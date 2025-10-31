@@ -619,6 +619,19 @@ en:
       total_storage: Media attachments
       totals_time_period_hint_html: The totals displayed below include data for all time.
       unknown_instance: There is currently no record of this domain on this server.
+      metadata_refresh_scheduled: Metadata Refresh Scheduled.
+      metadata:
+        title: Instance Metadata
+        software: Software
+        version: Version
+        theme_color: Theme Color
+        last_updated: Last Updated
+        never_updated: Never Updated
+        outdated_warning: Outdated!
+        favicon_url: Favicon URL
+        refresh: Request Update
+        refreshing: Requesting...
+        unknown: Unknown
     invites:
       deactivate_all: Deactivate all
       filter:
@@ -1220,6 +1233,7 @@ en:
     animations_and_accessibility: Animations and accessibility
     boosting_preferences: Boosting preferences
     boosting_preferences_info_html: "<strong>Tip:</strong> Regardless of settings, <kbd>Shift</kbd> + <kbd>Click</kbd> on the %{icon} Boost icon will immediately boost."
+    customized: Customized
     discovery: Discovery
     localization:
       body: Mastodon is translated by volunteers.

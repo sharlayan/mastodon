@@ -3,9 +3,10 @@ import Trie from 'substring-trie';
 import { getIsSystemTheme, isDarkMode } from '@/mastodon/utils/theme';
 import { assetHost } from 'mastodon/utils/config';
 
-import { autoPlayGif } from '../../initial_state';
+import { autoPlayGif , customEmojiSize } from '../../initial_state';
 
 import { unicodeMapping } from './emoji_unicode_mapping_light';
+
 
 const trie = new Trie(Object.keys(unicodeMapping));
 
@@ -80,7 +81,7 @@ const emojifyTextNode = (node, customEmojis) => {
       const filename = autoPlayGif ? custom_emoji.url : custom_emoji.static_url;
       replacement = document.createElement('img');
       replacement.setAttribute('draggable', 'false');
-      replacement.setAttribute('class', 'emojione custom-emoji');
+      replacement.setAttribute('class', `emojione custom-emoji${customEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`);
       replacement.setAttribute('alt', shortcode);
       replacement.setAttribute('title', shortcode);
       replacement.setAttribute('src', filename);

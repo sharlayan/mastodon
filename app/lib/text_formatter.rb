@@ -181,7 +181,7 @@ class TextFormatter
     return html if url.blank? || html.include?(url)
 
     <<~HTML.squish
-      <p class="quote-inline">RE: #{TextFormatter.shortened_link(url)}</p>#{html}
+      #{html}<br /><br /><span class="quote-inline">RE: #{TextFormatter.shortened_link(url)}</span>
     HTML
   end
 end

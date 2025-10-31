@@ -30,7 +30,14 @@ es:
   skins:
     vanilla:
       default: Predeterminado
-
+ko:
+  flavours:
+    vanilla:
+      description: 기본 Mastodon 인스턴스가 사용하는 테마입니다. 이 테마는 GlitchSoc에 추가된 기능을 사용할 수 없습니다.
+      name: 마스토돈 바닐라
+  skins:
+    vanilla:
+      default: 마스토돈 기본
 ja:
   flavours:
     vanilla:

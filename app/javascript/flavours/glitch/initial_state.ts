@@ -24,6 +24,7 @@ interface InitialStateMeta {
   limited_federation_mode: boolean;
   locale: string;
   mascot: string | null;
+  max_reactions: number;
   me?: string;
   moved_to_account_id?: string;
   owner?: string;
@@ -46,12 +47,16 @@ interface InitialStateMeta {
   use_blurhash: boolean;
   use_pending_items?: boolean;
   version: string;
+  visible_reactions: number;
   sso_redirect: string;
   status_page_url: string;
   terms_of_service_enabled: boolean;
   emoji_style?: string;
   wrapstodon?: InitialWrapstodonState | null;
   default_content_type: string;
+  show_instance_info: boolean;
+  custom_emoji_size: boolean;
+  reaction_custom_emoji_size: boolean;
 }
 
 interface Role {
@@ -85,6 +90,7 @@ export interface InitialState {
   local_settings: any;
   max_feed_hashtags: number;
   poll_limits: PollLimits;
+  max_reactions: number;
 }
 
 const element = document.getElementById('initial-state');
@@ -137,6 +143,7 @@ export const expandSpoilers = getMeta('expand_spoilers');
 export const forceSingleColumn = !getMeta('advanced_layout');
 export const limitedFederationMode = getMeta('limited_federation_mode');
 export const mascot = getMeta('mascot');
+export const maxReactions = initialState?.max_reactions ?? 1;
 export const me = getMeta('me');
 export const movedToAccountId = getMeta('moved_to_account_id');
 export const owner = getMeta('owner');
@@ -158,11 +165,14 @@ export const landingPage = getMeta('landing_page');
 export const useBlurhash = getMeta('use_blurhash');
 export const usePendingItems = getMeta('use_pending_items');
 export const version = getMeta('version');
+export const visibleReactions = getMeta('visible_reactions');
 export const criticalUpdatesPending = initialState?.critical_updates_pending;
 export const statusPageUrl = getMeta('status_page_url');
 export const sso_redirect = getMeta('sso_redirect');
 export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
-export const wrapstodon = getMeta('wrapstodon');
+export const showInstanceInfo = getMeta('show_instance_info');
+export const customEmojiSize = getMeta('custom_emoji_size');
+export const reactionCustomEmojiSize = getMeta('reaction_custom_emoji_size');
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

@@ -21,7 +21,7 @@ module Mastodon
     end
 
     def prerelease
-      version_configuration[:prerelease].presence || default_prerelease
+      version_configuration[:prerelease].presence || read_git_hash_from_file
     end
 
     def build_metadata
@@ -51,11 +51,11 @@ module Mastodon
     end
 
     def repository
-      source_configuration[:repository]
+      source_configuration[:repository] || "sharlayan/mastodon/src/branch/#{current_git_branch}"
     end
 
     def source_base_url
-      source_configuration[:base_url] || "https://github.com/#{repository}"
+      source_configuration[:base_url] || "https://git.drk.st/#{repository}"
     end
 
     # specify git tag or commit hash here
@@ -89,6 +89,32 @@ module Mastodon
 
     def mastodon_configuration
       Rails.configuration.x.mastodon
+    end
+
+    def read_git_head_file
+      head_file_path = '.git/HEAD'
+      File.read(head_file_path).strip
+    end
+
+    def read_git_hash_from_file
+      head_file_content = read_git_head_file
+      if head_file_content.start_with?('ref:')
+        ref_path = head_file_content.sub('ref: ', '').strip
+        ref_file_path = File.join('.git', ref_path)
+        ref_file_content = File.read(ref_file_path).strip
+        ref_file_content[0, 7]
+      else
+        head_file_content[0, 7]
+      end
+    end
+
+    def current_git_branch
+      head_file_content = read_git_head_file
+      if head_file_content.start_with?('ref: refs/heads/')
+        head_file_content.delete_prefix('ref: refs/heads/')
+      else
+        'Detached from HEAD'
+      end
     end
   end
 end

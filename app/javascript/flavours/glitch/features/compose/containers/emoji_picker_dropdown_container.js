@@ -7,7 +7,7 @@ import { useEmoji } from '../../../actions/emojis';
 import { changeSetting } from '../../../actions/settings';
 import EmojiPickerDropdown from '../components/emoji_picker_dropdown';
 
-const perLine = 8;
+const perLine = 7;
 const lines   = 2;
 
 const DEFAULTS = [

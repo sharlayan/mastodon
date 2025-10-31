@@ -125,8 +125,8 @@ code {
       .label_input > label {
         font-family: inherit;
         font-size: 14px;
-        padding-top: 5px;
-        color: var(--color-text-primary);
+        padding-top: 2px;
+        color: $primary-text-color;
         display: block;
         width: auto;
       }
@@ -160,7 +160,8 @@ code {
       .overridden,
       .recommended,
       .not_recommended,
-      .glitch_only {
+      .glitch_only,
+      .sharlayan_only {
         position: absolute;
         margin: 0 4px;
         margin-top: -2px;

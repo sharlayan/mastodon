@@ -56,15 +56,6 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
         <LocalSettingsPageItem
           settings={settings}
-          item={['hicolor_privacy_icons']}
-          id='mastodon-settings--hicolor_privacy_icons'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.hicolor_privacy_icons' defaultMessage='High color privacy icons' />
-          <span className='hint'><FormattedMessage id='settings.hicolor_privacy_icons.hint' defaultMessage='Display privacy icons in bright and easily distinguishable colors' /></span>
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
           item={['confirm_boost_missing_media_description']}
           id='mastodon-settings--confirm_boost_missing_media_description'
           onChange={onChange}
@@ -93,30 +84,40 @@ class LocalSettingsPage extends PureComponent {
         >
           <FormattedMessage id='settings.rewrite_mentions' defaultMessage='Rewrite mentions in displayed statuses' />
         </LocalSettingsPageItem>
+
         <section>
-          <h2><FormattedMessage id='settings.notifications_opts' defaultMessage='Notifications options' /></h2>
+          <h2><FormattedMessage id='settings.layout_opts' defaultMessage='Layout options' /></h2>
           <LocalSettingsPageItem
             settings={settings}
-            item={['notifications', 'tab_badge']}
-            id='mastodon-settings--notifications-tab_badge'
+            item={['stretch']}
+            id='mastodon-settings--stretch'
             onChange={onChange}
           >
-            <FormattedMessage id='settings.notifications.tab_badge' defaultMessage='Unread notifications badge' />
-            <span className='hint'><FormattedMessage id='settings.notifications.tab_badge.hint' defaultMessage="Display a badge for unread notifications in the column icons when the notifications column isn't open" /></span>
+            <FormattedMessage id='settings.wide_view' defaultMessage='Wide view (Desktop mode only)' />
+            <span className='hint'><FormattedMessage id='settings.wide_view_hint' defaultMessage='Stretches columns to better fill the available space.' /></span>
           </LocalSettingsPageItem>
           <LocalSettingsPageItem
             settings={settings}
-            item={['notifications', 'favicon_badge']}
-            id='mastodon-settings--notifications-favicon_badge'
+            item={['fullwidth_columns']}
+            id='mastodon-settings--fullwidth_columns'
             onChange={onChange}
           >
-            <FormattedMessage id='settings.notifications.favicon_badge' defaultMessage='Unread notifications favicon badge' />
-            <span className='hint'><FormattedMessage id='settings.notifications.favicon_badge.hint' defaultMessage='Add a badge for unread notifications to the favicon' /></span>
+            <FormattedMessage id='settings.fullwidth_view' defaultMessage='Stretch columns to full width (Desktop mode only)' />
+            <span className='hint'><FormattedMessage id='settings.fullwidth_view_hint' defaultMessage='Stretches columns to fill all the available space.' /></span>
           </LocalSettingsPageItem>
         </section>
 
         <section>
           <h2><FormattedMessage id='settings.status_icons' defaultMessage='Toot icons' /></h2>
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['hicolor_privacy_icons']}
+            id='mastodon-settings--hicolor_privacy_icons'
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.hicolor_privacy_icons' defaultMessage='High color privacy icons' />
+            <span className='hint'><FormattedMessage id='settings.hicolor_privacy_icons.hint' defaultMessage='Display privacy icons in bright and easily distinguishable colors' /></span>
+          </LocalSettingsPageItem>
           <LocalSettingsPageItem
             settings={settings}
             item={['status_icons', 'language']}
@@ -158,25 +159,26 @@ class LocalSettingsPage extends PureComponent {
             <FormattedMessage id='settings.status_icons_visibility' defaultMessage='Toot privacy indicator' />
           </LocalSettingsPageItem>
         </section>
+
         <section>
-          <h2><FormattedMessage id='settings.layout_opts' defaultMessage='Layout options' /></h2>
+          <h2><FormattedMessage id='settings.notifications_opts' defaultMessage='Notifications options' /></h2>
           <LocalSettingsPageItem
             settings={settings}
-            item={['stretch']}
-            id='mastodon-settings--stretch'
+            item={['notifications', 'tab_badge']}
+            id='mastodon-settings--notifications-tab_badge'
             onChange={onChange}
           >
-            <FormattedMessage id='settings.wide_view' defaultMessage='Wide view (Desktop mode only)' />
-            <span className='hint'><FormattedMessage id='settings.wide_view_hint' defaultMessage='Stretches columns to better fill the available space.' /></span>
+            <FormattedMessage id='settings.notifications.tab_badge' defaultMessage='Unread notifications badge' />
+            <span className='hint'><FormattedMessage id='settings.notifications.tab_badge.hint' defaultMessage="Display a badge for unread notifications in the column icons when the notifications column isn't open" /></span>
           </LocalSettingsPageItem>
           <LocalSettingsPageItem
             settings={settings}
-            item={['fullwidth_columns']}
-            id='mastodon-settings--fullwidth_columns'
+            item={['notifications', 'favicon_badge']}
+            id='mastodon-settings--notifications-favicon_badge'
             onChange={onChange}
           >
-            <FormattedMessage id='settings.fullwidth_view' defaultMessage='Stretch columns to full width (Desktop mode only)' />
-            <span className='hint'><FormattedMessage id='settings.fullwidth_view_hint' defaultMessage='Stretches columns to fill all the available space.' /></span>
+            <FormattedMessage id='settings.notifications.favicon_badge' defaultMessage='Unread notifications favicon badge' />
+            <span className='hint'><FormattedMessage id='settings.notifications.favicon_badge.hint' defaultMessage='Add a badge for unread notifications to the favicon' /></span>
           </LocalSettingsPageItem>
         </section>
       </div>
@@ -191,6 +193,14 @@ class LocalSettingsPage extends PureComponent {
           onChange={onChange}
         >
           <FormattedMessage id='settings.always_show_spoilers_field' defaultMessage='Always enable the Content Warning field' />
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
+          item={['mention_reblogger']}
+          id='mastodon-settings--mention_reblogger'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.mention_reblogger' defaultMessage='Mention booster when replying to a boosted post' />
         </LocalSettingsPageItem>
         <LocalSettingsPageItem
           settings={settings}

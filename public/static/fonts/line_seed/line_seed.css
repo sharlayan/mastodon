@@ -1,0 +1,62 @@
+@font-face {
+  font-family: "Line Seed KR";
+  src: url("/static/fonts/line_seed/LINESeedKR-Th.eot?t=1610000000");
+  src: url("/static/fonts/line_seed/LINESeedKR-Th.eot?t=1610000000#iefix") format("eot"),
+  url("/static/fonts/line_seed/LINESeedKR-Th.woff?t=1610000000") format("woff");
+  font-weight: 100;
+  font-style: normal
+}
+
+@font-face {
+  font-family: "Line Seed KR";
+  src: url("/static/fonts/line_seed/LINESeedKR-Rg.eot?t=1610000000");
+  src: url("/static/fonts/line_seed/LINESeedKR-Rg.eot?t=1610000000#iefix") format("eot"),
+  url("/static/fonts/line_seed/LINESeedKR-Rg.woff?t=1610000000") format("woff");
+  font-weight: 400;
+  font-style: normal
+}
+
+@font-face {
+  font-family: "Line Seed KR";
+  src: url("/static/fonts/line_seed/LINESeedKR-Bd.eot?t=1610000000");
+  src: url("/static/fonts/line_seed/LINESeedKR-Bd.eot?t=1610000000#iefix") format("eot"),
+  url("/static/fonts/line_seed/LINESeedKR-Bd.woff?t=1610000000") format("woff");
+  font-weight: 700;
+  font-style: normal
+}
+
+@font-face {
+  font-family: "Line Seed JP";
+  src: url("/static/fonts/line_seed/LINESeedJP_TTF_Th.eot?t=1610000000");
+  src: url("/static/fonts/line_seed/LINESeedJP_TTF_Th.eot?t=1610000000#iefix") format("eot"),
+  url("/static/fonts/line_seed/LINESeedJP_OTF_Th.woff?t=1610000000") format("woff");
+  font-weight: 100;
+  font-style: normal
+}
+
+@font-face {
+  font-family: "Line Seed JP";
+  src: url("/static/fonts/line_seed/LINESeedJP_TTF_Rg.eot?t=1610000000");
+  src: url("/static/fonts/line_seed/LINESeedJP_TTF_Rg.eot?t=1610000000#iefix") format("eot"),
+  url("/static/fonts/line_seed/LINESeedJP_OTF_Rg.woff?t=1610000000") format("woff");
+  font-weight: 400;
+  font-style: normal
+}
+
+@font-face {
+  font-family: "Line Seed JP";
+  src: url("/static/fonts/line_seed/LINESeedJP_TTF_Bd.eot?t=1610000000");
+  src: url("/static/fonts/line_seed/LINESeedJP_TTF_Bd.eot?t=1610000000#iefix") format("eot"),
+  url("/static/fonts/line_seed/LINESeedJP_OTF_Bd.woff?t=1610000000") format("woff");
+  font-weight: 700;
+  font-style: normal
+}
+
+@font-face {
+  font-family: "Line Seed JP";
+  src: url("/static/fonts/line_seed/LINESeedJP_TTF_Eb.eot?t=1610000000");
+  src: url("/static/fonts/line_seed/LINESeedJP_TTF_Eb.eot?t=1610000000#iefix") format("eot"),
+  url("/static/fonts/line_seed/LINESeedJP_OTF_Eb.woff?t=1610000000") format("woff");
+  font-weight: 900;
+  font-style: normal
+}

@@ -19,6 +19,7 @@ module Admin
       @instance_moderation_notes = @instance.moderation_notes.includes(:account).chronological
       @time_period = (6.days.ago.to_date...Time.now.utc.to_date)
       @action_logs = Admin::ActionLogFilter.new(target_domain: @instance.domain).results.limit(LOGS_LIMIT)
+      @instance_metadata = @instance.metadata
     end
 
     def destroy
@@ -50,6 +51,14 @@ module Admin
       unavailable_domain = UnavailableDomain.create!(domain: @instance.domain)
       log_action :create, unavailable_domain
       redirect_to admin_instance_path(@instance.domain)
+    end
+
+    def refresh_metadata
+      authorize :instance, :refresh_metadata?
+      InstanceMetadataUpdateWorker.perform_async(@instance.domain)
+      # never logging. but code leave...
+      # log_action :refresh_metadata, @instance
+      redirect_to admin_instance_path(@instance), notice: I18n.t('admin.instances.metadata_refresh_scheduled')
     end
 
     private

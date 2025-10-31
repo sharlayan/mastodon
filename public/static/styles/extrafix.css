@@ -1,0 +1,13 @@
+@import '/static/fonts/line_seed/line_seed.css';
+/*
+  FFXIV_Lodestone_SSF from Final Fantasy XIV® Official Homepage
+*/
+
+/* set to html and body (it can override specific styles) */
+html,
+html > body {
+  font-family:
+    'FFXIV_Lodestone_SSF', 'Line Seed KR', 'Line Seed JP',
+    mastodon-font-sans-serif, sans-serif;
+  font-weight: 500;
+}

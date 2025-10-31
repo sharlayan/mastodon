@@ -37,5 +37,6 @@ export const NotificationPoll: React.FC<{
         : labelRendererOther
     }
     unread={unread}
+    collapsed
   />
 );

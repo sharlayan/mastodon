@@ -1,0 +1,18 @@
+img.emojione {
+  margin: 0;
+}
+
+img.emojione.custom-emoji.horizontal-origin-custom-emoji {
+  width: auto;
+  min-width: 1em;
+  max-width: 100%;
+  font-size: inherit;
+}
+
+html .reactions-bar__item__users__emoji.horizontal-origin {
+  width: auto;
+  min-width: 1em;
+  max-width: 100%;
+  font-size: 16px;
+  box-sizing: border-box;
+}

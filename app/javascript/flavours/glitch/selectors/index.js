@@ -13,15 +13,31 @@ const getStatusInputSelectors = [
   (state, { id }) => state.getIn(['statuses', state.getIn(['statuses', id, 'reblog'])]),
   (state, { id }) => state.getIn(['accounts', state.getIn(['statuses', id, 'account'])]),
   (state, { id }) => state.getIn(['accounts', state.getIn(['statuses', state.getIn(['statuses', id, 'reblog']), 'account'])]),
+  (state, { id }) => getReactionUsers(state, id),
+  (state, { id }) => {
+    const reblogId = state.getIn(['statuses', id, 'reblog']);
+    return reblogId ? getReactionUsers(state, reblogId) : null;
+  },
   getFilters,
   (_, { contextType }) => ['detailed', 'bookmarks', 'favourites', 'search'].includes(contextType),
 ];
+
+const getReactionUsers = (state, id) => {
+  const reactions = state.getIn(['statuses', id, 'reactions']);
+  if (!reactions) return null;
+
+  return reactions
+    .flatMap(reaction => reaction.get('users'))
+    .map(user => state.getIn(['accounts', user.get('id')]));
+};
 
 function getStatusResultFunction(
   statusBase,
   statusReblog,
   accountBase,
   accountReblog,
+  reactedUsers,
+  reactedUsersReblog,
   filters,
   warnInsteadOfHide
 ) {
@@ -72,12 +88,43 @@ function getStatusResultFunction(
     statusReblog = null;
   }
 
+  // check needed user fetch error
+  let reactions = statusReblog
+    ? statusReblog.get('reactions')
+    : statusBase.get('reactions');
+
+  let users = statusReblog
+    ? reactedUsersReblog
+    : reactedUsers;
+
+  if (reactions && users && users.size > 0) {
+    try {
+      let userIndex = 0;
+      for (let i = 0; i < reactions.size; i++) {
+        const reactionUsers = reactions.getIn([i, 'users']);
+        if (reactionUsers) {
+          for(let j = 0; j < reactionUsers.size; j++) {
+            if (userIndex < users.size) {
+              reactions = reactions.setIn([i, 'users', j], users.get(userIndex++));
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error processing reactions:', error);
+    }
+  }
+
   return {
     status: statusBase.withMutations(map => {
       map.set('reblog', statusReblog);
       map.set('account', accountBase);
       map.set('matched_filters', filtered);
       map.set('matched_media_filters', mediaFiltered);
+
+      if (!statusReblog) {
+        map.set('reactions', reactions);
+      }
     }),
     loadingState: statusBase.get('isLoading') ? 'loading' : 'complete'
   };

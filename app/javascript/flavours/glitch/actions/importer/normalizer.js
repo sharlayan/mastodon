@@ -38,6 +38,9 @@ export function normalizeStatus(status, normalOldStatus, { settings, bogusQuoteP
   normalStatus.account = status.account.id;
 
   if (status.reblog && status.reblog.id) {
+    normalStatus.reactions = status.reblog.reactions;
+    normalStatus.reacted = status.reblog.reacted;
+
     normalStatus.reblog = status.reblog.id;
   }
 

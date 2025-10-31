@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
+import AddReactionIcon from '@/material-icons/400-24px/add_reaction.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import InsertChartIcon from '@/material-icons/400-24px/insert_chart.svg?react';
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
@@ -23,6 +24,10 @@ const tooltips = defineMessages({
   favourites: {
     id: 'notifications.filter.favourites',
     defaultMessage: 'Favorites',
+  },
+  reactions: {
+    id: 'notifications.filter.reactions',
+    defaultMessage: 'Reactions',
   },
   boosts: { id: 'notifications.filter.boosts', defaultMessage: 'Boosts' },
   polls: { id: 'notifications.filter.polls', defaultMessage: 'Poll results' },
@@ -97,6 +102,14 @@ export const FilterBar: React.FC = () => {
           title={intl.formatMessage(tooltips.favourites)}
         >
           <Icon id='star' icon={StarIcon} />
+        </BarButton>
+        <BarButton
+          selectedFilter={selectedFilter}
+          type='reaction'
+          key='reaction'
+          title={intl.formatMessage(tooltips.reactions)}
+        >
+          <Icon id='add_reaction' icon={AddReactionIcon} />
         </BarButton>
         <BarButton
           selectedFilter={selectedFilter}

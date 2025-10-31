@@ -219,13 +219,9 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
     const fulltext = `${spoiler_text ?? ''}${countableText(status ?? '')}`;
     const hasText = fulltext.trim().length > 0;
 
-    if (!(hasText || media.size !== 0 || (hasQuote && spoiler_text?.length))) {
-      dispatch(showAlert({
-        message: messages.blankPostError,
-      }));
-      dispatch(focusCompose());
-
-      return;
+    if (getState().getIn(['compose', 'advanced_options', 'do_not_federate'])) {
+      // local timeline limit specific emoji change to 🏡
+      status = status + ' 🏡';
     }
 
     dispatch(submitComposeRequest());

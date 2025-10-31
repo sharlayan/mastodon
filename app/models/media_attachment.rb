@@ -71,7 +71,7 @@ class MediaAttachment < ApplicationRecord
 
   IMAGE_STYLES = {
     original: {
-      pixels: 8_294_400, # 3840x2160px
+      pixels: 16_777_216, # 4096 x 4096
       file_geometry_parser: FastGeometryParser,
     }.freeze,
 
@@ -84,8 +84,8 @@ class MediaAttachment < ApplicationRecord
 
   IMAGE_CONVERTED_STYLES = {
     original: {
-      format: 'jpeg',
-      content_type: 'image/jpeg',
+      format: 'png',
+      content_type: 'image/png',
     }.merge(IMAGE_STYLES[:original]).freeze,
 
     small: {

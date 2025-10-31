@@ -70,7 +70,11 @@ en:
         setting_use_blurhash: Gradients are based on the colors of the hidden visuals but obfuscate any details
         setting_use_pending_items: Hide timeline updates behind a click instead of automatically scrolling the feed
         username: You can use letters, numbers, and underscores
+        warn_quote_policy_html: "<strong>Warning:</strong><br>If you limit who can quote, software other than Mastodon, maybe quoted if they don't accept the FEP-044f (Fediverse Enhancement Proposals)<br>%{instance} default is 'Nobody'"
         whole_word: When the keyword or phrase is alphanumeric only, it will only be applied if it matches the whole word
+        setting_show_instance_info: Display instance name, theme color, and favicon for posts from other servers
+        setting_custom_emoji_size: Display Original size of Long Horizontally Custom Emoji
+        setting_reaction_custom_emoji_size: Display Original size of Long Horizontally Custom Emoji on Reaction Button
       domain_allow:
         domain: This domain will be able to fetch data from this server and incoming data from it will be processed and stored
       email_domain_block:
@@ -274,6 +278,9 @@ en:
         username: Username
         username_or_email: Username or Email
         whole_word: Whole word
+        setting_show_instance_info: Show instance information on posts
+        setting_custom_emoji_size: Show Origin Size Custom Emoji
+        setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction Button
       email_domain_block:
         with_dns_records: Include MX records and IPs of the domain
       featured_tag:

@@ -63,6 +63,18 @@ class Instance < ApplicationRecord
     domain
   end
 
+  def metadata
+    @metadata ||= InstanceMetadata.for_domain(domain)
+  end
+
+  def theme_color
+    metadata.theme_color_with_fallback
+  end
+
+  def favicon_url
+    metadata.favicon_url_with_fallback
+  end
+
   alias to_log_human_identifier to_param
 
   delegate :exhausted_deliveries_days, to: :delivery_failure_tracker

@@ -70,6 +70,10 @@ class InstancePresenter < ActiveModelSerializers::Model
     Mastodon::Version.to_s
   end
 
+  def git_head
+    Mastodon::Version.source_url
+  end
+
   def source_url
     Mastodon::Version.source_url
   end

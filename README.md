@@ -1,4 +1,12 @@
-# Mastodon Glitch Edition
+# Mastodon Glitch - Sharlayan flavour
+
+Mastodon 포크들에서 Emoji Reaction 을 지원하는 여러 버전을 참고하여 재구성한 버전입니다.
+참고한 버전은 다음과 같습니다.
+
+- Mastodon Urusai! (글리치 리액션 기능 전반)
+- Mastodon mstdn.lalafell.org (F-Finene, 미스키 스타일 반응 보기)
+
+# Mastodon Glitch
 
 [![Ruby Testing](https://github.com/glitch-soc/mastodon/actions/workflows/test-ruby.yml/badge.svg)](https://github.com/glitch-soc/mastodon/actions/workflows/test-ruby.yml)
 [![Crowdin](https://badges.crowdin.net/glitch-soc/localized.svg)][glitch-crowdin]

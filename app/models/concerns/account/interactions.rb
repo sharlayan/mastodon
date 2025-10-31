@@ -196,6 +196,14 @@ module Account::Interactions
     status.proper.favourites.exists?(account: self)
   end
 
+  def reacted?(status, name = nil, custom_emoji = nil)
+    if name.nil?
+      status.proper.status_reactions.exists?(account: self)
+    else
+      status.proper.status_reactions.exists?(account: self, name: name, custom_emoji: custom_emoji)
+    end
+  end
+
   def bookmarked?(status)
     status.proper.bookmarks.exists?(account: self)
   end

@@ -1,0 +1,30 @@
+# frozen_string_literal: true
+
+class Scheduler::InstanceMetadataRefreshScheduler
+  include Sidekiq::Worker
+  include DatabaseHelper
+
+  sidekiq_options retry: 0
+
+  def perform
+    missing_info_domains = InstanceMetadata.where('software IS NULL OR software = ? OR instance_name IS NULL OR instance_name = ?', '', '').pluck(:domain).first(50)
+
+    missing_info_domains.each do |domain|
+      InstanceMetadataUpdateWorker.perform_async(domain)
+    end
+
+    outdated_domains = InstanceMetadata.where.not(id: InstanceMetadata.where('software IS NULL OR instance_name IS NULL')).where('theme_color_updated_at IS NULL OR theme_color_updated_at < ?', 7.days.ago).pluck(:domain).first(50)
+
+    outdated_domains.each do |domain|
+      InstanceMetadataUpdateWorker.perform_async(domain)
+    end
+
+    active_domains = Account.remote.where.not(domain: nil).where('last_status_at > ?', 30.days.ago).distinct.pluck(:domain).first(30)
+
+    active_domains.each do |domain|
+      next if InstanceMetadata.exists?(domain: domain)
+
+      InstanceMetadataUpdateWorker.perform_async(domain)
+    end
+  end
+end

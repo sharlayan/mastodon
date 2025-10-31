@@ -10,6 +10,7 @@ import ImmutablePureComponent from 'react-immutable-pure-component';
 import { Hotkeys } from 'flavours/glitch/components/hotkeys';
 import { ContentWarning } from 'flavours/glitch/components/content_warning';
 import { PictureInPicturePlaceholder } from 'flavours/glitch/components/picture_in_picture_placeholder';
+import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
 import { autoUnfoldCW } from 'flavours/glitch/utils/content_warning';
 import { withOptionalRouter, WithOptionalRouterPropTypes } from 'flavours/glitch/utils/react_router';
 
@@ -19,16 +20,19 @@ import Card from '../features/status/components/card';
 import Bundle from '../features/ui/components/bundle';
 import { MediaGallery, Video, Audio } from '../features/ui/util/async-components';
 import { SensitiveMediaContext } from '../features/ui/util/sensitive_media_context';
-import { displayMedia } from '../initial_state';
+import { displayMedia, visibleReactions, disableHoverCards, showInstanceInfo } from '../initial_state';
 
 import AttachmentList from './attachment_list';
 import { StatusHeader } from './status/header'
 import { getHashtagBarForStatus } from './hashtag_bar';
 import { MentionsPlaceholder } from './mentions_placeholder';
 import StatusActionBar from './status_action_bar';
+import StatusReactions from './status_reactions';
 import StatusContent from './status_content';
 import StatusIcons from './status_icons';
 import StatusPrepend from './status_prepend';
+
+import InstanceBadge from './instance_badge';
 
 const domParser = new DOMParser();
 
@@ -38,7 +42,7 @@ const messages = defineMessages({
   quote_cancel: { id: 'status.quote.cancel', defaultMessage: 'Cancel quote' },
 });
 
-export const textForScreenReader = ({intl, status, rebloggedByText = false, isQuote = false, expanded = false}) => {
+export const textForScreenReader = ({ intl, status, rebloggedByText = false, isQuote = false, expanded = false }) => {
   const displayName = status.getIn(['account', 'display_name']);
 
   const spoilerText = status.getIn(['translation', 'spoiler_text']) || status.get('spoiler_text');
@@ -79,6 +83,7 @@ class Status extends ImmutablePureComponent {
   static contextType = SensitiveMediaContext;
 
   static propTypes = {
+    identity: identityContextPropShape,
     containerId: PropTypes.string,
     id: PropTypes.string,
     status: ImmutablePropTypes.map,
@@ -90,6 +95,8 @@ class Status extends ImmutablePureComponent {
     onClick: PropTypes.func,
     onReply: PropTypes.func,
     onFavourite: PropTypes.func,
+    onReactionAdd: PropTypes.func,
+    onReactionRemove: PropTypes.func,
     onReblog: PropTypes.func,
     onQuote: PropTypes.func,
     onBookmark: PropTypes.func,
@@ -209,7 +216,7 @@ class Status extends ImmutablePureComponent {
     return updated ? update : null;
   }
 
-  componentDidMount () {
+  componentDidMount() {
     const { node } = this;
 
     // Prevent a crash when node is undefined. Not completely sure why this
@@ -375,7 +382,7 @@ class Status extends ImmutablePureComponent {
       this.props.onClick();
       return;
     }
-    
+
     const { history } = this.props;
     const status = this.props.status;
 
@@ -436,40 +443,26 @@ class Status extends ImmutablePureComponent {
     this.props.onTranslate(this.props.status);
   };
 
-  renderLoadingMediaGallery () {
+  renderLoadingMediaGallery() {
     return <div className='media-gallery' style={{ height: '110px' }} />;
   }
 
-  renderLoadingVideoPlayer () {
+  renderLoadingVideoPlayer() {
     return <div className='video-player' style={{ height: '110px' }} />;
   }
 
-  renderLoadingAudioPlayer () {
+  renderLoadingAudioPlayer() {
     return <div className='audio-player' style={{ height: '110px' }} />;
   }
 
-  render () {
-    const {
-      intl,
-      hidden,
-      featured,
-      unfocusable,
-      unread,
-      showActions = true,
-      isQuotedPost = false,
-      pictureInPicture,
-      previousId,
-      nextInReplyToId,
-      rootId,
-      skipPrepend,
-      avatarSize = 46,
-      children,
-    } = this.props;
+  render() {
+    const { intl, hidden, featured, unfocusable, unread, pictureInPicture, previousId, nextInReplyToId, rootId, skipPrepend, avatarSize = 46, children } = this.props;
 
     // glitch-soc-specific
     const {
       status,
       account,
+      identity,
       settings,
       muted,
       onOpenVideo,
@@ -478,6 +471,7 @@ class Status extends ImmutablePureComponent {
       history,
       ...other
     } = this.props;
+
     let attachments = null;
 
     let media = [];
@@ -511,6 +505,8 @@ class Status extends ImmutablePureComponent {
     const connectToRoot = rootId && rootId === status.get('in_reply_to_id');
     const connectReply = nextInReplyToId && nextInReplyToId === status.get('id');
     const matchedFilters = status.get('matched_filters');
+
+    const instanceInfo = status.get('instance_metadata');
 
     if (hidden) {
       return (
@@ -664,6 +660,7 @@ class Status extends ImmutablePureComponent {
     if (this.props.prepend && account) {
       const notifKind = {
         favourite: 'favourited',
+        reaction: 'reacted',
         reblog: 'boosted',
         reblogged_by: 'boosted',
         status: 'posted',
@@ -684,7 +681,13 @@ class Status extends ImmutablePureComponent {
       rebloggedByText = intl.formatMessage({ id: 'status.reblogged_by', defaultMessage: '{name} boosted' }, { name: account.get('acct') });
     }
 
-    const {statusContentProps, hashtagBar} = getHashtagBarForStatus(status);
+    if (account === undefined || account === null) {
+      statusAvatar = <Avatar account={status.get('account')} size={avatarSize} />;
+    } else {
+      statusAvatar = <AvatarOverlay account={status.get('account')} friend={account} />;
+    }
+
+    const { statusContentProps, hashtagBar } = getHashtagBarForStatus(status);
 
     const header = this.props.headerRenderFn
       ? this.props.headerRenderFn({ status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured })
@@ -710,7 +713,7 @@ class Status extends ImmutablePureComponent {
           {...selectorAttribs}
           tabIndex={unfocusable ? null : 0}
           data-featured={featured ? 'true' : null}
-          aria-label={textForScreenReader({intl, status, rebloggedByText, isQuote: isQuotedPost, expanded: !status.get('hidden')})}
+          aria-label={textForScreenReader({ intl, status, rebloggedByText, isQuote: isQuotedPost, expanded: !status.get('hidden') })}
           ref={this.handleRef}
           data-nosnippet={status.getIn(['account', 'noindex'], true) || undefined}
         >
@@ -719,21 +722,49 @@ class Status extends ImmutablePureComponent {
           <div
             className={
               classNames('status', `status-${status.get('visibility')}`,
-              {
-                'status-reply': !!status.get('in_reply_to_id'),
-                'status--in-thread': !!rootId,
-                'status--first-in-thread': previousId && (!connectUp || connectToRoot),
-                muted: this.props.muted,
-                'status--is-quote': isQuotedPost,
-                'status--has-quote': !!status.get('quote'),
-                'status--highlighted-entry': this.props.shouldHighlightOnMount,
-              })
+                {
+                  'status-reply': !!status.get('in_reply_to_id'),
+                  'status--in-thread': !!rootId,
+                  'status--first-in-thread': previousId && (!connectUp || connectToRoot),
+                  muted: this.props.muted,
+                  'status--is-quote': isQuotedPost,
+                  'status--has-quote': !!status.get('quote'),
+                  'status--highlighted-entry': this.props.shouldHighlightOnMount,
+                })
             }
             data-id={status.get('id')}
           >
             {(connectReply || connectUp || connectToRoot) && <div className={classNames('status__line', { 'status__line--full': connectReply, 'status__line--first': !status.get('in_reply_to_id') && !connectToRoot })} />}
 
-            {(!muted) && header}
+            {(!muted) && (
+              <header onClick={this.handleHeaderClick} onAuxClick={this.handleHeaderClick} className='status__info'>
+                <LinkedDisplayName displayProps={{ account: status.get('account'),  disableEmojiTooltip: !disableHoverCards }} className='status__display-name'>
+                  <div className='status__avatar'>
+                    {statusAvatar}
+                  </div>
+                </LinkedDisplayName>
+
+                {isQuotedPost && !!this.props.onQuoteCancel ? (
+                  <IconButton
+                    onClick={this.handleQuoteCancel}
+                    className='status__quote-cancel'
+                    title={intl.formatMessage(messages.quote_cancel)}
+                    icon="cancel-fill"
+                    iconComponent={CancelFillIcon}
+                  />
+                ) : (
+                  <StatusIcons
+                    status={status}
+                    mediaIcons={mediaIcons}
+                    settings={settings.get('status_icons')}
+                  />
+                )}
+              </header>
+            )}
+
+            {showInstanceInfo && instanceInfo && (
+              <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
+            )}
 
             <ContentWarning status={status} expanded={expanded} onClick={this.handleExpandedToggle} icons={mediaIcons} />
 
@@ -759,14 +790,24 @@ class Status extends ImmutablePureComponent {
             {/* This is a glitch-soc addition to have a placeholder */}
             {!expanded && <MentionsPlaceholder status={status} />}
 
-            {(showActions && !isQuotedPost) &&
-              <StatusActionBar
-                status={status}
-                account={status.get('account')}
-                showReplyCount={settings.get('show_reply_count')}
-                onFilter={matchedFilters ? this.handleFilterClick : null}
-                {...other}
-              />
+            {!isQuotedPost &&
+              <>
+                <StatusReactions
+                  statusId={status.get('id')}
+                  reactions={status.get('reactions')}
+                  numVisible={visibleReactions}
+                  addReaction={this.props.onReactionAdd}
+                  removeReaction={this.props.onReactionRemove}
+                  canReact={this.props.identity.signedIn}
+                />
+                <StatusActionBar
+                  status={status}
+                  account={status.get('account')}
+                  showReplyCount={settings.get('show_reply_count')}
+                  onFilter={matchedFilters ? this.handleFilterClick : null}
+                  {...other}
+                />
+              </>
             }
           </div>
         </div>
@@ -776,4 +817,4 @@ class Status extends ImmutablePureComponent {
 
 }
 
-export default withOptionalRouter(injectIntl(Status));
+export default withOptionalRouter(injectIntl(withIdentity(Status)));

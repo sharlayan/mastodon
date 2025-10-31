@@ -44,6 +44,7 @@ class StatusCacheHydrator
 
       payload[:filtered]   = payload[:reblog][:filtered]
       payload[:favourited] = payload[:reblog][:favourited]
+      payload[:reactions]  = payload[:reblog][:reactions]
       payload[:reblogged]  = payload[:reblog][:reblogged]
       payload[:quote_approval] = payload[:reblog][:quote_approval]
     end
@@ -51,6 +52,7 @@ class StatusCacheHydrator
 
   def fill_status_payload(payload, status, account_id, nested: false, fresh: true)
     payload[:favourited] = Favourite.exists?(account_id: account_id, status_id: status.id)
+    payload[:reactions]  = serialized_reactions(account_id)
     payload[:reblogged]  = Status.exists?(account_id: account_id, reblog_of_id: status.id)
     payload[:muted]      = ConversationMute.exists?(account_id: account_id, conversation_id: status.conversation_id)
     payload[:bookmarked] = Bookmark.exists?(account_id: account_id, status_id: status.id)
@@ -126,6 +128,16 @@ class StatusCacheHydrator
     ActiveModelSerializers::SerializableResource.new(
       filter,
       serializer: REST::FilterResultSerializer
+    ).as_json
+  end
+
+  def serialized_reactions(account_id)
+    reactions = @status.reactions(account_id)
+    ActiveModelSerializers::SerializableResource.new(
+      reactions,
+      each_serializer: REST::ReactionSerializer,
+      scope: account_id, # terrible
+      scope_name: :current_user
     ).as_json
   end
 

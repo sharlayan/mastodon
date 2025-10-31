@@ -220,7 +220,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
     approval_uri = @status_parser.quote_approval_uri
     approval_uri = nil if unsupported_uri_scheme?(approval_uri) || TagManager.instance.local_url?(approval_uri)
-    @quote = Quote.new(account: @account, approval_uri: approval_uri, legacy: @status_parser.legacy_quote?, state: @status_parser.deleted_quote? ? :deleted : :pending)
+    @quote = Quote.new(account: @account, approval_uri: approval_uri, legacy: @status_parser.legacy_quote?, state: @status_parser.deleted_quote? ? :deleted : :pending, from_misskey: @status_parser.from_misskey?)
   end
 
   def process_hashtag(tag)

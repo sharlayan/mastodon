@@ -13,7 +13,15 @@ class ActivityPub::VerifyQuoteService < BaseService
     @fetching_error = nil
 
     fetch_quoted_post_if_needed!(fetchable_quoted_uri, prefetched_body: prefetched_quoted_object)
+
+    # Misskey has no quote limit...
+    if quote.legacy? && quote.from_misskey? && quote.quoted_status_id.present?
+      quote.accept!
+      return
+    end
+
     return if quote.quoted_account&.local?
+
     return if fast_track_approval! || quote.approval_uri.blank?
 
     @json = fetch_approval_object(quote.approval_uri, prefetched_body: prefetched_approval)

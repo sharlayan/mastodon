@@ -41,11 +41,13 @@ export const Column = forwardRef<ColumnRef, ColumnProps>(
       },
     }));
 
+    const classNames = ['column', className].filter(Boolean).join(' ');
+
     return (
       <div
         role='region'
         aria-label={label}
-        className={classNames('column', className)}
+        className={classNames}
         ref={nodeRef}
       >
         {children}

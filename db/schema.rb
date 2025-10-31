@@ -122,10 +122,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.boolean "keep_pinned", default: true, null: false
     t.boolean "keep_polls", default: false, null: false
     t.boolean "keep_self_bookmark", default: true, null: false
-    t.boolean "keep_self_fav", default: true, null: false
+    t.boolean "keep_self_reaction", default: true, null: false
     t.integer "min_favs"
     t.integer "min_reblogs"
-    t.integer "min_status_age", default: 1209600, null: false
+    t.integer "min_reactions"
+    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_account_statuses_cleanup_policies_on_account_id"
   end
@@ -1158,6 +1159,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.index ["status_id"], name: "index_status_pins_on_status_id"
   end
 
+  create_table "status_reactions", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "status_id", null: false
+    t.string "name", default: "", null: false
+    t.bigint "custom_emoji_id"
+    t.datetime "created_at", precision: 6, null: false
+    t.datetime "updated_at", precision: 6, null: false
+    t.index ["account_id", "status_id", "name"], name: "index_status_reactions_on_account_id_and_status_id", unique: true
+    t.index ["custom_emoji_id"], name: "index_status_reactions_on_custom_emoji_id"
+    t.index ["status_id"], name: "index_status_reactions_on_status_id"
+  end
+
   create_table "status_stats", force: :cascade do |t|
     t.datetime "created_at", precision: nil, null: false
     t.bigint "favourites_count", default: 0, null: false
@@ -1496,6 +1509,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
   add_foreign_key "mentions", "statuses", on_delete: :cascade
   add_foreign_key "mutes", "accounts", column: "target_account_id", name: "fk_eecff219ea", on_delete: :cascade
   add_foreign_key "mutes", "accounts", name: "fk_b8d8daf315", on_delete: :cascade
+  add_foreign_key "notification_permissions", "accounts"
   add_foreign_key "notification_permissions", "accounts", column: "from_account_id", on_delete: :cascade
   add_foreign_key "notification_permissions", "accounts", on_delete: :cascade
   add_foreign_key "notification_policies", "accounts", on_delete: :cascade
@@ -1538,6 +1552,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
   add_foreign_key "status_edits", "statuses", on_delete: :cascade
   add_foreign_key "status_pins", "accounts", name: "fk_d4cb435b62", on_delete: :cascade
   add_foreign_key "status_pins", "statuses", on_delete: :cascade
+  add_foreign_key "status_reactions", "accounts", on_delete: :cascade
+  add_foreign_key "status_reactions", "custom_emojis", on_delete: :cascade
+  add_foreign_key "status_reactions", "statuses", on_delete: :cascade
   add_foreign_key "status_stats", "statuses", on_delete: :cascade
   add_foreign_key "status_trends", "accounts", on_delete: :cascade
   add_foreign_key "status_trends", "statuses", on_delete: :cascade

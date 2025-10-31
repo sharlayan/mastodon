@@ -1,0 +1,114 @@
+$doodle-background: #d9e1e8;
+
+.doodle-modal {
+  display: flex;
+  flex-direction: column;
+
+  .doodle-wrapper {
+    display: flex;
+    flex-direction: row;
+  }
+
+  &__top {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px;
+
+    &__left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      button {
+        padding: 0 4px;
+      }
+    }
+
+    &__right {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+
+  &__action-bar {
+    background: $doodle-background;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    & > div {
+      padding: 0;
+      padding-inline-end: 0;
+      padding-inline-start: 0;
+    }
+
+    .doodle-toolbar {
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+    }
+
+    .doodle-options {
+      box-sizing: border-box;
+      width: 100%;
+      max-height: 2em;
+      display: flex;
+      justify-content: start;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filler {
+      flex-grow: 1;
+    }
+
+    .doodle-palette {
+      max-width: calc(16px * 12);
+      background: #808080;
+
+      button {
+        border: 0;
+
+        &.foreground,
+        &.background {
+          position: relative;
+
+          &::before {
+            content: '';
+            display: block;
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            right: 0;
+          }
+        }
+
+        &.foreground::before {
+          background: linear-gradient(
+            135deg,
+            #f00 0,
+            #f00 5px,
+            #fff 5px,
+            #fff 6px,
+            transparent 6px,
+            transparent 100%
+          );
+        }
+
+        &.background::before {
+          background: linear-gradient(
+            315deg,
+            #f00 0,
+            #f00 5px,
+            #fff 5px,
+            #fff 6px,
+            transparent 6px,
+            transparent 100%
+          );
+        }
+      }
+    }
+  }
+}

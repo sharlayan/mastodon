@@ -139,6 +139,22 @@ module User::HasSettings
     settings['default_quote_policy'] || 'public'
   end
 
+  def setting_visible_reactions
+    integer_cast_setting('visible_reactions', 0)
+  end
+
+  def settings_show_instance_info
+    settings['web.show_instance_info']
+  end
+
+  def settings_custom_emoji_size
+    settings['web.custom_emoji_size']
+  end
+
+  def settings_reaction_custom_emoji_size
+    settings['web.reaction_custom_emoji_size']
+  end
+
   def allows_report_emails?
     settings['notification_emails.report']
   end
@@ -181,5 +197,15 @@ module User::HasSettings
 
   def hide_all_media?
     settings['web.display_media'] == 'hide_all'
+  end
+
+  def integer_cast_setting(key, min = nil, max = nil)
+    i = ActiveModel::Type::Integer.new.cast(settings[key])
+    # the cast above doesn't return a number if passed the string "e"
+    i = 0 unless i.is_a? Numeric
+    return min if !min.nil? && i < min
+    return max if !max.nil? && i > max
+
+    i
   end
 end

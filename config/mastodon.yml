@@ -8,11 +8,11 @@ shared:
     api_url: <%= ENV.fetch('DONATION_CAMPAIGNS_URL', nil)&.to_json %>
     environment: <%= ENV.fetch('DONATION_CAMPAIGNS_ENVIRONMENT', nil)&.to_json %>
   source:
-    base_url: <%= ENV.fetch('SOURCE_BASE_URL', nil)&.to_json %>
-    repository: <%= ENV.fetch('GITHUB_REPOSITORY', 'glitch-soc/mastodon') %>
+    base_url: <%= ENV.fetch('SOURCE_BASE_URL', 'https://git.drk.st/')&.to_json %>
+    repository: <%= ENV.fetch('GITHUB_REPOSITORY', 'arcturus/mastodon') %>
     tag: <%= ENV.fetch('SOURCE_TAG', nil) %>
   version:
-    metadata: <%= ['glitch', ENV.fetch('MASTODON_VERSION_METADATA', nil)].compact_blank.join('.').to_json %>
+    metadata: <%= ['sharlayan', ENV.fetch('MASTODON_VERSION_METADATA', nil)].compact_blank.join('.').to_json %>
     prerelease: <%= ENV.fetch('MASTODON_VERSION_PRERELEASE', nil)&.to_json %>
 test:
   experimental_features: <%= [ENV.fetch('EXPERIMENTAL_FEATURES', nil), 'testing_only'].compact.join(',') %>

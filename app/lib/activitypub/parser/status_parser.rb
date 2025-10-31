@@ -39,7 +39,7 @@ class ActivityPub::Parser::StatusParser
 
   def text
     if @object['content'].present?
-      @object['content']
+      sanitize_misskey_quote_br(@object['content'])
     elsif content_language_map?
       @object['contentMap'].values.first
     end
@@ -126,6 +126,13 @@ class ActivityPub::Parser::StatusParser
   end
 
   def quote_policy
+    # quote auto allow from misskey notes
+    if from_misskey? && [:public, :unlisted].include?(visibility)
+      flags = Status::QUOTE_APPROVAL_POLICY_FLAGS[:followers]
+      flags <<= 16
+      return flags
+    end
+
     flags = 0
     policy = @object.dig('interactionPolicy', 'canQuote')
     return flags if policy.blank?
@@ -162,6 +169,16 @@ class ActivityPub::Parser::StatusParser
 
   def quote_approval_uri
     as_array(@object['quoteAuthorization']).first
+  end
+
+  def from_misskey?
+    return false unless @json.is_a?(Hash)
+
+    # check in @context array
+    context = as_array(@json['@context'])
+    context.any? do |ctx|
+      ctx.is_a?(Hash) && ctx.key?('misskey')
+    end
   end
 
   def converted_object_type?
@@ -221,5 +238,11 @@ class ActivityPub::Parser::StatusParser
 
   def name_language_map?
     @object['nameMap'].is_a?(Hash) && !@object['nameMap'].empty?
+  end
+
+  def sanitize_misskey_quote_br(content)
+    return content if content.blank? || !from_misskey?
+
+    content.gsub(%r{<br\s*/>\s*(?=<span\s+class=["']quote-inline["']>)}, '')
   end
 end

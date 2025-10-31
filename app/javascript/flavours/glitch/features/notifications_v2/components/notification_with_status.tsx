@@ -29,7 +29,9 @@ export const NotificationWithStatus: React.FC<{
   statusId: string | undefined;
   count: number;
   labelRenderer: LabelRenderer;
+  labelSeeMoreHref?: string | undefined;
   unread: boolean;
+  collapsed?: boolean;
 }> = ({
   icon,
   iconId,
@@ -37,8 +39,10 @@ export const NotificationWithStatus: React.FC<{
   statusId,
   count,
   labelRenderer,
+  labelSeeMoreHref,
   type,
   unread,
+  collapsed,
 }) => {
   const dispatch = useAppDispatch();
 
@@ -50,6 +54,7 @@ export const NotificationWithStatus: React.FC<{
       labelRenderer(
         <LinkedDisplayName displayProps={{ account, variant: 'simple' }} />,
         count,
+        labelSeeMoreHref ?? '',
       ),
     [labelRenderer, account, count],
   );
@@ -119,6 +124,8 @@ export const NotificationWithStatus: React.FC<{
           skipPrepend
           avatarSize={40}
           unfocusable
+          // patch for old notification style
+          collapsed={collapsed ?? false}
         />
       </div>
     </Hotkeys>

@@ -71,6 +71,9 @@ ko:
         setting_use_pending_items: 타임라인의 새 게시물을 자동으로 보여 주는 대신, 클릭해서 나타내도록 합니다
         username: 문자, 숫자, 밑줄을 사용할 수 있습니다
         whole_word: 키워드가 영문과 숫자로만 이루어 진 경우, 단어 전체에 매칭 되었을 때에만 작동하게 합니다
+        setting_show_instance_info: 다른 서버의 게시물에 인스턴스 이름, 테마 색상 및 파비콘 표시
+        setting_custom_emoji_size: 가로로 긴 커스텀 에모지의 가로 길이를 늘려서 표시합니다.
+        setting_reaction_custom_emoji_size: 리액션 버튼에서 가로로 긴 커스텀 에모지의 가로 길이를 늘려서 표시합니다.
       domain_allow:
         domain: 이 도메인은 이 서버에서 데이터를 가져갈 수 있고 이 도메인에서 보내진 데이터는 처리되고 저장 됩니다
       email_domain_block:
@@ -240,6 +243,8 @@ ko:
         setting_default_privacy: 게시물 공개 범위
         setting_default_quote_policy: 인용할 수 있는 사람
         setting_default_sensitive: 미디어를 언제나 민감한 콘텐츠로 설정
+        setting_default_quote_policy_private: 팔로워만으로 설정할 경우 다른 사람이 인용할 수 없습니다.
+        setting_default_quote_policy_unlisted: 사용자의 게시물을 인용할 경우 인용된 게시물은 인기 게시물에서 숨겨집니다.
         setting_delete_modal: 게시물을 삭제하기 전 경고하기
         setting_disable_hover_cards: 호버시 프로필 미리보기를 비활성화
         setting_disable_swiping: 스와이프 모션 비활성화
@@ -266,7 +271,11 @@ ko:
         type: 불러오기 종류
         username: 사용자명
         username_or_email: 사용자명 또는 이메일
+        warn_quote_policy_html: "<strong>주의:</strong><br>인용할 수 있는 사용자를 제한하더라도 Mastodon 이외의 소프트웨어가 FEP-044f 제안을 수용하지 않으면 인용될 수 있음을 이해해 주시기 바랍니다.<br>%{instance} 서버의 경우 기본값이 '나만' 으로 지정되어 있습니다."
         whole_word: 단어 전체에 매칭
+        setting_show_instance_info: 게시물에 인스턴스 정보 표시 (글리치 풍미에만 적용됨)
+        setting_custom_emoji_size: 커스텀 에모지 원본 비율 표시
+        setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
       email_domain_block:
         with_dns_records: 도메인의 IP와 MX 레코드 값을 포함
       featured_tag:

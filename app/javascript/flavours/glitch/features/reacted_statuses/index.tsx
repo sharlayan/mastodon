@@ -1,0 +1,121 @@
+import { useEffect, useRef, useCallback } from 'react';
+
+import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
+
+import { Helmet } from 'react-helmet';
+
+import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
+import {
+  addColumn,
+  removeColumn,
+  moveColumn,
+} from 'flavours/glitch/actions/columns';
+import {
+  fetchReactedStatuses,
+  expandReactedStatuses,
+} from 'flavours/glitch/actions/reactions';
+import { Column } from 'flavours/glitch/components/column';
+import type { ColumnRef } from 'flavours/glitch/components/column';
+import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import StatusList from 'flavours/glitch/components/status_list';
+import { getStatusList } from 'flavours/glitch/selectors';
+import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
+
+const messages = defineMessages({
+  heading: { id: 'column.reactions', defaultMessage: 'Reactions' },
+});
+
+const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
+  columnId,
+  multiColumn,
+}) => {
+  const dispatch = useAppDispatch();
+  const intl = useIntl();
+  const columnRef = useRef<ColumnRef>(null);
+  const statusIds = useAppSelector((state) =>
+    getStatusList(state, 'reactions'),
+  );
+  const isLoading = useAppSelector(
+    (state) =>
+      state.status_lists.getIn(['reactions', 'isLoading'], true) as boolean,
+  );
+  const hasMore = useAppSelector(
+    (state) => !!state.status_lists.getIn(['reactions', 'next']),
+  );
+
+  useEffect(() => {
+    dispatch(fetchReactedStatuses());
+  }, [dispatch]);
+
+  const handlePin = useCallback(() => {
+    if (columnId) {
+      dispatch(removeColumn(columnId));
+    } else {
+      dispatch(addColumn('REACTIONS', {}));
+    }
+  }, [dispatch, columnId]);
+
+  const handleMove = useCallback(
+    (dir: number) => {
+      dispatch(moveColumn(columnId, dir));
+    },
+    [dispatch, columnId],
+  );
+
+  const handleHeaderClick = useCallback(() => {
+    columnRef.current?.scrollTop();
+  }, []);
+
+  const handleLoadMore = useCallback(() => {
+    dispatch(expandReactedStatuses());
+  }, [dispatch]);
+
+  const pinned = !!columnId;
+
+  const emptyMessage = (
+    <FormattedMessage
+      id='empty_column.reacted_statuses'
+      defaultMessage="You don't have any reacted posts yet. When you react to one, it will show up here."
+    />
+  );
+
+  return (
+    <Column
+      bindToDocument={!multiColumn}
+      ref={columnRef}
+      label={intl.formatMessage(messages.heading)}
+    >
+      <ColumnHeader
+        icon='mood'
+        iconComponent={MoodIcon}
+        title={intl.formatMessage(messages.heading)}
+        onPin={handlePin}
+        onMove={handleMove}
+        onClick={handleHeaderClick}
+        pinned={pinned}
+        multiColumn={multiColumn}
+        showBackButton
+      />
+
+      <StatusList
+        trackScroll={!pinned}
+        statusIds={statusIds}
+        scrollKey={`reacted_statuses-${columnId}`}
+        hasMore={hasMore}
+        isLoading={isLoading}
+        onLoadMore={handleLoadMore}
+        emptyMessage={emptyMessage}
+        bindToDocument={!multiColumn}
+        timelineId='reactions'
+      />
+
+      <Helmet>
+        <title>{intl.formatMessage(messages.heading)}</title>
+        <meta name='robots' content='noindex' />
+      </Helmet>
+    </Column>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export
+export default Reactions;

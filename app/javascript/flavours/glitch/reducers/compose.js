@@ -132,11 +132,15 @@ const initialPoll = ImmutableMap({
   multiple: false,
 });
 
-function statusToTextMentions(state, status) {
+function statusToTextMentions(state, status, statusRebloggedBy) {
   let set = ImmutableOrderedSet([]);
 
   if (status.getIn(['account', 'id']) !== me) {
     set = set.add(`@${status.getIn(['account', 'acct'])} `);
+  }
+
+  if (statusRebloggedBy) {
+    set = set.add(`@${statusRebloggedBy.get('acct')}`);
   }
 
   return set.union(status.get('mentions').filterNot(mention => mention.get('id') === me).map(mention => `@${mention.get('acct')} `)).join('');
@@ -505,7 +509,7 @@ export const composeReducer = (state = initialState, action) => {
     return state.withMutations(map => {
       map.set('id', null);
       map.set('in_reply_to', action.status.get('id'));
-      map.set('text', statusToTextMentions(state, action.status));
+      map.set('text', statusToTextMentions(state, action.status, action.statusRebloggedBy));
       map.set('privacy', privacyPreference(action.status.get('visibility'), state.get('default_privacy')));
       map.update(
         'advanced_options',
@@ -590,7 +594,7 @@ export const composeReducer = (state = initialState, action) => {
       .set('isUploadingThumbnail', false)
       .update('media_attachments', list => list.map(item => {
         if (item.get('id') === action.media.id) {
-          return fromJS(action.media).set('unattached', item.get('unattached'));
+          return fromJS(action.media);
         }
 
         return item;
@@ -637,6 +641,7 @@ export const composeReducer = (state = initialState, action) => {
   case REDRAFT: {
     const do_not_federate = !!action.status.get('local_only');
     let text = action.raw_text || unescapeHTML(expandMentions(action.status));
+    if (do_not_federate) text = text.replace(/ ?🏡$/, '');
     return state.withMutations(map => {
       map.set('text', text);
       map.set('content_type', action.content_type || 'text/plain');

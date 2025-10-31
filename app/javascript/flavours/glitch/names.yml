@@ -29,7 +29,14 @@ es:
   skins:
     glitch:
       default: Predeterminado
-
+ko:
+  flavours:
+    glitch:
+      description: GlitchSoc 인스턴스의 기본 풍미입니다.
+      name: 마스토돈 글리치 에디션
+  skins:
+    glitch:
+      default: 마스토돈 기본 (글리치)
 ja:
   flavours:
     glitch:

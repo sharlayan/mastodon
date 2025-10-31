@@ -131,6 +131,10 @@ export function FavouritedStatuses () {
   return import('../../favourited_statuses');
 }
 
+export function ReactedStatuses () {
+  return import('../../reacted_statuses');
+}
+
 export function FollowedTags () {
   return import('../../followed_tags');
 }

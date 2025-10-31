@@ -14,6 +14,7 @@
   /domain_blocks
   /explore/(*any)
   /favourites
+  /reactions
   /follow_requests
   /followed_tags
   /getting-started

@@ -76,7 +76,7 @@ class Account < ApplicationRecord
   BACKGROUND_REFRESH_INTERVAL = 1.week.freeze
   REFRESH_DEADLINE = 6.hours
   STALE_THRESHOLD = 1.day
-  DEFAULT_FIELDS_SIZE = (ENV['MAX_PROFILE_FIELDS'] || 4).to_i
+  DEFAULT_FIELDS_SIZE = (ENV['MAX_PROFILE_FIELDS'] || 10).to_i
   INSTANCE_ACTOR_ID = -99
 
   USERNAME_RE   = /[a-z0-9_]+([.-]+[a-z0-9_]+)*/i
@@ -84,8 +84,8 @@ class Account < ApplicationRecord
   URL_PREFIX_RE = %r{\Ahttp(s?)://[^/]+}
   USERNAME_ONLY_RE = /\A#{USERNAME_RE}\z/i
   USERNAME_LENGTH_LIMIT = 30
-  DISPLAY_NAME_LENGTH_LIMIT = (ENV['MAX_DISPLAY_NAME_CHARS'] || 30).to_i
-  NOTE_LENGTH_LIMIT = (ENV['MAX_BIO_CHARS'] || 500).to_i
+  DISPLAY_NAME_LENGTH_LIMIT = (ENV['MAX_DISPLAY_NAME_CHARS'] || 100).to_i
+  NOTE_LENGTH_LIMIT = (ENV['MAX_BIO_CHARS'] || 3000).to_i
 
   # Hard limits for federated content
   USERNAME_LENGTH_HARD_LIMIT = 2048
@@ -466,14 +466,17 @@ class Account < ApplicationRecord
     save!
   end
 
-  def featureable_by?(other_account)
-    return discoverable? if local?
-    return false unless Mastodon::Feature.collections_federation_enabled?
-
-    feature_policy_for_account(other_account).in?(%i(automatic manual))
-  end
+  after_commit :schedule_instance_metadata_update, on: [:create, :update], if: :should_update_instance_metadata?
 
   private
+
+  def should_update_instance_metadata?
+    domain.present? && (InstanceMetadata.where(domain: domain).none? || InstanceMetadata.find_by(domain: domain)&.theme_color_needs_update?)
+  end
+
+  def schedule_instance_metadata_update
+    InstanceMetadataUpdateWorker.perform_async(domain)
+  end
 
   def prepare_contents
     display_name&.strip!

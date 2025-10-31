@@ -48,19 +48,28 @@
                 label: t('statuses_cleanup.keep_self_fav'),
                 wrapper: :with_label
     .fields-row__column.fields-row__column-6.fields-group
+      = f.input :keep_self_reaction,
+                disabled: !@policy.enabled?,
+                hint: t('statuses_cleanup.keep_self_reaction_hint'),
+                label: t('statuses_cleanup.keep_self_reaction'),
+                wrapper: :with_label,
+                sharlayan_only: true
+
+  .fields-row
+    .fields-row__column.fields-row__column-6.fields-group
       = f.input :keep_self_bookmark,
                 disabled: !@policy.enabled?,
                 hint: t('statuses_cleanup.keep_self_bookmark_hint'),
                 label: t('statuses_cleanup.keep_self_bookmark'),
                 wrapper: :with_label
-
-  .fields-row
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :keep_polls,
                 disabled: !@policy.enabled?,
                 hint: t('statuses_cleanup.keep_polls_hint'),
                 label: t('statuses_cleanup.keep_polls'),
                 wrapper: :with_label
+
+  .fields-row
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :keep_media,
                 disabled: !@policy.enabled?,
@@ -78,6 +87,16 @@
                 input_html: { min: 1, placeholder: t('statuses_cleanup.ignore_favs') },
                 label: t('statuses_cleanup.min_favs'),
                 wrapper: :with_label
+    .fields-row__column.fields-row__column-6.fields-group
+      = f.input :min_reactions,
+                disabled: !@policy.enabled?,
+                hint: t('statuses_cleanup.min_reactions_hint'),
+                input_html: { min: 1, placeholder: t('statuses_cleanup.ignore_reactions') },
+                label: t('statuses_cleanup.min_reactions'),
+                wrapper: :with_label,
+                sharlayan_only: true
+
+  .fields-row
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :min_reblogs,
                 disabled: !@policy.enabled?,

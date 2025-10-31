@@ -124,7 +124,12 @@ class PostStatusService < BaseService
     status.quote = Quote.create(quoted_status: @quoted_status, status: status)
     status.quote.ensure_quoted_access
 
-    status.quote.accept! if @quoted_status.local? && StatusPolicy.new(@status.account, @quoted_status).quote?
+    if !@quoted_status.local? && @quoted_status.account.domain.present?
+      instance_metadata = InstanceMetadata.for_domain(@quoted_status.account.domain)
+      status.quote.accept! if instance_metadata.present? && instance_metadata.misskey_based?
+    elsif @quoted_status.local? && StatusPolicy.new(@status.account, @quoted_status).quote?
+      status.quote.accept!
+    end
   end
 
   def safeguard_mentions!(status)

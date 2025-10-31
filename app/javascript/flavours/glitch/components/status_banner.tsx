@@ -1,9 +1,10 @@
 import type { MouseEventHandler } from 'react';
-import { useCallback, useRef, useId } from 'react';
+import { useCallback, useRef, useId, useState } from 'react';
 
 import { FormattedMessage } from 'react-intl';
 
 import { AnimateEmojiProvider } from './emoji/context';
+import { EmojiInfoTooltip } from './emoji_info_tooltip';
 
 export enum BannerVariant {
   Warning = 'warning',
@@ -20,6 +21,10 @@ export const StatusBanner: React.FC<{
   expanded?: boolean;
   onClick?: () => void;
 }> = ({ children, variant, expanded, onClick }) => {
+  const [containerElement, setContainerElement] = useState<HTMLElement | null>(
+    null,
+  );
+
   const descriptionId = useId();
 
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -45,7 +50,10 @@ export const StatusBanner: React.FC<{
       onClick={forwardClick}
       onMouseUp={stopPropagation}
     >
-      <p id={descriptionId}>{children}</p>
+      <p id={descriptionId} ref={setContainerElement}>
+        {children}
+      </p>
+      <EmojiInfoTooltip containerRef={{ current: containerElement }} />
 
       <button
         ref={buttonRef}

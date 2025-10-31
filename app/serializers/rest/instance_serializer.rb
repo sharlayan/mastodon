@@ -12,7 +12,7 @@ class REST::InstanceSerializer < ActiveModel::Serializer
 
   attributes :domain, :title, :version, :source_url, :description,
              :usage, :thumbnail, :icon, :languages, :configuration,
-             :registrations, :api_versions, :wrapstodon
+             :registrations, :api_versions, :fedibird_capabilities
 
   has_one :contact, serializer: ContactSerializer
   has_many :rules, serializer: REST::RuleSerializer
@@ -106,6 +106,11 @@ class REST::InstanceSerializer < ActiveModel::Serializer
         enabled: TranslationService.configured?,
       },
 
+      reactions: {
+        max_reactions: StatusReactionValidator::LIMIT,
+        max_reactions_per_account: 1,
+      },
+
       timelines_access: {
         live_feeds: {
           local: Setting.local_live_feed_access,
@@ -134,6 +139,19 @@ class REST::InstanceSerializer < ActiveModel::Serializer
       min_age: Setting.min_age.presence,
       url: ENV.fetch('SSO_ACCOUNT_SIGN_UP', nil),
     }
+  end
+
+  # for third party apps
+  def fedibird_capabilities
+    capabilities = [
+      :emoji_reaction,
+      :enable_wide_emoji,
+      :enable_wide_emoji_reaction,
+    ]
+
+    capabilities << :profile_search unless Chewy.enabled?
+
+    capabilities
   end
 
   def api_versions

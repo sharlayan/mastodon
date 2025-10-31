@@ -36,6 +36,7 @@ const initialState = ImmutableMap({
       follow: false,
       follow_request: false,
       favourite: false,
+      reaction: false,
       reblog: false,
       quote: false,
       mention: false,
@@ -60,6 +61,7 @@ const initialState = ImmutableMap({
       follow: true,
       follow_request: false,
       favourite: true,
+      reaction: false,
       reblog: true,
       quote: true,
       mention: true,
@@ -74,6 +76,7 @@ const initialState = ImmutableMap({
       follow: true,
       follow_request: false,
       favourite: true,
+      reaction: false,
       reblog: true,
       quote: true,
       mention: true,
@@ -85,16 +88,9 @@ const initialState = ImmutableMap({
     }),
 
     group: ImmutableMap({
-      follow: true
-    }),
-  }),
-
-  firehose: ImmutableMap({
-    onlyMedia: false,
-    allowLocalOnly: true,
-
-    regex: ImmutableMap({
-      body: '',
+      reaction: true,
+      favourite: true,
+      reblog: true,
     }),
   }),
 

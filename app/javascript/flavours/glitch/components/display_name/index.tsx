@@ -13,6 +13,7 @@ export interface DisplayNameProps {
   account?: Account;
   localDomain?: string;
   variant?: 'default' | 'simple' | 'noDomain';
+  disableEmojiTooltip?: boolean;
 }
 
 export const DisplayName: FC<

@@ -11,12 +11,14 @@ import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import { Icon } from 'flavours/glitch/components/icon';
 import { MediaIcon } from 'flavours/glitch/components/media_icon';
 import { languages } from 'flavours/glitch/initial_state';
+import { RelativeTimestamp } from './relative_timestamp';
 
 import { VisibilityIcon } from './visibility_icon';
 
 const messages = defineMessages({
   inReplyTo: { id: 'status.in_reply_to', defaultMessage: 'This toot is a reply' },
   localOnly: { id: 'status.local_only', defaultMessage: 'Only visible from your instance' },
+  edited: { id: 'status.edited', defaultMessage: 'Edited {date}' },
 });
 
 const LanguageIcon = ({ language }) => {
@@ -54,24 +56,29 @@ class StatusIcons extends PureComponent {
     } = this.props;
 
     return (
-      <div className='status__info__icons'>
-        {settings.get('language') && status.get('language') && <LanguageIcon language={status.get('language')} />}
-        {settings.get('reply') && status.get('in_reply_to_id', null) !== null ? (
-          <Icon
-            className='status__reply-icon'
-            id='comment'
-            icon={ForumIcon}
-            aria-label={intl.formatMessage(messages.inReplyTo)}
-          />
-        ) : null}
-        {settings.get('local_only') && status.get('local_only') &&
-          <Icon
-            id='home'
-            icon={HomeIcon}
-            aria-label={intl.formatMessage(messages.localOnly)}
-          />}
-        {settings.get('media') && !!mediaIcons && mediaIcons.map(icon => (<MediaIcon key={`media-icon--${icon}`} className='status__media-icon' icon={icon} />))}
-        {settings.get('visibility') && <VisibilityIcon visibility={status.get('visibility')} />}
+      <div className='status__info__custom'>
+        <a href={status.get('url')} className='status__relative-time' target='_blank' rel='noopener'>
+          <RelativeTimestamp timestamp={status.get('created_at')} />{status.get('edited_at') && <abbr title={intl.formatMessage(messages.edited, { date: intl.formatDate(status.get('edited_at'), { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) })}> *</abbr>}
+        </a>
+        <div className='status__info__icons'>
+          {settings.get('language') && status.get('language') && <LanguageIcon language={status.get('language')} />}
+          {settings.get('reply') && status.get('in_reply_to_id', null) !== null ? (
+            <Icon
+              className='status__reply-icon'
+              id='comment'
+              icon={ForumIcon}
+              aria-label={intl.formatMessage(messages.inReplyTo)}
+            />
+          ) : null}
+          {settings.get('local_only') && status.get('local_only') &&
+            <Icon
+              id='home'
+              icon={HomeIcon}
+              aria-label={intl.formatMessage(messages.localOnly)}
+            />}
+          {settings.get('media') && !!mediaIcons && mediaIcons.map(icon => (<MediaIcon key={`media-icon--${icon}`} className='status__media-icon' icon={icon} />))}
+          {settings.get('visibility') && <VisibilityIcon visibility={status.get('visibility')} />}
+        </div>
       </div>
     );
   }

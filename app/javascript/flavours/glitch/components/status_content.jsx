@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import React from 'react';
 import { PureComponent } from 'react';
 
 import { FormattedMessage, injectIntl } from 'react-intl';
@@ -17,6 +18,8 @@ import { languages as preloadedLanguages } from 'flavours/glitch/initial_state';
 
 import { EmojiHTML } from './emoji/html';
 import { HandledLink } from './status/handled_link';
+
+import { EmojiInfoTooltip } from './emoji_info_tooltip';
 
 const MAX_HEIGHT = 706; // 22px * 32 (+ 2px padding at the top)
 
@@ -98,8 +101,10 @@ class StatusContent extends PureComponent {
     history: PropTypes.object.isRequired
   };
 
+  contentRef = React.createRef();
+
   _updateStatusLinks () {
-    const node = this.node;
+    const node = this.contentRef.current;
 
     if (!node) {
       return;
@@ -159,10 +164,6 @@ class StatusContent extends PureComponent {
     this.props.onTranslate();
   };
 
-  setRef = (c) => {
-    this.node = c;
-  };
-
   handleElement = (element, { key, ...props }, children) => {
     if (element instanceof HTMLAnchorElement) {
       const mention = this.props.status.get('mentions').find(item => compareUrls(element.href, item.get('url')));
@@ -192,7 +193,7 @@ class StatusContent extends PureComponent {
     const targetLanguages = this.props.languages?.get(status.get('language') || 'und');
     const renderTranslate = this.props.onTranslate && this.props.identity.signedIn && ['public', 'unlisted'].includes(status.get('visibility')) && status.get('search_index').trim().length > 0 && targetLanguages?.includes(contentLocale);
 
-    const content = statusContent ?? getStatusContent(status);
+    const content = (statusContent ?? getStatusContent(status)).replace(/(<br\s*\/?>)+[\s\n]*$/, '');
     const language = status.getIn(['translation', 'language']) || status.get('language');
     const classNames = classnames('status__content', {
       'status__content--with-action': this.props.onClick && this.props.history,
@@ -218,9 +219,9 @@ class StatusContent extends PureComponent {
         <>
           <div
             className={classNames}
-            ref={this.setRef}
             onMouseDown={this.handleMouseDown}
             onMouseUp={this.handleMouseUp}
+            ref={this.contentRef}
             key='status-content'
           >
             <EmojiHTML
@@ -236,11 +237,16 @@ class StatusContent extends PureComponent {
           </div>
 
           {readMoreButton}
+
+          <EmojiInfoTooltip
+            containerRef={this.contentRef}
+            enabled
+          />
         </>
       );
     } else {
       return (
-        <div className={classNames} ref={this.setRef}>
+        <div className={classNames} ref={this.contentRef}>
           <EmojiHTML
             className='status__content__text status__content__text--visible translate'
             lang={language}
@@ -251,6 +257,11 @@ class StatusContent extends PureComponent {
 
           {poll}
           {translateButton}
+
+          <EmojiInfoTooltip
+            containerRef={this.contentRef}
+            enabled
+          />
         </div>
       );
     }

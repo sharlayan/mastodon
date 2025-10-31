@@ -35,8 +35,7 @@ class NotifyService < BaseService
       @sender = notification.from_account
       @notification = notification
       @policy = NotificationPolicy.find_or_initialize_by(account: @recipient)
-      @from_staff = @sender.local? && @sender.user.present? && @sender.user_role&.bypass_block?(@recipient.user_role)
-      @options = options
+      @from_staff = @sender&.local? && @sender.user.present? && @sender.user_role&.bypass_block?(@recipient.user_role)
     end
 
     private
@@ -137,7 +136,7 @@ class NotifyService < BaseService
     end
 
     def from_self?
-      @recipient.id == @sender.id
+      @recipient&.id == @sender&.id
     end
 
     def domain_blocking?

@@ -8,6 +8,10 @@ class REST::ReactionSerializer < ActiveModel::Serializer
   attribute :me, if: :current_user?
   attribute :url, if: :custom_emoji?
   attribute :static_url, if: :custom_emoji?
+  attribute :domain, if: :custom_emoji?
+  attribute :account_ids, if: :account_ids?
+
+  has_many :users, serializer: REST::AccountSerializer
 
   def count
     object.respond_to?(:count) ? object.count : 0
@@ -21,11 +25,41 @@ class REST::ReactionSerializer < ActiveModel::Serializer
     object.custom_emoji.present?
   end
 
+  def account_ids?
+    object.account_ids.to_s
+  end
+
   def url
     full_asset_url(object.custom_emoji.image.url)
   end
 
   def static_url
     full_asset_url(object.custom_emoji.image.url(:static))
+  end
+
+  def users
+    object.users
+  end
+
+  def name
+    if extern?
+      [object.name, '@', object.custom_emoji.domain].join
+    else
+      object.name
+    end
+  end
+
+  def domain
+    if extern?
+      object.custom_emoji.domain
+    else
+      ''
+    end
+  end
+
+  private
+
+  def extern?
+    custom_emoji? && object.custom_emoji.domain.present?
   end
 end

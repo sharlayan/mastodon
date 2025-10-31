@@ -1,0 +1,28 @@
+/*
+ffxiv_lodestone_ssf and ffxiv_lodestone from jp.finalfantasyxiv.com
+copyright by © SQUARE ENIX
+*/
+
+@font-face {
+  font-family: "FFXIV_Lodestone_SSF";
+  src: url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone_SSF-1745376275.eot?t=1592321622");
+  src: url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone_SSF-1745376275.eot?t=1592321622#iefix") format("eot"),
+  url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone_SSF-1745376275.woff?t=1592321622") format("woff"),
+  url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone_SSF-1745376275.ttf?t=1592321622") format("truetype"),
+  url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone_SSF-1745376275.svg?t=1592321622#FFXIV_Lodestone_SSF") format("svg");
+  font-weight: 400;
+  font-style: normal
+}
+
+@font-face {
+  font-family: "FFXIV_Lodestone";
+  src: url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone-1748579545.eot?t=1592321622");
+  src: url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone-1748579545.eot?t=1592321622#iefix") format("eot"),
+  url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone-1748579545.woff?t=1592321622") format("woff"),
+  url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone-1748579545.ttf?t=1592321622") format("truetype"),
+  url("/static/fonts/ffxiv_lodestone/FFXIV_Lodestone-1748579545.svg?t=1592321622#FFXIV_Lodestone_SSF") format("svg");
+  font-weight: 400;
+  font-style: normal
+}
+
+html>body {font-family: "FFXIV_Lodestone_SSF", "FFXIV_Lodestone", "mastodon-font-sans-serif", sans-serif; font-weight: 500}

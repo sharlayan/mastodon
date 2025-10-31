@@ -19,13 +19,16 @@ import {
   stringToEmojiState,
   tokenizeText,
 } from '@/flavours/glitch/features/emoji/render';
+import { customEmojiSize } from '@/flavours/glitch/initial_state';
 
 import { AnimateEmojiContext, CustomEmojiContext } from './context';
+
 
 interface EmojiProps {
   code: string;
   showFallback?: boolean;
   showLoading?: boolean;
+  staticUrl?: string;
 }
 
 export const Emoji: FC<EmojiProps> = ({
@@ -77,12 +80,13 @@ export const Emoji: FC<EmojiProps> = ({
 
   if (state.type === EMOJI_TYPE_CUSTOM) {
     const shortcode = `:${state.code}:`;
+    const classes = `emojione custom-emoji${customEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`;
     return (
       <img
         src={animate ? state.data.url : state.data.static_url}
         alt={shortcode}
         title={shortcode}
-        className='emojione custom-emoji'
+        className={classes}
         loading='lazy'
       />
     );

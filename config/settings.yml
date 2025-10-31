@@ -24,6 +24,7 @@ defaults: &defaults
   trends: true
   trendable_by_default: false
   trending_status_cw: true
+  visible_reactions: 6
   hide_followers_count: false
   disallowed_hashtags: # space separated string or list of hashtags without the hash
   bootstrap_timeline_accounts: ''
@@ -39,6 +40,9 @@ defaults: &defaults
   backups_retention_period: 7
   captcha_enabled: false
   allow_referrer_origin: false
+  show_instance_info: true
+  custom_emoji_size: false
+  reaction_custom_emoji_size: false
   landing_page: 'trends'
   wrapstodon: true
 

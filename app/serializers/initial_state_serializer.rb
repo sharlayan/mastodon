@@ -6,12 +6,17 @@ class InitialStateSerializer < ActiveModel::Serializer
   attributes :meta, :compose, :accounts,
              :media_attachments, :settings,
              :max_feed_hashtags, :poll_limits,
-             :languages, :features
+             :languages, :max_reactions,
+             :features
 
   attribute :critical_updates_pending, if: -> { object&.role&.can?(:view_devops) && SoftwareUpdate.check_enabled? }
 
   has_one :push_subscription, serializer: REST::WebPushSubscriptionSerializer
   has_one :role, serializer: REST::RoleSerializer
+
+  def max_reactions
+    StatusReactionValidator::LIMIT
+  end
 
   def max_feed_hashtags
     TagFeed::LIMIT_PER_MODE
@@ -47,8 +52,11 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:use_pending_items] = object_account_user.setting_use_pending_items
       store[:default_content_type] = object_account_user.setting_default_content_type
       store[:show_trends]       = Setting.trends && object_account_user.setting_trends
+      store[:visible_reactions] = object_account_user.setting_visible_reactions
       store[:emoji_style]       = object_account_user.settings['web.emoji_style']
-      store[:wrapstodon]        = wrapstodon
+      store[:show_instance_info] = object_account_user.settings_show_instance_info
+      store[:custom_emoji_size] = object_account_user.settings_custom_emoji_size
+      store[:reaction_custom_emoji_size] = object_account_user.settings_reaction_custom_emoji_size
     else
       store[:auto_play_gif] = Setting.auto_play_gif
       store[:display_media] = Setting.display_media
@@ -149,6 +157,10 @@ class InitialStateSerializer < ActiveModel::Serializer
       local_topic_feed_access: Setting.local_topic_feed_access,
       remote_topic_feed_access: Setting.remote_topic_feed_access,
     }
+  end
+
+  def object_account
+    object.current_account
   end
 
   def object_account_user

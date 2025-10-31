@@ -1,4 +1,4 @@
-import { useEffect, forwardRef } from 'react';
+import { useEffect, forwardRef, useState } from 'react';
 
 import { FormattedMessage } from 'react-intl';
 
@@ -14,6 +14,7 @@ import {
   FollowersYouKnowCounter,
 } from 'flavours/glitch/components/counters';
 import { DisplayName } from 'flavours/glitch/components/display_name';
+import { EmojiInfoTooltip } from 'flavours/glitch/components/emoji_info_tooltip';
 import { FollowButton } from 'flavours/glitch/components/follow_button';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { Permalink } from 'flavours/glitch/components/permalink';
@@ -27,6 +28,10 @@ export const HoverCardAccount = forwardRef<
   HTMLDivElement,
   { accountId?: string }
 >(({ accountId }, ref) => {
+  const [containerElement, setContainerElement] = useState<HTMLElement | null>(
+    null,
+  );
+
   const dispatch = useAppDispatch();
 
   const account = useAppSelector((state) =>
@@ -65,16 +70,14 @@ export const HoverCardAccount = forwardRef<
     !isFollower;
 
   return (
-    <div
-      ref={ref}
-      id='hover-card'
-      role='tooltip'
-      className={classNames('hover-card dropdown-animation', {
-        'hover-card--loading': !account,
-      })}
-    >
+    <div ref={ref} id='hover-card' role='tooltip'>
       {account ? (
-        <>
+        <div
+          className={classNames('hover-card dropdown-animation', {
+            'hover-card--loading': !account,
+          })}
+          ref={setContainerElement}
+        >
           <Permalink
             to={`/@${account.acct}`}
             href={account.get('url')}
@@ -84,7 +87,11 @@ export const HoverCardAccount = forwardRef<
               account={isSuspendedOrHidden ? undefined : account}
               size={46}
             />
-            <DisplayName account={account} localDomain={domain} />
+            <DisplayName
+              account={account}
+              localDomain={domain}
+              disableEmojiTooltip
+            />
           </Permalink>
 
           {isSuspendedOrHidden ? (
@@ -176,10 +183,11 @@ export const HoverCardAccount = forwardRef<
               <FollowButton accountId={accountId} />
             </>
           )}
-        </>
+        </div>
       ) : (
         <LoadingIndicator />
       )}
+      <EmojiInfoTooltip containerRef={{ current: containerElement }} enabled />
     </div>
   );
 });

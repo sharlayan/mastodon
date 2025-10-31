@@ -82,6 +82,7 @@ class Status < ApplicationRecord
   has_many :mentions, dependent: :destroy, inverse_of: :status
   has_many :mentioned_accounts, through: :mentions, source: :account, class_name: 'Account'
   has_many :media_attachments, dependent: :nullify
+  has_many :status_reactions, inverse_of: :status, dependent: :destroy
   has_many :quotes, foreign_key: 'quoted_status_id', inverse_of: :quoted_status, dependent: :nullify
 
   # The `dependent` option is enabled by the initial `mentions` association declaration
@@ -294,6 +295,17 @@ class Status < ApplicationRecord
     @emojis = CustomEmoji.from_text(fields.join(' '), account.domain)
   end
 
+  def reactions(account_id = nil)
+    # TODO: error check (maybe cause 500 in reaction notification)
+    grouped_ordered_status_reactions.select(
+      [:status_id, :name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
+        values << value_for_reaction_me_column(account_id)
+      end
+    ).to_a.tap do |records|
+      ActiveRecord::Associations::Preloader.new(records: records, associations: :custom_emoji).call
+    end
+  end
+
   def ordered_media_attachments
     if ordered_media_attachment_ids.nil?
       # NOTE: sort Ruby-side to avoid hitting the database when the status is
@@ -315,6 +327,10 @@ class Status < ApplicationRecord
 
   def favourites_count
     status_stat&.favourites_count || 0
+  end
+
+  def reactions_count
+    status_stat&.reactions_count || 0
   end
 
   def quotes_count
@@ -408,6 +424,11 @@ class Status < ApplicationRecord
       Favourite.select(:status_id).where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
     end
 
+    def reactions_map(status_ids, account_id)
+      # TODO: error check
+      StatusReaction.select('status_id').where(status_id: status_ids).where(account_id: account_id).each_with_object({}) { |f, h| h[f.status_id] = true }
+    end
+
     def bookmarks_map(status_ids, account_id)
       Bookmark.select(:status_id).where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
     end
@@ -441,11 +462,16 @@ class Status < ApplicationRecord
 
   def marked_local_only?
     # match both with and without U+FE0F (the emoji variation selector)
-    /#{local_only_emoji}\ufe0f?\z/.match?(content)
+    /(#{all_local_only_emojis.join('|')})\ufe0f?\z/.match?(content)
   end
 
   def local_only_emoji
     '👁'
+  end
+
+  # local only patch
+  def all_local_only_emojis
+    ['🏡'].push(local_only_emoji)
   end
 
   def status_stat
@@ -470,6 +496,36 @@ class Status < ApplicationRecord
   end
 
   private
+
+  def grouped_ordered_status_reactions
+    status_reactions
+      .group(:status_id, :name, :custom_emoji_id)
+      .order(
+        Arel.sql('MIN(created_at)').asc
+      )
+  end
+
+  def value_for_reaction_me_column(account_id)
+    # error check
+    if account_id.nil?
+      'FALSE AS me'
+    else
+      <<~SQL.squish
+        EXISTS(
+          SELECT 1
+          FROM status_reactions inner_reactions
+          WHERE inner_reactions.account_id = #{account_id}
+            AND inner_reactions.status_id = status_reactions.status_id
+            AND inner_reactions.name = status_reactions.name
+            AND (
+              inner_reactions.custom_emoji_id = status_reactions.custom_emoji_id
+              OR inner_reactions.custom_emoji_id IS NULL
+                AND status_reactions.custom_emoji_id IS NULL
+            )
+        ) AS me
+      SQL
+    end
+  end
 
   def update_status_stat!(attrs)
     return if marked_for_destruction? || destroyed?

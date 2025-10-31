@@ -12,4 +12,8 @@ class InstancePolicy < ApplicationPolicy
   def destroy?
     role.can?(:manage_federation)
   end
+
+  def refresh_metadata?
+    role.can?(:manage_federation)
+  end
 end

@@ -94,6 +94,7 @@ export const config: UserConfigFnPromise = async ({ mode, command }) => {
           postcssPresetEnv({
             features: {
               'logical-properties-and-values': false,
+              'is-pseudo-class': false,
             },
           }),
         ],

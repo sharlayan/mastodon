@@ -51,6 +51,7 @@ class LocalSettings extends PureComponent {
 
     return (
       <div className='glitch modal-root__modal local-settings'>
+        <div className='local-settings__page__decoration-before' />
         <LocalSettingsNavigation
           index={currentIndex}
           onClose={onClose}
@@ -61,6 +62,7 @@ class LocalSettings extends PureComponent {
           onChange={onChange}
           settings={settings}
         />
+        <div className='local-settings__page__decoration-after' />
       </div>
     );
   }

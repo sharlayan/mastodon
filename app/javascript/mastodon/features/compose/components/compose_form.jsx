@@ -325,8 +325,10 @@ class ComposeForm extends ImmutablePureComponent {
                 <EmojiPickerDropdown onPickEmoji={this.handleEmojiPick} />
                 <CharacterCounter max={maxChars} text={this.getFulltextForCharacterCounting()} />
               </div>
+            </div>
 
-              <div className='compose-form__submit'>
+            <div className='compose-form__publish'>
+              <div className='compose-form__publish-button-wrapper'>
                 <Button
                   type='submit'
                   compact

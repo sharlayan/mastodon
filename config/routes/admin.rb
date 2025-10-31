@@ -91,6 +91,7 @@ namespace :admin do
       post :clear_delivery_errors
       post :restart_delivery
       post :stop_delivery
+      post :refresh_metadata
     end
 
     resources :moderation_notes, controller: 'instances/moderation_notes', only: [:create, :destroy]

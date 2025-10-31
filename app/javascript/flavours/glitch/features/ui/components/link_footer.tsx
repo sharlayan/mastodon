@@ -3,7 +3,6 @@ import { FormattedMessage } from 'react-intl';
 import { Link } from 'react-router-dom';
 
 import {
-  domain,
   version,
   source_url,
   statusPageUrl,
@@ -19,7 +18,6 @@ export const LinkFooter: React.FC<{
   return (
     <div className='link-footer'>
       <p>
-        <strong>{domain}</strong>:{' '}
         <Link to='/about' target={multiColumn ? '_blank' : undefined}>
           <FormattedMessage
             id='footer.about_this_server'
@@ -75,10 +73,6 @@ export const LinkFooter: React.FC<{
 
       <p>
         <strong>Mastodon</strong>:{' '}
-        <a href='https://joinmastodon.org' target='_blank' rel='noopener'>
-          <FormattedMessage id='footer.about' defaultMessage='About' />
-        </a>
-        <DividingCircle />
         <a href='https://joinmastodon.org/apps' target='_blank' rel='noopener'>
           <FormattedMessage id='footer.get_app' defaultMessage='Get the app' />
         </a>
@@ -94,6 +88,17 @@ export const LinkFooter: React.FC<{
           <FormattedMessage
             id='footer.source_code'
             defaultMessage='View source code'
+          />
+        </a>
+        <DividingCircle />
+        <a
+          href='https://git.drk.st/arcturus/mastodon/graph'
+          rel='noopener noreferrer'
+          target='_blank'
+        >
+          <FormattedMessage
+            id='footer.commitgraph'
+            defaultMessage='Commit Graph'
           />
         </a>
         <DividingCircle />

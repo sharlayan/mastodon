@@ -17,12 +17,21 @@
     - SiteUpload::APPLE_ICON_SIZES.each do |size|
       %link{ rel: 'apple-touch-icon', sizes: "#{size}x#{size}", href: app_icon_path(size.to_i) || frontend_asset_path("icons/apple-touch-icon-#{size}x#{size}.png") }/
 
-    - if use_mask_icon?
-      %link{ rel: 'mask-icon', href: frontend_asset_path('images/logo-symbol-icon.svg'), color: '#6364FF' }/
+    %link{ rel: 'mask-icon', href: frontend_asset_path('images/logo-symbol-icon.svg'), color: '#007046' }/
     %link{ rel: 'manifest', href: manifest_path(format: :json) }/
-    = javascript_inline_tag 'theme-selection.js'
-    = theme_color_tags color_scheme
-    %meta{ name: 'mobile-web-app-capable', content: 'yes' }/
+
+    -# theme color by branch
+    - if current_git_branch == 'dev'
+      %meta{ name: 'theme-color', content: '#FFA040' }/
+      %meta{ name: 'theme-color-orig', content: '#FFA040' }/
+    - elsif current_git_branch == 'darkest'
+      %meta{ name: 'theme-color', content: '#5BA451' }/
+      %meta{ name: 'theme-color-orig', content: '#5BA451' }/
+    - else
+      %meta{ name: 'theme-color', content: '#007046' }/
+      %meta{ name: 'theme-color-orig', content: '#007046' }/
+
+    %meta{ name: 'apple-mobile-web-app-capable', content: 'yes' }/
 
     %title= html_title
 
@@ -39,6 +48,12 @@
     %meta{ name: 'style-nonce', content: request.content_security_policy_nonce, property: 'csp-nonce', nonce: request.content_security_policy_nonce }
 
     = custom_stylesheet
+
+    -# import font
+    = stylesheet_link_tag '/static/fonts/ffxiv_lodestone/ffxiv_lodestone.css?v=1.3', skip_pipeline: true, media: 'all', id: 'extended-fonts-ffxiv'
+
+    -# glitch / vanilla shared extra css
+    = stylesheet_link_tag '/static/styles/extrafix.css?v=1.3', skip_pipeline: true, media: 'all', id: 'extrafix'
 
     = yield :header_tags
 

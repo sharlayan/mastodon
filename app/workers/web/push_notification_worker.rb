@@ -4,10 +4,11 @@ class Web::PushNotificationWorker
   include Sidekiq::Worker
   include RoutingHelper
 
-  sidekiq_options queue: 'push', retry: 5
+  sidekiq_options queue: 'push', retry: 3
 
   TTL     = 48.hours
   URGENCY = 'normal'
+  IGNORED_DOMAINS = ENV.fetch('PUSH_NOTIFICATION_IGNORED_DOMAINS', 'ntfy.sh').split(',').map(&:strip).reject(&:empty?).freeze
 
   def perform(subscription_id, notification_id)
     @subscription = Web::PushSubscription.find(subscription_id)
@@ -38,6 +39,20 @@ class Web::PushNotificationWorker
   end
 
   private
+
+  def should_ignore_domain?
+    domain = endpoint_domain
+    IGNORED_DOMAINS.include?(domain) if domain
+  end
+
+  def endpoint_domain
+    return nil unless @subscription&.endpoint
+
+    uri = URI.parse(@subscription.endpoint)
+    uri.host
+  rescue URI::InvalidURIError
+    nil
+  end
 
   def perform_legacy_request
     payload = web_push_request.legacy_encrypt(push_notification_json)
@@ -86,6 +101,15 @@ class Web::PushNotificationWorker
       # that isn't about rate-limiting or timeouts, we can
       # assume that the subscription is invalid or expired
       # and must be removed
+      if should_ignore_domain?
+        Rails.logger.info { "Ignoring response for domain #{endpoint_domain}: #{response.code}" }
+        return true
+      end
+
+      if response.code == 507
+        Rails.logger.info { "Received 507 response for subscription #{@subscription.id}, treating as success" }
+        return true
+      end
 
       if (400..499).cover?(response.code) && ![408, 429].include?(response.code)
         @subscription.destroy!

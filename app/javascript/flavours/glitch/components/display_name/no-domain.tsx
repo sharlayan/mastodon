@@ -1,23 +1,36 @@
 import type { ComponentPropsWithoutRef, FC } from 'react';
+import { useState } from 'react';
 
 import classNames from 'classnames';
 
 import { AnimateEmojiProvider } from '../emoji/context';
 import { EmojiHTML } from '../emoji/html';
+import { EmojiInfoTooltip } from '../emoji_info_tooltip';
 import { Skeleton } from '../skeleton';
 
 import type { DisplayNameProps } from './index';
 
 export const DisplayNameWithoutDomain: FC<
   Omit<DisplayNameProps, 'variant'> & ComponentPropsWithoutRef<'span'>
-> = ({ account, className, children, localDomain: _, ...props }) => {
+> = ({
+  account,
+  className,
+  children,
+  disableEmojiTooltip,
+  localDomain: _,
+  ...props
+}) => {
+  const [containerElement, setContainerElement] = useState<HTMLElement | null>(
+    null,
+  );
+
   return (
     <AnimateEmojiProvider
       {...props}
       as='span'
       className={classNames('display-name', className)}
     >
-      <bdi>
+      <bdi ref={setContainerElement}>
         {account ? (
           <EmojiHTML
             className='display-name__html'
@@ -30,6 +43,10 @@ export const DisplayNameWithoutDomain: FC<
             <Skeleton width='10ch' />
           </strong>
         )}
+        <EmojiInfoTooltip
+          containerRef={{ current: containerElement }}
+          enabled={!disableEmojiTooltip}
+        />
       </bdi>
       {children}
     </AnimateEmojiProvider>

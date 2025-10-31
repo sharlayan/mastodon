@@ -232,7 +232,7 @@ export const ColumnHeader: React.FC<Props> = ({
   const collapsedContent = [extraContent];
 
   if (multiColumn) {
-    collapsedContent.push(
+    collapsedContent.unshift(
       <div key='buttons' className='column-header__advanced-buttons'>
         {pinButton}
         {moveButtons}

@@ -11,6 +11,63 @@
     %p
       = t('admin.instances.unknown_instance')
 
+- if @instance.persisted?
+  %hr.spacer/
+
+  %h3= t('admin.instances.metadata.title')
+
+  .metadata-header
+    = image_tag @instance_metadata.favicon_url_with_fallback, class: 'instance-favicon-large', onerror: "this.style.display='none'"
+    %div
+      %h4.instance-name= @instance_metadata.instance_name_with_fallback
+      %p.instance-domain
+        = @instance.domain
+        = link_to t('admin.instances.metadata.refresh'), refresh_metadata_admin_instance_path(@instance), method: :post, class: 'metadata-refresh-link', data: { disable_with: t('admin.instances.metadata.refreshing') }
+
+  .metadata-grid
+    .metadata-item
+      .metadata-label
+        = t('admin.instances.metadata.software')
+      .metadata-value
+        - if @instance_metadata.software.present?
+          %span.software-badge{ data: { color: @instance_metadata.theme_color_with_fallback } }
+            = @instance_metadata.software.capitalize
+            - if @instance_metadata.misskey_based?
+              %span.badge-hint (Misskey)
+        - else
+          %span.muted-hint= t('admin.instances.metadata.unknown')
+
+    .metadata-item
+      .metadata-label
+        = t('admin.instances.metadata.version')
+      .metadata-value
+        - if @instance_metadata.version.present?
+          %code.version-code= @instance_metadata.version
+        - else
+          %span.muted-hint= t('admin.instances.metadata.unknown')
+
+    .metadata-item
+      .metadata-label
+        = t('admin.instances.metadata.theme_color')
+      .metadata-value
+        .color-preview
+          %code= @instance_metadata.theme_color_with_fallback
+
+    .metadata-item
+      .metadata-label
+        = t('admin.instances.metadata.last_updated')
+      .metadata-value
+        - if @instance_metadata.metadata_updated_at.present?
+          %time.formatted{ datetime: @instance_metadata.metadata_updated_at.iso8601, title: l(@instance_metadata.metadata_updated_at) }
+            = time_ago_in_words(@instance_metadata.metadata_updated_at)
+            = t('datetime.distance_in_words.ago')
+        - else
+          %span.muted-hint= t('admin.instances.metadata.never_updated')
+
+  - if @instance_metadata.metadata_needs_update?
+    .metadata-warning
+      = t('admin.instances.metadata.outdated_warning')
+
 %hr.spacer/
 
 %h3= t('admin.instances.content_policies.title')

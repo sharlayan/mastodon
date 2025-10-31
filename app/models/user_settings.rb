@@ -18,7 +18,8 @@ class UserSettings
   setting :default_privacy, default: nil, in: %w(public unlisted private)
   setting :default_content_type, default: 'text/plain'
   setting :hide_followers_count, default: false
-  setting :default_quote_policy, default: 'public', in: %w(public followers nobody)
+  setting :visible_reactions, default: 6
+  setting :default_quote_policy, default: 'nobody', in: %w(public followers nobody) # patch for default no-quote my statuses
 
   setting_inverse_alias :indexable, :noindex
   setting_inverse_alias :show_followers_count, :hide_followers_count
@@ -42,14 +43,16 @@ class UserSettings
     setting :display_media, default: 'default', in: %w(default show_all hide_all)
     setting :auto_play, default: false
     setting :emoji_style, default: 'auto', in: %w(auto native twemoji)
-    setting :color_scheme, default: 'auto', in: %w(auto light dark)
-    setting :contrast, default: 'auto', in: %w(auto high)
+    setting :show_instance_info, default: true
+    setting :custom_emoji_size, default: false
+    setting :reaction_custom_emoji_size, default: false
   end
 
   namespace :notification_emails do
     setting :follow, default: true
     setting :reblog, default: false
     setting :favourite, default: false
+    setting :reaction, default: false
     setting :mention, default: true
     setting :quote, default: true
     setting :follow_request, default: true

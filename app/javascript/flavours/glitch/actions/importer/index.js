@@ -82,6 +82,14 @@ export function importFetchedStatuses(statuses, options = {}) {
         pushUnique(polls, createPollFromServerJSON(status.poll, getState().polls[status.poll.id]));
       }
 
+      // need error check
+      if (status.reactions && Array.isArray(status.reactions)) {
+        status.reactions
+          .flatMap(reaction => reaction.users || [])
+          .filter(user => user)
+          .forEach(user => pushUnique(accounts, user));
+      }
+
       if (status.card) {
         status.card.authors.forEach(author => author.account && pushUnique(accounts, author.account));
       }

@@ -46,7 +46,8 @@ import {
   Status,
   GettingStarted,
   KeyboardShortcuts,
-  Firehose,
+  PublicTimeline,
+  CommunityTimeline,
   AccountTimeline,
   AccountGallery,
   HomeTimeline,
@@ -61,6 +62,7 @@ import {
   NotificationRequest,
   FollowRequests,
   FavouritedStatuses,
+  ReactedStatuses,
   BookmarkedStatuses,
   FollowedTags,
   LinkTimeline,
@@ -222,11 +224,8 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/terms-of-service/:date?' component={TermsOfService} content={children} />
 
             <WrappedRoute path={['/home', '/timelines/home']} component={HomeTimeline} content={children} />
-            <Redirect from='/timelines/public' to='/public' exact />
-            <Redirect from='/timelines/public/local' to='/public/local' exact />
-            <WrappedRoute path='/public' exact component={Firehose} componentParams={{ feedType: 'public' }} content={children} />
-            <WrappedRoute path='/public/local' exact component={Firehose} componentParams={{ feedType: 'community' }} content={children} />
-            <WrappedRoute path='/public/remote' exact component={Firehose} componentParams={{ feedType: 'public:remote' }} content={children} />
+            <WrappedRoute path={['/public', '/timelines/public']} exact component={PublicTimeline} content={children} />
+            <WrappedRoute path={['/public/local', '/timelines/public/local']} exact component={CommunityTimeline} content={children} />
             <WrappedRoute path={['/conversations', '/timelines/direct']} component={DirectTimeline} content={children} />
             <WrappedRoute path='/tags/:id' component={HashtagTimeline} content={children} />
             <WrappedRoute path='/links/:url' component={LinkTimeline} content={children} />
@@ -238,6 +237,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/notifications/requests' component={NotificationRequests} content={children} exact />
             <WrappedRoute path='/notifications/requests/:id' component={NotificationRequest} content={children} exact />
             <WrappedRoute path='/favourites' component={FavouritedStatuses} content={children} />
+            <WrappedRoute path='/reactions' component={ReactedStatuses} content={children} />
 
             <WrappedRoute path='/bookmarks' component={BookmarkedStatuses} content={children} />
             <WrappedRoute path='/pinned' component={PinnedStatuses} content={children} />

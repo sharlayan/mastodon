@@ -204,6 +204,17 @@ module ApplicationHelper
     text.split("\n").map { |line| "> #{line}" }.join("\n")
   end
 
+  def current_git_branch
+    head_file_path = '.git/HEAD'
+    head_file_content = File.read(head_file_path).strip
+    if head_file_content.start_with?('ref:')
+      ref_path = head_file_content.sub('ref: ', '').strip
+      ref_path.split('/').last
+    else
+      'Detached from HEAD'
+    end
+  end
+
   def render_initial_state
     state_params = {
       settings: {},

@@ -1,5 +1,7 @@
+import { useCallback } from 'react';
+
 import classNames from 'classnames';
-import { useRouteMatch, NavLink } from 'react-router-dom';
+import { useRouteMatch, NavLink, useLocation } from 'react-router-dom';
 
 import { Icon } from 'mastodon/components/icon';
 import type { IconProp } from 'mastodon/components/icon';
@@ -31,7 +33,12 @@ export const ColumnLink: React.FC<{
   transparent,
   ...other
 }) => {
-  const match = useRouteMatch(to ?? '');
+  const location = useLocation();
+  const routeMatch = useRouteMatch(to ?? '');
+  const match =
+    to && (to === '/public' || to === '/public/local')
+      ? location.pathname === to
+      : routeMatch;
   const className = classNames('column-link', {
     'column-link--transparent': transparent,
   });
@@ -61,6 +68,10 @@ export const ColumnLink: React.FC<{
     ));
   const active = !!match;
 
+  const navLinkIsActive = useCallback(() => {
+    return location.pathname === to;
+  }, [location.pathname, to]);
+
   if (href) {
     return (
       <a href={href} className={className} data-method={method} {...other}>
@@ -70,8 +81,14 @@ export const ColumnLink: React.FC<{
       </a>
     );
   } else if (to) {
+    const shouldUseCustomIsActive = to === '/public' || to === '/public/local';
     return (
-      <NavLink to={to} className={className} {...other}>
+      <NavLink
+        to={to}
+        isActive={shouldUseCustomIsActive ? navLinkIsActive : undefined}
+        className={className}
+        {...other}
+      >
         {active ? activeIconElement : iconElement}
         <span>{text}</span>
         {badgeElement}

@@ -7,7 +7,7 @@ import type { NotificationGroupFavourite } from 'flavours/glitch/models/notifica
 import { useAppSelector } from 'flavours/glitch/store';
 
 import type { LabelRenderer } from './notification_group_with_status';
-import { NotificationGroupWithStatus } from './notification_group_with_status';
+import { NotificationWithStatus } from './notification_with_status';
 
 const labelRenderer: LabelRenderer = (displayedName, total, seeMoreHref) => {
   if (total === 1)
@@ -77,19 +77,21 @@ export const NotificationFavourite: React.FC<{
   );
 
   return (
-    <NotificationGroupWithStatus
+    // patch for old notification style
+    <NotificationWithStatus
       type='favourite'
       icon={StarIcon}
       iconId='star'
       accountIds={notification.sampleAccountIds}
       statusId={notification.statusId}
-      timestamp={notification.latest_page_notification_at}
+      // timestamp={notification.latest_page_notification_at}
       count={notification.notifications_count}
       labelRenderer={isPrivateMention ? privateLabelRenderer : labelRenderer}
       labelSeeMoreHref={
         statusAccount ? `/@${statusAccount}/${statusId}/favourites` : undefined
       }
       unread={unread}
+      collapsed
     />
   );
 };

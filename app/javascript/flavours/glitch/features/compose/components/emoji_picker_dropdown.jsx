@@ -154,6 +154,21 @@ class ModifierPicker extends PureComponent {
 
 class EmojiPickerMenuImpl extends PureComponent {
 
+  constructor(props) {
+    super(props);
+
+    const savedSize = this.loadSavedSize();
+
+    this.state = {
+      modifierOpen: false,
+      readyToFocus: false,
+      pickerSize: savedSize,
+    };
+
+    this.resizeObserver = null;
+    this.resizeTimeout = null;
+  }
+
   static propTypes = {
     custom_emojis: ImmutablePropTypes.list,
     frequentlyUsedEmojis: PropTypes.arrayOf(PropTypes.string),
@@ -173,11 +188,6 @@ class EmojiPickerMenuImpl extends PureComponent {
     frequentlyUsedEmojis: [],
   };
 
-  state = {
-    modifierOpen: false,
-    readyToFocus: false,
-  };
-
   handleDocumentClick = e => {
     if (this.node && !this.node.contains(e.target) && !this.props.pickerButtonRef.contains(e.target)) {
       this.props.onClose();
@@ -187,14 +197,18 @@ class EmojiPickerMenuImpl extends PureComponent {
   componentDidMount() {
     document.addEventListener('click', this.handleDocumentClick, { capture: true });
     document.addEventListener('touchend', this.handleDocumentClick, listenerOptions);
+    this.setupResizeObserver();
 
     // Because of https://github.com/react-bootstrap/react-bootstrap/issues/2614 we need
     // to wait for a frame before focusing
     requestAnimationFrame(() => {
       this.setState({ readyToFocus: true });
+
       if (this.node) {
         const element = this.node.querySelector('input[type="search"]');
-        if (element) element.focus();
+        if (element) {
+          element.focus();
+        }
       }
     });
   }
@@ -202,10 +216,15 @@ class EmojiPickerMenuImpl extends PureComponent {
   componentWillUnmount() {
     document.removeEventListener('click', this.handleDocumentClick, { capture: true });
     document.removeEventListener('touchend', this.handleDocumentClick, listenerOptions);
+    this.cleanupResizeObserver();
   }
 
   setRef = c => {
     this.node = c;
+
+    if (c && !this.resizeObserver) {
+      this.setupResizeObserver();
+    }
   };
 
   getI18n = () => {
@@ -252,16 +271,65 @@ class EmojiPickerMenuImpl extends PureComponent {
     this.props.onSkinTone(modifier);
   };
 
+  loadSavedSize = () => {
+    try {
+      const saved = localStorage.getItem('mastodon-emojipicker-size');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  saveSizeDebounced = (width, height) => {
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+    }
+
+    this.resizeTimeout = setTimeout(() => {
+      try {
+        localStorage.setItem('mastodon-emojipicker-size', JSON.stringify({ width, height }));
+      } catch (e) {
+        // ignore save fail
+      }
+    }, 500); // 500ms debounce
+  };
+
+  setupResizeObserver = () => {
+    if (!this.node || this.resizeObserver) return;
+
+    this.resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        this.saveSizeDebounced(width, height);
+        this.setState({ pickerSize: { width, height } });
+      }
+    });
+
+    this.resizeObserver.observe(this.node);
+  };
+
+  cleanupResizeObserver = () => {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = null;
+    }
+
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+      this.resizeTimeout = null;
+    }
+  };
+
   render() {
     const { loading, style, intl, custom_emojis, skinTone, frequentlyUsedEmojis } = this.props;
 
     if (loading) {
-      return <div style={{ width: 299 }} />;
+      return <div style={{ width: 329 }} />;
     }
 
     const title = intl.formatMessage(messages.emoji);
 
-    const { modifierOpen } = this.state;
+    const { modifierOpen, pickerSize } = this.state;
 
     const categoriesSort = [
       'recent',
@@ -277,11 +345,19 @@ class EmojiPickerMenuImpl extends PureComponent {
 
     categoriesSort.splice(1, 0, ...Array.from(categoriesFromEmojis(custom_emojis)).sort());
 
+    const pickerStyle = pickerSize
+      ? {
+          ...style,
+          width: pickerSize.width,
+          height: pickerSize.height
+        }
+      : style;
+
     return (
-      <div className={classNames('emoji-picker-dropdown__menu', { selecting: modifierOpen })} style={style} ref={this.setRef}>
+      <div className={classNames('emoji-picker-dropdown__menu', { selecting: modifierOpen })} style={pickerStyle} ref={this.setRef}>
         <EmojiPicker
-          perLine={8}
-          emojiSize={22}
+          perLine={7}
+          emojiSize={28}
           custom={buildCustomEmojis(custom_emojis)}
           color=''
           emoji=''
@@ -308,7 +384,6 @@ class EmojiPickerMenuImpl extends PureComponent {
       </div>
     );
   }
-
 }
 
 const EmojiPickerMenu = injectIntl(EmojiPickerMenuImpl);
@@ -322,7 +397,7 @@ class EmojiPickerDropdown extends PureComponent {
     onPickEmoji: PropTypes.func.isRequired,
     onSkinTone: PropTypes.func.isRequired,
     skinTone: PropTypes.number.isRequired,
-    disabled: PropTypes.bool,
+    inverted: PropTypes.bool
   };
 
   state = {
@@ -385,7 +460,7 @@ class EmojiPickerDropdown extends PureComponent {
   };
 
   render() {
-    const { intl, onPickEmoji, onSkinTone, skinTone, frequentlyUsedEmojis, disabled } = this.props;
+    const { intl, onPickEmoji, onSkinTone, skinTone, frequentlyUsedEmojis, inverted } = this.props;
     const title = intl.formatMessage(messages.emoji);
     const { active, loading, placement } = this.state;
 
@@ -397,9 +472,7 @@ class EmojiPickerDropdown extends PureComponent {
           active={active}
           iconComponent={MoodIcon}
           onClick={this.onToggle}
-          disabled={disabled}
-          id="emoji"
-          inverted
+          inverted={inverted}
         />
 
         <Overlay show={active} placement={placement} flip target={this.findTarget} popperConfig={{ strategy: 'fixed', onFirstUpdate: this.handleOverlayEnter }}>

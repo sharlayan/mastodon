@@ -258,6 +258,7 @@ export const Notifications: React.FC<{
       bindToDocument={!multiColumn}
       ref={columnRef}
       label={intl.formatMessage(messages.title)}
+      className='notifications'
     >
       <ColumnHeader
         icon='bell'
