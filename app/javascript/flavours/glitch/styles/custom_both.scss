@@ -164,10 +164,10 @@ html {
 
   /* instance badge */
   .instance-badge {
-    display: inline-flex;
+    display: flex;
     box-sizing: border-box;
-    align-items: center;
-    gap: 4px;
+    align-items: stretch;
+    gap: 2px;
     padding: 0;
     border-radius: 4px;
     background: linear-gradient(
@@ -193,6 +193,9 @@ html {
 
     &__domain {
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      position: relative;
       color: $white;
       -webkit-text-stroke: $black 0.225em;
       paint-order: stroke fill;
