@@ -1,53 +1,322 @@
-$gh-blue: #58a6ff;
-$gh-red: #ff7b72;
-$gh-green: #3fb950;
-$gh-yellow: #d29922;
-$gh-magenta: #bc8cff;
-$gh-cyan: #76e3ea;
-$gh-desc: #8b949e;
-$gh-white: #b1bac4;
-$gh-verified: #3fb950;
+@use 'sass:color';
+@use 'variables' as *;
+@use 'functions' as *;
 
-$gh-extra-black: #0d1117;
-$gh-extra-black-bright: #161b22;
-$gh-extra-white: #b1bac4;
-$gh-extra-white-bright: #b1bac4;
-$gh-extra-gray: #6e7681;
-$gh-extra-red: #ff7b72;
-$gh-extra-red-bright: #ffa198;
-$gh-extra-green: #3fb950;
-$gh-extra-green-bright: #56d364;
-$gh-extra-yellow: #d29922;
-$gh-extra-yellow-bright: #e3b341;
-$gh-extra-blue: #58a6ff;
-$gh-extra-blue-bright: #79c0ff;
-$gh-extra-magenta: #bc8cff;
-$gh-extra-magenta-bright: #d2a8ff;
-$gh-extra-cyan: #76e3ea;
-$gh-extra-cyan-bright: #b3f0ff;
+html {
+  /* instance badge */
+  .instance-badge {
+    display: flex;
+    box-sizing: border-box;
+    align-items: stretch;
+    gap: 2px;
+    padding: 0;
+    border-radius: 4px;
+    background: linear-gradient(
+      to right,
+      var(--instance-theme-color, rgba(99, 100, 255, 10%)) 50%,
+      transparent 100%
+    );
+    margin-inline-start: var(--status-gutter-width, 0);
+    width: calc(100% - var(--status-gutter-width, 0px));
+    margin-bottom: 4px;
 
-$gh-blue-5: #1f6feb;
-$gh-select-background: #010409;
-$gh-text: #c9d1d9;
-$gh-link: #58a6ff;
-$gh-verified: #3fb950;
-$gh-description: #8b949e;
-$gh-background: #0d1117;
-$gh-header: #161b22;
-$gh-divider: #21262d;
-$gh-primary-btn: #238636;
-$gh-primary-btn-hover: #2ea043;
-$gh-primary-btn-border: rgba(240, 246, 252, 10%);
-$gh-primary-btn-hover-border: rgba(240, 246, 252, 10%);
+    &__favicon {
+      display: block;
+      width: 16px;
+      height: 16px;
 
-:root {
-  --ffxiv-textcolor: #eee1c5;
-  --ffxiv-textcolor-desc: #878787;
-  --ffxiv-textcolor-group: #d8bb7d;
-  --ffxiv-textcolor-button: #fff;
-  --ffxiv-textcolor-dutyname: #79c7ec;
-  --ffxiv-textcolor-partyleader: #d3eee9;
-  --ffxiv-textcolor-partylist: #e8fffe;
-  --ffxiv-edgecolor-partylist: #085098;
-  --ffxiv-edgecolor-dtrbar: #8e6a0c;
+      &__image {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+      }
+    }
+
+    &__domain {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      position: relative;
+      color: $white;
+      -webkit-text-stroke: $black 0.225em;
+      paint-order: stroke fill;
+      vertical-align: middle;
+    }
+
+    &__software {
+      color: $darker-text-color;
+      font-weight: 400;
+
+      &::before {
+        content: '·';
+        margin: 0 4px;
+      }
+    }
+
+    &--compact {
+      padding: 0;
+      vertical-align: middle;
+      line-height: 0.875em;
+
+      .instance-badge__favicon {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  .status--in-thread {
+    .instance-badge {
+      -webkit-margin-start: var(--thread-margin);
+      margin-inline-start: var(--thread-margin);
+      width: calc(100% - var(--thread-margin));
+    }
+  }
+
+  /* default */
+  [class^='notification'] .status .reactions-bar {
+    margin-inline-start: var(--status-gutter-width, 0);
+    width: calc(100% - var(--status-gutter-width, 0px));
+  }
+
+  .emoji-magnify-overlay .reactions-bar__item__users {
+    &__emoji {
+      margin: 0 !important;
+    }
+
+    .display-name img {
+      display: inline !important;
+      width: auto !important;
+      height: 1em;
+    }
+  }
+
+  .status {
+    &__quote-author-button {
+      box-sizing: border-box;
+    }
+
+    &__info__custom {
+      display: flex;
+      gap: 4px;
+      flex-direction: column;
+
+      time {
+        font-size: 0.8em;
+      }
+
+      .status__info__icons {
+        justify-content: flex-end;
+
+        .text-icon {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+
+  .reactions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0 !important;
+    margin-top: 15px;
+    margin-bottom: 8px !important;
+    margin-inline-start: -2px;
+    width: calc(100% - (90px - 33px));
+    gap: 4px;
+
+    &__item {
+      flex-shrink: 0;
+      @if $darken-multiplier == -1 {
+        background: color.adjust($classic-base-color, $lightness: 12%);
+      } @else {
+        background: $classic-secondary-color;
+      }
+
+      color: $darker-text-color;
+      border-radius: 3px;
+      cursor: pointer;
+      user-select: none;
+      padding: 0 6px;
+      display: flex;
+      align-items: center;
+      transition: all 100ms ease-in;
+      transition-property: background-color, color;
+      border: 1px solid transparent;
+
+      &[disabled] {
+        border-color: #888;
+        border-style: dashed;
+        cursor: default;
+        background: transparent !important;
+      }
+
+      &__emoji {
+        display: flex;
+        margin: 3px 0;
+        width: 16px;
+        height: 16px;
+
+        img {
+          display: block;
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          min-width: auto;
+          min-height: auto;
+          object-fit: contain;
+        }
+      }
+
+      &__count {
+        display: block;
+        min-width: 9px;
+        font-size: 13px;
+        font-weight: 500;
+        text-align: center;
+        margin-inline-start: 6px;
+      }
+
+      &__users {
+        background: var(--modal-background-color);
+        box-shadow: var(--dropdown-shadow);
+        -webkit-backdrop-filter: blur(10px) saturate(180%) contrast(75%)
+          brightness(70%);
+        backdrop-filter: blur(10px) saturate(180%) contrast(75%) brightness(70%);
+        border: 1px solid var(--modal-border-color);
+        display: flex;
+        padding: 12px;
+        border-radius: 8px;
+        z-index: 9999;
+        font-size: 13px;
+
+        .emojione {
+          width: auto;
+          height: auto;
+
+          &.custom-emoji {
+            width: auto;
+            height: auto;
+          }
+        }
+
+        &__emoji {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: auto;
+
+          &__code {
+            margin-top: 6px;
+            word-break: break-all;
+            max-width: 120px;
+          }
+
+          span {
+            .emojione {
+              min-width: 48px;
+
+              &.custom-emoji {
+                max-width: 120px;
+                max-height: 120px;
+              }
+            }
+          }
+        }
+
+        &__list {
+          padding-left: 12px;
+          margin-left: 12px;
+          border-left: 1px solid var(--modal-border-color);
+        }
+
+        &__item {
+          display: flex;
+          justify-content: flex-start;
+          align-items: center;
+          margin-bottom: 4px;
+
+          .emojione {
+            max-height: 1em;
+          }
+
+          .account__avatar {
+            margin-right: 6px;
+          }
+
+          .display-name {
+            &__account {
+              display: none;
+            }
+
+            &__html {
+              display: block !important;
+              min-width: 100px;
+            }
+          }
+        }
+      }
+
+      &:hover,
+      &:focus,
+      &:active {
+        @if $darken-multiplier == -1 {
+          background: color.adjust($classic-base-color, $lightness: 16%);
+        } @else {
+          background: color.adjust($classic-secondary-color, $lightness: -16%);
+        }
+
+        transition: all 200ms ease-out;
+        transition-property: background-color, color;
+        color: color.adjust($darker-text-color, $lightness: -4%);
+      }
+
+      &.active {
+        transition: all 100ms ease-in;
+        transition-property: background-color, color;
+        color: color.adjust($highlight-text-color, $lightness: 8%);
+      }
+    }
+
+    .emoji-picker-dropdown {
+      margin: 2px;
+    }
+
+    &:hover .emoji-button {
+      opacity: 0.85;
+    }
+
+    .emoji-button {
+      color: $darker-text-color;
+      margin: 0;
+      font-size: 16px;
+      width: auto;
+      flex-shrink: 0;
+      padding: 0 6px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      opacity: 0.5;
+      transition: all 100ms ease-in;
+      transition-property: background-color, color;
+
+      &:hover,
+      &:active,
+      &:focus {
+        opacity: 1;
+        color: lighten($darker-text-color, 4%);
+        transition: all 200ms ease-out;
+        transition-property: background-color, color;
+      }
+    }
+
+    &--empty {
+      display: none;
+
+      .emoji-button {
+        padding: 0;
+      }
+    }
+  }
 }
