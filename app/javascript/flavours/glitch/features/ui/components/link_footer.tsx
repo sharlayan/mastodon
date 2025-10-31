@@ -92,7 +92,7 @@ export const LinkFooter: React.FC<{
         </a>
         <DividingCircle />
         <a
-          href='https://git.drk.st/arcturus/mastodon/graph'
+          href='https://git.drk.st/sharlayan/mastodon/graph'
           rel='noopener noreferrer'
           target='_blank'
         >
