@@ -16,6 +16,7 @@ import RepeatIcon from '@/material-icons/400-24px/repeat.svg?react';
 import StarIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import { Icon } from 'flavours/glitch/components/icon';
 import { me } from 'flavours/glitch/initial_state';
+import { DisplayName } from './display_name';
 
 import { LinkedDisplayName } from './display_name';
 
@@ -31,12 +32,19 @@ export default class StatusPrepend extends PureComponent {
   Message = () => {
     const { type, account } = this.props;
     let link = (
-      <LinkedDisplayName
-        displayProps={{
-          account: account,
-          variant: 'simple'
-        }}
-      />
+      <Permalink
+        to={`/@${account.get('acct')}`}
+        href={account.get('url')}
+        className='status__display-name'
+        data-hover-card-account={account.get('id')}
+      >
+        <DisplayName
+          account={account}
+          variant='noDomain'
+          disableEmojiTooltip
+          style={{ display: 'inline' }}
+        />
+      </Permalink>
     );
     switch (type) {
     case 'reblogged_by':
