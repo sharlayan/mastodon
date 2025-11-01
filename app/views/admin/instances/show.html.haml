@@ -19,7 +19,7 @@
   .metadata-header
     = image_tag @instance_metadata.favicon_url_with_fallback, class: 'instance-favicon-large', onerror: "this.style.display='none'"
     %div
-      %h4.instance-name= @instance_metadata.instance_name_with_fallback
+      %span.instance-name= @instance_metadata.instance_name_with_fallback
       %p.instance-domain
         = @instance.domain
         = link_to t('admin.instances.metadata.refresh'), refresh_metadata_admin_instance_path(@instance), method: :post, class: 'metadata-refresh-link', data: { disable_with: t('admin.instances.metadata.refreshing') }

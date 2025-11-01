@@ -10,7 +10,7 @@ class InstanceMetadataUpdateWorker
 
     metadata = InstanceMetadata.find_by(domain: domain)
 
-    self.class.sidekiq_options retry: 5, queue: 'default' if metadata&.software.blank?
+    self.class.sidekiq_options retry: 3, queue: 'default' if metadata&.software.blank?
 
     FetchInstanceThemeColorService.new.call(domain)
   rescue => e

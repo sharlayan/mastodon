@@ -72,3 +72,6 @@
       interval: 1 day
       class: Scheduler::Fasp::FollowRecommendationCleanupScheduler
       queue: scheduler
+    instance_metadata_refresh:
+      cron: '0 0 * * 0'
+      class: Scheduler::InstanceMetadataRefreshScheduler

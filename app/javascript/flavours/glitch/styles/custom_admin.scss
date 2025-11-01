@@ -3,7 +3,6 @@
 @use 'functions' as *;
 
 html {
-  /* admin */
   .admin-wrapper {
     .instance-metadata-panel {
       border-radius: 8px;
@@ -19,6 +18,10 @@ html {
       margin-bottom: 20px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--background-border-color);
+
+      & > div {
+        flex-grow: 1;
+      }
 
       .instance-favicon-large {
         width: 48px;
