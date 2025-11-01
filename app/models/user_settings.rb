@@ -43,7 +43,7 @@ class UserSettings
     setting :display_media, default: 'default', in: %w(default show_all hide_all)
     setting :auto_play, default: false
     setting :emoji_style, default: 'auto', in: %w(auto native twemoji)
-    setting :show_instance_info, default: true
+    setting :show_instance_info, default: false
     setting :custom_emoji_size, default: false
     setting :reaction_custom_emoji_size, default: false
   end

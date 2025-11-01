@@ -1706,6 +1706,8 @@ ko:
       subject: "%{name} 님이 방금 게시물을 올렸습니다"
     update:
       subject: "%{name} 님이 게시물을 수정했습니다"
+    reaction:
+      subject: "%{name} 님이 게시물에 반응을 남겼습니다"
   notifications:
     administration_emails: 관리자 이메일 알림
     email_events: 이메일 알림에 대한 이벤트

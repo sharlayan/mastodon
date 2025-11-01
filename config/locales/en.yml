@@ -1768,6 +1768,8 @@ en:
       subject: "%{name} just posted"
     update:
       subject: "%{name} edited a post"
+    reaction:
+      subject: "%{name} reacted to your post"
   notifications:
     administration_emails: Admin email notifications
     email_events: Events for email notifications
