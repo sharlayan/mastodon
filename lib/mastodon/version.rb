@@ -102,9 +102,9 @@ module Mastodon
         ref_path = head_file_content.sub('ref: ', '').strip
         ref_file_path = File.join('.git', ref_path)
         ref_file_content = File.read(ref_file_path).strip
-        ref_file_content[0, 7]
+        ref_file_content[0, 5]
       else
-        head_file_content[0, 7]
+        head_file_content[0, 5]
       end
     end
 
