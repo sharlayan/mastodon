@@ -122,12 +122,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.boolean "keep_pinned", default: true, null: false
     t.boolean "keep_polls", default: false, null: false
     t.boolean "keep_self_bookmark", default: true, null: false
-    t.boolean "keep_self_reaction", default: true, null: false
     t.integer "min_favs"
     t.integer "min_reblogs"
-    t.integer "min_reactions"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "keep_self_reaction", default: true, null: false
+    t.integer "min_reactions"
     t.index ["account_id"], name: "index_account_statuses_cleanup_policies_on_account_id"
   end
 
@@ -651,6 +651,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.index ["user_id"], name: "index_identities_on_user_id"
   end
 
+  create_table "instance_metadata", force: :cascade do |t|
+    t.string "domain", null: false
+    t.string "software"
+    t.string "version"
+    t.string "theme_color"
+    t.datetime "theme_color_updated_at"
+    t.string "favicon_url"
+    t.datetime "metadata_updated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "instance_name"
+    t.index ["domain"], name: "index_instance_metadata_on_domain", unique: true
+    t.index ["theme_color_updated_at"], name: "index_instance_metadata_on_theme_color_updated_at"
+  end
+
   create_table "instance_moderation_notes", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.text "content"
@@ -985,11 +1000,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.string "approval_uri"
     t.datetime "created_at", null: false
     t.boolean "legacy", default: false, null: false
-    t.bigint "quoted_account_id"
-    t.bigint "quoted_status_id"
-    t.integer "state", default: 0, null: false
-    t.bigint "status_id", null: false
-    t.datetime "updated_at", null: false
+    t.boolean "from_misskey", default: false, null: false
     t.index ["account_id", "quoted_account_id", "id"], name: "index_quotes_on_account_id_and_quoted_account_id_and_id"
     t.index ["activity_uri"], name: "index_quotes_on_activity_uri", unique: true, where: "(activity_uri IS NOT NULL)"
     t.index ["approval_uri"], name: "index_quotes_on_approval_uri", where: "(approval_uri IS NOT NULL)"
@@ -1164,9 +1175,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.bigint "status_id", null: false
     t.string "name", default: "", null: false
     t.bigint "custom_emoji_id"
-    t.datetime "created_at", precision: 6, null: false
-    t.datetime "updated_at", precision: 6, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
     t.index ["account_id", "status_id", "name"], name: "index_status_reactions_on_account_id_and_status_id", unique: true
+    t.index ["account_id"], name: "index_status_reactions_on_account_id"
     t.index ["custom_emoji_id"], name: "index_status_reactions_on_custom_emoji_id"
     t.index ["status_id"], name: "index_status_reactions_on_status_id"
   end
@@ -1180,7 +1192,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.bigint "status_id", null: false
     t.bigint "untrusted_favourites_count"
     t.bigint "untrusted_reblogs_count"
-    t.datetime "updated_at", precision: nil, null: false
+    t.bigint "quotes_count", default: 0, null: false
+    t.bigint "reactions_count", default: 0, null: false
     t.index ["status_id"], name: "index_status_stats_on_status_id", unique: true
   end
 
@@ -1509,7 +1522,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
   add_foreign_key "mentions", "statuses", on_delete: :cascade
   add_foreign_key "mutes", "accounts", column: "target_account_id", name: "fk_eecff219ea", on_delete: :cascade
   add_foreign_key "mutes", "accounts", name: "fk_b8d8daf315", on_delete: :cascade
-  add_foreign_key "notification_permissions", "accounts"
   add_foreign_key "notification_permissions", "accounts", column: "from_account_id", on_delete: :cascade
   add_foreign_key "notification_permissions", "accounts", on_delete: :cascade
   add_foreign_key "notification_policies", "accounts", on_delete: :cascade
