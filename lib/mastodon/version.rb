@@ -116,7 +116,7 @@ module Mastodon
 
     def current_git_branch
       head_file_content = read_git_head_file
-      return '' if head_file_content.empty?
+      return 'dev' if head_file_content.empty?
 
       if head_file_content.start_with?('ref: refs/heads/')
         head_file_content.delete_prefix('ref: refs/heads/')
