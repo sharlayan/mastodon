@@ -421,7 +421,6 @@ class StatusActionBar extends ImmutablePureComponent {
             </Dropdown>
           )}
         </RemoveQuoteHint>
-        <div className='status__action-bar-spacer' />
       </div>
     );
   }
