@@ -94,10 +94,14 @@ module Mastodon
     def read_git_head_file
       head_file_path = '.git/HEAD'
       File.read(head_file_path).strip
+    rescue Errno::ENOENT, Errno::EACCES, IOError
+      ''
     end
 
     def read_git_hash_from_file
       head_file_content = read_git_head_file
+      return '' if head_file_content.empty?
+
       if head_file_content.start_with?('ref:')
         ref_path = head_file_content.sub('ref: ', '').strip
         ref_file_path = File.join('.git', ref_path)
@@ -106,10 +110,14 @@ module Mastodon
       else
         head_file_content[0, 5]
       end
+    rescue Errno::ENOENT, Errno::EACCES, IOError
+      ''
     end
 
     def current_git_branch
       head_file_content = read_git_head_file
+      return '' if head_file_content.empty?
+
       if head_file_content.start_with?('ref: refs/heads/')
         head_file_content.delete_prefix('ref: refs/heads/')
       else
