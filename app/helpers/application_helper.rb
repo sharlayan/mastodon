@@ -204,6 +204,13 @@ module ApplicationHelper
     text.split("\n").map { |line| "> #{line}" }.join("\n")
   end
 
+  def read_git_head_file
+    head_file_path = '.git/HEAD'
+    File.read(head_file_path).strip
+  rescue Errno::ENOENT, Errno::EACCES, IOError
+    ''
+  end
+
   def current_git_branch
     head_file_content = read_git_head_file
     return 'dev' if head_file_content.empty?
