@@ -1819,7 +1819,7 @@ body > [data-popper-placement] {
 .status__action-bar {
   display: flex;
   align-items: center;
-  gap: 18px;
+  justify-content: space-between;
   margin-top: 8px;
 
   &-spacer {
