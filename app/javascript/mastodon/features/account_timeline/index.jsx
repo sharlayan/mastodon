@@ -8,9 +8,10 @@ import ImmutablePureComponent from 'react-immutable-pure-component';
 import { connect } from 'react-redux';
 
 import BundleColumnError from 'mastodon/features/ui/components/bundle_column_error';
-import { me } from 'mastodon/initial_state';
+import { me, localAccountStatusesAccess } from 'mastodon/initial_state';
 import { normalizeForLookup } from 'mastodon/reducers/accounts_map';
 import { getAccountHidden } from 'mastodon/selectors/accounts';
+import { withIdentity } from 'mastodon/identity_context';
 
 import { lookupAccount, fetchAccount } from '../../actions/accounts';
 import { expandAccountFeaturedTimeline, expandAccountTimeline, connectTimeline, disconnectTimeline } from '../../actions/timelines';
@@ -77,8 +78,17 @@ class AccountTimeline extends ImmutablePureComponent {
     multiColumn: PropTypes.bool,
   };
 
+  _shouldBlockLoad () {
+    const { signedIn } = this.props.identity;
+    return !signedIn && localAccountStatusesAccess;
+  }
+
   _load () {
     const { accountId, withReplies, params: { tagged }, dispatch } = this.props;
+
+    if (this._shouldBlockLoad()) {
+      return;
+    }
 
     dispatch(fetchAccount(accountId));
 
@@ -136,6 +146,7 @@ class AccountTimeline extends ImmutablePureComponent {
 
   render () {
     const { accountId, statusIds, isLoading, hasMore, blockedBy, suspended, isAccount, hidden, multiColumn, remote, remoteUrl, params: { tagged } } = this.props;
+    const { signedIn } = this.props.identity;
 
     if (isLoading && statusIds.isEmpty()) {
       return (
@@ -151,9 +162,11 @@ class AccountTimeline extends ImmutablePureComponent {
 
     let emptyMessage;
 
-    const forceEmptyState = suspended || blockedBy || hidden;
+    const forceEmptyState = suspended || blockedBy || hidden || (!signedIn && localAccountStatusesAccess);
 
-    if (suspended) {
+    if (!signedIn && localAccountStatusesAccess) {
+      emptyMessage = <FormattedMessage id='empty_column.not_logged_in' defaultMessage='Require Login' />;
+    } else if (suspended) {
       emptyMessage = <FormattedMessage id='empty_column.account_suspended' defaultMessage='Account suspended' />;
     } else if (hidden) {
       emptyMessage = <LimitedAccountHint accountId={accountId} />;
@@ -194,4 +207,4 @@ class AccountTimeline extends ImmutablePureComponent {
 
 }
 
-export default connect(mapStateToProps)(AccountTimeline);
+export default connect(mapStateToProps)(withIdentity(AccountTimeline));

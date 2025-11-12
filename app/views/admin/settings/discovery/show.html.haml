@@ -58,7 +58,15 @@
                 label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
                 wrapper: :with_label
 
-  %h2= t('admin.settings.discovery.privacy')
+  .fields-row
+    .fields-row__column.fields-row__column-6.fields-group
+      = f.input :local_account_statuses_access,
+                collection: f.object.class::FEED_ACCESS_MODES,
+                include_blank: false,
+                label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
+                wrapper: :with_label
+
+  %h4= t('admin.settings.discovery.privacy')
 
   .fields-group
     = f.input :noindex,

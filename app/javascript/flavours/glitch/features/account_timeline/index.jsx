@@ -11,6 +11,8 @@ import { ProfileColumnHeader } from 'flavours/glitch/features/account/components
 import BundleColumnError from 'flavours/glitch/features/ui/components/bundle_column_error';
 import { normalizeForLookup } from 'flavours/glitch/reducers/accounts_map';
 import { getAccountHidden } from 'flavours/glitch/selectors/accounts';
+import { withIdentity } from '../../identity_context';
+import { localAccountStatusesAccess } from '../../initial_state';
 
 import { lookupAccount, fetchAccount } from '../../actions/accounts';
 import { expandAccountFeaturedTimeline, expandAccountTimeline } from '../../actions/timelines';
@@ -48,7 +50,7 @@ const mapStateToProps = (state, { params: { acct, id, tagged }, withReplies = fa
     isAccount: !!state.getIn(['accounts', accountId]),
     statusIds: state.getIn(['timelines', `account:${path}`, 'items'], ImmutableList()),
     isLoading: state.getIn(['timelines', `account:${path}`, 'isLoading']),
-    hasMore:   state.getIn(['timelines', `account:${path}`, 'hasMore']),
+    hasMore: state.getIn(['timelines', `account:${path}`, 'hasMore']),
     suspended: state.getIn(['accounts', accountId, 'suspended'], false),
     hidden: getAccountHidden(state, accountId),
   };
@@ -74,8 +76,17 @@ class AccountTimeline extends ImmutablePureComponent {
     multiColumn: PropTypes.bool,
   };
 
-  _load () {
+  _shouldBlockLoad () {
+    const { signedIn } = this.props.identity;
+    return !signedIn && localAccountStatusesAccess;
+  }
+
+  _load() {
     const { accountId, withReplies, params: { tagged }, dispatch } = this.props;
+
+    if (this._shouldBlockLoad()) {
+      return;
+    }
 
     dispatch(fetchAccount(accountId));
 
@@ -86,7 +97,7 @@ class AccountTimeline extends ImmutablePureComponent {
     dispatch(expandAccountTimeline(accountId, { withReplies, tagged }));
   }
 
-  componentDidMount () {
+  componentDidMount() {
     const { params: { acct }, accountId, dispatch } = this.props;
 
     if (accountId) {
@@ -96,7 +107,7 @@ class AccountTimeline extends ImmutablePureComponent {
     }
   }
 
-  componentDidUpdate (prevProps) {
+  componentDidUpdate(prevProps) {
     const { params: { acct, tagged }, accountId, withReplies, dispatch } = this.props;
 
     if (prevProps.accountId !== accountId && accountId) {
@@ -111,7 +122,7 @@ class AccountTimeline extends ImmutablePureComponent {
     }
   }
 
-  UNSAFE_componentWillReceiveProps (nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     const { dispatch } = this.props;
 
     if ((nextProps.params.accountId !== this.props.params.accountId && nextProps.params.accountId) || nextProps.withReplies !== this.props.withReplies) {
@@ -137,8 +148,9 @@ class AccountTimeline extends ImmutablePureComponent {
     this.column = c;
   };
 
-  render () {
+  render() {
     const { accountId, statusIds, isLoading, hasMore, suspended, isAccount, hidden, multiColumn, remote, remoteUrl, params: { tagged } } = this.props;
+    const { signedIn } = this.props.identity;
 
     if (isLoading && statusIds.isEmpty()) {
       return (
@@ -154,9 +166,11 @@ class AccountTimeline extends ImmutablePureComponent {
 
     let emptyMessage;
 
-    const forceEmptyState = suspended || hidden;
+    const forceEmptyState = suspended || hidden || (!signedIn && localAccountStatusesAccess);
 
-    if (suspended) {
+    if (!signedIn && localAccountStatusesAccess) {
+      emptyMessage = <FormattedMessage id='empty_column.not_logged_in' defaultMessage='Require Login' />;
+    } else if (suspended) {
       emptyMessage = <FormattedMessage id='empty_column.account_suspended' defaultMessage='Account suspended' />;
     } else if (hidden) {
       emptyMessage = <LimitedAccountHint accountId={accountId} />;
@@ -176,7 +190,7 @@ class AccountTimeline extends ImmutablePureComponent {
               <AccountHeader accountId={this.props.accountId} hideTabs={forceEmptyState} tagged={tagged} />
               {!forceEmptyState && <FeaturedCarousel accountId={this.props.accountId} tagged={tagged} />}
             </>
-        }
+          }
           alwaysPrepend
           append={<RemoteHint accountId={accountId} />}
           scrollKey='account_timeline'
@@ -194,4 +208,4 @@ class AccountTimeline extends ImmutablePureComponent {
 
 }
 
-export default connect(mapStateToProps)(AccountTimeline);
+export default connect(mapStateToProps)(withIdentity(AccountTimeline));

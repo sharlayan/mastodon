@@ -300,6 +300,7 @@ en:
         custom_css: Custom CSS
         favicon: Favicon
         landing_page: Landing page for new visitors
+        local_account_statuses_access: Access to local account feeds
         local_live_feed_access: Access to live feeds featuring local posts
         local_topic_feed_access: Access to hashtag and link feeds featuring local posts
         mascot: Custom mascot (legacy)
