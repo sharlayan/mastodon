@@ -31,8 +31,8 @@ export const FederationButton = () => {
   }, [dispatch]);
 
   const options = [
-    { icon: 'link', iconComponent: ShareIcon, value: 'federated', text: intl.formatMessage(messages.federated_label), meta: intl.formatMessage(messages.federated_meta) },
     { icon: 'link-slash', iconComponent: ShareOffIcon, value: 'local-only', text: intl.formatMessage(messages.local_only_label), meta: intl.formatMessage(messages.local_only_meta) },
+    { icon: 'link', iconComponent: ShareIcon, value: 'federated', text: intl.formatMessage(messages.federated_label), meta: intl.formatMessage(messages.federated_meta) },
   ];
 
   return (
