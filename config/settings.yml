@@ -2,7 +2,7 @@
 # important settings can be changed from the admin interface.
 
 defaults: &defaults
-  site_title: 'Mastodon Glitch Edition'
+  site_title: 'Mastodon Macaron Edition'
   site_short_description: ''
   site_description: ''
   site_extended_description: ''
@@ -12,7 +12,7 @@ defaults: &defaults
   registrations_mode: 'none'
   profile_directory: true
   closed_registrations_message: ''
-  local_account_statuses_access: 'authenticated'
+  local_account_statuses_access: 'public'
   local_live_feed_access: 'authenticated'
   remote_live_feed_access: 'authenticated'
   local_topic_feed_access: 'authenticated'
