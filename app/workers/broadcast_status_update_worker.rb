@@ -47,7 +47,16 @@ class BroadcastStatusUpdateWorker
     # if muted user, ignore it
     muted_by_ids = Mute.where(target_account_id: status.account_id).pluck(:account_id)
 
-    status.account.followers.where(domain: nil).where.not(id: muted_by_ids).select(:id).find_each do |follower|
+    list_excluded_ids = ListAccount
+                        .joins(:list)
+                        .where(account_id: status.account_id)
+                        .where(lists: { exclusive: true })
+                        .pluck('lists.account_id')
+                        .uniq
+
+    excluded_ids = muted_by_ids + list_excluded_ids
+
+    status.account.followers.where(domain: nil).where.not(id: excluded_ids).select(:id).find_each do |follower|
       Redis.current.publish("timeline:#{follower.id}", Oj.dump(event: :update, payload: payload))
     end
   end
