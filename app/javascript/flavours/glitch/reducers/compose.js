@@ -59,7 +59,7 @@ import {
 } from '../actions/compose';
 import { REDRAFT } from '../actions/statuses';
 import { STORE_HYDRATE } from '../actions/store';
-import { me, defaultContentType } from '../initial_state';
+import { me, defaultContentType, localAccountStatusesAccess } from '../initial_state';
 import { recoverHashtags } from '../utils/hashtag';
 import { unescapeHTML } from '../utils/html';
 import { overwrite } from '../utils/js_helpers';
@@ -98,7 +98,7 @@ const initialState = ImmutableMap({
   suggestion_token: null,
   suggestions: ImmutableList(),
   default_advanced_options: ImmutableMap({
-    do_not_federate: true,
+    do_not_federate: localAccountStatusesAccess !== 'public',
     threaded_mode: null,  //  Do not reset
   }),
   default_privacy: 'public',
