@@ -28,6 +28,9 @@ en:
       trending_status_cw:
         desc_html: When trending posts are enabled, allow posts with Content Warnings to be eligible. Changes to this setting are not retroactive.
         title: Allow posts with Content Warnings to trend
+      force_local_only:
+        desc_html: When this setting is enabled, all posts from users on this server will be forcibly published as local-only. (for closed original character community)
+        title: Force local-only
   appearance:
     localization:
       glitch_guide_link: https://crowdin.com/project/glitch-soc

@@ -153,6 +153,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       trends_enabled: Setting.trends,
       version: instance_presenter.version,
       terms_of_service_enabled: TermsOfService.current.present?,
+      force_local_only: Setting.force_local_only,
       local_account_statuses_access: Setting.local_account_statuses_access,
       local_live_feed_access: Setting.local_live_feed_access,
       remote_live_feed_access: Setting.remote_live_feed_access,

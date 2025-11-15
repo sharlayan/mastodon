@@ -28,6 +28,9 @@ ko:
       trending_status_cw:
         desc_html: 유행하는 게시물이 활성화 되었을 때, 열람주의가 설정된 글도 허용합니다. 이 설정의 변경은 소급 적용되지 않습니다.
         title: 열람주의를 가진 글이 유행에 오를 수 있도록 허용
+      force_local_only:
+        desc_html: 이 설정을 활성화 하는 경우 서버 내 이용자가 작성하는 모든 게시물이 로컬 전용으로 강제됩니다. (자캐 커뮤용)
+        title: 로컬 전용 강제
   appearance:
     localization:
       glitch_guide_link: https://crowdin.com/project/glitch-soc

@@ -24,7 +24,21 @@
               recommended: :not_recommended
 
   .fields-group
-    = f.input :trending_status_cw, as: :boolean, wrapper: :with_label, label: t('admin.settings.trending_status_cw.title'), hint: t('admin.settings.trending_status_cw.desc_html'), glitch_only: true
+    = f.input :trending_status_cw,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.trending_status_cw.title'),
+              hint: t('admin.settings.trending_status_cw.desc_html'),
+              glitch_only: true
+
+  .fields-group
+    = f.input :force_local_only,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.force_local_only.title'),
+              hint: t('admin.settings.force_local_only.desc_html'),
+              recommended: :not_recommended,
+              sharlayan_only: true
 
   %h2= t('admin.settings.discovery.public_timelines')
 
@@ -64,7 +78,8 @@
                 collection: f.object.class::FEED_ACCESS_MODES,
                 include_blank: false,
                 label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
-                wrapper: :with_label
+                wrapper: :with_label,
+                sharlayan_only: true
 
   %h4= t('admin.settings.discovery.privacy')
 

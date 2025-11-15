@@ -46,6 +46,7 @@ class Form::AdminSettings
     app_icon
     favicon
     min_age
+    force_local_only
     local_account_statuses_access
     local_live_feed_access
     remote_live_feed_access
@@ -78,6 +79,7 @@ class Form::AdminSettings
     noindex
     require_invite_text
     captcha_enabled
+    force_local_only
     authorized_fetch
     wrapstodon
   ).freeze
