@@ -4,6 +4,7 @@ import { injectIntl, defineMessages, FormattedMessage } from 'react-intl';
 
 import classNames from 'classnames';
 
+import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 
@@ -42,6 +43,7 @@ const messages = defineMessages({
   quote_noun: { id: 'status.quote_noun', defaultMessage: 'Quote', description: 'Quote as a noun' },
   contains_quote: { id: 'status.contains_quote', defaultMessage: 'Contains quote' },
   quote_cancel: { id: 'status.quote.cancel', defaultMessage: 'Cancel quote' },
+  localOnly: { id: 'status.local_only', defaultMessage: 'Only visible from your instance' },
 });
 
 export const textForScreenReader = ({intl, status, rebloggedByText = false, isQuote = false}) => {
@@ -589,7 +591,35 @@ class Status extends ImmutablePureComponent {
           >
             {(connectReply || connectUp || connectToRoot) && <div className={classNames('status__line', { 'status__line--full': connectReply, 'status__line--first': !status.get('in_reply_to_id') && !connectToRoot })} />}
 
-            {header}
+            <div onClick={this.handleHeaderClick} onAuxClick={this.handleHeaderClick} className='status__info'>
+              <Link to={`/@${status.getIn(['account', 'acct'])}/${status.get('id')}`} className='status__relative-time'>
+                <span className='status__visibility-icon'>
+                  {status.get('local_only') &&
+                  <Icon
+                    id='home'
+                    icon={HomeIcon}
+                    aria-label={intl.formatMessage(messages.localOnly)}
+                  />}
+                  <VisibilityIcon visibility={status.get('visibility')} /></span>
+                <RelativeTimestamp timestamp={status.get('created_at')} />{status.get('edited_at') && <abbr title={intl.formatMessage(messages.edited, { date: intl.formatDate(status.get('edited_at'), { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) })}> *</abbr>}
+              </Link>
+
+              <LinkedDisplayName displayProps={{account: status.get('account')}} className='status__display-name'>
+                <div className='status__avatar'>
+                  {statusAvatar}
+                </div>
+              </LinkedDisplayName>
+
+              {isQuotedPost && !!this.props.onQuoteCancel &&  (
+                <IconButton
+                  onClick={this.handleQuoteCancel}
+                  className='status__quote-cancel'
+                  title={intl.formatMessage(messages.quote_cancel)}
+                  icon="cancel-fill"
+                  iconComponent={CancelFillIcon}
+                />
+              )}
+            </div>
 
             {matchedFilters && <FilterWarning title={matchedFilters.join(', ')} expanded={this.state.showDespiteFilter} onClick={this.handleFilterToggle} />}
 

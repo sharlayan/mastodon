@@ -10,7 +10,7 @@ import ImmutablePureComponent from 'react-immutable-pure-component';
 
 import { length } from 'stringz';
 
-import { missingAltTextModal } from 'flavours/glitch/initial_state';
+import { forceLocalOnly, missingAltTextModal } from 'flavours/glitch/initial_state';
 
 import AutosuggestInput from 'flavours/glitch/components/autosuggest_input';
 import AutosuggestTextarea from 'flavours/glitch/components/autosuggest_textarea';
@@ -346,7 +346,7 @@ class ComposeForm extends ImmutablePureComponent {
                 {!this.props.spoilerAlwaysOn && <SpoilerButtonContainer />}
                 <ContentTypeButton />
                 <EmojiPickerDropdown onPickEmoji={this.handleEmojiPick} />
-                <FederationButton />
+                {!forceLocalOnly && <FederationButton />}
                 <ThreadModeButton />
                 <CharacterCounter max={maxChars} text={this.getFulltextForCharacterCounting()} />
               </div>
