@@ -10,6 +10,8 @@ import { search as emojiSearch } from 'flavours/glitch/features/emoji/emoji_mart
 import { tagHistory } from 'flavours/glitch/settings';
 import { recoverHashtags } from 'flavours/glitch/utils/hashtag';
 
+import { forceLocalOnly } from '../initial_state';
+
 import { showAlert, showAlertForError } from './alerts';
 import { useEmoji } from './emojis';
 import { importFetchedAccounts, importFetchedStatus } from './importer';
@@ -219,7 +221,16 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
     const fulltext = `${spoiler_text ?? ''}${countableText(status ?? '')}`;
     const hasText = fulltext.trim().length > 0;
 
-    if (getState().getIn(['compose', 'advanced_options', 'do_not_federate'])) {
+    if (!(hasText || media.size !== 0 || (hasQuote && spoiler_text?.length))) {
+      dispatch(showAlert({
+        message: messages.blankPostError,
+      }));
+      dispatch(focusCompose());
+
+      return;
+    }
+
+    if (getState().getIn(['compose', 'advanced_options', 'do_not_federate']) && !forceLocalOnly) {
       // local timeline limit specific emoji change to 🏡
       status = status + ' 🏡';
     }
