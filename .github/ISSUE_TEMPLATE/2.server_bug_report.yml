@@ -1,18 +1,18 @@
-name: Bug Report (server / API)
+name: 버그 리포트 (서버 / API)
 description: |
-  There is a problem with the HTTP server, REST API, ActivityPub interaction, etc.
+  HTTP 서버, REST API, ActivityPub 상호작용 등에 문제가 있습니다.
 labels: [bug, 'status/to triage']
 body:
   - type: markdown
     attributes:
       value: |
-        Make sure that you are submitting a new bug that was not previously reported or already fixed.
+        이전에 보고되지 않았거나 이미 수정되지 않은 새로운 버그를 제출하고 있는지 확인하세요.
 
-        Please use a concise and distinct title for the issue.
+        이슈 제목은 간결하고 명확하게 작성해 주세요.
   - type: textarea
     attributes:
-      label: Steps to reproduce the problem
-      description: What were you trying to do?
+      label: 문제 재현 단계
+      description: 무엇을 하려고 했나요?
       value: |
         1.
         2.
@@ -22,44 +22,44 @@ body:
       required: true
   - type: input
     attributes:
-      label: Expected behaviour
-      description: What should have happened?
+      label: 예상 동작
+      description: 어떻게 동작해야 했나요?
     validations:
       required: true
   - type: input
     attributes:
-      label: Actual behaviour
-      description: What happened?
+      label: 실제 동작
+      description: 무슨 일이 일어났나요?
     validations:
       required: true
   - type: textarea
     attributes:
-      label: Detailed description
+      label: 상세 설명
     validations:
       required: false
   - type: input
     attributes:
-      label: Mastodon instance
-      description: The address of the Mastodon instance where you experienced the issue
-      placeholder: mastodon.social
+      label: Mastodon 인스턴스
+      description: 문제가 발생한 Mastodon 인스턴스의 주소
+      placeholder: sharlayan.in
     validations:
       required: false
   - type: input
     attributes:
-      label: Mastodon version
+      label: Mastodon 버전
       description: |
-        This is displayed at the bottom of the About page, eg. `v4.4.0-beta.1`
-      placeholder: v4.4.0-beta.1
+        정보(About) 페이지 하단에 표시됩니다. 예: `v4.5.0-beta.1`
+      placeholder: v4.5.0-beta.1
     validations:
       required: false
   - type: textarea
     attributes:
-      label: Technical details
+      label: 기술적 세부사항
       description: |
-        Any additional technical details you may have, like logs or error traces
+        로그나 오류 추적과 같은 추가적인 기술적 세부사항
       value: |
-        If this is happening on your own Mastodon server, please fill out those:
-        - Ruby version: (from `ruby --version`, eg. v3.4.9)
-        - Node.js version: (from `node --version`, eg. v22.16.0)
+        자체 Mastodon 서버에서 발생한 경우 다음 항목을 작성해 주세요:
+        - Ruby 버전: (`ruby --version`에서 확인, 예: v3.4.4)
+        - Node.js 버전: (`node --version`에서 확인, 예: v22.16.0)
     validations:
       required: false

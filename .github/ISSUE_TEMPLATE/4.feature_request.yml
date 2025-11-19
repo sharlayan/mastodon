@@ -1,22 +1,22 @@
-name: Feature Request
-description: I have a suggestion
+name: 기능 요청
+description: 제안 사항이 있습니다
 labels: [suggestion]
 body:
   - type: markdown
     attributes:
       value: |
-        Please use a concise and distinct title for the issue.
+        이슈 제목은 간결하고 명확하게 작성해 주세요.
 
-        Consider: Could it be implemented as a 3rd party app using the REST API instead?
+        고려 사항: REST API를 사용하는 서드파티 앱으로 구현할 수 있을까요?
   - type: textarea
     attributes:
-      label: Pitch
-      description: Describe your idea for a feature. Make sure it has not already been suggested/implemented/turned down before.
+      label: 제안 내용
+      description: 기능에 대한 아이디어를 설명해 주세요. 이전에 제안/구현/거부되지 않았는지 확인하세요.
     validations:
       required: true
   - type: textarea
     attributes:
-      label: Motivation
-      description: Why do you think this feature is needed? Who would benefit from it?
+      label: 동기
+      description: 이 기능이 왜 필요하다고 생각하나요? 누가 혜택을 받을까요?
     validations:
       required: true
