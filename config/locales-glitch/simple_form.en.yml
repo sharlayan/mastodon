@@ -2,6 +2,7 @@
 en:
   simple_form:
     glitch_only: glitch-soc
+    sharlayan_only: sharlayan
     hints:
       defaults:
         setting_default_content_type_html: When writing toots, assume they are written in raw HTML, unless specified otherwise
