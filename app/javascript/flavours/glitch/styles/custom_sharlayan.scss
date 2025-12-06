@@ -127,7 +127,7 @@ html {
 
     &__item {
       flex-shrink: 0;
-      background: var(--color-gray-950);
+      background: var(--color-grey-950);
       color: var(--color-text-tertiary);
       border-radius: 3px;
       cursor: pointer;
@@ -254,16 +254,16 @@ html {
       &:hover,
       &:focus,
       &:active {
-        background: var(--color-gray-950);
+        background: var(--color-grey-950);
         transition: all 200ms ease-out;
         transition-property: background-color, color;
-        color: color.adjust(var(--color-text-tertiary), $lightness: -4%);
+        color: var(--color-grey-600);
       }
 
       &.active {
         transition: all 100ms ease-in;
         transition-property: background-color, color;
-        color: color.adjust($highlight-text-color, $lightness: 8%);
+        color: var(--color-grey-400);
       }
     }
 
