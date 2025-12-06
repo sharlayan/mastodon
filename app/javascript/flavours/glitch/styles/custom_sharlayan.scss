@@ -127,7 +127,7 @@ html {
 
     &__item {
       flex-shrink: 0;
-      background: var(--color-grey-950);
+      background: var(--color-grey-800);
       color: var(--color-text-tertiary);
       border-radius: 3px;
       cursor: pointer;
@@ -254,7 +254,7 @@ html {
       &:hover,
       &:focus,
       &:active {
-        background: var(--color-grey-950);
+        background: var(--color-grey-700);
         transition: all 200ms ease-out;
         transition-property: background-color, color;
         color: var(--color-grey-600);
@@ -263,6 +263,7 @@ html {
       &.active {
         transition: all 100ms ease-in;
         transition-property: background-color, color;
+        background: var(--color-grey-600);
         color: var(--color-grey-400);
       }
     }
