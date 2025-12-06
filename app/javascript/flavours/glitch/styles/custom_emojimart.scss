@@ -1,5 +1,4 @@
-@use 'functions' as *;
-@use 'variables' as *;
+@use 'mastodon/variables' as *;
 
 /* emoji-mart component custom, weak style for override */
 .emoji-mart-category-label {
@@ -76,11 +75,21 @@ body:not([class*='skin-mastodon-modern']) {
   }
 }
 
+@media (prefers-color-scheme: light) {
+  :root {
+    --icon-expand: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2220px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2220px%22%20fill%3D%22%23000000%22%3E%3Cpath%20d%3D%22M480-384%20288-576h384L480-384Z%22%2F%3E%3C%2Fsvg%3E');
+    --icon-collapse: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2220px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2220px%22%20fill%3D%22%23000000%22%3E%3Cpath%20d%3D%22m288-384%20192-192%20192%20192H288Z%22%2F%3E%3C%2Fsvg%3E');
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --icon-expand: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2220px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2220px%22%20fill%3D%22%23B7B7B7%22%3E%3Cpath%20d%3D%22M480-384%20288-576h384L480-384Z%22%2F%3E%3C%2Fsvg%3E');
+    --icon-collapse: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2220px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2220px%22%20fill%3D%22%23B7B7B7%22%3E%3Cpath%20d%3D%22m288-384%20192-192%20192%20192H288Z%22%2F%3E%3C%2Fsvg%3E');
+  }
+}
+
 .emoji-mart {
-  --icon-expand: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2220px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2220px%22%20fill%3D%22%23000000%22%3E%3Cpath%20d%3D%22M480-384%20288-576h384L480-384Z%22%2F%3E%3C%2Fsvg%3E');
-  --icon-collapse: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2220px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2220px%22%20fill%3D%22%23000000%22%3E%3Cpath%20d%3D%22m288-384%20192-192%20192%20192H288Z%22%2F%3E%3C%2Fsvg%3E');
-  --icon-expand-white: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2220px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2220px%22%20fill%3D%22%23B7B7B7%22%3E%3Cpath%20d%3D%22M480-384%20288-576h384L480-384Z%22%2F%3E%3C%2Fsvg%3E');
-  --icon-collapse-white: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20height%3D%2220px%22%20viewBox%3D%220%20-960%20960%20960%22%20width%3D%2220px%22%20fill%3D%22%23B7B7B7%22%3E%3Cpath%20d%3D%22m288-384%20192-192%20192%20192H288Z%22%2F%3E%3C%2Fsvg%3E');
   --anchor-width: 36px;
   --search-height: 55px;
   --default-height: 300px;
@@ -102,12 +111,7 @@ body:not([class*='skin-mastodon-modern']) {
       &::before {
         content: '';
         background-size: 100% 100%;
-        @if $darken-multiplier == -1 {
-          background-image: var(--icon-expand-white);
-        } @else {
-          background-image: var(--icon-expand);
-        }
-
+        background-image: var(--icon-expand);
         position: absolute;
         top: 4px;
         right: 4px;
@@ -122,11 +126,7 @@ body:not([class*='skin-mastodon-modern']) {
     .emoji-mart-category-label {
       span {
         &::before {
-          @if $darken-multiplier == -1 {
-            background-image: var(--icon-collapse-white);
-          } @else {
-            background-image: var(--icon-collapse);
-          }
+          background-image: var(--icon-collapse);
         }
       }
     }

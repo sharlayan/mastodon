@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'variables' as *;
-@use 'functions' as *;
+@use 'mastodon/variables' as *;
 
 html {
   /* instance badge */
@@ -37,14 +36,14 @@ html {
       display: flex;
       align-items: center;
       position: relative;
-      color: $white;
-      -webkit-text-stroke: $black 0.225em;
+      color: var(--color-white);
+      -webkit-text-stroke: var(--color-black) 0.225em;
       paint-order: stroke fill;
       vertical-align: middle;
     }
 
     &__software {
-      color: $darker-text-color;
+      color: var(--color-text-tertiary);
       font-weight: 400;
 
       &::before {
@@ -128,13 +127,8 @@ html {
 
     &__item {
       flex-shrink: 0;
-      @if $darken-multiplier == -1 {
-        background: color.adjust($classic-base-color, $lightness: 12%);
-      } @else {
-        background: $classic-secondary-color;
-      }
-
-      color: $darker-text-color;
+      background: var(--color-gray-950);
+      color: var(--color-text-tertiary);
       border-radius: 3px;
       cursor: pointer;
       user-select: none;
@@ -179,12 +173,11 @@ html {
       }
 
       &__users {
-        background: var(--modal-background-color);
+        background: var(--color-bg-primary);
         box-shadow: var(--dropdown-shadow);
-        -webkit-backdrop-filter: blur(10px) saturate(180%) contrast(75%)
-          brightness(70%);
-        backdrop-filter: blur(10px) saturate(180%) contrast(75%) brightness(70%);
-        border: 1px solid var(--modal-border-color);
+        -webkit-backdrop-filter: $backdrop-blur-filter;
+        backdrop-filter: $backdrop-blur-filter;
+        border: 1px solid var(--color-border-primary);
         display: flex;
         padding: 12px;
         border-radius: 8px;
@@ -228,7 +221,7 @@ html {
         &__list {
           padding-left: 12px;
           margin-left: 12px;
-          border-left: 1px solid var(--modal-border-color);
+          border-left: 1px solid var(--color-border-primary);
         }
 
         &__item {
@@ -261,15 +254,10 @@ html {
       &:hover,
       &:focus,
       &:active {
-        @if $darken-multiplier == -1 {
-          background: color.adjust($classic-base-color, $lightness: 16%);
-        } @else {
-          background: color.adjust($classic-secondary-color, $lightness: -16%);
-        }
-
+        background: var(--color-gray-950);
         transition: all 200ms ease-out;
         transition-property: background-color, color;
-        color: color.adjust($darker-text-color, $lightness: -4%);
+        color: color.adjust(var(--color-text-tertiary), $lightness: -4%);
       }
 
       &.active {
@@ -288,7 +276,7 @@ html {
     }
 
     .emoji-button {
-      color: $darker-text-color;
+      color: var(--color-text-tertiary);
       margin: 0;
       font-size: 16px;
       width: auto;
@@ -305,7 +293,7 @@ html {
       &:active,
       &:focus {
         opacity: 1;
-        color: lighten($darker-text-color, 4%);
+        color: var(--color-text-secondary);
         transition: all 200ms ease-out;
         transition-property: background-color, color;
       }
