@@ -196,8 +196,8 @@
 .simple_form .overridden,
 .simple_form .recommended,
 .simple_form .not_recommended,
-.simple_form .sharlayan_only,
-.simple_form .glitch_only {
+.simple_form .glitch_only,
+.simple_form .sharlayan_only {
   display: inline-block;
   padding: 4px 6px;
   cursor: default;
@@ -268,9 +268,9 @@
 }
 
 .simple_form .sharlayan_only {
-  color: lighten($success-green, 12%);
-  background-color: rgba(lighten($success-green, 12%), 0.1);
-  border-color: rgba(lighten($success-green, 12%), 0.5);
+  color: var(--color-green-400);
+  background-color: var(--color-green-600);
+  border-color: var(--color-green-600);
 }
 
 .account__header__fields {
