@@ -2,7 +2,7 @@
 ko:
   simple_form:
     glitch_only: 글리치
-    sharlayan_only: 샬레이안
+    sharlayan_only: 커스텀
     hints:
       defaults:
         setting_default_content_type_html: 게시물을 작성할 때, 형식을 지정하지 않았다면, 생 HTML이라고 가정합니다
