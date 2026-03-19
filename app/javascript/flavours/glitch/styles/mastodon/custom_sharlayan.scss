@@ -1,5 +1,5 @@
 @use 'sass:color';
-@use 'mastodon/variables' as *;
+@use 'variables' as *;
 
 html {
   /* instance badge */
@@ -127,9 +127,15 @@ html {
 
     &__item {
       flex-shrink: 0;
-      background: var(--color-grey-800);
-      color: var(--color-text-tertiary);
+      background: var(--color-bg-brand-softer);
+      color: color-mix(
+        in oklab,
+        var(--color-text-primary),
+        var(--color-text-secondary)
+      );
+      border: 1px solid var(--color-border-on-bg-brand-softer);
       border-radius: 3px;
+      box-sizing: border-box;
       cursor: pointer;
       user-select: none;
       padding: 0 6px;
@@ -137,7 +143,6 @@ html {
       align-items: center;
       transition: all 100ms ease-in;
       transition-property: background-color, color;
-      border: 1px solid transparent;
 
       &[disabled] {
         border-color: #888;
@@ -254,17 +259,18 @@ html {
       &:hover,
       &:focus,
       &:active {
-        background: var(--color-grey-700);
+        color: var(--color-text-primary);
+        background: var(--color-bg-brand-soft);
         transition: all 200ms ease-out;
         transition-property: background-color, color;
-        color: var(--color-grey-600);
       }
 
       &.active {
+        color: var(--color-text-brand);
+        background-color: var(--color-bg-brand-softer);
+        border-color: var(--color-text-brand);
         transition: all 100ms ease-in;
         transition-property: background-color, color;
-        background: var(--color-grey-600);
-        color: var(--color-grey-400);
       }
     }
 
@@ -277,7 +283,7 @@ html {
     }
 
     .emoji-button {
-      color: var(--color-text-tertiary);
+      color: var(--color-text-secondary);
       margin: 0;
       font-size: 16px;
       width: auto;
@@ -294,7 +300,11 @@ html {
       &:active,
       &:focus {
         opacity: 1;
-        color: var(--color-text-secondary);
+        color: color-mix(
+          in oklab,
+          var(--color-text-primary),
+          var(--color-text-secondary)
+        );
         transition: all 200ms ease-out;
         transition-property: background-color, color;
       }

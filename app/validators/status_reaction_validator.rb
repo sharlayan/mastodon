@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class StatusReactionValidator < ActiveModel::Validator
-  SUPPORTED_EMOJIS = JSON.parse(File.read(Rails.root.join('app', 'javascript', 'mastodon', 'features', 'emoji', 'emoji_map.json').read)).keys.freeze
+  SUPPORTED_EMOJIS = JSON.parse(Rails.root.join('app', 'javascript', 'mastodon', 'features', 'emoji', 'emoji_map.json').read).keys.freeze
 
   LIMIT = [1, (ENV['MAX_REACTIONS'] || 1).to_i].max
 
