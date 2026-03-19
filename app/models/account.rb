@@ -468,6 +468,17 @@ class Account < ApplicationRecord
 
   after_commit :schedule_instance_metadata_update, on: [:create, :update], if: :should_update_instance_metadata?
 
+  def featureable?
+    local? && discoverable?
+  end
+
+  def featureable_by?(other_account)
+    return discoverable? if local?
+    return false unless Mastodon::Feature.collections_federation_enabled?
+
+    feature_policy_for_account(other_account).in?(%i(automatic manual))
+  end
+
   private
 
   def should_update_instance_metadata?

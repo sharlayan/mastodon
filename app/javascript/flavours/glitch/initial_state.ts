@@ -179,6 +179,7 @@ export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const showInstanceInfo = getMeta('show_instance_info');
 export const customEmojiSize = getMeta('custom_emoji_size');
 export const reactionCustomEmojiSize = getMeta('reaction_custom_emoji_size');
+export const wrapstodon = getMeta('wrapstodon');
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

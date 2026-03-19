@@ -32,19 +32,12 @@ export default class StatusPrepend extends PureComponent {
   Message = () => {
     const { type, account } = this.props;
     let link = (
-      <Permalink
-        to={`/@${account.get('acct')}`}
-        href={account.get('url')}
-        className='status__display-name'
-        data-hover-card-account={account.get('id')}
-      >
-        <DisplayName
-          account={account}
-          variant='noDomain'
-          disableEmojiTooltip
-          style={{ display: 'inline' }}
-        />
-      </Permalink>
+      <LinkedDisplayName
+        displayProps={{
+          account: account,
+          variant: 'simple'
+        }}
+      />
     );
     switch (type) {
     case 'reblogged_by':

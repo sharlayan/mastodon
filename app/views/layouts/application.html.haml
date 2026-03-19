@@ -19,6 +19,8 @@
 
     %link{ rel: 'mask-icon', href: frontend_asset_path('images/logo-symbol-icon.svg'), color: '#007046' }/
     %link{ rel: 'manifest', href: manifest_path(format: :json) }/
+    = javascript_inline_tag 'theme-selection.js'
+    = theme_color_tags current_theme
 
     -# theme color by branch
     - if current_git_branch == 'dev'
@@ -31,7 +33,7 @@
       %meta{ name: 'theme-color', content: '#007046' }/
       %meta{ name: 'theme-color-orig', content: '#007046' }/
 
-    %meta{ name: 'apple-mobile-web-app-capable', content: 'yes' }/
+    %meta{ name: 'mobile-web-app-capable', content: 'yes' }/
 
     %title= html_title
 

@@ -1,6 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
-
-import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
+import { useCallback, useState } from 'react';
 
 import classNames from 'classnames';
 import { Helmet } from 'react-helmet';
@@ -9,45 +7,11 @@ import { openModal } from '@/flavours/glitch/actions/modal';
 import { AccountBio } from '@/flavours/glitch/components/account_bio';
 import { Avatar } from '@/flavours/glitch/components/avatar';
 import { AnimateEmojiProvider } from '@/flavours/glitch/components/emoji/context';
-import LockIcon from '@/material-icons/400-24px/lock.svg?react';
-import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
-import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
-import NotificationsActiveIcon from '@/material-icons/400-24px/notifications_active-fill.svg?react';
-import ShareIcon from '@/material-icons/400-24px/share.svg?react';
-import {
-  followAccount,
-  unblockAccount,
-  unmuteAccount,
-  pinAccount,
-  unpinAccount,
-  removeAccountFromFollowers,
-} from 'flavours/glitch/actions/accounts';
-import { initBlockModal } from 'flavours/glitch/actions/blocks';
-import { mentionCompose, directCompose } from 'flavours/glitch/actions/compose';
-import {
-  initDomainBlockModal,
-  unblockDomain,
-} from 'flavours/glitch/actions/domain_blocks';
-import { openModal } from 'flavours/glitch/actions/modal';
-import { initMuteModal } from 'flavours/glitch/actions/mutes';
-import { initReport } from 'flavours/glitch/actions/reports';
-import { Avatar } from 'flavours/glitch/components/avatar';
-import {
-  Badge,
-  AutomatedBadge,
-  GroupBadge,
-} from 'flavours/glitch/components/badge';
-import { CopyIconButton } from 'flavours/glitch/components/copy_icon_button';
-import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
-import { EmojiInfoTooltip } from 'flavours/glitch/components/emoji_info_tooltip';
-import { FollowButton } from 'flavours/glitch/components/follow_button';
-import { FormattedDateWrapper } from 'flavours/glitch/components/formatted_date';
-import { Icon } from 'flavours/glitch/components/icon';
-import { IconButton } from 'flavours/glitch/components/icon_button';
-import { AccountNote } from 'flavours/glitch/features/account/components/account_note';
-import { DomainPill } from 'flavours/glitch/features/account/components/domain_pill';
-import FollowRequestNoteContainer from 'flavours/glitch/features/account/containers/follow_request_note_container';
-import { useIdentity } from 'flavours/glitch/identity_context';
+import { EmojiInfoTooltip } from '@/flavours/glitch/components/emoji_info_tooltip';
+import { AccountNote } from '@/flavours/glitch/features/account/components/account_note';
+import FollowRequestNoteContainer from '@/flavours/glitch/features/account/containers/follow_request_note_container';
+import { useLayout } from '@/flavours/glitch/hooks/useLayout';
+import { useVisibility } from '@/flavours/glitch/hooks/useVisibility';
 import {
   autoPlayGif,
   me,
@@ -91,6 +55,8 @@ export const AccountHeader: React.FC<{
   const [containerElement, setContainerElement] = useState<HTMLElement | null>(
     null,
   );
+  const isRedesign = isRedesignEnabled();
+
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
   const relationship = useAppSelector((state) =>
@@ -206,26 +172,21 @@ export const AccountHeader: React.FC<{
             )}
           </div>
 
-          <div className='account__header__tabs__name'>
-            <h1>
-              <DisplayName
-                account={account}
-                variant='simple'
-                disableEmojiTooltip
+          <div
+            className={classNames(
+              'account__header__tabs__name',
+              isRedesign && redesignClasses.nameWrapper,
+            )}
+          >
+            <AccountName accountId={accountId} />
+            {isRedesign && (
+              <AccountButtons
+                accountId={accountId}
+                className={redesignClasses.buttonsDesktop}
+                noShare={!isMe || 'share' in navigator}
+                forceMenu={'share' in navigator}
               />
-              <small>
-                <span>
-                  @{username}
-                  <span className='invisible'>@{domain}</span>
-                </span>
-                <DomainPill
-                  username={username ?? ''}
-                  domain={domain ?? ''}
-                  isSelf={me === account.id}
-                />
-                {lockedIcon}
-              </small>
-            </h1>
+            )}
           </div>
 
           <AccountBadges accountId={accountId} />

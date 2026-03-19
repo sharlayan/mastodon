@@ -1121,7 +1121,7 @@ body > [data-popper-placement] {
   .emojione {
     width: 20px;
     height: 20px;
-    margin: -2px 0 0;
+    margin: -3px 0 0;
   }
 
   p,
@@ -1837,8 +1837,8 @@ body > [data-popper-placement] {
 }
 
 .detailed-status {
-  padding: 10px 14px; // glitch: reduced padding
-  border-top: 1px solid var(--background-border-color);
+  padding: 14px 10px; // glitch: reduced padding
+  border-top: 1px solid var(--color-border-primary);
 
   .status__content {
     font-size: 19px;

@@ -12,7 +12,7 @@ class REST::InstanceSerializer < ActiveModel::Serializer
 
   attributes :domain, :title, :version, :source_url, :description,
              :usage, :thumbnail, :icon, :languages, :configuration,
-             :registrations, :api_versions, :fedibird_capabilities
+             :registrations, :api_versions, :wrapstodon, :fedibird_capabilities
 
   has_one :contact, serializer: ContactSerializer
   has_many :rules, serializer: REST::RuleSerializer

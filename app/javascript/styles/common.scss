@@ -1,8 +1,10 @@
+@use 'mastodon/variables';
 @use 'mastodon/mixins';
 @use 'fonts/roboto';
 @use 'fonts/roboto-mono';
 
 @use 'mastodon/reset';
+@use 'mastodon/theme';
 @use 'mastodon/basics';
 @use 'mastodon/branding';
 @use 'mastodon/containers';
@@ -14,12 +16,10 @@
 @use 'mastodon/polls';
 @use 'mastodon/modal';
 @use 'mastodon/emoji_picker';
-@use 'mastodon/annual_reports';
 @use 'mastodon/about';
 @use 'mastodon/tables';
 @use 'mastodon/admin';
 @use 'mastodon/dashboard';
 @use 'mastodon/rtl';
-@use 'mastodon/accessibility';
 @use 'mastodon/rich_text';
 @use 'mastodon/custom_origin';

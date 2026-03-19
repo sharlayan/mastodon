@@ -46,6 +46,8 @@ class UserSettings
     setting :show_instance_info, default: false
     setting :custom_emoji_size, default: false
     setting :reaction_custom_emoji_size, default: false
+    setting :color_scheme, default: 'auto', in: %w(auto light dark)
+    setting :contrast, default: 'auto', in: %w(auto high)
   end
 
   namespace :notification_emails do

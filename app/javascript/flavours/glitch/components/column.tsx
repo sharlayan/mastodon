@@ -1,8 +1,6 @@
 import { forwardRef, useRef, useImperativeHandle } from 'react';
 import type { Ref } from 'react';
 
-import classNames from 'classnames';
-
 import { scrollTop } from 'flavours/glitch/scroll';
 
 export interface ColumnRef {

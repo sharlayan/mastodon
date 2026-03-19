@@ -122,9 +122,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.boolean "keep_pinned", default: true, null: false
     t.boolean "keep_polls", default: false, null: false
     t.boolean "keep_self_bookmark", default: true, null: false
+    t.boolean "keep_self_fav", default: true, null: false
     t.integer "min_favs"
     t.integer "min_reblogs"
-    t.datetime "created_at", null: false
+    t.integer "min_status_age", default: 1209600, null: false
     t.datetime "updated_at", null: false
     t.boolean "keep_self_reaction", default: true, null: false
     t.integer "min_reactions"
@@ -1001,6 +1002,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.datetime "created_at", null: false
     t.boolean "legacy", default: false, null: false
     t.boolean "from_misskey", default: false, null: false
+    t.bigint "quoted_account_id"
+    t.bigint "quoted_status_id"
+    t.integer "state", default: 0, null: false
+    t.bigint "status_id", null: false
+    t.datetime "updated_at", null: false
     t.index ["account_id", "quoted_account_id", "id"], name: "index_quotes_on_account_id_and_quoted_account_id_and_id"
     t.index ["activity_uri"], name: "index_quotes_on_activity_uri", unique: true, where: "(activity_uri IS NOT NULL)"
     t.index ["approval_uri"], name: "index_quotes_on_approval_uri", where: "(approval_uri IS NOT NULL)"
@@ -1192,8 +1198,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_152331) do
     t.bigint "status_id", null: false
     t.bigint "untrusted_favourites_count"
     t.bigint "untrusted_reblogs_count"
-    t.bigint "quotes_count", default: 0, null: false
     t.bigint "reactions_count", default: 0, null: false
+    t.datetime "updated_at", precision: nil, null: false
     t.index ["status_id"], name: "index_status_stats_on_status_id", unique: true
   end
 

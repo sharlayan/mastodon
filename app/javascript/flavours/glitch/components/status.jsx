@@ -455,8 +455,23 @@ class Status extends ImmutablePureComponent {
     return <div className='audio-player' style={{ height: '110px' }} />;
   }
 
-  render() {
-    const { intl, hidden, featured, unfocusable, unread, pictureInPicture, previousId, nextInReplyToId, rootId, skipPrepend, avatarSize = 46, children } = this.props;
+  render () {
+    const {
+      intl,
+      hidden,
+      featured,
+      unfocusable,
+      unread,
+      showActions = true,
+      isQuotedPost = false,
+      pictureInPicture,
+      previousId,
+      nextInReplyToId,
+      rootId,
+      skipPrepend,
+      avatarSize = 46,
+      children,
+    } = this.props;
 
     // glitch-soc-specific
     const {
@@ -681,13 +696,7 @@ class Status extends ImmutablePureComponent {
       rebloggedByText = intl.formatMessage({ id: 'status.reblogged_by', defaultMessage: '{name} boosted' }, { name: account.get('acct') });
     }
 
-    if (account === undefined || account === null) {
-      statusAvatar = <Avatar account={status.get('account')} size={avatarSize} />;
-    } else {
-      statusAvatar = <AvatarOverlay account={status.get('account')} friend={account} />;
-    }
-
-    const { statusContentProps, hashtagBar } = getHashtagBarForStatus(status);
+    const {statusContentProps, hashtagBar} = getHashtagBarForStatus(status);
 
     const header = this.props.headerRenderFn
       ? this.props.headerRenderFn({ status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured })
@@ -736,31 +745,7 @@ class Status extends ImmutablePureComponent {
           >
             {(connectReply || connectUp || connectToRoot) && <div className={classNames('status__line', { 'status__line--full': connectReply, 'status__line--first': !status.get('in_reply_to_id') && !connectToRoot })} />}
 
-            {(!muted) && (
-              <header onClick={this.handleHeaderClick} onAuxClick={this.handleHeaderClick} className='status__info'>
-                <LinkedDisplayName displayProps={{ account: status.get('account'),  disableEmojiTooltip: !disableHoverCards }} className='status__display-name'>
-                  <div className='status__avatar'>
-                    {statusAvatar}
-                  </div>
-                </LinkedDisplayName>
-
-                {isQuotedPost && !!this.props.onQuoteCancel ? (
-                  <IconButton
-                    onClick={this.handleQuoteCancel}
-                    className='status__quote-cancel'
-                    title={intl.formatMessage(messages.quote_cancel)}
-                    icon="cancel-fill"
-                    iconComponent={CancelFillIcon}
-                  />
-                ) : (
-                  <StatusIcons
-                    status={status}
-                    mediaIcons={mediaIcons}
-                    settings={settings.get('status_icons')}
-                  />
-                )}
-              </header>
-            )}
+            {(!muted) && header}
 
             {showInstanceInfo && instanceInfo && (
               <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
@@ -790,7 +775,7 @@ class Status extends ImmutablePureComponent {
             {/* This is a glitch-soc addition to have a placeholder */}
             {!expanded && <MentionsPlaceholder status={status} />}
 
-            {!isQuotedPost &&
+            {(showActions && !isQuotedPost) &&
               <>
                 <StatusReactions
                   statusId={status.get('id')}

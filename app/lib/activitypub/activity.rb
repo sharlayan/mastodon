@@ -27,11 +27,11 @@ class ActivityPub::Activity
 
     private
 
-    def klass
+    def klass_for(json)
       # force redirect for Misskey compatibility
       @json['type'] = 'EmojiReact' if @json['type'].eql?('Like') && @json['content'].present?
 
-      case @json['type']
+      case json['type']
       when 'Create'
         ActivityPub::Activity::Create
       when 'Announce'

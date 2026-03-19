@@ -23,7 +23,6 @@ import { customEmojiSize } from '@/mastodon/initial_state';
 
 import { AnimateEmojiContext, CustomEmojiContext } from './context';
 
-
 interface EmojiProps {
   code: string;
   showFallback?: boolean;

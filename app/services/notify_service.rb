@@ -35,7 +35,8 @@ class NotifyService < BaseService
       @sender = notification.from_account
       @notification = notification
       @policy = NotificationPolicy.find_or_initialize_by(account: @recipient)
-      @from_staff = @sender&.local? && @sender.user.present? && @sender.user_role&.bypass_block?(@recipient.user_role)
+      @from_staff = @sender.local? && @sender.user.present? && @sender.user_role&.bypass_block?(@recipient.user_role)
+      @options = options
     end
 
     private
