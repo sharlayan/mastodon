@@ -19,6 +19,10 @@ RSpec.describe UnreactService, type: :service do
     it 'removes a reaction' do
       expect(status.reactions.first).to be_nil
     end
+
+    it 'enqueues BroadcastStatusUpdateWorker' do
+      expect(BroadcastStatusUpdateWorker).to have_enqueued_sidekiq_job(status.id)
+    end
   end
 
   describe 'remote ActivityPub' do
@@ -35,8 +39,30 @@ RSpec.describe UnreactService, type: :service do
       expect(status.reactions.first).to be_nil
     end
 
-    it 'sends an undo activity' do
-      expect(a_request(:post, 'http://example.com/inbox')).to have_been_made.once
+    it 'enqueues ReactionsDistributionWorker with target inbox' do
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, 'http://example.com/inbox')
+    end
+  end
+
+  describe 'when reaction does not exist' do
+    let(:status) { Fabricate(:status) }
+
+    it 'returns nil' do
+      result = subject.call(sender, status, '👍')
+      expect(result).to be_nil
+    end
+  end
+
+  describe 'distribution' do
+    let(:status) { Fabricate(:status, account: sender) }
+
+    before do
+      sender.status_reactions.find_or_create_by!(status: status, name: '👍')
+      subject.call(sender, status, '👍')
+    end
+
+    it 'enqueues ReactionsDistributionWorker with empty target for local status' do
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '')
     end
   end
 end

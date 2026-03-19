@@ -12,32 +12,21 @@ class BroadcastStatusUpdateWorker
     # silenced account updated on public timeline. disabled it
     return if status.account.nil? || status.account.suspended? || status.account.silenced?
 
-    # recent status only
-    return if status.created_at < 10.minutes.ago
-
     payload = InlineRenderer.render(status, nil, :status)
     return if payload.nil?
 
-    if status.mentions.exists?
-      broadcast_to_mentioned_users(status, payload)
-    else
-      broadcast_to_all_followers(status, payload)
-    end
-
+    # Always publish to status-specific channel for users currently viewing this status
     Redis.current.publish("timeline:status:#{status.id}", Oj.dump(event: :update, payload: payload))
+
+    # For recent statuses, also broadcast to timelines
+    return if status.created_at < 7.days.ago
+
+    broadcast_to_all_followers(status, payload)
   rescue ActiveRecord::RecordNotFound
     true
   end
 
   private
-
-  def broadcast_to_mentioned_users(status, payload)
-    Redis.current.publish("timeline:#{status.account_id}", Oj.dump(event: :update, payload: payload)) if status.account&.local?
-
-    status.mentions.joins(:account).where(accounts: { domain: nil }).pluck(:account_id).compact.each do |account_id|
-      Redis.current.publish("timeline:#{account_id}", Oj.dump(event: :update, payload: payload))
-    end
-  end
 
   def broadcast_to_all_followers(status, payload)
     Redis.current.publish('timeline:public', Oj.dump(event: :update, payload: payload)) if status.public_visibility?
@@ -48,11 +37,11 @@ class BroadcastStatusUpdateWorker
     muted_by_ids = Mute.where(target_account_id: status.account_id).pluck(:account_id)
 
     list_excluded_ids = ListAccount
-                        .joins(:list)
-                        .where(account_id: status.account_id)
-                        .where(lists: { exclusive: true })
-                        .pluck('lists.account_id')
-                        .uniq
+      .joins(:list)
+      .where(account_id: status.account_id)
+      .where(lists: { exclusive: true })
+      .pluck('lists.account_id')
+      .uniq
 
     excluded_ids = muted_by_ids + list_excluded_ids
 

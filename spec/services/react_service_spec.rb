@@ -18,6 +18,10 @@ RSpec.describe ReactService, type: :service do
     it 'creates a reaction' do
       expect(status.reactions.first).to_not be_nil
     end
+
+    it 'sends a local notification' do
+      expect(LocalNotificationWorker).to have_enqueued_sidekiq_job(bob.id, anything, 'StatusReaction', 'reaction')
+    end
   end
 
   describe 'remote ActivityPub' do
@@ -33,8 +37,35 @@ RSpec.describe ReactService, type: :service do
       expect(status.reactions.first).to_not be_nil
     end
 
-    it 'sends a react activity' do
-      expect(a_request(:post, 'http://example.com/inbox')).to have_been_made.once
+    it 'enqueues a ReactionsDistributionWorker' do
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, 'http://example.com/inbox')
+    end
+  end
+
+  describe 'distribution to followers and following' do
+    let(:status) { Fabricate(:status, account: sender) }
+
+    before do
+      subject.call(sender, status, '👍')
+    end
+
+    it 'enqueues ReactionsDistributionWorker with empty target for local status' do
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '')
+    end
+
+    it 'enqueues BroadcastStatusUpdateWorker' do
+      expect(BroadcastStatusUpdateWorker).to have_enqueued_sidekiq_job(status.id)
+    end
+  end
+
+  describe 'idempotency' do
+    let(:status) { Fabricate(:status) }
+
+    it 'returns existing reaction without creating duplicate' do
+      first  = subject.call(sender, status, '👍')
+      second = subject.call(sender, status, '👍')
+      expect(first.id).to eq second.id
+      expect(StatusReaction.where(account: sender, status: status, name: '👍').count).to eq 1
     end
   end
 end

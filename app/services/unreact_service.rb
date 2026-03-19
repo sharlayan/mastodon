@@ -10,16 +10,19 @@ class UnreactService < BaseService
     return if reaction.nil?
 
     reaction.destroy!
-    create_notification(reaction) if !status.account.local? && status.account.activitypub?
+    distribute_undo_reaction(reaction)
     BroadcastStatusUpdateWorker.perform_async(status.id)
     reaction
   end
 
   private
 
-  def create_notification(reaction)
+  def distribute_undo_reaction(reaction)
+    return unless reaction.account.local?
+
     status = reaction.status
-    ActivityPub::DeliveryWorker.perform_async(build_json(reaction), reaction.account_id, status.account.shared_inbox_url)
+    target_inbox = status.account.local? ? '' : (status.account.shared_inbox_url || status.account.inbox_url)
+    ActivityPub::ReactionsDistributionWorker.perform_async(build_json(reaction), reaction.account_id, target_inbox)
   end
 
   def build_json(reaction)

@@ -21,7 +21,15 @@ class ActivityPub::ReactionsDistributionWorker < ActivityPub::RawDistributionWor
   protected
 
   def inboxes
-    @inboxes ||= (AccountReachFinder.new(@account).inboxes + @target_inboxes).uniq
+    @inboxes ||= (followers_inboxes + following_inboxes + @target_inboxes).uniq
+  end
+
+  def followers_inboxes
+    @account.followers.inboxes
+  end
+
+  def following_inboxes
+    @account.following.inboxes
   end
 
   def payload

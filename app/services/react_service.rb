@@ -30,11 +30,17 @@ class ReactService < BaseService
   def create_notification(reaction)
     status = reaction.status
 
-    if status.account.local?
-      LocalNotificationWorker.perform_async(status.account_id, reaction.id, 'StatusReaction', 'reaction')
-    elsif status.account.activitypub?
-      ActivityPub::DeliveryWorker.perform_async(build_json(reaction), reaction.account_id, status.account.shared_inbox_url)
-    end
+    LocalNotificationWorker.perform_async(status.account_id, reaction.id, 'StatusReaction', 'reaction') if status.account.local?
+
+    distribute_reaction(reaction)
+  end
+
+  def distribute_reaction(reaction)
+    return unless reaction.account.local?
+
+    status = reaction.status
+    target_inbox = status.account.local? ? '' : (status.account.shared_inbox_url || status.account.inbox_url)
+    ActivityPub::ReactionsDistributionWorker.perform_async(build_json(reaction), reaction.account_id, target_inbox)
   end
 
   def increment_statistics
