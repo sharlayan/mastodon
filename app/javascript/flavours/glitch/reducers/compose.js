@@ -59,7 +59,7 @@ import {
 } from '../actions/compose';
 import { REDRAFT } from '../actions/statuses';
 import { STORE_HYDRATE } from '../actions/store';
-import { me, defaultContentType, forceLocalOnly } from '../initial_state';
+import { me, defaultContentType } from '../initial_state';
 import { recoverHashtags } from '../utils/hashtag';
 import { unescapeHTML } from '../utils/html';
 import { overwrite } from '../utils/js_helpers';

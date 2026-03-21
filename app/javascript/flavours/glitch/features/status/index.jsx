@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 
-import { defineMessages, injectIntl } from 'react-intl';
+import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 
 import classNames from 'classnames';
 import { Helmet } from 'react-helmet';
@@ -57,7 +57,7 @@ import { setStatusQuotePolicy } from '../../actions/statuses_typed';
 import ColumnHeader from '../../components/column_header';
 import { textForScreenReader, defaultMediaVisibility } from '../../components/status';
 import { StatusQuoteManager } from '../../components/status_quoted';
-import { deleteModal } from '../../initial_state';
+import { deleteModal, localStatusPageAccess } from '../../initial_state';
 import { makeGetStatus, makeGetPictureInPicture } from '../../selectors';
 import { getAncestorsIds, getDescendantsIds } from 'flavours/glitch/selectors/contexts';
 import Column from '../ui/components/column';
@@ -161,9 +161,16 @@ class Status extends ImmutablePureComponent {
     newRepliesIds: [],
   };
 
+  _shouldBlockLoad () {
+    const { signedIn } = this.props.identity;
+    return !signedIn && localStatusPageAccess !== 'public';
+  }
+
   componentDidMount () {
     attachFullscreenListener(this.onFullScreenChange);
-    this.props.dispatch(fetchStatus(this.props.params.statusId, { forceFetch: true }));
+    if (!this._shouldBlockLoad()) {
+      this.props.dispatch(fetchStatus(this.props.params.statusId, { forceFetch: true }));
+    }
   }
 
   static getDerivedStateFromProps(props, state) {
@@ -171,7 +178,9 @@ class Status extends ImmutablePureComponent {
     let updated = false;
 
     if (props.params.statusId && state.statusId !== props.params.statusId) {
-      props.dispatch(fetchStatus(props.params.statusId, { forceFetch: true }));
+      if (props.identity?.signedIn || localStatusPageAccess === 'public') {
+        props.dispatch(fetchStatus(props.params.statusId, { forceFetch: true }));
+      }
       update.threadExpanded = undefined;
       update.statusId = props.params.statusId;
       updated = true;
@@ -576,6 +585,20 @@ class Status extends ImmutablePureComponent {
     let ancestors, descendants, remoteHint;
     const { isLoading, status, settings, ancestorsIds, descendantsIds, refresh, intl, domain, multiColumn, pictureInPicture } = this.props;
     const { fullscreen } = this.state;
+
+    if (this._shouldBlockLoad()) {
+      return (
+        <Column>
+          <ColumnHeader
+            showBackButton
+            multiColumn={multiColumn}
+          />
+          <div className='empty-column-indicator'>
+            <FormattedMessage id='empty_column.not_logged_in' defaultMessage='Require Login' />
+          </div>
+        </Column>
+      );
+    }
 
     if (isLoading) {
       return (

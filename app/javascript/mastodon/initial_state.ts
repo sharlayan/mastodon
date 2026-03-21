@@ -36,6 +36,7 @@ interface InitialStateMeta {
   streaming_api_base_url: string;
   force_local_only: boolean;
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
+  local_status_page_access: 'public' | 'authenticated' | 'disabled';
   local_live_feed_access: 'public' | 'authenticated' | 'disabled';
   remote_live_feed_access: 'public' | 'authenticated' | 'disabled';
   local_topic_feed_access: 'public' | 'authenticated';
@@ -128,6 +129,7 @@ export const source_url = getMeta('source_url');
 export const localAccountStatusesAccess = getMeta(
   'local_account_statuses_access',
 );
+export const localStatusPageAccess = getMeta('local_status_page_access');
 export const forceLocalOnly = getMeta('force_local_only');
 export const localLiveFeedAccess = getMeta('local_live_feed_access');
 export const remoteLiveFeedAccess = getMeta('remote_live_feed_access');

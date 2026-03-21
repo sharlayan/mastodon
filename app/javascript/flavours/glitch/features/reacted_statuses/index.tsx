@@ -13,6 +13,8 @@ import {
 import {
   fetchReactedStatuses,
   expandReactedStatuses,
+  fetchReactionSummary,
+  setReactionFilter,
 } from 'flavours/glitch/actions/reactions';
 import { Column } from 'flavours/glitch/components/column';
 import type { ColumnRef } from 'flavours/glitch/components/column';
@@ -20,6 +22,8 @@ import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import StatusList from 'flavours/glitch/components/status_list';
 import { getStatusList } from 'flavours/glitch/selectors';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
+
+import { ReactionSummaryBar } from './reaction_summary_bar';
 
 const messages = defineMessages({
   heading: { id: 'column.reactions', defaultMessage: 'Reactions' },
@@ -42,9 +46,16 @@ const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
   const hasMore = useAppSelector(
     (state) => !!state.status_lists.getIn(['reactions', 'next']),
   );
+  const reactionSummary = useAppSelector((state) =>
+    state.status_lists.get('reactionSummary'),
+  );
+  const reactionFilter = useAppSelector(
+    (state) => state.status_lists.get('reactionFilter') as string | null,
+  );
 
   useEffect(() => {
     dispatch(fetchReactedStatuses());
+    dispatch(fetchReactionSummary());
   }, [dispatch]);
 
   const handlePin = useCallback(() => {
@@ -69,6 +80,13 @@ const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
   const handleLoadMore = useCallback(() => {
     dispatch(expandReactedStatuses());
   }, [dispatch]);
+
+  const handleFilterChange = useCallback(
+    (name: string | null) => {
+      dispatch(setReactionFilter(name));
+    },
+    [dispatch],
+  );
 
   const pinned = !!columnId;
 
@@ -95,7 +113,13 @@ const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
         pinned={pinned}
         multiColumn={multiColumn}
         showBackButton
-      />
+      >
+        <ReactionSummaryBar
+          summary={reactionSummary}
+          activeFilter={reactionFilter}
+          onFilterChange={handleFilterChange}
+        />
+      </ColumnHeader>
 
       <StatusList
         trackScroll={!pinned}

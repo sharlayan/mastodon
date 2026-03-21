@@ -2010,6 +2010,7 @@ en:
     exceptions: Exceptions
     explanation: Automated deletion is performed with low priority. There may be a delay between reaching the age threshold and being removed.
     ignore_favs: Ignore favorites
+    ignore_reactions: Ignore reactions
     ignore_reblogs: Ignore boosts
     interaction_exceptions: Exceptions based on interactions
     interaction_exceptions_explanation: Posts which temporarily exceed the favorite or boost threshold may be retained even if they are later decreased.
@@ -2025,6 +2026,8 @@ en:
     keep_self_bookmark_hint: Doesn't delete your own posts if you have bookmarked them
     keep_self_fav: Keep posts you favorited
     keep_self_fav_hint: Doesn't delete your own posts if you have favorited them
+    keep_self_reaction: Keep posts you reacted to
+    keep_self_reaction_hint: Doesn't delete your own posts if you have reacted to them
     min_age:
       '1209600': 2 weeks
       '15778476': 6 months
@@ -2037,6 +2040,8 @@ en:
     min_age_label: Age threshold
     min_favs: Keep posts favorited at least
     min_favs_hint: Doesn't delete any of your posts that has received at least this number of favorites. Leave blank to delete posts regardless of their number of favorites
+    min_reactions: Keep posts reacted at least
+    min_reactions_hint: Doesn't delete any of your posts that has received at least this number of reactions. Leave blank to delete posts regardless of their number of reactions
     min_reblogs: Keep posts boosted at least
     min_reblogs_hint: Doesn't delete any of your posts that has been boosted at least this number of times. Leave blank to delete posts regardless of their number of boosts
   stream_entries:

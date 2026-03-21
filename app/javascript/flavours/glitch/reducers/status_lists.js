@@ -1,4 +1,4 @@
-import { Map as ImmutableMap, OrderedSet as ImmutableOrderedSet } from 'immutable';
+import { Map as ImmutableMap, List as ImmutableList, OrderedSet as ImmutableOrderedSet } from 'immutable';
 
 import {
   blockAccountSuccess,
@@ -41,6 +41,8 @@ import {
   REACTED_STATUSES_EXPAND_REQUEST,
   REACTED_STATUSES_EXPAND_SUCCESS,
   REACTED_STATUSES_EXPAND_FAIL,
+  REACTION_SUMMARY_FETCH_SUCCESS,
+  REACTION_FILTER_SET,
 } from '../actions/reactions';
 import {
   TRENDS_STATUSES_FETCH_REQUEST,
@@ -83,6 +85,8 @@ const initialState = ImmutableMap({
     items: ImmutableOrderedSet(),
     statusId: null,
   }),
+  reactionSummary: ImmutableList(),
+  reactionFilter: null,
 });
 
 const normalizeList = (state, listType, statuses, next) => {
@@ -139,6 +143,10 @@ export default function statusLists(state = initialState, action) {
     return normalizeList(state, 'reactions', action.statuses, action.next);
   case REACTED_STATUSES_EXPAND_SUCCESS:
     return appendToList(state, 'reactions', action.statuses, action.next);
+  case REACTION_SUMMARY_FETCH_SUCCESS:
+    return state.set('reactionSummary', ImmutableList(action.summary));
+  case REACTION_FILTER_SET:
+    return state.set('reactionFilter', action.name || null);
   case BOOKMARKED_STATUSES_FETCH_REQUEST:
   case BOOKMARKED_STATUSES_EXPAND_REQUEST:
     return state.setIn(['bookmarks', 'isLoading'], true);

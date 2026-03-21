@@ -52,6 +52,8 @@
   "notifications.column_settings.reaction": "Reactions:",
   "notifications.filter.reactions": "Reactions",
   "notifications.others": "others",
+  "reactions.all": "All",
+  "reactions.unknown_emoji": "Unknown",
   "settings.always_show_spoilers_field": "Always enable the Content Warning field",
   "settings.close": "Close",
   "settings.compose_box_opts": "Compose box",

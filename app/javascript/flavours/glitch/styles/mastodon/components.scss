@@ -1837,7 +1837,7 @@ body > [data-popper-placement] {
 }
 
 .detailed-status {
-  padding: 14px 10px; // glitch: reduced padding
+  padding: 10px 14px; // glitch: reduced padding
   border-top: 1px solid var(--color-border-primary);
 
   .status__content {
@@ -9426,6 +9426,79 @@ noscript {
   &--empty {
     .emoji-button {
       padding: 0;
+    }
+  }
+}
+
+.reaction-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+
+  &__item {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: var(--color-bg-brand-softer);
+    color: color-mix(
+      in oklab,
+      var(--color-text-primary),
+      var(--color-text-secondary)
+    );
+    border: 1px solid var(--color-border-on-bg-brand-softer);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    user-select: none;
+    transition: all 100ms ease-in;
+    transition-property: background-color, color, border-color;
+
+    &:hover,
+    &:focus,
+    &:active {
+      color: var(--color-text-primary);
+      background: var(--color-bg-brand-soft);
+      transition: all 200ms ease-out;
+      transition-property: background-color, color;
+    }
+
+    &.active {
+      color: var(--color-text-brand);
+      background-color: var(--color-bg-brand-softer);
+      border-color: var(--color-text-brand);
+    }
+
+    &__emoji {
+      display: flex;
+      align-items: center;
+
+      img {
+        display: block;
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+      }
+    }
+
+    &__count {
+      min-width: 9px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    &__label {
+      font-size: 13px;
+    }
+
+    &__unknown {
+      font-size: 11px;
+      font-style: italic;
+      color: var(--color-text-secondary);
     }
   }
 }

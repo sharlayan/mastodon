@@ -155,6 +155,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       terms_of_service_enabled: TermsOfService.current.present?,
       force_local_only: Setting.force_local_only,
       local_account_statuses_access: Setting.local_account_statuses_access,
+      local_status_page_access: Setting.local_status_page_access,
       local_live_feed_access: Setting.local_live_feed_access,
       remote_live_feed_access: Setting.remote_live_feed_access,
       local_topic_feed_access: Setting.local_topic_feed_access,

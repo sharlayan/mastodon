@@ -10,14 +10,25 @@ export const REACTED_STATUSES_EXPAND_REQUEST = 'REACTED_STATUSES_EXPAND_REQUEST'
 export const REACTED_STATUSES_EXPAND_SUCCESS = 'REACTED_STATUSES_EXPAND_SUCCESS';
 export const REACTED_STATUSES_EXPAND_FAIL    = 'REACTED_STATUSES_EXPAND_FAIL';
 
-export const fetchReactedStatuses = () => (dispatch, getState) => {
+export const REACTION_SUMMARY_FETCH_REQUEST = 'REACTION_SUMMARY_FETCH_REQUEST';
+export const REACTION_SUMMARY_FETCH_SUCCESS = 'REACTION_SUMMARY_FETCH_SUCCESS';
+export const REACTION_SUMMARY_FETCH_FAIL    = 'REACTION_SUMMARY_FETCH_FAIL';
+
+export const REACTION_FILTER_SET = 'REACTION_FILTER_SET';
+
+export const fetchReactedStatuses = (name) => (dispatch, getState) => {
   if (getState().getIn(['status_lists', 'reactions', 'isLoading'])) {
     return;
   }
 
   dispatch(fetchReactedStatusesRequest());
 
-  api(getState).get('/api/v1/reactions').then(response => {
+  const params = {};
+  if (name) {
+    params.name = name;
+  }
+
+  api(getState).get('/api/v1/reactions', { params }).then(response => {
     const next = getLinks(response).refs.find(link => link.rel === 'next');
     dispatch(importFetchedStatuses(response.data));
     dispatch(fetchReactedStatusesSuccess(response.data, next ? next.uri : null));
@@ -76,3 +87,27 @@ export const expandReactedStatusesFail = (error) => ({
   type: REACTED_STATUSES_EXPAND_FAIL,
   error,
 })
+
+export const fetchReactionSummary = () => (dispatch, getState) => {
+  dispatch({ type: REACTION_SUMMARY_FETCH_REQUEST });
+
+  api(getState).get('/api/v1/reactions/summary').then(response => {
+    dispatch({
+      type: REACTION_SUMMARY_FETCH_SUCCESS,
+      summary: response.data,
+    });
+  }).catch(error => {
+    dispatch({
+      type: REACTION_SUMMARY_FETCH_FAIL,
+      error,
+    });
+  });
+};
+
+export const setReactionFilter = (name) => (dispatch) => {
+  dispatch({
+    type: REACTION_FILTER_SET,
+    name,
+  });
+  dispatch(fetchReactedStatuses(name));
+};

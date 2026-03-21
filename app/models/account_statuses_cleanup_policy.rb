@@ -35,7 +35,7 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
   ].freeze
 
   EXCEPTION_BOOLS      = %w(keep_direct keep_pinned keep_polls keep_media keep_self_fav keep_self_reaction keep_self_bookmark).freeze
-  EXCEPTION_THRESHOLDS = %w(min_favs min_reblogs).freeze
+  EXCEPTION_THRESHOLDS = %w(min_favs min_reactions min_reblogs).freeze
 
   # Depending on the cleanup policy, the query to discover the next
   # statuses to delete my get expensive if the account has a lot of old

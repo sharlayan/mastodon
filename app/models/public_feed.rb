@@ -67,10 +67,6 @@ class PublicFeed
     options[:with_replies]
   end
 
-  def local_account_statuses_access
-    Setting.local_account_statuses_access
-  end
-
   def local_feed_setting
     Setting.local_live_feed_access
   end

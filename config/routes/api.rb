@@ -116,7 +116,11 @@ namespace :api, format: false do
     resources :blocks, only: [:index]
     resources :mutes, only: [:index]
     resources :favourites, only: [:index]
-    resources :reactions, only: [:index]
+    resources :reactions, only: [:index] do
+      collection do
+        get :summary
+      end
+    end
     resources :bookmarks, only: [:index]
     resources :reports, only: [:create]
     resources :trends, only: [:index], controller: 'trends/tags'

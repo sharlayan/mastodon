@@ -9,6 +9,7 @@ class StatusesController < ApplicationController
   vary_by -> { public_fetch_mode? ? 'Accept, Accept-Language, Cookie' : 'Accept, Accept-Language, Cookie, Signature' }
 
   before_action :require_account_signature!, only: [:show, :activity], if: -> { request.format == :json && authorized_fetch_mode? }
+  before_action :authenticate_user!, only: [:show, :embed], if: -> { Setting.local_status_page_access != 'public' }
   before_action :set_status
   before_action :redirect_to_original, only: :show
   before_action :verify_embed_allowed, only: :embed

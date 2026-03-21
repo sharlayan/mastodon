@@ -31,6 +31,8 @@
   "endorsed_accounts_editor.endorsed_accounts": "추천하는 계정들",
   "favourite_modal.combo": "다음엔 {combo}를 눌러 건너뛸 수 있습니다",
   "favourite_modal.favourite": "관심글로 지정할까요?",
+  "reactions.all": "전체",
+  "reactions.unknown_emoji": "알 수 없음",
   "federation.federated.long": "이 게시물이 다른 서버에 전달되는 것을 허용",
   "federation.federated.short": "연합됨",
   "federation.local_only.long": "이 게시물이 다른 서버에 전달되는 것을 막기",

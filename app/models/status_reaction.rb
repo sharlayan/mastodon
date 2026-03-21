@@ -35,6 +35,7 @@ class StatusReaction < ApplicationRecord
 
   after_create :increment_cache_counters
   after_destroy :decrement_cache_counters
+  after_destroy :invalidate_cleanup_info
 
   def users
     account_ids = StatusReaction.where(status_id: status_id, name: name, custom_emoji_id: custom_emoji_id).select(:account_id)
@@ -60,5 +61,11 @@ class StatusReaction < ApplicationRecord
     return if association(:status).loaded? && status.marked_for_destruction?
 
     status&.decrement_count!(:reactions_count)
+  end
+
+  def invalidate_cleanup_info
+    return unless status&.account_id == account_id && account.local?
+
+    account.statuses_cleanup_policy&.invalidate_last_inspected(status, :unreact)
   end
 end

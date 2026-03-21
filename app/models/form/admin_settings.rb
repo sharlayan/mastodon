@@ -48,6 +48,7 @@ class Form::AdminSettings
     min_age
     force_local_only
     local_account_statuses_access
+    local_status_page_access
     local_live_feed_access
     remote_live_feed_access
     local_topic_feed_access
@@ -121,6 +122,7 @@ class Form::AdminSettings
   validates :show_domain_blocks, inclusion: { in: DOMAIN_BLOCK_AUDIENCES }, if: -> { defined?(@show_domain_blocks) }
   validates :show_domain_blocks_rationale, inclusion: { in: DOMAIN_BLOCK_AUDIENCES }, if: -> { defined?(@show_domain_blocks_rationale) }
   validates :local_account_statuses_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@local_account_statuses_access) }
+  validates :local_status_page_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@local_status_page_access) }
   validates :local_live_feed_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@local_live_feed_access) }
   validates :remote_live_feed_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@remote_live_feed_access) }
   validates :local_topic_feed_access, inclusion: { in: ALTERNATE_FEED_ACCESS_MODES }, if: -> { defined?(@local_topic_feed_access) }

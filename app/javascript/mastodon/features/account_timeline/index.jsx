@@ -80,7 +80,7 @@ class AccountTimeline extends ImmutablePureComponent {
 
   _shouldBlockLoad () {
     const { signedIn } = this.props.identity;
-    return !signedIn && localAccountStatusesAccess;
+    return !signedIn && localAccountStatusesAccess !== 'public';
   }
 
   _load () {
@@ -162,9 +162,9 @@ class AccountTimeline extends ImmutablePureComponent {
 
     let emptyMessage;
 
-    const forceEmptyState = suspended || blockedBy || hidden || (!signedIn && localAccountStatusesAccess);
+    const forceEmptyState = suspended || blockedBy || hidden || (!signedIn && localAccountStatusesAccess !== 'public');
 
-    if (!signedIn && localAccountStatusesAccess) {
+    if (!signedIn && localAccountStatusesAccess !== 'public') {
       emptyMessage = <FormattedMessage id='empty_column.not_logged_in' defaultMessage='Require Login' />;
     } else if (suspended) {
       emptyMessage = <FormattedMessage id='empty_column.account_suspended' defaultMessage='Account suspended' />;

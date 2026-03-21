@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::OEmbedController < Api::BaseController
-  skip_before_action :require_authenticated_user!
+  skip_before_action :require_authenticated_user!, unless: -> { Setting.local_status_page_access != 'public' }
 
   before_action :set_status
   before_action :require_public_status!
