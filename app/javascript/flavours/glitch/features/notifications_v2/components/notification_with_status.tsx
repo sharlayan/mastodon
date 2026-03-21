@@ -56,7 +56,7 @@ export const NotificationWithStatus: React.FC<{
         count,
         labelSeeMoreHref ?? '',
       ),
-    [labelRenderer, account, count],
+    [labelRenderer, account, count, labelSeeMoreHref],
   );
 
   const isPrivateMention = useAppSelector(

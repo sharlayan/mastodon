@@ -48,7 +48,7 @@ class ReactService < BaseService
   end
 
   def build_json(reaction)
-    json = Oj.dump(serialize_payload(reaction, ActivityPub::EmojiReactionSerializer))
+    json = serialize_payload(reaction, ActivityPub::EmojiReactionSerializer).to_json
     json.gsub('MisskeyReaction', '_misskey_reaction')
   end
 end

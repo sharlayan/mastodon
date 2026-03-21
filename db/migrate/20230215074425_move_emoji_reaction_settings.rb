@@ -32,7 +32,7 @@ class MoveEmojiReactionSettings < ActiveRecord::Migration[6.1]
 
       users.each do |user|
         previous_settings = previous_settings_for_batch[user.id]&.index_by(&:var) || {}
-        user_settings = Oj.load(user.settings || '{}')
+        user_settings = JSON.parse(user.settings || '{}')
         user_settings.delete('theme')
 
         MAPPING.each do |legacy_key, new_key|
@@ -49,7 +49,7 @@ class MoveEmojiReactionSettings < ActiveRecord::Migration[6.1]
           end
         end
 
-        user.update_column('settings', Oj.dump(user_settings))
+        user.update_column('settings', JSON.generate(user_settings))
       end
     end
   rescue ActiveRecord::StatementInvalid => e

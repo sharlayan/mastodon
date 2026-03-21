@@ -26,7 +26,7 @@ class UnreactService < BaseService
   end
 
   def build_json(reaction)
-    json = Oj.dump(serialize_payload(reaction, ActivityPub::UndoEmojiReactionSerializer))
+    json = serialize_payload(reaction, ActivityPub::UndoEmojiReactionSerializer).to_json
     json.gsub('MisskeyReaction', '_misskey_reaction')
   end
 end

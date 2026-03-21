@@ -145,7 +145,7 @@ class FetchInstanceThemeColorService < BaseService
     request.perform do |response|
       if response.code == 200
         response_body = response.body_with_limit
-        meta_data = Oj.load(response_body)
+        meta_data = JSON.parse(response_body)
         software = detect_misskey_software(meta_data)
         version = meta_data['version']
 
@@ -174,7 +174,7 @@ class FetchInstanceThemeColorService < BaseService
       if response.code == 200
         response_body = response.body_with_limit
 
-        meta_data = Oj.load(response_body)
+        meta_data = JSON.parse(response_body)
 
         return meta_data['name'] if meta_data['name'].present?
 
@@ -251,7 +251,7 @@ class FetchInstanceThemeColorService < BaseService
     request.perform do |response|
       if response.code == 200
         response_body = response.body_with_limit
-        instance_data = Oj.load(response_body)
+        instance_data = JSON.parse(response_body)
 
         return instance_data['title'] if instance_data['title'].present?
       end
@@ -266,7 +266,7 @@ class FetchInstanceThemeColorService < BaseService
     request_v2.perform do |response|
       if response.code == 200
         response_body = response.body_with_limit
-        instance_data = Oj.load(response_body)
+        instance_data = JSON.parse(response_body)
 
         return instance_data['title'] if instance_data['title'].present?
       end
@@ -286,7 +286,7 @@ class FetchInstanceThemeColorService < BaseService
     request.perform do |response|
       if response.code == 200
         response_body = response.body_with_limit
-        nodeinfo_data = Oj.load(response_body)
+        nodeinfo_data = JSON.parse(response_body)
         links = nodeinfo_data['links'] || []
         latest_link = links.max_by { |link| link['rel']&.scan(/\d+\.\d+/)&.first.to_f }
         nodeinfo_url = latest_link&.[]('href')
@@ -302,7 +302,7 @@ class FetchInstanceThemeColorService < BaseService
     nodeinfo_request.perform do |response|
       if response.code == 200
         response_body = response.body_with_limit
-        nodeinfo = Oj.load(response_body)
+        nodeinfo = JSON.parse(response_body)
       end
     end
 

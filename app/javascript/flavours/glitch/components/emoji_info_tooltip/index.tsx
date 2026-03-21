@@ -77,7 +77,7 @@ export const EmojiInfoTooltip: FC<EmojiInfoTooltipProps> = ({
       observer.disconnect();
       detachEmojiListeners();
     };
-  }, [enabled, attachEmojiListeners, detachEmojiListeners]);
+  }, [enabled, attachEmojiListeners, detachEmojiListeners, containerRef]);
 
   const isAboveCenter = (element: HTMLElement | null): boolean => {
     if (!element) return false;
