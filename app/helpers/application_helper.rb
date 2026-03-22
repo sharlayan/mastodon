@@ -180,6 +180,10 @@ module ApplicationHelper
   def body_classes
     output = []
     output << content_for(:body_classes)
+    if current_flavour == 'glitch'
+      output << "flavour-#{current_flavour}"
+      output << "skin-#{current_skin}"
+    end
     output.compact_blank.join(' ')
   end
 
