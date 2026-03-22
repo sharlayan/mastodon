@@ -8,7 +8,7 @@ module InstanceMetadataSerializable
   end
 
   def instance_metadata
-    return nil if metadata_domain.present?
+    return nil if metadata_domain.blank?
 
     begin
       metadata = fetch_or_create_metadata(metadata_domain)

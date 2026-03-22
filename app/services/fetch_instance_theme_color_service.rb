@@ -1,15 +1,28 @@
 # frozen_string_literal: true
 
 class FetchInstanceThemeColorService < BaseService
+  NETWORK_ERRORS = [
+    HTTP::Error,
+    OpenSSL::SSL::SSLError,
+    SocketError,
+    Addressable::URI::InvalidURIError,
+    Errno::ECONNREFUSED,
+    Errno::EHOSTUNREACH,
+    Errno::ETIMEDOUT,
+  ].freeze
+
   def call(domain)
     @domain = domain
     @metadata = InstanceMetadata.for_domain(domain)
     @favicon_from_api = nil
 
-    theme_color = fetch_theme_color_from_html
-    favicon_url = detect_favicon_url
-    software_info = fetch_software_info
-    instance_name = fetch_instance_name
+    misskey_meta = fetch_misskey_meta
+    misskey_name = fetch_instance_name_from_misskey
+
+    theme_color = extract_theme_color
+    favicon_url = extract_favicon_url
+    software_info = determine_software_info(misskey_meta)
+    instance_name = determine_instance_name(misskey_name)
 
     local_favicon_path = download_and_save_favicon(favicon_url) if favicon_url.present?
 
@@ -24,7 +37,7 @@ class FetchInstanceThemeColorService < BaseService
     )
 
     @metadata
-  rescue HTTP::Error, OpenSSL::SSL::SSLError, SocketError, Addressable::URI::InvalidURIError
+  rescue *NETWORK_ERRORS
     @metadata.update(
       theme_color_updated_at: Time.now.utc,
       metadata_updated_at: Time.now.utc
@@ -35,103 +48,85 @@ class FetchInstanceThemeColorService < BaseService
 
   private
 
-  def fetch_theme_color_from_html
-    url = "https://#{@domain}"
-
-    request = Request.new(:get, url)
-    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
-    request.perform do |response|
-      return nil unless response.code == 200
-
-      html_body = response.body_with_limit
-
-      return extract_theme_color_from_html(html_body)
+  def fetch_homepage_html
+    @homepage_html ||= begin
+      url = "https://#{@domain}"
+      request = Request.new(:get, url)
+      request.add_headers('User-Agent' => Mastodon::Version.user_agent)
+      html = nil
+      request.perform do |response|
+        html = response.body_with_limit if response.code == 200
+      end
+      html
     end
-
+  rescue *NETWORK_ERRORS
     nil
   end
 
-  def extract_theme_color_from_html(html)
-    doc = Nokogiri::HTML(html)
+  def parsed_homepage
+    @parsed_homepage ||= Nokogiri::HTML(fetch_homepage_html) if fetch_homepage_html
+  end
 
-    theme_color_meta = doc.at_css('meta[name="theme-color"]')
+  def fetch_nodeinfo
+    return @nodeinfo if defined?(@nodeinfo_fetched)
 
+    @nodeinfo_fetched = true
+    @nodeinfo = fetch_nodeinfo_uncached
+  end
+
+  def extract_theme_color
+    return nil unless parsed_homepage
+
+    theme_color_meta = parsed_homepage.at_css('meta[name="theme-color"]')
     return normalize_color(theme_color_meta['content']) if theme_color_meta&.[]('content')
 
-    tile_color_meta = doc.at_css('meta[name="msapplication-TileColor"]')
-
+    tile_color_meta = parsed_homepage.at_css('meta[name="msapplication-TileColor"]')
     return normalize_color(tile_color_meta['content']) if tile_color_meta&.[]('content')
 
     nil
   end
 
-  def detect_favicon_url
-    url = "https://#{@domain}"
-
+  def extract_favicon_url
     return @favicon_from_api if @favicon_from_api.present?
 
-    request = Request.new(:get, url)
-    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
+    return "https://#{@domain}/favicon.ico" unless parsed_homepage
 
-    html = nil
-    request.perform do |response|
-      html = response.body_with_limit if response.code == 200
-    end
-
-    return "https://#{@domain}/favicon.ico" if html.nil?
-
-    doc = Nokogiri::HTML(html)
-
-    favicon_link = doc.at_css('link[rel="icon"], link[rel="shortcut icon"]')
-    if favicon_link && favicon_link['href']
-      href = favicon_link['href']
-      favicon_url = href.start_with?('http') ? href : "https://#{@domain}#{href}"
-      return favicon_url
-    end
+    favicon_link = parsed_homepage.at_css('link[rel="icon"], link[rel="shortcut icon"]')
+    return resolve_url(favicon_link['href']) || "https://#{@domain}/favicon.ico" if favicon_link && favicon_link['href']
 
     "https://#{@domain}/favicon.ico"
   end
 
-  def fetch_software_info
-    misskey_info = fetch_misskey_meta
-
-    return misskey_info if misskey_info[:software].present?
+  def determine_software_info(misskey_meta)
+    return misskey_meta if misskey_meta[:software].present?
 
     nodeinfo = fetch_nodeinfo
     if nodeinfo
-      software_data = {
+      return {
         software: nodeinfo.dig('software', 'name'),
         version: nodeinfo.dig('software', 'version'),
       }
-      return software_data
     end
 
     { software: nil, version: nil }
-  rescue
+  rescue *NETWORK_ERRORS, JSON::ParserError
     { software: nil, version: nil }
   end
 
-  def fetch_instance_name
-    misskey_name = fetch_instance_name_from_misskey
-
+  def determine_instance_name(misskey_name)
     return misskey_name if misskey_name.present?
 
     nodeinfo = fetch_nodeinfo
-    if nodeinfo && nodeinfo.dig('metadata', 'nodeName').present?
-      node_name = nodeinfo.dig('metadata', 'nodeName')
-      return node_name
-    end
+    return nodeinfo.dig('metadata', 'nodeName') if nodeinfo && nodeinfo.dig('metadata', 'nodeName').present?
 
-    html_name = fetch_instance_name_from_html
-
+    html_name = extract_instance_name_from_html
     return html_name if html_name.present?
 
     api_name = fetch_instance_name_from_api
-
     return api_name if api_name.present?
 
     @domain
-  rescue
+  rescue *NETWORK_ERRORS, JSON::ParserError
     @domain
   end
 
@@ -159,7 +154,7 @@ class FetchInstanceThemeColorService < BaseService
     end
 
     { software: nil, version: nil }
-  rescue
+  rescue *NETWORK_ERRORS, JSON::ParserError
     { software: nil, version: nil }
   end
 
@@ -185,7 +180,7 @@ class FetchInstanceThemeColorService < BaseService
     end
 
     nil
-  rescue
+  rescue *NETWORK_ERRORS, JSON::ParserError
     nil
   end
 
@@ -209,35 +204,18 @@ class FetchInstanceThemeColorService < BaseService
     'misskey'
   end
 
-  def fetch_instance_name_from_html
-    url = "https://#{@domain}"
+  def extract_instance_name_from_html
+    return nil unless parsed_homepage
 
-    request = Request.new(:get, url)
-    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
-
-    html = nil
-    request.perform do |response|
-      html = response.body_with_limit if response.code == 200
-    end
-
-    return nil if html.nil?
-
-    doc = Nokogiri::HTML(html)
-
-    og_site_name = doc.at_css('meta[property="og:site_name"]')
-
+    og_site_name = parsed_homepage.at_css('meta[property="og:site_name"]')
     return og_site_name['content'] if og_site_name&.[]('content')
 
-    app_name = doc.at_css('meta[name="application-name"]')
-
+    app_name = parsed_homepage.at_css('meta[name="application-name"]')
     return app_name['content'] if app_name&.[]('content')
 
-    title = doc.at_css('title')
-
+    title = parsed_homepage.at_css('title')
     return title.text.strip if title&.text.present?
 
-    nil
-  rescue
     nil
   end
 
@@ -272,11 +250,11 @@ class FetchInstanceThemeColorService < BaseService
       end
     end
     nil
-  rescue
+  rescue *NETWORK_ERRORS, JSON::ParserError
     nil
   end
 
-  def fetch_nodeinfo
+  def fetch_nodeinfo_uncached
     well_known_url = "https://#{@domain}/.well-known/nodeinfo"
 
     request = Request.new(:get, well_known_url)
@@ -307,7 +285,7 @@ class FetchInstanceThemeColorService < BaseService
     end
 
     nodeinfo
-  rescue
+  rescue *NETWORK_ERRORS, JSON::ParserError
     nil
   end
 
@@ -322,6 +300,16 @@ class FetchInstanceThemeColorService < BaseService
       return "##{color[1].upcase * 2}#{color[2].upcase * 2}#{color[3].upcase * 2}"
     end
 
+    nil
+  end
+
+  def resolve_url(href)
+    return href if href.start_with?('http://', 'https://')
+    return "https:#{href}" if href.start_with?('//')
+
+    base_url = "https://#{@domain}"
+    URI.join(base_url, href).to_s
+  rescue URI::InvalidURIError
     nil
   end
 
@@ -358,7 +346,7 @@ class FetchInstanceThemeColorService < BaseService
     end
 
     nil
-  rescue
+  rescue *NETWORK_ERRORS, Errno::ENOENT, Errno::EACCES
     nil
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_18_144837) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -123,13 +123,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_144837) do
     t.boolean "keep_polls", default: false, null: false
     t.boolean "keep_self_bookmark", default: true, null: false
     t.boolean "keep_self_fav", default: true, null: false
+    t.boolean "keep_self_reaction", default: true, null: false
     t.integer "min_favs"
+    t.integer "min_reactions"
     t.integer "min_reblogs"
     t.integer "min_status_age", default: 1209600, null: false
     t.datetime "updated_at", null: false
-    t.boolean "keep_self_reaction", default: true, null: false
-    t.integer "min_reactions"
     t.index ["account_id"], name: "index_account_statuses_cleanup_policies_on_account_id"
+  end
+
+  create_table "account_switch_authorizations", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "target_account_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "target_account_id"], name: "index_account_switch_auths_on_account_and_target", unique: true
+    t.index ["account_id"], name: "index_account_switch_authorizations_on_account_id"
+    t.index ["target_account_id"], name: "index_account_switch_authorizations_on_target_account_id"
   end
 
   create_table "account_warning_presets", force: :cascade do |t|
@@ -653,16 +663,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_144837) do
   end
 
   create_table "instance_metadata", force: :cascade do |t|
+    t.datetime "created_at", null: false
     t.string "domain", null: false
+    t.string "favicon_url"
+    t.string "instance_name"
+    t.datetime "metadata_updated_at"
     t.string "software"
-    t.string "version"
     t.string "theme_color"
     t.datetime "theme_color_updated_at"
-    t.string "favicon_url"
-    t.datetime "metadata_updated_at"
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "instance_name"
+    t.string "version"
     t.index ["domain"], name: "index_instance_metadata_on_domain", unique: true
     t.index ["theme_color_updated_at"], name: "index_instance_metadata_on_theme_color_updated_at"
   end
@@ -1000,8 +1010,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_144837) do
     t.string "activity_uri"
     t.string "approval_uri"
     t.datetime "created_at", null: false
-    t.boolean "legacy", default: false, null: false
     t.boolean "from_misskey", default: false, null: false
+    t.boolean "legacy", default: false, null: false
     t.bigint "quoted_account_id"
     t.bigint "quoted_status_id"
     t.integer "state", default: 0, null: false
@@ -1178,10 +1188,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_144837) do
 
   create_table "status_reactions", force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.bigint "status_id", null: false
-    t.string "name", default: "", null: false
-    t.bigint "custom_emoji_id"
     t.datetime "created_at", null: false
+    t.bigint "custom_emoji_id"
+    t.string "name", default: "", null: false
+    t.bigint "status_id", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id", "status_id", "name"], name: "index_status_reactions_on_account_id_and_status_id", unique: true
     t.index ["account_id"], name: "index_status_reactions_on_account_id"
@@ -1193,12 +1203,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_144837) do
     t.datetime "created_at", precision: nil, null: false
     t.bigint "favourites_count", default: 0, null: false
     t.bigint "quotes_count", default: 0, null: false
+    t.bigint "reactions_count", default: 0, null: false
     t.bigint "reblogs_count", default: 0, null: false
     t.bigint "replies_count", default: 0, null: false
     t.bigint "status_id", null: false
     t.bigint "untrusted_favourites_count"
     t.bigint "untrusted_reblogs_count"
-    t.bigint "reactions_count", default: 0, null: false
     t.datetime "updated_at", precision: nil, null: false
     t.index ["status_id"], name: "index_status_stats_on_status_id", unique: true
   end
@@ -1458,6 +1468,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_18_144837) do
   add_foreign_key "account_relationship_severance_events", "relationship_severance_events", on_delete: :cascade
   add_foreign_key "account_stats", "accounts", on_delete: :cascade
   add_foreign_key "account_statuses_cleanup_policies", "accounts", on_delete: :cascade
+  add_foreign_key "account_switch_authorizations", "accounts", column: "target_account_id", on_delete: :cascade
+  add_foreign_key "account_switch_authorizations", "accounts", on_delete: :cascade
   add_foreign_key "account_warnings", "accounts", column: "target_account_id", on_delete: :cascade
   add_foreign_key "account_warnings", "accounts", on_delete: :nullify
   add_foreign_key "account_warnings", "reports", on_delete: :cascade
