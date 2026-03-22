@@ -75,5 +75,9 @@ module Account::Associations
 
     # BulkImport records owned by account
     has_many :bulk_imports, inverse_of: :account, dependent: :delete_all
+
+    # Account switch authorizations
+    has_many :account_switch_authorizations, inverse_of: :account, dependent: :destroy
+    has_many :switchable_accounts, through: :account_switch_authorizations, source: :target_account
   end
 end

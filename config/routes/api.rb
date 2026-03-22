@@ -225,6 +225,8 @@ namespace :api, format: false do
       resources :familiar_followers, only: :index
     end
 
+    resources :account_switches, only: [:index, :destroy]
+
     resources :accounts, only: [:index, :create, :show] do
       scope module: :accounts do
         resources :statuses, only: :index

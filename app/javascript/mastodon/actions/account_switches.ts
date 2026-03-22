@@ -1,0 +1,22 @@
+import { importFetchedAccounts } from 'mastodon/actions/importer';
+import {
+  apiGetAccountSwitches,
+  apiDeleteAccountSwitch,
+} from 'mastodon/api/account_switches';
+import { createDataLoadingThunk } from 'mastodon/store/typed_functions';
+
+export const fetchAccountSwitches = createDataLoadingThunk(
+  'accountSwitches/fetch',
+  () => apiGetAccountSwitches(),
+  (data, { dispatch }) => {
+    const accounts = data.children.map((auth) => auth.target_account);
+    if (data.parent) accounts.push(data.parent);
+    dispatch(importFetchedAccounts(accounts));
+    return data;
+  },
+);
+
+export const deleteAccountSwitch = createDataLoadingThunk(
+  'accountSwitches/delete',
+  ({ id }: { id: string }) => apiDeleteAccountSwitch(id).then(() => id),
+);

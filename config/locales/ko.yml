@@ -6,6 +6,9 @@ ko:
     contact_unavailable: 없음
     hosted_on: "%{domain}에서 호스팅 되는 마스토돈"
     title: 정보
+  account_switcher:
+    switch_failed: 계정을 찾을 수 없습니다.
+    switch_unauthorized: 이 계정으로 전환할 권한이 없습니다.
   accounts:
     errors:
       cannot_be_added_to_collections: 이 계정은 컬렉션에 추가할 수 없습니다.
@@ -2163,5 +2166,14 @@ ko:
     not_supported: 이 브라우저는 보안 키를 지원하지 않습니다
     otp_required: 보안 키를 사용하기 위해서는 2단계 인증을 먼저 활성화 해 주세요
     registered_on: "%{date}에 등록됨"
+  multi_accounts:
+    auth:
+      add_account: 계정 추가
+      sign_in_hint: 추가할 계정으로 로그인하세요.
+      same_account: 현재 로그인한 계정과 동일한 계정은 추가할 수 없습니다.
+      success_message: 계정이 성공적으로 추가되었습니다. 창을 닫는 중...
+      success_close_message: 계정이 추가되었습니다. 이 창을 닫으셔도 됩니다.
+      completing_authorization: 인증을 완료하는 중...
+      authorization_complete: 인증이 완료되었습니다. 이 창을 닫으셔도 됩니다.
   wrapstodon:
     title: "%{name} 님의 %{year} 랩스토돈"

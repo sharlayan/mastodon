@@ -44,6 +44,10 @@ const messages = defineMessages({
     id: 'navigation_bar.privacy_and_reach',
     defaultMessage: 'Privacy and reach',
   },
+  switchAccount: {
+    id: 'navigation_bar.switch_account',
+    defaultMessage: 'Switch account',
+  },
 });
 
 export const MoreLink: React.FC = () => {
@@ -102,14 +106,25 @@ export const MoreLink: React.FC = () => {
       });
     }
 
+    const handleSwitchAccountClick = () => {
+      dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} }));
+    };
+
     const handleLogoutClick = () => {
       dispatch(openModal({ modalType: 'CONFIRM_LOG_OUT', modalProps: {} }));
     };
 
-    arr.push(null, {
-      text: intl.formatMessage(messages.logout),
-      action: handleLogoutClick,
-    });
+    arr.push(
+      null,
+      {
+        text: intl.formatMessage(messages.switchAccount),
+        action: handleSwitchAccountClick,
+      },
+      {
+        text: intl.formatMessage(messages.logout),
+        action: handleLogoutClick,
+      },
+    );
 
     return arr;
   }, [intl, dispatch, permissions]);

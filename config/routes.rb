@@ -223,6 +223,18 @@ Rails.application.routes.draw do
 
   get '/admin', to: redirect('/admin/dashboard', status: 302)
 
+  # Multi-account switching
+  namespace :multi_accounts do
+    resource :entry, only: [:show], controller: :entries
+    resource :callback, only: [:show], controller: :callbacks
+
+    scope :auth, controller: :auth do
+      get 'sign_in', action: :new, as: :auth_sign_in
+      post 'sign_in', action: :create
+      post 'verify_otp', action: :verify_otp, as: :auth_verify_otp
+    end
+  end
+
   draw(:api)
 
   draw(:fasp)

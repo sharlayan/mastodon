@@ -1,0 +1,22 @@
+- content_for :page_title do
+  = t('multi_accounts.auth.add_account')
+
+%p#message= t('multi_accounts.auth.completing_authorization')
+
+%script{ nonce: request.content_security_policy_nonce }
+  :plain
+    (function() {
+      var data = {
+        type: 'multi_account_callback',
+        state: '#{j @state}',
+        code: '#{j @code}',
+        error: '#{j @error}'
+      };
+
+      if (window.opener) {
+        window.opener.postMessage(data, window.location.origin);
+        window.close();
+      } else {
+        document.getElementById('message').textContent = '#{j t('multi_accounts.auth.authorization_complete')}';
+      }
+    })();

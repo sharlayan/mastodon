@@ -6,6 +6,9 @@ en:
     contact_unavailable: N/A
     hosted_on: Mastodon hosted on %{domain}
     title: About
+  account_switcher:
+    switch_failed: Account not found.
+    switch_unauthorized: You are not authorized to switch to this account.
   accounts:
     errors:
       cannot_be_added_to_collections: This account cannot be added to collections.
@@ -2238,6 +2241,15 @@ en:
     not_supported: This browser doesn't support security keys
     otp_required: To use security keys please enable two-factor authentication first.
     registered_on: Registered on %{date}
+  multi_accounts:
+    auth:
+      add_account: Add account
+      sign_in_hint: Sign in to the account you want to add.
+      same_account: Cannot add the same account you are currently logged in as.
+      success_message: Account added successfully. Closing window...
+      success_close_message: Account added. You may close this window.
+      completing_authorization: Completing authorization...
+      authorization_complete: Authorization complete. You may close this window.
   wrapstodon:
     description: See how %{name} used Mastodon this year!
     title: Wrapstodon %{year} for %{name}

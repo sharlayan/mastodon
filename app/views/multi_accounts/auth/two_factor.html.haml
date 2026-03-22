@@ -1,0 +1,22 @@
+- content_for :page_title do
+  = t('simple_form.labels.defaults.otp_attempt')
+
+= simple_form_for(User.new,
+                  as: :user,
+                  url: multi_accounts_auth_verify_otp_path(state: @state),
+                  html: { method: :post }) do |f|
+  %p.hint.authentication-hint= t('simple_form.hints.sessions.otp')
+
+  .fields-group
+    = f.input :otp_attempt,
+              autofocus: true,
+              input_html: { 'aria-label': t('simple_form.labels.defaults.otp_attempt'), autocomplete: 'one-time-code' },
+              label: t('simple_form.labels.defaults.otp_attempt'),
+              type: :number,
+              wrapper: :with_label
+
+  .actions
+    = f.button :button, t('auth.login'), type: :submit
+
+  - if Setting.site_contact_email.present?
+    %p.hint.subtle-hint= t('users.otp_lost_help_html', email: mail_to(Setting.site_contact_email))
