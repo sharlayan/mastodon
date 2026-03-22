@@ -97,45 +97,49 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
       },
 
       onReceive(data) {
-        switch (data.event) {
-        case 'update':
-          // @ts-expect-error
-          dispatch(updateTimeline(timelineId, JSON.parse(data.payload), { accept: options.accept, bogusQuotePolicy }));
-          break;
-        case 'status.update':
-          // @ts-expect-error
-          dispatch(updateStatus(JSON.parse(data.payload), { bogusQuotePolicy }));
-          break;
-        case 'delete':
-          dispatch(deleteFromTimelines(data.payload));
-          break;
-        case 'notification': {
-          // @ts-expect-error
-          const notificationJSON = JSON.parse(data.payload);
-          dispatch(updateNotifications(notificationJSON, messages, locale));
-          // TODO: remove this once the groups feature replaces the previous one
-          dispatch(processNewNotificationForGroups(notificationJSON));
-          break;
-        }
-        case 'notifications_merged': {
-          dispatch(refreshStaleNotificationGroups());
-          break;
-        }
-        case 'conversation':
-          // @ts-expect-error
-          dispatch(updateConversations(JSON.parse(data.payload)));
-          break;
-        case 'announcement':
-          // @ts-expect-error
-          dispatch(updateAnnouncements(JSON.parse(data.payload)));
-          break;
-        case 'announcement.reaction':
-          // @ts-expect-error
-          dispatch(updateAnnouncementsReaction(JSON.parse(data.payload)));
-          break;
-        case 'announcement.delete':
-          dispatch(deleteAnnouncement(data.payload));
-          break;
+        try {
+          switch (data.event) {
+          case 'update':
+            // @ts-expect-error
+            dispatch(updateTimeline(timelineId, JSON.parse(data.payload), { accept: options.accept, bogusQuotePolicy }));
+            break;
+          case 'status.update':
+            // @ts-expect-error
+            dispatch(updateStatus(JSON.parse(data.payload), { bogusQuotePolicy }));
+            break;
+          case 'delete':
+            dispatch(deleteFromTimelines(data.payload));
+            break;
+          case 'notification': {
+            // @ts-expect-error
+            const notificationJSON = JSON.parse(data.payload);
+            dispatch(updateNotifications(notificationJSON, messages, locale));
+            // TODO: remove this once the groups feature replaces the previous one
+            dispatch(processNewNotificationForGroups(notificationJSON));
+            break;
+          }
+          case 'notifications_merged': {
+            dispatch(refreshStaleNotificationGroups());
+            break;
+          }
+          case 'conversation':
+            // @ts-expect-error
+            dispatch(updateConversations(JSON.parse(data.payload)));
+            break;
+          case 'announcement':
+            // @ts-expect-error
+            dispatch(updateAnnouncements(JSON.parse(data.payload)));
+            break;
+          case 'announcement.reaction':
+            // @ts-expect-error
+            dispatch(updateAnnouncementsReaction(JSON.parse(data.payload)));
+            break;
+          case 'announcement.delete':
+            dispatch(deleteAnnouncement(data.payload));
+            break;
+          }
+        } catch (e) {
+          console.error(`Failed to process streaming event '${data.event}':`, e);
         }
       },
     };

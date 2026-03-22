@@ -248,7 +248,13 @@ const createConnection = (streamingAPIBaseURL, accessToken, channelName, { conne
     const ws = new WebSocketClient(`${streamingAPIBaseURL}/api/v1/streaming/?${params.join('&')}`, accessToken);
 
     ws.onopen = connected;
-    ws.onmessage = e => received(JSON.parse(e.data));
+    ws.onmessage = e => {
+      try {
+        received(JSON.parse(e.data));
+      } catch (err) {
+        console.error('Failed to process WebSocket message:', err);
+      }
+    };
     ws.onclose = disconnected;
     ws.onreconnect = reconnected;
 

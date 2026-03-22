@@ -139,6 +139,9 @@ class StatusCacheHydrator
       scope: account_id, # terrible
       scope_name: :current_user
     ).as_json
+  rescue => e
+    Rails.logger.error("Failed to serialize reactions for status #{@status.id}: #{e.message}")
+    []
   end
 
   def payload_application

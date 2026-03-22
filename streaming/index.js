@@ -290,7 +290,13 @@ const startServer = async () => {
     const json = parseJSON(message, null);
     if (!json) return;
 
-    callbacks.forEach(callback => callback(json));
+    callbacks.forEach(callback => {
+      try {
+        callback(json);
+      } catch (err) {
+        logger.error({ err }, `Error processing Redis message on channel ${key}`);
+      }
+    });
   };
   redisSubscribeClient.on("message", onRedisMessage);
 
