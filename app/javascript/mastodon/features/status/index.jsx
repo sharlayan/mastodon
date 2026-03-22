@@ -163,25 +163,10 @@ class Status extends ImmutablePureComponent {
     return !signedIn && localStatusPageAccess !== 'public';
   }
 
-  UNSAFE_componentWillMount () {
+  componentDidMount() {
     if (this._shouldBlockLoad()) return;
     this.props.dispatch(fetchStatus(this.props.params.statusId, { forceFetch: true }));
-  }
-
-  componentDidMount () {
     attachFullscreenListener(this.onFullScreenChange);
-  }
-
-  UNSAFE_componentWillReceiveProps (nextProps) {
-    if (nextProps.params.statusId !== this.props.params.statusId && nextProps.params.statusId) {
-      if (!this._shouldBlockLoad()) {
-        this.props.dispatch(fetchStatus(nextProps.params.statusId, { forceFetch: true }));
-      }
-    }
-
-    if (nextProps.status && nextProps.status.get('id') !== this.state.loadedStatusId) {
-      this.setState({ showMedia: defaultMediaVisibility(nextProps.status), loadedStatusId: nextProps.status.get('id') });
-    }
   }
 
   handleToggleMediaVisibility = () => {
@@ -501,8 +486,8 @@ class Status extends ImmutablePureComponent {
     this.statusNode = c;
   };
 
-  componentDidUpdate (prevProps) {
-    const { status, descendantsIds } = this.props;
+  componentDidUpdate(prevProps) {
+    const { status, descendantsIds, params } = this.props;
 
     const isSameStatus = status && (prevProps.status?.get('id') === status.get('id'));
 
@@ -513,6 +498,14 @@ class Status extends ImmutablePureComponent {
       if (newRepliesIds.length) {
         this.setState({newRepliesIds});
       }
+    }
+
+    if (params.statusId && prevProps.params.statusId !== params.statusId) {
+      this.props.dispatch(fetchStatus(params.statusId, { forceFetch: true }));
+    }
+
+    if (status && status.get('id') !== this.state.loadedStatusId) {
+      this.setState({ showMedia: defaultMediaVisibility(this.props.status), loadedStatusId: status.get('id') });
     }
   }
 
