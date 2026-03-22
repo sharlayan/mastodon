@@ -6,6 +6,9 @@ ja:
     contact_unavailable: N/A
     hosted_on: Mastodon hosted on %{domain}
     title: このサーバーについて
+  account_switcher:
+    switch_failed: アカウントが見つかりません。
+    switch_unauthorized: このアカウントに切り替える権限がありません。
   accounts:
     followers:
       other: フォロワー
@@ -1611,6 +1614,15 @@ ja:
       redirect: プロフィールに引っ越し済みの通知が表示され、検索結果から除外されます
   moderation:
     title: モデレーション
+  multi_accounts:
+    auth:
+      add_account: アカウントを追加
+      sign_in_hint: 追加したいアカウントでログインしてください。
+      same_account: 現在ログイン中のアカウントと同じアカウントは追加できません。
+      success_message: アカウントが正常に追加されました。ウィンドウを閉じています...
+      success_close_message: アカウントが追加されました。このウィンドウを閉じてください。
+      completing_authorization: 認証を完了しています...
+      authorization_complete: 認証が完了しました。このウィンドウを閉じてください。
   move_handler:
     carry_blocks_over_text: このユーザーは、あなたがブロックしていた%{acct}から引っ越しました。
     carry_mutes_over_text: このユーザーは、あなたがミュートしていた%{acct}から引っ越しました。
