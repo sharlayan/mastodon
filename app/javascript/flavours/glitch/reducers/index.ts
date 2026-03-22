@@ -3,6 +3,7 @@ import { Record as ImmutableRecord, mergeDeep } from 'immutable';
 import { loadingBarReducer } from 'react-redux-loading-bar';
 import { combineReducers } from 'redux-immutable';
 
+import { accountSwitchesReducer } from './account_switches';
 import { accountsReducer } from './accounts';
 import { accountsFamiliarFollowersReducer } from './accounts_familiar_followers';
 import { accountsMapReducer } from './accounts_map';
@@ -44,6 +45,7 @@ import trends from './trends';
 import user_lists from './user_lists';
 
 const reducers = {
+  accountSwitches: accountSwitchesReducer,
   announcements,
   dropdownMenu: dropdownMenuReducer,
   timelines,

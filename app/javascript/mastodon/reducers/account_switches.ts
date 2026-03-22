@@ -1,0 +1,64 @@
+import type { Reducer } from '@reduxjs/toolkit';
+import {
+  Map as ImmutableMap,
+  Record as ImmutableRecord,
+  List as ImmutableList,
+} from 'immutable';
+
+import {
+  fetchAccountSwitches,
+  deleteAccountSwitch,
+} from 'mastodon/actions/account_switches';
+
+const AuthorizationRecord = ImmutableRecord({
+  id: '',
+  target_account_id: '',
+  created_at: '',
+});
+
+type Authorization = ReturnType<typeof AuthorizationRecord>;
+
+const initialState = ImmutableMap({
+  items: ImmutableList<Authorization>(),
+  parentAccountId: null as string | null,
+  isLoading: false,
+  loaded: false,
+});
+
+type State = typeof initialState;
+
+export const accountSwitchesReducer: Reducer<State> = (
+  state = initialState,
+  action,
+) => {
+  if (fetchAccountSwitches.pending.match(action)) {
+    return state.set('isLoading', true);
+  } else if (fetchAccountSwitches.fulfilled.match(action)) {
+    const data = action.payload;
+    const items = ImmutableList(
+      data.children.map((auth) =>
+        AuthorizationRecord({
+          id: auth.id,
+          target_account_id: auth.target_account.id,
+          created_at: auth.created_at,
+        }),
+      ),
+    );
+    return state
+      .set('items', items)
+      .set('parentAccountId', data.parent?.id ?? null)
+      .set('isLoading', false)
+      .set('loaded', true);
+  } else if (fetchAccountSwitches.rejected.match(action)) {
+    return state.set('isLoading', false);
+  } else if (deleteAccountSwitch.fulfilled.match(action)) {
+    const deletedId = action.payload;
+    return state.update('items', (items) =>
+      (items as ImmutableList<Authorization>).filter(
+        (item) => item.get('id') !== deletedId,
+      ),
+    );
+  }
+
+  return state;
+};

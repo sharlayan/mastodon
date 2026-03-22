@@ -1,0 +1,26 @@
+- content_for :page_title do
+  = t('multi_accounts.auth.add_account')
+
+= simple_form_for @user, as: :user, url: multi_accounts_auth_sign_in_path(state: @state), html: { autocomplete: 'on', 'data-turbo': 'false' } do |f|
+  %h1.title= t('multi_accounts.auth.add_account')
+  %p.lead= t('multi_accounts.auth.sign_in_hint')
+
+  .fields-group
+    = f.input :email,
+              autofocus: true,
+              required: true,
+              hint: false,
+              input_html: { 'aria-label': t('simple_form.labels.defaults.email'), autocomplete: 'username' },
+              label: t('simple_form.labels.defaults.email'),
+              wrapper: :with_label
+
+  .fields-group
+    = f.input :password,
+              required: true,
+              hint: false,
+              input_html: { 'aria-label': t('simple_form.labels.defaults.password'), autocomplete: 'current-password' },
+              label: t('simple_form.labels.defaults.password'),
+              wrapper: :with_label
+
+  .actions
+    = f.button :button, t('auth.login'), type: :submit

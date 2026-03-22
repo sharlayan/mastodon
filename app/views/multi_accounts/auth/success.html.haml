@@ -1,0 +1,48 @@
+- content_for :page_title do
+  = t('multi_accounts.auth.add_account')
+
+%p#message= t('multi_accounts.auth.success_message')
+
+%script{ nonce: request.content_security_policy_nonce }
+  :plain
+    (function() {
+      var data = {
+        type: 'multi_account_callback',
+        state: '#{j @result_state}',
+        success: true
+      };
+
+      var delivered = false;
+
+      if (window.opener) {
+        try {
+          window.opener.postMessage(data, window.location.origin);
+          delivered = true;
+        } catch (e) {}
+      }
+
+      if (typeof BroadcastChannel !== 'undefined') {
+        try {
+          var bc = new BroadcastChannel('multi_account_auth');
+          bc.postMessage(data);
+          delivered = true;
+          setTimeout(function() { bc.close(); }, 1000);
+        } catch (e) {}
+      }
+
+      if (delivered) {
+        var attempts = 0;
+        var tryClose = function() {
+          attempts++;
+          window.close();
+          if (attempts < 5) {
+            setTimeout(tryClose, 500);
+          } else {
+            document.getElementById('message').textContent = '#{j t('multi_accounts.auth.success_close_message')}';
+          }
+        };
+        setTimeout(tryClose, 300);
+      } else {
+        document.getElementById('message').textContent = '#{j t('multi_accounts.auth.success_close_message')}';
+      }
+    })();

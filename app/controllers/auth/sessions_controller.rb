@@ -12,6 +12,8 @@ class Auth::SessionsController < Devise::SessionsController
   skip_before_action :require_functional!
   skip_before_action :update_user_sign_in
 
+  before_action :handle_account_switch, only: [:new], if: -> { params[:switch_to].present? }
+
   around_action :preserve_stored_location, only: :destroy, if: :continue_after?
 
   prepend_before_action :check_suspicious!, only: [:create]
@@ -87,6 +89,8 @@ class Auth::SessionsController < Devise::SessionsController
   end
 
   def require_no_authentication
+    return if params[:switch_to].present? && user_signed_in?
+
     super
 
     # Delete flash message that isn't entirely useful and may be confusing in
@@ -95,6 +99,68 @@ class Auth::SessionsController < Devise::SessionsController
   end
 
   private
+
+  def handle_account_switch
+    unless user_signed_in?
+      redirect_to new_user_session_path
+      return
+    end
+
+    target_account = Account.find_by(id: params[:switch_to])
+
+    unless target_account
+      redirect_to root_path, alert: I18n.t('account_switcher.switch_failed')
+      return
+    end
+
+    target_user = target_account.user
+
+    unless target_user&.active_for_authentication?
+      redirect_to root_path, alert: I18n.t('account_switcher.switch_failed')
+      return
+    end
+
+    parent_stack = session.fetch(:switch_parent_stack, []).map(&:to_i)
+
+    max_depth = 5
+    if parent_stack.length >= max_depth && parent_stack.last != target_account.id
+      redirect_to root_path, alert: I18n.t('account_switcher.switch_unauthorized')
+      return
+    end
+
+    if parent_stack.last == target_account.id
+      # Reverse switch: going back to parent account
+      # Verify the parent still has a valid authorization covering this account
+      authorization = AccountSwitchAuthorization.find_by(
+        account_id: target_account.id,
+        target_account_id: current_account.id
+      )
+
+      unless authorization
+        redirect_to root_path, alert: I18n.t('account_switcher.switch_unauthorized')
+        return
+      end
+
+      new_stack = parent_stack[0..-2]
+    else
+      # Forward switch: going to a child account
+      authorization = current_account.account_switch_authorizations.find_by(target_account: target_account)
+
+      unless authorization
+        redirect_to root_path, alert: I18n.t('account_switcher.switch_unauthorized')
+        return
+      end
+
+      new_stack = parent_stack + [current_account.id]
+    end
+
+    sign_out(current_user)
+    sign_in(target_user)
+    session[:switch_parent_stack] = new_stack
+    target_user.update_sign_in!(new_sign_in: true)
+
+    redirect_to root_path
+  end
 
   def preserve_stored_location
     original_stored_location = stored_location_for(:user)

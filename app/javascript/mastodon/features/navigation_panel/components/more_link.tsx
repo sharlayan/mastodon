@@ -25,6 +25,10 @@ const messages = defineMessages({
   },
   moderation: { id: 'navigation_bar.moderation', defaultMessage: 'Moderation' },
   logout: { id: 'navigation_bar.logout', defaultMessage: 'Logout' },
+  switchAccount: {
+    id: 'navigation_bar.switch_account',
+    defaultMessage: 'Switch account',
+  },
   automatedDeletion: {
     id: 'navigation_bar.automated_deletion',
     defaultMessage: 'Automated post deletion',
@@ -99,14 +103,25 @@ export const MoreLink: React.FC = () => {
       });
     }
 
+    const handleSwitchAccountClick = () => {
+      dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} }));
+    };
+
     const handleLogoutClick = () => {
       dispatch(openModal({ modalType: 'CONFIRM_LOG_OUT', modalProps: {} }));
     };
 
-    arr.push(null, {
-      text: intl.formatMessage(messages.logout),
-      action: handleLogoutClick,
-    });
+    arr.push(
+      null,
+      {
+        text: intl.formatMessage(messages.switchAccount),
+        action: handleSwitchAccountClick,
+      },
+      {
+        text: intl.formatMessage(messages.logout),
+        action: handleLogoutClick,
+      },
+    );
 
     return arr;
   }, [intl, dispatch, permissions]);
