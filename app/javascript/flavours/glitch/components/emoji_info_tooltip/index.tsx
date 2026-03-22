@@ -1,8 +1,76 @@
-import type { RefObject, FC } from 'react';
+import type { RefObject, FC, ReactNode } from 'react';
 import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 
 import Overlay from 'react-overlays/Overlay';
+
+interface EmojiReactionOverlayProps {
+  show: boolean;
+  target: HTMLElement | (() => HTMLElement | null) | null;
+  emojiUrl: string;
+  shortCode: string;
+  placement?: 'top' | 'bottom';
+  emojiClassName?: string;
+  children?: ReactNode;
+}
+
+export const EmojiReactionOverlay: FC<EmojiReactionOverlayProps> = ({
+  show,
+  target,
+  emojiUrl,
+  shortCode,
+  placement = 'bottom',
+  emojiClassName,
+  children,
+}) => {
+  if (!show || !target) {
+    return null;
+  }
+
+  return (
+    <Overlay
+      show={show}
+      offset={[0, 5]}
+      placement={placement}
+      flip
+      target={target}
+      popperConfig={{ strategy: 'fixed' }}
+    >
+      {({
+        props,
+        placement: currentPlacement,
+      }: {
+        props: React.HTMLAttributes<HTMLDivElement>;
+        placement: string;
+      }) => (
+        <div className='emoji-magnify-overlay' {...props}>
+          <div className={`dropdown-animation ${currentPlacement}`}>
+            <div className='reactions-bar__item__users'>
+              <div
+                className={
+                  emojiClassName ?? 'reactions-bar__item__users__emoji'
+                }
+              >
+                <span>
+                  <img
+                    src={emojiUrl}
+                    alt={shortCode}
+                    className='emojione custom-emoji'
+                    loading='lazy'
+                  />
+                </span>
+                <span className='reactions-bar__item__users__emoji__code'>
+                  {shortCode}
+                </span>
+              </div>
+              {children}
+            </div>
+          </div>
+        </div>
+      )}
+    </Overlay>
+  );
+};
 
 interface EmojiInfoTooltipProps {
   containerRef: RefObject<HTMLElement>;
@@ -96,46 +164,16 @@ export const EmojiInfoTooltip: FC<EmojiInfoTooltipProps> = ({
   }
 
   const img = emojiElement;
-
   const shortCode = img.getAttribute('alt') ?? '';
   const emojiUrl = img.getAttribute('src') ?? '';
 
   return (
-    <Overlay
+    <EmojiReactionOverlay
       show={hovered}
-      offset={[0, 5]}
-      placement={isAboveCenter(img) ? 'bottom' : 'top'}
-      flip
       target={emojiElement}
-      popperConfig={{ strategy: 'fixed' }}
-    >
-      {({
-        props,
-        placement,
-      }: {
-        props: React.HTMLAttributes<HTMLDivElement>;
-        placement: string;
-      }) => (
-        <div className='emoji-magnify-overlay' {...props}>
-          <div className={`dropdown-animation ${placement}`}>
-            <div className='reactions-bar__item__users'>
-              <div className='reactions-bar__item__users__emoji'>
-                <span>
-                  <img
-                    src={emojiUrl}
-                    alt={shortCode}
-                    className='emojione custom-emoji'
-                    loading='lazy'
-                  />
-                </span>
-                <span className='reactions-bar__item__users__emoji__code'>
-                  {shortCode}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </Overlay>
+      emojiUrl={emojiUrl}
+      shortCode={shortCode}
+      placement={isAboveCenter(img) ? 'bottom' : 'top'}
+    />
   );
 };

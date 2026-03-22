@@ -26,9 +26,13 @@ const getReactionUsers = (state, id) => {
   const reactions = state.getIn(['statuses', id, 'reactions']);
   if (!reactions) return null;
 
-  return reactions
-    .flatMap(reaction => reaction.get('users'))
-    .map(user => state.getIn(['accounts', user.get('id')]));
+  return reactions.map(reaction => {
+    const users = reaction.get('users');
+    if (!users) return null;
+    return users
+      .map(user => user && state.getIn(['accounts', user.get('id')]))
+      .filter(account => !!account);
+  });
 };
 
 function getStatusResultFunction(
@@ -88,31 +92,22 @@ function getStatusResultFunction(
     statusReblog = null;
   }
 
-  // check needed user fetch error
   let reactions = statusReblog
     ? statusReblog.get('reactions')
     : statusBase.get('reactions');
 
-  let users = statusReblog
+  const usersPerReaction = statusReblog
     ? reactedUsersReblog
     : reactedUsers;
 
-  if (reactions && users && users.size > 0) {
-    try {
-      let userIndex = 0;
-      for (let i = 0; i < reactions.size; i++) {
-        const reactionUsers = reactions.getIn([i, 'users']);
-        if (reactionUsers) {
-          for(let j = 0; j < reactionUsers.size; j++) {
-            if (userIndex < users.size) {
-              reactions = reactions.setIn([i, 'users', j], users.get(userIndex++));
-            }
-          }
-        }
+  if (reactions && usersPerReaction) {
+    reactions = reactions.map((reaction, i) => {
+      const resolvedUsers = usersPerReaction.get(i);
+      if (resolvedUsers) {
+        return reaction.set('users', resolvedUsers);
       }
-    } catch (error) {
-      console.error('Error processing reactions:', error);
-    }
+      return reaction;
+    });
   }
 
   return {
