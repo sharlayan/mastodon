@@ -15,6 +15,7 @@ class Api::V1::AccountSwitchesController < Api::BaseController
     children_owner = (Account.find_by(id: root_parent_id) if root_parent_id.present?) || current_account
 
     children = children_owner.account_switch_authorizations
+      .where.not(target_account_id: current_account.id)
       .includes(target_account: [:account_stat])
       .order(created_at: :desc)
 
