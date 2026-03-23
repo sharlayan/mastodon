@@ -7,19 +7,23 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   before_action :set_authorization, only: [:destroy]
 
   def index
-    children = current_account.account_switch_authorizations
+    parent_stack = switch_parent_stack
+    root_parent_id = parent_stack.first
+    direct_parent_id = parent_stack.last
+
+    # Always show the root (main) account's children, not the current sub-account's
+    children_owner = (Account.find_by(id: root_parent_id) if root_parent_id.present?) || current_account
+
+    children = children_owner.account_switch_authorizations
       .includes(target_account: [:account_stat])
       .order(created_at: :desc)
 
-    parent_stack = session.fetch(:switch_parent_stack, []).map(&:to_i)
-    parent_account_id = parent_stack.last
-
-    parent_account = if parent_account_id.present?
+    parent_account = if direct_parent_id.present?
                        auth = AccountSwitchAuthorization.find_by(
-                         account_id: parent_account_id,
+                         account_id: direct_parent_id,
                          target_account_id: current_account.id
                        )
-                       auth.present? ? Account.includes(:account_stat).find_by(id: parent_account_id) : nil
+                       auth.present? ? Account.includes(:account_stat).find_by(id: direct_parent_id) : nil
                      end
 
     render json: {

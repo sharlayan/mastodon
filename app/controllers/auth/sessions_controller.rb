@@ -35,6 +35,7 @@ class Auth::SessionsController < Devise::SessionsController
   end
 
   def destroy
+    cookies.delete(:switch_parent_stack)
     super
     session.delete(:challenge_passed_at)
     flash.delete(:notice)
@@ -120,7 +121,7 @@ class Auth::SessionsController < Devise::SessionsController
       return
     end
 
-    parent_stack = session.fetch(:switch_parent_stack, []).map(&:to_i)
+    parent_stack = switch_parent_stack
 
     max_depth = 5
     if parent_stack.length >= max_depth && parent_stack.last != target_account.id
@@ -156,7 +157,7 @@ class Auth::SessionsController < Devise::SessionsController
 
     sign_out(current_user)
     sign_in(target_user)
-    session[:switch_parent_stack] = new_stack
+    persist_switch_parent_stack(new_stack)
     target_user.update_sign_in!(new_sign_in: true)
 
     redirect_to root_path

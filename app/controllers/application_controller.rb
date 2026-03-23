@@ -100,6 +100,38 @@ class ApplicationController < ActionController::Base
 
   protected
 
+  def switch_parent_stack
+    stack = session[:switch_parent_stack]
+
+    if stack.nil? && cookies.signed[:switch_parent_stack].present?
+      begin
+        stack = JSON.parse(cookies.signed[:switch_parent_stack])
+        session[:switch_parent_stack] = stack
+      rescue JSON::ParserError
+        cookies.delete(:switch_parent_stack)
+        stack = nil
+      end
+    end
+
+    (stack || []).map(&:to_i)
+  end
+
+  def persist_switch_parent_stack(new_stack)
+    session[:switch_parent_stack] = new_stack
+
+    if new_stack.blank?
+      cookies.delete(:switch_parent_stack)
+    else
+      cookies.signed[:switch_parent_stack] = {
+        value: new_stack.to_json,
+        expires: 30.days.from_now,
+        httponly: true,
+        secure: Rails.configuration.x.use_https,
+        same_site: :lax,
+      }
+    end
+  end
+
   def truthy_param?(key)
     ActiveModel::Type::Boolean.new.cast(params[key])
   end
