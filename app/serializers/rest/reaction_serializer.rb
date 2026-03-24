@@ -26,7 +26,7 @@ class REST::ReactionSerializer < ActiveModel::Serializer
   end
 
   def account_ids?
-    object.account_ids.to_s
+    object.account_ids.present?
   end
 
   def url

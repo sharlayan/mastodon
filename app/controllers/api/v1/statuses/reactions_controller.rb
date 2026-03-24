@@ -3,16 +3,13 @@
 class Api::V1::Statuses::ReactionsController < Api::V1::Statuses::BaseController
   before_action -> { doorkeeper_authorize! :write, :'write:favourites' }
   before_action :require_user!
-  before_action :set_status, only: %i(create update destroy)
+  before_action :set_status, only: %i(create destroy)
 
   def create
     ReactService.new.call(current_account, @status, params[:id])
     render json: @status, serializer: REST::StatusSerializer
-  end
-
-  def update
-    ReactService.new.call(current_account, @status, params[:id])
-    render json: @status, serializer: REST::StatusSerializer
+  rescue Mastodon::NotPermittedError
+    not_found
   end
 
   def destroy

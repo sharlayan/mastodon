@@ -7,14 +7,20 @@ class ReactService < BaseService
   def call(account, status, emoji)
     authorize_with account, status, :react?
 
+    return if emoji.blank?
+
     name, domain = emoji.split('@')
     return unless domain.nil? || status.local?
 
     custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
     reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
-    return reaction unless reaction.nil?
+    return reaction if reaction
 
-    reaction = StatusReaction.create!(account: account, status: status, name: name, custom_emoji: custom_emoji)
+    begin
+      reaction = StatusReaction.create!(account: account, status: status, name: name, custom_emoji: custom_emoji)
+    rescue ActiveRecord::RecordNotUnique
+      return StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
+    end
 
     Trends.statuses.register(status)
 
@@ -48,7 +54,6 @@ class ReactService < BaseService
   end
 
   def build_json(reaction)
-    json = serialize_payload(reaction, ActivityPub::EmojiReactionSerializer).to_json
-    json.gsub('MisskeyReaction', '_misskey_reaction')
+    serialize_payload(reaction, ActivityPub::EmojiReactionSerializer).to_json
   end
 end

@@ -120,6 +120,19 @@ export function normalizeStatus(status, normalOldStatus, { settings, bogusQuoteP
         }
       });
     }
+
+    if (normalStatus.reactions && Array.isArray(normalStatus.reactions)) {
+      const oldReactions = normalOldStatus.get('reactions');
+      if (oldReactions) {
+        normalStatus.reactions = normalStatus.reactions.map(reaction => {
+          const oldReaction = oldReactions.find(r => r.get('name') === reaction.name);
+          if (oldReaction && oldReaction.get('me')) {
+            return { ...reaction, me: true };
+          }
+          return reaction;
+        });
+      }
+    }
   }
 
   return normalStatus;

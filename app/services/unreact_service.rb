@@ -4,6 +4,8 @@ class UnreactService < BaseService
   include Payloadable
 
   def call(account, status, emoji)
+    return if emoji.blank?
+
     name, domain = emoji.split('@')
     custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
     reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
@@ -26,7 +28,6 @@ class UnreactService < BaseService
   end
 
   def build_json(reaction)
-    json = serialize_payload(reaction, ActivityPub::UndoEmojiReactionSerializer).to_json
-    json.gsub('MisskeyReaction', '_misskey_reaction')
+    serialize_payload(reaction, ActivityPub::UndoEmojiReactionSerializer).to_json
   end
 end
