@@ -2,6 +2,7 @@
 
 class NotifyService < BaseService
   include Redisable
+  include RoutingHelper
 
   # TODO: the severed_relationships and annual_report types probably warrants email notifications
   NON_EMAIL_TYPES = %i(
@@ -256,6 +257,7 @@ class NotifyService < BaseService
   def push_notification!
     push_to_streaming_api! if subscribed_to_streaming_api?
     push_to_web_push_subscriptions!
+    push_to_linked_account_subscribers!
   end
 
   def push_to_streaming_api!
@@ -276,6 +278,45 @@ class NotifyService < BaseService
 
   def push_to_web_push_subscriptions!
     ::Web::PushNotificationWorker.push_bulk(web_push_subscriptions.select { |subscription| subscription.pushable?(@notification) }) { |subscription| [subscription.id, @notification.id] }
+  end
+
+  def push_to_linked_account_subscribers!
+    # Find main accounts that have push_forward enabled for this sub-account
+    linked_auths = AccountSwitchAuthorization.push_forwarding
+      .where(target_account_id: @recipient.id)
+      .joins('INNER JOIN users ON users.account_id = account_switch_authorizations.account_id')
+
+    linked_auths.pluck('users.id').each do |main_user_id|
+      ::Web::LinkedPushNotificationWorker.perform_async(main_user_id, @notification.id)
+    end
+
+    # Also push to streaming for main accounts currently connected
+    linked_auths.pluck('account_switch_authorizations.account_id').each do |main_account_id|
+      push_linked_notification_to_streaming!(main_account_id)
+    end
+  end
+
+  def push_linked_notification_to_streaming!(main_account_id)
+    return unless redis.exists?("subscribed:timeline:#{main_account_id}") || redis.exists?("subscribed:timeline:#{main_account_id}:notifications")
+
+    payload = {
+      linked_account_id: @recipient.id.to_s,
+      linked_account_acct: @recipient.acct,
+      notification: {
+        id: @notification.id.to_s,
+        type: @notification.type,
+        created_at: @notification.created_at.iso8601,
+        account: {
+          id: @notification.from_account.id.to_s,
+          acct: @notification.from_account.acct,
+          display_name: @notification.from_account.display_name,
+          username: @notification.from_account.username,
+          avatar: full_asset_url(@notification.from_account.avatar_static_url),
+        },
+      },
+    }
+
+    redis.publish("timeline:#{main_account_id}:notifications", { event: :linked_notification, payload: payload.to_json }.to_json)
   end
 
   def web_push_subscriptions

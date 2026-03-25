@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_24_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -135,6 +135,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
   create_table "account_switch_authorizations", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
+    t.boolean "push_forward", default: false, null: false
     t.bigint "target_account_id", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id", "target_account_id"], name: "index_account_switch_auths_on_account_and_target", unique: true
@@ -179,7 +180,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
     t.boolean "discoverable"
     t.string "display_name", default: "", null: false
     t.string "domain"
-    t.integer "feature_approval_policy", default: 0, null: false
     t.string "featured_collection_url"
     t.jsonb "fields"
     t.string "followers_url", default: "", null: false
@@ -403,7 +403,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
     t.text "description"
     t.text "description_html"
     t.boolean "discoverable", null: false
-    t.integer "item_count", default: 0, null: false
     t.string "language"
     t.boolean "local", null: false
     t.string "name", null: false
@@ -434,7 +433,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
 
   create_table "custom_emoji_categories", force: :cascade do |t|
     t.datetime "created_at", precision: nil, null: false
-    t.bigint "featured_emoji_id"
     t.string "name"
     t.datetime "updated_at", precision: nil, null: false
     t.index ["name"], name: "index_custom_emoji_categories_on_name", unique: true
@@ -645,7 +643,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
     t.datetime "created_at", null: false
     t.jsonb "data", null: false
     t.integer "schema_version", null: false
-    t.string "share_key"
     t.datetime "updated_at", null: false
     t.datetime "viewed_at"
     t.integer "year", null: false
@@ -875,11 +872,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
     t.integer "expires_in"
     t.datetime "last_used_at", precision: nil
     t.inet "last_used_ip"
+    t.boolean "multi_account", default: false, null: false
     t.string "refresh_token"
     t.bigint "resource_owner_id"
     t.datetime "revoked_at", precision: nil
     t.string "scopes"
     t.string "token", null: false
+    t.index ["multi_account"], name: "index_oauth_access_tokens_on_multi_account"
     t.index ["refresh_token"], name: "index_oauth_access_tokens_on_refresh_token", unique: true, opclass: :text_pattern_ops, where: "(refresh_token IS NOT NULL)"
     t.index ["resource_owner_id"], name: "index_oauth_access_tokens_on_resource_owner_id", where: "(resource_owner_id IS NOT NULL)"
     t.index ["token"], name: "index_oauth_access_tokens_on_token", unique: true
@@ -1500,7 +1499,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_22_160524) do
   add_foreign_key "collections", "tags"
   add_foreign_key "conversation_mutes", "accounts", name: "fk_225b4212bb", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
-  add_foreign_key "custom_emoji_categories", "custom_emojis", column: "featured_emoji_id", on_delete: :nullify
   add_foreign_key "custom_filter_keywords", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "statuses", on_delete: :cascade

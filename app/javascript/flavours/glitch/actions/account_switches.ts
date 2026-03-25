@@ -2,6 +2,8 @@ import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
 import {
   apiGetAccountSwitches,
   apiDeleteAccountSwitch,
+  apiCreatePushForward,
+  apiDeletePushForward,
 } from 'flavours/glitch/api/account_switches';
 import { createDataLoadingThunk } from 'flavours/glitch/store/typed_functions';
 
@@ -19,4 +21,16 @@ export const fetchAccountSwitches = createDataLoadingThunk(
 export const deleteAccountSwitch = createDataLoadingThunk(
   'accountSwitches/delete',
   ({ id }: { id: string }) => apiDeleteAccountSwitch(id).then(() => id),
+);
+
+export const enableLinkedPushForward = createDataLoadingThunk(
+  'accountSwitches/enablePushForward',
+  ({ linkedAccountId }: { linkedAccountId: string }) =>
+    apiCreatePushForward(linkedAccountId),
+);
+
+export const disableLinkedPushForward = createDataLoadingThunk(
+  'accountSwitches/disablePushForward',
+  ({ linkedAccountId }: { linkedAccountId: string }) =>
+    apiDeletePushForward(linkedAccountId).then(() => linkedAccountId),
 );

@@ -12,6 +12,7 @@ import { connectUserStream } from 'mastodon/actions/streaming';
 import ErrorBoundary from 'mastodon/components/error_boundary';
 import { Router } from 'mastodon/components/router';
 import UI from 'mastodon/features/ui';
+import { LinkedNotificationsPoller } from 'mastodon/features/ui/components/linked_notifications_poller';
 import { IdentityContext, createIdentityContext } from 'mastodon/identity_context';
 import { initialState, title as siteTitle } from 'mastodon/initial_state';
 import { IntlProvider } from 'mastodon/locales';
@@ -58,6 +59,8 @@ export default class Mastodon extends PureComponent {
                 </ScrollContext>
                 <BodyScrollLock />
               </Router>
+
+              {this.identity.signedIn && <LinkedNotificationsPoller />}
 
               <Helmet defaultTitle={title} titleTemplate={`%s - ${title}`} />
             </ErrorBoundary>

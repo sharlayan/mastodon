@@ -7036,7 +7036,7 @@ a.status-card {
   &__content {
     overflow-y: auto;
     flex: 1;
-    padding: 8px 0;
+    padding: 0;
   }
 
   &__loading {
@@ -7061,18 +7061,24 @@ a.status-card {
 
     &--current {
       background: var(--color-bg-secondary);
-      cursor: pointer;
+      flex-direction: column;
+      align-items: stretch;
+      cursor: default;
+      padding: 0;
 
       &:hover {
-        background: var(--color-bg-brand-softer);
+        background: var(--color-bg-secondary);
       }
     }
 
     &--parent {
-      cursor: pointer;
+      flex-direction: column;
+      align-items: stretch;
+      cursor: default;
+      padding: 0;
 
       &:hover {
-        background: var(--color-bg-brand-softer);
+        background: transparent;
       }
     }
 
@@ -7115,6 +7121,9 @@ a.status-card {
     }
 
     &__actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       flex-shrink: 0;
     }
   }
@@ -7153,8 +7162,112 @@ a.status-card {
   }
 
   &__remove-button {
+    padding: 4px 6px;
+    width: auto;
+
     .icon {
       color: var(--color-text-danger, #ff6b6b);
+    }
+  }
+
+  &__check-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 6px;
+
+    .icon {
+      color: var(--color-accent);
+    }
+  }
+
+  // Switchable item now uses a flex-column wrapper to accommodate the
+  // notification settings panel that expands below the main row.
+  &__item--switchable {
+    flex-direction: column;
+    align-items: stretch;
+    cursor: default;
+    padding: 0;
+
+    &:hover {
+      background: transparent;
+    }
+  }
+
+  &__item__row {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    gap: 12px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-bg-brand-softer);
+    }
+  }
+
+  &__notif-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    width: auto;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-bg-brand-softer);
+    }
+
+    &.open {
+      background: var(--color-bg-brand-softer);
+    }
+
+    .icon {
+      color: var(--color-accent);
+    }
+
+    &.active .icon {
+      color: var(--color-accent);
+    }
+  }
+
+  &__notif-settings {
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--color-bg-secondary);
+    border-radius: 6px;
+    margin: 0 4px 4px;
+  }
+
+  &__notif-hint {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+  }
+
+  &__notif-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+
+    input[type='checkbox'] {
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    &:hover {
+      color: var(--color-text-primary);
     }
   }
 }

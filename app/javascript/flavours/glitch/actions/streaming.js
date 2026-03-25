@@ -1,8 +1,10 @@
 // @ts-check
 
+import { me } from '../initial_state';
 import { getLocale } from '../locales';
 import { connectStream } from '../stream';
 
+import { showAlert } from './alerts';
 import {
   fetchAnnouncements,
   updateAnnouncements,
@@ -116,6 +118,27 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
             dispatch(updateNotifications(notificationJSON, messages, locale));
             // TODO: remove this once the groups feature replaces the previous one
             dispatch(processNewNotificationForGroups(notificationJSON));
+            break;
+          }
+          case 'linked_notification': {
+            // @ts-expect-error
+            const linked = JSON.parse(data.payload);
+            const fromName = linked.notification.account.display_name || linked.notification.account.username;
+            const msgTemplate = messages[`notification.${linked.notification.type}`];
+            const rawMessage = typeof msgTemplate === 'string' ? msgTemplate.replace(/\{name\}/g, fromName) : fromName;
+            const MAX_MSG_LENGTH = 120;
+            const message = rawMessage.length > MAX_MSG_LENGTH ? rawMessage.slice(0, MAX_MSG_LENGTH - 1) + '…' : rawMessage;
+
+            dispatch(showAlert({ title: `@${linked.linked_account_acct}`, message }));
+
+            // Update lastSeenId so the poller won't show duplicates
+            if (me) {
+              const key = `linked_notif_last_id_${me}_${linked.linked_account_id}`;
+              const prev = localStorage.getItem(key);
+              if (!prev || Number(linked.notification.id) > Number(prev)) {
+                localStorage.setItem(key, linked.notification.id);
+              }
+            }
             break;
           }
           case 'notifications_merged': {

@@ -5,12 +5,15 @@ import { defineMessages, useIntl } from 'react-intl';
 import classNames from 'classnames';
 
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
+import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
 import CheckIcon from '@/material-icons/400-24px/person_shield.svg?react';
 import {
   fetchAccountSwitches,
   deleteAccountSwitch,
+  enableLinkedPushForward,
+  disableLinkedPushForward,
 } from 'mastodon/actions/account_switches';
 import { Avatar } from 'mastodon/components/avatar';
 import { DisplayName } from 'mastodon/components/display_name';
@@ -56,7 +59,54 @@ const messages = defineMessages({
     id: 'account_switcher.remove_account_confirm',
     defaultMessage: 'Are you sure you want to unlink {name} (@{acct})?',
   },
+  notifications: {
+    id: 'account_switcher.notifications',
+    defaultMessage: 'Notifications',
+  },
+  receiveNotifications: {
+    id: 'account_switcher.receive_notifications',
+    defaultMessage: 'Receive in-app notifications',
+  },
+  receivePushNotifications: {
+    id: 'account_switcher.receive_push_notifications',
+    defaultMessage: 'Receive push notifications',
+  },
+  notifHint: {
+    id: 'account_switcher.notif_hint',
+    defaultMessage:
+      'Receive notifications for this account while using another account',
+  },
 });
+
+export interface LinkedNotifPrefs {
+  inApp: boolean;
+  push: boolean;
+}
+
+const PREFS_KEY = (meId: string) => `linked_notif_prefs_${meId}`;
+
+export const getLinkedNotifPrefs = (
+  meId: string,
+): Record<string, LinkedNotifPrefs> => {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY(meId)) ?? '{}') as Record<
+      string,
+      LinkedNotifPrefs
+    >;
+  } catch {
+    return {};
+  }
+};
+
+export const setLinkedNotifPref = (
+  meId: string,
+  accountId: string,
+  prefs: LinkedNotifPrefs,
+) => {
+  const all = getLinkedNotifPrefs(meId);
+  all[accountId] = prefs;
+  localStorage.setItem(PREFS_KEY(meId), JSON.stringify(all));
+};
 
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
@@ -297,6 +347,7 @@ const ParentAccountItem: React.FC<{
   onSwitch: (accountId: string) => void;
 }> = ({ accountId, onSwitch }) => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
 
   const accountData = account as unknown as
@@ -306,6 +357,16 @@ const ParentAccountItem: React.FC<{
     accountData?.get('display_name') ??
     accountData?.get('username') ??
     accountId;
+
+  const [showNotifSettings, setShowNotifSettings] = useState(false);
+  const [inAppEnabled, setInAppEnabled] = useState(() => {
+    if (!me) return false;
+    return getLinkedNotifPrefs(me)[accountId]?.inApp ?? false;
+  });
+  const [pushEnabled, setPushEnabled] = useState(() => {
+    if (!me) return false;
+    return getLinkedNotifPrefs(me)[accountId]?.push ?? false;
+  });
 
   const handleSwitch = useCallback(() => {
     onSwitch(accountId);
@@ -318,65 +379,285 @@ const ParentAccountItem: React.FC<{
     [handleSwitch],
   );
 
+  const handleToggleNotifSettings = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowNotifSettings((v) => !v);
+  }, []);
+
+  const handleNotifPanelClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleNotifPanelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleInAppChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (!me) return;
+      const checked = e.target.checked;
+      setInAppEnabled(checked);
+      const current = getLinkedNotifPrefs(me)[accountId] ?? {
+        inApp: false,
+        push: false,
+      };
+      setLinkedNotifPref(me, accountId, { ...current, inApp: checked });
+    },
+    [accountId],
+  );
+
+  const handlePushChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (!me) return;
+      const checked = e.target.checked;
+      setPushEnabled(checked);
+      const current = getLinkedNotifPrefs(me)[accountId] ?? {
+        inApp: false,
+        push: false,
+      };
+      setLinkedNotifPref(me, accountId, { ...current, push: checked });
+
+      if (checked) {
+        void dispatch(enableLinkedPushForward({ linkedAccountId: accountId }));
+      } else {
+        void dispatch(disableLinkedPushForward({ linkedAccountId: accountId }));
+      }
+    },
+    [accountId, dispatch],
+  );
+
   if (!account) return null;
 
   return (
     <div
-      className='account-switcher-modal__item account-switcher-modal__item--parent'
-      onClick={handleSwitch}
-      onKeyDown={handleKeyDown}
-      role='button'
-      tabIndex={0}
-      title={intl.formatMessage(messages.backTo, { name: displayName })}
+      className={classNames(
+        'account-switcher-modal__item',
+        'account-switcher-modal__item--parent',
+        { 'account-switcher-modal__item--notif-open': showNotifSettings },
+      )}
     >
-      <div className='account-switcher-modal__item__avatar'>
-        <Avatar account={account as never} size={36} />
+      <div
+        className='account-switcher-modal__item__row'
+        onClick={handleSwitch}
+        onKeyDown={handleKeyDown}
+        role='button'
+        tabIndex={0}
+        title={intl.formatMessage(messages.backTo, { name: displayName })}
+      >
+        <div className='account-switcher-modal__item__avatar'>
+          <Avatar account={account as never} size={36} />
+        </div>
+        <div className='account-switcher-modal__item__info'>
+          <span className='account-switcher-modal__parent-label'>
+            {intl.formatMessage(messages.parentAccount)}
+          </span>
+          <DisplayName account={account as never} />
+        </div>
+        <div className='account-switcher-modal__item__actions'>
+          <button
+            className={classNames('account-switcher-modal__notif-button', {
+              active: inAppEnabled || pushEnabled,
+              open: showNotifSettings,
+            })}
+            onClick={handleToggleNotifSettings}
+            type='button'
+            title={intl.formatMessage(messages.notifications)}
+            aria-expanded={showNotifSettings}
+          >
+            <Icon id='notifications' icon={NotificationsIcon} />
+          </button>
+          <span
+            className='account-switcher-modal__check-button'
+            title={intl.formatMessage(messages.parentAccount)}
+          >
+            <Icon id='check' icon={CheckIcon} />
+          </span>
+        </div>
       </div>
-      <div className='account-switcher-modal__item__info'>
-        <span className='account-switcher-modal__parent-label'>
-          {intl.formatMessage(messages.parentAccount)}
-        </span>
-        <DisplayName account={account as never} />
-      </div>
-      <div className='account-switcher-modal__item__check'>
-        <Icon
-          id='check'
-          icon={CheckIcon}
-          aria-label={intl.formatMessage(messages.parentAccount)}
-        />
-      </div>
+
+      {showNotifSettings && (
+        /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
+        <div
+          onClick={handleNotifPanelClick}
+          onKeyDown={handleNotifPanelKeyDown}
+        >
+          <div
+            className='account-switcher-modal__notif-settings'
+            role='group'
+            aria-label={intl.formatMessage(messages.notifications)}
+          >
+            <label className='account-switcher-modal__notif-label'>
+              <input
+                type='checkbox'
+                checked={inAppEnabled}
+                onChange={handleInAppChange}
+              />
+              <span>{intl.formatMessage(messages.receiveNotifications)}</span>
+            </label>
+            <label className='account-switcher-modal__notif-label'>
+              <input
+                type='checkbox'
+                checked={pushEnabled}
+                onChange={handlePushChange}
+              />
+              <span>
+                {intl.formatMessage(messages.receivePushNotifications)}
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 const CurrentAccountItem: React.FC<{ isMain: boolean }> = ({ isMain }) => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
   const account = useAppSelector((state) =>
     me ? state.accounts.get(me) : undefined,
+  );
+
+  const [showNotifSettings, setShowNotifSettings] = useState(false);
+  const [inAppEnabled, setInAppEnabled] = useState(() => {
+    if (!me) return false;
+    return getLinkedNotifPrefs(me)[me]?.inApp ?? false;
+  });
+  const [pushEnabled, setPushEnabled] = useState(() => {
+    if (!me) return false;
+    return getLinkedNotifPrefs(me)[me]?.push ?? false;
+  });
+
+  const handleToggleNotifSettings = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowNotifSettings((v) => !v);
+  }, []);
+
+  const handleNotifPanelClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleNotifPanelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleInAppChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (!me) return;
+      const checked = e.target.checked;
+      setInAppEnabled(checked);
+      const current = getLinkedNotifPrefs(me)[me] ?? {
+        inApp: false,
+        push: false,
+      };
+      setLinkedNotifPref(me, me, { ...current, inApp: checked });
+    },
+    [],
+  );
+
+  const handlePushChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (!me) return;
+      const checked = e.target.checked;
+      setPushEnabled(checked);
+      const current = getLinkedNotifPrefs(me)[me] ?? {
+        inApp: false,
+        push: false,
+      };
+      setLinkedNotifPref(me, me, { ...current, push: checked });
+
+      if (checked) {
+        void dispatch(enableLinkedPushForward({ linkedAccountId: me }));
+      } else {
+        void dispatch(disableLinkedPushForward({ linkedAccountId: me }));
+      }
+    },
+    [dispatch],
   );
 
   if (!account) return null;
 
   return (
-    <div className='account-switcher-modal__item account-switcher-modal__item--current'>
-      <div className='account-switcher-modal__item__avatar'>
-        <Avatar account={account as never} size={36} />
-      </div>
-      <div className='account-switcher-modal__item__info'>
-        <span className='account-switcher-modal__parent-label'>
-          {intl.formatMessage(
-            isMain ? messages.parentAccount : messages.currentAccount,
+    <div
+      className={classNames(
+        'account-switcher-modal__item',
+        'account-switcher-modal__item--current',
+        { 'account-switcher-modal__item--notif-open': showNotifSettings },
+      )}
+    >
+      <div className='account-switcher-modal__item__row'>
+        <div className='account-switcher-modal__item__avatar'>
+          <Avatar account={account as never} size={36} />
+        </div>
+        <div className='account-switcher-modal__item__info'>
+          <span className='account-switcher-modal__parent-label'>
+            {intl.formatMessage(
+              isMain ? messages.parentAccount : messages.currentAccount,
+            )}
+          </span>
+          <DisplayName account={account as never} />
+        </div>
+        <div className='account-switcher-modal__item__actions'>
+          <button
+            className={classNames('account-switcher-modal__notif-button', {
+              active: inAppEnabled || pushEnabled,
+              open: showNotifSettings,
+            })}
+            onClick={handleToggleNotifSettings}
+            type='button'
+            title={intl.formatMessage(messages.notifications)}
+            aria-expanded={showNotifSettings}
+          >
+            <Icon id='notifications' icon={NotificationsIcon} />
+          </button>
+          {isMain && (
+            <span
+              className='account-switcher-modal__check-button'
+              title={intl.formatMessage(messages.currentAccount)}
+            >
+              <Icon id='check' icon={CheckIcon} />
+            </span>
           )}
-        </span>
-        <DisplayName account={account as never} />
+        </div>
       </div>
-      {isMain && (
-        <div className='account-switcher-modal__item__check'>
-          <Icon
-            id='check'
-            icon={CheckIcon}
-            aria-label={intl.formatMessage(messages.currentAccount)}
-          />
+
+      {showNotifSettings && (
+        /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
+        <div
+          onClick={handleNotifPanelClick}
+          onKeyDown={handleNotifPanelKeyDown}
+        >
+          <div
+            className='account-switcher-modal__notif-settings'
+            role='group'
+            aria-label={intl.formatMessage(messages.notifications)}
+          >
+            <span className='account-switcher-modal__notif-hint'>
+              {intl.formatMessage(messages.notifHint)}
+            </span>
+            <label className='account-switcher-modal__notif-label'>
+              <input
+                type='checkbox'
+                checked={inAppEnabled}
+                onChange={handleInAppChange}
+              />
+              <span>{intl.formatMessage(messages.receiveNotifications)}</span>
+            </label>
+            <label className='account-switcher-modal__notif-label'>
+              <input
+                type='checkbox'
+                checked={pushEnabled}
+                onChange={handlePushChange}
+              />
+              <span>
+                {intl.formatMessage(messages.receivePushNotifications)}
+              </span>
+            </label>
+          </div>
         </div>
       )}
     </div>
@@ -390,6 +671,7 @@ const SwitchableAccountItem: React.FC<{
   onRemove: (authId: string, name: string, acct: string) => void;
 }> = ({ authId, accountId, onSwitch, onRemove }) => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
 
   const accountData = account as unknown as
@@ -401,6 +683,65 @@ const SwitchableAccountItem: React.FC<{
     accountId;
   const acctHandle =
     accountData?.get('acct') ?? accountData?.get('username') ?? accountId;
+
+  const [showNotifSettings, setShowNotifSettings] = useState(false);
+  const [inAppEnabled, setInAppEnabled] = useState(() => {
+    if (!me) return false;
+    return getLinkedNotifPrefs(me)[accountId]?.inApp ?? false;
+  });
+  const [pushEnabled, setPushEnabled] = useState(() => {
+    if (!me) return false;
+    return getLinkedNotifPrefs(me)[accountId]?.push ?? false;
+  });
+
+  const handleToggleNotifSettings = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowNotifSettings((v) => !v);
+  }, []);
+
+  const handleNotifPanelClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleNotifPanelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const handleInAppChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (!me) return;
+      const checked = e.target.checked;
+      setInAppEnabled(checked);
+      const current = getLinkedNotifPrefs(me)[accountId] ?? {
+        inApp: false,
+        push: false,
+      };
+      setLinkedNotifPref(me, accountId, { ...current, inApp: checked });
+    },
+    [accountId],
+  );
+
+  const handlePushChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      if (!me) return;
+      const checked = e.target.checked;
+      setPushEnabled(checked);
+      const current = getLinkedNotifPrefs(me)[accountId] ?? {
+        inApp: false,
+        push: false,
+      };
+      setLinkedNotifPref(me, accountId, { ...current, push: checked });
+
+      if (checked) {
+        void dispatch(enableLinkedPushForward({ linkedAccountId: accountId }));
+      } else {
+        void dispatch(disableLinkedPushForward({ linkedAccountId: accountId }));
+      }
+    },
+    [accountId, dispatch],
+  );
 
   const handleSwitch = useCallback(() => {
     onSwitch(accountId);
@@ -428,29 +769,80 @@ const SwitchableAccountItem: React.FC<{
       className={classNames(
         'account-switcher-modal__item',
         'account-switcher-modal__item--switchable',
+        { 'account-switcher-modal__item--notif-open': showNotifSettings },
       )}
-      onClick={handleSwitch}
-      onKeyDown={handleKeyDown}
-      role='button'
-      tabIndex={0}
-      title={intl.formatMessage(messages.switchTo, { name: displayName })}
     >
-      <div className='account-switcher-modal__item__avatar'>
-        <Avatar account={account as never} size={36} />
+      <div
+        className='account-switcher-modal__item__row'
+        onClick={handleSwitch}
+        onKeyDown={handleKeyDown}
+        role='button'
+        tabIndex={0}
+        title={intl.formatMessage(messages.switchTo, { name: displayName })}
+      >
+        <div className='account-switcher-modal__item__avatar'>
+          <Avatar account={account as never} size={36} />
+        </div>
+        <div className='account-switcher-modal__item__info'>
+          <DisplayName account={account as never} />
+        </div>
+        <div className='account-switcher-modal__item__actions'>
+          <button
+            className={classNames('account-switcher-modal__notif-button', {
+              active: inAppEnabled || pushEnabled,
+              open: showNotifSettings,
+            })}
+            onClick={handleToggleNotifSettings}
+            type='button'
+            title={intl.formatMessage(messages.notifications)}
+            aria-expanded={showNotifSettings}
+          >
+            <Icon id='notifications' icon={NotificationsIcon} />
+          </button>
+
+          <button
+            className='account-switcher-modal__remove-button'
+            onClick={handleRemove}
+            type='button'
+            title={intl.formatMessage(messages.removeAccount)}
+          >
+            <Icon id='person-remove' icon={PersonRemoveIcon} />
+          </button>
+        </div>
       </div>
-      <div className='account-switcher-modal__item__info'>
-        <DisplayName account={account as never} />
-      </div>
-      <div className='account-switcher-modal__item__actions'>
-        <button
-          className='account-switcher-modal__remove-button'
-          onClick={handleRemove}
-          type='button'
-          title={intl.formatMessage(messages.removeAccount)}
+
+      {showNotifSettings && (
+        /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
+        <div
+          onClick={handleNotifPanelClick}
+          onKeyDown={handleNotifPanelKeyDown}
         >
-          <Icon id='person-remove' icon={PersonRemoveIcon} />
-        </button>
-      </div>
+          <div
+            className='account-switcher-modal__notif-settings'
+            role='group'
+            aria-label={intl.formatMessage(messages.notifications)}
+          >
+            <label className='account-switcher-modal__notif-label'>
+              <input
+                type='checkbox'
+                checked={inAppEnabled}
+                onChange={handleInAppChange}
+              />
+              <span>{intl.formatMessage(messages.receiveNotifications)}</span>
+            </label>
+            <label className='account-switcher-modal__notif-label'>
+              <input
+                type='checkbox'
+                checked={pushEnabled}
+                onChange={handlePushChange}
+              />
+              <span>
+                {intl.formatMessage(messages.receivePushNotifications)}
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

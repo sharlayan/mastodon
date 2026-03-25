@@ -13,6 +13,7 @@ import { connectUserStream } from 'flavours/glitch/actions/streaming';
 import ErrorBoundary from 'flavours/glitch/components/error_boundary';
 import { Router } from 'flavours/glitch/components/router';
 import UI from 'flavours/glitch/features/ui';
+import { LinkedNotificationsPoller } from 'flavours/glitch/features/ui/components/linked_notifications_poller';
 import { IdentityContext, createIdentityContext } from 'flavours/glitch/identity_context';
 import { initialState, title as siteTitle } from 'flavours/glitch/initial_state';
 import { IntlProvider } from 'flavours/glitch/locales';
@@ -63,6 +64,8 @@ export default class Mastodon extends PureComponent {
                 </ScrollContext>
                 <BodyScrollLock />
               </Router>
+
+              {this.identity.signedIn && <LinkedNotificationsPoller />}
 
               <Helmet defaultTitle={title} titleTemplate={`%s - ${title}`} />
             </ErrorBoundary>

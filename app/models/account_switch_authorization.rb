@@ -19,6 +19,7 @@ class AccountSwitchAuthorization < ApplicationRecord
   validate :not_self_referential
 
   scope :for_account, ->(account) { where(account: account) }
+  scope :push_forwarding, -> { where(push_forward: true) }
 
   private
 

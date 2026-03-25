@@ -225,7 +225,13 @@ namespace :api, format: false do
       resources :familiar_followers, only: :index
     end
 
-    resources :account_switches, only: [:index, :destroy]
+    resources :account_switches, only: [:index, :destroy] do
+      collection do
+        get    :linked_notifications
+        post   :push_forward, action: :create_push_forward
+        delete :push_forward, action: :destroy_push_forward
+      end
+    end
 
     resources :accounts, only: [:index, :create, :show] do
       scope module: :accounts do
