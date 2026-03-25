@@ -123,6 +123,17 @@ export const setLinkedNotifPref = (
   }
 };
 
+const getAccountDisplayName = (
+  data: { get(key: string): string } | undefined,
+  fallback: string,
+): string => {
+  const displayName = data?.get('display_name') ?? '';
+  if (displayName.trim().length > 0) return displayName;
+  const username = data?.get('username') ?? '';
+  if (username.trim().length > 0) return username;
+  return fallback;
+};
+
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
 const OAUTH_TIMEOUT = 120000;
@@ -377,10 +388,7 @@ const ParentAccountItem: React.FC<{
   const accountData = account as unknown as
     | { get(key: string): string }
     | undefined;
-  const displayName =
-    accountData?.get('display_name') ??
-    accountData?.get('username') ??
-    accountId;
+  const displayName = getAccountDisplayName(accountData, accountId);
 
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [inAppEnabled, setInAppEnabled] = useState(() => {
@@ -701,10 +709,7 @@ const SwitchableAccountItem: React.FC<{
   const accountData = account as unknown as
     | { get(key: string): string }
     | undefined;
-  const displayName =
-    accountData?.get('display_name') ??
-    accountData?.get('username') ??
-    accountId;
+  const displayName = getAccountDisplayName(accountData, accountId);
   const acctHandle =
     accountData?.get('acct') ?? accountData?.get('username') ?? accountId;
 
