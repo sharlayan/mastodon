@@ -55,6 +55,10 @@ const messages = defineMessages({
     id: 'account_switcher.close',
     defaultMessage: 'Close',
   },
+  switchAccountConfirm: {
+    id: 'account_switcher.switch_account_confirm',
+    defaultMessage: 'Switch to {name}?',
+  },
   removeAccountConfirm: {
     id: 'account_switcher.remove_account_confirm',
     defaultMessage: 'Are you sure you want to unlink {name} (@{acct})?',
@@ -279,9 +283,18 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
     [dispatch, intl],
   );
 
-  const handleSwitchAccount = useCallback((_accountId: string) => {
-    window.location.href = `/auth/sign_in?switch_to=${_accountId}`;
-  }, []);
+  const handleSwitchAccount = useCallback(
+    (_accountId: string, name: string) => {
+      if (
+        window.confirm(
+          intl.formatMessage(messages.switchAccountConfirm, { name }),
+        )
+      ) {
+        window.location.href = `/auth/sign_in?switch_to=${_accountId}`;
+      }
+    },
+    [intl],
+  );
 
   const authList = items as unknown as
     | {
@@ -355,7 +368,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
 
 const ParentAccountItem: React.FC<{
   accountId: string;
-  onSwitch: (accountId: string) => void;
+  onSwitch: (accountId: string, name: string) => void;
 }> = ({ accountId, onSwitch }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
@@ -380,8 +393,8 @@ const ParentAccountItem: React.FC<{
   });
 
   const handleSwitch = useCallback(() => {
-    onSwitch(accountId);
-  }, [accountId, onSwitch]);
+    onSwitch(accountId, displayName);
+  }, [accountId, displayName, onSwitch]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -678,7 +691,7 @@ const CurrentAccountItem: React.FC<{ isMain: boolean }> = ({ isMain }) => {
 const SwitchableAccountItem: React.FC<{
   authId: string;
   accountId: string;
-  onSwitch: (accountId: string) => void;
+  onSwitch: (accountId: string, name: string) => void;
   onRemove: (authId: string, name: string, acct: string) => void;
 }> = ({ authId, accountId, onSwitch, onRemove }) => {
   const intl = useIntl();
@@ -755,8 +768,8 @@ const SwitchableAccountItem: React.FC<{
   );
 
   const handleSwitch = useCallback(() => {
-    onSwitch(accountId);
-  }, [accountId, onSwitch]);
+    onSwitch(accountId, displayName);
+  }, [accountId, displayName, onSwitch]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

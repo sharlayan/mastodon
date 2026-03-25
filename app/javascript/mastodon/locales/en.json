@@ -11,6 +11,7 @@
   "account_switcher.parent_account": "Main account",
   "account_switcher.remove_account": "Remove account",
   "account_switcher.remove_account_confirm": "Are you sure you want to unlink {name} (@{acct})?",
+  "account_switcher.switch_account_confirm": "Switch to {name}?",
   "account_switcher.switch_to": "Switch to {name}",
   "account_switcher.title": "Switch account",
   "about.blocks": "Moderated servers",
