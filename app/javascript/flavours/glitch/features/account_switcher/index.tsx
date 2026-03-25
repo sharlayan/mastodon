@@ -103,9 +103,20 @@ export const setLinkedNotifPref = (
   accountId: string,
   prefs: LinkedNotifPrefs,
 ) => {
-  const all = getLinkedNotifPrefs(meId);
+  const prevAll = getLinkedNotifPrefs(meId);
+  const wasInApp = prevAll[accountId]?.inApp ?? false;
+
+  const all = { ...prevAll };
   all[accountId] = prefs;
   localStorage.setItem(PREFS_KEY(meId), JSON.stringify(all));
+
+  if (prefs.inApp && !wasInApp) {
+    const lastIdKey = `linked_notif_last_id_${meId}_${accountId}`;
+    if (!localStorage.getItem(lastIdKey)) {
+      const nowSnowflake = (BigInt(Date.now()) << 16n).toString();
+      localStorage.setItem(lastIdKey, nowSnowflake);
+    }
+  }
 };
 
 const OAUTH_POPUP_WIDTH = 600;

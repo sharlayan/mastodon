@@ -28,8 +28,12 @@ const buildSinceIds = (): Record<string, string> => {
   const result: Record<string, string> = {};
   for (const [accountId, pref] of Object.entries(prefs)) {
     if (!pref.inApp) continue;
-    const lastId = getLastSeenId(accountId);
-    if (lastId) result[accountId] = lastId;
+    let lastId = getLastSeenId(accountId);
+    if (!lastId) {
+      lastId = (BigInt(Date.now()) << 16n).toString();
+      setLastSeenId(accountId, lastId);
+    }
+    result[accountId] = lastId;
   }
   return result;
 };
