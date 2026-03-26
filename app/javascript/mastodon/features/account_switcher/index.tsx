@@ -341,7 +341,16 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           />
         )}
 
-        {me && <CurrentAccountItem isMain={parentAccountId === null} />}
+        {me && (
+          <CurrentAccountItem
+            isMain={parentAccountId === null}
+            hasLinkedAccounts={
+              !loaded ||
+              parentAccountId !== null ||
+              (authList?.toArray().length ?? 0) > 0
+            }
+          />
+        )}
 
         {isLoading && !loaded && (
           <div className='account-switcher-modal__loading'>
@@ -545,7 +554,10 @@ const ParentAccountItem: React.FC<{
   );
 };
 
-const CurrentAccountItem: React.FC<{ isMain: boolean }> = ({ isMain }) => {
+const CurrentAccountItem: React.FC<{
+  isMain: boolean;
+  hasLinkedAccounts: boolean;
+}> = ({ isMain, hasLinkedAccounts }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) =>
@@ -634,18 +646,20 @@ const CurrentAccountItem: React.FC<{ isMain: boolean }> = ({ isMain }) => {
           <DisplayName account={account as never} />
         </div>
         <div className='account-switcher-modal__item__actions'>
-          <button
-            className={classNames('account-switcher-modal__notif-button', {
-              active: inAppEnabled || pushEnabled,
-              open: showNotifSettings,
-            })}
-            onClick={handleToggleNotifSettings}
-            type='button'
-            title={intl.formatMessage(messages.notifications)}
-            aria-expanded={showNotifSettings}
-          >
-            <Icon id='notifications' icon={NotificationsIcon} />
-          </button>
+          {hasLinkedAccounts && (
+            <button
+              className={classNames('account-switcher-modal__notif-button', {
+                active: inAppEnabled || pushEnabled,
+                open: showNotifSettings,
+              })}
+              onClick={handleToggleNotifSettings}
+              type='button'
+              title={intl.formatMessage(messages.notifications)}
+              aria-expanded={showNotifSettings}
+            >
+              <Icon id='notifications' icon={NotificationsIcon} />
+            </button>
+          )}
           {isMain && (
             <span
               className='account-switcher-modal__check-button'
@@ -657,7 +671,7 @@ const CurrentAccountItem: React.FC<{ isMain: boolean }> = ({ isMain }) => {
         </div>
       </div>
 
-      {showNotifSettings && (
+      {hasLinkedAccounts && showNotifSettings && (
         /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
         <div
           onClick={handleNotifPanelClick}
