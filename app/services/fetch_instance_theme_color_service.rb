@@ -26,8 +26,14 @@ class FetchInstanceThemeColorService < BaseService
 
     local_favicon_path = download_and_save_favicon(favicon_url) if favicon_url.present?
 
+    resolved_theme_color = if parsed_homepage
+                             theme_color || @metadata.default_theme_color
+                           else
+                             @metadata.theme_color.presence || theme_color || @metadata.default_theme_color
+                           end
+
     @metadata.update(
-      theme_color: theme_color || @metadata.default_theme_color,
+      theme_color: resolved_theme_color,
       theme_color_updated_at: Time.now.utc,
       favicon_url: local_favicon_path,
       software: software_info[:software],
@@ -90,6 +96,9 @@ class FetchInstanceThemeColorService < BaseService
     return @favicon_from_api if @favicon_from_api.present?
 
     return "https://#{@domain}/favicon.ico" unless parsed_homepage
+
+    app_icon = parsed_homepage.at_css('link[rel="apple-touch-icon"], link[rel="apple-touch-icon-precomposed"]')
+    return resolve_url(app_icon['href']) if app_icon&.[]('href') && resolve_url(app_icon['href'])
 
     favicon_link = parsed_homepage.at_css('link[rel="icon"], link[rel="shortcut icon"]')
     return resolve_url(favicon_link['href']) || "https://#{@domain}/favicon.ico" if favicon_link && favicon_link['href']
