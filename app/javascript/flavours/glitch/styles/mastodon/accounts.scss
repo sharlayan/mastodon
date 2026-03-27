@@ -263,13 +263,13 @@
 
 .simple_form .glitch_only {
   color: var(--color-text-warning);
-  background-color: var(--color-bg-warning-softer);
-  border-color: var(--color-border-on-bg-warning-softer);
+  background-color: var(--color-bg-warning-softest);
+  border-color: var(--color-border-warning-soft);
 }
 
 .simple_form .sharlayan_only {
   color: var(--color-green-400);
-  background-color: var(--color-bg-success-softer);
+  background-color: var(--color-bg-success-softest);
   border-color: var(--color-green-600);
 }
 

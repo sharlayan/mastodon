@@ -7049,7 +7049,7 @@ a.status-card {
       cursor: pointer;
 
       &:hover {
-        background: var(--color-bg-brand-softer);
+        background: var(--color-bg-brand-softest);
       }
     }
 
@@ -7142,7 +7142,7 @@ a.status-card {
     cursor: pointer;
 
     &:hover {
-      background: var(--color-bg-brand-softer);
+      background: var(--color-bg-brand-softest);
     }
 
     &:disabled {
@@ -7197,7 +7197,7 @@ a.status-card {
     cursor: pointer;
 
     &:hover {
-      background: var(--color-bg-brand-softer);
+      background: var(--color-bg-brand-softest);
     }
   }
 
@@ -7215,11 +7215,11 @@ a.status-card {
     cursor: pointer;
 
     &:hover {
-      background: var(--color-bg-brand-softer);
+      background: var(--color-bg-brand-softest);
     }
 
     &.open {
-      background: var(--color-bg-brand-softer);
+      background: var(--color-bg-brand-softest);
     }
 
     .icon {
