@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { PureComponent } from 'react';
 
-import { FormattedMessage, injectIntl } from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 
 import classnames from 'classnames';
 import { withRouter } from 'react-router-dom';
@@ -17,6 +17,7 @@ import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity
 import { languages as preloadedLanguages } from 'flavours/glitch/initial_state';
 
 import { EmojiHTML } from './emoji/html';
+import { injectIntl } from './intl';
 import { HandledLink } from './status/handled_link';
 
 import { EmojiInfoTooltip } from './emoji_info_tooltip';

@@ -2,7 +2,7 @@
 import PropTypes from 'prop-types';
 import { PureComponent } from 'react';
 
-import { defineMessages, injectIntl } from 'react-intl';
+import { defineMessages } from 'react-intl';
 
 import ImmutablePropTypes from 'react-immutable-proptypes';
 
@@ -12,6 +12,7 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { MediaIcon } from 'flavours/glitch/components/media_icon';
 import { languages } from 'flavours/glitch/initial_state';
 import { RelativeTimestamp } from './relative_timestamp';
+import { injectIntl } from '@/flavours/glitch/components/intl';
 
 import { VisibilityIcon } from './visibility_icon';
 
