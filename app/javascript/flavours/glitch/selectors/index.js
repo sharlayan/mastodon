@@ -112,7 +112,7 @@ function getStatusResultFunction(
 
   return {
     status: statusBase.withMutations(map => {
-      map.set('reblog', statusReblog);
+      map.set('reblog', statusReblog ? statusReblog.set('reactions', reactions) : statusReblog);
       map.set('account', accountBase);
       map.set('matched_filters', filtered);
       map.set('matched_media_filters', mediaFiltered);
