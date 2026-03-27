@@ -114,7 +114,7 @@ export const NotificationWithStatus: React.FC<{
           <div className='notification-ungrouped__header__icon'>
             <Icon icon={icon} id={iconId} />
           </div>
-          {label}
+          <div className='notification-ungrouped__label'>{label}</div>
         </div>
 
         <StatusQuoteManager
