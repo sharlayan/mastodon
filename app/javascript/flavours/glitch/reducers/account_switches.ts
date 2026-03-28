@@ -8,6 +8,7 @@ import {
 import {
   fetchAccountSwitches,
   deleteAccountSwitch,
+  setLinkedUnreadCounts,
 } from 'flavours/glitch/actions/account_switches';
 
 const AuthorizationRecord = ImmutableRecord({
@@ -21,8 +22,10 @@ type Authorization = ReturnType<typeof AuthorizationRecord>;
 const initialState = ImmutableMap({
   items: ImmutableList<Authorization>(),
   parentAccountId: null as string | null,
+  rootAccountId: null as string | null,
   isLoading: false,
   loaded: false,
+  linkedUnreadCounts: ImmutableMap<string, number>(),
 });
 
 type State = typeof initialState;
@@ -47,6 +50,7 @@ export const accountSwitchesReducer: Reducer<State> = (
     return state
       .set('items', items)
       .set('parentAccountId', data.parent?.id ?? null)
+      .set('rootAccountId', data.root_account_id)
       .set('isLoading', false)
       .set('loaded', true);
   } else if (fetchAccountSwitches.rejected.match(action)) {
@@ -58,6 +62,13 @@ export const accountSwitchesReducer: Reducer<State> = (
         (item) => item.get('id') !== deletedId,
       ),
     );
+  } else if (setLinkedUnreadCounts.match(action)) {
+    const counts = action.payload;
+    let map = ImmutableMap<string, number>();
+    for (const [accountId, count] of Object.entries(counts)) {
+      map = map.set(accountId, count);
+    }
+    return state.set('linkedUnreadCounts', map);
   }
 
   return state;

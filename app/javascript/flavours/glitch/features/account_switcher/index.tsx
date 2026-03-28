@@ -87,40 +87,37 @@ export interface LinkedNotifPrefs {
   push: boolean;
 }
 
-const PREFS_KEY = (meId: string) => `linked_notif_prefs_${meId}`;
+const ROOT_ACCOUNT_KEY = 'linked_notif_root_account';
+
+export const getLinkedNotifRootAccount = (): string | null =>
+  localStorage.getItem(ROOT_ACCOUNT_KEY);
+
+export const setLinkedNotifRootAccount = (rootId: string) => {
+  localStorage.setItem(ROOT_ACCOUNT_KEY, rootId);
+};
+
+const PREFS_KEY = (rootId: string) => `linked_notif_prefs_${rootId}`;
 
 export const getLinkedNotifPrefs = (
-  meId: string,
+  rootId: string,
 ): Record<string, LinkedNotifPrefs> => {
   try {
-    return JSON.parse(localStorage.getItem(PREFS_KEY(meId)) ?? '{}') as Record<
-      string,
-      LinkedNotifPrefs
-    >;
+    return JSON.parse(
+      localStorage.getItem(PREFS_KEY(rootId)) ?? '{}',
+    ) as Record<string, LinkedNotifPrefs>;
   } catch {
     return {};
   }
 };
 
 export const setLinkedNotifPref = (
-  meId: string,
+  rootId: string,
   accountId: string,
   prefs: LinkedNotifPrefs,
 ) => {
-  const prevAll = getLinkedNotifPrefs(meId);
-  const wasInApp = prevAll[accountId]?.inApp ?? false;
-
-  const all = { ...prevAll };
+  const all = { ...getLinkedNotifPrefs(rootId) };
   all[accountId] = prefs;
-  localStorage.setItem(PREFS_KEY(meId), JSON.stringify(all));
-
-  if (prefs.inApp && !wasInApp) {
-    const lastIdKey = `linked_notif_last_id_${meId}_${accountId}`;
-    if (!localStorage.getItem(lastIdKey)) {
-      const nowSnowflake = (BigInt(Date.now()) << 16n).toString();
-      localStorage.setItem(lastIdKey, nowSnowflake);
-    }
-  }
+  localStorage.setItem(PREFS_KEY(rootId), JSON.stringify(all));
 };
 
 const getAccountDisplayName = (
@@ -164,6 +161,10 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   const parentAccountId = useAppSelector(
     (state) => state.accountSwitches.get('parentAccountId') as string | null,
   );
+  const rootAccountId =
+    useAppSelector(
+      (state) => state.accountSwitches.get('rootAccountId') as string | null,
+    ) ?? me;
   const isLoading = useAppSelector(
     (state) => state.accountSwitches.get('isLoading') as boolean,
   );
@@ -176,6 +177,12 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
       void dispatch(fetchAccountSwitches());
     }
   }, [dispatch, loaded]);
+
+  useEffect(() => {
+    if (rootAccountId) {
+      setLinkedNotifRootAccount(rootAccountId);
+    }
+  }, [rootAccountId]);
 
   const handleAddAccount = useCallback(async () => {
     if (addingAccount) return;
@@ -337,6 +344,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
         {parentAccountId && (
           <ParentAccountItem
             accountId={parentAccountId}
+            rootAccountId={rootAccountId ?? ''}
             onSwitch={handleSwitchAccount}
           />
         )}
@@ -344,6 +352,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
         {me && (
           <CurrentAccountItem
             isMain={parentAccountId === null}
+            rootAccountId={rootAccountId ?? ''}
             hasLinkedAccounts={
               !loaded ||
               parentAccountId !== null ||
@@ -363,6 +372,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
             key={auth.id}
             authId={auth.id}
             accountId={auth.target_account_id}
+            rootAccountId={rootAccountId ?? ''}
             onSwitch={handleSwitchAccount}
             onRemove={handleRemoveAccount}
           />
@@ -388,11 +398,20 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
 
 const ParentAccountItem: React.FC<{
   accountId: string;
+  rootAccountId: string;
   onSwitch: (accountId: string, name: string) => void;
-}> = ({ accountId, onSwitch }) => {
+}> = ({ accountId, rootAccountId, onSwitch }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
+  const unreadCount = useAppSelector(
+    (state) =>
+      (
+        state.accountSwitches.get('linkedUnreadCounts') as
+          | Map<string, number>
+          | undefined
+      )?.get(accountId) ?? 0,
+  );
 
   const accountData = account as unknown as
     | { get(key: string): string }
@@ -401,12 +420,10 @@ const ParentAccountItem: React.FC<{
 
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [inAppEnabled, setInAppEnabled] = useState(() => {
-    if (!me) return false;
-    return getLinkedNotifPrefs(me)[accountId]?.inApp ?? false;
+    return getLinkedNotifPrefs(rootAccountId)[accountId]?.inApp ?? false;
   });
   const [pushEnabled, setPushEnabled] = useState(() => {
-    if (!me) return false;
-    return getLinkedNotifPrefs(me)[accountId]?.push ?? false;
+    return getLinkedNotifPrefs(rootAccountId)[accountId]?.push ?? false;
   });
 
   const handleSwitch = useCallback(() => {
@@ -436,29 +453,33 @@ const ParentAccountItem: React.FC<{
   const handleInAppChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       e.stopPropagation();
-      if (!me) return;
       const checked = e.target.checked;
       setInAppEnabled(checked);
-      const current = getLinkedNotifPrefs(me)[accountId] ?? {
+      const current = getLinkedNotifPrefs(rootAccountId)[accountId] ?? {
         inApp: false,
         push: false,
       };
-      setLinkedNotifPref(me, accountId, { ...current, inApp: checked });
+      setLinkedNotifPref(rootAccountId, accountId, {
+        ...current,
+        inApp: checked,
+      });
     },
-    [accountId],
+    [accountId, rootAccountId],
   );
 
   const handlePushChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       e.stopPropagation();
-      if (!me) return;
       const checked = e.target.checked;
       setPushEnabled(checked);
-      const current = getLinkedNotifPrefs(me)[accountId] ?? {
+      const current = getLinkedNotifPrefs(rootAccountId)[accountId] ?? {
         inApp: false,
         push: false,
       };
-      setLinkedNotifPref(me, accountId, { ...current, push: checked });
+      setLinkedNotifPref(rootAccountId, accountId, {
+        ...current,
+        push: checked,
+      });
 
       if (checked) {
         void dispatch(enableLinkedPushForward({ linkedAccountId: accountId }));
@@ -466,7 +487,7 @@ const ParentAccountItem: React.FC<{
         void dispatch(disableLinkedPushForward({ linkedAccountId: accountId }));
       }
     },
-    [accountId, dispatch],
+    [accountId, rootAccountId, dispatch],
   );
 
   if (!account) return null;
@@ -489,6 +510,11 @@ const ParentAccountItem: React.FC<{
       >
         <div className='account-switcher-modal__item__avatar'>
           <Avatar account={account as never} size={36} />
+          {unreadCount > 0 && (
+            <span className='account-switcher-modal__unread-badge'>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </div>
         <div className='account-switcher-modal__item__info'>
           <span className='account-switcher-modal__parent-label'>
@@ -556,8 +582,9 @@ const ParentAccountItem: React.FC<{
 
 const CurrentAccountItem: React.FC<{
   isMain: boolean;
+  rootAccountId: string;
   hasLinkedAccounts: boolean;
-}> = ({ isMain, hasLinkedAccounts }) => {
+}> = ({ isMain, rootAccountId, hasLinkedAccounts }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) =>
@@ -567,11 +594,11 @@ const CurrentAccountItem: React.FC<{
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [inAppEnabled, setInAppEnabled] = useState(() => {
     if (!me) return false;
-    return getLinkedNotifPrefs(me)[me]?.inApp ?? false;
+    return getLinkedNotifPrefs(rootAccountId)[me]?.inApp ?? false;
   });
   const [pushEnabled, setPushEnabled] = useState(() => {
     if (!me) return false;
-    return getLinkedNotifPrefs(me)[me]?.push ?? false;
+    return getLinkedNotifPrefs(rootAccountId)[me]?.push ?? false;
   });
 
   const handleToggleNotifSettings = useCallback((e: React.MouseEvent) => {
@@ -593,13 +620,13 @@ const CurrentAccountItem: React.FC<{
       if (!me) return;
       const checked = e.target.checked;
       setInAppEnabled(checked);
-      const current = getLinkedNotifPrefs(me)[me] ?? {
+      const current = getLinkedNotifPrefs(rootAccountId)[me] ?? {
         inApp: false,
         push: false,
       };
-      setLinkedNotifPref(me, me, { ...current, inApp: checked });
+      setLinkedNotifPref(rootAccountId, me, { ...current, inApp: checked });
     },
-    [],
+    [rootAccountId],
   );
 
   const handlePushChange = useCallback(
@@ -608,11 +635,11 @@ const CurrentAccountItem: React.FC<{
       if (!me) return;
       const checked = e.target.checked;
       setPushEnabled(checked);
-      const current = getLinkedNotifPrefs(me)[me] ?? {
+      const current = getLinkedNotifPrefs(rootAccountId)[me] ?? {
         inApp: false,
         push: false,
       };
-      setLinkedNotifPref(me, me, { ...current, push: checked });
+      setLinkedNotifPref(rootAccountId, me, { ...current, push: checked });
 
       if (checked) {
         void dispatch(enableLinkedPushForward({ linkedAccountId: me }));
@@ -620,7 +647,7 @@ const CurrentAccountItem: React.FC<{
         void dispatch(disableLinkedPushForward({ linkedAccountId: me }));
       }
     },
-    [dispatch],
+    [rootAccountId, dispatch],
   );
 
   if (!account) return null;
@@ -713,12 +740,21 @@ const CurrentAccountItem: React.FC<{
 const SwitchableAccountItem: React.FC<{
   authId: string;
   accountId: string;
+  rootAccountId: string;
   onSwitch: (accountId: string, name: string) => void;
   onRemove: (authId: string, name: string, acct: string) => void;
-}> = ({ authId, accountId, onSwitch, onRemove }) => {
+}> = ({ authId, accountId, rootAccountId, onSwitch, onRemove }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
+  const unreadCount = useAppSelector(
+    (state) =>
+      (
+        state.accountSwitches.get('linkedUnreadCounts') as
+          | Map<string, number>
+          | undefined
+      )?.get(accountId) ?? 0,
+  );
 
   const accountData = account as unknown as
     | { get(key: string): string }
@@ -729,12 +765,10 @@ const SwitchableAccountItem: React.FC<{
 
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [inAppEnabled, setInAppEnabled] = useState(() => {
-    if (!me) return false;
-    return getLinkedNotifPrefs(me)[accountId]?.inApp ?? false;
+    return getLinkedNotifPrefs(rootAccountId)[accountId]?.inApp ?? false;
   });
   const [pushEnabled, setPushEnabled] = useState(() => {
-    if (!me) return false;
-    return getLinkedNotifPrefs(me)[accountId]?.push ?? false;
+    return getLinkedNotifPrefs(rootAccountId)[accountId]?.push ?? false;
   });
 
   const handleToggleNotifSettings = useCallback((e: React.MouseEvent) => {
@@ -753,29 +787,33 @@ const SwitchableAccountItem: React.FC<{
   const handleInAppChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       e.stopPropagation();
-      if (!me) return;
       const checked = e.target.checked;
       setInAppEnabled(checked);
-      const current = getLinkedNotifPrefs(me)[accountId] ?? {
+      const current = getLinkedNotifPrefs(rootAccountId)[accountId] ?? {
         inApp: false,
         push: false,
       };
-      setLinkedNotifPref(me, accountId, { ...current, inApp: checked });
+      setLinkedNotifPref(rootAccountId, accountId, {
+        ...current,
+        inApp: checked,
+      });
     },
-    [accountId],
+    [accountId, rootAccountId],
   );
 
   const handlePushChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       e.stopPropagation();
-      if (!me) return;
       const checked = e.target.checked;
       setPushEnabled(checked);
-      const current = getLinkedNotifPrefs(me)[accountId] ?? {
+      const current = getLinkedNotifPrefs(rootAccountId)[accountId] ?? {
         inApp: false,
         push: false,
       };
-      setLinkedNotifPref(me, accountId, { ...current, push: checked });
+      setLinkedNotifPref(rootAccountId, accountId, {
+        ...current,
+        push: checked,
+      });
 
       if (checked) {
         void dispatch(enableLinkedPushForward({ linkedAccountId: accountId }));
@@ -783,7 +821,7 @@ const SwitchableAccountItem: React.FC<{
         void dispatch(disableLinkedPushForward({ linkedAccountId: accountId }));
       }
     },
-    [accountId, dispatch],
+    [accountId, rootAccountId, dispatch],
   );
 
   const handleSwitch = useCallback(() => {
@@ -825,6 +863,11 @@ const SwitchableAccountItem: React.FC<{
       >
         <div className='account-switcher-modal__item__avatar'>
           <Avatar account={account as never} size={36} />
+          {unreadCount > 0 && (
+            <span className='account-switcher-modal__unread-badge'>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </div>
         <div className='account-switcher-modal__item__info'>
           <DisplayName account={account as never} />

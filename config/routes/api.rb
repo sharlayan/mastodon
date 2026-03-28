@@ -226,7 +226,7 @@ namespace :api, format: false do
 
     resources :account_switches, only: [:index, :destroy] do
       collection do
-        get    :linked_notifications
+        get    :linked_unread_counts
         post   :push_forward, action: :create_push_forward
         delete :push_forward, action: :destroy_push_forward
       end

@@ -1,3 +1,5 @@
+import { createAction } from '@reduxjs/toolkit';
+
 import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
 import {
   apiGetAccountSwitches,
@@ -6,6 +8,10 @@ import {
   apiDeletePushForward,
 } from 'flavours/glitch/api/account_switches';
 import { createDataLoadingThunk } from 'flavours/glitch/store/typed_functions';
+
+export const setLinkedUnreadCounts = createAction<Record<string, number>>(
+  'accountSwitches/setLinkedUnreadCounts',
+);
 
 export const fetchAccountSwitches = createDataLoadingThunk(
   'accountSwitches/fetch',

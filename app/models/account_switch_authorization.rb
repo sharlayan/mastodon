@@ -16,14 +16,7 @@ class AccountSwitchAuthorization < ApplicationRecord
   belongs_to :target_account, class_name: 'Account'
 
   validates :target_account_id, uniqueness: { scope: :account_id }
-  validate :not_self_referential
 
   scope :for_account, ->(account) { where(account: account) }
   scope :push_forwarding, -> { where(push_forward: true) }
-
-  private
-
-  def not_self_referential
-    errors.add(:target_account_id, 'cannot be the same as account') if account_id == target_account_id
-  end
 end
