@@ -10678,6 +10678,13 @@ noscript {
   font-weight: 700;
 }
 
+.notification-bar__body {
+  display: block;
+  margin-top: 4px;
+  opacity: 0.85;
+  font-size: 0.9em;
+}
+
 .notification-bar__action {
   display: inline-block;
   border: 0;

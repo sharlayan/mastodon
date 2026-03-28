@@ -7327,7 +7327,7 @@ a.status-card {
       cursor: pointer;
 
       &:hover {
-        background: var(--color-bg-brand-softer);
+        background: var(--color-bg-brand-softest);
       }
     }
 
@@ -7420,7 +7420,7 @@ a.status-card {
     cursor: pointer;
 
     &:hover {
-      background: var(--color-bg-brand-softer);
+      background: var(--color-bg-brand-softest);
     }
 
     &:disabled {
@@ -7473,7 +7473,7 @@ a.status-card {
     cursor: pointer;
 
     &:hover {
-      background: var(--color-bg-brand-softer);
+      background: var(--color-bg-brand-softest);
     }
   }
 
@@ -7491,11 +7491,11 @@ a.status-card {
     cursor: pointer;
 
     &:hover {
-      background: var(--color-bg-brand-softer);
+      background: var(--color-bg-brand-softest);
     }
 
     &.open {
-      background: var(--color-bg-brand-softer);
+      background: var(--color-bg-brand-softest);
     }
 
     .icon {
@@ -9774,13 +9774,13 @@ noscript {
     align-items: center;
     gap: 6px;
     padding: 4px 8px;
-    background: var(--color-bg-brand-softer);
+    background: var(--color-bg-brand-softest);
     color: color-mix(
       in oklab,
       var(--color-text-primary),
       var(--color-text-secondary)
     );
-    border: 1px solid var(--color-border-on-bg-brand-softer);
+    border: 1px solid var(--color-border-brand-soft);
     border-radius: 4px;
     cursor: pointer;
     font-size: 13px;
@@ -11054,7 +11054,7 @@ noscript {
   color: var(--color-text-inverted);
   background: var(--color-bg-inverted);
   backdrop-filter: blur(8px);
-  border: 1px solid var(--color-border-on-bg-inverted);
+  border: 1px solid var(--color-border-primary);
   border-radius: 8px;
   box-shadow:
     0 10px 15px -3px var(--color-shadow-primary),
@@ -11090,6 +11090,13 @@ noscript {
 .notification-bar__title {
   margin-inline-end: 5px;
   font-weight: 700;
+}
+
+.notification-bar__body {
+  display: block;
+  margin-top: 4px;
+  opacity: 0.85;
+  font-size: 0.9em;
 }
 
 .notification-bar__action {
