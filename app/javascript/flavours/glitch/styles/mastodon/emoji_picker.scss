@@ -19,6 +19,12 @@
   &:first-child {
     background: var(--color-bg-tertiary);
     border-bottom: 1px solid var(--color-border-primary);
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
@@ -27,12 +33,6 @@
   justify-content: space-between;
   padding: 0 6px;
   line-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
 }
 
 .emoji-mart-anchor {
@@ -91,6 +91,7 @@
 }
 
 .emoji-mart-scroll {
+  overflow-x: hidden;
   overflow-y: scroll;
   height: 270px;
   max-height: 35vh;
