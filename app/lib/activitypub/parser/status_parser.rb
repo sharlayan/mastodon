@@ -128,7 +128,7 @@ class ActivityPub::Parser::StatusParser
   def quote_policy
     # quote auto allow from misskey notes
     if from_misskey? && [:public, :unlisted].include?(visibility)
-      flags = Status::QUOTE_APPROVAL_POLICY_FLAGS[:followers]
+      flags = InteractionPolicy::POLICY_FLAGS[:followers]
       flags <<= 16
       return flags
     end

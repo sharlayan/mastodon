@@ -4,6 +4,15 @@ class ActivityPub::FetchRemoteAccountService < ActivityPub::FetchRemoteActorServ
   # Does a WebFinger roundtrip on each call, unless `only_key` is true
   def call(uri, prefetched_body: nil, break_on_redirect: false, only_key: false, suppress_errors: true, request_id: nil)
     actor = super
+
+    if actor.is_a?(Account) && actor.remote?
+      begin
+        ensure_instance_metadata(actor)
+      rescue => e
+        Rails.logger.warn "Failed to enqueue instance metadata update for #{actor.domain}: #{e}"
+      end
+    end
+
     return actor if actor.nil? || actor.is_a?(Account)
 
     Rails.logger.debug { "Fetching account #{uri} failed: Expected Account, got #{actor.class.name}" }
@@ -11,13 +20,6 @@ class ActivityPub::FetchRemoteAccountService < ActivityPub::FetchRemoteActorServ
   end
 
   private
-
-  def after_create(account)
-    super
-    ensure_instance_metadata(account) if account&.remote?
-  rescue => e
-    Rails.logger.warn "Failed to enqueue instance metadata update for #{account&.domain}: #{e}"
-  end
 
   def ensure_instance_metadata(account)
     domain = account.domain
