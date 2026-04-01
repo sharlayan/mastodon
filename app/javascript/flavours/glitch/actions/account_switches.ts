@@ -20,6 +20,29 @@ export const fetchAccountSwitches = createDataLoadingThunk(
     const accounts = data.children.map((auth) => auth.target_account);
     if (data.parent) accounts.push(data.parent);
     dispatch(importFetchedAccounts(accounts));
+
+    // Sync push_forward from server to localStorage so all devices stay consistent
+    const rootId = data.root_account_id;
+    if (rootId) {
+      const key = `linked_notif_prefs_${rootId}`;
+      try {
+        const prefs = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<
+          string,
+          { inApp?: boolean; push?: boolean }
+        >;
+        for (const auth of data.children) {
+          const accountId = auth.target_account.id;
+          prefs[accountId] = {
+            ...(prefs[accountId] ?? {}),
+            push: auth.push_forward,
+          };
+        }
+        localStorage.setItem(key, JSON.stringify(prefs));
+      } catch {
+        /* ignore */
+      }
+    }
+
     return data;
   },
 );

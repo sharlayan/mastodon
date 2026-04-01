@@ -4,6 +4,7 @@ export interface ApiAccountSwitchAuthorizationJSON {
   id: string;
   created_at: string;
   target_account: ApiAccountJSON;
+  push_forward: boolean;
 }
 
 export interface ApiAccountSwitchesResponseJSON {

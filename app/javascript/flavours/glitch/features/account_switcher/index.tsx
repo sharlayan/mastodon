@@ -4,6 +4,8 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
+import Toggle from 'react-toggle';
+
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
@@ -556,19 +558,11 @@ const ParentAccountItem: React.FC<{
             aria-label={intl.formatMessage(messages.notifications)}
           >
             <label className='account-switcher-modal__notif-label'>
-              <input
-                type='checkbox'
-                checked={inAppEnabled}
-                onChange={handleInAppChange}
-              />
+              <Toggle checked={inAppEnabled} onChange={handleInAppChange} />
               <span>{intl.formatMessage(messages.receiveNotifications)}</span>
             </label>
             <label className='account-switcher-modal__notif-label'>
-              <input
-                type='checkbox'
-                checked={pushEnabled}
-                onChange={handlePushChange}
-              />
+              <Toggle checked={pushEnabled} onChange={handlePushChange} />
               <span>
                 {intl.formatMessage(messages.receivePushNotifications)}
               </span>
@@ -713,19 +707,11 @@ const CurrentAccountItem: React.FC<{
               {intl.formatMessage(messages.notifHint)}
             </span>
             <label className='account-switcher-modal__notif-label'>
-              <input
-                type='checkbox'
-                checked={inAppEnabled}
-                onChange={handleInAppChange}
-              />
+              <Toggle checked={inAppEnabled} onChange={handleInAppChange} />
               <span>{intl.formatMessage(messages.receiveNotifications)}</span>
             </label>
             <label className='account-switcher-modal__notif-label'>
-              <input
-                type='checkbox'
-                checked={pushEnabled}
-                onChange={handlePushChange}
-              />
+              <Toggle checked={pushEnabled} onChange={handlePushChange} />
               <span>
                 {intl.formatMessage(messages.receivePushNotifications)}
               </span>
@@ -909,19 +895,11 @@ const SwitchableAccountItem: React.FC<{
             aria-label={intl.formatMessage(messages.notifications)}
           >
             <label className='account-switcher-modal__notif-label'>
-              <input
-                type='checkbox'
-                checked={inAppEnabled}
-                onChange={handleInAppChange}
-              />
+              <Toggle checked={inAppEnabled} onChange={handleInAppChange} />
               <span>{intl.formatMessage(messages.receiveNotifications)}</span>
             </label>
             <label className='account-switcher-modal__notif-label'>
-              <input
-                type='checkbox'
-                checked={pushEnabled}
-                onChange={handlePushChange}
-              />
+              <Toggle checked={pushEnabled} onChange={handlePushChange} />
               <span>
                 {intl.formatMessage(messages.receivePushNotifications)}
               </span>

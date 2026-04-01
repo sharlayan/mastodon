@@ -7,7 +7,6 @@ class BroadcastStatusUpdateWorker
 
   def perform(status_id)
     status = Status.find(status_id)
-    return if status.nil?
 
     # silenced account updated on public timeline. disabled it
     return if status.account.nil? || status.account.suspended? || status.account.silenced?
@@ -19,7 +18,7 @@ class BroadcastStatusUpdateWorker
     Redis.current.publish("timeline:status:#{status.id}", JSON.generate(event: :update, payload: payload))
 
     # For recent statuses, also broadcast to timelines
-    return if status.created_at < 7.days.ago
+    return if status.created_at < 10.minutes.ago
 
     broadcast_to_all_followers(status, payload)
   rescue ActiveRecord::RecordNotFound
