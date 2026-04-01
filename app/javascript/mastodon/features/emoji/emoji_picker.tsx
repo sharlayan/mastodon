@@ -1,8 +1,8 @@
 import type { EmojiProps, PickerProps } from 'emoji-mart';
-import EmojiRaw from 'emoji-mart/dist-es/components/emoji/nimble-emoji';
-import PickerRaw from 'emoji-mart/dist-es/components/picker/nimble-picker';
 
 import { assetHost } from 'mastodon/utils/config';
+
+import { NimbleEmoji, NimblePicker } from '../emoji_mart_lazyload';
 
 import { EMOJI_MODE_NATIVE } from './constants';
 import EmojiData from './emoji_data.json';
@@ -20,7 +20,7 @@ const Emoji = ({
 }: EmojiProps) => {
   const { mode } = useEmojiAppState();
   return (
-    <EmojiRaw
+    <NimbleEmoji
       data={EmojiData}
       set={set}
       sheetSize={sheetSize}
@@ -43,7 +43,7 @@ const Picker = ({
 }: PickerProps) => {
   const { mode } = useEmojiAppState();
   return (
-    <PickerRaw
+    <NimblePicker
       data={EmojiData}
       set={set}
       sheetSize={sheetSize}
