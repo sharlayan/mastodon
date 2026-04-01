@@ -182,6 +182,7 @@ namespace :admin do
   resources :custom_emojis, only: [:index, :new, :create] do
     collection do
       post :batch
+      post :reset_cache
     end
   end
 

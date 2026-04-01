@@ -4,6 +4,7 @@ import { connect } from 'react-redux';
 
 
 import { useEmoji } from '../../../actions/emojis';
+import { addFavoriteEmoji, removeFavoriteEmoji } from '../../../actions/favorite_emojis';
 import { changeSetting } from '../../../actions/settings';
 import EmojiPickerDropdown from '../components/emoji_picker_dropdown';
 
@@ -64,6 +65,7 @@ const getCustomEmojis = createSelector([
 
 const mapStateToProps = state => ({
   custom_emojis: getCustomEmojis(state),
+  favorite_emojis: state.get('favorite_emojis'),
   skinTone: state.getIn(['settings', 'skinTone']),
   frequentlyUsedEmojis: getFrequentlyUsedEmojis(state),
 });
@@ -80,6 +82,14 @@ const mapDispatchToProps = (dispatch, { onPickEmoji }) => ({
     if (onPickEmoji) {
       onPickEmoji(emoji);
     }
+  },
+
+  onAddFavorite: (name, emojiType) => {
+    dispatch(addFavoriteEmoji(name, emojiType));
+  },
+
+  onRemoveFavorite: (name, emojiType, position) => {
+    dispatch(removeFavoriteEmoji(name, emojiType, position));
   },
 });
 

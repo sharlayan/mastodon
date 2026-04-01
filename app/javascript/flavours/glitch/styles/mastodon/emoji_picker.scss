@@ -246,3 +246,73 @@
 .emoji-mart-preview {
   display: none;
 }
+
+.emoji-mart-anchor-custom-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto;
+}
+
+.emoji-context-menu {
+  z-index: 10000;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 15%);
+  padding: 4px 0;
+  min-width: 180px;
+
+  &__item {
+    display: block;
+    width: 100%;
+    padding: 8px 14px;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    text-align: start;
+    cursor: pointer;
+    line-height: 1.4;
+
+    &:hover {
+      background: var(--color-bg-brand-softest);
+    }
+
+    &--disabled {
+      color: var(--color-text-secondary);
+      cursor: default;
+
+      &:hover {
+        background: transparent;
+      }
+    }
+  }
+}
+
+.emoji-mart-category-list button.emoji-mart-emoji {
+  position: relative;
+
+  & > span.emoji-mart-emoji__favorite-star {
+    position: absolute !important;
+    display: block !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    inset-inline-end: 1px;
+    width: calc(100% - 10px) !important;
+    height: calc(100% - 10px) !important;
+    pointer-events: none;
+    color: var(--color-accent-primary, #ffd700);
+    line-height: 1;
+
+    svg {
+      display: block;
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      fill: currentColor;
+      filter: drop-shadow(0 0 1px rgba(0, 0, 0, 100%));
+    }
+  }
+}

@@ -7,6 +7,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 
 
 import { fetchCustomEmojis } from 'flavours/glitch/actions/custom_emojis';
+import { fetchFavoriteEmojis } from 'flavours/glitch/actions/favorite_emojis';
 import { checkDeprecatedLocalSettings } from 'flavours/glitch/actions/local_settings';
 import { hydrateStore } from 'flavours/glitch/actions/store';
 import { connectUserStream } from 'flavours/glitch/actions/streaming';
@@ -34,6 +35,7 @@ store.dispatch(checkDeprecatedLocalSettings());
 
 if (initialState.meta.me) {
   store.dispatch(fetchCustomEmojis());
+  store.dispatch(fetchFavoriteEmojis());
 }
 
 export default class Mastodon extends PureComponent {

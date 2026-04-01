@@ -14,6 +14,7 @@ import { contextsReducer } from './contexts';
 import conversations from './conversations';
 import custom_emojis from './custom_emojis';
 import { dropdownMenuReducer } from './dropdown_menu';
+import favorite_emojis from './favorite_emojis';
 import filters from './filters';
 import height_cache from './height_cache';
 import history from './history';
@@ -70,6 +71,7 @@ const reducers = {
   notificationGroups: notificationGroupsReducer,
   height_cache,
   custom_emojis,
+  favorite_emojis,
   lists: listsReducer,
   followedTags: followedTagsReducer,
   filters,

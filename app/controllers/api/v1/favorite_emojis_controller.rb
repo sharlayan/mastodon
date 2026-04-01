@@ -1,0 +1,34 @@
+# frozen_string_literal: true
+
+class Api::V1::FavoriteEmojisController < Api::BaseController
+  before_action :require_user!
+  before_action :set_favorite_emoji, only: :destroy
+
+  def index
+    @favorite_emojis = current_account.favorite_emojis.ordered
+    render json: @favorite_emojis, each_serializer: REST::FavoriteEmojiSerializer
+  end
+
+  def create
+    position = current_account.favorite_emojis.count
+    @favorite_emoji = current_account.favorite_emojis.create!(favorite_emoji_params.merge(position: position))
+    render json: @favorite_emoji, serializer: REST::FavoriteEmojiSerializer
+  rescue ActiveRecord::RecordNotUnique
+    render json: { error: 'Already favorited' }, status: 422
+  end
+
+  def destroy
+    @favorite_emoji.destroy!
+    render_empty
+  end
+
+  private
+
+  def set_favorite_emoji
+    @favorite_emoji = current_account.favorite_emojis.find_by!(name: params[:name])
+  end
+
+  def favorite_emoji_params
+    params.permit(:name, :emoji_type)
+  end
+end

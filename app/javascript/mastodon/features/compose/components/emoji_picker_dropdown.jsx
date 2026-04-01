@@ -31,6 +31,10 @@ const messages = defineMessages({
   objects: { id: 'emoji_button.objects', defaultMessage: 'Objects' },
   symbols: { id: 'emoji_button.symbols', defaultMessage: 'Symbols' },
   flags: { id: 'emoji_button.flags', defaultMessage: 'Flags' },
+  favorites: { id: 'emoji_button.favorites', defaultMessage: 'Favorites' },
+  add_to_favorites: { id: 'emoji_button.add_to_favorites', defaultMessage: 'Add to Favorites' },
+  already_in_favorites: { id: 'emoji_button.already_in_favorites', defaultMessage: 'Already in Favorites' },
+  remove_from_favorites: { id: 'emoji_button.remove_from_favorites', defaultMessage: 'Remove from Favorites' },
 });
 
 let EmojiPicker, Emoji; // load asynchronously
@@ -157,10 +161,13 @@ class EmojiPickerMenuImpl extends PureComponent {
 
   static propTypes = {
     custom_emojis: ImmutablePropTypes.list,
+    favorite_emojis: ImmutablePropTypes.list,
     frequentlyUsedEmojis: PropTypes.arrayOf(PropTypes.string),
     loading: PropTypes.bool,
     onClose: PropTypes.func.isRequired,
     onPick: PropTypes.func.isRequired,
+    onAddFavorite: PropTypes.func,
+    onRemoveFavorite: PropTypes.func,
     style: PropTypes.object,
     intl: PropTypes.object.isRequired,
     skinTone: PropTypes.number.isRequired,
@@ -181,6 +188,7 @@ class EmojiPickerMenuImpl extends PureComponent {
 
   handleDocumentClick = e => {
     if (this.node && !this.node.contains(e.target) && !this.props.pickerButtonRef.contains(e.target)) {
+      if (e.target.closest('.emoji-context-menu')) return;
       this.props.onClose();
     }
   };
@@ -226,6 +234,7 @@ class EmojiPickerMenuImpl extends PureComponent {
         symbols: intl.formatMessage(messages.symbols),
         flags: intl.formatMessage(messages.flags),
         custom: intl.formatMessage(messages.custom),
+        favorites: intl.formatMessage(messages.favorites),
       },
     };
   };
@@ -254,7 +263,7 @@ class EmojiPickerMenuImpl extends PureComponent {
   };
 
   render() {
-    const { loading, style, intl, custom_emojis, skinTone, frequentlyUsedEmojis } = this.props;
+    const { loading, style, intl, custom_emojis, favorite_emojis, skinTone, frequentlyUsedEmojis, onAddFavorite, onRemoveFavorite } = this.props;
 
     if (loading) {
       return <div style={{ width: 299 }} />;
@@ -278,6 +287,10 @@ class EmojiPickerMenuImpl extends PureComponent {
 
     categoriesSort.splice(1, 0, ...Array.from(categoriesFromEmojis(custom_emojis)).sort());
 
+    if (favorite_emojis && favorite_emojis.size > 0) {
+      categoriesSort.unshift('favorites');
+    }
+
     return (
       <div className={classNames('emoji-picker-dropdown__menu', { selecting: modifierOpen })} style={style} ref={this.setRef}>
         <EmojiPicker
@@ -297,6 +310,12 @@ class EmojiPickerMenuImpl extends PureComponent {
           notFound={notFoundFn}
           autoFocus={this.state.readyToFocus}
           emojiTooltip
+          favoriteEmojis={favorite_emojis}
+          onAddFavorite={onAddFavorite}
+          onRemoveFavorite={onRemoveFavorite}
+          addToFavoritesLabel={intl.formatMessage(messages.add_to_favorites)}
+          alreadyInFavoritesLabel={intl.formatMessage(messages.already_in_favorites)}
+          removeFromFavoritesLabel={intl.formatMessage(messages.remove_from_favorites)}
         />
 
         <ModifierPicker
@@ -318,10 +337,13 @@ class EmojiPickerDropdown extends PureComponent {
 
   static propTypes = {
     custom_emojis: ImmutablePropTypes.list,
+    favorite_emojis: ImmutablePropTypes.list,
     frequentlyUsedEmojis: PropTypes.arrayOf(PropTypes.string),
     intl: PropTypes.object.isRequired,
     onPickEmoji: PropTypes.func.isRequired,
     onSkinTone: PropTypes.func.isRequired,
+    onAddFavorite: PropTypes.func,
+    onRemoveFavorite: PropTypes.func,
     skinTone: PropTypes.number.isRequired,
     disabled: PropTypes.bool,
   };
@@ -386,7 +408,7 @@ class EmojiPickerDropdown extends PureComponent {
   };
 
   render() {
-    const { intl, onPickEmoji, onSkinTone, skinTone, frequentlyUsedEmojis, disabled } = this.props;
+    const { intl, onPickEmoji, onSkinTone, skinTone, frequentlyUsedEmojis, disabled, onAddFavorite, onRemoveFavorite } = this.props;
     const title = intl.formatMessage(messages.emoji);
     const { active, loading, placement } = this.state;
 
@@ -409,6 +431,7 @@ class EmojiPickerDropdown extends PureComponent {
               <div className={`dropdown-animation ${placement}`}>
                 <EmojiPickerMenu
                   custom_emojis={this.props.custom_emojis}
+                  favorite_emojis={this.props.favorite_emojis}
                   loading={loading}
                   onClose={this.onHideDropdown}
                   onPick={onPickEmoji}
@@ -416,6 +439,8 @@ class EmojiPickerDropdown extends PureComponent {
                   skinTone={skinTone}
                   frequentlyUsedEmojis={frequentlyUsedEmojis}
                   pickerButtonRef={this.target}
+                  onAddFavorite={onAddFavorite}
+                  onRemoveFavorite={onRemoveFavorite}
                 />
               </div>
             </div>

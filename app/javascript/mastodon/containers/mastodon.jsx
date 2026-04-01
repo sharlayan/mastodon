@@ -7,6 +7,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 
 
 import { fetchCustomEmojis } from 'mastodon/actions/custom_emojis';
+import { fetchFavoriteEmojis } from 'mastodon/actions/favorite_emojis';
 import { hydrateStore } from 'mastodon/actions/store';
 import { connectUserStream } from 'mastodon/actions/streaming';
 import ErrorBoundary from 'mastodon/components/error_boundary';
@@ -29,6 +30,7 @@ const hydrateAction = hydrateStore(initialState);
 store.dispatch(hydrateAction);
 if (initialState.meta.me) {
   store.dispatch(fetchCustomEmojis());
+  store.dispatch(fetchFavoriteEmojis());
 }
 
 export default class Mastodon extends PureComponent {

@@ -20,6 +20,7 @@ module Account::Associations
         has_many :curated_collection_items, through: :collections, class_name: 'CollectionItem', source: :collection_items
         has_many :conversations, class_name: 'AccountConversation'
         has_many :custom_filters
+        has_many :favorite_emojis
         has_many :favourites
         has_many :status_reactions
         has_many :featured_tags, -> { includes(:tag) }

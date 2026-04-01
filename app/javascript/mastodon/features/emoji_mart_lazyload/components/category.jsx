@@ -98,6 +98,10 @@ export default class Category extends React.Component {
       shouldUpdate = true
     }
 
+    if (emojis !== nextEmojis) {
+      shouldUpdate = true
+    }
+
     return shouldUpdate
   }
 
@@ -105,7 +109,7 @@ export default class Category extends React.Component {
     try {
       const saved = localStorage.getItem('mastodon-emojimart-categories-setting')
       const collapsedCategories = saved ? JSON.parse(saved) : {"Recent":false, "Search":false}
-      return collapsedCategories[categoryName] !== false
+      return collapsedCategories[categoryName] === true
     } catch (e) {
       return false
     }
@@ -129,6 +133,13 @@ export default class Category extends React.Component {
     const newCollapsedState = !this.state.isCollapsed
     this.setState({ isCollapsed: newCollapsedState })
     this.saveCollapsedState(this.props.name, newCollapsedState)
+  }
+
+  expand() {
+    if (this.state.isCollapsed) {
+      this.setState({ isCollapsed: false })
+      this.saveCollapsedState(this.props.name, false)
+    }
   }
 
   updateCategoryVisibility() {

@@ -82,6 +82,7 @@ namespace :api, format: false do
     end
 
     resources :custom_emojis, only: [:index]
+    resources :favorite_emojis, only: [:index, :create, :destroy], param: :name
     resources :suggestions, only: [:index, :destroy]
     resources :scheduled_statuses, only: [:index, :show, :update, :destroy]
     resources :preferences, only: [:index]

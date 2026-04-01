@@ -3,6 +3,7 @@
 
 - if can?(:create, :custom_emoji)
   - content_for :heading_actions do
+    = button_to t('admin.custom_emojis.reset_cache'), reset_cache_admin_custom_emojis_path, method: :post, class: 'button button--secondary', data: { confirm: t('admin.reports.are_you_sure') }
     = link_to t('admin.custom_emojis.upload'), new_admin_custom_emoji_path, class: 'button'
 
 .filters

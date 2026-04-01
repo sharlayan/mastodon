@@ -10,6 +10,7 @@ import { PickerPropTypes } from '../../utils/shared-props'
 
 import Anchors from '../anchors'
 import Category from '../category'
+import EmojiContextMenu from '../emoji-context-menu'
 import Preview from '../preview'
 import Search from '../search'
 import { PickerDefaultProps } from '../../utils/shared-default-props'
@@ -29,6 +30,7 @@ const I18N = {
     places: 'Travel & Places',
     objects: 'Objects',
     symbols: 'Symbols',
+    favorites: 'Favorites',
     flags: 'Flags',
     custom: 'Custom',
   },
@@ -50,6 +52,7 @@ export default class NimblePicker extends React.PureComponent {
     this.CUSTOM = []
 
     this.RECENT_CATEGORY = { id: 'recent', name: 'Recent', emojis: null }
+    this.FAVORITES_CATEGORY = { id: 'favorites', name: 'Favorites', emojis: null, anchor: true }
     this.SEARCH_CATEGORY = {
       id: 'search',
       name: 'Search',
@@ -64,7 +67,7 @@ export default class NimblePicker extends React.PureComponent {
     this.data = props.data
     this.i18n = deepMerge(I18N, props.i18n)
     this.icons = deepMerge(icons, props.icons)
-    this.state = { firstRender: true }
+    this.state = { firstRender: true, contextMenu: null }
 
     this.categories = []
     let allCategories = [].concat(this.data.categories)
@@ -81,7 +84,8 @@ export default class NimblePicker extends React.PureComponent {
               : 'custom',
             name: emoji.customCategory || 'Custom',
             emojis: [],
-            anchor: customCategoriesCreated === 0,
+            anchor: true,
+            firstEmoji: null,
           }
 
           customCategoriesCreated++
@@ -96,6 +100,10 @@ export default class NimblePicker extends React.PureComponent {
           custom: true,
         }
 
+        if (!category.firstEmoji && emoji.imageUrl) {
+          category.firstEmoji = { imageUrl: emoji.imageUrl, id: emoji.id || emoji.short_names[0], name: emoji.name }
+        }
+
         category.emojis.push(customEmoji)
         this.CUSTOM.push(customEmoji)
       })
@@ -103,6 +111,30 @@ export default class NimblePicker extends React.PureComponent {
       allCategories = allCategories.concat(
         Object.keys(customCategories).map((key) => customCategories[key]),
       )
+    }
+
+    const initialFavoritesList = []
+    if (props.favoriteEmojis && props.favoriteEmojis.size > 0) {
+      props.favoriteEmojis.forEach((fav) => {
+        const name = fav.get('name')
+        const emojiType = fav.get('emoji_type')
+
+        if (emojiType === 'custom') {
+          const customMatch = this.CUSTOM.find((e) => e.id === name)
+          if (customMatch) {
+            initialFavoritesList.push(customMatch)
+          }
+        } else {
+          const unicodeEmoji = this.data.emojis[name]
+          if (unicodeEmoji) {
+            initialFavoritesList.push(unicodeEmoji)
+          }
+        }
+      })
+
+      if (initialFavoritesList.length > 0) {
+        this.FAVORITES_CATEGORY.emojis = initialFavoritesList
+      }
     }
 
     this.hideRecent = true
@@ -173,6 +205,10 @@ export default class NimblePicker extends React.PureComponent {
       this.categories.unshift(this.RECENT_CATEGORY)
     }
 
+    if (initialFavoritesList.length > 0) {
+      this.categories.unshift(this.FAVORITES_CATEGORY)
+    }
+
     if (this.categories[0]) {
       this.categories[0].first = true
     }
@@ -194,6 +230,8 @@ export default class NimblePicker extends React.PureComponent {
     this.handleSkinChange = this.handleSkinChange.bind(this)
     this.handleKeyDown = this.handleKeyDown.bind(this)
     this.handleDarkMatchMediaChange = this.handleDarkMatchMediaChange.bind(this)
+    this.handleEmojiContextMenu = this.handleEmojiContextMenu.bind(this)
+    this.handleContextMenuClose = this.handleContextMenuClose.bind(this)
   }
 
   componentDidMount() {
@@ -205,9 +243,75 @@ export default class NimblePicker extends React.PureComponent {
     }
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
+    if (prevProps.favoriteEmojis !== this.props.favoriteEmojis) {
+      this.rebuildFavoritesCategory()
+    }
+
     this.updateCategoriesSize()
     this.handleScroll()
+  }
+
+  rebuildFavoritesCategory() {
+    const { favoriteEmojis } = this.props
+
+    let newFavoritesEmojis = null
+
+    if (favoriteEmojis && favoriteEmojis.size > 0) {
+      const favoriteEmojisList = []
+
+      favoriteEmojis.forEach((fav) => {
+        const name = fav.get('name')
+        const emojiType = fav.get('emoji_type')
+
+        if (emojiType === 'custom') {
+          const customMatch = this.CUSTOM.find((e) => e.id === name)
+          if (customMatch) {
+            favoriteEmojisList.push(customMatch)
+          }
+        } else {
+          const unicodeEmoji = this.data.emojis[name]
+          if (unicodeEmoji) {
+            favoriteEmojisList.push(unicodeEmoji)
+          }
+        }
+      })
+
+      if (favoriteEmojisList.length > 0) {
+        newFavoritesEmojis = favoriteEmojisList
+      }
+    }
+
+    // Create new object so Category's shouldComponentUpdate detects the emojis change
+    this.FAVORITES_CATEGORY = { ...this.FAVORITES_CATEGORY, emojis: newFavoritesEmojis }
+
+    // Rebuild categories: search → favorites? → recent? → regular
+    const include = this.props.include
+    const withoutSpecial = this.categories.filter(
+      (c) => c.id !== 'search' && c.id !== 'recent' && c.id !== 'favorites'
+    )
+
+    if (include && include.length) {
+      withoutSpecial.sort((a, b) => {
+        if (include.indexOf(a.id) > include.indexOf(b.id)) return 1
+        return -1
+      })
+    }
+
+    const search = this.categories[0]
+    const recent = this.categories.find((c) => c.id === 'recent')
+
+    const middle = []
+    if (newFavoritesEmojis) middle.push(this.FAVORITES_CATEGORY)
+    if (recent) middle.push(recent)
+
+    this.categories = [search, ...middle, ...withoutSpecial]
+
+    // Restore 'first' flag on the first non-search category
+    const firstReal = this.categories.find((c) => c.id !== 'search')
+    if (firstReal) firstReal.first = true
+
+    this.forceUpdate()
   }
 
   componentWillUnmount() {
@@ -390,6 +494,11 @@ export default class NimblePicker extends React.PureComponent {
       }
     }
 
+    if (emojis) {
+      const searchComponent = this.categoryRefs['category-0']
+      if (searchComponent && searchComponent.expand) searchComponent.expand()
+    }
+
     this.forceUpdate()
     if (this.scroll) {
       this.scroll.scrollTop = 0
@@ -404,15 +513,20 @@ export default class NimblePicker extends React.PureComponent {
 
     scrollToComponent = () => {
       if (component) {
-        let { top } = component
+        if (component.expand) component.expand()
 
-        if (category.first) {
-          top = 0
-        } else {
-          top += 1
-        }
+        requestAnimationFrame(() => {
+          component.memoizeSize()
+          let { top } = component
 
-        scroll.scrollTop = top
+          if (category.first) {
+            top = 0
+          } else {
+            top += 1
+          }
+
+          scroll.scrollTop = top
+        })
       }
     }
 
@@ -463,6 +577,23 @@ export default class NimblePicker extends React.PureComponent {
     if (handled) {
       e.preventDefault()
     }
+  }
+
+  handleEmojiContextMenu(emoji, e, categoryId) {
+    if (!this.props.onAddFavorite) return
+
+    const MENU_WIDTH = 200
+    const MENU_HEIGHT = 60
+    const x = Math.min(e.clientX, window.innerWidth - MENU_WIDTH)
+    const y = Math.min(e.clientY, window.innerHeight - MENU_HEIGHT)
+
+    this.setState({
+      contextMenu: { emoji, x, y, categoryId },
+    })
+  }
+
+  handleContextMenuClose() {
+    this.setState({ contextMenu: null })
   }
 
   updateCategoriesSize() {
@@ -615,9 +746,13 @@ export default class NimblePicker extends React.PureComponent {
                   tooltip: emojiTooltip,
                   backgroundImageFn: backgroundImageFn,
                   useButton: useButton,
+                  favoriteEmojiIds: this.props.favoriteEmojis
+                    ? new Set(this.props.favoriteEmojis.map((f) => f.get('name')).toArray())
+                    : null,
                   onOver: this.handleEmojiOver,
                   onLeave: this.handleEmojiLeave,
                   onClick: this.handleEmojiClick,
+                  onContextMenu: (emoji, e) => this.handleEmojiContextMenu(emoji, e, category.id),
                 }}
                 notFound={notFound}
                 notFoundEmoji={notFoundEmoji}
@@ -653,6 +788,30 @@ export default class NimblePicker extends React.PureComponent {
               i18n={this.i18n}
             />
           </div>
+        )}
+
+        {this.state.contextMenu && this.props.onAddFavorite && (
+          <EmojiContextMenu
+            emoji={this.state.contextMenu.emoji}
+            isInFavoritesCategory={this.state.contextMenu.categoryId === 'favorites'}
+            isFavorite={
+              this.props.favoriteEmojis
+                ? this.props.favoriteEmojis.some((f) => f.get('name') === (this.state.contextMenu.emoji.id || this.state.contextMenu.emoji.short_names[0]))
+                : false
+            }
+            favoriteEmojiData={
+              this.props.favoriteEmojis
+                ? this.props.favoriteEmojis.find((f) => f.get('name') === (this.state.contextMenu.emoji.id || this.state.contextMenu.emoji.short_names[0]))
+                : undefined
+            }
+            onAddFavorite={this.props.onAddFavorite}
+            onRemoveFavorite={this.props.onRemoveFavorite}
+            addToFavoritesLabel={this.props.addToFavoritesLabel}
+            removeFromFavoritesLabel={this.props.removeFromFavoritesLabel}
+            alreadyInFavoritesLabel={this.props.alreadyInFavoritesLabel}
+            position={{ x: this.state.contextMenu.x, y: this.state.contextMenu.y }}
+            onClose={this.handleContextMenuClose}
+          />
         )}
       </section>
     )

@@ -376,6 +376,8 @@ ko:
       no_emoji_selected: 아무 것도 선택 되지 않아 어떤 에모지도 바뀌지 않았습니다
       not_permitted: 이 작업을 수행할 권한이 없습니다
       overwrite: 덮어쓰기
+      reset_cache: 캐시 초기화
+      reset_cache_done_msg: 커스텀 에모지 캐시가 초기화되었습니다
       shortcode: 짧은 코드
       shortcode_hint: 최소 2글자, 영문자, 숫자, _만 사용 가능
       title: 커스텀 에모지

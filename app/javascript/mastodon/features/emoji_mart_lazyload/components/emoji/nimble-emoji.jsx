@@ -54,6 +54,15 @@ const _handleLeave = (e, props) => {
   onLeave(emoji, e)
 }
 
+const _handleContextMenu = (e, props) => {
+  if (!props.onContextMenu) {
+    return
+  }
+  e.preventDefault()
+  var emoji = _getSanitizedData(props)
+  props.onContextMenu(emoji, e)
+}
+
 const _isNumeric = (value) => {
   return !isNaN(value - parseFloat(value))
 }
@@ -198,6 +207,9 @@ const NimbleEmoji = (props) => {
     }
   }
 
+  const emojiId = data.id || (short_names && short_names[0])
+  const isFavorited = props.favoriteEmojiIds && props.favoriteEmojiIds.has(emojiId)
+
   if (props.html) {
     style = _convertStyleToCSS(style)
     return `<${Tag.name} style='${style}' aria-label='${label}' ${
@@ -209,7 +221,7 @@ const NimbleEmoji = (props) => {
         onClick={(e) => _handleClick(e, props)}
         onMouseEnter={(e) => _handleOver(e, props)}
         onMouseLeave={(e) => _handleLeave(e, props)}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={(e) => props.onContextMenu ? _handleContextMenu(e, props) : e.preventDefault()}
         aria-label={label}
         title={title}
         className={className}
@@ -228,6 +240,13 @@ const NimbleEmoji = (props) => {
           :
           <span style={style}>{children}</span>
         }
+        {isFavorited && (
+          <span className="emoji-mart-emoji__favorite-star" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="14" height="14">
+              <path d="m233-120 65-281L80-590l288-25 112-265 112 265 288 25-218 189 65 281-247-149-247 149Z" />
+            </svg>
+          </span>
+        )}
       </Tag.name>
     )
   }

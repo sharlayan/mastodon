@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_26_112324) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_28_221522) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -434,6 +434,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_112324) do
 
   create_table "custom_emoji_categories", force: :cascade do |t|
     t.datetime "created_at", precision: nil, null: false
+    t.bigint "featured_emoji_id"
     t.string "name"
     t.datetime "updated_at", precision: nil, null: false
     t.index ["name"], name: "index_custom_emoji_categories_on_name", unique: true
@@ -587,6 +588,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_112324) do
     t.integer "threshold_timeframe"
     t.datetime "updated_at", null: false
     t.index ["fasp_provider_id"], name: "index_fasp_subscriptions_on_fasp_provider_id"
+  end
+
+  create_table "favorite_emojis", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "emoji_type", null: false
+    t.string "name", null: false
+    t.integer "position"
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "name"], name: "index_favorite_emojis_on_account_id_and_name", unique: true
+    t.index ["account_id"], name: "index_favorite_emojis_on_account_id"
   end
 
   create_table "favourites", force: :cascade do |t|
@@ -1540,6 +1552,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_112324) do
   add_foreign_key "collections", "tags"
   add_foreign_key "conversation_mutes", "accounts", name: "fk_225b4212bb", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
+  add_foreign_key "custom_emoji_categories", "custom_emojis", column: "featured_emoji_id", on_delete: :nullify
   add_foreign_key "custom_filter_keywords", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "statuses", on_delete: :cascade
@@ -1551,6 +1564,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_26_112324) do
   add_foreign_key "fasp_follow_recommendations", "accounts", column: "recommended_account_id"
   add_foreign_key "fasp_follow_recommendations", "accounts", column: "requesting_account_id"
   add_foreign_key "fasp_subscriptions", "fasp_providers"
+  add_foreign_key "favorite_emojis", "accounts", on_delete: :cascade
   add_foreign_key "favourites", "accounts", name: "fk_5eb6c2b873", on_delete: :cascade
   add_foreign_key "favourites", "statuses", name: "fk_b0e856845e", on_delete: :cascade
   add_foreign_key "featured_tags", "accounts", on_delete: :cascade

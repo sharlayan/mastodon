@@ -37,6 +37,15 @@ module Admin
       end
     end
 
+    def reset_cache
+      authorize :custom_emoji, :index?
+
+      Rails.cache.delete('api/v1/custom_emojis')
+      Rails.cache.delete_matched('emoji:*')
+
+      redirect_to admin_custom_emojis_path, notice: I18n.t('admin.custom_emojis.reset_cache_done_msg')
+    end
+
     def batch
       authorize :custom_emoji, :index?
 

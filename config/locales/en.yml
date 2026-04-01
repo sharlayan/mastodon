@@ -381,6 +381,8 @@ en:
       no_emoji_selected: No emojis were changed as none were selected
       not_permitted: You are not permitted to perform this action
       overwrite: Overwrite
+      reset_cache: Reset cache
+      reset_cache_done_msg: Custom emoji cache has been reset
       shortcode: Shortcode
       shortcode_hint: At least 2 characters, only alphanumeric characters and underscores
       title: Custom emojis
