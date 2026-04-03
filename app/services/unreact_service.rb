@@ -23,8 +23,15 @@ class UnreactService < BaseService
     return unless reaction.account.local?
 
     status = reaction.status
-    target_inbox = status.account.local? ? '' : (status.account.shared_inbox_url || status.account.inbox_url)
-    ActivityPub::ReactionsDistributionWorker.perform_async(build_json(reaction), reaction.account_id, target_inbox)
+
+    if status.public_visibility?
+      target_inbox = status.account.local? ? '' : (status.account.shared_inbox_url || status.account.inbox_url)
+      ActivityPub::ReactionsDistributionWorker.perform_async(build_json(reaction), reaction.account_id, target_inbox)
+    elsif status.account.activitypub?
+      # For non-public statuses, only notify the status author directly
+      # to avoid leaking reaction info to servers that cannot see the post
+      ActivityPub::DeliveryWorker.perform_async(build_json(reaction), reaction.account_id, status.account.inbox_url)
+    end
   end
 
   def build_json(reaction)
