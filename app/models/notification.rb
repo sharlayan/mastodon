@@ -51,6 +51,9 @@ class Notification < ApplicationRecord
     follow_request: {
       filterable: true,
     }.freeze,
+    follow_accepted: {
+      filterable: false,
+    }.freeze,
     favourite: {
       filterable: true,
     }.freeze,
@@ -237,7 +240,9 @@ class Notification < ApplicationRecord
     case activity_type
     when 'Status'
       self.from_account_id = type == :quoted_update ? activity&.quote&.quoted_account_id : activity&.account_id
-    when 'Follow', 'Favourite', 'FollowRequest', 'Poll', 'Report', 'Quote', 'Collection', 'StatusReaction'
+    when 'Follow'
+      self.from_account_id = type == :follow_accepted ? activity&.target_account_id : activity&.account_id
+    when 'Favourite', 'StatusReaction', 'FollowRequest', 'Poll', 'Report', 'Quote', 'Collection'
       self.from_account_id = activity&.account_id
     when 'CollectionItem'
       self.from_account_id = activity&.collection&.account_id

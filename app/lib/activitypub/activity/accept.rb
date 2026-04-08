@@ -33,6 +33,15 @@ class ActivityPub::Activity::Accept < ActivityPub::Activity
     request.authorize!
 
     RemoteAccountRefreshWorker.perform_async(request.target_account_id) if is_first_follow
+
+    followed_message = @json['followedMessage'].presence
+    if followed_message && request.account.local?
+      follow = Follow.find_by(account: request.account, target_account: request.target_account)
+      if follow
+        follow.update_column(:follow_message, followed_message.truncate(256))
+        LocalNotificationWorker.perform_async(request.account.id, follow.id, 'Follow', 'follow_accepted')
+      end
+    end
   end
 
   def accept_embedded_quote_request

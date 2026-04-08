@@ -176,6 +176,7 @@ const transformProfile = (result: ApiProfileJSON): ProfileData => ({
   showMediaReplies: result.show_media_replies,
   showFeatured: result.show_featured,
   attributionDomains: result.attribution_domains,
+  followedMessage: result.followed_message,
   featuredTags: result.featured_tags.map(transformTag),
 });
 

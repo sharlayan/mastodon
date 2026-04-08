@@ -8,7 +8,8 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   context_extensions :manually_approves_followers, :featured, :also_known_as,
                      :moved_to, :property_value, :discoverable, :suspended,
-                     :memorial, :indexable, :attribution_domains, :profile_settings
+                     :memorial, :indexable, :attribution_domains, :profile_settings,
+                     :misskey_followed_message
 
   context_extensions :interaction_policies if Mastodon::Feature.collections_enabled?
 
@@ -33,6 +34,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   attribute :also_known_as, if: :also_known_as?
   attribute :suspended, if: :suspended?
   attribute :attribution_domains, if: -> { object.attribution_domains.any? }
+  attribute :misskey_followed_message, key: :_misskey_followedMessage, if: :followed_message?
 
   class EndpointsSerializer < ActivityPub::Serializer
     include RoutingHelper
@@ -134,6 +136,14 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   def suspended
     object.suspended?
+  end
+
+  def misskey_followed_message
+    object.followed_message
+  end
+
+  def followed_message?
+    !object.unavailable? && object.followed_message.present?
   end
 
   def url

@@ -50,6 +50,9 @@ export type NotificationGroupQuotedUpdate =
   BaseNotificationWithStatus<'quoted_update'>;
 export type NotificationGroupFollow = BaseNotification<'follow'>;
 export type NotificationGroupFollowRequest = BaseNotification<'follow_request'>;
+export interface NotificationGroupFollowAccepted extends BaseNotification<'follow_accepted'> {
+  followMessage: string | null;
+}
 export type NotificationGroupAdminSignUp = BaseNotification<'admin.sign_up'>;
 
 export type AccountWarningAction =
@@ -111,6 +114,7 @@ export type NotificationGroup =
   | NotificationGroupQuotedUpdate
   | NotificationGroupFollow
   | NotificationGroupFollowRequest
+  | NotificationGroupFollowAccepted
   | NotificationGroupModerationWarning
   | NotificationGroupSeveredRelationships
   | NotificationGroupAdminSignUp
@@ -206,6 +210,16 @@ export function createNotificationGroupFromJSON(
         sampleAccountIds,
       };
     }
+    case 'follow_accepted': {
+      const { follow_message: followMessage, ...groupWithoutFollowMessage } =
+        group;
+      return {
+        ...groupWithoutFollowMessage,
+        partial: false,
+        followMessage,
+        sampleAccountIds,
+      };
+    }
     default:
       return {
         sampleAccountIds,
@@ -272,6 +286,12 @@ export function createNotificationGroupFromNotificationJSON(
         ...group,
         type: notification.type,
         collection: notification.collection,
+      };
+    case 'follow_accepted':
+      return {
+        ...group,
+        type: notification.type,
+        followMessage: notification.follow_message,
       };
     default:
       return {

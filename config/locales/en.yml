@@ -1764,6 +1764,10 @@ en:
       body: "%{name} is now following you!"
       subject: "%{name} is now following you"
       title: New follower
+    follow_accepted:
+      body: "%{name} accepted your follow request"
+      subject: "%{name} accepted your follow request"
+      title: Follow accepted
     follow_request:
       action: Manage follow requests
       body: "%{name} has requested to follow you"
@@ -2126,6 +2130,7 @@ en:
     notification_emails:
       favourite: favorite notification emails
       follow: follow notification emails
+      follow_accepted: follow accepted notification emails
       follow_request: follow request emails
       mention: mention notification emails
       reblog: boost notification emails

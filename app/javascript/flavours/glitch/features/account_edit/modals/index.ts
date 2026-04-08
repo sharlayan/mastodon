@@ -1,5 +1,6 @@
 export * from './bio_modal';
 export * from './fields_modals';
+export * from './follow_message_modal';
 export * from './fields_reorder_modal';
 export { ImageAltModal } from './image_alt';
 export * from './image_delete';

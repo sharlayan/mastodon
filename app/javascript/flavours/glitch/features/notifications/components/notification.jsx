@@ -27,6 +27,7 @@ import Report from './report';
 
 const messages = defineMessages({
   follow: { id: 'notification.follow', defaultMessage: '{name} followed you' },
+  followAccepted: { id: 'notification.follow_accepted', defaultMessage: '{name} accepted your follow' },
   adminSignUp: { id: 'notification.admin.sign_up', defaultMessage: '{name} signed up' },
   adminReport: { id: 'notification.admin.report', defaultMessage: '{name} reported {target}' },
   relationshipsSevered: { id: 'notification.relationships_severance_event', defaultMessage: 'Lost connections with {name}' },
@@ -118,6 +119,33 @@ class Notification extends ImmutablePureComponent {
           </div>
 
           <Account id={account.get('id')} hidden={this.props.hidden} />
+        </div>
+      </Hotkeys>
+    );
+  }
+
+  renderFollowAccepted (notification, account, link) {
+    const { intl, unread } = this.props;
+    const followMessage = notification.get('follow_message');
+
+    return (
+      <Hotkeys handlers={this.getHandlers()}>
+        <div className={classNames('notification notification-follow-accepted focusable', { unread })} tabIndex={0} aria-label={notificationForScreenReader(intl, intl.formatMessage(messages.followAccepted, { name: account.get('acct') }), notification.get('created_at'))}>
+          <div className='notification__message'>
+            <Icon id='user-plus' icon={PersonAddIcon} />
+
+            <span title={notification.get('created_at')}>
+              <FormattedMessage id='notification.follow_accepted' defaultMessage='{name} accepted your follow' values={{ name: link }} />
+            </span>
+          </div>
+
+          <Account id={account.get('id')} hidden={this.props.hidden} />
+
+          {followMessage && (
+            <div className='notification__follow-message'>
+              {followMessage}
+            </div>
+          )}
         </div>
       </Hotkeys>
     );
@@ -462,6 +490,8 @@ class Notification extends ImmutablePureComponent {
     switch(notification.get('type')) {
     case 'follow':
       return this.renderFollow(notification, account, link);
+    case 'follow_accepted':
+      return this.renderFollowAccepted(notification, account, link);
     case 'follow_request':
       return this.renderFollowRequest(notification, account, link);
     case 'mention':

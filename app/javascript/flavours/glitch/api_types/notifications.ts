@@ -11,6 +11,7 @@ import type { ApiStatusJSON } from './statuses';
 export const allNotificationTypes: NotificationType[] = [
   'follow',
   'follow_request',
+  'follow_accepted',
   'favourite',
   'reaction',
   'reblog',
@@ -43,6 +44,7 @@ export type NotificationType =
   | NotificationWithStatusType
   | 'follow'
   | 'follow_request'
+  | 'follow_accepted'
   | 'moderation_warning'
   | 'severed_relationships'
   | 'admin.sign_up'
@@ -119,6 +121,16 @@ interface SimpleNotificationJSON extends BaseNotificationJSON {
   type: SimpleNotificationTypes;
 }
 
+export interface FollowAcceptedNotificationJSON extends BaseNotificationJSON {
+  type: 'follow_accepted';
+  follow_message: string | null;
+}
+
+interface FollowAcceptedNotificationGroupJSON extends BaseNotificationGroupJSON {
+  type: 'follow_accepted';
+  follow_message: string | null;
+}
+
 export interface ApiAccountWarningJSON {
   id: string;
   action: AccountWarningAction;
@@ -175,7 +187,8 @@ export type ApiNotificationJSON =
   | NotificationWithStatusJSON
   | ModerationWarningNotificationJSON
   | AddedToCollectionNotificationJSON
-  | CollectionUpdateNotificationJSON;
+  | CollectionUpdateNotificationJSON
+  | FollowAcceptedNotificationJSON;
 
 export type ApiNotificationGroupJSON =
   | SimpleNotificationGroupJSON
@@ -185,7 +198,8 @@ export type ApiNotificationGroupJSON =
   | ModerationWarningNotificationGroupJSON
   | AnnualReportNotificationGroupJSON
   | AddedToCollectionNotificationGroupJSON
-  | CollectionUpdateNotificationGroupJSON;
+  | CollectionUpdateNotificationGroupJSON
+  | FollowAcceptedNotificationGroupJSON;
 
 export interface ApiNotificationGroupsResultJSON {
   accounts: ApiAccountJSON[];

@@ -7,6 +7,7 @@ en:
         discoverable: Your public posts and profile may be featured or recommended in various areas of Mastodon and your profile may be suggested to other users.
         display_name: Your full name or your fun name.
         fields: Your homepage, pronouns, age, anything you want.
+        followed_message: This message will be sent to users when you accept their follow request.
         indexable: Your public posts may appear in search results on Mastodon. People who have interacted with your posts may be able to search them regardless.
         note: 'You can @mention other people or #hashtags.'
         show_collections: People will be able to browse through your follows and followers. People that you follow will see that you follow them regardless.
@@ -230,6 +231,7 @@ en:
         expires_in: Expire after
         fields: Extra fields
         filter_action: Filter action
+        followed_message: Follow message
         header: Header picture
         honeypot: "%{label} (do not fill in)"
         inbox_url: URL of the relay inbox

@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 
+import { useIntl, defineMessages } from 'react-intl';
+
 import classNames from 'classnames';
 import { Helmet } from 'react-helmet';
 
@@ -32,6 +34,13 @@ import { AccountNumberFields } from './number_fields';
 import classes from './styles.module.scss';
 import { AccountTabs } from './tabs';
 
+const messages = defineMessages({
+  followMessage: {
+    id: 'account.follow_message',
+    defaultMessage: 'Follow message',
+  },
+});
+
 const titleFromAccount = (account: Account) => {
   const displayName = account.display_name;
   const acct =
@@ -48,6 +57,7 @@ export const AccountHeader: React.FC<{
   accountId: string;
   hideTabs?: boolean;
 }> = ({ accountId, hideTabs }) => {
+  const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
   const relationship = useAppSelector((state) =>
@@ -184,6 +194,15 @@ export const AccountHeader: React.FC<{
                 />
 
                 <AccountHeaderFields accountId={accountId} />
+
+                {account.followed_message && relationship?.following && (
+                  <div className='account__header__follow-message'>
+                    <span className='account__header__follow-message__label'>
+                      {intl.formatMessage(messages.followMessage)}
+                    </span>
+                    <p>{account.followed_message}</p>
+                  </div>
+                )}
               </div>
 
               {!me && account.email_subscriptions && (

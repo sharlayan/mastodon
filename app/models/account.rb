@@ -138,6 +138,7 @@ class Account < ApplicationRecord
   validates :display_name, length: { maximum: DISPLAY_NAME_LENGTH_LIMIT }, if: -> { local? && will_save_change_to_display_name? }
   validates :note, note_length: { maximum: NOTE_LENGTH_LIMIT }, if: -> { local? && will_save_change_to_note? }
   validates :fields, length: { maximum: DEFAULT_FIELDS_SIZE }, if: -> { local? && will_save_change_to_fields? }
+  validates :followed_message, length: { maximum: 256 }, if: -> { local? && will_save_change_to_followed_message? }
   validates_with EmptyProfileFieldNamesValidator, if: -> { local? && will_save_change_to_fields? }
   with_options on: :create, if: :local? do
     validates :followers_url, absence: true

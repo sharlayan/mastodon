@@ -104,6 +104,19 @@ export const messages = defineMessages({
     id: 'account_edit.featured_hashtags.edit_label',
     defaultMessage: 'Add hashtags',
   },
+  followMessageTitle: {
+    id: 'account_edit.follow_message.title',
+    defaultMessage: 'Follow message',
+  },
+  followMessagePlaceholder: {
+    id: 'account_edit.follow_message.placeholder',
+    defaultMessage:
+      'Add a message shown to users when you accept their follow request.',
+  },
+  followMessageEditLabel: {
+    id: 'account_edit.follow_message.edit_label',
+    defaultMessage: 'Edit follow message',
+  },
   profileTabTitle: {
     id: 'account_edit.profile_tab.title',
     defaultMessage: 'Profile tab settings',
@@ -161,6 +174,9 @@ export const AccountEdit: FC = () => {
   const handleCustomFieldsVerifiedHelp = useCallback(() => {
     handleOpenModal('ACCOUNT_EDIT_VERIFY_LINKS');
   }, [handleOpenModal]);
+  const handleFollowMessageEdit = useCallback(() => {
+    handleOpenModal('ACCOUNT_EDIT_FOLLOW_MESSAGE');
+  }, [handleOpenModal]);
   const handleProfileDisplayEdit = useCallback(() => {
     handleOpenModal('ACCOUNT_EDIT_PROFILE_DISPLAY');
   }, [handleOpenModal]);
@@ -189,6 +205,7 @@ export const AccountEdit: FC = () => {
   const hasBio = !!profile.bio;
   const hasFields = profile.fields.length > 0;
   const hasTags = profile.featuredTags.length > 0;
+  const hasFollowMessage = !!profile.followedMessage;
 
   return (
     <AccountEditColumn
@@ -245,6 +262,21 @@ export const AccountEdit: FC = () => {
             accountId={profile.id}
             className={classes.bio}
           />
+        </AccountEditSection>
+
+        <AccountEditSection
+          title={messages.followMessageTitle}
+          description={messages.followMessagePlaceholder}
+          showDescription={!hasFollowMessage}
+          buttons={
+            <EditButton
+              onClick={handleFollowMessageEdit}
+              label={intl.formatMessage(messages.followMessageEditLabel)}
+              icon={hasFollowMessage}
+            />
+          }
+        >
+          {hasFollowMessage && <span>{profile.followedMessage}</span>}
         </AccountEditSection>
 
         <AccountEditSection

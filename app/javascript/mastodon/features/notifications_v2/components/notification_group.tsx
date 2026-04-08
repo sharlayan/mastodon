@@ -11,6 +11,7 @@ import { NotificationAdminSignUp } from './notification_admin_sign_up';
 import { NotificationAnnualReport } from './notification_annual_report';
 import { NotificationFavourite } from './notification_favourite';
 import { NotificationFollow } from './notification_follow';
+import { NotificationFollowAccepted } from './notification_follow_accepted';
 import { NotificationFollowRequest } from './notification_follow_request';
 import { NotificationMention } from './notification_mention';
 import { NotificationModerationWarning } from './notification_moderation_warning';
@@ -91,6 +92,14 @@ export const NotificationGroup: React.FC<{
     case 'follow':
       content = (
         <NotificationFollow unread={unread} notification={notificationGroup} />
+      );
+      break;
+    case 'follow_accepted':
+      content = (
+        <NotificationFollowAccepted
+          unread={unread}
+          notification={notificationGroup}
+        />
       );
       break;
     case 'follow_request':

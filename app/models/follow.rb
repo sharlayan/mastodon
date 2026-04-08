@@ -5,6 +5,7 @@
 # Table name: follows
 #
 #  id                :bigint(8)        not null, primary key
+#  follow_message    :string(256)
 #  languages         :string           is an Array
 #  notify            :boolean          default(FALSE), not null
 #  show_reblogs      :boolean          default(TRUE), not null

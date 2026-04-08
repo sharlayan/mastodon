@@ -1629,6 +1629,10 @@ ja:
       body: "%{name}さんにフォローされています！"
       subject: "%{name}さんにフォローされています"
       title: 新たなフォロワー
+    follow_accepted:
+      body: "%{name}さんがフォローリクエストを承認しました"
+      subject: "%{name}さんがフォローリクエストを承認しました"
+      title: フォロー承認
     follow_request:
       action: フォローリクエストの管理
       body: "%{name}さんがあなたにフォローをリクエストしました"

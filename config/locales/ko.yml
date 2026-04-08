@@ -1687,6 +1687,10 @@ ko:
       body: "%{name} 님이 나를 팔로우했습니다!"
       subject: "%{name} 님이 나를 팔로우했습니다"
       title: 새 팔로워
+    follow_accepted:
+      body: "%{name} 님이 팔로우 요청을 수락했습니다"
+      subject: "%{name} 님이 팔로우 요청을 수락했습니다"
+      title: 팔로우 수락됨
     follow_request:
       action: 팔로우 요청 관리
       body: "%{name} 님이 내게 팔로우 요청을 보냈습니다"

@@ -631,6 +631,8 @@
   "notification.favourite_pm.name_and_others_with_link": "{name} と <a>{count, plural, other {#人}}</a> があなたのプライベートメンションをお気に入りにしました",
   "notification.follow": "{name}さんにフォローされました",
   "notification.follow.name_and_others": "{name}さんと<a>ほか{count, plural, other {#人}}</a>にフォローされました",
+  "notification.follow_accepted": "{name}さんがフォローを承認しました",
+  "notification.follow_accepted.name_and_others": "{name}さんと<a>ほか{count, plural, other {#人}}</a>がフォローを承認しました",
   "notification.follow_request": "{name}さんがあなたにフォローリクエストしました",
   "notification.follow_request.name_and_others": "{name}さんとほか{count, plural, other {#人}}があなたにフォローリクエストしました",
   "notification.label.mention": "メンション",

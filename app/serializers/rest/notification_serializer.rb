@@ -13,6 +13,8 @@ class REST::NotificationSerializer < ActiveModel::Serializer
   belongs_to :account_warning, key: :moderation_warning, if: :moderation_warning_event?, serializer: REST::AccountWarningSerializer
   belongs_to :target_collection, key: :collection, if: :collection_type?, serializer: REST::CollectionSerializer
 
+  attribute :follow_message, if: :follow_accepted_type?
+
   def id
     object.id.to_s
   end
@@ -27,6 +29,14 @@ class REST::NotificationSerializer < ActiveModel::Serializer
 
   def collection_type?
     [:added_to_collection, :collection_update].include?(object.type)
+  end
+
+  def follow_accepted_type?
+    object.type == :follow_accepted
+  end
+
+  def follow_message
+    object.follow&.follow_message
   end
 
   def report_type?

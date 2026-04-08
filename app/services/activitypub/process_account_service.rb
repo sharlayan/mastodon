@@ -151,6 +151,7 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.show_media              = @json['showMedia'] if @json.key?('showMedia')
     @account.show_media_replies      = @json['showRepliesInMedia'] if @json.key?('showRepliesInMedia')
     @account.attribution_domains     = as_array(@json['attributionDomains'] || []).take(Account::ATTRIBUTION_DOMAINS_HARD_LIMIT).map { |item| value_or_id(item) }
+    @account.followed_message        = (@json['_misskey_followedMessage'] || @json['followedMessage'] || '')[0...256].presence
   end
 
   def set_fetchable_key!

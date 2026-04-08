@@ -16,6 +16,8 @@ class REST::NotificationGroupSerializer < ActiveModel::Serializer
   belongs_to :generated_annual_report, key: :annual_report, if: :annual_report_event?, serializer: REST::AnnualReportEventSerializer
   belongs_to :target_collection, key: :collection, if: :collection_type?, serializer: REST::CollectionSerializer
 
+  attribute :follow_message, if: :follow_accepted_type?
+
   def sample_account_ids
     object.sample_accounts.pluck(:id).map(&:to_s)
   end
@@ -46,6 +48,14 @@ class REST::NotificationGroupSerializer < ActiveModel::Serializer
 
   def annual_report_event?
     object.type == :annual_report
+  end
+
+  def follow_accepted_type?
+    object.type == :follow_accepted
+  end
+
+  def follow_message
+    object.notification.follow&.follow_message
   end
 
   def page_min_id
