@@ -2,6 +2,7 @@
 
 class UnreactService < BaseService
   include Payloadable
+  include ActivityPub::ReactionDistribution
 
   def call(account, status, emoji)
     return if emoji.blank?
@@ -20,18 +21,7 @@ class UnreactService < BaseService
   private
 
   def distribute_undo_reaction(reaction)
-    return unless reaction.account.local?
-
-    status = reaction.status
-
-    if status.public_visibility?
-      target_inbox = status.account.local? ? '' : (status.account.shared_inbox_url || status.account.inbox_url)
-      ActivityPub::ReactionsDistributionWorker.perform_async(build_json(reaction), reaction.account_id, target_inbox)
-    elsif status.account.activitypub?
-      # For non-public statuses, only notify the status author directly
-      # to avoid leaking reaction info to servers that cannot see the post
-      ActivityPub::DeliveryWorker.perform_async(build_json(reaction), reaction.account_id, status.account.inbox_url)
-    end
+    distribute_reaction_activity(reaction, build_json(reaction))
   end
 
   def build_json(reaction)

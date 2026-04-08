@@ -61,8 +61,9 @@ class Api::V1::AccountSwitchesController < Api::BaseController
       next unless acct&.user
 
       marker = acct.user.markers.find { |m| m.timeline == 'notifications' }
+      last_read_id = marker&.last_read_id&.positive? ? marker.last_read_id : nil
       scope = Notification.where(account_id: acct.id).without_suspended.where(filtered: false)
-      scope = scope.where(Notification.arel_table[:id].gt(marker.last_read_id)) if marker&.last_read_id&.positive?
+      scope = scope.where(id: ((last_read_id + 1)..)) if last_read_id
       counts[acct.id.to_s] = [scope.count, 100].min
     end
 

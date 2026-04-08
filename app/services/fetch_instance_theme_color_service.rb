@@ -142,9 +142,8 @@ class FetchInstanceThemeColorService < BaseService
   def fetch_misskey_meta
     api_url = "https://#{@domain}/nodeinfo/2.1"
 
-    request = Request.new(:post, api_url)
+    request = Request.new(:get, api_url)
     request.add_headers('User-Agent' => Mastodon::Version.user_agent)
-    request.add_headers('Content-Type' => 'application/json')
 
     request.perform do |response|
       if response.code == 200
@@ -203,12 +202,14 @@ class FetchInstanceThemeColorService < BaseService
     return 'magnetar' if repo_url.include?('magnetar')
     return 'iceshrimp' if repo_url.include?('iceshrimp')
     return 'catodon' if repo_url.include?('catodon')
+    return 'cherrypick' if repo_url.include?('cherrypick')
 
     version = meta_data['version']&.downcase || ''
 
     return 'sharkey' if version.include?('sharkey')
     return 'firefish' if version.include?('firefish')
     return 'calckey' if version.include?('calckey')
+    return 'cherrypick' if version.include?('cherrypick')
 
     'misskey'
   end
