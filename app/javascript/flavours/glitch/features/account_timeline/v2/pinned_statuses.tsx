@@ -14,6 +14,7 @@ import { Button } from '@/flavours/glitch/components/button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { StatusHeader } from '@/flavours/glitch/components/status/header';
 import type { StatusHeaderRenderFn } from '@/flavours/glitch/components/status/header';
+import StatusIcons from '@/flavours/glitch/components/status_icons';
 import { selectTimelineByKey } from '@/flavours/glitch/selectors/timelines';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import IconPinned from '@/images/icons/icon_pinned.svg?react';
@@ -72,14 +73,25 @@ export function usePinnedStatusIds({
 
 export const renderPinnedStatusHeader: StatusHeaderRenderFn = ({
   featured,
+  mediaIcons,
+  settings,
   ...args
 }) => {
+  const iconsEl = settings ? (
+    <StatusIcons
+      status={args.status}
+      mediaIcons={mediaIcons}
+      settings={settings}
+    />
+  ) : null;
+
   if (!featured) {
-    return <StatusHeader {...args} />;
+    return <StatusHeader {...args}>{iconsEl}</StatusHeader>;
   }
   return (
     <StatusHeader {...args} className={classes.pinnedStatusHeader}>
       <PinnedBadge />
+      {iconsEl}
     </StatusHeader>
   );
 };

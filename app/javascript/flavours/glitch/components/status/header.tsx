@@ -4,6 +4,8 @@ import { defineMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
+import type { Map as ImmutableMap } from 'immutable';
+
 import { isStatusVisibility } from '@/flavours/glitch/api_types/statuses';
 import type { Account } from '@/flavours/glitch/models/account';
 import type { Status } from '@/flavours/glitch/models/status';
@@ -24,6 +26,8 @@ export interface StatusHeaderProps {
   onHeaderClick?: MouseEventHandler<HTMLDivElement>;
   className?: string;
   featured?: boolean;
+  mediaIcons?: string[];
+  settings?: ImmutableMap<string, unknown>;
 }
 
 export type StatusHeaderRenderFn = (args: StatusHeaderProps) => ReactNode;
