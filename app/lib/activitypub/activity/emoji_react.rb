@@ -7,6 +7,8 @@ class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
 
     return if original_status.nil? || delete_arrived_first?(@json['id'])
 
+    custom_emoji = nil
+
     if /^:.*:$/.match?(name)
       name.delete! ':'
       custom_emoji = process_emoji_tags(name, @json['tag'])

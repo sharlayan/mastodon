@@ -125,6 +125,8 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
 
     return if status.nil? || !status.account.local?
 
+    custom_emoji = nil
+
     if /^:.*:$/.match?(name)
       name.delete! ':'
       custom_emoji = process_emoji_tags(name, @object['tag'])
@@ -133,7 +135,7 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
     end
 
     if @account.reacted?(status, name, custom_emoji)
-      reaction = status.status_reactions.where(account: @account, name: name).first
+      reaction = status.status_reactions.where(account: @account, name: name, custom_emoji: custom_emoji).first
       reaction&.destroy
     else
       delete_later!(object_uri)

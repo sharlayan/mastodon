@@ -11,6 +11,24 @@ class FetchInstanceThemeColorService < BaseService
     Errno::ETIMEDOUT,
   ].freeze
 
+  ALLOWED_FAVICON_CONTENT_TYPES = %w(
+    image/png
+    image/x-icon
+    image/vnd.microsoft.icon
+    image/gif
+    image/jpeg
+    image/webp
+  ).freeze
+
+  CONTENT_TYPE_TO_EXT = {
+    'image/png' => '.png',
+    'image/x-icon' => '.ico',
+    'image/vnd.microsoft.icon' => '.ico',
+    'image/gif' => '.gif',
+    'image/jpeg' => '.jpg',
+    'image/webp' => '.webp',
+  }.freeze
+
   def call(domain)
     @domain = domain
     @metadata = InstanceMetadata.for_domain(domain)
@@ -327,32 +345,33 @@ class FetchInstanceThemeColorService < BaseService
     return nil if favicon_url.blank?
 
     begin
-      uri = URI.parse(favicon_url)
-      ext = File.extname(uri.path)
-      ext = '.ico' if ext.blank? || ext.length > 5
+      URI.parse(favicon_url)
     rescue URI::InvalidURIError
       return nil
     end
 
     safe_domain = @domain.gsub(/[^a-zA-Z0-9\-.]/, '_')
-    filename = "#{safe_domain}#{ext}"
 
     storage_path = Rails.public_path.join('system', 'instance_favicons')
     FileUtils.mkdir_p(storage_path)
-    file_path = storage_path.join(filename)
 
     request = Request.new(:get, favicon_url)
     request.add_headers('User-Agent' => Mastodon::Version.user_agent)
 
     request.perform do |response|
-      if response.code == 200
-        content = response.body_with_limit
-        File.binwrite(file_path, content)
+      next unless response.code == 200
 
-        local_url = "/system/instance_favicons/#{filename}"
+      content_type = response.headers['content-type']&.split(';')&.first&.strip&.downcase
+      next unless ALLOWED_FAVICON_CONTENT_TYPES.include?(content_type)
 
-        return local_url
-      end
+      ext = CONTENT_TYPE_TO_EXT[content_type] || '.ico'
+      filename = "#{safe_domain}#{ext}"
+      file_path = storage_path.join(filename)
+
+      content = response.body_with_limit
+      File.binwrite(file_path, content)
+
+      return "/system/instance_favicons/#{filename}"
     end
 
     nil
