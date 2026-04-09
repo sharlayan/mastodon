@@ -162,9 +162,10 @@ code {
       .not_recommended,
       .glitch_only,
       .sharlayan_only {
-        position: absolute;
-        margin: 0 4px;
-        margin-top: -2px;
+        position: relative;
+        padding: 2px 6px;
+        top: 0.25em;
+        left: -0.1em;
       }
     }
   }
