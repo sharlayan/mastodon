@@ -1,0 +1,31 @@
+- content_for :page_title do
+  = t('admin.avatar_decorations.pending_title')
+
+- content_for :heading_actions do
+  = link_to t('admin.avatar_decorations.all_decorations'), admin_avatar_decorations_path, class: 'button button--secondary'
+
+.table-wrapper
+  %table.table
+    %thead
+      %tr
+        %th= t('admin.avatar_decorations.preview')
+        %th= t('admin.avatar_decorations.name')
+        %th= t('admin.avatar_decorations.origin')
+        %th
+    %tbody
+      - if @decorations.empty?
+        %tr
+          %td{ colspan: 4 }
+            = nothing_here
+      - else
+        - @decorations.each do |decoration|
+          %tr
+            %td
+              %img.avatar-decoration-preview{ src: decoration.image_url, alt: decoration.name }
+            %td= decoration.name
+            %td= decoration.host
+            %td.table-action-cell
+              = button_to t('admin.avatar_decorations.approve'), approve_admin_avatar_decoration_path(decoration), method: :post, class: 'table-action-link'
+              = button_to t('admin.avatar_decorations.delete'), admin_avatar_decoration_path(decoration), method: :delete, class: 'table-action-link table-action-link--destructive', data: { confirm: t('admin.reports.are_you_sure') }
+
+= paginate @decorations

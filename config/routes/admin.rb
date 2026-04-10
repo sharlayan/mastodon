@@ -135,9 +135,12 @@ namespace :admin do
       post :unsilence
       post :unsuspend
       post :redownload
+      post :refresh_avatar_decorations
       post :remove_avatar
       post :remove_header
       post :memorialize
+      post :block_avatar_decorations
+      post :unblock_avatar_decorations
       post :approve
       post :reject
       post :unblock_email
@@ -172,6 +175,18 @@ namespace :admin do
       post :reset_cache
     end
   end
+
+  resources :avatar_decorations, only: [:index, :new, :create, :edit, :update, :destroy] do
+    member do
+      post :approve
+      post :redownload
+    end
+    collection do
+      post :batch
+    end
+  end
+
+  resources :avatar_decoration_domain_blocks, only: [:index, :create, :destroy]
 
   resources :ip_blocks, only: [:index, :new, :create], concerns: :batch
 

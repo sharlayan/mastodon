@@ -7,6 +7,7 @@ import type {
   ApiAccountFieldJSON,
   ApiAccountRoleJSON,
   ApiAccountJSON,
+  ApiAvatarDecorationJSON,
 } from 'flavours/glitch/api_types/accounts';
 import { unescapeHTML } from 'flavours/glitch/utils/html';
 
@@ -43,7 +44,10 @@ const AccountRoleFactory = ImmutableRecord<AccountRoleShape>({
 
 // Account
 export interface AccountShape extends Required<
-  Omit<ApiAccountJSON, 'emojis' | 'fields' | 'roles' | 'moved' | 'url'>
+  Omit<
+    ApiAccountJSON,
+    'emojis' | 'fields' | 'roles' | 'moved' | 'url' | 'avatar_decorations'
+  >
 > {
   emojis: ImmutableList<CustomEmoji>;
   fields: ImmutableList<AccountField>;
@@ -54,6 +58,7 @@ export interface AccountShape extends Required<
   hidden: boolean;
   moved: string | null;
   url: string;
+  avatar_decorations: ApiAvatarDecorationJSON[];
 }
 
 export type Account = RecordOf<AccountShape>;
@@ -105,6 +110,7 @@ export const accountDefaultValues: AccountShape = {
   hide_collections: false,
   email_subscriptions: false,
   followed_message: null,
+  avatar_decorations: [],
   // This comes from `ApiMutedAccountJSON`, but we should eventually
   // store that in a different object.
   mute_expires_at: null,

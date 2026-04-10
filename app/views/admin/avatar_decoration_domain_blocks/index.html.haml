@@ -1,0 +1,40 @@
+- content_for :page_title do
+  = t('admin.avatar_decoration_domain_blocks.title')
+
+= simple_form_for AvatarDecorationDomainBlock.new, url: admin_avatar_decoration_domain_blocks_path do |f|
+  = render 'shared/error_messages', object: @domain_block if defined?(@domain_block) && @domain_block&.errors&.any?
+
+  .fields-group
+    = f.input :domain,
+              wrapper: :with_label,
+              label: t('admin.avatar_decoration_domain_blocks.domain'),
+              hint: t('admin.avatar_decoration_domain_blocks.domain_hint')
+
+  .actions
+    = f.button :button, t('admin.avatar_decoration_domain_blocks.block'), type: :submit, class: 'button button--dangerous'
+
+.table-wrapper
+  %table.table
+    %thead
+      %tr
+        %th= t('admin.avatar_decoration_domain_blocks.domain')
+        %th= t('admin.avatar_decoration_domain_blocks.added_at')
+        %th
+    %tbody
+      - if @domain_blocks.empty?
+        %tr
+          %td{ colspan: 3 }
+            = nothing_here
+      - else
+        - @domain_blocks.each do |block|
+          %tr
+            %td= block.domain
+            %td= l block.created_at, format: :short
+            %td.table-action-cell
+              = button_to t('admin.avatar_decoration_domain_blocks.unblock'),
+                          admin_avatar_decoration_domain_block_path(block),
+                          method: :delete,
+                          class: 'table-action-link table-action-link--destructive',
+                          data: { confirm: t('admin.reports.are_you_sure') }
+
+= paginate @domain_blocks

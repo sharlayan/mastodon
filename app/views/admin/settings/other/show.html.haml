@@ -30,5 +30,36 @@
   .fields-group
     = f.input :mfm_allow_composition, as: :boolean, wrapper: :with_label, label: t('admin.settings.mfm_allow_composition.title'), hint: t('admin.settings.mfm_allow_composition.desc_html')
 
+  %h2= t('admin.settings.avatar_decorations.title')
+
+  .fields-group
+    = f.input :avatar_decorations_enabled,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.avatar_decorations.enabled'),
+              hint: t('admin.settings.avatar_decorations.enabled_hint')
+
+  .fields-group
+    = f.input :avatar_decorations_federation_enabled,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.avatar_decorations.federation_enabled'),
+              hint: t('admin.settings.avatar_decorations.federation_enabled_hint')
+
+  .fields-group
+    = f.input :avatar_decorations_local_only_view,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.avatar_decorations.local_only_view'),
+              hint: t('admin.settings.avatar_decorations.local_only_view_hint')
+
+  .fields-group
+    = f.input :avatar_decorations_max_count,
+              as: :integer,
+              wrapper: :with_label,
+              label: t('admin.settings.avatar_decorations.max_count'),
+              hint: t('admin.settings.avatar_decorations.max_count_hint'),
+              input_html: { min: 0, max: 16 }
+
   .actions
     = f.button :button, t('generic.save_changes'), type: :submit

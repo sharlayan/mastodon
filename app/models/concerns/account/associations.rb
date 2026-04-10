@@ -42,6 +42,7 @@ module Account::Associations
         has_many :statuses
         has_many :keypairs
         has_many :email_subscriptions
+        has_many :avatar_decoration_mutes
 
         has_one :deletion_request, class_name: 'AccountDeletionRequest'
         has_one :follow_recommendation_suppression
@@ -56,6 +57,7 @@ module Account::Associations
         has_many :targeted_account_notes, class_name: 'AccountNote'
         has_many :targeted_moderation_notes, class_name: 'AccountModerationNote'
         has_many :targeted_reports, class_name: 'Report'
+        has_many :avatar_decoration_mutes_targeting_account, class_name: 'AvatarDecorationMute'
       end
     end
 

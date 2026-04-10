@@ -728,8 +728,16 @@ kbd {
 
 .action-buttons {
   display: flex;
-  overflow: hidden;
+  overflow: visible;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
 }
 
 .spacer {

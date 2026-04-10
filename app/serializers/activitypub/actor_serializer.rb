@@ -9,7 +9,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   context_extensions :manually_approves_followers, :featured, :also_known_as,
                      :moved_to, :property_value, :discoverable, :suspended,
                      :memorial, :indexable, :attribution_domains, :profile_settings,
-                     :misskey_followed_message
+                     :misskey_followed_message, :avatar_decorations
 
   context_extensions :interaction_policies if Mastodon::Feature.collections_enabled?
 
@@ -35,6 +35,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   attribute :suspended, if: :suspended?
   attribute :attribution_domains, if: -> { object.attribution_domains.any? }
   attribute :misskey_followed_message, key: :_misskey_followedMessage, if: :followed_message?
+  attribute :misskey_avatar_decorations, key: :_misskey_avatarDecorations, if: :avatar_decorations_enabled?
 
   class EndpointsSerializer < ActivityPub::Serializer
     include RoutingHelper
@@ -144,6 +145,38 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   def followed_message?
     !object.unavailable? && object.followed_message.present?
+  end
+
+  def avatar_decorations_enabled?
+    Setting.avatar_decorations_enabled &&
+      Setting.avatar_decorations_federation_enabled &&
+      !object.unavailable? &&
+      !object.avatar_decorations_blocked &&
+      object.avatar_decorations.any?
+  end
+
+  def misskey_avatar_decorations
+    decoration_ids = object.avatar_decorations.filter_map { |d| d['id'] }
+    return [] if decoration_ids.empty?
+
+    decorations_by_id = AvatarDecoration.find_many_cached(decoration_ids).index_by(&:id)
+
+    object.avatar_decorations.filter_map do |config|
+      decoration = decorations_by_id[config['id']]
+      next if decoration.nil?
+
+      {
+        id: decoration.id.to_s,
+        url: full_asset_url(decoration.image_url),
+        staticUrl: full_asset_url(decoration.image_static_url),
+        angle: config['angle'] || 0.0,
+        flipH: config['flip_h'] || false,
+        offsetX: config['offset_x'] || 0.0,
+        offsetY: config['offset_y'] || 0.0,
+        scale: config['scale'] || 1.0,
+        opacity: config['opacity'] || 1.0,
+      }
+    end
   end
 
   def url

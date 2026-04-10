@@ -61,6 +61,10 @@ class AccountPolicy < ApplicationPolicy
     role.can?(:manage_users)
   end
 
+  def block_avatar_decorations?
+    role.can?(:manage_users)
+  end
+
   def review?
     role.can?(:manage_taxonomies)
   end

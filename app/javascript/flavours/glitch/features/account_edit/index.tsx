@@ -125,6 +125,18 @@ export const messages = defineMessages({
     id: 'account_edit.profile_tab.subtitle',
     defaultMessage: 'Customize the tabs on your profile and what they display.',
   },
+  decorationsTitle: {
+    id: 'account_edit.decorations.title',
+    defaultMessage: 'Profile decorations',
+  },
+  decorationsPlaceholder: {
+    id: 'account_edit.decorations.placeholder',
+    defaultMessage: 'Add decorative overlays to your avatar.',
+  },
+  decorationsEditLabel: {
+    id: 'account_edit.decorations.edit_label',
+    defaultMessage: 'Edit decorations',
+  },
   advancedSettingsTitle: {
     id: 'account_edit.advanced_settings.title',
     defaultMessage: 'Advanced settings',
@@ -180,6 +192,9 @@ export const AccountEdit: FC = () => {
   const handleProfileDisplayEdit = useCallback(() => {
     handleOpenModal('ACCOUNT_EDIT_PROFILE_DISPLAY');
   }, [handleOpenModal]);
+  const handleDecorationsEdit = useCallback(() => {
+    handleOpenModal('ACCOUNT_EDIT_DECORATION');
+  }, [handleOpenModal]);
 
   const history = useHistory();
   const handleFeaturedTagsEdit = useCallback(() => {
@@ -206,6 +221,7 @@ export const AccountEdit: FC = () => {
   const hasFields = profile.fields.length > 0;
   const hasTags = profile.featuredTags.length > 0;
   const hasFollowMessage = !!profile.followedMessage;
+  const hasDecorations = profile.avatarDecorations.length > 0;
 
   return (
     <AccountEditColumn
@@ -277,6 +293,39 @@ export const AccountEdit: FC = () => {
           }
         >
           {hasFollowMessage && <span>{profile.followedMessage}</span>}
+        </AccountEditSection>
+
+        <AccountEditSection
+          title={messages.decorationsTitle}
+          description={messages.decorationsPlaceholder}
+          showDescription={!hasDecorations}
+          buttons={
+            <EditButton
+              onClick={handleDecorationsEdit}
+              label={intl.formatMessage(messages.decorationsEditLabel)}
+              icon={hasDecorations}
+            />
+          }
+        >
+          {hasDecorations && (
+            <span>
+              {profile.avatarDecorations.length === 1
+                ? intl.formatMessage(
+                    {
+                      id: 'account_edit.decorations.count_one',
+                      defaultMessage: '{count} decoration',
+                    },
+                    { count: profile.avatarDecorations.length },
+                  )
+                : intl.formatMessage(
+                    {
+                      id: 'account_edit.decorations.count_other',
+                      defaultMessage: '{count} decorations',
+                    },
+                    { count: profile.avatarDecorations.length },
+                  )}
+            </span>
+          )}
         </AccountEditSection>
 
         <AccountEditSection

@@ -38,10 +38,17 @@ class NodeInfo::Serializer < ActiveModel::Serializer
   end
 
   def metadata
-    {
+    meta = {
       nodeName: Setting.site_title,
       nodeDescription: Setting.site_short_description,
     }
+
+    if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
+      meta[:features] = (meta[:features] || []) + ['avatarDecorations']
+      meta[:avatarDecorations] = true
+    end
+
+    meta
   end
 
   private

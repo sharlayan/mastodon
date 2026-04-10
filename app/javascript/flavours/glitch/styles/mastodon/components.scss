@@ -1685,6 +1685,10 @@ body > [data-popper-placement] {
   overflow: hidden;
   margin-inline-end: auto;
 
+  &:has(.account__avatar--decorated) {
+    overflow: visible;
+  }
+
   .display-name {
     bdi {
       overflow: hidden;
@@ -2328,7 +2332,7 @@ body > [data-popper-placement] {
   background: var(--color-bg-tertiary);
   flex-shrink: 0;
 
-  img {
+  img:not(.account__avatar__decoration) {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -2344,6 +2348,29 @@ body > [data-popper-placement] {
     display: inline-block;
     vertical-align: middle;
     margin-inline-end: 5px;
+  }
+
+  &--decorated {
+    overflow: visible;
+  }
+
+  &--force-round {
+    border-radius: 50% !important;
+
+    img:not(.account__avatar__decoration) {
+      border-radius: 50% !important;
+    }
+  }
+
+  &__decoration {
+    position: absolute;
+    top: -50%;
+    inset-inline-start: -50%;
+    width: 200%;
+    height: 200%;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 1;
   }
 
   &-composite {
@@ -2397,6 +2424,29 @@ body > [data-popper-placement] {
     font-weight: 500;
     text-align: center;
   }
+
+  &--decorated {
+    overflow: visible;
+    background: transparent !important;
+  }
+
+  &__decoration {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: auto;
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+.avatar-decoration-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--color-bg-secondary);
 }
 
 a .account__avatar {
@@ -2534,6 +2584,10 @@ a.account__display-name {
   line-height: 22px;
   margin-bottom: 16px;
   overflow: hidden;
+
+  &:has(.account__avatar--decorated) {
+    overflow: visible;
+  }
 
   strong,
   span {
@@ -9043,6 +9097,10 @@ noscript {
     overflow: hidden;
     margin-inline-start: -2px; // aligns the pfp with content below
 
+    &:has(.account__avatar--decorated) {
+      overflow: visible;
+    }
+
     &__name {
       margin-top: 16px;
       margin-bottom: 16px;
@@ -9867,6 +9925,14 @@ noscript {
       pointer-events: none;
     }
   }
+}
+
+.status__wrapper:has(.account__avatar--decorated) {
+  overflow: hidden;
+}
+
+.detailed-status:has(.account__avatar--decorated) {
+  overflow: hidden;
 }
 
 .picture-in-picture {

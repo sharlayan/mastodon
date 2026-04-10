@@ -38,7 +38,8 @@ class Api::V1::ProfilesController < Api::BaseController
       :show_featured,
       :followed_message,
       attribution_domains: [],
-      fields_attributes: [:name, :value]
+      fields_attributes: [:name, :value],
+      avatar_decorations: [:id, :angle, :flip_h, :offset_x, :offset_y, :scale, :opacity]
     )
   end
 end

@@ -61,6 +61,9 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:mfm_animations]              = object_account_user.settings_mfm_animations
       store[:mfm_fold_mode]               = object_account_user.settings_mfm_fold_mode
       store[:wrapstodon] = wrapstodon
+      store[:show_avatar_decorations]           = object_account_user.settings['avatar_decorations.show']
+      store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']
+      store[:force_round_avatar_decoration]     = object_account_user.settings['avatar_decorations.force_round']
     else
       store[:auto_play_gif] = Setting.auto_play_gif
       store[:display_media] = Setting.display_media
@@ -157,6 +160,8 @@ class InitialStateSerializer < ActiveModel::Serializer
       version: instance_presenter.version,
       terms_of_service_enabled: TermsOfService.current.present?,
       force_local_only: Setting.force_local_only,
+      avatar_decorations_enabled: Setting.avatar_decorations_enabled,
+      avatar_decorations_federation_enabled: Setting.avatar_decorations_federation_enabled,
       local_account_statuses_access: Setting.local_account_statuses_access,
       local_status_page_access: Setting.local_status_page_access,
       local_live_feed_access: Setting.local_live_feed_access,

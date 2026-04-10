@@ -78,6 +78,12 @@ class UserSettings
     setting :must_be_following_dm, default: false
   end
 
+  namespace :avatar_decorations do
+    setting :show, default: false
+    setting :show_federated, default: false
+    setting :force_round, default: false
+  end
+
   def initialize(original_hash)
     @original_hash = original_hash || {}
   end

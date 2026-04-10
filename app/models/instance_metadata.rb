@@ -77,4 +77,8 @@ class InstanceMetadata < ApplicationRecord
     misskey_variants = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick)
     misskey_variants.include?(software.downcase)
   end
+
+  def avatar_decorations_compatible?
+    misskey_based? || supports_avatar_decorations?
+  end
 end

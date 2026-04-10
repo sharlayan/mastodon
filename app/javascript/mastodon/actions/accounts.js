@@ -3,6 +3,7 @@ import { debounceWithDispatchAndArguments } from 'mastodon/utils/debounce';
 
 import api, { getLinks } from '../api';
 import { me } from '../initial_state';
+import { showAlert, showAlertForError } from './alerts';
 
 import {
   followAccountSuccess, unfollowAccountSuccess,
@@ -253,6 +254,20 @@ export function unmuteAccount(id) {
       dispatch(unmuteAccountSuccess({ relationship: response.data }));
     }).catch(error => {
       dispatch(unmuteAccountFail({ id, error }));
+    });
+  };
+}
+
+export function refetchAccount(id) {
+  return (dispatch) => {
+    api().post(`/api/v1/accounts/${id}/refetch`).then(() => {
+      dispatch(showAlert({ message: { id: 'account.refetch_queued', defaultMessage: 'Profile refresh queued' } }));
+    }).catch((error) => {
+      if (error.response?.status === 429) {
+        dispatch(showAlert({ message: { id: 'account.refetch_rate_limited', defaultMessage: 'Too many refresh requests. Please try again later.' } }));
+      } else {
+        dispatch(showAlertForError(error));
+      }
     });
   };
 }

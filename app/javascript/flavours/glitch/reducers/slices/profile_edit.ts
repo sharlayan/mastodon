@@ -178,6 +178,7 @@ const transformProfile = (result: ApiProfileJSON): ProfileData => ({
   attributionDomains: result.attribution_domains,
   followedMessage: result.followed_message,
   featuredTags: result.featured_tags.map(transformTag),
+  avatarDecorations: result.avatar_decorations,
 });
 
 export const fetchProfile = createDataLoadingThunk(

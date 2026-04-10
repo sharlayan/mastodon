@@ -106,6 +106,7 @@ export const MODAL_COMPONENTS = {
   'ACCOUNT_FIELD_OVERFLOW': () => import('@/flavours/glitch/features/account_timeline/modals/field_modal').then(module => ({ default: module.AccountFieldModal })),
   'ACCOUNT_EDIT_NAME': accountEditModal('NameModal'),
   'ACCOUNT_EDIT_BIO': accountEditModal('BioModal'),
+  'ACCOUNT_EDIT_DECORATION': accountEditModal('DecorationModal'),
   'ACCOUNT_EDIT_FOLLOW_MESSAGE': accountEditModal('FollowMessageModal'),
   'ACCOUNT_EDIT_PROFILE_DISPLAY': accountEditModal('ProfileDisplayModal'),
   'ACCOUNT_EDIT_VERIFY_LINKS': accountEditModal('VerifiedModal'),

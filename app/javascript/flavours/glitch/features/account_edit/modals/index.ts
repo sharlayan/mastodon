@@ -1,4 +1,5 @@
 export * from './bio_modal';
+export * from './decoration_modal';
 export * from './fields_modals';
 export * from './follow_message_modal';
 export * from './fields_reorder_modal';

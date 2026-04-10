@@ -11,7 +11,7 @@ class REST::ProfileSerializer < ActiveModel::Serializer
              :locked, :bot,
              :hide_collections, :discoverable, :indexable,
              :show_media, :show_media_replies, :show_featured,
-             :attribution_domains, :followed_message
+             :attribution_domains, :followed_message, :avatar_decorations
 
   has_many :featured_tags, serializer: REST::FeaturedTagSerializer
 
@@ -45,5 +45,9 @@ class REST::ProfileSerializer < ActiveModel::Serializer
 
   def header_static
     object.header_file_name.present? ? full_asset_url(object.header_static_url) : nil
+  end
+
+  def avatar_decorations
+    object.avatar_decorations || []
   end
 end

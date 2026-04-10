@@ -3,9 +3,15 @@
 class UpdateAccountService < BaseService
   PREVIEW_CARD_REATTRIBUTION_LIMIT = 1_000
 
+  MAX_DECORATIONS = 16
+
+  FLIP_H_TRUE_VALUES = ['true', true].freeze
+
   def call(account, params, raise_error: false)
     was_locked    = account.locked
     update_method = raise_error ? :update! : :update
+
+    params = process_avatar_decorations(account, params) if params.key?(:avatar_decorations)
 
     account.send(update_method, params).tap do |ret|
       next unless ret
@@ -21,6 +27,32 @@ class UpdateAccountService < BaseService
   end
 
   private
+
+  def process_avatar_decorations(account, params)
+    return params unless Setting.avatar_decorations_enabled && account.local?
+
+    effective_max = Setting.avatar_decorations_max_count.to_i.clamp(0, MAX_DECORATIONS)
+    raw = Array(params[:avatar_decorations]).first(effective_max)
+    role = account.user&.role || UserRole.everyone
+    available_ids = AvatarDecoration.local.approved.available_to_role(role).pluck(:id).map(&:to_s)
+
+    sanitized = raw.filter_map do |d|
+      id = d[:id].to_s
+      next unless available_ids.include?(id)
+
+      {
+        'id' => id.to_i,
+        'angle' => d[:angle].to_f.clamp(-0.5, 0.5),
+        'flip_h' => FLIP_H_TRUE_VALUES.include?(d[:flip_h]),
+        'offset_x' => d[:offset_x].to_f.clamp(-0.25, 0.25),
+        'offset_y' => d[:offset_y].to_f.clamp(-0.25, 0.25),
+        'scale' => d[:scale].to_f.clamp(0.5, 1.5),
+        'opacity' => d[:opacity].to_f.clamp(0.1, 1.0),
+      }
+    end
+
+    params.merge(avatar_decorations: sanitized)
+  end
 
   def authorize_all_follow_requests(account)
     follow_requests = FollowRequest.where(target_account: account)

@@ -6,6 +6,7 @@ import { defineMessages, useIntl } from 'react-intl';
 import {
   followAccount,
   pinAccount,
+  refetchAccount,
   unblockAccount,
   unmuteAccount,
   unpinAccount,
@@ -24,9 +25,14 @@ import {
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { initMuteModal } from '@/flavours/glitch/actions/mutes';
 import { initReport } from '@/flavours/glitch/actions/reports';
+import { apiRequestPost } from '@/flavours/glitch/api';
 import { Dropdown } from '@/flavours/glitch/components/dropdown_menu';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
+import {
+  avatarDecorationsEnabled,
+  showAvatarDecorations,
+} from '@/flavours/glitch/initial_state';
 import type { Account } from '@/flavours/glitch/models/account';
 import type { MenuItem } from '@/flavours/glitch/models/dropdown_menu';
 import type { Relationship } from '@/flavours/glitch/models/relationship';
@@ -40,6 +46,7 @@ import BlockIcon from '@/material-icons/400-24px/block.svg?react';
 import LinkIcon from '@/material-icons/400-24px/link_2.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
+import RefreshIcon from '@/material-icons/400-24px/refresh.svg?react';
 import ReportIcon from '@/material-icons/400-24px/report.svg?react';
 import ShareIcon from '@/material-icons/400-24px/share.svg?react';
 
@@ -224,6 +231,26 @@ const redesignMessages = defineMessages({
     id: 'account.menu.remove_follower',
     defaultMessage: 'Remove follower',
   },
+  muteDecorations: {
+    id: 'account.menu.mute_decorations',
+    defaultMessage: "Hide {name}'s decorations",
+  },
+  unmuteDecorations: {
+    id: 'account.menu.unmute_decorations',
+    defaultMessage: "Show {name}'s decorations",
+  },
+  adminBlockDecorations: {
+    id: 'account.menu.admin_block_decorations',
+    defaultMessage: "Hide {name}'s decorations for everyone",
+  },
+  adminBlockDomainDecorations: {
+    id: 'account.menu.admin_block_domain_decorations',
+    defaultMessage: 'Block decorations from {domain}',
+  },
+  refetchProfile: {
+    id: 'account.menu.refetch_profile',
+    defaultMessage: 'Refresh profile data',
+  },
 });
 
 function getMenuItems({
@@ -238,7 +265,6 @@ function getMenuItems({
   const isRemote = account.acct !== account.username;
   const remoteDomain = isRemote ? account.acct.split('@')[1] : null;
 
-  // Share and copy link options
   if (account.url) {
     if ('share' in navigator) {
       items.push({
@@ -261,7 +287,6 @@ function getMenuItems({
     });
   }
 
-  // Open on remote page.
   if (isRemote) {
     items.push({
       text: intl.formatMessage(redesignMessages.openOriginalPage, {
@@ -271,7 +296,16 @@ function getMenuItems({
     });
   }
 
-  // Mention and direct message options
+  if (isRemote && signedIn) {
+    items.push({
+      text: intl.formatMessage(redesignMessages.refetchProfile),
+      action: () => {
+        dispatch(refetchAccount(account.id));
+      },
+      icon: RefreshIcon,
+    });
+  }
+
   if (signedIn && !account.suspended) {
     items.push(
       null,
@@ -296,7 +330,6 @@ function getMenuItems({
     return items;
   }
 
-  // List and featuring options
   if (relationship?.following) {
     items.push(
       {
@@ -347,7 +380,6 @@ function getMenuItems({
     null,
   );
 
-  // Timeline options
   if (relationship?.following && !relationship.muting) {
     items.push(
       {
@@ -480,6 +512,23 @@ function getMenuItems({
   }
 
   if (
+    avatarDecorationsEnabled &&
+    showAvatarDecorations &&
+    account.avatar_decorations.length > 0
+  ) {
+    items.push(null, {
+      text: intl.formatMessage(redesignMessages.muteDecorations, {
+        name: account.username,
+      }),
+      action: () => {
+        void apiRequestPost('v1/avatar_decoration_mutes', {
+          account_id: account.id,
+        });
+      },
+    });
+  }
+
+  if (
     (permissions & PERMISSION_MANAGE_USERS) === PERMISSION_MANAGE_USERS ||
     (isRemote &&
       (permissions & PERMISSION_MANAGE_FEDERATION) ===
@@ -493,6 +542,16 @@ function getMenuItems({
         }),
         href: `/admin/accounts/${account.id}`,
       });
+
+      if (avatarDecorationsEnabled && account.avatar_decorations.length > 0) {
+        items.push({
+          text: intl.formatMessage(redesignMessages.adminBlockDecorations, {
+            name: account.username,
+          }),
+          href: `/admin/accounts/${account.id}?block_decorations=1`,
+          dangerous: true,
+        });
+      }
     }
     if (
       remoteDomain &&
@@ -505,6 +564,19 @@ function getMenuItems({
         }),
         href: `/admin/instances/${remoteDomain}`,
       });
+
+      if (avatarDecorationsEnabled) {
+        items.push({
+          text: intl.formatMessage(
+            redesignMessages.adminBlockDomainDecorations,
+            {
+              domain: remoteDomain,
+            },
+          ),
+          href: `/admin/avatar_decoration_domain_blocks`,
+          dangerous: true,
+        });
+      }
     }
   }
 

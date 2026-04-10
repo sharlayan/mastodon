@@ -2,12 +2,14 @@
 
 class Api::V1::AccountsController < Api::BaseController
   include RegistrationHelper
+  include Redisable
 
-  before_action -> { authorize_if_got_token! :read, :'read:accounts' }, except: [:create, :follow, :unfollow, :remove_from_followers, :block, :unblock, :mute, :unmute]
+  before_action -> { authorize_if_got_token! :read, :'read:accounts' }, except: [:create, :follow, :unfollow, :remove_from_followers, :block, :unblock, :mute, :unmute, :refetch]
   before_action -> { doorkeeper_authorize! :follow, :write, :'write:follows' }, only: [:follow, :unfollow, :remove_from_followers]
   before_action -> { doorkeeper_authorize! :follow, :write, :'write:mutes' }, only: [:mute, :unmute]
   before_action -> { doorkeeper_authorize! :follow, :write, :'write:blocks' }, only: [:block, :unblock]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:create]
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:refetch]
 
   before_action :require_user!, except: [:index, :show, :create]
   before_action :require_client_credentials!, only: [:create]
@@ -79,6 +81,38 @@ class Api::V1::AccountsController < Api::BaseController
   def unmute
     UnmuteService.new.call(current_user.account, @account)
     render json: @account, serializer: REST::RelationshipSerializer, relationships: relationships
+  end
+
+  REFETCH_TARGET_LIMIT = 2
+
+  def refetch
+    raise Mastodon::ValidationError, I18n.t('accounts.refetch_local_error') if @account.local?
+
+    bypass_rate_limit = current_user.can?(:administrator) || current_user.can?(:view_dashboard)
+
+    unless bypass_rate_limit
+      rate_limiter = RateLimiter.new(current_user.account, family: :account_refetch)
+
+      begin
+        rate_limiter.record!
+
+        target_key = "rate_limit:refetch_target:#{@account.id}:#{Time.now.to_i / 1.hour.to_i}"
+        target_count = redis.incr(target_key)
+        redis.expire(target_key, 1.hour.to_i + 1) if target_count == 1
+
+        if target_count > REFETCH_TARGET_LIMIT
+          redis.decr(target_key)
+          rate_limiter.rollback!
+          raise Mastodon::RateLimitExceededError
+        end
+      rescue Mastodon::RateLimitExceededError
+        render json: { error: I18n.t('errors.429') }, status: 429
+        return
+      end
+    end
+
+    RemoteAccountRefreshWorker.perform_async(@account.id)
+    render_empty
   end
 
   private

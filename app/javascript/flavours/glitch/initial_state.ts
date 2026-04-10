@@ -38,6 +38,11 @@ interface InitialStateMeta {
   source_url: string;
   streaming_api_base_url: string;
   force_local_only: boolean;
+  avatar_decorations_enabled: boolean;
+  avatar_decorations_federation_enabled: boolean;
+  show_avatar_decorations?: boolean;
+  show_federated_avatar_decorations?: boolean;
+  force_round_avatar_decoration?: boolean;
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
   local_live_feed_access: 'public' | 'authenticated' | 'disabled';
@@ -189,6 +194,16 @@ export const mfmAnimations = getMeta('mfm_animations') !== false;
 export const mfmFoldMode =
   (getMeta('mfm_fold_mode') as string | undefined) ?? 'sensitive';
 export const wrapstodon = getMeta('wrapstodon');
+export const avatarDecorationsEnabled = getMeta('avatar_decorations_enabled');
+export const avatarDecorationsFederationEnabled = getMeta(
+  'avatar_decorations_federation_enabled',
+);
+export const showAvatarDecorations =
+  getMeta('show_avatar_decorations') ?? false;
+export const showFederatedAvatarDecorations =
+  getMeta('show_federated_avatar_decorations') ?? false;
+export const forceRoundAvatarDecoration =
+  getMeta('force_round_avatar_decoration') ?? false;
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

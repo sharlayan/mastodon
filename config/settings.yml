@@ -50,6 +50,10 @@ defaults: &defaults
   wrapstodon: true
   mfm_enabled: false
   mfm_allow_composition: false
+  avatar_decorations_enabled: false
+  avatar_decorations_federation_enabled: false
+  avatar_decorations_local_only_view: false
+  avatar_decorations_max_count: 5
 
 development:
   <<: *defaults

@@ -1,0 +1,66 @@
+- content_for :page_title do
+  = t('admin.avatar_decorations.title')
+
+- if can?(:create, :avatar_decoration)
+  - content_for :heading_actions do
+    = link_to t('admin.avatar_decorations.add_new'), new_admin_avatar_decoration_path, class: 'button'
+
+.filters
+  .filter-subset
+    %strong= t('admin.accounts.location.title')
+    %ul
+      %li= filter_link_to t('admin.accounts.location.all'), local: nil, remote: nil, by_domain: nil
+      %li
+        - if selected? local: '1', remote: nil
+          = filter_link_to t('admin.accounts.location.local'), { local: nil, remote: nil }, { local: '1', remote: nil }
+        - else
+          = filter_link_to t('admin.accounts.location.local'), local: '1', remote: nil, by_domain: nil
+      %li
+        - if selected? remote: '1', local: nil
+          = filter_link_to t('admin.accounts.location.remote'), { remote: nil, local: nil, by_domain: nil }, { remote: '1', local: nil }
+        - else
+          = filter_link_to t('admin.accounts.location.remote'), remote: '1', local: nil
+
+  .filter-subset
+    %strong= t('admin.avatar_decorations.status')
+    %ul
+      %li= filter_link_to t('admin.accounts.location.all'), status: nil
+      %li= filter_link_to t('admin.avatar_decorations.approved'), status: 'approved'
+      %li= filter_link_to t('admin.avatar_decorations.pending_approval'), status: 'pending'
+
+- if params[:remote] == '1'
+  = form_with url: admin_avatar_decorations_url, method: :get, class: :simple_form do |form|
+    .fields-group
+      = form.hidden_field :remote, value: '1'
+
+      .input.string.optional
+        = form.text_field :by_domain,
+                          value: params[:by_domain],
+                          class: 'string optional',
+                          placeholder: t('admin.custom_emojis.by_domain')
+
+      .actions
+        %button.button= t('admin.accounts.search')
+        = link_to t('admin.accounts.reset'), admin_avatar_decorations_path(remote: '1'), class: 'button button--dangerous'
+
+= form_with model: @form, url: batch_admin_avatar_decorations_path do |f|
+  = hidden_field_tag :page, params[:page] || 1
+
+  - [:local, :remote, :by_domain, :status].each do |key|
+    = hidden_field_tag key, params[key] if params[key].present?
+
+  .batch-table
+    .batch-table__toolbar
+      %label.batch-table__toolbar__select.batch-checkbox-all
+        = check_box_tag :batch_checkbox_all, nil, false
+      .batch-table__toolbar__actions
+        = f.button safe_join([material_symbol('check_circle'), t('admin.avatar_decorations.approve')]), name: :approve, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
+        = f.button safe_join([material_symbol('close'), t('admin.avatar_decorations.delete')]), name: :delete, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
+
+    .batch-table__body
+      - if @decorations.empty?
+        = nothing_here 'nothing-here--under-tabs'
+      - else
+        = render partial: 'decoration', collection: @decorations, locals: { f: f }
+
+= paginate @decorations

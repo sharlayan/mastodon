@@ -6,6 +6,7 @@ import {
 } from 'flavours/glitch/api';
 import type {
   ApiAccountJSON,
+  ApiAvatarDecorationJSON,
   ApiFamiliarFollowersJSON,
 } from 'flavours/glitch/api_types/accounts';
 import type { ApiRelationshipJSON } from 'flavours/glitch/api_types/relationships';
@@ -78,3 +79,6 @@ export const apiDeleteProfileHeader = () =>
 
 export const apiSubscribeByEmail = (id: string, email: string) =>
   apiRequestPost(`v1/accounts/${id}/email_subscriptions`, { email });
+
+export const apiGetAvatarDecorations = () =>
+  apiRequestGet<ApiAvatarDecorationJSON[]>('v1/avatar_decorations');

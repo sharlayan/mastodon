@@ -28,6 +28,7 @@ en:
       one: Post
       other: Posts
     posts_tab_heading: Posts
+    refetch_local_error: Cannot refresh a local account
     self_follow_error: Following your own account is not allowed
   admin:
     account_actions:
@@ -126,6 +127,8 @@ en:
       push_subscription_expires: PuSH subscription expires
       redownload: Refresh profile
       redownloaded_msg: Successfully refreshed %{username}'s profile from origin
+      refresh_avatar_decorations: Refresh decorations
+      refreshed_avatar_decorations_msg: Successfully enqueued avatar decoration refresh for %{username}
       reject: Reject
       rejected_msg: Successfully rejected %{username}'s sign-up application
       remote_suspension_irreversible: The data of this account has been irreversibly deleted.
@@ -356,6 +359,51 @@ en:
       open: Open
       view_publicly: View publicly
     critical_update_pending: Critical update pending
+    avatar_decorations:
+      add_new: Add new decoration
+      all_decorations: All decorations
+      approve: Approve
+      approved: Approved
+      approved_msg: Decoration approved successfully
+      created_msg: Decoration created successfully
+      current_image: Current image
+      delete: Delete
+      description: Description
+      destroyed_msg: Decoration deleted successfully
+      edit: Edit
+      image: Image
+      image_hint: PNG, GIF or WebP, max %{size}. Should be a transparent overlay image.
+      local: Local
+      name: Name
+      origin: Origin
+      pending_approval: Pending approval
+      pending_title: Decorations pending approval
+      preview: Preview
+      redownload: Refresh from remote server
+      redownloaded_msg: Successfully refreshed decoration image from remote server
+      redownload_failed_msg: Failed to refresh decoration image from remote server
+      replace_image: Replace image
+      title: Profile Decorations
+      no_decoration_selected: No decoration selected
+      no_role_required: No restriction (everyone)
+      required_role: Role restriction
+      required_role_hint: Only users with this role or higher can apply this decoration.
+      status: Status
+      updated_msg: Decoration updated successfully
+    avatar_decoration_domain_blocks:
+      added_at: Added
+      block: Block domain
+      created_msg: Domain decoration block created successfully
+      destroyed_msg: Domain decoration block removed successfully
+      domain: Domain
+      domain_hint: Block all decorations from this server
+      title: Blocked decoration domains
+      unblock: Unblock
+    accounts:
+      block_avatar_decorations: Block decorations
+      unblock_avatar_decorations: Unblock decorations
+      blocked_avatar_decorations_msg: Profile decorations blocked for %{username}
+      unblocked_avatar_decorations_msg: Profile decorations unblocked for %{username}
     custom_emojis:
       assign_category: Assign category
       by_domain: Domain
@@ -889,6 +937,16 @@ en:
         title: Discovery
         trends: Trends
         wrapstodon: Wrapstodon
+      avatar_decorations:
+        title: Profile Decorations
+        enabled: Enable profile decorations
+        enabled_hint: Allow users to display avatar decorations on their profiles
+        federation_enabled: Enable decoration federation
+        federation_enabled_hint: Fetch and display decorations from remote Misskey-compatible servers
+        local_only_view: Remote decorations only
+        local_only_view_hint: Disable local decorations; only show decorations received from federated servers
+        max_count: Maximum decorations per user
+        max_count_hint: Maximum number of decorations a user may activate at once (0–16)
       domain_blocks:
         all: To everyone
         disabled: To no one
@@ -1970,6 +2028,7 @@ en:
     migrate: Account migration
     notifications: Email notifications
     preferences: Preferences
+    avatar_decorations: Profile Decorations
     profile: Public profile
     relationships: Follows and followers
     severed_relationships: Severed relationships

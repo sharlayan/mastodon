@@ -79,6 +79,9 @@ en:
         setting_mfm_enabled: Render MFM-formatted content from Misskey and compatible servers with animations and styles
         setting_mfm_animations: Play animations in MFM content (spin, bounce, shake, etc.). Disabling this will show static fallbacks instead.
         setting_mfm_fold_mode: "Choose when to fold (collapse) MFM posts behind an expand toggle. 'Sensitive' folds posts with animation, scale, or border effects. 'All' folds every MFM post."
+        setting_show_avatar_decorations: Display avatar decoration frames on profiles. Off by default.
+        setting_show_federated_avatar_decorations: Also show decorations received from Misskey-compatible servers
+        setting_force_round_avatar_decoration: Force profile images to be circular (border-radius 50%) when a decoration is active.
       domain_allow:
         domain: This domain will be able to fetch data from this server and incoming data from it will be processed and stored
       email_domain_block:
@@ -293,6 +296,9 @@ en:
         setting_mfm_fold_mode_show: "Show as-is"
         setting_mfm_fold_mode_sensitive: "Fold sensitive MFM (recommended)"
         setting_mfm_fold_mode_all: "Fold all MFM"
+        setting_show_avatar_decorations: Show profile decorations
+        setting_show_federated_avatar_decorations: Show decorations from federated servers
+        setting_force_round_avatar_decoration: Force round profile image with decoration
       email_domain_block:
         with_dns_records: Include MX records and IPs of the domain
       featured_tag:

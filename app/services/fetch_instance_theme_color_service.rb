@@ -50,6 +50,8 @@ class FetchInstanceThemeColorService < BaseService
                              @metadata.theme_color.presence || theme_color || @metadata.default_theme_color
                            end
 
+    nodeinfo_features = extract_nodeinfo_features
+
     @metadata.update(
       theme_color: resolved_theme_color,
       theme_color_updated_at: Time.now.utc,
@@ -57,6 +59,7 @@ class FetchInstanceThemeColorService < BaseService
       software: software_info[:software],
       version: software_info[:version],
       instance_name: instance_name,
+      supports_avatar_decorations: nodeinfo_features.include?('avatarDecorations'),
       metadata_updated_at: Time.now.utc
     )
 
@@ -122,6 +125,19 @@ class FetchInstanceThemeColorService < BaseService
     return resolve_url(favicon_link['href']) || "https://#{@domain}/favicon.ico" if favicon_link && favicon_link['href']
 
     "https://#{@domain}/favicon.ico"
+  end
+
+  def extract_nodeinfo_features
+    nodeinfo = fetch_nodeinfo
+    return [] if nodeinfo.nil?
+
+    features = nodeinfo.dig('metadata', 'features')
+    return features if features.is_a?(Array)
+
+    # Also check the boolean shorthand we emit ourselves
+    nodeinfo.dig('metadata', 'avatarDecorations') ? ['avatarDecorations'] : []
+  rescue
+    []
   end
 
   def determine_software_info(misskey_meta)

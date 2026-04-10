@@ -18,6 +18,21 @@ class RateLimiter
       limit: 400,
       period: 24.hours.freeze,
     }.freeze,
+
+    misskey_compat_api: {
+      limit: 300,
+      period: 5.minutes.freeze,
+    }.freeze,
+
+    account_refetch: {
+      limit: 10,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_users_show: {
+      limit: 100,
+      period: 1.hour.freeze,
+    }.freeze,
   }.freeze
 
   def initialize(by, options = {})

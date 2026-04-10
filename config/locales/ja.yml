@@ -23,6 +23,7 @@ ja:
     posts:
       other: 投稿
     posts_tab_heading: 投稿
+    refetch_local_error: ローカルアカウントは更新できません
     self_follow_error: 自分のアカウントをフォローすることはできません
   admin:
     account_actions:
@@ -40,6 +41,10 @@ ja:
       approved_msg: "%{username}さんの登録申請を承認しました"
       are_you_sure: 本当に実行しますか？
       avatar: アイコン
+      block_avatar_decorations: デコレーションをブロック
+      unblock_avatar_decorations: デコレーションのブロックを解除
+      blocked_avatar_decorations_msg: "%{username}のアバターデコレーションをブロックしました"
+      unblocked_avatar_decorations_msg: "%{username}のアバターデコレーションのブロックを解除しました"
       by_domain: ドメイン
       change_email:
         changed_msg: メールアドレスを変更しました!
@@ -341,6 +346,38 @@ ja:
       accounts: アカウント
       collection_title: "%{name} によるコレクション"
     critical_update_pending: 重要な更新が保留中です
+    avatar_decorations:
+      add_new: 新しいデコレーションを追加
+      all_decorations: すべてのデコレーション
+      approve: 承認
+      approved: 承認済み
+      approved_msg: デコレーションが承認されました
+      created_msg: デコレーションが作成されました
+      current_image: 現在の画像
+      delete: 削除
+      description: 説明
+      destroyed_msg: デコレーションが削除されました
+      edit: 編集
+      image: 画像
+      image_hint: PNG、GIF、WebP、最大%{size}。透過オーバーレイ画像を推奨します。
+      local: ローカル
+      name: 名前
+      origin: 由来
+      pending_approval: 承認待ち
+      pending_title: 承認待ちのデコレーション
+      preview: プレビュー
+      replace_image: 画像を置き換え
+      title: アバターデコレーション
+      updated_msg: デコレーションが更新されました
+    avatar_decoration_domain_blocks:
+      added_at: 追加日
+      block: ドメインをブロック
+      created_msg: ドメインのデコレーションブロックが作成されました
+      destroyed_msg: ドメインのデコレーションブロックが解除されました
+      domain: ドメイン
+      domain_hint: このサーバーからのすべてのデコレーションをブロック
+      title: ブロック済みデコレーションドメイン
+      unblock: ブロック解除
     custom_emojis:
       assign_category: カテゴリーを割り当て
       by_domain: ドメイン
@@ -835,6 +872,16 @@ ja:
         publish_statistics: 統計情報を公開する
         title: 見つける
         trends: トレンド
+      avatar_decorations:
+        title: アイコンデコレーション
+        enabled: アイコンデコレーションを有効にする
+        enabled_hint: ユーザーがアイコンデコレーションを表示できるようにします
+        federation_enabled: デコレーションの連合を有効にする
+        federation_enabled_hint: リモートのMisskey互換サーバーからデコレーションを取得・表示します
+        local_only_view: リモートデコレーションのみ
+        local_only_view_hint: ローカルデコレーションを無効にし、連合サーバーから受信したデコレーションのみ表示します
+        max_count: ユーザーあたりの最大デコレーション数
+        max_count_hint: ユーザーが同時に有効化できるデコレーションの最大数 (0〜16)
       domain_blocks:
         all: 誰にでも許可
         disabled: 誰にも許可しない
@@ -1835,6 +1882,7 @@ ja:
     migrate: アカウントの引っ越し
     notifications: メール通知
     preferences: ユーザー設定
+    avatar_decorations: アイコンデコレーション
     profile: プロフィール
     relationships: フォロー・フォロワー
     severed_relationships: 途切れたフォロー関係

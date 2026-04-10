@@ -84,6 +84,9 @@ namespace :api, format: false do
 
     resources :custom_emojis, only: [:index]
     resources :favorite_emojis, only: [:index, :create, :destroy], param: :name
+    resources :avatar_decorations, only: [:index]
+    post   '/avatar_decoration_mutes',     to: 'avatar_decorations#create_mute',  as: :avatar_decoration_mutes
+    delete '/avatar_decoration_mutes/:id', to: 'avatar_decorations#destroy_mute', as: :avatar_decoration_mute
     resources :suggestions, only: [:index, :destroy]
     resources :scheduled_statuses, only: [:index, :show, :update, :destroy]
     resources :preferences, only: [:index]
@@ -254,6 +257,7 @@ namespace :api, format: false do
         post :unblock
         post :mute
         post :unmute
+        post :refetch
       end
 
       scope module: :accounts do
@@ -398,5 +402,10 @@ namespace :api, format: false do
     resource :settings, only: [:update]
     resources :embeds, only: [:show]
     resources :push_subscriptions, only: [:create, :destroy, :update]
+  end
+
+  namespace :misskey_compat, path: '' do
+    post 'users/show', to: 'users#show'
+    post 'get-avatar-decorations', to: 'avatar_decorations#index'
   end
 end

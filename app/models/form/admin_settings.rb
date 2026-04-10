@@ -57,6 +57,10 @@ class Form::AdminSettings
     wrapstodon
     mfm_enabled
     mfm_allow_composition
+    avatar_decorations_enabled
+    avatar_decorations_federation_enabled
+    avatar_decorations_local_only_view
+    avatar_decorations_max_count
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -64,6 +68,7 @@ class Form::AdminSettings
     content_cache_retention_period
     backups_retention_period
     min_age
+    avatar_decorations_max_count
   ).freeze
 
   BOOLEAN_KEYS = %i(
@@ -87,6 +92,9 @@ class Form::AdminSettings
     wrapstodon
     mfm_enabled
     mfm_allow_composition
+    avatar_decorations_enabled
+    avatar_decorations_federation_enabled
+    avatar_decorations_local_only_view
   ).freeze
 
   UPLOAD_KEYS = %i(

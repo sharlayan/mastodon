@@ -35,6 +35,7 @@ module ContextHelper
     },
     followed_message: { 'toot' => 'http://joinmastodon.org/ns#', 'followedMessage' => 'toot:followedMessage' },
     misskey_followed_message: { 'misskey' => 'https://misskey-hub.net/ns#', '_misskey_followedMessage' => 'misskey:_misskey_followedMessage' },
+    avatar_decorations: { 'misskey' => 'https://misskey-hub.net/ns#', '_misskey_avatarDecorations' => 'misskey:_misskey_avatarDecorations' },
     quote_requests: { 'QuoteRequest' => 'https://w3id.org/fep/044f#QuoteRequest' },
     quotes: {
       'quote' => 'https://w3id.org/fep/044f#quote',

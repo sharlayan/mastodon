@@ -1,6 +1,16 @@
 import type { ApiAccountFieldJSON } from './accounts';
 import type { ApiFeaturedTagJSON } from './tags';
 
+export interface ApiProfileDecorationConfigJSON {
+  id: number;
+  angle: number;
+  flip_h: boolean;
+  offset_x: number;
+  offset_y: number;
+  scale: number;
+  opacity: number;
+}
+
 export interface ApiProfileJSON {
   id: string;
   display_name: string;
@@ -23,6 +33,7 @@ export interface ApiProfileJSON {
   attribution_domains: string[];
   featured_tags: ApiFeaturedTagJSON[];
   followed_message: string | null;
+  avatar_decorations: ApiProfileDecorationConfigJSON[];
 }
 
 export type ApiProfileUpdateParams = Partial<
@@ -45,4 +56,5 @@ export type ApiProfileUpdateParams = Partial<
 > & {
   attribution_domains?: string[];
   fields_attributes?: Pick<ApiAccountFieldJSON, 'name' | 'value'>[];
+  avatar_decorations?: ApiProfileDecorationConfigJSON[];
 };

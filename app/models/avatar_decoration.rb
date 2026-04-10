@@ -1,0 +1,74 @@
+# frozen_string_literal: true
+
+class AvatarDecoration < ApplicationRecord
+  include Attachmentable
+  include Remotable
+
+  IMAGE_MIME_TYPES = %w(image/png image/gif image/webp image/apng).freeze
+  IMAGE_LIMIT = (ENV['MAX_AVATAR_DECORATION_SIZE'] || 5.megabytes).to_i
+
+  belongs_to :required_role, class_name: 'UserRole', optional: true
+
+  scope :local,    -> { where(host: nil) }
+  scope :remote,   -> { where.not(host: nil) }
+  scope :approved, -> { where(approved: true) }
+  scope :pending_approval, -> { where(approved: false) }
+  MAX_REMOTE_DECORATIONS = 16
+
+  scope :available_to_role, lambda { |role|
+    where(required_role_id: nil)
+      .or(where(required_role: UserRole.where(position: ..role.position)))
+  }
+
+  has_attached_file :image,
+                    styles: { static: { format: :png, convert_options: '-coalesce +profile "!icc,*"' } },
+                    validate_media_type: false,
+                    processors: [:lazy_thumbnail]
+
+  validates_attachment_content_type :image, content_type: IMAGE_MIME_TYPES
+  validates_attachment_size :image, less_than: IMAGE_LIMIT
+  remotable_attachment :image, IMAGE_LIMIT
+
+  validates :name, presence: true, length: { maximum: 256 }
+  validates :description, length: { maximum: 2048 }
+  validate :image_or_remote_url_present
+  validates :remote_id, uniqueness: { scope: :host }, allow_nil: true
+
+  def self.find_many_cached(ids)
+    cache = RequestStore.store[:avatar_decorations_by_id] ||= {}
+    missing_ids = ids.reject { |id| cache.key?(id) }
+    if missing_ids.any?
+      where(id: missing_ids).find_each { |d| cache[d.id] = d }
+      missing_ids.each { |id| cache[id] ||= nil }
+    end
+    ids.filter_map { |id| cache[id] }
+  end
+
+  def local?
+    host.nil?
+  end
+
+  def image_url
+    if image_file_name.present?
+      image.url(:original)
+    else
+      image_remote_url
+    end
+  end
+
+  def image_static_url
+    if image_file_name.present? && image_content_type == 'image/gif'
+      image.url(:static)
+    else
+      image_url
+    end
+  end
+
+  private
+
+  def image_or_remote_url_present
+    return if image_file_name.present? || image_remote_url.present?
+
+    errors.add(:image, :blank)
+  end
+end

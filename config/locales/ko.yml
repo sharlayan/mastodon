@@ -25,6 +25,7 @@ ko:
     posts:
       other: 게시물
     posts_tab_heading: 게시물
+    refetch_local_error: 로컬 계정은 새로고침할 수 없습니다
     self_follow_error: 본인의 계정을 팔로우할 수는 없습니다
   admin:
     account_actions:
@@ -42,6 +43,10 @@ ko:
       approved_msg: 성공적으로 %{username}의 가입 신청서를 승인했습니다
       are_you_sure: 확실합니까?
       avatar: 아바타
+      block_avatar_decorations: 장식 표시 끄기
+      unblock_avatar_decorations: 장식 표시 켜기
+      blocked_avatar_decorations_msg: "%{username}의 아바타 장식을 표시하지 않습니다"
+      unblocked_avatar_decorations_msg: "%{username}의 아바타 장식을 표시합니다"
       by_domain: 도메인
       collections: 컬렉션
       change_email:
@@ -122,6 +127,8 @@ ko:
       push_subscription_expires: PuSH 구독 기간 만료
       redownload: 프로필 업데이트
       redownloaded_msg: 성공적으로 %{username}의 프로필을 원본으로부터 업데이트 하였습니다
+      refresh_avatar_decorations: 프로필 장식 업데이트
+      refreshed_avatar_decorations_msg: '%{username}의 프로필 장식 업데이트를 요청했습니다'
       reject: 거부
       rejected_msg: 성공적으로 %{username}의 가입 신청서를 반려하였습니다
       remote_suspension_irreversible: 이 계정의 데이터는 되돌릴 수 없도록 삭제되었습니다.
@@ -351,6 +358,46 @@ ko:
       unpublished_msg: 공지가 성공적으로 발행 취소되었습니다!
       updated_msg: 공지가 성공적으로 업데이트되었습니다!
     critical_update_pending: 긴급 업데이트 보류 중
+    avatar_decorations:
+      add_new: 새 아바타 장식 추가
+      all_decorations: 모든 아바타 장식
+      approve: 승인
+      approved: 승인됨
+      approved_msg: 아바타 장식이 성공적으로 승인되었습니다
+      created_msg: 아바타 장식이 성공적으로 생성되었습니다
+      current_image: 현재 이미지
+      delete: 삭제
+      description: 설명
+      destroyed_msg: 아바타 장식이 성공적으로 삭제되었습니다
+      edit: 편집
+      image: 이미지
+      image_hint: PNG, GIF 또는 WebP, 최대 %{size}. 투명 오버레이 이미지여야 합니다.
+      local: 로컬
+      name: 이름
+      origin: 출처
+      pending_approval: 승인 대기 중
+      pending_title: 승인 대기 중인 아바타 장식
+      preview: 미리보기
+      redownload: 원격 서버에서 업데이트
+      redownloaded_msg: 원격 서버에서 아바타 장식 이미지를 성공적으로 업데이트했습니다
+      redownload_failed_msg: 원격 서버에서 아바타 장식 이미지를 업데이트하지 못했습니다
+      replace_image: 이미지 교체
+      title: 아바타 장식
+      no_decoration_selected: 선택된 아바타 장식이 없습니다
+      no_role_required: 제한 없음 (모든 사용자)
+      required_role: 역할 제한
+      required_role_hint: 이 역할 이상의 사용자만 이 장식을 적용할 수 있습니다.
+      status: 상태
+      updated_msg: 아바타 장식이 성공적으로 업데이트되었습니다
+    avatar_decoration_domain_blocks:
+      added_at: 추가됨
+      block: 도메인 차단
+      created_msg: 도메인 아바타 장식 차단이 성공적으로 생성되었습니다
+      destroyed_msg: 도메인 아바타 장식 차단이 성공적으로 제거되었습니다
+      domain: 도메인
+      domain_hint: 이 서버의 모든 아바타 장식을 차단합니다
+      title: 아바타 장식 차단 도메인
+      unblock: 차단 해제
     custom_emojis:
       assign_category: 분류 지정
       by_domain: 도메인
@@ -872,6 +919,16 @@ ko:
         title: 발견하기
         trends: 유행
         wrapstodon: 랩스토돈
+      avatar_decorations:
+        title: 아바타 장식
+        enabled: 아바타 장식 활성화
+        enabled_hint: 사용자가 아바타 장식을 사용할 수 있도록 합니다
+        federation_enabled: 아바타 장식 연합 활성화
+        federation_enabled_hint: 원격 Misskey 호환 서버에서 아바타 장식을 가져와 표시합니다
+        local_only_view: 원격 아바타 장식만
+        local_only_view_hint: 로컬 아바타 장식을 비활성화하고 연합 서버에서 받은 아바타 장식만 표시합니다
+        max_count: 사용자당 최대 장식 수
+        max_count_hint: 사용자가 동시에 활성화할 수 있는 최대 장식 수 (0~16)
       domain_blocks:
         all: 모두에게
         disabled: 아무에게도 안 함
@@ -1891,6 +1948,7 @@ ko:
     migrate: 계정 이동
     notifications: 이메일 알림
     preferences: 환경설정
+    avatar_decorations: 아바타 장식
     profile: 공개 프로필
     relationships: 팔로잉과 팔로워
     severed_relationships: 단절된 관계들

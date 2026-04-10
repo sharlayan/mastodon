@@ -35,7 +35,8 @@ class Api::V1::Accounts::CredentialsController < Api::BaseController
       :indexable,
       :followed_message,
       attribution_domains: [],
-      fields_attributes: [:name, :value]
+      fields_attributes: [:name, :value],
+      avatar_decorations: [:id, :angle, :flip_h, :offset_x, :offset_y, :scale, :opacity]
     )
   end
 

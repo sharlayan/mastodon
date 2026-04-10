@@ -33,9 +33,16 @@
           = link_to t('admin.accounts.confirm'), admin_account_confirmation_path(account.id), method: :post, class: 'button'
       - if (!account.local? || account.user_approved?) && can?(:suspend, account)
         = link_to t('admin.accounts.perform_full_suspension'), new_admin_account_action_path(account.id, type: 'suspend'), class: 'button'
+      - if Setting.avatar_decorations_enabled && can?(:block_avatar_decorations, account)
+        - if account.avatar_decorations_blocked?
+          = link_to t('admin.accounts.unblock_avatar_decorations'), unblock_avatar_decorations_admin_account_path(account.id), method: :post, class: 'button'
+        - else
+          = link_to t('admin.accounts.block_avatar_decorations'), block_avatar_decorations_admin_account_path(account.id), method: :post, class: 'button button--destructive'
     %div
       - if account.local?
         - if !account.memorial? && account.user_approved? && can?(:memorialize, account)
           = link_to t('admin.accounts.memorialize'), memorialize_admin_account_path(account.id), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }, class: 'button button--destructive'
       - elsif can?(:redownload, account)
         = link_to t('admin.accounts.redownload'), redownload_admin_account_path(account.id), method: :post, class: 'button'
+        - if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
+          = link_to t('admin.accounts.refresh_avatar_decorations'), refresh_avatar_decorations_admin_account_path(account.id), method: :post, class: 'button'

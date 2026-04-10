@@ -71,6 +71,9 @@ ja:
         setting_use_pending_items: 新着があってもタイムラインを自動的にスクロールしないようにします
         username: アルファベット大文字と小文字、数字、アンダーバー「_」が使えます
         whole_word: キーワードまたはフレーズが英数字のみの場合、単語全体と一致する場合のみ適用されるようになります
+        setting_show_avatar_decorations: アイコンデコレーションを表示します。デフォルトではオフです。
+        setting_show_federated_avatar_decorations: Misskey互換サーバーから受信したアイコンデコレーションも表示します
+        setting_force_round_avatar_decoration: デコレーション表示時にプロフィール画像を円形（border-radius 50%）に強制します。
       domain_allow:
         domain: 登録するとこのサーバーからデータを受信したり、このドメインから受信するデータを処理して保存できるようになります
       email_domain_block:
@@ -258,6 +261,9 @@ ja:
         setting_unfollow_modal: フォローを解除する前に確認ダイアログを表示する
         setting_use_blurhash: 非表示のメディアを色付きのぼかしで表示する
         setting_use_pending_items: 手動更新モード
+        setting_show_avatar_decorations: アイコンデコレーションを表示
+        setting_show_federated_avatar_decorations: 連合サーバーからのアイコンデコレーションを表示
+        setting_force_round_avatar_decoration: デコレーション表示時にプロフィール画像を円形に強制
         severity: 重大性
         sign_in_token_attempt: セキュリティコード
         title: タイトル

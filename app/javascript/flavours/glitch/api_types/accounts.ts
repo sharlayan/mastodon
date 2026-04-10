@@ -6,6 +6,18 @@ export interface ApiAccountFieldJSON {
   verified_at: string | null;
 }
 
+export interface ApiAvatarDecorationJSON {
+  id: string;
+  url: string;
+  static_url: string;
+  angle: number;
+  flip_h: boolean;
+  offset_x: number;
+  offset_y: number;
+  scale: number;
+  opacity: number;
+}
+
 export interface ApiAccountRoleJSON {
   color: string;
   id: string;
@@ -72,6 +84,7 @@ export interface BaseApiAccountJSON {
   hide_collections: boolean;
   email_subscriptions?: boolean;
   followed_message?: string | null;
+  avatar_decorations?: ApiAvatarDecorationJSON[];
 }
 
 // See app/serializers/rest/muted_account_serializer.rb

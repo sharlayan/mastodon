@@ -353,6 +353,13 @@ a.table-action-link {
         color: var(--color-text-secondary);
         font-weight: 500;
       }
+
+      &__actions {
+        flex: 0 0 auto;
+        min-width: 160px;
+        text-align: end;
+        white-space: nowrap;
+      }
     }
 
     .directory__tag {

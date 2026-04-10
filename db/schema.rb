@@ -169,6 +169,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_083500) do
     t.string "also_known_as", array: true
     t.string "attribution_domains", default: [], array: true
     t.string "avatar_content_type"
+    t.jsonb "avatar_decorations", default: [], null: false
+    t.boolean "avatar_decorations_blocked", default: false, null: false
     t.string "avatar_description", default: "", null: false
     t.string "avatar_file_name"
     t.integer "avatar_file_size"
@@ -182,6 +184,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_083500) do
     t.string "domain"
     t.string "featured_collection_url"
     t.jsonb "fields"
+    t.string "followed_message", limit: 256
     t.string "followers_url", default: "", null: false
     t.string "following_url", default: "", null: false
     t.string "header_content_type"
@@ -303,6 +306,45 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_083500) do
     t.index ["account_warning_id"], name: "index_appeals_on_account_warning_id", unique: true
     t.index ["approved_by_account_id"], name: "index_appeals_on_approved_by_account_id", where: "(approved_by_account_id IS NOT NULL)"
     t.index ["rejected_by_account_id"], name: "index_appeals_on_rejected_by_account_id", where: "(rejected_by_account_id IS NOT NULL)"
+  end
+
+  create_table "avatar_decoration_domain_blocks", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "domain", null: false
+    t.datetime "updated_at", null: false
+    t.index ["domain"], name: "index_avatar_decoration_domain_blocks_on_domain", unique: true
+  end
+
+  create_table "avatar_decoration_mutes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "target_account_id"
+    t.string "target_domain"
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "target_account_id"], name: "idx_on_account_id_target_account_id_5e59a83152", unique: true, where: "(target_account_id IS NOT NULL)"
+    t.index ["account_id", "target_domain"], name: "index_avatar_decoration_mutes_on_account_id_and_target_domain", unique: true, where: "(target_domain IS NOT NULL)"
+    t.index ["account_id"], name: "index_avatar_decoration_mutes_on_account_id"
+    t.index ["target_account_id"], name: "index_avatar_decoration_mutes_on_target_account_id"
+  end
+
+  create_table "avatar_decorations", force: :cascade do |t|
+    t.boolean "approved", default: false, null: false
+    t.datetime "created_at", null: false
+    t.text "description", default: ""
+    t.string "host"
+    t.string "image_content_type"
+    t.string "image_file_name"
+    t.integer "image_file_size"
+    t.string "image_remote_url"
+    t.datetime "image_updated_at"
+    t.string "name", default: "", null: false
+    t.string "remote_id"
+    t.bigint "required_role_id"
+    t.datetime "updated_at", null: false
+    t.index ["approved"], name: "index_avatar_decorations_on_approved"
+    t.index ["host", "remote_id"], name: "index_avatar_decorations_on_host_and_remote_id", unique: true, where: "(host IS NOT NULL)"
+    t.index ["host"], name: "index_avatar_decorations_on_host"
+    t.index ["required_role_id"], name: "index_avatar_decorations_on_required_role_id"
   end
 
   create_table "backups", force: :cascade do |t|
@@ -654,6 +696,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_083500) do
   create_table "follows", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", precision: nil, null: false
+    t.string "follow_message", limit: 256
     t.string "languages", array: true
     t.boolean "notify", default: false, null: false
     t.boolean "show_reblogs", default: true, null: false
@@ -1278,6 +1321,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_083500) do
     t.boolean "local"
     t.boolean "local_only"
     t.boolean "mfm", default: false, null: false
+    t.text "mfm_html"
     t.text "mfm_text"
     t.bigint "ordered_media_attachment_ids", array: true
     t.bigint "poll_id"
@@ -1538,6 +1582,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_083500) do
   add_foreign_key "appeals", "accounts", column: "approved_by_account_id", on_delete: :nullify
   add_foreign_key "appeals", "accounts", column: "rejected_by_account_id", on_delete: :nullify
   add_foreign_key "appeals", "accounts", on_delete: :cascade
+  add_foreign_key "avatar_decoration_mutes", "accounts"
+  add_foreign_key "avatar_decoration_mutes", "accounts", column: "target_account_id"
   add_foreign_key "backups", "users", on_delete: :nullify
   add_foreign_key "blocks", "accounts", column: "target_account_id", name: "fk_9571bfabc1", on_delete: :cascade
   add_foreign_key "blocks", "accounts", name: "fk_4269e03e65", on_delete: :cascade

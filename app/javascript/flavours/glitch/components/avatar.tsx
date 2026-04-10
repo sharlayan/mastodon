@@ -4,14 +4,24 @@ import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 
 import { useHovering } from 'flavours/glitch/hooks/useHovering';
-import { autoPlayGif } from 'flavours/glitch/initial_state';
+import {
+  autoPlayGif,
+  avatarDecorationsEnabled,
+  forceRoundAvatarDecoration,
+  showAvatarDecorations,
+  showFederatedAvatarDecorations,
+} from 'flavours/glitch/initial_state';
 import type { Account } from 'flavours/glitch/models/account';
 
 import { useAccount } from '../hooks/useAccount';
 
+import { buildDecorationTransform } from './avatar_decoration_utils';
+
 interface Props {
   account:
-    | Pick<Account, 'id' | 'acct' | 'avatar' | 'avatar_static'>
+    | (Pick<Account, 'id' | 'acct' | 'avatar' | 'avatar_static'> & {
+        avatar_decorations?: Account['avatar_decorations'];
+      })
     | undefined; // FIXME: remove `undefined` once we know for sure its always there
   alt?: string;
   size?: number;
@@ -56,11 +66,26 @@ export const Avatar: React.FC<Props> = ({
     setError(true);
   }, [setError]);
 
+  const isRemote = account?.acct.includes('@') ?? false;
+  const decorations = account?.avatar_decorations;
+  const visibleDecorations =
+    avatarDecorationsEnabled &&
+    showAvatarDecorations &&
+    (!isRemote || showFederatedAvatarDecorations) &&
+    decorations?.length
+      ? decorations
+      : [];
+
+  const hasDecoration = visibleDecorations.length > 0;
+
   const avatar = (
     <span
       className={classNames(className, 'account__avatar', {
         'account__avatar--inline': inline,
         'account__avatar--loading': loading,
+        'account__avatar--decorated': hasDecoration,
+        'account__avatar--force-round':
+          hasDecoration && forceRoundAvatarDecoration,
       })}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -70,6 +95,20 @@ export const Avatar: React.FC<Props> = ({
       {src && !error && (
         <img src={src} alt={alt} onLoad={handleLoad} onError={handleError} />
       )}
+
+      {visibleDecorations.map((decoration, index) => (
+        <img
+          key={`${decoration.id}-${index}`}
+          className='account__avatar__decoration'
+          src={animate || hovering ? decoration.url : decoration.static_url}
+          alt=''
+          aria-hidden='true'
+          style={{
+            transform: buildDecorationTransform(decoration),
+            opacity: decoration.opacity,
+          }}
+        />
+      ))}
 
       {counter && (
         <span

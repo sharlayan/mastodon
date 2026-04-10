@@ -1,0 +1,33 @@
+.batch-table__row
+  %label.batch-table__row__select.batch-table__row__select--aligned.batch-checkbox
+    = f.check_box :avatar_decoration_ids, { multiple: true, include_hidden: false }, decoration.id
+
+  .batch-table__row__content.batch-table__row__content--with-image
+    .batch-table__row__content__image
+      %img.avatar-decoration-preview{ src: decoration.image_url, alt: decoration.name }
+
+    .batch-table__row__content__text
+      %span= decoration.name
+      - if decoration.description.present?
+        %span.hint= decoration.description.truncate(64)
+
+    .batch-table__row__content__extra
+      - if decoration.local?
+        = t('admin.accounts.location.local')
+      - else
+        = decoration.host
+
+      %br/
+
+      - if decoration.approved?
+        = material_symbol('check_circle')
+        = t('admin.avatar_decorations.approved')
+      - else
+        = material_symbol('pending')
+        = t('admin.avatar_decorations.pending_approval')
+
+    .batch-table__row__content__actions
+      = link_to t('admin.avatar_decorations.edit'), edit_admin_avatar_decoration_path(decoration), class: 'table-action-link'
+      - unless decoration.approved?
+        = link_to t('admin.avatar_decorations.approve'), approve_admin_avatar_decoration_path(decoration), method: :post, class: 'table-action-link'
+      = link_to t('admin.avatar_decorations.delete'), admin_avatar_decoration_path(decoration), method: :delete, class: 'table-action-link table-action-link--destructive', data: { confirm: t('admin.reports.are_you_sure') }

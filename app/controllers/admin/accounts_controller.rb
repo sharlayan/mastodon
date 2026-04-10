@@ -138,6 +138,32 @@ module Admin
       redirect_to admin_account_path(@account.id), notice: I18n.t('admin.accounts.unblocked_email_msg', username: @account.acct)
     end
 
+    def refresh_avatar_decorations
+      authorize @account, :redownload?
+
+      FetchRemoteAvatarDecorationsWorker.perform_async(@account.id)
+
+      redirect_to admin_account_path(@account.id), notice: I18n.t('admin.accounts.refreshed_avatar_decorations_msg', username: @account.acct)
+    end
+
+    def block_avatar_decorations
+      authorize @account, :block_avatar_decorations?
+
+      @account.update!(avatar_decorations_blocked: true)
+      log_action :update, @account
+
+      redirect_to admin_account_path(@account.id), notice: I18n.t('admin.accounts.blocked_avatar_decorations_msg', username: @account.acct)
+    end
+
+    def unblock_avatar_decorations
+      authorize @account, :block_avatar_decorations?
+
+      @account.update!(avatar_decorations_blocked: false)
+      log_action :update, @account
+
+      redirect_to admin_account_path(@account.id), notice: I18n.t('admin.accounts.unblocked_avatar_decorations_msg', username: @account.acct)
+    end
+
     private
 
     def set_account

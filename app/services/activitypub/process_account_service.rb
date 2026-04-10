@@ -152,6 +152,7 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.show_media_replies      = @json['showRepliesInMedia'] if @json.key?('showRepliesInMedia')
     @account.attribution_domains     = as_array(@json['attributionDomains'] || []).take(Account::ATTRIBUTION_DOMAINS_HARD_LIMIT).map { |item| value_or_id(item) }
     @account.followed_message        = (@json['_misskey_followedMessage'] || @json['followedMessage'] || '')[0...256].presence
+    process_avatar_decorations! if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
   end
 
   def set_fetchable_key!
@@ -312,6 +313,68 @@ class ActivityPub::ProcessAccountService < BaseService
     else
       url_candidate
     end
+  end
+
+  def process_avatar_decorations!
+    return if AvatarDecorationDomainBlock.blocked?(@account.domain)
+
+    raw = @json['_misskey_avatarDecorations']
+
+    if raw.is_a?(Array) && raw.any?
+      process_avatar_decorations_from_ap!(raw)
+    elsif @account.domain.present?
+      meta = InstanceMetadata.find_by(domain: @account.domain)
+      FetchRemoteAvatarDecorationsWorker.perform_in(rand(30), @account.id) if meta.nil? || meta.avatar_decorations_compatible?
+    end
+  end
+
+  def process_avatar_decorations_from_ap!(raw)
+    decoration_configs = []
+
+    raw.first(AvatarDecoration::MAX_REMOTE_DECORATIONS).each do |d|
+      next unless d.is_a?(Hash) && d['id'].present? && d['url'].present?
+
+      raw_url = d['url'].to_s
+      image_url = if raw_url.start_with?('http://', 'https://')
+                    raw_url
+                  elsif raw_url.start_with?('/')
+                    begin
+                      Addressable::URI.parse("https://#{@account.domain}#{raw_url}").to_s
+                    rescue Addressable::URI::InvalidURIError
+                      next
+                    end
+                  else
+                    next
+                  end
+
+      decoration = begin
+        dec = AvatarDecoration.find_or_initialize_by(host: @account.domain, remote_id: d['id'].to_s)
+        dec.image_remote_url = image_url.slice(0, 4096)
+        dec.name             = d['id'].to_s.slice(0, 256) if dec.name.blank?
+        dec.approved         = true if dec.new_record?
+        dec.save if dec.changed?
+        dec
+      rescue ActiveRecord::RecordNotUnique
+        AvatarDecoration.find_by(host: @account.domain, remote_id: d['id'].to_s)
+      rescue => e
+        Rails.logger.warn "Failed to save avatar decoration #{d['id']} from #{@account.domain}: #{e.message}"
+        nil
+      end
+
+      next if decoration.nil? || !decoration.persisted?
+
+      decoration_configs << {
+        'id' => decoration.id,
+        'angle' => d['angle'].to_f.clamp(-0.5, 0.5),
+        'flip_h' => d['flipH'] == true,
+        'offset_x' => d['offsetX'].to_f.clamp(-0.25, 0.25),
+        'offset_y' => d['offsetY'].to_f.clamp(-0.25, 0.25),
+        'scale' => (d['scale'] || d['scaleX'] || 1.0).to_f.clamp(0.5, 1.5),
+        'opacity' => (d['opacity'] || 1.0).to_f.clamp(0.1, 1.0),
+      }
+    end
+
+    @account.avatar_decorations = decoration_configs
   end
 
   def property_values
