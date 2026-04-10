@@ -2,10 +2,9 @@ import { useCallback } from 'react';
 
 import { useIntl, defineMessages } from 'react-intl';
 
-import SmallCodeIcon from '@/material-icons/400-20px/code.svg?react';
 import SmallDescriptionIcon from '@/material-icons/400-20px/description.svg?react';
 import SmallMarkdownIcon from '@/material-icons/400-20px/markdown.svg?react';
-import CodeIcon from '@/material-icons/400-24px/code.svg?react';
+import BrushIcon from '@/material-icons/400-24px/brush.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import MarkdownIcon from '@/material-icons/400-24px/markdown.svg?react';
 import { changeComposeContentType } from 'flavours/glitch/actions/compose';
@@ -19,8 +18,8 @@ const messages = defineMessages({
   plain_text_meta: { id: 'compose.content-type.plain_meta', defaultMessage: 'Write with no advanced formatting' },
   markdown_label: { id: 'compose.content-type.markdown', defaultMessage: 'Markdown' },
   markdown_meta: { id: 'compose.content-type.markdown_meta', defaultMessage: 'Format your posts using Markdown' },
-  html_label: { id: 'compose.content-type.html', defaultMessage: 'HTML' },
-  html_meta: { id: 'compose.content-type.html_meta', defaultMessage: 'Format your posts using HTML' },
+  mfm_label: { id: 'compose.content-type.mfm', defaultMessage: 'MFM' },
+  mfm_meta: { id: 'compose.content-type.mfm_meta', defaultMessage: 'Format your posts using Markup language For Misskey' },
 });
 
 export const ContentTypeButton = () => {
@@ -28,6 +27,7 @@ export const ContentTypeButton = () => {
 
   const showButton = useAppSelector((state) => state.getIn(['local_settings', 'show_content_type_choice']));
   const contentType = useAppSelector((state) => state.getIn(['compose', 'content_type']));
+  const mfmAllowComposition = useAppSelector((state) => state.getIn(['server', 'server', 'configuration', 'mfm', 'allow_composition']));
   const dispatch = useAppDispatch();
 
   const handleChange = useCallback((value) => {
@@ -41,20 +41,23 @@ export const ContentTypeButton = () => {
   const options = [
     { icon: 'file-text', iconComponent: DescriptionIcon, value: 'text/plain', text: intl.formatMessage(messages.plain_text_label), meta: intl.formatMessage(messages.plain_text_meta) },
     { icon: 'arrow-circle-down', iconComponent: MarkdownIcon, value: 'text/markdown', text: intl.formatMessage(messages.markdown_label), meta: intl.formatMessage(messages.markdown_meta) },
-    { icon: 'code', iconComponent: CodeIcon,  value: 'text/html', text: intl.formatMessage(messages.html_label), meta: intl.formatMessage(messages.html_meta) },
   ];
+
+  if (mfmAllowComposition) {
+    options.push({ icon: 'brush', iconComponent: BrushIcon, value: 'text/x-mfm', text: intl.formatMessage(messages.mfm_label), meta: intl.formatMessage(messages.mfm_meta) });
+  }
 
   const icon = {
     'text/plain': 'file-text',
     'text/markdown': 'arrow-circle-down',
-    'text/html': 'code',
-  }[contentType];
+    'text/x-mfm': 'brush',
+  }[contentType] ?? 'file-text';
 
   const iconComponent = {
     'text/plain': SmallDescriptionIcon,
     'text/markdown': SmallMarkdownIcon,
-    'text/html': SmallCodeIcon,
-  }[contentType];
+    'text/x-mfm': BrushIcon,
+  }[contentType] ?? SmallDescriptionIcon;
 
   return (
     <DropdownIconButton

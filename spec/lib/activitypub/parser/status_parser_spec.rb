@@ -49,6 +49,91 @@ RSpec.describe ActivityPub::Parser::StatusParser do
     )
   end
 
+  describe '#mfm?' do
+    context 'when the content contains MFM function syntax' do
+      let(:object_json) do
+        {
+          id: [ActivityPub::TagManager.instance.uri_for(sender), 'post1'].join('/'),
+          type: 'Note',
+          to: 'https://www.w3.org/ns/activitystreams#Public',
+          content: 'plain html',
+          source: { content: '$[tada hello]', mediaType: 'text/x.misskeymarkdown' },
+          published: 1.hour.ago.utc.iso8601,
+        }
+      end
+
+      it 'returns true' do
+        expect(subject.mfm?).to be true
+      end
+    end
+
+    context 'when the content does not contain MFM syntax' do
+      it 'returns false' do
+        expect(subject.mfm?).to be false
+      end
+    end
+  end
+
+  describe '#mfm_source_text' do
+    context 'when source has misskeymarkdown mediaType' do
+      let(:object_json) do
+        {
+          id: [ActivityPub::TagManager.instance.uri_for(sender), 'post1'].join('/'),
+          type: 'Note',
+          to: 'https://www.w3.org/ns/activitystreams#Public',
+          content: '<p>html content</p>',
+          source: { content: '$[tada raw mfm]', mediaType: 'text/x.misskeymarkdown' },
+          published: 1.hour.ago.utc.iso8601,
+        }
+      end
+
+      it 'returns the source content' do
+        expect(subject.mfm_source_text).to eq('$[tada raw mfm]')
+      end
+    end
+
+    context 'when only _misskey_content is present' do
+      let(:object_json) do
+        {
+          id: [ActivityPub::TagManager.instance.uri_for(sender), 'post1'].join('/'),
+          type: 'Note',
+          to: 'https://www.w3.org/ns/activitystreams#Public',
+          content: '<p>html content</p>',
+          _misskey_content: '$[spin legacy mfm]',
+          published: 1.hour.ago.utc.iso8601,
+        }
+      end
+
+      it 'returns the _misskey_content value' do
+        expect(subject.mfm_source_text).to eq('$[spin legacy mfm]')
+      end
+    end
+
+    context 'when neither source nor _misskey_content is present' do
+      it 'returns nil' do
+        expect(subject.mfm_source_text).to be_nil
+      end
+    end
+
+    context 'when source mediaType is not misskeymarkdown' do
+      let(:object_json) do
+        {
+          id: [ActivityPub::TagManager.instance.uri_for(sender), 'post1'].join('/'),
+          type: 'Note',
+          to: 'https://www.w3.org/ns/activitystreams#Public',
+          content: '<p>html content</p>',
+          source: { content: '# markdown', mediaType: 'text/markdown' },
+          _misskey_content: '$[spin fallback]',
+          published: 1.hour.ago.utc.iso8601,
+        }
+      end
+
+      it 'falls back to _misskey_content' do
+        expect(subject.mfm_source_text).to eq('$[spin fallback]')
+      end
+    end
+  end
+
   context 'when the likes collection is not inlined' do
     let(:object_json) do
       {

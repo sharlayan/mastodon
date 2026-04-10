@@ -1,9 +1,16 @@
+import { useMemo } from 'react';
+
 import classNames from 'classnames';
+
+import * as mfm from 'mfm-js';
 
 import { useAppSelector } from '../store';
 
 import { EmojiHTML } from './emoji/html';
+import { MfmRenderer } from './mfm';
 import { useElementHandledLink } from './status/handled_link';
+
+const mfmDomParser = new DOMParser();
 
 interface AccountBioProps {
   className?: string;
@@ -32,8 +39,32 @@ export const AccountBio: React.FC<AccountBioProps> = ({
     return account?.emojis;
   });
 
+  const plainText = useMemo(() => {
+    if (!note) return '';
+    const doc = mfmDomParser.parseFromString(note, 'text/html');
+    return doc.body.textContent || '';
+  }, [note]);
+
+  const hasMfm = useMemo(() => {
+    if (!plainText) return false;
+    try {
+      const ast = mfm.parseSimple(plainText);
+      return mfm.extract(ast, (node) => node.type === 'fn').length > 0;
+    } catch {
+      return false;
+    }
+  }, [plainText]);
+
   if (note.length === 0) {
     return null;
+  }
+
+  if (hasMfm) {
+    return (
+      <div className={classNames(className, 'translate')}>
+        <MfmRenderer text={plainText} emojis={extraEmojis} isProfile />
+      </div>
+    );
   }
 
   return (

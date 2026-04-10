@@ -48,6 +48,8 @@ defaults: &defaults
   reaction_custom_emoji_size: false
   landing_page: 'trends'
   wrapstodon: true
+  mfm_enabled: false
+  mfm_allow_composition: false
 
 development:
   <<: *defaults

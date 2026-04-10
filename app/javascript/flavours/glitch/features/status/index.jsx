@@ -98,6 +98,7 @@ const makeMapStateToProps = () => {
       ancestorsIds,
       descendantsIds,
       settings: state.get('local_settings'),
+      mfmEnabled: state.getIn(['server', 'server', 'configuration', 'mfm', 'enabled']),
       askReplyConfirmation: state.getIn(['local_settings', 'confirm_before_clearing_draft']) && state.getIn(['compose', 'text']).trim().length !== 0,
       domain: state.getIn(['meta', 'domain']),
       pictureInPicture: getPictureInPicture(state, { id: props.params.statusId }),
@@ -144,6 +145,7 @@ class Status extends ImmutablePureComponent {
       inUse: PropTypes.bool,
       available: PropTypes.bool,
     }),
+    mfmEnabled: PropTypes.bool,
     ...WithRouterPropTypes
   };
 
@@ -592,7 +594,7 @@ class Status extends ImmutablePureComponent {
 
   render () {
     let ancestors, descendants, remoteHint;
-    const { isLoading, status, settings, ancestorsIds, descendantsIds, refresh, intl, domain, multiColumn, pictureInPicture } = this.props;
+    const { isLoading, status, settings, ancestorsIds, descendantsIds, refresh, intl, domain, multiColumn, pictureInPicture, mfmEnabled } = this.props;
     const { fullscreen } = this.state;
 
     if (this._shouldBlockLoad()) {
@@ -687,6 +689,7 @@ class Status extends ImmutablePureComponent {
                   pictureInPicture={pictureInPicture}
                   ancestors={this.props.ancestorsIds.length}
                   multiColumn={multiColumn}
+                  mfmEnabled={mfmEnabled}
                 />
 
                 <ActionBar

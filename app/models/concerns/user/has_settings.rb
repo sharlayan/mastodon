@@ -159,6 +159,18 @@ module User::HasSettings
     settings['web.reaction_custom_emoji_size']
   end
 
+  def settings_mfm_enabled
+    settings['web.mfm_enabled']
+  end
+
+  def settings_mfm_animations
+    settings['web.mfm_animations']
+  end
+
+  def settings_mfm_fold_mode
+    settings['web.mfm_fold_mode']
+  end
+
   def allows_report_emails?
     settings['notification_emails.report']
   end

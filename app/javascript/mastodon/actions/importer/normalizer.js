@@ -94,6 +94,8 @@ export function normalizeStatus(status, normalOldStatus, { bogusQuotePolicy = fa
     normalStatus.search_index = domParser.parseFromString(searchContent, 'text/html').documentElement.textContent;
     normalStatus.contentHtml  = normalStatus.content;
     normalStatus.spoilerHtml  = escapeTextContentForBrowser(spoilerText);
+    normalStatus.mfm          = status.mfm || false;
+    normalStatus.mfm_text     = status.mfm_text || null;
     normalStatus.hidden       = expandSpoilers ? false : spoilerText.length > 0 || normalStatus.sensitive;
 
     // Remove quote fallback link from the DOM so it doesn't mess with paragraph margins

@@ -76,6 +76,9 @@ en:
         setting_show_instance_info: Display instance name, theme color, and favicon for posts from other servers
         setting_custom_emoji_size: Display Original size of Long Horizontally Custom Emoji
         setting_reaction_custom_emoji_size: Display Original size of Long Horizontally Custom Emoji on Reaction Button
+        setting_mfm_enabled: Render MFM-formatted content from Misskey and compatible servers with animations and styles
+        setting_mfm_animations: Play animations in MFM content (spin, bounce, shake, etc.). Disabling this will show static fallbacks instead.
+        setting_mfm_fold_mode: "Choose when to fold (collapse) MFM posts behind an expand toggle. 'Sensitive' folds posts with animation, scale, or border effects. 'All' folds every MFM post."
       domain_allow:
         domain: This domain will be able to fetch data from this server and incoming data from it will be processed and stored
       email_domain_block:
@@ -284,6 +287,12 @@ en:
         setting_show_instance_info: Show instance information on posts
         setting_custom_emoji_size: Show Origin Size Custom Emoji
         setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction Button
+        setting_mfm_enabled: Enable MFM rendering
+        setting_mfm_animations: Enable MFM animations
+        setting_mfm_fold_mode: MFM post folding
+        setting_mfm_fold_mode_show: "Show as-is"
+        setting_mfm_fold_mode_sensitive: "Fold sensitive MFM (recommended)"
+        setting_mfm_fold_mode_all: "Fold all MFM"
       email_domain_block:
         with_dns_records: Include MX records and IPs of the domain
       featured_tag:

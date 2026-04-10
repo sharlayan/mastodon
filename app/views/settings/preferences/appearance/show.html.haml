@@ -91,13 +91,6 @@
                  label: t('simple_form.labels.defaults.setting_reaction_custom_emoji_size'),
                  sharlayan_only: true
 
-    .fields-group
-      = ff.input :'web.show_instance_info',
-                 wrapper: :with_label,
-                 hint: t('simple_form.hints.defaults.setting_show_instance_info'),
-                 label: t('simple_form.labels.defaults.setting_show_instance_info'),
-                 sharlayan_only: true
-
     .fields-group.fields-row__column.fields-row__column-6
       = ff.input :visible_reactions,
                  wrapper: :with_label,
@@ -105,6 +98,34 @@
                  input_html: { type: 'number', min: '0', data: { default: '6' } },
                  hint: false,
                  sharlayan_only: true
+
+    %h2= t 'appearance.misskey_flavour'
+
+    .fields-group
+      = ff.input :'web.show_instance_info',
+                 wrapper: :with_label,
+                 hint: t('simple_form.hints.defaults.setting_show_instance_info'),
+                 label: t('simple_form.labels.defaults.setting_show_instance_info'),
+                 sharlayan_only: true
+      - if Setting.mfm_enabled
+        = ff.input :'web.mfm_enabled',
+                   wrapper: :with_label,
+                   hint: t('simple_form.hints.defaults.setting_mfm_enabled'),
+                   label: t('simple_form.labels.defaults.setting_mfm_enabled'),
+                   sharlayan_only: true
+        = ff.input :'web.mfm_animations',
+                   wrapper: :with_label,
+                   hint: t('simple_form.hints.defaults.setting_mfm_animations'),
+                   label: t('simple_form.labels.defaults.setting_mfm_animations'),
+                   sharlayan_only: true
+        = ff.input :'web.mfm_fold_mode',
+                   collection: %w(show sensitive all),
+                   include_blank: false,
+                   label_method: ->(mode) { t("simple_form.labels.defaults.setting_mfm_fold_mode_#{mode}") },
+                   wrapper: :with_label,
+                   hint: t('simple_form.hints.defaults.setting_mfm_fold_mode'),
+                   label: t('simple_form.labels.defaults.setting_mfm_fold_mode'),
+                   sharlayan_only: true
 
     %h2= t 'appearance.discovery'
 

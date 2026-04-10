@@ -88,6 +88,7 @@
     "lande": "^1.0.10",
     "lodash": "^4.17.21",
     "marky": "^1.2.5",
+    "mfm-js": "0.25.0",
     "path-complete-extname": "^1.0.0",
     "postcss-preset-env": "^11.0.0",
     "prop-types": "^15.8.1",

@@ -2905,6 +2905,7 @@ __metadata:
     lint-staged: "npm:^16.2.6"
     lodash: "npm:^4.17.21"
     marky: "npm:^1.2.5"
+    mfm-js: "npm:0.25.0"
     msw: "npm:^2.12.1"
     msw-storybook-addon: "npm:^2.0.6"
     oxfmt: "npm:^0.33.0"
@@ -4341,6 +4342,13 @@ __metadata:
   peerDependencies:
     "@testing-library/dom": ">=7.21.4"
   checksum: 10c0/75fea130a52bf320d35d46ed54f3eec77e71a56911b8b69a3fe29497b0b9947b2dc80d30f04054ad4ce7f577856ae3e5397ea7dff0ef14944d3909784c7a93fe
+  languageName: node
+  linkType: hard
+
+"@twemoji/parser@npm:16.0.0":
+  version: 16.0.0
+  resolution: "@twemoji/parser@npm:16.0.0"
+  checksum: 10c0/b1976e6ee3354ee7d021a1b97f1befa0db585adee34998f5b27f618a0ab50840e30b7cb5af384365e038f0e91e52680704c111225f8441d2b58ec1a0a6926d4d
   languageName: node
   linkType: hard
 
@@ -10066,6 +10074,15 @@ __metadata:
   version: 1.4.1
   resolution: "merge2@npm:1.4.1"
   checksum: 10c0/254a8a4605b58f450308fc474c82ac9a094848081bf4c06778200207820e5193726dc563a0d2c16468810516a5c97d9d3ea0ca6585d23c58ccfff2403e8dbbeb
+  languageName: node
+  linkType: hard
+
+"mfm-js@npm:0.25.0":
+  version: 0.25.0
+  resolution: "mfm-js@npm:0.25.0"
+  dependencies:
+    "@twemoji/parser": "npm:16.0.0"
+  checksum: 10c0/670d149b20e552b275f0ca3211dfe54a26e61ae881b09279fee6fdd7715dd4503cd7e1e9daf247efb90b0ac65c4ce52c554458479518f98c35bd62284963f98e
   languageName: node
   linkType: hard
 

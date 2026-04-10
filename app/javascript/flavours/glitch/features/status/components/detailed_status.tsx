@@ -68,6 +68,7 @@ export const DetailedStatus: React.FC<{
   ancestors?: number;
   multiColumn?: boolean;
   expanded: boolean;
+  mfmEnabled?: boolean;
 }> = ({
   status,
   onOpenMedia,
@@ -87,6 +88,7 @@ export const DetailedStatus: React.FC<{
   ancestors = 0,
   multiColumn = false,
   expanded,
+  mfmEnabled,
 }) => {
   const properStatus = status?.get('reblog') ?? status;
   const [height, setHeight] = useState(0);
@@ -494,6 +496,7 @@ export const DetailedStatus: React.FC<{
             <StatusContent
               status={status}
               onTranslate={handleTranslate}
+              mfmEnabled={mfmEnabled}
               {...(statusContentProps as any)}
             />
 

@@ -10,7 +10,9 @@ class REST::StatusSerializer < ActiveModel::Serializer
              :sensitive, :spoiler_text, :visibility, :language,
              :uri, :url, :replies_count, :reblogs_count,
              :favourites_count, :reactions_count, :quotes_count,
-             :edited_at
+             :edited_at, :mfm
+
+  attribute :mfm_text, if: :mfm_text?
 
   attribute :favourited, if: :current_user?
   attribute :reacted, if: :current_user?
@@ -231,6 +233,10 @@ class REST::StatusSerializer < ActiveModel::Serializer
 
   def show_instance_info?
     object.account.domain.present?
+  end
+
+  def mfm_text?
+    object.mfm? && object.mfm_text.present?
   end
 
   private

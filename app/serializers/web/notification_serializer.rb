@@ -8,6 +8,18 @@ class Web::NotificationSerializer < ActiveModel::Serializer
   attributes :access_token, :preferred_locale, :notification_id,
              :notification_type, :icon, :title, :body
 
+  private
+
+  def status_plain_text(status)
+    if status.local? && status.content_type == 'text/x-mfm'
+      MfmHtmlConverter.convert(status.text)
+    else
+      status.text
+    end
+  end
+
+  public
+
   def access_token
     current_push_subscription.associated_access_token
   end
@@ -33,7 +45,13 @@ class Web::NotificationSerializer < ActiveModel::Serializer
   end
 
   def body
-    str = strip_tags(object.target_status&.spoiler_text.presence || object.target_status&.text || object.from_account.note)
+    status = object.target_status
+    raw = if status
+            status.spoiler_text.presence || status_plain_text(status)
+          else
+            object.from_account.note
+          end
+    str = strip_tags(raw)
     truncate(HTMLEntities.new.decode(str.to_str), length: 140, escape: false) # Do not encode entities, since this value will not be used in HTML
   end
 end

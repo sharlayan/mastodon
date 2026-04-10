@@ -176,6 +176,8 @@ class ActivityPub::ProcessStatusUpdateService < BaseService
     @status.spoiler_text = @status_parser.processed_spoiler_text
     @status.sensitive    = @account.sensitized? || @status_parser.sensitive || false
     @status.language     = @status_parser.language
+    @status.mfm          = @status_parser.mfm?
+    @status.mfm_text     = @status_parser.mfm? ? @status_parser.mfm_source_text : nil
 
     @significant_changes = text_significantly_changed? || @status.spoiler_text_changed? || @media_attachments_changed || @poll_changed || @quote_changed
 

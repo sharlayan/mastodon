@@ -87,6 +87,10 @@ class PostStatusService < BaseService
 
   def preprocess_attributes!
     fill_blank_text!
+    @content_type = @options[:content_type] || @account.user&.setting_default_content_type
+    # Strip MFM content type if server MFM is disabled
+    @content_type = 'text/plain' if @content_type == 'text/x-mfm' && !Setting.mfm_enabled
+    @mfm = Setting.mfm_enabled && (@content_type == 'text/x-mfm' || MfmDetector.contains_mfm?(@text))
     @sensitive    = (@options[:sensitive].nil? ? @account.user&.setting_default_sensitive : @options[:sensitive]) || @options[:spoiler_text].present?
     @visibility   = @options[:visibility] || @account.user&.setting_default_privacy
     @visibility   = :unlisted if @visibility&.to_sym == :public && @account.silenced?
@@ -288,7 +292,8 @@ class PostStatusService < BaseService
       visibility: @visibility,
       language: valid_locale_cascade(@options[:language], @account.user&.preferred_posting_language, I18n.default_locale),
       application: @options[:application],
-      content_type: @options[:content_type] || @account.user&.setting_default_content_type,
+      content_type: @content_type,
+      mfm: @mfm,
       local_only: @options[:local_only],
       rate_limit: @options[:with_rate_limit],
       quote_approval_policy: @options[:quote_approval_policy],

@@ -13,6 +13,14 @@ ko:
       hide_followers_count:
         desc_html: 사용자 프로필에 팔로워 수를 표시하지 않습니다
         title: 팔로워 수 숨기기
+      mfm:
+        title: MFM (Markup language For Misskey)
+      mfm_enabled:
+        desc_html: Misskey와 호환 서버의 MFM 형식 콘텐츠를 애니메이션 및 스타일로 렌더링합니다
+        title: MFM 렌더링 활성화
+      mfm_allow_composition:
+        desc_html: 이 서버의 사용자가 MFM 형식으로 게시글을 작성할 수 있도록 허용합니다. 비활성화해도 외부 서버의 MFM은 렌더링됩니다.
+        title: MFM으로 게시글 작성 허용
       other:
         preamble: 다른 곳에 맞지 않는 다양한 글리치 전용 설정들.
         title: 기타

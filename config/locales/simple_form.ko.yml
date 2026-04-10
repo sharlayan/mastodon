@@ -7,7 +7,7 @@ ko:
         discoverable: 내 공개 게시물과 프로필이 마스토돈의 다양한 추천 기능에 나타날 수 있고 프로필이 다른 사용자에게 제안될 수 있습니다
         display_name: 진짜 이름 또는 재미난 이름.
         fields: 홈페이지, 호칭, 나이, 뭐든지 적고 싶은 것들.
-        followed_message: 팔로우 요청을 수락했을 때 상대방에게 전송되는 메시지입니다.
+        followed_message: 팔로우 받았을 때 상대방에게 보여줄 단문 메시지를 설정할 수 있습니다. 팔로우를 승인제로 한 경우, 팔로우 요청을 수락했을 때 보여줍니다.
         indexable: 내 공개 게시물이 마스토돈의 검색 결과에 나타날 수 있습니다. 내 게시물과 상호작용했던 사람들은 이 설정과 관계 없이 그 게시물을 검색할 수 있습니다.
         note: '남을 @mention 하거나 #hashtag 태그를 달 수 있습니다.'
         show_collections: 사람들이 내 계정의 팔로우와 팔로워를 볼 수 있습니다. 내가 팔로우 하는 사람은 이 설정에 관계 없이 내가 팔로우 했다는 사실을 알 수 있습니다.
@@ -74,7 +74,11 @@ ko:
         whole_word: 키워드가 영문과 숫자로만 이루어 진 경우, 단어 전체에 매칭 되었을 때에만 작동하게 합니다
         setting_show_instance_info: 다른 서버의 게시물에 인스턴스 이름, 테마 색상 및 파비콘 표시
         setting_custom_emoji_size: 가로로 긴 커스텀 에모지의 가로 길이를 늘려서 표시합니다.
-        setting_reaction_custom_emoji_size: 리액션 버튼에서 가로로 긴 커스텀 에모지의 가로 길이를 늘려서 표시합니다.
+        setting_reaction_custom_emoji_size: 리액션 버튼에서 가로로 긴 커스텀 에모지의 가로 길이를 늘려 서 표시합니다.
+        setting_mfm_enabled: Misskey 및 호환 서버의 MFM 형식 콘텐츠를 애니메이션과 스타일로 렌더링합니다
+        setting_mfm_animations: MFM 콘텐츠의 애니메이션을 재생합니다 (spin, bounce, shake 등). 비활성화하면 정적 대체 표시로 전환됩니다.
+        setting_mfm_fold_mode: "MFM 게시물을 접는 기준을 선택합니다. '민감한'은 애니메이션, 크기 조정, 테두리 효과가 있는 게시물을 접습니다. '모두'는 모든 MFM 게시물을 접습니다."
+
       domain_allow:
         domain: 이 도메인은 이 서버에서 데이터를 가져갈 수 있고 이 도메인에서 보내진 데이터는 처리되고 저장 됩니다
       email_domain_block:
@@ -221,7 +225,7 @@ ko:
         email: 이메일 주소
         expires_in: 만기
         fields: 부가 필드
-        followed_message: 팔로우 메시지
+        followed_message: 팔로우 받았을 때 메시지
         header: 헤더 사진
         honeypot: "%{label} (채우지 마시오)"
         inbox_url: 릴레이 서버의 inbox URL
@@ -275,6 +279,14 @@ ko:
         warn_quote_policy_html: "<strong>주의:</strong><br>인용할 수 있는 사용자를 제한하더라도 Mastodon 이외의 소프트웨어가 FEP-044f 제안을 수용하지 않으면 인용될 수 있음을 이해해 주시기 바랍니다.<br>%{instance} 서버의 경우 기본값이 '나만' 으로 지정되어 있습니다."
         whole_word: 단어 전체에 매칭
         setting_show_instance_info: 게시물에 인스턴스 정보 표시 (글리치 풍미에만 적용됨)
+        setting_custom_emoji_size: 커스텀 에모지 원본 비율 표시
+        setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
+        setting_mfm_enabled: MFM 렌더링 활성화
+        setting_mfm_animations: MFM 애니메이션 활성화
+        setting_mfm_fold_mode: MFM 게시물 접기
+        setting_mfm_fold_mode_show: "그대로 표시"
+        setting_mfm_fold_mode_sensitive: "민감한 MFM 접기 (권장)"
+        setting_mfm_fold_mode_all: "모두 접기"
         setting_custom_emoji_size: 커스텀 에모지 원본 비율 표시
         setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
       email_domain_block:

@@ -22,5 +22,13 @@
   .fields-group
     = f.input :outgoing_spoilers, wrapper: :with_label, label: t('admin.settings.outgoing_spoilers.title'), hint: t('admin.settings.outgoing_spoilers.desc_html'), glitch_only: true
 
+  %h2= t('admin.settings.mfm.title')
+
+  .fields-group
+    = f.input :mfm_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.mfm_enabled.title'), hint: t('admin.settings.mfm_enabled.desc_html')
+
+  .fields-group
+    = f.input :mfm_allow_composition, as: :boolean, wrapper: :with_label, label: t('admin.settings.mfm_allow_composition.title'), hint: t('admin.settings.mfm_allow_composition.desc_html')
+
   .actions
     = f.button :button, t('generic.save_changes'), type: :submit

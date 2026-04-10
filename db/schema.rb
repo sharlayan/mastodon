@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_28_221522) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_02_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1277,6 +1277,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_28_221522) do
     t.string "language"
     t.boolean "local"
     t.boolean "local_only"
+    t.boolean "mfm", default: false, null: false
+    t.text "mfm_text"
     t.bigint "ordered_media_attachment_ids", array: true
     t.bigint "poll_id"
     t.integer "quote_approval_policy", default: 0, null: false

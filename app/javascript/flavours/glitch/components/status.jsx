@@ -137,6 +137,7 @@ class Status extends ImmutablePureComponent {
     unfocusable: PropTypes.bool,
     headerRenderFn: PropTypes.func,
     settings: ImmutablePropTypes.map.isRequired,
+    mfmEnabled: PropTypes.bool,
     pictureInPicture: ImmutablePropTypes.contains({
       inUse: PropTypes.bool,
       available: PropTypes.bool,
@@ -498,6 +499,7 @@ class Status extends ImmutablePureComponent {
     }
 
     const isExpanded = settings.getIn(['content_warnings', 'shared_state']) ? !status.get('hidden') : this.state.isExpanded;
+
     const expanded = isExpanded || status.get('spoiler_text').length === 0;
 
     const handlers = {
@@ -763,6 +765,7 @@ class Status extends ImmutablePureComponent {
                   collapsible
                   media={media}
                   onCollapsedToggle={this.handleCollapsedToggle}
+                  mfmEnabled={this.props.mfmEnabled}
                   {...statusContentProps}
                 />
 

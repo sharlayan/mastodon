@@ -93,6 +93,51 @@ RSpec.describe ActivityPub::NoteSerializer do
     end
   end
 
+  context 'with a local MFM post' do
+    let!(:local_account) { Fabricate(:account, domain: nil) }
+    let!(:parent) { Fabricate(:status, account: local_account, text: '$[tada hello world]', mfm: true, visibility: :public, language: 'en') }
+
+    it 'includes _misskey_content with the raw MFM text' do
+      expect(subject).to include('_misskey_content' => '$[tada hello world]')
+    end
+
+    it 'includes source with misskeymarkdown mediaType' do
+      expect(subject).to include(
+        'source' => {
+          'content' => '$[tada hello world]',
+          'mediaType' => 'text/x.misskeymarkdown',
+        }
+      )
+    end
+
+    it 'has content as HTML (not raw MFM)' do
+      expect(subject['content']).to be_a(String)
+      expect(subject['content']).to_not start_with('$[')
+    end
+  end
+
+  context 'with a non-MFM local post' do
+    it 'does not include _misskey_content' do
+      expect(subject).to_not have_key('_misskey_content')
+    end
+
+    it 'does not include source with misskeymarkdown mediaType' do
+      source = subject['source']
+      expect(source).to be_nil.or(
+        satisfy { |s| s.is_a?(Hash) && s['mediaType'] != 'text/x.misskeymarkdown' }
+      )
+    end
+  end
+
+  context 'with a remote MFM post' do
+    let!(:remote_account) { Fabricate(:account, domain: 'remote.example', uri: 'https://remote.example/users/1') }
+    let!(:parent) { Fabricate(:status, account: remote_account, text: '$[tada hello]', mfm: true, visibility: :public, language: 'en', uri: 'https://remote.example/statuses/1') }
+
+    it 'does not include _misskey_content' do
+      expect(subject).to_not have_key('_misskey_content')
+    end
+  end
+
   context 'with a quote policy' do
     let(:parent) { Fabricate(:status, quote_approval_policy: InteractionPolicy::POLICY_FLAGS[:followers] << 16) }
 

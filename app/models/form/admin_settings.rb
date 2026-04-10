@@ -55,6 +55,8 @@ class Form::AdminSettings
     remote_topic_feed_access
     landing_page
     wrapstodon
+    mfm_enabled
+    mfm_allow_composition
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -83,6 +85,8 @@ class Form::AdminSettings
     force_local_only
     authorized_fetch
     wrapstodon
+    mfm_enabled
+    mfm_allow_composition
   ).freeze
 
   UPLOAD_KEYS = %i(

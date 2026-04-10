@@ -18,6 +18,8 @@
   "compose.content-type.html_meta": "게시물을 HTML 형식으로 구성",
   "compose.content-type.markdown": "마크다운",
   "compose.content-type.markdown_meta": "게시물을 마크다운 형식으로 구성",
+  "compose.content-type.mfm": "MFM",
+  "compose.content-type.mfm_meta": "Markup language For Misskey으로 게시물 작성",
   "compose.content-type.plain": "일반 텍스트",
   "compose.content-type.plain_meta": "고급 양식 없이 작성",
   "compose.disable_threaded_mode": "글타래 모드 비활성화",
@@ -81,6 +83,12 @@
   "settings.media_letterbox_hint": "확대하고 자르는 대신 축소하고 레터박스에 넣어 이미지를 보여줍니다",
   "settings.media_reveal_behind_cw": "열람주의로 가려진 미디어를 기본으로 펼쳐 두기",
   "settings.mention_reblogger": "부스트 된 게시물에 답글을 달 때 부스트한 사람을 언급(멘션)합니다.",
+  "settings.mfm": "MFM (Markup language For Misskey)",
+  "settings.mfm_animations": "MFM 애니메이션 활성화",
+  "settings.mfm_animations_hint": "MFM 콘텐츠의 애니메이션을 재생합니다 (회전, 바운스, 흔들기 등). 비활성화하면 정적 대체 표시로 보입니다.",
+
+  "settings.mfm_enabled": "MFM 렌더링 활성화",
+  "settings.mfm_enabled_hint": "Misskey와 호환 서버의 MFM 형식 콘텐츠를 애니메이션 및 스타일로 렌더링합니다",
   "settings.notifications.favicon_badge": "읽지 않은 알림 파비콘 배지",
   "settings.notifications.favicon_badge.hint": "읽지 않은 알림 배지를 파비콘에 추가합니다",
   "settings.notifications.tab_badge": "읽지 않은 알림 배지",
@@ -128,6 +136,7 @@
   "status.in_reply_to": "이 글은 답글입니다",
   "status.is_poll": "이 글은 설문입니다",
   "status.local_only": "당신의 서버에서만 보입니다",
+  "status.mfm_fold_expand": "MFM 게시물 펼쳐서 보기",
   "status.react": "리액션",
   "status.show_filter_reason": "그냥 표시하기"
 }

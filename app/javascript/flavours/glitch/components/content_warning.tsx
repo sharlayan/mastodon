@@ -15,6 +15,7 @@ export const ContentWarning: React.FC<{
   icons?: IconName[];
 }> = ({ status, expanded, onClick, icons }) => {
   const hasSpoiler = !!status.get('spoiler_text');
+
   if (!hasSpoiler) {
     return null;
   }

@@ -13,10 +13,10 @@
   "compose.attach.doodle": "Draw something",
   "compose.change_federation": "Change federation settings",
   "compose.content-type.change": "Change advanced formatting options",
-  "compose.content-type.html": "HTML",
-  "compose.content-type.html_meta": "Format your posts using HTML",
   "compose.content-type.markdown": "Markdown",
   "compose.content-type.markdown_meta": "Format your posts using Markdown",
+  "compose.content-type.mfm": "MFM",
+  "compose.content-type.mfm_meta": "Format your posts using Markup language For Misskey",
   "compose.content-type.plain": "Plain text",
   "compose.content-type.plain_meta": "Write with no advanced formatting",
   "compose.disable_threaded_mode": "Disable threaded mode",
@@ -127,6 +127,7 @@
   "status.in_reply_to": "This toot is a reply",
   "status.is_poll": "This toot is a poll",
   "status.local_only": "Only visible from your instance",
+  "status.mfm_fold_expand": "Expand MFM post",
   "status.react": "React",
   "status.show_filter_reason": "Show anyway"
 }

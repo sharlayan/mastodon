@@ -49,6 +49,10 @@ class UserSettings
     setting :reaction_custom_emoji_size, default: false
     setting :color_scheme, default: 'auto', in: %w(auto light dark)
     setting :contrast, default: 'auto', in: %w(auto high)
+    setting :mfm_force_sensitive, default: false
+    setting :mfm_enabled, default: false
+    setting :mfm_animations, default: false
+    setting :mfm_fold_mode, default: 'sensitive', in: %w(show sensitive all)
   end
 
   namespace :notification_emails do

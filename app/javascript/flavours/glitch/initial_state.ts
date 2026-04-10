@@ -60,6 +60,9 @@ interface InitialStateMeta {
   show_instance_info: boolean;
   custom_emoji_size: boolean;
   reaction_custom_emoji_size: boolean;
+  mfm_enabled: boolean;
+  mfm_animations: boolean;
+  mfm_fold_mode: 'show' | 'sensitive' | 'all';
 }
 
 interface Role {
@@ -181,6 +184,10 @@ export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const showInstanceInfo = getMeta('show_instance_info');
 export const customEmojiSize = getMeta('custom_emoji_size');
 export const reactionCustomEmojiSize = getMeta('reaction_custom_emoji_size');
+export const mfmEnabled = getMeta('mfm_enabled') !== false;
+export const mfmAnimations = getMeta('mfm_animations') !== false;
+export const mfmFoldMode =
+  (getMeta('mfm_fold_mode') as string | undefined) ?? 'sensitive';
 export const wrapstodon = getMeta('wrapstodon');
 
 const displayNames =

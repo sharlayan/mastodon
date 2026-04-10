@@ -98,6 +98,17 @@ class ActivityPub::Parser::StatusParser
     @object['sensitive']
   end
 
+  def mfm?
+    mfm_source_text.present? || MfmDetector.contains_mfm?(text)
+  end
+
+  def mfm_source_text
+    source = @object['source']
+    return source['content'].presence if source.is_a?(Hash) && source['mediaType']&.include?('misskeymarkdown')
+
+    @object['_misskey_content'].presence
+  end
+
   def visibility
     if audience_to.any? { |to| ActivityPub::TagManager.instance.public_collection?(to) }
       :public

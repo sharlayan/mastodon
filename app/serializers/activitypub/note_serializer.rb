@@ -18,6 +18,10 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
 
   attribute :direct_message, if: :non_public?
 
+  # MFM source fields (Misskey-compatible): included only for local MFM posts
+  attribute :_misskey_content, if: :local_mfm?
+  attribute :source, if: :local_mfm?
+
   has_many :virtual_attachments, key: :attachment
   has_many :virtual_tags, key: :tag
 
@@ -63,12 +67,40 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
   end
 
   def content
-    status_content_format(object)
+    if local_mfm?
+      mfm_to_html_content
+    else
+      status_content_format(object)
+    end
   end
 
   def content_map
     { object.language => content }
   end
+
+  def local_mfm?
+    object.local? && object.mfm?
+  end
+
+  def _misskey_content
+    object.text
+  end
+
+  def source
+    {
+      content: object.text,
+      mediaType: 'text/x.misskeymarkdown',
+    }
+  end
+
+  private
+
+  def mfm_to_html_content
+    base_html = status_content_format(object)
+    MfmHtmlConverter.convert_in_html(base_html)
+  end
+
+  public
 
   def replies
     replies = object.self_replies(5).pluck(:id, :uri)

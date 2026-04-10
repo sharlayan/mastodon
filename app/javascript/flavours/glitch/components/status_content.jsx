@@ -17,10 +17,24 @@ import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity
 import { languages as preloadedLanguages } from 'flavours/glitch/initial_state';
 
 import { EmojiHTML } from './emoji/html';
+import { MfmRenderer, hasSensitiveFoldTags } from './mfm';
 import { injectIntl } from './intl';
 import { HandledLink } from './status/handled_link';
 
 import { EmojiInfoTooltip } from './emoji_info_tooltip';
+
+const mfmDomParser = new DOMParser();
+
+function extractPlainTextFromHtml(html) {
+  const doc = mfmDomParser.parseFromString(html, 'text/html');
+  for (const br of doc.querySelectorAll('br')) {
+    br.replaceWith('\n');
+  }
+  for (const p of doc.querySelectorAll('p')) {
+    p.after('\n');
+  }
+  return doc.body.textContent || '';
+}
 
 const MAX_HEIGHT = 706; // 22px * 32 (+ 2px padding at the top)
 
@@ -72,6 +86,9 @@ class TranslateButton extends PureComponent {
 
 const mapStateToProps = state => ({
   languages: state.getIn(['server', 'translationLanguages', 'items']),
+  localMfmEnabled: state.getIn(['meta', 'mfm_enabled']) !== false,
+  localMfmAnimations: state.getIn(['meta', 'mfm_animations']) !== false,
+  localMfmFoldMode: state.getIn(['meta', 'mfm_fold_mode']) ?? 'sensitive',
 });
 
 const compareUrls = (href1, href2) => {
@@ -96,6 +113,10 @@ class StatusContent extends PureComponent {
     onCollapsedToggle: PropTypes.func,
     languages: ImmutablePropTypes.map,
     intl: PropTypes.object,
+    mfmEnabled: PropTypes.bool,
+    localMfmEnabled: PropTypes.bool,
+    localMfmAnimations: PropTypes.bool,
+    localMfmFoldMode: PropTypes.string,
     // from react-router
     match: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
@@ -148,7 +169,7 @@ class StatusContent extends PureComponent {
 
     let element = e.target;
     while (element !== e.currentTarget) {
-      if (['button', 'video', 'a', 'label', 'canvas'].includes(element.localName) || element.getAttribute('role') === 'button') {
+      if (['button', 'video', 'a', 'label', 'canvas', 'summary', 'details'].includes(element.localName) || element.getAttribute('role') === 'button') {
         return;
       }
       element = element.parentNode;
@@ -196,6 +217,9 @@ class StatusContent extends PureComponent {
 
     const content = (statusContent ?? getStatusContent(status)).replace(/(<br\s*\/?>)+[\s\n]*$/, '');
     const language = status.getIn(['translation', 'language']) || status.get('language');
+    const isMfm = status.get('mfm') && this.props.mfmEnabled !== false && this.props.localMfmEnabled !== false;
+    const mfmAnimationsEnabled = this.props.localMfmAnimations !== false;
+    const mfmFoldMode = this.props.localMfmFoldMode ?? 'sensitive';
     const classNames = classnames('status__content', {
       'status__content--with-action': this.props.onClick && this.props.history,
       'status__content--collapsed': renderReadMore,
@@ -215,6 +239,35 @@ class StatusContent extends PureComponent {
       <Poll pollId={status.get('poll')} status={status} lang={language} />
     );
 
+    // MFM content: use stored mfm_text if available, otherwise extract from HTML
+    const mfmSourceText = status.get('mfm_text') || extractPlainTextFromHtml(content);
+    const shouldFoldMfm = isMfm && (
+      mfmFoldMode === 'all' ||
+      (mfmFoldMode === 'sensitive' && hasSensitiveFoldTags(mfmSourceText))
+    );
+    const contentElement = isMfm ? (
+      <div className='status__content__text status__content__text--visible translate' lang={language}>
+        {shouldFoldMfm ? (
+          <details className='status__content__mfm-fold'>
+            <summary>
+              <FormattedMessage id='status.mfm_fold_expand' defaultMessage='Expand MFM post' />
+            </summary>
+            <MfmRenderer text={mfmSourceText} emojis={status.get('emojis')} animationsEnabled={mfmAnimationsEnabled} />
+          </details>
+        ) : (
+          <MfmRenderer text={mfmSourceText} emojis={status.get('emojis')} animationsEnabled={mfmAnimationsEnabled} />
+        )}
+      </div>
+    ) : (
+      <EmojiHTML
+        className='status__content__text status__content__text--visible translate'
+        lang={language}
+        htmlString={content}
+        extraEmojis={status.get('emojis')}
+        onElement={this.handleElement}
+      />
+    );
+
     if (this.props.onClick) {
       return (
         <>
@@ -225,13 +278,7 @@ class StatusContent extends PureComponent {
             ref={this.contentRef}
             key='status-content'
           >
-            <EmojiHTML
-              className='status__content__text status__content__text--visible translate'
-              lang={language}
-              htmlString={content}
-              extraEmojis={status.get('emojis')}
-              onElement={this.handleElement}
-            />
+            {contentElement}
 
             {poll}
             {translateButton}
@@ -248,13 +295,7 @@ class StatusContent extends PureComponent {
     } else {
       return (
         <div className={classNames} ref={this.contentRef}>
-          <EmojiHTML
-            className='status__content__text status__content__text--visible translate'
-            lang={language}
-            htmlString={content}
-            extraEmojis={status.get('emojis')}
-            onElement={this.handleElement}
-          />
+          {contentElement}
 
           {poll}
           {translateButton}

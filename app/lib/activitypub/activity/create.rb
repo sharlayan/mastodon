@@ -111,6 +111,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       override_timestamps: @options[:override_timestamps],
       reply: @status_parser.reply,
       sensitive: @account.sensitized? || @status_parser.sensitive || false,
+      mfm: @status_parser.mfm?,
+      mfm_text: @status_parser.mfm? ? @status_parser.mfm_source_text : nil,
       visibility: @status_parser.visibility,
       thread: replied_to_status,
       conversation: conversation_from_uri(@object['conversation']),

@@ -13,6 +13,14 @@ en:
       hide_followers_count:
         desc_html: Do not show followers count on user profiles
         title: Hide followers count
+      mfm:
+        title: MFM (Markup language For Misskey)
+      mfm_enabled:
+        desc_html: Render MFM-formatted content from Misskey and compatible servers with animations and styles
+        title: Enable MFM rendering
+      mfm_allow_composition:
+        desc_html: Allow users on this server to compose posts in MFM format. If disabled, MFM from remote servers will still be rendered.
+        title: Allow MFM post composition
       other:
         preamble: Various glitch-soc settings not fitting in other categories.
         title: Other

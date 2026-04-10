@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class HtmlAwareFormatter
-  STATUS_MIME_TYPES = %w(text/plain text/markdown text/html).freeze
+  STATUS_MIME_TYPES = %w(text/plain text/markdown text/html text/x-mfm).freeze
 
   attr_reader :text, :local, :options
 
@@ -38,6 +38,8 @@ class HtmlAwareFormatter
     if %w(text/markdown text/html).include?(@options[:content_type])
       AdvancedTextFormatter.new(text, options).to_s
     else
+      # text/x-mfm and text/plain both use plain text formatting
+      # MFM parsing is done client-side; server only sets the mfm flag
       TextFormatter.new(text, options).to_s
     end
   end

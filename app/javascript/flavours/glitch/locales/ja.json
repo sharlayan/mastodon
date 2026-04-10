@@ -16,6 +16,8 @@
   "compose.content-type.html_meta": "投稿に HTML を使用する",
   "compose.content-type.markdown": "マークダウン",
   "compose.content-type.markdown_meta": "投稿に Markdown を使用する",
+  "compose.content-type.mfm": "MFM",
+  "compose.content-type.mfm_meta": "投稿に Markup language For Misskey を使用する",
   "compose.content-type.plain": "プレーンテキスト",
   "compose.disable_threaded_mode": "スレッドモードを無効にする",
   "compose.enable_threaded_mode": "スレッドモードを有効にする",
@@ -54,6 +56,9 @@
   "settings.media_fullwidth": "全幅メディアプレビュー",
   "settings.media_letterbox": "メディアをレターボックス式で表示",
   "settings.media_reveal_behind_cw": "既定で警告指定されているトゥートの閲覧注意メディアを表示する",
+  "settings.mfm": "MFM (Markup language For Misskey)",
+  "settings.mfm_enabled": "MFM レンダリングを有効にする",
+  "settings.mfm_enabled_hint": "Misskey および対応サーバーの MFM 形式コンテンツをアニメーションとスタイルでレンダリングする",
   "settings.notifications.favicon_badge": "通知アイコンに未読件数を表示する",
   "settings.notifications.tab_badge": "未読の通知があるとき、通知アイコンにマークを表示する",
   "settings.notifications_opts": "通知の設定",
@@ -98,5 +103,6 @@
   "status.in_reply_to": "このトゥートは返信です",
   "status.is_poll": "このトゥートはアンケートです",
   "status.local_only": "あなたのインスタンスのみに公開",
+  "status.mfm_fold_expand": "MFM投稿を展開して表示",
   "status.show_filter_reason": "とにかく表示"
 }

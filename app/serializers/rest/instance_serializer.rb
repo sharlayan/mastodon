@@ -129,6 +129,11 @@ class REST::InstanceSerializer < ActiveModel::Serializer
       },
 
       limited_federation: limited_federation?,
+
+      mfm: {
+        enabled: Setting.mfm_enabled,
+        allow_composition: Setting.mfm_allow_composition,
+      },
     }
   end
 
