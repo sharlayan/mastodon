@@ -87,4 +87,4 @@ export const MFM_ALLOWED_BORDER_STYLES = new Set([
 
 export const MFM_MAX_SCALE = 5;
 
-export const MFM_MAX_CONTAINER_HEIGHT = 600;
+export const MFM_FOLD_LENGTH_THRESHOLD = 1000;
