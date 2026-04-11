@@ -1,4 +1,4 @@
-export { MfmRenderer, hasSensitiveFoldTags } from './mfm_renderer';
+export { MfmRenderer, hasSensitiveFoldTags, hasAnyMfmFn } from './mfm_renderer';
 export { MfmSparkle } from './mfm_sparkle';
 export {
   MFM_ALLOWED_TAGS,

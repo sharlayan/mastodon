@@ -34,6 +34,20 @@ export function hasSensitiveFoldTags(text: string): boolean {
   }
 }
 
+export function hasAnyMfmFn(text: string): boolean {
+  try {
+    const ast = mfm.parse(text);
+    let found = false;
+    mfm.inspect(ast, (node) => {
+      if (found) return;
+      if (node.type === 'fn') found = true;
+    });
+    return found;
+  } catch {
+    return false;
+  }
+}
+
 interface MfmRendererProps {
   text: string;
   emojis?: CustomEmojiMapArg | null;

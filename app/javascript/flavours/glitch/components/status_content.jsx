@@ -17,7 +17,7 @@ import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity
 import { languages as preloadedLanguages } from 'flavours/glitch/initial_state';
 
 import { EmojiHTML } from './emoji/html';
-import { MfmRenderer, hasSensitiveFoldTags, MFM_FOLD_LENGTH_THRESHOLD } from './mfm';
+import { MfmRenderer, hasSensitiveFoldTags, hasAnyMfmFn, MFM_FOLD_LENGTH_THRESHOLD } from './mfm';
 import { injectIntl } from './intl';
 import { HandledLink } from './status/handled_link';
 
@@ -241,8 +241,9 @@ class StatusContent extends PureComponent {
 
     // MFM content: use stored mfm_text if available, otherwise extract from HTML
     const mfmSourceText = status.get('mfm_text') || extractPlainTextFromHtml(content);
+    const hasMfmFn = isMfm && hasAnyMfmFn(mfmSourceText);
     const shouldFoldMfm = isMfm && (
-      mfmFoldMode === 'all' ||
+      (mfmFoldMode === 'all' && hasMfmFn) ||
       (mfmFoldMode === 'sensitive' && hasSensitiveFoldTags(mfmSourceText)) ||
       mfmSourceText.length > MFM_FOLD_LENGTH_THRESHOLD
     );
