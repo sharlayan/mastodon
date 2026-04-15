@@ -9935,6 +9935,15 @@ noscript {
   overflow: hidden;
 }
 
+.notification-ungrouped:has(.account__avatar--decorated),
+.notification-group:has(.account__avatar--decorated) {
+  overflow: hidden;
+
+  .status__wrapper {
+    overflow: visible;
+  }
+}
+
 .picture-in-picture {
   position: fixed;
   bottom: 20px;

@@ -42,6 +42,7 @@ module Admin
 
     def update
       authorize :avatar_decoration, :update?
+      raise Mastodon::NotPermittedError unless @decoration.local?
 
       if @decoration.update(decoration_params)
         log_action :update, @decoration
