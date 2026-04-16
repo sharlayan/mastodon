@@ -1,0 +1,55 @@
+- content_for :page_title do
+  = t('admin.custom_emojis.bulk_edit.title')
+
+- content_for :heading_actions do
+  = link_to t('admin.custom_emojis.title'), admin_custom_emojis_path, class: 'button button--secondary'
+
+= form_with url: bulk_edit_admin_custom_emojis_path, method: :get, class: :simple_form do |f|
+  .fields-group
+    .input.string.optional
+      = f.text_field :shortcode,
+                     value: params[:shortcode],
+                     class: 'string optional',
+                     placeholder: t('admin.custom_emojis.shortcode')
+    .actions
+      %button.button= t('admin.accounts.search')
+      = link_to t('admin.accounts.reset'), bulk_edit_admin_custom_emojis_path, class: 'button button--dangerous'
+
+= form_with url: bulk_update_admin_custom_emojis_path, method: :post do |_f|
+  = hidden_field_tag :page, params[:page] || 1
+  = hidden_field_tag :shortcode, params[:shortcode] if params[:shortcode].present?
+
+  .batch-table
+    .batch-table__toolbar
+      .batch-table__toolbar__actions
+        %button.button{ type: :submit }
+          = material_symbol('save')
+          = t('generic.save_changes')
+
+    .batch-table__body
+      - if @custom_emojis.empty?
+        = nothing_here 'nothing-here--under-tabs'
+      - else
+        .bulk-edit-list
+          - @custom_emojis.each do |emoji|
+            .bulk-edit-row
+              .bulk-edit-row__emoji
+                = custom_emoji_tag(emoji)
+              .bulk-edit-row__info
+                .bulk-edit-row__shortcode
+                  %samp :#{emoji.shortcode}:
+                .bulk-edit-row__fields
+                  = text_field_tag "emojis[#{emoji.id}][aliases_raw]",
+                                   emoji.aliases&.join(', '),
+                                   class: 'bulk-edit-input',
+                                   placeholder: t('admin.custom_emojis.aliases_hint')
+                  = text_field_tag "emojis[#{emoji.id}][license]",
+                                   emoji.license,
+                                   class: 'bulk-edit-input',
+                                   placeholder: t('admin.custom_emojis.license_hint')
+                  = select_tag "emojis[#{emoji.id}][category_id]",
+                               options_from_collection_for_select(@categories, 'id', 'name', emoji.category_id),
+                               include_blank: t('admin.custom_emojis.uncategorized'),
+                               class: 'bulk-edit-select'
+
+= paginate @custom_emojis

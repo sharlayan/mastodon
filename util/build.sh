@@ -43,6 +43,12 @@ debug_console () {
   bundle exec rails console
 }
 
+clear_cache () {
+  rails_export
+  bundle exec rails runner "Rails.cache.clear"
+  echo -e "\033[32m[cache]\033[0m Rails 캐시 클리어 완료"
+}
+
 build_web () {
   rails_export
 
@@ -50,6 +56,7 @@ build_web () {
   bundle exec rails assets:precompile --trace
 
   debug_migrate
+  clear_cache
 }
 
 instance_info() {

@@ -5,31 +5,50 @@
     .batch-table__row__content__image
       = custom_emoji_tag(custom_emoji)
 
-    .batch-table__row__content__text
-      %samp :#{custom_emoji.shortcode}:
+    - if custom_emoji.local?
+      .batch-table__row__content__text.custom-emoji-info-col
+        %samp.custom-emoji-shortcode :#{custom_emoji.shortcode}:
+        - if custom_emoji.aliases.present?
+          .custom-emoji-tags
+            - custom_emoji.aliases.each do |tag|
+              %span.custom-emoji-tag= tag
+        .custom-emoji-category
+          %span.information-badge= custom_emoji.category&.name || t('admin.custom_emojis.uncategorized')
 
-      - if custom_emoji.local?
-        %span.information-badge= custom_emoji.category&.name || t('admin.custom_emojis.uncategorized')
+      .custom-emoji-status-col
+        - if custom_emoji.disabled?
+          %span= t('admin.custom_emojis.disabled')
+        - else
+          %span= t('admin.custom_emojis.enabled')
+        &bull;
+        - if custom_emoji.visible_in_picker?
+          %span= t('admin.custom_emojis.listed')
+        - else
+          %span= t('admin.custom_emojis.unlisted')
+        &bull;
+        %span= t('admin.accounts.location.local')
 
-    .batch-table__row__content__extra
-      - if custom_emoji.local?
-        = t('admin.accounts.location.local')
-      - else
+      .custom-emoji-actions-col
+        = link_to material_symbol('edit'), edit_admin_custom_emoji_path(custom_emoji), class: 'icon-button', title: t('generic.edit')
+
+    - else
+      .batch-table__row__content__text
+        %samp :#{custom_emoji.shortcode}:
+
+        - if custom_emoji.aliases.present?
+          %span.aliases
+            = custom_emoji.aliases.join(', ')
+
+      .batch-table__row__content__extra
         = custom_emoji.domain
 
         - if custom_emoji.local_counterpart.present?
           &bull;
           = t('admin.accounts.location.local')
 
-      %br/
+        %br/
 
-      - if custom_emoji.disabled?
-        = t('admin.custom_emojis.disabled')
-      - else
-        = t('admin.custom_emojis.enabled')
-      - if custom_emoji.local?
-        &bull;
-        - if custom_emoji.visible_in_picker?
-          = t('admin.custom_emojis.listed')
+        - if custom_emoji.disabled?
+          = t('admin.custom_emojis.disabled')
         - else
-          = t('admin.custom_emojis.unlisted')
+          = t('admin.custom_emojis.enabled')

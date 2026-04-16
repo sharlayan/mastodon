@@ -425,6 +425,20 @@ ko:
       overwrite: 덮어쓰기
       reset_cache: 캐시 초기화
       reset_cache_done_msg: 커스텀 에모지 캐시가 초기화되었습니다
+      aliases: 별명(aliases)
+      aliases_hint: "쉼표로 구분하여 입력하세요. (예: 블롭, 귀여워, かわいい)"
+      shortcode_readonly_hint: 짧은 코드는 생성 후 변경할 수 없습니다.
+      edit:
+        title: 커스텀 에모지 편집
+      bulk_edit:
+        title: 커스텀 에모지 일괄 편집
+        visible: 피커에 표시
+      bulk_edit_link: 일괄 편집
+      bulk_updated_msg:
+        other: "%{count}개의 에모지가 성공적으로 업데이트되었습니다!"
+      bulk_update_partial: "%{updated}개 업데이트됨, %{failed}개 실패"
+      license: 라이선스/출처
+      license_hint: 에모지의 저작자, 라이선스, 출처 등을 입력하세요
       shortcode: 짧은 코드
       shortcode_hint: 최소 2글자, 영문자, 숫자, _만 사용 가능
       title: 커스텀 에모지
@@ -1565,6 +1579,7 @@ ko:
     copy: 복사
     delete: 삭제
     deselect: 전체 선택 해제
+    edit: 수정
     none: 없음
     order_by: 정렬
     save_changes: 변경 사항을 저장
@@ -2254,3 +2269,11 @@ ko:
   wrapstodon:
     description: '%{name}님의 올해 Mastodon 활동을 확인해보세요!'
     title: "%{name} 님의 %{year} 랩스토돈"
+  activerecord:
+    errors:
+      models:
+        custom_emoji:
+          attributes:
+            aliases:
+              too_many: "별명은 최대 %{max}개까지 입력할 수 있습니다"
+              too_long: "%{max}자를 초과하는 별명이 포함되어 있습니다"

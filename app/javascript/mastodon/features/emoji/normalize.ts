@@ -91,11 +91,15 @@ export function transformEmojiData(
 
 export function transformCustomEmojiData(
   emoji: ApiCustomEmojiJSON,
+  segmenter: Intl.Segmenter | null = null,
 ): CustomEmojiData {
-  const tokens = emoji.shortcode
-    .split('_')
-    .filter((word) => word.length >= EMOJI_MIN_TOKEN_LENGTH)
-    .map((word) => word.toLowerCase());
+  const shortcodeTokens = extractTokens(emoji.shortcode, segmenter);
+  const aliasTokens = (emoji.aliases ?? []).flatMap((alias) =>
+    extractTokens(alias, segmenter),
+  );
+  const tokens = [...new Set([...shortcodeTokens, ...aliasTokens])].sort(
+    (a, b) => a.localeCompare(b),
+  );
   return {
     ...emoji,
     tokens,

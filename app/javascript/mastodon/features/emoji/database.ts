@@ -187,8 +187,11 @@ export async function putCustomEmojiData({
     log('Cleared existing custom emojis in database');
   }
 
+  const segmenter = localeToSegmenter((navigator.language || 'en') as Locale);
   await Promise.all(
-    emojis.map((emoji) => trx.store.put(transformCustomEmojiData(emoji))),
+    emojis.map((emoji) =>
+      trx.store.put(transformCustomEmojiData(emoji, segmenter)),
+    ),
   );
   await trx.done;
 

@@ -431,6 +431,21 @@ en:
       overwrite: Overwrite
       reset_cache: Reset cache
       reset_cache_done_msg: Custom emoji cache has been reset
+      aliases: Aliases
+      aliases_hint: Comma-separated list of alternative names for search (e.g. blob, cute, kawaii)
+      shortcode_readonly_hint: The shortcode cannot be changed after creation.
+      edit:
+        title: Edit custom emoji
+      bulk_edit:
+        title: Bulk edit custom emojis
+        visible: Visible in picker
+      bulk_edit_link: Bulk edit
+      bulk_updated_msg:
+        one: "%{count} emoji successfully updated!"
+        other: "%{count} emojis successfully updated!"
+      bulk_update_partial: "%{updated} updated, %{failed} failed"
+      license: License / Attribution
+      license_hint: Author, license, or source information for this emoji
       shortcode: Shortcode
       shortcode_hint: At least 2 characters, only alphanumeric characters and underscores
       title: Custom emojis
@@ -2362,3 +2377,11 @@ en:
   wrapstodon:
     description: See how %{name} used Mastodon this year!
     title: Wrapstodon %{year} for %{name}
+  activerecord:
+    errors:
+      models:
+        custom_emoji:
+          attributes:
+            aliases:
+              too_many: "is too long (maximum is %{max} aliases)"
+              too_long: "contains an alias exceeding %{max} characters"

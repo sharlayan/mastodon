@@ -178,13 +178,16 @@ export const buildCustomEmojis = (customEmojis) => {
     const url       = autoPlayGif ? emoji.get('url') : emoji.get('static_url');
     const name      = shortcode.replace(':', '');
 
+    const aliases = emoji.get('aliases');
+    const aliasKeywords = aliases ? aliases.toJS() : [];
+
     emojis.push({
       id: name,
       name,
       short_names: [name],
       text: '',
       emoticons: [],
-      keywords: [name],
+      keywords: [name, ...aliasKeywords],
       imageUrl: url,
       custom: true,
       customCategory: emoji.get('category'),

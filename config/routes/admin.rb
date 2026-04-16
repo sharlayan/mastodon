@@ -169,10 +169,12 @@ namespace :admin do
     end
   end
 
-  resources :custom_emojis, only: [:index, :new, :create] do
+  resources :custom_emojis, only: [:index, :new, :create, :edit, :update] do
     collection do
       post :batch
       post :reset_cache
+      get  :bulk_edit
+      post :bulk_update
     end
   end
 

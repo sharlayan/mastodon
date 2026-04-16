@@ -5,7 +5,7 @@ class REST::CustomEmojiSerializer < ActiveModel::Serializer
 
   # Please update `app/javascript/mastodon/api_types/custom_emoji.ts` when making changes to the attributes
 
-  attributes :shortcode, :url, :static_url, :visible_in_picker
+  attributes :shortcode, :url, :static_url, :visible_in_picker, :aliases, :license
 
   attribute :category, if: :category_loaded?
   attribute :featured, if: :category_loaded?

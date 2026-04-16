@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_10_083500) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_11_181601) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -497,6 +497,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_10_083500) do
     t.datetime "updated_at", precision: nil, null: false
     t.string "uri"
     t.boolean "visible_in_picker", default: true, null: false
+    t.text "aliases", default: [], null: false, array: true
+    t.text "license"
+    t.index ["aliases"], name: "index_custom_emojis_on_aliases", using: :gin
     t.index ["shortcode", "domain"], name: "index_custom_emojis_on_shortcode_and_domain", unique: true
   end
 

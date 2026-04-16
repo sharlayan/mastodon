@@ -6,4 +6,6 @@ export interface ApiCustomEmojiJSON {
   category?: string;
   featured?: boolean;
   visible_in_picker: boolean;
+  aliases?: string[];
+  license?: string;
 }
