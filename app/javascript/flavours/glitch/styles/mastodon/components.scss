@@ -2447,6 +2447,16 @@ body > [data-popper-placement] {
   object-fit: contain;
   border-radius: 4px;
   background: var(--color-bg-secondary);
+
+  .batch-table__row__content__image & {
+    width: 128px;
+    height: 128px;
+  }
+
+  .fields-group & {
+    width: 256px;
+    height: 256px;
+  }
 }
 
 a .account__avatar {

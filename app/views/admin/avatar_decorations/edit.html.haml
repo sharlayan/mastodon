@@ -29,8 +29,7 @@
                 hint: t('admin.avatar_decorations.required_role_hint'),
                 as: :select,
                 collection: [[t('admin.avatar_decorations.no_role_required'), nil]] + UserRole.assignable.map { |r| [r.name, r.id] },
-                include_blank: false,
-                input_html: { style: 'width: auto' }
+                include_blank: false
 
     .fields-group
       = f.input :image,
@@ -43,11 +42,12 @@
       = f.button :button, t('generic.save_changes'), type: :submit
       = link_to t('generic.cancel'), admin_avatar_decorations_path, class: 'button button--secondary'
 - else
-  - if @decoration.image_url.present?
-    .fields-group
-      %p.hint= t('admin.avatar_decorations.current_image')
-      %img.avatar-decoration-preview{ src: @decoration.image_url, alt: @decoration.name }
+  .simple_form
+    - if @decoration.image_url.present?
+      .fields-group
+        %p.hint= t('admin.avatar_decorations.current_image')
+        %img.avatar-decoration-preview{ src: @decoration.image_url, alt: @decoration.name }
 
-  .actions
-    = link_to t('admin.avatar_decorations.redownload'), redownload_admin_avatar_decoration_path(@decoration), method: :post, class: 'button button--secondary button--block'
-    = link_to t('generic.cancel'), admin_avatar_decorations_path, class: 'button button--secondary'
+    .actions
+      = link_to t('admin.avatar_decorations.redownload'), redownload_admin_avatar_decoration_path(@decoration), method: :post, class: 'button button--block'
+      = link_to t('generic.cancel'), admin_avatar_decorations_path, class: 'button button--secondary'

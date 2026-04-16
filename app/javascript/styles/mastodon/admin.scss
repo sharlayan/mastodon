@@ -2255,3 +2255,21 @@ a.sparkline {
     }
   }
 }
+
+.avatar-decoration-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--color-bg-secondary, #eee);
+
+  .batch-table__row__content__image & {
+    width: 128px;
+    height: 128px;
+  }
+
+  .fields-group & {
+    width: 256px;
+    height: 256px;
+  }
+}
