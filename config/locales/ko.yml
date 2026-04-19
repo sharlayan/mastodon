@@ -127,8 +127,8 @@ ko:
       push_subscription_expires: PuSH 구독 기간 만료
       redownload: 프로필 업데이트
       redownloaded_msg: 성공적으로 %{username}의 프로필을 원본으로부터 업데이트 하였습니다
-      refresh_avatar_decorations: 프로필 장식 업데이트
-      refreshed_avatar_decorations_msg: '%{username}의 프로필 장식 업데이트를 요청했습니다'
+      refresh_avatar_decorations: 아바타 장식 업데이트
+      refreshed_avatar_decorations_msg: '%{username}의 아바타 장식 업데이트를 요청했습니다'
       reject: 거부
       rejected_msg: 성공적으로 %{username}의 가입 신청서를 반려하였습니다
       remote_suspension_irreversible: 이 계정의 데이터는 되돌릴 수 없도록 삭제되었습니다.
@@ -1126,6 +1126,7 @@ ko:
       published_on_html: "%{date}에 게시됨"
       save_draft: 초안 저장
       title: 이용 약관
+    not_permitted: 이 작업을 수행할 권한이 없습니다
     title: 관리
     trends:
       allow: 허용

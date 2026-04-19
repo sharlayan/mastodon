@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FC } from 'react';
+import type React from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
+
+import Overlay from 'react-overlays/Overlay';
 
 import { apiGetAvatarDecorations } from '@/flavours/glitch/api/accounts';
 import type { ApiAvatarDecorationJSON } from '@/flavours/glitch/api_types/accounts';
@@ -97,6 +100,50 @@ const messages = defineMessages({
   },
 });
 
+interface DecorationTooltipProps {
+  show: boolean;
+  target: HTMLElement | null;
+  decoration: ApiAvatarDecorationJSON;
+}
+
+const DecorationTooltip: FC<DecorationTooltipProps> = ({
+  show,
+  target,
+  decoration,
+}) => {
+  if (!show || !target) return null;
+  const url = autoPlayGif ? decoration.url : decoration.static_url;
+  return (
+    <Overlay
+      show={show}
+      offset={[0, 8]}
+      placement='top'
+      flip
+      target={target}
+      popperConfig={{ strategy: 'fixed' }}
+    >
+      {({
+        props,
+        placement: currentPlacement,
+      }: {
+        props: React.HTMLAttributes<HTMLDivElement>;
+        placement: string;
+      }) => (
+        <div className={classes.decorationTooltipOverlay} {...props}>
+          <div className={`dropdown-animation ${currentPlacement}`}>
+            <div className={classes.decorationTooltip}>
+              <img src={url} alt='' className={classes.decorationTooltipImg} />
+              <span className={classes.decorationTooltipName}>
+                {decoration.name}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </Overlay>
+  );
+};
+
 interface DecorationTileProps {
   decoration: ApiAvatarDecorationJSON;
   isSelected: boolean;
@@ -109,19 +156,40 @@ const DecorationTile: FC<DecorationTileProps> = ({
   onSelect,
 }) => {
   const numericId = parseInt(decoration.id, 10);
+  const [buttonEl, setButtonEl] = useState<HTMLButtonElement | null>(null);
+  const [hovered, setHovered] = useState(false);
+
   const handleClick = useCallback(() => {
     onSelect(numericId);
   }, [onSelect, numericId]);
 
+  const handleMouseEnter = useCallback(() => {
+    setHovered(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setHovered(false);
+  }, []);
+
   return (
-    <button
-      type='button'
-      className={`${classes.decorationTile} ${isSelected ? classes.decorationTileSelected : ''}`}
-      onClick={handleClick}
-      aria-pressed={isSelected}
-    >
-      <img src={decoration.url} alt='' className={classes.decorationImg} />
-    </button>
+    <>
+      <button
+        ref={setButtonEl}
+        type='button'
+        className={`${classes.decorationTile} ${isSelected ? classes.decorationTileSelected : ''}`}
+        onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        aria-pressed={isSelected}
+      >
+        <img src={decoration.url} alt='' className={classes.decorationImg} />
+      </button>
+      <DecorationTooltip
+        show={hovered}
+        target={buttonEl}
+        decoration={decoration}
+      />
+    </>
   );
 };
 
@@ -263,7 +331,7 @@ const ActiveListItem: FC<ActiveListItemProps> = ({
             {url && <img src={url} alt='' className={classes.listItemImg} />}
           </div>
           <span className={classes.listItemName}>
-            {decoration?.id ?? String(config.id)}
+            {decoration?.name ?? String(config.id)}
           </span>
         </button>
         <div className={classes.listItemReorder}>
@@ -576,7 +644,7 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
             {intl.formatMessage(messages.noActiveDecorations)}
           </p>
         )}
-        {configs.map((config, idx) => (
+        {[...configs].reverse().map((config, idx) => (
           <ActiveListItem
             key={config.instanceId}
             config={config}
@@ -587,8 +655,8 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
             onToggleExpand={handleToggleExpand}
             onEdit={handleEditItem}
             onRemove={handleRemoveItem}
-            onMoveUp={handleMoveUp}
-            onMoveDown={handleMoveDown}
+            onMoveUp={handleMoveDown}
+            onMoveDown={handleMoveUp}
           />
         ))}
       </div>

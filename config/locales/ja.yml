@@ -41,8 +41,8 @@ ja:
       approved_msg: "%{username}さんの登録申請を承認しました"
       are_you_sure: 本当に実行しますか？
       avatar: アイコン
-      block_avatar_decorations: デコレーションをブロック
-      unblock_avatar_decorations: デコレーションのブロックを解除
+      block_avatar_decorations: アバターデコレーションをブロック
+      unblock_avatar_decorations: アバターデコレーションのブロックを解除
       blocked_avatar_decorations_msg: "%{username}のアバターデコレーションをブロックしました"
       unblocked_avatar_decorations_msg: "%{username}のアバターデコレーションのブロックを解除しました"
       by_domain: ドメイン
@@ -125,6 +125,8 @@ ja:
       push_subscription_expires: PuSH購読期限
       redownload: プロフィールを更新
       redownloaded_msg: "%{username}のプロフィールを正常に更新しました"
+      refresh_avatar_decorations: アバターデコレーションを更新
+      refreshed_avatar_decorations_msg: "%{username}のアバターデコレーション更新をキューに追加しました"
       reject: 却下
       rejected_msg: "%{username}さんの登録申請を却下しました"
       remote_suspension_irreversible: このアカウントのデータは不可逆的に削除されました。
@@ -366,8 +368,16 @@ ja:
       pending_approval: 承認待ち
       pending_title: 承認待ちのデコレーション
       preview: プレビュー
+      redownload: リモートサーバーから画像を更新
+      redownloaded_msg: リモートサーバーからデコレーション画像を正常に更新しました
+      redownload_failed_msg: リモートサーバーからデコレーション画像の更新に失敗しました
       replace_image: 画像を置き換え
       title: アバターデコレーション
+      no_decoration_selected: デコレーションが選択されていません
+      no_role_required: 制限なし（全員）
+      required_role: ロール制限
+      required_role_hint: このロール以上のユーザーのみこのデコレーションを適用できます。
+      status: ステータス
       updated_msg: デコレーションが更新されました
     avatar_decoration_domain_blocks:
       added_at: 追加日
@@ -873,9 +883,9 @@ ja:
         title: 見つける
         trends: トレンド
       avatar_decorations:
-        title: アイコンデコレーション
-        enabled: アイコンデコレーションを有効にする
-        enabled_hint: ユーザーがアイコンデコレーションを表示できるようにします
+        title: アバターデコレーション
+        enabled: アバターデコレーションを有効にする
+        enabled_hint: ユーザーがアバターデコレーションを表示できるようにします
         federation_enabled: デコレーションの連合を有効にする
         federation_enabled_hint: リモートのMisskey互換サーバーからデコレーションを取得・表示します
         local_only_view: リモートデコレーションのみ
@@ -1063,6 +1073,7 @@ ja:
       published_on_html: "%{date} に公開"
       save_draft: 下書きを保存
       title: サービス利用規約
+    not_permitted: この操作を実行する権限がありません
     title: 管理
     trends:
       allow: 許可
@@ -1142,6 +1153,7 @@ ja:
         contains: 含む
         equals: 一致
       contains_html: "%{string}を含む"
+      created_msg: ユーザー名ルールを作成しました
       delete: 削除
       edit:
         title: ユーザー名ルールの編集
@@ -1149,7 +1161,10 @@ ja:
       new:
         create: ルールを作成
         title: ユーザー名ルールを作成
+      no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
+      not_permitted: 権限がありません
       title: ユーザー名ルール
+      updated_msg: ユーザー名ルールを更新しました
     warning_presets:
       add_new: 追加
       delete: 削除
@@ -1882,7 +1897,7 @@ ja:
     migrate: アカウントの引っ越し
     notifications: メール通知
     preferences: ユーザー設定
-    avatar_decorations: アイコンデコレーション
+    avatar_decorations: アバターデコレーション
     profile: プロフィール
     relationships: フォロー・フォロワー
     severed_relationships: 途切れたフォロー関係

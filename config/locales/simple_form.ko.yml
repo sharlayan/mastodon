@@ -281,19 +281,15 @@ ko:
         setting_show_instance_info: 게시물에 인스턴스 정보 표시 (글리치 풍미에만 적용됨)
         setting_custom_emoji_size: 커스텀 에모지 원본 비율 표시
         setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
-        setting_show_avatar_decorations: 아바타 장식 표시
-        setting_show_federated_avatar_decorations: 연합 서버의 아바타 장식 표시
-        setting_force_round_avatar_decoration: 장식 활성 시 프로필 이미지 원형 강제 적용
         setting_mfm_enabled: MFM 렌더링 활성화
         setting_mfm_animations: MFM 애니메이션 활성화
         setting_mfm_fold_mode: MFM 게시물 접기
         setting_mfm_fold_mode_show: "그대로 표시"
         setting_mfm_fold_mode_sensitive: "민감한 MFM 접기 (권장)"
         setting_mfm_fold_mode_all: "모두 접기"
-        setting_custom_emoji_size: 커스텀 에모지 원본 비율 표시
-        setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
-        setting_show_avatar_decorations: 프로필 데코레이션 표시
-        setting_show_federated_avatar_decorations: 연합 서버의 데코레이션 표시
+        setting_show_avatar_decorations: 아바타 장식 표시
+        setting_show_federated_avatar_decorations: 연합 서버의 아바타 장식 표시
+        setting_force_round_avatar_decoration: 장식 활성 시 프로필 이미지 원형 강제 적용
       email_domain_block:
         with_dns_records: 도메인의 IP와 MX 레코드 값을 포함
       featured_tag:

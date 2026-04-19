@@ -296,9 +296,9 @@ en:
         setting_mfm_fold_mode_show: "Show as-is"
         setting_mfm_fold_mode_sensitive: "Fold sensitive MFM (recommended)"
         setting_mfm_fold_mode_all: "Fold all MFM"
-        setting_show_avatar_decorations: Show profile decorations
-        setting_show_federated_avatar_decorations: Show decorations from federated servers
-        setting_force_round_avatar_decoration: Force round profile image with decoration
+        setting_show_avatar_decorations: Show avatar decorations
+        setting_show_federated_avatar_decorations: Show avatar decorations from federated servers
+        setting_force_round_avatar_decoration: Force round profile image with avatar decoration
       email_domain_block:
         with_dns_records: Include MX records and IPs of the domain
       featured_tag:

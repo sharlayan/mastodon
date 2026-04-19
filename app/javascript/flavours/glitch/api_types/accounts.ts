@@ -8,6 +8,7 @@ export interface ApiAccountFieldJSON {
 
 export interface ApiAvatarDecorationJSON {
   id: string;
+  name: string;
   url: string;
   static_url: string;
   angle: number;

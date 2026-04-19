@@ -8,6 +8,7 @@ import {
   autoPlayGif,
   avatarDecorationsEnabled,
   forceRoundAvatarDecoration,
+  me,
   showAvatarDecorations,
   showFederatedAvatarDecorations,
 } from 'flavours/glitch/initial_state';
@@ -32,6 +33,7 @@ interface Props {
   counter?: number | string;
   counterBorderColor?: string;
   className?: string;
+  forceShowDecorations?: boolean;
 }
 
 export const Avatar: React.FC<Props> = ({
@@ -45,6 +47,7 @@ export const Avatar: React.FC<Props> = ({
   className,
   counter,
   counterBorderColor,
+  forceShowDecorations = false,
 }) => {
   const { hovering, handleMouseEnter, handleMouseLeave } = useHovering(animate);
   const [loading, setLoading] = useState(true);
@@ -68,10 +71,11 @@ export const Avatar: React.FC<Props> = ({
 
   const isRemote = account?.acct.includes('@') ?? false;
   const decorations = account?.avatar_decorations;
+  const isGuest = !me;
   const visibleDecorations =
     avatarDecorationsEnabled &&
-    showAvatarDecorations &&
-    (!isRemote || showFederatedAvatarDecorations) &&
+    (forceShowDecorations || isGuest || showAvatarDecorations) &&
+    (!isRemote || isGuest || showFederatedAvatarDecorations) &&
     decorations?.length
       ? decorations
       : [];

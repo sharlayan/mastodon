@@ -203,7 +203,7 @@ export const showAvatarDecorations =
 export const showFederatedAvatarDecorations =
   getMeta('show_federated_avatar_decorations') ?? false;
 export const forceRoundAvatarDecoration =
-  getMeta('force_round_avatar_decoration') ?? false;
+  getMeta('force_round_avatar_decoration') ?? !me;
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers
