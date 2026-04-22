@@ -1,6 +1,6 @@
-import { useHovering } from 'flavours/glitch/hooks/useHovering';
-import { autoPlayGif } from 'flavours/glitch/initial_state';
 import type { Account } from 'flavours/glitch/models/account';
+
+import { Avatar } from './avatar';
 
 interface Props {
   account: Account | undefined; // FIXME: remove `undefined` once we know for sure its always there
@@ -10,14 +10,6 @@ interface Props {
   overlaySize?: number;
 }
 
-const handleImgLoadError = (error: { currentTarget: HTMLElement }) => {
-  //
-  // When the img tag fails to load the image, set the img tag to display: none. This prevents the
-  // alt-text from overrunning the containing div.
-  //
-  error.currentTarget.style.display = 'none';
-};
-
 export const AvatarOverlay: React.FC<Props> = ({
   account,
   friend,
@@ -25,51 +17,16 @@ export const AvatarOverlay: React.FC<Props> = ({
   baseSize = 36,
   overlaySize = 24,
 }) => {
-  const { hovering, handleMouseEnter, handleMouseLeave } =
-    useHovering(autoPlayGif);
-  const accountSrc = hovering
-    ? account?.get('avatar')
-    : account?.get('avatar_static');
-  const friendSrc = hovering
-    ? friend?.get('avatar')
-    : friend?.get('avatar_static');
-
   return (
     <div
       className='account__avatar-overlay'
       style={{ width: size, height: size }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       <div className='account__avatar-overlay-base'>
-        <div
-          className='account__avatar'
-          style={{ width: `${baseSize}px`, height: `${baseSize}px` }}
-          data-avatar-of={`@${account?.get('acct')}`}
-        >
-          {accountSrc && (
-            <img
-              src={accountSrc}
-              alt={account?.get('acct')}
-              onError={handleImgLoadError}
-            />
-          )}
-        </div>
+        <Avatar account={account} size={baseSize} />
       </div>
       <div className='account__avatar-overlay-overlay'>
-        <div
-          className='account__avatar'
-          style={{ width: `${overlaySize}px`, height: `${overlaySize}px` }}
-          data-avatar-of={`@${friend?.get('acct')}`}
-        >
-          {friendSrc && (
-            <img
-              src={friendSrc}
-              alt={friend?.get('acct')}
-              onError={handleImgLoadError}
-            />
-          )}
-        </div>
+        <Avatar account={friend} size={overlaySize} />
       </div>
     </div>
   );

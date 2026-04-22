@@ -16,7 +16,7 @@ import type { Account } from 'flavours/glitch/models/account';
 
 import { useAccount } from '../hooks/useAccount';
 
-import { buildDecorationTransform } from './avatar_decoration_utils';
+import { AvatarDecoration } from './avatar_decoration';
 
 interface Props {
   account:
@@ -70,26 +70,21 @@ export const Avatar: React.FC<Props> = ({
   }, [setError]);
 
   const isRemote = account?.acct.includes('@') ?? false;
-  const decorations = account?.avatar_decorations;
   const isGuest = !me;
-  const visibleDecorations =
+  const hasDecorations =
     avatarDecorationsEnabled &&
     (forceShowDecorations || isGuest || showAvatarDecorations) &&
     (!isRemote || isGuest || showFederatedAvatarDecorations) &&
-    decorations?.length
-      ? decorations
-      : [];
-
-  const hasDecoration = visibleDecorations.length > 0;
+    (account?.avatar_decorations?.length ?? 0) > 0;
 
   const avatar = (
     <span
       className={classNames(className, 'account__avatar', {
         'account__avatar--inline': inline,
         'account__avatar--loading': loading,
-        'account__avatar--decorated': hasDecoration,
+        'account__avatar--decorated': hasDecorations,
         'account__avatar--force-round':
-          hasDecoration && forceRoundAvatarDecoration,
+          hasDecorations && forceRoundAvatarDecoration,
       })}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -100,19 +95,12 @@ export const Avatar: React.FC<Props> = ({
         <img src={src} alt={alt} onLoad={handleLoad} onError={handleError} />
       )}
 
-      {visibleDecorations.map((decoration, index) => (
-        <img
-          key={`${decoration.id}-${index}`}
-          className='account__avatar__decoration'
-          src={animate || hovering ? decoration.url : decoration.static_url}
-          alt=''
-          aria-hidden='true'
-          style={{
-            transform: buildDecorationTransform(decoration),
-            opacity: decoration.opacity,
-          }}
-        />
-      ))}
+      <AvatarDecoration
+        account={account}
+        animate={animate ?? false}
+        hovering={hovering}
+        forceShow={forceShowDecorations}
+      />
 
       {counter && (
         <span
