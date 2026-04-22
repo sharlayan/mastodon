@@ -690,7 +690,8 @@ export const composeReducer = (state = initialState, action) => {
   case COMPOSE_SET_STATUS:
     return state.withMutations(map => {
       map.set('id', action.status.get('id'));
-      map.set('text', action.text);
+      map.set('text', action.text.replace(/\s*(🏡|👁)\ufe0f?$/, ''));
+      map.updateIn(['advanced_options'], opts => opts.set('do_not_federate', !!action.status.get('local_only')));
       map.set('content_type', action.content_type || 'text/plain');
       map.set('in_reply_to', action.status.get('in_reply_to_id'));
       map.set('privacy', action.status.get('visibility'));

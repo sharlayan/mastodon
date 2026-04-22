@@ -230,8 +230,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       return;
     }
 
-    if (getState().getIn(['compose', 'advanced_options', 'do_not_federate']) && !forceLocalOnly) {
-      // local timeline limit specific emoji change to 🏡
+    if (getState().getIn(['compose', 'advanced_options', 'do_not_federate']) && !forceLocalOnly && statusId === null) {
       status = status + ' 🏡';
     }
 
