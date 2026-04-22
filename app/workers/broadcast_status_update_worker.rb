@@ -2,6 +2,7 @@
 
 class BroadcastStatusUpdateWorker
   include Sidekiq::Worker
+  include Redisable
 
   sidekiq_options queue: 'push', retry: 3
 
