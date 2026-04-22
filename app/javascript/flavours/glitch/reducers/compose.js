@@ -640,7 +640,7 @@ export const composeReducer = (state = initialState, action) => {
     return state.mergeIn(['doodle'], action.options);
   case REDRAFT: {
     const do_not_federate = !!action.status.get('local_only');
-    let text = action.raw_text || unescapeHTML(expandMentions(action.status));
+    let text = (action.raw_text || unescapeHTML(expandMentions(action.status))).replace(/\s*(🏡|👁)️?$/, '');
     return state.withMutations(map => {
       map.set('text', text);
       map.set('content_type', action.content_type || 'text/plain');
