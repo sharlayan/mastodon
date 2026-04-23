@@ -17,6 +17,8 @@
   "account_edit.decoration_modal.offset_y": "垂直位置",
   "account_edit.decoration_modal.opacity": "不透明度",
   "account_edit.decoration_modal.remove": "外す",
+  "account_edit.decoration_modal.no_search_results": "検索に一致するデコレーションがありません。",
+  "account_edit.decoration_modal.search": "デコレーションを検索…",
   "account_edit.decoration_modal.scale": "サイズ",
   "account_edit.decoration_modal.title": "アイコンデコレーション",
   "account_edit.decorations.count_one": "{count}個のデコレーション",

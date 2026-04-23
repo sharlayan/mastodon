@@ -182,9 +182,25 @@
   gap: 8px;
 }
 
+.searchInput {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: var(--color-border-brand);
+  }
+}
+
 .decorationTile {
-  width: 96px;
-  height: 96px;
+  width: 64px;
+  height: 64px;
   border-radius: 8px;
   border: 2px solid var(--color-border-primary);
   background: var(--color-bg-secondary);

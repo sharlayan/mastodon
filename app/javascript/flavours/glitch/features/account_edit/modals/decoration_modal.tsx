@@ -58,6 +58,10 @@ const messages = defineMessages({
     id: 'account_edit.decoration_modal.no_decorations',
     defaultMessage: 'No profile decorations are available on this server.',
   },
+  noSearchResults: {
+    id: 'account_edit.decoration_modal.no_search_results',
+    defaultMessage: 'No decorations match your search.',
+  },
   noActiveDecorations: {
     id: 'account_edit.decoration_modal.no_active',
     defaultMessage: 'No decorations added yet.',
@@ -97,6 +101,10 @@ const messages = defineMessages({
   moveDown: {
     id: 'account_edit.decoration_modal.move_down',
     defaultMessage: 'Move down',
+  },
+  searchPlaceholder: {
+    id: 'account_edit.decoration_modal.search',
+    defaultMessage: 'Search decorations…',
   },
 });
 
@@ -517,6 +525,11 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingAddId, setPendingAddId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearchChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
 
   useEffect(() => {
     void apiGetAvatarDecorations().then((list) => {
@@ -675,42 +688,63 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
     </>
   );
 
-  const renderLevel2 = () => (
-    <>
-      {available === null && <LoadingIndicator />}
-      {available !== null && available.length === 0 && (
-        <p className={classes.empty}>
-          {intl.formatMessage(messages.noDecorations)}
-        </p>
-      )}
-      {available !== null && available.length > 0 && (
-        <div className={classes.grid}>
-          {available.map((decoration) => {
-            const numericId = parseInt(decoration.id, 10);
-            return (
-              <DecorationTile
-                key={decoration.id}
-                decoration={decoration}
-                isSelected={pendingAddId === numericId}
-                onSelect={handleSelectPending}
-              />
-            );
-          })}
-        </div>
-      )}
+  const renderLevel2 = () => {
+    const query = searchQuery.trim().toLowerCase();
+    const filtered =
+      available !== null && query.length > 0
+        ? available.filter((d) => d.name.toLowerCase().includes(query))
+        : available;
 
-      <div className={classes.levelActions}>
-        <Button onClick={handleBackFromAdd} secondary>
-          {intl.formatMessage(messages.back)}
-        </Button>
-        {pendingAddId != null && (
-          <Button onClick={handleConfirmAdd}>
-            {intl.formatMessage(messages.addThis)}
-          </Button>
+    return (
+      <>
+        {available !== null && available.length > 0 && (
+          <input
+            type='search'
+            className={classes.searchInput}
+            placeholder={intl.formatMessage(messages.searchPlaceholder)}
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
         )}
-      </div>
-    </>
-  );
+        {filtered === null && <LoadingIndicator />}
+        {filtered !== null && filtered.length === 0 && (
+          <p className={classes.empty}>
+            {intl.formatMessage(
+              query.length > 0
+                ? messages.noSearchResults
+                : messages.noDecorations,
+            )}
+          </p>
+        )}
+        {filtered !== null && filtered.length > 0 && (
+          <div className={classes.grid}>
+            {filtered.map((decoration) => {
+              const numericId = parseInt(decoration.id, 10);
+              return (
+                <DecorationTile
+                  key={decoration.id}
+                  decoration={decoration}
+                  isSelected={pendingAddId === numericId}
+                  onSelect={handleSelectPending}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        <div className={classes.levelActions}>
+          <Button onClick={handleBackFromAdd} secondary>
+            {intl.formatMessage(messages.back)}
+          </Button>
+          {pendingAddId != null && (
+            <Button onClick={handleConfirmAdd}>
+              {intl.formatMessage(messages.addThis)}
+            </Button>
+          )}
+        </div>
+      </>
+    );
+  };
 
   const renderLevel3 = () => {
     const config = configs.find((c) => c.instanceId === editingId);
