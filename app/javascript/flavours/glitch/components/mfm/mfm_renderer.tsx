@@ -219,11 +219,7 @@ function renderNode(
       return <code key={key}>{node.props.code}</code>;
 
     case 'quote':
-      return (
-        <blockquote key={key} className='mfm-quote'>
-          {children}
-        </blockquote>
-      );
+      return <blockquote key={key}>{children}</blockquote>;
 
     case 'mathInline':
       return (
