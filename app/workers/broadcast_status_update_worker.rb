@@ -29,6 +29,11 @@ class BroadcastStatusUpdateWorker
   private
 
   def broadcast_to_all_followers(status, payload)
+    if status.direct_visibility? || status.limited_visibility?
+      broadcast_to_direct_timelines(status, payload)
+      return
+    end
+
     redis.publish('timeline:public', JSON.generate(event: :update, payload: payload)) if status.public_visibility?
 
     redis.publish("timeline:#{status.account_id}", JSON.generate(event: :update, payload: payload))
@@ -47,6 +52,14 @@ class BroadcastStatusUpdateWorker
 
     status.account.followers.where(domain: nil).where.not(id: excluded_ids).select(:id).find_each do |follower|
       redis.publish("timeline:#{follower.id}", JSON.generate(event: :update, payload: payload))
+    end
+  end
+
+  def broadcast_to_direct_timelines(status, payload)
+    recipient_ids = ([status.account_id] + status.mentions.joins(:account).merge(Account.local).pluck(:account_id)).uniq
+
+    recipient_ids.each do |account_id|
+      redis.publish("timeline:direct:#{account_id}", JSON.generate(event: :update, payload: payload))
     end
   end
 end

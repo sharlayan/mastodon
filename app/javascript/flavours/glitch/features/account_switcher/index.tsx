@@ -4,8 +4,6 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
-import Toggle from 'react-toggle';
-
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
@@ -19,6 +17,7 @@ import {
 } from 'flavours/glitch/actions/account_switches';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { DisplayName } from 'flavours/glitch/components/display_name';
+import { Toggle } from 'flavours/glitch/components/form_fields';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import { me } from 'flavours/glitch/initial_state';

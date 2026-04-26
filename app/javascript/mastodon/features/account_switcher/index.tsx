@@ -4,8 +4,6 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
-import Toggle from 'react-toggle';
-
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
@@ -19,6 +17,7 @@ import {
 } from 'mastodon/actions/account_switches';
 import { Avatar } from 'mastodon/components/avatar';
 import { DisplayName } from 'mastodon/components/display_name';
+import { Toggle } from 'mastodon/components/form_fields';
 import { Icon } from 'mastodon/components/icon';
 import { IconButton } from 'mastodon/components/icon_button';
 import { me } from 'mastodon/initial_state';
