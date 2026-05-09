@@ -1,10 +1,13 @@
 import type { FC } from 'react';
 
 import type { EmojiProps, PickerProps } from 'emoji-mart';
-import EmojiRaw from 'emoji-mart/dist-es/components/emoji/nimble-emoji';
-import PickerRaw from 'emoji-mart/dist-es/components/picker/nimble-picker';
 
 import { assetHost } from '@/flavours/glitch/utils/config';
+
+import {
+  NimblePicker as PickerRaw,
+  NimbleEmoji as EmojiRaw,
+} from '../emoji_mart_lazyload';
 
 import { EMOJI_MODE_NATIVE } from './constants';
 import EmojiData from './emoji_data.json';
