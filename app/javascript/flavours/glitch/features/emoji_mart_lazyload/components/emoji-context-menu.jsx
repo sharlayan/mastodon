@@ -57,6 +57,8 @@ export default class EmojiContextMenu extends React.PureComponent {
       top: position.y,
     }
 
+    const isCustom = this.props.emoji.custom
+
     let content
     if (isInFavoritesCategory && isFavorite) {
       content = (
@@ -74,7 +76,7 @@ export default class EmojiContextMenu extends React.PureComponent {
           {this.props.alreadyInFavoritesLabel || 'Already in Favorites'}
         </span>
       )
-    } else {
+    } else if (isCustom) {
       content = (
         <button
           type="button"
@@ -84,7 +86,11 @@ export default class EmojiContextMenu extends React.PureComponent {
           {this.props.addToFavoritesLabel || 'Add to Favorites'}
         </button>
       )
+    } else {
+      content = null
     }
+
+    if (!content) return null
 
     return createPortal(
       <div

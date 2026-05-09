@@ -10,6 +10,8 @@ class Api::V1::FavoriteEmojisController < Api::BaseController
   end
 
   def create
+    return render json: { error: 'Only custom emojis can be favorited' }, status: 422 if favorite_emoji_params[:emoji_type] == 'unicode'
+
     position = current_account.favorite_emojis.count
     @favorite_emoji = current_account.favorite_emojis.create!(favorite_emoji_params.merge(position: position))
     render json: @favorite_emoji, serializer: REST::FavoriteEmojiSerializer
