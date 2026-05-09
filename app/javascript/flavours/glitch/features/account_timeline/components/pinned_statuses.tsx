@@ -9,6 +9,7 @@ import { Button } from '@/flavours/glitch/components/button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { StatusHeader } from '@/flavours/glitch/components/status/header';
 import type { StatusHeaderRenderFn } from '@/flavours/glitch/components/status/header';
+import StatusIcons from '@/flavours/glitch/components/status_icons';
 import IconPinned from '@/images/icons/icon_pinned.svg?react';
 
 import { useAccountContext } from '../hooks/useAccountContext';
@@ -16,10 +17,20 @@ import classes from '../styles.module.scss';
 
 export const renderPinnedStatusHeader: StatusHeaderRenderFn = ({
   featured,
+  mediaIcons,
+  settings,
   ...args
 }) => {
+  const icons = settings && (
+    <StatusIcons
+      status={args.status}
+      mediaIcons={mediaIcons}
+      settings={settings}
+    />
+  );
+
   if (!featured) {
-    return <StatusHeader {...args} />;
+    return <StatusHeader {...args}>{icons}</StatusHeader>;
   }
   return (
     <StatusHeader {...args} className={classes.pinnedStatusHeader}>
@@ -33,6 +44,7 @@ export const renderPinnedStatusHeader: StatusHeaderRenderFn = ({
           />
         }
       />
+      {icons}
     </StatusHeader>
   );
 };
