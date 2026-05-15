@@ -9308,31 +9308,31 @@ noscript {
         }
       }
     }
+  }
 
-    .account__header__follow-message {
-      margin-top: 8px;
-      padding: 8px 12px;
-      border-radius: 4px;
-      border: 1px solid var(--color-border-primary);
-      background: transparent;
+  &__follow-message {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--color-border-primary);
+    background: transparent;
 
-      &__label {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        text-transform: uppercase;
-        color: var(--color-text-tertiary);
-        margin-bottom: 4px;
-      }
+    &__label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      margin-bottom: 4px;
+    }
 
-      p {
-        margin: 0;
-        font-size: 14px;
-        color: var(--color-text-secondary);
-        unicode-bidi: plaintext;
-        word-break: normal;
-        overflow-wrap: break-word;
-      }
+    p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      unicode-bidi: plaintext;
+      word-break: normal;
+      overflow-wrap: break-word;
     }
   }
 
