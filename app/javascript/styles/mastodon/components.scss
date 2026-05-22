@@ -2039,7 +2039,8 @@ body > [data-popper-placement] {
     align-items: center;
     gap: 10px;
     color: var(--account-handle-color);
-    overflow: hidden;
+
+    // overflow not hidden, to allow avatar decorations to extend past the wrapper
     text-decoration: none;
     font-size: var(--account-handle-size);
 

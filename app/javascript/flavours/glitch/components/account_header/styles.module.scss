@@ -39,7 +39,8 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  overflow: hidden;
+
+  // overflow not hidden, to allow avatar decorations to extend past the wrapper
   margin-inline-start: -2px; // aligns the pfp with content below
 }
 
