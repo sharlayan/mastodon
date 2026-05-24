@@ -2,12 +2,10 @@ import { FormattedMessage } from 'react-intl';
 
 import { Link } from 'react-router-dom';
 
+import escapeTextContentForBrowser from 'escape-html';
+
 import PersonAddIcon from '@/material-icons/400-24px/person_add-fill.svg?react';
-import { textToEmojis } from 'flavours/glitch/components/emoji';
-import {
-  AnimateEmojiProvider,
-  CustomEmojiProvider,
-} from 'flavours/glitch/components/emoji/context';
+import { EmojiHTML } from 'flavours/glitch/components/emoji/html';
 import { me } from 'flavours/glitch/initial_state';
 import type { NotificationGroupFollowAccepted } from 'flavours/glitch/models/notification_group';
 import { useAppSelector } from 'flavours/glitch/store';
@@ -52,11 +50,11 @@ export const NotificationFollowAccepted: React.FC<{
   );
 
   const additionalContent = notification.followMessage ? (
-    <CustomEmojiProvider emojis={sourceEmojis}>
-      <AnimateEmojiProvider className='notification__follow-message'>
-        {textToEmojis(notification.followMessage)}
-      </AnimateEmojiProvider>
-    </CustomEmojiProvider>
+    <EmojiHTML
+      className='notification__follow-message'
+      htmlString={escapeTextContentForBrowser(notification.followMessage)}
+      extraEmojis={sourceEmojis}
+    />
   ) : undefined;
 
   return (

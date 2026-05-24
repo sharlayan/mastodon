@@ -5,6 +5,7 @@ import { useIntl, defineMessages } from 'react-intl';
 import classNames from 'classnames';
 
 import { Helmet } from '@unhead/react/helmet';
+import escapeTextContentForBrowser from 'escape-html';
 
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { EmojiInfoTooltip } from '@/flavours/glitch/components/emoji_info_tooltip';
@@ -22,8 +23,8 @@ import { useAppSelector, useAppDispatch } from '@/flavours/glitch/store';
 
 import { AccountBio } from '../account_bio';
 import { Avatar } from '../avatar';
-import { textToEmojis } from '../emoji';
-import { AnimateEmojiProvider, CustomEmojiProvider } from '../emoji/context';
+import { AnimateEmojiProvider } from '../emoji/context';
+import { EmojiHTML } from '../emoji/html';
 import { FamiliarFollowers } from '../familiar_followers';
 
 import { AccountBanners } from './banners';
@@ -179,11 +180,13 @@ export const AccountHeader: React.FC<{
                   <span className='account__header__follow-message__label'>
                     {intl.formatMessage(messages.followMessage)}
                   </span>
-                  <CustomEmojiProvider emojis={account.emojis}>
-                    <AnimateEmojiProvider as='p'>
-                      {textToEmojis(account.followed_message)}
-                    </AnimateEmojiProvider>
-                  </CustomEmojiProvider>
+                  <EmojiHTML
+                    as='p'
+                    htmlString={escapeTextContentForBrowser(
+                      account.followed_message,
+                    )}
+                    extraEmojis={account.emojis}
+                  />
                 </div>
               )}
 
