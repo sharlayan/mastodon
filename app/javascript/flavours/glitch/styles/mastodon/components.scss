@@ -2378,7 +2378,7 @@ body > [data-popper-placement] {
     height: 100%;
     overflow: visible;
     pointer-events: none;
-    z-index: 1;
+    z-index: 0;
 
     &--force-round {
       border-radius: 50%;
@@ -9910,7 +9910,7 @@ noscript {
 }
 
 .detailed-status:has(.account__avatar--decorated) {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .notification-ungrouped:has(.account__avatar--decorated),
