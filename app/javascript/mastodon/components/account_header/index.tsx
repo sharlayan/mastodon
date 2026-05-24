@@ -20,7 +20,8 @@ import { useAppSelector, useAppDispatch } from '@/mastodon/store';
 
 import { AccountBio } from '../account_bio';
 import { Avatar } from '../avatar';
-import { AnimateEmojiProvider } from '../emoji/context';
+import { textToEmojis } from '../emoji';
+import { AnimateEmojiProvider, CustomEmojiProvider } from '../emoji/context';
 import { FamiliarFollowers } from '../familiar_followers';
 
 import { AccountBanners } from './banners';
@@ -171,7 +172,11 @@ export const AccountHeader: React.FC<{
                   <span className='account__header__follow-message__label'>
                     {intl.formatMessage(messages.followMessage)}
                   </span>
-                  <p>{account.followed_message}</p>
+                  <CustomEmojiProvider emojis={account.emojis}>
+                    <AnimateEmojiProvider as='p'>
+                      {textToEmojis(account.followed_message)}
+                    </AnimateEmojiProvider>
+                  </CustomEmojiProvider>
                 </div>
               )}
 

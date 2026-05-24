@@ -3,6 +3,11 @@ import { FormattedMessage } from 'react-intl';
 import { Link } from 'react-router-dom';
 
 import PersonAddIcon from '@/material-icons/400-24px/person_add-fill.svg?react';
+import { textToEmojis } from 'flavours/glitch/components/emoji';
+import {
+  AnimateEmojiProvider,
+  CustomEmojiProvider,
+} from 'flavours/glitch/components/emoji/context';
 import { me } from 'flavours/glitch/initial_state';
 import type { NotificationGroupFollowAccepted } from 'flavours/glitch/models/notification_group';
 import { useAppSelector } from 'flavours/glitch/store';
@@ -41,11 +46,17 @@ export const NotificationFollowAccepted: React.FC<{
   const username = useAppSelector(
     (state) => state.accounts.getIn([me, 'username']) as string,
   );
+  const sourceAccountId = notification.sampleAccountIds[0];
+  const sourceEmojis = useAppSelector((state) =>
+    sourceAccountId ? state.accounts.get(sourceAccountId)?.emojis : undefined,
+  );
 
   const additionalContent = notification.followMessage ? (
-    <div className='notification__follow-message'>
-      {notification.followMessage}
-    </div>
+    <CustomEmojiProvider emojis={sourceEmojis}>
+      <AnimateEmojiProvider className='notification__follow-message'>
+        {textToEmojis(notification.followMessage)}
+      </AnimateEmojiProvider>
+    </CustomEmojiProvider>
   ) : undefined;
 
   return (
