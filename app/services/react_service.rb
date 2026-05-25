@@ -10,10 +10,16 @@ class ReactService < BaseService
 
     return if emoji.blank?
 
-    name, domain = emoji.split('@')
+    parts = emoji.to_s.split('@')
+    return if parts.size > 2
+
+    name, domain = parts
     return unless domain.nil? || status.local?
 
-    custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
+    custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain) if name.present?
+
+    return if domain.present? && custom_emoji.nil?
+
     reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
     return reaction if reaction
 

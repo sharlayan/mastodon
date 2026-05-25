@@ -69,14 +69,18 @@ module Admin
       @categories    = CustomEmojiCategory.alphabetic.all
     end
 
+    BULK_UPDATE_LIMIT = 200
+
     def bulk_update
       authorize :custom_emoji, :update?
 
       updated = 0
       failed  = 0
 
+      entries = bulk_emoji_update_params.first(BULK_UPDATE_LIMIT)
+
       ActiveRecord::Base.transaction do
-        bulk_emoji_update_params.each do |id, attrs|
+        entries.each do |id, attrs|
           emoji = CustomEmoji.local.find_by(id: id)
           next unless emoji
 

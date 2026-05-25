@@ -3,14 +3,18 @@
 class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
   def perform
     original_status = status_from_uri(object_uri)
-    name = @json['content']
+    raw_name = @json['content'].to_s
 
     return if original_status.nil? || delete_arrived_first?(@json['id'])
+    return if raw_name.blank?
 
     custom_emoji = nil
+    name = raw_name
 
-    if /^:.*:$/.match?(name)
-      name.delete! ':'
+    if /\A:.+:\z/.match?(raw_name)
+      name = raw_name.tr(':', '')
+      return if name.blank?
+
       custom_emoji = process_emoji_tags(name, @json['tag'])
 
       return if custom_emoji.nil?
