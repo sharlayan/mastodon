@@ -105,37 +105,11 @@ class Auth::SessionsController < Devise::SessionsController
     end
 
     parent_stack = switch_parent_stack
+    new_stack = compute_switch_stack(parent_stack, target_account)
 
-    max_depth = 5
-    if parent_stack.length >= max_depth && parent_stack.last != target_account.id
+    if new_stack.nil? || new_stack.length > 5
       redirect_to root_path, alert: I18n.t('account_switcher.switch_unauthorized')
       return
-    end
-
-    if parent_stack.last == target_account.id
-      # Reverse switch: going back to parent account
-      # Verify the parent still has a valid authorization covering this account
-      authorization = AccountSwitchAuthorization.find_by(
-        account_id: target_account.id,
-        target_account_id: current_account.id
-      )
-
-      unless authorization
-        redirect_to root_path, alert: I18n.t('account_switcher.switch_unauthorized')
-        return
-      end
-
-      new_stack = parent_stack[0..-2]
-    else
-      # Forward switch: going to a child account
-      authorization = current_account.account_switch_authorizations.find_by(target_account: target_account)
-
-      unless authorization
-        redirect_to root_path, alert: I18n.t('account_switcher.switch_unauthorized')
-        return
-      end
-
-      new_stack = parent_stack + [current_account.id]
     end
 
     sign_out(current_user)
@@ -144,6 +118,36 @@ class Auth::SessionsController < Devise::SessionsController
     target_user.update_sign_in!(new_sign_in: true)
 
     redirect_to root_path
+  end
+
+  # Returns the new switch_parent_stack after switching to target_account,
+  # or nil if no valid authorization path exists.
+  def compute_switch_stack(parent_stack, target_account)
+    # Reverse switch: target is the direct parent in the stack
+    if parent_stack.last == target_account.id
+      return nil unless AccountSwitchAuthorization.exists?(
+        account_id: target_account.id,
+        target_account_id: current_account.id
+      )
+
+      return parent_stack[0..-2]
+    end
+
+    # Direct forward: current account authorized target
+    return parent_stack + [current_account.id] if current_account.account_switch_authorizations.exists?(target_account: target_account)
+
+    # Ancestor-mediated (sibling or cousin): some ancestor in the stack authorized target.
+    # Collapse stack to that ancestor so the chain stays coherent.
+    parent_stack.reverse_each do |ancestor_id|
+      next unless AccountSwitchAuthorization.exists?(
+        account_id: ancestor_id, target_account_id: target_account.id
+      )
+
+      idx = parent_stack.index(ancestor_id)
+      return parent_stack[0..idx]
+    end
+
+    nil
   end
 
   def preserve_stored_location
