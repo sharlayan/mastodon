@@ -5,12 +5,14 @@ class MultiAccounts::CallbacksController < ApplicationController
 
   layout 'auth'
 
+  before_action :authenticate_user!
   after_action :set_csp_nonce_directives
 
   def show
     @state = params[:state]
     @code = params[:code]
     @error = params[:error]
+    @expected_origin = root_url.chomp('/')
   end
 
   private

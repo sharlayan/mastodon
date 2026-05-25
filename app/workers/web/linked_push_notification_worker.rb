@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 # Sends push notifications to a main user's subscriptions when a linked (child)
-# account receives a notification. The push payload includes the main user's
-# access token; the service worker's fetch for the notification returns 404,
-# triggering fallback display via title/body/icon from the push payload itself.
+# account receives a notification. The payload contains only display data
+# (title/body/icon); no access token or fetchable notification_id is included,
+# so the service worker renders directly from the payload.
 class Web::LinkedPushNotificationWorker
   include Sidekiq::Worker
   include RoutingHelper
@@ -48,8 +48,6 @@ class Web::LinkedPushNotificationWorker
 
   def build_payload(subscription)
     {
-      access_token: subscription.associated_access_token,
-      notification_id: @notification.id,
       preferred_locale: subscription.locale.presence || I18n.default_locale,
       notification_type: @notification.type,
       icon: full_asset_url(@notification.from_account.avatar_static_url),

@@ -6,12 +6,13 @@ module MultiAccounts
     KEY_PREFIX = 'multi_account:state:'
 
     class << self
-      def store!(state, nonce, user_id, redirect_uri = nil, switch_parent_stack: nil)
+      def store!(state, nonce, user_id, redirect_uri = nil, switch_parent_stack: nil, session_id: nil)
         data = {
           nonce: nonce,
           user_id: user_id,
           redirect_uri: redirect_uri,
           switch_parent_stack: switch_parent_stack,
+          session_id: session_id,
           created_at: Time.now.utc.iso8601,
         }
 

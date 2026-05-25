@@ -12,9 +12,12 @@
         code: '#{j @code}',
         error: '#{j @error}'
       };
+      var expectedOrigin = '#{j @expected_origin}';
 
-      if (window.opener) {
-        window.opener.postMessage(data, window.location.origin);
+      if (window.opener && window.location.origin === expectedOrigin) {
+        try {
+          window.opener.postMessage(data, expectedOrigin);
+        } catch (e) {}
         window.close();
       } else {
         document.getElementById('message').textContent = '#{j t('multi_accounts.auth.authorization_complete')}';

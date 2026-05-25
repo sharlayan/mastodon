@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::UsersController < ApplicationController
+  RequesterIdentity = Struct.new(:id)
+
   skip_before_action :verify_authenticity_token, raise: false
 
   def show
@@ -11,7 +13,7 @@ class Api::MisskeyCompat::UsersController < ApplicationController
     return render json: { error: 'Not Found' }, status: 404 if @account.nil?
 
     begin
-      RateLimiter.new(@account, family: :misskey_users_show).record!
+      RateLimiter.new(RequesterIdentity.new(request.remote_ip), family: :misskey_users_show).record!
     rescue Mastodon::RateLimitExceededError
       return render json: { error: I18n.t('errors.429') }, status: 429
     end

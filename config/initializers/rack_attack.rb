@@ -153,6 +153,20 @@ class Rack::Attack
     req.warden_user_id if (req.put? || req.patch?) && (req.path_matches?('/auth') || req.path_matches?('/auth/password'))
   end
 
+  MULTI_ACCOUNT_AUTH_PATHS = ['/multi_accounts/auth/sign_in', '/multi_accounts/auth/verify_otp'].freeze
+
+  throttle('throttle_multi_account_login_attempts/ip', limit: 25, period: 5.minutes) do |req|
+    req.throttleable_remote_ip if req.post? && MULTI_ACCOUNT_AUTH_PATHS.include?(req.path)
+  end
+
+  throttle('throttle_multi_account_login_attempts/email', limit: 25, period: 1.hour) do |req|
+    req.params.dig('user', 'email').presence if req.post? && req.path == '/multi_accounts/auth/sign_in'
+  end
+
+  throttle('throttle_multi_account_login_attempts/state', limit: 10, period: 15.minutes) do |req|
+    req.params['state'].presence if req.post? && MULTI_ACCOUNT_AUTH_PATHS.include?(req.path)
+  end
+
   self.throttled_responder = lambda do |request|
     now        = Time.now.utc
     match_data = request.env['rack.attack.match_data']

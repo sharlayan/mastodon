@@ -366,9 +366,9 @@ class FetchInstanceThemeColorService < BaseService
       return nil
     end
 
-    safe_domain = @domain.gsub(/[^a-zA-Z0-9\-.]/, '_')
+    domain_digest = Digest::SHA1.hexdigest(@domain.to_s)
 
-    storage_path = Rails.public_path.join('system', 'instance_favicons')
+    storage_path = Rails.public_path.join('system', 'instance_favicons').expand_path
     FileUtils.mkdir_p(storage_path)
 
     request = Request.new(:get, favicon_url)
@@ -381,8 +381,10 @@ class FetchInstanceThemeColorService < BaseService
       next unless ALLOWED_FAVICON_CONTENT_TYPES.include?(content_type)
 
       ext = CONTENT_TYPE_TO_EXT[content_type] || '.ico'
-      filename = "#{safe_domain}#{ext}"
-      file_path = storage_path.join(filename)
+      filename = "#{domain_digest}#{ext}"
+      file_path = storage_path.join(filename).expand_path
+
+      next unless file_path.to_s.start_with?("#{storage_path}/")
 
       content = response.body_with_limit
       File.binwrite(file_path, content)

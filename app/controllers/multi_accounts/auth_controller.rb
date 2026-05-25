@@ -80,7 +80,16 @@ class MultiAccounts::AuthController < ApplicationController
     @state = params[:state]
     @state_data = MultiAccounts::StateStore.fetch(@state)
 
-    render plain: I18n.t('devise.failure.timeout'), status: 400 if @state_data.nil?
+    if @state_data.nil?
+      render plain: I18n.t('devise.failure.timeout'), status: 400
+      return
+    end
+
+    bound_session_id = @state_data[:session_id]
+    if bound_session_id.present? && bound_session_id != session.id&.public_id
+      render plain: I18n.t('devise.failure.timeout'), status: 400
+      nil
+    end
   end
 
   def complete_authentication(user)
