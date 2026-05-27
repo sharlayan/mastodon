@@ -354,6 +354,14 @@ ja:
       approve: 承認
       approved: 承認済み
       approved_msg: デコレーションが承認されました
+      category: カテゴリ
+      new_category: 新しいカテゴリ
+      new_category_hint: 入力すると新しいカテゴリが作成され、上の選択より優先されます。
+      no_category: カテゴリなし
+      uncategorized: 未分類
+      assign_category: カテゴリを割り当て
+      create_new_category: 新しいカテゴリを作成
+      update_category: カテゴリを更新
       created_msg: デコレーションが作成されました
       current_image: 現在の画像
       delete: 削除

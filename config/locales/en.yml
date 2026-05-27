@@ -377,6 +377,14 @@ en:
       approve: Approve
       approved: Approved
       approved_msg: Decoration approved successfully
+      category: Category
+      new_category: New category
+      new_category_hint: If filled, a new category will be created (overrides the selection above).
+      no_category: No category
+      uncategorized: Uncategorized
+      assign_category: Assign category
+      create_new_category: Create new category
+      update_category: Update category
       created_msg: Decoration created successfully
       current_image: Current image
       delete: Delete

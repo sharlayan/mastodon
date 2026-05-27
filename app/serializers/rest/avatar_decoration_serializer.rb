@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
 class REST::AvatarDecorationSerializer < ActiveModel::Serializer
-  attributes :id, :name, :description, :url, :static_url
+  attributes :id, :name, :description, :url, :static_url, :category
 
   def id
     object.id.to_s
+  end
+
+  def category
+    object.category&.name
   end
 
   def url

@@ -23,6 +23,20 @@
         %img.avatar-decoration-preview{ src: @decoration.image_url, alt: @decoration.name }
 
     .fields-group
+      = f.input :category_id,
+                wrapper: :with_label,
+                label: t('admin.avatar_decorations.category'),
+                as: :select,
+                collection: AvatarDecorationCategory.alphabetic.map { |c| [c.name, c.id] },
+                include_blank: t('admin.avatar_decorations.no_category')
+
+    .fields-group
+      .with_label
+        = f.label :category_name, t('admin.avatar_decorations.new_category'), class: 'string optional'
+        = f.text_field :category_name, class: 'string optional'
+        %span.hint= t('admin.avatar_decorations.new_category_hint')
+
+    .fields-group
       = f.input :required_role_id,
                 wrapper: :with_label,
                 label: t('admin.avatar_decorations.required_role'),

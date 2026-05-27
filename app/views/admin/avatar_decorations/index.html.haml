@@ -55,7 +55,22 @@
         = check_box_tag :batch_checkbox_all, nil, false
       .batch-table__toolbar__actions
         = f.button safe_join([material_symbol('check_circle'), t('admin.avatar_decorations.approve')]), name: :approve, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
+        - if params[:local] == '1'
+          = f.button safe_join([material_symbol('label'), t('admin.avatar_decorations.update_category')]), name: :update, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
         = f.button safe_join([material_symbol('close'), t('admin.avatar_decorations.delete')]), name: :delete, class: 'table-action-link', type: :submit, data: { confirm: t('admin.reports.are_you_sure') }
+
+    - if params[:local] == '1'
+      .batch-table__form
+        .avatar-decoration-category-fields
+          = f.select :category_id,
+                     options_from_collection_for_select(AvatarDecorationCategory.alphabetic.all, 'id', 'name'),
+                     { 'aria-label': t('admin.avatar_decorations.assign_category'), prompt: t('admin.avatar_decorations.assign_category') },
+                     { class: 'avatar-decoration-category-fields__select' }
+          = f.text_field :category_name,
+                         type: 'text',
+                         'aria-label': t('admin.avatar_decorations.create_new_category'),
+                         class: 'avatar-decoration-category-fields__input',
+                         placeholder: t('admin.avatar_decorations.create_new_category')
 
     .batch-table__body
       - if @decorations.empty?

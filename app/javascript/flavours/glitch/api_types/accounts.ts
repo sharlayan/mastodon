@@ -11,6 +11,7 @@ export interface ApiAvatarDecorationJSON {
   name: string;
   url: string;
   static_url: string;
+  category: string | null;
   angle: number;
   flip_h: boolean;
   offset_x: number;

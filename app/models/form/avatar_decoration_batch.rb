@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Form::AvatarDecorationBatch < Form::BaseBatch
-  attr_accessor :avatar_decoration_ids
+  attr_accessor :avatar_decoration_ids, :category_id, :category_name
 
   def save
     case action
@@ -9,6 +9,8 @@ class Form::AvatarDecorationBatch < Form::BaseBatch
       approve!
     when 'delete'
       delete!
+    when 'update'
+      update!
     end
   end
 
@@ -26,6 +28,21 @@ class Form::AvatarDecorationBatch < Form::BaseBatch
         decoration.update!(approved: true)
         log_action :update, decoration
       end
+    end
+  end
+
+  def update!
+    verify_authorization(:update?)
+
+    category = if category_id.present?
+                 AvatarDecorationCategory.find(category_id)
+               elsif category_name.present?
+                 AvatarDecorationCategory.find_or_create_by!(name: category_name)
+               end
+
+    avatar_decorations.each do |decoration|
+      decoration.update(category_id: category&.id)
+      log_action :update, decoration
     end
   end
 

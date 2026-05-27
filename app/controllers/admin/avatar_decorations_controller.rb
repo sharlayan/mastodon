@@ -101,7 +101,12 @@ module Admin
     end
 
     def decoration_params
-      params.expect(avatar_decoration: [:name, :description, :image, :required_role_id])
+      permitted = params.expect(avatar_decoration: [:name, :description, :image, :required_role_id, :category_id, :category_name])
+      category_name = permitted.delete(:category_name)
+
+      permitted[:category_id] = AvatarDecorationCategory.find_or_create_by!(name: category_name.strip).id if category_name.present?
+
+      permitted
     end
 
     def filtered_decorations
@@ -133,11 +138,13 @@ module Admin
         'approve'
       elsif params[:delete]
         'delete'
+      elsif params[:update]
+        'update'
       end
     end
 
     def form_avatar_decoration_batch_params
-      params.expect(form_avatar_decoration_batch: [avatar_decoration_ids: []])
+      params.expect(form_avatar_decoration_batch: [:category_id, :category_name, avatar_decoration_ids: []])
     end
   end
 end

@@ -106,7 +106,49 @@ const messages = defineMessages({
     id: 'account_edit.decoration_modal.search',
     defaultMessage: 'Search decorations…',
   },
+  allCategories: {
+    id: 'account_edit.decoration_modal.all_categories',
+    defaultMessage: 'All categories',
+  },
+  uncategorized: {
+    id: 'account_edit.decoration_modal.uncategorized',
+    defaultMessage: 'Uncategorized',
+  },
+  categoryCount: {
+    id: 'account_edit.decoration_modal.category_count',
+    defaultMessage: '{name} ({count})',
+  },
 });
+
+const UNCATEGORIZED_KEY = '__uncategorized__';
+
+interface CategoryGroup {
+  key: string;
+  name: string;
+  decorations: ApiAvatarDecorationJSON[];
+}
+
+function groupByCategory(
+  list: ApiAvatarDecorationJSON[],
+  uncategorizedLabel: string,
+): CategoryGroup[] {
+  const groups = new Map<string, CategoryGroup>();
+  for (const d of list) {
+    const key = d.category ?? UNCATEGORIZED_KEY;
+    const name = d.category ?? uncategorizedLabel;
+    let group = groups.get(key);
+    if (!group) {
+      group = { key, name, decorations: [] };
+      groups.set(key, group);
+    }
+    group.decorations.push(d);
+  }
+  return Array.from(groups.values()).sort((a, b) => {
+    if (a.key === UNCATEGORIZED_KEY) return 1;
+    if (b.key === UNCATEGORIZED_KEY) return -1;
+    return a.name.localeCompare(b.name);
+  });
+}
 
 interface DecorationTooltipProps {
   show: boolean;
@@ -526,10 +568,35 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingAddId, setPendingAddId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const handleSearchChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   }, []);
+
+  const handleCategoryFilterChange = useCallback(
+    (e: ChangeEvent<HTMLSelectElement>) => {
+      setCategoryFilter(e.target.value);
+    },
+    [],
+  );
+
+  const handleToggleCategory = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const key = e.currentTarget.dataset.key;
+      if (!key) return;
+      setCollapsedCategories((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     void apiGetAvatarDecorations().then((list) => {
@@ -690,24 +757,74 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
 
   const renderLevel2 = () => {
     const query = searchQuery.trim().toLowerCase();
-    const filtered =
+    const uncategorizedLabel = intl.formatMessage(messages.uncategorized);
+
+    const searchFiltered =
       available !== null && query.length > 0
         ? available.filter((d) => d.name.toLowerCase().includes(query))
         : available;
 
+    const allGroups =
+      available !== null ? groupByCategory(available, uncategorizedLabel) : [];
+
+    const visibleGroups =
+      searchFiltered !== null
+        ? groupByCategory(
+            categoryFilter === 'all'
+              ? searchFiltered
+              : searchFiltered.filter(
+                  (d) => (d.category ?? UNCATEGORIZED_KEY) === categoryFilter,
+                ),
+            uncategorizedLabel,
+          )
+        : [];
+
+    const renderTile = (decoration: ApiAvatarDecorationJSON) => {
+      const numericId = parseInt(decoration.id, 10);
+      return (
+        <DecorationTile
+          key={decoration.id}
+          decoration={decoration}
+          isSelected={pendingAddId === numericId}
+          onSelect={handleSelectPending}
+        />
+      );
+    };
+
     return (
       <>
         {available !== null && available.length > 0 && (
-          <input
-            type='search'
-            className={classes.searchInput}
-            placeholder={intl.formatMessage(messages.searchPlaceholder)}
-            value={searchQuery}
-            onChange={handleSearchChange}
-          />
+          <div className={classes.filterRow}>
+            <input
+              type='search'
+              className={classes.searchInput}
+              placeholder={intl.formatMessage(messages.searchPlaceholder)}
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+            {allGroups.length > 1 && (
+              <select
+                className={classes.categorySelect}
+                value={categoryFilter}
+                onChange={handleCategoryFilterChange}
+              >
+                <option value='all'>
+                  {intl.formatMessage(messages.allCategories)}
+                </option>
+                {allGroups.map((g) => (
+                  <option key={g.key} value={g.key}>
+                    {intl.formatMessage(messages.categoryCount, {
+                      name: g.name,
+                      count: g.decorations.length,
+                    })}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         )}
-        {filtered === null && <LoadingIndicator />}
-        {filtered !== null && filtered.length === 0 && (
+        {searchFiltered === null && <LoadingIndicator />}
+        {searchFiltered !== null && visibleGroups.length === 0 && (
           <p className={classes.empty}>
             {intl.formatMessage(
               query.length > 0
@@ -716,21 +833,35 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
             )}
           </p>
         )}
-        {filtered !== null && filtered.length > 0 && (
-          <div className={classes.grid}>
-            {filtered.map((decoration) => {
-              const numericId = parseInt(decoration.id, 10);
-              return (
-                <DecorationTile
-                  key={decoration.id}
-                  decoration={decoration}
-                  isSelected={pendingAddId === numericId}
-                  onSelect={handleSelectPending}
-                />
-              );
-            })}
-          </div>
-        )}
+        {visibleGroups.map((group) => {
+          const collapsed = collapsedCategories.has(group.key);
+          return (
+            <div key={group.key} className={classes.categoryGroup}>
+              <button
+                type='button'
+                className={classes.categoryHeader}
+                data-key={group.key}
+                onClick={handleToggleCategory}
+                aria-expanded={!collapsed}
+              >
+                <span className={classes.categoryCaret}>
+                  {collapsed ? '▶' : '▼'}
+                </span>
+                <span>
+                  {intl.formatMessage(messages.categoryCount, {
+                    name: group.name,
+                    count: group.decorations.length,
+                  })}
+                </span>
+              </button>
+              {!collapsed && (
+                <div className={classes.grid}>
+                  {group.decorations.map(renderTile)}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         <div className={classes.levelActions}>
           <Button onClick={handleBackFromAdd} secondary>

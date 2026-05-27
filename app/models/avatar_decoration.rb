@@ -8,6 +8,9 @@ class AvatarDecoration < ApplicationRecord
   IMAGE_LIMIT = (ENV['MAX_AVATAR_DECORATION_SIZE'] || 5.megabytes).to_i
 
   belongs_to :required_role, class_name: 'UserRole', optional: true
+  belongs_to :category, class_name: 'AvatarDecorationCategory', optional: true, inverse_of: :decorations
+
+  attr_accessor :category_name
 
   scope :local,    -> { where(host: nil) }
   scope :remote,   -> { where.not(host: nil) }

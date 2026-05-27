@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_05_155103) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_26_050104) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -308,6 +308,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_05_155103) do
     t.index ["rejected_by_account_id"], name: "index_appeals_on_rejected_by_account_id", where: "(rejected_by_account_id IS NOT NULL)"
   end
 
+  create_table "avatar_decoration_categories", force: :cascade do |t|
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_avatar_decoration_categories_on_name", unique: true
+  end
+
   create_table "avatar_decoration_domain_blocks", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "domain", null: false
@@ -341,7 +348,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_05_155103) do
     t.string "remote_id"
     t.bigint "required_role_id"
     t.datetime "updated_at", null: false
+    t.bigint "category_id"
     t.index ["approved"], name: "index_avatar_decorations_on_approved"
+    t.index ["category_id"], name: "index_avatar_decorations_on_category_id"
     t.index ["host", "remote_id"], name: "index_avatar_decorations_on_host_and_remote_id", unique: true, where: "(host IS NOT NULL)"
     t.index ["host"], name: "index_avatar_decorations_on_host"
     t.index ["required_role_id"], name: "index_avatar_decorations_on_required_role_id"
