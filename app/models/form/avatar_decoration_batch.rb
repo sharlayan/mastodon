@@ -37,7 +37,7 @@ class Form::AvatarDecorationBatch < Form::BaseBatch
     category = if category_id.present?
                  AvatarDecorationCategory.find(category_id)
                elsif category_name.present?
-                 AvatarDecorationCategory.find_or_create_by!(name: category_name)
+                 AvatarDecorationCategory.find_or_create_by!(name: category_name.strip)
                end
 
     avatar_decorations.each do |decoration|
