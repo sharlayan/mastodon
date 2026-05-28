@@ -99,6 +99,7 @@ html {
       display: flex;
       gap: 4px;
       flex-direction: column;
+      flex-shrink: 0;
 
       time {
         font-size: 0.8em;
