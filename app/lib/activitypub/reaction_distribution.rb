@@ -7,7 +7,7 @@ module ActivityPub::ReactionDistribution
     status = reaction.status
 
     if status.public_visibility?
-      target_inbox = status.account.local? ? '' : (status.account.shared_inbox_url || status.account.inbox_url)
+      target_inbox = status.account.local? ? '' : (status.account.shared_inbox_url.presence || status.account.inbox_url)
       ActivityPub::ReactionsDistributionWorker.perform_async(json, reaction.account_id, target_inbox)
     elsif status.account.activitypub?
       # For non-public statuses, only notify the status author directly

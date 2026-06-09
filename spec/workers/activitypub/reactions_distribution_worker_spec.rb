@@ -18,66 +18,40 @@ RSpec.describe ActivityPub::ReactionsDistributionWorker do
     end
 
     context 'with empty target_inbox_url' do
-      it 'delivers to follower inboxes only' do
-        expect_push_bulk_to_match(
-          ActivityPub::DeliveryWorker,
-          a_collection_containing_exactly(
-            [json, account.id, 'http://follower.example.com/inbox', {}]
-          )
-        ) do
-          subject.perform(json, account.id, '')
-        end
-      end
-
-      it 'does not deliver to following servers' do
-        allow(Sidekiq::Client).to receive(:push_bulk)
-
+      it 'delivers to follower and following inboxes (Misskey-style propagation)' do
         subject.perform(json, account.id, '')
 
-        expect(Sidekiq::Client).to_not have_received(:push_bulk).with(
-          hash_including('args' => a_collection_including(
-            a_collection_including('http://following.example.com/inbox')
-          ))
-        )
+        expect(ActivityPub::DeliveryWorker)
+          .to have_enqueued_sidekiq_job(json, account.id, 'http://follower.example.com/inbox', anything)
+          .and have_enqueued_sidekiq_job(json, account.id, 'http://following.example.com/inbox', anything)
       end
 
       it 'does not deliver to unrelated servers' do
-        allow(Sidekiq::Client).to receive(:push_bulk)
-
         subject.perform(json, account.id, '')
 
-        expect(Sidekiq::Client).to_not have_received(:push_bulk).with(
-          hash_including('args' => a_collection_including(
-            a_collection_including('http://unrelated.example.com/inbox')
-          ))
-        )
+        expect(ActivityPub::DeliveryWorker)
+          .to_not have_enqueued_sidekiq_job(json, account.id, 'http://unrelated.example.com/inbox', anything)
       end
     end
 
     context 'with a target inbox' do
-      it 'delivers to followers and target inboxes' do
-        expect_push_bulk_to_match(
-          ActivityPub::DeliveryWorker,
-          a_collection_containing_exactly(
-            [json, account.id, 'http://follower.example.com/inbox', {}],
-            [json, account.id, 'http://target.example.com/inbox', {}]
-          )
-        ) do
-          subject.perform(json, account.id, 'http://target.example.com/inbox')
-        end
+      it 'delivers to follower, following, and target inboxes' do
+        subject.perform(json, account.id, 'http://target.example.com/inbox')
+
+        expect(ActivityPub::DeliveryWorker)
+          .to have_enqueued_sidekiq_job(json, account.id, 'http://follower.example.com/inbox', anything)
+          .and have_enqueued_sidekiq_job(json, account.id, 'http://following.example.com/inbox', anything)
+          .and have_enqueued_sidekiq_job(json, account.id, 'http://target.example.com/inbox', anything)
       end
     end
 
     context 'when target inbox overlaps with follower inbox' do
       it 'deduplicates inboxes' do
-        expect_push_bulk_to_match(
-          ActivityPub::DeliveryWorker,
-          a_collection_containing_exactly(
-            [json, account.id, 'http://follower.example.com/inbox', {}]
-          )
-        ) do
-          subject.perform(json, account.id, 'http://follower.example.com/inbox')
-        end
+        subject.perform(json, account.id, 'http://follower.example.com/inbox')
+
+        expect(ActivityPub::DeliveryWorker)
+          .to have_enqueued_sidekiq_job(json, account.id, 'http://follower.example.com/inbox', anything)
+          .exactly(1).time
       end
     end
 
