@@ -52,6 +52,8 @@ clear_cache () {
 build_web () {
   rails_export
 
+  yarn install
+
   bundle install
   bundle exec rails assets:precompile --trace
 
