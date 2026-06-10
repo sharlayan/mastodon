@@ -12,7 +12,7 @@ RSpec.describe BroadcastStatusUpdateWorker do
   before do
     follower.user # ensure user is created
     follower.follow!(account)
-    allow(Redis.current).to receive(:publish)
+    allow(redis).to receive(:publish)
   end
 
   describe '#perform' do
@@ -21,28 +21,28 @@ RSpec.describe BroadcastStatusUpdateWorker do
         status.update(visibility: :public)
       end
 
-      it 'publishes to the status-specific channel' do
+      it 'publishes a status.reaction event to the status-specific channel' do
         subject.perform(status.id)
 
-        expect(Redis.current).to have_received(:publish).with("timeline:status:#{status.id}", anything)
+        expect(redis).to have_received(:publish).with("timeline:status:#{status.id}", a_string_including('"event":"status.reaction"'))
       end
 
       it 'publishes to the public timeline' do
         subject.perform(status.id)
 
-        expect(Redis.current).to have_received(:publish).with('timeline:public', anything)
+        expect(redis).to have_received(:publish).with('timeline:public', anything)
       end
 
       it 'publishes to the author timeline' do
         subject.perform(status.id)
 
-        expect(Redis.current).to have_received(:publish).with("timeline:#{account.id}", anything)
+        expect(redis).to have_received(:publish).with("timeline:#{account.id}", anything)
       end
 
       it 'publishes to followers' do
         subject.perform(status.id)
 
-        expect(Redis.current).to have_received(:publish).with("timeline:#{follower.id}", anything)
+        expect(redis).to have_received(:publish).with("timeline:#{follower.id}", anything)
       end
     end
 
@@ -54,13 +54,13 @@ RSpec.describe BroadcastStatusUpdateWorker do
       it 'does not publish to the public timeline' do
         subject.perform(status.id)
 
-        expect(Redis.current).to_not have_received(:publish).with('timeline:public', anything)
+        expect(redis).to_not have_received(:publish).with('timeline:public', anything)
       end
 
       it 'publishes to the status-specific channel' do
         subject.perform(status.id)
 
-        expect(Redis.current).to have_received(:publish).with("timeline:status:#{status.id}", anything)
+        expect(redis).to have_received(:publish).with("timeline:status:#{status.id}", anything)
       end
     end
 
@@ -72,14 +72,14 @@ RSpec.describe BroadcastStatusUpdateWorker do
       it 'still publishes to the status-specific channel' do
         subject.perform(status.id)
 
-        expect(Redis.current).to have_received(:publish).with("timeline:status:#{status.id}", anything)
+        expect(redis).to have_received(:publish).with("timeline:status:#{status.id}", anything)
       end
 
       it 'does not broadcast to timelines' do
         subject.perform(status.id)
 
-        expect(Redis.current).to_not have_received(:publish).with('timeline:public', anything)
-        expect(Redis.current).to_not have_received(:publish).with("timeline:#{follower.id}", anything)
+        expect(redis).to_not have_received(:publish).with('timeline:public', anything)
+        expect(redis).to_not have_received(:publish).with("timeline:#{follower.id}", anything)
       end
     end
 
@@ -91,7 +91,7 @@ RSpec.describe BroadcastStatusUpdateWorker do
       it 'does not publish anything' do
         subject.perform(status.id)
 
-        expect(Redis.current).to_not have_received(:publish)
+        expect(redis).to_not have_received(:publish)
       end
     end
 
@@ -103,7 +103,7 @@ RSpec.describe BroadcastStatusUpdateWorker do
       it 'does not publish anything' do
         subject.perform(status.id)
 
-        expect(Redis.current).to_not have_received(:publish)
+        expect(redis).to_not have_received(:publish)
       end
     end
 
@@ -116,7 +116,7 @@ RSpec.describe BroadcastStatusUpdateWorker do
       it 'does not publish to the muted follower' do
         subject.perform(status.id)
 
-        expect(Redis.current).to_not have_received(:publish).with("timeline:#{follower.id}", anything)
+        expect(redis).to_not have_received(:publish).with("timeline:#{follower.id}", anything)
       end
     end
 

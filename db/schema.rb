@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_26_050104) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_27_200113) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -309,8 +309,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_26_050104) do
   end
 
   create_table "avatar_decoration_categories", force: :cascade do |t|
-    t.string "name"
     t.datetime "created_at", null: false
+    t.string "name"
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_avatar_decoration_categories_on_name", unique: true
   end
@@ -336,6 +336,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_26_050104) do
 
   create_table "avatar_decorations", force: :cascade do |t|
     t.boolean "approved", default: false, null: false
+    t.bigint "category_id"
     t.datetime "created_at", null: false
     t.text "description", default: ""
     t.string "host"
@@ -348,7 +349,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_26_050104) do
     t.string "remote_id"
     t.bigint "required_role_id"
     t.datetime "updated_at", null: false
-    t.bigint "category_id"
     t.index ["approved"], name: "index_avatar_decorations_on_approved"
     t.index ["category_id"], name: "index_avatar_decorations_on_category_id"
     t.index ["host", "remote_id"], name: "index_avatar_decorations_on_host_and_remote_id", unique: true, where: "(host IS NOT NULL)"
@@ -494,6 +494,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_26_050104) do
   end
 
   create_table "custom_emojis", force: :cascade do |t|
+    t.text "aliases", default: [], null: false, array: true
     t.bigint "category_id"
     t.datetime "created_at", precision: nil, null: false
     t.boolean "disabled", default: false, null: false
@@ -504,12 +505,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_26_050104) do
     t.string "image_remote_url"
     t.integer "image_storage_schema_version"
     t.datetime "image_updated_at", precision: nil
+    t.text "license"
     t.string "shortcode", default: "", null: false
     t.datetime "updated_at", precision: nil, null: false
     t.string "uri"
     t.boolean "visible_in_picker", default: true, null: false
-    t.text "aliases", default: [], null: false, array: true
-    t.text "license"
     t.index ["aliases"], name: "index_custom_emojis_on_aliases", using: :gin
     t.index ["shortcode", "domain"], name: "index_custom_emojis_on_shortcode_and_domain", unique: true
   end
@@ -1599,6 +1599,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_26_050104) do
   add_foreign_key "appeals", "accounts", on_delete: :cascade
   add_foreign_key "avatar_decoration_mutes", "accounts"
   add_foreign_key "avatar_decoration_mutes", "accounts", column: "target_account_id"
+  add_foreign_key "avatar_decorations", "avatar_decoration_categories", column: "category_id", on_delete: :nullify, validate: false
   add_foreign_key "backups", "users", on_delete: :nullify
   add_foreign_key "blocks", "accounts", column: "target_account_id", name: "fk_9571bfabc1", on_delete: :cascade
   add_foreign_key "blocks", "accounts", name: "fk_4269e03e65", on_delete: :cascade
