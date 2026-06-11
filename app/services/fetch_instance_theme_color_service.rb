@@ -44,31 +44,46 @@ class FetchInstanceThemeColorService < BaseService
 
     local_favicon_path = download_and_save_favicon(favicon_url) if favicon_url.present?
 
-    resolved_theme_color = if parsed_homepage
-                             theme_color || @metadata.default_theme_color
-                           else
-                             @metadata.theme_color.presence || theme_color || @metadata.default_theme_color
-                           end
+    # Only overwrite a field when we actually obtained a fresh, valid value.
+    # A partial fetch failure must never clobber previously stored data, must
+    # never persist an external URL, and must never reset the personal color.
+    attributes = { metadata_updated_at: Time.now.utc }
 
-    nodeinfo_features = extract_nodeinfo_features
+    # Theme (personal) color: keep the existing one unless we detected a new
+    # color from the homepage. Only fall back to the software default the very
+    # first time, when nothing has ever been stored.
+    if theme_color.present?
+      attributes[:theme_color] = theme_color
+      attributes[:theme_color_updated_at] = Time.now.utc
+    elsif @metadata.theme_color.blank?
+      attributes[:theme_color] = @metadata.default_theme_color
+      attributes[:theme_color_updated_at] = Time.now.utc
+    end
 
-    @metadata.update(
-      theme_color: resolved_theme_color,
-      theme_color_updated_at: Time.now.utc,
-      favicon_url: local_favicon_path,
-      software: software_info[:software],
-      version: software_info[:version],
-      instance_name: instance_name,
-      supports_avatar_decorations: nodeinfo_features.include?('avatarDecorations'),
-      metadata_updated_at: Time.now.utc
-    )
+    # Favicon: only ever store a locally downloaded path. Never persist a remote
+    # URL (it breaks CSP), and keep the existing local copy if the download failed.
+    attributes[:favicon_url] = local_favicon_path if local_favicon_path.present?
+
+    # Software / version: keep existing values if detection failed.
+    if software_info[:software].present?
+      attributes[:software] = software_info[:software]
+      attributes[:version] = software_info[:version]
+    end
+
+    # Instance name: determine_instance_name falls back to the bare domain, so
+    # treat that as "not found" rather than overwriting a real name.
+    attributes[:instance_name] = instance_name if instance_name.present? && instance_name != @domain
+
+    # avatarDecorations support: only update when nodeinfo was actually reachable,
+    # otherwise we would reset a known-true flag to false on a transient failure.
+    attributes[:supports_avatar_decorations] = extract_nodeinfo_features.include?('avatarDecorations') if fetch_nodeinfo.present?
+
+    @metadata.update(attributes)
 
     @metadata
   rescue *NETWORK_ERRORS
-    @metadata.update(
-      theme_color_updated_at: Time.now.utc,
-      metadata_updated_at: Time.now.utc
-    )
+    # Total failure: keep all existing data, only throttle the next refresh.
+    @metadata.update(metadata_updated_at: Time.now.utc)
 
     nil
   end

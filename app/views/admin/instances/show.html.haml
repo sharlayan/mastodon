@@ -17,7 +17,8 @@
   %h3= t('admin.instances.metadata.title')
 
   .metadata-header
-    = image_tag @instance_metadata.favicon_url_with_fallback, class: 'instance-favicon-large', onerror: "this.style.display='none'"
+    - if @instance_metadata.favicon_url_with_fallback.present?
+      = image_tag @instance_metadata.favicon_url_with_fallback, class: 'instance-favicon-large', onerror: "this.style.display='none'"
     %div
       %span.instance-name= @instance_metadata.instance_name_with_fallback
       %p.instance-domain

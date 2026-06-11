@@ -52,7 +52,7 @@ class InstanceMetadata < ApplicationRecord
   end
 
   def favicon_url_with_fallback
-    favicon_url.presence || "https://#{domain}/favicon.ico"
+    favicon_url.presence
   end
 
   def instance_name_with_fallback
