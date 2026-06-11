@@ -20,9 +20,6 @@ class BroadcastStatusUpdateWorker
     # Always publish to status-specific channel for users currently viewing this status
     redis.publish("timeline:status:#{status.id}", message)
 
-    # For recent statuses, also broadcast to timelines
-    return if status.created_at < 10.minutes.ago
-
     broadcast_to_all_followers(status, message)
   rescue ActiveRecord::RecordNotFound
     true
