@@ -182,6 +182,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_150940) do
     t.boolean "discoverable"
     t.string "display_name", default: "", null: false
     t.string "domain"
+    t.integer "feature_approval_policy", default: 0, null: false
     t.string "featured_collection_url"
     t.jsonb "fields"
     t.string "followed_message", limit: 256
