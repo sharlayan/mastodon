@@ -423,7 +423,7 @@ class Status < ApplicationRecord
 
     def reactions_map(status_ids, account_id)
       # TODO: error check
-      StatusReaction.select('status_id').where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
+      StatusReaction.select(:status_id).where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
     end
 
     def bookmarks_map(status_ids, account_id)
