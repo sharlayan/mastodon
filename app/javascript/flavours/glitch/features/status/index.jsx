@@ -99,7 +99,7 @@ const makeMapStateToProps = () => {
       ancestorsIds,
       descendantsIds,
       settings: state.get('local_settings'),
-      mfmEnabled: state.getIn(['server', 'server', 'configuration', 'mfm', 'enabled']),
+      mfmEnabled: state.getIn(['server', 'server', 'item', 'configuration', 'mfm', 'enabled']),
       askReplyConfirmation: state.getIn(['local_settings', 'confirm_before_clearing_draft']) && state.getIn(['compose', 'text']).trim().length !== 0,
       domain: state.getIn(['meta', 'domain']),
       pictureInPicture: getPictureInPicture(state, { id: props.params.statusId }),

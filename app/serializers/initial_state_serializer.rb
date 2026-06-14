@@ -60,6 +60,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:mfm_enabled]                 = object_account_user.settings_mfm_enabled
       store[:mfm_animations]              = object_account_user.settings_mfm_animations
       store[:mfm_fold_mode]               = object_account_user.settings_mfm_fold_mode
+      store[:mfm_allow_composition]       = Setting.mfm_allow_composition
       store[:wrapstodon] = wrapstodon
       store[:show_avatar_decorations]           = object_account_user.settings['avatar_decorations.show']
       store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']

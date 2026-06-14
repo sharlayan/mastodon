@@ -68,6 +68,7 @@ interface InitialStateMeta {
   mfm_enabled: boolean;
   mfm_animations: boolean;
   mfm_fold_mode: 'show' | 'sensitive' | 'all';
+  mfm_allow_composition: boolean;
 }
 
 interface IntialStateRole {
@@ -201,6 +202,7 @@ export const showInstanceInfo = getMeta('show_instance_info');
 export const customEmojiSize = getMeta('custom_emoji_size');
 export const reactionCustomEmojiSize = getMeta('reaction_custom_emoji_size');
 export const mfmEnabled = getMeta('mfm_enabled') !== false;
+export const mfmAllowComposition = getMeta('mfm_allow_composition') === true;
 export const mfmAnimations = getMeta('mfm_animations') !== false;
 export const mfmFoldMode =
   (getMeta('mfm_fold_mode') as string | undefined) ?? 'sensitive';

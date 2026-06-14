@@ -8,6 +8,7 @@ import BrushIcon from '@/material-icons/400-24px/brush.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import MarkdownIcon from '@/material-icons/400-24px/markdown.svg?react';
 import { changeComposeContentType } from 'flavours/glitch/actions/compose';
+import { mfmAllowComposition } from 'flavours/glitch/initial_state';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import { DropdownIconButton } from './dropdown_icon_button';
@@ -27,7 +28,6 @@ export const ContentTypeButton = () => {
 
   const showButton = useAppSelector((state) => state.getIn(['local_settings', 'show_content_type_choice']));
   const contentType = useAppSelector((state) => state.getIn(['compose', 'content_type']));
-  const mfmAllowComposition = useAppSelector((state) => state.getIn(['server', 'server', 'item', 'configuration', 'mfm', 'allow_composition']));
   const dispatch = useAppDispatch();
 
   const handleChange = useCallback((value) => {

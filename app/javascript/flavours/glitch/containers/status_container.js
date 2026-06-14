@@ -65,7 +65,7 @@ const makeMapStateToProps = () => {
       settings: state.get('local_settings'),
       prepend: prepend || props.prepend,
       pictureInPicture: getPictureInPicture(state, props),
-      mfmEnabled: state.getIn(['server', 'server', 'configuration', 'mfm', 'enabled']),
+      mfmEnabled: state.getIn(['server', 'server', 'item', 'configuration', 'mfm', 'enabled']),
     };
   };
 
