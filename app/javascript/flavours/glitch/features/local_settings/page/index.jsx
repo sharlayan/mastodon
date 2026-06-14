@@ -238,6 +238,14 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
         <LocalSettingsPageItem
           settings={settings}
+          item={['hide_mfm_compose_hint']}
+          id='mastodon-settings--hide_mfm_compose_hint'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.hide_mfm_compose_hint' defaultMessage='Hide MFM preview and syntax link in the compose box' />
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
           item={['show_published_toast']}
           id='mastodon-settings--show_published_toast'
           onChange={onChange}

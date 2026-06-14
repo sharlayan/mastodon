@@ -27,6 +27,7 @@ import { ContentTypeButton } from './content_type_button';
 import { EditIndicator } from './edit_indicator';
 import { FederationButton } from './federation_button';
 import { LanguageDropdown } from './language_dropdown';
+import { MfmComposeHint } from './mfm_compose_hint';
 import { NavigationBar } from './navigation_bar';
 import { PollForm } from "./poll_form";
 import { ReplyIndicator } from './reply_indicator';
@@ -376,6 +377,8 @@ class ComposeForm extends ImmutablePureComponent {
                 </Button>
               </div>
             </div>
+
+            <MfmComposeHint />
           </div>
         </div>
       </form>

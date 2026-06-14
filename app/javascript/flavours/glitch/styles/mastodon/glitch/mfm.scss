@@ -92,7 +92,6 @@
 
 .mfm-tada {
   display: inline-block;
-  font-size: 150%;
   animation-name: mfm-tada;
   animation-duration: var(--mfm-speed, 1s);
   animation-timing-function: linear;
@@ -557,7 +556,8 @@
 }
 
 // === Reduced motion: disable all animations unless user explicitly disabled reduce-motion ===
-html:not(.no-reduce-motion) .mfm-container {
+// The MFM preview modal always plays animations regardless of this preference.
+html:not(.no-reduce-motion) .mfm-container:not(.mfm-preview-modal *) {
   .mfm-tada,
   .mfm-jelly,
   .mfm-twitch,
@@ -572,9 +572,25 @@ html:not(.no-reduce-motion) .mfm-container {
   }
 }
 
-html:not(.no-reduce-motion) .mfm-sparkle-particle {
+html:not(.no-reduce-motion) .mfm-sparkle-particle:not(.mfm-preview-modal *) {
   animation: none !important;
   display: none;
+}
+
+// MFM preview modal: animations always run (no hover required, ignores reduce-motion)
+.mfm-preview-modal .mfm-container {
+  .mfm-tada,
+  .mfm-jelly,
+  .mfm-twitch,
+  .mfm-shake,
+  .mfm-spin,
+  .mfm-spin-x,
+  .mfm-spin-y,
+  .mfm-jump,
+  .mfm-bounce,
+  .mfm-rainbow {
+    animation-play-state: running;
+  }
 }
 
 .status__content__mfm-fold {
@@ -601,5 +617,113 @@ html:not(.no-reduce-motion) .mfm-sparkle-particle {
 
   &[open] summary {
     margin-block-end: 8px;
+  }
+}
+
+.compose-form__mfm-hint {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--color-border-primary);
+  font-size: 13px;
+
+  &__preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-accent);
+    cursor: pointer;
+    font-size: inherit;
+    font-weight: 500;
+
+    .icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover,
+    &:focus {
+      text-decoration: underline;
+    }
+  }
+
+  &__docs {
+    margin-inline-start: auto;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+
+    &:hover,
+    &:focus {
+      color: var(--color-accent);
+      text-decoration: underline;
+    }
+  }
+}
+
+.mfm-preview-modal {
+  display: flex;
+  flex-direction: column;
+  max-width: 90vw;
+  width: 460px;
+  max-height: 80vh;
+  background: var(--color-bg-secondary);
+  border-radius: 8px;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--color-border-primary);
+
+    &__title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      h1 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+        color: var(--color-text-primary);
+      }
+    }
+  }
+
+  &__body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 16px;
+    color: var(--color-text-primary);
+    white-space: pre-wrap;
+  }
+
+  &__empty {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    white-space: normal;
+  }
+
+  &__footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--color-border-primary);
+    text-align: end;
+    font-size: 13px;
+
+    a {
+      color: var(--color-accent);
+      text-decoration: none;
+
+      &:hover,
+      &:focus {
+        text-decoration: underline;
+      }
+    }
   }
 }
