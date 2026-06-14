@@ -27,7 +27,7 @@ export const ContentTypeButton = () => {
 
   const showButton = useAppSelector((state) => state.getIn(['local_settings', 'show_content_type_choice']));
   const contentType = useAppSelector((state) => state.getIn(['compose', 'content_type']));
-  const mfmAllowComposition = useAppSelector((state) => state.getIn(['server', 'server', 'configuration', 'mfm', 'allow_composition']));
+  const mfmAllowComposition = useAppSelector((state) => state.getIn(['server', 'server', 'item', 'configuration', 'mfm', 'allow_composition']));
   const dispatch = useAppDispatch();
 
   const handleChange = useCallback((value) => {

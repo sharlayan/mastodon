@@ -142,5 +142,10 @@ export interface ApiInstanceJSON {
     };
 
     limited_federation: boolean;
+
+    mfm: {
+      enabled: boolean;
+      allow_composition: boolean;
+    };
   };
 }
