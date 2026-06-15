@@ -37,6 +37,19 @@ class Rack::Attack
       authenticated_token&.id
     end
 
+    def bypasses_rate_limit?
+      return @bypasses_rate_limit if defined?(@bypasses_rate_limit)
+
+      @bypasses_rate_limit = begin
+        if Setting.rate_limit_bypass_enabled
+          user_id = authenticated_user_id
+          user_id.present? && User.find_by(id: user_id)&.can?(:administrator, :view_devops)
+        else
+          false
+        end
+      end
+    end
+
     def warden_user_id
       @env['warden']&.user&.id
     end
@@ -67,11 +80,11 @@ class Rack::Attack
   end
 
   throttle('throttle_authenticated_api', limit: 1_500, period: 5.minutes) do |req|
-    req.authenticated_user_id if req.api_request?
+    req.authenticated_user_id if req.api_request? && !req.bypasses_rate_limit?
   end
 
   throttle('throttle_per_token_api', limit: 500, period: 5.minutes) do |req|
-    req.authenticated_token_id if req.api_request?
+    req.authenticated_token_id if req.api_request? && !req.bypasses_rate_limit?
   end
 
   throttle('throttle_unauthenticated_api', limit: 300, period: 5.minutes) do |req|
@@ -79,7 +92,7 @@ class Rack::Attack
   end
 
   throttle('throttle_api_media', limit: 100, period: 30.minutes) do |req|
-    req.authenticated_user_id if req.post? && req.path.match?(%r{\A/api/v\d+/media\z}i)
+    req.authenticated_user_id if req.post? && req.path.match?(%r{\A/api/v\d+/media\z}i) && !req.bypasses_rate_limit?
   end
 
   throttle('throttle_media_proxy', limit: 100, period: 10.minutes) do |req|
@@ -91,7 +104,7 @@ class Rack::Attack
   end
 
   throttle('throttle_authenticated_paging', limit: 1_000, period: 15.minutes) do |req|
-    req.authenticated_user_id if req.paging_request?
+    req.authenticated_user_id if req.paging_request? && !req.bypasses_rate_limit?
   end
 
   throttle('throttle_unauthenticated_paging', limit: 300, period: 15.minutes) do |req|
@@ -102,7 +115,7 @@ class Rack::Attack
   API_DELETE_STATUS_REGEX = %r{\A/api/v1/statuses/\d+\z}
 
   throttle('throttle_api_delete', limit: 60, period: 30.minutes) do |req|
-    req.authenticated_user_id if (req.post? && req.path.match?(API_DELETE_REBLOG_REGEX)) || (req.delete? && req.path.match?(API_DELETE_STATUS_REGEX))
+    req.authenticated_user_id if ((req.post? && req.path.match?(API_DELETE_REBLOG_REGEX)) || (req.delete? && req.path.match?(API_DELETE_STATUS_REGEX))) && !req.bypasses_rate_limit?
   end
 
   throttle('throttle_oauth_application_registrations/ip', limit: 5, period: 10.minutes) do |req|

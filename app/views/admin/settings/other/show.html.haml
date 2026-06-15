@@ -61,5 +61,14 @@
               hint: t('admin.settings.avatar_decorations.max_count_hint'),
               input_html: { min: 0, max: 16 }
 
+  %h2= t('admin.settings.rate_limit_bypass.title')
+
+  .fields-group
+    = f.input :rate_limit_bypass_enabled,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.rate_limit_bypass.enabled'),
+              hint: t('admin.settings.rate_limit_bypass.enabled_hint')
+
   .actions
     = f.button :button, t('generic.save_changes'), type: :submit

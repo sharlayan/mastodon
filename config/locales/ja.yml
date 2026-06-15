@@ -839,7 +839,7 @@ ja:
         view_dashboard: ダッシュボードの表示
         view_dashboard_description: ユーザーがダッシュボードやさまざまなメトリクスにアクセスできるようにします
         view_devops: 開発者
-        view_devops_description: Sidekiq と pgHero ダッシュボードにアクセスできるようにします
+        view_devops_description: "Sidekiq と pgHero ダッシュボードにアクセスできるようにします。APIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません"
       title: ロール
     rules:
       add_new: ルールを追加
@@ -898,6 +898,10 @@ ja:
         local_only_view_hint: ローカルデコレーションを無効にし、連合サーバーから受信したデコレーションのみ表示します
         max_count: ユーザーあたりの最大デコレーション数
         max_count_hint: ユーザーが同時に有効化できるデコレーションの最大数 (0〜16)
+      rate_limit_bypass:
+        title: APIレート制限のバイパス
+        enabled: 特定の権限にAPIレート制限のバイパスを許可
+        enabled_hint: 有効にすると、管理者またはDevOps権限を持つユーザーはAPIレート制限を受けなくなります。無効の場合はすべてのユーザーに制限が適用されます。
       domain_blocks:
         all: 誰にでも許可
         disabled: 誰にも許可しない

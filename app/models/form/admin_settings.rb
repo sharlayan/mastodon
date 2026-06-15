@@ -58,6 +58,7 @@ class Form::AdminSettings
     wrapstodon
     mfm_enabled
     mfm_allow_composition
+    rate_limit_bypass_enabled
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view
@@ -97,6 +98,7 @@ class Form::AdminSettings
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view
+    rate_limit_bypass_enabled
   ).freeze
 
   UPLOAD_KEYS = %i(

@@ -967,7 +967,7 @@ ko:
         view_dashboard: 대시보드 보기
         view_dashboard_description: 사용자가 여러 통계정보를 볼 수 있는 대시보드에 접근할 수 있도록 허용
         view_devops: 데브옵스
-        view_devops_description: Sidekiq과 pgHero 대시보드에 접근할 수 있도록 허용
+        view_devops_description: "Sidekiq과 pgHero 대시보드에 접근할 수 있도록 허용. API 제한 우회 설정이 활성화된 경우 이 권한을 가진 사용자는 API 제한을 받지 않습니다"
         view_feeds: 실시간 및 화제 피드 보기
         view_feeds_description: 서버 설정에 관계 없이 실시간과 해시태그 피드에 접근할 수 있도록 허용
       requires_2fa: 2단계 인증 필요
@@ -1030,6 +1030,10 @@ ko:
         local_only_view_hint: 로컬 아바타 장식을 비활성화하고 연합 서버에서 받은 아바타 장식만 표시합니다
         max_count: 사용자당 최대 장식 수
         max_count_hint: 사용자가 동시에 활성화할 수 있는 최대 장식 수 (0~16)
+      rate_limit_bypass:
+        title: API 제한 우회
+        enabled: 특정 권한에 API 제한 우회 허용
+        enabled_hint: 활성화하면 관리자 또는 DevOps 권한을 가진 사용자가 API 제한(rate limit)을 받지 않습니다. 비활성화하면 모든 사용자에게 제한이 적용됩니다.
       domain_blocks:
         all: 모두에게
         disabled: 아무에게도 안 함

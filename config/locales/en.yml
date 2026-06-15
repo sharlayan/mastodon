@@ -994,7 +994,7 @@ en:
         view_dashboard: View Dashboard
         view_dashboard_description: Allows users to access the dashboard and various metrics
         view_devops: DevOps
-        view_devops_description: Allows users to access Sidekiq and pgHero dashboards
+        view_devops_description: "Allows users to access Sidekiq and pgHero dashboards. When API rate limit bypass is enabled, users with this permission are not subject to API rate limits"
         view_feeds: View live and topic feeds
         view_feeds_description: Allows users to access the live and topic feeds regardless of server settings
       requires_2fa: Requires two-factor authentication
@@ -1057,6 +1057,10 @@ en:
         local_only_view_hint: Disable local decorations; only show decorations received from federated servers
         max_count: Maximum decorations per user
         max_count_hint: Maximum number of decorations a user may activate at once (0–16)
+      rate_limit_bypass:
+        title: API Rate Limit Bypass
+        enabled: Allow privileged roles to bypass API rate limits
+        enabled_hint: When enabled, users with the Administrator or DevOps permission are not subject to API rate limits. Leave disabled to apply rate limits to everyone.
       domain_blocks:
         all: To everyone
         disabled: To no one
