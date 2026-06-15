@@ -6,6 +6,11 @@ Mastodon 포크들에서 Emoji Reaction 을 지원하는 여러 버전을 참고
 - Mastodon Urusai! (글리치 리액션 기능 전반)
 - Mastodon mstdn.lalafell.org (F-Finene, 미스키 스타일 반응 보기)
 
+---
+
+> [!WARNING]
+> 본 포크 및 브랜치를 설치해 주고 수고비를 받는 등의 행위를 금합니다.
+
 # Mastodon Glitch
 
 [![Ruby Testing](https://github.com/glitch-soc/mastodon/actions/workflows/test-ruby.yml/badge.svg)](https://github.com/glitch-soc/mastodon/actions/workflows/test-ruby.yml)
