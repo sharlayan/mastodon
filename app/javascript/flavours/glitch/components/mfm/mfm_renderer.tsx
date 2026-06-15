@@ -3,7 +3,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import * as mfm from 'mfm-js';
 
 import { Emoji } from '@/flavours/glitch/components/emoji';
-import { CustomEmojiProvider } from '@/flavours/glitch/components/emoji/context';
+import {
+  AnimateEmojiProvider,
+  CustomEmojiProvider,
+} from '@/flavours/glitch/components/emoji/context';
 import type { CustomEmojiMapArg } from '@/flavours/glitch/features/emoji/types';
 
 import {
@@ -86,13 +89,14 @@ export const MfmRenderer: React.FC<MfmRendererProps> = ({
   return (
     <CustomEmojiProvider emojis={emojis}>
       <MfmHoverContext.Provider value={hovered}>
-        <span
+        <AnimateEmojiProvider
+          as='span'
           className='mfm-container'
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
           {renderNodes(ast, allowedTags, animationsEnabled)}
-        </span>
+        </AnimateEmojiProvider>
       </MfmHoverContext.Provider>
     </CustomEmojiProvider>
   );
