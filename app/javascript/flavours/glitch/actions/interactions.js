@@ -458,112 +458,140 @@ export function unpinFail(status, error) {
   };
 }
 
-export const addReaction = (statusId, name, url) => (dispatch, getState) => {
-  const status = getState().get('statuses').get(statusId);
-  let alreadyAdded = false;
-  if (status) {
-    const reaction = status.get('reactions').find(x => x.get('name') === name);
-    if (reaction && reaction.get('me')) {
-      alreadyAdded = true;
-    }
-  }
-  if (!alreadyAdded) {
-    dispatch(addReactionRequest(statusId, name, url));
-  }
+export function addReaction(statusId, name, url) {
+  return (dispatch, getState) => {
+    const status = getState().getIn(['statuses', statusId]);
+    let alreadyAdded = false;
 
-  // encodeURIComponent is required for the Keycap Number Sign emoji, see:
-  // <https://github.com/glitch-soc/mastodon/pull/1980#issuecomment-1345538932>
-  api(getState).post(`/api/v1/statuses/${statusId}/react/${encodeURIComponent(name)}`).then((response) => {
-    dispatch(addReactionSuccess(statusId, name));
-    dispatch(importFetchedStatus(response.data));
-  }).catch(err => {
+    if (status) {
+      const reaction = status.get('reactions').find(x => x.get('name') === name);
+      if (reaction && reaction.get('me')) {
+        alreadyAdded = true;
+      }
+    }
+
     if (!alreadyAdded) {
-      dispatch(addReactionFail(statusId, name, err));
+      dispatch(addReactionRequest(statusId, name, url));
     }
-  });
-};
 
-export const addReactionRequest = (statusId, name, url) => ({
-  type: REACTION_ADD_REQUEST,
-  id: statusId,
-  skipLoading: true,
-  name,
-  url,
-});
+    // encodeURIComponent is required for the Keycap Number Sign emoji, see:
+    // <https://github.com/glitch-soc/mastodon/pull/1980#issuecomment-1345538932>
+    api().post(`/api/v1/statuses/${statusId}/react/${encodeURIComponent(name)}`).then(response => {
+      dispatch(addReactionSuccess(statusId, name));
+      dispatch(importFetchedStatus(response.data));
+    }).catch(error => {
+      if (!alreadyAdded) {
+        dispatch(addReactionFail(statusId, name, error));
+      }
+    });
+  };
+}
 
-export const addReactionSuccess = (statusId, name) => ({
-  type: REACTION_ADD_SUCCESS,
-  id: statusId,
-  skipLoading: true,
-  name,
-});
+export function addReactionRequest(statusId, name, url) {
+  return {
+    type: REACTION_ADD_REQUEST,
+    id: statusId,
+    name,
+    url,
+    skipLoading: true,
+  };
+}
 
-export const addReactionFail = (statusId, name, error) => ({
-  type: REACTION_ADD_FAIL,
-  id: statusId,
-  skipLoading: true,
-  name,
-  error,
-});
+export function addReactionSuccess(statusId, name) {
+  return {
+    type: REACTION_ADD_SUCCESS,
+    id: statusId,
+    name,
+    skipLoading: true,
+  };
+}
 
-export const removeReaction = (statusId, name) => (dispatch, getState) => {
-  dispatch(removeReactionRequest(statusId, name));
+export function addReactionFail(statusId, name, error) {
+  return {
+    type: REACTION_ADD_FAIL,
+    id: statusId,
+    name,
+    error,
+    skipLoading: true,
+  };
+}
 
-  api(getState).post(`/api/v1/statuses/${statusId}/unreact/${encodeURIComponent(name)}`).then((response) => {
-    dispatch(removeReactionSuccess(statusId, name));
-    dispatch(importFetchedStatus(response.data));
-  }).catch(err => {
-    dispatch(removeReactionFail(statusId, name, err));
-  });
-};
+export function removeReaction(statusId, name) {
+  return (dispatch) => {
+    dispatch(removeReactionRequest(statusId, name));
 
-export const removeReactionRequest = (statusId, name) => ({
-  type: REACTION_REMOVE_REQUEST,
-  id: statusId,
-  skipLoading: true,
-  name,
-});
+    api().post(`/api/v1/statuses/${statusId}/unreact/${encodeURIComponent(name)}`).then(response => {
+      dispatch(removeReactionSuccess(statusId, name));
+      dispatch(importFetchedStatus(response.data));
+    }).catch(error => {
+      dispatch(removeReactionFail(statusId, name, error));
+    });
+  };
+}
 
-export const removeReactionSuccess = (statusId, name) => ({
-  type: REACTION_REMOVE_SUCCESS,
-  id: statusId,
-  skipLoading: true,
-  name,
-});
+export function removeReactionRequest(statusId, name) {
+  return {
+    type: REACTION_REMOVE_REQUEST,
+    id: statusId,
+    name,
+    skipLoading: true,
+  };
+}
 
-export const removeReactionFail = (statusId, name) => ({
-  type: REACTION_REMOVE_FAIL,
-  id: statusId,
-  skipLoading: true,
-  name,
-});
+export function removeReactionSuccess(statusId, name) {
+  return {
+    type: REACTION_REMOVE_SUCCESS,
+    id: statusId,
+    name,
+    skipLoading: true,
+  };
+}
 
-export const fetchReaction = (id) => (dispatch, getState) => {
-  dispatch(fetchReactionRequest(id));
+export function removeReactionFail(statusId, name, error) {
+  return {
+    type: REACTION_REMOVE_FAIL,
+    id: statusId,
+    name,
+    error,
+    skipLoading: true,
+  };
+}
 
-  api(getState).get(`/api/v1/statuses/${id}/reacted_by`).then(response => {
-    dispatch(fetchReactionSuccess(id, response.data));
-    dispatch(importFetchedAccounts(response.data));
-  }).catch(error => {
-    dispatch(fetchReactionFail(id, error));
-  });
-};
+export function fetchReaction(id) {
+  return (dispatch) => {
+    dispatch(fetchReactionRequest(id));
 
-export const fetchReactionRequest = (id) => ({
-  type: REACTION_FETCH_REQUEST,
-  id,
-});
+    api().get(`/api/v1/statuses/${id}/reacted_by`).then(response => {
+      dispatch(importFetchedAccounts(response.data));
+      dispatch(fetchReactionSuccess(id, response.data));
+    }).catch(error => {
+      dispatch(fetchReactionFail(id, error));
+    });
+  };
+}
 
-export const fetchReactionSuccess = (id, accounts) => ({
-  type: REACTION_FETCH_SUCCESS,
-  id,
-  accounts,
-});
+export function fetchReactionRequest(id) {
+  return {
+    type: REACTION_FETCH_REQUEST,
+    id,
+  };
+}
 
-export const fetchReactionFail = (id, error) => ({
-  type: REACTION_FETCH_FAIL,
-  error,
-});
+export function fetchReactionSuccess(id, accounts) {
+  return {
+    type: REACTION_FETCH_SUCCESS,
+    id,
+    accounts,
+  };
+}
+
+export function fetchReactionFail(id, error) {
+  return {
+    type: REACTION_FETCH_FAIL,
+    id,
+    error,
+  };
+}
 
 function toggleReblogWithoutConfirmation(status, visibility) {
   return (dispatch) => {

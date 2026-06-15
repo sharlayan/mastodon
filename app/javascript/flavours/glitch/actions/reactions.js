@@ -16,98 +16,118 @@ export const REACTION_SUMMARY_FETCH_FAIL    = 'REACTION_SUMMARY_FETCH_FAIL';
 
 export const REACTION_FILTER_SET = 'REACTION_FILTER_SET';
 
-export const fetchReactedStatuses = (name) => (dispatch, getState) => {
-  if (getState().getIn(['status_lists', 'reactions', 'isLoading'])) {
-    return;
-  }
+export function fetchReactedStatuses(name) {
+  return (dispatch, getState) => {
+    if (getState().getIn(['status_lists', 'reactions', 'isLoading'])) {
+      return;
+    }
 
-  dispatch(fetchReactedStatusesRequest());
+    dispatch(fetchReactedStatusesRequest());
 
-  const params = {};
-  if (name) {
-    params.name = name;
-  }
+    const params = {};
+    if (name) {
+      params.name = name;
+    }
 
-  api(getState).get('/api/v1/reactions', { params }).then(response => {
-    const next = getLinks(response).refs.find(link => link.rel === 'next');
-    dispatch(importFetchedStatuses(response.data));
-    dispatch(fetchReactedStatusesSuccess(response.data, next ? next.uri : null));
-  }).catch(error => {
-    dispatch(fetchReactedStatusesFail(error));
-  });
-};
-
-export const fetchReactedStatusesRequest = () => ({
-  type: REACTED_STATUSES_FETCH_REQUEST,
-  skipLoading: true,
-})
-
-export const fetchReactedStatusesSuccess = (statuses, next) => ({
-  type: REACTED_STATUSES_FETCH_SUCCESS,
-  statuses,
-  next,
-  skipLoading: true,
-})
-
-export const fetchReactedStatusesFail = (error) => ({
-  type: REACTED_STATUSES_FETCH_FAIL,
-  error,
-  skipLoading: true,
-});
-
-export const expandReactedStatuses = () => (dispatch, getState) => {
-  const url = getState().getIn(['status_lists', 'reactions', 'next'], null);
-
-  if (url === null || getState().getIn(['status_lists', 'reactions', 'isLoading'])) {
-    return;
-  }
-
-  dispatch(expandReactedStatusesRequest());
-
-  api(getState).get(url).then(response => {
-    const next = getLinks(response).refs.find(link => link.rel === 'next');
-    dispatch(importFetchedStatuses(response.data));
-    dispatch(expandReactedStatusesSuccess(response.data, next ? next.uri : null));
-  }).catch(error => {
-    dispatch(expandReactedStatusesFail(error));
-  });
-};
-
-export const expandReactedStatusesRequest = () => ({
-  type: REACTED_STATUSES_EXPAND_REQUEST,
-})
-
-export const expandReactedStatusesSuccess = (statuses, next) => ({
-  type: REACTED_STATUSES_EXPAND_SUCCESS,
-  statuses,
-  next,
-})
-
-export const expandReactedStatusesFail = (error) => ({
-  type: REACTED_STATUSES_EXPAND_FAIL,
-  error,
-})
-
-export const fetchReactionSummary = () => (dispatch, getState) => {
-  dispatch({ type: REACTION_SUMMARY_FETCH_REQUEST });
-
-  api(getState).get('/api/v1/reactions/summary').then(response => {
-    dispatch({
-      type: REACTION_SUMMARY_FETCH_SUCCESS,
-      summary: response.data,
+    api().get('/api/v1/reactions', { params }).then(response => {
+      const next = getLinks(response).refs.find(link => link.rel === 'next');
+      dispatch(importFetchedStatuses(response.data));
+      dispatch(fetchReactedStatusesSuccess(response.data, next ? next.uri : null));
+    }).catch(error => {
+      dispatch(fetchReactedStatusesFail(error));
     });
-  }).catch(error => {
-    dispatch({
-      type: REACTION_SUMMARY_FETCH_FAIL,
-      error,
-    });
-  });
-};
+  };
+}
 
-export const setReactionFilter = (name) => (dispatch) => {
-  dispatch({
-    type: REACTION_FILTER_SET,
-    name,
-  });
-  dispatch(fetchReactedStatuses(name));
-};
+export function fetchReactedStatusesRequest() {
+  return {
+    type: REACTED_STATUSES_FETCH_REQUEST,
+    skipLoading: true,
+  };
+}
+
+export function fetchReactedStatusesSuccess(statuses, next) {
+  return {
+    type: REACTED_STATUSES_FETCH_SUCCESS,
+    statuses,
+    next,
+    skipLoading: true,
+  };
+}
+
+export function fetchReactedStatusesFail(error) {
+  return {
+    type: REACTED_STATUSES_FETCH_FAIL,
+    error,
+    skipLoading: true,
+  };
+}
+
+export function expandReactedStatuses() {
+  return (dispatch, getState) => {
+    const url = getState().getIn(['status_lists', 'reactions', 'next'], null);
+
+    if (url === null || getState().getIn(['status_lists', 'reactions', 'isLoading'])) {
+      return;
+    }
+
+    dispatch(expandReactedStatusesRequest());
+
+    api().get(url).then(response => {
+      const next = getLinks(response).refs.find(link => link.rel === 'next');
+      dispatch(importFetchedStatuses(response.data));
+      dispatch(expandReactedStatusesSuccess(response.data, next ? next.uri : null));
+    }).catch(error => {
+      dispatch(expandReactedStatusesFail(error));
+    });
+  };
+}
+
+export function expandReactedStatusesRequest() {
+  return {
+    type: REACTED_STATUSES_EXPAND_REQUEST,
+  };
+}
+
+export function expandReactedStatusesSuccess(statuses, next) {
+  return {
+    type: REACTED_STATUSES_EXPAND_SUCCESS,
+    statuses,
+    next,
+  };
+}
+
+export function expandReactedStatusesFail(error) {
+  return {
+    type: REACTED_STATUSES_EXPAND_FAIL,
+    error,
+  };
+}
+
+export function fetchReactionSummary() {
+  return (dispatch) => {
+    dispatch({ type: REACTION_SUMMARY_FETCH_REQUEST });
+
+    api().get('/api/v1/reactions/summary').then(response => {
+      dispatch({
+        type: REACTION_SUMMARY_FETCH_SUCCESS,
+        summary: response.data,
+      });
+    }).catch(error => {
+      dispatch({
+        type: REACTION_SUMMARY_FETCH_FAIL,
+        error,
+      });
+    });
+  };
+}
+
+export function setReactionFilter(name) {
+  return (dispatch) => {
+    dispatch({
+      type: REACTION_FILTER_SET,
+      name,
+    });
+    dispatch(fetchReactedStatuses(name));
+  };
+}

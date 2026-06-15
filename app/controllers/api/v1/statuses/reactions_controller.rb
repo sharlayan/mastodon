@@ -3,29 +3,39 @@
 class Api::V1::Statuses::ReactionsController < Api::V1::Statuses::BaseController
   before_action -> { doorkeeper_authorize! :write, :'write:favourites' }
   before_action :require_user!
-  before_action :set_status, only: %i(create destroy)
+  skip_before_action :set_status, only: [:destroy]
 
   def create
     ReactService.new.call(current_account, @status, params[:id])
     render json: @status, serializer: REST::StatusSerializer
-  rescue Mastodon::NotPermittedError
+  rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     not_found
   end
 
   def destroy
-    UnreactWorker.perform_async(current_account.id, @status.id, params[:id])
+    reaction = find_reaction
 
-    render json: @status, serializer: REST::StatusSerializer, relationships: StatusRelationshipsPresenter.new([@status], current_account.id, reactions_map: { @status.id => false })
-  rescue Mastodon::NotPermittedError
+    if reaction
+      @status = reaction.status
+      count = [@status.reactions_count - 1, 0].max
+      UnreactWorker.perform_async(current_account.id, @status.id, params[:id])
+    else
+      @status = Status.find(params[:status_id])
+      count = @status.reactions_count
+      authorize @status, :show?
+    end
+
+    relationships = StatusRelationshipsPresenter.new([@status], current_account.id, attributes_map: { @status.id => { reactions_count: count } })
+    render json: @status, serializer: REST::StatusSerializer, relationships: relationships
+  rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     not_found
   end
 
   private
 
-  def set_status
-    @status = Status.find(params[:status_id])
-    authorize @status, :show?
-  rescue Mastodon::NotPermittedError
-    not_found
+  def find_reaction
+    name, domain = params[:id].to_s.split('@')
+    custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
+    current_account.status_reactions.find_by(status_id: params[:status_id], name: name, custom_emoji: custom_emoji)
   end
 end

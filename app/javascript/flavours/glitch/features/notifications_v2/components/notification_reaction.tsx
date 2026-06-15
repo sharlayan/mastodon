@@ -9,7 +9,7 @@ import { NotificationWithStatus } from './notification_with_status';
 const labelRenderer: LabelRenderer = (displayedName) => (
   <FormattedMessage
     id='notification.reaction'
-    defaultMessage='{name} reacted a post'
+    defaultMessage='{name} reacted to your post'
     values={{ name: displayedName }}
   />
 );

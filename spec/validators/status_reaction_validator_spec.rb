@@ -2,40 +2,43 @@
 
 require 'rails_helper'
 
-RSpec.describe ReactionValidator do
-  let(:announcement) { Fabricate(:announcement) }
+RSpec.describe StatusReactionValidator do
+  let(:status) { Fabricate(:status) }
 
   describe '#validate' do
     it 'adds error when not a valid unicode emoji' do
-      reaction = announcement.announcement_reactions.build(name: 'F')
+      reaction = status.status_reactions.build(name: 'F', account: Fabricate(:account))
       subject.validate(reaction)
       expect(reaction.errors).to_not be_empty
     end
 
     it 'does not add error when non-unicode emoji is a custom emoji' do
       custom_emoji = Fabricate(:custom_emoji)
-      reaction = announcement.announcement_reactions.build(name: custom_emoji.shortcode, custom_emoji_id: custom_emoji.id)
+      reaction = status.status_reactions.build(name: custom_emoji.shortcode, custom_emoji_id: custom_emoji.id, account: Fabricate(:account))
       subject.validate(reaction)
       expect(reaction.errors).to be_empty
     end
 
     it 'adds error when reaction limit count has already been reached' do
-      stub_const 'ReactionValidator::LIMIT', 2
+      stub_const 'StatusReactionValidator::LIMIT', 2
+      account = Fabricate(:account)
       %w(🐘 ❤️).each do |name|
-        announcement.announcement_reactions.create!(name: name, account: Fabricate(:account))
+        status.status_reactions.create!(name: name, account: account)
       end
 
-      reaction = announcement.announcement_reactions.build(name: '😘')
+      reaction = status.status_reactions.build(name: '😘', account: account)
       subject.validate(reaction)
       expect(reaction.errors).to_not be_empty
     end
 
     it 'does not add error when new reaction is part of the existing ones' do
-      %w(🐘 ❤️ 🙉 😍 😋 😂 😞 👍).each do |name|
-        announcement.announcement_reactions.create!(name: name, account: Fabricate(:account))
+      stub_const 'StatusReactionValidator::LIMIT', 2
+      account = Fabricate(:account)
+      %w(🐘 ❤️).each do |name|
+        status.status_reactions.create!(name: name, account: account)
       end
 
-      reaction = announcement.announcement_reactions.build(name: '😋')
+      reaction = status.status_reactions.build(name: '🐘', account: account)
       subject.validate(reaction)
       expect(reaction.errors).to be_empty
     end

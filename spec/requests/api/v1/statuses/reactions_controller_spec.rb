@@ -2,114 +2,147 @@
 
 require 'rails_helper'
 
-describe Api::V1::Statuses::ReactionsController do
-  render_views
+RSpec.describe 'Reactions', :inline_jobs do
+  let(:user)    { Fabricate(:user) }
+  let(:scopes)  { 'write:favourites' }
+  let(:token)   { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: scopes) }
+  let(:headers) { { 'Authorization' => "Bearer #{token.token}" } }
 
-  let(:user)  { Fabricate(:user) }
-  let(:app)   { Fabricate(:application, name: 'Test app', website: 'http://testapp.com') }
-  let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write:favourites', application: app) }
-
-  context 'with an oauth token' do
-    before do
-      allow(controller).to receive(:doorkeeper_token) { token }
+  describe 'POST /api/v1/statuses/:status_id/react/:id' do
+    subject do
+      post "/api/v1/statuses/#{status.id}/react/#{CGI.escape('👍')}", headers: headers
     end
 
-    describe 'POST #create' do
-      let(:status) { Fabricate(:status, account: user.account) }
+    let(:status) { Fabricate(:status) }
+
+    it_behaves_like 'forbidden for wrong scope', 'read read:favourites'
+
+    context 'with public status' do
+      it 'reacts to the status successfully and includes updated json', :aggregate_failures do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(response.content_type)
+          .to start_with('application/json')
+        expect(user.account.reacted?(status, '👍')).to be true
+
+        expect(response.parsed_body).to match(
+          a_hash_including(id: status.id.to_s, reactions: [a_hash_including(name: '👍', count: 1, me: true)])
+        )
+      end
+    end
+
+    context 'with private status of not-followed account' do
+      let(:status) { Fabricate(:status, visibility: :private) }
+
+      it 'returns http not found' do
+        subject
+
+        expect(response).to have_http_status(404)
+        expect(response.content_type)
+          .to start_with('application/json')
+      end
+    end
+
+    context 'with private status of followed account' do
+      let(:status) { Fabricate(:status, visibility: :private) }
 
       before do
-        post :create, params: { status_id: status.id, id: '👍' }
+        user.account.follow!(status.account)
       end
 
-      context 'with public status' do
-        it 'returns http success' do
-          expect(response).to have_http_status(200)
-        end
+      it 'reacts to the status successfully', :aggregate_failures do
+        subject
 
-        it 'updates the reacted attribute' do
-          expect(user.account.reacted?(status, '👍')).to be true
-        end
-
-        it 'returns json with updated attributes' do
-          hash_body = body_as_json
-
-          expect(hash_body[:id]).to eq status.id.to_s
-          expect(hash_body[:reactions]).to_not be_empty
-          expect(hash_body[:reactions][0][:count]).to be 1
-          expect(hash_body[:reactions][0][:me]).to be true
-          expect(hash_body[:reactions][0][:name]).to eq '👍'
-        end
-      end
-
-      context 'with private status of not-followed account' do
-        let(:status) { Fabricate(:status, visibility: :private) }
-
-        it 'returns http not found' do
-          expect(response).to have_http_status(404)
-        end
+        expect(response).to have_http_status(200)
+        expect(response.content_type)
+          .to start_with('application/json')
+        expect(user.account.reacted?(status, '👍')).to be true
       end
     end
 
-    describe 'POST #destroy' do
-      context 'with public status' do
-        let(:status) { Fabricate(:status, account: user.account) }
+    context 'without an authorization header' do
+      let(:headers) { {} }
 
-        before do
-          ReactService.new.call(user.account, status, '👍')
-          post :destroy, params: { status_id: status.id, id: '👍' }
-        end
+      it 'returns http unauthorized' do
+        subject
 
-        it 'returns http success' do
-          expect(response).to have_http_status(200)
-        end
+        expect(response).to have_http_status(401)
+        expect(response.content_type)
+          .to start_with('application/json')
+      end
+    end
+  end
 
-        it 'updates the reacted attribute' do
-          expect(user.account.reacted?(status, '👍')).to be false
-        end
+  describe 'POST /api/v1/statuses/:status_id/unreact/:id' do
+    subject do
+      post "/api/v1/statuses/#{status.id}/unreact/#{CGI.escape('👍')}", headers: headers
+    end
 
-        it 'returns json with updated attributes' do
-          hash_body = body_as_json
+    let(:status) { Fabricate(:status) }
 
-          expect(hash_body[:id]).to eq status.id.to_s
-          expect(hash_body[:reactions]).to be_empty
-        end
+    it_behaves_like 'forbidden for wrong scope', 'read read:favourites'
+
+    context 'with public status' do
+      before do
+        ReactService.new.call(user.account, status, '👍')
       end
 
-      context 'with public status when blocked by its author' do
-        let(:status) { Fabricate(:status) }
+      it 'unreacts the status successfully and includes updated json', :aggregate_failures do
+        subject
 
-        before do
-          ReactService.new.call(user.account, status, '👍')
-          status.account.block!(user.account)
-          post :destroy, params: { status_id: status.id, id: '👍' }
-        end
+        expect(response).to have_http_status(200)
+        expect(response.content_type)
+          .to start_with('application/json')
 
-        it 'returns http success' do
-          expect(response).to have_http_status(200)
-        end
+        expect(user.account.reacted?(status, '👍')).to be false
 
-        it 'updates the reacted attribute' do
-          expect(user.account.reacted?(status, '👍')).to be false
-        end
+        expect(response.parsed_body).to match(
+          a_hash_including(id: status.id.to_s, reactions_count: 0, reactions: [])
+        )
+      end
+    end
 
-        it 'returns json with updated attributes' do
-          hash_body = body_as_json
-
-          expect(hash_body[:id]).to eq status.id.to_s
-          expect(hash_body[:reactions]).to be_empty
-        end
+    context 'when the requesting user was blocked by the status author' do
+      before do
+        ReactService.new.call(user.account, status, '👍')
+        status.account.block!(user.account)
       end
 
-      context 'with private status that was not reacted to' do
-        let(:status) { Fabricate(:status, visibility: :private) }
+      it 'unreacts the status successfully and includes updated json', :aggregate_failures do
+        subject
 
-        before do
-          post :destroy, params: { status_id: status.id, id: '👍' }
-        end
+        expect(response).to have_http_status(200)
+        expect(response.content_type)
+          .to start_with('application/json')
 
-        it 'returns http not found' do
-          expect(response).to have_http_status(404)
-        end
+        expect(user.account.reacted?(status, '👍')).to be false
+
+        expect(response.parsed_body).to match(
+          a_hash_including(id: status.id.to_s, reactions_count: 0, reactions: [])
+        )
+      end
+    end
+
+    context 'when status is not reacted to' do
+      it 'returns http success' do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(response.content_type)
+          .to start_with('application/json')
+      end
+    end
+
+    context 'with private status that was not reacted to' do
+      let(:status) { Fabricate(:status, visibility: :private) }
+
+      it 'returns http not found' do
+        subject
+
+        expect(response).to have_http_status(404)
+        expect(response.content_type)
+          .to start_with('application/json')
       end
     end
   end

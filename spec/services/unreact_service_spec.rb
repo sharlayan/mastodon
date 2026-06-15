@@ -47,9 +47,9 @@ RSpec.describe UnreactService, type: :service do
   describe 'when reaction does not exist' do
     let(:status) { Fabricate(:status) }
 
-    it 'returns nil' do
-      result = subject.call(sender, status, '👍')
-      expect(result).to be_nil
+    it 'raises RecordNotFound' do
+      expect { subject.call(sender, status, '👍') }
+        .to raise_error(ActiveRecord::RecordNotFound)
     end
   end
 
