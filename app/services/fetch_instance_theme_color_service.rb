@@ -44,6 +44,8 @@ class FetchInstanceThemeColorService < BaseService
 
     local_favicon_path = download_and_save_favicon(favicon_url) if favicon_url.present?
 
+    local_favicon_path ||= generate_blank_favicon if @metadata.favicon_url.blank?
+
     # Only overwrite a field when we actually obtained a fresh, valid value.
     # A partial fetch failure must never clobber previously stored data, must
     # never persist an external URL, and must never reset the personal color.
@@ -409,6 +411,25 @@ class FetchInstanceThemeColorService < BaseService
 
     nil
   rescue *NETWORK_ERRORS, Errno::ENOENT, Errno::EACCES
+    nil
+  end
+
+  def generate_blank_favicon
+    domain_digest = Digest::SHA1.hexdigest(@domain.to_s)
+
+    storage_path = Rails.public_path.join('system', 'instance_favicons').expand_path
+    FileUtils.mkdir_p(storage_path)
+
+    filename = "#{domain_digest}.png"
+    file_path = storage_path.join(filename).expand_path
+
+    return nil unless file_path.to_s.start_with?("#{storage_path}/")
+
+    image = Vips::Image.black(64, 64, bands: 4)
+    image.pngsave(file_path.to_s)
+
+    "/system/instance_favicons/#{filename}"
+  rescue Vips::Error, Errno::ENOENT, Errno::EACCES
     nil
   end
 end
