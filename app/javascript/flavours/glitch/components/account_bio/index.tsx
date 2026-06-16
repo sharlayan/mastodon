@@ -4,11 +4,12 @@ import classNames from 'classnames';
 
 import * as mfm from 'mfm-js';
 
-import { useAppSelector } from '../store';
+import { useAppSelector } from '../../store';
+import { EmojiHTML } from '../emoji/html';
+import { MfmRenderer } from '../mfm';
+import { useElementHandledLink } from '../status/handled_link';
 
-import { EmojiHTML } from './emoji/html';
-import { MfmRenderer } from './mfm';
-import { useElementHandledLink } from './status/handled_link';
+import classes from './styles.module.scss';
 
 const mfmDomParser = new DOMParser();
 
@@ -19,7 +20,7 @@ interface AccountBioProps {
 }
 
 export const AccountBio: React.FC<AccountBioProps> = ({
-  className,
+  className = classes.bio,
   accountId,
   showDropdown = false,
 }) => {
