@@ -11,6 +11,38 @@ Mastodon 포크들에서 Emoji Reaction 을 지원하는 여러 버전을 참고
 > [!WARNING]
 > 본 포크 및 브랜치를 설치해 주고 수고비를 받는 등의 행위를 금합니다.
 
+---
+
+### 커스텀 된 기능 목록
+
+#### 에모지 리액션
+
+유니코드/커스텀 에모지 리액션, ActivityPub 연합 및 미스키 호환, 미스키 스타일 반응 보기, 에모지 즐겨찾기(우클릭 등록)
+
+#### MFM (Markup language For Misskey)
+
+미스키 호환 서식 렌더링(`mfm-js`) 연합, 광과민성 태그 자동 민감화(auto-sensitive), 관리자/사용자별 설정
+
+#### 아바타 장식
+
+미스키 호환 아바타 장식 시스템 연합, 장식별 각도/크기/투명도/오프셋/반전 설정, 원형 강제(force round) 옵션
+
+#### 커뮤니티 & 접근 제어
+
+로컬 전용 게시물, 로컬 강제 설정, 피드/타임라인/게시물 페이지별 접근 모드(public/authenticated/disabled) 관리, 계정 전환 기능
+
+#### 연합 인스턴스 정보 뱃지
+
+연합 서버의 소프트웨어·테마색·파비콘·이름을 Misskey의 서버 뱃지처럼 표시하기 위한 식별 및 캐싱
+
+#### 기타 UI
+
+에모지 피커 lazyload 및 카테고리 선택 개선
+
+---
+
+아래부터는 Glitch SoC 의 원본 Readme 입니다.
+
 # Mastodon Glitch
 
 [![Ruby Testing](https://github.com/glitch-soc/mastodon/actions/workflows/test-ruby.yml/badge.svg)](https://github.com/glitch-soc/mastodon/actions/workflows/test-ruby.yml)
