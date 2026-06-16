@@ -20,7 +20,8 @@ export interface StatusHeaderProps {
   status: Status;
   account?: Account;
   avatarSize?: number;
-  children?: ReactNode;
+  contentBeforeDate?: ReactNode;
+  contentAfterDate?: ReactNode;
   wrapperProps?: HTMLAttributes<HTMLDivElement>;
   displayNameProps?: DisplayNameProps;
   onHeaderClick?: MouseEventHandler<HTMLDivElement>;
@@ -35,10 +36,11 @@ export type StatusHeaderRenderFn = (args: StatusHeaderProps) => ReactNode;
 export const StatusHeader: FC<StatusHeaderProps> = ({
   status,
   account,
-  children,
   className,
   avatarSize = 48,
   wrapperProps,
+  contentBeforeDate,
+  contentAfterDate,
   onHeaderClick,
 }) => {
   const statusAccount = status.get('account') as Account | undefined;
@@ -58,7 +60,8 @@ export const StatusHeader: FC<StatusHeaderProps> = ({
         avatarSize={avatarSize}
       />
 
-      {children}
+      {contentBeforeDate}
+      {contentAfterDate}
     </header>
   );
 };

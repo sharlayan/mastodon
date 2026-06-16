@@ -1720,7 +1720,6 @@ body > [data-popper-placement] {
 
 .status__quote-cancel {
   align-self: self-start;
-  order: 5;
 }
 
 .status__info {
@@ -11986,6 +11985,7 @@ noscript {
     -webkit-box-orient: vertical;
     max-height: 2 * 20px;
     overflow: hidden;
+    overflow-wrap: anywhere;
 
     p {
       margin-bottom: 0;

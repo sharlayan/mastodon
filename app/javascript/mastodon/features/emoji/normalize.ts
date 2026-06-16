@@ -94,12 +94,16 @@ export function transformCustomEmojiData(
   segmenter: Intl.Segmenter | null = null,
 ): CustomEmojiData {
   const shortcodeTokens = extractTokens(emoji.shortcode, segmenter);
+  if (!shortcodeTokens.includes(emoji.shortcode)) {
+    shortcodeTokens.unshift(emoji.shortcode);
+  }
   const aliasTokens = (emoji.aliases ?? []).flatMap((alias) =>
     extractTokens(alias, segmenter),
   );
   const tokens = [...new Set([...shortcodeTokens, ...aliasTokens])].sort(
     (a, b) => a.localeCompare(b),
   );
+
   return {
     ...emoji,
     tokens,
@@ -219,7 +223,9 @@ export function extractTokens(
   // Prefer to use Intl.Segmenter if available for better locale support.
   if (segmenter) {
     for (const { isWordLike, segment } of segmenter.segment(
-      input.replaceAll('_', ' '), // Handle underscores from shortcodes.
+      input
+        .replaceAll(/[_-]+/g, ' ') // Handle underscores from shortcodes.
+        .replaceAll(/([a-z])([A-Z])/g, '$1 $2'), // Handle camelCase.
     )) {
       if (isWordLike && segment.length >= EMOJI_MIN_TOKEN_LENGTH) {
         tokens.push(segment.toLowerCase());

@@ -86,7 +86,7 @@ class TranslateButton extends PureComponent {
 }
 
 const mapStateToProps = state => ({
-  languages: state.server.translationLanguages.items,
+  languages: state.server.translationLanguages.item,
   localMfmEnabled: state.getIn(['meta', 'mfm_enabled']) !== false,
   localMfmAnimations: state.getIn(['meta', 'mfm_animations']) !== false,
   localMfmFoldMode: state.getIn(['meta', 'mfm_fold_mode']) ?? 'sensitive',
@@ -209,7 +209,7 @@ class StatusContent extends PureComponent {
 
     const renderReadMore = this.props.onClick && status.get('collapsed');
     const contentLocale = intl.locale.replace(/[_-].*/, '');
-    const targetLanguages = this.props.languages?.get(status.get('language') || 'und');
+    const targetLanguages = this.props.languages?.[status.get('language') || 'und'];
     const renderTranslate = this.props.onTranslate && this.props.identity.signedIn && ['public', 'unlisted'].includes(status.get('visibility')) && status.get('search_index').trim().length > 0 && targetLanguages?.includes(contentLocale);
 
     const content = (statusContent ?? getStatusContent(status)).replace(/(<br\s*\/?>)+[\s\n]*$/, '');

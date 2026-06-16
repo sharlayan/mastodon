@@ -30,22 +30,28 @@ export const renderPinnedStatusHeader: StatusHeaderRenderFn = ({
   );
 
   if (!featured) {
-    return <StatusHeader {...args}>{icons}</StatusHeader>;
+    return <StatusHeader {...args} contentBeforeDate={icons} />;
   }
   return (
-    <StatusHeader {...args} className={classes.pinnedStatusHeader}>
-      <Badge
-        className={classes.pinnedBadge}
-        icon={<Icon id='pinned' icon={IconPinned} />}
-        label={
-          <FormattedMessage
-            id='account.timeline.pinned'
-            defaultMessage='Pinned'
+    <StatusHeader
+      {...args}
+      className={classes.pinnedStatusHeader}
+      contentBeforeDate={
+        <>
+          <Badge
+            className={classes.pinnedBadge}
+            icon={<Icon id='pinned' icon={IconPinned} />}
+            label={
+              <FormattedMessage
+                id='account.timeline.pinned'
+                defaultMessage='Pinned'
+              />
+            }
           />
-        }
-      />
-      {icons}
-    </StatusHeader>
+          {icons}
+        </>
+      }
+    />
   );
 };
 
