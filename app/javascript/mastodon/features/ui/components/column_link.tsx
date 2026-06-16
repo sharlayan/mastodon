@@ -5,6 +5,7 @@ import { useRouteMatch, NavLink, useLocation } from 'react-router-dom';
 
 import { Icon } from 'mastodon/components/icon';
 import type { IconProp } from 'mastodon/components/icon';
+import type { MastodonLocationDescriptor } from 'mastodon/components/router';
 
 export const ColumnLink: React.FC<{
   icon: React.ReactNode;
@@ -13,7 +14,7 @@ export const ColumnLink: React.FC<{
   activeIconComponent?: IconProp;
   isActive?: (match: unknown, location: { pathname: string }) => boolean;
   text: string;
-  to?: string;
+  to?: MastodonLocationDescriptor;
   href?: string;
   method?: string;
   badge?: React.ReactNode;
@@ -34,10 +35,11 @@ export const ColumnLink: React.FC<{
   ...other
 }) => {
   const location = useLocation();
-  const routeMatch = useRouteMatch(to ?? '');
+  const toPath = (typeof to === 'string' ? to : to?.pathname) ?? '';
+  const routeMatch = useRouteMatch(toPath);
   const match =
-    to && (to === '/public' || to === '/public/local')
-      ? location.pathname === to
+    toPath === '/public' || toPath === '/public/local'
+      ? location.pathname === toPath
       : routeMatch;
   const className = classNames('column-link', {
     'column-link--transparent': transparent,
@@ -69,8 +71,8 @@ export const ColumnLink: React.FC<{
   const active = !!match;
 
   const navLinkIsActive = useCallback(() => {
-    return location.pathname === to;
-  }, [location.pathname, to]);
+    return location.pathname === toPath;
+  }, [location.pathname, toPath]);
 
   if (href) {
     return (
@@ -81,7 +83,8 @@ export const ColumnLink: React.FC<{
       </a>
     );
   } else if (to) {
-    const shouldUseCustomIsActive = to === '/public' || to === '/public/local';
+    const shouldUseCustomIsActive =
+      toPath === '/public' || toPath === '/public/local';
     return (
       <NavLink
         to={to}
