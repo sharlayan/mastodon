@@ -19,7 +19,6 @@ import {
   stringToEmojiState,
   tokenizeText,
 } from '@/flavours/glitch/features/emoji/render';
-import type { ExtraCustomEmojiMap } from '@/flavours/glitch/features/emoji/types';
 import { customEmojiSize } from '@/flavours/glitch/initial_state';
 
 import { AnimateEmojiContext, CustomEmojiContext } from './context';
@@ -28,19 +27,14 @@ interface EmojiProps {
   code: string;
   showFallback?: boolean;
   showLoading?: boolean;
-  customEmoji?: ExtraCustomEmojiMap | null;
 }
 
 export const Emoji: FC<EmojiProps> = ({
   code,
   showFallback = true,
   showLoading = true,
-  customEmoji: customEmojiOverride,
 }) => {
-  let customEmoji = useContext(CustomEmojiContext);
-  if (customEmojiOverride) {
-    customEmoji = customEmojiOverride;
-  }
+  const customEmoji = useContext(CustomEmojiContext);
 
   // First, set the emoji state based on the input code.
   const [state, setState] = useState(() =>
