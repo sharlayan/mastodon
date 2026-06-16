@@ -423,7 +423,7 @@ class Status < ApplicationRecord
 
     def reactions_map(status_ids, account_id)
       # TODO: error check
-      StatusReaction.select('status_id').where(status_id: status_ids).where(account_id: account_id).each_with_object({}) { |f, h| h[f.status_id] = true }
+      StatusReaction.select('status_id').where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
     end
 
     def bookmarks_map(status_ids, account_id)
@@ -455,20 +455,6 @@ class Status < ApplicationRecord
         status&.distributable? ? status : nil
       end
     end
-  end
-
-  def marked_local_only?
-    # match both with and without U+FE0F (the emoji variation selector)
-    /(#{all_local_only_emojis.join('|')})\ufe0f?\z/.match?(content)
-  end
-
-  def local_only_emoji
-    '👁'
-  end
-
-  # local only patch
-  def all_local_only_emojis
-    ['🏡'].push(local_only_emoji)
   end
 
   def status_stat
@@ -555,7 +541,7 @@ class Status < ApplicationRecord
     if reblog?
       self.local_only = reblog.local_only
     elsif local_only.nil?
-      self.local_only = marked_local_only?
+      self.local_only = false
     end
   end
 

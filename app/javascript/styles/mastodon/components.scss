@@ -2503,7 +2503,7 @@ a.account__display-name {
   }
 
   strong,
-  span {
+  span:not(.emojione) {
     display: block;
     text-overflow: ellipsis;
     overflow: hidden;
