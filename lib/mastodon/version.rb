@@ -51,7 +51,7 @@ module Mastodon
     end
 
     def repository
-      source_configuration[:repository] || "sharlayan/mastodon/src/branch/#{current_git_branch}"
+      source_configuration[:repository] || "sharlayan/mastodon/tree/#{current_git_branch}"
     end
 
     def source_base_url
