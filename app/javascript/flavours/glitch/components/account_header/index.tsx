@@ -8,8 +8,8 @@ import { Helmet } from '@unhead/react/helmet';
 
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { EmojiInfoTooltip } from '@/flavours/glitch/components/emoji_info_tooltip';
-import FollowRequestNoteContainer from '@/flavours/glitch/features/account/containers/follow_request_note_container';
 import { useLayout } from '@/flavours/glitch/hooks/useLayout';
+import { useRelationship } from '@/flavours/glitch/hooks/useRelationship';
 import { useVisibility } from '@/flavours/glitch/hooks/useVisibility';
 import {
   autoPlayGif,
@@ -25,10 +25,9 @@ import { Avatar } from '../avatar';
 import { AnimateEmojiProvider } from '../emoji/context';
 import { FamiliarFollowers } from '../familiar_followers';
 
+import { AccountBanners } from './banners';
 import { AccountButtons } from './buttons';
 import { AccountHeaderFields } from './fields';
-import { MemorialNote } from './memorial_note';
-import { MovedNote } from './moved_note';
 import { AccountName } from './name';
 import { AccountNote } from './note';
 import { AccountNumberFields } from './number_fields';
@@ -66,10 +65,8 @@ export const AccountHeader: React.FC<{
 
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
-  const relationship = useAppSelector((state) =>
-    state.relationships.get(accountId),
-  );
   const hidden = useAppSelector((state) => getAccountHidden(state, accountId));
+  const relationship = useRelationship(accountId);
 
   const handleOpenAvatar = useCallback(
     (e: React.MouseEvent) => {
@@ -112,19 +109,12 @@ export const AccountHeader: React.FC<{
   const isMe = me && account.id === me;
 
   return (
-    <div className='account-timeline__header' ref={setContainerElement}>
-      {!hidden && account.memorial && <MemorialNote />}
-      {!hidden && account.moved && (
-        <MovedNote accountId={account.id} targetAccountId={account.moved} />
-      )}
+    <div ref={setContainerElement}>
+      <AccountBanners account={account} />
 
       <AnimateEmojiProvider
         className={classNames(!!account.moved && classes.moved)}
       >
-        {!suspendedOrHidden && !account.moved && relationship?.requested_by && (
-          <FollowRequestNoteContainer account={account} />
-        )}
-
         <div className={classes.header}>
           {!suspendedOrHidden && (
             <img

@@ -7,7 +7,6 @@ import classNames from 'classnames';
 import { Helmet } from '@unhead/react/helmet';
 
 import { openModal } from '@/mastodon/actions/modal';
-import FollowRequestNoteContainer from '@/mastodon/features/account/containers/follow_request_note_container';
 import { useLayout } from '@/mastodon/hooks/useLayout';
 import { useVisibility } from '@/mastodon/hooks/useVisibility';
 import {
@@ -24,10 +23,9 @@ import { Avatar } from '../avatar';
 import { AnimateEmojiProvider } from '../emoji/context';
 import { FamiliarFollowers } from '../familiar_followers';
 
+import { AccountBanners } from './banners';
 import { AccountButtons } from './buttons';
 import { AccountHeaderFields } from './fields';
-import { MemorialNote } from './memorial_note';
-import { MovedNote } from './moved_note';
 import { AccountName } from './name';
 import { AccountNote } from './note';
 import { AccountNumberFields } from './number_fields';
@@ -61,9 +59,6 @@ export const AccountHeader: React.FC<{
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
-  const relationship = useAppSelector((state) =>
-    state.relationships.get(accountId),
-  );
   const hidden = useAppSelector((state) => getAccountHidden(state, accountId));
 
   const handleOpenAvatar = useCallback(
@@ -108,18 +103,11 @@ export const AccountHeader: React.FC<{
 
   return (
     <div>
-      {!hidden && account.memorial && <MemorialNote />}
-      {!hidden && account.moved && (
-        <MovedNote accountId={account.id} targetAccountId={account.moved} />
-      )}
+      <AccountBanners account={account} />
 
       <AnimateEmojiProvider
         className={classNames(!!account.moved && classes.moved)}
       >
-        {!suspendedOrHidden && !account.moved && relationship?.requested_by && (
-          <FollowRequestNoteContainer account={account} />
-        )}
-
         <div className={classes.header}>
           {!suspendedOrHidden && (
             <img
