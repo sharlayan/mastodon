@@ -69,7 +69,6 @@
   "federation.local_only.long": "Prevent this post from reaching other servers",
   "federation.local_only.short": "Local-only",
   "firehose.column_settings.allow_local_only": "Show local-only posts in \"All\"",
-  "footer.commitgraph": "Commit Graph",
   "home.column_settings.advanced": "Advanced",
   "home.column_settings.filter_regex": "Filter out by regular expressions",
   "home.column_settings.show_direct": "Show private mentions",

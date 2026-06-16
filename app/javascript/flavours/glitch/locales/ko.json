@@ -73,7 +73,6 @@
   "federation.local_only.long": "이 게시물이 다른 서버에 전달되는 것을 막기",
   "federation.local_only.short": "로컬 전용",
   "firehose.column_settings.allow_local_only": "\"모두\" 탭에서 로컬 전용 글 보여주기",
-  "footer.commitgraph": "커밋 그래프",
   "home.column_settings.advanced": "고급",
   "home.column_settings.filter_regex": "정규표현식으로 필터",
   "home.column_settings.show_direct": "DM 보여주기",

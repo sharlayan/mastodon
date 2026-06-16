@@ -114,18 +114,6 @@ export const LinkFooter: React.FC<{
               />
             </a>
           </li>
-          <li>
-            <a
-              href='https://git.drk.st/sharlayan/mastodon/graph'
-              rel='noopener noreferrer'
-              target='_blank'
-            >
-              <FormattedMessage
-                id='footer.commitgraph'
-                defaultMessage='Commit Graph'
-              />
-            </a>
-          </li>
           <li className={classes.version}>v{version}</li>
         </ul>
       </section>
