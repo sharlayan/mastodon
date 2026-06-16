@@ -1,6 +1,5 @@
 import { Provider } from 'react-redux';
 
-import { fetchCustomEmojis } from 'flavours/glitch/actions/custom_emojis';
 import { fetchFavoriteEmojis } from 'flavours/glitch/actions/favorite_emojis';
 import { fetchServer } from 'flavours/glitch/actions/server';
 import { hydrateStore } from 'flavours/glitch/actions/store';
@@ -15,7 +14,6 @@ if (initialState) {
 }
 
 if (initialState && initialState.meta && initialState.meta.me) {
-  store.dispatch(fetchCustomEmojis());
   store.dispatch(fetchFavoriteEmojis());
 }
 store.dispatch(fetchServer());

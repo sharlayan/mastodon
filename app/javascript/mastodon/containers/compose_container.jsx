@@ -1,6 +1,5 @@
 import { Provider } from 'react-redux';
 
-import { fetchCustomEmojis } from 'mastodon/actions/custom_emojis';
 import { fetchFavoriteEmojis } from 'mastodon/actions/favorite_emojis';
 import { fetchServer } from 'mastodon/actions/server';
 import { hydrateStore } from 'mastodon/actions/store';
@@ -15,7 +14,6 @@ if (initialState) {
 }
 
 if (initialState && initialState.meta && initialState.meta.me) {
-  store.dispatch(fetchCustomEmojis());
   store.dispatch(fetchFavoriteEmojis());
 }
 store.dispatch(fetchServer());

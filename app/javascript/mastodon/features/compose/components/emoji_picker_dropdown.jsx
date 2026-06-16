@@ -3,9 +3,9 @@ import { PureComponent } from 'react';
 
 import { defineMessages, FormattedMessage } from 'react-intl';
 
-import classNames from 'classnames';
-
 import ImmutablePropTypes from 'react-immutable-proptypes';
+
+import classNames from 'classnames';
 
 import { supportsPassiveEvents } from 'detect-passive-events';
 import Overlay from 'react-overlays/Overlay';
@@ -14,7 +14,6 @@ import MoodIcon from '@/material-icons/400-20px/mood.svg?react';
 import { IconButton } from 'mastodon/components/icon_button';
 import { injectIntl } from '@/mastodon/components/intl';
 
-import { buildCustomEmojis, categoriesFromEmojis } from '../../emoji/emoji';
 import { EmojiPicker as EmojiPickerAsync } from '../../ui/util/async-components';
 
 const messages = defineMessages({
@@ -160,7 +159,6 @@ class ModifierPicker extends PureComponent {
 class EmojiPickerMenuImpl extends PureComponent {
 
   static propTypes = {
-    custom_emojis: ImmutablePropTypes.list,
     favorite_emojis: ImmutablePropTypes.list,
     frequentlyUsedEmojis: PropTypes.arrayOf(PropTypes.string),
     loading: PropTypes.bool,
@@ -263,7 +261,7 @@ class EmojiPickerMenuImpl extends PureComponent {
   };
 
   render() {
-    const { loading, style, intl, custom_emojis, favorite_emojis, skinTone, frequentlyUsedEmojis, onAddFavorite, onRemoveFavorite } = this.props;
+    const { loading, style, intl, favorite_emojis, skinTone, frequentlyUsedEmojis, onAddFavorite, onRemoveFavorite } = this.props;
 
     if (loading) {
       return <div style={{ width: 299 }} />;
@@ -273,36 +271,16 @@ class EmojiPickerMenuImpl extends PureComponent {
 
     const { modifierOpen } = this.state;
 
-    const categoriesSort = [
-      'recent',
-      'people',
-      'nature',
-      'foods',
-      'activity',
-      'places',
-      'objects',
-      'symbols',
-      'flags',
-    ];
-
-    categoriesSort.splice(1, 0, ...Array.from(categoriesFromEmojis(custom_emojis)).sort());
-
-    if (favorite_emojis && favorite_emojis.size > 0) {
-      categoriesSort.unshift('favorites');
-    }
-
     return (
       <div className={classNames('emoji-picker-dropdown__menu', { selecting: modifierOpen })} style={style} ref={this.setRef}>
         <EmojiPicker
           perLine={8}
           emojiSize={22}
-          custom={buildCustomEmojis(custom_emojis)}
           color=''
           emoji=''
           title={title}
           i18n={this.getI18n()}
           onClick={this.handleClick}
-          include={categoriesSort}
           recent={frequentlyUsedEmojis}
           skin={skinTone}
           showPreview={false}
@@ -334,9 +312,7 @@ class EmojiPickerMenuImpl extends PureComponent {
 const EmojiPickerMenu = injectIntl(EmojiPickerMenuImpl);
 
 class EmojiPickerDropdown extends PureComponent {
-
   static propTypes = {
-    custom_emojis: ImmutablePropTypes.list,
     favorite_emojis: ImmutablePropTypes.list,
     frequentlyUsedEmojis: PropTypes.arrayOf(PropTypes.string),
     intl: PropTypes.object.isRequired,
@@ -368,7 +344,9 @@ class EmojiPickerDropdown extends PureComponent {
         EmojiPicker = EmojiMart.Picker;
         Emoji = EmojiMart.Emoji;
 
-        this.setState({ loading: false });
+        void EmojiMart.loadCustomEmojiData().then(() => {
+          this.setState({ loading: false });
+        });
       }).catch(() => {
         this.setState({ loading: false, active: false });
       });
@@ -430,7 +408,6 @@ class EmojiPickerDropdown extends PureComponent {
             <div {...props} style={{ ...props.style }}>
               <div className={`dropdown-animation ${placement}`}>
                 <EmojiPickerMenu
-                  custom_emojis={this.props.custom_emojis}
                   favorite_emojis={this.props.favorite_emojis}
                   loading={loading}
                   onClose={this.onHideDropdown}

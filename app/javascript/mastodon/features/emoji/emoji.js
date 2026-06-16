@@ -169,32 +169,3 @@ const emojify = (str, customEmojis = {}) => {
 };
 
 export default emojify;
-
-export const buildCustomEmojis = (customEmojis) => {
-  const emojis = [];
-
-  customEmojis.forEach(emoji => {
-    const shortcode = emoji.get('shortcode');
-    const url       = autoPlayGif ? emoji.get('url') : emoji.get('static_url');
-    const name      = shortcode.replace(':', '');
-
-    const aliases = emoji.get('aliases');
-    const aliasKeywords = aliases ? aliases.toJS() : [];
-
-    emojis.push({
-      id: name,
-      name,
-      short_names: [name],
-      text: '',
-      emoticons: [],
-      keywords: [name, ...aliasKeywords],
-      imageUrl: url,
-      custom: true,
-      customCategory: emoji.get('category'),
-    });
-  });
-
-  return emojis;
-};
-
-export const categoriesFromEmojis = customEmojis => customEmojis.reduce((set, emoji) => set.add(emoji.get('category') ? `custom-${emoji.get('category')}` : 'custom'), new Set(['custom']));

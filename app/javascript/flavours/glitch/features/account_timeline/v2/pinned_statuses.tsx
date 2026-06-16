@@ -20,8 +20,8 @@ import { selectTimelineByKey } from '@/flavours/glitch/selectors/timelines';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import IconPinned from '@/images/icons/icon_pinned.svg?react';
 
-import { useAccountContext } from './context';
-import classes from './styles.module.scss';
+import { useAccountContext } from '../hooks/useAccountContext';
+import classes from '../styles.module.scss';
 
 export function usePinnedStatusIds({
   accountId,
