@@ -10,6 +10,7 @@ import { checkDeprecatedLocalSettings } from 'flavours/glitch/actions/local_sett
 import { hydrateStore } from 'flavours/glitch/actions/store';
 import { connectUserStream } from 'flavours/glitch/actions/streaming';
 import ErrorBoundary from 'flavours/glitch/components/error_boundary';
+import { FocusTargetProvider } from '@/flavours/glitch/components/navigation_focus_target';
 import { Router } from 'flavours/glitch/components/router';
 import UI from 'flavours/glitch/features/ui';
 import { LinkedNotificationsPoller } from 'flavours/glitch/features/ui/components/linked_notifications_poller';
@@ -59,7 +60,9 @@ export default class Mastodon extends PureComponent {
             <ErrorBoundary>
               <Router>
                 <ScrollContext>
-                  <Route path='/' component={UI} />
+                  <FocusTargetProvider>
+                    <Route path='/' component={UI} />
+                  </FocusTargetProvider>
                 </ScrollContext>
                 <BodyScrollLock />
               </Router>
