@@ -86,7 +86,7 @@ class TranslateButton extends PureComponent {
 }
 
 const mapStateToProps = state => ({
-  languages: state.getIn(['server', 'translationLanguages', 'items']),
+  languages: state.server.translationLanguages.items,
   localMfmEnabled: state.getIn(['meta', 'mfm_enabled']) !== false,
   localMfmAnimations: state.getIn(['meta', 'mfm_animations']) !== false,
   localMfmFoldMode: state.getIn(['meta', 'mfm_fold_mode']) ?? 'sensitive',
@@ -192,7 +192,7 @@ class StatusContent extends PureComponent {
           text={element.innerText}
           hashtagAccountId={this.props.status.getIn(['account', 'id'])}
           mention={mention?.toJSON()}
-          collection={taggedCollection?.toJSON()}
+          collectionId={taggedCollection?.get('id')}
           key={key}
         >
           {children}
