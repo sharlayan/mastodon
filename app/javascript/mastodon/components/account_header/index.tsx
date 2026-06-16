@@ -9,6 +9,7 @@ import escapeTextContentForBrowser from 'escape-html';
 
 import { openModal } from '@/mastodon/actions/modal';
 import { useLayout } from '@/mastodon/hooks/useLayout';
+import { useRelationship } from '@/mastodon/hooks/useRelationship';
 import { useVisibility } from '@/mastodon/hooks/useVisibility';
 import {
   autoPlayGif,
@@ -62,6 +63,7 @@ export const AccountHeader: React.FC<{
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
   const hidden = useAppSelector((state) => getAccountHidden(state, accountId));
+  const relationship = useRelationship(accountId);
 
   const handleOpenAvatar = useCallback(
     (e: React.MouseEvent) => {

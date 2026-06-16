@@ -5,6 +5,7 @@ class Api::V1::Statuses::ContextsController < Api::BaseController
   include AsyncRefreshesConcern
 
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }
+  before_action :require_user!, if: -> { Setting.local_status_page_access != 'public' }
   before_action :set_status
 
   # This API was originally unlimited, pagination cannot be introduced without

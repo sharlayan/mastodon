@@ -54,8 +54,7 @@ export const Emoji: FC<EmojiProps> = ({
   const { mode } = useEmojiAppState();
   return (
     <EmojiRaw
-      // eslint-disable-next-line @typescript-eslint/no-deprecated -- In React props are frozen, but the library we use is old so doesn't respect that.
-      {...(EmojiRaw.defaultProps ?? {})}
+      {...EmojiRaw.defaultProps}
       data={EmojiData}
       set={set}
       sheetSize={sheetSize}

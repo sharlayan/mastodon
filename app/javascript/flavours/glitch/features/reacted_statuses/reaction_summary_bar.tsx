@@ -4,7 +4,8 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
-import { unicodeMapping } from 'flavours/glitch/features/emoji/emoji_unicode_mapping_light';
+import { unicodeHexToUrl } from 'flavours/glitch/features/emoji/normalize';
+import { emojiToUnicodeHex } from 'flavours/glitch/features/emoji/utils';
 import { autoPlayGif } from 'flavours/glitch/initial_state';
 import { assetHost } from 'flavours/glitch/utils/config';
 
@@ -102,16 +103,18 @@ const ReactionSummaryItem: React.FC<{
       );
     }
 
-    const mapping = unicodeMapping[entry.name];
-    if (mapping) {
-      const { filename, shortCode } = mapping;
+    if (!entry.url) {
+      const src = unicodeHexToUrl({
+        unicodeHex: emojiToUnicodeHex(entry.name),
+        assetHost,
+      });
       return (
         <img
           draggable={false}
           className='emojione'
           alt={entry.name}
-          title={`:${shortCode}:`}
-          src={`${assetHost}/emoji/${filename}.svg`}
+          title={`:${entry.name}:`}
+          src={src}
         />
       );
     }

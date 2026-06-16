@@ -5,7 +5,8 @@ import classNames from 'classnames';
 
 import type { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
-import { unicodeMapping } from '../features/emoji/emoji_unicode_mapping_light';
+import { unicodeHexToUrl } from '../features/emoji/normalize';
+import { emojiToUnicodeHex } from '../features/emoji/utils';
 import { autoPlayGif, reactionCustomEmojiSize } from '../initial_state';
 import { assetHost } from '../utils/config';
 
@@ -29,35 +30,32 @@ interface StatusReactionsProps {
   canReact: boolean;
 }
 
+function unicodeEmojiUrl(emoji: string): string {
+  return unicodeHexToUrl({ unicodeHex: emojiToUnicodeHex(emoji), assetHost });
+}
+
 const Emoji: FC<{
   emoji: string;
   hovered: boolean;
   url?: string;
   staticUrl?: string;
 }> = ({ emoji, hovered, url, staticUrl }) => {
-  if (unicodeMapping[emoji]) {
-    const { filename } = unicodeMapping[emoji];
-
+  if (!url) {
     return (
       <img
         draggable='false'
         className='emojione'
         alt={emoji}
-        src={`${assetHost}/emoji/${filename}.svg`}
+        src={unicodeEmojiUrl(emoji)}
       />
     );
   } else {
-    const filename = autoPlayGif || hovered ? url : staticUrl;
+    const src = autoPlayGif || hovered ? url : staticUrl;
     const shortCode = `:${emoji}:`;
     const classes = `emojione custom-emoji${reactionCustomEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`;
 
     return (
-      <img
-        draggable='false'
-        className={classes}
-        alt={shortCode}
-        src={filename}
-      />
+      <img draggable='false' className={classes} alt={shortCode} src={src} />
     );
   }
 };
@@ -106,10 +104,7 @@ const Reaction: FC<{
     hasValidUsers = validUsers.size > 0;
   }
 
-  const mapped = unicodeMapping[name];
-  const shortCode = mapped ? mapped.shortCode : name;
-  const title = `:${shortCode}:`;
-
+  const title = `:${name}:`;
   const emojiClasses = `reactions-bar__item__users__emoji${reactionCustomEmojiSize ? ' horizontal-origin' : ''}`;
 
   return (
@@ -149,7 +144,7 @@ const Reaction: FC<{
               ? autoPlayGif || hovered
                 ? url
                 : (staticUrl ?? url)
-              : `${assetHost}/emoji/${unicodeMapping[name]?.filename}.svg`
+              : unicodeEmojiUrl(name)
           }
           shortCode={title}
           placement='bottom'
@@ -213,4 +208,4 @@ const StatusReactions: FC<StatusReactionsProps> = ({
   );
 };
 
-export default StatusReactions;
+export { StatusReactions };

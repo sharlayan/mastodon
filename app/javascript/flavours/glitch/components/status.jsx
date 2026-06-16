@@ -28,7 +28,7 @@ import { StatusHeader } from './status/header'
 import { getHashtagBarForStatus } from './hashtag_bar';
 import { MentionsPlaceholder } from './mentions_placeholder';
 import StatusActionBar from './status_action_bar';
-import StatusReactions from './status_reactions';
+import { StatusReactions } from './status_reactions';
 import StatusContent from './status_content';
 import StatusIcons from './status_icons';
 import StatusPrepend from './status_prepend';
