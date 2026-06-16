@@ -62,6 +62,7 @@ class Form::AdminSettings
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view
     avatar_decorations_max_count
+    email_footer_text
   ).freeze
 
   INTEGER_KEYS = %i(

@@ -33,6 +33,7 @@ import StatusContent from './status_content';
 import StatusIcons from './status_icons';
 import StatusPrepend from './status_prepend';
 import { CollectionPreviewCard } from '../features/collections/components/collection_preview_card';
+import { compareUrls } from '../utils/compare_urls';
 
 import InstanceBadge from './instance_badge';
 
@@ -662,7 +663,7 @@ class Status extends ImmutablePureComponent {
         status.get('tagged_collections')
       ).find((item) => compareUrls(item.get('url'), cardUrl));
       if (taggedCollection) {
-        media.push(<CollectionPreviewCard collection={taggedCollection} />);
+        media.push(<CollectionPreviewCard collection={taggedCollection.toJS()} />);
       } else {
         media.push(
           <Card

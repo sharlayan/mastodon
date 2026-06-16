@@ -3,7 +3,8 @@ import { useCallback, useState } from 'react';
 import { useIntl, defineMessages } from 'react-intl';
 
 import classNames from 'classnames';
-import { Helmet } from 'react-helmet';
+
+import { Helmet } from '@unhead/react/helmet';
 
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { EmojiInfoTooltip } from '@/flavours/glitch/components/emoji_info_tooltip';
@@ -118,15 +119,13 @@ export const AccountHeader: React.FC<{
       )}
 
       <AnimateEmojiProvider
-        className={classNames('account__header', {
-          inactive: !!account.moved,
-        })}
+        className={classNames(!!account.moved && classes.moved)}
       >
         {!suspendedOrHidden && !account.moved && relationship?.requested_by && (
           <FollowRequestNoteContainer account={account} />
         )}
 
-        <div className={classNames('account__header__image', classes.header)}>
+        <div className={classes.header}>
           {!suspendedOrHidden && (
             <img
               src={autoPlayGif ? account.header : account.header_static}
@@ -136,21 +135,16 @@ export const AccountHeader: React.FC<{
           )}
         </div>
 
-        <div className={classNames('account__header__bar', classes.barWrapper)}>
-          <div
-            className={classNames(
-              'account__header__tabs',
-              classes.avatarWrapper,
-            )}
-          >
+        <div className={classes.barWrapper}>
+          <div className={classes.avatarWrapper}>
             <a
-              className='avatar'
               href={account.avatar}
               rel='noopener'
               target='_blank'
               onClick={handleOpenAvatar}
             >
               <Avatar
+                className={classes.avatar}
                 account={suspendedOrHidden ? undefined : account}
                 alt={account.avatar_description}
                 size={80}
@@ -158,12 +152,7 @@ export const AccountHeader: React.FC<{
             </a>
           </div>
 
-          <div
-            className={classNames(
-              'account__header__tabs__name',
-              classes.displayNameWrapper,
-            )}
-          >
+          <div className={classes.displayNameWrapper}>
             <AccountName accountId={accountId} />
             <AccountButtons
               accountId={accountId}
@@ -183,32 +172,25 @@ export const AccountHeader: React.FC<{
           )}
 
           {!suspendedOrHidden && (
-            <div className='account__header__extra'>
-              <div className='account__header__bio'>
-                {me && account.id !== me && (
-                  <AccountNote accountId={accountId} />
-                )}
+            <div className={classes.bioButtonsWrapper}>
+              {me && account.id !== me && <AccountNote accountId={accountId} />}
 
-                <AccountBio
-                  showDropdown
-                  accountId={accountId}
-                  className={classNames(
-                    'account__header__content',
-                    classes.bio,
-                  )}
-                />
+              <AccountBio
+                showDropdown
+                accountId={accountId}
+                className={classes.bio}
+              />
 
-                <AccountHeaderFields accountId={accountId} />
+              <AccountHeaderFields accountId={accountId} />
 
-                {account.followed_message && relationship?.following && (
-                  <div className='account__header__follow-message'>
-                    <span className='account__header__follow-message__label'>
-                      {intl.formatMessage(messages.followMessage)}
-                    </span>
-                    <p>{account.followed_message}</p>
-                  </div>
-                )}
-              </div>
+              {account.followed_message && relationship?.following && (
+                <div className='account__header__follow-message'>
+                  <span className='account__header__follow-message__label'>
+                    {intl.formatMessage(messages.followMessage)}
+                  </span>
+                  <p>{account.followed_message}</p>
+                </div>
+              )}
 
               {!me && account.email_subscriptions && (
                 <AccountSubscriptionForm accountId={accountId} />
