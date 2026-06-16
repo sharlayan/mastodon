@@ -150,7 +150,7 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.show_featured           = @json['showFeatured'] if @json.key?('showFeatured')
     @account.show_media              = @json['showMedia'] if @json.key?('showMedia')
     @account.show_media_replies      = @json['showRepliesInMedia'] if @json.key?('showRepliesInMedia')
-    @account.attribution_domains     = as_array(@json['attributionDomains'] || []).take(Account::ATTRIBUTION_DOMAINS_HARD_LIMIT).map { |item| value_or_id(item) }
+    @account.attribution_domains     = as_array(@json['attributionDomains'] || []).take(Account::ATTRIBUTION_DOMAINS_HARD_LIMIT).grep(String)
     @account.followed_message        = (@json['_misskey_followedMessage'] || @json['followedMessage'] || '')[0...256].presence
     process_avatar_decorations! if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
   end
