@@ -1,5 +1,25 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: avatar_decorations
+#
+#  id                 :bigint(8)        not null, primary key
+#  approved           :boolean          default(FALSE), not null
+#  description        :text             default("")
+#  host               :string
+#  image_content_type :string
+#  image_file_name    :string
+#  image_file_size    :integer
+#  image_remote_url   :string
+#  image_updated_at   :datetime
+#  name               :string           default(""), not null
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
+#  category_id        :bigint(8)
+#  remote_id          :string
+#  required_role_id   :bigint(8)
+#
 class AvatarDecoration < ApplicationRecord
   include Attachmentable
   include Remotable

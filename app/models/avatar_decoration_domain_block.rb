@@ -1,5 +1,14 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: avatar_decoration_domain_blocks
+#
+#  id         :bigint(8)        not null, primary key
+#  domain     :string           not null
+#  created_at :datetime         not null
+#  updated_at :datetime         not null
+#
 class AvatarDecorationDomainBlock < ApplicationRecord
   include DomainNormalizable
 

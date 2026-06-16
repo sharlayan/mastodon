@@ -5,6 +5,7 @@
 # Table name: custom_emojis
 #
 #  id                           :bigint(8)        not null, primary key
+#  aliases                      :text             default([]), not null, is an Array
 #  disabled                     :boolean          default(FALSE), not null
 #  domain                       :string
 #  image_content_type           :string
@@ -13,11 +14,10 @@
 #  image_remote_url             :string
 #  image_storage_schema_version :integer
 #  image_updated_at             :datetime
+#  license                      :text
 #  shortcode                    :string           default(""), not null
 #  uri                          :string
 #  visible_in_picker            :boolean          default(TRUE), not null
-#  aliases                      :text             default([]), not null, is an Array
-#  license                      :text
 #  created_at                   :datetime         not null
 #  updated_at                   :datetime         not null
 #  category_id                  :bigint(8)

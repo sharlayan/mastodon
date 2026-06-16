@@ -457,6 +457,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_150940) do
     t.text "description"
     t.text "description_html"
     t.boolean "discoverable", null: false
+    t.integer "item_count", default: 0, null: false
     t.string "language"
     t.boolean "local", null: false
     t.string "name", null: false
@@ -727,6 +728,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_150940) do
     t.datetime "created_at", null: false
     t.jsonb "data", null: false
     t.integer "schema_version", null: false
+    t.string "share_key"
     t.datetime "updated_at", null: false
     t.datetime "viewed_at"
     t.integer "year", null: false
@@ -750,6 +752,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_11_150940) do
     t.string "instance_name"
     t.datetime "metadata_updated_at"
     t.string "software"
+    t.boolean "supports_avatar_decorations", default: false, null: false
     t.string "theme_color"
     t.datetime "theme_color_updated_at"
     t.datetime "updated_at", null: false

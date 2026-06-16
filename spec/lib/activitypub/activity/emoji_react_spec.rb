@@ -21,13 +21,21 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
     }.with_indifferent_access
   end
 
+  let(:custom_emoji_icon_url) { 'https://example.com/emoji.png' }
+
   let(:json_custom_emoji) do
     {
       '@context': 'https://www.w3.org/ns/activitystreams',
       id: 'foo',
       type: 'EmojiReact',
       content: ":#{custom_emoji.shortcode}:",
-      tag: ['Emoji', custom_emoji],
+      tag: [
+        {
+          type: 'Emoji',
+          name: ":#{custom_emoji.shortcode}:",
+          icon: { type: 'Image', url: custom_emoji_icon_url },
+        },
+      ],
       actor: ActivityPub::TagManager.instance.uri_for(sender),
       object: ActivityPub::TagManager.instance.uri_for(status),
     }.with_indifferent_access
@@ -39,10 +47,21 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
       id: 'foo',
       type: 'EmojiReact',
       content: ":#{remote_custom_emoji.shortcode}:",
-      tag: ['Emoji', remote_custom_emoji],
+      tag: [
+        {
+          type: 'Emoji',
+          name: ":#{remote_custom_emoji.shortcode}:",
+          icon: { type: 'Image', url: custom_emoji_icon_url },
+        },
+      ],
       actor: ActivityPub::TagManager.instance.uri_for(sender),
       object: ActivityPub::TagManager.instance.uri_for(status),
     }.with_indifferent_access
+  end
+
+  before do
+    stub_request(:get, custom_emoji_icon_url)
+      .to_return(status: 200, body: Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').read, headers: { 'Content-Type' => 'image/png' })
   end
 
   describe '#perform' do
@@ -66,7 +85,7 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
       end
 
       it 'creates a reaction from sender to status' do
-        expect(sender.reacted?(status, custom_emoji.shortcode)).to be true
+        expect(sender.reacted?(status, custom_emoji.shortcode, custom_emoji)).to be true
       end
     end
 
@@ -78,7 +97,7 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
       end
 
       it 'creates a reaction from sender to status' do
-        expect(remote_sender.reacted?(status, remote_custom_emoji.shortcode)).to be true
+        expect(remote_sender.reacted?(status, remote_custom_emoji.shortcode, remote_custom_emoji)).to be true
       end
     end
   end

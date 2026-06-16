@@ -4,14 +4,17 @@
 #
 # Table name: instance_metadata
 #
-#  domain                    :string
-#  software                  :string
-#  version                   :string
-#  instance_name             :string
-#  theme_color               :string
-#  theme_color_updated_at    :datetime
-#  favicon_url               :string
-#  metadata_updated_at       :datetime
+#  id                     :bigint(8)        not null, primary key
+#  domain                 :string           not null
+#  favicon_url            :string
+#  instance_name          :string
+#  metadata_updated_at    :datetime
+#  software               :string
+#  theme_color            :string
+#  theme_color_updated_at :datetime
+#  version                :string
+#  created_at             :datetime         not null
+#  updated_at             :datetime         not null
 #
 
 class InstanceMetadata < ApplicationRecord
@@ -52,7 +55,7 @@ class InstanceMetadata < ApplicationRecord
   end
 
   def favicon_url_with_fallback
-    favicon_url.presence
+    favicon_url.presence || "https://#{domain}/favicon.ico"
   end
 
   def instance_name_with_fallback

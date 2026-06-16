@@ -65,34 +65,18 @@ RSpec.describe InstancePresenter do
   end
 
   describe '#source_url' do
-    context 'with the GITHUB_REPOSITORY env variable set' do
-      around do |example|
-        ClimateControl.modify GITHUB_REPOSITORY: 'other/repo' do
-          reload_configuration
-          example.run
-        end
-      end
-
-      it 'uses the env variable to build a repo URL' do
-        expect(instance_presenter.source_url).to eq('https://github.com/other/repo')
-      end
+    # This fork pins the source URL to its own repository via the mastodon
+    # configuration (Mastodon::Version.source_url), independent of the
+    # GITHUB_REPOSITORY env variable used by upstream glitch-soc.
+    it 'returns the configured fork repository URL' do
+      expect(instance_presenter.source_url).to eq(Mastodon::Version.source_url)
     end
 
-    context 'without the GITHUB_REPOSITORY env variable set' do
-      around do |example|
-        ClimateControl.modify GITHUB_REPOSITORY: nil do
-          reload_configuration
-          example.run
-        end
+    it 'ignores the GITHUB_REPOSITORY env variable' do
+      ClimateControl.modify GITHUB_REPOSITORY: 'other/repo' do
+        Rails.configuration.x.mastodon = Rails.application.config_for(:mastodon)
+        expect(instance_presenter.source_url).to_not include('other/repo')
       end
-
-      it 'defaults to the core glitch-soc repo URL' do
-        expect(instance_presenter.source_url).to eq('https://github.com/glitch-soc/mastodon')
-      end
-    end
-
-    def reload_configuration
-      Rails.configuration.x.mastodon = Rails.application.config_for(:mastodon)
     end
   end
 

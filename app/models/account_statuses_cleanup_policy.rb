@@ -12,6 +12,7 @@
 #  keep_polls         :boolean          default(FALSE), not null
 #  keep_self_bookmark :boolean          default(TRUE), not null
 #  keep_self_fav      :boolean          default(TRUE), not null
+#  keep_self_reaction :boolean          default(TRUE), not null
 #  min_favs           :integer
 #  min_reactions      :integer
 #  min_reblogs        :integer

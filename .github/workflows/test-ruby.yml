@@ -62,6 +62,12 @@ jobs:
         run: |-
           bin/rails assets:precompile
 
+      - name: Link test service worker artifacts
+        if: matrix.mode == 'test'
+        run: |
+          rm -rf public/packs
+          ln -s packs-test public/packs
+
       - name: Archive asset artifacts
         run: |
           tar --exclude={"*.br","*.gz"} -zcf artifacts.tar.gz public/assets public/packs* tmp/cache/vite/last-build*.json

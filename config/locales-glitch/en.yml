@@ -10,17 +10,20 @@ en:
         title: Require new users to solve a CAPTCHA to confirm their account
       flavour_and_skin:
         title: Flavour and skin
+      force_local_only:
+        desc_html: When this setting is enabled, all posts from users on this server will be forcibly published as local-only. (for closed original character community)
+        title: Force local-only
       hide_followers_count:
         desc_html: Do not show followers count on user profiles
         title: Hide followers count
       mfm:
         title: MFM (Markup language For Misskey)
-      mfm_enabled:
-        desc_html: Render MFM-formatted content from Misskey and compatible servers with animations and styles
-        title: Enable MFM rendering
       mfm_allow_composition:
         desc_html: Allow users on this server to compose posts in MFM format. If disabled, MFM from remote servers will still be rendered.
         title: Allow MFM post composition
+      mfm_enabled:
+        desc_html: Render MFM-formatted content from Misskey and compatible servers with animations and styles
+        title: Enable MFM rendering
       other:
         preamble: Various glitch-soc settings not fitting in other categories.
         title: Other
@@ -36,18 +39,21 @@ en:
       trending_status_cw:
         desc_html: When trending posts are enabled, allow posts with Content Warnings to be eligible. Changes to this setting are not retroactive.
         title: Allow posts with Content Warnings to trend
-      force_local_only:
-        desc_html: When this setting is enabled, all posts from users on this server will be forcibly published as local-only. (for closed original character community)
-        title: Force local-only
   appearance:
     localization:
       glitch_guide_link: https://crowdin.com/project/glitch-soc
       glitch_guide_link_text: And likewise for glitch-soc!
+  applications:
+    invalid_regexp: 'Invalid regular expression: %{message}'
   auth:
     captcha_confirmation:
       hint_html: Just one more step! To confirm your account, this server requires you to solve a CAPTCHA. You can <a href="/about/more">contact the server administrator</a> if you have questions or need assistance with confirming your account.
       title: User verification
+  edit_profile:
+    basic_information: Basic information
+    hint_html: "<strong>Customize what people see on your public profile and next to your posts.</strong> Other people are more likely to follow you back and interact with you when you have a filled out profile and a profile picture."
   generic:
+    edit: Edit
     use_this: Use this
   settings:
     flavours: Flavours

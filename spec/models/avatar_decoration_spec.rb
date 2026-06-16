@@ -3,6 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe AvatarDecoration do
+  # Remote decorations are cached locally: assigning image_remote_url downloads
+  # the image, so stub those fetches with a valid PNG.
+  before do
+    stub_request(:get, %r{\Ahttps://(example\.com|remote\.example)/})
+      .to_return(status: 200, body: Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').read, headers: { 'Content-Type' => 'image/png' })
+  end
+
   describe 'validations' do
     it 'requires a name' do
       decoration = described_class.new(name: '', image: Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').open)
@@ -86,9 +93,9 @@ RSpec.describe AvatarDecoration do
       expect(decoration.image_url).to include('/original/')
     end
 
-    it 'returns remote URL for remote decorations' do
+    it 'returns the locally cached image URL for remote decorations' do
       decoration = Fabricate(:avatar_decoration, host: 'example.com', image_remote_url: 'https://example.com/deco.png', remote_id: 'r1', image: nil)
-      expect(decoration.image_url).to eq('https://example.com/deco.png')
+      expect(decoration.image_url).to include('/original/')
     end
   end
 

@@ -9,6 +9,8 @@
 #  also_known_as                 :string           is an Array
 #  attribution_domains           :string           default([]), is an Array
 #  avatar_content_type           :string
+#  avatar_decorations            :jsonb            not null
+#  avatar_decorations_blocked    :boolean          default(FALSE), not null
 #  avatar_description            :string           default(""), not null
 #  avatar_file_name              :string
 #  avatar_file_size              :integer
@@ -22,6 +24,7 @@
 #  feature_approval_policy       :integer          default(0), not null
 #  featured_collection_url       :string
 #  fields                        :jsonb
+#  followed_message              :string(256)
 #  followers_url                 :string           default(""), not null
 #  following_url                 :string           default(""), not null
 #  header_content_type           :string

@@ -7,8 +7,8 @@
 #  id                :bigint(8)        not null, primary key
 #  activity_uri      :string
 #  approval_uri      :string
-#  legacy            :boolean          default(FALSE), not null
 #  from_misskey      :boolean          default(FALSE), not null
+#  legacy            :boolean          default(FALSE), not null
 #  state             :integer          default("pending"), not null
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null

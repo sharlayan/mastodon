@@ -26,7 +26,7 @@ class REST::ReactionSerializer < ActiveModel::Serializer
   end
 
   def account_ids?
-    object.account_ids.present?
+    object.respond_to?(:account_ids) && object.account_ids.present?
   end
 
   def url
@@ -38,7 +38,7 @@ class REST::ReactionSerializer < ActiveModel::Serializer
   end
 
   def users
-    object.users
+    object.respond_to?(:users) ? object.users : []
   end
 
   def name

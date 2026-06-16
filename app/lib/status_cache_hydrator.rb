@@ -47,6 +47,7 @@ class StatusCacheHydrator
 
       payload[:filtered]   = payload[:reblog][:filtered]
       payload[:favourited] = payload[:reblog][:favourited]
+      payload[:reacted]    = payload[:reblog][:reacted]
       payload[:reactions]  = payload[:reblog][:reactions]
       payload[:reblogged]  = payload[:reblog][:reblogged]
       payload[:quote_approval] = payload[:reblog][:quote_approval]
@@ -55,6 +56,7 @@ class StatusCacheHydrator
 
   def fill_status_payload(payload, status, account, nested: false, fresh: true)
     payload[:favourited] = Favourite.exists?(account_id: account.id, status_id: status.id)
+    payload[:reacted]    = account.reacted?(status)
     payload[:reactions]  = serialized_reactions(account.id)
     payload[:reblogged]  = Status.exists?(account_id: account.id, reblog_of_id: status.id)
     payload[:muted]      = ConversationMute.exists?(account_id: account.id, conversation_id: status.conversation_id)

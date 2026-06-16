@@ -1,5 +1,16 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: avatar_decoration_mutes
+#
+#  id                :bigint(8)        not null, primary key
+#  target_domain     :string
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  account_id        :bigint(8)        not null
+#  target_account_id :bigint(8)
+#
 class AvatarDecorationMute < ApplicationRecord
   belongs_to :account
   belongs_to :target_account, class_name: 'Account', optional: true, inverse_of: :avatar_decoration_mutes_targeting_account

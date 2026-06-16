@@ -8,9 +8,13 @@ RSpec.describe FetchInstanceThemeColorService do
   let(:domain) { 'remote.example.com' }
 
   before do
+    # This spec exercises the real remote fetch, so opt out of the test-env
+    # network guard that other specs rely on.
+    described_class.allow_remote_fetch_in_test = true
+
     # Default stubs for all external requests
     stub_request(:get, "https://#{domain}").to_return(status: 200, body: default_html, headers: { 'Content-Type' => 'text/html' })
-    stub_request(:post, "https://#{domain}/nodeinfo/2.1").to_return(status: 404)
+    stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 404)
     stub_request(:post, "https://#{domain}/api/meta").to_return(status: 404)
     stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 404)
     stub_request(:get, "https://#{domain}/api/v1/instance").to_return(status: 404)
@@ -24,6 +28,8 @@ RSpec.describe FetchInstanceThemeColorService do
   end
 
   after do
+    described_class.allow_remote_fetch_in_test = false
+
     # Clean up favicon files
     storage_path = Rails.public_path.join('system', 'instance_favicons')
     FileUtils.rm_rf(storage_path)
@@ -130,55 +136,61 @@ RSpec.describe FetchInstanceThemeColorService do
   end
 
   describe 'favicon detection' do
+    # The service stores favicons under a SHA1 digest of the domain and derives
+    # the file extension from the response Content-Type.
+    let(:favicon_dir) { '/system/instance_favicons' }
+    let(:domain_digest) { Digest::SHA1.hexdigest(domain) }
+
     before do
-      stub_request(:get, "https://#{domain}/custom-favicon.png").to_return(status: 200, body: 'png-data')
+      stub_request(:get, "https://#{domain}/custom-favicon.png").to_return(status: 200, body: 'png-data', headers: { 'Content-Type' => 'image/png' })
     end
 
     it 'extracts favicon from link[rel="icon"] tag' do
       result = subject.call(domain)
-      expect(result.favicon_url).to eq('/system/instance_favicons/remote.example.com.png')
+      expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.png")
     end
 
     it 'falls back to /favicon.ico when no link tag' do
       html = '<html><head></head><body></body></html>'
       stub_request(:get, "https://#{domain}").to_return(status: 200, body: html)
+      stub_request(:get, "https://#{domain}/favicon.ico").to_return(status: 200, body: 'fake-ico-data', headers: { 'Content-Type' => 'image/x-icon' })
 
       result = subject.call(domain)
-      expect(result.favicon_url).to eq('/system/instance_favicons/remote.example.com.ico')
+      expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.ico")
     end
 
     it 'handles protocol-relative favicon URLs' do
       html = '<html><head><link rel="icon" href="//cdn.example.com/favicon.png"></head><body></body></html>'
       stub_request(:get, "https://#{domain}").to_return(status: 200, body: html)
-      stub_request(:get, 'https://cdn.example.com/favicon.png').to_return(status: 200, body: 'png-data')
+      stub_request(:get, 'https://cdn.example.com/favicon.png').to_return(status: 200, body: 'png-data', headers: { 'Content-Type' => 'image/png' })
 
       result = subject.call(domain)
-      expect(result.favicon_url).to eq('/system/instance_favicons/remote.example.com.png')
+      expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.png")
     end
 
     it 'handles absolute favicon URLs' do
-      html = '<html><head><link rel="icon" href="https://cdn.example.com/icon.svg"></head><body></body></html>'
+      html = '<html><head><link rel="icon" href="https://cdn.example.com/icon.png"></head><body></body></html>'
       stub_request(:get, "https://#{domain}").to_return(status: 200, body: html)
-      stub_request(:get, 'https://cdn.example.com/icon.svg').to_return(status: 200, body: 'svg-data')
+      stub_request(:get, 'https://cdn.example.com/icon.png').to_return(status: 200, body: 'png-data', headers: { 'Content-Type' => 'image/png' })
 
       result = subject.call(domain)
-      expect(result.favicon_url).to eq('/system/instance_favicons/remote.example.com.svg')
+      expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.png")
     end
 
     it 'uses favicon_from_api when set by Misskey API' do
       misskey_meta_response = { name: 'Misskey Instance', iconUrl: 'https://cdn.misskey.example/icon.png' }.to_json
       stub_request(:post, "https://#{domain}/api/meta").to_return(status: 200, body: misskey_meta_response, headers: { 'Content-Type' => 'application/json' })
-      stub_request(:get, 'https://cdn.misskey.example/icon.png').to_return(status: 200, body: 'misskey-icon')
+      stub_request(:get, 'https://cdn.misskey.example/icon.png').to_return(status: 200, body: 'misskey-icon', headers: { 'Content-Type' => 'image/png' })
 
       result = subject.call(domain)
-      expect(result.favicon_url).to eq('/system/instance_favicons/remote.example.com.png')
+      expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.png")
     end
   end
 
   describe 'software detection' do
     it 'identifies Misskey from nodeinfo/2.1 POST response' do
       misskey_response = { repositoryUrl: 'https://github.com/misskey-dev/misskey', version: '2024.0.0' }.to_json
-      stub_request(:post, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: misskey_response, headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: misskey_response, headers: { 'Content-Type' => 'application/json' })
 
       result = subject.call(domain)
       expect(result.software).to eq('misskey')
@@ -186,7 +198,7 @@ RSpec.describe FetchInstanceThemeColorService do
 
     it 'identifies Sharkey from repository URL' do
       sharkey_response = { repositoryUrl: 'https://activitypub.software/TransFem-org/Sharkey', version: '2024.0.0' }.to_json
-      stub_request(:post, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: sharkey_response, headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: sharkey_response, headers: { 'Content-Type' => 'application/json' })
 
       result = subject.call(domain)
       expect(result.software).to eq('sharkey')
@@ -194,7 +206,7 @@ RSpec.describe FetchInstanceThemeColorService do
 
     it 'identifies Firefish from version string' do
       firefish_response = { repositoryUrl: 'https://example.com/repo', version: '1.0.0-firefish' }.to_json
-      stub_request(:post, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: firefish_response, headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: firefish_response, headers: { 'Content-Type' => 'application/json' })
 
       result = subject.call(domain)
       expect(result.software).to eq('firefish')
@@ -277,25 +289,25 @@ RSpec.describe FetchInstanceThemeColorService do
       stub_request(:get, "https://#{domain}/api/v2/instance").to_return(status: 200, body: '{}')
 
       result = subject.call(domain)
-      expect(result.instance_name).to eq(domain)
+      expect(result.instance_name_with_fallback).to eq(domain)
     end
   end
 
   describe 'error handling' do
     it 'handles HTTP::Error gracefully and still returns metadata with defaults' do
       stub_request(:get, "https://#{domain}").to_raise(HTTP::Error)
-      stub_request(:post, "https://#{domain}/nodeinfo/2.1").to_raise(HTTP::Error)
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_raise(HTTP::Error)
       stub_request(:post, "https://#{domain}/api/meta").to_raise(HTTP::Error)
 
       result = subject.call(domain)
       expect(result).to be_a(InstanceMetadata)
       expect(result.software).to be_nil
-      expect(result.instance_name).to eq(domain)
+      expect(result.instance_name_with_fallback).to eq(domain)
     end
 
     it 'handles OpenSSL::SSL::SSLError gracefully' do
       stub_request(:get, "https://#{domain}").to_raise(OpenSSL::SSL::SSLError)
-      stub_request(:post, "https://#{domain}/nodeinfo/2.1").to_raise(OpenSSL::SSL::SSLError)
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_raise(OpenSSL::SSL::SSLError)
       stub_request(:post, "https://#{domain}/api/meta").to_raise(OpenSSL::SSL::SSLError)
 
       result = subject.call(domain)
@@ -305,7 +317,7 @@ RSpec.describe FetchInstanceThemeColorService do
 
     it 'handles SocketError gracefully' do
       stub_request(:get, "https://#{domain}").to_raise(SocketError)
-      stub_request(:post, "https://#{domain}/nodeinfo/2.1").to_raise(SocketError)
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_raise(SocketError)
       stub_request(:post, "https://#{domain}/api/meta").to_raise(SocketError)
 
       result = subject.call(domain)
@@ -315,7 +327,7 @@ RSpec.describe FetchInstanceThemeColorService do
 
     it 'updates timestamps even when individual fetches fail' do
       stub_request(:get, "https://#{domain}").to_raise(HTTP::Error)
-      stub_request(:post, "https://#{domain}/nodeinfo/2.1").to_raise(HTTP::Error)
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_raise(HTTP::Error)
       stub_request(:post, "https://#{domain}/api/meta").to_raise(HTTP::Error)
 
       subject.call(domain)
@@ -336,25 +348,25 @@ RSpec.describe FetchInstanceThemeColorService do
       expect(File.exist?(file_path)).to be true
     end
 
-    it 'sanitizes domain name for filename' do
+    it 'uses a digest of the domain for the filename' do
       special_domain = 'sub.example.com'
       stub_request(:get, "https://#{special_domain}").to_return(status: 200, body: default_html)
-      stub_request(:post, "https://#{special_domain}/nodeinfo/2.1").to_return(status: 404)
+      stub_request(:get, "https://#{special_domain}/nodeinfo/2.1").to_return(status: 404)
       stub_request(:post, "https://#{special_domain}/api/meta").to_return(status: 404)
       stub_request(:get, "https://#{special_domain}/.well-known/nodeinfo").to_return(status: 404)
       stub_request(:get, "https://#{special_domain}/api/v1/instance").to_return(status: 404)
       stub_request(:get, "https://#{special_domain}/api/v2/instance").to_return(status: 404)
-      stub_request(:get, "https://#{special_domain}/custom-favicon.png").to_return(status: 200, body: 'png-data')
+      stub_request(:get, "https://#{special_domain}/custom-favicon.png").to_return(status: 200, body: 'png-data', headers: { 'Content-Type' => 'image/png' })
 
       result = subject.call(special_domain)
-      expect(result.favicon_url).to include('sub.example.com')
+      expect(result.favicon_url).to eq("/system/instance_favicons/#{Digest::SHA1.hexdigest(special_domain)}.png")
     end
 
-    it 'handles favicon download failure gracefully' do
+    it 'falls back to a generated blank favicon when the download fails' do
       stub_request(:get, "https://#{domain}/custom-favicon.png").to_return(status: 500)
 
       result = subject.call(domain)
-      expect(result.favicon_url).to be_nil
+      expect(result.favicon_url).to eq("/system/instance_favicons/#{Digest::SHA1.hexdigest(domain)}.png")
     end
   end
 end

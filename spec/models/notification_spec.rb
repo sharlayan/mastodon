@@ -289,6 +289,7 @@ RSpec.describe Notification do
               follow_attributes,
               follow_request_attributes,
               favourite_attributes,
+              reaction_attributes,
               poll_attributes
             )
         end
@@ -346,11 +347,19 @@ RSpec.describe Notification do
           ).and(have_loaded_association(:poll))
         end
 
+        def reaction_attributes
+          have_attributes(
+            type: :reaction,
+            status_reaction: have_loaded_association(:status),
+            target_status: eq(reaction.status).and(have_loaded_association(:account))
+          ).and(have_loaded_association(:status_reaction))
+        end
+
         it 'replaces reaction' do
-          # reaction
-          expect(subject[7].type).to eq :reaction
-          expect(subject[7].target_status.association(:account)).to be_loaded
-          expect(subject[7].target_status).to eq reaction.status
+          # reaction is the 7th notification in the collection (index 6)
+          expect(subject[6].type).to eq :reaction
+          expect(subject[6].target_status.association(:account)).to be_loaded
+          expect(subject[6].target_status).to eq reaction.status
         end
       end
     end

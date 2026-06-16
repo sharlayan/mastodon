@@ -52,8 +52,8 @@ RSpec.describe 'POST /api/v1/accounts/:id/refetch' do
 
     before do
       key = "rate_limit:refetch_target:#{account.id}:#{Time.now.to_i / 1.hour.to_i}"
-      Redis.current.set(key, 2)
-      Redis.current.expire(key, 1.hour.to_i)
+      redis.set(key, 2)
+      redis.expire(key, 1.hour.to_i)
     end
 
     it 'returns 429 error' do

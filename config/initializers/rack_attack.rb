@@ -83,7 +83,7 @@ class Rack::Attack
     req.authenticated_user_id if req.api_request? && !req.bypasses_rate_limit?
   end
 
-  throttle('throttle_per_token_api', limit: 500, period: 5.minutes) do |req|
+  throttle('throttle_per_token_api', limit: 1_500, period: 5.minutes) do |req|
     req.authenticated_token_id if req.api_request? && !req.bypasses_rate_limit?
   end
 

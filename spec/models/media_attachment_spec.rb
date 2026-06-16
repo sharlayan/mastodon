@@ -152,13 +152,13 @@ RSpec.describe MediaAttachment, :attachment_processing do
   describe 'avif' do
     let(:media) { Fabricate(:media_attachment, file: attachment_fixture('600x400.avif')) }
 
-    it_behaves_like 'static 600x400 image', 'image/jpeg', '.jpeg'
+    it_behaves_like 'static 600x400 image', 'image/png', '.png'
   end
 
   describe 'heic' do
     let(:media) { Fabricate(:media_attachment, file: attachment_fixture('600x400.heic')) }
 
-    it_behaves_like 'static 600x400 image', 'image/jpeg', '.jpeg'
+    it_behaves_like 'static 600x400 image', 'image/png', '.png'
   end
 
   describe 'base64-encoded image' do

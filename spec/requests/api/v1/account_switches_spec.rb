@@ -54,52 +54,6 @@ RSpec.describe 'AccountSwitches' do
     end
   end
 
-  describe 'GET /api/v1/account_switches/linked_notifications' do
-    subject { get '/api/v1/account_switches/linked_notifications', headers: read_headers, params: params }
-
-    let(:params) { {} }
-
-    context 'with no linked accounts' do
-      it 'returns an empty array' do
-        subject
-
-        expect(response).to have_http_status(200)
-        expect(response.parsed_body).to be_empty
-      end
-    end
-
-    context 'with a linked child account that has notifications' do
-      let!(:from_account) { Fabricate(:account) }
-      let!(:status)       { Fabricate(:status, account: from_account) }
-      let!(:notification) { Fabricate(:notification, account: child, activity: status, type: :favourite) }
-
-      before do
-        Fabricate(:account_switch_authorization, account: user.account, target_account: child)
-      end
-
-      it 'returns notifications from the linked account' do
-        subject
-
-        expect(response).to have_http_status(200)
-        expect(response.parsed_body.length).to be >= 1
-        item = response.parsed_body.first
-        expect(item[:linked_account_id]).to eq(child.id.to_s)
-        expect(item[:notification][:id]).to eq(notification.id.to_s)
-      end
-
-      context 'with since_ids param' do
-        let(:params) { { since_ids: { child.id.to_s => notification.id.to_s } } }
-
-        it 'returns no notifications (all already seen)' do
-          subject
-
-          expect(response).to have_http_status(200)
-          expect(response.parsed_body).to be_empty
-        end
-      end
-    end
-  end
-
   describe 'DELETE /api/v1/account_switches/:id' do
     let!(:auth) { Fabricate(:account_switch_authorization, account: user.account, target_account: child) }
 

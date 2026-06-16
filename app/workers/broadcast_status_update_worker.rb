@@ -20,12 +20,18 @@ class BroadcastStatusUpdateWorker
     # Always publish to status-specific channel for users currently viewing this status
     redis.publish("timeline:status:#{status.id}", message)
 
-    broadcast_to_all_followers(status, message)
+    # Avoid bumping stale posts back into home/public timelines when they merely
+    # receive a new reaction; only refresh the status-specific channel for those.
+    broadcast_to_all_followers(status, message) unless status_too_old?(status)
   rescue ActiveRecord::RecordNotFound
     true
   end
 
   private
+
+  def status_too_old?(status)
+    status.created_at < 7.days.ago
+  end
 
   def broadcast_to_all_followers(status, message)
     if status.direct_visibility? || status.limited_visibility?

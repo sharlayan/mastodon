@@ -1,6 +1,19 @@
 # frozen_string_literal: true
 
 class FetchInstanceThemeColorService < BaseService
+  # In the test environment this service must never reach out to the network as
+  # a side effect of unrelated specs: creating/updating an account enqueues
+  # InstanceMetadataUpdateWorker (see Account#schedule_instance_metadata_update),
+  # which, when jobs run inline, would otherwise perform real HTTP requests and
+  # trip WebMock. By default we skip the remote fetch under test and return a
+  # test-safe metadata record. Specs that specifically exercise the remote fetch
+  # can opt back in by setting `allow_remote_fetch_in_test` to true.
+  @allow_remote_fetch_in_test = false
+
+  class << self
+    attr_accessor :allow_remote_fetch_in_test
+  end
+
   NETWORK_ERRORS = [
     HTTP::Error,
     OpenSSL::SSL::SSLError,
@@ -33,6 +46,8 @@ class FetchInstanceThemeColorService < BaseService
     @domain = domain
     @metadata = InstanceMetadata.for_domain(domain)
     @favicon_from_api = nil
+
+    return skip_remote_fetch! if skip_remote_fetch?
 
     misskey_meta = fetch_misskey_meta
     misskey_name = fetch_instance_name_from_misskey
@@ -91,6 +106,25 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   private
+
+  # True when we must not perform any real network request (default in tests).
+  def skip_remote_fetch?
+    Rails.env.test? && !self.class.allow_remote_fetch_in_test
+  end
+
+  # Test-only path: avoid HTTP entirely, just stamp the record with a sane
+  # default and throttle the next refresh, then return the metadata.
+  def skip_remote_fetch!
+    attributes = { metadata_updated_at: Time.now.utc }
+
+    if @metadata.theme_color.blank?
+      attributes[:theme_color] = @metadata.default_theme_color
+      attributes[:theme_color_updated_at] = Time.now.utc
+    end
+
+    @metadata.update(attributes)
+    @metadata
+  end
 
   def fetch_homepage_html
     @homepage_html ||= begin

@@ -38,6 +38,8 @@ RSpec.describe 'Profile API' do
           'header_static' => %r{https://.*},
           'header_description' => '',
           'hide_collections' => anything,
+          'avatar_decorations' => [],
+          'followed_message' => anything,
           'bot' => account.bot,
           'locked' => account.locked,
           'discoverable' => account.discoverable,
