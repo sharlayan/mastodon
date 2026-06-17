@@ -294,6 +294,7 @@ class PostStatusService < BaseService
       application: @options[:application],
       content_type: @content_type,
       mfm: @mfm,
+      mfm_text: (@mfm ? @text : nil),
       local_only: @options[:local_only],
       rate_limit: @options[:with_rate_limit],
       quote_approval_policy: @options[:quote_approval_policy],
