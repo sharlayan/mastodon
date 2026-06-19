@@ -1,3 +1,5 @@
+import { Set as ImmutableSet } from 'immutable';
+
 import api, { getLinks } from '../api';
 
 import {
@@ -5,6 +7,7 @@ import {
   importFetchedStatuses,
   importFetchedStatus,
 } from './importer';
+import { expandTimeline, updateTimeline } from './timelines';
 
 export const CONVERSATIONS_MOUNT   = 'CONVERSATIONS_MOUNT';
 export const CONVERSATIONS_UNMOUNT = 'CONVERSATIONS_UNMOUNT';
@@ -28,19 +31,22 @@ export const unmountConversations = () => ({
   type: CONVERSATIONS_UNMOUNT,
 });
 
-export const markConversationRead = conversationId => (dispatch) => {
+export const markConversationRead = (conversationId, memberIds = [conversationId]) => (dispatch) => {
   dispatch({
     type: CONVERSATIONS_READ,
     id: conversationId,
   });
 
-  api().post(`/api/v1/conversations/${conversationId}/read`);
+  memberIds.forEach(id => api().post(`/api/v1/conversations/${id}/read`));
 };
+
+export const expandConversationStatuses = (conversationId, { maxId } = {}) =>
+  expandTimeline(`conversation:${conversationId}`, `/api/v1/conversations/${conversationId}/statuses`, { max_id: maxId });
 
 export const expandConversations = ({ maxId } = {}) => (dispatch, getState) => {
   dispatch(expandConversationsRequest());
 
-  const params = { max_id: maxId };
+  const params = { max_id: maxId, grouped: '1' };
 
   if (!maxId) {
     params.since_id = getState().getIn(['conversations', 'items', 0, 'last_status']);
@@ -75,7 +81,7 @@ export const expandConversationsFail = error => ({
   error,
 });
 
-export const updateConversations = conversation => dispatch => {
+export const updateConversations = conversation => (dispatch, getState) => {
   dispatch(importFetchedAccounts(conversation.accounts));
 
   if (conversation.last_status) {
@@ -86,12 +92,25 @@ export const updateConversations = conversation => dispatch => {
     type: CONVERSATIONS_UPDATE,
     conversation,
   });
+
+  if (conversation.last_status) {
+    const accountIds = ImmutableSet(conversation.accounts.map(account => account.id));
+    const group = getState().getIn(['conversations', 'items']).find(item => item.get('accounts').toSet().equals(accountIds));
+
+    if (group) {
+      const timelineId = `conversation:${group.get('id')}`;
+
+      if (getState().getIn(['timelines', timelineId])) {
+        dispatch(updateTimeline(timelineId, conversation.last_status));
+      }
+    }
+  }
 };
 
-export const deleteConversation = conversationId => (dispatch) => {
+export const deleteConversation = (conversationId, memberIds = [conversationId]) => (dispatch) => {
   dispatch(deleteConversationRequest(conversationId));
 
-  api().delete(`/api/v1/conversations/${conversationId}`)
+  Promise.all(memberIds.map(id => api().delete(`/api/v1/conversations/${id}`)))
     .then(() => dispatch(deleteConversationSuccess(conversationId)))
     .catch(error => dispatch(deleteConversationFail(conversationId, error)));
 };

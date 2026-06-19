@@ -51,6 +51,7 @@ export const Conversation = ({ conversation, scrollKey }) => {
   const unread = conversation.get('unread');
   const lastStatusId = conversation.get('last_status');
   const accountIds = conversation.get('accounts');
+  const memberIds = conversation.get('member_ids')?.toArray() ?? [id];
   const intl = useIntl();
   const dispatch = useDispatch();
   const history = useHistory();
@@ -62,16 +63,12 @@ export const Conversation = ({ conversation, scrollKey }) => {
   const [expanded, setExpanded] = useState(undefined);
 
   const handleClick = useCallback(() => {
-    if (unread) {
-      dispatch(markConversationRead(id));
-    }
-
-    history.push(`/@${lastStatus.getIn(['account', 'acct'])}/${lastStatus.get('id')}`);
-  }, [dispatch, history, unread, id, lastStatus]);
+    history.push(`/conversations/${id}`);
+  }, [history, id]);
 
   const handleMarkAsRead = useCallback(() => {
-    dispatch(markConversationRead(id));
-  }, [dispatch, id]);
+    dispatch(markConversationRead(id, memberIds));
+  }, [dispatch, id, memberIds]);
 
   const handleReply = useCallback(() => {
     dispatch((_, getState) => {
@@ -86,8 +83,8 @@ export const Conversation = ({ conversation, scrollKey }) => {
   }, [dispatch, lastStatus]);
 
   const handleDelete = useCallback(() => {
-    dispatch(deleteConversation(id));
-  }, [dispatch, id]);
+    dispatch(deleteConversation(id, memberIds));
+  }, [dispatch, id, memberIds]);
 
   const handleConversationMute = useCallback(() => {
     if (lastStatus.get('muted')) {

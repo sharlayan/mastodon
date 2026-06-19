@@ -30,7 +30,7 @@ class ColumnSettings extends PureComponent {
       <div className='column-settings'>
         <section>
           <div className='column-settings__row'>
-            <SettingToggle settings={settings} settingPath={['conversations']} onChange={onChange} label={<FormattedMessage id='direct.group_by_conversations' defaultMessage='Group by conversation' />} />
+            <SettingToggle settings={settings} settingPath={['conversations']} onChange={onChange} label={<FormattedMessage id='direct.group_by_accounts' defaultMessage='Group by account' />} />
           </div>
         </section>
 

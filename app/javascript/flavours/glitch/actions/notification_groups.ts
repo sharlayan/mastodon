@@ -2,6 +2,7 @@ import { createAction } from '@reduxjs/toolkit';
 
 import {
   apiClearNotifications,
+  apiDismissNotification,
   apiFetchNotificationGroups,
 } from 'flavours/glitch/api/notifications';
 import type { ApiAccountJSON } from 'flavours/glitch/api_types/accounts';
@@ -14,6 +15,7 @@ import type {
 import { allNotificationTypes } from 'flavours/glitch/api_types/notifications';
 import type { ApiStatusJSON } from 'flavours/glitch/api_types/statuses';
 import { usePendingItems } from 'flavours/glitch/initial_state';
+import type { NotificationGroup } from 'flavours/glitch/models/notification_group';
 import type { NotificationGap } from 'flavours/glitch/reducers/notification_groups';
 import {
   selectSettingsNotificationsExcludedTypes,
@@ -255,6 +257,28 @@ export const clearNotifications = createDataLoadingThunk(
 
 export const markNotificationsAsRead = createAction(
   'notificationGroups/markAsRead',
+);
+
+export const dismissNotificationsForStatuses = createAppAsyncThunk(
+  'notificationGroups/dismissForStatuses',
+  async (statusIds: string[], { getState }) => {
+    const wanted = new Set(statusIds);
+
+    const notificationIds = getState()
+      .notificationGroups.groups.filter(
+        (group): group is NotificationGroup =>
+          group.type !== 'gap' &&
+          (group.type === 'mention' || group.type === 'quote') &&
+          'statusId' in group &&
+          !!group.statusId &&
+          wanted.has(group.statusId),
+      )
+      .map((group) => group.most_recent_notification_id);
+
+    await Promise.all(notificationIds.map((id) => apiDismissNotification(id)));
+
+    return { statusIds };
+  },
 );
 
 export const mountNotifications = createAppAsyncThunk(

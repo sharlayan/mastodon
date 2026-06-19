@@ -12,6 +12,7 @@ import announcements from './announcements';
 import { composeReducer } from './compose';
 import { contextsReducer } from './contexts';
 import conversations from './conversations';
+import direct_compose from './direct_compose';
 import { dropdownMenuReducer } from './dropdown_menu';
 import favorite_emojis from './favorite_emojis';
 import filters from './filters';
@@ -76,6 +77,7 @@ const reducers = {
   followedTags: followedTagsReducer,
   filters,
   conversations,
+  direct_compose,
   suggestions: suggestionsReducer,
   polls: pollsReducer,
   trends,

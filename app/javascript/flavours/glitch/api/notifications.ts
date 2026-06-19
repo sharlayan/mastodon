@@ -55,6 +55,9 @@ export const apiFetchNotificationGroups = async (params?: {
 export const apiClearNotifications = () =>
   apiRequest<undefined>('POST', 'v1/notifications/clear');
 
+export const apiDismissNotification = (id: string) =>
+  apiRequestPost(`v1/notifications/${id}/dismiss`);
+
 export const apiFetchNotificationRequests = async (
   params?: {
     since_id?: string;

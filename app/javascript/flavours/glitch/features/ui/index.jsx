@@ -56,6 +56,7 @@ import {
   Reblogs,
   Favourites,
   DirectTimeline,
+  ConversationThread,
   HashtagTimeline,
   Notifications,
   NotificationRequests,
@@ -214,6 +215,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path={['/home', '/timelines/home']} component={HomeTimeline} content={children} />
             <WrappedRoute path={['/public', '/timelines/public']} exact component={PublicTimeline} content={children} />
             <WrappedRoute path={['/public/local', '/timelines/public/local']} exact component={CommunityTimeline} content={children} />
+            <WrappedRoute path='/conversations/:conversationId' component={ConversationThread} content={children} />
             <WrappedRoute path={['/conversations', '/timelines/direct']} component={DirectTimeline} content={children} />
             <WrappedRoute path='/tags/:id' component={HashtagTimeline} content={children} />
             <WrappedRoute path='/links/:url' component={LinkTimeline} content={children} />

@@ -19,6 +19,8 @@ class AccountConversation < ApplicationRecord
 
   attr_writer :participant_accounts
 
+  attr_accessor :member_ids, :group_unread
+
   before_validation :set_last_status
   after_commit :push_to_streaming_api
 

@@ -54,4 +54,47 @@ RSpec.describe 'API V1 Conversations' do
       end
     end
   end
+
+  describe 'GET /api/v1/conversations with grouped=1', :inline_jobs do
+    before do
+      user.account.follow!(other.account)
+      PostStatusService.new.call(other.account, text: 'First thread @alice', visibility: 'direct')
+      PostStatusService.new.call(other.account, text: 'Second thread @alice', visibility: 'direct')
+    end
+
+    it 'collapses threads with the same recipient set into a single card', :aggregate_failures do
+      get '/api/v1/conversations', params: { grouped: '1' }, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq 1
+      expect(response.parsed_body.first[:member_ids].size).to eq 2
+      expect(response.parsed_body.first[:unread]).to be true
+    end
+  end
+
+  describe 'GET /api/v1/conversations/:id/statuses', :inline_jobs do
+    before do
+      user.account.follow!(other.account)
+      PostStatusService.new.call(other.account, text: 'First thread @alice', visibility: 'direct')
+      PostStatusService.new.call(other.account, text: 'Second thread @alice', visibility: 'direct')
+    end
+
+    let(:conversation) { AccountConversation.where(account: user.account).first }
+
+    it 'returns every status across the merged threads in reverse-chronological order', :aggregate_failures do
+      get "/api/v1/conversations/#{conversation.id}/statuses", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq 2
+      expect(response.parsed_body.pluck(:content).join).to include('First thread', 'Second thread')
+      expect(response.parsed_body.first[:id].to_i).to be > response.parsed_body.last[:id].to_i
+    end
+
+    it 'generates valid pagination headers including the conversation id', :aggregate_failures do
+      get "/api/v1/conversations/#{conversation.id}/statuses", params: { limit: 1 }, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.headers['Link']&.to_s).to include("/api/v1/conversations/#{conversation.id}/statuses")
+    end
+  end
 end

@@ -9550,6 +9550,10 @@ noscript {
     padding-inline-end: 15px;
     overflow: hidden;
 
+    .status__content a {
+      pointer-events: none;
+    }
+
     &__info {
       overflow: hidden;
       display: flex;

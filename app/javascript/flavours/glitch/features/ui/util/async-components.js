@@ -42,6 +42,10 @@ export function DirectTimeline() {
   return import('../../direct_timeline');
 }
 
+export function ConversationThread() {
+  return import('../../direct_timeline/conversation');
+}
+
 export function Collections() {
   return import('../../collections').then(
     module => ({default: module.Collections})

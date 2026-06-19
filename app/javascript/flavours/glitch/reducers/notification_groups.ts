@@ -11,6 +11,7 @@ import { blockDomainSuccess } from 'flavours/glitch/actions/domain_blocks_typed'
 import { fetchMarkers } from 'flavours/glitch/actions/markers';
 import {
   clearNotifications,
+  dismissNotificationsForStatuses,
   fetchNotifications,
   fetchNotificationsGap,
   processNewNotificationForGroups,
@@ -502,6 +503,11 @@ export const notificationGroupsReducer = createReducer<NotificationGroupsState>(
       })
       .addCase(timelineDelete, (state, action) => {
         removeNotificationsForStatus(state, action.payload.statusId);
+      })
+      .addCase(dismissNotificationsForStatuses.fulfilled, (state, action) => {
+        action.payload.statusIds.forEach((statusId) => {
+          removeNotificationsForStatus(state, statusId);
+        });
       })
       .addCase(clearNotifications.pending, (state) => {
         state.groups = [];
