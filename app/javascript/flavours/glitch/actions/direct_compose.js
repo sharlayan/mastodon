@@ -11,6 +11,9 @@ import { updateTimeline } from './timelines';
 export const DIRECT_COMPOSE_CHANGE = 'DIRECT_COMPOSE_CHANGE';
 export const DIRECT_COMPOSE_RESET  = 'DIRECT_COMPOSE_RESET';
 
+export const DIRECT_COMPOSE_CHANGE_SPOILER = 'DIRECT_COMPOSE_CHANGE_SPOILER';
+export const DIRECT_COMPOSE_TOGGLE_SPOILER = 'DIRECT_COMPOSE_TOGGLE_SPOILER';
+
 export const DIRECT_COMPOSE_SET_REPLY   = 'DIRECT_COMPOSE_SET_REPLY';
 export const DIRECT_COMPOSE_CLEAR_REPLY = 'DIRECT_COMPOSE_CLEAR_REPLY';
 
@@ -32,6 +35,17 @@ export const changeDirectCompose = (conversationId, text) => ({
 
 export const resetDirectCompose = conversationId => ({
   type: DIRECT_COMPOSE_RESET,
+  conversationId,
+});
+
+export const changeDirectComposeSpoiler = (conversationId, spoilerText) => ({
+  type: DIRECT_COMPOSE_CHANGE_SPOILER,
+  conversationId,
+  spoilerText,
+});
+
+export const toggleDirectComposeSpoiler = conversationId => ({
+  type: DIRECT_COMPOSE_TOGGLE_SPOILER,
   conversationId,
 });
 
@@ -82,6 +96,9 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
   const text  = (state.getIn(['direct_compose', conversationId, 'text']) || '').trim();
   const media = state.getIn(['direct_compose', conversationId, 'media'], ImmutableList());
 
+  const spoilerActive = state.getIn(['direct_compose', conversationId, 'spoiler'], false);
+  const spoilerText   = spoilerActive ? (state.getIn(['direct_compose', conversationId, 'spoiler_text']) || '').trim() : '';
+
   if (text.length === 0 && media.size === 0) {
     return;
   }
@@ -102,6 +119,8 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
     in_reply_to_id: inReplyToId || null,
     media_ids: media.map(item => item.get('id')).toArray(),
     visibility: 'direct',
+    spoiler_text: spoilerText,
+    sensitive: spoilerText.length > 0 || undefined,
   }, {
     headers: { 'Idempotency-Key': uuid() },
   }).then(response => {

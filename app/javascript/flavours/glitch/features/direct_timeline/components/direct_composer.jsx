@@ -3,17 +3,17 @@ import { useCallback, useRef } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
-import classNames from 'classnames';
-
 import { List as ImmutableList } from 'immutable';
 import { useDispatch, useSelector } from 'react-redux';
 
 import AddPhotoAlternateIcon from '@/material-icons/400-24px/add_photo_alternate.svg?react';
-import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import ReplyIcon from '@/material-icons/400-24px/reply.svg?react';
+import WarningIcon from '@/material-icons/400-24px/warning.svg?react';
 import {
   changeDirectCompose,
+  changeDirectComposeSpoiler,
+  toggleDirectComposeSpoiler,
   submitDirectMessage,
   uploadDirectMedia,
   removeDirectMedia,
@@ -22,6 +22,7 @@ import {
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
+import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import { UploadProgress } from 'flavours/glitch/features/compose/components/upload_progress';
 import { makeGetStatus } from 'flavours/glitch/selectors';
 
@@ -31,6 +32,8 @@ const messages = defineMessages({
   upload: { id: 'direct_composer.upload', defaultMessage: 'Add image' },
   removeMedia: { id: 'direct_composer.remove_media', defaultMessage: 'Remove' },
   cancelReply: { id: 'direct_composer.cancel_reply', defaultMessage: 'Cancel reply' },
+  spoiler: { id: 'direct_composer.spoiler', defaultMessage: 'Add content warning' },
+  spoilerPlaceholder: { id: 'direct_composer.spoiler_placeholder', defaultMessage: 'Content warning (optional)' },
 });
 
 const getStatus = makeGetStatus();
@@ -39,8 +42,11 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const intl = useIntl();
   const dispatch = useDispatch();
   const fileRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const text         = useSelector(state => state.getIn(['direct_compose', conversationId, 'text'], ''));
+  const spoiler      = useSelector(state => state.getIn(['direct_compose', conversationId, 'spoiler'], false));
+  const spoilerText  = useSelector(state => state.getIn(['direct_compose', conversationId, 'spoiler_text'], ''));
   const media        = useSelector(state => state.getIn(['direct_compose', conversationId, 'media'], ImmutableList()));
   const isUploading  = useSelector(state => state.getIn(['direct_compose', conversationId, 'is_uploading'], false));
   const isSubmitting = useSelector(state => state.getIn(['direct_compose', conversationId, 'is_submitting'], false));
@@ -55,6 +61,32 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const handleChange = useCallback(e => {
     dispatch(changeDirectCompose(conversationId, e.target.value));
   }, [dispatch, conversationId]);
+
+  const handleSpoilerChange = useCallback(e => {
+    dispatch(changeDirectComposeSpoiler(conversationId, e.target.value));
+  }, [dispatch, conversationId]);
+
+  const handleToggleSpoiler = useCallback(() => {
+    dispatch(toggleDirectComposeSpoiler(conversationId));
+  }, [dispatch, conversationId]);
+
+  const handleEmojiPick = useCallback(data => {
+    const textarea = textareaRef.current;
+    const position = textarea ? textarea.selectionStart : text.length;
+    const needsSpace = position > 0 && !(/\s/).test(text[position - 1]);
+    const emoji = needsSpace ? ` ${data.native}` : data.native;
+    const newText = `${text.slice(0, position)}${emoji} ${text.slice(position)}`;
+
+    dispatch(changeDirectCompose(conversationId, newText));
+
+    requestAnimationFrame(() => {
+      const caret = position + emoji.length + 1;
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(caret, caret);
+      }
+    });
+  }, [dispatch, conversationId, text]);
 
   const handleSubmit = useCallback(() => {
     dispatch(submitDirectMessage(conversationId, { inReplyToId: effectiveReplyId, recipientIds }));
@@ -109,6 +141,16 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
         </div>
       )}
 
+      {spoiler && (
+        <input
+          className='direct-composer__spoiler'
+          placeholder={intl.formatMessage(messages.spoilerPlaceholder)}
+          value={spoilerText}
+          onChange={handleSpoilerChange}
+          disabled={isSubmitting}
+        />
+      )}
+
       {media.size > 0 && (
         <div className='direct-composer__media'>
           {media.map(item => (
@@ -138,16 +180,8 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
           onChange={handleFileChange}
         />
 
-        <IconButton
-          className='direct-composer__button'
-          title={intl.formatMessage(messages.upload)}
-          icon='camera'
-          iconComponent={AddPhotoAlternateIcon}
-          onClick={handleUploadClick}
-          disabled={isUploading}
-        />
-
         <textarea
+          ref={textareaRef}
           className='direct-composer__textarea'
           placeholder={intl.formatMessage(messages.placeholder)}
           value={text}
@@ -158,13 +192,36 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
         />
 
         <IconButton
-          className={classNames('direct-composer__button', 'direct-composer__send')}
-          title={intl.formatMessage(messages.send)}
-          icon='paper-plane'
-          iconComponent={ArrowUpwardIcon}
+          className='direct-composer__button'
+          title={intl.formatMessage(messages.upload)}
+          icon='camera'
+          iconComponent={AddPhotoAlternateIcon}
+          onClick={handleUploadClick}
+          disabled={isUploading}
+        />
+
+        <div className='direct-composer__emoji'>
+          <EmojiPickerDropdown onPickEmoji={handleEmojiPick} />
+        </div>
+
+        <IconButton
+          className='direct-composer__button'
+          title={intl.formatMessage(messages.spoiler)}
+          icon='warning'
+          iconComponent={WarningIcon}
+          onClick={handleToggleSpoiler}
+          active={spoiler}
+          disabled={isSubmitting}
+        />
+
+        <button
+          type='button'
+          className='direct-composer__send'
           onClick={handleSubmit}
           disabled={!canSubmit}
-        />
+        >
+          {intl.formatMessage(messages.send)}
+        </button>
       </div>
     </div>
   );

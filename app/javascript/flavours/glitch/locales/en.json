@@ -70,6 +70,8 @@
   "direct_composer.remove_media": "Remove",
   "direct_composer.replying_to": "Replying to {name}",
   "direct_composer.send": "Send",
+  "direct_composer.spoiler": "Add content warning",
+  "direct_composer.spoiler_placeholder": "Content warning (optional)",
   "direct_composer.upload": "Add image",
   "direct_conversation.in_reply_to": "In reply to",
   "direct_conversation.load_older": "Load older messages",

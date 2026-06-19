@@ -74,6 +74,8 @@
   "direct_composer.remove_media": "삭제",
   "direct_composer.replying_to": "{name}님에게 답글",
   "direct_composer.send": "보내기",
+  "direct_composer.spoiler": "열람주의 추가",
+  "direct_composer.spoiler_placeholder": "열람주의 문구 (선택사항)",
   "direct_composer.upload": "이미지 첨부",
   "direct_conversation.in_reply_to": "답장 대상",
   "direct_conversation.load_older": "이전 메시지 불러오기",

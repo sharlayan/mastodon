@@ -64,6 +64,8 @@
   "direct_composer.placeholder": "メッセージを送信…",
   "direct_composer.remove_media": "削除",
   "direct_composer.send": "送信",
+  "direct_composer.spoiler": "閲覧注意を追加",
+  "direct_composer.spoiler_placeholder": "閲覧注意の説明 (任意)",
   "direct_composer.upload": "画像を追加",
   "direct_conversation.load_older": "以前のメッセージを読み込む",
   "direct_conversation.title_single": "{name1}さんとの会話",

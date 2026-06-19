@@ -3,6 +3,8 @@ import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 import {
   DIRECT_COMPOSE_CHANGE,
   DIRECT_COMPOSE_RESET,
+  DIRECT_COMPOSE_CHANGE_SPOILER,
+  DIRECT_COMPOSE_TOGGLE_SPOILER,
   DIRECT_COMPOSE_SET_REPLY,
   DIRECT_COMPOSE_CLEAR_REPLY,
   DIRECT_COMPOSE_SUBMIT_REQUEST,
@@ -17,6 +19,8 @@ import {
 
 const initialThread = ImmutableMap({
   text: '',
+  spoiler: false,
+  spoiler_text: '',
   media: ImmutableList(),
   is_uploading: false,
   is_submitting: false,
@@ -35,6 +39,13 @@ export default function direct_compose(state = initialState, action) {
   switch (action.type) {
   case DIRECT_COMPOSE_CHANGE:
     return updateThread(state, action.conversationId, t => t.set('text', action.text));
+  case DIRECT_COMPOSE_CHANGE_SPOILER:
+    return updateThread(state, action.conversationId, t => t.set('spoiler_text', action.spoilerText));
+  case DIRECT_COMPOSE_TOGGLE_SPOILER:
+    return updateThread(state, action.conversationId, t => {
+      const next = !t.get('spoiler');
+      return t.set('spoiler', next).set('spoiler_text', next ? t.get('spoiler_text') : '');
+    });
   case DIRECT_COMPOSE_RESET:
     return state.set(action.conversationId, initialThread);
   case DIRECT_COMPOSE_SET_REPLY:
