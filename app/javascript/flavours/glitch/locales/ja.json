@@ -155,5 +155,6 @@
   "status.is_poll": "このトゥートはアンケートです",
   "status.local_only": "あなたのインスタンスのみに公開",
   "status.mfm_fold_expand": "MFM投稿を展開して表示",
+  "status.react": "リアクション",
   "status.show_filter_reason": "とにかく表示"
 }

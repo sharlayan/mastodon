@@ -211,6 +211,58 @@
     opacity: 1;
   }
 
+  &__react {
+    display: flex;
+    align-items: center;
+
+    .emoji-picker-dropdown {
+      display: flex;
+    }
+
+    .icon-button {
+      width: auto;
+      padding: 2px;
+    }
+  }
+
+  .reactions-bar {
+    margin: 2px 0 0;
+    margin-inline-start: 0;
+    padding-inline-start: 48px;
+    width: auto;
+    gap: 3px;
+
+    &--empty {
+      display: none;
+    }
+
+    &__item {
+      border: 0;
+      border-radius: 12px;
+      background: var(--color-bg-tertiary);
+      margin: 0;
+      padding: 1px 8px;
+      min-height: 22px;
+
+      &__emoji {
+        width: 15px;
+        height: 15px;
+        margin: 2px 0;
+      }
+
+      &__count {
+        font-size: 12px;
+        margin-inline-start: 4px;
+      }
+
+      &.active {
+        border: 0;
+        background: var(--color-bg-brand-softest);
+        color: var(--color-text-brand);
+      }
+    }
+  }
+
   &__bubble {
     position: relative;
     background: var(--color-bg-tertiary);
@@ -273,6 +325,12 @@
     .chat-message__bubble {
       background: var(--color-bg-brand-base);
       color: var(--color-text-on-brand-base);
+    }
+
+    .reactions-bar.reactions-bar {
+      justify-content: flex-end;
+      padding-inline-start: 0;
+      padding-inline-end: 48px;
     }
   }
 

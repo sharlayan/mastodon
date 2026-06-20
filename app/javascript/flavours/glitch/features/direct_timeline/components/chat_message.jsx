@@ -13,6 +13,7 @@ import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import { initBlockModal } from 'flavours/glitch/actions/blocks';
 import { mentionCompose } from 'flavours/glitch/actions/compose';
 import { setDirectReplyTo } from 'flavours/glitch/actions/direct_compose';
+import { addReaction, removeReaction } from 'flavours/glitch/actions/interactions';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { initMuteModal } from 'flavours/glitch/actions/mutes';
 import { initReport } from 'flavours/glitch/actions/reports';
@@ -25,10 +26,12 @@ import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { AnimateEmojiProvider } from 'flavours/glitch/components/emoji/context';
 import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
 import StatusContent from 'flavours/glitch/components/status_content';
+import { StatusReactions } from 'flavours/glitch/components/status_reactions';
 import { ParentQuote } from 'flavours/glitch/features/direct_timeline/components/parent_quote';
+import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import Bundle from 'flavours/glitch/features/ui/components/bundle';
 import { MediaGallery, Video, Audio } from 'flavours/glitch/features/ui/util/async-components';
-import { me, deleteModal } from 'flavours/glitch/initial_state';
+import { me, deleteModal, maxReactions } from 'flavours/glitch/initial_state';
 import { makeGetStatus } from 'flavours/glitch/selectors';
 
 const messages = defineMessages({
@@ -45,6 +48,7 @@ const messages = defineMessages({
   report: { id: 'status.report', defaultMessage: 'Report @{name}' },
   muteConversation: { id: 'status.mute_conversation', defaultMessage: 'Mute conversation' },
   unmuteConversation: { id: 'status.unmute_conversation', defaultMessage: 'Unmute conversation' },
+  react: { id: 'status.react', defaultMessage: 'React' },
 });
 
 const getStatus = makeGetStatus();
@@ -213,6 +217,11 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
   const hasSpoiler = !!status.get('spoiler_text');
   const showContent = !hasSpoiler || expanded;
 
+  const signedIn = !!me;
+  const reactions = status.get('reactions');
+  const hasReactions = reactions && reactions.some(reaction => reaction.get('count') > 0);
+  const canReact = signedIn && reactions.filter(reaction => reaction.get('count') > 0 && reaction.get('me')).size < maxReactions;
+
   const fullTime = intl.formatDate(status.get('created_at'), {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
@@ -281,6 +290,18 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
 
   const handleReport = () => {
     dispatch(initReport(account, status));
+  };
+
+  const handleReactionAdd = (id, name, url) => {
+    dispatch(addReaction(id, name, url));
+  };
+
+  const handleReactionRemove = (id, name) => {
+    dispatch(removeReaction(id, name));
+  };
+
+  const handleEmojiPick = (data) => {
+    dispatch(addReaction(status.get('id'), data.native.replace(/:/g, ''), data.imageUrl));
   };
 
   const isSensitive = status.get('sensitive');
@@ -435,6 +456,12 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
             </div>
 
             <div className='chat-message__actions'>
+              {signedIn && (
+                <div className='chat-message__react' title={intl.formatMessage(messages.react)}>
+                  <EmojiPickerDropdown onPickEmoji={handleEmojiPick} disabled={!canReact} />
+                </div>
+              )}
+
               <Dropdown
                 status={status}
                 items={menu}
@@ -448,6 +475,17 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
           </div>
         </div>
       </div>
+
+      {hasReactions && (
+        <StatusReactions
+          statusId={status.get('id')}
+          reactions={reactions}
+          numVisible={8}
+          addReaction={handleReactionAdd}
+          removeReaction={handleReactionRemove}
+          canReact={signedIn}
+        />
+      )}
 
       {isGroupEnd && (
         <div className='chat-message__header'>
