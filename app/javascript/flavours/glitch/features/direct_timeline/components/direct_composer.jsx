@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { useCallback, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -44,6 +44,7 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const dispatch = useDispatch();
   const fileRef = useRef(null);
   const textareaRef = useRef(null);
+  const rowRef = useRef(null);
 
   const text         = useSelector(state => state.getIn(['direct_compose', conversationId, 'text'], ''));
   const spoiler      = useSelector(state => state.getIn(['direct_compose', conversationId, 'spoiler'], false));
@@ -58,6 +59,27 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const effectiveReplyId  = replyOverrideId || inReplyToId;
 
   const canSubmit = !isSubmitting && (text.trim().length > 0 || media.size > 0);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    const row = rowRef.current;
+
+    if (!textarea || !row) {
+      return;
+    }
+
+    let tallest = 0;
+
+    for (const child of row.children) {
+      if (child === textarea) {
+        continue;
+      }
+
+      tallest = Math.max(tallest, child.offsetHeight);
+    }
+
+    textarea.style.minHeight = tallest > 0 ? `${tallest}px` : '';
+  });
 
   const handleChange = useCallback(e => {
     dispatch(changeDirectCompose(conversationId, e.target.value));
@@ -171,7 +193,7 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
 
       <UploadProgress active={isUploading} progress={progress} />
 
-      <div className='direct-composer__row'>
+      <div className='direct-composer__row' ref={rowRef}>
         <input
           ref={fileRef}
           type='file'

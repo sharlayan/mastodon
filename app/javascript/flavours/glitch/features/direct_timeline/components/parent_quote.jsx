@@ -1,8 +1,6 @@
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useRef } from 'react';
 
-import { FormattedMessage } from 'react-intl';
-
 import { useHistory } from 'react-router-dom';
 
 import { useDispatch, useSelector } from 'react-redux';
@@ -54,9 +52,6 @@ export const ParentQuote = ({ statusId }) => {
         <Avatar account={account} size={16} />
         <DisplayName account={account} variant='simple' />
         <VisibilityIcon visibility={status.get('visibility')} />
-        <span className='chat-message__parent__label'>
-          <FormattedMessage id='direct_conversation.in_reply_to' defaultMessage='In reply to' />
-        </span>
       </div>
 
       <EmojiHTML

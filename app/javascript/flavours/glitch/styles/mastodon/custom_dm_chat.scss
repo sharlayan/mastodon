@@ -325,6 +325,11 @@
     .chat-message__bubble {
       background: var(--color-bg-brand-base);
       color: var(--color-text-on-brand-base);
+
+      .status__content a {
+        color: inherit;
+        text-decoration: underline;
+      }
     }
 
     .reactions-bar.reactions-bar {
@@ -471,7 +476,6 @@
     order: 2;
     flex: 1 1 auto;
     align-self: stretch;
-    min-height: 100%;
     min-width: 0;
     width: 0;
     resize: none;
