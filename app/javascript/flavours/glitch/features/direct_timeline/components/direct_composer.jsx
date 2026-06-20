@@ -5,6 +5,7 @@ import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
 import { List as ImmutableList } from 'immutable';
 import { useDispatch, useSelector } from 'react-redux';
+import Textarea from 'react-textarea-autosize';
 
 import AddPhotoAlternateIcon from '@/material-icons/400-24px/add_photo_alternate.svg?react';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
@@ -180,14 +181,15 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
           onChange={handleFileChange}
         />
 
-        <textarea
+        <Textarea
           ref={textareaRef}
           className='direct-composer__textarea'
           placeholder={intl.formatMessage(messages.placeholder)}
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          rows={1}
+          minRows={1}
+          maxRows={5}
           disabled={isSubmitting}
         />
 

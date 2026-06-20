@@ -11,6 +11,8 @@ import { List as ImmutableList } from 'immutable';
 import { useDispatch, useSelector } from 'react-redux';
 
 import GroupIcon from '@/material-icons/400-24px/group.svg?react';
+import MailIcon from '@/material-icons/400-24px/mail.svg?react';
+import { addColumn, removeColumn, moveColumn } from 'flavours/glitch/actions/columns';
 import { markConversationRead, expandConversationStatuses } from 'flavours/glitch/actions/conversations';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { dismissNotificationsForStatuses } from 'flavours/glitch/actions/notification_groups';
@@ -18,7 +20,7 @@ import { connectDirectStream } from 'flavours/glitch/actions/streaming';
 import { isNonStatusId } from 'flavours/glitch/actions/timelines_typed';
 import { CircularProgress } from 'flavours/glitch/components/circular_progress';
 import Column from 'flavours/glitch/components/column';
-import { ColumnBackButton } from 'flavours/glitch/components/column_back_button';
+import ColumnHeader from 'flavours/glitch/components/column_header';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 
@@ -33,8 +35,10 @@ const messages = defineMessages({
   titleMore: { id: 'direct_conversation.title_more', defaultMessage: 'Conversation with {name1}, {name2} and {count, plural, one {# other} other {# others}}' },
 });
 
-const ConversationThread = ({ multiColumn }) => {
-  const { conversationId } = useParams();
+const ConversationThread = ({ multiColumn, columnId, params }) => {
+  const { conversationId: routeConversationId } = useParams();
+  const conversationId = params?.id ?? routeConversationId;
+  const pinned = !!columnId;
   const intl = useIntl();
   const dispatch = useDispatch();
   const columnRef = useRef();
@@ -120,12 +124,18 @@ const ConversationThread = ({ multiColumn }) => {
   }, [dispatch, conversationId]);
 
   useEffect(() => {
+    // The body-height fix is only needed for the single-column (route) view;
+    // pinned deck columns are already height-bounded by the columns layout.
+    if (multiColumn) {
+      return undefined;
+    }
+
     document.body.classList.add('conversation-detail-active');
 
     return () => {
       document.body.classList.remove('conversation-detail-active');
     };
-  }, []);
+  }, [multiColumn]);
 
   // Re-arm the initial pin-to-bottom for each thread (same route reuses the
   // component instance across conversation switches).
@@ -172,24 +182,48 @@ const ConversationThread = ({ multiColumn }) => {
     }
   }, [dispatch, conversationId, oldestId]);
 
+  const handlePin = useCallback(() => {
+    if (columnId) {
+      dispatch(removeColumn(columnId));
+    } else {
+      dispatch(addColumn('CONVERSATION', { id: conversationId }));
+    }
+  }, [dispatch, columnId, conversationId]);
+
+  const handleMove = useCallback(dir => {
+    dispatch(moveColumn(columnId, dir));
+  }, [dispatch, columnId]);
+
+  const handleHeaderClick = useCallback(() => {
+    columnRef.current?.scrollTop();
+  }, []);
+
+  const participantsButton = recipientAccounts.length > 0 ? (
+    <IconButton
+      className='column-header__button'
+      icon='group'
+      iconComponent={GroupIcon}
+      title={intl.formatMessage(messages.participants)}
+      onClick={handleShowParticipants}
+    />
+  ) : undefined;
+
   return (
     <Column bindToDocument={!multiColumn} ref={columnRef} label={intl.formatMessage(messages.title)}>
-      <ColumnBackButton />
+      <ColumnHeader
+        icon='envelope'
+        iconComponent={MailIcon}
+        title={headerTitle}
+        onPin={handlePin}
+        onMove={handleMove}
+        onClick={handleHeaderClick}
+        pinned={pinned}
+        multiColumn={multiColumn}
+        showBackButton={!pinned}
+        extraButton={participantsButton}
+      />
 
       <div className='conversation-thread'>
-        <div className='conversation-thread__header'>
-          <span className='conversation-thread__header__title'>{headerTitle}</span>
-          {recipientAccounts.length > 0 && (
-            <IconButton
-              className='conversation-thread__header__participants'
-              icon='group'
-              iconComponent={GroupIcon}
-              title={intl.formatMessage(messages.participants)}
-              onClick={handleShowParticipants}
-            />
-          )}
-        </div>
-
         <div className='conversation-thread__body'>
           <div className='conversation-thread__messages' ref={messagesRef}>
             {hasMore && !isLoading && (
@@ -240,6 +274,10 @@ const ConversationThread = ({ multiColumn }) => {
 
 ConversationThread.propTypes = {
   multiColumn: PropTypes.bool,
+  columnId: PropTypes.string,
+  params: PropTypes.shape({
+    id: PropTypes.string,
+  }),
 };
 
 export default ConversationThread;

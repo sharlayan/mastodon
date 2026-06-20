@@ -9,37 +9,6 @@
   border-inline: 1px solid var(--color-border-primary);
   border-bottom: 1px solid var(--color-border-primary);
 
-  &__header {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--color-border-primary);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--color-text-primary);
-
-    &__title {
-      flex: 1 1 auto;
-      min-width: 0;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    &__participants {
-      flex: 0 0 auto;
-      color: var(--color-text-secondary);
-
-      &:hover,
-      &:focus {
-        color: var(--color-text-primary);
-      }
-    }
-  }
-
   &__body {
     position: relative;
     flex: 1 1 auto;
@@ -443,6 +412,8 @@
   &__textarea {
     order: 2;
     flex: 1 1 auto;
+    align-self: stretch;
+    min-height: 100%;
     min-width: 0;
     width: 0;
     resize: none;
@@ -454,7 +425,7 @@
     font-size: 15px;
     font-family: inherit;
     line-height: 1.4;
-    max-height: 120px;
+    overflow-y: auto;
 
     &::placeholder {
       color: var(--color-text-tertiary);
