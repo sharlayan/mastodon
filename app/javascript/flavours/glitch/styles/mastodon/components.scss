@@ -9764,6 +9764,22 @@ noscript {
       transition: all 100ms ease-in;
       transition-property: background-color, color;
     }
+
+    &--unreactable {
+      cursor: not-allowed;
+      opacity: 0.45;
+
+      &:hover,
+      &:focus,
+      &:active {
+        color: color-mix(
+          in oklab,
+          var(--color-text-primary),
+          var(--color-text-secondary)
+        );
+        background: var(--color-bg-brand-softest);
+      }
+    }
   }
 
   .emoji-picker-dropdown {

@@ -1038,6 +1038,9 @@ en:
       allow_user_custom_css:
         desc_html: Let users define their own custom CSS that is applied only to their own session in the web interface. When disabled, any stored user CSS stops being applied.
         title: Allow user custom CSS
+      reaction_local_emoji_only:
+        desc_html: Require a custom emoji to also exist locally before users can react with it. Remote custom emojis still appear in the picker, but reacting with one that has no local counterpart is blocked. Unicode emoji and local custom emoji are unaffected.
+        title: Restrict reactions to local custom emoji
       appearance:
         preamble: Customize Mastodon's web interface.
         title: Appearance

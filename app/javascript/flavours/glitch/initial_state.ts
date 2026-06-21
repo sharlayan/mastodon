@@ -65,6 +65,7 @@ interface InitialStateMeta {
   show_instance_info: boolean;
   custom_emoji_size: boolean;
   reaction_custom_emoji_size: boolean;
+  reaction_local_emoji_only: boolean;
   mfm_enabled: boolean;
   mfm_animations: boolean;
   mfm_fold_mode: 'show' | 'sensitive' | 'all';
@@ -209,6 +210,7 @@ export const showInstanceInfo = getMeta('show_instance_info');
 export const customEmojiSize = getMeta('custom_emoji_size');
 export const customEmojiMutes = getMeta('custom_emoji_mutes') ?? [];
 export const reactionCustomEmojiSize = getMeta('reaction_custom_emoji_size');
+export const reactionLocalEmojiOnly = getMeta('reaction_local_emoji_only');
 export const mfmEnabled = getMeta('mfm_enabled') !== false;
 export const mfmAllowComposition = getMeta('mfm_allow_composition') === true;
 export const mfmAnimations = getMeta('mfm_animations') !== false;

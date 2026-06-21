@@ -302,7 +302,7 @@ class Status < ApplicationRecord
         values << value_for_reaction_me_column(account_id)
       end
     ).to_a.tap do |records|
-      ActiveRecord::Associations::Preloader.new(records: records, associations: :custom_emoji).call
+      ActiveRecord::Associations::Preloader.new(records: records, associations: { custom_emoji: :local_counterpart }).call
     end
   end
 

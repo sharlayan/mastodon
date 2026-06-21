@@ -56,6 +56,7 @@ class Form::AdminSettings
     remote_topic_feed_access
     landing_page
     wrapstodon
+    reaction_local_emoji_only
     mfm_enabled
     mfm_allow_composition
     rate_limit_bypass_enabled
@@ -94,6 +95,7 @@ class Form::AdminSettings
     force_local_only
     authorized_fetch
     wrapstodon
+    reaction_local_emoji_only
     mfm_enabled
     mfm_allow_composition
     avatar_decorations_enabled

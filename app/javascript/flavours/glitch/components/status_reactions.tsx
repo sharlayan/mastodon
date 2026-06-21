@@ -7,7 +7,11 @@ import type { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
 import { unicodeHexToUrl } from '../features/emoji/normalize';
 import { emojiToUnicodeHex } from '../features/emoji/utils';
-import { autoPlayGif, reactionCustomEmojiSize } from '../initial_state';
+import {
+  autoPlayGif,
+  reactionCustomEmojiSize,
+  reactionLocalEmojiOnly,
+} from '../initial_state';
 import { assetHost } from '../utils/config';
 
 import { AnimatedNumber } from './animated_number';
@@ -95,6 +99,13 @@ const Reaction: FC<{
     | undefined;
   const url = reaction.get('url') as string | undefined;
   const staticUrl = reaction.get('static_url') as string | undefined;
+  const me = reaction.get('me') as boolean | undefined;
+
+  const unreactable =
+    reactionLocalEmojiOnly &&
+    !!url &&
+    reaction.get('local_counterpart') === false &&
+    !me;
 
   let validUsers: ImmutableList<ReactionUser> | undefined;
   let hasValidUsers = false;
@@ -118,9 +129,10 @@ const Reaction: FC<{
           type='button'
           className={classNames('reactions-bar__item', {
             active: reaction.get('me'),
+            'reactions-bar__item--unreactable': unreactable,
           })}
           onClick={handleClick}
-          disabled={!canReact}
+          disabled={!canReact || unreactable}
         >
           <span className={emojiClasses}>
             <Emoji

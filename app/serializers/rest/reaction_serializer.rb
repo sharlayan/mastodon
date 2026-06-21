@@ -9,6 +9,7 @@ class REST::ReactionSerializer < ActiveModel::Serializer
   attribute :url, if: :custom_emoji?
   attribute :static_url, if: :custom_emoji?
   attribute :domain, if: :custom_emoji?
+  attribute :local_counterpart, if: :custom_emoji?
   attribute :account_ids, if: :account_ids?
 
   has_many :users, serializer: REST::AccountSerializer
@@ -55,6 +56,10 @@ class REST::ReactionSerializer < ActiveModel::Serializer
     else
       ''
     end
+  end
+
+  def local_counterpart
+    object.custom_emoji.local_counterpart.present?
   end
 
   private
