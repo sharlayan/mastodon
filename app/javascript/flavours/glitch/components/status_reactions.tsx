@@ -7,6 +7,7 @@ import type { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
 import { unicodeHexToUrl } from '../features/emoji/normalize';
 import { emojiToUnicodeHex } from '../features/emoji/utils';
+import { useIdentity } from '../identity_context';
 import {
   autoPlayGif,
   reactionCustomEmojiSize,
@@ -71,6 +72,7 @@ const Reaction: FC<{
   removeReaction?: (statusId: string, name: string) => void;
   canReact: boolean;
 }> = ({ statusId, reaction, addReaction, removeReaction, canReact }) => {
+  const { signedIn } = useIdentity();
   const [hovered, setHovered] = useState(false);
   const targetRef = useRef<HTMLSpanElement>(null);
 
@@ -102,6 +104,7 @@ const Reaction: FC<{
   const me = reaction.get('me') as boolean | undefined;
 
   const unreactable =
+    signedIn &&
     reactionLocalEmojiOnly &&
     !!url &&
     reaction.get('local_counterpart') === false &&

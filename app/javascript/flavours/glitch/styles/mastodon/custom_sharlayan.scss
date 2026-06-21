@@ -152,6 +152,12 @@ html {
         background: transparent !important;
       }
 
+      &--unreactable[disabled] {
+        border-color: var(--color-border-brand-soft);
+        border-style: solid;
+        cursor: not-allowed;
+      }
+
       &__emoji {
         display: flex;
         margin: 3px 0;
