@@ -20,6 +20,7 @@ import {
   tokenizeText,
 } from '@/flavours/glitch/features/emoji/render';
 import { customEmojiSize } from '@/flavours/glitch/initial_state';
+import { useIsCustomEmojiMuted } from '@/flavours/glitch/utils/custom_emoji_mutes';
 
 import { AnimateEmojiContext, CustomEmojiContext } from './context';
 
@@ -51,6 +52,14 @@ export const Emoji: FC<EmojiProps> = ({
 
   const animate = useContext(AnimateEmojiContext);
 
+  const isCustomEmoji = state?.type === EMOJI_TYPE_CUSTOM;
+  const customShortcode = isCustomEmoji ? state.code : '';
+  const customDomain =
+    state && isStateLoaded(state) && state.type === EMOJI_TYPE_CUSTOM
+      ? state.data.domain
+      : undefined;
+  const isMuted = useIsCustomEmojiMuted(customShortcode, customDomain);
+
   const fallback = showFallback ? code : null;
 
   // If the code is invalid or we otherwise know it's not valid, show the fallback.
@@ -78,6 +87,15 @@ export const Emoji: FC<EmojiProps> = ({
 
   if (state.type === EMOJI_TYPE_CUSTOM) {
     const shortcode = `:${state.code}:`;
+
+    if (isMuted) {
+      return (
+        <span className='muted-custom-emoji' title={shortcode}>
+          {shortcode}
+        </span>
+      );
+    }
+
     const classes = `emojione custom-emoji${customEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`;
     return (
       <img

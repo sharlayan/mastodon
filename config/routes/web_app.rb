@@ -9,6 +9,7 @@
   /bookmarks
   /collections/(*any)
   /conversations/(*any)
+  /custom_emoji_mutes
   /deck/(*any)
   /directory
   /domain_blocks

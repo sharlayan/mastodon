@@ -44,6 +44,7 @@ module Account::Associations
         has_many :email_subscriptions
         has_many :avatar_decoration_mutes
         has_many :reaction_mutes, dependent: :destroy
+        has_many :custom_emoji_mutes, dependent: :destroy
 
         has_one :deletion_request, class_name: 'AccountDeletionRequest'
         has_one :follow_recommendation_suppression

@@ -52,7 +52,10 @@ export interface StatusShape {
 
   // Embeds
   card?: CardShape;
-  emojis: Pick<ApiCustomEmojiJSON, 'shortcode' | 'static_url' | 'url'>[];
+  emojis: Pick<
+    ApiCustomEmojiJSON,
+    'shortcode' | 'static_url' | 'url' | 'domain'
+  >[];
   media_attachments: MediaAttachmentShape[];
   mentions: ApiMentionJSON[];
   poll?: string;

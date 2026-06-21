@@ -22,6 +22,10 @@ const messages = defineMessages({
   },
   mutes: { id: 'navigation_bar.mutes', defaultMessage: 'Muted users' },
   filters: { id: 'navigation_bar.filters', defaultMessage: 'Muted words' },
+  customEmojiMutes: {
+    id: 'navigation_bar.custom_emoji_mutes',
+    defaultMessage: 'Muted custom emoji',
+  },
   administration: {
     id: 'navigation_bar.administration',
     defaultMessage: 'Administration',
@@ -64,6 +68,10 @@ export const MoreLink: React.FC = () => {
       {
         to: '/mutes',
         text: intl.formatMessage(messages.mutes),
+      },
+      {
+        to: '/custom_emoji_mutes',
+        text: intl.formatMessage(messages.customEmojiMutes),
       },
       {
         to: '/blocks',

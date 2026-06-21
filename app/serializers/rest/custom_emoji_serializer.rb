@@ -9,6 +9,7 @@ class REST::CustomEmojiSerializer < ActiveModel::Serializer
 
   attribute :category, if: :category_loaded?
   attribute :featured, if: :category_loaded?
+  attribute :domain, if: :remote?
 
   def url
     full_asset_url(object.image.url)
@@ -28,5 +29,9 @@ class REST::CustomEmojiSerializer < ActiveModel::Serializer
 
   def category_loaded?
     object.association(:category).loaded? && object.category.present?
+  end
+
+  def remote?
+    object.domain.present?
   end
 end

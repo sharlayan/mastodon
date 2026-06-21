@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_21_140539) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_21_172008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -525,6 +525,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_140539) do
     t.boolean "visible_in_picker", default: true, null: false
     t.index ["aliases"], name: "index_custom_emojis_on_aliases", using: :gin
     t.index ["shortcode", "domain"], name: "index_custom_emojis_on_shortcode_and_domain", unique: true
+  end
+
+  create_table "custom_emoji_mutes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "domain", default: "", null: false
+    t.string "prefix", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "prefix", "domain"], name: "index_custom_emoji_mutes_on_account_prefix_domain", unique: true
+    t.index ["account_id"], name: "index_custom_emoji_mutes_on_account_id"
   end
 
   create_table "custom_filter_keywords", force: :cascade do |t|
@@ -1650,6 +1660,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_140539) do
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
   add_foreign_key "custom_csses", "users", on_delete: :cascade
   add_foreign_key "custom_emoji_categories", "custom_emojis", column: "featured_emoji_id", on_delete: :nullify
+  add_foreign_key "custom_emoji_mutes", "accounts", on_delete: :cascade
   add_foreign_key "custom_filter_keywords", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "statuses", on_delete: :cascade

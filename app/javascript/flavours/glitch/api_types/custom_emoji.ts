@@ -8,4 +8,5 @@ export interface ApiCustomEmojiJSON {
   visible_in_picker: boolean;
   aliases?: string[];
   license?: string;
+  domain?: string;
 }

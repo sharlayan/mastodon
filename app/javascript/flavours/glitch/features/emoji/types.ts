@@ -49,7 +49,7 @@ export type AnyEmojiData = CustomEmojiData | UnicodeEmojiData;
 
 type CustomEmojiRenderFields = Pick<
   CustomEmojiData,
-  'shortcode' | 'static_url' | 'url'
+  'shortcode' | 'static_url' | 'url' | 'domain'
 >;
 
 export interface EmojiStateUnicode {
@@ -77,7 +77,7 @@ export type CustomEmojiMapArg =
 
 export type ExtraCustomEmojiMap = Record<
   string,
-  Pick<CustomEmojiData, 'shortcode' | 'static_url' | 'url'>
+  Pick<CustomEmojiData, 'shortcode' | 'static_url' | 'url' | 'domain'>
 >;
 
 export type EmojiWorkerMessage =

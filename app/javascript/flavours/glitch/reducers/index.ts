@@ -12,6 +12,7 @@ import announcements from './announcements';
 import { composeReducer } from './compose';
 import { contextsReducer } from './contexts';
 import conversations from './conversations';
+import { customEmojiMutesReducer } from './custom_emoji_mutes';
 import direct_compose from './direct_compose';
 import { dropdownMenuReducer } from './dropdown_menu';
 import favorite_emojis from './favorite_emojis';
@@ -75,6 +76,7 @@ const reducers = {
   favorite_emojis,
   lists: listsReducer,
   followedTags: followedTagsReducer,
+  custom_emoji_mutes: customEmojiMutesReducer,
   filters,
   conversations,
   direct_compose,

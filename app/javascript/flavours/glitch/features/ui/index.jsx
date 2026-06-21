@@ -77,6 +77,7 @@ import {
   Blocks,
   DomainBlocks,
   Mutes,
+  CustomEmojiMutes,
   PinnedStatuses,
   Directory,
   OnboardingProfile,
@@ -269,6 +270,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/domain_blocks' component={DomainBlocks} content={children} />
             <WrappedRoute path='/followed_tags' component={FollowedTags} content={children} />
             <WrappedRoute path='/mutes' component={Mutes} content={children} />
+            <WrappedRoute path='/custom_emoji_mutes' component={CustomEmojiMutes} content={children} />
             <WrappedRoute path='/lists' component={Lists} content={children} />
 
             <Route path='/overview' component={CustomHomepage} />

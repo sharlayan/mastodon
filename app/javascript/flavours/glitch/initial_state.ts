@@ -69,6 +69,13 @@ interface InitialStateMeta {
   mfm_animations: boolean;
   mfm_fold_mode: 'show' | 'sensitive' | 'all';
   mfm_allow_composition: boolean;
+  custom_emoji_mutes?: ApiCustomEmojiMuteJSON[];
+}
+
+export interface ApiCustomEmojiMuteJSON {
+  id: string;
+  prefix: string;
+  domain: string;
 }
 
 interface IntialStateRole {
@@ -200,6 +207,7 @@ export const sso_redirect = getMeta('sso_redirect');
 export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const showInstanceInfo = getMeta('show_instance_info');
 export const customEmojiSize = getMeta('custom_emoji_size');
+export const customEmojiMutes = getMeta('custom_emoji_mutes') ?? [];
 export const reactionCustomEmojiSize = getMeta('reaction_custom_emoji_size');
 export const mfmEnabled = getMeta('mfm_enabled') !== false;
 export const mfmAllowComposition = getMeta('mfm_allow_composition') === true;
