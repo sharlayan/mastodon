@@ -3,6 +3,7 @@
 class REST::Admin::DomainBlockSerializer < ActiveModel::Serializer
   attributes :id, :domain, :digest, :created_at, :severity,
              :reject_media, :reject_reports,
+             :reject_favourite, :reject_relay, :block_trends, :hidden,
              :private_comment, :public_comment, :obfuscate
 
   def id

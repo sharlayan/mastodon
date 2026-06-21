@@ -91,6 +91,7 @@ class Trends::Statuses < Trends::Base
   def eligible?(status)
     status.created_at.past? &&
       opted_into_trends?(status) &&
+      !DomainBlock.block_trends?(status.account.domain) &&
       !sensitive_content?(status) &&
       !status.reply? &&
       valid_locale?(status.language) &&

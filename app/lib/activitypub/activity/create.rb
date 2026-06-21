@@ -456,8 +456,12 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   end
 
   def related_to_local_activity?
-    fetch? || followed_by_local_accounts? || requested_through_relay? ||
+    fetch? || followed_by_local_accounts? || accepted_through_relay? ||
       responds_to_followed_account? || addresses_local_accounts?
+  end
+
+  def accepted_through_relay?
+    requested_through_relay? && !DomainBlock.reject_relay?(@account.domain)
   end
 
   def responds_to_followed_account?

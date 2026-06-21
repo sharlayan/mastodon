@@ -465,6 +465,8 @@ ja:
       undo: 連合許可を外す
     domain_blocks:
       add_new: ドメインブロックを追加
+      block_trends: トレンドから除外
+      block_trends_hint: このドメインの投稿とハッシュタグをトレンドの集計から除外します
       confirm_suspension:
         cancel: キャンセル
         confirm: 停止
@@ -481,6 +483,8 @@ ja:
       existing_domain_block: あなたは既に%{name}さんに厳しい制限を課しています。
       existing_domain_block_html: 既に%{name}に対して、より厳しい制限を課しています。先に<a href="%{unblock_url}">その制限を解除</a>する必要があります。
       export: エクスポート
+      hidden: 公開リストから隠す
+      hidden_hint: ドメインブロックの公開を有効にしていても、このドメインブロックを公開リストから隠します
       import: インポート
       new:
         create: ブロックを作成
@@ -499,8 +503,12 @@ ja:
       private_comment_hint: このコメントは同じサーバーのモデレーターも閲覧できます。
       public_comment: コメント (公開)
       public_comment_hint: ドメインブロックの公開を有効にしている場合、このコメントも公開されます。
+      reject_favourite: お気に入りを拒否
+      reject_favourite_hint: このドメインからのお気に入りと絵文字リアクションを無視します
       reject_media: メディアファイルを拒否
       reject_media_hint: ローカルに保存されたメディアファイルを削除し、今後のダウンロードを拒否します。停止とは無関係です
+      reject_relay: リレー投稿を拒否
+      reject_relay_hint: リレー経由でのみ届いたこのドメインの投稿を受け入れません
       reject_reports: 通報を拒否
       reject_reports_hint: このドメインからの通報をすべて無視します。停止とは無関係です
       undo: ドメインブロックを戻す
@@ -601,7 +609,10 @@ ja:
         description_html: このドメインとそのサブドメインのすべてのアカウントに適用されるコンテンツポリシーを定義できます。
         limited_federation_mode_description_html: このドメインとの連合を許可するかどうかを選択できます。
         policies:
+          block_trends: トレンドから除外
+          reject_favourite: お気に入りを拒否
           reject_media: メディアを拒否する
+          reject_relay: リレー投稿を拒否
           reject_reports: 通報を拒否
           silence: 制限
           suspend: サスペンド

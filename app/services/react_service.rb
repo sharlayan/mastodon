@@ -20,6 +20,8 @@ class ReactService < BaseService
 
     return if domain.present? && custom_emoji.nil?
 
+    return if status.account.local? && ReactionMute.muted?(status.account_id, account)
+
     reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
     return reaction if reaction
 

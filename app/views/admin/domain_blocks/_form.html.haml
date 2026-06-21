@@ -27,6 +27,30 @@
                label: I18n.t('admin.domain_blocks.reject_reports'),
                wrapper: :with_label
 .fields-group
+  = form.input :reject_favourite,
+               as: :boolean,
+               hint: I18n.t('admin.domain_blocks.reject_favourite_hint'),
+               label: I18n.t('admin.domain_blocks.reject_favourite'),
+               wrapper: :with_label
+.fields-group
+  = form.input :reject_relay,
+               as: :boolean,
+               hint: I18n.t('admin.domain_blocks.reject_relay_hint'),
+               label: I18n.t('admin.domain_blocks.reject_relay'),
+               wrapper: :with_label
+.fields-group
+  = form.input :block_trends,
+               as: :boolean,
+               hint: I18n.t('admin.domain_blocks.block_trends_hint'),
+               label: I18n.t('admin.domain_blocks.block_trends'),
+               wrapper: :with_label
+.fields-group
+  = form.input :hidden,
+               as: :boolean,
+               hint: I18n.t('admin.domain_blocks.hidden_hint'),
+               label: I18n.t('admin.domain_blocks.hidden'),
+               wrapper: :with_label
+.fields-group
   = form.input :obfuscate,
                as: :boolean,
                hint: I18n.t('admin.domain_blocks.obfuscate_hint'),

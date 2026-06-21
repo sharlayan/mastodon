@@ -2,11 +2,14 @@
 
 class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
   def perform
+    return if DomainBlock.reject_favourite?(@account.domain)
+
     original_status = status_from_uri(object_uri)
     raw_name = @json['content'].to_s
 
     return if original_status.nil? || delete_arrived_first?(@json['id'])
     return if raw_name.blank?
+    return if ReactionMute.muted?(original_status.account_id, @account)
 
     custom_emoji = nil
     name = raw_name

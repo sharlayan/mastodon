@@ -11,6 +11,10 @@ module Admin
       public_comment
       reject_media
       reject_reports
+      reject_favourite
+      reject_relay
+      block_trends
+      hidden
       severity
     ).freeze
 
@@ -119,7 +123,7 @@ module Admin
       params
         .expect(
           form_domain_block_batch: [
-            domain_blocks_attributes: [[:enabled, :domain, :severity, :reject_media, :reject_reports, :private_comment, :public_comment, :obfuscate]],
+            domain_blocks_attributes: [[:enabled, :domain, :severity, :reject_media, :reject_reports, :reject_favourite, :reject_relay, :block_trends, :hidden, :private_comment, :public_comment, :obfuscate]],
           ]
         )
     end

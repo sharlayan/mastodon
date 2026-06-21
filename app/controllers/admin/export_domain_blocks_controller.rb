@@ -34,6 +34,10 @@ module Admin
                                        severity: row.fetch('#severity', :suspend),
                                        reject_media: row.fetch('#reject_media', false),
                                        reject_reports: row.fetch('#reject_reports', false),
+                                       reject_favourite: row.fetch('#reject_favourite', false),
+                                       reject_relay: row.fetch('#reject_relay', false),
+                                       block_trends: row.fetch('#block_trends', false),
+                                       hidden: row.fetch('#hidden', false),
                                        private_comment: @global_private_comment,
                                        public_comment: row['#public_comment'],
                                        obfuscate: row.fetch('#obfuscate', false))
@@ -67,13 +71,13 @@ module Admin
     end
 
     def export_headers
-      %w(#domain #severity #reject_media #reject_reports #public_comment #obfuscate)
+      %w(#domain #severity #reject_media #reject_reports #reject_favourite #reject_relay #block_trends #hidden #public_comment #obfuscate)
     end
 
     def export_data
       CSV.generate(headers: export_headers, write_headers: true) do |content|
         DomainBlock.with_limitations.order(id: :asc).each do |instance|
-          content << [instance.domain, instance.severity, instance.reject_media, instance.reject_reports, instance.public_comment, instance.obfuscate]
+          content << [instance.domain, instance.severity, instance.reject_media, instance.reject_reports, instance.reject_favourite, instance.reject_relay, instance.block_trends, instance.hidden, instance.public_comment, instance.obfuscate]
         end
       end
     end

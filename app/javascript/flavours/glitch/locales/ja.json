@@ -33,6 +33,8 @@
   "account.disclaimer_full": "このユーザー情報は不正確な可能性があります。",
   "account.follows": "フォロー",
   "account.menu.mute_decorations": "{name}のデコレーションを隠す",
+  "account.menu.mute_domain_reactions": "{domain}からのリアクションを受け取らない",
+  "account.menu.mute_reactions": "{name}のリアクションを受け取らない",
   "account.menu.unmute_decorations": "{name}のデコレーションを表示",
   "account.menu.admin_block_decorations": "{name}のデコレーションを全員に非表示",
   "account.menu.admin_block_domain_decorations": "{domain}からのデコレーションをブロック",

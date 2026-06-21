@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_21_040018) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_21_140539) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -564,12 +564,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_040018) do
   end
 
   create_table "domain_blocks", force: :cascade do |t|
+    t.boolean "block_trends", default: false, null: false
     t.datetime "created_at", precision: nil, null: false
     t.string "domain", default: "", null: false
+    t.boolean "hidden", default: false, null: false
     t.boolean "obfuscate", default: false, null: false
     t.text "private_comment"
     t.text "public_comment"
+    t.boolean "reject_favourite", default: false, null: false
     t.boolean "reject_media", default: false, null: false
+    t.boolean "reject_relay", default: false, null: false
     t.boolean "reject_reports", default: false, null: false
     t.integer "severity", default: 0
     t.datetime "updated_at", precision: nil, null: false
@@ -1137,6 +1141,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_040018) do
     t.index ["status_id"], name: "index_quotes_on_status_id", unique: true
   end
 
+  create_table "reaction_mutes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "target_account_id"
+    t.string "target_domain"
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "target_account_id"], name: "index_reaction_mutes_on_account_id_and_target_account_id", unique: true, where: "(target_account_id IS NOT NULL)"
+    t.index ["account_id", "target_domain"], name: "index_reaction_mutes_on_account_id_and_target_domain", unique: true, where: "(target_domain IS NOT NULL)"
+    t.index ["account_id"], name: "index_reaction_mutes_on_account_id"
+    t.index ["target_account_id"], name: "index_reaction_mutes_on_target_account_id"
+  end
+
   create_table "relationship_severance_events", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "purged", default: false, null: false
@@ -1702,6 +1718,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_21_040018) do
   add_foreign_key "quotes", "statuses", on_delete: :cascade
   add_foreign_key "report_notes", "accounts", on_delete: :cascade
   add_foreign_key "report_notes", "reports", on_delete: :cascade
+  add_foreign_key "reaction_mutes", "accounts", column: "target_account_id", on_delete: :cascade
+  add_foreign_key "reaction_mutes", "accounts", on_delete: :cascade
   add_foreign_key "reports", "accounts", column: "action_taken_by_account_id", name: "fk_bca45b75fd", on_delete: :nullify
   add_foreign_key "reports", "accounts", column: "assigned_account_id", on_delete: :nullify
   add_foreign_key "reports", "accounts", column: "target_account_id", name: "fk_eb37af34f0", on_delete: :cascade

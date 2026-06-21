@@ -11,6 +11,10 @@
 #  public_comment  :text
 #  reject_media    :boolean          default(FALSE), not null
 #  reject_reports  :boolean          default(FALSE), not null
+#  reject_favourite :boolean         default(FALSE), not null
+#  reject_relay    :boolean          default(FALSE), not null
+#  block_trends    :boolean          default(FALSE), not null
+#  hidden          :boolean          default(FALSE), not null
 #  severity        :integer          default("silence")
 #  created_at      :datetime         not null
 #  updated_at      :datetime         not null
@@ -28,8 +32,14 @@ class DomainBlock < ApplicationRecord
   has_many :accounts, foreign_key: :domain, primary_key: :domain, inverse_of: false, dependent: nil
   delegate :count, to: :accounts, prefix: true
 
-  scope :with_user_facing_limitations, -> { where(severity: [:silence, :suspend]) }
-  scope :with_limitations, -> { where(severity: [:silence, :suspend]).or(where(reject_media: true)) }
+  EXTENDED_LIMITATION_POLICIES = %i(reject_media reject_favourite reject_relay block_trends).freeze
+
+  scope :with_user_facing_limitations, -> { where(severity: [:silence, :suspend]).where(hidden: false) }
+  scope :with_limitations, lambda {
+    EXTENDED_LIMITATION_POLICIES.reduce(where(severity: [:silence, :suspend])) do |relation, policy|
+      relation.or(where(policy => true))
+    end
+  }
   scope :by_severity, -> { in_order_of(:severity, %w(noop silence suspend)).order(:domain) }
 
   def to_log_human_identifier
@@ -40,8 +50,14 @@ class DomainBlock < ApplicationRecord
     if suspend?
       [:suspend]
     else
-      [severity.to_sym, reject_media? ? :reject_media : nil, reject_reports? ? :reject_reports : nil]
-        .reject { |policy| policy == :noop }
+      [
+        severity.to_sym,
+        reject_media? ? :reject_media : nil,
+        reject_favourite? ? :reject_favourite : nil,
+        reject_relay? ? :reject_relay : nil,
+        block_trends? ? :block_trends : nil,
+        reject_reports? ? :reject_reports : nil,
+      ].reject { |policy| policy == :noop }
         .compact
     end
   end
@@ -63,6 +79,18 @@ class DomainBlock < ApplicationRecord
       !!rule_for(domain)&.reject_reports?
     end
 
+    def reject_favourite?(domain)
+      !!rule_for(domain)&.reject_favourite?
+    end
+
+    def reject_relay?(domain)
+      !!rule_for(domain)&.reject_relay?
+    end
+
+    def block_trends?(domain)
+      !!rule_for(domain)&.block_trends?
+    end
+
     alias blocked? suspend?
 
     def rule_for(domain)
@@ -81,7 +109,11 @@ class DomainBlock < ApplicationRecord
     return false if other_block.suspend? && (silence? || noop?)
     return false if other_block.silence? && noop?
 
-    (reject_media || !other_block.reject_media) && (reject_reports || !other_block.reject_reports)
+    (reject_media || !other_block.reject_media) &&
+      (reject_reports || !other_block.reject_reports) &&
+      (reject_favourite || !other_block.reject_favourite) &&
+      (reject_relay || !other_block.reject_relay) &&
+      (block_trends || !other_block.block_trends)
   end
 
   def public_domain

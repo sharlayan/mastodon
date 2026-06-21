@@ -68,7 +68,7 @@ class Api::V1::Admin::DomainBlocksController < Api::BaseController
   end
 
   def domain_block_params
-    params.permit(:severity, :reject_media, :reject_reports, :private_comment, :public_comment, :obfuscate)
+    params.permit(:severity, :reject_media, :reject_reports, :reject_favourite, :reject_relay, :block_trends, :hidden, :private_comment, :public_comment, :obfuscate)
   end
 
   def next_path
@@ -88,6 +88,6 @@ class Api::V1::Admin::DomainBlocksController < Api::BaseController
   end
 
   def resource_params
-    params.permit(:domain, :severity, :reject_media, :reject_reports, :private_comment, :public_comment, :obfuscate)
+    params.permit(:domain, :severity, :reject_media, :reject_reports, :reject_favourite, :reject_relay, :block_trends, :hidden, :private_comment, :public_comment, :obfuscate)
   end
 end

@@ -33,6 +33,8 @@
   "account.disclaimer_full": "아래에 있는 정보들은 사용자의 프로필을 완벽하게 나타내지 못하고 있을 수도 있습니다.",
   "account.follows": "팔로우",
   "account.menu.mute_decorations": "{name}의 장식 숨기기",
+  "account.menu.mute_domain_reactions": "{domain}에서 오는 반응 받지 않기",
+  "account.menu.mute_reactions": "{name}의 반응 받지 않기",
   "account.menu.unmute_decorations": "{name}의 장식 표시",
   "account.menu.admin_block_decorations": "모든 사람에게 {name}의 장식 숨기기",
   "account.menu.admin_block_domain_decorations": "{domain}의 장식 차단",

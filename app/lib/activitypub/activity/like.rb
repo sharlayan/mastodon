@@ -2,6 +2,8 @@
 
 class ActivityPub::Activity::Like < ActivityPub::Activity
   def perform
+    return if DomainBlock.reject_favourite?(@account.domain)
+
     original_status = status_from_uri(object_uri)
 
     # redirect to emojireact
@@ -25,6 +27,8 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
     name = @json['content'] || @json['_misskey_reaction']
 
     return false if name.nil?
+
+    return true if ReactionMute.muted?(original_status.account_id, @account)
 
     if /^:.*:$/.match?(name)
       name.delete! ':'

@@ -32,6 +32,7 @@ class Trends::Tags < Trends::Base
 
   def register(status, at_time = Time.now.utc)
     return unless !status.reblog? && status.public_visibility? && !status.account.silenced?
+    return if DomainBlock.block_trends?(status.account.domain)
 
     status.tags.each do |tag|
       add(tag, status.account_id, at_time) if tag.usable?

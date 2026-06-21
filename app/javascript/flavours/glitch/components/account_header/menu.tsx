@@ -260,6 +260,14 @@ const redesignMessages = defineMessages({
     id: 'account.menu.refetch_profile',
     defaultMessage: 'Refresh profile data',
   },
+  muteReactions: {
+    id: 'account.menu.mute_reactions',
+    defaultMessage: "Don't receive reactions from {name}",
+  },
+  muteDomainReactions: {
+    id: 'account.menu.mute_domain_reactions',
+    defaultMessage: "Don't receive reactions from {domain}",
+  },
 });
 
 function getMenuItems({
@@ -555,6 +563,30 @@ function getMenuItems({
       action: () => {
         void apiRequestPost('v1/avatar_decoration_mutes', {
           account_id: account.id,
+        });
+      },
+    });
+  }
+
+  items.push(null, {
+    text: intl.formatMessage(redesignMessages.muteReactions, {
+      name: account.username,
+    }),
+    action: () => {
+      void apiRequestPost('v1/reaction_mutes', {
+        account_id: account.id,
+      });
+    },
+  });
+
+  if (remoteDomain) {
+    items.push({
+      text: intl.formatMessage(redesignMessages.muteDomainReactions, {
+        domain: remoteDomain,
+      }),
+      action: () => {
+        void apiRequestPost('v1/reaction_mutes', {
+          domain: remoteDomain,
         });
       },
     });
