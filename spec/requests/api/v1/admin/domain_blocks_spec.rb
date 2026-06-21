@@ -32,10 +32,10 @@ RSpec.describe 'Domain Blocks' do
     context 'when there are domain blocks' do
       let!(:domain_blocks) do
         [
-          Fabricate(:domain_block, severity: :silence, reject_media: true),
-          Fabricate(:domain_block, severity: :suspend, obfuscate: true),
-          Fabricate(:domain_block, severity: :noop, reject_reports: true),
-          Fabricate(:domain_block, public_comment: 'Spam'),
+          Fabricate(:domain_block, severity: :silence, reject_media: true, reject_favourite: true),
+          Fabricate(:domain_block, severity: :suspend, reject_relay: true, obfuscate: true),
+          Fabricate(:domain_block, severity: :noop, reject_reports: true, block_trends: true),
+          Fabricate(:domain_block, hidden: true, public_comment: 'Spam'),
           Fabricate(:domain_block, private_comment: 'Spam'),
         ]
       end
@@ -49,6 +49,10 @@ RSpec.describe 'Domain Blocks' do
             severity: domain_block.severity.to_s,
             reject_media: domain_block.reject_media,
             reject_reports: domain_block.reject_reports,
+            reject_favourite: domain_block.reject_favourite,
+            reject_relay: domain_block.reject_relay,
+            block_trends: domain_block.block_trends,
+            hidden: domain_block.hidden,
             private_comment: domain_block.private_comment,
             public_comment: domain_block.public_comment,
             obfuscate: domain_block.obfuscate,
@@ -84,7 +88,15 @@ RSpec.describe 'Domain Blocks' do
       get "/api/v1/admin/domain_blocks/#{domain_block.id}", headers: headers
     end
 
-    let!(:domain_block) { Fabricate(:domain_block) }
+    let!(:domain_block) do
+      Fabricate(
+        :domain_block,
+        reject_favourite: true,
+        reject_relay: true,
+        block_trends: true,
+        hidden: true
+      )
+    end
 
     it_behaves_like 'forbidden for wrong scope', 'write:statuses'
     it_behaves_like 'forbidden for wrong role', ''
@@ -104,6 +116,10 @@ RSpec.describe 'Domain Blocks' do
         severity: domain_block.severity.to_s,
         reject_media: domain_block.reject_media,
         reject_reports: domain_block.reject_reports,
+        reject_favourite: domain_block.reject_favourite,
+        reject_relay: domain_block.reject_relay,
+        block_trends: domain_block.block_trends,
+        hidden: domain_block.hidden,
         private_comment: domain_block.private_comment,
         public_comment: domain_block.public_comment,
         obfuscate: domain_block.obfuscate

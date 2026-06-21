@@ -19,9 +19,9 @@ RSpec.describe Admin::ExportDomainBlocksController do
 
   describe 'GET #export' do
     it 'renders instances' do
-      Fabricate(:domain_block, domain: 'bad.domain', severity: 'silence', public_comment: 'bad server')
-      Fabricate(:domain_block, domain: 'worse.domain', severity: 'suspend', reject_media: true, reject_reports: true, public_comment: 'worse server', obfuscate: true)
-      Fabricate(:domain_block, domain: 'reject.media', severity: 'noop', reject_media: true, public_comment: 'reject media and test unicode characters ♥')
+      Fabricate(:domain_block, domain: 'bad.domain', severity: 'silence', reject_favourite: true, public_comment: 'bad server')
+      Fabricate(:domain_block, domain: 'worse.domain', severity: 'suspend', reject_media: true, reject_reports: true, reject_relay: true, hidden: true, public_comment: 'worse server', obfuscate: true)
+      Fabricate(:domain_block, domain: 'reject.media', severity: 'noop', reject_media: true, block_trends: true, public_comment: 'reject media and test unicode characters ♥')
       Fabricate(:domain_block, domain: 'no.op', severity: 'noop', public_comment: 'noop')
 
       get :export, params: { format: :csv }
