@@ -22,6 +22,9 @@
   .fields-group
     = f.input :outgoing_spoilers, wrapper: :with_label, label: t('admin.settings.outgoing_spoilers.title'), hint: t('admin.settings.outgoing_spoilers.desc_html'), glitch_only: true
 
+  .fields-group
+    = f.input :allow_user_custom_css, as: :boolean, wrapper: :with_label, label: t('admin.settings.allow_user_custom_css.title'), hint: t('admin.settings.allow_user_custom_css.desc_html')
+
   %h2= t('admin.settings.mfm.title')
 
   .fields-group

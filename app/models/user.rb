@@ -84,6 +84,7 @@ class User < ApplicationRecord
   has_many :ips, class_name: 'UserIp', inverse_of: :user, dependent: nil
 
   has_one :invite_request, class_name: 'UserInviteRequest', inverse_of: :user, dependent: :destroy
+  has_one :custom_css, inverse_of: :user, dependent: :destroy, autosave: true
   accepts_nested_attributes_for :invite_request, reject_if: ->(attributes) { attributes['text'].blank? && !Setting.require_invite_text }
   validates :invite_request, presence: true, on: :create, if: :invite_text_required?
 
@@ -157,6 +158,14 @@ class User < ApplicationRecord
 
   def invited?
     invite_id.present?
+  end
+
+  def custom_css_text
+    custom_css&.css
+  end
+
+  def custom_css_text=(value)
+    (custom_css || build_custom_css).css = value.to_s
   end
 
   def valid_invitation?

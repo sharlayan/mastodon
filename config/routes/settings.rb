@@ -12,6 +12,7 @@ namespace :settings do
     resource :posting_defaults, only: [:show, :update]
     resource :notifications, only: [:show, :update]
     resource :other, only: [:show, :update], controller: :other
+    resource :custom_css, only: [:show, :update], controller: :custom_css
   end
 
   resources :imports, only: [:index, :show, :destroy, :create] do

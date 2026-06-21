@@ -185,4 +185,34 @@ RSpec.describe InstanceMetadata do
       expect(record.misskey_based?).to be true
     end
   end
+
+  describe '#supports_feature?' do
+    it 'returns true when the feature is advertised in nodeinfo' do
+      record = Fabricate(:instance_metadata, software: 'mastodon', features: %w(emoji_reaction circle))
+      expect(record.supports_feature?('emoji_reaction')).to be true
+      expect(record.supports_feature?(:circle)).to be true
+    end
+
+    it 'returns false when the feature is not advertised' do
+      record = Fabricate(:instance_metadata, software: 'mastodon', features: [])
+      expect(record.supports_feature?('emoji_reaction')).to be false
+    end
+  end
+
+  describe '#server_features' do
+    it 'enables emoji reactions and quotes for misskey variants by software name alone' do
+      record = Fabricate(:instance_metadata, software: 'sharkey', features: [])
+      expect(record.server_features).to include(emoji_reaction: true, quote: true)
+    end
+
+    it 'enables capabilities advertised via nodeinfo features for mastodon-family servers' do
+      record = Fabricate(:instance_metadata, software: 'mastodon', features: %w(emoji_reaction circle status_reference))
+      expect(record.server_features).to include(emoji_reaction: true, circle: true, status_reference: true)
+    end
+
+    it 'keeps capabilities disabled for a vanilla mastodon server' do
+      record = Fabricate(:instance_metadata, software: 'mastodon', features: [])
+      expect(record.server_features).to include(emoji_reaction: false, quote: false, circle: false, status_reference: false)
+    end
+  end
 end

@@ -63,6 +63,7 @@ class Form::AdminSettings
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view
     avatar_decorations_max_count
+    allow_user_custom_css
     email_footer_text
   ).freeze
 
@@ -99,6 +100,7 @@ class Form::AdminSettings
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view
     rate_limit_bypass_enabled
+    allow_user_custom_css
   ).freeze
 
   UPLOAD_KEYS = %i(

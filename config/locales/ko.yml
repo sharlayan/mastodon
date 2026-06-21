@@ -1005,6 +1005,9 @@ ko:
       allow_referrer_origin:
         desc: 사용자가 외부 사이트 링크를 클릭한 경우 브라우저는 마스토돈 서버 주소를 리퍼러로 보내게 됩니다. 이 서버가 개인 서버인 경우 등 사용자를 식별할 수 있는 경우 이 기능을 비활성화하세요.
         title: 외부 사이트가 이 마스토돈 서버를 트래픽 소스로 볼 수 있도록 허용
+      allow_user_custom_css:
+        desc_html: 사용자가 웹 인터페이스에서 본인 세션에만 적용되는 커스텀 CSS를 직접 지정할 수 있도록 허용합니다. 비활성화하면 저장된 사용자 CSS도 더 이상 적용되지 않습니다.
+        title: 사용자 커스텀 CSS 허용
       appearance:
         preamble: 마스토돈의 웹 인터페이스를 변경
         title: 외관
@@ -1442,6 +1445,7 @@ ko:
       welcome_title: "%{name} 님 반갑습니다!"
       wrong_email_hint: 만약 이메일 주소가 올바르지 않다면, 계정 설정에서 변경할 수 있습니다.
     delete_account: 계정 삭제
+    disable_custom_css: 커스텀 CSS 비활성화
     delete_account_html: 계정을 삭제하고 싶은 경우, <a href="%{path}">여기서</a> 삭제할 수 있습니다. 삭제 전 확인 화면이 표시됩니다.
     description:
       prefix_invited_by_user: "@%{name}님이 마스토돈 서버에 초대했습니다!"
@@ -1528,9 +1532,17 @@ ko:
   contrast:
     auto: 자동
     high: 높음
+  content_font_sizes:
+    large: 크게
+    medium: 보통
+    x_large: 아주 크게
+    xx_large: 매우 크게
   crypto:
     errors:
       invalid_key: 유효하지 않은 Ed25519 또는 Curve25519 키
+  custom_css:
+    disabled_by_admin: 서버 관리자가 사용자 커스텀 CSS를 비활성화했습니다. 위의 서버 전체 스타일 적용 여부는 계속 선택할 수 있습니다.
+    preamble_html: 웹 인터페이스에서 본인 세션에만 적용되는 CSS를 직접 지정할 수 있습니다. 잘못되었거나 악의적인 CSS는 레이아웃을 망가뜨릴 수 있으며, 그럴 경우 로그인 폼에서 <strong>커스텀 CSS 비활성화</strong>를 선택해 복구할 수 있습니다.
   date:
     formats:
       default: "%Y-%m-%d"
@@ -2122,6 +2134,7 @@ ko:
     appearance: 외관
     authorized_apps: 승인된 애플리케이션
     back: 마스토돈으로 돌아가기
+    custom_css: 커스텀 CSS
     delete: 계정 삭제
     development: 개발
     edit_profile: 프로필 편집

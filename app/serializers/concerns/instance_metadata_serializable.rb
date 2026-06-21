@@ -67,6 +67,7 @@ module InstanceMetadataSerializable
       version: metadata.version,
       theme_color: metadata.theme_color_with_fallback,
       favicon_url: metadata.favicon_url_with_fallback,
+      server_features: metadata.server_features,
     }
   rescue => e
     Rails.logger.error("Failed to serialize metadata for #{metadata.domain}: #{e.message}")

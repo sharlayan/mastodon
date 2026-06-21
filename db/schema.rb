@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_18_114230) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_21_040018) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -490,6 +490,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_114230) do
     t.index ["uri"], name: "index_conversations_on_uri", unique: true, opclass: :text_pattern_ops, where: "(uri IS NOT NULL)"
   end
 
+  create_table "custom_csses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "css", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id"], name: "index_custom_csses_on_user_id", unique: true
+  end
+
   create_table "custom_emoji_categories", force: :cascade do |t|
     t.datetime "created_at", precision: nil, null: false
     t.bigint "featured_emoji_id"
@@ -751,6 +759,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_114230) do
     t.datetime "created_at", null: false
     t.string "domain", null: false
     t.string "favicon_url"
+    t.jsonb "features", default: [], null: false
     t.string "instance_name"
     t.datetime "metadata_updated_at"
     t.string "software"
@@ -1623,6 +1632,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_18_114230) do
   add_foreign_key "collections", "tags"
   add_foreign_key "conversation_mutes", "accounts", name: "fk_225b4212bb", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
+  add_foreign_key "custom_csses", "users", on_delete: :cascade
   add_foreign_key "custom_emoji_categories", "custom_emojis", column: "featured_emoji_id", on_delete: :nullify
   add_foreign_key "custom_filter_keywords", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "custom_filters", on_delete: :cascade

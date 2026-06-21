@@ -20,6 +20,7 @@ SimpleNavigation::Configuration.run do |navigation|
       s.item :posting_defaults, safe_join([material_symbol('edit_square'), t('preferences.posting_defaults')]), settings_preferences_posting_defaults_path
       s.item :notifications, safe_join([material_symbol('mail'), t('settings.notifications')]), settings_preferences_notifications_path
       s.item :other, safe_join([material_symbol('tune'), t('preferences.other')]), settings_preferences_other_path
+      s.item :custom_css, safe_join([material_symbol('code'), t('settings.custom_css')]), settings_preferences_custom_css_path
     end
 
     n.item :flavours, safe_join([material_symbol('brush'), t('settings.flavours')]), settings_flavours_path do |flavours|

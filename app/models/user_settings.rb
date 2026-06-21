@@ -21,6 +21,7 @@ class UserSettings
   setting :visible_reactions, default: 6
   setting :default_quote_policy, default: 'nobody', in: %w(public followers nobody) # patch for default no-quote my statuses
   setting :email_subscriptions, default: false
+  setting :content_font_size, default: 'medium', in: %w(medium large x_large xx_large)
 
   setting_inverse_alias :indexable, :noindex
   setting_inverse_alias :show_followers_count, :hide_followers_count
@@ -53,6 +54,8 @@ class UserSettings
     setting :mfm_enabled, default: false
     setting :mfm_animations, default: false
     setting :mfm_fold_mode, default: 'sensitive', in: %w(show sensitive all)
+    setting :use_server_css, default: true
+    setting :use_custom_css, default: false
   end
 
   namespace :notification_emails do

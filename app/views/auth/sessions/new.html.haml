@@ -33,6 +33,11 @@
                 label: t('simple_form.labels.defaults.password'),
                 wrapper: :with_label
 
+    .fields-group
+      .label_input.checkbox
+        = check_box_tag :disable_css, '1', false
+        = label_tag :disable_css, t('auth.disable_custom_css')
+
     .actions
       = f.button :button, t('auth.login'), type: :submit
 

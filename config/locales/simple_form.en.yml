@@ -81,6 +81,10 @@ en:
         setting_show_avatar_decorations: Display avatar decoration frames on profiles. Off by default.
         setting_show_federated_avatar_decorations: Also show decorations received from Misskey-compatible servers
         setting_force_round_avatar_decoration: Force profile images to be circular (border-radius 50%) when a decoration is active.
+        setting_content_font_size: Adjust the font size of post bodies only. Other interface text is unaffected.
+        custom_css_text: Plain CSS, applied only to your own session. Maximum 100 KB.
+        setting_use_server_css: When enabled, the server-wide custom styles set by the administrator are applied.
+        setting_use_custom_css: When enabled, your own custom CSS below is applied to the web interface.
       domain_allow:
         domain: This domain will be able to fetch data from this server and incoming data from it will be processed and stored
       email_domain_block:
@@ -301,6 +305,10 @@ en:
         setting_show_avatar_decorations: Show avatar decorations
         setting_show_federated_avatar_decorations: Show avatar decorations from federated servers
         setting_force_round_avatar_decoration: Force round profile image with avatar decoration
+        setting_content_font_size: Post text size
+        custom_css_text: Custom CSS
+        setting_use_server_css: Apply server custom CSS
+        setting_use_custom_css: Apply my custom CSS
       email_domain_block:
         with_dns_records: Include MX records and IPs of the domain
       featured_tag:

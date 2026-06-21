@@ -80,6 +80,10 @@ ko:
         setting_show_avatar_decorations: 아바타 장식을 표시합니다.
         setting_show_federated_avatar_decorations: Misskey 호환 서버에서 받은 장식을 표시합니다.
         setting_force_round_avatar_decoration: 아바타 장식이 활성화된 경우 프로필 이미지를 원형(border-radius 50%)으로 강제 설정합니다.
+        setting_content_font_size: 게시물 본문의 글자 크기만 조절합니다. 다른 인터페이스 텍스트에는 영향을 주지 않습니다.
+        custom_css_text: 본인 세션에만 적용되는 일반 CSS입니다. 최대 100 KB.
+        setting_use_server_css: 활성화하면 관리자가 설정한 서버 전체 커스텀 스타일이 적용됩니다.
+        setting_use_custom_css: 활성화하면 아래에 작성한 커스텀 CSS가 웹 인터페이스에 적용됩니다.
       domain_allow:
         domain: 이 도메인은 이 서버에서 데이터를 가져갈 수 있고 이 도메인에서 보내진 데이터는 처리되고 저장 됩니다
       email_domain_block:
@@ -302,6 +306,10 @@ ko:
         setting_show_avatar_decorations: 아바타 장식 표시
         setting_show_federated_avatar_decorations: 연합 서버의 아바타 장식 표시
         setting_force_round_avatar_decoration: 장식 활성 시 프로필 이미지 원형 강제 적용
+        setting_content_font_size: 게시물 글자 크기
+        custom_css_text: 커스텀 CSS
+        setting_use_server_css: 서버 커스텀 CSS 적용
+        setting_use_custom_css: 내 커스텀 CSS 적용
       email_domain_block:
         with_dns_records: 도메인의 IP와 MX 레코드 값을 포함
       featured_tag:

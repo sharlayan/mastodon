@@ -320,3 +320,46 @@ html {
     }
   }
 }
+
+@mixin content-font-size(
+  $content,
+  $content-line,
+  $content-emoji,
+  $detail,
+  $detail-line,
+  $detail-emoji
+) {
+  .status__content,
+  .reply-indicator__content,
+  .edit-indicator__content {
+    font-size: $content;
+    line-height: $content-line;
+
+    .emojione {
+      width: $content-emoji;
+      height: $content-emoji;
+    }
+  }
+
+  .detailed-status .status__content {
+    font-size: $detail;
+    line-height: $detail-line;
+
+    .emojione {
+      width: $detail-emoji;
+      height: $detail-emoji;
+    }
+  }
+}
+
+html.content-font-size__large {
+  @include content-font-size(18px, 27px, 24px, 25px, 32px, 32px);
+}
+
+html.content-font-size__x_large {
+  @include content-font-size(22px, 30px, 32px, 30px, 39px, 42px);
+}
+
+html.content-font-size__xx_large {
+  @include content-font-size(30px, 44px, 42px, 40px, 52px, 56px);
+}

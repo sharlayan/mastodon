@@ -93,7 +93,11 @@ class FetchInstanceThemeColorService < BaseService
 
     # avatarDecorations support: only update when nodeinfo was actually reachable,
     # otherwise we would reset a known-true flag to false on a transient failure.
-    attributes[:supports_avatar_decorations] = extract_nodeinfo_features.include?('avatarDecorations') if fetch_nodeinfo.present?
+    if fetch_nodeinfo.present?
+      nodeinfo_features = extract_nodeinfo_features
+      attributes[:supports_avatar_decorations] = nodeinfo_features.include?('avatarDecorations')
+      attributes[:features] = nodeinfo_features
+    end
 
     @metadata.update(attributes)
 

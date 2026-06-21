@@ -1024,6 +1024,9 @@ en:
       allow_referrer_origin:
         desc: When your users click links to external sites, their browser may send the address of your Mastodon server as the referrer. Disable this if this would uniquely identify your users, e.g. if this is a personal Mastodon server.
         title: Allow external sites to see your Mastodon server as a traffic source
+      allow_user_custom_css:
+        desc_html: Let users define their own custom CSS that is applied only to their own session in the web interface. When disabled, any stored user CSS stops being applied.
+        title: Allow user custom CSS
       appearance:
         preamble: Customize Mastodon's web interface.
         title: Appearance
@@ -1467,6 +1470,7 @@ en:
       wrong_email_hint: If that email address is not correct, you can change it in account settings.
     delete_account: Delete account
     delete_account_html: If you wish to delete your account, you can <a href="%{path}">proceed here</a>. You will be asked for confirmation.
+    disable_custom_css: Disable custom CSS
     description:
       prefix_invited_by_user: "@%{name} invites you to join this server of Mastodon!"
       prefix_sign_up: Sign up on Mastodon today!
@@ -1552,9 +1556,17 @@ en:
   contrast:
     auto: Auto
     high: High
+  content_font_sizes:
+    large: Large
+    medium: Medium
+    x_large: Extra large
+    xx_large: Huge
   crypto:
     errors:
       invalid_key: is not a valid Ed25519 or Curve25519 key
+  custom_css:
+    disabled_by_admin: The server administrator has disabled user custom CSS. You can still choose whether to apply the server-wide styles above.
+    preamble_html: Define your own CSS that will be applied only to your own session in the web interface. Invalid or malicious CSS can break the layout; if that happens, tick <strong>Disable custom CSS</strong> on the login form to recover.
   date:
     formats:
       default: "%b %d, %Y"
@@ -2178,6 +2190,7 @@ en:
     appearance: Appearance
     authorized_apps: Authorized apps
     back: Back to Mastodon
+    custom_css: Custom CSS
     delete: Account deletion
     development: Development
     edit_profile: Edit profile

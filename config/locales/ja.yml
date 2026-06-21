@@ -863,6 +863,9 @@ ja:
       allow_referrer_origin:
         desc: ユーザが外部サイトへのリンクをクリックする際、ユーザーのブラウザはあなたのMastodonサーバーのアドレスを紹介者として送信することがあります。 これによりあなたのユーザーが特定されてしまう場合、例えば個人用のMastodonサーバーなどである場合などは無効にしてください。
         title: 外部サイトが Mastodon サーバーをトラフィックソースとして表示することを許可する
+      allow_user_custom_css:
+        desc_html: ユーザーがウェブインターフェースで、自分のセッションにのみ適用されるカスタムCSSを設定できるようにします。無効にすると、保存済みのユーザーCSSも適用されなくなります。
+        title: ユーザーのカスタムCSSを許可する
       appearance:
         preamble: ウェブインターフェースをカスタマイズします。
         title: 外観
@@ -1285,6 +1288,7 @@ ja:
       welcome_title: ようこそ、%{name}さん！
       wrong_email_hint: メールアドレスが正しくない場合は、アカウント設定画面で変更できます。
     delete_account: アカウントの削除
+    disable_custom_css: カスタムCSSを無効にする
     delete_account_html: アカウントを削除したい場合、<a href="%{path}">こちら</a>から手続きが行えます。削除する前に、確認画面があります。
     description:
       prefix_invited_by_user: "@%{name}さんがあなたをこのMastodonサーバーに招待しました"
@@ -1369,9 +1373,17 @@ ja:
   contrast:
     auto: 自動
     high: 高
+  content_font_sizes:
+    large: 大きい
+    medium: 標準
+    x_large: とても大きい
+    xx_large: 極大
   crypto:
     errors:
       invalid_key: 有効なEd25519またはCurve25519キーではありません
+  custom_css:
+    disabled_by_admin: サーバー管理者がユーザーのカスタムCSSを無効にしています。上のサーバー全体のスタイルを適用するかどうかは引き続き選択できます。
+    preamble_html: ウェブインターフェースで、自分のセッションにのみ適用されるCSSを設定できます。不正または悪意のあるCSSはレイアウトを壊す可能性があります。その場合はログインフォームで<strong>カスタムCSSを無効にする</strong>にチェックを入れて復旧できます。
   date:
     formats:
       default: "%Y年%m月%d日"
@@ -1894,6 +1906,7 @@ ja:
     appearance: 外観
     authorized_apps: 認証済みアプリ
     back: Mastodonに戻る
+    custom_css: カスタムCSS
     delete: アカウントの削除
     development: 開発
     edit_profile: プロフィールを編集

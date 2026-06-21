@@ -204,6 +204,7 @@ class Auth::SessionsController < Devise::SessionsController
   def on_authentication_success(user, security_measure)
     @on_authentication_success_called = true
 
+    disable_custom_css_if_requested(user)
     clear_2fa_attempt_from_user(user)
     clear_attempt_from_session
 
@@ -223,6 +224,13 @@ class Auth::SessionsController < Devise::SessionsController
 
   def suspicious_sign_in?(user)
     SuspiciousSignInDetector.new(user).suspicious?(request)
+  end
+
+  def disable_custom_css_if_requested(user)
+    return unless ActiveModel::Type::Boolean.new.cast(params[:disable_css])
+
+    user.settings['web.use_custom_css'] = false
+    user.save
   end
 
   def on_authentication_failure(user, security_measure, failure_reason)

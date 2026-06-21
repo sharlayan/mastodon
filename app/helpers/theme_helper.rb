@@ -48,6 +48,25 @@ module ThemeHelper
     )
   end
 
+  def server_css?
+    current_user.nil? || current_user.setting_use_server_css
+  end
+
+  def user_custom_css?
+    Setting.allow_user_custom_css && current_user.present? && current_user.setting_use_custom_css && current_user.custom_css_text.present?
+  end
+
+  def user_custom_stylesheet
+    return if current_user.nil?
+
+    stylesheet_link_tag(
+      user_custom_css_path(version: current_user.custom_css&.updated_at&.to_i),
+      host: root_url,
+      media: :all,
+      skip_pipeline: true
+    )
+  end
+
   def current_flavour
     [current_user&.setting_flavour, Setting.flavour, 'glitch', 'vanilla'].find { |flavour| Themes.instance.flavours.include?(flavour) }
   end

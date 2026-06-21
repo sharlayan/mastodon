@@ -6,6 +6,7 @@
 #
 #  id                     :bigint(8)        not null, primary key
 #  domain                 :string           not null
+#  features               :jsonb            not null
 #  favicon_url            :string
 #  instance_name          :string
 #  metadata_updated_at    :datetime
@@ -36,6 +37,9 @@ class InstanceMetadata < ApplicationRecord
     'friendica' => '#3478C8',
     'hubzilla' => '#43488A',
   }.freeze
+
+  REACTION_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick akkoma pleroma kmyblue).freeze
+  QUOTE_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick kmyblue).freeze
 
   def self.for_domain(domain)
     find_or_create_by(domain: domain)
@@ -83,5 +87,27 @@ class InstanceMetadata < ApplicationRecord
 
   def avatar_decorations_compatible?
     misskey_based? || supports_avatar_decorations?
+  end
+
+  def supports_feature?(name)
+    return false if features.blank?
+
+    features.include?(name.to_s)
+  end
+
+  def software_in?(list)
+    return false if software.blank?
+
+    list.include?(software.downcase)
+  end
+
+  def server_features
+    {
+      emoji_reaction: supports_feature?('emoji_reaction') || misskey_based? || software_in?(REACTION_SOFTWARE),
+      quote: supports_feature?('quote') || software_in?(QUOTE_SOFTWARE),
+      status_reference: supports_feature?('status_reference'),
+      circle: supports_feature?('circle'),
+      avatar_decorations: avatar_decorations_compatible?,
+    }
   end
 end

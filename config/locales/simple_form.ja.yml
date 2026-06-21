@@ -70,6 +70,10 @@ ja:
         setting_show_avatar_decorations: アバターデコレーションを表示します。デフォルトではオフです。
         setting_show_federated_avatar_decorations: Misskey互換サーバーから受信したアバターデコレーションも表示します
         setting_force_round_avatar_decoration: デコレーション表示時にプロフィール画像を円形（border-radius 50%）に強制します。
+        setting_content_font_size: 投稿本文の文字サイズのみを調整します。その他のUIテキストには影響しません。
+        custom_css_text: 自分のセッションにのみ適用されるプレーンなCSSです。最大100 KB。
+        setting_use_server_css: 有効にすると、管理者が設定したサーバー全体のカスタムスタイルが適用されます。
+        setting_use_custom_css: 有効にすると、下に記入したカスタムCSSがウェブインターフェースに適用されます。
       domain_allow:
         domain: 登録するとこのサーバーからデータを受信したり、このドメインから受信するデータを処理して保存できるようになります
       email_domain_block:
@@ -260,6 +264,10 @@ ja:
         setting_show_avatar_decorations: アバターデコレーションを表示
         setting_show_federated_avatar_decorations: 連合サーバーからのアバターデコレーションを表示
         setting_force_round_avatar_decoration: デコレーション表示時にプロフィール画像を円形に強制
+        setting_content_font_size: 投稿の文字サイズ
+        custom_css_text: カスタムCSS
+        setting_use_server_css: サーバーのカスタムCSSを適用
+        setting_use_custom_css: 自分のカスタムCSSを適用
         severity: 重大性
         sign_in_token_attempt: セキュリティコード
         title: タイトル

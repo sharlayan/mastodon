@@ -55,6 +55,18 @@ module User::HasSettings
     settings['web.use_system_font']
   end
 
+  def setting_content_font_size
+    settings['content_font_size']
+  end
+
+  def setting_use_server_css
+    settings['web.use_server_css']
+  end
+
+  def setting_use_custom_css
+    settings['web.use_custom_css']
+  end
+
   def setting_system_scrollbars_ui
     settings['web.use_system_scrollbars']
   end

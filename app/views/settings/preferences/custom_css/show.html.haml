@@ -1,0 +1,36 @@
+- content_for :page_title do
+  = t('settings.custom_css')
+
+- content_for :heading_actions do
+  = button_tag t('generic.save_changes'), class: 'button', form: 'edit_custom_css'
+
+= simple_form_for current_user, url: settings_preferences_custom_css_path, html: { method: :put, id: 'edit_custom_css' } do |f|
+  %p.lead= t('custom_css.preamble_html')
+
+  = f.simple_fields_for :settings, current_user.settings do |ff|
+    .fields-group
+      = ff.input :'web.use_server_css',
+                 wrapper: :with_label,
+                 hint: t('simple_form.hints.defaults.setting_use_server_css'),
+                 label: t('simple_form.labels.defaults.setting_use_server_css')
+
+    - if Setting.allow_user_custom_css
+      .fields-group
+        = ff.input :'web.use_custom_css',
+                   wrapper: :with_label,
+                   hint: t('simple_form.hints.defaults.setting_use_custom_css'),
+                   label: t('simple_form.labels.defaults.setting_use_custom_css')
+
+  - if Setting.allow_user_custom_css
+    .fields-group
+      = f.input :custom_css_text,
+                as: :text,
+                wrapper: :with_block_label,
+                label: t('simple_form.labels.defaults.custom_css_text'),
+                hint: t('simple_form.hints.defaults.custom_css_text'),
+                input_html: { rows: 16, spellcheck: false, autocapitalize: 'off', autocorrect: 'off' }
+  - else
+    .flash-message= t('custom_css.disabled_by_admin')
+
+  .actions
+    = f.button :button, t('generic.save_changes'), type: :submit
