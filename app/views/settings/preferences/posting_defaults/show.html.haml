@@ -53,6 +53,12 @@
                  label: I18n.t('simple_form.labels.defaults.setting_default_sensitive'),
                  wrapper: :with_label
 
+    .fields-group
+      = ff.input :bridge_unlisted_to_bsky,
+                 hint: I18n.t('simple_form.hints.defaults.setting_bridge_unlisted_to_bsky'),
+                 label: I18n.t('simple_form.labels.defaults.setting_bridge_unlisted_to_bsky'),
+                 wrapper: :with_label
+
     - content_types = %w(text/plain text/markdown)
     - content_types << 'text/x-mfm' if Setting.mfm_allow_composition
     .fields-group

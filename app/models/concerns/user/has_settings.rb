@@ -31,6 +31,10 @@ module User::HasSettings
     settings['default_sensitive']
   end
 
+  def setting_bridge_unlisted_to_bsky
+    settings['bridge_unlisted_to_bsky']
+  end
+
   def setting_boost_modal
     settings['web.reblog_modal']
   end

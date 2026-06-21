@@ -23,4 +23,21 @@ RSpec.describe ActivityPub::CreateNoteSerializer do
 
     expect(subject).to_not have_key('target')
   end
+
+  context 'when promote_to_public is enabled for an unlisted status' do
+    subject { serialized_record_json(status, described_class, adapter: ActivityPub::Adapter, options: { promote_to_public: true }) }
+
+    let(:status) { Fabricate(:status, visibility: :unlisted) }
+    let(:public_collection) { 'https://www.w3.org/ns/activitystreams#Public' }
+
+    it 'swaps to/cc so the activity appears public' do
+      expect(subject['to']).to include(public_collection)
+      expect(subject['cc']).to_not include(public_collection)
+    end
+
+    it 'also swaps to/cc on the inlined object' do
+      expect(subject.dig('object', 'to')).to include(public_collection)
+      expect(subject.dig('object', 'cc')).to_not include(public_collection)
+    end
+  end
 end

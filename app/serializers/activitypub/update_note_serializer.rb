@@ -18,10 +18,14 @@ class ActivityPub::UpdateNoteSerializer < ActivityPub::Serializer
   end
 
   def to
+    return ActivityPub::TagManager.instance.cc(object) if instance_options[:promote_to_public]
+
     ActivityPub::TagManager.instance.to(object)
   end
 
   def cc
+    return ActivityPub::TagManager.instance.to(object) if instance_options[:promote_to_public]
+
     ActivityPub::TagManager.instance.cc(object)
   end
 
