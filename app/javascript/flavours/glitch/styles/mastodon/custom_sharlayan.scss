@@ -72,6 +72,12 @@ html {
     }
   }
 
+  .status__wrapper-reply:not(:has(> .status--in-thread)) .status__prepend {
+    --thread-margin: initial;
+
+    margin-inline-start: 0;
+  }
+
   /* default */
   [class^='notification'] .status .reactions-bar {
     margin-inline-start: var(--status-gutter-width, 0);
