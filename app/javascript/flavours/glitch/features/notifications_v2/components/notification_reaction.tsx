@@ -1,8 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 
 import { FormattedMessage } from 'react-intl';
 
 import AddReactionIcon from '@/material-icons/400-24px/add_reaction.svg?react';
+import { EmojiInfoTooltip } from 'flavours/glitch/components/emoji_info_tooltip';
 import { unicodeHexToUrl } from 'flavours/glitch/features/emoji/normalize';
 import { emojiToUnicodeHex } from 'flavours/glitch/features/emoji/utils';
 import { autoPlayGif } from 'flavours/glitch/initial_state';
@@ -17,24 +18,30 @@ const ReactionEmoji: React.FC<{
   url?: string;
   staticUrl?: string;
 }> = ({ name, url, staticUrl }) => {
-  if (url) {
-    return (
-      <img
-        draggable='false'
-        className='emojione custom-emoji'
-        alt={`:${name}:`}
-        src={autoPlayGif ? url : (staticUrl ?? url)}
-      />
-    );
-  }
+  const containerRef = useRef<HTMLSpanElement>(null);
 
   return (
-    <img
-      draggable='false'
-      className='emojione'
-      alt={name}
-      src={unicodeHexToUrl({ unicodeHex: emojiToUnicodeHex(name), assetHost })}
-    />
+    <span ref={containerRef} className='notification-reaction__emoji'>
+      {url ? (
+        <img
+          draggable='false'
+          className='emojione custom-emoji'
+          alt={`:${name}:`}
+          src={autoPlayGif ? url : (staticUrl ?? url)}
+        />
+      ) : (
+        <img
+          draggable='false'
+          className='emojione'
+          alt={name}
+          src={unicodeHexToUrl({
+            unicodeHex: emojiToUnicodeHex(name),
+            assetHost,
+          })}
+        />
+      )}
+      <EmojiInfoTooltip containerRef={containerRef} enabled />
+    </span>
   );
 };
 
