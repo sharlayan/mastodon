@@ -120,7 +120,7 @@ class Notification < ApplicationRecord
     mention: [mention: :status],
     quote: [quote: :status],
     favourite: [favourite: :status],
-    reaction: [status_reaction: :status],
+    reaction: [status_reaction: [:status, :custom_emoji]],
     poll: [poll: :status],
     update: :status,
     quoted_update: :status,

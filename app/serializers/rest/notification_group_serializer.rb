@@ -21,6 +21,7 @@ class REST::NotificationGroupSerializer < ActiveModel::Serializer
   belongs_to :account_warning, key: :moderation_warning, if: :moderation_warning_event?, serializer: REST::AccountWarningSerializer
   belongs_to :generated_annual_report, key: :annual_report, if: :annual_report_event?, serializer: REST::AnnualReportEventSerializer
   belongs_to :target_collection, key: :collection, if: :collection_type?, serializer: REST::CollectionSerializer
+  belongs_to :reaction, if: :reaction_type?, serializer: REST::ReactionEmojiSerializer
 
   attribute :follow_message, if: :follow_accepted_type?
 
@@ -38,6 +39,10 @@ class REST::NotificationGroupSerializer < ActiveModel::Serializer
 
   def collection_type?
     [:added_to_collection, :collection_update].include?(object.type)
+  end
+
+  def reaction_type?
+    object.type == :reaction
   end
 
   def report_type?

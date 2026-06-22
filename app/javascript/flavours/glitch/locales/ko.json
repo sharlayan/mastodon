@@ -115,6 +115,7 @@
   "mfm_preview_modal.title": "MFM 미리보기",
   "navigation_bar.reactions": "리액션",
   "notification.reaction": "{name} 님이 당신의 게시글에 리액션을 남겼습니다.",
+  "notification.reaction_with_emoji": "{name} 님이 당신의 게시글에 {emoji} 리액션을 남겼습니다.",
   "notifications.column_settings.filter_bar.show_bar": "필터 막대 표시",
   "notifications.column_settings.reaction": "리액션:",
   "notifications.filter.reactions": "리액션",

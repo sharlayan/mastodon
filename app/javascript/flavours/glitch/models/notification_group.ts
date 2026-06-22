@@ -2,6 +2,7 @@ import type {
   ApiAccountRelationshipSeveranceEventJSON,
   ApiAccountWarningJSON,
   ApiAnnualReportEventJSON,
+  ApiReactionEmojiJSON,
   BaseNotificationGroupJSON,
   ApiNotificationGroupJSON,
   ApiNotificationJSON,
@@ -39,7 +40,9 @@ interface BaseNotification<
 
 export type NotificationGroupFavourite =
   BaseNotificationWithStatus<'favourite'>;
-export type NotificationGroupReaction = BaseNotificationWithStatus<'reaction'>;
+export interface NotificationGroupReaction extends BaseNotificationWithStatus<'reaction'> {
+  reaction?: ApiReactionEmojiJSON;
+}
 export type NotificationGroupReblog = BaseNotificationWithStatus<'reblog'>;
 export type NotificationGroupStatus = BaseNotificationWithStatus<'status'>;
 export type NotificationGroupMention = BaseNotificationWithStatus<'mention'>;
@@ -257,6 +260,7 @@ export function createNotificationGroupFromNotificationJSON(
         ...group,
         type: notification.type,
         statusId: notification.status?.id,
+        reaction: notification.reaction,
       };
     case 'admin.report':
       return {
