@@ -28,6 +28,7 @@
   /notifications_v2/(*any)
   /notifications/(*any)
   /pinned
+  /reaction_mutes
   /profile/(*any)
   /public
   /public/local

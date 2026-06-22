@@ -33,6 +33,7 @@ import notifications from './notifications';
 import { pictureInPictureReducer } from './picture_in_picture';
 import { pollsReducer } from './polls';
 import push_notifications from './push_notifications';
+import { reactionMutesReducer } from './reaction_mutes';
 import { relationshipsReducer } from './relationships';
 import { searchReducer } from './search';
 import { serverReducer } from './server';
@@ -77,6 +78,7 @@ const reducers = {
   lists: listsReducer,
   followedTags: followedTagsReducer,
   custom_emoji_mutes: customEmojiMutesReducer,
+  reaction_mutes: reactionMutesReducer,
   filters,
   conversations,
   direct_compose,

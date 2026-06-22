@@ -69,13 +69,25 @@ img.emojione.custom-emoji.horizontal-origin-custom-emoji {
   justify-content: space-between;
   gap: 10px;
   padding: 12px 15px;
-  border-bottom: 1px solid var(--background-border-color);
+  border-bottom: 1px solid var(--color-border-primary);
 
   .custom-emoji-mute__info {
     display: flex;
     flex-direction: column;
     gap: 2px;
     overflow: hidden;
+  }
+
+  .custom-emoji-mute__labels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .custom-emoji-mute__checkbox {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
   }
 
   .custom-emoji-mute__prefix {
@@ -88,6 +100,31 @@ img.emojione.custom-emoji.horizontal-origin-custom-emoji {
     color: var(--color-text-secondary);
     font-size: 13px;
     word-break: break-all;
+  }
+
+  .custom-emoji-mute__badge {
+    align-self: flex-start;
+    margin-top: 2px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-secondary);
+  }
+}
+
+.custom-emoji-mute__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    flex: 0 0 auto;
   }
 }
 

@@ -12,8 +12,15 @@ export const fetchCustomEmojiMutes = createDataLoadingThunk(
 
 export const createCustomEmojiMute = createDataLoadingThunk(
   'custom_emoji_mutes/create',
-  ({ prefix, domain }: { prefix: string; domain?: string }) =>
-    apiCreateCustomEmojiMute({ prefix, domain }),
+  ({
+    prefix,
+    domain,
+    reject_reactions,
+  }: {
+    prefix: string;
+    domain?: string;
+    reject_reactions?: boolean;
+  }) => apiCreateCustomEmojiMute({ prefix, domain, reject_reactions }),
 );
 
 export const deleteCustomEmojiMute = createDataLoadingThunk(

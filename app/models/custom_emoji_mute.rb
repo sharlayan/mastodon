@@ -4,12 +4,13 @@
 #
 # Table name: custom_emoji_mutes
 #
-#  id         :bigint(8)        not null, primary key
-#  prefix     :string           default(""), not null
-#  domain     :string           default(""), not null
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
-#  account_id :bigint(8)        not null
+#  id               :bigint(8)        not null, primary key
+#  prefix           :string           default(""), not null
+#  domain           :string           default(""), not null
+#  reject_reactions :boolean          default(FALSE), not null
+#  created_at       :datetime         not null
+#  updated_at       :datetime         not null
+#  account_id       :bigint(8)        not null
 #
 
 class CustomEmojiMute < ApplicationRecord
@@ -24,4 +25,15 @@ class CustomEmojiMute < ApplicationRecord
   validates :prefix, uniqueness: { scope: %i(account_id domain) }
 
   scope :for_account, ->(account_id) { where(account_id: account_id) }
+
+  def self.reaction_muted?(recipient_account_id, shortcode, domain)
+    return false if recipient_account_id.blank? || shortcode.blank?
+
+    normalized_shortcode = shortcode.to_s.downcase
+    normalized_domain = domain.to_s.downcase
+
+    for_account(recipient_account_id).where(reject_reactions: true).any? do |mute|
+      (mute.domain.blank? || mute.domain == normalized_domain) && normalized_shortcode.start_with?(mute.prefix.downcase)
+    end
+  end
 end

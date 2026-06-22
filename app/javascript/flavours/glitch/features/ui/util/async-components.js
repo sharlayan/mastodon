@@ -158,6 +158,10 @@ export function CustomEmojiMutes () {
   return import('../../custom_emoji_mutes');
 }
 
+export function ReactionMutes () {
+  return import('../../reaction_mutes');
+}
+
 export function MuteModal () {
   return import('../components/mute_modal');
 }

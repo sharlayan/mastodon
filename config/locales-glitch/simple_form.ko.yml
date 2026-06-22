@@ -22,7 +22,7 @@ ko:
         setting_show_followers_count: 팔로워 수 표시
         setting_skin: 스킨
         setting_system_emoji_font: 에모지에 시스템 기본 폰트 적용하기 (글리치 풍미에만 적용됨)
-        setting_visible_reactions: 에모지 반응 표시 수
+        setting_visible_reactions: 에모지 리액션 표시 수
       notification_emails:
         trending_link: 새로 유행중인 링크에 대한 리뷰가 필요할 때
         trending_status: 새로 유행중인 게시물에 대한 리뷰가 필요할 때

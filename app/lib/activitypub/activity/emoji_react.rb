@@ -21,6 +21,7 @@ class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
       custom_emoji = process_emoji_tags(name, @json['tag'])
 
       return if custom_emoji.nil?
+      return if CustomEmojiMute.reaction_muted?(original_status.account_id, custom_emoji.shortcode, custom_emoji.domain)
     end
 
     return if @account.reacted?(original_status, name, custom_emoji)

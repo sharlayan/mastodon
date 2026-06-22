@@ -18,6 +18,7 @@ class Api::V1::CustomEmojiMutesController < Api::BaseController
     domain = TagManager.instance.normalize_domain(domain) if domain.present?
 
     mute = current_account.custom_emoji_mutes.find_or_create_by!(prefix: prefix, domain: domain.to_s)
+    mute.update!(reject_reactions: ActiveModel::Type::Boolean.new.cast(params[:reject_reactions])) if params.key?(:reject_reactions)
 
     render json: mute, serializer: REST::CustomEmojiMuteSerializer
   end

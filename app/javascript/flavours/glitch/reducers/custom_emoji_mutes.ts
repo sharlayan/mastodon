@@ -23,7 +23,7 @@ const upsert = (
   mute: ApiCustomEmojiMuteJSON,
 ) => {
   if (items.some((item) => item.id === mute.id)) {
-    return items;
+    return items.map((item) => (item.id === mute.id ? mute : item));
   }
   return [mute, ...items];
 };

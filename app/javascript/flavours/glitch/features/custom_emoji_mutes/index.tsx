@@ -36,18 +36,36 @@ const messages = defineMessages({
 const CustomEmojiMuteRow: React.FC<{
   mute: ApiCustomEmojiMuteJSON;
   onDelete: (id: string) => void;
-}> = ({ mute, onDelete }) => {
+  onToggleReject: (mute: ApiCustomEmojiMuteJSON) => void;
+}> = ({ mute, onDelete, onToggleReject }) => {
   const handleClick = useCallback(() => {
     onDelete(mute.id);
   }, [mute.id, onDelete]);
 
+  const handleToggle = useCallback(() => {
+    onToggleReject(mute);
+  }, [mute, onToggleReject]);
+
   return (
     <div className='custom-emoji-mute'>
       <div className='custom-emoji-mute__info'>
-        <span className='custom-emoji-mute__prefix'>{mute.prefix}</span>
-        {mute.domain && (
-          <span className='custom-emoji-mute__domain'>@{mute.domain}</span>
-        )}
+        <div className='custom-emoji-mute__labels'>
+          <span className='custom-emoji-mute__prefix'>{mute.prefix}</span>
+          {mute.domain && (
+            <span className='custom-emoji-mute__domain'>@{mute.domain}</span>
+          )}
+        </div>
+        <label className='custom-emoji-mute__checkbox'>
+          <input
+            type='checkbox'
+            checked={mute.reject_reactions}
+            onChange={handleToggle}
+          />
+          <FormattedMessage
+            id='custom_emoji_mutes.reject_reactions_badge'
+            defaultMessage='Reactions blocked'
+          />
+        </label>
       </div>
       <Button onClick={handleClick}>
         <FormattedMessage
@@ -70,6 +88,7 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
 
   const [prefix, setPrefix] = useState('');
   const [domain, setDomain] = useState('');
+  const [rejectReactions, setRejectReactions] = useState(false);
 
   useEffect(() => {
     void dispatch(fetchCustomEmojiMutes());
@@ -89,6 +108,13 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
     [],
   );
 
+  const handleRejectReactionsChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setRejectReactions(event.target.checked);
+    },
+    [],
+  );
+
   const handleSubmit = useCallback(
     (event: React.FormEvent) => {
       event.preventDefault();
@@ -97,17 +123,35 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
         return;
       }
       void dispatch(
-        createCustomEmojiMute({ prefix: trimmed, domain: domain.trim() }),
+        createCustomEmojiMute({
+          prefix: trimmed,
+          domain: domain.trim(),
+          reject_reactions: rejectReactions,
+        }),
       );
       setPrefix('');
       setDomain('');
+      setRejectReactions(false);
     },
-    [dispatch, prefix, domain],
+    [dispatch, prefix, domain, rejectReactions],
   );
 
   const handleDelete = useCallback(
     (id: string) => {
       void dispatch(deleteCustomEmojiMute({ id }));
+    },
+    [dispatch],
+  );
+
+  const handleToggleReject = useCallback(
+    (mute: ApiCustomEmojiMuteJSON) => {
+      void dispatch(
+        createCustomEmojiMute({
+          prefix: mute.prefix,
+          domain: mute.domain,
+          reject_reactions: !mute.reject_reactions,
+        }),
+      );
     },
     [dispatch],
   );
@@ -168,6 +212,17 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
             />
           </Button>
         </div>
+        <label className='custom-emoji-mute__checkbox'>
+          <input
+            type='checkbox'
+            checked={rejectReactions}
+            onChange={handleRejectReactionsChange}
+          />
+          <FormattedMessage
+            id='custom_emoji_mutes.reject_reactions'
+            defaultMessage='Also refuse emoji reactions that use these emoji'
+          />
+        </label>
       </form>
 
       <ScrollableList
@@ -183,6 +238,7 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
             key={mute.id}
             mute={mute}
             onDelete={handleDelete}
+            onToggleReject={handleToggleReject}
           />
         ))}
       </ScrollableList>

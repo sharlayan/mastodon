@@ -66,7 +66,8 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:show_avatar_decorations]           = object_account_user.settings['avatar_decorations.show']
       store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']
       store[:force_round_avatar_decoration]     = object_account_user.settings['avatar_decorations.force_round']
-      store[:custom_emoji_mutes]                = object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain } }
+      store[:custom_emoji_mutes]                = object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions } }
+      store[:reaction_mutes]                    = object.current_account.reaction_mutes.includes(:target_account).order(id: :desc).map { |mute| { id: mute.id.to_s, target_account_id: mute.target_account_id&.to_s, target_acct: mute.target_account&.acct, target_domain: mute.target_domain } }
     else
       store[:auto_play_gif] = Setting.auto_play_gif
       store[:display_media] = Setting.display_media

@@ -36,6 +36,8 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
 
       # invalid custom emoji, treat it as a regular like
       return false if custom_emoji.nil?
+
+      return true if CustomEmojiMute.reaction_muted?(original_status.account_id, custom_emoji.shortcode, custom_emoji.domain)
     end
 
     return true if @account.reacted?(original_status, name, custom_emoji)
