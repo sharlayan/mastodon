@@ -67,8 +67,8 @@ export const Conversation = ({ conversation, scrollKey }) => {
   }, [history, id]);
 
   const handleMarkAsRead = useCallback(() => {
-    dispatch(markConversationRead(id, memberIds));
-  }, [dispatch, id, memberIds]);
+    dispatch(markConversationRead(id));
+  }, [dispatch, id]);
 
   const handleReply = useCallback(() => {
     dispatch((_, getState) => {

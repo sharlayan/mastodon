@@ -46,7 +46,6 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   const timelineId = `conversation:${conversationId}`;
 
   const conversation = useSelector(state => state.getIn(['conversations', 'items']).find(item => item.get('id') === conversationId));
-  const memberIds = conversation ? conversation.get('member_ids').toArray() : [conversationId];
   const recipientIds = conversation ? conversation.get('accounts').toArray() : [];
 
   const recipientAccounts = useSelector(state => recipientIds
@@ -113,7 +112,7 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
 
   useEffect(() => {
     dispatch(expandConversationStatuses(conversationId));
-    dispatch(markConversationRead(conversationId, memberIds));
+    dispatch(markConversationRead(conversationId));
 
     const disconnect = dispatch(connectDirectStream());
 
@@ -177,10 +176,10 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   }, [dispatch, recipientIds]);
 
   const handleLoadMore = useCallback(() => {
-    if (oldestId) {
+    if (oldestId && hasMore && !isLoading) {
       dispatch(expandConversationStatuses(conversationId, { maxId: oldestId }));
     }
-  }, [dispatch, conversationId, oldestId]);
+  }, [dispatch, conversationId, oldestId, hasMore, isLoading]);
 
   const handlePin = useCallback(() => {
     if (columnId) {

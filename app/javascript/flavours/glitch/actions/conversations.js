@@ -31,13 +31,13 @@ export const unmountConversations = () => ({
   type: CONVERSATIONS_UNMOUNT,
 });
 
-export const markConversationRead = (conversationId, memberIds = [conversationId]) => (dispatch) => {
+export const markConversationRead = (conversationId) => (dispatch) => {
   dispatch({
     type: CONVERSATIONS_READ,
     id: conversationId,
   });
 
-  memberIds.forEach(id => api().post(`/api/v1/conversations/${id}/read`));
+  api().post(`/api/v1/conversations/${conversationId}/read`);
 };
 
 export const expandConversationStatuses = (conversationId, { maxId } = {}) =>

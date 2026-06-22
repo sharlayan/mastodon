@@ -72,6 +72,7 @@ class ScrollableList extends PureComponent {
     isLoading: PropTypes.bool,
     showLoading: PropTypes.bool,
     hasMore: PropTypes.bool,
+    disableAutoLoad: PropTypes.bool,
     numPending: PropTypes.number,
     prepend: PropTypes.node,
     append: PropTypes.node,
@@ -102,7 +103,7 @@ class ScrollableList extends PureComponent {
       const clientHeight = this.getClientHeight();
       const offset = scrollHeight - scrollTop - clientHeight;
 
-      if (scrollTop > 0 && offset < 400 && this.props.onLoadMore && this.props.hasMore && !this.props.isLoading) {
+      if (scrollTop > 0 && offset < 400 && this.props.onLoadMore && this.props.hasMore && !this.props.isLoading && !this.props.disableAutoLoad) {
         this.props.onLoadMore();
       }
 

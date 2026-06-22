@@ -2,7 +2,8 @@
 
 class Api::V1::ConversationsController < Api::BaseController
   LIMIT = 20
-  STATUSES_LIMIT = 40
+  STATUSES_LIMIT = 50
+  STATUSES_DEFAULT_LIMIT = 50
 
   before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:index, :statuses]
   before_action -> { doorkeeper_authorize! :write, :'write:conversations' }, only: [:read, :unread, :destroy]
@@ -21,13 +22,11 @@ class Api::V1::ConversationsController < Api::BaseController
   end
 
   def read
-    @conversation.update!(unread: false)
-    render json: @conversation, serializer: REST::ConversationSerializer
+    mark_group_unread(false)
   end
 
   def unread
-    @conversation.update!(unread: true)
-    render json: @conversation, serializer: REST::ConversationSerializer
+    mark_group_unread(true)
   end
 
   def destroy
@@ -39,6 +38,15 @@ class Api::V1::ConversationsController < Api::BaseController
 
   def set_conversation
     @conversation = AccountConversation.where(account: current_account).find(params[:id])
+  end
+
+  def mark_group_unread(unread)
+    AccountConversation
+      .where(account: current_account, participant_account_ids: @conversation.participant_account_ids)
+      .update_all(unread: unread)
+
+    @conversation.reload
+    render json: @conversation, serializer: REST::ConversationSerializer
   end
 
   def grouped?
@@ -99,15 +107,34 @@ class Api::V1::ConversationsController < Api::BaseController
 
     Status.where(id: status_ids)
       .includes(:media_attachments, :status_stat, :tags, active_mentions: :account, account: [:account_stat, user: :role])
-      .to_a_paginated_by_id(limit_param(STATUSES_LIMIT, STATUSES_LIMIT), params_slice(:max_id, :since_id, :min_id))
+      .to_a_paginated_by_id(statuses_limit, params_slice(:max_id, :since_id, :min_id))
   end
 
   def grouped_status_ids
-    AccountConversation
+    inner = AccountConversation
       .where(account: current_account, participant_account_ids: @conversation.participant_account_ids)
-      .pluck(:status_ids)
-      .flatten
-      .uniq
+      .select(Arel.sql('DISTINCT unnest(status_ids) AS id'))
+
+    scope = Status.unscoped.from(Arel.sql("(#{inner.to_sql}) AS conversation_statuses"))
+
+    max_id   = params[:max_id].presence&.to_i
+    since_id = params[:since_id].presence&.to_i
+    min_id   = params[:min_id].presence&.to_i
+
+    scope = scope.where(conversation_statuses: { id: ...max_id }) if max_id
+    scope = scope.where('conversation_statuses.id > ?', since_id) if since_id
+    scope = scope.where('conversation_statuses.id > ?', min_id) if min_id
+
+    direction = min_id ? 'ASC' : 'DESC'
+
+    scope
+      .order(Arel.sql("conversation_statuses.id #{direction}"))
+      .limit(statuses_limit)
+      .pluck(Arel.sql('conversation_statuses.id'))
+  end
+
+  def statuses_limit
+    limit_param(STATUSES_DEFAULT_LIMIT, STATUSES_LIMIT)
   end
 
   def next_path
@@ -141,6 +168,6 @@ class Api::V1::ConversationsController < Api::BaseController
   end
 
   def records_continue?
-    records_collection.size == (action_name == 'statuses' ? limit_param(STATUSES_LIMIT, STATUSES_LIMIT) : limit_param(LIMIT))
+    records_collection.size == (action_name == 'statuses' ? statuses_limit : limit_param(LIMIT))
   end
 end

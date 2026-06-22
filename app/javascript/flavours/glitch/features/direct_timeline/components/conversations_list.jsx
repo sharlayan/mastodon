@@ -29,7 +29,7 @@ export const ConversationsList = ({ scrollKey, ...other }) => {
   }, [debouncedLoadMore, lastStatusId]);
 
   return (
-    <ScrollableList {...other} scrollKey={scrollKey} isLoading={isLoading} showLoading={isLoading && conversations.isEmpty()} hasMore={hasMore} onLoadMore={handleLoadMore} ref={listRef}>
+    <ScrollableList {...other} scrollKey={scrollKey} isLoading={isLoading} showLoading={isLoading && conversations.isEmpty()} hasMore={hasMore} onLoadMore={handleLoadMore} disableAutoLoad ref={listRef}>
       {conversations.map(item => (
         <Conversation
           key={item.get('id')}
