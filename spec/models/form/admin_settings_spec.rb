@@ -19,6 +19,11 @@ RSpec.describe Form::AdminSettings do
   end
 
   describe '#save' do
+    it 'saves the circles feature setting as a boolean' do
+      expect { described_class.new(circles_enabled: '1').save }
+        .to change(Setting, :circles_enabled).from(false).to(true)
+    end
+
     describe 'updating digest values' do
       context 'when updating custom css to real value' do
         subject { described_class.new(custom_css: css) }

@@ -1077,6 +1077,10 @@ en:
         local_only_view_hint: Disable local decorations; only show decorations received from federated servers
         max_count: Maximum decorations per user
         max_count_hint: Maximum number of decorations a user may activate at once (0–16)
+      circles:
+        title: Circles
+        enabled: Enable circles
+        enabled_hint: Allow users to create circles and publish posts visible only to selected followers.
       rate_limit_bypass:
         title: API Rate Limit Bypass
         enabled: Allow privileged roles to bypass API rate limits
@@ -1915,6 +1919,9 @@ en:
       confirm_visit: Are you sure you wish to open this link?
       hide_button: Hide
       label: Potentially sensitive content
+  circles:
+    errors:
+      limit: You have reached the maximum number of circles
   lists:
     errors:
       limit: You have reached the maximum number of lists

@@ -1058,6 +1058,10 @@ ko:
         local_only_view_hint: 로컬 아바타 장식을 비활성화하고 연합 서버에서 받은 아바타 장식만 표시합니다
         max_count: 사용자당 최대 장식 수
         max_count_hint: 사용자가 동시에 활성화할 수 있는 최대 장식 수 (0~16)
+      circles:
+        title: 서클
+        enabled: 서클 기능 활성화
+        enabled_hint: 사용자가 서클을 만들고 선택한 팔로워에게만 보이는 게시물을 작성할 수 있도록 합니다.
       rate_limit_bypass:
         title: API 제한 우회
         enabled: 특정 권한에 API 제한 우회 허용
@@ -1857,6 +1861,9 @@ ko:
       confirm_visit: 정말로 이 링크를 여시겠습니까?
       hide_button: 숨기기
       label: 민감한 컨텐츠일 수 있음
+  circles:
+    errors:
+      limit: 서클 최대 개수를 초과합니다
   lists:
     errors:
       limit: 리스트 최대 개수를 초과합니다

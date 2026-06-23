@@ -90,6 +90,7 @@ export interface ApiStatusJSON {
   sensitive: boolean;
   spoiler_text?: string;
   visibility: StatusVisibility;
+  limited_scope?: string;
   language: string;
   uri: string;
   url: string;

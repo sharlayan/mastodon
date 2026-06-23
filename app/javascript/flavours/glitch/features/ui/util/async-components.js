@@ -290,3 +290,15 @@ export function ListEdit () {
 export function ListMembers () {
   return import('../../lists/members');
 }
+
+export function Circles () {
+  return import('../../circles');
+}
+
+export function CircleEdit () {
+  return import('../../circles/new');
+}
+
+export function CircleMembers () {
+  return import('../../circles/members');
+}

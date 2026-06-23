@@ -93,6 +93,7 @@ class PostStatusService < BaseService
     @mfm = Setting.mfm_enabled && (@content_type == 'text/x-mfm' || MfmDetector.contains_mfm?(@text))
     @sensitive    = (@options[:sensitive].nil? ? @account.user&.setting_default_sensitive : @options[:sensitive]) || @options[:spoiler_text].present?
     @visibility   = @options[:visibility] || @account.user&.setting_default_privacy
+    load_circle! if @visibility&.to_sym == :circle
     @visibility   = :unlisted if @visibility&.to_sym == :public && @account.silenced?
     @visibility   = :private if @quoted_status&.private_visibility? && %i(public unlisted).include?(@visibility&.to_sym)
     @scheduled_at = @options[:scheduled_at]&.to_datetime
@@ -101,9 +102,18 @@ class PostStatusService < BaseService
     raise ActiveRecord::RecordInvalid
   end
 
+  def load_circle!
+    raise ActiveRecord::RecordNotFound unless Setting.circles_enabled
+
+    @circle        = @account.circles.find(@options[:circle_id])
+    @visibility    = :limited
+    @limited_scope = :circle
+  end
+
   def process_status!
     @status = @account.statuses.new(status_attributes)
-    process_mentions_service.call(@status)
+    process_mentions_service.call(@status, circle: @circle)
+    @status.limited_scope = :personal if @circle.present? && @status.mentions.empty?
     safeguard_mentions!(@status)
     safeguard_private_mention_quote!(@status)
     attach_tagged_objects!(@status)
@@ -116,6 +126,7 @@ class PostStatusService < BaseService
     # the media attachments when the status is created
     ApplicationRecord.transaction do
       @status.save!
+      @circle.statuses << @status if @circle.present?
     end
   end
 
@@ -190,7 +201,7 @@ class PostStatusService < BaseService
     LinkCrawlWorker.perform_async(@status.id)
     DistributionWorker.perform_async(@status.id)
     process_email_subscriptions!
-    ActivityPub::DistributionWorker.perform_async(@status.id) unless @status.local_only?
+    ActivityPub::DistributionWorker.perform_async(@status.id) unless @status.local_only? || @status.limited_personal?
     PollExpirationNotifyWorker.perform_at(@status.poll.expires_at, @status.poll.id) if @status.poll
     ActivityPub::QuoteRequestWorker.perform_async(@status.quote.id) if @status.quote&.quoted_status.present? && !@status.quote&.quoted_status&.local?
   end
@@ -290,6 +301,7 @@ class PostStatusService < BaseService
       sensitive: @sensitive,
       spoiler_text: @options[:spoiler_text] || '',
       visibility: @visibility,
+      limited_scope: @limited_scope,
       language: valid_locale_cascade(@options[:language], @account.user&.preferred_posting_language, I18n.default_locale),
       application: @options[:application],
       content_type: @content_type,

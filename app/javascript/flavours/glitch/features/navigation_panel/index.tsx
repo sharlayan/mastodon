@@ -48,6 +48,7 @@ import { getNavigationSkipLinkId } from 'flavours/glitch/features/ui/components/
 import { useBreakpoint } from 'flavours/glitch/features/ui/hooks/useBreakpoint';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import {
+  circlesEnabled,
   localLiveFeedAccess,
   remoteLiveFeedAccess,
   trendsEnabled,
@@ -86,6 +87,7 @@ const messages = defineMessages({
       'Label for the main navigation; should not contain the word "navigation".',
   },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
+  circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
@@ -413,6 +415,17 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
                 text={intl.formatMessage(messages.direct)}
               />
             </li>
+            {circlesEnabled && (
+              <li>
+                <ColumnLink
+                  transparent
+                  to='/circles'
+                  icon='group'
+                  iconComponent={PeopleIcon}
+                  text={intl.formatMessage(messages.circles)}
+                />
+              </li>
+            )}
 
             <li role='separator' />
 

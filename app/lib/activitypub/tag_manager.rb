@@ -237,6 +237,20 @@ class ActivityPub::TagManager
     cc
   end
 
+  LIMITED_SCOPE_MAP = {
+    'mutual' => 'Mutual',
+    'circle' => 'Circle',
+    'reply' => 'Reply',
+  }.freeze
+
+  def limited_scope(status)
+    LIMITED_SCOPE_MAP[status.limited_scope]
+  end
+
+  def limited_scope_from_uri(value)
+    LIMITED_SCOPE_MAP.key(value)
+  end
+
   def local_uri?(uri)
     return false if uri.nil?
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_22_161600) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -478,6 +478,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_161600) do
     t.bigint "account_id", null: false
     t.bigint "conversation_id", null: false
     t.index ["account_id", "conversation_id"], name: "index_conversation_mutes_on_account_id_and_conversation_id", unique: true
+  end
+
+  create_table "circle_accounts", force: :cascade do |t|
+    t.bigint "circle_id", null: false
+    t.bigint "account_id", null: false
+    t.bigint "follow_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_circle_accounts_on_account_id"
+    t.index ["circle_id", "account_id"], name: "index_circle_accounts_on_circle_id_and_account_id", unique: true
+    t.index ["circle_id"], name: "index_circle_accounts_on_circle_id"
+    t.index ["follow_id"], name: "index_circle_accounts_on_follow_id"
+  end
+
+  create_table "circle_statuses", force: :cascade do |t|
+    t.bigint "circle_id", null: false
+    t.bigint "status_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["circle_id", "status_id"], name: "index_circle_statuses_on_circle_id_and_status_id", unique: true
+    t.index ["circle_id"], name: "index_circle_statuses_on_circle_id"
+    t.index ["status_id"], name: "index_circle_statuses_on_status_id"
+  end
+
+  create_table "circles", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "title", default: "", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_circles_on_account_id"
   end
 
   create_table "conversations", force: :cascade do |t|
@@ -1375,6 +1405,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_161600) do
     t.bigint "in_reply_to_account_id"
     t.bigint "in_reply_to_id"
     t.string "language"
+    t.integer "limited_scope"
     t.boolean "local"
     t.boolean "local_only"
     t.boolean "mfm", default: false, null: false
@@ -1657,6 +1688,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_22_161600) do
   add_foreign_key "collection_reports", "reports", on_delete: :cascade
   add_foreign_key "collections", "accounts"
   add_foreign_key "collections", "tags"
+  add_foreign_key "circle_accounts", "accounts", on_delete: :cascade
+  add_foreign_key "circle_accounts", "circles", on_delete: :cascade
+  add_foreign_key "circle_accounts", "follows", on_delete: :cascade
+  add_foreign_key "circle_statuses", "circles", on_delete: :cascade
+  add_foreign_key "circle_statuses", "statuses", on_delete: :cascade
+  add_foreign_key "circles", "accounts", on_delete: :cascade
   add_foreign_key "conversation_mutes", "accounts", name: "fk_225b4212bb", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
   add_foreign_key "custom_csses", "users", on_delete: :cascade

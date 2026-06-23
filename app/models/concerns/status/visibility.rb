@@ -9,6 +9,11 @@ module Status::Visibility
          suffix: :visibility,
          validate: true
 
+    enum :limited_scope,
+         { none: 0, mutual: 1, circle: 2, reply: 3, personal: 4 },
+         prefix: :limited,
+         validate: { allow_nil: true }
+
     scope :distributable_visibility, -> { where(visibility: %i(public unlisted)) }
     scope :list_eligible_visibility, -> { where(visibility: %i(public unlisted private)) }
     scope :not_direct_visibility, -> { where.not(visibility: :direct) }

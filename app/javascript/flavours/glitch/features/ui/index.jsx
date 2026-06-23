@@ -32,7 +32,7 @@ import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../act
 import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
-import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain } from '../../initial_state';
+import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, circlesEnabled } from '../../initial_state';
 
 import BundleColumnError from './components/bundle_column_error';
 import { NavigationBar } from './components/navigation_bar';
@@ -71,6 +71,9 @@ import {
   Lists,
   ListEdit,
   ListMembers,
+  Circles,
+  CircleEdit,
+  CircleMembers,
   Collections,
   CollectionDetail,
   CollectionsEditor,
@@ -225,6 +228,10 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/lists/:id/edit' component={ListEdit} content={children} />
             <WrappedRoute path='/lists/:id/members' component={ListMembers} content={children} />
             <WrappedRoute path='/lists/:id' component={ListTimeline} content={children} />
+
+            {circlesEnabled && <WrappedRoute path='/circles/new' component={CircleEdit} content={children} />}
+            {circlesEnabled && <WrappedRoute path='/circles/:id/edit' component={CircleEdit} content={children} />}
+            {circlesEnabled && <WrappedRoute path='/circles/:id/members' component={CircleMembers} content={children} />}
             <WrappedRoute path='/notifications' component={Notifications} content={children} exact />
             <WrappedRoute path='/notifications/requests' component={NotificationRequests} content={children} exact />
             <WrappedRoute path='/notifications/requests/:id' component={NotificationRequest} content={children} exact />
@@ -274,6 +281,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/custom_emoji_mutes' component={CustomEmojiMutes} content={children} />
             <WrappedRoute path='/reaction_mutes' component={ReactionMutes} content={children} />
             <WrappedRoute path='/lists' component={Lists} content={children} />
+            {circlesEnabled && <WrappedRoute path='/circles' component={Circles} content={children} />}
 
             <Route path='/overview' component={CustomHomepage} />
             <Route component={BundleColumnError} />

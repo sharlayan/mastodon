@@ -116,6 +116,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       mfm: @status_parser.mfm?,
       mfm_text: @status_parser.mfm? ? @status_parser.mfm_source_text : nil,
       visibility: @status_parser.visibility,
+      limited_scope: @status_parser.limited_scope,
       thread: replied_to_status,
       conversation: conversation_from_uri(@object['conversation']),
       media_attachment_ids: attachment_ids,

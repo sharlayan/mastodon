@@ -4,7 +4,7 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
   include FormattingHelper
   include JsonLdHelper
 
-  context_extensions :atom_uri, :conversation, :sensitive, :voters_count, :quotes, :interaction_policies, :direct_message
+  context_extensions :atom_uri, :conversation, :sensitive, :voters_count, :quotes, :interaction_policies, :direct_message, :limited_scope
 
   attributes :id, :type, :summary,
              :in_reply_to, :published, :url,
@@ -17,6 +17,7 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
   attribute :updated, if: :edited?
 
   attribute :direct_message, if: :non_public?
+  attribute :limited_scope, key: :limitedScope, if: :limited_scope?
 
   # MFM source fields (Misskey-compatible): included only for local MFM posts
   attribute :_misskey_content, if: :local_mfm?
@@ -64,6 +65,14 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
 
   def non_public?
     !object.distributable?
+  end
+
+  def limited_scope
+    ActivityPub::TagManager.instance.limited_scope(object)
+  end
+
+  def limited_scope?
+    object.limited_visibility? && limited_scope.present?
   end
 
   def content

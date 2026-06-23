@@ -9,6 +9,7 @@ import { accountsFamiliarFollowersReducer } from './accounts_familiar_followers'
 import { accountsMapReducer } from './accounts_map';
 import { alertsReducer } from './alerts';
 import announcements from './announcements';
+import { circlesReducer } from './circles';
 import { composeReducer } from './compose';
 import { contextsReducer } from './contexts';
 import conversations from './conversations';
@@ -76,6 +77,7 @@ const reducers = {
   height_cache,
   favorite_emojis,
   lists: listsReducer,
+  circles: circlesReducer,
   followedTags: followedTagsReducer,
   custom_emoji_mutes: customEmojiMutesReducer,
   reaction_mutes: reactionMutesReducer,

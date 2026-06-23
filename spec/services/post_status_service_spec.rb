@@ -126,6 +126,27 @@ RSpec.describe PostStatusService do
     expect(status.visibility).to eq 'private'
   end
 
+  context 'when posting to a circle' do
+    let(:account) { Fabricate(:account) }
+    let(:circle) { Circle.create!(account: account, title: 'Friends') }
+
+    it 'raises not found when circles are disabled' do
+      expect do
+        subject.call(account, text: 'circle post', visibility: :circle, circle_id: circle.id)
+      end.to raise_error(ActiveRecord::RecordNotFound)
+    end
+
+    it 'creates the status when circles are enabled' do
+      Setting.circles_enabled = true
+
+      status = subject.call(account, text: 'circle post', visibility: :circle, circle_id: circle.id)
+
+      expect(status)
+        .to be_persisted
+        .and have_attributes(visibility: 'limited', limited_scope: 'personal')
+    end
+  end
+
   it 'raises on an invalid visibility' do
     expect do
       create_status_with_options(visibility: :xxx)
@@ -175,7 +196,7 @@ RSpec.describe PostStatusService do
     status = subject.call(account, text: 'test status update')
 
     expect(ProcessMentionsService).to have_received(:new)
-    expect(mention_service).to have_received(:call).with(status)
+    expect(mention_service).to have_received(:call).with(status, circle: nil)
   end
 
   it 'safeguards mentions' do

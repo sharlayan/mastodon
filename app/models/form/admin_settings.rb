@@ -60,6 +60,7 @@ class Form::AdminSettings
     reaction_local_emoji_only
     mfm_enabled
     mfm_allow_composition
+    circles_enabled
     rate_limit_bypass_enabled
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
@@ -99,6 +100,7 @@ class Form::AdminSettings
     reaction_local_emoji_only
     mfm_enabled
     mfm_allow_composition
+    circles_enabled
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view

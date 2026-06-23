@@ -7,6 +7,7 @@
 %w(
   /blocks
   /bookmarks
+  /circles/(*any)
   /collections/(*any)
   /conversations/(*any)
   /custom_emoji_mutes

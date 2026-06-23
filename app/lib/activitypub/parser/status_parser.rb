@@ -123,6 +123,10 @@ class ActivityPub::Parser::StatusParser
     end
   end
 
+  def limited_scope
+    ActivityPub::TagManager.instance.limited_scope_from_uri(@object['limitedScope'])
+  end
+
   def language
     lang = raw_language_code
     lang.presence && NORMALIZED_LOCALE_NAMES.fetch(lang.downcase.to_sym, lang)

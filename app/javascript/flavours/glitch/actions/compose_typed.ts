@@ -278,3 +278,7 @@ export const setComposeQuotePolicy = createAction<ApiQuotePolicy>(
 export const setDragUploadEnabled = createAction<boolean>(
   'compose/setDragUploadEnabled',
 );
+
+export const changeComposeCircle = createAction<string | null>(
+  'compose/circle_change',
+);

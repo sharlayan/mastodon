@@ -6,8 +6,9 @@ class ProcessMentionsService < BaseService
   # Scan status for mentions and fetch remote mentioned users,
   # and create local mention pointers
   # @param [Status] status
-  def call(status)
+  def call(status, circle: nil)
     @status = status
+    @circle = circle
 
     return unless @status.local?
 
@@ -16,11 +17,22 @@ class ProcessMentionsService < BaseService
 
     Status.transaction do
       scan_text!
+      process_circle! if @circle.present?
       assign_mentions!
     end
   end
 
   private
+
+  def process_circle!
+    mentioned_account_ids = @current_mentions.map(&:account_id)
+
+    @circle.accounts.find_each do |target_account|
+      next if mentioned_account_ids.include?(target_account.id)
+
+      @current_mentions << @status.mentions.new(silent: true, account: target_account)
+    end
+  end
 
   def scan_text!
     @status.text = @status.text.gsub(Account::MENTION_RE) do |match|

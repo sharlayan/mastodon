@@ -246,6 +246,7 @@ namespace :api, format: false do
         resources :followers, only: :index, controller: :follower_accounts
         resources :following, only: :index, controller: :following_accounts
         resources :lists, only: :index
+        resources :circles, only: :index
         resources :identity_proofs, only: :index
         resources :featured_tags, only: :index
         resources :endorsements, only: :index
@@ -288,6 +289,11 @@ namespace :api, format: false do
 
     resources :lists, only: [:index, :create, :show, :update, :destroy] do
       resource :accounts, only: [:show, :create, :destroy], module: :lists
+    end
+
+    resources :circles, only: [:index, :create, :show, :update, :destroy] do
+      resource :accounts, only: [:show, :create, :destroy], module: :circles
+      resources :statuses, only: [:index], module: :circles
     end
 
     namespace :featured_tags do

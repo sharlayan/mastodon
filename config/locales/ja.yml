@@ -915,6 +915,10 @@ ja:
         local_only_view_hint: ローカルデコレーションを無効にし、連合サーバーから受信したデコレーションのみ表示します
         max_count: ユーザーあたりの最大デコレーション数
         max_count_hint: ユーザーが同時に有効化できるデコレーションの最大数 (0〜16)
+      circles:
+        title: サークル
+        enabled: サークル機能を有効にする
+        enabled_hint: ユーザーがサークルを作成し、選択したフォロワーだけに表示される投稿を作成できるようにします。
       rate_limit_bypass:
         title: APIレート制限のバイパス
         enabled: 特定の権限にAPIレート制限のバイパスを許可
@@ -1659,6 +1663,9 @@ ja:
   link_preview:
     potentially_sensitive_content:
       hide_button: 非表示
+  circles:
+    errors:
+      limit: サークルの上限数に達しています
   lists:
     errors:
       limit: リストの上限数に達しています

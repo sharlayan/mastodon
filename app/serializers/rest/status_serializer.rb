@@ -21,6 +21,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
   attribute :bookmarked, if: :current_user?
   attribute :pinned, if: :pinnable?
   attribute :local_only, if: :local?
+  attribute :limited_scope, if: :limited_scope?
   attribute :instance_metadata, if: :show_instance_info?
   has_many :filtered, serializer: REST::FilterResultSerializer, if: :current_user?
 
@@ -81,6 +82,10 @@ class REST::StatusSerializer < ActiveModel::Serializer
     else
       object.visibility
     end
+  end
+
+  def limited_scope?
+    object.limited_visibility? && object.limited_scope.present?
   end
 
   def sensitive
