@@ -23,6 +23,7 @@ import Column from 'flavours/glitch/components/column';
 import ColumnHeader from 'flavours/glitch/components/column_header';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { IconButton } from 'flavours/glitch/components/icon_button';
+import { me } from 'flavours/glitch/initial_state';
 
 import { ChatMessage } from './components/chat_message';
 import { DirectComposer } from './components/direct_composer';
@@ -46,7 +47,49 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   const timelineId = `conversation:${conversationId}`;
 
   const conversation = useSelector(state => state.getIn(['conversations', 'items']).find(item => item.get('id') === conversationId));
-  const recipientIds = conversation ? conversation.get('accounts').toArray() : [];
+
+  const items = useSelector(state => state.getIn(['timelines', timelineId, 'items']) || ImmutableList());
+  const isLoading = useSelector(state => state.getIn(['timelines', timelineId, 'isLoading'], false));
+  const hasMore = useSelector(state => state.getIn(['timelines', timelineId, 'hasMore'], false));
+
+  const statusIds = useMemo(() => items.filter(id => id && !isNonStatusId(id)), [items]);
+
+  const statuses = useSelector(state => state.get('statuses'));
+
+  const recipientIds = useMemo(() => {
+    if (conversation) {
+      return conversation.get('accounts').toArray();
+    }
+
+    const ids = [];
+    const seen = new Set();
+
+    statusIds.forEach(id => {
+      const status = statuses.get(id);
+
+      if (!status) {
+        return;
+      }
+
+      const authorId = status.get('account');
+
+      if (authorId && authorId !== me && !seen.has(authorId)) {
+        seen.add(authorId);
+        ids.push(authorId);
+      }
+
+      (status.get('mentions') || ImmutableList()).forEach(mention => {
+        const mentionId = mention.get('id');
+
+        if (mentionId && mentionId !== me && !seen.has(mentionId)) {
+          seen.add(mentionId);
+          ids.push(mentionId);
+        }
+      });
+    });
+
+    return ids;
+  }, [conversation, statusIds, statuses]);
 
   const recipientAccounts = useSelector(state => recipientIds
     .map(id => state.getIn(['accounts', id]))
@@ -65,12 +108,6 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   } else if (recipientAccounts.length > 2) {
     headerTitle = <FormattedMessage {...messages.titleMore} values={{ name1: nameNode(recipientAccounts[0]), name2: nameNode(recipientAccounts[1]), count: recipientAccounts.length - 2 }} />;
   }
-
-  const items = useSelector(state => state.getIn(['timelines', timelineId, 'items']) || ImmutableList());
-  const isLoading = useSelector(state => state.getIn(['timelines', timelineId, 'isLoading'], false));
-  const hasMore = useSelector(state => state.getIn(['timelines', timelineId, 'hasMore'], false));
-
-  const statusIds = useMemo(() => items.filter(id => id && !isNonStatusId(id)), [items]);
 
   // Timelines are stored newest-first; render chronologically (oldest → newest)
   // for a chat-like layout with the latest message at the bottom.

@@ -215,6 +215,15 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
           disabled={isSubmitting}
         />
 
+        <button
+          type='button'
+          className='direct-composer__send'
+          onClick={handleSubmit}
+          disabled={!canSubmit}
+        >
+          {intl.formatMessage(messages.send)}
+        </button>
+
         <IconButton
           className='direct-composer__button'
           title={intl.formatMessage(messages.upload)}
@@ -237,15 +246,6 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
           active={spoiler}
           disabled={isSubmitting}
         />
-
-        <button
-          type='button'
-          className='direct-composer__send'
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-        >
-          {intl.formatMessage(messages.send)}
-        </button>
       </div>
     </div>
   );

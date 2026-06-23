@@ -66,6 +66,14 @@ export const Conversation = ({ conversation, scrollKey }) => {
     history.push(`/conversations/${id}`);
   }, [history, id]);
 
+  const handleContentClickCapture = useCallback((e) => {
+    if (e.target.closest('a')) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleClick();
+    }
+  }, [handleClick]);
+
   const handleMarkAsRead = useCallback(() => {
     dispatch(markConversationRead(id));
   }, [dispatch, id]);
@@ -136,7 +144,7 @@ export const Conversation = ({ conversation, scrollKey }) => {
           <AvatarComposite accounts={accounts} size={48} />
         </div>
 
-        <div className='conversation__content'>
+        <div className='conversation__content' onClickCapture={handleContentClickCapture}>
           <div className='conversation__content__info'>
             <div className='conversation__content__relative-time'>
               {unread && <span className='conversation__unread' />} <RelativeTimestamp timestamp={lastStatus.get('created_at')} />
