@@ -111,6 +111,7 @@ ja:
         site_title: ドメイン名以外でサーバーを参照する方法
         status_page_url: 障害発生時などにユーザーがサーバーの状態を確認できるページのURL
         theme: ログインしていない人と新規ユーザーに表示されるテーマ。
+        theme_color: ブラウザのアドレスバーやアプリUIで使われるアクセントカラー。
         thumbnail: サーバー情報と共に表示される、アスペクト比が約 2:1 の画像。
         trendable_by_default: トレンドの審査を省略します。トレンドは掲載後でも個別に除外できます。
         trends: トレンドは、サーバー上で人気を集めている投稿、ハッシュタグ、ニュース記事などが表示されます。
@@ -312,6 +313,7 @@ ja:
         site_title: サーバーの名前
         status_page_url: サーバーの状態ページのURL
         theme: デフォルトテーマ
+        theme_color: テーマカラー
         thumbnail: サーバーのサムネイル
         trendable_by_default: 審査前のトレンドの掲載を許可する
         trends: トレンドを有効にする

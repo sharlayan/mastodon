@@ -123,6 +123,7 @@ ko:
         site_title: 사람들이 이 서버를 도메인 네임 대신에 부를 이름.
         status_page_url: 이 서버가 중단된 동안 사람들이 서버의 상태를 볼 수 있는 페이지 URL
         theme: 로그인 하지 않은 사용자나 새로운 사용자가 보게 될 테마.
+        theme_color: 브라우저의 주소 표시줄과 앱 UI에 사용되는 강조 색상.
         thumbnail: 대략 2:1 비율의 이미지가 서버 정보 옆에 표시됩니다.
         thumbnail_description: 이미지에 대한 설명은 시각에 문제가 있는 사람들이 내용을 이해하는데 도움이 됩니다.
         trendable_by_default: 유행하는 콘텐츠에 대한 수동 승인을 건너뜁니다. 이 설정이 적용된 이후에도 각각의 항목들을 삭제할 수 있습니다.
@@ -355,6 +356,7 @@ ko:
         site_title: 서버 이름
         status_page_url: 상태 페이지 URL
         theme: 기본 테마
+        theme_color: 테마 색상
         thumbnail: 서버 썸네일
         thumbnail_description: 썸네일 대체 텍스트
         trendable_by_default: 사전 리뷰 없이 트렌드에 오르는 것을 허용

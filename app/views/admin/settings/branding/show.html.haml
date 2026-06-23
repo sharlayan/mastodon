@@ -28,6 +28,11 @@
               input_html: { rows: 2, maxlength: Form::AdminSettings::DESCRIPTION_LIMIT },
               wrapper: :with_block_label
 
+  .fields-group
+    = f.input :theme_color,
+              input_html: { type: 'color' },
+              wrapper: :with_label
+
   .fields-row
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :thumbnail,

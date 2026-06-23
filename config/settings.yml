@@ -4,6 +4,7 @@
 defaults: &defaults
   site_title: 'Mastodon Macaron Edition'
   site_short_description: ''
+  theme_color: '#007046'
   site_description: ''
   site_extended_description: ''
   site_terms: ''

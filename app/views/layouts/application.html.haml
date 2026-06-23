@@ -22,16 +22,8 @@
     = javascript_inline_tag 'theme-selection.js'
     = theme_color_tags current_theme
 
-    -# theme color by branch
-    - if current_git_branch == 'dev'
-      %meta{ name: 'theme-color', content: '#FFA040' }/
-      %meta{ name: 'theme-color-orig', content: '#FFA040' }/
-    - elsif current_git_branch == 'darkest'
-      %meta{ name: 'theme-color', content: '#5BA451' }/
-      %meta{ name: 'theme-color-orig', content: '#5BA451' }/
-    - else
-      %meta{ name: 'theme-color', content: '#007046' }/
-      %meta{ name: 'theme-color-orig', content: '#007046' }/
+    %meta{ name: 'theme-color', content: Setting.theme_color }/
+    %meta{ name: 'theme-color-orig', content: Setting.theme_color }/
 
     %meta{ name: 'mobile-web-app-capable', content: 'yes' }/
 

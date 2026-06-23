@@ -12,7 +12,7 @@
 #
 
 class CustomCss < ApplicationRecord
-  CSS_SIZE_LIMIT = 100.kilobytes
+  CSS_SIZE_LIMIT = 300.kilobytes
 
   belongs_to :user
 
