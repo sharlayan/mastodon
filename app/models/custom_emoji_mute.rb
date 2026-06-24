@@ -8,6 +8,7 @@
 #  prefix           :string           default(""), not null
 #  domain           :string           default(""), not null
 #  reject_reactions :boolean          default(FALSE), not null
+#  hide_in_picker   :boolean          default(FALSE), not null
 #  created_at       :datetime         not null
 #  updated_at       :datetime         not null
 #  account_id       :bigint(8)        not null

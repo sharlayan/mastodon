@@ -561,6 +561,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "domain", default: "", null: false
+    t.boolean "hide_in_picker", default: false, null: false
     t.string "prefix", default: "", null: false
     t.boolean "reject_reactions", default: false, null: false
     t.datetime "updated_at", null: false

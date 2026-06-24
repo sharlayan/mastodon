@@ -19,6 +19,7 @@ class Api::V1::CustomEmojiMutesController < Api::BaseController
 
     mute = current_account.custom_emoji_mutes.find_or_create_by!(prefix: prefix, domain: domain.to_s)
     mute.update!(reject_reactions: ActiveModel::Type::Boolean.new.cast(params[:reject_reactions])) if params.key?(:reject_reactions)
+    mute.update!(hide_in_picker: ActiveModel::Type::Boolean.new.cast(params[:hide_in_picker])) if params.key?(:hide_in_picker)
 
     render json: mute, serializer: REST::CustomEmojiMuteSerializer
   end

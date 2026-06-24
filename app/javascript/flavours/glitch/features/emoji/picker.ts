@@ -6,6 +6,7 @@ import {
   useAppSelector,
 } from '@/flavours/glitch/store/typed_functions';
 import { createLimitedCache } from '@/flavours/glitch/utils/cache';
+import { isCustomEmojiMuted } from '@/flavours/glitch/utils/custom_emoji_mutes';
 
 import { emojiLogger } from './utils';
 
@@ -64,8 +65,14 @@ const defaultCategories = [
 ] as CategoryName[];
 
 const selectPickerData = createAppSelector(
-  [(state) => state.emojis.custom, (state) => state.emojis.customCategories],
-  (emojis, categories) => {
+  [
+    (state) => state.emojis.custom,
+    (state) => state.emojis.customCategories,
+    (state) => state.custom_emoji_mutes.items,
+  ],
+  (emojis, categories, mutes) => {
+    const pickerMutes = mutes.filter((mute) => mute.hide_in_picker);
+
     // Create a map of shortcode to category name.
     const categoryMap = new Map<string, string>();
     for (const category in categories) {
@@ -82,6 +89,10 @@ const selectPickerData = createAppSelector(
     for (const shortcode in emojis) {
       const emoji = emojis[shortcode];
       if (!emoji) {
+        continue;
+      }
+
+      if (isCustomEmojiMuted(shortcode, undefined, pickerMutes)) {
         continue;
       }
 

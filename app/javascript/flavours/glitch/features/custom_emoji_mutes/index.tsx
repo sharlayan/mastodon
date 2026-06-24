@@ -37,14 +37,19 @@ const CustomEmojiMuteRow: React.FC<{
   mute: ApiCustomEmojiMuteJSON;
   onDelete: (id: string) => void;
   onToggleReject: (mute: ApiCustomEmojiMuteJSON) => void;
-}> = ({ mute, onDelete, onToggleReject }) => {
+  onToggleHide: (mute: ApiCustomEmojiMuteJSON) => void;
+}> = ({ mute, onDelete, onToggleReject, onToggleHide }) => {
   const handleClick = useCallback(() => {
     onDelete(mute.id);
   }, [mute.id, onDelete]);
 
-  const handleToggle = useCallback(() => {
+  const handleToggleReject = useCallback(() => {
     onToggleReject(mute);
   }, [mute, onToggleReject]);
+
+  const handleToggleHide = useCallback(() => {
+    onToggleHide(mute);
+  }, [mute, onToggleHide]);
 
   return (
     <div className='custom-emoji-mute'>
@@ -59,11 +64,22 @@ const CustomEmojiMuteRow: React.FC<{
           <input
             type='checkbox'
             checked={mute.reject_reactions}
-            onChange={handleToggle}
+            onChange={handleToggleReject}
           />
           <FormattedMessage
             id='custom_emoji_mutes.reject_reactions_badge'
             defaultMessage='Reactions blocked'
+          />
+        </label>
+        <label className='custom-emoji-mute__checkbox'>
+          <input
+            type='checkbox'
+            checked={mute.hide_in_picker}
+            onChange={handleToggleHide}
+          />
+          <FormattedMessage
+            id='custom_emoji_mutes.hide_in_picker_badge'
+            defaultMessage='Hidden in picker'
           />
         </label>
       </div>
@@ -89,6 +105,7 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
   const [prefix, setPrefix] = useState('');
   const [domain, setDomain] = useState('');
   const [rejectReactions, setRejectReactions] = useState(false);
+  const [hideInPicker, setHideInPicker] = useState(false);
 
   useEffect(() => {
     void dispatch(fetchCustomEmojiMutes());
@@ -115,6 +132,13 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
     [],
   );
 
+  const handleHideInPickerChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setHideInPicker(event.target.checked);
+    },
+    [],
+  );
+
   const handleSubmit = useCallback(
     (event: React.FormEvent) => {
       event.preventDefault();
@@ -127,13 +151,15 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
           prefix: trimmed,
           domain: domain.trim(),
           reject_reactions: rejectReactions,
+          hide_in_picker: hideInPicker,
         }),
       );
       setPrefix('');
       setDomain('');
       setRejectReactions(false);
+      setHideInPicker(false);
     },
-    [dispatch, prefix, domain, rejectReactions],
+    [dispatch, prefix, domain, rejectReactions, hideInPicker],
   );
 
   const handleDelete = useCallback(
@@ -150,6 +176,19 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
           prefix: mute.prefix,
           domain: mute.domain,
           reject_reactions: !mute.reject_reactions,
+        }),
+      );
+    },
+    [dispatch],
+  );
+
+  const handleToggleHide = useCallback(
+    (mute: ApiCustomEmojiMuteJSON) => {
+      void dispatch(
+        createCustomEmojiMute({
+          prefix: mute.prefix,
+          domain: mute.domain,
+          hide_in_picker: !mute.hide_in_picker,
         }),
       );
     },
@@ -223,6 +262,17 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
             defaultMessage='Also refuse emoji reactions that use these emoji'
           />
         </label>
+        <label className='custom-emoji-mute__checkbox'>
+          <input
+            type='checkbox'
+            checked={hideInPicker}
+            onChange={handleHideInPickerChange}
+          />
+          <FormattedMessage
+            id='custom_emoji_mutes.hide_in_picker'
+            defaultMessage='Also hide these emoji in the emoji picker'
+          />
+        </label>
       </form>
 
       <ScrollableList
@@ -239,6 +289,7 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
             mute={mute}
             onDelete={handleDelete}
             onToggleReject={handleToggleReject}
+            onToggleHide={handleToggleHide}
           />
         ))}
       </ScrollableList>

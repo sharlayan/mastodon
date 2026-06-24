@@ -12,6 +12,7 @@ export const apiCreateCustomEmojiMute = (params: {
   prefix: string;
   domain?: string;
   reject_reactions?: boolean;
+  hide_in_picker?: boolean;
 }) => apiRequestPost<ApiCustomEmojiMuteJSON>('v1/custom_emoji_mutes', params);
 
 export const apiDeleteCustomEmojiMute = (id: string) =>

@@ -96,6 +96,8 @@
   "conversation.show_participants": "Show participants",
   "custom_emoji_mutes.add": "Add",
   "custom_emoji_mutes.domain_placeholder": "Server (optional, blank = all)",
+  "custom_emoji_mutes.hide_in_picker": "Also hide these emoji in the emoji picker",
+  "custom_emoji_mutes.hide_in_picker_badge": "Hidden in picker",
   "custom_emoji_mutes.hint": "Custom emoji whose shortcode starts with the given prefix are hidden and shown as translucent text. Leave the server blank to match emoji from any server.",
   "custom_emoji_mutes.prefix_placeholder": "Shortcode prefix (e.g. blob_)",
   "custom_emoji_mutes.reject_reactions": "Also refuse emoji reactions that use these emoji",

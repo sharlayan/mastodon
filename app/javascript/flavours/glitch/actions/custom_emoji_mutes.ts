@@ -16,11 +16,19 @@ export const createCustomEmojiMute = createDataLoadingThunk(
     prefix,
     domain,
     reject_reactions,
+    hide_in_picker,
   }: {
     prefix: string;
     domain?: string;
     reject_reactions?: boolean;
-  }) => apiCreateCustomEmojiMute({ prefix, domain, reject_reactions }),
+    hide_in_picker?: boolean;
+  }) =>
+    apiCreateCustomEmojiMute({
+      prefix,
+      domain,
+      reject_reactions,
+      hide_in_picker,
+    }),
 );
 
 export const deleteCustomEmojiMute = createDataLoadingThunk(

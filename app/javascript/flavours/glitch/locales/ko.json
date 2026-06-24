@@ -5,6 +5,8 @@
   "custom_emoji_mutes.domain_placeholder": "서버 (선택, 비우면 모든 서버)",
   "custom_emoji_mutes.hint": "지정한 접두사로 시작하는 숏코드의 커스텀 에모지를 숨기고 반투명 텍스트로 표시합니다. 서버를 비워두면 모든 서버의 에모지에 적용됩니다.",
   "custom_emoji_mutes.prefix_placeholder": "숏코드 접두사 (예: blob_)",
+  "custom_emoji_mutes.hide_in_picker": "이 에모지를 에모지 선택기에서도 숨기기",
+  "custom_emoji_mutes.hide_in_picker_badge": "선택기에서 숨김",
   "custom_emoji_mutes.reject_reactions": "이 에모지를 사용한 리액션도 거부하기",
   "custom_emoji_mutes.reject_reactions_badge": "리액션 차단됨",
   "custom_emoji_mutes.unmute": "뮤트 해제",

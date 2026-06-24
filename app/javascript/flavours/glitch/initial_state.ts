@@ -80,6 +80,7 @@ export interface ApiCustomEmojiMuteJSON {
   prefix: string;
   domain: string;
   reject_reactions: boolean;
+  hide_in_picker: boolean;
 }
 
 export interface ApiReactionMuteJSON {

@@ -1,5 +1,5 @@
 import type { ApiCustomEmojiMuteJSON } from 'flavours/glitch/initial_state';
-import { useAppSelector } from 'flavours/glitch/store';
+import { useAppSelector } from 'flavours/glitch/store/typed_functions';
 
 export function isCustomEmojiMuted(
   shortcode: string,
