@@ -5,6 +5,6 @@ Rails.application.config.after_initialize do
   next unless ActiveRecord::Base.connection.data_source_exists?('custom_emoji_mutes')
 
   CustomEmojiMute.purge_blank_prefixes!
-rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid, PG::ConnectionBad
+rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid, PG::ConnectionBad
   nil
 end

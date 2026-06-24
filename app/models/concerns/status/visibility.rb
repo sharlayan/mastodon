@@ -9,6 +9,7 @@ module Status::Visibility
          suffix: :visibility,
          validate: true
 
+    attribute :limited_scope, ActiveModel::Type::Integer.new
     enum :limited_scope,
          { none: 0, mutual: 1, circle: 2, reply: 3, personal: 4 },
          prefix: :limited,
