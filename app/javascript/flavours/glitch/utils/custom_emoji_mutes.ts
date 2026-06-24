@@ -14,10 +14,14 @@ export function isCustomEmojiMuted(
   const normalizedDomain = (domain ?? '').toLowerCase();
 
   return mutes.some((mute) => {
+    const prefix = mute.prefix.trim().toLowerCase();
+    if (prefix === '') {
+      return false;
+    }
     if (mute.domain && mute.domain !== normalizedDomain) {
       return false;
     }
-    return normalizedShortcode.startsWith(mute.prefix.toLowerCase());
+    return normalizedShortcode.startsWith(prefix);
   });
 }
 

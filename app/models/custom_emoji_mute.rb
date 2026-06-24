@@ -27,13 +27,17 @@ class CustomEmojiMute < ApplicationRecord
 
   scope :for_account, ->(account_id) { where(account_id: account_id) }
 
+  def self.purge_blank_prefixes!
+    where("TRIM(prefix) = ''").delete_all
+  end
+
   def self.reaction_muted?(recipient_account_id, shortcode, domain)
     return false if recipient_account_id.blank? || shortcode.blank?
 
     normalized_shortcode = shortcode.to_s.downcase
     normalized_domain = domain.to_s.downcase
 
-    for_account(recipient_account_id).where(reject_reactions: true).any? do |mute|
+    for_account(recipient_account_id).where(reject_reactions: true).where.not(prefix: '').any? do |mute|
       (mute.domain.blank? || mute.domain == normalized_domain) && normalized_shortcode.start_with?(mute.prefix.downcase)
     end
   end
