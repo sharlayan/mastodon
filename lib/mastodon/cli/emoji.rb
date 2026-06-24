@@ -14,6 +14,13 @@ module Mastodon::CLI
     long_desc <<-LONG_DESC
       Imports custom emoji from a TAR GZIP archive specified by PATH.
 
+      If the archive contains a 'metadata.json' manifest (as produced
+      by the export command), category, license, aliases and picker
+      visibility are restored as well. Existing emoji are updated when
+      the manifest entry is more recently modified than the local copy;
+      older entries are ignored. The --overwrite option forces every
+      emoji (image included) to be overwritten regardless of timestamps.
+
       Existing emoji will be skipped unless the --overwrite option
       is provided, in which case they will be overwritten.
 
@@ -29,35 +36,61 @@ module Mastodon::CLI
     LONG_DESC
     def import(path)
       imported = 0
+      updated  = 0
       skipped  = 0
       failed   = 0
       category = options[:category] ? CustomEmojiCategory.find_or_create_by(name: options[:category]) : nil
+      manifest = read_manifest(path)
 
       Gem::Package::TarReader.new(Zlib::GzipReader.open(path)) do |tar|
         tar.each do |entry|
           next unless entry.file? && entry.full_name.end_with?('.png', '.gif')
 
-          filename = File.basename(entry.full_name, '.*')
+          filename = File.basename(entry.full_name)
 
           # Skip macOS shadow files
           next if filename.start_with?('._')
 
-          shortcode    = [options[:prefix], filename, options[:suffix]].compact.join
+          meta         = manifest.dig('emojis', filename) || manifest.dig('emojis', entry.full_name) || {}
+          shortcode    = [options[:prefix], File.basename(filename, '.*'), options[:suffix]].compact.join
           custom_emoji = CustomEmoji.local.find_by('LOWER(shortcode) = ?', shortcode.downcase)
+          new_record   = custom_emoji.nil?
+          archive_time = parse_time(meta['updated_at'])
 
-          if custom_emoji && !options[:overwrite]
+          unless new_record
+            skip =
+              if archive_time.nil?
+                !options[:overwrite]
+              else
+                !options[:overwrite] && custom_emoji.updated_at.present? && custom_emoji.updated_at >= archive_time
+              end
+
+            if skip
+              skipped += 1
+              next
+            end
+          end
+
+          custom_emoji ||= CustomEmoji.new(shortcode: shortcode, domain: nil)
+
+          if new_record || options[:overwrite]
+            custom_emoji.image = StringIO.new(entry.read)
+            custom_emoji.image_file_name = filename
+          end
+
+          apply_metadata(custom_emoji, meta, category)
+
+          if !new_record && !options[:overwrite] && !custom_emoji.changed?
             skipped += 1
             next
           end
 
-          custom_emoji ||= CustomEmoji.new(shortcode: shortcode, domain: nil)
-          custom_emoji.image = StringIO.new(entry.read)
-          custom_emoji.image_file_name = File.basename(entry.full_name)
-          custom_emoji.visible_in_picker = !options[:unlisted]
-          custom_emoji.category = category
-
           if custom_emoji.save
-            imported += 1
+            if new_record
+              imported += 1
+            else
+              updated += 1
+            end
           else
             failed += 1
             say('Failure/Error: ', :red)
@@ -69,7 +102,7 @@ module Mastodon::CLI
         end
       end
 
-      say("Imported #{imported}, skipped #{skipped}, failed to import #{failed}", color(imported, skipped, failed))
+      say("Imported #{imported}, updated #{updated}, skipped #{skipped}, failed to import #{failed}", color(imported + updated, skipped, failed))
     end
 
     option :category
@@ -78,6 +111,11 @@ module Mastodon::CLI
     long_desc <<-LONG_DESC
       Exports custom emoji to 'export.tar.gz' at PATH.
 
+      A 'metadata.json' manifest is written alongside the images,
+      recording each emoji's category, license, aliases, picker
+      visibility and modification timestamps so they can be restored
+      on import.
+
       The --category option dumps only the specified category.
       If this option is not specified, all emoji will be exported.
 
@@ -85,27 +123,51 @@ module Mastodon::CLI
     LONG_DESC
     def export(path)
       exported         = 0
+      skipped          = 0
       category         = CustomEmojiCategory.find_by(name: options[:category])
       export_file_name = File.join(path, 'export.tar.gz')
 
       fail_with_message "Archive already exists! Use '--overwrite' to overwrite it!" if File.file?(export_file_name) && !options[:overwrite]
       fail_with_message "Unable to find category '#{options[:category]}'!" if category.nil? && options[:category]
 
+      manifest = { 'version' => 1, 'emojis' => {} }
+
       File.open(export_file_name, 'wb') do |file|
         Zlib::GzipWriter.wrap(file) do |gzip|
           Gem::Package::TarWriter.new(gzip) do |tar|
             scope = !options[:category] || category.nil? ? CustomEmoji.local : category.emojis
-            scope.find_each do |emoji|
+            scope.includes(:category).find_each do |emoji|
+              unless emoji.image.exists?
+                say("Skipping '#{emoji.shortcode}' (missing image file)...", :yellow)
+                skipped += 1
+                next
+              end
+
+              filename = emoji.shortcode + File.extname(emoji.image_file_name)
               say("Adding '#{emoji.shortcode}'...")
-              tar.add_file_simple(emoji.shortcode + File.extname(emoji.image_file_name), 0o644, emoji.image_file_size) do |io|
+              tar.add_file_simple(filename, 0o644, emoji.image_file_size) do |io|
                 io.write Paperclip.io_adapters.for(emoji.image).read
                 exported += 1
               end
+              manifest['emojis'][filename] = {
+                'shortcode' => emoji.shortcode,
+                'category' => emoji.category&.name,
+                'license' => emoji.license,
+                'aliases' => emoji.aliases,
+                'visible_in_picker' => emoji.visible_in_picker,
+                'updated_at' => emoji.updated_at&.iso8601,
+                'image_updated_at' => emoji.image_updated_at&.iso8601,
+              }
+            end
+
+            json = JSON.generate(manifest)
+            tar.add_file_simple('metadata.json', 0o644, json.bytesize) do |io|
+              io.write(json)
             end
           end
         end
       end
-      say("Exported #{exported}")
+      say("Exported #{exported}, skipped #{skipped}", skipped.zero? ? :green : :yellow)
     end
 
     option :remote_only, type: :boolean
@@ -134,6 +196,50 @@ module Mastodon::CLI
     end
 
     private
+
+    def read_manifest(path)
+      manifest = nil
+
+      Gem::Package::TarReader.new(Zlib::GzipReader.open(path)) do |tar|
+        tar.each do |entry|
+          next unless entry.file? && File.basename(entry.full_name) == 'metadata.json'
+
+          manifest = begin
+            JSON.parse(entry.read)
+          rescue JSON::ParserError
+            nil
+          end
+          break
+        end
+      end
+
+      manifest.is_a?(Hash) ? manifest : {}
+    end
+
+    def parse_time(value)
+      value.present? ? Time.zone.parse(value.to_s) : nil
+    rescue ArgumentError
+      nil
+    end
+
+    def apply_metadata(emoji, meta, category_option)
+      if category_option
+        emoji.category = category_option
+      elsif meta.key?('category')
+        emoji.category = meta['category'].present? ? CustomEmojiCategory.find_or_create_by(name: meta['category']) : nil
+      end
+
+      emoji.license = meta['license'] if meta.key?('license')
+      emoji.aliases = meta['aliases'] if meta['aliases'].is_a?(Array)
+
+      if options[:unlisted]
+        emoji.visible_in_picker = false
+      elsif meta.key?('visible_in_picker')
+        emoji.visible_in_picker = meta['visible_in_picker']
+      elsif emoji.new_record?
+        emoji.visible_in_picker = true
+      end
+    end
 
     def color(green, _yellow, red)
       if !green.zero? && red.zero?
