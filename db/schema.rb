@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_213900) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -381,6 +381,41 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
     t.index ["target_account_id"], name: "index_blocks_on_target_account_id"
   end
 
+  create_table "board_announcement_attachments", force: :cascade do |t|
+    t.string "blurhash"
+    t.bigint "board_announcement_id"
+    t.datetime "created_at", null: false
+    t.string "file_content_type"
+    t.string "file_file_name"
+    t.integer "file_file_size"
+    t.json "file_meta"
+    t.datetime "file_updated_at"
+    t.integer "type", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["board_announcement_id"], name: "index_board_announcement_attachments_on_board_announcement_id"
+  end
+
+  create_table "board_announcement_reads", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "board_announcement_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "board_announcement_id"], name: "index_board_announcement_reads_on_account_and_announcement", unique: true
+    t.index ["account_id"], name: "index_board_announcement_reads_on_account_id"
+    t.index ["board_announcement_id"], name: "index_board_announcement_reads_on_board_announcement_id"
+  end
+
+  create_table "board_announcements", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "published", default: false, null: false
+    t.datetime "published_at"
+    t.text "text", default: "", null: false
+    t.text "text_html", default: "", null: false
+    t.string "title", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["published_at"], name: "index_board_announcements_on_published_at"
+  end
+
   create_table "bookmarks", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", precision: nil, null: false
@@ -425,6 +460,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
     t.index ["reference_account_id"], name: "index_canonical_email_blocks_on_reference_account_id"
   end
 
+  create_table "circle_accounts", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "circle_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "follow_id"
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_circle_accounts_on_account_id"
+    t.index ["circle_id", "account_id"], name: "index_circle_accounts_on_circle_id_and_account_id", unique: true
+    t.index ["circle_id"], name: "index_circle_accounts_on_circle_id"
+    t.index ["follow_id"], name: "index_circle_accounts_on_follow_id"
+  end
+
+  create_table "circle_statuses", force: :cascade do |t|
+    t.bigint "circle_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "status_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["circle_id", "status_id"], name: "index_circle_statuses_on_circle_id_and_status_id", unique: true
+    t.index ["circle_id"], name: "index_circle_statuses_on_circle_id"
+    t.index ["status_id"], name: "index_circle_statuses_on_status_id"
+  end
+
+  create_table "circles", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "title", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_circles_on_account_id"
+  end
+
   create_table "collection_items", id: :bigint, default: -> { "timestamp_id('collection_items'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.string "activity_uri"
@@ -459,7 +524,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
     t.text "description"
     t.text "description_html"
     t.boolean "discoverable", null: false
-    t.integer "item_count", default: 0, null: false
     t.string "language"
     t.boolean "local", null: false
     t.string "name", null: false
@@ -478,36 +542,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
     t.bigint "account_id", null: false
     t.bigint "conversation_id", null: false
     t.index ["account_id", "conversation_id"], name: "index_conversation_mutes_on_account_id_and_conversation_id", unique: true
-  end
-
-  create_table "circle_accounts", force: :cascade do |t|
-    t.bigint "circle_id", null: false
-    t.bigint "account_id", null: false
-    t.bigint "follow_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id"], name: "index_circle_accounts_on_account_id"
-    t.index ["circle_id", "account_id"], name: "index_circle_accounts_on_circle_id_and_account_id", unique: true
-    t.index ["circle_id"], name: "index_circle_accounts_on_circle_id"
-    t.index ["follow_id"], name: "index_circle_accounts_on_follow_id"
-  end
-
-  create_table "circle_statuses", force: :cascade do |t|
-    t.bigint "circle_id", null: false
-    t.bigint "status_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["circle_id", "status_id"], name: "index_circle_statuses_on_circle_id_and_status_id", unique: true
-    t.index ["circle_id"], name: "index_circle_statuses_on_circle_id"
-    t.index ["status_id"], name: "index_circle_statuses_on_status_id"
-  end
-
-  create_table "circles", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.string "title", default: "", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id"], name: "index_circles_on_account_id"
   end
 
   create_table "conversations", force: :cascade do |t|
@@ -536,6 +570,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
     t.index ["name"], name: "index_custom_emoji_categories_on_name", unique: true
   end
 
+  create_table "custom_emoji_mutes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "domain", default: "", null: false
+    t.boolean "hide_in_picker", default: false, null: false
+    t.string "prefix", default: "", null: false
+    t.boolean "reject_reactions", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "prefix", "domain"], name: "index_custom_emoji_mutes_on_account_prefix_domain", unique: true
+    t.index ["account_id"], name: "index_custom_emoji_mutes_on_account_id"
+  end
+
   create_table "custom_emojis", force: :cascade do |t|
     t.text "aliases", default: [], null: false, array: true
     t.bigint "category_id"
@@ -555,18 +601,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
     t.boolean "visible_in_picker", default: true, null: false
     t.index ["aliases"], name: "index_custom_emojis_on_aliases", using: :gin
     t.index ["shortcode", "domain"], name: "index_custom_emojis_on_shortcode_and_domain", unique: true
-  end
-
-  create_table "custom_emoji_mutes", force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.datetime "created_at", null: false
-    t.string "domain", default: "", null: false
-    t.boolean "hide_in_picker", default: false, null: false
-    t.string "prefix", default: "", null: false
-    t.boolean "reject_reactions", default: false, null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "prefix", "domain"], name: "index_custom_emoji_mutes_on_account_prefix_domain", unique: true
-    t.index ["account_id"], name: "index_custom_emoji_mutes_on_account_id"
   end
 
   create_table "custom_filter_keywords", force: :cascade do |t|
@@ -784,7 +818,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
     t.datetime "created_at", null: false
     t.jsonb "data", null: false
     t.integer "schema_version", null: false
-    t.string "share_key"
     t.datetime "updated_at", null: false
     t.datetime "viewed_at"
     t.integer "year", null: false
@@ -1678,23 +1711,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
   add_foreign_key "backups", "users", on_delete: :nullify
   add_foreign_key "blocks", "accounts", column: "target_account_id", name: "fk_9571bfabc1", on_delete: :cascade
   add_foreign_key "blocks", "accounts", name: "fk_4269e03e65", on_delete: :cascade
+  add_foreign_key "board_announcement_attachments", "board_announcements", on_delete: :cascade
+  add_foreign_key "board_announcement_reads", "accounts", on_delete: :cascade
+  add_foreign_key "board_announcement_reads", "board_announcements", on_delete: :cascade
   add_foreign_key "bookmarks", "accounts", on_delete: :cascade
   add_foreign_key "bookmarks", "statuses", on_delete: :cascade
   add_foreign_key "bulk_import_rows", "bulk_imports", on_delete: :cascade
   add_foreign_key "bulk_imports", "accounts", on_delete: :cascade
   add_foreign_key "canonical_email_blocks", "accounts", column: "reference_account_id", on_delete: :cascade
-  add_foreign_key "collection_items", "accounts"
-  add_foreign_key "collection_items", "collections", on_delete: :cascade
-  add_foreign_key "collection_reports", "collections", on_delete: :cascade
-  add_foreign_key "collection_reports", "reports", on_delete: :cascade
-  add_foreign_key "collections", "accounts"
-  add_foreign_key "collections", "tags"
   add_foreign_key "circle_accounts", "accounts", on_delete: :cascade
   add_foreign_key "circle_accounts", "circles", on_delete: :cascade
   add_foreign_key "circle_accounts", "follows", on_delete: :cascade
   add_foreign_key "circle_statuses", "circles", on_delete: :cascade
   add_foreign_key "circle_statuses", "statuses", on_delete: :cascade
   add_foreign_key "circles", "accounts", on_delete: :cascade
+  add_foreign_key "collection_items", "accounts"
+  add_foreign_key "collection_items", "collections", on_delete: :cascade
+  add_foreign_key "collection_reports", "collections", on_delete: :cascade
+  add_foreign_key "collection_reports", "reports", on_delete: :cascade
+  add_foreign_key "collections", "accounts"
+  add_foreign_key "collections", "tags"
   add_foreign_key "conversation_mutes", "accounts", name: "fk_225b4212bb", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
   add_foreign_key "custom_csses", "users", on_delete: :cascade
@@ -1766,10 +1802,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_23_225400) do
   add_foreign_key "quotes", "accounts", on_delete: :cascade
   add_foreign_key "quotes", "statuses", column: "quoted_status_id", on_delete: :nullify
   add_foreign_key "quotes", "statuses", on_delete: :cascade
-  add_foreign_key "report_notes", "accounts", on_delete: :cascade
-  add_foreign_key "report_notes", "reports", on_delete: :cascade
   add_foreign_key "reaction_mutes", "accounts", column: "target_account_id", on_delete: :cascade
   add_foreign_key "reaction_mutes", "accounts", on_delete: :cascade
+  add_foreign_key "report_notes", "accounts", on_delete: :cascade
+  add_foreign_key "report_notes", "reports", on_delete: :cascade
   add_foreign_key "reports", "accounts", column: "action_taken_by_account_id", name: "fk_bca45b75fd", on_delete: :nullify
   add_foreign_key "reports", "accounts", column: "assigned_account_id", on_delete: :nullify
   add_foreign_key "reports", "accounts", column: "target_account_id", name: "fk_eb37af34f0", on_delete: :cascade

@@ -31,7 +31,7 @@ import { ParentQuote } from 'flavours/glitch/features/direct_timeline/components
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import Bundle from 'flavours/glitch/features/ui/components/bundle';
 import { MediaGallery, Video, Audio } from 'flavours/glitch/features/ui/util/async-components';
-import { me, deleteModal, maxReactions } from 'flavours/glitch/initial_state';
+import { me, deleteModal, maxReactions, reactionsEnabled } from 'flavours/glitch/initial_state';
 import { makeGetStatus } from 'flavours/glitch/selectors';
 
 const messages = defineMessages({
@@ -456,7 +456,7 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
             </div>
 
             <div className='chat-message__actions'>
-              {signedIn && (
+              {signedIn && reactionsEnabled && (
                 <div className='chat-message__react' title={intl.formatMessage(messages.react)}>
                   <EmojiPickerDropdown onPickEmoji={handleEmojiPick} disabled={!canReact} />
                 </div>
@@ -483,7 +483,7 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
           numVisible={8}
           addReaction={handleReactionAdd}
           removeReaction={handleReactionRemove}
-          canReact={signedIn}
+          canReact={signedIn && reactionsEnabled}
         />
       )}
 

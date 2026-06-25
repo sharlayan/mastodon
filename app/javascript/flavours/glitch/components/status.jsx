@@ -20,7 +20,7 @@ import Card from '../features/status/components/card';
 import Bundle from '../features/ui/components/bundle';
 import { MediaGallery, Video, Audio } from '../features/ui/util/async-components';
 import { SensitiveMediaContext } from '../features/ui/util/sensitive_media_context';
-import { displayMedia, visibleReactions, disableHoverCards, showInstanceInfo } from '../initial_state';
+import { displayMedia, visibleReactions, disableHoverCards, showInstanceInfo, reactionsEnabled } from '../initial_state';
 
 import { injectIntl } from './intl';
 import AttachmentList from './attachment_list';
@@ -807,7 +807,7 @@ class Status extends ImmutablePureComponent {
                   numVisible={visibleReactions}
                   addReaction={this.props.onReactionAdd}
                   removeReaction={this.props.onReactionRemove}
-                  canReact={this.props.identity.signedIn}
+                  canReact={this.props.identity.signedIn && reactionsEnabled}
                 />
                 <StatusActionBar
                   status={status}

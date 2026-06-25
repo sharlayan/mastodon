@@ -1114,6 +1114,10 @@ en:
         title: Circles
         enabled: Enable circles
         enabled_hint: Allow users to create circles and publish posts visible only to selected followers.
+      reactions:
+        title: Reactions
+        enabled: Enable emoji reactions
+        enabled_hint: Allow users to react to posts with emoji. When disabled, the reaction button is hidden and new reactions are rejected. Existing reactions remain visible.
       rate_limit_bypass:
         title: API Rate Limit Bypass
         enabled: Allow privileged roles to bypass API rate limits

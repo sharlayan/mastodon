@@ -3,6 +3,16 @@
 .fields-group
   = f.input :allow_user_custom_css, as: :boolean, wrapper: :with_label, label: t('admin.settings.allow_user_custom_css.title'), hint: t('admin.settings.allow_user_custom_css.desc_html'), sharlayan_only: true
 
+%h2= t('admin.settings.reactions.title')
+
+.fields-group
+  = f.input :reactions_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.reactions.enabled'),
+            hint: t('admin.settings.reactions.enabled_hint'),
+            sharlayan_only: true
+
 %h2= t('admin.settings.mfm.title')
 
 .fields-group

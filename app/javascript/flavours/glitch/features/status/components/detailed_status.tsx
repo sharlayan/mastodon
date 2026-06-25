@@ -39,6 +39,7 @@ import { useIdentity } from 'flavours/glitch/identity_context';
 import {
   visibleReactions,
   showInstanceInfo,
+  reactionsEnabled,
 } from 'flavours/glitch/initial_state';
 import type { CollectionAttachment } from 'flavours/glitch/models/status';
 import { useAppSelector } from 'flavours/glitch/store';
@@ -553,7 +554,7 @@ export const DetailedStatus: React.FC<{
             reactions={status.get('reactions')}
             addReaction={onReactionAdd}
             removeReaction={onReactionRemove}
-            canReact={signedIn}
+            canReact={signedIn && reactionsEnabled}
           />
         )}
 

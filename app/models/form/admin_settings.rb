@@ -58,6 +58,7 @@ class Form::AdminSettings
     landing_page
     wrapstodon
     reaction_local_emoji_only
+    reactions_enabled
     mfm_enabled
     mfm_allow_composition
     circles_enabled
@@ -99,6 +100,7 @@ class Form::AdminSettings
     authorized_fetch
     wrapstodon
     reaction_local_emoji_only
+    reactions_enabled
     mfm_enabled
     mfm_allow_composition
     circles_enabled

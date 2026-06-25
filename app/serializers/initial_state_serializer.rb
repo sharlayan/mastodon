@@ -58,6 +58,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:custom_emoji_size]           = object_account_user.settings_custom_emoji_size
       store[:reaction_custom_emoji_size]  = object_account_user.settings_reaction_custom_emoji_size
       store[:reaction_local_emoji_only]   = Setting.reaction_local_emoji_only
+      store[:reactions_enabled]           = Setting.reactions_enabled
       store[:mfm_enabled]                 = object_account_user.settings_mfm_enabled
       store[:mfm_animations]              = object_account_user.settings_mfm_animations
       store[:mfm_fold_mode]               = object_account_user.settings_mfm_fold_mode

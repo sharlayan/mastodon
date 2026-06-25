@@ -6,6 +6,8 @@ class Api::V1::Statuses::ReactionsController < Api::V1::Statuses::BaseController
   skip_before_action :set_status, only: [:destroy]
 
   def create
+    return not_found unless Setting.reactions_enabled
+
     ReactService.new.call(current_account, @status, params[:id])
     render json: @status, serializer: REST::StatusSerializer
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError

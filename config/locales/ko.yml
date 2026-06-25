@@ -1095,6 +1095,10 @@ ko:
         title: 서클
         enabled: 서클 기능 활성화
         enabled_hint: 사용자가 서클을 만들고 선택한 팔로워에게만 보이는 게시물을 작성할 수 있도록 합니다.
+      reactions:
+        title: 에모지 리액션
+        enabled: 에모지 리액션 활성화
+        enabled_hint: 사용자가 게시물에 에모지로 반응할 수 있도록 합니다. 비활성화하면 리액션 버튼이 숨겨지고 새 리액션이 거부됩니다. 기존 리액션은 계속 표시됩니다.
       rate_limit_bypass:
         title: API 제한 우회
         enabled: 특정 권한에 API 제한 우회 허용
