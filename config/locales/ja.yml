@@ -920,6 +920,8 @@ ja:
         danger_zone: 危険な操作
         preamble: ユーザーが生成したコンテンツがどのように Mastodon に保存されるかを管理します。
         title: コンテンツの保持
+      custom:
+        title: カスタム
       default_noindex:
         desc_html: この設定を自分で変更していない全ユーザーに影響します
         title: デフォルトで検索エンジンによるインデックスを拒否する

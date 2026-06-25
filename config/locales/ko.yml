@@ -1062,6 +1062,8 @@ ko:
         danger_zone: 위험한 영역
         preamble: 마스토돈에 저장된 사용자 콘텐츠를 어떻게 다룰지 제어합니다.
         title: 콘텐츠 보존기한
+      custom:
+        title: 커스텀
       default_noindex:
         desc_html: 이 설정을 개인적으로 바꾸지 않은 모든 사용자들에게 적용 됩니다
         title: 사용자들이 기본적으로 검색엔진에 인덱싱되지 않도록 합니다

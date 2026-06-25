@@ -1,0 +1,32 @@
+.fields-group
+  = f.input :reaction_local_emoji_only, as: :boolean, wrapper: :with_label, label: t('admin.settings.reaction_local_emoji_only.title'), hint: t('admin.settings.reaction_local_emoji_only.desc_html'), sharlayan_only: true
+
+%h2= t('admin.settings.circles.title')
+
+.fields-group
+  = f.input :circles_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.circles.enabled'),
+            hint: t('admin.settings.circles.enabled_hint'),
+            sharlayan_only: true
+
+%h2= t('admin.settings.board_announcements.title')
+
+.fields-group
+  = f.input :board_announcements_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.board_announcements.enabled'),
+            hint: t('admin.settings.board_announcements.enabled_hint'),
+            sharlayan_only: true
+
+%h2= t('admin.settings.rate_limit_bypass.title')
+
+.fields-group
+  = f.input :rate_limit_bypass_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.rate_limit_bypass.enabled'),
+            hint: t('admin.settings.rate_limit_bypass.enabled_hint'),
+            sharlayan_only: true

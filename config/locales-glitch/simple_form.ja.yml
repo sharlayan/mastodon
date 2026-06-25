@@ -2,6 +2,7 @@
 ja:
   simple_form:
     glitch_only: glitch-soc
+    sharlayan_only: 커스텀
     hints:
       defaults:
         setting_default_content_type_html: トゥートを作成するとき特に指定がない限り生のHTMLで書かれているとします
