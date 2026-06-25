@@ -2661,6 +2661,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fortawesome/fontawesome-free@npm:^7.2.0":
+  version: 7.2.0
+  resolution: "@fortawesome/fontawesome-free@npm:7.2.0"
+  checksum: 10c0/fc95989739857a2622c993929c6748c8c7eac3b490b0de6beb843b0b6a5de99f1e99c92901706c73e4da6be9413853a7382dfe82d2313c217489210a5b9965ed
+  languageName: node
+  linkType: hard
+
 "@gamestdio/websocket@npm:^0.3.2":
   version: 0.3.2
   resolution: "@gamestdio/websocket@npm:0.3.2"
@@ -2902,6 +2909,7 @@ __metadata:
     "@formatjs/cli": "npm:^6.1.1"
     "@formatjs/intl-pluralrules": "npm:^6.0.0"
     "@formatjs/unplugin": "npm:^1.1.5"
+    "@fortawesome/fontawesome-free": "npm:^7.2.0"
     "@gamestdio/websocket": "npm:^0.3.2"
     "@github/webauthn-json": "npm:^2.1.1"
     "@optimize-lodash/rollup-plugin": "npm:^6.0.0"
@@ -2956,6 +2964,7 @@ __metadata:
     debug: "npm:^4.4.1"
     delegated-events: "npm:^1.1.2"
     detect-passive-events: "npm:^2.0.3"
+    easymde: "npm:^2.21.0"
     emoji-mart: "npm:emoji-mart-lazyload@latest"
     emojibase: "npm:^16.0.0"
     emojibase-data: "npm:^16.0.3"
@@ -4566,6 +4575,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/codemirror@npm:^5.60.10":
+  version: 5.60.17
+  resolution: "@types/codemirror@npm:5.60.17"
+  dependencies:
+    "@types/tern": "npm:*"
+  checksum: 10c0/e6d493914d5fd73f221b6b695658a20401b95b4ea36c9e08b364315418c748fa2ab1ae245bdccbd529bbbaa2a305f1cf4cd7bf90c9ae7183f0b703fb3e054f7a
+  languageName: node
+  linkType: hard
+
 "@types/connect@npm:*":
   version: 3.4.38
   resolution: "@types/connect@npm:3.4.38"
@@ -4620,6 +4638,13 @@ __metadata:
   version: 1.0.4
   resolution: "@types/escape-html@npm:1.0.4"
   checksum: 10c0/5cdae9d38e97b1ad61180528ef7ca66bf6be96e875cc560c3e064d6ca75ccf2adaf2fa3b7bdd4f7494013e4357a2fb0bb62f2e59ca53097d5c45c7519d0ce9c3
+  languageName: node
+  linkType: hard
+
+"@types/estree@npm:*":
+  version: 1.0.9
+  resolution: "@types/estree@npm:1.0.9"
+  checksum: 10c0/3ad3286ca2988cd550dafb8f2ad599c8474868e954fa601a36655bdfefd8039f7c714b8c1c7f2ae219ffbd58bd4660e66fa7479a0120fc02d4777057d4865387
   languageName: node
   linkType: hard
 
@@ -4719,6 +4744,13 @@ __metadata:
   version: 4.17.24
   resolution: "@types/lodash@npm:4.17.24"
   checksum: 10c0/b72f60d4daacdad1fa643edb3faba204c02a01eb1ac00a83ff73496a6d236fc55e459c06106e8ced42277dba932d087d8fc090f8de4ef590d3f91e6d6f7ce85a
+  languageName: node
+  linkType: hard
+
+"@types/marked@npm:^4.0.7":
+  version: 4.3.2
+  resolution: "@types/marked@npm:4.3.2"
+  checksum: 10c0/6f44d28da5c940a719d6c6aca41e33f49c5fe957f7972939cc1cbb47d045951f4d969f382d655345d0463e47db1994635d2862018716fcef2fa85ceeceb116e7
   languageName: node
   linkType: hard
 
@@ -4946,6 +4978,15 @@ __metadata:
   version: 2.0.6
   resolution: "@types/statuses@npm:2.0.6"
   checksum: 10c0/dd88c220b0e2c6315686289525fd61472d2204d2e4bef4941acfb76bda01d3066f749ac74782aab5b537a45314fcd7d6261eefa40b6ec872691f5803adaa608d
+  languageName: node
+  linkType: hard
+
+"@types/tern@npm:*":
+  version: 0.23.9
+  resolution: "@types/tern@npm:0.23.9"
+  dependencies:
+    "@types/estree": "npm:*"
+  checksum: 10c0/1d30ccfbb84362fe7a7edeea3ba5268f5a7a0965d504147c6b701092f0ea3f0833799ee753e2059a535ca06590f91dd2416e4bd94a6e8ad51eea127a0607c617
   languageName: node
   linkType: hard
 
@@ -6478,6 +6519,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"codemirror-spell-checker@npm:1.1.2":
+  version: 1.1.2
+  resolution: "codemirror-spell-checker@npm:1.1.2"
+  dependencies:
+    typo-js: "npm:*"
+  checksum: 10c0/3846e6c6eb81d165db72cb2e15c413f3b948c0dd779c500d254aea417fe1cc58580688b78eb860a84c45e11251b5cd6a61a477141fa39dd3a2b04c2f5c91e474
+  languageName: node
+  linkType: hard
+
+"codemirror@npm:^5.65.15":
+  version: 5.65.21
+  resolution: "codemirror@npm:5.65.21"
+  checksum: 10c0/0884fc54ad32cbfa7605b23c8e9c0085d71856178f88448e6912335dddce321edab1326202b3778647658e7debdff07329f30e30b32f8fb4ba501582f798495a
+  languageName: node
+  linkType: hard
+
 "color-blend@npm:^4.0.0":
   version: 4.0.0
   resolution: "color-blend@npm:4.0.0"
@@ -7122,6 +7179,19 @@ __metadata:
   version: 0.2.0
   resolution: "eastasianwidth@npm:0.2.0"
   checksum: 10c0/26f364ebcdb6395f95124fda411f63137a4bfb5d3a06453f7f23dfe52502905bd84e0488172e0f9ec295fdc45f05c23d5d91baf16bd26f0fe9acd777a188dc39
+  languageName: node
+  linkType: hard
+
+"easymde@npm:^2.21.0":
+  version: 2.21.0
+  resolution: "easymde@npm:2.21.0"
+  dependencies:
+    "@types/codemirror": "npm:^5.60.10"
+    "@types/marked": "npm:^4.0.7"
+    codemirror: "npm:^5.65.15"
+    codemirror-spell-checker: "npm:1.1.2"
+    marked: "npm:^4.1.0"
+  checksum: 10c0/ae9363533140b4b8285822604c0df982d09b7e4b5efc1bece4511b9117ef7d46afab1d3cf93dcdc1d16d3550c0d37ddf08024a880d48bc983aea1ab10373870c
   languageName: node
   linkType: hard
 
@@ -10069,6 +10139,15 @@ __metadata:
     promise-retry: "npm:^2.0.1"
     ssri: "npm:^12.0.0"
   checksum: 10c0/c40efb5e5296e7feb8e37155bde8eb70bc57d731b1f7d90e35a092fde403d7697c56fb49334d92d330d6f1ca29a98142036d6480a12681133a0a1453164cb2f0
+  languageName: node
+  linkType: hard
+
+"marked@npm:^4.1.0":
+  version: 4.3.0
+  resolution: "marked@npm:4.3.0"
+  bin:
+    marked: bin/marked.js
+  checksum: 10c0/0013463855e31b9c88d8bb2891a611d10ef1dc79f2e3cbff1bf71ba389e04c5971298c886af0be799d7fa9aa4593b086a136062d59f1210b0480b026a8c5dc47
   languageName: node
   linkType: hard
 
@@ -14342,6 +14421,13 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 10c0/ad09fdf7a756814dce65bc60c1657b40d44451346858eea230e10f2e95a289d9183b6e32e5c11e95acc0ccc214b4f36289dcad4bf1886b0adb84d711d336a430
+  languageName: node
+  linkType: hard
+
+"typo-js@npm:*":
+  version: 1.3.2
+  resolution: "typo-js@npm:1.3.2"
+  checksum: 10c0/954d4ac169eea4eec22bb38c3d39abaf382b1a0e8140470f218c842658b754a464b6e7cf16dc9cb7a4191ea2abd293b3cd2992b8a20ad40d8783df5213dcde18
   languageName: node
   linkType: hard
 

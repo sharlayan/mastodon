@@ -68,6 +68,7 @@ class Form::AdminSettings
     avatar_decorations_max_count
     allow_user_custom_css
     email_footer_text
+    board_announcements_enabled
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -106,6 +107,7 @@ class Form::AdminSettings
     avatar_decorations_local_only_view
     rate_limit_bypass_enabled
     allow_user_custom_css
+    board_announcements_enabled
   ).freeze
 
   UPLOAD_KEYS = %i(

@@ -359,6 +359,33 @@ ko:
       unpublish: 게시 취소
       unpublished_msg: 공지가 성공적으로 발행 취소되었습니다!
       updated_msg: 공지가 성공적으로 업데이트되었습니다!
+    board_announcements:
+      attachments: 미디어 첨부
+      attachments_hint: 미디어를 업로드한 뒤 항목을 클릭하면 마크다운이 클립보드에 복사되어 본문에 붙여넣을 수 있습니다.
+      created_msg: 공지사항이 성공적으로 작성되었습니다!
+      destroyed_msg: 공지사항이 성공적으로 삭제되었습니다!
+      edit:
+        title: 공지사항 편집
+      empty: 공지사항을 찾을 수 없습니다.
+      markdown_hint: 서식을 위해 마크다운을 사용할 수 있습니다.
+      media:
+        add: 미디어 추가
+        copied: 마크다운이 클립보드에 복사되었습니다
+        copy_hint: 클릭하면 마크다운이 복사됩니다
+        error: 업로드에 실패했습니다
+        remove: 제거
+        uploading: 업로드 중…
+      new:
+        create: 공지사항 작성
+        title: 새 공지사항
+      publish: 게시
+      publish_hint: 이 공지사항을 사용자에게 표시합니다.
+      published: 게시됨
+      published_msg: 공지사항이 성공적으로 게시되었습니다!
+      title: 게시판 공지사항
+      unpublish: 게시 취소
+      unpublished_msg: 공지사항이 성공적으로 게시 취소되었습니다!
+      updated_msg: 공지사항이 성공적으로 수정되었습니다!
     collections:
       accounts: 계정
       back_to_account: 계정 페이지로 돌아가기
@@ -1058,6 +1085,10 @@ ko:
         local_only_view_hint: 로컬 아바타 장식을 비활성화하고 연합 서버에서 받은 아바타 장식만 표시합니다
         max_count: 사용자당 최대 장식 수
         max_count_hint: 사용자가 동시에 활성화할 수 있는 최대 장식 수 (0~16)
+      board_announcements:
+        title: 게시판형 공지사항
+        enabled: 게시판형 공지사항 활성화
+        enabled_hint: 사용자가 사이트 내 게시판형 공지사항 페이지를 볼 수 있도록 합니다. 비활성화하면 페이지와 네비게이션 링크가 숨겨집니다.
       circles:
         title: 서클
         enabled: 서클 기능 활성화

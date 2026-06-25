@@ -142,6 +142,10 @@ export function BookmarkedStatuses () {
   return import('../../bookmarked_statuses');
 }
 
+export function BoardAnnouncements () {
+  return import('../../board_announcements');
+}
+
 export function Blocks () {
   return import('../../blocks');
 }

@@ -76,6 +76,16 @@
               hint: t('admin.settings.avatar_decorations.max_count_hint'),
               input_html: { min: 0, max: 16 }
 
+  %h2= t('admin.settings.board_announcements.title')
+
+  .fields-group
+    = f.input :board_announcements_enabled,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.board_announcements.enabled'),
+              hint: t('admin.settings.board_announcements.enabled_hint'),
+              glitch_only: true
+
   %h2= t('admin.settings.rate_limit_bypass.title')
 
   .fields-group

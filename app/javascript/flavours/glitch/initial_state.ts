@@ -39,6 +39,7 @@ interface InitialStateMeta {
   streaming_api_base_url: string;
   force_local_only: boolean;
   circles_enabled: boolean;
+  board_announcements_enabled: boolean;
   avatar_decorations_enabled: boolean;
   avatar_decorations_federation_enabled: boolean;
   show_avatar_decorations?: boolean;
@@ -204,6 +205,8 @@ export const localAccountStatusesAccess = getMeta(
 export const localStatusPageAccess = getMeta('local_status_page_access');
 export const forceLocalOnly = getMeta('force_local_only');
 export const circlesEnabled = getMeta('circles_enabled') === true;
+export const boardAnnouncementsEnabled =
+  getMeta('board_announcements_enabled') === true;
 export const localLiveFeedAccess = getMeta('local_live_feed_access');
 export const remoteLiveFeedAccess = getMeta('remote_live_feed_access');
 export const localTopicFeedAccess = getMeta('local_topic_feed_access');

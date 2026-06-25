@@ -16,6 +16,8 @@ import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import AlternateEmailIcon from '@/material-icons/400-24px/alternate_email.svg?react';
 import BookmarksActiveIcon from '@/material-icons/400-24px/bookmarks-fill.svg?react';
 import BookmarksIcon from '@/material-icons/400-24px/bookmarks.svg?react';
+import CampaignActiveIcon from '@/material-icons/400-24px/campaign-fill.svg?react';
+import CampaignIcon from '@/material-icons/400-24px/campaign.svg?react';
 import CollectionsActiveIcon from '@/material-icons/400-24px/category-fill.svg?react';
 import CollectionsIcon from '@/material-icons/400-24px/category.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
@@ -35,6 +37,7 @@ import StarActiveIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import StarIcon from '@/material-icons/400-24px/star.svg?react';
 import TrendingUpIcon from '@/material-icons/400-24px/trending_up.svg?react';
 import { fetchFollowRequests } from 'flavours/glitch/actions/accounts';
+import { fetchBoardAnnouncementsUnreadCount } from 'flavours/glitch/actions/board_announcements';
 import { openModal } from 'flavours/glitch/actions/modal';
 import {
   openNavigation,
@@ -48,6 +51,7 @@ import { getNavigationSkipLinkId } from 'flavours/glitch/features/ui/components/
 import { useBreakpoint } from 'flavours/glitch/features/ui/hooks/useBreakpoint';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import {
+  boardAnnouncementsEnabled,
   circlesEnabled,
   localLiveFeedAccess,
   remoteLiveFeedAccess,
@@ -104,6 +108,10 @@ const messages = defineMessages({
     defaultMessage: 'Follows and followers',
   },
   about: { id: 'navigation_bar.about', defaultMessage: 'About' },
+  boardAnnouncements: {
+    id: 'navigation_bar.board_announcements',
+    defaultMessage: 'Announcements',
+  },
   search: { id: 'navigation_bar.search', defaultMessage: 'Search' },
   searchTrends: {
     id: 'navigation_bar.search_trends',
@@ -161,6 +169,41 @@ const NotificationsLink = () => {
         />
       }
       text={intl.formatMessage(messages.notifications)}
+    />
+  );
+};
+
+const BoardAnnouncementsLink: React.FC = () => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const count = useAppSelector((state) => state.boardAnnouncements.unreadCount);
+
+  useEffect(() => {
+    void dispatch(fetchBoardAnnouncementsUnreadCount());
+  }, [dispatch]);
+
+  return (
+    <ColumnLink
+      key='board_announcements'
+      transparent
+      to='/board_announcements'
+      icon={
+        <IconWithBadge
+          id='campaign'
+          icon={CampaignIcon}
+          count={count}
+          className='column-link__icon'
+        />
+      }
+      activeIcon={
+        <IconWithBadge
+          id='campaign'
+          icon={CampaignActiveIcon}
+          count={count}
+          className='column-link__icon'
+        />
+      }
+      text={intl.formatMessage(messages.boardAnnouncements)}
     />
   );
 };
@@ -424,6 +467,11 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
                   iconComponent={PeopleIcon}
                   text={intl.formatMessage(messages.circles)}
                 />
+              </li>
+            )}
+            {boardAnnouncementsEnabled && (
+              <li>
+                <BoardAnnouncementsLink />
               </li>
             )}
 

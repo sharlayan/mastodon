@@ -1,5 +1,8 @@
 {
   "about.fork_disclaimer": "Glitch-socはMastodonからフォークされたフリーなオープンソースソフトウェアです。",
+  "column.board_announcements": "お知らせ",
+  "empty_column.board_announcements": "まだお知らせはありません。",
+  "navigation_bar.board_announcements": "お知らせ",
   "column.custom_emoji_mutes": "ミュートしたカスタム絵文字",
   "custom_emoji_mutes.add": "追加",
   "custom_emoji_mutes.domain_placeholder": "サーバー（任意、空欄ですべて）",

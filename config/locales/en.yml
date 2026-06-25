@@ -354,6 +354,33 @@ en:
       unpublish: Unpublish
       unpublished_msg: Announcement successfully unpublished!
       updated_msg: Announcement successfully updated!
+    board_announcements:
+      attachments: Media attachments
+      attachments_hint: Upload media, then click an item to copy its Markdown into the body.
+      created_msg: Announcement successfully created!
+      destroyed_msg: Announcement successfully deleted!
+      edit:
+        title: Edit announcement
+      empty: No announcements found.
+      markdown_hint: You can use Markdown for formatting.
+      media:
+        add: Add media
+        copied: Markdown copied to clipboard
+        copy_hint: Click to copy Markdown
+        error: Upload failed
+        remove: Remove
+        uploading: Uploading…
+      new:
+        create: Create announcement
+        title: New announcement
+      publish: Publish
+      publish_hint: Make this announcement visible to users.
+      published: Published
+      published_msg: Announcement successfully published!
+      title: Board announcements
+      unpublish: Unpublish
+      unpublished_msg: Announcement successfully unpublished!
+      updated_msg: Announcement successfully updated!
     collections:
       accounts: Accounts
       back_to_account: Back to account page
@@ -1077,6 +1104,10 @@ en:
         local_only_view_hint: Disable local decorations; only show decorations received from federated servers
         max_count: Maximum decorations per user
         max_count_hint: Maximum number of decorations a user may activate at once (0–16)
+      board_announcements:
+        title: Board Announcements
+        enabled: Enable board announcements
+        enabled_hint: Allow users to view the site-internal bulletin board announcements page. When disabled, the page and navigation link are hidden.
       circles:
         title: Circles
         enabled: Enable circles

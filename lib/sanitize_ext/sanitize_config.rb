@@ -197,6 +197,30 @@ class Sanitize
       end
     end
 
+    BOARD_ANNOUNCEMENT = freeze_config MASTODON_STRICT.merge(
+      elements: MASTODON_STRICT[:elements] + %w(img hr table thead tbody tr th td p),
+
+      attributes: merge(
+        MASTODON_STRICT[:attributes],
+        'img' => %w(src alt title),
+        'td' => %w(colspan rowspan),
+        'th' => %w(colspan rowspan scope)
+      ),
+
+      protocols: merge(
+        MASTODON_STRICT[:protocols],
+        'img' => { 'src' => HTTP_PROTOCOLS }
+      ),
+
+      transformers: [
+        ALLOWED_CLASS_TRANSFORMER,
+        TRANSLATE_TRANSFORMER,
+        UNSUPPORTED_HREF_TRANSFORMER,
+        LINK_REL_TRANSFORMER,
+        LINK_TARGET_TRANSFORMER,
+      ]
+    )
+
     MASTODON_OUTGOING = freeze_config MASTODON_STRICT.merge(
       attributes: merge(
         MASTODON_STRICT[:attributes],

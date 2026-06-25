@@ -71,6 +71,18 @@ namespace :admin do
     resource :distribution, only: [:create], module: :announcements
   end
 
+  resources :board_announcements, except: [:show] do
+    member do
+      post :publish
+      post :unpublish
+    end
+
+    collection do
+      post 'attachments', to: 'board_announcements#upload_attachment'
+      delete 'attachments/:attachment_id', to: 'board_announcements#destroy_attachment', as: :attachment
+    end
+  end
+
   with_options to: redirect('/admin/settings/branding') do
     get '/settings'
     get '/settings/edit'

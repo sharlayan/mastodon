@@ -60,6 +60,7 @@ defaults: &defaults
   avatar_decorations_max_count: 5
   allow_user_custom_css: false
   rate_limit_bypass_enabled: false
+  board_announcements_enabled: true
 
 development:
   <<: *defaults

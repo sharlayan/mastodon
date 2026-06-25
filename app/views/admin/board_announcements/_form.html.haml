@@ -1,0 +1,44 @@
+.fields-group
+  = form.input :title,
+               wrapper: :with_block_label
+
+.fields-group
+  = form.input :text,
+               as: :text,
+               input_html: { id: 'board_announcement_text', data: { 'board-announcement-editor': true } },
+               hint: t('admin.board_announcements.markdown_hint'),
+               wrapper: :with_block_label
+
+:ruby
+  field_name = 'board_announcement[attachment_ids][]'
+  existing_attachments = ActiveModelSerializers::SerializableResource.new(
+    form.object.attachments,
+    each_serializer: REST::BoardAnnouncementAttachmentSerializer
+  ).to_json
+  media_data = {
+    'board-announcement-media': true,
+    'upload-url': attachments_admin_board_announcements_path,
+    'destroy-url': attachment_admin_board_announcements_path(0),
+    'field-name': field_name,
+    existing: existing_attachments,
+    'label-add': t('admin.board_announcements.media.add'),
+    'label-copy': t('admin.board_announcements.media.copy_hint'),
+    'label-remove': t('admin.board_announcements.media.remove'),
+    'label-copied': t('admin.board_announcements.media.copied'),
+    'label-uploading': t('admin.board_announcements.media.uploading'),
+    'label-error': t('admin.board_announcements.media.error'),
+  }
+
+.fields-group
+  %h4= t('admin.board_announcements.attachments')
+  %p.hint= t('admin.board_announcements.attachments_hint')
+
+  = hidden_field_tag field_name, ''
+
+  .board-announcement-media{ data: media_data }
+
+.fields-group
+  = form.input :published,
+               as: :boolean,
+               hint: t('admin.board_announcements.publish_hint'),
+               wrapper: :with_label

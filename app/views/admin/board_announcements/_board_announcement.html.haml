@@ -1,0 +1,19 @@
+.announcements-list__item{ id: dom_id(board_announcement) }
+  = link_to edit_admin_board_announcement_path(board_announcement), class: 'announcements-list__item__title' do
+    = board_announcement.title
+
+  .announcements-list__item__action-bar
+    .announcements-list__item__meta
+      - if board_announcement.published?
+        = t('admin.board_announcements.published')
+        ·
+      = l(board_announcement.published_at || board_announcement.created_at)
+
+    .announcements-list__item__actions
+      - if can?(:update, board_announcement)
+        - if board_announcement.published?
+          = table_link_to 'toggle_off', t('admin.board_announcements.unpublish'), unpublish_admin_board_announcement_path(board_announcement), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
+        - else
+          = table_link_to 'toggle_on', t('admin.board_announcements.publish'), publish_admin_board_announcement_path(board_announcement), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
+
+      = table_link_to 'delete', t('generic.delete'), admin_board_announcement_path(board_announcement), method: :delete, data: { confirm: t('admin.accounts.are_you_sure') } if can?(:destroy, board_announcement)

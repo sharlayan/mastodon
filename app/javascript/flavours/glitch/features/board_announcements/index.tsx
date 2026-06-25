@@ -1,0 +1,223 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+
+import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
+
+import classNames from 'classnames';
+
+import { Helmet } from '@unhead/react/helmet';
+
+import ArticleIcon from '@/material-icons/400-24px/article.svg?react';
+import ExpandMoreIcon from '@/material-icons/400-24px/expand_more.svg?react';
+import {
+  fetchBoardAnnouncements,
+  readBoardAnnouncement,
+} from 'flavours/glitch/actions/board_announcements';
+import {
+  addColumn,
+  removeColumn,
+  moveColumn,
+} from 'flavours/glitch/actions/columns';
+import type { ApiBoardAnnouncementJSON } from 'flavours/glitch/api_types/board_announcements';
+import { Column } from 'flavours/glitch/components/column';
+import type { ColumnRef } from 'flavours/glitch/components/column';
+import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { Icon } from 'flavours/glitch/components/icon';
+import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
+import { useLayout } from 'flavours/glitch/hooks/useLayout';
+import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
+
+const messages = defineMessages({
+  heading: {
+    id: 'column.board_announcements',
+    defaultMessage: 'Announcements',
+  },
+});
+
+const WIDE_QUERY = '(min-width: 720px)';
+
+const useWideMatch = () => {
+  const [matches, setMatches] = useState(
+    () => window.matchMedia(WIDE_QUERY).matches,
+  );
+
+  useEffect(() => {
+    const watcher = window.matchMedia(WIDE_QUERY);
+    const handler = () => {
+      setMatches(watcher.matches);
+    };
+
+    watcher.addEventListener('change', handler);
+    handler();
+
+    return () => {
+      watcher.removeEventListener('change', handler);
+    };
+  }, []);
+
+  return matches;
+};
+
+const Announcement: React.FC<{
+  announcement: ApiBoardAnnouncementJSON;
+  wide: boolean;
+}> = ({ announcement, wide }) => {
+  const intl = useIntl();
+  const [expanded, setExpanded] = useState(false);
+
+  const collapsible = !wide;
+  const showBody = wide || expanded;
+
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  const date = (
+    <time
+      className='board-announcement__date'
+      dateTime={announcement.published_at}
+    >
+      {intl.formatDate(announcement.published_at, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })}
+    </time>
+  );
+
+  const heading = (
+    <>
+      <h2 className='board-announcement__title'>{announcement.title}</h2>
+      {date}
+    </>
+  );
+
+  return (
+    <article
+      className={classNames('board-announcement', {
+        'board-announcement--wide': wide,
+        'board-announcement--collapsed': collapsible && !expanded,
+      })}
+    >
+      {collapsible ? (
+        <button
+          type='button'
+          className='board-announcement__header'
+          aria-expanded={expanded}
+          onClick={handleToggle}
+        >
+          {heading}
+          <Icon
+            id='expand-more'
+            icon={ExpandMoreIcon}
+            className='board-announcement__chevron'
+          />
+        </button>
+      ) : (
+        <div className='board-announcement__header'>{heading}</div>
+      )}
+
+      {showBody && (
+        <div
+          className='board-announcement__content translate'
+          dangerouslySetInnerHTML={{ __html: announcement.content }}
+        />
+      )}
+    </article>
+  );
+};
+
+const BoardAnnouncements: React.FC<{
+  columnId?: string;
+  multiColumn?: boolean;
+}> = ({ columnId, multiColumn }) => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const columnRef = useRef<ColumnRef>(null);
+  const { singleColumn } = useLayout();
+  const wideMatch = useWideMatch();
+  const wide = singleColumn || wideMatch;
+
+  const items = useAppSelector((state) => state.boardAnnouncements.items);
+  const isLoading = useAppSelector(
+    (state) => state.boardAnnouncements.isLoading,
+  );
+  const loaded = useAppSelector((state) => state.boardAnnouncements.loaded);
+
+  useEffect(() => {
+    void dispatch(fetchBoardAnnouncements());
+  }, [dispatch]);
+
+  useEffect(() => {
+    items
+      .filter((item) => !item.read)
+      .forEach((item) => {
+        void dispatch(readBoardAnnouncement({ id: item.id }));
+      });
+  }, [dispatch, items]);
+
+  const handlePin = useCallback(() => {
+    if (columnId) {
+      dispatch(removeColumn(columnId));
+    } else {
+      dispatch(addColumn('BOARD_ANNOUNCEMENTS', {}));
+    }
+  }, [dispatch, columnId]);
+
+  const handleMove = useCallback(
+    (dir: number) => {
+      if (columnId) dispatch(moveColumn(columnId, dir));
+    },
+    [dispatch, columnId],
+  );
+
+  const handleHeaderClick = useCallback(() => {
+    columnRef.current?.scrollTop();
+  }, []);
+
+  const pinned = !!columnId;
+
+  return (
+    <Column
+      bindToDocument={!multiColumn}
+      ref={columnRef}
+      label={intl.formatMessage(messages.heading)}
+    >
+      <ColumnHeader
+        icon='article'
+        iconComponent={ArticleIcon}
+        title={intl.formatMessage(messages.heading)}
+        onPin={handlePin}
+        onMove={handleMove}
+        onClick={handleHeaderClick}
+        pinned={pinned}
+        multiColumn={multiColumn}
+        showBackButton
+      />
+
+      <div className='scrollable'>
+        {isLoading && items.length === 0 && <LoadingIndicator />}
+
+        {loaded && items.length === 0 && (
+          <div className='empty-column-indicator'>
+            <FormattedMessage
+              id='empty_column.board_announcements'
+              defaultMessage='There are no announcements yet.'
+            />
+          </div>
+        )}
+
+        {items.map((item) => (
+          <Announcement key={item.id} announcement={item} wide={wide} />
+        ))}
+      </div>
+
+      <Helmet>
+        <title>{intl.formatMessage(messages.heading)}</title>
+        <meta name='robots' content='noindex' />
+      </Helmet>
+    </Column>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export
+export default BoardAnnouncements;

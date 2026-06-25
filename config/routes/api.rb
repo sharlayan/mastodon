@@ -112,6 +112,16 @@ namespace :api, format: false do
       end
     end
 
+    resources :board_announcements, only: [:index, :show] do
+      collection do
+        get :unread_count
+      end
+
+      member do
+        post :read
+      end
+    end
+
     resources :conversations, only: [:index, :destroy] do
       member do
         post :read

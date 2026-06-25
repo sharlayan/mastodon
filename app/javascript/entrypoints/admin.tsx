@@ -433,6 +433,53 @@ ready(() => {
         previewCard.classList.toggle('preview-card--image-visible');
       });
     });
+
+  const boardAnnouncementEditor = document.querySelector<HTMLTextAreaElement>(
+    'textarea[data-board-announcement-editor]',
+  );
+
+  if (boardAnnouncementEditor) {
+    void (async () => {
+      const { default: EasyMDE } = await import('easymde');
+      await import('easymde/dist/easymde.min.css');
+      await import('@fortawesome/fontawesome-free/css/fontawesome.min.css');
+      await import('@fortawesome/fontawesome-free/css/solid.min.css');
+      await import('@fortawesome/fontawesome-free/css/v4-shims.min.css');
+      await import('../styles/board_announcement_editor.css');
+
+      const { initBoardAnnouncementMedia } =
+        await import('../board_announcement_media');
+      initBoardAnnouncementMedia();
+
+      new EasyMDE({
+        element: boardAnnouncementEditor,
+        autoDownloadFontAwesome: false,
+        spellChecker: false,
+        status: false,
+        toolbar: [
+          'bold',
+          'italic',
+          'strikethrough',
+          'heading',
+          '|',
+          'quote',
+          'unordered-list',
+          'ordered-list',
+          'code',
+          'table',
+          '|',
+          'link',
+          'image',
+          '|',
+          'preview',
+          'side-by-side',
+          'fullscreen',
+          '|',
+          'guide',
+        ],
+      });
+    })();
+  }
 }).catch((reason: unknown) => {
   throw reason;
 });

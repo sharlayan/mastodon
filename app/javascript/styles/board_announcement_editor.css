@@ -1,0 +1,79 @@
+.editor-toolbar button.table,
+.editor-toolbar .table {
+  width: auto;
+  max-width: none;
+  border-spacing: initial;
+  border-collapse: initial;
+}
+
+.board-announcement-media__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.board-announcement-media__item {
+  position: relative;
+  width: 100px;
+}
+
+.board-announcement-media__thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  padding: 4px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--background-color, #1f232b);
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.board-announcement-media__thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+}
+
+.board-announcement-media__name {
+  font-size: 12px;
+  word-break: break-all;
+  text-align: center;
+}
+
+.board-announcement-media__remove {
+  position: absolute;
+  top: 2px;
+  inset-inline-end: 2px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 70%);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.board-announcement-media__add {
+  margin-top: 4px;
+}
+
+.board-announcement-media__file {
+  display: none;
+}
+
+.board-announcement-media__status {
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+.board-announcement-media__status--error {
+  color: #df405a;
+}

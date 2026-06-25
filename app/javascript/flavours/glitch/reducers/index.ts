@@ -9,6 +9,7 @@ import { accountsFamiliarFollowersReducer } from './accounts_familiar_followers'
 import { accountsMapReducer } from './accounts_map';
 import { alertsReducer } from './alerts';
 import announcements from './announcements';
+import { boardAnnouncementsReducer } from './board_announcements';
 import { circlesReducer } from './circles';
 import { composeReducer } from './compose';
 import { contextsReducer } from './contexts';
@@ -51,6 +52,7 @@ import user_lists from './user_lists';
 const reducers = {
   accountSwitches: accountSwitchesReducer,
   announcements,
+  boardAnnouncements: boardAnnouncementsReducer,
   dropdownMenu: dropdownMenuReducer,
   timelines,
   meta,

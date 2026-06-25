@@ -6,6 +6,7 @@
 
 %w(
   /blocks
+  /board_announcements
   /bookmarks
   /circles/(*any)
   /collections/(*any)
