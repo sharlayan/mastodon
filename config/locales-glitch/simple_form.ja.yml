@@ -2,7 +2,6 @@
 ja:
   simple_form:
     glitch_only: glitch-soc
-    sharlayan_only: 커스텀
     hints:
       defaults:
         setting_default_content_type_html: トゥートを作成するとき特に指定がない限り生のHTMLで書かれているとします
@@ -25,3 +24,4 @@ ja:
         trending_link: 新しいトレンドリンクのレビューが必要
         trending_status: 新しいトレンド投稿のレビューが必要
         trending_tag: 新しいトレンドタグにはレビューが必要
+    sharlayan_only: カスタム
