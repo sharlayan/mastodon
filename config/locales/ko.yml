@@ -970,6 +970,11 @@ ko:
       edit: "%{name} 역할 수정"
       everyone: 기본 권한
       everyone_full_description_html: 이것은 <strong>모든 사용자</strong>에게 적용될 <strong>기본 역할</strong>이며, 역할을 지정하지 않아도 적용됩니다. 다른 모든 역할들은 여기에서 권한을 상속합니다.
+      extra_categories:
+        api: API
+      extra_privileges:
+        bypass_rate_limit: API 제한 우회
+        bypass_rate_limit_description: 서버 설정에서 API 제한 우회가 활성화된 경우, 이 권한을 가진 사용자는 API 요청 제한을 받지 않습니다
       permissions_count:
         other: "%{count}개의 권한"
       privileges:
@@ -1016,7 +1021,7 @@ ko:
         view_dashboard: 대시보드 보기
         view_dashboard_description: 사용자가 여러 통계정보를 볼 수 있는 대시보드에 접근할 수 있도록 허용
         view_devops: 데브옵스
-        view_devops_description: "Sidekiq과 pgHero 대시보드에 접근할 수 있도록 허용. API 제한 우회 설정이 활성화된 경우 이 권한을 가진 사용자는 API 제한을 받지 않습니다"
+        view_devops_description: Sidekiq과 pgHero 대시보드에 접근할 수 있도록 허용
         view_feeds: 실시간 및 화제 피드 보기
         view_feeds_description: 서버 설정에 관계 없이 실시간과 해시태그 피드에 접근할 수 있도록 허용
       requires_2fa: 2단계 인증 필요

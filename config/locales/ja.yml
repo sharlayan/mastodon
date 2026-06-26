@@ -835,6 +835,11 @@ ja:
       edit: "『%{name}』のロールを編集"
       everyone: デフォルトの権限
       everyone_full_description_html: これは、割り当てられたロールを持っていないものであっても、 <strong>すべてのユーザー</strong> に影響を与える <strong>基本ロール</strong>です。 他のすべてのロールは、そこから権限を継承します。
+      extra_categories:
+        api: API
+      extra_privileges:
+        bypass_rate_limit: APIレート制限のバイパス
+        bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
       permissions_count:
         other: "%{count}件の権限"
       privileges:
@@ -877,7 +882,7 @@ ja:
         view_dashboard: ダッシュボードの表示
         view_dashboard_description: ユーザーがダッシュボードやさまざまなメトリクスにアクセスできるようにします
         view_devops: 開発者
-        view_devops_description: "Sidekiq と pgHero ダッシュボードにアクセスできるようにします。APIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません"
+        view_devops_description: Sidekiq と pgHero ダッシュボードにアクセスできるようにします
       title: ロール
     rules:
       add_new: ルールを追加

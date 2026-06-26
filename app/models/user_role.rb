@@ -43,6 +43,10 @@ class UserRole < ApplicationRecord
     manage_email_subscriptions: (1 << 22),
   }.freeze
 
+  EXTRA_FLAGS = {
+    bypass_rate_limit: (1 << 0),
+  }.freeze
+
   EVERYONE_ROLE_ID = -99
   NOBODY_POSITION = -1
 
@@ -100,6 +104,17 @@ class UserRole < ApplicationRecord
     }.freeze
   end
 
+  module ExtraFlags
+    NONE = 0
+    ALL  = EXTRA_FLAGS.values.reduce(0, &:|)
+
+    CATEGORIES = {
+      api: %i(
+        bypass_rate_limit
+      ).freeze,
+    }.freeze
+  end
+
   attr_writer :current_account
 
   validates :name, presence: true, unless: :everyone?
@@ -108,6 +123,7 @@ class UserRole < ApplicationRecord
   validates :collection_limit, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   validate :validate_permissions_elevation
+  validate :validate_extra_permissions_elevation
   validate :validate_position_elevation
   validate :validate_dangerous_permissions
   validate :validate_own_role_edition
@@ -152,6 +168,18 @@ class UserRole < ApplicationRecord
     any_of_privileges.any? { |privilege| in_permissions?(privilege) }
   end
 
+  def extra_permissions_as_keys
+    EXTRA_FLAGS.keys.select { |privilege| extra_permissions & EXTRA_FLAGS[privilege] == EXTRA_FLAGS[privilege] }.map(&:to_s)
+  end
+
+  def extra_permissions_as_keys=(value)
+    self.extra_permissions = value.filter_map(&:presence).reduce(ExtraFlags::NONE) { |bitmask, privilege| EXTRA_FLAGS.key?(privilege.to_sym) ? (bitmask | EXTRA_FLAGS[privilege.to_sym]) : bitmask }
+  end
+
+  def can_extra?(*any_of_privileges)
+    any_of_privileges.any? { |privilege| in_extra_permissions?(privilege) }
+  end
+
   def overrides?(other_role)
     other_role.nil? || position > other_role.position
   end
@@ -179,6 +207,16 @@ class UserRole < ApplicationRecord
     end
   end
 
+  def computed_extra_permissions
+    return extra_permissions if everyone?
+    return ExtraFlags::NONE if nobody?
+
+    @computed_extra_permissions ||= begin
+      computed = self.class.everyone.extra_permissions | extra_permissions
+      administrator? ? ExtraFlags::ALL : computed
+    end
+  end
+
   def to_log_human_identifier
     name
   end
@@ -195,6 +233,12 @@ class UserRole < ApplicationRecord
     computed_permissions & FLAGS[privilege] == FLAGS[privilege]
   end
 
+  def in_extra_permissions?(privilege)
+    raise ArgumentError, "Unknown extra privilege: #{privilege}" unless EXTRA_FLAGS.key?(privilege)
+
+    computed_extra_permissions & EXTRA_FLAGS[privilege] == EXTRA_FLAGS[privilege]
+  end
+
   def set_position
     self.position = NOBODY_POSITION if everyone?
   end
@@ -203,12 +247,17 @@ class UserRole < ApplicationRecord
     return unless defined?(@current_account) && @current_account.user_role.id == id
 
     errors.add(:permissions_as_keys, :own_role) if permissions_changed?
+    errors.add(:extra_permissions_as_keys, :own_role) if extra_permissions_changed?
     errors.add(:position, :own_role) if position_changed?
     errors.add(:require_2fa, :own_role) if require_2fa_changed? && !administrator?
   end
 
   def validate_permissions_elevation
     errors.add(:permissions_as_keys, :elevated) if defined?(@current_account) && @current_account.user_role.computed_permissions & permissions != permissions
+  end
+
+  def validate_extra_permissions_elevation
+    errors.add(:extra_permissions_as_keys, :elevated) if defined?(@current_account) && @current_account.user_role.computed_extra_permissions & extra_permissions != extra_permissions
   end
 
   def validate_position_elevation

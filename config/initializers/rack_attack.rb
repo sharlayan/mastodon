@@ -43,7 +43,7 @@ class Rack::Attack
       @bypasses_rate_limit = begin
         if Setting.rate_limit_bypass_enabled
           user_id = authenticated_user_id
-          user_id.present? && User.find_by(id: user_id)&.can?(:administrator, :view_devops)
+          user_id.present? && User.find_by(id: user_id)&.can_extra?(:bypass_rate_limit)
         else
           false
         end

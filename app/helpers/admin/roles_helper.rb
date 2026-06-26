@@ -15,10 +15,27 @@ module Admin
       permissions.filter { |privilege| role_flag_value(privilege).zero? }
     end
 
+    def extra_privilege_label(privilege)
+      safe_join(
+        [
+          t("admin.roles.extra_privileges.#{privilege}"),
+          content_tag(:span, t("admin.roles.extra_privileges.#{privilege}_description"), class: 'hint'),
+        ]
+      )
+    end
+
+    def disable_extra_permissions?(permissions)
+      permissions.filter { |privilege| role_extra_flag_value(privilege).zero? }
+    end
+
     private
 
     def role_flag_value(privilege)
       UserRole::FLAGS[privilege] & current_user.role.computed_permissions
+    end
+
+    def role_extra_flag_value(privilege)
+      UserRole::EXTRA_FLAGS[privilege] & current_user.role.computed_extra_permissions
     end
   end
 end

@@ -988,6 +988,11 @@ en:
       edit: Edit '%{name}' role
       everyone: Default permissions
       everyone_full_description_html: This is the <strong>base role</strong> affecting <strong>all users</strong>, even those without an assigned role. All other roles inherit permissions from it.
+      extra_categories:
+        api: API
+      extra_privileges:
+        bypass_rate_limit: Bypass API rate limits
+        bypass_rate_limit_description: When API rate limit bypass is enabled in server settings, users with this permission are not subject to API rate limits
       permissions_count:
         one: "%{count} permission"
         other: "%{count} permissions"
@@ -1035,7 +1040,7 @@ en:
         view_dashboard: View Dashboard
         view_dashboard_description: Allows users to access the dashboard and various metrics
         view_devops: DevOps
-        view_devops_description: "Allows users to access Sidekiq and pgHero dashboards. When API rate limit bypass is enabled, users with this permission are not subject to API rate limits"
+        view_devops_description: Allows users to access Sidekiq and pgHero dashboards
         view_feeds: View live and topic feeds
         view_feeds_description: Allows users to access the live and topic feeds regardless of server settings
       requires_2fa: Requires two-factor authentication
