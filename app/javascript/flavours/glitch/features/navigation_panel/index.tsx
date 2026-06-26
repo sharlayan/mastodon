@@ -27,6 +27,7 @@ import InfoIcon from '@/material-icons/400-24px/info.svg?react';
 import AdministrationIcon from '@/material-icons/400-24px/manufacturing.svg?react';
 import MoodActiveIcon from '@/material-icons/400-24px/mood-fill.svg?react';
 import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
+import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
 import NotificationsActiveIcon from '@/material-icons/400-24px/notifications-fill.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddActiveIcon from '@/material-icons/400-24px/person_add-fill.svg?react';
@@ -53,6 +54,7 @@ import { useIdentity } from 'flavours/glitch/identity_context';
 import {
   boardAnnouncementsEnabled,
   circlesEnabled,
+  clipsEnabled,
   localLiveFeedAccess,
   remoteLiveFeedAccess,
   trendsEnabled,
@@ -95,6 +97,7 @@ const messages = defineMessages({
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
+  clips: { id: 'navigation_bar.clips', defaultMessage: 'Clips' },
   collections: {
     id: 'navigation_bar.collections',
     defaultMessage: 'Collections',
@@ -439,6 +442,17 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
                 text={intl.formatMessage(messages.bookmarks)}
               />
             </li>
+            {clipsEnabled && (
+              <li>
+                <ColumnLink
+                  transparent
+                  to='/clips'
+                  icon='note-stack-add'
+                  iconComponent={NoteStackAddIcon}
+                  text={intl.formatMessage(messages.clips)}
+                />
+              </li>
+            )}
             <li>
               <ColumnLink
                 transparent

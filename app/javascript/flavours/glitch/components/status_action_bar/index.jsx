@@ -22,9 +22,10 @@ import { PERMISSION_MANAGE_USERS, PERMISSION_MANAGE_FEDERATION } from 'flavours/
 import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend_links';
 import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 
+import { openModal } from 'flavours/glitch/actions/modal';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
-import { me, maxReactions, quickBoosting, reactionsEnabled } from 'flavours/glitch/initial_state';
+import { me, maxReactions, quickBoosting, reactionsEnabled, clipsEnabled } from 'flavours/glitch/initial_state';
 
 import { IconButton } from '../icon_button';
 import { injectIntl } from '../intl';
@@ -51,6 +52,7 @@ const messages = defineMessages({
   removeFavourite: { id: 'status.remove_favourite', defaultMessage: 'Remove from favorites' },
   bookmark: { id: 'status.bookmark', defaultMessage: 'Bookmark' },
   removeBookmark: { id: 'status.remove_bookmark', defaultMessage: 'Remove bookmark' },
+  addToClip: { id: 'status.add_to_clip', defaultMessage: 'Add to clip' },
   open: { id: 'status.open', defaultMessage: 'Expand this status' },
   report: { id: 'status.report', defaultMessage: 'Report @{name}' },
   muteConversation: { id: 'status.mute_conversation', defaultMessage: 'Mute conversation' },
@@ -161,6 +163,13 @@ class StatusActionBar extends ImmutablePureComponent {
     this.props.onBookmark(this.props.status, e);
   };
 
+  handleAddToClipClick = () => {
+    this.props.dispatch(openModal({
+      modalType: 'CLIP_ADD',
+      modalProps: { statusId: this.props.status.get('id') },
+    }));
+  };
+
   handleDeleteClick = () => {
     this.props.onDelete(this.props.status);
   };
@@ -256,6 +265,10 @@ class StatusActionBar extends ImmutablePureComponent {
 
     if (publicStatus && 'share' in navigator) {
       menu.push({ text: intl.formatMessage(messages.share), action: this.handleShareClick });
+    }
+
+    if (signedIn && clipsEnabled) {
+      menu.push({ text: intl.formatMessage(messages.addToClip), action: this.handleAddToClipClick });
     }
 
     if (publicStatus && !isRemote) {

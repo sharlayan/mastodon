@@ -32,7 +32,7 @@ import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../act
 import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
-import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, circlesEnabled } from '../../initial_state';
+import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, circlesEnabled, clipsEnabled } from '../../initial_state';
 
 import BundleColumnError from './components/bundle_column_error';
 import { NavigationBar } from './components/navigation_bar';
@@ -72,6 +72,9 @@ import {
   Lists,
   ListEdit,
   ListMembers,
+  Clips,
+  ClipEdit,
+  ClipTimeline,
   Circles,
   CircleEdit,
   CircleMembers,
@@ -93,6 +96,7 @@ import {
   PrivacyPolicy,
   TermsOfService,
   AccountFeatured,
+  AccountClips,
   AccountEdit,
   AccountEditFeaturedTags,
   Quotes,
@@ -230,6 +234,10 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/lists/:id/members' component={ListMembers} content={children} />
             <WrappedRoute path='/lists/:id' component={ListTimeline} content={children} />
 
+            {clipsEnabled && <WrappedRoute path='/clips/new' component={ClipEdit} content={children} />}
+            {clipsEnabled && <WrappedRoute path='/clips/:id/edit' component={ClipEdit} content={children} />}
+            {clipsEnabled && <WrappedRoute path='/clips/:id' component={ClipTimeline} content={children} />}
+
             {circlesEnabled && <WrappedRoute path='/circles/new' component={CircleEdit} content={children} />}
             {circlesEnabled && <WrappedRoute path='/circles/:id/edit' component={CircleEdit} content={children} />}
             {circlesEnabled && <WrappedRoute path='/circles/:id/members' component={CircleMembers} content={children} />}
@@ -255,6 +263,7 @@ class SwitchingColumnsArea extends PureComponent {
 
             <WrappedRoute path={['/@:acct', '/accounts/:id']} exact component={AccountTimeline} content={children} />
             <WrappedRoute path={['/@:acct/featured', '/accounts/:id/featured']} component={AccountFeatured} content={children} />
+            {clipsEnabled && <WrappedRoute path={['/@:acct/clips', '/accounts/:id/clips']} component={AccountClips} content={children} />}
             <WrappedRoute path={['/@:acct/collections']} component={Collections} content={children} key='collections-list' />
             <WrappedRoute path={['/collections/new', '/collections/:id/edit']} component={CollectionsEditor} content={children} key='collections-editor' />
             <WrappedRoute path='/collections/:id' component={CollectionDetail} content={children} key='collections-detail' />
@@ -283,6 +292,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/custom_emoji_mutes' component={CustomEmojiMutes} content={children} />
             <WrappedRoute path='/reaction_mutes' component={ReactionMutes} content={children} />
             <WrappedRoute path='/lists' component={Lists} content={children} />
+            {clipsEnabled && <WrappedRoute path='/clips' component={Clips} content={children} />}
             {circlesEnabled && <WrappedRoute path='/circles' component={Circles} content={children} />}
 
             <Route path='/overview' component={CustomHomepage} />

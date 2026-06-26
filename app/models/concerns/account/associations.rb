@@ -36,6 +36,7 @@ module Account::Associations
         has_many :owned_lists, class_name: 'List'
         has_many :circles, dependent: :destroy
         has_many :circle_accounts, dependent: :destroy
+        has_many :clips, dependent: :destroy
         has_many :polls
         has_many :report_notes
         has_many :reports

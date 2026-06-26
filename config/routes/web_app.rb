@@ -9,6 +9,7 @@
   /board_announcements
   /bookmarks
   /circles/(*any)
+  /clips/(*any)
   /collections/(*any)
   /conversations/(*any)
   /custom_emoji_mutes

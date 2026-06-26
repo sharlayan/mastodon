@@ -1114,6 +1114,10 @@ en:
         title: Circles
         enabled: Enable circles
         enabled_hint: Allow users to create circles and publish posts visible only to selected followers.
+      clips:
+        title: Clips
+        enabled: Enable clips
+        enabled_hint: Allow users to create clips and collect posts into named collections. When disabled, existing clips are kept but cannot be accessed.
       reactions:
         title: Reactions
         enabled: Enable emoji reactions
@@ -1959,6 +1963,9 @@ en:
   circles:
     errors:
       limit: You have reached the maximum number of circles
+  clips:
+    errors:
+      limit: You have reached the maximum number of clips
   lists:
     errors:
       limit: You have reached the maximum number of lists

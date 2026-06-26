@@ -11,6 +11,7 @@ import { alertsReducer } from './alerts';
 import announcements from './announcements';
 import { boardAnnouncementsReducer } from './board_announcements';
 import { circlesReducer } from './circles';
+import { clipsReducer } from './clips';
 import { composeReducer } from './compose';
 import { contextsReducer } from './contexts';
 import conversations from './conversations';
@@ -79,6 +80,7 @@ const reducers = {
   height_cache,
   favorite_emojis,
   lists: listsReducer,
+  clips: clipsReducer,
   circles: circlesReducer,
   followedTags: followedTagsReducer,
   custom_emoji_mutes: customEmojiMutesReducer,

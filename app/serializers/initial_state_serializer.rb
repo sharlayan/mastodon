@@ -166,6 +166,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       terms_of_service_enabled: TermsOfService.current.present?,
       force_local_only: Setting.force_local_only,
       circles_enabled: Setting.circles_enabled,
+      clips_enabled: Setting.clips_enabled,
       board_announcements_enabled: Setting.board_announcements_enabled,
       avatar_decorations_enabled: Setting.avatar_decorations_enabled,
       avatar_decorations_federation_enabled: Setting.avatar_decorations_federation_enabled,

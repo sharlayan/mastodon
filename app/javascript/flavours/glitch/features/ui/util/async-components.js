@@ -92,6 +92,10 @@ export function AccountFeatured() {
   return import('../../account_featured');
 }
 
+export function AccountClips() {
+  return import('../../account_clips');
+}
+
 export function AccountEdit() {
   return import('../../account_edit')
   .then((module) => ({ default: module.AccountEdit }));
@@ -293,6 +297,18 @@ export function ListEdit () {
 
 export function ListMembers () {
   return import('../../lists/members');
+}
+
+export function Clips () {
+  return import('../../clips');
+}
+
+export function ClipEdit () {
+  return import('../../clips/new');
+}
+
+export function ClipTimeline () {
+  return import('../../clips/timeline');
 }
 
 export function Circles () {

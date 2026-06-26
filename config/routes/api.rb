@@ -53,6 +53,8 @@ namespace :api, format: false do
         resource :bookmark, only: :create
         post :unbookmark, to: 'bookmarks#destroy'
 
+        resources :clips, only: :index
+
         resource :mute, only: :create
         post :unmute, to: 'mutes#destroy'
 
@@ -257,6 +259,7 @@ namespace :api, format: false do
         resources :following, only: :index, controller: :following_accounts
         resources :lists, only: :index
         resources :circles, only: :index
+        resources :clips, only: :index
         resources :identity_proofs, only: :index
         resources :featured_tags, only: :index
         resources :endorsements, only: :index
@@ -304,6 +307,10 @@ namespace :api, format: false do
     resources :circles, only: [:index, :create, :show, :update, :destroy] do
       resource :accounts, only: [:show, :create, :destroy], module: :circles
       resources :statuses, only: [:index], module: :circles
+    end
+
+    resources :clips, only: [:index, :create, :show, :update, :destroy] do
+      resources :statuses, only: [:index, :create, :destroy], module: :clips
     end
 
     namespace :featured_tags do

@@ -6,6 +6,7 @@ import type { NavLinkProps } from 'react-router-dom';
 
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
+import { clipsEnabled } from '@/flavours/glitch/initial_state';
 
 import { TabLink, TabList } from '../tab_list';
 
@@ -24,7 +25,8 @@ export const AccountTabs: FC = () => {
   }
 
   const { acct, show_featured, show_media } = account;
-  if (!show_featured && !show_media) {
+  const showClips = clipsEnabled && !acct.includes('@');
+  if (!show_featured && !show_media && !showClips) {
     return <hr className={classes.noTabs} />;
   }
 
@@ -41,6 +43,11 @@ export const AccountTabs: FC = () => {
       {show_featured && (
         <TabLink exact to={`/@${acct}/featured`}>
           <FormattedMessage id='account.featured' defaultMessage='Featured' />
+        </TabLink>
+      )}
+      {showClips && (
+        <TabLink exact to={`/@${acct}/clips`}>
+          <FormattedMessage id='account.clips' defaultMessage='Clips' />
         </TabLink>
       )}
     </TabList>

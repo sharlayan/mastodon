@@ -952,6 +952,10 @@ ja:
         title: サークル
         enabled: サークル機能を有効にする
         enabled_hint: ユーザーがサークルを作成し、選択したフォロワーだけに表示される投稿を作成できるようにします。
+      clips:
+        title: クリップ
+        enabled: クリップ機能を有効にする
+        enabled_hint: ユーザーがクリップを作成し、投稿を名前付きのコレクションにまとめられるようにします。無効にすると既存のクリップは保持されますが、アクセスできなくなります。
       reactions:
         title: 絵文字リアクション
         enabled: 絵文字リアクションを有効にする
@@ -1703,6 +1707,9 @@ ja:
   circles:
     errors:
       limit: サークルの上限数に達しています
+  clips:
+    errors:
+      limit: クリップの上限数に達しています
   lists:
     errors:
       limit: リストの上限数に達しています

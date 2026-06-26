@@ -55,6 +55,7 @@ defaults: &defaults
   mfm_enabled: false
   mfm_allow_composition: false
   circles_enabled: false
+  clips_enabled: false
   avatar_decorations_enabled: false
   avatar_decorations_federation_enabled: false
   avatar_decorations_local_only_view: false

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_26_020400) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_26_124501) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -488,6 +488,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_020400) do
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_circles_on_account_id"
+  end
+
+  create_table "clip_statuses", force: :cascade do |t|
+    t.bigint "clip_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "status_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["clip_id", "status_id"], name: "index_clip_statuses_on_clip_id_and_status_id", unique: true
+    t.index ["clip_id"], name: "index_clip_statuses_on_clip_id"
+    t.index ["status_id"], name: "index_clip_statuses_on_status_id"
+  end
+
+  create_table "clips", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "public", default: false, null: false
+    t.string "title", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_clips_on_account_id"
   end
 
   create_table "collection_items", id: :bigint, default: -> { "timestamp_id('collection_items'::text)" }, force: :cascade do |t|
@@ -1727,6 +1747,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_020400) do
   add_foreign_key "circle_statuses", "circles", on_delete: :cascade
   add_foreign_key "circle_statuses", "statuses", on_delete: :cascade
   add_foreign_key "circles", "accounts", on_delete: :cascade
+  add_foreign_key "clip_statuses", "clips", on_delete: :cascade
+  add_foreign_key "clip_statuses", "statuses", on_delete: :cascade
+  add_foreign_key "clips", "accounts", on_delete: :cascade
   add_foreign_key "collection_items", "accounts"
   add_foreign_key "collection_items", "collections", on_delete: :cascade
   add_foreign_key "collection_reports", "collections", on_delete: :cascade

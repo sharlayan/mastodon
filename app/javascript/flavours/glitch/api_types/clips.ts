@@ -1,0 +1,12 @@
+// See app/serializers/rest/clip_serializer.rb
+
+export interface ApiClipJSON {
+  id: string;
+  title: string;
+  description: string | null;
+  public: boolean;
+  account_id: string;
+  statuses_count: number;
+  created_at: string;
+  updated_at: string;
+}

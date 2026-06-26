@@ -8,6 +8,16 @@
             hint: t('admin.settings.circles.enabled_hint'),
             sharlayan_only: true
 
+%h2= t('admin.settings.clips.title')
+
+.fields-group
+  = f.input :clips_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.clips.enabled'),
+            hint: t('admin.settings.clips.enabled_hint'),
+            sharlayan_only: true
+
 %h2= t('admin.settings.rate_limit_bypass.title')
 
 .fields-group
