@@ -3,6 +3,16 @@
 .fields-group
   = f.input :allow_user_custom_css, as: :boolean, wrapper: :with_label, label: t('admin.settings.allow_user_custom_css.title'), hint: t('admin.settings.allow_user_custom_css.desc_html'), sharlayan_only: true
 
+%h2= t('admin.settings.board_announcements.title')
+
+.fields-group
+  = f.input :board_announcements_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.board_announcements.enabled'),
+            hint: t('admin.settings.board_announcements.enabled_hint'),
+            sharlayan_only: true
+
 %h2= t('admin.settings.reactions.title')
 
 .fields-group
@@ -12,6 +22,9 @@
             label: t('admin.settings.reactions.enabled'),
             hint: t('admin.settings.reactions.enabled_hint'),
             sharlayan_only: true
+
+.fields-group
+  = f.input :reaction_local_emoji_only, as: :boolean, wrapper: :with_label, label: t('admin.settings.reaction_local_emoji_only.title'), hint: t('admin.settings.reaction_local_emoji_only.desc_html'), sharlayan_only: true
 
 %h2= t('admin.settings.mfm.title')
 
