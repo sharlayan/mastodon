@@ -83,7 +83,9 @@ const _convertStyleToCSS = (style) => {
   return div.getAttribute('style')
 }
 
-const NimbleEmoji = (props) => {
+const NimbleEmoji = (originalProps) => {
+  const props = { ...originalProps }
+
   if (props.data.compressed) {
     uncompress(props.data)
   }

@@ -7,7 +7,9 @@ import { EmojiPropTypes } from '../../utils/shared-props'
 import NimbleEmoji from './nimble-emoji'
 
 
-const Emoji = (props) => {
+const Emoji = (originalProps) => {
+  const props = { ...originalProps }
+
   for (let k in Emoji.defaultProps) {
     if (props[k] === undefined && Emoji.defaultProps[k] !== undefined) {
       props[k] = Emoji.defaultProps[k]
