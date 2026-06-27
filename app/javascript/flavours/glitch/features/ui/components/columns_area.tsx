@@ -31,6 +31,8 @@ import {
   BookmarkedStatuses,
   ListTimeline,
   Directory,
+  ReactedStatuses,
+  BoardAnnouncements,
 } from '../util/async-components';
 import { useColumnsContext } from '../util/columns_context';
 
@@ -54,6 +56,8 @@ const componentMap = {
   BOOKMARKS: BookmarkedStatuses,
   LIST: ListTimeline,
   DIRECTORY: Directory,
+  REACTIONS: ReactedStatuses,
+  BOARD_ANNOUNCEMENTS: BoardAnnouncements,
 } as const;
 
 const TabsBarPortal = () => {
