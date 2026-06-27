@@ -474,6 +474,7 @@ class EmojiPickerDropdown extends PureComponent {
           title={title}
           aria-expanded={active}
           active={active}
+          icon='mood'
           iconComponent={MoodIcon}
           onClick={this.onToggle}
           disabled={disabled}

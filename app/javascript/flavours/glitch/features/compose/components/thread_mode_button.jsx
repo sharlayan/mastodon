@@ -29,7 +29,7 @@ export const ThreadModeButton = () => {
   return (
     <IconButton
       disabled={isEditing}
-      icon=''
+      icon='quickreply'
       onClick={handleClick}
       iconComponent={QuickreplyIcon}
       title={title}
