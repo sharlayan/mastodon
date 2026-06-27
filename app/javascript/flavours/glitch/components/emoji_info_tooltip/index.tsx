@@ -73,7 +73,7 @@ export const EmojiReactionOverlay: FC<EmojiReactionOverlayProps> = ({
 };
 
 interface EmojiInfoTooltipProps {
-  containerRef: RefObject<HTMLElement>;
+  containerRef: RefObject<HTMLElement | null>;
   enabled?: boolean;
   callPosition?: string;
 }

@@ -54,14 +54,16 @@ export const Emoji: FC<EmojiProps> = ({
   const { mode } = useEmojiAppState();
   return (
     <EmojiRaw
-      {...EmojiRaw.defaultProps}
+      backgroundImageFn={backgroundImageFn}
       data={EmojiData}
+      native={mode === EMOJI_MODE_NATIVE}
       set={set}
-      sheetSize={sheetSize}
       sheetColumns={sheetColumns}
       sheetRows={sheetRows}
-      backgroundImageFn={backgroundImageFn}
-      native={mode === EMOJI_MODE_NATIVE}
+      sheetSize={sheetSize}
+      skin={1}
+      tooltip={false}
+      {...{ useButton: true }}
       {...props}
     />
   );

@@ -60,6 +60,14 @@ export interface AccountShape extends Required<
   url: string;
   avatar_decorations: ApiAvatarDecorationJSON[];
 }
+export type AccountShapeFull = Omit<
+  AccountShape,
+  'emojis' | 'fields' | 'roles'
+> & {
+  emojis: CustomEmoji[];
+  fields: AccountFieldShape[];
+  roles: AccountRoleShape[];
+};
 
 export type Account = RecordOf<AccountShape>;
 
