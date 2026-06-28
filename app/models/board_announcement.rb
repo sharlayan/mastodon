@@ -5,11 +5,11 @@
 # Table name: board_announcements
 #
 #  id           :bigint(8)        not null, primary key
-#  title        :string           default(""), not null
-#  text         :text             default(""), not null
-#  text_html    :text             default(""), not null
 #  published    :boolean          default(FALSE), not null
 #  published_at :datetime
+#  text         :text             default(""), not null
+#  text_html    :text             default(""), not null
+#  title        :string           default(""), not null
 #  created_at   :datetime         not null
 #  updated_at   :datetime         not null
 #

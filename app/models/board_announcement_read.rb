@@ -4,11 +4,11 @@
 #
 # Table name: board_announcement_reads
 #
-#  id                     :bigint(8)        not null, primary key
-#  account_id             :bigint(8)        not null
-#  board_announcement_id  :bigint(8)        not null
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
+#  id                    :bigint(8)        not null, primary key
+#  created_at            :datetime         not null
+#  updated_at            :datetime         not null
+#  account_id            :bigint(8)        not null
+#  board_announcement_id :bigint(8)        not null
 #
 
 class BoardAnnouncementRead < ApplicationRecord

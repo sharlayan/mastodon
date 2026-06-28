@@ -4,20 +4,20 @@
 #
 # Table name: domain_blocks
 #
-#  id              :bigint(8)        not null, primary key
-#  domain          :string           default(""), not null
-#  obfuscate       :boolean          default(FALSE), not null
-#  private_comment :text
-#  public_comment  :text
-#  reject_media    :boolean          default(FALSE), not null
-#  reject_reports  :boolean          default(FALSE), not null
-#  reject_favourite :boolean         default(FALSE), not null
-#  reject_relay    :boolean          default(FALSE), not null
-#  block_trends    :boolean          default(FALSE), not null
-#  hidden          :boolean          default(FALSE), not null
-#  severity        :integer          default("silence")
-#  created_at      :datetime         not null
-#  updated_at      :datetime         not null
+#  id               :bigint(8)        not null, primary key
+#  block_trends     :boolean          default(FALSE), not null
+#  domain           :string           default(""), not null
+#  hidden           :boolean          default(FALSE), not null
+#  obfuscate        :boolean          default(FALSE), not null
+#  private_comment  :text
+#  public_comment   :text
+#  reject_favourite :boolean          default(FALSE), not null
+#  reject_media     :boolean          default(FALSE), not null
+#  reject_relay     :boolean          default(FALSE), not null
+#  reject_reports   :boolean          default(FALSE), not null
+#  severity         :integer          default("silence")
+#  created_at       :datetime         not null
+#  updated_at       :datetime         not null
 #
 
 class DomainBlock < ApplicationRecord

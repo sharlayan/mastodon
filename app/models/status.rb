@@ -10,6 +10,7 @@
 #  edited_at                    :datetime
 #  fetched_replies_at           :datetime
 #  language                     :string
+#  limited_scope                :integer
 #  local                        :boolean
 #  local_only                   :boolean
 #  mfm                          :boolean          default(FALSE), not null

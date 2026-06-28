@@ -6,9 +6,9 @@
 #
 #  id         :bigint(8)        not null, primary key
 #  css        :text             default(""), not null
-#  user_id    :bigint(8)        not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
+#  user_id    :bigint(8)        not null
 #
 
 class CustomCss < ApplicationRecord

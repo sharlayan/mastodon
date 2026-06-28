@@ -4,18 +4,19 @@
 #
 # Table name: instance_metadata
 #
-#  id                     :bigint(8)        not null, primary key
-#  domain                 :string           not null
-#  features               :jsonb            not null
-#  favicon_url            :string
-#  instance_name          :string
-#  metadata_updated_at    :datetime
-#  software               :string
-#  theme_color            :string
-#  theme_color_updated_at :datetime
-#  version                :string
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
+#  id                          :bigint(8)        not null, primary key
+#  domain                      :string           not null
+#  favicon_url                 :string
+#  features                    :jsonb            not null
+#  instance_name               :string
+#  metadata_updated_at         :datetime
+#  software                    :string
+#  supports_avatar_decorations :boolean          default(FALSE), not null
+#  theme_color                 :string
+#  theme_color_updated_at      :datetime
+#  version                     :string
+#  created_at                  :datetime         not null
+#  updated_at                  :datetime         not null
 #
 
 class InstanceMetadata < ApplicationRecord

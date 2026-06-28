@@ -5,16 +5,16 @@
 # Table name: board_announcement_attachments
 #
 #  id                    :bigint(8)        not null, primary key
-#  board_announcement_id :bigint(8)        not null
-#  type                  :integer          default("image"), not null
-#  file_file_name        :string
-#  file_content_type     :string
-#  file_file_size        :integer
-#  file_updated_at       :datetime
 #  blurhash              :string
+#  file_content_type     :string
+#  file_file_name        :string
+#  file_file_size        :integer
 #  file_meta             :json
+#  file_updated_at       :datetime
+#  type                  :integer          default("image"), not null
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
+#  board_announcement_id :bigint(8)
 #
 
 class BoardAnnouncementAttachment < ApplicationRecord
