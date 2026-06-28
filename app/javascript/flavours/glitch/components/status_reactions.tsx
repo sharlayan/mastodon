@@ -13,7 +13,9 @@ import {
   reactionCustomEmojiSize,
   reactionLocalEmojiOnly,
 } from '../initial_state';
+import { useAppSelector } from '../store';
 import { assetHost } from '../utils/config';
+import { isCustomEmojiMuted } from '../utils/custom_emoji_mutes';
 
 import { AnimatedNumber } from './animated_number';
 import { Avatar } from './avatar';
@@ -195,8 +197,22 @@ const StatusReactions: FC<StatusReactionsProps> = ({
   removeReaction,
   canReact,
 }) => {
+  const customEmojiMutes = useAppSelector(
+    (state) => state.custom_emoji_mutes.items,
+  );
+
   let visibleReactions = reactions
     .filter((x) => (x.get('count') as number) > 0)
+    .filter((x) => {
+      if (!x.get('url')) {
+        return true;
+      }
+
+      const shortcode = (x.get('name') as string).split('@')[0] ?? '';
+      const domain = x.get('domain') as string | undefined;
+
+      return !isCustomEmojiMuted(shortcode, domain, customEmojiMutes);
+    })
     .sort((a, b) => (b.get('count') as number) - (a.get('count') as number));
 
   if (numVisible !== undefined && numVisible >= 0) {

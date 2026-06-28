@@ -298,7 +298,7 @@ class Status < ApplicationRecord
 
   def reactions(account_id = nil)
     # TODO: error check (maybe cause 500 in reaction notification)
-    grouped_ordered_status_reactions.select(
+    grouped_ordered_status_reactions(account_id).select(
       [:status_id, :name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
         values << value_for_reaction_me_column(account_id)
       end
@@ -484,8 +484,15 @@ class Status < ApplicationRecord
 
   private
 
-  def grouped_ordered_status_reactions
-    status_reactions
+  def grouped_ordered_status_reactions(account_id = nil)
+    scope = status_reactions
+
+    if account_id.present?
+      excluded_account_ids = Account.find_by(id: account_id)&.excluded_from_timeline_account_ids
+      scope = scope.where.not(account_id: excluded_account_ids) if excluded_account_ids.present?
+    end
+
+    scope
       .group(:status_id, :name, :custom_emoji_id)
       .order(
         Arel.sql('MIN(created_at)').asc
