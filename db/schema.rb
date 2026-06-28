@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_26_142900) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_29_024700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -122,6 +122,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_26_142900) do
     t.boolean "keep_pinned", default: true, null: false
     t.boolean "keep_polls", default: false, null: false
     t.boolean "keep_self_bookmark", default: true, null: false
+    t.boolean "keep_self_clip", default: true, null: false
     t.boolean "keep_self_fav", default: true, null: false
     t.boolean "keep_self_reaction", default: true, null: false
     t.integer "min_favs"

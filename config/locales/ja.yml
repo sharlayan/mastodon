@@ -2060,6 +2060,8 @@ ja:
     keep_polls_hint: アンケート付きの投稿を削除せずに残します
     keep_self_bookmark: ブックマークした投稿を保持
     keep_self_bookmark_hint: 自分自身でブックマークした投稿を削除せずに残します
+    keep_self_clip: クリップに追加した投稿を保持
+    keep_self_clip_hint: 自分のクリップに追加した投稿を削除せずに残します
     keep_self_fav: お気に入りに登録した投稿を保持
     keep_self_fav_hint: 自分自身でお気に入りに登録した投稿を削除せずに残します
     min_age:

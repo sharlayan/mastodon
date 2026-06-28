@@ -2359,6 +2359,8 @@ en:
     keep_polls_hint: Doesn't delete any of your polls
     keep_self_bookmark: Keep posts you bookmarked
     keep_self_bookmark_hint: Doesn't delete your own posts if you have bookmarked them
+    keep_self_clip: Keep posts in your clips
+    keep_self_clip_hint: Doesn't delete your own posts if you have added them to one of your clips
     keep_self_fav: Keep posts you favorited
     keep_self_fav_hint: Doesn't delete your own posts if you have favorited them
     keep_self_reaction: Keep posts you reacted to

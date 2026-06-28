@@ -76,6 +76,13 @@
                 hint: t('statuses_cleanup.keep_media_hint'),
                 label: t('statuses_cleanup.keep_media'),
                 wrapper: :with_label
+    .fields-row__column.fields-row__column-6.fields-group
+      = f.input :keep_self_clip,
+                disabled: !@policy.enabled?,
+                hint: t('statuses_cleanup.keep_self_clip_hint'),
+                label: t('statuses_cleanup.keep_self_clip'),
+                wrapper: :with_label,
+                sharlayan_only: true
 
   %h2= t('statuses_cleanup.interaction_exceptions')
 

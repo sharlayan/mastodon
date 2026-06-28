@@ -11,6 +11,7 @@
 #  keep_pinned        :boolean          default(TRUE), not null
 #  keep_polls         :boolean          default(FALSE), not null
 #  keep_self_bookmark :boolean          default(TRUE), not null
+#  keep_self_clip     :boolean          default(TRUE), not null
 #  keep_self_fav      :boolean          default(TRUE), not null
 #  keep_self_reaction :boolean          default(TRUE), not null
 #  min_favs           :integer
@@ -35,7 +36,7 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
     2.years.seconds,
   ].freeze
 
-  EXCEPTION_BOOLS      = %w(keep_direct keep_pinned keep_polls keep_media keep_self_fav keep_self_reaction keep_self_bookmark).freeze
+  EXCEPTION_BOOLS      = %w(keep_direct keep_pinned keep_polls keep_media keep_self_fav keep_self_reaction keep_self_bookmark keep_self_clip).freeze
   EXCEPTION_THRESHOLDS = %w(min_favs min_reactions min_reblogs).freeze
 
   # Depending on the cleanup policy, the query to discover the next
@@ -71,6 +72,7 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
     scope.merge!(without_self_fav_scope) if keep_self_fav?
     scope.merge!(without_self_reaction_scope) if keep_self_reaction?
     scope.merge!(without_self_bookmark_scope) if keep_self_bookmark?
+    scope.merge!(without_self_clip_scope) if keep_self_clip?
 
     scope.reorder(id: :asc).limit(limit)
   end
@@ -115,6 +117,8 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
       return unless keep_self_reaction?
     when :unpin
       return unless keep_pinned?
+    when :unclip
+      return unless keep_self_clip?
     end
 
     record_last_inspected(status.id)
@@ -164,6 +168,10 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
 
   def without_pinned_scope
     Status.where.not(self_status_reference_exists(StatusPin))
+  end
+
+  def without_self_clip_scope
+    Status.where('NOT EXISTS (SELECT * FROM clip_statuses cs JOIN clips c ON c.id = cs.clip_id WHERE cs.status_id = statuses.id AND c.account_id = statuses.account_id)')
   end
 
   def without_media_scope
