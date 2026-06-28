@@ -71,7 +71,7 @@ const ReactionMutes: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   );
 
   const handleSubmit = useCallback(
-    (event: React.FormEvent) => {
+    (event: React.SyntheticEvent) => {
       event.preventDefault();
       const trimmed = target.trim();
       if (!trimmed) {

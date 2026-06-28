@@ -19,6 +19,7 @@
 /tmp
 /coverage
 /public/system
+/local_settings_sync
 /public/assets
 /public/packs
 /public/packs-dev

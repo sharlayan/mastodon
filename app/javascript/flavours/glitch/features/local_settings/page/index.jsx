@@ -2,18 +2,20 @@
 import PropTypes from 'prop-types';
 import { PureComponent } from 'react';
 
-import { defineMessages, FormattedMessage } from 'react-intl';
+import { defineMessages, FormattedMessage, FormattedDate } from 'react-intl';
 
 import ImmutablePropTypes from 'react-immutable-proptypes';
 
 
 //  Our imports
+import { Button } from '@/flavours/glitch/components/button';
 import { injectIntl } from '@/flavours/glitch/components/intl';
-import { expandSpoilers } from 'flavours/glitch/initial_state';
+import { expandSpoilers, me } from 'flavours/glitch/initial_state';
 import { preferenceLink } from 'flavours/glitch/utils/backend_links';
 
 import DeprecatedLocalSettingsPageItem from './deprecated_item';
 import LocalSettingsPageItem from './item';
+import NavigationPanelSettings from './navigation_panel';
 
 //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
@@ -40,6 +42,8 @@ class LocalSettingsPage extends PureComponent {
     index    : PropTypes.number,
     intl     : PropTypes.object.isRequired,
     onChange : PropTypes.func.isRequired,
+    onSyncToServer : PropTypes.func.isRequired,
+    onSyncFromServer : PropTypes.func.isRequired,
     settings : ImmutablePropTypes.map.isRequired,
   };
 
@@ -390,14 +394,68 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
       </div>
     ),
+    ({ onChange, onSyncToServer, onSyncFromServer, settings }) => (
+      <div className='glitch local-settings__page sync'>
+        <h1><FormattedMessage id='settings.sync' defaultMessage='Server sync' /></h1>
+        <p className='hint'>
+          <FormattedMessage id='settings.sync.hint' defaultMessage='App settings are normally stored only in this browser. Enable server sync to manually save them to your account and load them on another device.' />
+        </p>
+        <LocalSettingsPageItem
+          settings={settings}
+          item={['sync_to_server']}
+          id='mastodon-settings--sync_to_server'
+          onChange={onChange}
+          disabled={!me}
+        >
+          <FormattedMessage id='settings.sync.enable' defaultMessage='Enable server sync' />
+        </LocalSettingsPageItem>
+        <div className='local-settings__page__sync-actions'>
+          <Button
+            onClick={onSyncToServer}
+            disabled={!me || !settings.get('sync_to_server')}
+          >
+            <FormattedMessage id='settings.sync.save' defaultMessage='Save to server' />
+          </Button>
+          <Button
+            onClick={onSyncFromServer}
+            disabled={!me || !settings.get('sync_to_server')}
+          >
+            <FormattedMessage id='settings.sync.load' defaultMessage='Load from server' />
+          </Button>
+        </div>
+        {settings.get('synced_at') && (
+          <p className='hint local-settings__page__sync-status'>
+            <FormattedMessage
+              id='settings.sync.last_synced'
+              defaultMessage='Last saved: {date}'
+              values={{
+                date: (
+                  <FormattedDate
+                    value={settings.get('synced_at')}
+                    year='numeric'
+                    month='short'
+                    day='2-digit'
+                    hour='2-digit'
+                    minute='2-digit'
+                  />
+                ),
+              }}
+            />
+          </p>
+        )}
+      </div>
+    ),
+    ({ intl, onChange, settings }) => (
+      <NavigationPanelSettings intl={intl} onChange={onChange} settings={settings} />
+    ),
   ];
 
   render () {
     const { pages } = this;
-    const { index, intl, onChange, settings } = this.props;
+    const { index, intl, onChange, onSyncToServer, onSyncFromServer, settings } = this.props;
     const CurrentPage = pages[index] || pages[0];
 
-    return <CurrentPage intl={intl} onChange={onChange} settings={settings} />;
+    return <CurrentPage intl={intl} onChange={onChange} onSyncToServer={onSyncToServer} onSyncFromServer={onSyncFromServer} settings={settings} />;
   }
 
 }

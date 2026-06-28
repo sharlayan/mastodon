@@ -140,7 +140,7 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
   );
 
   const handleSubmit = useCallback(
-    (event: React.FormEvent) => {
+    (event: React.SyntheticEvent) => {
       event.preventDefault();
       const trimmed = prefix.trim();
       if (!trimmed) {

@@ -437,6 +437,7 @@ namespace :api, format: false do
 
   namespace :web do
     resource :settings, only: [:update]
+    resource :local_settings, only: [:show, :update]
     resources :embeds, only: [:show]
     resources :push_subscriptions, only: [:create, :destroy, :update]
   end

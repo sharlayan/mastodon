@@ -1,0 +1,61 @@
+export const NAVIGATION_PANEL_ITEMS = [
+  'home',
+  'explore',
+  'federated',
+  'local',
+  'notifications',
+  'favourites',
+  'reactions',
+  'bookmarks',
+  'clips',
+  'collections',
+  'direct',
+  'circles',
+  'board_announcements',
+] as const;
+
+export type NavigationPanelItem = (typeof NAVIGATION_PANEL_ITEMS)[number];
+
+export const navigationPanelItemMessages: Record<
+  NavigationPanelItem,
+  { id: string; defaultMessage: string }
+> = {
+  home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
+  explore: { id: 'explore.title', defaultMessage: 'Trending' },
+  federated: {
+    id: 'navigation_bar.public_timeline',
+    defaultMessage: 'Federated',
+  },
+  local: { id: 'navigation_bar.community_timeline', defaultMessage: 'Local' },
+  notifications: {
+    id: 'tabs_bar.notifications',
+    defaultMessage: 'Notifications',
+  },
+  favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
+  reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
+  bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
+  clips: { id: 'navigation_bar.clips', defaultMessage: 'Clips' },
+  collections: {
+    id: 'navigation_bar.collections',
+    defaultMessage: 'Collections',
+  },
+  direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
+  circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
+  board_announcements: {
+    id: 'navigation_bar.board_announcements',
+    defaultMessage: 'Announcements',
+  },
+};
+
+export const computeNavigationOrder = (order?: string[]): string[] => {
+  const known = new Set<string>(NAVIGATION_PANEL_ITEMS);
+  const result = (order ?? []).filter((key) => known.has(key));
+
+  for (const key of NAVIGATION_PANEL_ITEMS) {
+    if (!result.includes(key)) {
+      result.push(key);
+    }
+  }
+
+  return result;
+};

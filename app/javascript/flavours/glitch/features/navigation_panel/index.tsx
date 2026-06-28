@@ -1,12 +1,12 @@
 import type { MouseEventHandler } from 'react';
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 import { useLocation } from 'react-router-dom';
 
-import type { Map as ImmutableMap } from 'immutable';
+import type { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
 import { animated, useSpring } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
@@ -73,6 +73,7 @@ import { ListPanel } from './components/list_panel';
 import { MoreLink } from './components/more_link';
 import { SignInBanner } from './components/sign_in_banner';
 import { Trends } from './components/trends';
+import { computeNavigationOrder } from './items';
 
 const messages = defineMessages({
   home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
@@ -282,8 +283,6 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
 
   let banner: React.ReactNode;
 
-  let linknum = 0;
-
   if (transientSingleColumn) {
     banner = (
       <div className='switch-to-advanced'>
@@ -313,6 +312,188 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
     [dispatch],
   );
 
+  const navOrder = useAppSelector(
+    (state) =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+      state.local_settings.getIn(['navigation_panel', 'order']) as
+        | ImmutableList<string>
+        | undefined,
+  );
+  const navHidden = useAppSelector(
+    (state) =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+      state.local_settings.getIn(['navigation_panel', 'hidden']) as
+        | ImmutableMap<string, boolean>
+        | undefined,
+  );
+  const isMobileLayout = useBreakpoint('openable');
+
+  const orderedKeys = useMemo(
+    () => computeNavigationOrder(navOrder ? navOrder.toArray() : undefined),
+    [navOrder],
+  );
+
+  const feedsAllowed =
+    canViewFeed(signedIn, permissions, localLiveFeedAccess) ||
+    canViewFeed(signedIn, permissions, remoteLiveFeedAccess);
+
+  const itemRenderers: Partial<
+    Record<string, (id?: string) => React.ReactNode>
+  > = {};
+
+  if (signedIn) {
+    itemRenderers.home = (id) => (
+      <ColumnLink
+        transparent
+        to='/home'
+        icon='home'
+        iconComponent={HomeIcon}
+        activeIconComponent={HomeActiveIcon}
+        text={intl.formatMessage(messages.home)}
+        id={id}
+      />
+    );
+  }
+
+  if (trendsEnabled) {
+    itemRenderers.explore = (id) => (
+      <ColumnLink
+        transparent
+        to='/explore'
+        icon='explore'
+        iconComponent={TrendingUpIcon}
+        text={intl.formatMessage(messages.explore)}
+        id={id}
+      />
+    );
+  }
+
+  if (feedsAllowed) {
+    itemRenderers.federated = (id) => (
+      <ColumnLink
+        transparent
+        to='/public'
+        icon='globe'
+        iconComponent={PublicIcon}
+        text={intl.formatMessage(messages.federated)}
+        id={id}
+      />
+    );
+    itemRenderers.local = (id) => (
+      <ColumnLink
+        transparent
+        to='/public/local'
+        icon='users'
+        iconComponent={PeopleIcon}
+        text={intl.formatMessage(messages.local)}
+        id={id}
+      />
+    );
+  }
+
+  if (signedIn) {
+    itemRenderers.notifications = () => <NotificationsLink />;
+    itemRenderers.favourites = (id) => (
+      <ColumnLink
+        transparent
+        to='/favourites'
+        icon='star'
+        iconComponent={StarIcon}
+        activeIconComponent={StarActiveIcon}
+        text={intl.formatMessage(messages.favourites)}
+        id={id}
+      />
+    );
+    itemRenderers.reactions = (id) => (
+      <ColumnLink
+        transparent
+        to='/reactions'
+        icon='mood'
+        iconComponent={MoodIcon}
+        activeIconComponent={MoodActiveIcon}
+        text={intl.formatMessage(messages.reactions)}
+        id={id}
+      />
+    );
+    itemRenderers.bookmarks = (id) => (
+      <ColumnLink
+        transparent
+        to='/bookmarks'
+        icon='bookmarks'
+        iconComponent={BookmarksIcon}
+        activeIconComponent={BookmarksActiveIcon}
+        text={intl.formatMessage(messages.bookmarks)}
+        id={id}
+      />
+    );
+    if (clipsEnabled) {
+      itemRenderers.clips = (id) => (
+        <ColumnLink
+          transparent
+          to='/clips'
+          icon='note-stack-add'
+          iconComponent={NoteStackAddIcon}
+          text={intl.formatMessage(messages.clips)}
+          id={id}
+        />
+      );
+    }
+    itemRenderers.collections = (id) => (
+      <ColumnLink
+        transparent
+        to={`/@${account?.acct}/collections`}
+        icon='collections'
+        iconComponent={CollectionsIcon}
+        activeIconComponent={CollectionsActiveIcon}
+        text={intl.formatMessage(messages.collections)}
+        id={id}
+      />
+    );
+    itemRenderers.direct = (id) => (
+      <ColumnLink
+        transparent
+        to='/conversations'
+        icon='at'
+        iconComponent={AlternateEmailIcon}
+        text={intl.formatMessage(messages.direct)}
+        id={id}
+      />
+    );
+    if (circlesEnabled) {
+      itemRenderers.circles = (id) => (
+        <ColumnLink
+          transparent
+          to='/circles'
+          icon='group'
+          iconComponent={PeopleIcon}
+          text={intl.formatMessage(messages.circles)}
+          id={id}
+        />
+      );
+    }
+    if (boardAnnouncementsEnabled) {
+      itemRenderers.board_announcements = () => <BoardAnnouncementsLink />;
+    }
+  }
+
+  const composeShown = signedIn && !multiColumn;
+
+  const visibleKeys = orderedKeys.filter(
+    (key) =>
+      itemRenderers[key] && (isMobileLayout || navHidden?.get(key) !== true),
+  );
+
+  const skipLinkKey = composeShown ? undefined : visibleKeys[0];
+  const aboutGetsSkipLink = !composeShown && visibleKeys.length === 0;
+
+  const navigationItems = visibleKeys.map((key) => (
+    <li key={key}>
+      {itemRenderers[key]?.(
+        key === skipLinkKey ? getNavigationSkipLinkId() : undefined,
+      )}
+    </li>
+  ));
+
   return (
     <nav
       className='navigation-panel'
@@ -325,79 +506,24 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
       {banner && <div className='navigation-panel__banner'>{banner}</div>}
 
       <ul className='navigation-panel__menu'>
-        {signedIn && (
-          <>
-            {!multiColumn && (
-              <li>
-                <ColumnLink
-                  to={{ pathname: '/publish', state: { focusTarget: false } }}
-                  icon='plus'
-                  iconComponent={AddIcon}
-                  activeIconComponent={AddIcon}
-                  text={intl.formatMessage(messages.compose)}
-                  className='button navigation-panel__compose-button'
-                  id={linknum++ === 0 ? getNavigationSkipLinkId() : undefined}
-                />
-              </li>
-            )}
-            <li>
-              <ColumnLink
-                transparent
-                to='/home'
-                icon='home'
-                iconComponent={HomeIcon}
-                activeIconComponent={HomeActiveIcon}
-                text={intl.formatMessage(messages.home)}
-                id={linknum++ === 0 ? getNavigationSkipLinkId() : undefined}
-              />
-            </li>
-          </>
-        )}
-
-        {trendsEnabled && (
+        {composeShown && (
           <li>
             <ColumnLink
-              transparent
-              to='/explore'
-              icon='explore'
-              iconComponent={TrendingUpIcon}
-              text={intl.formatMessage(messages.explore)}
-              id={linknum++ === 0 ? getNavigationSkipLinkId() : undefined}
+              to={{ pathname: '/publish', state: { focusTarget: false } }}
+              icon='plus'
+              iconComponent={AddIcon}
+              activeIconComponent={AddIcon}
+              text={intl.formatMessage(messages.compose)}
+              className='button navigation-panel__compose-button'
+              id={getNavigationSkipLinkId()}
             />
           </li>
         )}
 
-        {(canViewFeed(signedIn, permissions, localLiveFeedAccess) ||
-          canViewFeed(signedIn, permissions, remoteLiveFeedAccess)) && (
-          <>
-            <li>
-              <ColumnLink
-                transparent
-                to='/public'
-                icon='globe'
-                iconComponent={PublicIcon}
-                text={intl.formatMessage(messages.federated)}
-                id={linknum++ === 0 ? getNavigationSkipLinkId() : undefined}
-              />
-            </li>
-            <li>
-              <ColumnLink
-                transparent
-                to='/public/local'
-                icon='users'
-                iconComponent={PeopleIcon}
-                text={intl.formatMessage(messages.local)}
-              />
-            </li>
-          </>
-        )}
+        {navigationItems}
 
         {signedIn && (
           <>
-            <li>
-              <NotificationsLink />
-            </li>
-
             <li>
               <FollowRequestsLink />
             </li>
@@ -411,83 +537,6 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
             <ListPanel />
 
             <FollowedTagsPanel />
-
-            <li>
-              <ColumnLink
-                transparent
-                to='/favourites'
-                icon='star'
-                iconComponent={StarIcon}
-                activeIconComponent={StarActiveIcon}
-                text={intl.formatMessage(messages.favourites)}
-              />
-            </li>
-            <li>
-              <ColumnLink
-                transparent
-                to='/reactions'
-                icon='mood'
-                iconComponent={MoodIcon}
-                activeIconComponent={MoodActiveIcon}
-                text={intl.formatMessage(messages.reactions)}
-              />
-            </li>
-            <li>
-              <ColumnLink
-                transparent
-                to='/bookmarks'
-                icon='bookmarks'
-                iconComponent={BookmarksIcon}
-                activeIconComponent={BookmarksActiveIcon}
-                text={intl.formatMessage(messages.bookmarks)}
-              />
-            </li>
-            {clipsEnabled && (
-              <li>
-                <ColumnLink
-                  transparent
-                  to='/clips'
-                  icon='note-stack-add'
-                  iconComponent={NoteStackAddIcon}
-                  text={intl.formatMessage(messages.clips)}
-                />
-              </li>
-            )}
-            <li>
-              <ColumnLink
-                transparent
-                to={`/@${account?.acct}/collections`}
-                icon='collections'
-                iconComponent={CollectionsIcon}
-                activeIconComponent={CollectionsActiveIcon}
-                text={intl.formatMessage(messages.collections)}
-              />
-            </li>
-            <li>
-              <ColumnLink
-                transparent
-                to='/conversations'
-                icon='at'
-                iconComponent={AlternateEmailIcon}
-                text={intl.formatMessage(messages.direct)}
-              />
-            </li>
-            {circlesEnabled && (
-              <li>
-                <ColumnLink
-                  transparent
-                  to='/circles'
-                  icon='group'
-                  iconComponent={PeopleIcon}
-                  text={intl.formatMessage(messages.circles)}
-                />
-              </li>
-            )}
-            {boardAnnouncementsEnabled && (
-              <li>
-                <BoardAnnouncementsLink />
-              </li>
-            )}
 
             <li role='separator' />
 
@@ -523,7 +572,7 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
             icon='ellipsis-h'
             iconComponent={InfoIcon}
             text={intl.formatMessage(messages.about)}
-            id={linknum++ === 0 ? getNavigationSkipLinkId() : undefined}
+            id={aboutGetsSkipLink ? getNavigationSkipLinkId() : undefined}
           />
         </li>
 

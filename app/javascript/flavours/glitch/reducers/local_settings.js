@@ -1,8 +1,8 @@
 //  Package imports.
-import { Map as ImmutableMap } from 'immutable';
+import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 //  Our imports.
-import { LOCAL_SETTING_CHANGE, LOCAL_SETTING_DELETE } from 'flavours/glitch/actions/local_settings';
+import { LOCAL_SETTING_CHANGE, LOCAL_SETTING_DELETE, LOCAL_SETTING_IMPORT } from 'flavours/glitch/actions/local_settings';
 import { STORE_HYDRATE } from 'flavours/glitch/actions/store';
 
 const initialState = ImmutableMap({
@@ -46,7 +46,13 @@ const initialState = ImmutableMap({
     media:      true,
     visibility: true,
   }),
+  navigation_panel : ImmutableMap({
+    order  : ImmutableList(),
+    hidden : ImmutableMap(),
+  }),
   show_published_toast: true,
+  sync_to_server: false,
+  synced_at: null,
 });
 
 const hydrate = (state, localSettings) => state.mergeDeep(localSettings);
@@ -59,6 +65,8 @@ export default function localSettings(state = initialState, action) {
     return state.setIn(action.key, action.value);
   case LOCAL_SETTING_DELETE:
     return state.deleteIn(action.key);
+  case LOCAL_SETTING_IMPORT:
+    return state.mergeDeep(fromJS(action.settings));
   default:
     return state;
   }

@@ -6,7 +6,7 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
 
 //  Our imports
-import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
+import { changeLocalSetting, pushLocalSettingsToServer, fetchLocalSettingsFromServer } from 'flavours/glitch/actions/local_settings';
 import { closeModal } from 'flavours/glitch/actions/modal';
 
 import LocalSettingsNavigation from './navigation';
@@ -20,6 +20,12 @@ const mapDispatchToProps = dispatch => ({
   onChange (setting, value) {
     dispatch(changeLocalSetting(setting, value));
   },
+  onSyncToServer () {
+    dispatch(pushLocalSettingsToServer());
+  },
+  onSyncFromServer () {
+    dispatch(fetchLocalSettingsFromServer());
+  },
   onClose () {
     dispatch(closeModal({
       modalType: undefined,
@@ -32,6 +38,8 @@ class LocalSettings extends PureComponent {
 
   static propTypes = {
     onChange: PropTypes.func.isRequired,
+    onSyncToServer: PropTypes.func.isRequired,
+    onSyncFromServer: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     settings: ImmutablePropTypes.map.isRequired,
   };
@@ -46,7 +54,7 @@ class LocalSettings extends PureComponent {
   render () {
 
     const { navigateTo } = this;
-    const { onChange, onClose, settings } = this.props;
+    const { onChange, onSyncToServer, onSyncFromServer, onClose, settings } = this.props;
     const { currentIndex } = this.state;
 
     return (
@@ -60,6 +68,8 @@ class LocalSettings extends PureComponent {
         <LocalSettingsPage
           index={currentIndex}
           onChange={onChange}
+          onSyncToServer={onSyncToServer}
+          onSyncFromServer={onSyncFromServer}
           settings={settings}
         />
         <div className='local-settings__page__decoration-after' />
