@@ -4,6 +4,7 @@ class ActivityPub::Activity::Announce < ActivityPub::Activity
   def perform
     return reject_payload! if delete_arrived_first?(@json['id']) || !related_to_local_activity?
     return reject_payload! if @object.nil?
+    return reject_payload! if reject_relay?
 
     with_redis_lock("announce:#{value_or_id(@object)}") do
       original_status = status_from_object
@@ -80,6 +81,10 @@ class ActivityPub::Activity::Announce < ActivityPub::Activity
 
   def requested_through_relay?
     super || Relay.find_by(inbox_url: @account.inbox_url)&.enabled?
+  end
+
+  def reject_relay?
+    requested_through_relay? && DomainBlock.reject_relay?(@account.domain)
   end
 
   def reblog_of_local_status?
