@@ -233,7 +233,7 @@ class StatusContent extends PureComponent {
     );
 
     const poll = !!status.get('poll') && (
-      <Poll pollId={status.get('poll')} status={status} lang={language} />
+      <Poll pollId={status.get('poll')} statusUrl={status.get('uri')} accountId={status.getIn(['account', 'id'])} lang={language} />
     );
 
     // MFM content: use stored mfm_text if available, otherwise extract from HTML
