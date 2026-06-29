@@ -1,8 +1,9 @@
 import type { RefObject, FC, ReactNode } from 'react';
-import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 
-import Overlay from 'react-overlays/Overlay';
+import { Popover } from '@/flavours/glitch/components/popover';
+
+const noop = () => undefined;
 
 interface EmojiReactionOverlayProps {
   show: boolean;
@@ -23,26 +24,22 @@ export const EmojiReactionOverlay: FC<EmojiReactionOverlayProps> = ({
   emojiClassName,
   children,
 }) => {
-  if (!show || !target) {
+  const resolvedTarget = typeof target === 'function' ? target() : target;
+
+  if (!show || !resolvedTarget) {
     return null;
   }
 
   return (
-    <Overlay
-      show={show}
-      offset={[0, 5]}
+    <Popover
+      isOpen={show}
+      reference={resolvedTarget}
+      offset={5}
       placement={placement}
-      flip
-      target={target}
-      popperConfig={{ strategy: 'fixed' }}
+      onClose={noop}
+      closeOnClickOutside={false}
     >
-      {({
-        props,
-        placement: currentPlacement,
-      }: {
-        props: React.HTMLAttributes<HTMLDivElement>;
-        placement: string;
-      }) => (
+      {({ props, placement: currentPlacement }) => (
         <div className='emoji-magnify-overlay' {...props}>
           <div className={`dropdown-animation ${currentPlacement}`}>
             <div className='reactions-bar__item__users'>
@@ -68,7 +65,7 @@ export const EmojiReactionOverlay: FC<EmojiReactionOverlayProps> = ({
           </div>
         </div>
       )}
-    </Overlay>
+    </Popover>
   );
 };
 

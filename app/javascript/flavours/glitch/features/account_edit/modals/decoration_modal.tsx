@@ -4,14 +4,13 @@ import type React from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
-import Overlay from 'react-overlays/Overlay';
-
 import { apiGetAvatarDecorations } from '@/flavours/glitch/api/accounts';
 import type { ApiAvatarDecorationJSON } from '@/flavours/glitch/api_types/accounts';
 import type { ApiProfileDecorationConfigJSON } from '@/flavours/glitch/api_types/profile';
 import { buildDecorationTransform } from '@/flavours/glitch/components/avatar_decoration_utils';
 import { Button } from '@/flavours/glitch/components/button';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
+import { Popover } from '@/flavours/glitch/components/popover';
 import { patchProfile } from '@/flavours/glitch/reducers/slices/profile_edit';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import { autoPlayGif } from 'flavours/glitch/initial_state';
@@ -122,6 +121,8 @@ const messages = defineMessages({
 
 const UNCATEGORIZED_KEY = '__uncategorized__';
 
+const noop = () => undefined;
+
 interface CategoryGroup {
   key: string;
   name: string;
@@ -164,21 +165,15 @@ const DecorationTooltip: FC<DecorationTooltipProps> = ({
   if (!show || !target) return null;
   const url = autoPlayGif ? decoration.url : decoration.static_url;
   return (
-    <Overlay
-      show={show}
-      offset={[0, 8]}
+    <Popover
+      isOpen={show}
+      reference={target}
+      offset={8}
       placement='top'
-      flip
-      target={target}
-      popperConfig={{ strategy: 'fixed' }}
+      onClose={noop}
+      closeOnClickOutside={false}
     >
-      {({
-        props,
-        placement: currentPlacement,
-      }: {
-        props: React.HTMLAttributes<HTMLDivElement>;
-        placement: string;
-      }) => (
+      {({ props, placement: currentPlacement }) => (
         <div className={classes.decorationTooltipOverlay} {...props}>
           <div className={`dropdown-animation ${currentPlacement}`}>
             <div className={classes.decorationTooltip}>
@@ -190,7 +185,7 @@ const DecorationTooltip: FC<DecorationTooltipProps> = ({
           </div>
         </div>
       )}
-    </Overlay>
+    </Popover>
   );
 };
 
