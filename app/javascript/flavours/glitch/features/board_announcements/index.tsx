@@ -8,6 +8,7 @@ import { Helmet } from '@unhead/react/helmet';
 
 import ArticleIcon from '@/material-icons/400-24px/article.svg?react';
 import ExpandMoreIcon from '@/material-icons/400-24px/expand_more.svg?react';
+import RefreshIcon from '@/material-icons/400-24px/refresh.svg?react';
 import {
   fetchBoardAnnouncements,
   readBoardAnnouncement,
@@ -26,10 +27,16 @@ import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useLayout } from 'flavours/glitch/hooks/useLayout';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
+import { ReactionsBar } from './reactions';
+
 const messages = defineMessages({
   heading: {
     id: 'column.board_announcements',
     defaultMessage: 'Announcements',
+  },
+  refresh: {
+    id: 'board_announcements.refresh',
+    defaultMessage: 'Refresh',
   },
 });
 
@@ -117,10 +124,16 @@ const Announcement: React.FC<{
       )}
 
       {showBody && (
-        <div
-          className='board-announcement__content translate'
-          dangerouslySetInnerHTML={{ __html: announcement.content }}
-        />
+        <>
+          <div
+            className='board-announcement__content translate'
+            dangerouslySetInnerHTML={{ __html: announcement.content }}
+          />
+          <ReactionsBar
+            reactions={announcement.reactions}
+            id={announcement.id}
+          />
+        </>
       )}
     </article>
   );
@@ -174,6 +187,10 @@ const BoardAnnouncements: React.FC<{
     columnRef.current?.scrollTop();
   }, []);
 
+  const handleRefresh = useCallback(() => {
+    void dispatch(fetchBoardAnnouncements());
+  }, [dispatch]);
+
   const pinned = !!columnId;
 
   return (
@@ -192,6 +209,18 @@ const BoardAnnouncements: React.FC<{
         pinned={pinned}
         multiColumn={multiColumn}
         showBackButton
+        extraButton={
+          <button
+            type='button'
+            className='column-header__button'
+            title={intl.formatMessage(messages.refresh)}
+            aria-label={intl.formatMessage(messages.refresh)}
+            disabled={isLoading}
+            onClick={handleRefresh}
+          >
+            <Icon id='refresh' icon={RefreshIcon} />
+          </button>
+        }
       />
 
       <div className='scrollable'>

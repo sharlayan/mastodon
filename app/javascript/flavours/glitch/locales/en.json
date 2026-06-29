@@ -39,6 +39,7 @@
   "account_edit.decorations.edit_label": "Edit decorations",
   "account_edit.decorations.placeholder": "Add decorative overlays to your avatar.",
   "account_edit.decorations.title": "Profile decorations",
+  "board_announcements.refresh": "Refresh",
   "boost_modal.missing_description": "This toot contains some media without description",
   "circles.add_member": "Add",
   "circles.circle_members_count": "{count, plural, one {# member} other {# members}}",

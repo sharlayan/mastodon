@@ -4,6 +4,8 @@ import {
   fetchBoardAnnouncements,
   fetchBoardAnnouncementsUnreadCount,
   readBoardAnnouncement,
+  addBoardAnnouncementReaction,
+  removeBoardAnnouncementReaction,
 } from 'flavours/glitch/actions/board_announcements';
 import type { ApiBoardAnnouncementJSON } from 'flavours/glitch/api_types/board_announcements';
 
@@ -19,6 +21,31 @@ const initialState: BoardAnnouncementsState = {
   isLoading: false,
   loaded: false,
   unreadCount: 0,
+};
+
+const applyReaction = (
+  state: BoardAnnouncementsState,
+  id: string,
+  name: string,
+  me: boolean,
+) => {
+  const item = state.items.find((i) => i.id === id);
+
+  if (!item) return;
+
+  const reaction = item.reactions.find((r) => r.name === name);
+
+  if (reaction) {
+    if (reaction.me === me) return;
+    reaction.me = me;
+    reaction.count += me ? 1 : -1;
+
+    if (reaction.count <= 0) {
+      item.reactions = item.reactions.filter((r) => r.name !== name);
+    }
+  } else if (me) {
+    item.reactions.push({ name, count: 1, me: true });
+  }
 };
 
 export const boardAnnouncementsReducer = createReducer<BoardAnnouncementsState>(
@@ -50,6 +77,18 @@ export const boardAnnouncementsReducer = createReducer<BoardAnnouncementsState>(
           item.read = true;
           state.unreadCount = Math.max(0, state.unreadCount - 1);
         }
+      })
+      .addCase(addBoardAnnouncementReaction.pending, (state, action) => {
+        applyReaction(state, action.meta.arg.id, action.meta.arg.name, true);
+      })
+      .addCase(addBoardAnnouncementReaction.rejected, (state, action) => {
+        applyReaction(state, action.meta.arg.id, action.meta.arg.name, false);
+      })
+      .addCase(removeBoardAnnouncementReaction.pending, (state, action) => {
+        applyReaction(state, action.meta.arg.id, action.meta.arg.name, false);
+      })
+      .addCase(removeBoardAnnouncementReaction.rejected, (state, action) => {
+        applyReaction(state, action.meta.arg.id, action.meta.arg.name, true);
       });
   },
 );

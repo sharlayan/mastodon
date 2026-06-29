@@ -19,10 +19,18 @@ class ReactionValidator < ActiveModel::Validator
   end
 
   def new_reaction?(reaction)
-    !reaction.announcement.announcement_reactions.exists?(name: reaction.name)
+    !sibling_reactions(reaction).exists?(name: reaction.name)
   end
 
   def limit_reached?(reaction)
-    reaction.announcement.announcement_reactions.where.not(name: reaction.name).count('distinct name') >= LIMIT
+    sibling_reactions(reaction).where.not(name: reaction.name).count('distinct name') >= LIMIT
+  end
+
+  def sibling_reactions(reaction)
+    if reaction.respond_to?(:board_announcement)
+      reaction.board_announcement.board_announcement_reactions
+    else
+      reaction.announcement.announcement_reactions
+    end
   end
 end

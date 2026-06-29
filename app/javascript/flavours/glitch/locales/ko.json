@@ -41,6 +41,7 @@
   "account_edit.decorations.title": "아바타 장식",
   "account_edit.save": "저장",
   "account_switcher.switch_account_confirm": "{name} 계정으로 전환하시겠습니까?",
+  "board_announcements.refresh": "새로고침",
   "boost_modal.missing_description": "이 게시물은 설명이 없는 미디어를 포함하고 있습니다",
   "circles.add_member": "추가",
   "circles.circle_members_count": "{count, plural, other {#명의 구성원}}",

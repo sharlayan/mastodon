@@ -20,6 +20,7 @@ class BoardAnnouncement < ApplicationRecord
 
   has_many :reads, class_name: 'BoardAnnouncementRead', dependent: :destroy, inverse_of: :board_announcement
   has_many :attachments, class_name: 'BoardAnnouncementAttachment', dependent: :destroy, inverse_of: :board_announcement
+  has_many :board_announcement_reactions, dependent: :destroy, inverse_of: :board_announcement
 
   validates :title, presence: true, length: { maximum: 256 }
   validates :text, presence: true, length: { maximum: 65_535 }
@@ -51,7 +52,41 @@ class BoardAnnouncement < ApplicationRecord
     reads.exists?(account_id: account.id)
   end
 
+  def reactions(account = nil)
+    grouped_ordered_board_announcement_reactions.select(
+      [:name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
+        values << value_for_reaction_me_column(account)
+      end
+    ).to_a.tap do |records|
+      ActiveRecord::Associations::Preloader.new(records: records, associations: :custom_emoji).call
+    end
+  end
+
   private
+
+  def grouped_ordered_board_announcement_reactions
+    board_announcement_reactions
+      .group(:board_announcement_id, :name, :custom_emoji_id)
+      .order(
+        Arel.sql('MIN(created_at)').asc
+      )
+  end
+
+  def value_for_reaction_me_column(account)
+    if account.nil?
+      'FALSE AS me'
+    else
+      <<~SQL.squish
+        EXISTS(
+          SELECT 1
+          FROM board_announcement_reactions inner_reactions
+          WHERE inner_reactions.account_id = #{account.id}
+            AND inner_reactions.board_announcement_id = board_announcement_reactions.board_announcement_id
+            AND inner_reactions.name = board_announcement_reactions.name
+        ) AS me
+      SQL
+    end
+  end
 
   def render_text_html
     return unless title_changed? || text_changed?

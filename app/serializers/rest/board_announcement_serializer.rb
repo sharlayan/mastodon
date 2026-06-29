@@ -6,6 +6,7 @@ class REST::BoardAnnouncementSerializer < ActiveModel::Serializer
   attribute :read, if: :current_user?
 
   has_many :attachments, serializer: REST::BoardAnnouncementAttachmentSerializer
+  has_many :reactions, serializer: REST::AnnouncementReactionSerializer
 
   def current_user?
     !current_user.nil?
@@ -13,6 +14,10 @@ class REST::BoardAnnouncementSerializer < ActiveModel::Serializer
 
   def id
     object.id.to_s
+  end
+
+  def reactions
+    object.reactions(current_user&.account)
   end
 
   def content

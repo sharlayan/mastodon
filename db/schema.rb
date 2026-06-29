@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_29_024700) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_29_030000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -394,6 +394,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_024700) do
     t.integer "type", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["board_announcement_id"], name: "index_board_announcement_attachments_on_board_announcement_id"
+  end
+
+  create_table "board_announcement_reactions", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "board_announcement_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "custom_emoji_id"
+    t.string "name", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "board_announcement_id", "name"], name: "index_board_announcement_reactions_on_account_and_announcement", unique: true
+    t.index ["account_id"], name: "index_board_announcement_reactions_on_account_id"
+    t.index ["board_announcement_id"], name: "index_board_announcement_reactions_on_board_announcement_id"
+    t.index ["custom_emoji_id"], name: "index_board_announcement_reactions_on_custom_emoji_id", where: "(custom_emoji_id IS NOT NULL)"
   end
 
   create_table "board_announcement_reads", force: :cascade do |t|
@@ -1736,6 +1749,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_29_024700) do
   add_foreign_key "blocks", "accounts", column: "target_account_id", name: "fk_9571bfabc1", on_delete: :cascade
   add_foreign_key "blocks", "accounts", name: "fk_4269e03e65", on_delete: :cascade
   add_foreign_key "board_announcement_attachments", "board_announcements", on_delete: :cascade
+  add_foreign_key "board_announcement_reactions", "accounts", on_delete: :cascade
+  add_foreign_key "board_announcement_reactions", "board_announcements", on_delete: :cascade
+  add_foreign_key "board_announcement_reactions", "custom_emojis", on_delete: :cascade
   add_foreign_key "board_announcement_reads", "accounts", on_delete: :cascade
   add_foreign_key "board_announcement_reads", "board_announcements", on_delete: :cascade
   add_foreign_key "bookmarks", "accounts", on_delete: :cascade

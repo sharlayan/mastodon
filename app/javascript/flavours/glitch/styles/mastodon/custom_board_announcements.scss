@@ -3,6 +3,15 @@
 .board-announcement {
   border-bottom: 1px solid var(--color-border-primary);
 
+  .reactions-bar {
+    padding-inline: 8px;
+    margin-bottom: 12px;
+
+    &--empty {
+      display: flex;
+    }
+  }
+
   &__header {
     display: flex;
     align-items: baseline;

@@ -1,4 +1,9 @@
-import { apiRequestGet, apiRequestPost } from 'flavours/glitch/api';
+import {
+  apiRequestGet,
+  apiRequestPost,
+  apiRequestPut,
+  apiRequestDelete,
+} from 'flavours/glitch/api';
 import type {
   ApiBoardAnnouncementJSON,
   ApiBoardAnnouncementUnreadCountJSON,
@@ -14,3 +19,13 @@ export const apiGetBoardAnnouncementsUnreadCount = () =>
 
 export const apiReadBoardAnnouncement = (id: string) =>
   apiRequestPost(`v1/board_announcements/${id}/read`);
+
+export const apiAddBoardAnnouncementReaction = (id: string, name: string) =>
+  apiRequestPut(
+    `v1/board_announcements/${id}/reactions/${encodeURIComponent(name)}`,
+  );
+
+export const apiRemoveBoardAnnouncementReaction = (id: string, name: string) =>
+  apiRequestDelete(
+    `v1/board_announcements/${id}/reactions/${encodeURIComponent(name)}`,
+  );

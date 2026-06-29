@@ -12,6 +12,14 @@ export interface ApiBoardAnnouncementAttachmentJSON {
   meta: Record<string, unknown> | null;
 }
 
+export interface ApiBoardAnnouncementReactionJSON {
+  name: string;
+  count: number;
+  me: boolean;
+  url?: string;
+  static_url?: string;
+}
+
 export interface ApiBoardAnnouncementJSON {
   id: string;
   title: string;
@@ -20,6 +28,7 @@ export interface ApiBoardAnnouncementJSON {
   updated_at: string;
   read: boolean;
   attachments: ApiBoardAnnouncementAttachmentJSON[];
+  reactions: ApiBoardAnnouncementReactionJSON[];
 }
 
 export interface ApiBoardAnnouncementUnreadCountJSON {

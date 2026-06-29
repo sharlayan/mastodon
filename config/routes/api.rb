@@ -115,6 +115,10 @@ namespace :api, format: false do
     end
 
     resources :board_announcements, only: [:index, :show] do
+      scope module: :board_announcements do
+        resources :reactions, only: [:update, :destroy]
+      end
+
       collection do
         get :unread_count
       end
