@@ -20,7 +20,7 @@ class ReactService < BaseService
 
     return if domain.present? && custom_emoji.nil?
 
-    return if domain.present? && Setting.reaction_local_emoji_only && custom_emoji.local_counterpart.nil?
+    return if domain.present? && Setting.reaction_local_emoji_only
 
     return if status.account.local? && ReactionMute.muted?(status.account_id, account)
     return if status.account.local? && custom_emoji.present? && CustomEmojiMute.reaction_muted?(status.account_id, custom_emoji.shortcode, custom_emoji.domain)

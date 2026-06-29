@@ -104,13 +104,10 @@ const Reaction: FC<{
   const url = reaction.get('url') as string | undefined;
   const staticUrl = reaction.get('static_url') as string | undefined;
   const me = reaction.get('me') as boolean | undefined;
+  const domain = reaction.get('domain') as string | undefined;
 
   const unreactable =
-    signedIn &&
-    reactionLocalEmojiOnly &&
-    !!url &&
-    reaction.get('local_counterpart') === false &&
-    !me;
+    signedIn && reactionLocalEmojiOnly && !!url && !!domain && !me;
 
   let validUsers: ImmutableList<ReactionUser> | undefined;
   let hasValidUsers = false;
