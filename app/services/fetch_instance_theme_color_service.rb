@@ -42,6 +42,12 @@ class FetchInstanceThemeColorService < BaseService
     'image/webp' => '.webp',
   }.freeze
 
+  GENERIC_INSTANCE_NAME_PATTERNS = [
+    /\bmastodon\s+hosted\s+(?:on|by|at)\b/i,
+    /에서\s*호스팅\s*되는\s*마스토돈/,
+    /에서\s*운영\s*되는\s*마스토돈/,
+  ].freeze
+
   def call(domain)
     @domain = domain
     @metadata = InstanceMetadata.for_domain(domain)
@@ -212,20 +218,29 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def determine_instance_name(misskey_name)
-    return misskey_name if misskey_name.present?
+    return misskey_name if usable_instance_name?(misskey_name)
 
     nodeinfo = fetch_nodeinfo
-    return nodeinfo.dig('metadata', 'nodeName') if nodeinfo && nodeinfo.dig('metadata', 'nodeName').present?
+    nodeinfo_name = nodeinfo&.dig('metadata', 'nodeName')
+    return nodeinfo_name if usable_instance_name?(nodeinfo_name)
 
     html_name = extract_instance_name_from_html
-    return html_name if html_name.present?
+    return html_name if usable_instance_name?(html_name)
 
     api_name = fetch_instance_name_from_api
-    return api_name if api_name.present?
+    return api_name if usable_instance_name?(api_name)
 
     @domain
   rescue *NETWORK_ERRORS, JSON::ParserError
     @domain
+  end
+
+  def usable_instance_name?(name)
+    name.present? && !generic_instance_name?(name)
+  end
+
+  def generic_instance_name?(name)
+    GENERIC_INSTANCE_NAME_PATTERNS.any? { |pattern| name.match?(pattern) }
   end
 
   def fetch_misskey_meta
