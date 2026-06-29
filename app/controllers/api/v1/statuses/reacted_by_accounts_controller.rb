@@ -6,34 +6,28 @@ class Api::V1::Statuses::ReactedByAccountsController < Api::V1::Statuses::BaseCo
 
   def index
     cache_if_unauthenticated!
-    @accounts = load_accounts
-    render json: @accounts, each_serializer: REST::EmojiReactAccountSerializer
+    @reactions = load_reactions
+    render json: @reactions, each_serializer: REST::EmojiReactAccountSerializer
   end
 
   private
 
-  def load_accounts
-    scope = default_accounts
-    # scope = scope.not_excluded_by_account(current_account) unless current_account.nil?
-    scope.merge(paginated_reactions).to_a
+  def load_reactions
+    scope = default_reactions
+    scope = scope.merge(Account.not_excluded_by_account(current_account)) if current_account.present?
+    scope.paginate_by_max_id(
+      limit_param(DEFAULT_ACCOUNTS_LIMIT),
+      params[:max_id],
+      params[:since_id]
+    ).to_a
   end
 
-  def default_accounts
-    Account
-      .without_suspended
-      .includes(:status_reactions, :account_stat, :user)
-      .references(:status_reactions)
-      .where(status_reactions: { status_id: @status.id })
-  end
-
-  def paginated_status_reactions
+  def default_reactions
     StatusReaction
       .where(status_id: @status.id)
-      .paginate_by_max_id(
-        limit_param(DEFAULT_ACCOUNTS_LIMIT),
-        params[:max_id],
-        params[:since_id]
-      )
+      .joins(:account)
+      .merge(Account.without_suspended)
+      .includes(:custom_emoji, account: [:account_stat, :user])
   end
 
   def insert_pagination_headers
