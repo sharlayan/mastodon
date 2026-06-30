@@ -1127,6 +1127,10 @@ en:
         title: Reactions
         enabled: Enable emoji reactions
         enabled_hint: Allow users to react to posts with emoji. When disabled, the reaction button is hidden and new reactions are rejected. Existing reactions remain visible.
+      instance_metadata:
+        title: Instance Information Bar
+        enabled: Enable instance information bar and metadata collection
+        enabled_hint: When enabled, posts from other servers show an instance information bar (name, theme color, favicon) and the server collects metadata about federated instances. When disabled, the bar is hidden and no instance metadata is fetched.
       rate_limit_bypass:
         title: API Rate Limit Bypass
         enabled: Allow privileged roles to bypass API rate limits

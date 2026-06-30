@@ -7,6 +7,8 @@ class Scheduler::InstanceMetadataRefreshScheduler
   sidekiq_options retry: 0
 
   def perform
+    return unless Setting.instance_metadata_enabled
+
     missing_info_domains = InstanceMetadata.where('software IS NULL OR software = ? OR instance_name IS NULL OR instance_name = ?', '', '').pluck(:domain).first(50)
 
     missing_info_domains.each do |domain|

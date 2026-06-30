@@ -18,6 +18,16 @@
             hint: t('admin.settings.clips.enabled_hint'),
             sharlayan_only: true
 
+%h2= t('admin.settings.instance_metadata.title')
+
+.fields-group
+  = f.input :instance_metadata_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.instance_metadata.enabled'),
+            hint: t('admin.settings.instance_metadata.enabled_hint'),
+            sharlayan_only: true
+
 %h2= t('admin.settings.rate_limit_bypass.title')
 
 .fields-group

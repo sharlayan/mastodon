@@ -241,7 +241,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
   end
 
   def show_instance_info?
-    object.account.domain.present?
+    Setting.instance_metadata_enabled && object.account.domain.present?
   end
 
   def mfm_text?

@@ -25,7 +25,7 @@ module InstanceMetadataSerializable
   end
 
   def include_instance_metadata?
-    metadata_domain.present?
+    Setting.instance_metadata_enabled && metadata_domain.present?
   end
 
   private

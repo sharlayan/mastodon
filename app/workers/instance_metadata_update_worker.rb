@@ -7,6 +7,7 @@ class InstanceMetadataUpdateWorker
 
   def perform(domain, priority: false)
     return if domain.blank?
+    return unless Setting.instance_metadata_enabled
 
     FetchInstanceThemeColorService.new.call(domain)
   rescue => e

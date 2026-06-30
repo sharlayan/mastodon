@@ -46,6 +46,7 @@ defaults: &defaults
   captcha_enabled: false
   allow_referrer_origin: false
   show_instance_info: true
+  instance_metadata_enabled: true
   custom_emoji_size: false
   reaction_custom_emoji_size: false
   reaction_local_emoji_only: true
