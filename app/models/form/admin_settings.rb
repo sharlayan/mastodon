@@ -4,6 +4,7 @@ class Form::AdminSettings
   include ActiveModel::Model
 
   include AuthorizedFetchHelper
+  include RoleplayModeHelper
 
   KEYS = %i(
     site_contact_username
@@ -147,6 +148,7 @@ class Form::AdminSettings
   attr_accessor(*KEYS)
 
   validates :registrations_mode, inclusion: { in: REGISTRATION_MODES }, if: -> { defined?(@registrations_mode) }
+  validates :registrations_mode, exclusion: { in: %w(open) }, if: -> { defined?(@registrations_mode) && roleplay_mode? }
   validates :site_contact_email, :site_contact_username, presence: true, if: -> { defined?(@site_contact_username) || defined?(@site_contact_email) }
   validates :site_contact_username, existing_username: true, if: -> { defined?(@site_contact_username) }
   validates :bootstrap_timeline_accounts, existing_username: { multiple: true }, if: -> { defined?(@bootstrap_timeline_accounts) }
@@ -173,6 +175,8 @@ class Form::AdminSettings
 
       stored_value = if UPLOAD_KEYS.include?(key)
                        SiteUpload.where(var: key).first_or_initialize(var: key)
+                     elsif roleplay_mode? && ROLEPLAY_FORCED_SETTINGS.key?(key)
+                       ROLEPLAY_FORCED_SETTINGS[key]
                      elsif OVERRIDEN_SETTINGS.include?(key)
                        public_send(OVERRIDEN_SETTINGS[key])
                      else

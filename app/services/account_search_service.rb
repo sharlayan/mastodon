@@ -2,6 +2,7 @@
 
 class AccountSearchService < BaseService
   include SearchStoplight
+  include RoleplayModeHelper
 
   attr_reader :query, :limit, :offset, :options, :account
 
@@ -205,7 +206,7 @@ class AccountSearchService < BaseService
 
     return @exact_match if defined?(@exact_match)
 
-    match = if options[:resolve]
+    match = if options[:resolve] && !roleplay_mode?
               ResolveAccountService.new.call(query)
             elsif domain_is_local?
               Account.find_local(query_username)

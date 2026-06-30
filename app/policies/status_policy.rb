@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 class StatusPolicy < ApplicationPolicy
+  include RoleplayModeHelper
+
   def show?
     return false if author.unavailable?
     return false if local_only? && (current_account.nil? || !current_account.local?)
+    return true if roleplay_admin?
 
     if requires_mention?
       owned? || mention_exists?
@@ -94,5 +97,9 @@ class StatusPolicy < ApplicationPolicy
 
   def local_only?
     record.local_only?
+  end
+
+  def roleplay_admin?
+    roleplay_mode? && role.administrator?
   end
 end

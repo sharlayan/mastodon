@@ -2,6 +2,7 @@
 
 class InitialStateSerializer < ActiveModel::Serializer
   include RoutingHelper
+  include RoleplayModeHelper
 
   attributes :meta, :compose, :accounts,
              :media_attachments, :settings,
@@ -176,6 +177,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       remote_live_feed_access: Setting.remote_live_feed_access,
       local_topic_feed_access: Setting.local_topic_feed_access,
       remote_topic_feed_access: Setting.remote_topic_feed_access,
+      roleplay_mode: roleplay_mode?,
     }
   end
 

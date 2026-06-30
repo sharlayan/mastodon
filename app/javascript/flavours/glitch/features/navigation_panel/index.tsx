@@ -58,10 +58,11 @@ import {
   localLiveFeedAccess,
   remoteLiveFeedAccess,
   trendsEnabled,
+  roleplayMode,
   me,
 } from 'flavours/glitch/initial_state';
 import { transientSingleColumn } from 'flavours/glitch/is_mobile';
-import { canViewFeed } from 'flavours/glitch/permissions';
+import { canViewFeed, isAdministrator } from 'flavours/glitch/permissions';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
@@ -83,6 +84,10 @@ const messages = defineMessages({
   },
   explore: { id: 'explore.title', defaultMessage: 'Trending' },
   local: { id: 'navigation_bar.community_timeline', defaultMessage: 'Local' },
+  localRoleplay: {
+    id: 'navigation_bar.roleplay_public_timeline',
+    defaultMessage: 'Public timeline',
+  },
   federated: {
     id: 'navigation_bar.public_timeline',
     defaultMessage: 'Federated',
@@ -94,6 +99,10 @@ const messages = defineMessages({
       'Label for the main navigation; should not contain the word "navigation".',
   },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
+  adminTimeline: {
+    id: 'navigation_bar.admin_timeline',
+    defaultMessage: 'Management timeline',
+  },
   circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
@@ -369,23 +378,27 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
   }
 
   if (feedsAllowed) {
-    itemRenderers.federated = (id) => (
-      <ColumnLink
-        transparent
-        to='/public'
-        icon='globe'
-        iconComponent={PublicIcon}
-        text={intl.formatMessage(messages.federated)}
-        id={id}
-      />
-    );
+    if (!roleplayMode) {
+      itemRenderers.federated = (id) => (
+        <ColumnLink
+          transparent
+          to='/public'
+          icon='globe'
+          iconComponent={PublicIcon}
+          text={intl.formatMessage(messages.federated)}
+          id={id}
+        />
+      );
+    }
     itemRenderers.local = (id) => (
       <ColumnLink
         transparent
         to='/public/local'
         icon='users'
         iconComponent={PeopleIcon}
-        text={intl.formatMessage(messages.local)}
+        text={intl.formatMessage(
+          roleplayMode ? messages.localRoleplay : messages.local,
+        )}
         id={id}
       />
     );
@@ -521,6 +534,18 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
         )}
 
         {navigationItems}
+
+        {signedIn && roleplayMode && isAdministrator(permissions) && (
+          <li>
+            <ColumnLink
+              transparent
+              to='/timelines/admin'
+              icon='manufacturing'
+              iconComponent={AdministrationIcon}
+              text={intl.formatMessage(messages.adminTimeline)}
+            />
+          </li>
+        )}
 
         {signedIn && (
           <>

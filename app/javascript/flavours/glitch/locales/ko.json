@@ -173,6 +173,7 @@
   "navigation_bar.public_timeline": "연합",
   "navigation_bar.reaction_mutes": "에모지 리액션 받지 않기",
   "navigation_bar.reactions": "리액션",
+  "navigation_bar.roleplay_public_timeline": "공개 타임라인",
   "notification.reaction": "{name} 님이 당신의 게시글에 리액션을 남겼습니다.",
   "notification.reaction_with_emoji": "{name} 님이 당신의 게시글에 {emoji} 리액션을 남겼습니다.",
   "notifications.column_settings.filter_bar.show_bar": "필터 막대 표시",

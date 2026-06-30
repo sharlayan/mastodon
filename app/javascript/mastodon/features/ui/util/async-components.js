@@ -34,6 +34,10 @@ export function DirectTimeline() {
   return import('../../direct_timeline');
 }
 
+export function AdminTimeline() {
+  return import('../../admin_timeline');
+}
+
 export function ListTimeline () {
   return import('../../list_timeline');
 }

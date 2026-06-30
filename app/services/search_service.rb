@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class SearchService < BaseService
+  include RoleplayModeHelper
+
   QUOTE_EQUIVALENT_CHARACTERS = /[“”„«»「」『』《》]/
 
   def call(query, account, limit, options = {})
@@ -9,7 +11,7 @@ class SearchService < BaseService
     @options   = options
     @limit     = limit.to_i
     @offset    = options[:type].blank? ? 0 : options[:offset].to_i
-    @resolve   = options[:resolve] || false
+    @resolve   = !roleplay_mode? && (options[:resolve] || false)
     @following = options[:following] || false
     @query_fasp = options[:query_fasp] || false
 

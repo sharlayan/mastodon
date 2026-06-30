@@ -21,6 +21,7 @@ import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import HomeActiveIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import InfoIcon from '@/material-icons/400-24px/info.svg?react';
+import AdministrationIcon from '@/material-icons/400-24px/manufacturing.svg?react';
 import NotificationsActiveIcon from '@/material-icons/400-24px/notifications-fill.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddActiveIcon from '@/material-icons/400-24px/person_add-fill.svg?react';
@@ -44,10 +45,11 @@ import {
   localLiveFeedAccess,
   remoteLiveFeedAccess,
   trendsEnabled,
+  roleplayMode,
   me,
 } from 'mastodon/initial_state';
 import { transientSingleColumn } from 'mastodon/is_mobile';
-import { canViewFeed } from 'mastodon/permissions';
+import { canViewFeed, isAdministrator } from 'mastodon/permissions';
 import { selectUnreadNotificationGroupsCount } from 'mastodon/selectors/notifications';
 import { useAppSelector, useAppDispatch } from 'mastodon/store';
 
@@ -79,6 +81,10 @@ const messages = defineMessages({
       'Label for the main navigation; should not contain the word "navigation".',
   },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
+  adminTimeline: {
+    id: 'navigation_bar.admin_timeline',
+    defaultMessage: 'Management timeline',
+  },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   collections: {
@@ -313,6 +319,18 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
               />
             </li>
           </>
+        )}
+
+        {signedIn && roleplayMode && isAdministrator(permissions) && (
+          <li>
+            <ColumnLink
+              transparent
+              to='/timelines/admin'
+              icon='manufacturing'
+              iconComponent={AdministrationIcon}
+              text={intl.formatMessage(messages.adminTimeline)}
+            />
+          </li>
         )}
 
         {signedIn && (

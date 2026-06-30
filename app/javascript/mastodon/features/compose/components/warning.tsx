@@ -4,7 +4,7 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import { animated, useSpring } from '@react-spring/web';
 
-import { me } from 'mastodon/initial_state';
+import { me, roleplayMode } from 'mastodon/initial_state';
 import { useAppSelector } from 'mastodon/store';
 import type { RootState } from 'mastodon/store';
 import { HASHTAG_PATTERN_REGEX } from 'mastodon/utils/hashtags';
@@ -58,6 +58,15 @@ export const Warning = () => {
   if (directMessageWarning) {
     return (
       <WarningMessage>
+        {roleplayMode && (
+          <>
+            <FormattedMessage
+              id='compose_form.rp_server_dm_warning'
+              defaultMessage='Server administrators can read direct messages for moderation.'
+            />
+            <br />
+          </>
+        )}
         <FormattedMessage
           id='compose_form.encryption_warning'
           defaultMessage='Posts on Mastodon are not end-to-end encrypted. Do not share any dangerous information over Mastodon.'
