@@ -14,6 +14,7 @@ class Settings::ImportsController < Settings::BaseController
     bookmarks: 'bookmarks_failures.csv',
     lists: 'lists_failures.csv',
     custom_filters: 'custom_filters_failures.json',
+    clips: 'clips_failures.json',
   }.freeze
 
   TYPE_TO_HEADERS_MAP = {
@@ -66,12 +67,10 @@ class Settings::ImportsController < Settings::BaseController
       format.json do
         filename = TYPE_TO_FILENAME_MAP[@bulk_import.type.to_sym]
 
-        data_collection = { custom_filters: [] }
+        root_key = @bulk_import.type.to_sym
+        data_collection = { root_key => [] }
         @bulk_import.rows.find_each do |row|
-          case @bulk_import.type.to_sym
-          when :custom_filters
-            data_collection[:custom_filters] << row.data
-          end
+          data_collection[root_key] << row.data
         end
         export_data = JSON.generate(data_collection)
 

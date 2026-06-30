@@ -32,6 +32,7 @@ namespace :settings do
     resources :domain_blocks, only: :index, controller: :blocked_domains
     resources :bookmarks, only: :index
     resources :custom_filters, only: :index, constraints: { format: :json }, controller: :custom_filters
+    resources :clips, only: :index, constraints: { format: :json }, controller: :clips
   end
 
   resources :two_factor_authentication_methods, only: [:index] do

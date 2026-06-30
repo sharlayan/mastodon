@@ -1734,6 +1734,7 @@ ko:
       size: 크기
     blocks: 차단
     bookmarks: 북마크
+    clips: 클립
     csv: CSV
     custom_filters: 필터
     domain_blocks: 도메인 차단
@@ -1825,6 +1826,8 @@ ko:
         other: 나의 <strong>차단 목록</strong>을 <strong>%{filename}</strong>에서 가져온 <strong>%{count} 개의 계정</strong>으로 덮어 씌우려고 합니다.
       bookmarks_html:
         other: 나의 <strong>북마크</strong>를 <strong>%{filename}</strong>에서 가져온 <strong>%{count} 개의 게시물</strong>로 덮어 씌우려고 합니다.
+      clips_html:
+        other: 나의 <strong>클립</strong>을 <strong>%{filename}</strong>의 내용으로 덮어 씌우려고 합니다. 최대 <strong>%{count} 개의 클립</strong>이 새 클립으로 추가됩니다.
       domain_blocking_html:
         other: 나의 <strong>도메인 차단 목록</strong>을 <strong>%{filename}</strong>에서 가져온 <strong>%{count} 개의 도메인</strong>으로 덮어 씌우려고 합니다.
       following_html:
@@ -1838,6 +1841,8 @@ ko:
         other: "<strong>%{filename}</strong>에서 가져온 <strong>%{count}개의 계정</strong>을 차단하려고 합니다."
       bookmarks_html:
         other: "<strong>%{filename}</strong>에서 가져온 <strong>%{count}개의 게시물</strong>을 북마크에 추가하려고 합니다."
+      clips_html:
+        other: "<strong>%{filename}</strong>에서 가져온 <strong>%{count}개의 클립</strong>을 내 <strong>클립</strong>에 추가하려고 합니다."
       custom_filters_html:
         other: "<strong>%{filename}</strong>에서 가져온 <strong>%{count}개의 필터</strong>를 <strong>필터</strong>에 추가하려고 합니다."
       domain_blocking_html:
@@ -1861,6 +1866,7 @@ ko:
     titles:
       blocking: 차단한 계정 가져오는 중
       bookmarks: 북마크 가져오는 중
+      clips: 클립 가져오는 중
       domain_blocking: 차단한 도메인 가져오는 중
       following: 팔로우한 계정 가져오는 중
       lists: 리스트 가져오기
@@ -1872,6 +1878,7 @@ ko:
     types:
       blocking: 차단한 계정 목록
       bookmarks: 북마크
+      clips: 클립
       custom_filters: 필터
       domain_blocking: 도메인 차단 목록
       following: 팔로잉 목록

@@ -23,6 +23,8 @@ class Form::Import
 
   KNOWN_FIRST_HEADERS = EXPECTED_HEADERS_BY_TYPE.values.map(&:first).uniq.freeze
 
+  JSON_TYPES = %i(custom_filters clips).freeze
+
   ATTRIBUTE_BY_HEADER = {
     'Account address' => 'acct',
     'Show boosts' => 'show_reblogs',
@@ -59,7 +61,7 @@ class Form::Import
   end
 
   def guessed_type_json
-    :custom_filters if parse_json.keys.any?('custom_filters')
+    JSON_TYPES.find { |json_type| parse_json.key?(json_type.to_s) }
   end
 
   # Whether the uploaded CSV file seems to correspond to a different import type than the one selected
@@ -211,7 +213,7 @@ class Form::Import
   end
 
   def json_data
-    parse_json['custom_filters'].map(&:deep_symbolize_keys)
+    parse_json[type.to_s].map(&:deep_symbolize_keys)
   end
 
   def parse_json
@@ -219,6 +221,6 @@ class Form::Import
   end
 
   def allowed_type_for_json?
-    type.to_sym.in?(%i(custom_filters))
+    type.to_sym.in?(JSON_TYPES)
   end
 end

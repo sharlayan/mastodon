@@ -50,11 +50,34 @@ class BulkImportRowService
       status_ids = Status.where(uri: @data['statuses']).ids
       filter.statuses = status_ids.map { |status| CustomFilterStatus.new(status_id: status) } if status_ids.any?
       filter.save!
+    when :clips
+      uris = Array(@data['statuses'])
+      resolved = []
+      missing = false
+      uris.each do |uri|
+        status = resolve_import_status(uri)
+        status.nil? ? (missing = true) : (resolved << status)
+      end
+
+      clip = @account.clips.create!(title: @data['title'], description: @data['description'], public: @data['public'] || false)
+      status_ids = resolved.map(&:id).uniq
+      clip.clip_statuses = status_ids.map { |status_id| ClipStatus.new(status_id: status_id) } if status_ids.any?
+
+      return false if missing
     end
 
     true
   rescue ActiveRecord::RecordNotFound
     false
+  end
+
+  def resolve_import_status(uri)
+    status = ActivityPub::TagManager.instance.uri_to_resource(uri, Status)
+    return status if status.present?
+    return nil if ActivityPub::TagManager.instance.local_uri?(uri)
+
+    target_domain = Addressable::URI.parse(uri).normalized_host
+    stoplight_wrapper(target_domain).run(stoplight_fallback) { ActivityPub::FetchRemoteStatusService.new.call(uri) }
   end
 
   def domain(uri)

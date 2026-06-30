@@ -1768,6 +1768,7 @@ en:
       size: Size
     blocks: You block
     bookmarks: Bookmarks
+    clips: Clips
     csv: CSV
     custom_filters: Filters
     domain_blocks: Domain blocks
@@ -1868,6 +1869,9 @@ en:
       bookmarks_html:
         one: You are about to <strong>replace your bookmarks</strong> with up to <strong>%{count} post</strong> from <strong>%{filename}</strong>.
         other: You are about to <strong>replace your bookmarks</strong> with up to <strong>%{count} posts</strong> from <strong>%{filename}</strong>.
+      clips_html:
+        one: You are about to <strong>replace your clips</strong> with contents of <strong>%{filename}</strong>. Up to <strong>%{count} clip</strong> will be added to new clips.
+        other: You are about to <strong>replace your clips</strong> with contents of <strong>%{filename}</strong>. Up to <strong>%{count} clips</strong> will be added to new clips.
       custom_filters_html:
         one: You are about to <strong>replace your filters</strong> with contents of <strong>%{filename}</strong>. Up to <strong>%{count} filter</strong> will be added to new filters.
         other: You are about to <strong>replace your filters</strong> with contents of <strong>%{filename}</strong>. Up to <strong>%{count} filters</strong> will be added to new filters.
@@ -1890,6 +1894,9 @@ en:
       bookmarks_html:
         one: You are about to add up to <strong>%{count} post</strong> from <strong>%{filename}</strong> to your <strong>bookmarks</strong>.
         other: You are about to add up to <strong>%{count} posts</strong> from <strong>%{filename}</strong> to your <strong>bookmarks</strong>.
+      clips_html:
+        one: You are about to add up to <strong>%{count} clip</strong> from <strong>%{filename}</strong> to your <strong>clips</strong>.
+        other: You are about to add up to <strong>%{count} clips</strong> from <strong>%{filename}</strong> to your <strong>clips</strong>.
       custom_filters_html:
         one: You are about to add up to <strong>%{count} filter</strong> from <strong>%{filename}</strong> to your <strong>filters</strong>.
         other: You are about to add up to <strong>%{count} filters</strong> from <strong>%{filename}</strong> to your <strong>filters</strong>.
@@ -1918,6 +1925,7 @@ en:
     titles:
       blocking: Importing blocked accounts
       bookmarks: Importing bookmarks
+      clips: Importing clips
       domain_blocking: Importing blocked domains
       following: Importing followed accounts
       lists: Importing lists
@@ -1929,6 +1937,7 @@ en:
     types:
       blocking: Blocking list
       bookmarks: Bookmarks
+      clips: Clips
       custom_filters: Filters
       domain_blocking: Domain blocking list
       following: Following list

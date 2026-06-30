@@ -20,6 +20,8 @@ class BulkImportService < BaseService
       import_lists!
     when :custom_filters
       import_custom_filters!
+    when :clips
+      import_clips!
     end
 
     @import.update!(state: :finished, finished_at: Time.now.utc) if @import.processing_complete?
@@ -189,6 +191,16 @@ class BulkImportService < BaseService
     rows = @import.rows.to_a
 
     @account.custom_filters.destroy_all if @import.overwrite?
+
+    Import::RowWorker.push_bulk(rows) do |row|
+      [row.id]
+    end
+  end
+
+  def import_clips!
+    rows = @import.rows.to_a
+
+    @account.clips.destroy_all if @import.overwrite?
 
     Import::RowWorker.push_bulk(rows) do |row|
       [row.id]

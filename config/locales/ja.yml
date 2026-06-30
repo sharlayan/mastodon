@@ -1547,6 +1547,7 @@ ja:
       size: 容量
     blocks: ブロック
     bookmarks: ブックマーク
+    clips: クリップ
     csv: CSV
     domain_blocks: 非表示にしたドメイン
     lists: リスト
@@ -1634,6 +1635,8 @@ ja:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のアカウント</strong>で<strong>ブロックリストを置き換えようとしています</strong>。
       bookmarks_html:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}の投稿</strong>で<strong>ブックマークを置き換えようとしています</strong>。
+      clips_html:
+        other: あなたは<strong>%{filename}</strong>の内容で<strong>クリップを置き換えようとしています</strong>。最大<strong>%{count}のクリップ</strong>が新しいクリップに追加されます。
       domain_blocking_html:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のドメイン</strong>で<strong>ドメインブロックリストを置き換えようとしています</strong>。
       following_html:
@@ -1647,6 +1650,8 @@ ja:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のアカウント</strong>を<strong>ブロックしようとしています</strong>。
       bookmarks_html:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}の投稿</strong>を<strong>ブックマークに追加しようとしています</strong>。
+      clips_html:
+        other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のクリップ</strong>を<strong>クリップに追加しようとしています</strong>。
       domain_blocking_html:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のドメイン</strong>を<strong>ブロックしようとしています</strong>。
       following_html:
@@ -1668,6 +1673,7 @@ ja:
     titles:
       blocking: ブロックのインポート
       bookmarks: ブックマークのインポート
+      clips: クリップのインポート
       domain_blocking: ドメイン非表示のインポート
       following: フォローのインポート
       lists: リストのインポート
@@ -1679,6 +1685,7 @@ ja:
     types:
       blocking: ブロックしたアカウントリスト
       bookmarks: ブックマーク
+      clips: クリップ
       domain_blocking: 非表示にしたドメインリスト
       following: フォロー中のアカウントリスト
       lists: リスト

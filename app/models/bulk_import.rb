@@ -36,6 +36,7 @@ class BulkImport < ApplicationRecord
     bookmarks: 4,
     lists: 5,
     custom_filters: 6,
+    clips: 7,
   }
 
   enum :state, {

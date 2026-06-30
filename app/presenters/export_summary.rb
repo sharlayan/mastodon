@@ -6,6 +6,7 @@ class ExportSummary
   delegate(
     :blocking,
     :bookmarks,
+    :clips,
     :custom_filters,
     :domain_blocks,
     :owned_lists,
@@ -26,6 +27,10 @@ class ExportSummary
 
   def total_bookmarks
     counts[:bookmarks].value
+  end
+
+  def total_clips
+    counts[:clips].value
   end
 
   def total_custom_filters
@@ -66,6 +71,7 @@ class ExportSummary
     {
       blocks: account_blocking.async_count,
       bookmarks: account_bookmarks.async_count,
+      clips: account_clips.async_count,
       custom_filters: account_custom_filters.async_count,
       domain_blocks: account_domain_blocks.async_count,
       owned_lists: account_owned_lists.async_count,
