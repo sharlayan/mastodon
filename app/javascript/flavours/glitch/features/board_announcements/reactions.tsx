@@ -116,6 +116,9 @@ const Reaction: FC<{
 
   const isCustom = !isUnicodeEmoji(reaction.name) && !!reaction.url;
   const shortCode = `:${reaction.name}:`;
+  const fallbackCode = isUnicodeEmoji(reaction.name)
+    ? reaction.name
+    : shortCode;
   const customSrc =
     autoPlayGif || hovered
       ? reaction.url
@@ -142,7 +145,7 @@ const Reaction: FC<{
               src={customSrc}
             />
           ) : (
-            <Emoji code={reaction.name} />
+            <Emoji code={fallbackCode} />
           )}
         </span>
         <span className='reactions-bar__item__count'>
