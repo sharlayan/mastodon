@@ -12,7 +12,7 @@ import type {
 import { unescapeHTML } from 'flavours/glitch/utils/html';
 
 import { CustomEmojiFactory } from './custom_emoji';
-import type { CustomEmoji } from './custom_emoji';
+import type { CustomEmoji, CustomEmojiShape } from './custom_emoji';
 
 // AccountField
 export interface AccountFieldShape extends Required<ApiAccountFieldJSON> {
@@ -64,7 +64,7 @@ export type AccountShapeFull = Omit<
   AccountShape,
   'emojis' | 'fields' | 'roles'
 > & {
-  emojis: CustomEmoji[];
+  emojis: CustomEmojiShape[];
   fields: AccountFieldShape[];
   roles: AccountRoleShape[];
 };

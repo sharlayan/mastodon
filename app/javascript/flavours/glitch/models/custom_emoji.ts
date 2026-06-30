@@ -3,12 +3,7 @@ import { Record as ImmutableRecord, isList } from 'immutable';
 
 import type { ApiCustomEmojiJSON } from 'flavours/glitch/api_types/custom_emoji';
 
-type CustomEmojiShape = Required<
-  Omit<ApiCustomEmojiJSON, 'aliases' | 'license'>
-> & {
-  aliases: string[];
-  license: string;
-};
+export type CustomEmojiShape = Required<ApiCustomEmojiJSON>; // no changes from server shape
 export type CustomEmoji = RecordOf<CustomEmojiShape>;
 
 export const CustomEmojiFactory = ImmutableRecord<CustomEmojiShape>({
