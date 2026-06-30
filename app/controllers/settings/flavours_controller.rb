@@ -14,15 +14,18 @@ class Settings::FlavoursController < Settings::BaseController
   end
 
   def show
+    return redirect_to action: 'show', flavour: 'glitch' if roleplay_mode? && params[:flavour] != 'glitch'
+
     redirect_to action: 'show', flavour: current_flavour unless Themes.instance.flavours.include?(params[:flavour]) || (params[:flavour] == current_flavour)
 
-    @listing = Themes.instance.flavours
+    @listing = roleplay_mode? ? ['glitch'] : Themes.instance.flavours
     @selected = params[:flavour]
   end
 
   def update
-    current_user.settings.update(flavour: params.require(:flavour), skin: params.dig(:user, :setting_skin))
+    flavour = roleplay_mode? ? 'glitch' : params.require(:flavour)
+    current_user.settings.update(flavour: flavour, skin: params.dig(:user, :setting_skin))
     current_user.save
-    redirect_to action: 'show', flavour: params[:flavour]
+    redirect_to action: 'show', flavour: flavour
   end
 end
