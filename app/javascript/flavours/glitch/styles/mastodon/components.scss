@@ -838,7 +838,7 @@ body > [data-popover-placement] {
 
   &__buttons {
     display: flex;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
     flex: 1 1 auto;
 
@@ -9711,10 +9711,11 @@ noscript {
     border: 1px solid var(--color-border-brand-soft);
     border-radius: 3px;
     box-sizing: border-box;
-    margin: 2px;
+    margin: 1px;
     cursor: pointer;
     user-select: none;
     padding: 0 6px;
+    min-height: 2em;
     display: flex;
     align-items: center;
     transition: all 100ms ease-in;
