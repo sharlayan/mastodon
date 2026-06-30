@@ -89,6 +89,15 @@ class LocalSettingsPage extends PureComponent {
         >
           <FormattedMessage id='settings.rewrite_mentions' defaultMessage='Rewrite mentions in displayed statuses' />
         </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
+          item={['show_follow_list_bio']}
+          id='mastodon-settings--show_follow_list_bio'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.show_follow_list_bio' defaultMessage='Show bio and follow message in follow lists' />
+          <span className='hint'><FormattedMessage id='settings.show_follow_list_bio.hint' defaultMessage='Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists' /></span>
+        </LocalSettingsPageItem>
 
         <section>
           <h2><FormattedMessage id='settings.layout_opts' defaultMessage='Layout options' /></h2>

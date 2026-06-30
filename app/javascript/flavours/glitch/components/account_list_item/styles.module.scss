@@ -38,6 +38,23 @@
   align-self: end;
 }
 
+.followMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+
+  p {
+    margin: 0;
+  }
+}
+
+.followMessageLabel {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .bio {
   overflow: hidden;
   display: -webkit-box;

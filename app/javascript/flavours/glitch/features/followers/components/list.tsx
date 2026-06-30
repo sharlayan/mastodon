@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access,
+                  @typescript-eslint/no-unsafe-call */
+
 import { useCallback, useMemo, useRef } from 'react';
 import type { FC, ReactNode } from 'react';
 
@@ -10,6 +13,7 @@ import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bund
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';
 import { useLayout } from '@/flavours/glitch/hooks/useLayout';
+import { useAppSelector } from '@/flavours/glitch/store';
 
 import { ProfileColumnHeader } from '../../account/components/profile_column_header';
 
@@ -51,6 +55,11 @@ export const AccountList: FC<AccountListProps> = ({
   const { blockedBy, hidden, suspended } = useAccountVisibility(accountId);
   const forceEmptyState = blockedBy || hidden || suspended;
 
+  const showBio = useAppSelector(
+    (state) =>
+      state.local_settings.getIn(['show_follow_list_bio'], true) as boolean,
+  );
+
   const children = useMemo(() => {
     if (forceEmptyState) {
       return [];
@@ -60,7 +69,9 @@ export const AccountList: FC<AccountListProps> = ({
         <AccountListItem
           key={followerId}
           accountId={followerId}
-          withBio={false}
+          withBio={showBio}
+          bioCharLimit={100}
+          withFollowedMessage={showBio}
           badge={withoutFollowsYouBadge ? false : null}
         />
       )) ?? [];
@@ -70,13 +81,21 @@ export const AccountList: FC<AccountListProps> = ({
         <AccountListItem
           key={prependAccountId}
           accountId={prependAccountId}
-          withBio={false}
+          withBio={showBio}
+          bioCharLimit={100}
+          withFollowedMessage={showBio}
           badge={withoutFollowsYouBadge ? false : null}
         />,
       );
     }
     return children;
-  }, [prependAccountId, list, forceEmptyState, withoutFollowsYouBadge]);
+  }, [
+    prependAccountId,
+    list,
+    forceEmptyState,
+    withoutFollowsYouBadge,
+    showBio,
+  ]);
 
   const columnRef = useRef<ColumnRef>(null);
   const handleHeaderClick = useCallback(() => {

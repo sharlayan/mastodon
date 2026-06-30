@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 
-import { FormattedMessage, useIntl } from 'react-intl';
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
+
+import escapeTextContentForBrowser from 'escape-html';
 
 import {
   FollowsYouBadge,
@@ -27,6 +29,13 @@ import { ShortNumber } from '../short_number';
 
 import classes from './styles.module.scss';
 
+const messages = defineMessages({
+  followMessage: {
+    id: 'account.follow_message',
+    defaultMessage: 'Follow message',
+  },
+});
+
 export interface RenderButtonOptions {
   accountId: string | undefined;
   relationship: Relationship | null | undefined;
@@ -38,6 +47,8 @@ interface Props {
   accountId: string | undefined;
   stats?: Stat[];
   withBio?: boolean;
+  bioCharLimit?: number;
+  withFollowedMessage?: boolean;
   withBorder?: boolean;
   badge?: ReactNode;
   renderButton?: (options: RenderButtonOptions) => React.ReactNode;
@@ -56,6 +67,8 @@ export const AccountListItem: React.FC<Props> = ({
   accountId,
   stats = DEFAULT_STATS,
   withBio = true,
+  bioCharLimit,
+  withFollowedMessage = false,
   withBorder = true,
   badge: badgeProp,
   renderButton = defaultRenderButton,
@@ -69,6 +82,16 @@ export const AccountListItem: React.FC<Props> = ({
     () => account?.created_at.includes(new Date().getFullYear().toString()),
     [account?.created_at],
   );
+
+  const bioHtmlString = useMemo(() => {
+    if (typeof bioCharLimit !== 'number') {
+      return account?.note_emojified ?? '';
+    }
+    const plain = account?.note_plain ?? '';
+    const truncated =
+      plain.length > bioCharLimit ? `${plain.slice(0, bioCharLimit)}…` : plain;
+    return escapeTextContentForBrowser(truncated);
+  }, [account?.note_emojified, account?.note_plain, bioCharLimit]);
 
   if (!accountId || !account) {
     return null;
@@ -178,18 +201,32 @@ export const AccountListItem: React.FC<Props> = ({
             )}
           </NumberFieldsItem>
         )}
-        {firstVerifiedField && (
-          <VerifiedBadge
-            link={firstVerifiedField.value}
-            className={classes.verifiedBadge}
-          />
-        )}
       </NumberFields>
       {withBio && account.note.length > 0 && (
         <EmojiHTML
           className={classNames(classes.bio, 'translate')}
-          htmlString={account.note_emojified}
+          htmlString={bioHtmlString}
           extraEmojis={account.emojis}
+        />
+      )}
+      {withFollowedMessage &&
+        account.followed_message &&
+        relationship?.following && (
+          <div className={classes.followMessage}>
+            <span className={classes.followMessageLabel}>
+              {intl.formatMessage(messages.followMessage)}
+            </span>
+            <EmojiHTML
+              as='p'
+              htmlString={escapeTextContentForBrowser(account.followed_message)}
+              extraEmojis={account.emojis}
+            />
+          </div>
+        )}
+      {firstVerifiedField && (
+        <VerifiedBadge
+          link={firstVerifiedField.value}
+          className={classes.verifiedBadge}
         />
       )}
     </div>
