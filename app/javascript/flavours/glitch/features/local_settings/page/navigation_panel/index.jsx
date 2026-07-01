@@ -9,9 +9,15 @@ import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?reac
 import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { computeNavigationOrder, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
+import { useIdentity } from '@/flavours/glitch/identity_context';
+import { roleplayMode } from '@/flavours/glitch/initial_state';
+import { isAdministrator } from '@/flavours/glitch/permissions';
 
 const NavigationPanelSettings = ({ settings, onChange, intl }) => {
-  const order = computeNavigationOrder(settings.getIn(['navigation_panel', 'order'])?.toJS());
+  const { permissions } = useIdentity();
+  const adminTimelineAvailable = roleplayMode && isAdministrator(permissions);
+  const order = computeNavigationOrder(settings.getIn(['navigation_panel', 'order'])?.toJS())
+    .filter((key) => key !== 'admin_timeline' || adminTimelineAvailable);
   const hidden = settings.getIn(['navigation_panel', 'hidden']) ?? ImmutableMap();
 
   const move = (key, delta) => {

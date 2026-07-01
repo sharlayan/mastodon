@@ -164,6 +164,7 @@
   "mfm_preview_modal.syntax_docs": "MFM 문법 문서",
   "mfm_preview_modal.title": "MFM 미리보기",
   "moved_to_warning": "이 계정은 {moved_to_link}로 이동한 것으로 표시되었고, 새 팔로우를 받지 않는 것 같습니다.",
+  "navigation_bar.admin_timeline": "관리 타임라인",
   "navigation_bar.app_settings": "앱 설정",
   "navigation_bar.board_announcements": "공지사항",
   "navigation_bar.circles": "서클",

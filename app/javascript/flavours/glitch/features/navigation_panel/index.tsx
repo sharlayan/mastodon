@@ -487,6 +487,18 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
     if (boardAnnouncementsEnabled) {
       itemRenderers.board_announcements = () => <BoardAnnouncementsLink />;
     }
+    if (roleplayMode && isAdministrator(permissions)) {
+      itemRenderers.admin_timeline = (id) => (
+        <ColumnLink
+          transparent
+          to='/timelines/admin'
+          icon='manufacturing'
+          iconComponent={AdministrationIcon}
+          text={intl.formatMessage(messages.adminTimeline)}
+          id={id}
+        />
+      );
+    }
   }
 
   const composeShown = signedIn && !multiColumn;
@@ -534,18 +546,6 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
         )}
 
         {navigationItems}
-
-        {signedIn && roleplayMode && isAdministrator(permissions) && (
-          <li>
-            <ColumnLink
-              transparent
-              to='/timelines/admin'
-              icon='manufacturing'
-              iconComponent={AdministrationIcon}
-              text={intl.formatMessage(messages.adminTimeline)}
-            />
-          </li>
-        )}
 
         {signedIn && (
           <>

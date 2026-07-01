@@ -12,6 +12,7 @@ export const NAVIGATION_PANEL_ITEMS = [
   'direct',
   'circles',
   'board_announcements',
+  'admin_timeline',
 ] as const;
 
 export type NavigationPanelItem = (typeof NAVIGATION_PANEL_ITEMS)[number];
@@ -44,6 +45,10 @@ export const navigationPanelItemMessages: Record<
   board_announcements: {
     id: 'navigation_bar.board_announcements',
     defaultMessage: 'Announcements',
+  },
+  admin_timeline: {
+    id: 'navigation_bar.admin_timeline',
+    defaultMessage: 'Management timeline',
   },
 };
 
