@@ -22,6 +22,7 @@ class Admin::BoardAnnouncementsController < Admin::BaseController
     authorize :board_announcement, :create?
 
     @announcement = BoardAnnouncement.new(resource_params)
+    @announcement.account = current_account
 
     if @announcement.save
       log_action :create, @announcement

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_30_070600) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_02_052400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -420,6 +420,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_070600) do
   end
 
   create_table "board_announcements", force: :cascade do |t|
+    t.bigint "account_id"
     t.datetime "created_at", null: false
     t.boolean "published", default: false, null: false
     t.datetime "published_at"
@@ -427,6 +428,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_070600) do
     t.text "text_html", default: "", null: false
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_board_announcements_on_account_id", where: "(account_id IS NOT NULL)"
     t.index ["published_at"], name: "index_board_announcements_on_published_at"
   end
 
@@ -1756,6 +1758,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_30_070600) do
   add_foreign_key "board_announcement_reactions", "custom_emojis", on_delete: :cascade
   add_foreign_key "board_announcement_reads", "accounts", on_delete: :cascade
   add_foreign_key "board_announcement_reads", "board_announcements", on_delete: :cascade
+  add_foreign_key "board_announcements", "accounts", on_delete: :nullify
   add_foreign_key "bookmarks", "accounts", on_delete: :cascade
   add_foreign_key "bookmarks", "statuses", on_delete: :cascade
   add_foreign_key "bulk_import_rows", "bulk_imports", on_delete: :cascade

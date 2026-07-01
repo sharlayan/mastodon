@@ -8,6 +8,9 @@
         = t('admin.board_announcements.published')
         ·
       = l(board_announcement.published_at || board_announcement.created_at)
+      - if board_announcement.account.present?
+        ·
+        = t('admin.board_announcements.author', name: board_announcement.account.acct)
 
     .announcements-list__item__actions
       - if can?(:update, board_announcement)

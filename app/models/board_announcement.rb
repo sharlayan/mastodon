@@ -12,11 +12,14 @@
 #  title        :string           default(""), not null
 #  created_at   :datetime         not null
 #  updated_at   :datetime         not null
+#  account_id   :bigint(8)
 #
 
 class BoardAnnouncement < ApplicationRecord
   scope :published, -> { where(published: true) }
   scope :reverse_chronological, -> { order(coalesced_timestamp.desc) }
+
+  belongs_to :account, optional: true
 
   has_many :reads, class_name: 'BoardAnnouncementRead', dependent: :destroy, inverse_of: :board_announcement
   has_many :attachments, class_name: 'BoardAnnouncementAttachment', dependent: :destroy, inverse_of: :board_announcement

@@ -11,12 +11,6 @@
 #  account_id        :bigint(8)        not null
 #  target_account_id :bigint(8)
 #
-#  id                :bigint(8)        not null, primary key
-#  target_domain     :string
-#  created_at        :datetime         not null
-#  updated_at        :datetime         not null
-#  account_id        :bigint(8)        not null
-#  target_account_id :bigint(8)
 
 class ReactionMute < ApplicationRecord
   belongs_to :account
