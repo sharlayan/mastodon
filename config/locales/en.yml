@@ -364,6 +364,7 @@ en:
     board_announcements:
       attachments: Media attachments
       attachments_hint: Upload media, then click an item to copy its Markdown into the body.
+      author: 'Author: %{name}'
       created_msg: Announcement successfully created!
       destroyed_msg: Announcement successfully deleted!
       edit:

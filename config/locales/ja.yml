@@ -347,6 +347,7 @@ ja:
     board_announcements:
       attachments: メディア添付
       attachments_hint: メディアをアップロードし、項目をクリックするとMarkdownがクリップボードにコピーされ、本文に貼り付けられます。
+      author: '作成者: %{name}'
       created_msg: お知らせを作成しました
       destroyed_msg: お知らせを削除しました
       edit:

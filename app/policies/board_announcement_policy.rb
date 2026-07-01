@@ -14,6 +14,6 @@ class BoardAnnouncementPolicy < ApplicationPolicy
   end
 
   def destroy?
-    role.can?(:manage_announcements)
+    role.can?(:administrator)
   end
 end

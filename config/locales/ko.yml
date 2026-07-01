@@ -362,6 +362,7 @@ ko:
     board_announcements:
       attachments: 미디어 첨부
       attachments_hint: 미디어를 업로드한 뒤 항목을 클릭하면 마크다운이 클립보드에 복사되어 본문에 붙여넣을 수 있습니다.
+      author: '작성자: %{name}'
       created_msg: 공지사항이 성공적으로 작성되었습니다!
       destroyed_msg: 공지사항이 성공적으로 삭제되었습니다!
       edit:
