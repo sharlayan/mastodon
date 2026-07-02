@@ -67,12 +67,12 @@ const useWideMatch = () => {
 const Announcement: React.FC<{
   announcement: ApiBoardAnnouncementJSON;
   wide: boolean;
-}> = ({ announcement, wide }) => {
+  defaultExpanded: boolean;
+}> = ({ announcement, wide, defaultExpanded }) => {
   const intl = useIntl();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
 
-  const collapsible = !wide;
-  const showBody = wide || expanded;
+  const showBody = expanded;
 
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
@@ -102,26 +102,22 @@ const Announcement: React.FC<{
     <article
       className={classNames('board-announcement', {
         'board-announcement--wide': wide,
-        'board-announcement--collapsed': collapsible && !expanded,
+        'board-announcement--collapsed': !expanded,
       })}
     >
-      {collapsible ? (
-        <button
-          type='button'
-          className='board-announcement__header'
-          aria-expanded={expanded}
-          onClick={handleToggle}
-        >
-          {heading}
-          <Icon
-            id='expand-more'
-            icon={ExpandMoreIcon}
-            className='board-announcement__chevron'
-          />
-        </button>
-      ) : (
-        <div className='board-announcement__header'>{heading}</div>
-      )}
+      <button
+        type='button'
+        className='board-announcement__header'
+        aria-expanded={expanded}
+        onClick={handleToggle}
+      >
+        {heading}
+        <Icon
+          id='expand-more'
+          icon={ExpandMoreIcon}
+          className='board-announcement__chevron'
+        />
+      </button>
 
       {showBody && (
         <>
@@ -235,8 +231,13 @@ const BoardAnnouncements: React.FC<{
           </div>
         )}
 
-        {items.map((item) => (
-          <Announcement key={item.id} announcement={item} wide={wide} />
+        {items.map((item, index) => (
+          <Announcement
+            key={item.id}
+            announcement={item}
+            wide={wide}
+            defaultExpanded={index === 0}
+          />
         ))}
       </div>
 
