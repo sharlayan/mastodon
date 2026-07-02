@@ -933,7 +933,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_052400) do
     t.integer "type", null: false
     t.datetime "updated_at", null: false
     t.string "uri"
-    t.index ["account_id", "local_fragment"], name: "index_keypairs_on_account_id_and_local_fragment", unique: true, where: "(local_fragment IS NOT NULL)"
+    t.index ["account_id", "local_fragment"], name: "index_keypairs_on_account_id_and_local_fragment", unique: true
     t.index ["account_id"], name: "index_keypairs_on_account_id"
     t.index ["uri"], name: "index_keypairs_on_uri", unique: true
   end
