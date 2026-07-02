@@ -209,6 +209,7 @@ export const localStatusPageAccess = getMeta('local_status_page_access');
 export const forceLocalOnly = getMeta('force_local_only');
 export const circlesEnabled = getMeta('circles_enabled') === true;
 export const clipsEnabled = getMeta('clips_enabled') === true;
+export const collectionsEnabled = false as boolean;
 export const boardAnnouncementsEnabled =
   getMeta('board_announcements_enabled') === true;
 export const localLiveFeedAccess = getMeta('local_live_feed_access');

@@ -34,6 +34,7 @@ import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import {
   avatarDecorationsEnabled,
+  collectionsEnabled,
   showAvatarDecorations,
 } from '@/flavours/glitch/initial_state';
 import type { Account } from '@/flavours/glitch/models/account';
@@ -366,8 +367,9 @@ function getMenuItems({
 
   // Add to collection
   if (
-    canAccountBeAdded(account) ||
-    (canAccountBeAddedByFollowers(account) && relationship?.following)
+    collectionsEnabled &&
+    (canAccountBeAdded(account) ||
+      (canAccountBeAddedByFollowers(account) && relationship?.following))
   ) {
     items.push({
       text: intl.formatMessage(redesignMessages.addToCollection),

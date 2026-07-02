@@ -55,6 +55,7 @@ import {
   boardAnnouncementsEnabled,
   circlesEnabled,
   clipsEnabled,
+  collectionsEnabled,
   localLiveFeedAccess,
   remoteLiveFeedAccess,
   trendsEnabled,
@@ -451,17 +452,19 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
         />
       );
     }
-    itemRenderers.collections = (id) => (
-      <ColumnLink
-        transparent
-        to={`/@${account?.acct}/collections`}
-        icon='collections'
-        iconComponent={CollectionsIcon}
-        activeIconComponent={CollectionsActiveIcon}
-        text={intl.formatMessage(messages.collections)}
-        id={id}
-      />
-    );
+    if (collectionsEnabled) {
+      itemRenderers.collections = (id) => (
+        <ColumnLink
+          transparent
+          to={`/@${account?.acct}/collections`}
+          icon='collections'
+          iconComponent={CollectionsIcon}
+          activeIconComponent={CollectionsActiveIcon}
+          text={intl.formatMessage(messages.collections)}
+          id={id}
+        />
+      );
+    }
     itemRenderers.direct = (id) => (
       <ColumnLink
         transparent
