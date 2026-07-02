@@ -355,6 +355,7 @@
   "directory.recently_active": "最近の活動順",
   "disabled_account_banner.account_settings": "アカウント設定",
   "disabled_account_banner.text": "あなたのアカウント『{disabledAccount}』は現在無効になっています。",
+  "dismissable_banner.admin_timeline": "このタイムラインはコミュニティモードが有効な間、管理者のみが閲覧できます。サーバー内のすべての投稿を制限なく閲覧できます。",
   "dismissable_banner.community_timeline": "これらは{domain}がホストしている人たちの最新の公開投稿です。",
   "dismissable_banner.dismiss": "閉じる",
   "dismissable_banner.public_timeline": "{domain}のユーザーがフォローしているFediverseユーザーによる最近の公開投稿です。",

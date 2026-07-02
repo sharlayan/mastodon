@@ -8,6 +8,7 @@ import { Helmet } from '@unhead/react/helmet';
 import { connect } from 'react-redux';
 
 import ManufacturingIcon from '@/material-icons/400-24px/manufacturing.svg?react';
+import { DismissableBanner } from '@/flavours/glitch/components/dismissable_banner';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
@@ -124,6 +125,7 @@ class AdminTimeline extends PureComponent {
         </ColumnHeader>
 
         <StatusListContainer
+          prepend={<DismissableBanner id='admin_timeline'><FormattedMessage id='dismissable_banner.admin_timeline' defaultMessage='This timeline is only visible to administrators while community mode is enabled. You can view every post on the server without restriction.' /></DismissableBanner>}
           trackScroll={!pinned}
           scrollKey={`admin_timeline-${columnId}`}
           timelineId={adminTimelineId(this.filters())}

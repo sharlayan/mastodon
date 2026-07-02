@@ -651,6 +651,7 @@
   "directory.recently_active": "최근 활동",
   "disabled_account_banner.account_settings": "계정 설정",
   "disabled_account_banner.text": "당신의 계정 {disabledAccount}는 현재 비활성화 상태입니다.",
+  "dismissable_banner.admin_timeline": "이 타임라인은 커뮤니티 모드를 활성화 한 상태로 관리자만 볼 수 있는 타임라인입니다. 서버 내 모든 게시글을 제약 없이 볼 수 있습니다.",
   "dismissable_banner.community_timeline": "여기 있는 것들은 계정이 {domain}에 있는 사람들의 최근 공개 게시물들입니다.",
   "dismissable_banner.dismiss": "지우기",
   "dismissable_banner.public_timeline": "이 게시물들은 {domain}에 있는 사람들이 팔로우하는 페디버스 사용자들의 최신 공개 게시물입니다.",

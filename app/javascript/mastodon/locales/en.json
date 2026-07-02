@@ -627,6 +627,7 @@
   "directory.recently_active": "Recently active",
   "disabled_account_banner.account_settings": "Account settings",
   "disabled_account_banner.text": "Your account {disabledAccount} is currently disabled.",
+  "dismissable_banner.admin_timeline": "This timeline is only visible to administrators while community mode is enabled. You can view every post on the server without restriction.",
   "dismissable_banner.community_timeline": "These are the most recent public posts from people whose accounts are hosted by {domain}.",
   "dismissable_banner.dismiss": "Dismiss",
   "dismissable_banner.public_timeline": "These are the most recent public posts from people on the fediverse that people on {domain} follow.",
