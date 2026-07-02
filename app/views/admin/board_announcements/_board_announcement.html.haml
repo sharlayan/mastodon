@@ -11,6 +11,9 @@
       - if board_announcement.account.present?
         ·
         = t('admin.board_announcements.author', name: board_announcement.account.acct)
+      - if board_announcement.sort_priority != 0
+        ·
+        #{t('admin.board_announcements.sort_priority')}: #{board_announcement.sort_priority}
 
     .announcements-list__item__actions
       - if can?(:update, board_announcement)

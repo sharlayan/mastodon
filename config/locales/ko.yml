@@ -383,6 +383,8 @@ ko:
       publish_hint: 이 공지사항을 사용자에게 표시합니다.
       published: 게시됨
       published_msg: 공지사항이 성공적으로 게시되었습니다!
+      sort_priority: 정렬 우선도
+      sort_priority_hint: 공지사항은 기본적으로 최신순으로 정렬됩니다. 값이 높을수록 다른 공지보다 위에 고정됩니다(기본값 0).
       title: 게시판 공지사항
       unpublish: 게시 취소
       unpublished_msg: 공지사항이 성공적으로 게시 취소되었습니다!

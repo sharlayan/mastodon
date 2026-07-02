@@ -385,6 +385,8 @@ en:
       publish_hint: Make this announcement visible to users.
       published: Published
       published_msg: Announcement successfully published!
+      sort_priority: Sort priority
+      sort_priority_hint: Announcements are ordered newest first by default. A higher priority pins the announcement above others (default 0).
       title: Board announcements
       unpublish: Unpublish
       unpublished_msg: Announcement successfully unpublished!

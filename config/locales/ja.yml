@@ -368,6 +368,8 @@ ja:
       publish_hint: このお知らせをユーザーに表示します。
       published: 公開済み
       published_msg: お知らせを掲載しました
+      sort_priority: 並び順の優先度
+      sort_priority_hint: お知らせはデフォルトで新しい順に並びます。値が大きいほど他のお知らせより上に固定されます（デフォルト0）。
       title: 掲示板のお知らせ
       unpublish: 非公開にする
       unpublished_msg: お知らせを非掲載にしました

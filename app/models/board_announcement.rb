@@ -4,20 +4,21 @@
 #
 # Table name: board_announcements
 #
-#  id           :bigint(8)        not null, primary key
-#  published    :boolean          default(FALSE), not null
-#  published_at :datetime
-#  text         :text             default(""), not null
-#  text_html    :text             default(""), not null
-#  title        :string           default(""), not null
-#  created_at   :datetime         not null
-#  updated_at   :datetime         not null
-#  account_id   :bigint(8)
+#  id            :bigint(8)        not null, primary key
+#  published     :boolean          default(FALSE), not null
+#  published_at  :datetime
+#  sort_priority :integer          default(0), not null
+#  text          :text             default(""), not null
+#  text_html     :text             default(""), not null
+#  title         :string           default(""), not null
+#  created_at    :datetime         not null
+#  updated_at    :datetime         not null
+#  account_id    :bigint(8)
 #
 
 class BoardAnnouncement < ApplicationRecord
   scope :published, -> { where(published: true) }
-  scope :reverse_chronological, -> { order(coalesced_timestamp.desc) }
+  scope :reverse_chronological, -> { order(sort_priority: :desc).order(coalesced_timestamp.desc) }
 
   belongs_to :account, optional: true
 
