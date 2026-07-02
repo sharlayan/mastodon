@@ -60,12 +60,12 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:reaction_custom_emoji_size]  = object_account_user.settings_reaction_custom_emoji_size
       store[:reaction_local_emoji_only]   = Setting.reaction_local_emoji_only
       store[:reactions_enabled]           = Setting.reactions_enabled
-      store[:mfm_enabled]                 = object_account_user.settings_mfm_enabled
+      store[:mfm_enabled]                 = (roleplay_mode? && Setting.force_mfm_enabled) || object_account_user.settings_mfm_enabled
       store[:mfm_animations]              = object_account_user.settings_mfm_animations
       store[:mfm_fold_mode]               = object_account_user.settings_mfm_fold_mode
       store[:mfm_allow_composition]       = Setting.mfm_allow_composition
       store[:wrapstodon] = wrapstodon
-      store[:show_avatar_decorations]           = object_account_user.settings['avatar_decorations.show']
+      store[:show_avatar_decorations]           = (roleplay_mode? && Setting.force_avatar_decorations) || object_account_user.settings['avatar_decorations.show']
       store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']
       store[:force_round_avatar_decoration]     = object_account_user.settings['avatar_decorations.force_round']
       store[:custom_emoji_mutes]                = object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions, hide_in_picker: mute.hide_in_picker } }

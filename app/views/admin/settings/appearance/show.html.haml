@@ -12,7 +12,7 @@
 
   .fields-group
     = f.input :flavour_and_skin,
-              collection: Themes.instance.flavours_and_skins,
+              collection: roleplay_mode? ? Themes.instance.flavours_and_skins.reject { |flavour_and_skin| flavour_and_skin.first == 'vanilla' } : Themes.instance.flavours_and_skins,
               group_label_method: ->(flavour_and_skin) { I18n.t("flavours.#{flavour_and_skin}.name", default: flavour_and_skin) },
               wrapper: :with_label,
               label: t('admin.settings.flavour_and_skin.title'),

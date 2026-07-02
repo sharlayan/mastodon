@@ -950,6 +950,13 @@ ja:
         local_only_view_hint: ローカルデコレーションを無効にし、連合サーバーから受信したデコレーションのみ表示します
         max_count: ユーザーあたりの最大デコレーション数
         max_count_hint: ユーザーが同時に有効化できるデコレーションの最大数 (0〜16)
+      community_mode_override:
+        title: コミュニティモード強制設定
+        preamble: コミュニティモードが有効な間、これらのオプションは各ユーザーの個人設定を上書きし、全ユーザーに対して機能を強制的に適用します。
+        force_avatar_decorations: アバターデコレーション表示の強制
+        force_avatar_decorations_hint: 各ユーザーの「アバターデコレーションを表示」設定を無視し、全ユーザーにアバターデコレーションを表示します。上記でアバターデコレーションが有効になっている必要があります。
+        force_mfm_enabled: MFMレンダリングの強制
+        force_mfm_enabled_hint: 各ユーザーのMFM設定を無視し、全ユーザーにMFM書式をレンダリングします。
       board_announcements:
         title: 掲示板型お知らせ
         enabled: 掲示板型お知らせを有効にする

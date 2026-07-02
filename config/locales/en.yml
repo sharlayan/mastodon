@@ -1119,6 +1119,13 @@ en:
         local_only_view_hint: Disable local decorations; only show decorations received from federated servers
         max_count: Maximum decorations per user
         max_count_hint: Maximum number of decorations a user may activate at once (0–16)
+      community_mode_override:
+        title: Community Mode Overrides
+        preamble: While Community Mode is active, these options override each user's personal preference and force the feature on for everyone.
+        force_avatar_decorations: Force avatar decoration display
+        force_avatar_decorations_hint: Ignore each user's "show avatar decorations" preference and display avatar decorations for everyone. Requires avatar decorations to be enabled above.
+        force_mfm_enabled: Force MFM rendering
+        force_mfm_enabled_hint: Ignore each user's MFM preference and render MFM formatting for everyone.
       board_announcements:
         title: Board Announcements
         enabled: Enable board announcements

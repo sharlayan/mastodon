@@ -55,6 +55,8 @@ defaults: &defaults
   wrapstodon: true
   mfm_enabled: false
   mfm_allow_composition: false
+  force_mfm_enabled: false
+  force_avatar_decorations: false
   circles_enabled: false
   clips_enabled: false
   avatar_decorations_enabled: false

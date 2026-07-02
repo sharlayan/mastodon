@@ -68,3 +68,24 @@
             hint: t('admin.settings.avatar_decorations.max_count_hint'),
             input_html: { min: 0, max: 16 },
             sharlayan_only: true
+
+- if roleplay_mode?
+  %h2= t('admin.settings.community_mode_override.title')
+
+  %p.lead= t('admin.settings.community_mode_override.preamble')
+
+  .fields-group
+    = f.input :force_avatar_decorations,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.community_mode_override.force_avatar_decorations'),
+              hint: t('admin.settings.community_mode_override.force_avatar_decorations_hint'),
+              sharlayan_only: true
+
+  .fields-group
+    = f.input :force_mfm_enabled,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.community_mode_override.force_mfm_enabled'),
+              hint: t('admin.settings.community_mode_override.force_mfm_enabled_hint'),
+              sharlayan_only: true
