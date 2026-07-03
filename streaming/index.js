@@ -732,7 +732,7 @@ const startServer = async () => {
 
       // Filter based on language:
       // @ts-expect-error
-      if (Array.isArray(req.chosenLanguages) && req.chosenLanguages.indexOf(payload.language) === -1) {
+      if (Array.isArray(req.chosenLanguages) && req.chosenLanguages.indexOf(payload.language || 'und') === -1) {
         // @ts-expect-error
         log.debug(`Message ${payload.id} filtered by language (${payload.language})`);
         return;
