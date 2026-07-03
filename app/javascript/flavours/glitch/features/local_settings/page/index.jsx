@@ -267,6 +267,14 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
         <LocalSettingsPageItem
           settings={settings}
+          item={['show_clip_choice']}
+          id='mastodon-settings--show_clip_choice'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.show_clip_choice' defaultMessage='Show clip selection in the compose box' />
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
           item={['show_published_toast']}
           id='mastodon-settings--show_published_toast'
           onChange={onChange}

@@ -270,6 +270,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         sensitive: getState().getIn(['compose', 'sensitive']) || (spoiler_text.length > 0 && media.size !== 0),
         visibility: visibility,
         circle_id: circleId,
+        clip_ids: statusId === null ? getState().getIn(['compose', 'clip_ids']).toArray() : undefined,
         poll: getState().getIn(['compose', 'poll'], null),
         language: getState().getIn(['compose', 'language']),
         quoted_status_id: getState().getIn(['compose', 'quoted_status_id']),

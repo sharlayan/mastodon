@@ -127,6 +127,16 @@ class PostStatusService < BaseService
     ApplicationRecord.transaction do
       @status.save!
       @circle.statuses << @status if @circle.present?
+      attach_clips!(@status)
+    end
+  end
+
+  def attach_clips!(status)
+    return unless Setting.clips_enabled
+    return if @options[:clip_ids].blank?
+
+    @account.clips.where(id: @options[:clip_ids]).find_each do |clip|
+      clip.statuses << status
     end
   end
 

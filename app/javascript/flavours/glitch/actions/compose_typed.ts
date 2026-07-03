@@ -282,3 +282,5 @@ export const setDragUploadEnabled = createAction<boolean>(
 export const changeComposeCircle = createAction<string | null>(
   'compose/circle_change',
 );
+
+export const toggleComposeClip = createAction<string>('compose/clip_toggle');

@@ -46,6 +46,7 @@ class Api::V1::StatusesController < Api::BaseController
       content_type: status_params[:content_type],
       local_only: status_params[:local_only],
       allowed_mentions: status_params[:allowed_mentions],
+      clip_ids: status_params[:clip_ids],
       idempotency: request.headers['Idempotency-Key'],
       with_rate_limit: true
     )
@@ -148,6 +149,7 @@ class Api::V1::StatusesController < Api::BaseController
       :content_type,
       :local_only,
       allowed_mentions: [],
+      clip_ids: [],
       media_ids: [],
       media_attributes: [
         :id,
