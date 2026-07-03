@@ -64,6 +64,7 @@ class Form::AdminSettings
     mfm_allow_composition
     force_mfm_enabled
     force_avatar_decorations
+    force_round_avatar
     circles_enabled
     clips_enabled
     rate_limit_bypass_enabled
@@ -110,6 +111,7 @@ class Form::AdminSettings
     mfm_allow_composition
     force_mfm_enabled
     force_avatar_decorations
+    force_round_avatar
     circles_enabled
     clips_enabled
     avatar_decorations_enabled

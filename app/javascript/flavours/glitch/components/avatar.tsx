@@ -7,6 +7,7 @@ import { useHovering } from 'flavours/glitch/hooks/useHovering';
 import {
   autoPlayGif,
   avatarDecorationsEnabled,
+  forceRoundAvatar,
   forceRoundAvatarDecoration,
   me,
   showAvatarDecorations,
@@ -84,7 +85,7 @@ export const Avatar: React.FC<Props> = ({
         'account__avatar--loading': loading,
         'account__avatar--decorated': hasDecorations,
         'account__avatar--force-round':
-          hasDecorations && forceRoundAvatarDecoration,
+          forceRoundAvatar || (hasDecorations && forceRoundAvatarDecoration),
       })}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

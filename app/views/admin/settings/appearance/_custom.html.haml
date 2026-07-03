@@ -83,6 +83,14 @@
               sharlayan_only: true
 
   .fields-group
+    = f.input :force_round_avatar,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.community_mode_override.force_round_avatar'),
+              hint: t('admin.settings.community_mode_override.force_round_avatar_hint'),
+              sharlayan_only: true
+
+  .fields-group
     = f.input :force_mfm_enabled,
               as: :boolean,
               wrapper: :with_label,

@@ -957,6 +957,8 @@ ja:
         preamble: コミュニティモードが有効な間、これらのオプションは各ユーザーの個人設定を上書きし、全ユーザーに対して機能を強制的に適用します。
         force_avatar_decorations: アバターデコレーション表示の強制
         force_avatar_decorations_hint: 各ユーザーの「アバターデコレーションを表示」設定を無視し、全ユーザーにアバターデコレーションを表示します。上記でアバターデコレーションが有効になっている必要があります。
+        force_round_avatar: アバター画像を円形に強制
+        force_round_avatar_hint: テーマに関係なく、全ユーザーのアバター画像を円形で表示します。
         force_mfm_enabled: MFMレンダリングの強制
         force_mfm_enabled_hint: 各ユーザーのMFM設定を無視し、全ユーザーにMFM書式をレンダリングします。
       board_announcements:
@@ -1326,6 +1328,7 @@ ja:
   appearance:
     advanced_settings: 詳細設定
     animations_and_accessibility: アニメーションとアクセシビリティー
+    community_mode_forced_hint: このオプションは現在サーバーによって強制的に有効化されています。設定を変更しても反映されません。
     boosting_preferences: ブースト設定
     boosting_preferences_info_html: "<strong>Tip:</strong> 設定に関係なく、<kbd>Shift</kbd> を押しながら %{icon} Boostアイコンを<kbd>クリック</kbd>すると、すぐにブーストされます。"
     discovery: 見つける

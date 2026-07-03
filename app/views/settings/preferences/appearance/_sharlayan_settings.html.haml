@@ -33,15 +33,17 @@
 %h2= t 'appearance.misskey_flavour'
 
 .fields-group
-  = ff.input :'web.show_instance_info',
-             wrapper: :with_label,
-             hint: t('simple_form.hints.defaults.setting_show_instance_info'),
-             label: t('simple_form.labels.defaults.setting_show_instance_info'),
-             sharlayan_only: true
+  - unless roleplay_mode?
+    = ff.input :'web.show_instance_info',
+               wrapper: :with_label,
+               hint: t('simple_form.hints.defaults.setting_show_instance_info'),
+               label: t('simple_form.labels.defaults.setting_show_instance_info'),
+               sharlayan_only: true
   - if Setting.mfm_enabled
+    - mfm_forced = roleplay_mode? && Setting.force_mfm_enabled
     = ff.input :'web.mfm_enabled',
                wrapper: :with_label,
-               hint: t('simple_form.hints.defaults.setting_mfm_enabled'),
+               hint: mfm_forced ? t('appearance.community_mode_forced_hint') : t('simple_form.hints.defaults.setting_mfm_enabled'),
                label: t('simple_form.labels.defaults.setting_mfm_enabled'),
                sharlayan_only: true
     = ff.input :'web.mfm_animations',
@@ -61,21 +63,23 @@
              sharlayan_only: true
 
 - if Setting.avatar_decorations_enabled
+  - avatar_decorations_forced = roleplay_mode? && Setting.force_avatar_decorations
   %h2= t 'settings.avatar_decorations'
   .fields-group
     = ff.input :'avatar_decorations.show',
                wrapper: :with_label,
                label: t('simple_form.labels.defaults.setting_show_avatar_decorations'),
-               hint: t('simple_form.hints.defaults.setting_show_avatar_decorations'),
+               hint: avatar_decorations_forced ? t('appearance.community_mode_forced_hint') : t('simple_form.hints.defaults.setting_show_avatar_decorations'),
                sharlayan_only: true
-    - if Setting.avatar_decorations_federation_enabled
+    - if Setting.avatar_decorations_federation_enabled && !roleplay_mode?
       = ff.input :'avatar_decorations.show_federated',
                  wrapper: :with_label,
                  label: t('simple_form.labels.defaults.setting_show_federated_avatar_decorations'),
                  hint: t('simple_form.hints.defaults.setting_show_federated_avatar_decorations'),
                  sharlayan_only: true
+    - round_avatar_forced = roleplay_mode? && Setting.force_round_avatar
     = ff.input :'avatar_decorations.force_round',
                wrapper: :with_label,
                label: t('simple_form.labels.defaults.setting_force_round_avatar_decoration'),
-               hint: t('simple_form.hints.defaults.setting_force_round_avatar_decoration'),
+               hint: round_avatar_forced ? t('appearance.community_mode_forced_hint') : t('simple_form.hints.defaults.setting_force_round_avatar_decoration'),
                sharlayan_only: true

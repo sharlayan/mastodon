@@ -46,6 +46,7 @@ interface InitialStateMeta {
   show_avatar_decorations?: boolean;
   show_federated_avatar_decorations?: boolean;
   force_round_avatar_decoration?: boolean;
+  force_round_avatar?: boolean;
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
   local_live_feed_access: 'public' | 'authenticated' | 'disabled';
@@ -253,6 +254,7 @@ export const showFederatedAvatarDecorations =
   getMeta('show_federated_avatar_decorations') ?? false;
 export const forceRoundAvatarDecoration =
   getMeta('force_round_avatar_decoration') ?? !me;
+export const forceRoundAvatar = getMeta('force_round_avatar') ?? false;
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

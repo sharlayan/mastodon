@@ -67,7 +67,8 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:wrapstodon] = wrapstodon
       store[:show_avatar_decorations]           = (roleplay_mode? && Setting.force_avatar_decorations) || object_account_user.settings['avatar_decorations.show']
       store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']
-      store[:force_round_avatar_decoration]     = object_account_user.settings['avatar_decorations.force_round']
+      store[:force_round_avatar_decoration]     = (roleplay_mode? && Setting.force_round_avatar) || object_account_user.settings['avatar_decorations.force_round']
+      store[:force_round_avatar]                = roleplay_mode? && Setting.force_round_avatar
       store[:custom_emoji_mute_hidden]          = object_account_user.settings['web.custom_emoji_mute_hidden']
       store[:custom_emoji_mutes]                = object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions, hide_in_picker: mute.hide_in_picker } }
       store[:reaction_mutes]                    = object.current_account.reaction_mutes.includes(:target_account).order(id: :desc).map { |mute| { id: mute.id.to_s, target_account_id: mute.target_account_id&.to_s, target_acct: mute.target_account&.acct, target_domain: mute.target_domain } }

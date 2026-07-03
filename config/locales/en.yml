@@ -1126,6 +1126,8 @@ en:
         preamble: While Community Mode is active, these options override each user's personal preference and force the feature on for everyone.
         force_avatar_decorations: Force avatar decoration display
         force_avatar_decorations_hint: Ignore each user's "show avatar decorations" preference and display avatar decorations for everyone. Requires avatar decorations to be enabled above.
+        force_round_avatar: Force round avatar images
+        force_round_avatar_hint: Display every avatar image as a circle for all users, regardless of theme.
         force_mfm_enabled: Force MFM rendering
         force_mfm_enabled_hint: Ignore each user's MFM preference and render MFM formatting for everyone.
       board_announcements:
@@ -1514,6 +1516,7 @@ en:
     animations_and_accessibility: Animations and accessibility
     boosting_preferences: Boosting preferences
     boosting_preferences_info_html: "<strong>Tip:</strong> Regardless of settings, <kbd>Shift</kbd> + <kbd>Click</kbd> on the %{icon} Boost icon will immediately boost."
+    community_mode_forced_hint: This option is currently enabled and enforced by the server. Changing it will have no effect.
     customized: Customized - Emojis
     misskey_flavour: Customized - Misskey Flavour
     discovery: Discovery
