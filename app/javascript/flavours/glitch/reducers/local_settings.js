@@ -4,6 +4,7 @@ import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 //  Our imports.
 import { LOCAL_SETTING_CHANGE, LOCAL_SETTING_DELETE, LOCAL_SETTING_IMPORT } from 'flavours/glitch/actions/local_settings';
 import { STORE_HYDRATE } from 'flavours/glitch/actions/store';
+import { roleplayMode } from 'flavours/glitch/initial_state';
 
 const initialState = ImmutableMap({
   fullwidth_columns: false,
@@ -22,10 +23,10 @@ const initialState = ImmutableMap({
   hicolor_privacy_icons: false,
   show_content_type_choice: false,
   hide_mfm_compose_hint: false,
-  show_clip_choice: true,
+  show_clip_choice: !roleplayMode,
   tag_misleading_links: true,
   show_follow_list_bio: true,
-  use_publish_toot: true,
+  use_publish_toot: !roleplayMode,
   rewrite_mentions: 'no',
   content_warnings : ImmutableMap({
     filter       : null,
