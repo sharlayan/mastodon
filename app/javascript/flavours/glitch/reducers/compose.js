@@ -10,6 +10,7 @@ import {
   cancelPasteLinkCompose,
   setDragUploadEnabled,
   changeComposeCircle,
+  toggleComposeClip,
 } from '@/flavours/glitch/actions/compose_typed';
 import { timelineDelete } from 'flavours/glitch/actions/timelines_typed';
 
@@ -78,6 +79,7 @@ const initialState = ImmutableMap({
   spoiler_text: '',
   privacy: null,
   circle_id: null,
+  clip_ids: ImmutableList(),
   id: null,
   content_type: defaultContentType || 'text/plain',
   text: '',
@@ -185,6 +187,7 @@ function clearAll(state) {
     );
     map.set('privacy', state.get('default_privacy'));
     map.set('circle_id', null);
+    map.set('clip_ids', ImmutableList());
     map.set('sensitive', state.get('default_sensitive'));
     map.set('language', state.get('default_language'));
     map.update('media_attachments', list => list.clear());
@@ -418,6 +421,12 @@ export const composeReducer = (state = initialState, action) => {
     return state
       .set('circle_id', action.payload)
       .set('idempotencyKey', uuid());
+  } else if (toggleComposeClip.match(action)) {
+    return state.update('clip_ids', list => (
+      list.includes(action.payload)
+        ? list.filter(id => id !== action.payload)
+        : list.push(action.payload)
+    ));
   } else if (changeUploadCompose.fulfilled.match(action)) {
     return state
       .set('is_changing_upload', false)

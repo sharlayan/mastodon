@@ -65,6 +65,7 @@ const mapStateToProps = state => ({
   caretPosition: state.getIn(['compose', 'caretPosition']),
   preselectDate: state.getIn(['compose', 'preselectDate']),
   preselectOnReply: state.getIn(['local_settings', 'preselect_on_reply']),
+  usePublishToot: state.getIn(['local_settings', 'use_publish_toot']),
   isSubmitting: state.getIn(['compose', 'is_submitting']),
   isEditing: state.getIn(['compose', 'id']) !== null,
   isChangingUpload: state.getIn(['compose', 'is_changing_upload']),

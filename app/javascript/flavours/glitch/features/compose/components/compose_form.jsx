@@ -38,6 +38,7 @@ import { Warning } from './warning';
 import { ComposeQuotedStatus } from './quoted_post';
 import { VisibilityButton } from './visibility_button';
 import { CircleButton } from './circle_button';
+import { ClipButton } from './clip_button';
 
 const allowedAroundShortCode = '><\u0085\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000\u2028\u2029\u0009\u000a\u000b\u000c\u000d';
 
@@ -45,6 +46,7 @@ const messages = defineMessages({
   placeholder: { id: 'compose_form.placeholder', defaultMessage: 'What is on your mind?' },
   spoiler_placeholder: { id: 'compose_form.spoiler_placeholder', defaultMessage: 'Content warning (optional)' },
   publish: { id: 'compose_form.publish', defaultMessage: 'Post' },
+  publishToot: { id: 'compose_form.publish_toot', defaultMessage: '뿌우' },
   saveChanges: { id: 'compose_form.save_changes', defaultMessage: 'Update' },
   reply: { id: 'compose_form.reply', defaultMessage: 'Reply' },
 });
@@ -63,6 +65,7 @@ class ComposeForm extends ImmutablePureComponent {
     caretPosition: PropTypes.number,
     preselectDate: PropTypes.instanceOf(Date),
     preselectOnReply: PropTypes.bool,
+    usePublishToot: PropTypes.bool,
     isSubmitting: PropTypes.bool,
     isChangingUpload: PropTypes.bool,
     isEditing: PropTypes.bool,
@@ -293,6 +296,7 @@ class ComposeForm extends ImmutablePureComponent {
           <div className='compose-form__dropdowns'>
             <VisibilityButton disabled={this.props.isEditing} />
             <CircleButton disabled={this.props.isEditing} />
+            <ClipButton disabled={this.props.isEditing} />
             <LanguageDropdown />
           </div>
 
@@ -374,7 +378,7 @@ class ComposeForm extends ImmutablePureComponent {
                   {intl.formatMessage(
                     this.props.isEditing ?
                       messages.saveChanges :
-                      (this.props.isInReply ? messages.reply : messages.publish)
+                      (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish))
                   )}
                 </Button>
               </div>

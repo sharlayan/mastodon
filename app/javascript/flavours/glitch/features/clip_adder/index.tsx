@@ -4,11 +4,14 @@ import { FormattedMessage, useIntl, defineMessages } from 'react-intl';
 
 import { Link } from 'react-router-dom';
 
+import type { List as ImmutableList } from 'immutable';
+
 import { EmptyState } from '@/flavours/glitch/components/empty_state';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { NavigationFocusTarget } from '@/flavours/glitch/components/navigation_focus_target';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import { fetchClips } from 'flavours/glitch/actions/clips';
+import { toggleComposeClip } from 'flavours/glitch/actions/compose_typed';
 import {
   apiGetStatusClips,
   apiAddStatusToClip,
@@ -62,8 +65,28 @@ const ClipRow: React.FC<{
   );
 };
 
+const ComposeClipRow: React.FC<{
+  clip: Clip;
+}> = ({ clip }) => {
+  const dispatch = useAppDispatch();
+  const checked = useAppSelector((state) =>
+    (state.compose.get('clip_ids') as ImmutableList<string>).includes(clip.id),
+  );
+
+  const handleChange = useCallback(() => {
+    dispatch(toggleComposeClip(clip.id));
+  }, [dispatch, clip.id]);
+
+  return (
+    <label className='clip-adder__list__item'>
+      <span className='clip-adder__list__item__title'>{clip.title}</span>
+      <Toggle checked={checked} onChange={handleChange} />
+    </label>
+  );
+};
+
 export const ClipAdder: React.FC<{
-  statusId: string;
+  statusId?: string;
   onClose: () => void;
 }> = ({ statusId, onClose }) => {
   const intl = useIntl();
@@ -80,9 +103,11 @@ export const ClipAdder: React.FC<{
 
     void Promise.all([
       dispatch(fetchClips()),
-      apiGetStatusClips(statusId).then((data) => {
-        if (active) setMemberClipIds(new Set(data.map((clip) => clip.id)));
-      }),
+      statusId
+        ? apiGetStatusClips(statusId).then((data) => {
+            if (active) setMemberClipIds(new Set(data.map((clip) => clip.id)));
+          })
+        : Promise.resolve(),
     ])
       .catch(() => {
         // Nothing
@@ -150,14 +175,18 @@ export const ClipAdder: React.FC<{
               </Link>
             </EmptyState>
           ) : (
-            clips.map((clip) => (
-              <ClipRow
-                key={clip.id}
-                clip={clip}
-                statusId={statusId}
-                initialChecked={memberClipIds.has(clip.id)}
-              />
-            ))
+            clips.map((clip) =>
+              statusId ? (
+                <ClipRow
+                  key={clip.id}
+                  clip={clip}
+                  statusId={statusId}
+                  initialChecked={memberClipIds.has(clip.id)}
+                />
+              ) : (
+                <ComposeClipRow key={clip.id} clip={clip} />
+              ),
+            )
           )}
         </div>
       </div>
