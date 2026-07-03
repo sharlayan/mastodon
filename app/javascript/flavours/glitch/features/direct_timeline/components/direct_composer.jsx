@@ -126,6 +126,15 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
     }
   }, [handleSubmit]);
 
+  const handlePaste = useCallback(e => {
+    const files = e.clipboardData?.files;
+
+    if (files && files.length > 0) {
+      dispatch(uploadDirectMedia(conversationId, files));
+      e.preventDefault();
+    }
+  }, [dispatch, conversationId]);
+
   const handleUploadClick = useCallback(() => {
     fileRef.current?.click();
   }, []);
@@ -210,6 +219,7 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           minRows={1}
           maxRows={5}
           disabled={isSubmitting}
