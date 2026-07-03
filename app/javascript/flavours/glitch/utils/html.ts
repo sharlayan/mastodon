@@ -19,12 +19,12 @@ interface AllowedTag {
   children?: boolean;
 }
 
-type AllowedTagsType = {
+export type AllowedTagsType = {
   [Tag in keyof React.JSX.IntrinsicElements]?: AllowedTag;
 };
 
 const globalAttributes: Record<string, boolean | string> = htmlConfig.global;
-const defaultAllowedTags: AllowedTagsType = htmlConfig.tags;
+export const defaultAllowedTags: AllowedTagsType = htmlConfig.tags;
 
 interface QueueItem {
   node: Node;
