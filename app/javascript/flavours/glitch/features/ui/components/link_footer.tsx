@@ -21,7 +21,7 @@ export const LinkFooter: React.FC<{
   return (
     <footer className={classes.wrapper} data-context={context}>
       <section>
-        <h2 className={classes.heading}>{`${domain}:`}</h2>
+        <h2 className={classes.heading}>{`${domain}`}</h2>
         <ul className={classes.list}>
           <li>
             <Link to='/about' target={multiColumn ? '_blank' : undefined}>
@@ -78,7 +78,7 @@ export const LinkFooter: React.FC<{
         </ul>
       </section>
       <section>
-        <h2 className={classes.heading}>Mastodon:</h2>
+        <h2 className={classes.heading}>Mastodon</h2>
         <ul className={classes.list}>
           <li>
             <a href='https://joinmastodon.org' target='_blank' rel='noopener'>
@@ -114,8 +114,10 @@ export const LinkFooter: React.FC<{
               />
             </a>
           </li>
-          <li className={classes.version}>v{version}</li>
         </ul>
+      </section>
+      <section>
+        <h2 className={classes.version}>v{version}</h2>
       </section>
     </footer>
   );
