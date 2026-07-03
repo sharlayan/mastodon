@@ -1608,6 +1608,7 @@ body > [data-popover-placement] {
     & > .hashtag-bar,
     & > .content-warning,
     & > .filter-warning,
+    & > .reactions-bar,
     & > .status__quote {
       margin-inline-start: var(--thread-margin);
       width: calc(100% - var(--thread-margin));
@@ -12344,5 +12345,28 @@ noscript {
     display: flex;
     align-items: center;
     gap: 4px;
+  }
+}
+
+footer._ui_components_link_footer__wrapper {
+  gap: 10px;
+
+  & > section {
+    & > h2._ui_components_link_footer__heading,
+    & > h2._ui_components_link_footer__version {
+      display: flex;
+      width: 100%;
+      box-sizing: border-box;
+      align-items: center;
+      gap: 8px;
+
+      &::before,
+      &::after {
+        display: block;
+        content: '';
+        border-top: 1px solid var(--color-border-primary);
+        flex: 1;
+      }
+    }
   }
 }

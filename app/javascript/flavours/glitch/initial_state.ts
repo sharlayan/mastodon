@@ -75,6 +75,7 @@ interface InitialStateMeta {
   mfm_fold_mode: 'show' | 'sensitive' | 'all';
   mfm_allow_composition: boolean;
   roleplay_mode?: boolean;
+  custom_emoji_mute_hidden?: boolean;
   custom_emoji_mutes?: ApiCustomEmojiMuteJSON[];
   reaction_mutes?: ApiReactionMuteJSON[];
 }
@@ -229,6 +230,8 @@ export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const showInstanceInfo = getMeta('show_instance_info');
 export const customEmojiSize = getMeta('custom_emoji_size');
 export const customEmojiMutes = getMeta('custom_emoji_mutes') ?? [];
+export const customEmojiMuteHidden =
+  getMeta('custom_emoji_mute_hidden') === true;
 export const reactionMutes = getMeta('reaction_mutes') ?? [];
 export const reactionCustomEmojiSize = getMeta('reaction_custom_emoji_size');
 export const reactionLocalEmojiOnly = getMeta('reaction_local_emoji_only');

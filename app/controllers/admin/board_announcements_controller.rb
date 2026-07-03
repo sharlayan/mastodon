@@ -100,6 +100,6 @@ class Admin::BoardAnnouncementsController < Admin::BaseController
 
   def resource_params
     params
-      .expect(board_announcement: [:title, :text, :published, { attachment_ids: [] }])
+      .expect(board_announcement: [:title, :text, :published, :sort_priority, { attachment_ids: [] }])
   end
 end

@@ -3,7 +3,7 @@
 .glitch.local-settings {
   position: relative;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   border-radius: 16px;
   background: var(--color-bg-primary);
   backdrop-filter: $backdrop-blur-filter;
@@ -52,6 +52,61 @@
     margin-top: 20px;
     margin-bottom: 10px;
   }
+}
+
+.glitch.local-settings__header {
+  display: none;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 8px 0 16px;
+  height: 44px;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+}
+
+.local-settings__header__title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.local-settings__header__tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.local-settings__header__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  appearance: none;
+
+  &:hover {
+    background: var(--color-bg-brand-soft);
+    color: var(--color-text-on-brand-base);
+  }
+}
+
+.glitch.local-settings__content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: row;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .glitch.local-settings__navigation__item {
@@ -188,6 +243,17 @@
     span:last-of-type {
       display: none;
     }
+  }
+}
+
+@media screen and (width >= 631px) {
+  .glitch.local-settings__header {
+    display: flex;
+  }
+
+  .glitch.local-settings__navigation__item.preferences,
+  .glitch.local-settings__navigation__item.close {
+    display: none;
   }
 }
 

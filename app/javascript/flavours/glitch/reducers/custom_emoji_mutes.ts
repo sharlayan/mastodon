@@ -4,17 +4,23 @@ import {
   fetchCustomEmojiMutes,
   createCustomEmojiMute,
   deleteCustomEmojiMute,
+  updateCustomEmojiMuteHidden,
 } from 'flavours/glitch/actions/custom_emoji_mutes';
-import { customEmojiMutes as initialCustomEmojiMutes } from 'flavours/glitch/initial_state';
+import {
+  customEmojiMutes as initialCustomEmojiMutes,
+  customEmojiMuteHidden as initialCustomEmojiMuteHidden,
+} from 'flavours/glitch/initial_state';
 import type { ApiCustomEmojiMuteJSON } from 'flavours/glitch/initial_state';
 
 interface CustomEmojiMutesState {
   items: ApiCustomEmojiMuteJSON[];
+  hidden: boolean;
   loading: boolean;
 }
 
 const initialState: CustomEmojiMutesState = {
   items: initialCustomEmojiMutes,
+  hidden: initialCustomEmojiMuteHidden,
   loading: false,
 };
 
@@ -49,6 +55,9 @@ export const customEmojiMutesReducer = createReducer(
         state.items = state.items.filter(
           (item) => item.id !== action.payload.id,
         );
+      })
+      .addCase(updateCustomEmojiMuteHidden.fulfilled, (state, action) => {
+        state.hidden = action.payload.hidden;
       });
   },
 );

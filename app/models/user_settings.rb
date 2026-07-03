@@ -55,6 +55,7 @@ class UserSettings
     setting :mfm_enabled, default: false
     setting :mfm_animations, default: false
     setting :mfm_fold_mode, default: 'sensitive', in: %w(show sensitive all)
+    setting :custom_emoji_mute_hidden, default: false
     setting :use_server_css, default: true
     setting :use_custom_css, default: false
   end

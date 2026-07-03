@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_02_052400) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_03_062501) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -424,12 +424,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_02_052400) do
     t.datetime "created_at", null: false
     t.boolean "published", default: false, null: false
     t.datetime "published_at"
+    t.integer "sort_priority", default: 0, null: false
     t.text "text", default: "", null: false
     t.text "text_html", default: "", null: false
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_board_announcements_on_account_id", where: "(account_id IS NOT NULL)"
     t.index ["published_at"], name: "index_board_announcements_on_published_at"
+    t.index ["sort_priority"], name: "index_board_announcements_on_sort_priority"
   end
 
   create_table "bookmarks", force: :cascade do |t|

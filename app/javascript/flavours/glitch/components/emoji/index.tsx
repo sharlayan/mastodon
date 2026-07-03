@@ -20,7 +20,10 @@ import {
   tokenizeText,
 } from '@/flavours/glitch/features/emoji/render';
 import { customEmojiSize } from '@/flavours/glitch/initial_state';
-import { useIsCustomEmojiMuted } from '@/flavours/glitch/utils/custom_emoji_mutes';
+import {
+  useIsCustomEmojiMuted,
+  useCustomEmojiMuteHidden,
+} from '@/flavours/glitch/utils/custom_emoji_mutes';
 
 import { AnimateEmojiContext, CustomEmojiContext } from './context';
 
@@ -59,6 +62,7 @@ export const Emoji: FC<EmojiProps> = ({
       ? state.data.domain
       : undefined;
   const isMuted = useIsCustomEmojiMuted(customShortcode, customDomain);
+  const muteHidden = useCustomEmojiMuteHidden();
 
   const fallback = showFallback ? code : null;
 
@@ -89,6 +93,15 @@ export const Emoji: FC<EmojiProps> = ({
     const shortcode = `:${state.code}:`;
 
     if (isMuted) {
+      if (muteHidden) {
+        return (
+          <span
+            className='muted-custom-emoji muted-custom-emoji--box'
+            title={shortcode}
+            aria-label={shortcode}
+          />
+        );
+      }
       return (
         <span className='muted-custom-emoji' title={shortcode}>
           {shortcode}

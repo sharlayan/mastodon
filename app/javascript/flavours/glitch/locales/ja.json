@@ -112,6 +112,7 @@
   "confirmations.deprecated_settings.confirm": "Mastodonの設定を使用",
   "custom_emoji_mutes.add": "追加",
   "custom_emoji_mutes.domain_placeholder": "サーバー（任意、空欄ですべて）",
+  "custom_emoji_mutes.hide_completely": "ミュートした絵文字を完全に隠す（半透明のテキストの代わりに空の四角で表示）",
   "custom_emoji_mutes.hide_in_picker": "これらの絵文字を絵文字ピッカーでも非表示にする",
   "custom_emoji_mutes.hide_in_picker_badge": "ピッカーで非表示",
   "custom_emoji_mutes.hint": "指定した接頭辞で始まるショートコードのカスタム絵文字を非表示にし、半透明のテキストで表示します。サーバーを空欄にするとすべてのサーバーの絵文字に適用されます。",

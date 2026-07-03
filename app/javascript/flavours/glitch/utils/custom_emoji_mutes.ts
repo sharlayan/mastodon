@@ -32,3 +32,7 @@ export function useIsCustomEmojiMuted(
   const mutes = useAppSelector((state) => state.custom_emoji_mutes.items);
   return isCustomEmojiMuted(shortcode, domain, mutes);
 }
+
+export function useCustomEmojiMuteHidden(): boolean {
+  return useAppSelector((state) => state.custom_emoji_mutes.hidden);
+}

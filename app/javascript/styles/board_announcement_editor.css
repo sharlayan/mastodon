@@ -6,6 +6,17 @@
   border-collapse: initial;
 }
 
+.CodeMirror .cm-header-1,
+.CodeMirror .cm-header-2,
+.CodeMirror .cm-header-3,
+.CodeMirror .cm-header-4,
+.CodeMirror .cm-header-5,
+.CodeMirror .cm-header-6,
+.CodeMirror .cm-quote {
+  font-size: inherit;
+  line-height: inherit;
+}
+
 .board-announcement-media__list {
   display: flex;
   flex-wrap: wrap;

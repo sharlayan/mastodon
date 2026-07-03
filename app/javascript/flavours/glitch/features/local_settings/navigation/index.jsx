@@ -93,6 +93,7 @@ class LocalSettingsNavigation extends PureComponent {
         />
         <LocalSettingsNavigationItem
           active={index === 6}
+          className='preferences'
           href={preferencesLink}
           index={6}
           icon='cog'
