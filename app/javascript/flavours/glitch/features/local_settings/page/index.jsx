@@ -98,6 +98,14 @@ class LocalSettingsPage extends PureComponent {
           <FormattedMessage id='settings.show_follow_list_bio' defaultMessage='Show bio and follow message in follow lists' />
           <span className='hint'><FormattedMessage id='settings.show_follow_list_bio.hint' defaultMessage='Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists' /></span>
         </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
+          item={['use_publish_toot']}
+          id='mastodon-settings--use_publish_toot'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.use_publish_toot' defaultMessage='Use "뿌우" as the publish button label' />
+        </LocalSettingsPageItem>
 
         <section>
           <h2><FormattedMessage id='settings.layout_opts' defaultMessage='Layout options' /></h2>

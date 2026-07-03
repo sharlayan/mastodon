@@ -45,6 +45,7 @@ const messages = defineMessages({
   placeholder: { id: 'compose_form.placeholder', defaultMessage: 'What is on your mind?' },
   spoiler_placeholder: { id: 'compose_form.spoiler_placeholder', defaultMessage: 'Content warning (optional)' },
   publish: { id: 'compose_form.publish', defaultMessage: 'Post' },
+  publishToot: { id: 'compose_form.publish_toot', defaultMessage: '뿌우' },
   saveChanges: { id: 'compose_form.save_changes', defaultMessage: 'Update' },
   reply: { id: 'compose_form.reply', defaultMessage: 'Reply' },
 });
@@ -63,6 +64,7 @@ class ComposeForm extends ImmutablePureComponent {
     caretPosition: PropTypes.number,
     preselectDate: PropTypes.instanceOf(Date),
     preselectOnReply: PropTypes.bool,
+    usePublishToot: PropTypes.bool,
     isSubmitting: PropTypes.bool,
     isChangingUpload: PropTypes.bool,
     isEditing: PropTypes.bool,
@@ -374,7 +376,7 @@ class ComposeForm extends ImmutablePureComponent {
                   {intl.formatMessage(
                     this.props.isEditing ?
                       messages.saveChanges :
-                      (this.props.isInReply ? messages.reply : messages.publish)
+                      (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish))
                   )}
                 </Button>
               </div>

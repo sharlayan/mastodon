@@ -24,6 +24,7 @@ const initialState = ImmutableMap({
   hide_mfm_compose_hint: false,
   tag_misleading_links: true,
   show_follow_list_bio: true,
+  use_publish_toot: true,
   rewrite_mentions: 'no',
   content_warnings : ImmutableMap({
     filter       : null,
