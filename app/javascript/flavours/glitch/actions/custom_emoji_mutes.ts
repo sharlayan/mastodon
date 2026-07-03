@@ -2,6 +2,7 @@ import {
   apiGetCustomEmojiMutes,
   apiCreateCustomEmojiMute,
   apiDeleteCustomEmojiMute,
+  apiUpdateCustomEmojiMutePreferences,
 } from 'flavours/glitch/api/custom_emoji_mutes';
 import { createDataLoadingThunk } from 'flavours/glitch/store/typed_functions';
 
@@ -29,6 +30,12 @@ export const createCustomEmojiMute = createDataLoadingThunk(
       reject_reactions,
       hide_in_picker,
     }),
+);
+
+export const updateCustomEmojiMuteHidden = createDataLoadingThunk(
+  'custom_emoji_mutes/update_hidden',
+  ({ hidden }: { hidden: boolean }) =>
+    apiUpdateCustomEmojiMutePreferences({ hidden }),
 );
 
 export const deleteCustomEmojiMute = createDataLoadingThunk(

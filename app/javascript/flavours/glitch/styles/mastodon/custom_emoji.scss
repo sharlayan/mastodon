@@ -15,6 +15,18 @@ img.emojione.custom-emoji.horizontal-origin-custom-emoji {
   word-break: break-all;
 }
 
+.muted-custom-emoji--box {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: middle;
+  border-radius: 3px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  opacity: 0.6;
+  font-size: inherit;
+}
+
 .custom-emoji-mute__form {
   padding: 15px;
   border: 1px solid var(--color-border-primary);
@@ -60,6 +72,16 @@ img.emojione.custom-emoji.horizontal-origin-custom-emoji {
         font-size: 16px;
       }
     }
+  }
+}
+
+.custom-emoji-mute__settings {
+  padding: 12px 15px;
+  border: 1px solid var(--color-border-primary);
+  border-top: unset;
+
+  & > label:first-child {
+    margin-top: unset;
   }
 }
 

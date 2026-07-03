@@ -90,7 +90,11 @@ namespace :api, format: false do
     post   '/avatar_decoration_mutes',     to: 'avatar_decorations#create_mute',  as: :avatar_decoration_mutes
     delete '/avatar_decoration_mutes/:id', to: 'avatar_decorations#destroy_mute', as: :avatar_decoration_mute
     resources :reaction_mutes, only: [:index, :create, :destroy]
-    resources :custom_emoji_mutes, only: [:index, :create, :destroy]
+    resources :custom_emoji_mutes, only: [:index, :create, :destroy] do
+      collection do
+        put :preferences
+      end
+    end
     resources :suggestions, only: [:index, :destroy]
     resources :scheduled_statuses, only: [:index, :show, :update, :destroy]
     resources :preferences, only: [:index]

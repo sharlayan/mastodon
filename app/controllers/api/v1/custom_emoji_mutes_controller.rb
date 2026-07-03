@@ -29,4 +29,9 @@ class Api::V1::CustomEmojiMutesController < Api::BaseController
     mute.destroy!
     render_empty
   end
+
+  def preferences
+    current_user.update!(settings_attributes: { 'web.custom_emoji_mute_hidden' => ActiveModel::Type::Boolean.new.cast(params[:hidden]) })
+    render json: { hidden: current_user.settings['web.custom_emoji_mute_hidden'] }
+  end
 end

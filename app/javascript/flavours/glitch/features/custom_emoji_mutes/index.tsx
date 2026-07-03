@@ -9,6 +9,7 @@ import {
   fetchCustomEmojiMutes,
   createCustomEmojiMute,
   deleteCustomEmojiMute,
+  updateCustomEmojiMuteHidden,
 } from 'flavours/glitch/actions/custom_emoji_mutes';
 import { Button } from 'flavours/glitch/components/button';
 import { Column } from 'flavours/glitch/components/column';
@@ -98,7 +99,7 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
 }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
-  const { items, loading } = useAppSelector(
+  const { items, loading, hidden } = useAppSelector(
     (state) => state.custom_emoji_mutes,
   );
 
@@ -165,6 +166,15 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
   const handleDelete = useCallback(
     (id: string) => {
       void dispatch(deleteCustomEmojiMute({ id }));
+    },
+    [dispatch],
+  );
+
+  const handleHiddenChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      void dispatch(
+        updateCustomEmojiMuteHidden({ hidden: event.target.checked }),
+      );
     },
     [dispatch],
   );
@@ -274,6 +284,20 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
           />
         </label>
       </form>
+
+      <div className='custom-emoji-mute__settings'>
+        <label className='custom-emoji-mute__checkbox'>
+          <input
+            type='checkbox'
+            checked={hidden}
+            onChange={handleHiddenChange}
+          />
+          <FormattedMessage
+            id='custom_emoji_mutes.hide_completely'
+            defaultMessage='Hide muted emoji completely (show an empty box instead of translucent text)'
+          />
+        </label>
+      </div>
 
       <ScrollableList
         scrollKey='custom_emoji_mutes'
