@@ -22,6 +22,7 @@ import type { ApiBoardAnnouncementJSON } from 'flavours/glitch/api_types/board_a
 import { Column } from 'flavours/glitch/components/column';
 import type { ColumnRef } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { EmojiHTML } from 'flavours/glitch/components/emoji/html';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useLayout } from 'flavours/glitch/hooks/useLayout';
@@ -121,9 +122,10 @@ const Announcement: React.FC<{
 
       {showBody && (
         <>
-          <div
+          <EmojiHTML
             className='board-announcement__content translate'
-            dangerouslySetInnerHTML={{ __html: announcement.content }}
+            htmlString={announcement.content}
+            extraEmojis={announcement.emojis}
           />
           <ReactionsBar
             reactions={announcement.reactions}

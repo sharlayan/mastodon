@@ -56,6 +56,10 @@ class BoardAnnouncement < ApplicationRecord
     reads.exists?(account_id: account.id)
   end
 
+  def emojis
+    @emojis ||= CustomEmoji.from_text(text)
+  end
+
   def reactions(account = nil)
     grouped_ordered_board_announcement_reactions.select(
       [:name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
