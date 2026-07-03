@@ -22,12 +22,26 @@ import type { ApiBoardAnnouncementJSON } from 'flavours/glitch/api_types/board_a
 import { Column } from 'flavours/glitch/components/column';
 import type { ColumnRef } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { EmojiHTML } from 'flavours/glitch/components/emoji/html';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useLayout } from 'flavours/glitch/hooks/useLayout';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
+import type { AllowedTagsType } from 'flavours/glitch/utils/html';
+import { defaultAllowedTags } from 'flavours/glitch/utils/html';
 
 import { ReactionsBar } from './reactions';
+
+const BOARD_ALLOWED_TAGS: AllowedTagsType = {
+  ...defaultAllowedTags,
+  hr: { children: false },
+  table: {},
+  thead: {},
+  tbody: {},
+  tr: {},
+  th: { attributes: { colspan: 'colSpan', rowspan: 'rowSpan', scope: true } },
+  td: { attributes: { colspan: 'colSpan', rowspan: 'rowSpan' } },
+};
 
 const messages = defineMessages({
   heading: {
@@ -121,9 +135,11 @@ const Announcement: React.FC<{
 
       {showBody && (
         <>
-          <div
+          <EmojiHTML
             className='board-announcement__content translate'
-            dangerouslySetInnerHTML={{ __html: announcement.content }}
+            htmlString={announcement.content}
+            extraEmojis={announcement.emojis}
+            allowedTags={BOARD_ALLOWED_TAGS}
           />
           <ReactionsBar
             reactions={announcement.reactions}

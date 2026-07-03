@@ -185,6 +185,7 @@
   "settings.layout_opts": "レイアウトの設定",
   "settings.media": "メディア",
   "settings.navigation_panel": "ナビゲーションパネル",
+  "settings.navigation_panel.drag_handle": "ドラッグして並べ替え",
   "settings.navigation_panel.hint": "ナビゲーションサイドバーのリンクを並べ替えたり非表示にできます。非表示にしたリンクもモバイルレイアウトでは表示されます。",
   "settings.navigation_panel.move_down": "下に移動",
   "settings.navigation_panel.move_up": "上に移動",

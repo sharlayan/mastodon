@@ -1,5 +1,7 @@
 // See app/serializers/rest/board_announcement_serializer.rb
 
+import type { ApiCustomEmojiJSON } from './custom_emoji';
+
 export interface ApiBoardAnnouncementAttachmentJSON {
   id: string;
   type: 'image' | 'file';
@@ -29,6 +31,7 @@ export interface ApiBoardAnnouncementJSON {
   read: boolean;
   attachments: ApiBoardAnnouncementAttachmentJSON[];
   reactions: ApiBoardAnnouncementReactionJSON[];
+  emojis: ApiCustomEmojiJSON[];
 }
 
 export interface ApiBoardAnnouncementUnreadCountJSON {

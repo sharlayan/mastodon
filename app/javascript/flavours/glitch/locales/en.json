@@ -209,6 +209,7 @@
   "settings.media_reveal_behind_cw": "Reveal sensitive media behind a CW by default",
   "settings.mention_reblogger": "Mention booster when replying to a boosted post",
   "settings.navigation_panel": "Navigation panel",
+  "settings.navigation_panel.drag_handle": "Drag to reorder",
   "settings.navigation_panel.hint": "Reorder or hide the links in the navigation sidebar. Hidden links still appear on mobile layouts.",
   "settings.navigation_panel.move_down": "Move down",
   "settings.navigation_panel.move_up": "Move up",

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import type { CustomEmojiMapArg } from '@/flavours/glitch/features/emoji/types';
 import type {
+  AllowedTagsType,
   OnAttributeHandler,
   OnElementHandler,
 } from '@/flavours/glitch/utils/html';
@@ -17,18 +18,23 @@ export interface EmojiHTMLProps {
   className?: string;
   onElement?: OnElementHandler;
   onAttribute?: OnAttributeHandler;
+  allowedTags?: AllowedTagsType;
 }
 
 export const EmojiHTML = polymorphicForwardRef<'div', EmojiHTMLProps>(
-  ({ extraEmojis, htmlString, onElement, onAttribute, ...props }, ref) => {
+  (
+    { extraEmojis, htmlString, onElement, onAttribute, allowedTags, ...props },
+    ref,
+  ) => {
     const contents = useMemo(
       () =>
         htmlStringToComponents(htmlString, {
           onText: textToEmojis,
           onElement,
           onAttribute,
+          allowedTags,
         }),
-      [htmlString, onAttribute, onElement],
+      [htmlString, onAttribute, onElement, allowedTags],
     );
 
     return (

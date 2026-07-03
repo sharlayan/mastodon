@@ -7,6 +7,7 @@ class REST::BoardAnnouncementSerializer < ActiveModel::Serializer
 
   has_many :attachments, serializer: REST::BoardAnnouncementAttachmentSerializer
   has_many :reactions, serializer: REST::AnnouncementReactionSerializer
+  has_many :emojis, serializer: REST::CustomEmojiSerializer
 
   def current_user?
     !current_user.nil?
