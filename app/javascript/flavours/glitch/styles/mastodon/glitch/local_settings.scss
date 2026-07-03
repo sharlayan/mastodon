@@ -198,6 +198,23 @@
     gap: 10px;
     padding: 4px 0;
     border-bottom: 1px solid var(--color-border-primary);
+    background: var(--color-bg-primary);
+
+    &.dragging {
+      opacity: 0.9;
+      z-index: 2;
+    }
+
+    &__handle {
+      flex: 0 0 auto;
+      cursor: grab;
+      color: var(--color-text-secondary);
+      touch-action: none;
+
+      &:active {
+        cursor: grabbing;
+      }
+    }
 
     label {
       position: relative;

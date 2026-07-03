@@ -2,17 +2,120 @@ import PropTypes from 'prop-types';
 
 import { FormattedMessage } from 'react-intl';
 
+import classNames from 'classnames';
 import { fromJS, Map as ImmutableMap } from 'immutable';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  restrictToParentElement,
+  restrictToVerticalAxis,
+} from '@dnd-kit/modifiers';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
+import DragIndicatorIcon from '@/material-icons/400-24px/drag_indicator.svg?react';
+import { Icon } from '@/flavours/glitch/components/icon';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { computeNavigationOrder, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
+
+const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, intl, onToggle, onMove }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: itemKey });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={classNames('local-settings__navigation-panel__item', { dragging: isDragging })}
+    >
+      <Icon
+        id='drag'
+        icon={DragIndicatorIcon}
+        className='local-settings__navigation-panel__item__handle'
+        aria-label={intl.formatMessage({ id: 'settings.navigation_panel.drag_handle', defaultMessage: 'Drag to reorder' })}
+        {...listeners}
+        {...attributes}
+      />
+      <label htmlFor={`navigation-panel--${itemKey}`}>
+        <input
+          id={`navigation-panel--${itemKey}`}
+          type='checkbox'
+          checked={checked}
+          onChange={() => { onToggle(itemKey); }}
+        />
+        <FormattedMessage {...navigationPanelItemMessages[itemKey]} />
+      </label>
+      <div className='local-settings__navigation-panel__item__actions'>
+        <IconButton
+          icon='arrow-up'
+          iconComponent={ArrowUpwardIcon}
+          title={intl.formatMessage({ id: 'settings.navigation_panel.move_up', defaultMessage: 'Move up' })}
+          onClick={() => { onMove(itemKey, -1); }}
+          disabled={index === 0}
+        />
+        <IconButton
+          icon='arrow-down'
+          iconComponent={ArrowDownwardIcon}
+          title={intl.formatMessage({ id: 'settings.navigation_panel.move_down', defaultMessage: 'Move down' })}
+          onClick={() => { onMove(itemKey, 1); }}
+          disabled={index === length - 1}
+        />
+      </div>
+    </li>
+  );
+};
+
+NavigationPanelSettingsItem.propTypes = {
+  itemKey: PropTypes.string.isRequired,
+  index: PropTypes.number.isRequired,
+  length: PropTypes.number.isRequired,
+  checked: PropTypes.bool.isRequired,
+  intl: PropTypes.object.isRequired,
+  onToggle: PropTypes.func.isRequired,
+  onMove: PropTypes.func.isRequired,
+};
 
 const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   const order = computeNavigationOrder(settings.getIn(['navigation_panel', 'order'])?.toJS());
   const hidden = settings.getIn(['navigation_panel', 'hidden']) ?? ImmutableMap();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   const move = (key, delta) => {
     const index = order.indexOf(key);
@@ -22,15 +125,28 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
       return;
     }
 
-    const next = order.slice();
-    next.splice(index, 1);
-    next.splice(target, 0, key);
-
-    onChange(['navigation_panel', 'order'], fromJS(next));
+    onChange(['navigation_panel', 'order'], fromJS(arrayMove(order, index, target)));
   };
 
   const toggle = (key) => {
     onChange(['navigation_panel', 'hidden'], hidden.set(key, hidden.get(key) !== true));
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = order.indexOf(active.id);
+    const newIndex = order.indexOf(over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    onChange(['navigation_panel', 'order'], fromJS(arrayMove(order, oldIndex, newIndex)));
   };
 
   return (
@@ -39,37 +155,29 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
       <p className='hint'>
         <FormattedMessage id='settings.navigation_panel.hint' defaultMessage='Reorder or hide the links in the navigation sidebar. Hidden links still appear on mobile layouts.' />
       </p>
-      <ul className='local-settings__navigation-panel'>
-        {order.map((key, index) => (
-          <li key={key} className='local-settings__navigation-panel__item'>
-            <label htmlFor={`navigation-panel--${key}`}>
-              <input
-                id={`navigation-panel--${key}`}
-                type='checkbox'
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+      >
+        <SortableContext items={order} strategy={verticalListSortingStrategy}>
+          <ul className='local-settings__navigation-panel'>
+            {order.map((key, index) => (
+              <NavigationPanelSettingsItem
+                key={key}
+                itemKey={key}
+                index={index}
+                length={order.length}
                 checked={hidden.get(key) !== true}
-                onChange={() => { toggle(key); }}
+                intl={intl}
+                onToggle={toggle}
+                onMove={move}
               />
-              <FormattedMessage {...navigationPanelItemMessages[key]} />
-            </label>
-            <div className='local-settings__navigation-panel__item__actions'>
-              <IconButton
-                icon='arrow-up'
-                iconComponent={ArrowUpwardIcon}
-                title={intl.formatMessage({ id: 'settings.navigation_panel.move_up', defaultMessage: 'Move up' })}
-                onClick={() => { move(key, -1); }}
-                disabled={index === 0}
-              />
-              <IconButton
-                icon='arrow-down'
-                iconComponent={ArrowDownwardIcon}
-                title={intl.formatMessage({ id: 'settings.navigation_panel.move_down', defaultMessage: 'Move down' })}
-                onClick={() => { move(key, 1); }}
-                disabled={index === order.length - 1}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 };
