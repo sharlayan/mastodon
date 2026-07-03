@@ -39,6 +39,7 @@ export interface StatusContainerProps {
   contextType?: StatusContextType;
   withCounters?: boolean;
   unfocusable?: boolean;
+  collapsed?: boolean;
   headerRenderFn?: StatusHeaderRenderFn;
   getScrollPosition?: () => null | { height: number; top: number };
   updateScrollBottom?: (snapshot: number) => void;
@@ -51,7 +52,7 @@ export interface StatusContainerProps {
 }
 
 export const TypedStatusContainer =
-  StatusContainer as ComponentType<StatusContainerProps>;
+  StatusContainer as unknown as ComponentType<StatusContainerProps>;
 
 // Taken from the Status component.
 export interface StatusProps extends StatusContainerProps {
