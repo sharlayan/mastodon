@@ -275,6 +275,14 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
         <LocalSettingsPageItem
           settings={settings}
+          item={['show_schedule_button']}
+          id='mastodon-settings--show_schedule_button'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.show_schedule_button' defaultMessage='Show schedule button in the compose box' />
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
           item={['show_published_toast']}
           id='mastodon-settings--show_published_toast'
           onChange={onChange}

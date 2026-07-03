@@ -146,6 +146,10 @@ export function BookmarkedStatuses () {
   return import('../../bookmarked_statuses');
 }
 
+export function ScheduledTimeline () {
+  return import('../../scheduled_timeline');
+}
+
 export function BoardAnnouncements () {
   return import('../../board_announcements');
 }

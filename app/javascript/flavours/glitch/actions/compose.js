@@ -16,6 +16,7 @@ import { forceLocalOnly } from '../initial_state';
 import { showAlert, showAlertForError } from './alerts';
 import { useEmoji } from './emojis';
 import { importFetchedAccounts, importFetchedStatus } from './importer';
+import { addScheduledStatus, SCHEDULED_STATUS_DELETE_SUCCESS } from './scheduled_statuses';
 import { openModal } from './modal';
 import { updateTimeline } from './timelines';
 
@@ -84,6 +85,7 @@ export const COMPOSE_CHANGE_MEDIA_ORDER       = 'COMPOSE_CHANGE_MEDIA_ORDER';
 
 export const COMPOSE_SET_STATUS = 'COMPOSE_SET_STATUS';
 export const COMPOSE_FOCUS = 'COMPOSE_FOCUS';
+export const COMPOSE_SCHEDULED_AT_CHANGE = 'COMPOSE_SCHEDULED_AT_CHANGE';
 
 const messages = defineMessages({
   uploadErrorLimit: { id: 'upload_error.limit', defaultMessage: 'File upload limit exceeded.' },
@@ -93,6 +95,7 @@ const messages = defineMessages({
   published: { id: 'compose.published.body', defaultMessage: 'Post published.' },
   saved: { id: 'compose.saved.body', defaultMessage: 'Post saved.' },
   blankPostError: { id: 'compose.error.blank_post', defaultMessage: 'Post can\'t be blank.' },
+  scheduledFor: { id: 'compose.scheduled_for', defaultMessage: 'Scheduled for {time}' },
 });
 
 export const ensureComposeIsVisible = (getState) => {
@@ -228,7 +231,12 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       return;
     }
 
-    if (getState().getIn(['compose', 'advanced_options', 'do_not_federate']) && !forceLocalOnly && statusId === null) {
+    const scheduledAt = getState().getIn(['compose', 'scheduled_at']);
+    const isRedraftingScheduled = !!(statusId && scheduledAt);
+    const editingScheduledId = isRedraftingScheduled ? statusId : null;
+    const effectiveStatusId = isRedraftingScheduled ? null : statusId;
+
+    if (getState().getIn(['compose', 'advanced_options', 'do_not_federate']) && !forceLocalOnly && effectiveStatusId === null) {
       status = status + ' 🏡';
     }
 
@@ -238,7 +246,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
     // necessarily been changed on the server. Do it now in the same
     // API call.
     let media_attributes;
-    if (statusId !== null) {
+    if (effectiveStatusId !== null) {
       media_attributes = media.map(item => {
         let focus;
 
@@ -254,11 +262,25 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       });
     }
 
-    const circleId = !overridePrivacy && statusId === null ? getState().getIn(['compose', 'circle_id']) : null;
+    const circleId = !overridePrivacy && effectiveStatusId === null ? getState().getIn(['compose', 'circle_id']) : null;
     const visibility = circleId ? 'circle' : (overridePrivacy || getState().getIn(['compose', 'privacy']));
-    api().request({
-      url: statusId === null ? '/api/v1/statuses' : `/api/v1/statuses/${statusId}`,
-      method: statusId === null ? 'post' : 'put',
+    const rawPoll = getState().getIn(['compose', 'poll'], null);
+    const poll = rawPoll ? (() => {
+      const options = rawPoll.get('options');
+      const sanitizedOptions = options
+        ? options.map(o => (o && typeof o === 'string' ? o.trim() : String(o).trim())).filter(Boolean).toArray()
+        : [];
+      return {
+        options: sanitizedOptions,
+        expires_in: rawPoll.get('expires_in'),
+        multiple: rawPoll.get('multiple'),
+        hide_totals: rawPoll.get('hide_totals'),
+      };
+    })() : null;
+
+    const doSubmit = () => api().request({
+      url: effectiveStatusId === null ? '/api/v1/statuses' : `/api/v1/statuses/${effectiveStatusId}`,
+      method: effectiveStatusId === null ? 'post' : 'put',
       data: {
         status,
         spoiler_text,
@@ -270,26 +292,43 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         sensitive: getState().getIn(['compose', 'sensitive']) || (spoiler_text.length > 0 && media.size !== 0),
         visibility: visibility,
         circle_id: circleId,
-        clip_ids: statusId === null ? getState().getIn(['compose', 'clip_ids']).toArray() : undefined,
-        poll: getState().getIn(['compose', 'poll'], null),
+        clip_ids: effectiveStatusId === null ? getState().getIn(['compose', 'clip_ids']).toArray() : undefined,
+        poll,
         language: getState().getIn(['compose', 'language']),
         quoted_status_id: getState().getIn(['compose', 'quoted_status_id']),
         quote_approval_policy: visibility === 'private' || visibility === 'direct' || visibility === 'circle' ? 'nobody' : getState().getIn(['compose', 'quote_policy']),
+        scheduled_at: effectiveStatusId === null ? getState().getIn(['compose', 'scheduled_at']) : undefined,
       },
       headers: {
         'Idempotency-Key': getState().getIn(['compose', 'idempotencyKey']),
       },
     }).then(function (response) {
+      const isScheduled = response.data && response.data.scheduled_at;
+
       if ((browserHistory.location.pathname === '/publish' || browserHistory.location.pathname === '/statuses/new')
           && window.history.state
           && !getState().getIn(['compose', 'advanced_options', 'threaded_mode'])) {
         browserHistory.goBack();
       }
 
-      dispatch(insertIntoTagHistory(response.data.tags, status));
+      if (!isScheduled) {
+        dispatch(insertIntoTagHistory(response.data.tags, status));
+      }
       dispatch(submitComposeSuccess({ ...response.data }));
       if (typeof successCallback === 'function') {
         successCallback(response.data);
+      }
+
+      if (isScheduled) {
+        dispatch(addScheduledStatus(response.data));
+        const scheduledDate = new Date(response.data.scheduled_at);
+        const timeStr = scheduledDate.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+        dispatch(showAlert({
+          message: messages.scheduledFor,
+          values: { time: timeStr },
+          dismissAfter: 5000,
+        }));
+        return;
       }
 
       // To make the app more responsive, immediately push the status
@@ -302,26 +341,26 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         }
       };
 
-      if (statusId) {
+      if (effectiveStatusId) {
         dispatch(importFetchedStatus({ ...response.data }));
       }
 
-      if (statusId === null) {
+      if (effectiveStatusId === null) {
         insertIfOnline('home');
       }
 
-      if (statusId === null && response.data.in_reply_to_id === null && response.data.visibility === 'public') {
+      if (effectiveStatusId === null && response.data.in_reply_to_id === null && response.data.visibility === 'public') {
         insertIfOnline('community');
         if (!response.data.local_only) {
           insertIfOnline('public');
         }
-      } else if (statusId === null && response.data.visibility === 'direct') {
+      } else if (effectiveStatusId === null && response.data.visibility === 'direct') {
         insertIfOnline('direct');
       }
 
       if (getState().getIn(['local_settings', 'show_published_toast'])) {
         dispatch(showAlert({
-          message: statusId === null ? messages.published : messages.saved,
+          message: effectiveStatusId === null ? messages.published : messages.saved,
           action: messages.open,
           dismissAfter: 10000,
           onClick: () => browserHistory.push(
@@ -333,6 +372,17 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
     }).catch(function (error) {
       dispatch(submitComposeFail(error));
     });
+
+    if (isRedraftingScheduled) {
+      api().delete(`/api/v1/scheduled_statuses/${editingScheduledId}`).then(() => {
+        dispatch({ type: SCHEDULED_STATUS_DELETE_SUCCESS, id: editingScheduledId });
+        doSubmit();
+      }).catch((err) => {
+        dispatch(submitComposeFail(err));
+      });
+    } else {
+      doSubmit();
+    }
   };
 }
 
@@ -353,6 +403,13 @@ export function submitComposeFail(error) {
   return {
     type: COMPOSE_SUBMIT_FAIL,
     error: error,
+  };
+}
+
+export function changeScheduledAt(scheduledAt) {
+  return {
+    type: COMPOSE_SCHEDULED_AT_CHANGE,
+    scheduledAt: scheduledAt || null,
   };
 }
 

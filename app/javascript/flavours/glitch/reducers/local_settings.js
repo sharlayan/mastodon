@@ -23,6 +23,7 @@ const initialState = ImmutableMap({
   show_content_type_choice: false,
   hide_mfm_compose_hint: false,
   show_clip_choice: true,
+  show_schedule_button: true,
   tag_misleading_links: true,
   show_follow_list_bio: true,
   use_publish_toot: true,

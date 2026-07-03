@@ -65,6 +65,7 @@ import {
   FavouritedStatuses,
   ReactedStatuses,
   BookmarkedStatuses,
+  ScheduledTimeline,
   BoardAnnouncements,
   FollowedTags,
   LinkTimeline,
@@ -248,6 +249,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/reactions' component={ReactedStatuses} content={children} />
 
             <WrappedRoute path='/bookmarks' component={BookmarkedStatuses} content={children} />
+            <WrappedRoute path={['/scheduled', '/timelines/scheduled']} component={ScheduledTimeline} content={children} />
             <WrappedRoute path='/board_announcements' component={BoardAnnouncements} content={children} />
             <WrappedRoute path='/pinned' component={PinnedStatuses} content={children} />
 

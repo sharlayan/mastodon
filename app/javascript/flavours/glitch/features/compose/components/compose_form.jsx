@@ -31,6 +31,7 @@ import { MfmComposeHint } from './mfm_compose_hint';
 import { NavigationBar } from './navigation_bar';
 import { PollForm } from "./poll_form";
 import { ReplyIndicator } from './reply_indicator';
+import { ScheduleButton } from './schedule_button';
 import { SecondaryPrivacyButton } from './secondary_privacy_button';
 import { ThreadModeButton } from './thread_mode_button';
 import { UploadForm } from './upload_form';
@@ -47,6 +48,7 @@ const messages = defineMessages({
   spoiler_placeholder: { id: 'compose_form.spoiler_placeholder', defaultMessage: 'Content warning (optional)' },
   publish: { id: 'compose_form.publish', defaultMessage: 'Post' },
   publishToot: { id: 'compose_form.publish_toot', defaultMessage: '뿌우' },
+  schedule: { id: 'compose_form.schedule_submit', defaultMessage: 'Schedule' },
   saveChanges: { id: 'compose_form.save_changes', defaultMessage: 'Update' },
   reply: { id: 'compose_form.reply', defaultMessage: 'Reply' },
 });
@@ -66,9 +68,11 @@ class ComposeForm extends ImmutablePureComponent {
     preselectDate: PropTypes.instanceOf(Date),
     preselectOnReply: PropTypes.bool,
     usePublishToot: PropTypes.bool,
+    showScheduleButton: PropTypes.bool,
     isSubmitting: PropTypes.bool,
     isChangingUpload: PropTypes.bool,
     isEditing: PropTypes.bool,
+    isEditingScheduled: PropTypes.bool,
     isUploading: PropTypes.bool,
     onChange: PropTypes.func.isRequired,
     onSubmit: PropTypes.func.isRequired,
@@ -89,6 +93,8 @@ class ComposeForm extends ImmutablePureComponent {
     lang: PropTypes.string,
     maxChars: PropTypes.number,
     redirectOnSuccess: PropTypes.bool,
+    scheduledAt: PropTypes.string,
+    onScheduleChange: PropTypes.func,
   };
 
   static defaultProps = {
@@ -298,6 +304,14 @@ class ComposeForm extends ImmutablePureComponent {
             <CircleButton disabled={this.props.isEditing} />
             <ClipButton disabled={this.props.isEditing} />
             <LanguageDropdown />
+            {(this.props.showScheduleButton || this.props.isEditingScheduled) && (
+              <ScheduleButton
+                scheduledAt={this.props.scheduledAt}
+                onScheduleChange={this.props.onScheduleChange}
+                disabled={this.props.isEditing && !this.props.isEditingScheduled}
+                isEditing={this.props.isEditing && !this.props.isEditingScheduled}
+              />
+            )}
           </div>
 
           {this.props.spoiler && (
@@ -376,9 +390,11 @@ class ComposeForm extends ImmutablePureComponent {
                   loading={isSubmitting}
                 >
                   {intl.formatMessage(
-                    this.props.isEditing ?
-                      messages.saveChanges :
-                      (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish))
+                    this.props.isEditing
+                      ? messages.saveChanges
+                      : (this.props.scheduledAt
+                        ? messages.schedule
+                        : (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish)))
                   )}
                 </Button>
               </div>

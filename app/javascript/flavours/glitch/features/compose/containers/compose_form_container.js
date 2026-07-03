@@ -2,6 +2,7 @@ import { connect } from 'react-redux';
 
 import {
   changeCompose,
+  changeScheduledAt,
   submitCompose,
   clearComposeSuggestions,
   fetchComposeSuggestions,
@@ -66,8 +67,10 @@ const mapStateToProps = state => ({
   preselectDate: state.getIn(['compose', 'preselectDate']),
   preselectOnReply: state.getIn(['local_settings', 'preselect_on_reply']),
   usePublishToot: state.getIn(['local_settings', 'use_publish_toot']),
+  showScheduleButton: state.getIn(['local_settings', 'show_schedule_button']),
   isSubmitting: state.getIn(['compose', 'is_submitting']),
   isEditing: state.getIn(['compose', 'id']) !== null,
+  isEditingScheduled: !!(state.getIn(['compose', 'id']) && state.getIn(['compose', 'scheduled_at']) && !state.getIn(['statuses', state.getIn(['compose', 'id'])])),
   isChangingUpload: state.getIn(['compose', 'is_changing_upload']),
   isUploading: state.getIn(['compose', 'is_uploading']),
   anyMedia: state.getIn(['compose', 'media_attachments']).size > 0,
@@ -82,6 +85,7 @@ const mapStateToProps = state => ({
   sideArm: sideArmPrivacy(state),
   media: state.getIn(['compose', 'media_attachments']),
   maxChars: state.getIn(['server', 'server', 'item', 'configuration', 'statuses', 'max_characters'], 500),
+  scheduledAt: state.getIn(['compose', 'scheduled_at']),
 });
 
 const mapDispatchToProps = (dispatch, props) => ({
@@ -136,6 +140,10 @@ const mapDispatchToProps = (dispatch, props) => ({
 
   onPickEmoji (position, data, needsSpace) {
     dispatch(insertEmojiCompose(position, data, needsSpace));
+  },
+
+  onScheduleChange (scheduledAt) {
+    dispatch(changeScheduledAt(scheduledAt));
   },
 
 });

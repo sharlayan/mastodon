@@ -8,6 +8,7 @@ export const NAVIGATION_PANEL_ITEMS = [
   'reactions',
   'bookmarks',
   'clips',
+  'scheduled',
   'collections',
   'direct',
   'circles',
@@ -35,6 +36,10 @@ export const navigationPanelItemMessages: Record<
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   clips: { id: 'navigation_bar.clips', defaultMessage: 'Clips' },
+  scheduled: {
+    id: 'navigation_bar.scheduled',
+    defaultMessage: 'Scheduled posts',
+  },
   collections: {
     id: 'navigation_bar.collections',
     defaultMessage: 'Collections',
