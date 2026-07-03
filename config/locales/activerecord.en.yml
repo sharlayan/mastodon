@@ -46,6 +46,8 @@ en:
           attributes:
             data:
               malformed: is malformed
+        circle_account:
+          must_be_follower: must be a follower account
         list_account:
           attributes:
             account_id:

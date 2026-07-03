@@ -2506,6 +2506,10 @@ a .account__avatar {
   cursor: pointer;
 }
 
+.status__avatar:has(.account__avatar--force-round) {
+  border-radius: 50%;
+}
+
 .avatar-group {
   display: flex;
 
