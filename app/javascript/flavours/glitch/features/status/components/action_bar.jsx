@@ -22,7 +22,7 @@ import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend
 import { IconButton } from '../../../components/icon_button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
-import { me, maxReactions, quickBoosting, reactionsEnabled } from '../../../initial_state';
+import { me, maxReactions, quickBoosting, reactionsEnabled, roleplayMode } from '../../../initial_state';
 import { BoostButton } from '@/flavours/glitch/components/status/boost_button';
 import { quoteItemState, selectStatusState } from '@/flavours/glitch/components/status/boost_button_utils';
 
@@ -31,6 +31,7 @@ const messages = defineMessages({
   redraft: { id: 'status.redraft', defaultMessage: 'Delete & re-draft' },
   edit: { id: 'status.edit', defaultMessage: 'Edit' },
   direct: { id: 'status.direct', defaultMessage: 'Privately mention @{name}' },
+  directDm: { id: 'status.direct_dm', defaultMessage: 'Send DM to @{name}' },
   mention: { id: 'status.mention', defaultMessage: 'Mention @{name}' },
   reply: { id: 'status.reply', defaultMessage: 'Reply' },
   favourite: { id: 'status.favourite', defaultMessage: 'Favorite' },
@@ -238,7 +239,7 @@ class ActionBar extends PureComponent {
         menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
       } else {
         menu.push({ text: intl.formatMessage(messages.mention, { name: status.getIn(['account', 'username']) }), action: this.handleMentionClick });
-        menu.push({ text: intl.formatMessage(messages.direct, { name: status.getIn(['account', 'username']) }), action: this.handleDirectClick });
+        menu.push({ text: intl.formatMessage(roleplayMode ? messages.directDm : messages.direct, { name: status.getIn(['account', 'username']) }), action: this.handleDirectClick });
         menu.push(null);
 
         if (quotedAccountId === me) {

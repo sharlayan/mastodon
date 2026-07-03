@@ -1,6 +1,7 @@
 {
   "about.fork_disclaimer": "글리치는 마스토돈에서 포크한 자유 오픈소스 소프트웨어입니다.",
   "account.clips": "클립",
+  "account.menu.direct_dm": "DM 보내기",
   "account.disclaimer_full": "아래에 있는 정보들은 사용자의 프로필을 완벽하게 나타내지 못하고 있을 수도 있습니다.",
   "account.follow_message": "팔로우 메시지",
   "account.follows": "팔로우",
@@ -277,6 +278,7 @@
   "settings.wide_view": "넓은 뷰 (데스크탑 모드 전용)",
   "settings.wide_view_hint": "컬럼들을 늘려서 활용 가능한 공간을 사용합니다.",
   "status.add_to_clip": "클립에 추가",
+  "status.direct_dm": "@{name} 님에게 DM 보내기",
   "status.filtered": "걸러짐",
   "status.has_audio": "소리 파일이 첨부되어 있습니다",
   "status.has_pictures": "그림 파일이 첨부되어 있습니다",

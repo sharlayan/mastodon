@@ -35,6 +35,7 @@ import { useIdentity } from '@/flavours/glitch/identity_context';
 import {
   avatarDecorationsEnabled,
   collectionsEnabled,
+  roleplayMode,
   showAvatarDecorations,
 } from '@/flavours/glitch/initial_state';
 import type { Account } from '@/flavours/glitch/models/account';
@@ -198,6 +199,10 @@ const redesignMessages = defineMessages({
     id: 'account.menu.direct',
     defaultMessage: 'Privately mention',
   },
+  directDm: {
+    id: 'account.menu.direct_dm',
+    defaultMessage: 'Send DM',
+  },
   mute: { id: 'account.menu.mute', defaultMessage: 'Mute account' },
   unmute: {
     id: 'account.menu.unmute',
@@ -335,7 +340,9 @@ function getMenuItems({
       },
 
       {
-        text: intl.formatMessage(redesignMessages.direct),
+        text: intl.formatMessage(
+          roleplayMode ? redesignMessages.directDm : redesignMessages.direct,
+        ),
         action: () => {
           dispatch(directCompose(account));
         },

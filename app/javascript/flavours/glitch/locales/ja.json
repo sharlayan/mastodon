@@ -1,6 +1,7 @@
 {
   "about.fork_disclaimer": "Glitch-socはMastodonからフォークされたフリーなオープンソースソフトウェアです。",
   "account.clips": "クリップ",
+  "account.menu.direct_dm": "DMを送信",
   "account.disclaimer_full": "このユーザー情報は不正確な可能性があります。",
   "account.follow_message": "フォローメッセージ",
   "account.follows": "フォロー",
@@ -242,6 +243,7 @@
   "settings.wide_view": "ワイドビュー(デスクトップ レイアウトのみ)",
   "settings.wide_view_hint": "使用可能なスペースを埋めるためにカラムを伸ばします。",
   "status.add_to_clip": "クリップに追加",
+  "status.direct_dm": "@{name} さんにDMを送信",
   "status.filtered": "フィルタリングされた",
   "status.has_audio": "添付されたオーディオファイルが表示されます",
   "status.has_pictures": "添付された画像が表示されます",

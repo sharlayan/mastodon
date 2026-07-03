@@ -25,7 +25,7 @@ import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
-import { me, maxReactions, quickBoosting, reactionsEnabled, clipsEnabled } from 'flavours/glitch/initial_state';
+import { me, maxReactions, quickBoosting, reactionsEnabled, clipsEnabled, roleplayMode } from 'flavours/glitch/initial_state';
 
 import { IconButton } from '../icon_button';
 import { injectIntl } from '../intl';
@@ -40,6 +40,7 @@ const messages = defineMessages({
   redraft: { id: 'status.redraft', defaultMessage: 'Delete & re-draft' },
   edit: { id: 'status.edit', defaultMessage: 'Edit' },
   direct: { id: 'status.direct', defaultMessage: 'Privately mention @{name}' },
+  directDm: { id: 'status.direct_dm', defaultMessage: 'Send DM to @{name}' },
   mention: { id: 'status.mention', defaultMessage: 'Mention @{name}' },
   mute: { id: 'account.mute', defaultMessage: 'Mute @{name}' },
   block: { id: 'account.block', defaultMessage: 'Block @{name}' },
@@ -310,7 +311,7 @@ class StatusActionBar extends ImmutablePureComponent {
         menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
       } else {
         menu.push({ text: intl.formatMessage(messages.mention, { name: status.getIn(['account', 'username']) }), action: this.handleMentionClick });
-        menu.push({ text: intl.formatMessage(messages.direct, { name: status.getIn(['account', 'username']) }), action: this.handleDirectClick });
+        menu.push({ text: intl.formatMessage(roleplayMode ? messages.directDm : messages.direct, { name: status.getIn(['account', 'username']) }), action: this.handleDirectClick });
         menu.push(null);
 
         if (!this.props.onFilter) {
