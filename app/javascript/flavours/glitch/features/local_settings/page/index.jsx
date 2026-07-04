@@ -10,7 +10,7 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 //  Our imports
 import { Button } from '@/flavours/glitch/components/button';
 import { injectIntl } from '@/flavours/glitch/components/intl';
-import { expandSpoilers, me } from 'flavours/glitch/initial_state';
+import { expandSpoilers, me, roleplayMode } from 'flavours/glitch/initial_state';
 import { preferenceLink } from 'flavours/glitch/utils/backend_links';
 
 import DeprecatedLocalSettingsPageItem from './deprecated_item';
@@ -273,6 +273,16 @@ class LocalSettingsPage extends PureComponent {
         >
           <FormattedMessage id='settings.show_clip_choice' defaultMessage='Show clip selection in the compose box' />
         </LocalSettingsPageItem>
+        {roleplayMode && (
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['hide_compose_language']}
+            id='mastodon-settings--hide_compose_language'
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.hide_compose_language' defaultMessage='Hide the language selector in the compose box' />
+          </LocalSettingsPageItem>
+        )}
         <LocalSettingsPageItem
           settings={settings}
           item={['show_published_toast']}

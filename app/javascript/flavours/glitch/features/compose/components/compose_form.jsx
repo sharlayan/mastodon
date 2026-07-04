@@ -66,6 +66,7 @@ class ComposeForm extends ImmutablePureComponent {
     preselectDate: PropTypes.instanceOf(Date),
     preselectOnReply: PropTypes.bool,
     usePublishToot: PropTypes.bool,
+    hideLanguage: PropTypes.bool,
     isSubmitting: PropTypes.bool,
     isChangingUpload: PropTypes.bool,
     isEditing: PropTypes.bool,
@@ -297,7 +298,7 @@ class ComposeForm extends ImmutablePureComponent {
             <VisibilityButton disabled={this.props.isEditing} />
             <CircleButton disabled={this.props.isEditing} />
             <ClipButton disabled={this.props.isEditing} />
-            <LanguageDropdown />
+            {!this.props.hideLanguage && <LanguageDropdown />}
           </div>
 
           {this.props.spoiler && (

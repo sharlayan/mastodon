@@ -204,6 +204,7 @@
   "settings.general": "General",
   "settings.hicolor_privacy_icons": "High color privacy icons",
   "settings.hicolor_privacy_icons.hint": "Display privacy icons in bright and easily distinguishable colors",
+  "settings.hide_compose_language": "Hide the language selector in the compose box",
   "settings.hide_mfm_compose_hint": "Hide MFM preview and syntax link in the compose box",
   "settings.inline_preview_cards": "Inline preview cards for external links",
   "settings.layout_opts": "Layout options",

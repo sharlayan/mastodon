@@ -185,6 +185,7 @@
   "settings.general": "一般",
   "settings.hicolor_privacy_icons": "ハイカラーの公開範囲アイコン",
   "settings.hicolor_privacy_icons.hint": "公開範囲アイコンを明るく表示し見分けやすい色にします",
+  "settings.hide_compose_language": "投稿ボックスの言語選択を非表示",
   "settings.hide_mfm_compose_hint": "投稿ボックスのMFMプレビューと構文リンクを非表示",
   "settings.inline_preview_cards": "外部リンクに埋め込みプレビューを有効にする",
   "settings.layout_opts": "レイアウトの設定",
