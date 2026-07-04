@@ -52,9 +52,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_04_171200) do
 
   create_table "account_domain_mutes", force: :cascade do |t|
     t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
     t.string "domain", null: false
     t.boolean "hide_from_home", default: false, null: false
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id", "domain"], name: "index_account_domain_mutes_on_account_id_and_domain", unique: true
   end
