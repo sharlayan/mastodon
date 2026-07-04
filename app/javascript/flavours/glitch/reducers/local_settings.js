@@ -25,7 +25,7 @@ const initialState = ImmutableMap({
   hide_mfm_compose_hint: false,
   show_clip_choice: !roleplayMode,
   hide_compose_language: roleplayMode,
-  show_schedule_button: true,
+  show_schedule_button: !roleplayMode,
   tag_misleading_links: true,
   show_follow_list_bio: true,
   use_publish_toot: !roleplayMode,
