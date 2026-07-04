@@ -69,7 +69,7 @@ module Mastodon::CLI
 
       # First, ensure all indices are created and have the correct
       # structure, so that live data can already be written
-      indices.select { |index| index.specification.changed? }.each do |index|
+      indices.select { |index| index.specification.changed? || !index.exists? }.each do |index|
         progress.title = "Upgrading #{index} "
         index.purge
         index.specification.lock!
