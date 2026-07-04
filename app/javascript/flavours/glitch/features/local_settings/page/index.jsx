@@ -285,6 +285,14 @@ class LocalSettingsPage extends PureComponent {
         )}
         <LocalSettingsPageItem
           settings={settings}
+          item={['show_schedule_button']}
+          id='mastodon-settings--show_schedule_button'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.show_schedule_button' defaultMessage='Show schedule button in the compose box' />
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
           item={['show_published_toast']}
           id='mastodon-settings--show_published_toast'
           onChange={onChange}
@@ -389,6 +397,15 @@ class LocalSettingsPage extends PureComponent {
           onChange={onChange}
         >
           <FormattedMessage id='settings.media_fullwidth' defaultMessage='Full-width media previews' />
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
+          item={['media', 'no_autoplay_gifv']}
+          id='mastodon-settings--media-no_autoplay_gifv'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.media_no_autoplay_gifv' defaultMessage='Do not autoplay attached GIFs' />
+          <span className='hint'><FormattedMessage id='settings.media_no_autoplay_gifv_hint' defaultMessage='Attached GIF media will play on hover or click instead of automatically, even when GIF autoplay is enabled' /></span>
         </LocalSettingsPageItem>
         <LocalSettingsPageItem
           settings={settings}

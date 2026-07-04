@@ -150,6 +150,10 @@ export function BookmarkedStatuses () {
   return import('../../bookmarked_statuses');
 }
 
+export function ScheduledTimeline () {
+  return import('../../scheduled_timeline');
+}
+
 export function BoardAnnouncements () {
   return import('../../board_announcements');
 }
@@ -160,6 +164,10 @@ export function Blocks () {
 
 export function DomainBlocks () {
   return import('../../domain_blocks');
+}
+
+export function DomainMutes () {
+  return import('../../domain_mutes');
 }
 
 export function Mutes () {
@@ -184,6 +192,10 @@ export function BlockModal () {
 
 export function DomainBlockModal () {
   return import('../components/domain_block_modal');
+}
+
+export function DomainMuteModal () {
+  return import('../components/domain_mute_modal');
 }
 
 export function ReportModal () {

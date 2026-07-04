@@ -66,6 +66,7 @@ class Status < ApplicationRecord
   ].freeze
 
   MEDIA_ATTACHMENTS_LIMIT = 4
+  REMOTE_MEDIA_ATTACHMENTS_LIMIT = 16
 
   rate_limit by: :account, family: :statuses
 
@@ -151,6 +152,14 @@ class Status < ApplicationRecord
   scope :tagged_with, ->(tag_ids) { joins(:statuses_tags).where(statuses_tags: { tag_id: tag_ids }) }
   scope :not_excluded_by_account, ->(account) { where.not(account_id: account.excluded_from_timeline_account_ids) }
   scope :not_domain_blocked_by_account, ->(account) { account.excluded_from_timeline_domains.blank? ? left_outer_joins(:account) : left_outer_joins(:account).merge(Account.not_domain_blocked_by_account(account)) }
+  scope :not_domain_muted_by_account, lambda { |account|
+    return self if account.muted_from_timeline_domains.blank?
+
+    left_outer_joins(:account)
+      .where('accounts.domain is NULL or statuses.account_id in (?) or accounts.domain not in (?)',
+             Follow.where(account_id: account.id).select(:target_account_id),
+             account.muted_from_timeline_domains)
+  }
   scope :tagged_with_all, lambda { |tag_ids|
     Array(tag_ids).map(&:to_i).reduce(self) do |result, id|
       result.where(<<~SQL.squish, tag_id: id)
@@ -316,7 +325,11 @@ class Status < ApplicationRecord
     else
       map = media_attachments.index_by(&:id)
       ordered_media_attachment_ids.filter_map { |media_attachment_id| map[media_attachment_id] }
-    end.take(MEDIA_ATTACHMENTS_LIMIT)
+    end.take(media_attachments_limit)
+  end
+
+  def media_attachments_limit
+    local? ? MEDIA_ATTACHMENTS_LIMIT : REMOTE_MEDIA_ATTACHMENTS_LIMIT
   end
 
   def replies_count

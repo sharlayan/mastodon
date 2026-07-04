@@ -732,7 +732,7 @@ const startServer = async () => {
 
       // Filter based on language:
       // @ts-expect-error
-      if (Array.isArray(req.chosenLanguages) && req.chosenLanguages.indexOf(payload.language) === -1) {
+      if (Array.isArray(req.chosenLanguages) && req.chosenLanguages.indexOf(payload.language || 'und') === -1) {
         // @ts-expect-error
         log.debug(`Message ${payload.id} filtered by language (${payload.language})`);
         return;
@@ -749,6 +749,8 @@ const startServer = async () => {
       const targetAccountIds = [payload.account.id].concat(payload.mentions.map(item => item.id));
       // @ts-expect-error
       const accountDomain = payload.account.acct.split('@')[1];
+      // @ts-expect-error
+      const statusAccountId = payload.account.id;
 
       // TODO: Move this logic out of the message handling loop
       pgPool.connect((err, client, releasePgConnection) => {
@@ -774,7 +776,11 @@ const startServer = async () => {
 
         if (accountDomain) {
           // @ts-expect-error
-          queries.push(client.query('SELECT 1 FROM account_domain_blocks WHERE account_id = $1 AND domain = $2', [req.accountId, accountDomain]));
+          queries.push(client.query(
+            `SELECT 1 FROM account_domain_blocks WHERE account_id = $1 AND domain = $2
+             UNION
+             SELECT 1 FROM account_domain_mutes WHERE account_id = $1 AND domain = $2
+             AND NOT EXISTS (SELECT 1 FROM follows WHERE account_id = $1 AND target_account_id = $3)`, [req.accountId, accountDomain, statusAccountId]));
         }
 
         // @ts-expect-error

@@ -66,6 +66,7 @@ import {
   FavouritedStatuses,
   ReactedStatuses,
   BookmarkedStatuses,
+  ScheduledTimeline,
   BoardAnnouncements,
   FollowedTags,
   LinkTimeline,
@@ -84,6 +85,7 @@ import {
   CollectionsEditor,
   Blocks,
   DomainBlocks,
+  DomainMutes,
   Mutes,
   CustomEmojiMutes,
   ReactionMutes,
@@ -250,6 +252,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/reactions' component={ReactedStatuses} content={children} />
 
             <WrappedRoute path='/bookmarks' component={BookmarkedStatuses} content={children} />
+            <WrappedRoute path={['/scheduled', '/timelines/scheduled']} component={ScheduledTimeline} content={children} />
             <WrappedRoute path='/board_announcements' component={BoardAnnouncements} content={children} />
             <WrappedRoute path='/pinned' component={PinnedStatuses} content={children} />
 
@@ -289,6 +292,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/follow_requests' component={FollowRequests} content={children} />
             <WrappedRoute path='/blocks' component={Blocks} content={children} />
             <WrappedRoute path='/domain_blocks' component={DomainBlocks} content={children} />
+            <WrappedRoute path='/domain_mutes' component={DomainMutes} content={children} />
             <WrappedRoute path='/followed_tags' component={FollowedTags} content={children} />
             <WrappedRoute path='/mutes' component={Mutes} content={children} />
             <WrappedRoute path='/custom_emoji_mutes' component={CustomEmojiMutes} content={children} />

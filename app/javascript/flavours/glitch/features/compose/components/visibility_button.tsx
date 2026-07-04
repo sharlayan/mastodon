@@ -73,6 +73,42 @@ const visibilityOptions = {
   },
 };
 
+export const VisibilityQuoteLabel: FC<{
+  visibility: StatusVisibility;
+  quotePolicy: ApiQuotePolicy;
+}> = ({ visibility, quotePolicy }) => {
+  const intl = useIntl();
+  const visibilityText = intl.formatMessage(visibilityOptions[visibility].text);
+  if (visibility === 'private' || visibility === 'direct') {
+    return <span>{visibilityText}</span>;
+  }
+  if (quotePolicy === 'nobody') {
+    return (
+      <span>
+        {intl.formatMessage(messages.disabled_quote, {
+          visibility: visibilityText,
+        })}
+      </span>
+    );
+  }
+  if (quotePolicy !== 'public') {
+    return (
+      <span>
+        {intl.formatMessage(messages.limited_quote, {
+          visibility: visibilityText,
+        })}
+      </span>
+    );
+  }
+  return (
+    <span>
+      {intl.formatMessage(messages.anyone_quote, {
+        visibility: visibilityText,
+      })}
+    </span>
+  );
+};
+
 const PrivacyModalButton: FC<PrivacyDropdownProps> = ({ disabled = false }) => {
   const intl = useIntl();
 

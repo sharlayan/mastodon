@@ -17,6 +17,14 @@ import { formatTime } from 'flavours/glitch/features/video';
 
 import { autoPlayGif, displayMedia, useBlurhash } from '../initial_state';
 
+const colCount = function(size) {
+  return Math.max(Math.ceil(Math.sqrt(size)), 2);
+};
+
+const rowCount = function(size) {
+  return Math.ceil(size / colCount(size));
+};
+
 class Item extends PureComponent {
 
   static propTypes = {
@@ -30,6 +38,7 @@ class Item extends PureComponent {
     displayWidth: PropTypes.number,
     visible: PropTypes.bool.isRequired,
     autoplay: PropTypes.bool,
+    disableGifvAutoplay: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -57,6 +66,10 @@ class Item extends PureComponent {
   };
 
   getAutoPlay() {
+    if (this.props.disableGifvAutoplay && this.props.attachment.get('type') === 'gifv') {
+      return false;
+    }
+
     return this.props.autoplay || autoPlayGif;
   }
 
@@ -94,14 +107,18 @@ class Item extends PureComponent {
     let badges = [], thumbnail;
 
     let width  = 50;
-    let height = 100;
+    let height = 50;
 
-    if (size === 1) {
+    const cols = colCount(size);
+    const remaining = (-size % cols + cols) % cols;
+    const largeCount = Math.floor(remaining / 3);
+    const mediumCount = remaining % 3;
+
+    if (size === 1 || index < largeCount) {
       width = 100;
-    }
-
-    if (size === 4 || (size === 3 && index > 0)) {
-      height = 50;
+      height = 100;
+    } else if (size === 2 || index < largeCount + mediumCount) {
+      height = 100;
     }
 
     const description = attachment.getIn(['translation', 'description']) || attachment.get('description');
@@ -230,6 +247,7 @@ class MediaGallery extends PureComponent {
     cacheWidth: PropTypes.func,
     visible: PropTypes.bool,
     autoplay: PropTypes.bool,
+    disableGifvAutoplay: PropTypes.bool,
     onToggleVisibility: PropTypes.func,
     matchedFilters: PropTypes.arrayOf(PropTypes.string),
   };
@@ -313,7 +331,7 @@ class MediaGallery extends PureComponent {
   }
 
   render () {
-    const { media, lang, sensitive, letterbox, fullwidth, defaultWidth, autoplay, matchedFilters } = this.props;
+    const { media, lang, sensitive, letterbox, fullwidth, defaultWidth, autoplay, disableGifvAutoplay, matchedFilters } = this.props;
     const { visible } = this.state;
     const size     = media.size;
     const uncached = media.every(attachment => attachment.get('type') === 'unknown');
@@ -329,13 +347,18 @@ class MediaGallery extends PureComponent {
     if (this.isStandaloneEligible()) { // TODO: cropImages setting
       style.aspectRatio = `${this.props.media.getIn([0, 'meta', 'small', 'aspect'])}`;
     } else {
+      const cols = colCount(size);
+      const rows = rowCount(size);
+      style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
       style.aspectRatio = '16 / 9';
     }
 
     if (this.isStandaloneEligible()) {
-      children = <Item standalone autoplay={autoplay} onClick={this.handleClick} attachment={media.get(0)} lang={lang} displayWidth={width} visible={visible} />;
+      children = <Item standalone autoplay={autoplay} disableGifvAutoplay={disableGifvAutoplay} onClick={this.handleClick} attachment={media.get(0)} lang={lang} displayWidth={width} visible={visible} />;
     } else {
-      children = media.map((attachment, i) => <Item key={attachment.get('id')} autoplay={autoplay} onClick={this.handleClick} attachment={attachment} index={i} lang={lang} size={size} letterbox={letterbox} displayWidth={width} visible={visible || uncached} />);
+      children = media.map((attachment, i) => <Item key={attachment.get('id')} autoplay={autoplay} disableGifvAutoplay={disableGifvAutoplay} onClick={this.handleClick} attachment={attachment} index={i} lang={lang} size={size} letterbox={letterbox} displayWidth={width} visible={visible || uncached} />);
     }
 
     return (

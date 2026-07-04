@@ -38,6 +38,7 @@ import { pollsReducer } from './polls';
 import push_notifications from './push_notifications';
 import { reactionMutesReducer } from './reaction_mutes';
 import { relationshipsReducer } from './relationships';
+import scheduled_statuses from './scheduled_statuses';
 import { searchReducer } from './search';
 import { serverReducer } from './server';
 import settings from './settings';
@@ -90,6 +91,7 @@ const reducers = {
   direct_compose,
   suggestions: suggestionsReducer,
   polls: pollsReducer,
+  scheduled_statuses,
   trends,
   markers: markersReducer,
   picture_in_picture: pictureInPictureReducer,

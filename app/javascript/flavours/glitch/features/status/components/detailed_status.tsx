@@ -108,6 +108,13 @@ export const DetailedStatus: React.FC<{
     (state) =>
       state.local_settings.getIn(['media', 'fullwidth'], false) as boolean,
   );
+  const disableGifvAutoplay = useAppSelector(
+    (state) =>
+      state.local_settings.getIn(
+        ['media', 'no_autoplay_gifv'],
+        false,
+      ) as boolean,
+  );
 
   const handleOpenVideo = useCallback(
     (options: VideoModalOptions) => {
@@ -247,6 +254,7 @@ export const DetailedStatus: React.FC<{
           height={300}
           letterbox={letterboxMedia}
           fullwidth={fullwidthMedia}
+          disableGifvAutoplay={disableGifvAutoplay}
           hidden={!expanded}
           onOpenMedia={onOpenMedia}
           visible={showMedia}

@@ -589,6 +589,7 @@ class Status extends ImmutablePureComponent {
                 sensitive={status.get('sensitive')}
                 letterbox={settings.getIn(['media', 'letterbox'])}
                 fullwidth={!rootId && settings.getIn(['media', 'fullwidth'])}
+                disableGifvAutoplay={settings.getIn(['media', 'no_autoplay_gifv'])}
                 hidden={!expanded}
                 onOpenMedia={this.handleOpenMedia}
                 cacheWidth={this.props.cacheMediaWidth}

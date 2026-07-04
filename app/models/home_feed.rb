@@ -6,6 +6,33 @@ class HomeFeed < Feed
     super(:home, account.id)
   end
 
+  def get(limit, max_id = nil, since_id = nil, min_id = nil)
+    limit    = limit.to_i
+    max_id   = max_id.to_i if max_id.present?
+    since_id = since_id.to_i if since_id.present?
+    min_id   = min_id.to_i if min_id.present?
+
+    if min_id.present?
+      redis_min_id = fetch_min_redis_id
+      return from_redis(limit, max_id, since_id, min_id) if redis_min_id && min_id >= redis_min_id
+
+      from_database(limit, max_id, since_id, min_id)
+    else
+      statuses = from_redis(limit, max_id, since_id, min_id)
+      return statuses if statuses.size >= limit
+
+      if since_id.present?
+        redis_min_id = fetch_min_redis_id
+        return statuses if redis_min_id.present? && since_id >= redis_min_id
+      end
+
+      remaining_limit = limit - statuses.size
+
+      max_id = statuses.last.id unless statuses.empty?
+      statuses + from_database(remaining_limit, max_id, since_id, min_id)
+    end
+  end
+
   def async_refresh
     @async_refresh ||= AsyncRefresh.new(redis_regeneration_key)
   end
@@ -28,7 +55,51 @@ class HomeFeed < Feed
     retry if upgrade_redis_key!
   end
 
+  protected
+
+  def from_database(limit, max_id, since_id, min_id)
+    tag_following_ids = TagFollow.where(account: @account).pluck(:tag_id)
+    following_ids     = @account.active_relationships.pluck(:target_account_id)
+    all_account_ids   = following_ids + [@account.id]
+
+    scope = Status.where(account_id: all_account_ids, visibility: %i(public unlisted private))
+      .or(Status.where(account_id: @account.id))
+
+    if following_ids.any?
+      mention_exists = Mention.where(Mention.arel_table[:status_id].eq(Status.arel_table[:id]))
+        .where(account_id: @account.id)
+      scope = scope.or(Status.where(account_id: following_ids).where(mention_exists.arel.exists))
+    end
+
+    if tag_following_ids.any?
+      statuses_tags = Arel::Table.new(:statuses_tags)
+      tag_exists = statuses_tags.where(statuses_tags[:status_id].eq(Status.arel_table[:id]))
+        .where(statuses_tags[:tag_id].in(tag_following_ids))
+        .project(Arel.sql('1'))
+      scope = scope.or(Status.where(visibility: :public).where(tag_exists.exists))
+    end
+
+    statuses = scope
+      .includes(:tags)
+      .to_a_paginated_by_id(limit, min_id: min_id, max_id: max_id, since_id: since_id)
+
+    tag_set = tag_following_ids.to_set
+    statuses.reject! do |status|
+      if status.tags.any? { |tag| tag_set.include?(tag.id) }
+        FeedManager.instance.filter?(:tags, status, @account)
+      else
+        FeedManager.instance.filter?(:home, status, @account)
+      end
+    end
+
+    statuses.sort_by { |status| -status.id }
+  end
+
   private
+
+  def fetch_min_redis_id
+    redis.zrangebyscore(key, '(0', '(+inf', limit: [0, 1]).first&.to_i
+  end
 
   def redis_regeneration_key
     @redis_regeneration_key = "account:#{@account.id}:regeneration"

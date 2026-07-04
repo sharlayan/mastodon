@@ -16,12 +16,14 @@ import { EmbeddedStatusContent } from 'flavours/glitch/features/notifications_v2
 
 const messages = defineMessages({
   cancel: { id: 'reply_indicator.cancel', defaultMessage: 'Cancel' },
+  redraftingScheduled: { id: 'edit_indicator.redrafting_scheduled', defaultMessage: 'Redrafting scheduled post' },
 });
 
 export const EditIndicator = () => {
   const intl = useIntl();
   const dispatch = useDispatch();
   const id = useSelector(state => state.getIn(['compose', 'id']));
+  const scheduledAt = useSelector(state => state.getIn(['compose', 'scheduled_at']));
   const status = useSelector(state => state.getIn(['statuses', id]));
   const account = useSelector(state => state.getIn(['accounts', status?.get('account')]));
 
@@ -29,8 +31,26 @@ export const EditIndicator = () => {
     dispatch(cancelReplyCompose());
   }, [dispatch]);
 
-  if (!status) {
+  const isEditingScheduled = !!(id && scheduledAt && !status);
+
+  if (!status && !isEditingScheduled) {
     return null;
+  }
+
+  if (isEditingScheduled) {
+    return (
+      <div className='edit-indicator'>
+        <div className='edit-indicator__header'>
+          <div className='edit-indicator__display-name'>
+            <FormattedMessage {...messages.redraftingScheduled} />
+          </div>
+
+          <div className='edit-indicator__cancel'>
+            <IconButton title={intl.formatMessage(messages.cancel)} icon='times' iconComponent={CloseIcon} onClick={handleCancelClick} inverted />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

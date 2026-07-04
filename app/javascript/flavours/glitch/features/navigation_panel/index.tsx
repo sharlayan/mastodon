@@ -16,6 +16,7 @@ import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import AlternateEmailIcon from '@/material-icons/400-24px/alternate_email.svg?react';
 import BookmarksActiveIcon from '@/material-icons/400-24px/bookmarks-fill.svg?react';
 import BookmarksIcon from '@/material-icons/400-24px/bookmarks.svg?react';
+import CalendarTodayIcon from '@/material-icons/400-24px/calendar_today.svg?react';
 import CampaignActiveIcon from '@/material-icons/400-24px/campaign-fill.svg?react';
 import CampaignIcon from '@/material-icons/400-24px/campaign.svg?react';
 import CollectionsActiveIcon from '@/material-icons/400-24px/category-fill.svg?react';
@@ -109,6 +110,10 @@ const messages = defineMessages({
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   clips: { id: 'navigation_bar.clips', defaultMessage: 'Clips' },
+  scheduled: {
+    id: 'navigation_bar.scheduled',
+    defaultMessage: 'Scheduled posts',
+  },
   collections: {
     id: 'navigation_bar.collections',
     defaultMessage: 'Collections',
@@ -452,6 +457,16 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
         />
       );
     }
+    itemRenderers.scheduled = (id) => (
+      <ColumnLink
+        transparent
+        to='/scheduled'
+        icon='calendar'
+        iconComponent={CalendarTodayIcon}
+        text={intl.formatMessage(messages.scheduled)}
+        id={id}
+      />
+    );
     if (collectionsEnabled) {
       itemRenderers.collections = (id) => (
         <ColumnLink
