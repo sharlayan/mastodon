@@ -16,6 +16,7 @@ import { preferenceLink } from 'flavours/glitch/utils/backend_links';
 import DeprecatedLocalSettingsPageItem from './deprecated_item';
 import LocalSettingsPageItem from './item';
 import NavigationPanelSettings from './navigation_panel';
+import QuickPreferences from './quick_preferences';
 
 //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
@@ -196,6 +197,9 @@ class LocalSettingsPage extends PureComponent {
           </LocalSettingsPageItem>
         </section>
       </div>
+    ),
+    () => (
+      <QuickPreferences />
     ),
     ({ intl, onChange, settings }) => (
       <div className='glitch local-settings__page compose_box_opts'>

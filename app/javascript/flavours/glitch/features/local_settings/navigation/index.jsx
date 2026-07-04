@@ -11,6 +11,7 @@ import ImageIcon from '@/material-icons/400-24px/image.svg?react';
 import ListIcon from '@/material-icons/400-24px/list.svg?react';
 import ManufacturingIcon from '@/material-icons/400-24px/manufacturing.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings-fill.svg?react';
+import TuneIcon from '@/material-icons/400-24px/tune.svg?react';
 import WarningIcon from '@/material-icons/400-24px/warning.svg?react';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { preferencesLink } from 'flavours/glitch/utils/backend_links';
@@ -18,6 +19,7 @@ import { preferencesLink } from 'flavours/glitch/utils/backend_links';
 import LocalSettingsNavigationItem from './item';
 
 const messages = defineMessages({
+  quick_preferences: { id: 'settings.quick_preferences', defaultMessage: 'Quick preferences' },
   general: {  id: 'settings.general', defaultMessage: 'General' },
   compose: {  id: 'settings.compose_box_opts', defaultMessage: 'Compose box' },
   content_warnings: { id: 'settings.content_warnings', defaultMessage: 'Content Warnings' },
@@ -55,55 +57,63 @@ class LocalSettingsNavigation extends PureComponent {
           active={index === 1}
           index={1}
           onNavigate={onNavigate}
+          icon='sliders'
+          iconComponent={TuneIcon}
+          title={intl.formatMessage(messages.quick_preferences)}
+        />
+        <LocalSettingsNavigationItem
+          active={index === 2}
+          index={2}
+          onNavigate={onNavigate}
           icon='pencil'
           iconComponent={EditIcon}
           title={intl.formatMessage(messages.compose)}
         />
         <LocalSettingsNavigationItem
-          active={index === 2}
-          index={2}
+          active={index === 3}
+          index={3}
           onNavigate={onNavigate}
           icon='warning'
           iconComponent={WarningIcon}
           title={intl.formatMessage(messages.content_warnings)}
         />
         <LocalSettingsNavigationItem
-          active={index === 3}
-          index={3}
+          active={index === 4}
+          index={4}
           onNavigate={onNavigate}
           icon='image'
           iconComponent={ImageIcon}
           title={intl.formatMessage(messages.media)}
         />
         <LocalSettingsNavigationItem
-          active={index === 4}
-          index={4}
+          active={index === 5}
+          index={5}
           onNavigate={onNavigate}
           icon='cloud'
           iconComponent={CloudSyncIcon}
           title={intl.formatMessage(messages.sync)}
         />
         <LocalSettingsNavigationItem
-          active={index === 5}
-          index={5}
+          active={index === 6}
+          index={6}
           onNavigate={onNavigate}
           icon='list'
           iconComponent={ListIcon}
           title={intl.formatMessage(messages.navigation_panel)}
         />
         <LocalSettingsNavigationItem
-          active={index === 6}
+          active={index === 7}
           className='preferences'
           href={preferencesLink}
-          index={6}
+          index={7}
           icon='cog'
           iconComponent={SettingsIcon}
           title={intl.formatMessage(messages.preferences)}
         />
         <LocalSettingsNavigationItem
-          active={index === 7}
+          active={index === 8}
           className='close'
-          index={7}
+          index={8}
           onNavigate={onClose}
           icon='times'
           iconComponent={CloseIcon}
