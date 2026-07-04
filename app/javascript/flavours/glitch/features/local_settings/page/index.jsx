@@ -390,6 +390,15 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
         <LocalSettingsPageItem
           settings={settings}
+          item={['media', 'no_autoplay_gifv']}
+          id='mastodon-settings--media-no_autoplay_gifv'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.media_no_autoplay_gifv' defaultMessage='Do not autoplay attached GIFs' />
+          <span className='hint'><FormattedMessage id='settings.media_no_autoplay_gifv_hint' defaultMessage='Attached GIF media will play on hover or click instead of automatically, even when GIF autoplay is enabled' /></span>
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
           item={['inline_preview_cards']}
           id='mastodon-settings--inline-preview-cards'
           onChange={onChange}

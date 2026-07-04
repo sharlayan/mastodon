@@ -251,6 +251,8 @@
   "settings.media_fullwidth": "최대폭 미디어 미리보기",
   "settings.media_letterbox": "레터박스 미디어",
   "settings.media_letterbox_hint": "확대하고 자르는 대신 축소하고 레터박스에 넣어 이미지를 보여줍니다",
+  "settings.media_no_autoplay_gifv": "첨부된 GIF 자동재생 안함",
+  "settings.media_no_autoplay_gifv_hint": "GIF 자동재생이 켜져 있어도, 첨부된 GIF 미디어는 자동으로 재생되지 않고 마우스를 올리거나 클릭할 때 재생됩니다",
   "settings.media_reveal_behind_cw": "열람주의로 가려진 미디어를 기본으로 펼쳐 두기",
   "settings.mention_reblogger": "부스트 된 게시물에 답글을 달 때 부스트한 사람을 언급(멘션)합니다.",
   "settings.mfm": "MFM (Markup language For Misskey)",

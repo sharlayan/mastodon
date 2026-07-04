@@ -222,6 +222,8 @@
   "settings.navigation_panel.move_up": "上に移動",
   "settings.media_fullwidth": "全幅メディアプレビュー",
   "settings.media_letterbox": "メディアをレターボックス式で表示",
+  "settings.media_no_autoplay_gifv": "添付されたGIFを自動再生しない",
+  "settings.media_no_autoplay_gifv_hint": "GIFの自動再生が有効でも、添付されたGIFメディアは自動再生されず、マウスオーバーまたはクリック時に再生されます",
   "settings.media_reveal_behind_cw": "既定で警告指定されているトゥートの閲覧注意メディアを表示する",
   "settings.mfm": "MFM (Markup language For Misskey)",
   "settings.mfm_enabled": "MFM レンダリングを有効にする",

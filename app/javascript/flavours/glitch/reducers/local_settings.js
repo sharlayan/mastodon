@@ -36,6 +36,7 @@ const initialState = ImmutableMap({
     letterbox        : true,
     fullwidth        : true,
     reveal_behind_cw : false,
+    no_autoplay_gifv : false,
     pop_in_player    : true,
     pop_in_position  : 'right',
   }),

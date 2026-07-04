@@ -238,6 +238,8 @@
   "settings.media_fullwidth": "Full-width media previews",
   "settings.media_letterbox": "Letterbox media",
   "settings.media_letterbox_hint": "Scale down and letterbox media to fill the image containers instead of stretching and cropping them",
+  "settings.media_no_autoplay_gifv": "Do not autoplay attached GIFs",
+  "settings.media_no_autoplay_gifv_hint": "Attached GIF media will play on hover or click instead of automatically, even when GIF autoplay is enabled",
   "settings.media_reveal_behind_cw": "Reveal sensitive media behind a CW by default",
   "settings.mention_reblogger": "Mention booster when replying to a boosted post",
   "settings.navigation_panel": "Navigation panel",
