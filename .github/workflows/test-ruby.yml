@@ -394,6 +394,25 @@ jobs:
       - name: Load database schema
         run: './bin/rails db:create db:schema:load db:seed'
 
+      - name: Install Nori analysis plugin
+        run: |
+          if [ "${{ contains(matrix.search-image, 'opensearch') }}" = "true" ]; then
+            container='${{ job.services.opensearch.id }}'
+            docker exec "$container" bin/opensearch-plugin install --batch analysis-nori
+          else
+            container='${{ job.services.elasticsearch.id }}'
+            docker exec "$container" bin/elasticsearch-plugin install --batch analysis-nori
+          fi
+          docker restart "$container"
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9200/_cluster/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Search cluster did not become healthy after installing Nori plugin' >&2
+          exit 1
+
       - run: bin/rspec --tag search
 
       - name: Archive logs
