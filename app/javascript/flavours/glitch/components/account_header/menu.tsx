@@ -22,6 +22,10 @@ import {
   initDomainBlockModal,
   unblockDomain,
 } from '@/flavours/glitch/actions/domain_blocks';
+import {
+  initDomainMuteModal,
+  unmuteDomain,
+} from '@/flavours/glitch/actions/domain_mutes';
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { initMuteModal } from '@/flavours/glitch/actions/mutes';
 import { initReport } from '@/flavours/glitch/actions/reports';
@@ -52,6 +56,7 @@ import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react'
 import RefreshIcon from '@/material-icons/400-24px/refresh.svg?react';
 import ReportIcon from '@/material-icons/400-24px/report.svg?react';
 import ShareIcon from '@/material-icons/400-24px/share.svg?react';
+import VolumeOffIcon from '@/material-icons/400-24px/volume_off.svg?react';
 
 import { Dropdown } from '../dropdown_menu';
 
@@ -214,6 +219,14 @@ const redesignMessages = defineMessages({
   domainUnblock: {
     id: 'account.menu.unblock_domain',
     defaultMessage: 'Unblock {domain}',
+  },
+  domainMute: {
+    id: 'account.menu.mute_domain',
+    defaultMessage: 'Mute {domain}',
+  },
+  domainUnmute: {
+    id: 'account.menu.unmute_domain',
+    defaultMessage: 'Unmute {domain}',
   },
   report: { id: 'account.menu.report', defaultMessage: 'Report account' },
   hideReblogs: {
@@ -548,6 +561,26 @@ function getMenuItems({
       dangerous: true,
       icon: BlockIcon,
       iconId: 'domain-block',
+    });
+    items.push({
+      text: intl.formatMessage(
+        relationship?.domain_muting
+          ? redesignMessages.domainUnmute
+          : redesignMessages.domainMute,
+        {
+          domain: remoteDomain,
+        },
+      ),
+      action: () => {
+        if (relationship?.domain_muting) {
+          dispatch(unmuteDomain(remoteDomain));
+        } else {
+          dispatch(initDomainMuteModal(account));
+        }
+      },
+      dangerous: true,
+      icon: VolumeOffIcon,
+      iconId: 'domain-mute',
     });
   }
 

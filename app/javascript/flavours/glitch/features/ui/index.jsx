@@ -84,6 +84,7 @@ import {
   CollectionsEditor,
   Blocks,
   DomainBlocks,
+  DomainMutes,
   Mutes,
   CustomEmojiMutes,
   ReactionMutes,
@@ -289,6 +290,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/follow_requests' component={FollowRequests} content={children} />
             <WrappedRoute path='/blocks' component={Blocks} content={children} />
             <WrappedRoute path='/domain_blocks' component={DomainBlocks} content={children} />
+            <WrappedRoute path='/domain_mutes' component={DomainMutes} content={children} />
             <WrappedRoute path='/followed_tags' component={FollowedTags} content={children} />
             <WrappedRoute path='/mutes' component={Mutes} content={children} />
             <WrappedRoute path='/custom_emoji_mutes' component={CustomEmojiMutes} content={children} />

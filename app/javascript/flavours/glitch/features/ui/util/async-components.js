@@ -162,6 +162,10 @@ export function DomainBlocks () {
   return import('../../domain_blocks');
 }
 
+export function DomainMutes () {
+  return import('../../domain_mutes');
+}
+
 export function Mutes () {
   return import('../../mutes');
 }
@@ -184,6 +188,10 @@ export function BlockModal () {
 
 export function DomainBlockModal () {
   return import('../components/domain_block_modal');
+}
+
+export function DomainMuteModal () {
+  return import('../components/domain_mute_modal');
 }
 
 export function ReportModal () {

@@ -20,6 +20,10 @@ const messages = defineMessages({
     id: 'navigation_bar.domain_blocks',
     defaultMessage: 'Blocked domains',
   },
+  domainMutes: {
+    id: 'navigation_bar.domain_mutes',
+    defaultMessage: 'Muted domains',
+  },
   mutes: { id: 'navigation_bar.mutes', defaultMessage: 'Muted users' },
   filters: { id: 'navigation_bar.filters', defaultMessage: 'Muted words' },
   customEmojiMutes: {
@@ -88,6 +92,10 @@ export const MoreLink: React.FC = () => {
       {
         to: '/domain_blocks',
         text: intl.formatMessage(messages.domainBlocks),
+      },
+      {
+        to: '/domain_mutes',
+        text: intl.formatMessage(messages.domainMutes),
       },
       null,
       {
