@@ -9,7 +9,7 @@ import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 
 export const CollapsiblePanel: React.FC<{
   children: React.ReactNode[];
-  to: string;
+  to?: string;
   title: string;
   collapseTitle: string;
   expandTitle: string;
@@ -31,9 +31,13 @@ export const CollapsiblePanel: React.FC<{
   const [expanded, setExpanded] = useState(false);
   const accessibilityId = useId();
 
-  const handleClick = useCallback(() => {
-    setExpanded((value) => !value);
-  }, [setExpanded]);
+  const handleClick = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      setExpanded((value) => !value);
+    },
+    [setExpanded],
+  );
 
   return (
     <li className='navigation-panel__list-panel'>
@@ -41,6 +45,7 @@ export const CollapsiblePanel: React.FC<{
         <ColumnLink
           transparent
           to={to}
+          onClick={to ? undefined : handleClick}
           icon={icon}
           iconComponent={iconComponent}
           activeIconComponent={activeIconComponent}
