@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Timelines::AntennaController < Api::V1::Timelines::BaseController
+  include Api::AntennaFeatureConcern
+
   before_action -> { doorkeeper_authorize! :read, :'read:lists' }
   before_action :require_user!
   before_action :set_antenna

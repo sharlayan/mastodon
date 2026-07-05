@@ -17,5 +17,10 @@ module WellKnown
       expires_in 30.minutes, public: true
       render_with_cache json: {}, serializer: NodeInfo::Serializer, adapter: NodeInfo::Adapter, expires_in: 30.minutes, root: 'nodeinfo'
     end
+
+    def show_two_one
+      expires_in 30.minutes, public: true
+      render_with_cache json: {}, serializer: NodeInfo::SerializerTwoOne, adapter: NodeInfo::AdapterTwoOne, expires_in: 30.minutes, root: 'nodeinfo'
+    end
   end
 end

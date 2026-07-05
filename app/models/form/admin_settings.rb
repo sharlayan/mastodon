@@ -76,6 +76,7 @@ class Form::AdminSettings
     email_footer_text
     board_announcements_enabled
     instance_metadata_enabled
+    antenna_enabled
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -121,6 +122,7 @@ class Form::AdminSettings
     allow_user_custom_css
     board_announcements_enabled
     instance_metadata_enabled
+    antenna_enabled
   ).freeze
 
   UPLOAD_KEYS = %i(

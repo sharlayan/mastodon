@@ -32,7 +32,7 @@ import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../act
 import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
-import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, circlesEnabled, clipsEnabled, collectionsEnabled } from '../../initial_state';
+import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, circlesEnabled, clipsEnabled, collectionsEnabled, antennaEnabled } from '../../initial_state';
 
 import BundleColumnError from './components/bundle_column_error';
 import { NavigationBar } from './components/navigation_bar';
@@ -249,10 +249,10 @@ class SwitchingColumnsArea extends PureComponent {
             {circlesEnabled && <WrappedRoute path='/circles/:id/edit' component={CircleEdit} content={children} />}
             {circlesEnabled && <WrappedRoute path='/circles/:id/members' component={CircleMembers} content={children} />}
 
-            <WrappedRoute path='/antennas/:id/edit' component={AntennaEdit} content={children} />
-            <WrappedRoute path='/antennas/:id' component={AntennaTimeline} content={children} />
-            <WrappedRoute path='/timelines/antenna/:id' component={AntennaTimeline} content={children} />
-            <WrappedRoute path='/antennas' component={Antennas} content={children} />
+            {antennaEnabled && <WrappedRoute path='/antennas/:id/edit' component={AntennaEdit} content={children} />}
+            {antennaEnabled && <WrappedRoute path='/antennas/:id' component={AntennaTimeline} content={children} />}
+            {antennaEnabled && <WrappedRoute path='/timelines/antenna/:id' component={AntennaTimeline} content={children} />}
+            {antennaEnabled && <WrappedRoute path='/antennas' component={Antennas} content={children} />}
             <WrappedRoute path='/notifications' component={Notifications} content={children} exact />
             <WrappedRoute path='/notifications/requests' component={NotificationRequests} content={children} exact />
             <WrappedRoute path='/notifications/requests/:id' component={NotificationRequest} content={children} exact />
