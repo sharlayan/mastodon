@@ -35,6 +35,17 @@ export const ExtensionsPanel: React.FC = () => {
 
   const children = [];
 
+  children.push(
+    <ColumnLink
+      key='scheduled'
+      transparent
+      to='/scheduled'
+      icon='calendar'
+      iconComponent={CalendarTodayIcon}
+      text={intl.formatMessage(messages.scheduled)}
+    />,
+  );
+
   if (clipsEnabled) {
     children.push(
       <ColumnLink
@@ -47,17 +58,6 @@ export const ExtensionsPanel: React.FC = () => {
       />,
     );
   }
-
-  children.push(
-    <ColumnLink
-      key='scheduled'
-      transparent
-      to='/scheduled'
-      icon='calendar'
-      iconComponent={CalendarTodayIcon}
-      text={intl.formatMessage(messages.scheduled)}
-    />,
-  );
 
   if (circlesEnabled) {
     children.push(
@@ -76,6 +76,7 @@ export const ExtensionsPanel: React.FC = () => {
     <CollapsiblePanel
       icon='puzzle-piece'
       iconComponent={ExtensionIcon}
+      showItemIcons
       title={intl.formatMessage(messages.extensions)}
       collapseTitle={intl.formatMessage(messages.collapse)}
       expandTitle={intl.formatMessage(messages.expand)}

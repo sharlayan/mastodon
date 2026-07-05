@@ -72,7 +72,7 @@ import { ListPanel } from './components/list_panel';
 import { MoreLink } from './components/more_link';
 import { SignInBanner } from './components/sign_in_banner';
 import { Trends } from './components/trends';
-import { computeNavigationOrder } from './items';
+import { computeNavigationOrder, isNavigationItemAlwaysVisible } from './items';
 
 const messages = defineMessages({
   home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
@@ -454,7 +454,10 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
 
   const visibleKeys = orderedKeys.filter(
     (key) =>
-      itemRenderers[key] && (isMobileLayout || navHidden?.get(key) !== true),
+      itemRenderers[key] &&
+      (isMobileLayout ||
+        isNavigationItemAlwaysVisible(key) ||
+        navHidden?.get(key) !== true),
   );
 
   const skipLinkKey = composeShown ? undefined : visibleKeys[0];
@@ -509,6 +512,8 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
             <li role='separator' />
 
             <ExtensionsPanel />
+
+            <li role='separator' />
 
             <ListPanel />
 

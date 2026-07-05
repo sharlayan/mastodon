@@ -17,6 +17,7 @@ export const CollapsiblePanel: React.FC<{
   iconComponent: IconProp;
   activeIconComponent?: IconProp;
   loading?: boolean;
+  showItemIcons?: boolean;
 }> = ({
   children,
   to,
@@ -27,6 +28,7 @@ export const CollapsiblePanel: React.FC<{
   collapseTitle,
   expandTitle,
   loading,
+  showItemIcons,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const accessibilityId = useId();
@@ -77,7 +79,11 @@ export const CollapsiblePanel: React.FC<{
 
       {children.length > 0 && expanded && (
         <div
-          className='navigation-panel__list-panel__items'
+          className={
+            showItemIcons
+              ? 'navigation-panel__list-panel__items navigation-panel__list-panel__items--with-icons'
+              : 'navigation-panel__list-panel__items'
+          }
           role='region'
           id={`${accessibilityId}-content`}
           aria-labelledby={`${accessibilityId}-title`}

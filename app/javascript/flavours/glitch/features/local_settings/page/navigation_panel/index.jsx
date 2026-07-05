@@ -32,9 +32,9 @@ import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
 import DragIndicatorIcon from '@/material-icons/400-24px/drag_indicator.svg?react';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
-import { computeNavigationOrder, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
+import { computeNavigationOrder, isNavigationItemAlwaysVisible, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
 
-const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, intl, onToggle, onMove }) => {
+const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, locked, intl, onToggle, onMove }) => {
   const {
     attributes,
     listeners,
@@ -67,7 +67,8 @@ const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, intl, on
         <input
           id={`navigation-panel--${itemKey}`}
           type='checkbox'
-          checked={checked}
+          checked={locked ? true : checked}
+          disabled={locked}
           onChange={() => { onToggle(itemKey); }}
         />
         <FormattedMessage {...navigationPanelItemMessages[itemKey]} />
@@ -97,6 +98,7 @@ NavigationPanelSettingsItem.propTypes = {
   index: PropTypes.number.isRequired,
   length: PropTypes.number.isRequired,
   checked: PropTypes.bool.isRequired,
+  locked: PropTypes.bool,
   intl: PropTypes.object.isRequired,
   onToggle: PropTypes.func.isRequired,
   onMove: PropTypes.func.isRequired,
@@ -129,6 +131,10 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   };
 
   const toggle = (key) => {
+    if (isNavigationItemAlwaysVisible(key)) {
+      return;
+    }
+
     onChange(['navigation_panel', 'hidden'], hidden.set(key, hidden.get(key) !== true));
   };
 
@@ -170,6 +176,7 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
                 index={index}
                 length={order.length}
                 checked={hidden.get(key) !== true}
+                locked={isNavigationItemAlwaysVisible(key)}
                 intl={intl}
                 onToggle={toggle}
                 onMove={move}

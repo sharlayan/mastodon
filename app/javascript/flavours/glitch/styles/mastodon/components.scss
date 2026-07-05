@@ -3913,6 +3913,14 @@ a.account__display-name {
       .icon {
         display: none;
       }
+
+      &--with-icons {
+        padding-inline-start: 0;
+
+        .icon {
+          display: inline-flex;
+        }
+      }
     }
   }
 

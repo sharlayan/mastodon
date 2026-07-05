@@ -14,6 +14,12 @@ export const NAVIGATION_PANEL_ITEMS = [
 
 export type NavigationPanelItem = (typeof NAVIGATION_PANEL_ITEMS)[number];
 
+export const NAVIGATION_PANEL_ALWAYS_VISIBLE_ITEMS: readonly NavigationPanelItem[] =
+  ['board_announcements'];
+
+export const isNavigationItemAlwaysVisible = (key: string): boolean =>
+  (NAVIGATION_PANEL_ALWAYS_VISIBLE_ITEMS as readonly string[]).includes(key);
+
 export const navigationPanelItemMessages: Record<
   NavigationPanelItem,
   { id: string; defaultMessage: string }
