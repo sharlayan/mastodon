@@ -76,8 +76,18 @@ class Admin::SystemCheck::ElasticsearchCheck < Admin::SystemCheck::BaseCheck
     Chewy.client.info['version']['minimum_wire_compatibility_version']
   end
 
+  def distribution
+    @distribution ||= Chewy.client.info['version']['distribution']
+  rescue Faraday::ConnectionFailed, Elastic::Transport::Transport::Error
+    nil
+  end
+
+  def opensearch?
+    distribution == 'opensearch'
+  end
+
   def required_version
-    '7.x'
+    opensearch? ? '2.x' : '7.x'
   end
 
   def compatible_version?
