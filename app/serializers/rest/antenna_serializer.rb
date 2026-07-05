@@ -42,10 +42,10 @@ class REST::AntennaSerializer < ActiveModel::Serializer
   end
 
   def tags
-    object.antenna_tags.includes_only.pluck(:tag_id).map(&:to_s)
+    object.tags.merge(AntennaTag.includes_only).pluck(:name)
   end
 
   def exclude_tags
-    object.exclude_tags.map(&:to_s)
+    Tag.where(id: object.exclude_tags).pluck(:name)
   end
 end

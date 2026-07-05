@@ -515,4 +515,18 @@ html.content-font-size__xx_large {
   &__form + .antenna-editor__check {
     margin-top: 10px;
   }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    bottom: 0;
+    background: var(--color-bg-primary);
+  }
+
+  &__unsaved {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
 }

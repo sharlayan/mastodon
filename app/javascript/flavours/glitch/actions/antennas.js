@@ -61,6 +61,40 @@ const refreshAfter = (id, request) => (dispatch) =>
   request.then(() => api().get(`/api/v1/antennas/${id}`))
     .then(({ data }) => dispatch({ type: ANTENNA_FETCH_SUCCESS, antenna: data }));
 
+export const saveAntenna = (id, { main, add, remove }) => (dispatch) => {
+  const chipCall = (kind, values, method) => {
+    if (!values || values.length === 0) return null;
+    const path = `/api/v1/antennas/${id}/${kind}`;
+    if (kind === 'accounts' || kind === 'exclude_accounts') {
+      return method === 'post'
+        ? api().post(path, { account_ids: values })
+        : api().delete(path, { data: { account_ids: values } });
+    }
+    const key = (kind === 'tags' || kind === 'exclude_tags') ? 'tags' : 'domains';
+    return method === 'post'
+      ? api().post(path, { [key]: values })
+      : api().delete(path, { data: { [key]: values } });
+  };
+
+  return api().put(`/api/v1/antennas/${id}`, main)
+    .then(() => Promise.all([
+      chipCall('domains', add.domains, 'post'),
+      chipCall('domains', remove.domains, 'delete'),
+      chipCall('exclude_domains', add.exclude_domains, 'post'),
+      chipCall('exclude_domains', remove.exclude_domains, 'delete'),
+      chipCall('tags', add.tags, 'post'),
+      chipCall('tags', remove.tags, 'delete'),
+      chipCall('exclude_tags', add.exclude_tags, 'post'),
+      chipCall('exclude_tags', remove.exclude_tags, 'delete'),
+      chipCall('accounts', add.accounts, 'post'),
+      chipCall('accounts', remove.accounts, 'delete'),
+      chipCall('exclude_accounts', add.exclude_accounts, 'post'),
+      chipCall('exclude_accounts', remove.exclude_accounts, 'delete'),
+    ].filter(Boolean)))
+    .then(() => api().get(`/api/v1/antennas/${id}`))
+    .then(({ data }) => dispatch({ type: ANTENNA_UPDATE_SUCCESS, antenna: data }));
+};
+
 export const addAntennaDomains = (id, domains, exclude = false) => (dispatch) =>
   dispatch(refreshAfter(id, api().post(`/api/v1/antennas/${id}/${exclude ? 'exclude_domains' : 'domains'}`, { domains })));
 
