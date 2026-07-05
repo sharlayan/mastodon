@@ -64,6 +64,7 @@ defaults: &defaults
   allow_user_custom_css: false
   rate_limit_bypass_enabled: false
   board_announcements_enabled: true
+  antenna_enabled: true
 
 development:
   <<: *defaults

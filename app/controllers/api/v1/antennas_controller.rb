@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::AntennasController < Api::BaseController
+  include Api::AntennaFeatureConcern
+
   before_action -> { doorkeeper_authorize! :read, :'read:lists' }, only: [:index, :show]
   before_action -> { doorkeeper_authorize! :write, :'write:lists' }, except: [:index, :show]
 

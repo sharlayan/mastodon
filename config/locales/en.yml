@@ -1137,6 +1137,10 @@ en:
         title: Reactions
         enabled: Enable emoji reactions
         enabled_hint: Allow users to react to posts with emoji. When disabled, the reaction button is hidden and new reactions are rejected. Existing reactions remain visible.
+      antenna:
+        title: Antennas
+        enabled: Enable antennas
+        enabled_hint: Allow users to create antennas that automatically collect posts matching conditions (accounts, domains, tags, keywords). When disabled, the antenna page, navigation link and API are unavailable.
       instance_metadata:
         title: Instance Information Bar
         enabled: Enable instance information bar and metadata collection

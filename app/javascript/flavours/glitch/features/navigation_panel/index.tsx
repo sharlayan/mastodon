@@ -51,6 +51,7 @@ import { getNavigationSkipLinkId } from 'flavours/glitch/features/ui/components/
 import { useBreakpoint } from 'flavours/glitch/features/ui/hooks/useBreakpoint';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import {
+  antennaEnabled,
   boardAnnouncementsEnabled,
   localLiveFeedAccess,
   remoteLiveFeedAccess,
@@ -516,7 +517,7 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
 
             <ListPanel />
 
-            <AntennaPanel />
+            {antennaEnabled && <AntennaPanel />}
 
             <FollowedTagsPanel />
 
