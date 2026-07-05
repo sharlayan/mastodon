@@ -16,7 +16,7 @@ class ActivityPub::VerifyQuoteService < BaseService
     fetch_quoted_post_if_needed!(fetchable_quoted_uri, prefetched_body: prefetched_quoted_object)
 
     # Misskey has no quote limit...
-    if quote.legacy? && quote.from_misskey? && quote.quoted_status_id.present?
+    if quote.legacy? && quote.quoted_status_id.present? && misskey_source?
       quote.accept!
       return
     end
@@ -43,6 +43,15 @@ class ActivityPub::VerifyQuoteService < BaseService
   end
 
   private
+
+  def misskey_source?
+    return true if @quote.from_misskey?
+
+    domain = @quote.account&.domain
+    return false if domain.blank?
+
+    InstanceMetadata.for_domain(domain).misskey_based?
+  end
 
   # FEP-044f defines rules that don't require the approval flow
   def fast_track_approval!
