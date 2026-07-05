@@ -26,6 +26,7 @@
             wrapper: :with_label,
             label: t('admin.settings.antenna.enabled'),
             hint: t('admin.settings.antenna.enabled_hint'),
+            disabled: roleplay_mode?,
             sharlayan_only: true
 
 %h2= t('admin.settings.instance_metadata.title')

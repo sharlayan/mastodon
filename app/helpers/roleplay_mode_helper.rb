@@ -2,6 +2,7 @@
 
 module RoleplayModeHelper
   ROLEPLAY_FORCED_SETTINGS = {
+    antenna_enabled: false,
     force_local_only: true,
     local_live_feed_access: 'authenticated',
     remote_live_feed_access: 'authenticated',
