@@ -16,6 +16,9 @@ class FeedInsertWorker
       when :list
         @list     = List.find(id)
         @follower = @list.account
+      when :antenna
+        @antenna  = Antenna.find(id)
+        @follower = @antenna.account
       when :direct
         @account  = Account.find(id)
       end
@@ -50,6 +53,8 @@ class FeedInsertWorker
       FeedManager.instance.filter(:tags, @status, @follower)
     when :list
       FeedManager.instance.filter(:list, @status, @list)
+    when :antenna
+      FeedManager.instance.filter(:antenna, @status, @antenna)
     when :direct
       FeedManager.instance.filter(:direct, @status, @account)
     end
@@ -68,6 +73,8 @@ class FeedInsertWorker
       FeedManager.instance.push_to_home(@follower, @status, update: update?)
     when :list
       FeedManager.instance.push_to_list(@list, @status, update: update?)
+    when :antenna
+      FeedManager.instance.push_to_antenna(@antenna, @status, update: update?)
     when :direct
       FeedManager.instance.push_to_direct(@account, @status, update: update?)
     end
@@ -79,6 +86,8 @@ class FeedInsertWorker
       FeedManager.instance.unpush_from_home(@follower, @status, update: true)
     when :list
       FeedManager.instance.unpush_from_list(@list, @status, update: true)
+    when :antenna
+      FeedManager.instance.unpush_from_antenna(@antenna, @status, update: true)
     when :direct
       FeedManager.instance.unpush_from_direct(@account, @status, update: true)
     end

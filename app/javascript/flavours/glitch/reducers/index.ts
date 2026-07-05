@@ -9,6 +9,7 @@ import { accountsFamiliarFollowersReducer } from './accounts_familiar_followers'
 import { accountsMapReducer } from './accounts_map';
 import { alertsReducer } from './alerts';
 import announcements from './announcements';
+import antennas from './antennas';
 import { boardAnnouncementsReducer } from './board_announcements';
 import { circlesReducer } from './circles';
 import { clipsReducer } from './clips';
@@ -83,6 +84,7 @@ const reducers = {
   lists: listsReducer,
   clips: clipsReducer,
   circles: circlesReducer,
+  antennas,
   followedTags: followedTagsReducer,
   custom_emoji_mutes: customEmojiMutesReducer,
   reaction_mutes: reactionMutesReducer,

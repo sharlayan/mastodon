@@ -25,6 +25,7 @@ import {
   fillPublicTimelineGaps,
   fillCommunityTimelineGaps,
   fillListTimelineGaps,
+  fillAntennaTimelineGaps,
 } from './timelines';
 
 /**
@@ -260,4 +261,14 @@ export const connectListStream = listId =>
   connectTimelineStream(`list:${listId}`, 'list', { list: listId }, {
     // @ts-expect-error
     fillGaps: () => fillListTimelineGaps(listId)
+  });
+
+/**
+ * @param {string} antennaId
+ * @returns {function(): void}
+ */
+export const connectAntennaStream = antennaId =>
+  connectTimelineStream(`antenna:${antennaId}`, 'antenna', { antenna: antennaId }, {
+    // @ts-expect-error
+    fillGaps: () => fillAntennaTimelineGaps(antennaId)
   });

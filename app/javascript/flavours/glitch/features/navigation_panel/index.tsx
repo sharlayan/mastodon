@@ -34,6 +34,7 @@ import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react
 import PersonAddActiveIcon from '@/material-icons/400-24px/person_add-fill.svg?react';
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
 import PublicIcon from '@/material-icons/400-24px/public.svg?react';
+import RadarIcon from '@/material-icons/400-24px/radar.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
 import StarActiveIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import StarIcon from '@/material-icons/400-24px/star.svg?react';
@@ -108,6 +109,7 @@ const messages = defineMessages({
   circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
+  antennas: { id: 'navigation_bar.antennas', defaultMessage: 'Antennas' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   clips: { id: 'navigation_bar.clips', defaultMessage: 'Clips' },
   scheduled: {
@@ -578,6 +580,16 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
             <li role='separator' />
 
             <ListPanel />
+
+            <li>
+              <ColumnLink
+                transparent
+                to='/antennas'
+                icon='radar'
+                iconComponent={RadarIcon}
+                text={intl.formatMessage(messages.antennas)}
+              />
+            </li>
 
             <FollowedTagsPanel />
 

@@ -78,6 +78,7 @@ namespace :api, format: false do
       resource :link, only: :show, controller: :link
       resources :tag, only: :show
       resources :list, only: :show
+      resources :antenna, only: :show
     end
 
     with_options to: 'streaming#index' do
@@ -271,6 +272,8 @@ namespace :api, format: false do
         resources :lists, only: :index
         resources :circles, only: :index
         resources :clips, only: :index
+        resources :antennas, only: :index
+        resources :exclude_antennas, only: :index
         resources :identity_proofs, only: :index
         resources :featured_tags, only: :index
         resources :endorsements, only: :index
@@ -322,6 +325,17 @@ namespace :api, format: false do
 
     resources :clips, only: [:index, :create, :show, :update, :destroy] do
       resources :statuses, only: [:index, :create, :destroy], module: :clips
+    end
+
+    resources :antennas, only: [:index, :create, :show, :update, :destroy] do
+      scope module: :antennas do
+        resource :accounts, only: [:show, :create, :destroy]
+        resource :exclude_accounts, only: [:show, :create, :destroy]
+        resource :domains, only: [:show, :create, :destroy]
+        resource :exclude_domains, only: [:show, :create, :destroy]
+        resource :tags, only: [:show, :create, :destroy]
+        resource :exclude_tags, only: [:show, :create, :destroy]
+      end
     end
 
     namespace :featured_tags do

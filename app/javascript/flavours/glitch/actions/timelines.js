@@ -175,6 +175,7 @@ export const expandAccountFeaturedTimeline = (accountId, { tagged } = {}) => exp
 export const expandAccountMediaTimeline    = (accountId, { maxId, withReplies } = {}) => expandTimeline(`account:${accountId}:media${withReplies ? ':with_replies' : ''}`, `/api/v1/accounts/${accountId}/statuses`, { max_id: maxId, only_media: true, limit: 40, exclude_replies: !withReplies });
 export const expandListTimeline            = (id, { maxId } = {}) => expandTimeline(`list:${id}`, `/api/v1/timelines/list/${id}`, { max_id: maxId });
 export const expandClipTimeline            = (id, { maxId } = {}) => expandTimeline(`clip:${id}`, `/api/v1/clips/${id}/statuses`, { max_id: maxId });
+export const expandAntennaTimeline         = (id, { maxId } = {}) => expandTimeline(`antenna:${id}`, `/api/v1/timelines/antenna/${id}`, { max_id: maxId });
 export const expandLinkTimeline            = (url, { maxId } = {}) => expandTimeline(`link:${url}`, `/api/v1/timelines/link`, { url, max_id: maxId });
 export const expandHashtagTimeline         = (hashtag, { maxId, tags, local } = {}) => {
   return expandTimeline(`hashtag:${hashtag}${local ? ':local' : ''}`, `/api/v1/timelines/tag/${hashtag}`, {
@@ -190,6 +191,7 @@ export const fillHomeTimelineGaps      = () => fillTimelineGaps('home', '/api/v1
 export const fillPublicTimelineGaps    = ({ onlyMedia, onlyRemote, allowLocalOnly } = {}) => fillTimelineGaps(`public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { remote: !!onlyRemote, only_media: !!onlyMedia, allow_local_only: !!allowLocalOnly });
 export const fillCommunityTimelineGaps = ({ onlyMedia } = {}) => fillTimelineGaps(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, only_media: !!onlyMedia });
 export const fillListTimelineGaps      = (id) => fillTimelineGaps(`list:${id}`, `/api/v1/timelines/list/${id}`, {});
+export const fillAntennaTimelineGaps   = (id) => fillTimelineGaps(`antenna:${id}`, `/api/v1/timelines/antenna/${id}`, {});
 
 export function expandTimelineRequest(timeline, isLoadingMore) {
   return {

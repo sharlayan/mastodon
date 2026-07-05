@@ -58,6 +58,8 @@ class FeedManager
       filter_from_direct?(status, receiver.id) ? :filter : nil
     when :tags
       filter_from_tags?(status, receiver.id, build_crutches(receiver.id, [status])) ? :filter : nil
+    when :antenna
+      filter_from_tags?(status, receiver.account_id, build_crutches(receiver.account_id, [status])) ? :filter : nil
     end
   end
 
@@ -120,6 +122,22 @@ class FeedManager
     return false unless remove_from_feed(:list, list.id, status, aggregate_reblogs: list.account.user&.aggregates_reblogs?)
 
     redis.publish("timeline:list:#{list.id}", { event: :delete, payload: status.id.to_s }.to_json) unless update
+    true
+  end
+
+  def push_to_antenna(antenna, status, update: false)
+    return false unless antenna.account.user&.signed_in_recently?
+    return false unless add_to_feed(:antenna, antenna.id, status, aggregate_reblogs: antenna.account.user&.aggregates_reblogs?)
+
+    trim(:antenna, antenna.id)
+    PushUpdateWorker.perform_async(antenna.account_id, status.id, "timeline:antenna:#{antenna.id}", { 'update' => update }) if push_update_required?("timeline:antenna:#{antenna.id}")
+    true
+  end
+
+  def unpush_from_antenna(antenna, status, update: false)
+    return false unless remove_from_feed(:antenna, antenna.id, status, aggregate_reblogs: antenna.account.user&.aggregates_reblogs?)
+
+    redis.publish("timeline:antenna:#{antenna.id}", { event: :delete, payload: status.id.to_s }.to_json) unless update
     true
   end
 
