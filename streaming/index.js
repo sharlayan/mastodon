@@ -113,6 +113,7 @@ const CHANNEL_NAMES = [
   'user',
   'user:notification',
   'list',
+  'antenna',
   'direct',
   'public',
   'public:media',
@@ -454,6 +455,8 @@ const startServer = async () => {
       return 'direct';
     case '/api/v1/streaming/list':
       return 'list';
+    case '/api/v1/streaming/antenna':
+      return 'antenna';
     default:
       return undefined;
     }
@@ -617,6 +620,21 @@ const startServer = async () => {
 
     if (result.rows.length === 0) {
       throw new AuthenticationError('List not found');
+    }
+  };
+
+  /**
+   * @param {string} antennaId
+   * @param {Request} req
+   * @returns {Promise.<void>}
+   */
+  const authorizeAntennaAccess = async (antennaId, req) => {
+    const { accountId } = req;
+
+    const result = await pgPool.query('SELECT id, account_id FROM antennas WHERE id = $1 AND account_id = $2 LIMIT 1', [antennaId, accountId]);
+
+    if (result.rows.length === 0) {
+      throw new AuthenticationError('Antenna not found');
     }
   };
 
@@ -1066,6 +1084,7 @@ const startServer = async () => {
    * @typedef StreamParams
    * @property {string} [tag]
    * @property {string} [list]
+   * @property {string} [antenna]
    * @property {string} [only_media]
    */
 
@@ -1186,6 +1205,22 @@ const startServer = async () => {
       });
 
       break;
+    case 'antenna':
+      if (!params.antenna) {
+        reject(new RequestError('Missing antenna id parameter'));
+        return;
+      }
+
+      authorizeAntennaAccess(params.antenna, req).then(() => {
+        resolve({
+          channelIds: [`timeline:antenna:${params.antenna}`],
+          options: { needsFiltering: false, allowLocalOnly: true },
+        });
+      }).catch(() => {
+        reject(new AuthenticationError('Not authorized to stream this antenna'));
+      });
+
+      break;
     default:
       reject(new RequestError('Unknown stream type'));
     }
@@ -1199,6 +1234,8 @@ const startServer = async () => {
   const streamNameFromChannelName = (channelName, params) => {
     if (channelName === 'list' && params.list) {
       return [channelName, params.list];
+    } else if (channelName === 'antenna' && params.antenna) {
+      return [channelName, params.antenna];
     } else if (['hashtag', 'hashtag:local'].includes(channelName) && params.tag) {
       return [channelName, params.tag];
     } else {

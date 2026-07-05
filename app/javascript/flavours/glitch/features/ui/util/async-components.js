@@ -38,6 +38,18 @@ export function Lists () {
   return import('../../lists');
 }
 
+export function Antennas () {
+  return import('../../antennas');
+}
+
+export function AntennaEdit () {
+  return import('../../antennas/edit');
+}
+
+export function AntennaTimeline () {
+  return import('../../antenna_timeline');
+}
+
 export function DirectTimeline() {
   return import('../../direct_timeline');
 }

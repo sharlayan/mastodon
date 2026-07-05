@@ -1723,6 +1723,14 @@ ja:
   link_preview:
     potentially_sensitive_content:
       hide_button: 非表示
+  antennas:
+    errors:
+      limit: アンテナの上限数に達しています
+      too_many_accounts: このアンテナのアカウント上限数に達しています
+      too_many_domains: このアンテナのドメイン上限数に達しています
+      too_many_keywords: このアンテナのキーワード上限数に達しています
+      too_many_tags: このアンテナのハッシュタグ上限数に達しています
+      too_short_keyword: キーワードは%{count}文字以上である必要があります
   circles:
     errors:
       limit: サークルの上限数に達しています

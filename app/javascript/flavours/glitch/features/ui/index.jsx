@@ -79,6 +79,9 @@ import {
   Circles,
   CircleEdit,
   CircleMembers,
+  Antennas,
+  AntennaEdit,
+  AntennaTimeline,
   Collections,
   CollectionDetail,
   CollectionsEditor,
@@ -243,6 +246,11 @@ class SwitchingColumnsArea extends PureComponent {
             {circlesEnabled && <WrappedRoute path='/circles/new' component={CircleEdit} content={children} />}
             {circlesEnabled && <WrappedRoute path='/circles/:id/edit' component={CircleEdit} content={children} />}
             {circlesEnabled && <WrappedRoute path='/circles/:id/members' component={CircleMembers} content={children} />}
+
+            <WrappedRoute path='/antennas/:id/edit' component={AntennaEdit} content={children} />
+            <WrappedRoute path='/antennas/:id' component={AntennaTimeline} content={children} />
+            <WrappedRoute path='/timelines/antenna/:id' component={AntennaTimeline} content={children} />
+            <WrappedRoute path='/antennas' component={Antennas} content={children} />
             <WrappedRoute path='/notifications' component={Notifications} content={children} exact />
             <WrappedRoute path='/notifications/requests' component={NotificationRequests} content={children} exact />
             <WrappedRoute path='/notifications/requests/:id' component={NotificationRequest} content={children} exact />

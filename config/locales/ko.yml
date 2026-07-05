@@ -1921,6 +1921,14 @@ ko:
       confirm_visit: 정말로 이 링크를 여시겠습니까?
       hide_button: 숨기기
       label: 민감한 컨텐츠일 수 있음
+  antennas:
+    errors:
+      limit: 안테나 최대 개수를 초과합니다
+      too_many_accounts: 이 안테나의 계정 최대 개수를 초과합니다
+      too_many_domains: 이 안테나의 도메인 최대 개수를 초과합니다
+      too_many_keywords: 이 안테나의 키워드 최대 개수를 초과합니다
+      too_many_tags: 이 안테나의 해시태그 최대 개수를 초과합니다
+      too_short_keyword: 키워드는 최소 %{count}자 이상이어야 합니다
   circles:
     errors:
       limit: 서클 최대 개수를 초과합니다
