@@ -9,6 +9,7 @@ module TestEndpoints
     /.well-known/host-meta
     /.well-known/nodeinfo
     /nodeinfo/2.0
+    /nodeinfo/2.1
     /manifest
     /css/custom-1a2s3d4f.css
     /custom.css
