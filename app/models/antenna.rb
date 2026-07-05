@@ -24,6 +24,7 @@
 #
 class Antenna < ApplicationRecord
   include Paginable
+  include Redisable
 
   ANTENNAS_PER_ACCOUNT_LIMIT = 30
   ACCOUNTS_PER_ANTENNA_LIMIT = 100
@@ -89,6 +90,10 @@ class Antenna < ApplicationRecord
 
   def exclude_tags
     self[:exclude_tags] || []
+  end
+
+  def last_status_id
+    redis.zrevrange(FeedManager.instance.key(:antenna, id), 0, 0).first
   end
 
   def configured?

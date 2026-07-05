@@ -18,7 +18,7 @@ export const ANTENNA_DELETE_FAIL    = 'ANTENNA_DELETE_FAIL';
 export const fetchAntennas = () => (dispatch) => {
   dispatch({ type: ANTENNAS_FETCH_REQUEST });
 
-  api().get('/api/v1/antennas')
+  return api().get('/api/v1/antennas')
     .then(({ data }) => dispatch({ type: ANTENNAS_FETCH_SUCCESS, antennas: data }))
     .catch(err => dispatch({ type: ANTENNAS_FETCH_FAIL, error: err }));
 };

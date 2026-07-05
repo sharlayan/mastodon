@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 class REST::AntennaSerializer < ActiveModel::Serializer
-  attributes :id, :title, :available, :with_media_only, :ignore_reblog,
+  attributes :id, :title, :last_status_id,
+             :available, :with_media_only, :ignore_reblog,
              :any_keywords, :any_accounts, :any_domains, :any_tags,
              :keywords, :exclude_keywords,
              :accounts, :exclude_accounts,
@@ -10,6 +11,10 @@ class REST::AntennaSerializer < ActiveModel::Serializer
 
   def id
     object.id.to_s
+  end
+
+  def last_status_id
+    object.last_status_id
   end
 
   def keywords
