@@ -16,7 +16,6 @@ import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import AlternateEmailIcon from '@/material-icons/400-24px/alternate_email.svg?react';
 import BookmarksActiveIcon from '@/material-icons/400-24px/bookmarks-fill.svg?react';
 import BookmarksIcon from '@/material-icons/400-24px/bookmarks.svg?react';
-import CalendarTodayIcon from '@/material-icons/400-24px/calendar_today.svg?react';
 import CampaignActiveIcon from '@/material-icons/400-24px/campaign-fill.svg?react';
 import CampaignIcon from '@/material-icons/400-24px/campaign.svg?react';
 import CollectionsActiveIcon from '@/material-icons/400-24px/category-fill.svg?react';
@@ -28,7 +27,6 @@ import InfoIcon from '@/material-icons/400-24px/info.svg?react';
 import AdministrationIcon from '@/material-icons/400-24px/manufacturing.svg?react';
 import MoodActiveIcon from '@/material-icons/400-24px/mood-fill.svg?react';
 import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
-import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
 import NotificationsActiveIcon from '@/material-icons/400-24px/notifications-fill.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddActiveIcon from '@/material-icons/400-24px/person_add-fill.svg?react';
@@ -54,8 +52,6 @@ import { useBreakpoint } from 'flavours/glitch/features/ui/hooks/useBreakpoint';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import {
   boardAnnouncementsEnabled,
-  circlesEnabled,
-  clipsEnabled,
   localLiveFeedAccess,
   remoteLiveFeedAccess,
   trendsEnabled,
@@ -69,6 +65,7 @@ import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 import { AnnualReportNavItem } from '../annual_report/nav_item';
 
 import { DisabledAccountBanner } from './components/disabled_account_banner';
+import { ExtensionsPanel } from './components/extensions_panel';
 import { FollowedTagsPanel } from './components/followed_tags_panel';
 import { ListPanel } from './components/list_panel';
 import { MoreLink } from './components/more_link';
@@ -95,15 +92,9 @@ const messages = defineMessages({
       'Label for the main navigation; should not contain the word "navigation".',
   },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
-  circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
-  clips: { id: 'navigation_bar.clips', defaultMessage: 'Clips' },
-  scheduled: {
-    id: 'navigation_bar.scheduled',
-    defaultMessage: 'Scheduled posts',
-  },
   collections: {
     id: 'navigation_bar.collections',
     defaultMessage: 'Collections',
@@ -431,28 +422,6 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
         id={id}
       />
     );
-    if (clipsEnabled) {
-      itemRenderers.clips = (id) => (
-        <ColumnLink
-          transparent
-          to='/clips'
-          icon='note-stack-add'
-          iconComponent={NoteStackAddIcon}
-          text={intl.formatMessage(messages.clips)}
-          id={id}
-        />
-      );
-    }
-    itemRenderers.scheduled = (id) => (
-      <ColumnLink
-        transparent
-        to='/scheduled'
-        icon='calendar'
-        iconComponent={CalendarTodayIcon}
-        text={intl.formatMessage(messages.scheduled)}
-        id={id}
-      />
-    );
     itemRenderers.collections = (id) => (
       <ColumnLink
         transparent
@@ -474,18 +443,6 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
         id={id}
       />
     );
-    if (circlesEnabled) {
-      itemRenderers.circles = (id) => (
-        <ColumnLink
-          transparent
-          to='/circles'
-          icon='group'
-          iconComponent={PeopleIcon}
-          text={intl.formatMessage(messages.circles)}
-          id={id}
-        />
-      );
-    }
     if (boardAnnouncementsEnabled) {
       itemRenderers.board_announcements = () => <BoardAnnouncementsLink />;
     }
@@ -548,6 +505,8 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
             </li>
 
             <li role='separator' />
+
+            <ExtensionsPanel />
 
             <ListPanel />
 
