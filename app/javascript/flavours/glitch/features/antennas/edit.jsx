@@ -70,7 +70,7 @@ ChipList.propTypes = {
 const toArray = value => (value && value.toJS ? value.toJS() : (value || []));
 const identity = value => value;
 
-const BOOL_FIELDS = ['available', 'with_media_only', 'ignore_reblog', 'any_keywords', 'any_domains', 'any_tags', 'any_accounts'];
+const BOOL_FIELDS = ['available', 'with_media_only', 'ignore_reblog'];
 
 const buildInitialState = (antenna) => ({
   title: antenna.get('title') || '',
@@ -158,11 +158,17 @@ const AntennaEdit = ({ params, multiColumn }) => {
   const handleSave = useCallback(() => {
     if (!form || !original || saving) return;
 
+    const keywords = form.keywords.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+
     const main = {
       title: form.title.trim(),
-      keywords: form.keywords.split('\n').map(s => s.trim()).filter(s => s.length > 0),
+      keywords,
       exclude_keywords: form.excludeKeywords.split('\n').map(s => s.trim()).filter(s => s.length > 0),
       ...form.bools,
+      any_keywords: keywords.length === 0,
+      any_domains: form.domains.length === 0,
+      any_tags: form.tags.length === 0,
+      any_accounts: form.accounts.length === 0,
     };
 
     const domains = diffStrings(form.domains, original.domains);
@@ -224,7 +230,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
           <section className='antenna-editor__section'>
             <h4><FormattedMessage id='antennas.keywords' defaultMessage='Keywords (one per line)' /></h4>
             <textarea className='setting-text' rows={4} value={form.keywords} onChange={e => { update({ keywords: e.target.value }); }} />
-            <label className='antenna-editor__check'><input type='checkbox' checked={bool('any_keywords')} onChange={handleToggle('any_keywords')} /> <FormattedMessage id='antennas.any_keywords' defaultMessage='Match any keyword (ignore this condition when empty)' /></label>
+            <p className='antenna-editor__hint'><FormattedMessage id='antennas.keywords_hint' defaultMessage='When empty, this condition is ignored.' /></p>
           </section>
 
           <section className='antenna-editor__section'>
@@ -240,9 +246,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
             onAdd={addChip('domains')}
             onRemove={removeChip('domains')}
             placeholder='example.com'
-          >
-            <label className='antenna-editor__check'><input type='checkbox' checked={bool('any_domains')} onChange={handleToggle('any_domains')} /> <FormattedMessage id='antennas.any_domains' defaultMessage='Match any domain' /></label>
-          </ChipList>
+          />
 
           <ChipList
             label={<FormattedMessage id='antennas.exclude_domains' defaultMessage='Excluded domains' />}
@@ -262,9 +266,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
             onAdd={addChip('tags')}
             onRemove={removeChip('tags')}
             placeholder='#art'
-          >
-            <label className='antenna-editor__check'><input type='checkbox' checked={bool('any_tags')} onChange={handleToggle('any_tags')} /> <FormattedMessage id='antennas.any_tags' defaultMessage='Match any hashtag' /></label>
-          </ChipList>
+          />
 
           <ChipList
             label={<FormattedMessage id='antennas.exclude_tags' defaultMessage='Excluded hashtags' />}
@@ -284,9 +286,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
             onAdd={addAccount('accounts')}
             onRemove={removeAccount('accounts')}
             placeholder='@user@example.com'
-          >
-            <label className='antenna-editor__check'><input type='checkbox' checked={bool('any_accounts')} onChange={handleToggle('any_accounts')} /> <FormattedMessage id='antennas.any_accounts' defaultMessage='Match any account' /></label>
-          </ChipList>
+          />
 
           <ChipList
             label={<FormattedMessage id='antennas.exclude_accounts' defaultMessage='Excluded accounts' />}
