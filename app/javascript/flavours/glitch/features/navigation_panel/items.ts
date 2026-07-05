@@ -7,16 +7,19 @@ export const NAVIGATION_PANEL_ITEMS = [
   'favourites',
   'reactions',
   'bookmarks',
-  'clips',
-  'scheduled',
   'collections',
   'direct',
-  'circles',
   'board_announcements',
   'admin_timeline',
 ] as const;
 
 export type NavigationPanelItem = (typeof NAVIGATION_PANEL_ITEMS)[number];
+
+export const NAVIGATION_PANEL_ALWAYS_VISIBLE_ITEMS: readonly NavigationPanelItem[] =
+  ['board_announcements'];
+
+export const isNavigationItemAlwaysVisible = (key: string): boolean =>
+  (NAVIGATION_PANEL_ALWAYS_VISIBLE_ITEMS as readonly string[]).includes(key);
 
 export const navigationPanelItemMessages: Record<
   NavigationPanelItem,
@@ -36,17 +39,11 @@ export const navigationPanelItemMessages: Record<
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
-  clips: { id: 'navigation_bar.clips', defaultMessage: 'Clips' },
-  scheduled: {
-    id: 'navigation_bar.scheduled',
-    defaultMessage: 'Scheduled posts',
-  },
   collections: {
     id: 'navigation_bar.collections',
     defaultMessage: 'Collections',
   },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
-  circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   board_announcements: {
     id: 'navigation_bar.board_announcements',
     defaultMessage: 'Announcements',

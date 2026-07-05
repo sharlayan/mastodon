@@ -9,7 +9,7 @@ import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 
 export const CollapsiblePanel: React.FC<{
   children: React.ReactNode[];
-  to: string;
+  to?: string;
   title: string;
   collapseTitle: string;
   expandTitle: string;
@@ -17,6 +17,7 @@ export const CollapsiblePanel: React.FC<{
   iconComponent: IconProp;
   activeIconComponent?: IconProp;
   loading?: boolean;
+  showItemIcons?: boolean;
 }> = ({
   children,
   to,
@@ -27,13 +28,18 @@ export const CollapsiblePanel: React.FC<{
   collapseTitle,
   expandTitle,
   loading,
+  showItemIcons,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const accessibilityId = useId();
 
-  const handleClick = useCallback(() => {
-    setExpanded((value) => !value);
-  }, [setExpanded]);
+  const handleClick = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      setExpanded((value) => !value);
+    },
+    [setExpanded],
+  );
 
   return (
     <li className='navigation-panel__list-panel'>
@@ -41,6 +47,7 @@ export const CollapsiblePanel: React.FC<{
         <ColumnLink
           transparent
           to={to}
+          onClick={to ? undefined : handleClick}
           icon={icon}
           iconComponent={iconComponent}
           activeIconComponent={activeIconComponent}
@@ -72,7 +79,11 @@ export const CollapsiblePanel: React.FC<{
 
       {children.length > 0 && expanded && (
         <div
-          className='navigation-panel__list-panel__items'
+          className={
+            showItemIcons
+              ? 'navigation-panel__list-panel__items navigation-panel__list-panel__items--with-icons'
+              : 'navigation-panel__list-panel__items'
+          }
           role='region'
           id={`${accessibilityId}-content`}
           aria-labelledby={`${accessibilityId}-title`}
