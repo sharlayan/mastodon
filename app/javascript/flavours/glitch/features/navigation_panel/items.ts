@@ -5,7 +5,6 @@ export const NAVIGATION_PANEL_ITEMS = [
   'local',
   'notifications',
   'favourites',
-  'reactions',
   'bookmarks',
   'collections',
   'direct',
@@ -37,7 +36,6 @@ export const navigationPanelItemMessages: Record<
     defaultMessage: 'Notifications',
   },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
-  reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   collections: {
     id: 'navigation_bar.collections',

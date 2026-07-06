@@ -3,6 +3,7 @@ import { useIntl, defineMessages } from 'react-intl';
 import CalendarTodayIcon from '@/material-icons/400-24px/calendar_today.svg?react';
 import ExtensionIcon from '@/material-icons/400-24px/extension.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
+import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
 import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
 import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 import { circlesEnabled, clipsEnabled } from 'flavours/glitch/initial_state';
@@ -28,12 +29,24 @@ const messages = defineMessages({
     defaultMessage: 'Scheduled posts',
   },
   circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
+  reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
 });
 
 export const ExtensionsPanel: React.FC = () => {
   const intl = useIntl();
 
   const children = [];
+
+  children.push(
+    <ColumnLink
+      key='reactions'
+      transparent
+      to='/reactions'
+      icon='mood'
+      iconComponent={MoodIcon}
+      text={intl.formatMessage(messages.reactions)}
+    />,
+  );
 
   children.push(
     <ColumnLink
