@@ -63,7 +63,7 @@ import {
   me,
 } from 'flavours/glitch/initial_state';
 import { transientSingleColumn } from 'flavours/glitch/is_mobile';
-import { canViewFeed, isAdministrator } from 'flavours/glitch/permissions';
+import { canViewFeed, canViewAdminTimeline } from 'flavours/glitch/permissions';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
@@ -290,7 +290,8 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
   multiColumn = false,
 }) => {
   const intl = useIntl();
-  const { signedIn, permissions, disabledAccountId } = useIdentity();
+  const { signedIn, permissions, extraPermissions, disabledAccountId } =
+    useIdentity();
   const location = useLocation();
   const showSearch = useBreakpoint('full') && !multiColumn;
   const account = useAccount(me);
@@ -494,7 +495,7 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
     if (boardAnnouncementsEnabled) {
       itemRenderers.board_announcements = () => <BoardAnnouncementsLink />;
     }
-    if (roleplayMode && isAdministrator(permissions)) {
+    if (roleplayMode && canViewAdminTimeline(permissions, extraPermissions)) {
       itemRenderers.admin_timeline = (id) => (
         <ColumnLink
           transparent

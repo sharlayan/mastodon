@@ -8,6 +8,8 @@ export const PERMISSION_MANAGE_REPORTS = 0x0000000000000010;
 export const PERMISSION_VIEW_DASHBOARD = 0x0000000000000008;
 export const PERMISSION_ADMINISTRATOR = 0x0000000000000001;
 
+export const EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE = 0x0000000000000002;
+
 // These helpers don't quite align with the names/categories in UserRole,
 // but are likely "good enough" for the use cases at present.
 //
@@ -27,6 +29,17 @@ export function canManageReports(permissions: number) {
 
 export function isAdministrator(permissions: number) {
   return (permissions & PERMISSION_ADMINISTRATOR) === PERMISSION_ADMINISTRATOR;
+}
+
+export function canViewAdminTimeline(
+  permissions: number,
+  extraPermissions: number,
+) {
+  return (
+    isAdministrator(permissions) ||
+    (extraPermissions & EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE) ===
+      EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE
+  );
 }
 
 export const canViewFeed = (

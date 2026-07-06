@@ -198,6 +198,7 @@ const preview: Preview = {
             accountId: signedIn ? '123' : undefined,
             disabledAccountId: undefined,
             permissions: 0,
+            extraPermissions: 0,
           }}
         >
           <Story />

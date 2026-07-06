@@ -975,9 +975,12 @@ ko:
       everyone_full_description_html: 이것은 <strong>모든 사용자</strong>에게 적용될 <strong>기본 역할</strong>이며, 역할을 지정하지 않아도 적용됩니다. 다른 모든 역할들은 여기에서 권한을 상속합니다.
       extra_categories:
         api: API
+        moderation: 모더레이션
       extra_privileges:
         bypass_rate_limit: API 제한 우회
         bypass_rate_limit_description: 서버 설정에서 API 제한 우회가 활성화된 경우, 이 권한을 가진 사용자는 API 요청 제한을 받지 않습니다
+        view_admin_timeline: 관리 타임라인 열람
+        view_admin_timeline_description: 커뮤니티(롤플레이) 모드에서 이 권한을 가진 사용자는 관리 타임라인을 볼 수 있습니다. 다만 최고 관리자(owner) 계정이 참여한 다이렉트 대화는 열람자가 owner가 아닌 한 숨겨집니다
       permissions_count:
         other: "%{count}개의 권한"
       privileges:

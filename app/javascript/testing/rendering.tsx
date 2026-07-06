@@ -29,6 +29,7 @@ function render(
     accountId: '123',
     disabledAccountId: undefined,
     permissions: 0,
+    extraPermissions: 0,
   };
 
   const Wrapper = (props: { children: React.ReactNode }) => {

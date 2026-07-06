@@ -49,7 +49,7 @@ import {
   me,
 } from 'mastodon/initial_state';
 import { transientSingleColumn } from 'mastodon/is_mobile';
-import { canViewFeed, isAdministrator } from 'mastodon/permissions';
+import { canViewFeed, canViewAdminTimeline } from 'mastodon/permissions';
 import { selectUnreadNotificationGroupsCount } from 'mastodon/selectors/notifications';
 import { useAppSelector, useAppDispatch } from 'mastodon/store';
 
@@ -215,7 +215,8 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
   multiColumn = false,
 }) => {
   const intl = useIntl();
-  const { signedIn, permissions, disabledAccountId } = useIdentity();
+  const { signedIn, permissions, extraPermissions, disabledAccountId } =
+    useIdentity();
   const location = useLocation();
   const showSearch = useBreakpoint('full') && !multiColumn;
   const account = useAccount(me);
@@ -321,17 +322,19 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
           </>
         )}
 
-        {signedIn && roleplayMode && isAdministrator(permissions) && (
-          <li>
-            <ColumnLink
-              transparent
-              to='/timelines/admin'
-              icon='manufacturing'
-              iconComponent={AdministrationIcon}
-              text={intl.formatMessage(messages.adminTimeline)}
-            />
-          </li>
-        )}
+        {signedIn &&
+          roleplayMode &&
+          canViewAdminTimeline(permissions, extraPermissions) && (
+            <li>
+              <ColumnLink
+                transparent
+                to='/timelines/admin'
+                icon='manufacturing'
+                iconComponent={AdministrationIcon}
+                text={intl.formatMessage(messages.adminTimeline)}
+              />
+            </li>
+          )}
 
         {signedIn && (
           <>

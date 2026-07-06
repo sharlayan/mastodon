@@ -46,6 +46,7 @@ class UserRole < ApplicationRecord
 
   EXTRA_FLAGS = {
     bypass_rate_limit: (1 << 0),
+    view_admin_timeline: (1 << 1),
   }.freeze
 
   EVERYONE_ROLE_ID = -99
@@ -112,6 +113,10 @@ class UserRole < ApplicationRecord
     CATEGORIES = {
       api: %i(
         bypass_rate_limit
+      ).freeze,
+
+      moderation: %i(
+        view_admin_timeline
       ).freeze,
     }.freeze
   end

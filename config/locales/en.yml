@@ -1000,9 +1000,12 @@ en:
       everyone_full_description_html: This is the <strong>base role</strong> affecting <strong>all users</strong>, even those without an assigned role. All other roles inherit permissions from it.
       extra_categories:
         api: API
+        moderation: Moderation
       extra_privileges:
         bypass_rate_limit: Bypass API rate limits
         bypass_rate_limit_description: When API rate limit bypass is enabled in server settings, users with this permission are not subject to API rate limits
+        view_admin_timeline: View the admin timeline
+        view_admin_timeline_description: In community (roleplay) mode, users with this permission can view the admin timeline. Direct conversations involving an owner account remain hidden unless the viewer is an owner
       permissions_count:
         one: "%{count} permission"
         other: "%{count} permissions"
