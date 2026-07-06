@@ -12,18 +12,19 @@ import {
   showAvatarDecorations,
   showFederatedAvatarDecorations,
 } from 'flavours/glitch/initial_state';
-import type { Account } from 'flavours/glitch/models/account';
+import type { Account, AccountShapeFull } from 'flavours/glitch/models/account';
 
 import { useAccount } from '../hooks/useAccount';
 
 import { AvatarDecoration } from './avatar_decoration';
 
 interface Props {
-  account:
-    | (Pick<Account, 'id' | 'acct' | 'avatar' | 'avatar_static'> & {
-        avatar_decorations?: Account['avatar_decorations'];
-      })
-    | undefined; // FIXME: remove `undefined` once we know for sure its always there
+  account?: Pick<
+    Account | AccountShapeFull,
+    'id' | 'acct' | 'avatar' | 'avatar_static'
+  > & {
+    avatar_decorations?: Account['avatar_decorations'];
+  };
   alt?: string;
   size?: number;
   style?: React.CSSProperties;

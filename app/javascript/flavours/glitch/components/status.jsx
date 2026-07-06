@@ -722,10 +722,10 @@ class Status extends ImmutablePureComponent {
     const {statusContentProps, hashtagBar} = getHashtagBarForStatus(status);
 
     const header = this.props.headerRenderFn
-      ? this.props.headerRenderFn({ status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured, mediaIcons, settings: settings.get('status_icons') })
+      ? this.props.headerRenderFn({ statusId: status.get('id'), status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured, mediaIcons, settings: settings.get('status_icons') })
       : (
         <StatusHeader
-          status={status}
+          statusId={status.get('id')}
           account={account}
           avatarSize={avatarSize}
           onHeaderClick={this.handleHeaderClick}
@@ -775,7 +775,7 @@ class Status extends ImmutablePureComponent {
               <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
             )}
 
-            <ContentWarning status={status} expanded={expanded} onClick={this.handleExpandedToggle} icons={mediaIcons} />
+            <ContentWarning statusId={status.get('id')} expanded={expanded} onClick={this.handleExpandedToggle} icons={mediaIcons} />
 
             {expanded && (
               <>
