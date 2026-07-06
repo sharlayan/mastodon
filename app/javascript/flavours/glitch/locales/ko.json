@@ -35,6 +35,7 @@
   "antennas.new.title_placeholder": "새 안테나 제목",
   "antennas.no_antennas_yet": "아직 안테나가 없습니다.",
   "antennas.save": "변경사항 저장",
+  "antennas.save_error": "변경사항을 저장할 수 없습니다. 입력값을 확인해 주세요.",
   "antennas.tags": "해시태그",
   "antennas.title": "제목",
   "antennas.unsaved_changes": "저장하지 않은 변경사항이 있습니다",

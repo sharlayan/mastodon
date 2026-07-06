@@ -535,4 +535,10 @@ html.content-font-size__xx_large {
     font-size: 13px;
     color: var(--color-text-secondary);
   }
+
+  &__error {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-error);
+  }
 }

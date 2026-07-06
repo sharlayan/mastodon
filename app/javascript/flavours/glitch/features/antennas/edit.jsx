@@ -21,6 +21,7 @@ import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 
 const messages = defineMessages({
   heading: { id: 'column.antennas', defaultMessage: 'Antennas' },
+  saveError: { id: 'antennas.save_error', defaultMessage: 'Could not save changes. Please check your input.' },
 });
 
 const ChipList = ({ label, items, getKey, getLabel, onAdd, onRemove, placeholder, children }) => {
@@ -107,6 +108,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
 
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     dispatch(fetchAntenna(id));
@@ -179,6 +181,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
     const excludeAccounts = diffAccounts(form.excludeAccounts, original.excludeAccounts);
 
     setSaving(true);
+    setError(null);
     dispatch(saveAntenna(id, {
       main,
       add: {
@@ -197,8 +200,10 @@ const AntennaEdit = ({ params, multiColumn }) => {
         accounts: accounts.remove,
         exclude_accounts: excludeAccounts.remove,
       },
-    })).catch(() => {}).finally(() => setSaving(false));
-  }, [dispatch, id, form, original, saving]);
+    })).catch(err => {
+      setError(err?.response?.data?.error || intl.formatMessage(messages.saveError));
+    }).finally(() => setSaving(false));
+  }, [dispatch, id, form, original, saving, intl]);
 
   if (!antenna || !antenna.get || !form) {
     return (
@@ -297,6 +302,12 @@ const AntennaEdit = ({ params, multiColumn }) => {
             onRemove={removeAccount('excludeAccounts')}
             placeholder='@user@example.com'
           />
+
+          {error && (
+            <section className='antenna-editor__section'>
+              <p className='antenna-editor__error' role='alert'>{error}</p>
+            </section>
+          )}
 
           <section className='antenna-editor__section antenna-editor__actions'>
             <button type='button' className='button' onClick={handleSave} disabled={!dirty || saving}>
