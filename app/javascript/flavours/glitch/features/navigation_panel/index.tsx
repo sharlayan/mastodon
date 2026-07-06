@@ -25,8 +25,6 @@ import HomeActiveIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import InfoIcon from '@/material-icons/400-24px/info.svg?react';
 import AdministrationIcon from '@/material-icons/400-24px/manufacturing.svg?react';
-import MoodActiveIcon from '@/material-icons/400-24px/mood-fill.svg?react';
-import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
 import NotificationsActiveIcon from '@/material-icons/400-24px/notifications-fill.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddActiveIcon from '@/material-icons/400-24px/person_add-fill.svg?react';
@@ -95,7 +93,6 @@ const messages = defineMessages({
   },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
-  reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   collections: {
     id: 'navigation_bar.collections',
@@ -399,17 +396,6 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
         iconComponent={StarIcon}
         activeIconComponent={StarActiveIcon}
         text={intl.formatMessage(messages.favourites)}
-        id={id}
-      />
-    );
-    itemRenderers.reactions = (id) => (
-      <ColumnLink
-        transparent
-        to='/reactions'
-        icon='mood'
-        iconComponent={MoodIcon}
-        activeIconComponent={MoodActiveIcon}
-        text={intl.formatMessage(messages.reactions)}
         id={id}
       />
     );
