@@ -20,11 +20,34 @@ import { Icon } from '../icon';
 
 import classes from './styles.module.scss';
 
+const readableTextColor = (hex: string) => {
+  const value = hex.replace('#', '');
+  if (value.length !== 3 && value.length !== 6) {
+    return undefined;
+  }
+  const full =
+    value.length === 3
+      ? value
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : value;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+    return undefined;
+  }
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luminance > 0.6 ? '#000000' : '#ffffff';
+};
+
 interface BadgeProps extends React.ComponentPropsWithoutRef<'div'> {
   label: ReactNode;
   icon?: ReactNode;
   domain?: ReactNode;
   roleId?: string;
+  color?: string;
   variant?:
     | 'default'
     | 'subtle'
@@ -46,6 +69,8 @@ export const Badge: FC<BadgeProps> = ({
   className,
   domain,
   roleId,
+  color,
+  style,
   ...otherProps
 }) => (
   <div
@@ -56,6 +81,11 @@ export const Badge: FC<BadgeProps> = ({
       classes[variant],
       className,
     )}
+    style={
+      color
+        ? { backgroundColor: color, color: readableTextColor(color), ...style }
+        : style
+    }
     data-account-role-id={roleId}
   >
     {icon}
