@@ -21,6 +21,8 @@ import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
 const environment = process.env.NODE_ENV || 'development';
 const PERMISSION_VIEW_FEEDS = 0x0000000000100000;
+const EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE = 0x0000000000000002;
+const roleplayMode = process.env.OC_ROLEPLAY_OPTION === 'true';
 
 // Correctly detect and load .env or .env.production file based on environment:
 const dotenvFile = environment === 'production' ? '.env.production' : '.env';
@@ -48,6 +50,7 @@ initializeLogLevel(process.env, environment);
  * @property {string} accountId
  * @property {string[]} chosenLanguages
  * @property {number} permissions
+ * @property {number} extraPermissions
  */
 
 /**
@@ -123,6 +126,7 @@ const CHANNEL_NAMES = [
   'public:remote:media',
   'hashtag',
   'hashtag:local',
+  'admin',
 ];
 
 const startServer = async () => {
@@ -387,7 +391,7 @@ const startServer = async () => {
    * @returns {Promise<ResolvedAccount>}
    */
   const accountFromToken = async (token, req) => {
-    const result = await pgPool.query('SELECT oauth_access_tokens.id, oauth_access_tokens.resource_owner_id, users.account_id, users.chosen_languages, oauth_access_tokens.scopes, COALESCE(user_roles.permissions, 0) AS permissions FROM oauth_access_tokens INNER JOIN users ON oauth_access_tokens.resource_owner_id = users.id INNER JOIN accounts ON accounts.id = users.account_id LEFT OUTER JOIN user_roles ON user_roles.id = users.role_id WHERE oauth_access_tokens.token = $1 AND oauth_access_tokens.revoked_at IS NULL AND users.disabled IS FALSE AND accounts.suspended_at IS NULL LIMIT 1', [token]);
+    const result = await pgPool.query('SELECT oauth_access_tokens.id, oauth_access_tokens.resource_owner_id, users.account_id, users.chosen_languages, oauth_access_tokens.scopes, COALESCE(user_roles.permissions, 0) AS permissions, COALESCE(user_roles.extra_permissions, 0) | COALESCE((SELECT extra_permissions FROM user_roles WHERE id = -99), 0) AS extra_permissions FROM oauth_access_tokens INNER JOIN users ON oauth_access_tokens.resource_owner_id = users.id INNER JOIN accounts ON accounts.id = users.account_id LEFT OUTER JOIN user_roles ON user_roles.id = users.role_id WHERE oauth_access_tokens.token = $1 AND oauth_access_tokens.revoked_at IS NULL AND users.disabled IS FALSE AND accounts.suspended_at IS NULL LIMIT 1', [token]);
 
     if (result.rows.length === 0) {
       throw new AuthenticationError('Invalid access token');
@@ -398,6 +402,7 @@ const startServer = async () => {
     req.accountId = result.rows[0].account_id;
     req.chosenLanguages = result.rows[0].chosen_languages;
     req.permissions = result.rows[0].permissions;
+    req.extraPermissions = result.rows[0].extra_permissions;
 
     return {
       accessTokenId: result.rows[0].id,
@@ -405,6 +410,7 @@ const startServer = async () => {
       accountId: result.rows[0].account_id,
       chosenLanguages: result.rows[0].chosen_languages,
       permissions: result.rows[0].permissions,
+      extraPermissions: result.rows[0].extra_permissions,
     };
   };
 
@@ -457,6 +463,8 @@ const startServer = async () => {
       return 'list';
     case '/api/v1/streaming/antenna':
       return 'antenna';
+    case '/api/v1/streaming/admin':
+      return 'admin';
     default:
       return undefined;
     }
@@ -1218,6 +1226,23 @@ const startServer = async () => {
         });
       }).catch(() => {
         reject(new AuthenticationError('Not authorized to stream this antenna'));
+      });
+
+      break;
+    case 'admin':
+      if (!roleplayMode) {
+        reject(new RequestError('Unknown stream type'));
+        return;
+      }
+
+      if (!(req.extraPermissions & EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE)) {
+        reject(new AuthenticationError('Not authorized to stream the management timeline'));
+        return;
+      }
+
+      resolve({
+        channelIds: ['timeline:admin'],
+        options: { needsFiltering: false, allowLocalOnly: true },
       });
 
       break;

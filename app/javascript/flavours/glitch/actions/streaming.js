@@ -1,6 +1,6 @@
 // @ts-check
 
-import { me } from '../initial_state';
+import { adminTimelineOwnerViewer, me } from '../initial_state';
 import { getLocale } from '../locales';
 import { connectStream } from '../stream';
 
@@ -26,6 +26,8 @@ import {
   fillCommunityTimelineGaps,
   fillListTimelineGaps,
   fillAntennaTimelineGaps,
+  fillAdminTimelineGaps,
+  adminTimelineId,
 } from './timelines';
 
 /**
@@ -271,4 +273,39 @@ export const connectAntennaStream = antennaId =>
   connectTimelineStream(`antenna:${antennaId}`, 'antenna', { antenna: antennaId }, {
     // @ts-expect-error
     fillGaps: () => fillAntennaTimelineGaps(antennaId)
+  });
+
+/**
+ * @param {Object} filters
+ * @param {boolean} [filters.hidePublic]
+ * @param {boolean} [filters.hideUnlisted]
+ * @param {boolean} [filters.hidePrivate]
+ * @param {boolean} [filters.groupDirect]
+ * @returns {function(object): boolean}
+ */
+const acceptAdminStatus = ({ hidePublic, hideUnlisted, hidePrivate, groupDirect } = {}) =>
+  /** @param {any} status */
+  ({ visibility, in_reply_to_id }) => {
+    if (hidePublic && visibility === 'public') return false;
+    if (hideUnlisted && visibility === 'unlisted') return false;
+    if (hidePrivate && visibility === 'private') return false;
+    if ((visibility === 'direct' || visibility === 'limited') && !adminTimelineOwnerViewer) return false;
+    if (groupDirect && visibility === 'direct' && in_reply_to_id) return false;
+
+    return true;
+  };
+
+/**
+ * @param {Object} filters
+ * @param {boolean} [filters.hidePublic]
+ * @param {boolean} [filters.hideUnlisted]
+ * @param {boolean} [filters.hidePrivate]
+ * @param {boolean} [filters.groupDirect]
+ * @returns {function(): void}
+ */
+export const connectAdminStream = ({ hidePublic, hideUnlisted, hidePrivate, groupDirect } = {}) =>
+  connectTimelineStream(adminTimelineId({ hidePublic, hideUnlisted, hidePrivate, groupDirect }), 'admin', {}, {
+    accept: acceptAdminStatus({ hidePublic, hideUnlisted, hidePrivate, groupDirect }),
+    // @ts-expect-error
+    fillGaps: () => fillAdminTimelineGaps({ hidePublic, hideUnlisted, hidePrivate, groupDirect }),
   });

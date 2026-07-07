@@ -10,8 +10,11 @@ import { connect } from 'react-redux';
 import ManufacturingIcon from '@/material-icons/400-24px/manufacturing.svg?react';
 import { DismissableBanner } from '@/flavours/glitch/components/dismissable_banner';
 import { injectIntl } from '@/flavours/glitch/components/intl';
+import { identityContextPropShape, withIdentity } from '@/flavours/glitch/identity_context';
+import { canViewAdminTimeline } from '@/flavours/glitch/permissions';
 
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
+import { connectAdminStream } from '../../actions/streaming';
 import { adminTimelineId, expandAdminTimeline } from '../../actions/timelines';
 import Column from '../../components/column';
 import ColumnHeader from '../../components/column_header';
@@ -47,6 +50,7 @@ const mapStateToProps = (state, { columnId }) => {
 
 class AdminTimeline extends PureComponent {
   static propTypes = {
+    identity: identityContextPropShape,
     dispatch: PropTypes.func.isRequired,
     columnId: PropTypes.string,
     intl: PropTypes.object.isRequired,
@@ -82,16 +86,42 @@ class AdminTimeline extends PureComponent {
     this.column.scrollTop();
   };
 
+  canStream = () => {
+    const { signedIn, permissions, extraPermissions } = this.props.identity;
+    return signedIn && canViewAdminTimeline(permissions, extraPermissions);
+  };
+
   componentDidMount () {
     const { dispatch } = this.props;
+
     dispatch(expandAdminTimeline(this.filters()));
+
+    if (this.canStream()) {
+      this.disconnect = dispatch(connectAdminStream(this.filters()));
+    }
   }
 
   componentDidUpdate (prevProps) {
     const { dispatch, hidePublic, hideUnlisted, hidePrivate, groupDirect } = this.props;
 
     if (prevProps.hidePublic !== hidePublic || prevProps.hideUnlisted !== hideUnlisted || prevProps.hidePrivate !== hidePrivate || prevProps.groupDirect !== groupDirect) {
+      if (this.disconnect) {
+        this.disconnect();
+        this.disconnect = null;
+      }
+
       dispatch(expandAdminTimeline(this.filters()));
+
+      if (this.canStream()) {
+        this.disconnect = dispatch(connectAdminStream(this.filters()));
+      }
+    }
+  }
+
+  componentWillUnmount () {
+    if (this.disconnect) {
+      this.disconnect();
+      this.disconnect = null;
     }
   }
 
@@ -143,4 +173,4 @@ class AdminTimeline extends PureComponent {
   }
 }
 
-export default connect(mapStateToProps)(injectIntl(AdminTimeline));
+export default withIdentity(connect(mapStateToProps)(injectIntl(AdminTimeline)));

@@ -79,6 +79,7 @@ interface InitialStateMeta {
   mfm_fold_mode: 'show' | 'sensitive' | 'all';
   mfm_allow_composition: boolean;
   roleplay_mode?: boolean;
+  admin_timeline_owner_viewer?: boolean;
   custom_emoji_mute_hidden?: boolean;
   custom_emoji_mutes?: ApiCustomEmojiMuteJSON[];
   reaction_mutes?: ApiReactionMuteJSON[];
@@ -251,6 +252,7 @@ export const mfmFoldMode =
   (getMeta('mfm_fold_mode') as string | undefined) ?? 'sensitive';
 export const wrapstodon = getMeta('wrapstodon');
 export const roleplayMode = getMeta('roleplay_mode');
+export const adminTimelineOwnerViewer = getMeta('admin_timeline_owner_viewer');
 export const avatarDecorationsEnabled = getMeta('avatar_decorations_enabled');
 export const avatarDecorationsFederationEnabled = getMeta(
   'avatar_decorations_federation_enabled',

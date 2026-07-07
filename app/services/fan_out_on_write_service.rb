@@ -2,6 +2,7 @@
 
 class FanOutOnWriteService < BaseService
   include Redisable
+  include RoleplayModeHelper
 
   # Push a status into home and mentions feeds
   # @param [Status] status
@@ -21,6 +22,7 @@ class FanOutOnWriteService < BaseService
     fan_out_to_local_recipients!
     fan_out_to_public_recipients! if broadcastable?
     fan_out_to_public_streams! if broadcastable?
+    broadcast_to_admin_stream! if roleplay_mode? && @status.account.local?
   end
 
   private
@@ -160,6 +162,10 @@ class FanOutOnWriteService < BaseService
       redis.publish('timeline:public:media', anonymous_payload)
       redis.publish(@status.local? ? 'timeline:public:local:media' : 'timeline:public:remote:media', anonymous_payload)
     end
+  end
+
+  def broadcast_to_admin_stream!
+    redis.publish('timeline:admin', anonymous_payload)
   end
 
   def deliver_to_conversation!

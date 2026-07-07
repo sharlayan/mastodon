@@ -192,6 +192,7 @@ export const fillPublicTimelineGaps    = ({ onlyMedia, onlyRemote, allowLocalOnl
 export const fillCommunityTimelineGaps = ({ onlyMedia } = {}) => fillTimelineGaps(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, only_media: !!onlyMedia });
 export const fillListTimelineGaps      = (id) => fillTimelineGaps(`list:${id}`, `/api/v1/timelines/list/${id}`, {});
 export const fillAntennaTimelineGaps   = (id) => fillTimelineGaps(`antenna:${id}`, `/api/v1/timelines/antenna/${id}`, {});
+export const fillAdminTimelineGaps      = ({ hidePublic, hideUnlisted, hidePrivate, groupDirect } = {}) => fillTimelineGaps(adminTimelineId({ hidePublic, hideUnlisted, hidePrivate, groupDirect }), '/api/v1/timelines/admin', { hide_public: !!hidePublic, hide_unlisted: !!hideUnlisted, hide_private: !!hidePrivate, group_direct: !!groupDirect });
 
 export function expandTimelineRequest(timeline, isLoadingMore) {
   return {

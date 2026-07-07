@@ -69,6 +69,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']
       store[:force_round_avatar_decoration]     = (roleplay_mode? && Setting.force_round_avatar) || object_account_user.settings['avatar_decorations.force_round']
       store[:force_round_avatar]                = roleplay_mode? && Setting.force_round_avatar
+      store[:admin_timeline_owner_viewer]       = roleplay_mode? && admin_timeline_owner_viewer?
       store[:color_scheme]                      = object_account_user.settings['web.color_scheme']
       store[:contrast]                          = object_account_user.settings['web.contrast']
       store[:custom_emoji_mute_hidden]          = object_account_user.settings['web.custom_emoji_mute_hidden']
@@ -192,6 +193,14 @@ class InitialStateSerializer < ActiveModel::Serializer
 
   def object_account_user
     object.current_account.user
+  end
+
+  def admin_timeline_owner_viewer?
+    role = object_account_user&.role
+    return false if role.nil? || role.everyone?
+
+    top_position = UserRole.assignable.maximum(:position)
+    role.position == top_position
   end
 
   def serialized_account(account)

@@ -4,6 +4,7 @@ class RemoveStatusService < BaseService
   include Redisable
   include Payloadable
   include Lockable
+  include RoleplayModeHelper
 
   # Delete a status
   # @param   [Status] status
@@ -28,6 +29,7 @@ class RemoveStatusService < BaseService
       remove_from_followers
       remove_from_lists
       remove_from_antennas
+      remove_from_admin
 
       # There is no reason to send out Undo activities when the
       # cause is that the original object has been removed, since
@@ -147,6 +149,14 @@ class RemoveStatusService < BaseService
 
     redis.publish('timeline:public', @payload)
     redis.publish(@status.local? ? 'timeline:public:local' : 'timeline:public:remote', @payload)
+  end
+
+  def remove_from_admin
+    return unless roleplay_mode? && @account.local?
+
+    return if skip_streaming?
+
+    redis.publish('timeline:admin', @payload)
   end
 
   def remove_from_media
