@@ -4,6 +4,8 @@ import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
 import classNames from 'classnames';
 
+import { fromJS } from 'immutable';
+
 import { Helmet } from '@unhead/react/helmet';
 
 import ArticleIcon from '@/material-icons/400-24px/article.svg?react';
@@ -18,6 +20,7 @@ import {
   removeColumn,
   moveColumn,
 } from 'flavours/glitch/actions/columns';
+import { openModal } from 'flavours/glitch/actions/modal';
 import type { ApiBoardAnnouncementJSON } from 'flavours/glitch/api_types/board_announcements';
 import { Column } from 'flavours/glitch/components/column';
 import type { ColumnRef } from 'flavours/glitch/components/column';
@@ -27,7 +30,10 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useLayout } from 'flavours/glitch/hooks/useLayout';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
-import type { AllowedTagsType } from 'flavours/glitch/utils/html';
+import type {
+  AllowedTagsType,
+  OnAttributeHandler,
+} from 'flavours/glitch/utils/html';
 import { defaultAllowedTags } from 'flavours/glitch/utils/html';
 
 import { ReactionsBar } from './reactions';
@@ -39,8 +45,55 @@ const BOARD_ALLOWED_TAGS: AllowedTagsType = {
   thead: {},
   tbody: {},
   tr: {},
-  th: { attributes: { colspan: 'colSpan', rowspan: 'rowSpan', scope: true } },
-  td: { attributes: { colspan: 'colSpan', rowspan: 'rowSpan' } },
+  th: {
+    attributes: {
+      colspan: 'colSpan',
+      rowspan: 'rowSpan',
+      scope: true,
+      align: true,
+    },
+  },
+  td: {
+    attributes: { colspan: 'colSpan', rowspan: 'rowSpan', align: true },
+  },
+  div: { attributes: { align: true } },
+  p: { attributes: { align: true } },
+  mark: {},
+  kbd: {},
+  ins: {},
+  small: {},
+};
+
+const styleStringToObject = (style: string): React.CSSProperties => {
+  const result: Record<string, string> = {};
+
+  for (const declaration of style.split(';')) {
+    const separator = declaration.indexOf(':');
+    if (separator === -1) {
+      continue;
+    }
+
+    const property = declaration.slice(0, separator).trim();
+    const value = declaration.slice(separator + 1).trim();
+    if (!property || !value) {
+      continue;
+    }
+
+    const camelCased = property
+      .toLowerCase()
+      .replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
+    result[camelCased] = value;
+  }
+
+  return result as React.CSSProperties;
+};
+
+const handleBoardAttribute: OnAttributeHandler = (name, value) => {
+  if (name === 'style') {
+    return ['style', styleStringToObject(value)];
+  }
+
+  return undefined;
 };
 
 const messages = defineMessages({
@@ -84,6 +137,7 @@ const Announcement: React.FC<{
   defaultExpanded: boolean;
 }> = ({ announcement, wide, defaultExpanded }) => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   const showBody = expanded;
@@ -91,6 +145,49 @@ const Announcement: React.FC<{
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
   }, []);
+
+  const handleContentClick = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const target = event.target as HTMLElement;
+      const image = target.closest<HTMLImageElement>('img:not(.emojione)');
+
+      if (!image || !event.currentTarget.contains(image)) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const images = Array.from(
+        event.currentTarget.querySelectorAll<HTMLImageElement>(
+          'img:not(.emojione)',
+        ),
+      );
+      const index = images.indexOf(image);
+
+      const media = fromJS(
+        images.map((element) => ({
+          type: 'image',
+          url: element.src,
+          preview_url: element.src,
+          description: element.alt || null,
+          meta: {
+            original: {
+              width: element.naturalWidth,
+              height: element.naturalHeight,
+            },
+          },
+        })),
+      );
+
+      dispatch(
+        openModal({
+          modalType: 'MEDIA',
+          modalProps: { media, index: index < 0 ? 0 : index },
+        }),
+      );
+    },
+    [dispatch],
+  );
 
   const date = (
     <time
@@ -140,6 +237,8 @@ const Announcement: React.FC<{
             htmlString={announcement.content}
             extraEmojis={announcement.emojis}
             allowedTags={BOARD_ALLOWED_TAGS}
+            onAttribute={handleBoardAttribute}
+            onClick={handleContentClick}
           />
           <ReactionsBar
             reactions={announcement.reactions}

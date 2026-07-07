@@ -75,8 +75,14 @@
     line-height: 1.6;
     color: var(--color-text-primary);
     overflow-wrap: break-word;
+    white-space: pre-wrap;
     padding: 16px;
     box-sizing: border-box;
+
+    pre,
+    pre code {
+      white-space: pre;
+    }
 
     h1,
     h2,
@@ -150,6 +156,10 @@
       max-width: 100%;
       height: auto;
       border-radius: 8px;
+    }
+
+    img:not(.emojione) {
+      cursor: zoom-in;
     }
 
     table {
