@@ -666,7 +666,7 @@ export const composeReducer = (state = initialState, action) => {
     return state.mergeIn(['doodle'], action.options);
   case REDRAFT: {
     const do_not_federate = !!action.status.get('local_only');
-    let text = (action.raw_text || unescapeHTML(expandMentions(action.status))).replace(/\s*(🏡|👁)️?$/, '');
+    let text = action.raw_text || unescapeHTML(expandMentions(action.status));
     return state.withMutations(map => {
       map.set('text', text);
       map.set('content_type', action.content_type || 'text/plain');
@@ -716,7 +716,7 @@ export const composeReducer = (state = initialState, action) => {
   case COMPOSE_SET_STATUS:
     return state.withMutations(map => {
       map.set('id', action.status.get('id'));
-      map.set('text', action.text.replace(/\s*(🏡|👁)\ufe0f?$/, ''));
+      map.set('text', action.text);
       map.updateIn(['advanced_options'], opts => opts.set('do_not_federate', !!action.status.get('local_only')));
       map.set('content_type', action.content_type || 'text/plain');
       map.set('in_reply_to', action.status.get('in_reply_to_id'));
