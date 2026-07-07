@@ -75,7 +75,6 @@
     line-height: 1.6;
     color: var(--color-text-primary);
     overflow-wrap: break-word;
-    white-space: pre-wrap;
     padding: 16px;
     box-sizing: border-box;
 
@@ -152,14 +151,20 @@
       padding: 1px 4px;
     }
 
-    img {
+    img:not(.emojione) {
+      cursor: zoom-in;
       max-width: 100%;
       height: auto;
       border-radius: 8px;
     }
 
-    img:not(.emojione) {
-      cursor: zoom-in;
+    img:is(.emojione) {
+      max-width: 100%;
+      border: unset;
+      margin: 0;
+      padding: 0;
+      height: 1.25em;
+      width: auto;
     }
 
     table {

@@ -208,6 +208,25 @@ class Sanitize
       font-weight
       font-style
       font-size
+      border
+      border-top
+      border-right
+      border-bottom
+      border-left
+      border-width
+      border-style
+      border-color
+      border-radius
+      padding
+      padding-top
+      padding-right
+      padding-bottom
+      padding-left
+      margin
+      margin-top
+      margin-right
+      margin-bottom
+      margin-left
     ).freeze
 
     BOARD_ANNOUNCEMENT = freeze_config MASTODON_STRICT.merge(
