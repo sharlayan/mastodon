@@ -5,14 +5,24 @@ module ActivityPub::ReactionDistribution
     return unless reaction.account.local?
 
     status = reaction.status
+    return if status.local_only?
 
-    if status.public_visibility?
+    case status.visibility.to_sym
+    when :public, :unlisted, :private
       target_inbox = status.account.local? ? '' : status.account.preferred_inbox_url
-      ActivityPub::ReactionsDistributionWorker.perform_async(json, reaction.account_id, target_inbox, status.account_id)
-    elsif status.account.activitypub?
-      # For non-public statuses, only notify the status author directly
-      # to avoid leaking reaction info to servers that cannot see the post
-      ActivityPub::DeliveryWorker.perform_async(json, reaction.account_id, status.account.inbox_url)
+      ActivityPub::ReactionsDistributionWorker.perform_async(json, reaction.account_id, target_inbox)
+    when :direct, :limited
+      reaction_direct_inboxes(status).each do |inbox_url|
+        ActivityPub::DeliveryWorker.perform_async(json, reaction.account_id, inbox_url)
+      end
     end
+  end
+
+  private
+
+  def reaction_direct_inboxes(status)
+    inboxes = status.active_mentions.includes(:account).map(&:account).select(&:activitypub?).map(&:preferred_inbox_url)
+    inboxes << status.account.preferred_inbox_url if status.account.activitypub?
+    inboxes.uniq
   end
 end

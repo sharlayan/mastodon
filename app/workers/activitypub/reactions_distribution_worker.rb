@@ -1,18 +1,10 @@
 # frozen_string_literal: true
 
 class ActivityPub::ReactionsDistributionWorker < ActivityPub::RawDistributionWorker
-  # Distribute reactions to servers that might have a copy
-  # of the account in question
-  def perform(json, source_account_id, target_inbox_url, status_account_id = nil)
+  def perform(json, source_account_id, target_inbox_url = '')
     @account        = Account.find(source_account_id)
     @json           = json
-    @status_account = status_account_id.present? ? Account.find(status_account_id) : @account
-
-    @target_inboxes = if target_inbox_url.to_s.empty?
-                        []
-                      else
-                        [target_inbox_url]
-                      end
+    @target_inboxes = target_inbox_url.to_s.empty? ? [] : [target_inbox_url]
 
     distribute!
   rescue ActiveRecord::RecordNotFound
@@ -22,11 +14,7 @@ class ActivityPub::ReactionsDistributionWorker < ActivityPub::RawDistributionWor
   protected
 
   def inboxes
-    @inboxes ||= (status_followers_inboxes + @target_inboxes).uniq
-  end
-
-  def status_followers_inboxes
-    @status_account.followers.inboxes
+    @inboxes ||= (@account.followers.inboxes + @target_inboxes).uniq
   end
 
   def payload

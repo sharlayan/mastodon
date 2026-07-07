@@ -38,11 +38,11 @@ RSpec.describe ReactService, type: :service do
     end
 
     it 'enqueues a ReactionsDistributionWorker' do
-      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, 'http://example.com/inbox', status.account_id)
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, 'http://example.com/inbox')
     end
   end
 
-  describe 'distribution to the status author followers' do
+  describe 'distribution to the reactor followers' do
     let(:status) { Fabricate(:status, account: sender) }
 
     before do
@@ -50,7 +50,7 @@ RSpec.describe ReactService, type: :service do
     end
 
     it 'enqueues ReactionsDistributionWorker with empty target for local status' do
-      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '', status.account_id)
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '')
     end
 
     it 'enqueues BroadcastStatusUpdateWorker' do

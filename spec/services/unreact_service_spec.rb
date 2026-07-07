@@ -40,7 +40,7 @@ RSpec.describe UnreactService, type: :service do
     end
 
     it 'enqueues ReactionsDistributionWorker with target inbox' do
-      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, 'http://example.com/inbox', status.account_id)
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, 'http://example.com/inbox')
     end
   end
 
@@ -62,7 +62,7 @@ RSpec.describe UnreactService, type: :service do
     end
 
     it 'enqueues ReactionsDistributionWorker with empty target for local status' do
-      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '', status.account_id)
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '')
     end
   end
 end
