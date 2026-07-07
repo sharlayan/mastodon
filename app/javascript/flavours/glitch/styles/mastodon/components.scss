@@ -401,7 +401,11 @@ body > [data-popover-placement] {
 }
 
 .autosuggest-textarea {
+  position: relative;
+
   &__textarea {
+    position: relative;
+    z-index: 1;
     background: transparent;
     min-height: 100px;
     padding-bottom: 0;
@@ -410,6 +414,42 @@ body > [data-popover-placement] {
 
     &::-webkit-scrollbar {
       all: unset;
+    }
+  }
+
+  &__highlights {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 12px;
+    padding-bottom: 0;
+    overflow: hidden;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: normal;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    color: transparent;
+    pointer-events: none;
+    user-select: none;
+
+    &__content {
+      margin: 0;
+      will-change: transform;
+    }
+
+    &__over {
+      color: transparent;
+      background: color-mix(
+        in srgb,
+        var(--color-bg-warning-base) 35%,
+        transparent
+      );
+      border-radius: 2px;
+      box-decoration-break: clone;
     }
   }
 

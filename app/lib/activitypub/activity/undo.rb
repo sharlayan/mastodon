@@ -105,13 +105,18 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
   def undo_like
     status = status_from_uri(target_uri)
 
-    return if status.nil? || !status.account.local?
+    return if status.nil?
+
+    if @object['content'].present? || @object['_misskey_reaction'].present?
+      undo_emoji_react
+      return
+    end
+
+    return unless status.account.local?
 
     if @account.favourited?(status)
       favourite = status.favourites.where(account: @account).first
       favourite&.destroy
-    elsif @object['content'].present? || @object['_misskey_reaction'].present?
-      undo_emoji_react
     else
       delete_later!(object_uri)
     end
@@ -123,7 +128,7 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
 
     status = status_from_uri(target_uri)
 
-    return if status.nil? || !status.account.local?
+    return if status.nil?
 
     custom_emoji = nil
 

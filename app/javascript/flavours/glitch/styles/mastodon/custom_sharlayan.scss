@@ -542,3 +542,23 @@ html.content-font-size__xx_large {
     color: var(--color-text-error);
   }
 }
+
+.inline-compose-form {
+  padding: 0;
+  border-bottom: 1px solid var(--color-border-primary);
+
+  .navigation-bar {
+    padding: 14px;
+  }
+
+  .compose-form {
+    padding: 2px;
+    gap: 0;
+  }
+
+  .compose-form__highlightable {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+}

@@ -21,6 +21,7 @@ import PollButtonContainer from '../containers/poll_button_container';
 import SpoilerButtonContainer from '../containers/spoiler_button_container';
 import UploadButtonContainer from '../containers/upload_button_container';
 import { countableText } from '../util/counter';
+import { overflowStart } from '../util/overflow';
 
 import { CharacterCounter } from './character_counter';
 import { ContentTypeButton } from './content_type_button';
@@ -358,6 +359,7 @@ class ComposeForm extends ImmutablePureComponent {
             autoFocus={autoFocus}
             lang={this.props.lang}
             className='compose-form__input'
+            overflowStart={overflowStart(this.props.text, maxChars - (this.props.spoiler ? length(this.props.spoilerText) : 0))}
           />
 
           <PollForm />

@@ -206,6 +206,15 @@ class LocalSettingsPage extends PureComponent {
         <h1><FormattedMessage id='settings.compose_box_opts' defaultMessage='Compose box' /></h1>
         <LocalSettingsPageItem
           settings={settings}
+          item={['inline_compose_timelines']}
+          id='mastodon-settings--inline_compose_timelines'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.inline_compose_timelines' defaultMessage='Show the compose box at the top of timelines' />
+          <span className='hint'><FormattedMessage id='settings.inline_compose_timelines.hint' defaultMessage='Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)' /></span>
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
           item={['use_publish_toot']}
           id='mastodon-settings--use_publish_toot'
           onChange={onChange}
