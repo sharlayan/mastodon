@@ -5,10 +5,10 @@ class Api::V1::ConversationsController < Api::BaseController
   STATUSES_LIMIT = 50
   STATUSES_DEFAULT_LIMIT = 50
 
-  before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:index, :statuses]
+  before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:index, :statuses, :with_account]
   before_action -> { doorkeeper_authorize! :write, :'write:conversations' }, only: [:read, :unread, :destroy]
   before_action :require_user!
-  before_action :set_conversation, except: :index
+  before_action :set_conversation, except: [:index, :with_account]
   after_action :insert_pagination_headers, only: [:index, :statuses]
 
   def index
@@ -32,6 +32,15 @@ class Api::V1::ConversationsController < Api::BaseController
   def destroy
     @conversation.destroy!
     render_empty
+  end
+
+  def with_account
+    id = AccountConversation
+      .where(account: current_account, participant_account_ids: [params[:account_id].to_i])
+      .order(last_status_id: :desc)
+      .pick(:id)
+
+    render json: { id: id&.to_s }
   end
 
   private

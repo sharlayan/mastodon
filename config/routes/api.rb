@@ -135,6 +135,10 @@ namespace :api, format: false do
     end
 
     resources :conversations, only: [:index, :destroy] do
+      collection do
+        get 'with_account/:account_id', action: :with_account
+      end
+
       member do
         post :read
         post :unread
