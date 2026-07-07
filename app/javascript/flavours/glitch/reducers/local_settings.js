@@ -26,6 +26,7 @@ const initialState = ImmutableMap({
   show_schedule_button: true,
   tag_misleading_links: true,
   show_follow_list_bio: true,
+  inline_compose_timelines: false,
   use_publish_toot: false,
   rewrite_mentions: 'no',
   content_warnings : ImmutableMap({

@@ -22,6 +22,7 @@ import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
 import { expandHomeTimeline } from '../../actions/timelines';
 import Column from '../../components/column';
 import ColumnHeader from '../../components/column_header';
+import { InlineComposeForm } from '../ui/components/inline_compose_form';
 import StatusListContainer from '../ui/containers/status_list_container';
 
 import { ColumnSettings } from './components/column_settings';
@@ -131,6 +132,7 @@ class HomeTimeline extends PureComponent {
     const pinned = !!columnId;
     const { signedIn } = this.props.identity;
     const banners = [
+      <InlineComposeForm key='inline-compose' multiColumn={multiColumn} />,
       <CriticalUpdateBanner key='critical-update-banner' />,
       <AnnualReportTimeline key='annual-report' />
     ];

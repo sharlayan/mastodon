@@ -269,6 +269,8 @@
   "settings.hicolor_privacy_icons": "High color privacy icons",
   "settings.hicolor_privacy_icons.hint": "Display privacy icons in bright and easily distinguishable colors",
   "settings.hide_mfm_compose_hint": "Hide MFM preview and syntax link in the compose box",
+  "settings.inline_compose_timelines": "Show the compose box at the top of timelines",
+  "settings.inline_compose_timelines.hint": "Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)",
   "settings.inline_preview_cards": "Inline preview cards for external links",
   "settings.layout_opts": "Layout options",
   "settings.media": "Media",
