@@ -78,6 +78,11 @@
     padding: 16px;
     box-sizing: border-box;
 
+    pre,
+    pre code {
+      white-space: pre;
+    }
+
     h1,
     h2,
     h3,
@@ -146,10 +151,20 @@
       padding: 1px 4px;
     }
 
-    img {
+    img:not(.emojione) {
+      cursor: zoom-in;
       max-width: 100%;
       height: auto;
       border-radius: 8px;
+    }
+
+    img:is(.emojione) {
+      max-width: 100%;
+      border: unset;
+      margin: 0;
+      padding: 0;
+      height: 1.25em;
+      width: auto;
     }
 
     table {

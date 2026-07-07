@@ -1,10 +1,15 @@
-import type { Account } from 'flavours/glitch/models/account';
+import type { Account, AccountShapeFull } from 'flavours/glitch/models/account';
 
 import { Avatar } from './avatar';
 
+type AvatarAccount = Pick<
+  Account | AccountShapeFull,
+  'id' | 'acct' | 'avatar' | 'avatar_static' | 'avatar_decorations'
+>;
+
 interface Props {
-  account: Account | undefined; // FIXME: remove `undefined` once we know for sure its always there
-  friend: Account | undefined; // FIXME: remove `undefined` once we know for sure its always there
+  account?: AvatarAccount;
+  friend?: AvatarAccount;
   size?: number;
   baseSize?: number;
   overlaySize?: number;

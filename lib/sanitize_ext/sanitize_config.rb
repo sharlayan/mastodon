@@ -197,20 +197,62 @@ class Sanitize
       end
     end
 
+    BOARD_ANNOUNCEMENT_CSS_PROPERTIES = %w(
+      color
+      background-color
+      text-align
+      text-decoration
+      text-decoration-line
+      text-decoration-color
+      text-decoration-style
+      font-weight
+      font-style
+      font-size
+      border
+      border-top
+      border-right
+      border-bottom
+      border-left
+      border-width
+      border-style
+      border-color
+      border-radius
+      padding
+      padding-top
+      padding-right
+      padding-bottom
+      padding-left
+      margin
+      margin-top
+      margin-right
+      margin-bottom
+      margin-left
+    ).freeze
+
     BOARD_ANNOUNCEMENT = freeze_config MASTODON_STRICT.merge(
-      elements: MASTODON_STRICT[:elements] + %w(img hr table thead tbody tr th td p),
+      elements: MASTODON_STRICT[:elements] + %w(img hr table thead tbody tr th td p div mark kbd ins small),
 
       attributes: merge(
         MASTODON_STRICT[:attributes],
-        'img' => %w(src alt title),
-        'td' => %w(colspan rowspan),
-        'th' => %w(colspan rowspan scope)
+        :all => %w(lang style),
+        'img' => %w(src alt title style),
+        'td' => %w(colspan rowspan align style),
+        'th' => %w(colspan rowspan scope align style),
+        'p' => %w(class align style),
+        'div' => %w(align style),
+        'span' => %w(class translate style)
       ),
 
       protocols: merge(
         MASTODON_STRICT[:protocols],
         'img' => { 'src' => HTTP_PROTOCOLS }
       ),
+
+      css: {
+        allow_comments: false,
+        allow_hacks: false,
+        properties: BOARD_ANNOUNCEMENT_CSS_PROPERTIES,
+      },
 
       transformers: [
         ALLOWED_CLASS_TRANSFORMER,
