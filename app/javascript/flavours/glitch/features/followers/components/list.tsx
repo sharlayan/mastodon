@@ -8,6 +8,7 @@ import { AccountListItem } from '@/flavours/glitch/components/account_list_item'
 import type { ColumnRef } from '@/flavours/glitch/components/column';
 import { Column } from '@/flavours/glitch/components/column';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
+import { MentionSearch } from '@/flavours/glitch/components/mention_search';
 import ScrollableList from '@/flavours/glitch/components/scrollable_list';
 import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bundle_column_error';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
@@ -131,7 +132,12 @@ export const AccountList: FC<AccountListProps> = ({
         hasMore={!forceEmptyState && list?.hasMore}
         isLoading={list?.isLoading ?? true}
         onLoadMore={loadMore}
-        prepend={header}
+        prepend={
+          <>
+            {header}
+            <MentionSearch />
+          </>
+        }
         alwaysPrepend
         append={append ?? <RemoteHint domain={domain} url={account.url} />}
         emptyMessage={emptyMessage}

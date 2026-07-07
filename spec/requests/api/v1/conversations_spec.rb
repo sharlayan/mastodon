@@ -97,4 +97,29 @@ RSpec.describe 'API V1 Conversations' do
       expect(response.headers['Link']&.to_s).to include("/api/v1/conversations/#{conversation.id}/statuses")
     end
   end
+
+  describe 'GET /api/v1/conversations/with_account/:account_id', :inline_jobs do
+    before do
+      user.account.follow!(other.account)
+      PostStatusService.new.call(other.account, text: 'Hey @alice', visibility: 'direct')
+    end
+
+    let(:conversation) { AccountConversation.where(account: user.account).first }
+
+    it 'returns the conversation id for an existing direct conversation', :aggregate_failures do
+      get "/api/v1/conversations/with_account/#{other.account.id}", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq conversation.id.to_s
+    end
+
+    it 'returns a null id when no conversation exists with the account', :aggregate_failures do
+      stranger = Fabricate(:account)
+
+      get "/api/v1/conversations/with_account/#{stranger.id}", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to be_nil
+    end
+  end
 end
