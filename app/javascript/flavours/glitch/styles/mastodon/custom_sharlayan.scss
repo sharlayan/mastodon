@@ -772,6 +772,24 @@ html.content-font-size__xx_large {
 }
 
 .compose-form--inline {
+  .reply-indicator__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+
+    .detailed-status__display-name {
+      margin-bottom: 0;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+  }
+
+  .reply-indicator__cancel {
+    flex: 0 0 auto;
+  }
+
   .compose-form__dropdowns {
     display: flex;
     align-items: start;

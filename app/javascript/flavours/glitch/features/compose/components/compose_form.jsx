@@ -357,7 +357,7 @@ class ComposeForm extends ImmutablePureComponent {
         })}
         onSubmit={this.handleSubmit}
       >
-        <ReplyIndicator />
+        <ReplyIndicator isInline={this.props.isInline} />
         {!withoutNavigation && <NavigationBar />}
         <Warning />
 
