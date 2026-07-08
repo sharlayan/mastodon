@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
-import { createRef } from 'react';
+import { createRef, useMemo } from 'react';
 
-import { defineMessages } from 'react-intl';
+import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
@@ -10,12 +10,17 @@ import ImmutablePureComponent from 'react-immutable-pure-component';
 
 import { length } from 'stringz';
 
-import { forceLocalOnly, missingAltTextModal } from 'flavours/glitch/initial_state';
+import { openModal } from 'flavours/glitch/actions/modal';
+import { forceLocalOnly, me, missingAltTextModal } from 'flavours/glitch/initial_state';
+import { useAppDispatch } from 'flavours/glitch/store';
 
 import AutosuggestInput from 'flavours/glitch/components/autosuggest_input';
 import AutosuggestTextarea from 'flavours/glitch/components/autosuggest_textarea';
+import { Avatar } from 'flavours/glitch/components/avatar';
 import { Button } from 'flavours/glitch/components/button';
+import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { injectIntl } from '@/flavours/glitch/components/intl';
+import { useAccount } from 'flavours/glitch/hooks/useAccount';
 import EmojiPickerDropdown from '../containers/emoji_picker_dropdown_container';
 import PollButtonContainer from '../containers/poll_button_container';
 import SpoilerButtonContainer from '../containers/spoiler_button_container';
@@ -52,7 +57,36 @@ const messages = defineMessages({
   schedule: { id: 'compose_form.schedule_submit', defaultMessage: 'Schedule' },
   saveChanges: { id: 'compose_form.save_changes', defaultMessage: 'Update' },
   reply: { id: 'compose_form.reply', defaultMessage: 'Reply' },
+  profile: { id: 'column_header.profile', defaultMessage: 'Profile' },
+  switchAccount: { id: 'navigation_bar.switch_account', defaultMessage: 'Switch account' },
+  scheduled: { id: 'navigation_bar.scheduled', defaultMessage: 'Scheduled posts' },
 });
+
+const ComposeFormAvatar = () => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const account = useAccount(me);
+  const acct = account?.get('acct');
+
+  const menu = useMemo(() => [
+    { text: intl.formatMessage(messages.profile), to: `/@${acct}` },
+    { text: intl.formatMessage(messages.switchAccount), action: () => dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })) },
+    null,
+    { text: intl.formatMessage(messages.scheduled), to: '/scheduled' },
+  ], [intl, dispatch, acct]);
+
+  if (!account) {
+    return null;
+  }
+
+  return (
+    <Dropdown items={menu} placement='bottom-start' scrollKey='compose-form-avatar'>
+      <button type='button' className='compose-form__dropdowns__avatar'>
+        <Avatar account={account} size={32} />
+      </button>
+    </Dropdown>
+  );
+};
 
 class ComposeForm extends ImmutablePureComponent {
   static propTypes = {
@@ -92,6 +126,7 @@ class ComposeForm extends ImmutablePureComponent {
     media: ImmutablePropTypes.list,
     isInReply: PropTypes.bool,
     singleColumn: PropTypes.bool,
+    isInline: PropTypes.bool,
     lang: PropTypes.string,
     maxChars: PropTypes.number,
     redirectOnSuccess: PropTypes.bool,
@@ -281,12 +316,41 @@ class ComposeForm extends ImmutablePureComponent {
     this.props.onPickEmoji(position, data, needsSpace);
   };
 
+  renderSubmit () {
+    const { intl, isSubmitting } = this.props;
+
+    return (
+      <div className='compose-form__submit'>
+        <SecondaryPrivacyButton
+          disabled={!this.canSubmit()}
+          privacy={this.props.sideArm}
+          isEditing={this.props.isEditing}
+          onClick={this.handleSecondarySubmit}
+        />
+        <Button
+          type='submit'
+          compact
+          disabled={!this.canSubmit()}
+          loading={isSubmitting}
+        >
+          {intl.formatMessage(
+            this.props.isEditing
+              ? messages.saveChanges
+              : (this.props.scheduledAt
+                ? messages.schedule
+                : (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish)))
+          )}
+        </Button>
+      </div>
+    );
+  }
+
   render () {
     const { intl, onPaste, onDrop, autoFocus, withoutNavigation, maxChars, isSubmitting } = this.props;
 
     return (
       <form
-        className='compose-form'
+        className={classNames('compose-form', { 'compose-form--inline': this.props.isInline })}
         role='region'
         aria-label={intl.formatMessage({
           id: 'tabs_bar.publish',
@@ -302,18 +366,25 @@ class ComposeForm extends ImmutablePureComponent {
           <EditIndicator />
 
           <div className='compose-form__dropdowns'>
-            <VisibilityButton disabled={this.props.isEditing} />
-            <CircleButton disabled={this.props.isEditing} />
-            <ClipButton disabled={this.props.isEditing} />
-            {!this.props.hideLanguage && <LanguageDropdown />}
-            {(this.props.showScheduleButton || this.props.isEditingScheduled) && (
-              <ScheduleButton
-                scheduledAt={this.props.scheduledAt}
-                onScheduleChange={this.props.onScheduleChange}
-                disabled={this.props.isEditing && !this.props.isEditingScheduled}
-                isEditing={this.props.isEditing && !this.props.isEditingScheduled}
-              />
-            )}
+            <div className='compose-form__dropdowns__left'>
+              {this.props.isInline && <ComposeFormAvatar />}
+              <VisibilityButton disabled={this.props.isEditing} />
+              <CircleButton disabled={this.props.isEditing} />
+              <ClipButton disabled={this.props.isEditing} />
+              {!this.props.hideLanguage && <LanguageDropdown />}
+              {(this.props.showScheduleButton || this.props.isEditingScheduled) && (
+                <ScheduleButton
+                  scheduledAt={this.props.scheduledAt}
+                  onScheduleChange={this.props.onScheduleChange}
+                  disabled={this.props.isEditing && !this.props.isEditingScheduled}
+                  isEditing={this.props.isEditing && !this.props.isEditingScheduled}
+                />
+              )}
+            </div>
+
+            <div className='compose-form__dropdowns__submit'>
+              {this.renderSubmit()}
+            </div>
           </div>
 
           {this.props.spoiler && (
@@ -379,28 +450,7 @@ class ComposeForm extends ImmutablePureComponent {
                 <CharacterCounter max={maxChars} text={this.getFulltextForCharacterCounting()} />
               </div>
 
-              <div className='compose-form__submit'>
-                <SecondaryPrivacyButton
-                  disabled={!this.canSubmit()}
-                  privacy={this.props.sideArm}
-                  isEditing={this.props.isEditing}
-                  onClick={this.handleSecondarySubmit}
-                />
-                <Button
-                  type='submit'
-                  compact
-                  disabled={!this.canSubmit()}
-                  loading={isSubmitting}
-                >
-                  {intl.formatMessage(
-                    this.props.isEditing
-                      ? messages.saveChanges
-                      : (this.props.scheduledAt
-                        ? messages.schedule
-                        : (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish)))
-                  )}
-                </Button>
-              </div>
+              {!this.props.isInline && this.renderSubmit()}
             </div>
 
             <MfmComposeHint />

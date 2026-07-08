@@ -12,7 +12,7 @@ import { Account } from 'flavours/glitch/components/account';
 import { ServerHeroImage } from 'flavours/glitch/components/server_hero_image';
 import { ShortNumber } from 'flavours/glitch/components/short_number';
 import { Skeleton } from 'flavours/glitch/components/skeleton';
-import { domain } from 'flavours/glitch/initial_state';
+import { domain, me } from 'flavours/glitch/initial_state';
 
 import { injectIntl } from './intl';
 
@@ -44,9 +44,11 @@ class ServerBanner extends PureComponent {
 
     return (
       <div className='server-banner'>
-        <div className='server-banner__introduction'>
-          <FormattedMessage id='server_banner.is_one_of_many' defaultMessage='{domain} is one of the many independent Mastodon servers you can use to participate in the fediverse.' values={{ domain: <strong>{domain}</strong>, mastodon: <a href='https://joinmastodon.org' target='_blank' rel='noopener'>Mastodon</a> }} />
-        </div>
+        {!me && (
+          <div className='server-banner__introduction'>
+            <FormattedMessage id='server_banner.is_one_of_many' defaultMessage='{domain} is one of the many independent Mastodon servers you can use to participate in the fediverse.' values={{ domain: <strong>{domain}</strong>, mastodon: <a href='https://joinmastodon.org' target='_blank' rel='noopener'>Mastodon</a> }} />
+          </div>
+        )}
 
         <NavLink to='/about'>
           <ServerHeroImage

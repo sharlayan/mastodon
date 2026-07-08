@@ -20,6 +20,11 @@ export const ComposePanel: React.FC = () => {
     dispatch(changeComposing(true));
   }, [dispatch]);
   const { signedIn } = useIdentity();
+  const inlineCompose = useAppSelector(
+    (state) =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      state.local_settings.get('inline_compose_timelines', false) as boolean,
+  );
   const hideComposer = useAppSelector((state) => {
     const mounted = state.compose.get('mounted');
     if (typeof mounted === 'number') {
@@ -36,6 +41,7 @@ export const ComposePanel: React.FC = () => {
   }, [dispatch]);
 
   const { singleColumn } = useLayout();
+  const hideForm = inlineCompose && singleColumn;
 
   return (
     <div className='compose-panel' onFocus={handleFocus}>
@@ -48,8 +54,18 @@ export const ComposePanel: React.FC = () => {
         </>
       )}
 
-      {signedIn && !hideComposer && <ComposeFormContainer singleColumn />}
-      {signedIn && hideComposer && <div className='compose-form' />}
+      {signedIn && !hideForm && !hideComposer && (
+        <ComposeFormContainer singleColumn />
+      )}
+      {signedIn && !hideForm && hideComposer && (
+        <div className='compose-form' />
+      )}
+      {signedIn && hideForm && (
+        <>
+          <ServerBanner />
+          <div className='flex-spacer' />
+        </>
+      )}
 
       <LinkFooter context={singleColumn ? 'default' : 'multi-column'} />
     </div>

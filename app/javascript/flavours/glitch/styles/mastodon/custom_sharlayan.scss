@@ -562,3 +562,53 @@ html.content-font-size__xx_large {
     box-shadow: none;
   }
 }
+
+.compose-form__dropdowns {
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+  }
+
+  &__avatar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+
+  &__submit {
+    display: none;
+    margin-inline-start: auto;
+  }
+}
+
+.compose-form--inline {
+  .compose-form__dropdowns {
+    &__left {
+      gap: 5px;
+    }
+  }
+
+  .autosuggest-textarea__highlights {
+    font-size: 16px;
+  }
+
+  .compose-form__dropdowns__submit {
+    display: flex;
+
+    button {
+      padding: 4px 16px;
+      gap: 4px;
+      box-sizing: border-box;
+      min-height: 25px;
+    }
+  }
+}
