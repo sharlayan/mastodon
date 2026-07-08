@@ -765,8 +765,13 @@ html.content-font-size__xx_large {
 
 .compose-form--inline {
   .compose-form__dropdowns {
+    display: flex;
+    align-items: start;
+    flex-wrap: nowrap;
+
     &__left {
       gap: 5px;
+      min-width: 0;
     }
   }
 
@@ -776,6 +781,7 @@ html.content-font-size__xx_large {
 
   .compose-form__dropdowns__submit {
     display: flex;
+    flex-shrink: 0;
 
     button {
       padding: 4px 16px;
