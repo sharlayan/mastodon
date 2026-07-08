@@ -607,6 +607,14 @@ html.content-font-size__xx_large {
 .inline-compose-mode {
   .tabs-bar__wrapper {
     position: inherit;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  @media screen and (width < 1175px) {
+    .tabs-bar__wrapper {
+      position: static !important;
+    }
   }
 }
 

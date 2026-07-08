@@ -70,7 +70,9 @@ export const InlineComposeShell = () => {
   }, [intl, savedTabList, lists, antennas]);
 
   const isFeedRoute = useMemo(
-    () => tabs.some((tab) => matchPath(location.pathname, { path: tab.to, exact: true })),
+    () => tabs.some((tab) => matchPath(location.pathname, { path: tab.to, exact: true }))
+      || !!matchPath(location.pathname, { path: '/lists/:id', exact: true })
+      || !!matchPath(location.pathname, { path: '/antennas/:id', exact: true }),
     [tabs, location.pathname],
   );
 
