@@ -17,9 +17,11 @@ export const InlineComposeForm = ({ multiColumn }) => {
     }
 
     dispatch(mountCompose());
+    document.documentElement.classList.add('inline-compose-mode');
 
     return () => {
       dispatch(unmountCompose());
+      document.documentElement.classList.remove('inline-compose-mode');
     };
   }, [dispatch, active]);
 
@@ -29,7 +31,7 @@ export const InlineComposeForm = ({ multiColumn }) => {
 
   return (
     <div className='inline-compose-form'>
-      <ComposeFormContainer />
+      <ComposeFormContainer isInline withoutNavigation />
     </div>
   );
 };

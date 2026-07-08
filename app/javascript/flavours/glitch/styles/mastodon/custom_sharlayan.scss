@@ -562,3 +562,37 @@ html.content-font-size__xx_large {
     box-shadow: none;
   }
 }
+
+.compose-form__dropdowns {
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+  }
+
+  &__submit {
+    display: none;
+    margin-inline-start: auto;
+  }
+}
+
+.compose-form--inline {
+  .compose-form__dropdowns {
+    &__left {
+      gap: 5px;
+    }
+  }
+
+  .compose-form__dropdowns__submit {
+    display: flex;
+
+    button {
+      padding: 4px 16px;
+      gap: 4px;
+      box-sizing: border-box;
+      min-height: 25px;
+    }
+  }
+}

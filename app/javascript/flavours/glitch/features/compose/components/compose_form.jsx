@@ -91,6 +91,7 @@ class ComposeForm extends ImmutablePureComponent {
     media: ImmutablePropTypes.list,
     isInReply: PropTypes.bool,
     singleColumn: PropTypes.bool,
+    isInline: PropTypes.bool,
     lang: PropTypes.string,
     maxChars: PropTypes.number,
     redirectOnSuccess: PropTypes.bool,
@@ -280,12 +281,41 @@ class ComposeForm extends ImmutablePureComponent {
     this.props.onPickEmoji(position, data, needsSpace);
   };
 
+  renderSubmit () {
+    const { intl, isSubmitting } = this.props;
+
+    return (
+      <div className='compose-form__submit'>
+        <SecondaryPrivacyButton
+          disabled={!this.canSubmit()}
+          privacy={this.props.sideArm}
+          isEditing={this.props.isEditing}
+          onClick={this.handleSecondarySubmit}
+        />
+        <Button
+          type='submit'
+          compact
+          disabled={!this.canSubmit()}
+          loading={isSubmitting}
+        >
+          {intl.formatMessage(
+            this.props.isEditing
+              ? messages.saveChanges
+              : (this.props.scheduledAt
+                ? messages.schedule
+                : (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish)))
+          )}
+        </Button>
+      </div>
+    );
+  }
+
   render () {
     const { intl, onPaste, onDrop, autoFocus, withoutNavigation, maxChars, isSubmitting } = this.props;
 
     return (
       <form
-        className='compose-form'
+        className={classNames('compose-form', { 'compose-form--inline': this.props.isInline })}
         role='region'
         aria-label={intl.formatMessage({
           id: 'tabs_bar.publish',
@@ -301,18 +331,24 @@ class ComposeForm extends ImmutablePureComponent {
           <EditIndicator />
 
           <div className='compose-form__dropdowns'>
-            <VisibilityButton disabled={this.props.isEditing} />
-            <CircleButton disabled={this.props.isEditing} />
-            <ClipButton disabled={this.props.isEditing} />
-            <LanguageDropdown />
-            {(this.props.showScheduleButton || this.props.isEditingScheduled) && (
-              <ScheduleButton
-                scheduledAt={this.props.scheduledAt}
-                onScheduleChange={this.props.onScheduleChange}
-                disabled={this.props.isEditing && !this.props.isEditingScheduled}
-                isEditing={this.props.isEditing && !this.props.isEditingScheduled}
-              />
-            )}
+            <div className='compose-form__dropdowns__left'>
+              <VisibilityButton disabled={this.props.isEditing} />
+              <CircleButton disabled={this.props.isEditing} />
+              <ClipButton disabled={this.props.isEditing} />
+              <LanguageDropdown />
+              {(this.props.showScheduleButton || this.props.isEditingScheduled) && (
+                <ScheduleButton
+                  scheduledAt={this.props.scheduledAt}
+                  onScheduleChange={this.props.onScheduleChange}
+                  disabled={this.props.isEditing && !this.props.isEditingScheduled}
+                  isEditing={this.props.isEditing && !this.props.isEditingScheduled}
+                />
+              )}
+            </div>
+
+            <div className='compose-form__dropdowns__submit'>
+              {this.renderSubmit()}
+            </div>
           </div>
 
           {this.props.spoiler && (
@@ -378,28 +414,7 @@ class ComposeForm extends ImmutablePureComponent {
                 <CharacterCounter max={maxChars} text={this.getFulltextForCharacterCounting()} />
               </div>
 
-              <div className='compose-form__submit'>
-                <SecondaryPrivacyButton
-                  disabled={!this.canSubmit()}
-                  privacy={this.props.sideArm}
-                  isEditing={this.props.isEditing}
-                  onClick={this.handleSecondarySubmit}
-                />
-                <Button
-                  type='submit'
-                  compact
-                  disabled={!this.canSubmit()}
-                  loading={isSubmitting}
-                >
-                  {intl.formatMessage(
-                    this.props.isEditing
-                      ? messages.saveChanges
-                      : (this.props.scheduledAt
-                        ? messages.schedule
-                        : (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish)))
-                  )}
-                </Button>
-              </div>
+              {!this.props.isInline && this.renderSubmit()}
             </div>
 
             <MfmComposeHint />
