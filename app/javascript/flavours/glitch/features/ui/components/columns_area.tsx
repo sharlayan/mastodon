@@ -42,6 +42,7 @@ import { BundleColumnError } from './bundle_column_error';
 import { ColumnLoading } from './column_loading';
 import { ComposePanel, RedirectToMobileComposeIfNeeded } from './compose_panel';
 import DrawerLoading from './drawer_loading';
+import { InlineComposeShell } from './inline_compose_shell';
 
 const componentMap = {
   COMPOSE: Compose,
@@ -142,6 +143,8 @@ export const ColumnsArea = forwardRef<
           <div className='tabs-bar__wrapper'>
             <TabsBarPortal />
           </div>
+
+          <InlineComposeShell />
 
           <div className='columns-area columns-area--mobile'>{children}</div>
         </main>

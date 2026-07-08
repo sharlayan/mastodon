@@ -19,7 +19,6 @@ import { connectCommunityStream } from '../../actions/streaming';
 import { expandCommunityTimeline } from '../../actions/timelines';
 import Column from '../../components/column';
 import ColumnHeader from '../../components/column_header';
-import { InlineComposeForm } from '../ui/components/inline_compose_form';
 import StatusListContainer from '../ui/containers/status_list_container';
 
 import ColumnSettingsContainer from './containers/column_settings_container';
@@ -158,7 +157,7 @@ class CommunityTimeline extends PureComponent {
         </ColumnHeader>
 
         <StatusListContainer
-          prepend={<><InlineComposeForm multiColumn={multiColumn} /><DismissableBanner id='community_timeline'><FormattedMessage id='dismissable_banner.community_timeline' defaultMessage='These are the most recent public posts from people whose accounts are hosted by {domain}.' values={{ domain }} /></DismissableBanner></>}
+          prepend={<DismissableBanner id='community_timeline'><FormattedMessage id='dismissable_banner.community_timeline' defaultMessage='These are the most recent public posts from people whose accounts are hosted by {domain}.' values={{ domain }} /></DismissableBanner>}
           alwaysPrepend
           trackScroll={!pinned}
           scrollKey={`community_timeline-${columnId}`}
