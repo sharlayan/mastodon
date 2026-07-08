@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
-import { createRef } from 'react';
+import { createRef, useMemo } from 'react';
 
-import { defineMessages } from 'react-intl';
+import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
@@ -10,12 +10,17 @@ import ImmutablePureComponent from 'react-immutable-pure-component';
 
 import { length } from 'stringz';
 
-import { forceLocalOnly, missingAltTextModal } from 'flavours/glitch/initial_state';
+import { openModal } from 'flavours/glitch/actions/modal';
+import { forceLocalOnly, me, missingAltTextModal } from 'flavours/glitch/initial_state';
+import { useAppDispatch } from 'flavours/glitch/store';
 
 import AutosuggestInput from 'flavours/glitch/components/autosuggest_input';
 import AutosuggestTextarea from 'flavours/glitch/components/autosuggest_textarea';
+import { Avatar } from 'flavours/glitch/components/avatar';
 import { Button } from 'flavours/glitch/components/button';
+import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { injectIntl } from '@/flavours/glitch/components/intl';
+import { useAccount } from 'flavours/glitch/hooks/useAccount';
 import EmojiPickerDropdown from '../containers/emoji_picker_dropdown_container';
 import PollButtonContainer from '../containers/poll_button_container';
 import SpoilerButtonContainer from '../containers/spoiler_button_container';
@@ -52,7 +57,36 @@ const messages = defineMessages({
   schedule: { id: 'compose_form.schedule_submit', defaultMessage: 'Schedule' },
   saveChanges: { id: 'compose_form.save_changes', defaultMessage: 'Update' },
   reply: { id: 'compose_form.reply', defaultMessage: 'Reply' },
+  profile: { id: 'column_header.profile', defaultMessage: 'Profile' },
+  switchAccount: { id: 'navigation_bar.switch_account', defaultMessage: 'Switch account' },
+  scheduled: { id: 'navigation_bar.scheduled', defaultMessage: 'Scheduled posts' },
 });
+
+const ComposeFormAvatar = () => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const account = useAccount(me);
+  const acct = account?.get('acct');
+
+  const menu = useMemo(() => [
+    { text: intl.formatMessage(messages.profile), to: `/@${acct}` },
+    { text: intl.formatMessage(messages.switchAccount), action: () => dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })) },
+    null,
+    { text: intl.formatMessage(messages.scheduled), to: '/scheduled' },
+  ], [intl, dispatch, acct]);
+
+  if (!account) {
+    return null;
+  }
+
+  return (
+    <Dropdown items={menu} placement='bottom-start' scrollKey='compose-form-avatar'>
+      <button type='button' className='compose-form__dropdowns__avatar'>
+        <Avatar account={account} size={32} />
+      </button>
+    </Dropdown>
+  );
+};
 
 class ComposeForm extends ImmutablePureComponent {
   static propTypes = {
@@ -332,6 +366,7 @@ class ComposeForm extends ImmutablePureComponent {
 
           <div className='compose-form__dropdowns'>
             <div className='compose-form__dropdowns__left'>
+              {this.props.isInline && <ComposeFormAvatar />}
               <VisibilityButton disabled={this.props.isEditing} />
               <CircleButton disabled={this.props.isEditing} />
               <ClipButton disabled={this.props.isEditing} />
