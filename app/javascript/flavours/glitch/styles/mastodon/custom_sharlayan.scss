@@ -598,22 +598,25 @@ html.content-font-size__xx_large {
 }
 
 @media screen and (width >= 1174px) {
-  .inline-compose-shell {
-    border: 1px solid var(--color-border-primary);
-    border-top: unset;
-    border-bottom: unset;
+  .inline-compose-shell__bar,
+  .inline-compose-form {
+    border-inline: 1px solid var(--color-border-primary);
+  }
+}
+
+.inline-compose-mode {
+  .tabs-bar__wrapper {
+    position: inherit;
   }
 }
 
 .inline-compose-shell {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background: var(--color-bg-primary);
+  display: contents;
 
   &__bar {
-    position: relative;
-    z-index: 2;
+    position: sticky;
+    top: 0;
+    z-index: 3;
     display: flex;
     align-items: stretch;
     background: var(--color-bg-primary);
