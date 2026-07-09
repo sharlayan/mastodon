@@ -482,5 +482,78 @@ namespace :api, format: false do
   namespace :misskey_compat, path: '' do
     post 'users/show', to: 'users#show'
     post 'get-avatar-decorations', to: 'avatar_decorations#index'
+
+    post 'meta', to: 'meta#show'
+    match 'emojis', to: 'emojis#index', via: [:get, :post]
+    post 'i', to: 'i#show'
+    post 'i/notifications', to: 'notifications#index'
+    post 'miauth/:session/check', to: 'miauth#check'
+
+    post 'notes/timeline', to: 'notes#timeline'
+    post 'notes/local-timeline', to: 'notes#local_timeline'
+    post 'notes/hybrid-timeline', to: 'notes#hybrid_timeline'
+    post 'notes/global-timeline', to: 'notes#global_timeline'
+    post 'notes/show', to: 'notes#show'
+    post 'notes/children', to: 'notes#children'
+    post 'notes/state', to: 'notes#state'
+    post 'notes/reactions/create', to: 'notes#reactions_create'
+    post 'notes/reactions/delete', to: 'notes#reactions_delete'
+
+    post 'drive/files/create', to: 'drive#create'
+
+    post 'notes/create', to: 'notes#create'
+    post 'notes/delete', to: 'notes#destroy'
+    post 'notes/mentions', to: 'notes#mentions'
+    post 'notes/featured', to: 'notes#featured'
+    post 'notes/search', to: 'notes#search'
+    post 'notes/favorites/create', to: 'notes#favorites_create'
+    post 'notes/favorites/delete', to: 'notes#favorites_delete'
+    post 'notes/polls/vote', to: 'notes#polls_vote'
+    post 'i/favorites', to: 'notes#my_favorites'
+
+    post 'users/notes', to: 'accounts#notes'
+    post 'users/search', to: 'accounts#search'
+    post 'users/followers', to: 'accounts#followers'
+    post 'users/following', to: 'accounts#following'
+    post 'users/report-abuse', to: 'accounts#report_abuse'
+    post 'pinned-users', to: 'accounts#pinned_users'
+
+    post 'following/create', to: 'following#create'
+    post 'following/delete', to: 'following#destroy'
+    post 'following/requests/accept', to: 'following#accept_request'
+    post 'following/requests/reject', to: 'following#reject_request'
+    post 'blocking/create', to: 'blocking#create'
+    post 'blocking/delete', to: 'blocking#destroy'
+    post 'mute/create', to: 'mutes#create'
+    post 'mute/delete', to: 'mutes#destroy'
+
+    match 'hashtags/trend', to: 'hashtags#trend', via: [:get, :post]
+
+    post 'users/lists/list', to: 'lists#index'
+    post 'users/lists/show', to: 'lists#show'
+    post 'users/lists/create', to: 'lists#create'
+    post 'users/lists/update', to: 'lists#update'
+    post 'users/lists/delete', to: 'lists#destroy'
+    post 'users/lists/push', to: 'lists#push'
+    post 'users/lists/pull', to: 'lists#pull'
+    post 'users/lists/get-memberships', to: 'lists#memberships'
+    post 'notes/user-list-timeline', to: 'lists#timeline'
+
+    post 'antennas/list', to: 'antennas#index'
+    post 'antennas/notes', to: 'antennas#notes'
+
+    post 'channels/followed', to: 'channels#empty'
+    post 'channels/my-favorites', to: 'channels#empty'
+    post 'channels/owned', to: 'channels#empty'
+    post 'channels/featured', to: 'channels#empty'
+    post 'channels/timeline', to: 'channels#empty'
+    post 'channels/search', to: 'channels#empty'
+    post 'channels/show', to: 'channels#noop'
+    post 'channels/create', to: 'channels#noop'
+    post 'channels/update', to: 'channels#noop'
+    match 'channels/follow', to: 'channels#noop', via: [:post]
+    match 'channels/unfollow', to: 'channels#noop', via: [:post]
+    match 'channels/favorite', to: 'channels#noop', via: [:post]
+    match 'channels/unfavorite', to: 'channels#noop', via: [:post]
   end
 end

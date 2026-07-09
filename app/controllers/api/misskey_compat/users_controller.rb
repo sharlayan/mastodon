@@ -1,22 +1,10 @@
 # frozen_string_literal: true
 
-class Api::MisskeyCompat::UsersController < ApplicationController
-  RequesterIdentity = Struct.new(:id)
-
-  skip_before_action :verify_authenticity_token, raise: false
-
+class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
   def show
-    username = params[:username].to_s.strip
-    return render json: { error: 'Missing username' }, status: 400 if username.blank?
-
-    @account = Account.local.find_by(username: username)
-    return render json: { error: 'Not Found' }, status: 404 if @account.nil?
-
-    begin
-      RateLimiter.new(RequesterIdentity.new(request.remote_ip), family: :misskey_users_show).record!
-    rescue Mastodon::RateLimitExceededError
-      return render json: { error: I18n.t('errors.429') }, status: 429
-    end
+    @account = find_account
+    return render_error('No such user', 'NO_SUCH_USER', 404) if @account.nil?
+    return if rate_limited?(:misskey_users_show)
 
     avatar_decorations = []
 
@@ -43,12 +31,20 @@ class Api::MisskeyCompat::UsersController < ApplicationController
       end
     end
 
-    render json: {
-      id: @account.id.to_s,
-      username: @account.username,
-      name: @account.display_name,
-      avatarUrl: @account.avatar_url,
-      avatarDecorations: avatar_decorations,
-    }
+    render json: MisskeyCompat::UserSerializer.serialize(@account, detailed: true).merge(avatarDecorations: avatar_decorations)
+  end
+
+  private
+
+  def find_account
+    if params[:userId].present?
+      Account.find_by(id: params[:userId])
+    else
+      username = params[:username].to_s.strip
+      return nil if username.blank?
+
+      domain = params[:host].to_s.strip.presence
+      domain.nil? ? Account.local.find_by(username: username) : Account.find_by(username: username, domain: domain)
+    end
   end
 end

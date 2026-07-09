@@ -61,6 +61,9 @@ Rails.application.routes.draw do
 
   get 'remote_interaction_helper', to: 'remote_interaction_helper#index'
 
+  get 'miauth/:session', to: 'miauth#show', as: :miauth
+  post 'miauth/:session', to: 'miauth#create'
+
   resource :instance_actor, path: 'actor', only: [:show] do
     scope module: :activitypub do
       resource :inbox, only: [:create]

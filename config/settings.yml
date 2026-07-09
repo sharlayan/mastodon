@@ -51,6 +51,7 @@ defaults: &defaults
   reaction_custom_emoji_size: false
   reaction_local_emoji_only: true
   reactions_enabled: true
+  misskey_compat_enabled: false
   landing_page: 'trends'
   wrapstodon: true
   mfm_enabled: false

@@ -1149,6 +1149,10 @@ ko:
         title: API 제한 우회
         enabled: 특정 권한에 API 제한 우회 허용
         enabled_hint: 활성화하면 관리자 또는 DevOps 권한을 가진 사용자가 API 제한(rate limit)을 받지 않습니다. 비활성화하면 모든 사용자에게 제한이 적용됩니다.
+      misskey_compat:
+        title: Misskey 호환 API (Flare)
+        enabled: Misskey 호환 API 레이어 활성화
+        enabled_hint: 활성화하면 이 서버가 Misskey API의 일부도 응답하여 Flare 같은 클라이언트가 로그인·리액션·MFM 렌더링을 할 수 있습니다. 켜면 Flare가 이 호스트를 Misskey로 인식합니다. 비활성화하면 기본 Mastodon 동작을 유지합니다.
       domain_blocks:
         all: 모두에게
         disabled: 아무에게도 안 함

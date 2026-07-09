@@ -25,7 +25,7 @@ import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
-import { me, maxReactions, quickBoosting, reactionsEnabled, clipsEnabled } from 'flavours/glitch/initial_state';
+import { me, quickBoosting, reactionsEnabled, clipsEnabled } from 'flavours/glitch/initial_state';
 
 import { IconButton } from '../icon_button';
 import { injectIntl } from '../intl';
@@ -365,7 +365,7 @@ class StatusActionBar extends ImmutablePureComponent {
       </div>
     );
 
-    const canReact = permissions && status.get('reactions').filter(r => r.get('count') > 0 && r.get('me')).size < maxReactions;
+    const canReact = permissions;
     const reactButton = (
       <IconButton
         className='status__action-bar-button'
