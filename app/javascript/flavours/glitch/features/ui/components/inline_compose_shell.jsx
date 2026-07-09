@@ -72,7 +72,8 @@ export const InlineComposeShell = () => {
   const isFeedRoute = useMemo(
     () => tabs.some((tab) => matchPath(location.pathname, { path: tab.to, exact: true }))
       || !!matchPath(location.pathname, { path: '/lists/:id', exact: true })
-      || !!matchPath(location.pathname, { path: '/antennas/:id', exact: true }),
+      || !!matchPath(location.pathname, { path: '/antennas/:id', exact: true })
+      || !!matchPath(location.pathname, { path: ['/conversations', '/timelines/direct'], exact: true }),
     [tabs, location.pathname],
   );
 
