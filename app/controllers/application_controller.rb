@@ -15,6 +15,7 @@ class ApplicationController < ActionController::Base
   include DatabaseHelper
   include AuthorizedFetchHelper
   include SelfDestructHelper
+  include MisskeyCompat::PskeyCspConcern
 
   helper_method :current_account
   helper_method :current_session
