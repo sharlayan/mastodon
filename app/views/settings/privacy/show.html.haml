@@ -19,6 +19,10 @@
   .fields-group
     = f.input :unlocked, as: :boolean, wrapper: :with_label
 
+  = f.simple_fields_for :settings, current_user.settings do |ff|
+    .fields-group
+      = ff.input :auto_accept_followed, wrapper: :with_label, glitch_only: true
+
   %h2= t('privacy.search')
 
   %p.lead= t('privacy.search_hint_html')

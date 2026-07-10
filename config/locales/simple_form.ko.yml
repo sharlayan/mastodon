@@ -61,6 +61,7 @@ ko:
         setting_boost_modal: 활성화하면 부스트하기 전에 부스트의 공개설정을 바꿀 수 있는 확인창이 먼저 뜨게 됩니다.
         setting_default_quote_policy_private: 마스토돈에서 작성된 팔로워 전용 게시물은 다른 사용자가 인용할 수 없습니다.
         setting_default_quote_policy_unlisted: 사람들에게 인용된 경우, 인용한 게시물도 유행 타임라인에서 감추게 됩니다.
+        setting_auto_accept_followed: 계정이 잠겨 있어도, 내가 이미 팔로우하고 있는 계정의 팔로우 요청은 자동으로 수락합니다.
         setting_bridge_unlisted_to_bsky: 제한된 공개(조용한 공개) 게시물을 연합우주에서는 조용히 유지하면서, 블루스카이 브릿지(bsky.brid.gy)에는 전체 공개로 전달하여 블루스카이로 연동되도록 합니다. 브릿지 계정을 팔로우해야 작동합니다.
         setting_default_sensitive: 민감한 미디어는 기본적으로 가려져 있으며 클릭해서 볼 수 있습니다
         setting_display_media_default: 민감함으로 설정된 미디어를 보여주기 전에 경고하기
@@ -266,6 +267,7 @@ ko:
         setting_default_language: 게시물 언어
         setting_default_privacy: 게시물 공개 범위
         setting_default_quote_policy: 인용할 수 있는 사람
+        setting_auto_accept_followed: 팔로우 중인 계정의 팔로우 요청 자동 수락
         setting_bridge_unlisted_to_bsky: 제한된 공개 게시물을 블루스카이에 전체 공개로 전달
         setting_default_sensitive: 미디어를 언제나 민감한 콘텐츠로 설정
         setting_default_quote_policy_private: 팔로워만으로 설정할 경우 다른 사람이 인용할 수 없습니다.

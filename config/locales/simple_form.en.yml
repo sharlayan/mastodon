@@ -61,6 +61,7 @@ en:
         setting_boost_modal: When enabled, boosting will first open a confirmation dialog in which you can change the visibility of your boost.
         setting_default_quote_policy_private: Followers-only posts authored on Mastodon can't be quoted by others.
         setting_default_quote_policy_unlisted: When people quote you, their post will also be hidden from trending timelines.
+        setting_auto_accept_followed: Automatically approve follow requests from accounts you already follow, even while your account is locked.
         setting_bridge_unlisted_to_bsky: Your unlisted posts stay quiet on the fediverse, but are delivered to the Bluesky bridge (bsky.brid.gy) as public so they get bridged to Bluesky. Requires following the bridge account.
         setting_default_sensitive: Sensitive media is hidden by default and can be revealed with a click
         setting_display_media_default: Warn before showing media marked as sensitive
@@ -268,6 +269,7 @@ en:
         setting_default_language: Posting language
         setting_default_privacy: Posting visibility
         setting_default_quote_policy: Who can quote
+        setting_auto_accept_followed: Auto-accept follow requests from accounts you follow
         setting_bridge_unlisted_to_bsky: Bridge unlisted posts to Bluesky as public
         setting_default_sensitive: Always mark media as sensitive
         setting_delete_modal: Warn me before deleting a post
