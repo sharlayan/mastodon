@@ -26,6 +26,8 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   attribute :avatar_decorations, if: :decorations_enabled?
 
+  attribute :mfm, if: :mfm?
+
   class AccountDecorator < SimpleDelegator
     def self.model_name
       Account.model_name
@@ -190,6 +192,30 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   def decorations_enabled?
     Setting.avatar_decorations_enabled && !object.avatar_decorations_blocked
+  end
+
+  def mfm
+    true
+  end
+
+  def mfm?
+    return false if object.unavailable?
+    return false unless account_contains_mfm?
+
+    object.local? || instance_supports_mfm?
+  end
+
+  def account_contains_mfm?
+    return true if MfmDetector.contains_mfm?(object.note)
+
+    object.fields.any? { |field| MfmDetector.contains_mfm?(field.value) }
+  end
+
+  def instance_supports_mfm?
+    return false unless Setting.instance_metadata_enabled
+    return false if object.domain.blank?
+
+    InstanceMetadata.find_by(domain: object.domain)&.misskey_based? || false
   end
 
   def avatar_decorations

@@ -87,6 +87,7 @@ export interface BaseApiAccountJSON {
   email_subscriptions?: boolean;
   followed_message?: string | null;
   avatar_decorations?: ApiAvatarDecorationJSON[];
+  mfm?: boolean;
 }
 
 // See app/serializers/rest/muted_account_serializer.rb

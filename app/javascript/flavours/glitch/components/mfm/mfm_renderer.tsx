@@ -66,11 +66,11 @@ export const MfmRenderer: React.FC<MfmRendererProps> = ({
 }) => {
   const ast = useMemo(() => {
     try {
-      return isProfile ? mfm.parseSimple(text) : mfm.parse(text);
+      return mfm.parse(text);
     } catch {
       return null;
     }
-  }, [text, isProfile]);
+  }, [text]);
 
   const [hovered, setHovered] = useState(false);
   const handleMouseEnter = useCallback(() => {

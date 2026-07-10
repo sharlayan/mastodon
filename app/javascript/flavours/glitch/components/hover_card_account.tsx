@@ -121,6 +121,7 @@ export const HoverCardAccount = forwardRef<
                   <AccountFields
                     fields={account.fields.take(2)}
                     emojis={account.emojis}
+                    mfm={account.mfm}
                   />
                 </div>
 
