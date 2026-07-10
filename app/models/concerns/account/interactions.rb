@@ -208,6 +208,10 @@ module Account::Interactions
     follow_requests.exists?(target_account: other_account)
   end
 
+  def auto_accept_follow_from?(other_account)
+    local? && user&.setting_auto_accept_followed && following?(other_account)
+  end
+
   def favourited?(status)
     status.proper.favourites.exists?(account: self)
   end
