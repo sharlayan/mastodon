@@ -31,7 +31,8 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
       end
     end
 
-    render json: MisskeyCompat::UserSerializer.serialize(@account, detailed: true).merge(avatarDecorations: avatar_decorations)
+    me_user = current_user if current_user && current_user.account_id == @account.id
+    render json: MisskeyCompat::UserSerializer.serialize(@account, detailed: true, viewer: current_account, me_user: me_user).merge(avatarDecorations: avatar_decorations)
   end
 
   private

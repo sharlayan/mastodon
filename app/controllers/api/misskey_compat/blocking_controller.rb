@@ -2,19 +2,40 @@
 
 class Api::MisskeyCompat::BlockingController < Api::MisskeyCompat::BaseController
   before_action :require_user!
-  before_action :set_target!
+  before_action :set_target!, only: [:create, :destroy]
+
+  def index
+    blocks = paginated_blocks
+    render json: blocks.map { |block| serialize(block) }
+  end
 
   def create
     BlockService.new.call(current_account, @target)
-    render json: MisskeyCompat::UserSerializer.serialize(@target, detailed: true)
+    render json: MisskeyCompat::UserSerializer.serialize(@target, detailed: true, viewer: current_account)
   end
 
   def destroy
     UnblockService.new.call(current_account, @target)
-    render json: MisskeyCompat::UserSerializer.serialize(@target, detailed: true)
+    render json: MisskeyCompat::UserSerializer.serialize(@target, detailed: true, viewer: current_account)
   end
 
   private
+
+  def serialize(block)
+    {
+      id: block.id.to_s,
+      createdAt: block.created_at.iso8601,
+      blockeeId: block.target_account_id.to_s,
+      blockee: MisskeyCompat::UserSerializer.serialize(block.target_account, detailed: true, viewer: current_account),
+    }
+  end
+
+  def paginated_blocks
+    scope = current_account.block_relationships.includes(:target_account).order(id: :desc)
+    scope = scope.where(id: ...params[:untilId].to_i) if params[:untilId].present?
+    scope = scope.where('blocks.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
+    scope.limit(pagination_limit(default: 30, max: 100))
+  end
 
   def set_target!
     @target = Account.find(params[:userId])

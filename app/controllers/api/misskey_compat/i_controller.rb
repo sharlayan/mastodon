@@ -4,6 +4,130 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   before_action :require_user!
 
   def show
-    render json: MisskeyCompat::UserSerializer.serialize(current_account, detailed: true)
+    render json: me_json
+  end
+
+  def update
+    return unless object_body!
+
+    apply_profile!
+    apply_privacy!
+    apply_muted_words!
+    apply_muted_instances!
+    apply_muted_emojis!
+
+    render json: me_json
+  end
+
+  def read_announcement
+    announcement = BoardAnnouncement.published.find_by(id: params[:announcementId])
+    return render_error('No such announcement', 'NO_SUCH_ANNOUNCEMENT', 404) if announcement.nil?
+
+    BoardAnnouncementRead.find_or_create_by(account: current_account, board_announcement: announcement)
+    head 204
+  end
+
+  private
+
+  def me_json
+    data = MisskeyCompat::UserSerializer.serialize(current_account, detailed: true, me_user: current_user)
+    data[:hasUnreadAnnouncement] = unread_announcement?
+    data
+  end
+
+  def apply_profile!
+    attrs = {}
+    attrs[:display_name] = params[:name].to_s if params.key?(:name)
+    attrs[:note] = params[:description].to_s if params.key?(:description)
+    attrs[:followed_message] = params[:followedMessage].to_s.presence if params.key?(:followedMessage)
+    attrs[:locked] = boolean_param(params[:isLocked]) if params.key?(:isLocked)
+    attrs[:discoverable] = boolean_param(params[:isExplorable]) if params.key?(:isExplorable)
+    attrs[:actor_type] = boolean_param(params[:isBot]) ? 'Service' : 'Person' if params.key?(:isBot)
+    attrs[:fields_attributes] = fields_attributes if params.key?(:fields)
+
+    hide = ff_hide_collections
+    attrs[:hide_collections] = hide unless hide.nil?
+
+    avatar = drive_file(params[:avatarId]) if params.key?(:avatarId)
+    header = drive_file(params[:bannerId]) if params.key?(:bannerId)
+    attrs[:avatar] = avatar.file if avatar
+    attrs[:header] = header.file if header
+
+    current_account.update!(attrs) if attrs.present?
+  end
+
+  def apply_privacy!
+    settings = {}
+    settings['noindex'] = boolean_param(params[:noCrawle]) if params.key?(:noCrawle)
+    settings['default_sensitive'] = boolean_param(params[:alwaysMarkNsfw]) if params.key?(:alwaysMarkNsfw)
+    settings['auto_accept_followed'] = boolean_param(params[:autoAcceptFollowed]) if params.key?(:autoAcceptFollowed)
+
+    current_user.update!(settings_attributes: settings) if settings.present?
+  end
+
+  def fields_attributes
+    Array(params[:fields]).first(4).map do |field|
+      { name: field[:name].to_s, value: field[:value].to_s }
+    end
+  end
+
+  def ff_hide_collections
+    visibility = params[:followingVisibility] || params[:followersVisibility] || params[:ffVisibility]
+    return nil if visibility.nil?
+
+    visibility.to_s != 'public'
+  end
+
+  def drive_file(id)
+    return nil if id.blank?
+
+    current_account.media_attachments.find_by(id: id)
+  end
+
+  def boolean_param(value)
+    ActiveModel::Type::Boolean.new.cast(value)
+  end
+
+  def apply_muted_words!
+    apply_muted_word_setting!('misskey_muted_words', params[:mutedWords])
+    apply_muted_word_setting!('misskey_hard_muted_words', params[:hardMutedWords])
+  end
+
+  def apply_muted_word_setting!(key, value)
+    return if value.nil?
+
+    raise ArgumentError, "#{key} must be an array" unless value.is_a?(Array)
+
+    current_user.update!(settings_attributes: { key => JSON.generate(value) })
+  end
+
+  def apply_muted_instances!
+    return if params[:mutedInstances].nil?
+
+    raise ArgumentError, 'mutedInstances must be an array' unless params[:mutedInstances].is_a?(Array)
+
+    desired = params[:mutedInstances].filter_map { |host| host.to_s.downcase.strip.presence }.uniq
+    existing = current_account.domain_mutes.pluck(:domain)
+
+    (existing - desired).each { |domain| current_account.unmute_domain!(domain) }
+    (desired - existing).each do |domain|
+      current_account.mute_domain!(domain)
+    rescue ActiveRecord::RecordInvalid
+      next
+    end
+  end
+
+  def apply_muted_emojis!
+    return if params[:mutedEmojis].nil?
+
+    raise ArgumentError, 'mutedEmojis must be an array' unless params[:mutedEmojis].is_a?(Array)
+
+    MisskeyCompat::MutedEmojiConverter.apply(current_account, params[:mutedEmojis])
+  end
+
+  def unread_announcement?
+    BoardAnnouncement.published
+      .where.not(id: BoardAnnouncementRead.where(account: current_account).select(:board_announcement_id))
+      .exists?
   end
 end

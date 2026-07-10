@@ -25,6 +25,8 @@ class UserSettings
   setting :auto_quote_from_url, default: false # auto-promote fetchable ActivityPub post links in the body to a quote
   setting :email_subscriptions, default: false
   setting :content_font_size, default: 'medium', in: %w(medium large x_large xx_large)
+  setting :misskey_muted_words, default: '[]'
+  setting :misskey_hard_muted_words, default: '[]'
   setting :hide_online_status, default: true
 
   setting_inverse_alias :indexable, :noindex

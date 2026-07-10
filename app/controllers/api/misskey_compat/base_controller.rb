@@ -18,6 +18,10 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     render_invalid_param('#/', e.to_s)
   end
 
+  rescue_from ActiveRecord::RecordInvalid do |e|
+    render_error(e.to_s, 'INVALID_PARAM', 400)
+  end
+
   private
 
   def rate_limited?(family)

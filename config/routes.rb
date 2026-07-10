@@ -182,6 +182,9 @@ Rails.application.routes.draw do
     get '/@:account_username/wrapstodon/:year/:share_key', to: 'wrapstodon#show', as: :public_wrapstodon
   end
 
+  get '/avatar/:acct', to: 'misskey_compat/avatars#show', constraints: { acct: %r{[^/]+} }, format: false, as: :misskey_compat_avatar
+  get '/url', to: 'misskey_compat/url_preview#show', as: :misskey_compat_url_preview
+
   get '/@:username_with_domain/(*any)', to: 'home#index', constraints: { username_with_domain: %r{([^/])+?} }, as: :account_with_domain, format: false
   get '/settings', to: redirect('/settings/profile')
 

@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
-  before_action :require_user!
+  before_action :require_user!, only: [:create]
+
+  def unavailable
+    render_error('Drive is not available on this server', 'UNAVAILABLE', 400)
+  end
 
   def create
     return render_invalid_param('#/properties/file', 'file required') if params[:file].blank?

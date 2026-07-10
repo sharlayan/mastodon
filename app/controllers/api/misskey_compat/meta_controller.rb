@@ -10,6 +10,22 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     render json: detail ? detailed_meta : lite_meta
   end
 
+  def endpoints
+    render json: self.class.compat_endpoint_names
+  end
+
+  def self.compat_endpoint_names
+    @compat_endpoint_names ||= Rails.application.routes.routes.filter_map do |route|
+      controller = route.defaults[:controller]
+      next unless controller&.start_with?('api/misskey_compat')
+
+      path = route.path.spec.to_s.delete_suffix('(.:format)')
+      next if path.include?(':')
+
+      path.delete_prefix('/api/').presence
+    end.uniq
+  end
+
   private
 
   def detail_param

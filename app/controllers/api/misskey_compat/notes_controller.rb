@@ -9,7 +9,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   ).freeze
 
   before_action :require_user!, only: USER_ACTIONS
-  before_action :set_note, only: [:show, :children, :destroy, :state, :reactions_create, :reactions_delete, :favorites_create, :favorites_delete, :polls_vote]
+  before_action :set_note, only: [:show, :children, :destroy, :state, :reactions_create, :reactions_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
 
   def timeline
     render_notes HomeFeed.new(current_account).get(pagination_limit, until_id, since_id)
@@ -122,6 +122,11 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     }
   end
 
+  def clips
+    scope = Clip.public_clips.joins(:clip_statuses).where(clip_statuses: { status_id: @note.id })
+    render json: scope.map { |clip| MisskeyCompat::ClipSerializer.serialize(clip, current_account: current_account) }
+  end
+
   def polls_vote
     poll = @note.preloadable_poll
     render_error('No such poll', 'NO_POLL', 404) and return if poll.nil?
@@ -210,7 +215,15 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   def render_notes(statuses)
     statuses = statuses.to_a
     Status.preload_cacheable_associations(statuses)
+    preload_relations(statuses)
     render json: statuses.map { |status| serialize(status) }
+  end
+
+  def preload_relations(statuses)
+    ActiveRecord::Associations::Preloader.new(records: statuses, associations: [:thread, { quote: :quoted_status }]).call
+
+    related = statuses.filter_map(&:thread) + statuses.filter_map { |status| status.quote&.quoted_status }
+    Status.preload_cacheable_associations(related) if related.any?
   end
 
   def until_id

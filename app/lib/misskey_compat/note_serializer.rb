@@ -11,12 +11,12 @@ class MisskeyCompat::NoteSerializer
     'limited' => 'specified',
   }.freeze
 
-  def self.serialize(status, current_account: nil)
-    new.serialize(status, current_account: current_account)
+  def self.serialize(status, current_account: nil, embed_relations: true)
+    new.serialize(status, current_account: current_account, embed_relations: embed_relations)
   end
 
-  def serialize(status, current_account: nil)
-    return serialize_renote(status, current_account: current_account) if pure_renote?(status)
+  def serialize(status, current_account: nil, embed_relations: true)
+    return serialize_renote(status, current_account: current_account, embed_relations: embed_relations) if pure_renote?(status)
 
     emojis = {}
     reactions, my_reaction = reactions_for(status, current_account, emojis)
@@ -39,7 +39,9 @@ class MisskeyCompat::NoteSerializer
       renoteCount: status.reblogs_count,
       repliesCount: status.replies_count,
       replyId: status.in_reply_to_id&.to_s,
+      reply: embed_relations ? embedded_note(status.thread, current_account) : nil,
       renoteId: quoted_id(status),
+      renote: embed_relations ? embedded_note(quoted_status(status), current_account) : nil,
       isHidden: false,
       mentions: status.mentions.map { |m| m.account_id.to_s },
       visibleUserIds: [],
@@ -59,7 +61,7 @@ class MisskeyCompat::NoteSerializer
     status.reblog? && status.spoiler_text.blank? && status.text.blank? && status.ordered_media_attachments.empty?
   end
 
-  def serialize_renote(status, current_account:)
+  def serialize_renote(status, current_account:, embed_relations: true)
     {
       id: status.id.to_s,
       createdAt: status.created_at.iso8601,
@@ -69,7 +71,7 @@ class MisskeyCompat::NoteSerializer
       user: MisskeyCompat::UserSerializer.serialize(status.account),
       visibility: VISIBILITY_MAP.fetch(status.visibility, 'public'),
       renoteId: status.reblog_of_id.to_s,
-      renote: serialize(status.reblog, current_account: current_account),
+      renote: embed_relations ? serialize(status.reblog, current_account: current_account, embed_relations: false) : nil,
       reactions: {},
       reactionEmojis: {},
       renoteCount: status.reblogs_count,
@@ -78,8 +80,36 @@ class MisskeyCompat::NoteSerializer
     }
   end
 
+  def quoted_status(status)
+    status.quote&.quoted_status
+  end
+
+  def embedded_note(status, current_account)
+    return nil if status.nil?
+    return nil unless StatusPolicy.new(current_account, status).show?
+
+    serialize(status, current_account: current_account, embed_relations: false)
+  rescue Mastodon::NotPermittedError
+    nil
+  end
+
   def text_for(status)
-    PlainTextFormatter.new(status.text, status.local?).to_s.presence
+    text = PlainTextFormatter.new(status.text, status.local?).to_s.presence
+    text && qualify_mentions(text, status)
+  end
+
+  def qualify_mentions(text, status)
+    status.mentions.includes(:account).find_each do |mention|
+      account = mention.account
+      next if account.nil?
+
+      host = account.local? ? Rails.configuration.x.local_domain : account.domain
+      next if host.blank?
+
+      text = text.gsub(/@#{Regexp.escape(account.username)}(?![A-Za-z0-9_@])/i) { |m| "#{m}@#{host}" }
+    end
+
+    text
   end
 
   def quoted_id(status)
