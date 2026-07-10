@@ -20,7 +20,7 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
 
         {
           id: decoration.id.to_s,
-          url: decoration.image_url,
+          url: full_asset_url(decoration.image_url),
           angle: config['angle'] || 0.0,
           flipH: config['flip_h'] || false,
           offsetX: config['offset_x'] || 0.0,

@@ -88,4 +88,32 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     limit = default if limit <= 0
     limit.clamp(1, max)
   end
+
+  def compat_policies
+    {
+      gtlAvailable: true,
+      ltlAvailable: true,
+      canPublicNote: true,
+      canInitiateConversation: true,
+      canCreateContent: true,
+      canUpdateContent: true,
+      canDeleteContent: true,
+      canPurgeAccount: true,
+      canUpdateAvatar: true,
+      canUpdateBanner: true,
+      canManageCustomEmojis: false,
+      canManageAvatarDecorations: false,
+      canSearchNotes: true,
+      canUseTranslator: false,
+      canUseReaction: true,
+      canHideAds: false,
+      avatarDecorationLimit: avatar_decoration_limit,
+    }
+  end
+
+  def avatar_decoration_limit
+    return 0 unless Setting.avatar_decorations_enabled
+
+    Setting.avatar_decorations_max_count.to_i.clamp(0, UpdateAccountService::MAX_DECORATIONS)
+  end
 end

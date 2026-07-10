@@ -147,6 +147,11 @@ class FanOutOnWriteService < BaseService
     @status.tags.map(&:name).each do |hashtag|
       redis.publish("timeline:hashtag:#{hashtag.downcase}", anonymous_payload)
       redis.publish("timeline:hashtag:#{hashtag.downcase}:local", anonymous_payload) if @status.local?
+
+      unless update?
+        MisskeyCompat::Streaming.broadcast_note(redis, "timeline:hashtag:#{hashtag.downcase}", @status)
+        MisskeyCompat::Streaming.broadcast_note(redis, "timeline:hashtag:#{hashtag.downcase}:local", @status) if @status.local?
+      end
     end
   end
 
@@ -159,6 +164,11 @@ class FanOutOnWriteService < BaseService
     if @status.with_media?
       redis.publish('timeline:public:media', anonymous_payload)
       redis.publish(@status.local? ? 'timeline:public:local:media' : 'timeline:public:remote:media', anonymous_payload)
+    end
+
+    unless update?
+      MisskeyCompat::Streaming.broadcast_note(redis, 'timeline:public', @status)
+      MisskeyCompat::Streaming.broadcast_note(redis, @status.local? ? 'timeline:public:local' : 'timeline:public:remote', @status)
     end
   end
 

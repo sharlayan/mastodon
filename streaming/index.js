@@ -17,6 +17,7 @@ import { AuthenticationError, RequestError, extractStatusAndMessage as extractEr
 import { logger, httpLogger, initializeLogLevel, attachWebsocketHttpLogger, createWebsocketLogger } from './logging.js';
 import { setupMetrics } from './metrics.js';
 import * as Redis from './redis.js';
+import { createMisskeyCompat } from './misskey_compat.js';
 import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -415,7 +416,7 @@ const startServer = async () => {
   const accountFromRequest = (req) => new Promise((resolve, reject) => {
     const authorization = req.headers.authorization;
     const query         = parseQueryString(req);
-    const accessToken   = query?.access_token || req.headers['sec-websocket-protocol'];
+    const accessToken   = query?.access_token || query?.i || req.headers['sec-websocket-protocol'];
 
     if (!authorization && !accessToken) {
       reject(new AuthenticationError('Missing access token'));
@@ -679,6 +680,32 @@ const startServer = async () => {
     });
 
     return access;
+  };
+
+  let misskeyCompatSetting = { value: false, checkedAt: 0 };
+
+  /**
+   * Reads the `misskey_compat_enabled` server setting, cached briefly to avoid
+   * a database query per incoming message. Defaults to disabled when the
+   * setting row is absent (matching the settings.yml default).
+   * @returns {Promise.<boolean>}
+   */
+  const isMisskeyCompatEnabled = async () => {
+    const now = Date.now();
+
+    if (now - misskeyCompatSetting.checkedAt < 15000) {
+      return misskeyCompatSetting.value;
+    }
+
+    try {
+      const result = await pgPool.query("SELECT value FROM settings WHERE var = 'misskey_compat_enabled' LIMIT 1");
+      const enabled = result.rows.length > 0 && result.rows[0].value === "--- true\n";
+      misskeyCompatSetting = { value: enabled, checkedAt: now };
+      return enabled;
+    } catch (err) {
+      logger.error({ err }, 'Failed to read misskey_compat_enabled setting');
+      return false;
+    }
   };
 
   /**
@@ -1390,6 +1417,15 @@ const startServer = async () => {
     metrics.connectedChannels.labels({ type: 'websocket', channel: 'system' }).inc(2);
   };
 
+  const misskeyCompat = createMisskeyCompat({
+    subscribe,
+    unsubscribe,
+    subscriptionHeartbeat,
+    channelNameToIds,
+    isEnabled: isMisskeyCompatEnabled,
+    logger,
+  });
+
   /**
    * @param {import('ws').WebSocket & { isAlive: boolean }} ws
    * @param {Request} req
@@ -1423,6 +1459,8 @@ const startServer = async () => {
       subscriptions.forEach(channelIds => {
         removeSubscription(session, channelIds.split(';'));
       });
+
+      misskeyCompat.cleanup(session);
 
       // Decrement the metrics for connected clients:
       metrics.connectedClients.labels({ type: 'websocket' }).dec();
@@ -1472,6 +1510,8 @@ const startServer = async () => {
           firstParam(stream),
           params
         );
+      } else if (misskeyCompat.isMisskeyType(type)) {
+        misskeyCompat.handleMessage(session, json);
       } else {
         // Unknown action type
       }

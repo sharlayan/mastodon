@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AvatarDecorationsController < ApplicationController
+  include RoutingHelper
+
   RequesterIdentity = Struct.new(:id)
 
   skip_before_action :verify_authenticity_token, raise: false
@@ -17,7 +19,7 @@ class Api::MisskeyCompat::AvatarDecorationsController < ApplicationController
         id: d.id.to_s,
         name: d.name,
         description: d.description.presence || '',
-        url: d.image_url,
+        url: full_asset_url(d.image_url),
         roleIdsThatCanBeUsedThisDecoration: d.required_role_id ? [d.required_role_id.to_s] : [],
       }
     }

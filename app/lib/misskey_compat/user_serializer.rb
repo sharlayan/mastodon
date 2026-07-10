@@ -21,6 +21,7 @@ class MisskeyCompat::UserSerializer
       isModerator: false,
       onlineStatus: 'unknown',
       emojis: emojis_map(account.emojis),
+      avatarDecorations: avatar_decorations_for(account),
     }
 
     if detailed
@@ -62,6 +63,10 @@ class MisskeyCompat::UserSerializer
       ffVisibility: ff_visibility,
       followingVisibility: ff_visibility,
       followersVisibility: ff_visibility,
+      followedMessage: account.followed_message.presence,
+      location: account.location.presence,
+      birthday: account.birthday.presence,
+      lang: user.settings['default_language'].presence,
       mutedWords: parse_muted_words(user.settings['misskey_muted_words']),
       hardMutedWords: parse_muted_words(user.settings['misskey_hard_muted_words']),
       mutedInstances: account.domain_mutes.pluck(:domain),
@@ -96,6 +101,30 @@ class MisskeyCompat::UserSerializer
       pinnedNoteIds: [],
       pinnedNotes: [],
     }
+  end
+
+  def avatar_decorations_for(account)
+    return [] unless Setting.avatar_decorations_enabled
+    return [] if account.avatar_decorations_blocked || account.avatar_decorations.blank?
+
+    decoration_ids = account.avatar_decorations.filter_map { |config| config['id'] }
+    return [] if decoration_ids.empty?
+
+    decorations_by_id = AvatarDecoration.find_many_cached(decoration_ids).index_by(&:id)
+
+    account.avatar_decorations.filter_map do |config|
+      decoration = decorations_by_id[config['id']]
+      next if decoration.nil?
+
+      {
+        id: decoration.id.to_s,
+        url: full_asset_url(decoration.image_url),
+        angle: config['angle'] || 0.0,
+        flipH: config['flip_h'] || false,
+        offsetX: config['offset_x'] || 0.0,
+        offsetY: config['offset_y'] || 0.0,
+      }
+    end
   end
 
   def fields_for(account)

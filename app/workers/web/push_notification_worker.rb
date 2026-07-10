@@ -125,7 +125,11 @@ class Web::PushNotificationWorker
 
   def push_notification_json
     I18n.with_locale(@subscription.locale.presence || I18n.default_locale) do
-      serialized_notification.to_json
+      if @subscription.misskey_compat?
+        MisskeyCompat::PushSerializer.serialize(@notification, @subscription.user.account).to_json
+      else
+        serialized_notification.to_json
+      end
     end
   end
 

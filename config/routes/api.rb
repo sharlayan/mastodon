@@ -491,6 +491,10 @@ namespace :api, format: false do
     post 'i/notifications', to: 'notifications#index'
     post 'miauth/:session/check', to: 'miauth#check'
 
+    post 'sw/register', to: 'sw#register'
+    post 'sw/unregister', to: 'sw#unregister'
+    post 'sw/show-registration', to: 'sw#show_registration'
+
     post 'notes/timeline', to: 'notes#timeline'
     post 'notes/local-timeline', to: 'notes#local_timeline'
     post 'notes/hybrid-timeline', to: 'notes#hybrid_timeline'
@@ -524,7 +528,12 @@ namespace :api, format: false do
     post 'notes/favorites/create', to: 'notes#favorites_create'
     post 'notes/favorites/delete', to: 'notes#favorites_delete'
     post 'notes/polls/vote', to: 'notes#polls_vote'
+    post 'notes/polls/recommendation', to: 'notes#polls_recommendation'
     post 'i/favorites', to: 'notes#my_favorites'
+
+    post 'roles/list', to: 'roles#index'
+    post 'roles/show', to: 'roles#show'
+    post 'roles/users', to: 'roles#users'
 
     post 'users/notes', to: 'accounts#notes'
     post 'users/search', to: 'accounts#search'

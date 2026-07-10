@@ -31,6 +31,7 @@ class PushUpdateWorker
 
   def publish!
     redis.publish(@timeline_id, message)
+    MisskeyCompat::Streaming.broadcast_note(redis, @timeline_id, @status, current_account: Account.find_by(id: @account_id)) unless update?
   end
 
   def update?

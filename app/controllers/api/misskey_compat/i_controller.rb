@@ -32,6 +32,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   def me_json
     data = MisskeyCompat::UserSerializer.serialize(current_account, detailed: true, me_user: current_user)
     data[:hasUnreadAnnouncement] = unread_announcement?
+    data[:policies] = compat_policies
     data
   end
 
@@ -40,10 +41,13 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     attrs[:display_name] = params[:name].to_s if params.key?(:name)
     attrs[:note] = params[:description].to_s if params.key?(:description)
     attrs[:followed_message] = params[:followedMessage].to_s.presence if params.key?(:followedMessage)
+    attrs[:location] = params[:location].to_s.presence if params.key?(:location)
+    attrs[:birthday] = params[:birthday].to_s.presence if params.key?(:birthday)
     attrs[:locked] = boolean_param(params[:isLocked]) if params.key?(:isLocked)
     attrs[:discoverable] = boolean_param(params[:isExplorable]) if params.key?(:isExplorable)
     attrs[:actor_type] = boolean_param(params[:isBot]) ? 'Service' : 'Person' if params.key?(:isBot)
     attrs[:fields_attributes] = fields_attributes if params.key?(:fields)
+    attrs[:avatar_decorations] = avatar_decorations_attributes if params.key?(:avatarDecorations)
 
     hide = ff_hide_collections
     attrs[:hide_collections] = hide unless hide.nil?
@@ -53,7 +57,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     attrs[:avatar] = avatar.file if avatar
     attrs[:header] = header.file if header
 
-    current_account.update!(attrs) if attrs.present?
+    UpdateAccountService.new.call(current_account, attrs, raise_error: true) if attrs.present?
   end
 
   def apply_privacy!
@@ -61,6 +65,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     settings['noindex'] = boolean_param(params[:noCrawle]) if params.key?(:noCrawle)
     settings['default_sensitive'] = boolean_param(params[:alwaysMarkNsfw]) if params.key?(:alwaysMarkNsfw)
     settings['auto_accept_followed'] = boolean_param(params[:autoAcceptFollowed]) if params.key?(:autoAcceptFollowed)
+    settings['default_language'] = params[:lang].to_s.presence if params.key?(:lang)
 
     current_user.update!(settings_attributes: settings) if settings.present?
   end
@@ -68,6 +73,20 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   def fields_attributes
     Array(params[:fields]).first(4).map do |field|
       { name: field[:name].to_s, value: field[:value].to_s }
+    end
+  end
+
+  def avatar_decorations_attributes
+    Array(params[:avatarDecorations]).map do |config|
+      {
+        id: config[:id].to_s,
+        angle: config[:angle],
+        flip_h: config[:flipH],
+        offset_x: config[:offsetX],
+        offset_y: config[:offsetY],
+        scale: config.key?(:scale) ? config[:scale] : 1.0,
+        opacity: config.key?(:opacity) ? config[:opacity] : 1.0,
+      }
     end
   end
 

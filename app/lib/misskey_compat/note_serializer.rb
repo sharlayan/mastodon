@@ -19,7 +19,8 @@ class MisskeyCompat::NoteSerializer
     return serialize_renote(status, current_account: current_account, embed_relations: embed_relations) if pure_renote?(status)
 
     emojis = {}
-    reactions, my_reaction = reactions_for(status, current_account, emojis)
+    reaction_emojis = {}
+    reactions, my_reaction = reactions_for(status, current_account, reaction_emojis)
     merge_text_emojis(status, emojis)
     @current_account = current_account
 
@@ -34,7 +35,7 @@ class MisskeyCompat::NoteSerializer
       localOnly: status.local_only?,
       reactionAcceptance: nil,
       reactions: reactions,
-      reactionEmojis: {},
+      reactionEmojis: reaction_emojis,
       myReaction: my_reaction,
       renoteCount: status.reblogs_count,
       repliesCount: status.replies_count,
@@ -51,7 +52,7 @@ class MisskeyCompat::NoteSerializer
       poll: poll_for(status),
       emojis: emojis,
       uri: status.local? ? nil : status.uri,
-      url: status.local? ? ActivityPub::TagManager.instance.url_for(status) : status.url,
+      url: status.local? ? nil : (status.url || ActivityPub::TagManager.instance.url_for(status)),
     }
   end
 
@@ -118,7 +119,7 @@ class MisskeyCompat::NoteSerializer
     status.quote&.quoted_status_id&.to_s
   end
 
-  def reactions_for(status, current_account, emojis)
+  def reactions_for(status, current_account, reaction_emojis)
     reactions = {}
     my_reaction = nil
 
@@ -126,9 +127,10 @@ class MisskeyCompat::NoteSerializer
       custom = reaction.custom_emoji
 
       if custom.present?
-        suffix = custom.domain.present? ? "#{reaction.name}@#{custom.domain}" : reaction.name
+        host = custom.domain.presence
+        suffix = host ? "#{reaction.name}@#{host}" : "#{reaction.name}@."
         key = ":#{suffix}:"
-        emojis[suffix] = full_asset_url(custom.image.url)
+        reaction_emojis["#{reaction.name}@#{host}"] = full_asset_url(custom.image.url) if host
       else
         key = reaction.name
       end

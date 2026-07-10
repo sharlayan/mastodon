@@ -54,7 +54,11 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
       reaction = notification.status_reaction
       return nil if reaction.nil?
 
-      reaction.custom_emoji.present? ? ":#{reaction.name}:" : reaction.name
+      custom = reaction.custom_emoji
+      return reaction.name if custom.nil?
+
+      host = custom.domain.presence || '.'
+      ":#{reaction.name}@#{host}:"
     end
   end
 end

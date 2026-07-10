@@ -64,7 +64,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
       recaptchaSiteKey: nil,
       enableTurnstile: false,
       turnstileSiteKey: nil,
-      swPublickey: nil,
+      swPublickey: Rails.configuration.x.vapid.public_key.presence,
       themeColor: Setting.theme_color.presence,
       mascotImageUrl: upload_url(instance_presenter.mascot),
       bannerUrl: upload_url(instance_presenter.thumbnail, style: :'@1x'),
@@ -80,10 +80,10 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
       ads: [],
       notesPerOneAd: 0,
       enableEmail: true,
-      enableServiceWorker: false,
+      enableServiceWorker: Rails.configuration.x.vapid.public_key.present?,
       translatorAvailable: false,
       serverRules: Rule.ordered.pluck(:text),
-      policies: policies,
+      policies: compat_policies,
       mediaProxy: nil,
       enableUrlPreview: true,
     }
@@ -104,31 +104,10 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
         recaptcha: false,
         turnstile: false,
         objectStorage: false,
-        serviceWorker: false,
+        serviceWorker: Rails.configuration.x.vapid.public_key.present?,
         miauth: true,
       }
     )
-  end
-
-  def policies
-    {
-      gtlAvailable: true,
-      ltlAvailable: true,
-      canPublicNote: true,
-      canInitiateConversation: true,
-      canCreateContent: true,
-      canUpdateContent: true,
-      canDeleteContent: true,
-      canPurgeAccount: true,
-      canUpdateAvatar: true,
-      canUpdateBanner: true,
-      canManageCustomEmojis: false,
-      canManageAvatarDecorations: false,
-      canSearchNotes: true,
-      canUseTranslator: false,
-      canUseReaction: true,
-      canHideAds: false,
-    }
   end
 
   def upload_url(upload, style: :original)

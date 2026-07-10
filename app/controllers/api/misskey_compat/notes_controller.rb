@@ -5,7 +5,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     timeline hybrid_timeline mentions my_favorites
     create destroy state search
     reactions_create reactions_delete
-    favorites_create favorites_delete polls_vote
+    favorites_create favorites_delete polls_vote polls_recommendation
   ).freeze
 
   before_action :require_user!, only: USER_ACTIONS
@@ -48,7 +48,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     reaction = params[:reaction].to_s
     render_error('reaction required', 'INVALID_PARAM', 400) and return if reaction.blank?
 
-    ReactService.new.call(current_account, @note, normalize_reaction(reaction))
+    result = ReactService.new.call(current_account, @note, normalize_reaction(reaction))
+    render_error('Reaction could not be registered', 'REACTION_FAILED', 400) and return unless result.is_a?(StatusReaction) && result.persisted?
+
     head 204
   end
 
@@ -125,6 +127,20 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   def clips
     scope = Clip.public_clips.joins(:clip_statuses).where(clip_statuses: { status_id: @note.id })
     render json: scope.map { |clip| MisskeyCompat::ClipSerializer.serialize(clip, current_account: current_account) }
+  end
+
+  def polls_recommendation
+    scope = Status.where(visibility: [:public, :unlisted])
+      .where.not(poll_id: nil)
+      .joins(:poll)
+      .where('polls.expires_at IS NULL OR polls.expires_at > ?', Time.now.utc)
+      .not_excluded_by_account(current_account)
+      .where.not(account_id: current_account.id)
+      .order(id: :desc)
+      .offset(params[:offset].to_i)
+      .limit(pagination_limit)
+
+    render_notes scope
   end
 
   def polls_vote
@@ -235,7 +251,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def normalize_reaction(reaction)
-    reaction.start_with?(':') && reaction.end_with?(':') ? reaction[1..-2] : reaction
+    reaction = reaction[1..-2] if reaction.start_with?(':') && reaction.end_with?(':')
+    reaction.delete_suffix('@.')
   end
 
   def reaction_key(reaction)
