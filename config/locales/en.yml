@@ -367,10 +367,21 @@ en:
       author: 'Author: %{name}'
       created_msg: Announcement successfully created!
       destroyed_msg: Announcement successfully deleted!
+      display_hint: A banner announcement is also shown at the top of the timeline until dismissed.
+      displays:
+        banner: Banner
+        normal: Normal
       edit:
         title: Edit announcement
       empty: No announcements found.
+      for_existing_users_hint: Only show this announcement to accounts that existed when it was published (hide from newer sign-ups).
+      icons:
+        error: Error
+        info: Info
+        success: Success
+        warning: Warning
       markdown_hint: You can use Markdown for formatting.
+      need_confirmation_to_read_hint: Require users to press a confirmation button before it is marked as read.
       media:
         add: Add media
         copied: Markdown copied to clipboard
@@ -385,6 +396,10 @@ en:
       publish_hint: Make this announcement visible to users.
       published: Published
       published_msg: Announcement successfully published!
+      read_count:
+        one: "%{count} read"
+        other: "%{count} reads"
+      silence_hint: Add silently without showing an unread badge or banner.
       sort_priority: Sort priority
       sort_priority_hint: Announcements are ordered newest first by default. A higher priority pins the announcement above others (default 0).
       title: Board announcements

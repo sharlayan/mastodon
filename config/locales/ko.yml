@@ -365,10 +365,21 @@ ko:
       author: '작성자: %{name}'
       created_msg: 공지사항이 성공적으로 작성되었습니다!
       destroyed_msg: 공지사항이 성공적으로 삭제되었습니다!
+      display_hint: 배너 공지는 확인 전까지 타임라인 상단에도 표시됩니다.
+      displays:
+        banner: 배너
+        normal: 일반
       edit:
         title: 공지사항 편집
       empty: 공지사항을 찾을 수 없습니다.
+      for_existing_users_hint: 이 공지를 게시 시점에 이미 존재하던 계정에게만 표시합니다(이후 가입자에게는 숨김).
+      icons:
+        error: 오류
+        info: 정보
+        success: 성공
+        warning: 경고
       markdown_hint: 서식을 위해 마크다운을 사용할 수 있습니다.
+      need_confirmation_to_read_hint: 읽음으로 처리되기 전에 사용자가 확인 버튼을 누르도록 요구합니다.
       media:
         add: 미디어 추가
         copied: 마크다운이 클립보드에 복사되었습니다
@@ -383,6 +394,9 @@ ko:
       publish_hint: 이 공지사항을 사용자에게 표시합니다.
       published: 게시됨
       published_msg: 공지사항이 성공적으로 게시되었습니다!
+      read_count:
+        other: "%{count}명 읽음"
+      silence_hint: 미읽음 배지나 배너 없이 조용히 추가합니다.
       sort_priority: 정렬 우선도
       sort_priority_hint: 공지사항은 기본적으로 최신순으로 정렬됩니다. 값이 높을수록 다른 공지보다 위에 고정됩니다(기본값 0).
       title: 게시판 공지사항

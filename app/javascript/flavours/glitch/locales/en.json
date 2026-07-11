@@ -70,6 +70,8 @@
   "antennas.title": "Title",
   "antennas.unsaved_changes": "You have unsaved changes",
   "antennas.with_media_only": "Media only",
+  "board_announcements.dismiss": "Dismiss",
+  "board_announcements.mark_read": "Got it",
   "board_announcements.refresh": "Refresh",
   "boost_modal.missing_description": "This toot contains some media without description",
   "circles.add_member": "Add",

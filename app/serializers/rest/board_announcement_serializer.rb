@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::BoardAnnouncementSerializer < ActiveModel::Serializer
-  attributes :id, :title, :content, :published_at, :updated_at
+  attributes :id, :title, :content, :icon, :display, :need_confirmation_to_read, :silence, :published_at, :updated_at
 
   attribute :read, if: :current_user?
 

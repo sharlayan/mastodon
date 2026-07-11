@@ -76,6 +76,8 @@
   "account_edit.decorations.title": "アイコンデコレーション",
   "account_edit.save": "保存",
   "account_switcher.switch_account_confirm": "{name}に切り替えますか？",
+  "board_announcements.dismiss": "閉じる",
+  "board_announcements.mark_read": "確認しました",
   "board_announcements.refresh": "更新",
   "boost_modal.missing_description": "このトゥートには少なくとも1つの画像に説明が付与されていません",
   "circles.add_member": "追加",

@@ -91,7 +91,7 @@ class Admin::BoardAnnouncementsController < Admin::BaseController
   private
 
   def set_announcements
-    @announcements = BoardAnnouncement.reverse_chronological.page(params[:page])
+    @announcements = BoardAnnouncement.reverse_chronological.left_joins(:reads).group(:id).select('board_announcements.*, COUNT(board_announcement_reads.id) AS reads_count').page(params[:page])
   end
 
   def set_announcement
@@ -100,6 +100,6 @@ class Admin::BoardAnnouncementsController < Admin::BaseController
 
   def resource_params
     params
-      .expect(board_announcement: [:title, :text, :published, :sort_priority, { attachment_ids: [] }])
+      .expect(board_announcement: [:title, :text, :published, :sort_priority, :icon, :display, :need_confirmation_to_read, :silence, :for_existing_users, { attachment_ids: [] }])
   end
 end

@@ -4,21 +4,34 @@
 #
 # Table name: board_announcements
 #
-#  id            :bigint(8)        not null, primary key
-#  published     :boolean          default(FALSE), not null
-#  published_at  :datetime
-#  sort_priority :integer          default(0), not null
-#  text          :text             default(""), not null
-#  text_html     :text             default(""), not null
-#  title         :string           default(""), not null
-#  created_at    :datetime         not null
-#  updated_at    :datetime         not null
-#  account_id    :bigint(8)
+#  id                        :bigint(8)        not null, primary key
+#  display                   :string           default("normal"), not null
+#  for_existing_users        :boolean          default(FALSE), not null
+#  icon                      :string           default("info"), not null
+#  need_confirmation_to_read :boolean          default(FALSE), not null
+#  published                 :boolean          default(FALSE), not null
+#  published_at              :datetime
+#  silence                   :boolean          default(FALSE), not null
+#  sort_priority             :integer          default(0), not null
+#  text                      :text             default(""), not null
+#  text_html                 :text             default(""), not null
+#  title                     :string           default(""), not null
+#  created_at                :datetime         not null
+#  updated_at                :datetime         not null
+#  account_id                :bigint(8)
 #
 
 class BoardAnnouncement < ApplicationRecord
+  ICONS = %w(info warning error success).freeze
+  DISPLAYS = %w(normal banner).freeze
+
   scope :published, -> { where(published: true) }
   scope :reverse_chronological, -> { order(sort_priority: :desc).order(coalesced_timestamp.desc) }
+  scope :banner, -> { where(display: 'banner') }
+  scope :for_account, lambda { |account|
+    where(for_existing_users: false)
+      .or(where(for_existing_users: true).where("#{coalesced_timestamp} <= ?", account.created_at))
+  }
 
   belongs_to :account, optional: true
 
@@ -28,6 +41,8 @@ class BoardAnnouncement < ApplicationRecord
 
   validates :title, presence: true, length: { maximum: 256 }
   validates :text, presence: true, length: { maximum: 65_535 }
+  validates :icon, inclusion: { in: ICONS }
+  validates :display, inclusion: { in: DISPLAYS }
 
   before_save :render_text_html
   before_save :set_published_at

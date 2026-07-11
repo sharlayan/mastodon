@@ -350,10 +350,21 @@ ja:
       author: '作成者: %{name}'
       created_msg: お知らせを作成しました
       destroyed_msg: お知らせを削除しました
+      display_hint: バナーのお知らせは、閉じるまでタイムラインの上部にも表示されます。
+      displays:
+        banner: バナー
+        normal: 通常
       edit:
         title: お知らせを編集
       empty: お知らせはありません
+      for_existing_users_hint: このお知らせを公開時点で存在していたアカウントにのみ表示します（以降の新規登録者には非表示）。
+      icons:
+        error: エラー
+        info: 情報
+        success: 成功
+        warning: 警告
       markdown_hint: 書式設定にMarkdownを使用できます。
+      need_confirmation_to_read_hint: 既読にする前に、ユーザーに確認ボタンを押させます。
       media:
         add: メディアを追加
         copied: Markdownをクリップボードにコピーしました
@@ -368,6 +379,9 @@ ja:
       publish_hint: このお知らせをユーザーに表示します。
       published: 公開済み
       published_msg: お知らせを掲載しました
+      read_count:
+        other: "%{count}人が既読"
+      silence_hint: 未読バッジやバナーを表示せずに静かに追加します。
       sort_priority: 並び順の優先度
       sort_priority_hint: お知らせはデフォルトで新しい順に並びます。値が大きいほど他のお知らせより上に固定されます（デフォルト0）。
       title: 掲示板のお知らせ
