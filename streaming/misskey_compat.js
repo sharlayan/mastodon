@@ -69,6 +69,50 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     return session.misskey;
   };
 
+  const noteStore = (session) => {
+    if (!session.misskeyNotes) session.misskeyNotes = new Map();
+    return session.misskeyNotes;
+  };
+
+  const subNote = (session, body) => {
+    if (!body || (typeof body.id !== 'string' && typeof body.id !== 'number')) return;
+
+    const noteId = String(body.id);
+    const notes = noteStore(session);
+
+    if (notes.has(noteId)) return;
+
+    isEnabled().then((enabled) => {
+      if (!enabled || notes.has(noteId)) return;
+
+      const channel = `${MISSKEY_PREFIX}note:${noteId}`;
+
+      const listener = (json) => {
+        if (!json || json.event !== 'noteUpdated') return;
+        send(session.websocket, 'noteUpdated', json.payload);
+      };
+
+      subscribe(channel, listener);
+      const stopHeartbeat = subscriptionHeartbeat([channel]);
+
+      notes.set(noteId, { channel, listener, stopHeartbeat });
+    }).catch((err) => {
+      logger.error({ err }, 'misskey compat note subscribe failed');
+    });
+  };
+
+  const unsubNote = (session, body) => {
+    if (!session.misskeyNotes || !body || (typeof body.id !== 'string' && typeof body.id !== 'number')) return;
+
+    const noteId = String(body.id);
+    const sub = session.misskeyNotes.get(noteId);
+    if (!sub) return;
+
+    unsubscribe(sub.channel, sub.listener);
+    sub.stopHeartbeat();
+    session.misskeyNotes.delete(noteId);
+  };
+
   const connect = (session, body) => {
     if (!body || typeof body.id !== 'string' || typeof body.channel !== 'string') return;
 
@@ -115,9 +159,16 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
   };
 
   const cleanup = (session) => {
-    if (!session.misskey) return;
-    for (const id of Array.from(session.misskey.channels.keys())) {
-      teardown(session.misskey.channels, id);
+    if (session.misskey) {
+      for (const id of Array.from(session.misskey.channels.keys())) {
+        teardown(session.misskey.channels, id);
+      }
+    }
+
+    if (session.misskeyNotes) {
+      for (const noteId of Array.from(session.misskeyNotes.keys())) {
+        unsubNote(session, { id: noteId });
+      }
     }
   };
 
@@ -128,6 +179,15 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       break;
     case 'disconnect':
       disconnect(session, json.body);
+      break;
+    case 's':
+    case 'sr':
+    case 'subNote':
+      subNote(session, json.body);
+      break;
+    case 'un':
+    case 'unsubNote':
+      unsubNote(session, json.body);
       break;
     default:
       break;

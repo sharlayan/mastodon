@@ -3,6 +3,7 @@
 class ReactService < BaseService
   include Authorization
   include Payloadable
+  include Redisable
   include ActivityPub::ReactionDistribution
 
   def call(account, status, emoji)
@@ -40,6 +41,7 @@ class ReactService < BaseService
 
     create_notification(reaction)
     BroadcastStatusUpdateWorker.perform_async(status.id)
+    MisskeyCompat::Streaming.broadcast_reaction(redis, reaction.status, reaction, account, 'reacted')
     increment_statistics
 
     reaction

@@ -2,6 +2,7 @@
 
 class UnreactService < BaseService
   include Payloadable
+  include Redisable
   include ActivityPub::ReactionDistribution
 
   def call(account, status, emoji)
@@ -11,6 +12,7 @@ class UnreactService < BaseService
     reaction.destroy!
     distribute_undo_reaction(reaction)
     BroadcastStatusUpdateWorker.perform_async(status.id)
+    MisskeyCompat::Streaming.broadcast_reaction(redis, status, reaction, account, 'unreacted')
     reaction
   end
 

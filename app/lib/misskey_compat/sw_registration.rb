@@ -7,11 +7,14 @@ module MisskeyCompat
     module_function
 
     def register(user:, access_token_id:, endpoint:, auth:, publickey:)
-      subscription = Web::PushSubscription.find_by(access_token_id: access_token_id, endpoint: endpoint)
+      scope = Web::PushSubscription.where(user_id: user.id, endpoint: endpoint)
+      subscription = scope.find_by(access_token_id: access_token_id) || scope.order(id: :desc).first
       already = subscription.present?
 
+      scope.where.not(id: subscription.id).delete_all if subscription
+
       if already
-        subscription.update!(key_auth: auth, key_p256dh: publickey, data: subscription_data(subscription.data))
+        subscription.update!(access_token_id: access_token_id, key_auth: auth, key_p256dh: publickey, data: subscription_data(subscription.data))
       else
         subscription = Web::PushSubscription.create!(
           user: user,
