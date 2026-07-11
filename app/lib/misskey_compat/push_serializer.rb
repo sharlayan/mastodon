@@ -21,7 +21,8 @@ class MisskeyCompat::PushSerializer
   end
 
   def serialize(notification, recipient)
-    type = TYPE_MAP[notification.type]
+    status = notification.target_status
+    type = notification_type(notification, status)
     return nil if type.nil?
 
     body = {
@@ -36,7 +37,6 @@ class MisskeyCompat::PushSerializer
       body[:user] = MisskeyCompat::UserSerializer.serialize(from_account, viewer: recipient)
     end
 
-    status = notification.target_status
     body[:note] = MisskeyCompat::NoteSerializer.serialize(status, current_account: recipient, embed_relations: false) if status
 
     reaction = reaction_for(notification)
@@ -51,6 +51,13 @@ class MisskeyCompat::PushSerializer
   end
 
   private
+
+  def notification_type(notification, status)
+    type = TYPE_MAP[notification.type]
+    return type unless type == 'mention'
+
+    status&.in_reply_to_id.present? ? 'reply' : 'mention'
+  end
 
   def reaction_for(notification)
     case notification.type

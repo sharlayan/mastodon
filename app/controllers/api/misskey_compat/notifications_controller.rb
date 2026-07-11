@@ -7,6 +7,7 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
 
   TYPE_MAP = {
     mention: 'mention',
+    status: 'note',
     reblog: 'renote',
     quote: 'quote',
     follow: 'follow',
@@ -46,7 +47,8 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
   private
 
   def serialize(notification)
-    type = TYPE_MAP[notification.type]
+    status = notification.target_status
+    type = notification_type(notification, status)
     return nil if type.nil? || notification.from_account.nil?
 
     data = {
@@ -57,10 +59,16 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
       user: MisskeyCompat::UserSerializer.serialize(notification.from_account),
     }
 
-    status = notification.target_status
     data[:note] = MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) if status
     data[:reaction] = reaction_for(notification)
     data.compact
+  end
+
+  def notification_type(notification, status)
+    type = TYPE_MAP[notification.type]
+    return type unless type == 'mention'
+
+    status&.in_reply_to_id.present? ? 'reply' : 'mention'
   end
 
   def reaction_for(notification)
