@@ -2,6 +2,26 @@
 
 const MISSKEY_PREFIX = 'misskey:';
 
+const MI_ID_TIME2000 = 946684800000;
+
+/**
+ * Decode a Misskey-compat aidx id back to the underlying Mastodon id.
+ * Mirrors MisskeyCompat::MiId#decode.
+ * @param {string|number|undefined|null} mid
+ * @returns {string|undefined}
+ */
+const decodeMiId = (mid) => {
+  if (mid === undefined || mid === null) return undefined;
+  const str = String(mid);
+  if (!/^[0-9a-z]{16}$/.test(str)) return str;
+  if (str.startsWith('0')) {
+    return String(parseInt(str, 36));
+  }
+  const ms = BigInt(parseInt(str.slice(0, 8), 36) + MI_ID_TIME2000);
+  const seq = BigInt(parseInt(str.slice(8, 16), 36));
+  return ((ms << 16n) | seq).toString();
+};
+
 const MISSKEY_MESSAGE_TYPES = new Set([
   'connect',
   'disconnect',
@@ -39,9 +59,9 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
   case 'globalTimeline':
     return channelNameToIds(request, 'public', {}).then((r) => r.channelIds);
   case 'userList':
-    return channelNameToIds(request, 'list', { list: params.listId }).then((r) => r.channelIds);
+    return channelNameToIds(request, 'list', { list: decodeMiId(params.listId) }).then((r) => r.channelIds);
   case 'antenna':
-    return channelNameToIds(request, 'antenna', { antenna: params.antennaId }).then((r) => r.channelIds);
+    return channelNameToIds(request, 'antenna', { antenna: decodeMiId(params.antennaId) }).then((r) => r.channelIds);
   case 'hashtag':
     return channelNameToIds(request, 'hashtag', { tag: extractTag(params) }).then((r) => r.channelIds);
   default:

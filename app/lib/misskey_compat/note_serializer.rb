@@ -25,11 +25,11 @@ class MisskeyCompat::NoteSerializer
     @current_account = current_account
 
     {
-      id: status.id.to_s,
+      id: MisskeyCompat::MiId.encode(status.id),
       createdAt: status.created_at.iso8601,
       text: text_for(status),
       cw: status.spoiler_text.presence,
-      userId: status.account_id.to_s,
+      userId: MisskeyCompat::MiId.encode(status.account_id),
       user: MisskeyCompat::UserSerializer.serialize(status.account),
       visibility: VISIBILITY_MAP.fetch(status.visibility, 'public'),
       localOnly: status.local_only?,
@@ -39,14 +39,14 @@ class MisskeyCompat::NoteSerializer
       myReaction: my_reaction,
       renoteCount: status.reblogs_count,
       repliesCount: status.replies_count,
-      replyId: status.in_reply_to_id&.to_s,
+      replyId: MisskeyCompat::MiId.encode(status.in_reply_to_id),
       reply: embed_relations ? embedded_note(status.thread, current_account) : nil,
       renoteId: quoted_id(status),
       renote: embed_relations ? embedded_note(quoted_status(status), current_account) : nil,
       isHidden: false,
-      mentions: status.mentions.map { |m| m.account_id.to_s },
+      mentions: status.mentions.map { |m| MisskeyCompat::MiId.encode(m.account_id) },
       visibleUserIds: [],
-      fileIds: status.ordered_media_attachments.map { |m| m.id.to_s },
+      fileIds: status.ordered_media_attachments.map { |m| MisskeyCompat::MiId.encode(m.id) },
       files: status.ordered_media_attachments.map { |m| MisskeyCompat::DriveFileSerializer.serialize(m) },
       tags: status.tags.map(&:name),
       poll: poll_for(status),
@@ -64,14 +64,14 @@ class MisskeyCompat::NoteSerializer
 
   def serialize_renote(status, current_account:, embed_relations: true)
     {
-      id: status.id.to_s,
+      id: MisskeyCompat::MiId.encode(status.id),
       createdAt: status.created_at.iso8601,
       text: nil,
       cw: nil,
-      userId: status.account_id.to_s,
+      userId: MisskeyCompat::MiId.encode(status.account_id),
       user: MisskeyCompat::UserSerializer.serialize(status.account),
       visibility: VISIBILITY_MAP.fetch(status.visibility, 'public'),
-      renoteId: status.reblog_of_id.to_s,
+      renoteId: MisskeyCompat::MiId.encode(status.reblog_of_id),
       renote: embed_relations ? serialize(status.reblog, current_account: current_account, embed_relations: false) : nil,
       reactions: {},
       reactionEmojis: {},
@@ -114,9 +114,9 @@ class MisskeyCompat::NoteSerializer
   end
 
   def quoted_id(status)
-    return status.reblog_of_id.to_s if status.reblog?
+    return MisskeyCompat::MiId.encode(status.reblog_of_id) if status.reblog?
 
-    status.quote&.quoted_status_id&.to_s
+    MisskeyCompat::MiId.encode(status.quote&.quoted_status_id)
   end
 
   def reactions_for(status, current_account, reaction_emojis)

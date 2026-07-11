@@ -21,7 +21,7 @@ class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
     accounts = accounts.where(accounts: { id: (since_id.to_i + 1).. }) if since_id.present?
     accounts = accounts.limit(pagination_limit)
 
-    render json: accounts.map { |account| { id: account.id.to_s, user: serialize_user(account) } }
+    render json: accounts.map { |account| { id: MisskeyCompat::MiId.encode(account.id), user: serialize_user(account) } }
   end
 
   private
@@ -41,7 +41,7 @@ class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
 
   def serialize_role(role)
     {
-      id: role.id.to_s,
+      id: MisskeyCompat::MiId.encode(role.id),
       createdAt: role.created_at&.iso8601,
       updatedAt: role.updated_at&.iso8601,
       name: role.name,

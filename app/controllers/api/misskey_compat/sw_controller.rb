@@ -34,7 +34,7 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
     return render json: nil if subscription.nil?
 
     render json: {
-      userId: current_account.id.to_s,
+      userId: MisskeyCompat::MiId.encode(current_account.id),
       endpoint: subscription.endpoint,
       sendReadMessage: false,
     }

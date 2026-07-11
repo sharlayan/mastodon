@@ -36,7 +36,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
     follows = paginate_follows(Follow.where(target_account_id: target.id).includes(:account).order(id: :desc))
     render json: follows.map { |follow|
-      { id: follow.id.to_s, createdAt: follow.created_at.iso8601, followerId: follow.account_id.to_s, follower: MisskeyCompat::UserSerializer.serialize(follow.account) }
+      { id: MisskeyCompat::MiId.encode(follow.id), createdAt: follow.created_at.iso8601, followerId: MisskeyCompat::MiId.encode(follow.account_id), follower: MisskeyCompat::UserSerializer.serialize(follow.account) }
     }
   rescue ActiveRecord::RecordNotFound
     render_error('No such user', 'NO_SUCH_USER', 404)
@@ -48,7 +48,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
     follows = paginate_follows(Follow.where(account_id: target.id).includes(:target_account).order(id: :desc))
     render json: follows.map { |follow|
-      { id: follow.id.to_s, createdAt: follow.created_at.iso8601, followeeId: follow.target_account_id.to_s, followee: MisskeyCompat::UserSerializer.serialize(follow.target_account) }
+      { id: MisskeyCompat::MiId.encode(follow.id), createdAt: follow.created_at.iso8601, followeeId: MisskeyCompat::MiId.encode(follow.target_account_id), followee: MisskeyCompat::UserSerializer.serialize(follow.target_account) }
     }
   rescue ActiveRecord::RecordNotFound
     render_error('No such user', 'NO_SUCH_USER', 404)
@@ -107,7 +107,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
   def serialize_reaction(reaction, account)
     {
-      id: reaction.id.to_s,
+      id: MisskeyCompat::MiId.encode(reaction.id),
       createdAt: reaction.created_at.iso8601,
       user: MisskeyCompat::UserSerializer.serialize(account),
       type: reaction_type(reaction),

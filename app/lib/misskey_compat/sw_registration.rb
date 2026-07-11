@@ -34,7 +34,7 @@ module MisskeyCompat
       {
         state: already ? 'already-subscribed' : 'subscribed',
         key: Rails.configuration.x.vapid.public_key.presence,
-        userId: account.id.to_s,
+        userId: MisskeyCompat::MiId.encode(account.id),
         endpoint: subscription.endpoint,
         sendReadMessage: false,
       }

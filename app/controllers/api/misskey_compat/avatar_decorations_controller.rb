@@ -16,11 +16,11 @@ class Api::MisskeyCompat::AvatarDecorationsController < ApplicationController
 
     render json: decorations.map { |d|
       {
-        id: d.id.to_s,
+        id: MisskeyCompat::MiId.encode(d.id),
         name: d.name,
         description: d.description.presence || '',
         url: full_asset_url(d.image_url),
-        roleIdsThatCanBeUsedThisDecoration: d.required_role_id ? [d.required_role_id.to_s] : [],
+        roleIdsThatCanBeUsedThisDecoration: d.required_role_id ? [MisskeyCompat::MiId.encode(d.required_role_id)] : [],
       }
     }
   end

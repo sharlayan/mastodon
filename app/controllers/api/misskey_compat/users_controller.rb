@@ -19,7 +19,7 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
         next if decoration.nil?
 
         {
-          id: decoration.id.to_s,
+          id: MisskeyCompat::MiId.encode(decoration.id),
           url: full_asset_url(decoration.image_url),
           angle: config['angle'] || 0.0,
           flipH: config['flip_h'] || false,

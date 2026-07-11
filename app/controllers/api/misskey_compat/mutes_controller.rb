@@ -48,19 +48,19 @@ class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
 
   def serialize_muting(mute)
     {
-      id: mute.id.to_s,
+      id: MisskeyCompat::MiId.encode(mute.id),
       createdAt: mute.created_at.iso8601,
       expiresAt: nil,
-      muteeId: mute.target_account_id.to_s,
+      muteeId: MisskeyCompat::MiId.encode(mute.target_account_id),
       mutee: MisskeyCompat::UserSerializer.serialize(mute.target_account, detailed: true, viewer: current_account),
     }
   end
 
   def serialize_renote_muting(follow)
     {
-      id: follow.id.to_s,
+      id: MisskeyCompat::MiId.encode(follow.id),
       createdAt: follow.created_at.iso8601,
-      muteeId: follow.target_account_id.to_s,
+      muteeId: MisskeyCompat::MiId.encode(follow.target_account_id),
       mutee: MisskeyCompat::UserSerializer.serialize(follow.target_account, detailed: true, viewer: current_account),
     }
   end

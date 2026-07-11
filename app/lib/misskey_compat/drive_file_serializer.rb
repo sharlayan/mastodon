@@ -9,7 +9,7 @@ class MisskeyCompat::DriveFileSerializer
 
   def serialize(media)
     {
-      id: media.id.to_s,
+      id: MisskeyCompat::MiId.encode(media.id),
       createdAt: media.created_at&.iso8601,
       name: media.file_file_name.presence || media.id.to_s,
       type: media.file_content_type.presence || 'application/octet-stream',
@@ -22,7 +22,7 @@ class MisskeyCompat::DriveFileSerializer
       thumbnailUrl: full_asset_url(media.thumbnail.present? ? media.thumbnail.url(:original) : media.file.url(:small)),
       comment: media.description,
       folderId: nil,
-      userId: media.account_id&.to_s,
+      userId: MisskeyCompat::MiId.encode(media.account_id),
     }
   end
 

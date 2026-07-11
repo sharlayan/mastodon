@@ -120,7 +120,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     favourites = favourites.limit(pagination_limit)
 
     render json: favourites.map { |fav|
-      { id: fav.id.to_s, createdAt: fav.created_at.iso8601, noteId: fav.status_id.to_s, note: serialize(fav.status) }
+      { id: MisskeyCompat::MiId.encode(fav.id), createdAt: fav.created_at.iso8601, noteId: MisskeyCompat::MiId.encode(fav.status_id), note: serialize(fav.status) }
     }
   end
 

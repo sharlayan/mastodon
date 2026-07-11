@@ -33,10 +33,10 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
     return nil if type.nil? || notification.from_account.nil?
 
     data = {
-      id: notification.id.to_s,
+      id: MisskeyCompat::MiId.encode(notification.id),
       createdAt: notification.created_at.iso8601,
       type: type,
-      userId: notification.from_account.id.to_s,
+      userId: MisskeyCompat::MiId.encode(notification.from_account.id),
       user: MisskeyCompat::UserSerializer.serialize(notification.from_account),
     }
 

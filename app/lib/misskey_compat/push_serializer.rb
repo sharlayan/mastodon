@@ -25,14 +25,14 @@ class MisskeyCompat::PushSerializer
     return nil if type.nil?
 
     body = {
-      id: notification.id.to_s,
+      id: MisskeyCompat::MiId.encode(notification.id),
       createdAt: notification.created_at.iso8601,
       type: type,
     }
 
     from_account = notification.from_account
     if from_account
-      body[:userId] = from_account.id.to_s
+      body[:userId] = MisskeyCompat::MiId.encode(from_account.id)
       body[:user] = MisskeyCompat::UserSerializer.serialize(from_account, viewer: recipient)
     end
 
@@ -45,7 +45,7 @@ class MisskeyCompat::PushSerializer
     {
       type: 'notification',
       body: body.compact,
-      userId: recipient.id.to_s,
+      userId: MisskeyCompat::MiId.encode(recipient.id),
       dateTime: (notification.created_at.to_f * 1000).to_i,
     }
   end

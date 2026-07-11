@@ -23,9 +23,9 @@ class Api::MisskeyCompat::BlockingController < Api::MisskeyCompat::BaseControlle
 
   def serialize(block)
     {
-      id: block.id.to_s,
+      id: MisskeyCompat::MiId.encode(block.id),
       createdAt: block.created_at.iso8601,
-      blockeeId: block.target_account_id.to_s,
+      blockeeId: MisskeyCompat::MiId.encode(block.target_account_id),
       blockee: MisskeyCompat::UserSerializer.serialize(block.target_account, detailed: true, viewer: current_account),
     }
   end

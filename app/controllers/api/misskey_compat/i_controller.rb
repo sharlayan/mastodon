@@ -82,7 +82,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   def avatar_decorations_attributes
     Array(params[:avatarDecorations]).map do |config|
       {
-        id: config[:id].to_s,
+        id: MisskeyCompat::MiId.decode(config[:id]),
         angle: config[:angle],
         flip_h: config[:flipH],
         offset_x: config[:offsetX],

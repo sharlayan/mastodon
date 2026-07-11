@@ -9,7 +9,7 @@ class MisskeyCompat::AnnouncementSerializer
 
   def serialize(announcement, current_account: nil)
     {
-      id: announcement.id.to_s,
+      id: MisskeyCompat::MiId.encode(announcement.id),
       createdAt: (announcement.published_at || announcement.created_at).iso8601,
       updatedAt: announcement.updated_at&.iso8601,
       title: announcement.title,

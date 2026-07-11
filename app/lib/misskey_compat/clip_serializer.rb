@@ -9,10 +9,10 @@ class MisskeyCompat::ClipSerializer
     owner = current_account && clip.account_id == current_account.id
 
     {
-      id: clip.id.to_s,
+      id: MisskeyCompat::MiId.encode(clip.id),
       createdAt: clip.created_at.iso8601,
       lastClippedAt: nil,
-      userId: clip.account_id.to_s,
+      userId: MisskeyCompat::MiId.encode(clip.account_id),
       user: MisskeyCompat::UserSerializer.serialize(clip.account),
       name: clip.title,
       description: clip.description,

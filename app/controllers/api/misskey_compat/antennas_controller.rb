@@ -20,7 +20,7 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
 
   def serialize(antenna)
     {
-      id: antenna.id.to_s,
+      id: MisskeyCompat::MiId.encode(antenna.id),
       createdAt: antenna.created_at.iso8601,
       name: antenna.title,
       keywords: nest_keywords(antenna.keywords),

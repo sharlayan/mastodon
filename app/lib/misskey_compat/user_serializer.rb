@@ -9,7 +9,7 @@ class MisskeyCompat::UserSerializer
 
   def serialize(account, detailed: false, viewer: nil, me_user: nil)
     data = {
-      id: account.id.to_s,
+      id: MisskeyCompat::MiId.encode(account.id),
       name: account.display_name.presence || account.username,
       username: account.username,
       host: account.local? ? nil : account.domain,
@@ -143,7 +143,7 @@ class MisskeyCompat::UserSerializer
       next if decoration.nil?
 
       {
-        id: decoration.id.to_s,
+        id: MisskeyCompat::MiId.encode(decoration.id),
         url: full_asset_url(decoration.image_url),
         angle: config['angle'] || 0.0,
         flipH: config['flip_h'] || false,

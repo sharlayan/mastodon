@@ -18,17 +18,19 @@ module MisskeyCompat
     def broadcast_reaction(redis, status, reaction, account, type)
       return unless Setting.misskey_compat_enabled
       return if status.nil? || reaction.nil? || account.nil?
-      return unless redis.exists?("subscribed:misskey:note:#{status.id}")
+
+      note_id = MisskeyCompat::MiId.encode(status.id)
+      return unless redis.exists?("subscribed:misskey:note:#{note_id}")
 
       payload = {
-        id: status.id.to_s,
+        id: note_id,
         type: type,
         body: {
           reaction: reaction_key(reaction),
-          userId: account.id.to_s,
+          userId: MisskeyCompat::MiId.encode(account.id),
         },
       }
-      redis.publish("misskey:note:#{status.id}", JSON.generate({ event: 'noteUpdated', payload: payload }))
+      redis.publish("misskey:note:#{note_id}", JSON.generate({ event: 'noteUpdated', payload: payload }))
     rescue => e
       Rails.logger.warn("[misskey_compat] reaction broadcast failed for #{status&.id}: #{e.class} #{e.message}")
     end

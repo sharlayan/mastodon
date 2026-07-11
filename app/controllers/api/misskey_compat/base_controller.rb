@@ -9,8 +9,12 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   skip_before_action :verify_authenticity_token, raise: false
 
   before_action :require_misskey_compat_enabled!
+  before_action :decode_mi_ids!
 
   INVALID_PARAM_ID = '3d81ceae-475f-4600-b2a8-2bc116157532'
+
+  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId replyId renoteId listId antennaId announcementId avatarId bannerId folderId fileId channelId).freeze
+  MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
 
   RequesterIdentity = Struct.new(:id)
 
@@ -34,6 +38,18 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   def require_misskey_compat_enabled!
     render_error('This endpoint is not available', 'ENDPOINT_DISABLED', 404) unless Setting.misskey_compat_enabled
+  end
+
+  def decode_mi_ids!
+    MI_ID_SCALAR_PARAMS.each do |key|
+      value = params[key]
+      params[key] = MisskeyCompat::MiId.decode(value) if value.is_a?(String)
+    end
+
+    MI_ID_ARRAY_PARAMS.each do |key|
+      value = params[key]
+      params[key] = value.map { |item| item.is_a?(String) ? MisskeyCompat::MiId.decode(item) : item } if value.is_a?(Array)
+    end
   end
 
   def current_token

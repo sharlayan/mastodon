@@ -49,7 +49,7 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
     members = members.limit(pagination_limit)
 
     render json: members.map { |la|
-      { id: la.id.to_s, createdAt: la.created_at.iso8601, userId: la.account_id.to_s, user: MisskeyCompat::UserSerializer.serialize(la.account) }
+      { id: MisskeyCompat::MiId.encode(la.id), createdAt: la.created_at.iso8601, userId: MisskeyCompat::MiId.encode(la.account_id), user: MisskeyCompat::UserSerializer.serialize(la.account) }
     }
   end
 
@@ -63,11 +63,11 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
 
   def serialize(list)
     {
-      id: list.id.to_s,
+      id: MisskeyCompat::MiId.encode(list.id),
       createdAt: list.created_at.iso8601,
       name: list.title,
       isPublic: false,
-      userIds: list.accounts.pluck(:id).map(&:to_s),
+      userIds: list.accounts.pluck(:id).map { |id| MisskeyCompat::MiId.encode(id) },
     }
   end
 end
