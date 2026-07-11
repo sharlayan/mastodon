@@ -559,8 +559,11 @@ namespace :api, format: false do
 
     post 'following/create', to: 'following#create'
     post 'following/delete', to: 'following#destroy'
+    post 'following/requests/list', to: 'following#requests'
     post 'following/requests/accept', to: 'following#accept_request'
     post 'following/requests/reject', to: 'following#reject_request'
+    post 'following/requests/cancel', to: 'following#cancel_request'
+    post 'following/invalidate', to: 'following#invalidate'
     post 'blocking/create', to: 'blocking#create'
     post 'blocking/delete', to: 'blocking#destroy'
     post 'blocking/list', to: 'blocking#index'
