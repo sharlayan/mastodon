@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseController
-  before_action :require_user!, only: [:followers, :following]
+  before_action :require_user!, only: [:followers, :following, :search]
 
   def notes
     account = Account.find(params[:userId])

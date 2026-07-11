@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
+  before_action :require_user!
+
   def index
     render json: explorable_roles.map { |role| serialize_role(role) }
   end

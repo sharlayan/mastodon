@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseController
+  before_action :require_user!
+
   def trend
     return render json: [] unless Setting.trends
 

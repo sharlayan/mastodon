@@ -9,7 +9,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     favorites_create favorites_delete polls_vote polls_recommendation
   ).freeze
 
-  before_action :require_user!, only: USER_ACTIONS
+  before_action :require_user!, only: USER_ACTIONS + %i(local_timeline global_timeline)
   before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
 
   def timeline

@@ -188,6 +188,7 @@ Rails.application.routes.draw do
   get '/url', to: 'misskey_compat/url_preview#show', as: :misskey_compat_url_preview
   get '/scratchpad', to: 'misskey_compat/scratchpad#show', as: :scratchpad
   post '/scratchpad', to: 'misskey_compat/scratchpad#run'
+  get '/notes/:id', to: 'misskey_compat/notes#show', constraints: { id: /[0-9a-z]+/ }, as: :misskey_compat_note
 
   get '/@:username_with_domain/(*any)', to: 'home#index', constraints: { username_with_domain: %r{([^/])+?} }, as: :account_with_domain, format: false
   get '/settings', to: redirect('/settings/profile')

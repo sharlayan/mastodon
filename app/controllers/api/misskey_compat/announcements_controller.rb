@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AnnouncementsController < Api::MisskeyCompat::BaseController
+  before_action :require_user!
+
   def index
     scope = BoardAnnouncement.published.reverse_chronological
     scope = scope.for_account(current_account) if current_account
