@@ -584,6 +584,10 @@ namespace :api, format: false do
     post 'notes/user-list-timeline', to: 'lists#timeline'
 
     post 'antennas/list', to: 'antennas#index'
+    post 'antennas/show', to: 'antennas#show'
+    post 'antennas/create', to: 'antennas#create'
+    post 'antennas/update', to: 'antennas#update'
+    post 'antennas/delete', to: 'antennas#destroy'
     post 'antennas/notes', to: 'antennas#notes'
 
     post 'announcements', to: 'announcements#index'

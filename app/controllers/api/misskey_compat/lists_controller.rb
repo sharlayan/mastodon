@@ -28,7 +28,11 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
   end
 
   def push
-    AddAccountsToListService.new.call(@list, Account.where(id: params[:userId]))
+    account = Account.find_by(id: params[:userId])
+    return render_error('No such user', 'NO_SUCH_USER', 404) if account.nil?
+    return render_error('You can only add users you follow', 'NOT_FOLLOWING', 400) unless account.id == current_account.id || current_account.following?(account)
+
+    AddAccountsToListService.new.call(@list, Account.where(id: account.id))
     head 204
   end
 
