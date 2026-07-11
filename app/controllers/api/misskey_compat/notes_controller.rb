@@ -29,6 +29,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def show
+    @note = MisskeyCompat::ThreadResolveService.new.call(@note, on_behalf_of: current_account)
     render json: serialize(@note)
   end
 
