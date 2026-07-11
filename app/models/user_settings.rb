@@ -16,6 +16,9 @@ class UserSettings
   setting :default_language, default: nil
   setting :default_sensitive, default: false
   setting :auto_accept_followed, default: false
+  setting :show_reactions, default: true
+  setting :hide_online_status, default: false
+  setting :prevent_ai_learning, default: false
   setting :default_privacy, default: nil, in: %w(public unlisted private)
   setting :default_content_type, default: 'text/plain'
   setting :hide_followers_count, default: false

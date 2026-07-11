@@ -65,6 +65,9 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     settings['noindex'] = boolean_param(params[:noCrawle]) if params.key?(:noCrawle)
     settings['default_sensitive'] = boolean_param(params[:alwaysMarkNsfw]) if params.key?(:alwaysMarkNsfw)
     settings['auto_accept_followed'] = boolean_param(params[:autoAcceptFollowed]) if params.key?(:autoAcceptFollowed)
+    settings['show_reactions'] = boolean_param(params[:publicReactions]) if params.key?(:publicReactions)
+    settings['hide_online_status'] = boolean_param(params[:hideOnlineStatus]) if params.key?(:hideOnlineStatus)
+    settings['prevent_ai_learning'] = boolean_param(params[:preventAiLearning]) if params.key?(:preventAiLearning)
     settings['default_language'] = params[:lang].to_s.presence if params.key?(:lang)
 
     current_user.update!(settings_attributes: settings) if settings.present?

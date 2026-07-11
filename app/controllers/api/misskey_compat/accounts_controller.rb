@@ -54,6 +54,40 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     render_error('No such user', 'NO_SUCH_USER', 404)
   end
 
+  def reactions
+    account = Account.find(params[:userId])
+    return render json: [] if collections_hidden?(account, false)
+    return render json: [] unless reactions_public?(account)
+
+    scope = StatusReaction.where(account_id: account.id).includes(:status, :custom_emoji).order(id: :desc)
+    scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
+    scope = scope.where('status_reactions.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
+    reactions = scope.limit(pagination_limit).select { |reaction| reaction.status && StatusPolicy.new(current_account, reaction.status).show? }
+
+    render json: reactions.map { |reaction| serialize_reaction(reaction, account) }
+  rescue ActiveRecord::RecordNotFound
+    render_error('No such user', 'NO_SUCH_USER', 404)
+  end
+
+  def featured_notes
+    account = Account.find(params[:userId])
+    return render json: [] if collections_hidden?(account, false)
+
+    scope = account.statuses
+      .where(visibility: [:public, :unlisted], reblog_of_id: nil, in_reply_to_id: nil)
+      .joins(:status_stat)
+      .where('status_stats.reblogs_count + status_stats.favourites_count > 0')
+      .order(id: :desc)
+    scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
+    scope = scope.where('statuses.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
+    statuses = scope.limit(pagination_limit).to_a
+    Status.preload_cacheable_associations(statuses)
+
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) }
+  rescue ActiveRecord::RecordNotFound
+    render_error('No such user', 'NO_SUCH_USER', 404)
+  end
+
   def report_abuse
     require_user! and return if current_account.nil?
 
@@ -70,6 +104,31 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   private
+
+  def serialize_reaction(reaction, account)
+    {
+      id: reaction.id.to_s,
+      createdAt: reaction.created_at.iso8601,
+      user: MisskeyCompat::UserSerializer.serialize(account),
+      type: reaction_type(reaction),
+      note: MisskeyCompat::NoteSerializer.serialize(reaction.status, current_account: current_account),
+    }
+  end
+
+  def reactions_public?(account)
+    return true if current_account && current_account.id == account.id
+    return true unless account.local? && account.user
+
+    account.user.settings['show_reactions'] != false
+  end
+
+  def reaction_type(reaction)
+    custom = reaction.custom_emoji
+    return reaction.name if custom.nil?
+
+    host = custom.domain.presence || '.'
+    ":#{reaction.name}@#{host}:"
+  end
 
   def collections_hidden?(target, hidden)
     target.unavailable? || (hidden && current_account.id != target.id) || target.blocking?(current_account)

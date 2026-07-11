@@ -536,6 +536,8 @@ namespace :api, format: false do
     post 'roles/users', to: 'roles#users'
 
     post 'users/notes', to: 'accounts#notes'
+    post 'users/reactions', to: 'accounts#reactions'
+    post 'users/featured-notes', to: 'accounts#featured_notes'
     post 'users/search', to: 'accounts#search'
     post 'users/followers', to: 'accounts#followers'
     post 'users/following', to: 'accounts#following'

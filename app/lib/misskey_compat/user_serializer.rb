@@ -57,9 +57,9 @@ class MisskeyCompat::UserSerializer
       carefulBot: false,
       autoAcceptFollowed: user.settings['auto_accept_followed'] || false,
       noCrawle: user.settings['noindex'] || false,
-      preventAiLearning: false,
+      preventAiLearning: user.settings['prevent_ai_learning'] || false,
       isExplorable: account.discoverable?,
-      hideOnlineStatus: false,
+      hideOnlineStatus: user.settings['hide_online_status'] || false,
       ffVisibility: ff_visibility,
       followingVisibility: ff_visibility,
       followersVisibility: ff_visibility,
@@ -96,11 +96,17 @@ class MisskeyCompat::UserSerializer
       isSuspended: account.suspended?,
       isBot: account.bot?,
       isCat: false,
-      publicReactions: true,
+      publicReactions: public_reactions?(account),
       fields: fields_for(account),
       pinnedNoteIds: [],
       pinnedNotes: [],
     }
+  end
+
+  def public_reactions?(account)
+    return true unless account.local? && account.user
+
+    account.user.settings['show_reactions'] != false
   end
 
   def avatar_decorations_for(account)

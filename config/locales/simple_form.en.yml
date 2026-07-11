@@ -63,6 +63,9 @@ en:
         setting_default_quote_policy_unlisted: When people quote you, their post will also be hidden from trending timelines.
         setting_auto_accept_followed: Automatically approve follow requests from accounts you already follow, even while your account is locked.
         setting_auto_quote_from_url: When your post contains a link to another fediverse post that can be fetched, it is automatically turned into a quote without asking the author for permission. The quoted author is not asked to approve it.
+        setting_hide_online_status: Hide your online status from apps that support it (such as Misskey-compatible clients).
+        setting_prevent_ai_learning: Ask crawlers not to use your posts and media for AI training. This is a request only and cannot be enforced.
+        setting_show_reactions: Allow others to see which posts you have reacted to on your profile.
         setting_bridge_unlisted_to_bsky: Your unlisted posts stay quiet on the fediverse, but are delivered to the Bluesky bridge (bsky.brid.gy) as public so they get bridged to Bluesky. Requires following the bridge account.
         setting_show_online_status: Others can see whether you are online, recently active, or offline. When disabled, your status appears as unknown to everyone.
         setting_default_sensitive: Sensitive media is hidden by default and can be revealed with a click
@@ -273,6 +276,9 @@ en:
         setting_default_quote_policy: Who can quote
         setting_auto_accept_followed: Auto-accept follow requests from accounts you follow
         setting_auto_quote_from_url: Automatically quote fediverse post links in your posts
+        setting_hide_online_status: Hide online status
+        setting_prevent_ai_learning: Prevent use in AI training
+        setting_show_reactions: Show my reactions on my profile
         setting_bridge_unlisted_to_bsky: Bridge unlisted posts to Bluesky as public
         setting_show_online_status: Share my online status
         setting_default_sensitive: Always mark media as sensitive

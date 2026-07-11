@@ -49,6 +49,15 @@
     .fields-group
       = ff.input :show_application, wrapper: :with_label
 
+    .fields-group
+      = ff.input :show_reactions, wrapper: :with_label, glitch_only: true
+
+    .fields-group
+      = ff.input :hide_online_status, wrapper: :with_label, glitch_only: true
+
+    .fields-group
+      = ff.input :prevent_ai_learning, wrapper: :with_label, glitch_only: true
+
   %aside.callout
     = material_symbol 'info'
     .content
