@@ -53,6 +53,8 @@ Rails.application.routes.draw do
   get '/nodeinfo/2.0', to: 'well_known/node_info#show', as: :nodeinfo_schema
   get '/nodeinfo/2.1', to: 'well_known/node_info#show_two_one', as: :nodeinfo_2_1_schema
 
+  get '/proxy/*any', to: 'misskey_compat/media_proxy#show', format: false
+
   get 'manifest', to: 'manifests#show', defaults: { format: 'json' }
   get 'intent', to: 'intents#show'
   get 'custom.css', to: 'custom_css#show'

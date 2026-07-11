@@ -117,13 +117,14 @@ class MisskeyCompat::UserSerializer
     return nil if domain.blank?
 
     metadata = InstanceMetadata.find_by(domain: domain)
+    favicon = metadata&.favicon_url_with_fallback || "https://#{domain}/favicon.ico"
 
     {
       name: metadata&.instance_name_with_fallback || domain,
       softwareName: metadata&.software,
       softwareVersion: metadata&.version,
-      iconUrl: nil,
-      faviconUrl: metadata&.favicon_url_with_fallback || "https://#{domain}/favicon.ico",
+      iconUrl: favicon,
+      faviconUrl: favicon,
       themeColor: metadata&.theme_color_with_fallback,
     }
   end
