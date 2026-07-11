@@ -64,6 +64,7 @@ class Form::AdminSettings
     circles_enabled
     clips_enabled
     auto_quote_from_url
+    pages_enabled
     rate_limit_bypass_enabled
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
@@ -118,6 +119,7 @@ class Form::AdminSettings
     circles_enabled
     clips_enabled
     auto_quote_from_url
+    pages_enabled
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view

@@ -170,6 +170,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       force_local_only: Setting.force_local_only,
       circles_enabled: Setting.circles_enabled,
       clips_enabled: Setting.clips_enabled,
+      pages_enabled: Setting.pages_enabled,
       antenna_enabled: Setting.antenna_enabled,
       drive_enabled: Setting.drive_enabled,
       board_announcements_enabled: Setting.board_announcements_enabled,

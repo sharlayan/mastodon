@@ -1182,6 +1182,10 @@ en:
         allowed_extensions: Additional allowed file extensions
         allowed_extensions_hint: 'Image, video and audio uploads are always allowed. List any extra extensions to allow, separated by commas (for example: pdf, zip, txt). These extensions can never be allowed, because the files are served from this server''s own domain: %{extensions}.'
         allowed_extensions_invalid: 'cannot include these extensions: %{extensions}'
+      pages:
+        title: Pages
+        enabled: Enable pages
+        enabled_hint: Allow users to create block-based public pages. When disabled, existing pages are kept but cannot be accessed.
       reactions:
         title: Reactions
         enabled: Enable emoji reactions
@@ -2078,6 +2082,10 @@ en:
   clips:
     errors:
       limit: You have reached the maximum number of clips
+  pages:
+    errors:
+      limit: You have reached the maximum number of pages
+      own_page: You cannot like your own page
   lists:
     errors:
       limit: You have reached the maximum number of lists

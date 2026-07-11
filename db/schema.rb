@@ -1276,6 +1276,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_204800) do
     t.index ["uid"], name: "index_oauth_applications_on_uid", unique: true
   end
 
+  create_table "page_likes", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "page_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "page_id"], name: "index_page_likes_on_account_id_and_page_id", unique: true
+    t.index ["account_id"], name: "index_page_likes_on_account_id"
+    t.index ["page_id"], name: "index_page_likes_on_page_id"
+  end
+
+  create_table "pages", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.boolean "align_center", default: false, null: false
+    t.jsonb "content", default: [], null: false
+    t.datetime "created_at", null: false
+    t.bigint "eye_catching_media_attachment_id"
+    t.string "font", default: "sans-serif", null: false
+    t.boolean "hide_title_when_pinned", default: false, null: false
+    t.integer "likes_count", default: 0, null: false
+    t.string "name", null: false
+    t.text "summary"
+    t.string "title", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "name"], name: "index_pages_on_account_id_and_name", unique: true
+    t.index ["account_id"], name: "index_pages_on_account_id"
+    t.index ["eye_catching_media_attachment_id"], name: "index_pages_on_eye_catching_media_attachment_id"
+    t.index ["likes_count"], name: "index_pages_on_likes_count"
+  end
+
   create_table "pghero_space_stats", force: :cascade do |t|
     t.datetime "captured_at", precision: nil
     t.text "database"
@@ -2008,6 +2037,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_204800) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id", name: "fk_f5fc4c1ee3", on_delete: :cascade
   add_foreign_key "oauth_access_tokens", "users", column: "resource_owner_id", name: "fk_e84df68546", on_delete: :cascade
   add_foreign_key "oauth_applications", "users", column: "owner_id", name: "fk_b0988c7c0a", on_delete: :cascade
+  add_foreign_key "page_likes", "accounts", on_delete: :cascade
+  add_foreign_key "page_likes", "pages", on_delete: :cascade
+  add_foreign_key "pages", "accounts", on_delete: :cascade
+  add_foreign_key "pages", "media_attachments", column: "eye_catching_media_attachment_id", on_delete: :nullify
   add_foreign_key "poll_votes", "accounts", on_delete: :cascade
   add_foreign_key "poll_votes", "polls", on_delete: :cascade
   add_foreign_key "polls", "accounts", on_delete: :cascade

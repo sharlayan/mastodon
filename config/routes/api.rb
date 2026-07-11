@@ -301,6 +301,7 @@ namespace :api, format: false do
         resources :lists, only: :index
         resources :circles, only: :index
         resources :clips, only: :index
+        resources :pages, only: [:index, :show], param: :name
         resources :antennas, only: :index
         resources :exclude_antennas, only: :index
         resources :identity_proofs, only: :index
@@ -362,6 +363,17 @@ namespace :api, format: false do
 
       collection do
         get :favourites, to: 'clips/favourites#index'
+      end
+    end
+
+    resources :pages, only: [:index, :create, :show, :update, :destroy] do
+      member do
+        post :like
+        post :unlike
+      end
+
+      collection do
+        get :featured
       end
     end
 

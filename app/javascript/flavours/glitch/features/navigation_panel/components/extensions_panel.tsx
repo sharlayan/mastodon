@@ -1,12 +1,17 @@
 import { useIntl, defineMessages } from 'react-intl';
 
 import CalendarTodayIcon from '@/material-icons/400-24px/calendar_today.svg?react';
+import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import ExtensionIcon from '@/material-icons/400-24px/extension.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
 import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
 import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
-import { circlesEnabled, clipsEnabled } from 'flavours/glitch/initial_state';
+import {
+  circlesEnabled,
+  clipsEnabled,
+  pagesEnabled,
+} from 'flavours/glitch/initial_state';
 
 import { CollapsiblePanel } from './collapsible_panel';
 
@@ -30,6 +35,7 @@ const messages = defineMessages({
   },
   circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
+  pages: { id: 'navigation_bar.pages', defaultMessage: 'Pages' },
 });
 
 export const ExtensionsPanel: React.FC = () => {
@@ -68,6 +74,19 @@ export const ExtensionsPanel: React.FC = () => {
         icon='note-stack-add'
         iconComponent={NoteStackAddIcon}
         text={intl.formatMessage(messages.clips)}
+      />,
+    );
+  }
+
+  if (pagesEnabled) {
+    children.push(
+      <ColumnLink
+        key='pages'
+        transparent
+        to='/pages'
+        icon='description'
+        iconComponent={DescriptionIcon}
+        text={intl.formatMessage(messages.pages)}
       />,
     );
   }

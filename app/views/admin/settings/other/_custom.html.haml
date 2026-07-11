@@ -27,6 +27,14 @@
             sharlayan_only: true
 
 .fields-group
+  = f.input :pages_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.pages.enabled'),
+            hint: t('admin.settings.pages.enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
   = f.input :antenna_enabled,
             as: :boolean,
             wrapper: :with_label,

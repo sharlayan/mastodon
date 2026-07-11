@@ -1,0 +1,355 @@
+import { useEffect, useState, useCallback } from 'react';
+
+import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
+
+import { useParams, useHistory } from 'react-router-dom';
+
+import { Helmet } from '@unhead/react/helmet';
+
+import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
+import {
+  apiGetPage,
+  apiCreatePage,
+  apiUpdatePage,
+} from 'flavours/glitch/api/pages';
+import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
+import type {
+  ApiPageBlock,
+  ApiPageBlockType,
+  ApiPageFont,
+} from 'flavours/glitch/api_types/pages';
+import { Column } from 'flavours/glitch/components/column';
+import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import {
+  TextInputField,
+  TextAreaField,
+  SelectField,
+  CheckboxField,
+} from 'flavours/glitch/components/form_fields';
+
+import { BlockAddButtons } from './components/block_add_buttons';
+import { EditorBlock } from './components/editor_block';
+import type { PageBlockPatch } from './components/editor_block';
+import { ImageUploadField } from './components/image_upload_field';
+import {
+  createBlock,
+  updateBlockInTree,
+  removeBlockFromTree,
+  moveBlockInTree,
+} from './util/blocks';
+
+const messages = defineMessages({
+  newHeading: { id: 'pages.new', defaultMessage: 'New page' },
+  editHeading: { id: 'pages.edit', defaultMessage: 'Edit page' },
+  title: { id: 'pages.field.title', defaultMessage: 'Title' },
+  name: { id: 'pages.field.name', defaultMessage: 'URL slug' },
+  summary: { id: 'pages.field.summary', defaultMessage: 'Summary' },
+  eyeCatching: {
+    id: 'pages.field.eye_catching',
+    defaultMessage: 'Header image',
+  },
+  font: { id: 'pages.field.font', defaultMessage: 'Font' },
+  alignCenter: {
+    id: 'pages.field.align_center',
+    defaultMessage: 'Center align',
+  },
+  save: { id: 'pages.save', defaultMessage: 'Save' },
+});
+
+const TOP_LEVEL_TYPES: ApiPageBlockType[] = [
+  'text',
+  'section',
+  'image',
+  'note',
+];
+
+const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
+  const intl = useIntl();
+  const history = useHistory();
+  const { id } = useParams<{ id?: string }>();
+  const isEditing = !!id;
+
+  const [title, setTitle] = useState('');
+  const [name, setName] = useState('');
+  const [summary, setSummary] = useState('');
+  const [font, setFont] = useState<ApiPageFont>('sans-serif');
+  const [alignCenter, setAlignCenter] = useState(false);
+  const [content, setContent] = useState<ApiPageBlock[]>([]);
+  const [eyeCatching, setEyeCatching] = useState<ApiMediaAttachmentJSON | null>(
+    null,
+  );
+  const [mediaCache, setMediaCache] = useState<
+    Record<string, ApiMediaAttachmentJSON>
+  >({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!id) {
+      return;
+    }
+
+    apiGetPage(id)
+      .then((page) => {
+        setTitle(page.title);
+        setName(page.name);
+        setSummary(page.summary ?? '');
+        setFont(page.font);
+        setAlignCenter(page.align_center);
+        setContent(page.content);
+        setEyeCatching(page.eye_catching_media_attachment);
+        setMediaCache(
+          Object.fromEntries(
+            page.attached_media.map((media) => [media.id, media]),
+          ),
+        );
+        return page;
+      })
+      .catch(() => undefined);
+  }, [id]);
+
+  const handleTitleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setTitle(event.target.value);
+    },
+    [],
+  );
+
+  const handleNameChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setName(event.target.value);
+    },
+    [],
+  );
+
+  const handleSummaryChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setSummary(event.target.value);
+    },
+    [],
+  );
+
+  const handleFontChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setFont(event.target.value as ApiPageFont);
+    },
+    [],
+  );
+
+  const handleAlignChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setAlignCenter(event.target.checked);
+    },
+    [],
+  );
+
+  const handleMediaUploaded = useCallback((media: ApiMediaAttachmentJSON) => {
+    setMediaCache((cache) => ({ ...cache, [media.id]: media }));
+  }, []);
+
+  const getMedia = useCallback(
+    (fileId: string | null) => (fileId ? (mediaCache[fileId] ?? null) : null),
+    [mediaCache],
+  );
+
+  const handleUpdate = useCallback((blockId: string, patch: PageBlockPatch) => {
+    setContent((blocks) =>
+      updateBlockInTree(
+        blocks,
+        blockId,
+        (block) => ({ ...block, ...patch }) as ApiPageBlock,
+      ),
+    );
+  }, []);
+
+  const handleRemove = useCallback((blockId: string) => {
+    setContent((blocks) => removeBlockFromTree(blocks, blockId));
+  }, []);
+
+  const handleMove = useCallback((blockId: string, delta: number) => {
+    setContent((blocks) => moveBlockInTree(blocks, blockId, delta));
+  }, []);
+
+  const handleAddBlock = useCallback((type: ApiPageBlockType) => {
+    setContent((blocks) => [...blocks, createBlock(type)]);
+  }, []);
+
+  const handleAddChild = useCallback(
+    (parentId: string, type: ApiPageBlockType) => {
+      setContent((blocks) =>
+        updateBlockInTree(blocks, parentId, (parent) =>
+          parent.type === 'section'
+            ? { ...parent, children: [...parent.children, createBlock(type)] }
+            : parent,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleSave = useCallback(() => {
+    setSaving(true);
+    setError(false);
+
+    const payload = {
+      title,
+      name,
+      summary: summary || null,
+      font,
+      align_center: alignCenter,
+      content,
+      eye_catching_media_attachment_id: eyeCatching?.id ?? null,
+    };
+
+    const request = isEditing
+      ? apiUpdatePage(id, payload)
+      : apiCreatePage(payload);
+
+    request
+      .then((page) => {
+        history.push(`/pages/${page.id}`);
+        return page;
+      })
+      .catch(() => {
+        setError(true);
+        setSaving(false);
+      });
+  }, [
+    isEditing,
+    id,
+    title,
+    name,
+    summary,
+    font,
+    alignCenter,
+    content,
+    eyeCatching,
+    history,
+  ]);
+
+  const heading = intl.formatMessage(
+    isEditing ? messages.editHeading : messages.newHeading,
+  );
+
+  return (
+    <Column bindToDocument={!multiColumn} label={heading}>
+      <ColumnHeader
+        title={heading}
+        icon='description'
+        iconComponent={DescriptionIcon}
+        multiColumn={multiColumn}
+        showBackButton
+      />
+
+      <div className='scrollable'>
+        <div className='page-editor simple_form app-form'>
+          <div className='fields-group'>
+            <TextInputField
+              id='page_title'
+              required
+              maxLength={256}
+              label={intl.formatMessage(messages.title)}
+              value={title}
+              onChange={handleTitleChange}
+            />
+          </div>
+
+          <div className='fields-group'>
+            <TextInputField
+              id='page_name'
+              required
+              maxLength={256}
+              label={intl.formatMessage(messages.name)}
+              value={name}
+              onChange={handleNameChange}
+            />
+          </div>
+
+          <div className='fields-group'>
+            <TextAreaField
+              id='page_summary'
+              maxLength={256}
+              label={intl.formatMessage(messages.summary)}
+              value={summary}
+              onChange={handleSummaryChange}
+            />
+          </div>
+
+          <div className='fields-group'>
+            <span className='page-editor__label'>
+              {intl.formatMessage(messages.eyeCatching)}
+            </span>
+            <ImageUploadField value={eyeCatching} onChange={setEyeCatching} />
+          </div>
+
+          <div className='fields-group'>
+            <SelectField
+              id='page_font'
+              label={intl.formatMessage(messages.font)}
+              value={font}
+              onChange={handleFontChange}
+            >
+              <option value='sans-serif'>Sans-serif</option>
+              <option value='serif'>Serif</option>
+            </SelectField>
+          </div>
+
+          <div className='fields-group'>
+            <CheckboxField
+              id='page_align_center'
+              label={intl.formatMessage(messages.alignCenter)}
+              checked={alignCenter}
+              onChange={handleAlignChange}
+            />
+          </div>
+
+          <div className='page-editor__blocks'>
+            {content.map((block) => (
+              <EditorBlock
+                key={block.id}
+                block={block}
+                depth={0}
+                onUpdate={handleUpdate}
+                onRemove={handleRemove}
+                onMove={handleMove}
+                onAddChild={handleAddChild}
+                onMediaUploaded={handleMediaUploaded}
+                getMedia={getMedia}
+              />
+            ))}
+          </div>
+
+          <BlockAddButtons types={TOP_LEVEL_TYPES} onAdd={handleAddBlock} />
+
+          {error && (
+            <div className='page-editor__error'>
+              <FormattedMessage
+                id='pages.save_error'
+                defaultMessage='Could not save the page. Check the title and slug.'
+              />
+            </div>
+          )}
+
+          <div className='page-editor__actions'>
+            <button
+              type='button'
+              className='button'
+              disabled={saving}
+              onClick={handleSave}
+            >
+              {intl.formatMessage(messages.save)}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <Helmet>
+        <title>{heading}</title>
+        <meta name='robots' content='noindex' />
+      </Helmet>
+    </Column>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export
+export default PageEditor;

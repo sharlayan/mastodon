@@ -169,6 +169,8 @@ Rails.application.routes.draw do
       get '/@:username', as: :short_account
       get '/@:username/featured'
       get '/@:username/clips'
+      get '/@:username/pages'
+      get '/@:username/pages/:name'
       get '/@:username/collections'
       get '/@:username/with_replies', as: :short_account_with_replies
       get '/@:username/media', as: :short_account_media

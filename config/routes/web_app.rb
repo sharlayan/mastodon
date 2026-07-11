@@ -32,6 +32,7 @@
   /mutes
   /notifications_v2/(*any)
   /notifications/(*any)
+  /pages/(*any)
   /pinned
   /reaction_mutes
   /profile/(*any)

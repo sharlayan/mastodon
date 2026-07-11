@@ -1012,6 +1012,10 @@ ja:
         allowed_extensions: 追加で許可する拡張子
         allowed_extensions_hint: '画像・動画・音声は常に許可されます。その他に許可する拡張子をカンマ区切りで入力してください（例: pdf, zip, txt）。ファイルはこのサーバーのドメインから配信されるため、次の拡張子は許可できません: %{extensions}。'
         allowed_extensions_invalid: '次の拡張子は許可できません: %{extensions}'
+      pages:
+        title: ページ
+        enabled: ページ機能を有効にする
+        enabled_hint: ユーザーがブロックベースの公開ページを作成できるようにします。無効にすると既存のページは保持されますが、アクセスできなくなります。
       reactions:
         title: 絵文字リアクション
         enabled: 絵文字リアクションを有効にする
@@ -1798,6 +1802,10 @@ ja:
   clips:
     errors:
       limit: クリップの上限数に達しています
+  pages:
+    errors:
+      limit: ページの上限数に達しています
+      own_page: 自分のページにはいいねできません
   lists:
     errors:
       limit: リストの上限数に達しています
