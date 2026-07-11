@@ -92,6 +92,8 @@ class MisskeyCompat::UserSerializer
       uri: account.local? ? nil : account.uri,
       createdAt: account.created_at&.iso8601,
       updatedAt: account.updated_at&.iso8601,
+      bannerUrl: header_url(account),
+      bannerBlurhash: nil,
       isLocked: account.locked?,
       isSilenced: account.silenced?,
       isSuspended: account.suspended?,
@@ -102,6 +104,13 @@ class MisskeyCompat::UserSerializer
       pinnedNoteIds: [],
       pinnedNotes: [],
     }
+  end
+
+  def header_url(account)
+    return nil if account.unavailable?
+    return nil if account.header_file_name.blank?
+
+    full_asset_url(account.header_static_url)
   end
 
   def public_reactions?(account)

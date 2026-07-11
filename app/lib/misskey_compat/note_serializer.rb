@@ -47,7 +47,7 @@ class MisskeyCompat::NoteSerializer
       mentions: status.mentions.map { |m| MisskeyCompat::MiId.encode(m.account_id) },
       visibleUserIds: [],
       fileIds: status.ordered_media_attachments.map { |m| MisskeyCompat::MiId.encode(m.id) },
-      files: status.ordered_media_attachments.map { |m| MisskeyCompat::DriveFileSerializer.serialize(m) },
+      files: status.ordered_media_attachments.map { |m| MisskeyCompat::DriveFileSerializer.serialize(m, sensitive: status.sensitive?) },
       tags: status.tags.map(&:name),
       poll: poll_for(status),
       emojis: emojis,

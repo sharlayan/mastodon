@@ -3,11 +3,11 @@
 class MisskeyCompat::DriveFileSerializer
   include RoutingHelper
 
-  def self.serialize(media)
-    new.serialize(media)
+  def self.serialize(media, sensitive: nil)
+    new.serialize(media, sensitive: sensitive)
   end
 
-  def serialize(media)
+  def serialize(media, sensitive: nil)
     {
       id: MisskeyCompat::MiId.encode(media.id),
       createdAt: media.created_at&.iso8601,
@@ -15,7 +15,7 @@ class MisskeyCompat::DriveFileSerializer
       type: media.file_content_type.presence || 'application/octet-stream',
       md5: '',
       size: media.file_file_size || 0,
-      isSensitive: false,
+      isSensitive: sensitive.nil? ? (media.status&.sensitive? || false) : sensitive,
       blurhash: media.blurhash,
       properties: dimensions(media),
       url: full_asset_url(media.file.url(:original)),
