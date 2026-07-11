@@ -1145,6 +1145,10 @@ en:
         title: Instance Information Bar
         enabled: Enable instance information bar and metadata collection
         enabled_hint: When enabled, posts from other servers show an instance information bar (name, theme color, favicon) and the server collects metadata about federated instances. When disabled, the bar is hidden and no instance metadata is fetched.
+      online_status:
+        title: Online Status
+        enabled: Enable online status indicators
+        enabled_hint: When enabled, users who opt in can share whether they are online, recently active, or offline, shown as a dot on their avatar. When disabled, no online status is collected or shown to anyone, regardless of user settings.
       rate_limit_bypass:
         title: API Rate Limit Bypass
         enabled: Allow privileged roles to bypass API rate limits

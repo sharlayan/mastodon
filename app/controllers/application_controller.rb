@@ -28,6 +28,7 @@ class ApplicationController < ActionController::Base
 
   before_action :store_referrer, except: :raise_not_found, if: :devise_controller?
   before_action :require_functional!, if: :user_signed_in?
+  after_action :update_user_activity, if: :user_signed_in?
 
   before_action :set_cache_control_defaults
 
@@ -56,6 +57,12 @@ class ApplicationController < ActionController::Base
 
   def mfa_setup_path(path_params = {})
     settings_two_factor_authentication_methods_path(path_params)
+  end
+
+  def update_user_activity
+    return unless Setting.online_status_enabled
+
+    current_user.update_last_active!
   end
 
   def require_functional!

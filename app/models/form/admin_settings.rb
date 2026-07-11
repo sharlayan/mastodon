@@ -73,6 +73,7 @@ class Form::AdminSettings
     board_announcements_enabled
     instance_metadata_enabled
     antenna_enabled
+    online_status_enabled
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -116,6 +117,7 @@ class Form::AdminSettings
     board_announcements_enabled
     instance_metadata_enabled
     antenna_enabled
+    online_status_enabled
   ).freeze
 
   UPLOAD_KEYS = %i(

@@ -34,6 +34,16 @@
 .fields-group
   = f.input :mfm_allow_composition, as: :boolean, wrapper: :with_label, label: t('admin.settings.mfm_allow_composition.title'), hint: t('admin.settings.mfm_allow_composition.desc_html'), sharlayan_only: true
 
+%h2= t('admin.settings.online_status.title')
+
+.fields-group
+  = f.input :online_status_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.online_status.enabled'),
+            hint: t('admin.settings.online_status.enabled_hint'),
+            sharlayan_only: true
+
 %h2= t('admin.settings.avatar_decorations.title')
 
 .fields-group

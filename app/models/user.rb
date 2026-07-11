@@ -16,6 +16,7 @@
 #  disabled                  :boolean          default(FALSE), not null
 #  email                     :string           default(""), not null
 #  encrypted_password        :string           default(""), not null
+#  last_active_at            :datetime
 #  last_emailed_at           :datetime
 #  last_sign_in_at           :datetime
 #  locale                    :string

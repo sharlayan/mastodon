@@ -121,6 +121,7 @@ export const accountDefaultValues: AccountShape = {
   followed_message: null,
   avatar_decorations: [],
   mfm: false,
+  online_status: 'unknown',
   // This comes from `ApiMutedAccountJSON`, but we should eventually
   // store that in a different object.
   mute_expires_at: null,

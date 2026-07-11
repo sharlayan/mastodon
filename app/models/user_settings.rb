@@ -24,9 +24,11 @@ class UserSettings
   setting :bridge_unlisted_to_bsky, default: false # deliver unlisted statuses to bsky.brid.gy as public
   setting :email_subscriptions, default: false
   setting :content_font_size, default: 'medium', in: %w(medium large x_large xx_large)
+  setting :hide_online_status, default: true
 
   setting_inverse_alias :indexable, :noindex
   setting_inverse_alias :show_followers_count, :hide_followers_count
+  setting_inverse_alias :show_online_status, :hide_online_status
 
   namespace :web do
     setting :advanced_layout, default: false

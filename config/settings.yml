@@ -65,6 +65,7 @@ defaults: &defaults
   rate_limit_bypass_enabled: false
   board_announcements_enabled: true
   antenna_enabled: true
+  online_status_enabled: false
 
 development:
   <<: *defaults

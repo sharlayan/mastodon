@@ -443,7 +443,11 @@ body > [data-popover-placement] {
 
     &__over {
       color: transparent;
-      background: color-mix(in srgb, var(--color-bg-warning-base) 35%, transparent);
+      background: color-mix(
+        in srgb,
+        var(--color-bg-warning-base) 35%,
+        transparent
+      );
       border-radius: 2px;
       box-decoration-break: clone;
     }
@@ -2477,6 +2481,35 @@ body > [data-popover-placement] {
     height: 200%;
     object-fit: contain;
     pointer-events: none;
+  }
+
+  &__online {
+    position: absolute;
+    bottom: 0;
+    inset-inline-end: 0;
+    width: 30%;
+    height: 30%;
+    min-width: 8px;
+    min-height: 8px;
+    max-width: 14px;
+    max-height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--color-bg-secondary);
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 2;
+
+    &--online {
+      background: var(--color-bg-success-base);
+    }
+
+    &--active {
+      background: var(--color-bg-warning-base);
+    }
+
+    &--offline {
+      background: var(--color-text-secondary);
+    }
   }
 
   &-composite {

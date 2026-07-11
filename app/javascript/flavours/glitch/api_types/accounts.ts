@@ -88,7 +88,10 @@ export interface BaseApiAccountJSON {
   followed_message?: string | null;
   avatar_decorations?: ApiAvatarDecorationJSON[];
   mfm?: boolean;
+  online_status: ApiOnlineStatus;
 }
+
+export type ApiOnlineStatus = 'unknown' | 'online' | 'active' | 'offline';
 
 // See app/serializers/rest/muted_account_serializer.rb
 export interface ApiMutedAccountJSON extends BaseApiAccountJSON {

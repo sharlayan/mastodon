@@ -28,6 +28,8 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   attribute :mfm, if: :mfm?
 
+  attribute :online_status
+
   class AccountDecorator < SimpleDelegator
     def self.model_name
       Account.model_name
@@ -192,6 +194,13 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   def decorations_enabled?
     Setting.avatar_decorations_enabled && !object.avatar_decorations_blocked
+  end
+
+  def online_status
+    return 'unknown' unless Setting.online_status_enabled
+    return 'unknown' if object.unavailable? || object.user.nil?
+
+    object.user.online_status
   end
 
   def mfm
