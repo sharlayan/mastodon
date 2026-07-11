@@ -1822,6 +1822,16 @@ ja:
       followers: すべてのフォロワーを現在のアカウントから新しいアカウントに引き継ぎます
       only_redirect_html: または、<a href="%{path}">フォロワーを残したまま引っ越す</a>こともできます。
       redirect: プロフィールに引っ越し済みの通知が表示され、検索結果から除外されます
+  misskey_compat:
+    scratchpad:
+      code_label: AiScript コード
+      description: Misskey 互換アプリに表示されたコードを下に貼り付けて実行すると、プッシュ通知が登録されます。完了したら結果をコピーしてアプリに貼り付けてください。
+      no_session: 有効なセッションを確認できませんでした。このブラウザで再度ログインしてからお試しください。
+      result_label: '結果（アプリに貼り付けてください）:'
+      run: 実行
+      title: スクラッチパッド
+      unsupported: このスクラッチパッドはプッシュ通知の登録（sw/register）のみ対応しています。貼り付けられたコードを認識できませんでした。
+      wrong_account: このコードは @%{expected} 向けですが、現在 @%{current} でログインしています。該当アカウントでログインしてからお試しください。
   moderation:
     title: モデレーション
   multi_accounts:
