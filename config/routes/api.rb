@@ -489,6 +489,15 @@ namespace :api, format: false do
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
     post 'i/notifications', to: 'notifications#index'
+
+    post 'i/registry/get-all', to: 'registry#get_all'
+    post 'i/registry/get', to: 'registry#get'
+    post 'i/registry/get-detail', to: 'registry#get_detail'
+    post 'i/registry/set', to: 'registry#set'
+    post 'i/registry/remove', to: 'registry#remove'
+    post 'i/registry/keys', to: 'registry#keys'
+    post 'i/registry/keys-with-type', to: 'registry#keys_with_type'
+    post 'i/registry/scopes-with-domain', to: 'registry#scopes_with_domain'
     post 'miauth/:session/check', to: 'miauth#check'
 
     post 'sw/register', to: 'sw#register'
