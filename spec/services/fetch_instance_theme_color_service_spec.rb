@@ -17,6 +17,7 @@ RSpec.describe FetchInstanceThemeColorService do
     stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 404)
     stub_request(:post, "https://#{domain}/api/meta").to_return(status: 404)
     stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 404)
+    stub_request(:get, "https://#{domain}/manifest.json").to_return(status: 404)
     stub_request(:get, "https://#{domain}/api/v1/instance").to_return(status: 404)
     stub_request(:get, "https://#{domain}/api/v2/instance").to_return(status: 404)
     stub_request(:get, "https://#{domain}/favicon.ico").to_return(status: 200, body: 'fake-ico-data')
@@ -184,6 +185,51 @@ RSpec.describe FetchInstanceThemeColorService do
 
       result = subject.call(domain)
       expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.png")
+    end
+
+    it 'captures the Misskey API iconUrl even when the instance name is present' do
+      misskey_meta_response = { name: 'Misskey Instance', iconUrl: 'https://cdn.misskey.example/icon.png' }.to_json
+      stub_request(:post, "https://#{domain}/api/meta").to_return(status: 200, body: misskey_meta_response, headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, 'https://cdn.misskey.example/icon.png').to_return(status: 200, body: 'misskey-icon', headers: { 'Content-Type' => 'image/png' })
+
+      subject.call(domain)
+
+      expect(WebMock).to have_requested(:get, 'https://cdn.misskey.example/icon.png')
+    end
+
+    it 'prefers the web app manifest icon over the homepage link tag' do
+      manifest = { icons: [{ src: '/manifest-icon.png', sizes: '512x512', type: 'image/png' }] }.to_json
+      stub_request(:get, "https://#{domain}/manifest.json").to_return(status: 200, body: manifest, headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, "https://#{domain}/manifest-icon.png").to_return(status: 200, body: 'manifest-png', headers: { 'Content-Type' => 'image/png' })
+
+      subject.call(domain)
+
+      expect(WebMock).to have_requested(:get, "https://#{domain}/manifest-icon.png")
+      expect(WebMock).to_not have_requested(:get, "https://#{domain}/custom-favicon.png")
+    end
+
+    it 'selects the largest icon from the manifest' do
+      manifest = { icons: [
+        { src: '/small.png', sizes: '36x36', type: 'image/png' },
+        { src: '/large.png', sizes: '512x512', type: 'image/png' },
+        { src: '/medium.png', sizes: '192x192', type: 'image/png' },
+      ] }.to_json
+      stub_request(:get, "https://#{domain}/manifest.json").to_return(status: 200, body: manifest, headers: { 'Content-Type' => 'application/json' })
+      stub_request(:get, "https://#{domain}/large.png").to_return(status: 200, body: 'large-png', headers: { 'Content-Type' => 'image/png' })
+
+      subject.call(domain)
+
+      expect(WebMock).to have_requested(:get, "https://#{domain}/large.png")
+    end
+
+    it 'ignores data URI icons in the manifest' do
+      manifest = { icons: [{ src: 'data:image/png;base64,AAAA', sizes: '512x512' }] }.to_json
+      stub_request(:get, "https://#{domain}/manifest.json").to_return(status: 200, body: manifest, headers: { 'Content-Type' => 'application/json' })
+
+      result = subject.call(domain)
+
+      expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.png")
+      expect(WebMock).to have_requested(:get, "https://#{domain}/custom-favicon.png")
     end
   end
 
@@ -354,6 +400,7 @@ RSpec.describe FetchInstanceThemeColorService do
       stub_request(:get, "https://#{special_domain}/nodeinfo/2.1").to_return(status: 404)
       stub_request(:post, "https://#{special_domain}/api/meta").to_return(status: 404)
       stub_request(:get, "https://#{special_domain}/.well-known/nodeinfo").to_return(status: 404)
+      stub_request(:get, "https://#{special_domain}/manifest.json").to_return(status: 404)
       stub_request(:get, "https://#{special_domain}/api/v1/instance").to_return(status: 404)
       stub_request(:get, "https://#{special_domain}/api/v2/instance").to_return(status: 404)
       stub_request(:get, "https://#{special_domain}/custom-favicon.png").to_return(status: 200, body: 'png-data', headers: { 'Content-Type' => 'image/png' })

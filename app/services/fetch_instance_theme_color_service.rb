@@ -180,15 +180,83 @@ class FetchInstanceThemeColorService < BaseService
   def extract_favicon_url
     return @favicon_from_api if @favicon_from_api.present?
 
+    manifest_icon = extract_icon_from_manifest
+    return manifest_icon if manifest_icon.present?
+
     return "https://#{@domain}/favicon.ico" unless parsed_homepage
 
-    app_icon = parsed_homepage.at_css('link[rel="apple-touch-icon"], link[rel="apple-touch-icon-precomposed"]')
-    return resolve_url(app_icon['href']) if app_icon&.[]('href') && resolve_url(app_icon['href'])
+    app_icon = last_icon_href('link[rel~="apple-touch-icon-precomposed"]') || last_icon_href('link[rel~="apple-touch-icon"]')
+    return app_icon if app_icon.present?
 
-    favicon_link = parsed_homepage.at_css('link[rel="icon"], link[rel="shortcut icon"]')
-    return resolve_url(favicon_link['href']) || "https://#{@domain}/favicon.ico" if favicon_link && favicon_link['href']
+    favicon_link = last_icon_href('link[rel~="icon"]')
+    return favicon_link || "https://#{@domain}/favicon.ico" if favicon_link.present?
 
     "https://#{@domain}/favicon.ico"
+  end
+
+  def last_icon_href(selector)
+    return nil unless parsed_homepage
+
+    link = parsed_homepage.css(selector).to_a.reverse.find { |node| node['href'].present? }
+    return nil if link.nil?
+
+    resolved = resolve_url(link['href'])
+    return nil if resolved.blank? || resolved.start_with?('data:')
+
+    resolved
+  end
+
+  def extract_icon_from_manifest
+    manifest = fetch_manifest
+    return nil if manifest.nil?
+
+    icons = manifest['icons']
+    return nil unless icons.is_a?(Array)
+
+    candidates = icons.select { |icon| icon.is_a?(Hash) && icon['src'].present? }
+    return nil if candidates.empty?
+
+    best = candidates.max_by { |icon| manifest_icon_area(icon['sizes']) }
+    src = best['src']
+
+    resolved = resolve_url(src)
+    return nil if resolved.blank? || resolved.start_with?('data:')
+
+    resolved
+  rescue *NETWORK_ERRORS, JSON::ParserError
+    nil
+  end
+
+  def manifest_icon_area(sizes)
+    return 0 if sizes.blank?
+
+    sizes.to_s.split.filter_map do |size|
+      match = size.match(/\A(\d+)x(\d+)\z/i)
+      match ? match[1].to_i * match[2].to_i : nil
+    end.max || 0
+  end
+
+  def fetch_manifest
+    return @manifest if defined?(@manifest_fetched)
+
+    @manifest_fetched = true
+    @manifest = fetch_manifest_uncached
+  end
+
+  def fetch_manifest_uncached
+    url = "https://#{@domain}/manifest.json"
+
+    request = Request.new(:get, url)
+    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
+
+    manifest = nil
+    request.perform do |response|
+      manifest = JSON.parse(response.body_with_limit) if response.code == 200
+    end
+
+    manifest
+  rescue *NETWORK_ERRORS, JSON::ParserError
+    nil
   end
 
   def extract_nodeinfo_features
@@ -286,11 +354,11 @@ class FetchInstanceThemeColorService < BaseService
 
         meta_data = JSON.parse(response_body)
 
+        @favicon_from_api = resolve_url(meta_data['iconUrl']) if meta_data['iconUrl'].present?
+
         return meta_data['name'] if meta_data['name'].present?
 
         return meta_data['nodeName'] if meta_data['nodeName'].present?
-
-        @favicon_from_api = meta_data['iconUrl'] if meta_data['iconUrl'].present?
       end
     end
 
@@ -432,6 +500,7 @@ class FetchInstanceThemeColorService < BaseService
 
   def download_and_save_favicon(favicon_url)
     return nil if favicon_url.blank?
+    return nil if favicon_url.start_with?('data:')
 
     begin
       URI.parse(favicon_url)
