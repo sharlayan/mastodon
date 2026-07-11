@@ -37,7 +37,8 @@ class MisskeyCompat::PushSerializer
       body[:user] = MisskeyCompat::UserSerializer.serialize(from_account, viewer: recipient)
     end
 
-    body[:note] = MisskeyCompat::NoteSerializer.serialize(status, current_account: recipient, embed_relations: false) if status
+    note = notification.type == :reblog ? notification.status : status
+    body[:note] = MisskeyCompat::NoteSerializer.serialize(note, current_account: recipient, embed_relations: false) if note
 
     reaction = reaction_for(notification)
     body[:reaction] = reaction if reaction

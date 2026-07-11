@@ -59,9 +59,16 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
       user: MisskeyCompat::UserSerializer.serialize(notification.from_account),
     }
 
-    data[:note] = MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) if status
+    note = note_status(notification, status)
+    data[:note] = MisskeyCompat::NoteSerializer.serialize(note, current_account: current_account) if note
     data[:reaction] = reaction_for(notification)
     data.compact
+  end
+
+  def note_status(notification, status)
+    return notification.status if notification.type == :reblog
+
+    status
   end
 
   def notification_type(notification, status)
