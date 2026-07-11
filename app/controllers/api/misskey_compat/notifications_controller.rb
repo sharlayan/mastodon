@@ -26,6 +26,23 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
     render json: notifications.filter_map { |notification| serialize(notification) }
   end
 
+  def mark_all_as_read
+    latest_id = current_account.notifications.maximum(:id)
+
+    if latest_id
+      marker = current_user.markers.find_or_create_by(timeline: 'notifications')
+      marker.update(last_read_id: latest_id) if marker.last_read_id.to_i < latest_id
+    end
+
+    head 204
+  rescue ActiveRecord::StaleObjectError
+    head 204
+  end
+
+  def create
+    head 204
+  end
+
   private
 
   def serialize(notification)

@@ -489,6 +489,10 @@ namespace :api, format: false do
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
     post 'i/notifications', to: 'notifications#index'
+    post 'i/notifications-grouped', to: 'notifications#index'
+    post 'i/read-all-notifications', to: 'notifications#mark_all_as_read'
+    post 'notifications/mark-all-as-read', to: 'notifications#mark_all_as_read'
+    post 'notifications/create', to: 'notifications#create'
 
     post 'i/registry/get-all', to: 'registry#get_all'
     post 'i/registry/get', to: 'registry#get'
