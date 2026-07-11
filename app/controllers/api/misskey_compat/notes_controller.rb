@@ -3,13 +3,14 @@
 class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   USER_ACTIONS = %i(
     timeline hybrid_timeline mentions my_favorites
-    create destroy state search
+    create destroy state search translate unrenote
     reactions_create reactions_delete
+    thread_muting_create thread_muting_delete
     favorites_create favorites_delete polls_vote polls_recommendation
   ).freeze
 
   before_action :require_user!, only: USER_ACTIONS
-  before_action :set_note, only: [:show, :children, :destroy, :state, :reactions_create, :reactions_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
+  before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
 
   def timeline
     render_notes HomeFeed.new(current_account).get(pagination_limit, until_id, since_id)
@@ -36,12 +37,74 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     render json: descendants.map { |status| serialize(status) }
   end
 
+  def replies
+    scope = Status.where(in_reply_to_id: @note.id)
+    render_visible_notes paginate_notes(scope)
+  end
+
+  def conversation
+    statuses = @note.ancestors(pagination_limit(default: 10, max: 100) + params[:offset].to_i, current_account).reverse
+    statuses = statuses.drop(params[:offset].to_i).first(pagination_limit(default: 10, max: 100))
+    Status.preload_cacheable_associations(statuses)
+    preload_relations(statuses)
+    render json: statuses.map { |status| serialize(status) }
+  end
+
+  def renotes
+    scope = Status.where(reblog_of_id: @note.id).where(text: [nil, ''])
+    render_visible_notes paginate_notes(scope)
+  end
+
+  def unrenote
+    Status.where(account_id: current_account.id, reblog_of_id: @note.id).find_each do |reblog|
+      RemoveStatusService.new.call(reblog)
+    end
+    head 204
+  end
+
+  def note_reactions
+    scope = @note.status_reactions.includes(:account, :custom_emoji).order(id: :desc)
+    scope = scope.where(name: reaction_type_name(params[:type])) if params[:type].present?
+    scope = scope.where(id: ...(until_id.to_i)) if until_id.present?
+    scope = scope.where('status_reactions.id > ?', since_id.to_i) if since_id.present?
+    reactions = scope.limit(pagination_limit(default: 10, max: 100))
+
+    render json: reactions.map { |reaction| serialize_note_reaction(reaction) }
+  end
+
+  def thread_muting_create
+    conversation = @note.conversation
+    render_error('No such note', 'NO_SUCH_NOTE', 404) and return if conversation.nil?
+
+    current_account.mute_conversation!(conversation)
+    head 204
+  end
+
+  def thread_muting_delete
+    conversation = @note.conversation
+    render_error('No such note', 'NO_SUCH_NOTE', 404) and return if conversation.nil?
+
+    current_account.unmute_conversation!(conversation)
+    head 204
+  end
+
   def state
     render json: {
       isFavorited: current_account.favourited?(@note),
-      isMutedThread: false,
+      isMutedThread: @note.conversation.present? && current_account.muting_conversation?(@note.conversation),
       isRenoted: current_account.reblogged?(@note),
     }
+  end
+
+  def translate
+    render_error('Translation is not available', 'UNAVAILABLE', 400) and return unless TranslationService.configured?
+
+    translation = TranslateStatusService.new.call(@note, target_language)
+    render json: { sourceLang: translation.detected_source_language, text: html_to_text(translation.content) }
+  rescue TranslationService::NotConfiguredError, Mastodon::NotPermittedError
+    render_error('Translation is not available', 'UNAVAILABLE', 400)
+  rescue TranslationService::Error
+    render_error('Translation failed', 'TRANSLATION_FAILED', 500)
   end
 
   def reactions_create
@@ -152,6 +215,49 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def paginate_notes(scope)
+    scope = scope.where(id: ...(until_id.to_i)) if until_id.present?
+    scope = scope.where('statuses.id > ?', since_id.to_i) if since_id.present?
+    scope.order(id: :desc).limit(pagination_limit(default: 10, max: 100))
+  end
+
+  def render_visible_notes(scope)
+    statuses = scope.to_a.select { |status| StatusPolicy.new(current_account, status).show? }
+    Status.preload_cacheable_associations(statuses)
+    preload_relations(statuses)
+    render json: statuses.map { |status| serialize(status) }
+  end
+
+  def serialize_note_reaction(reaction)
+    {
+      id: MisskeyCompat::MiId.encode(reaction.id),
+      createdAt: reaction.created_at.iso8601,
+      user: MisskeyCompat::UserSerializer.serialize(reaction.account),
+      type: reaction_type(reaction),
+    }
+  end
+
+  def reaction_type(reaction)
+    custom = reaction.custom_emoji
+    return reaction.name if custom.nil?
+
+    host = custom.domain.presence || '.'
+    ":#{reaction.name}@#{host}:"
+  end
+
+  def reaction_type_name(type)
+    type.to_s.delete_prefix(':').sub(/@[^:]*:?\z/, '').delete_suffix(':')
+  end
+
+  def target_language
+    lang = params[:targetLang].to_s.presence || I18n.locale.to_s
+    lang.split(/[_-]/).first
+  end
+
+  def html_to_text(html)
+    Nokogiri::HTML5.fragment(html.to_s.gsub(%r{</p><p>}, "\n\n").gsub('<br>', "\n").gsub('<br/>', "\n")).text
+  end
 
   def renote_id
     params[:renoteId].presence

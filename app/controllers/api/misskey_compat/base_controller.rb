@@ -120,7 +120,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       canManageCustomEmojis: false,
       canManageAvatarDecorations: false,
       canSearchNotes: true,
-      canUseTranslator: false,
+      canUseTranslator: TranslationService.configured?,
       canUseReaction: true,
       canHideAds: false,
       avatarDecorationLimit: avatar_decoration_limit,

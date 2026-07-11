@@ -486,6 +486,7 @@ namespace :api, format: false do
     post 'meta', to: 'meta#show'
     match 'endpoints', to: 'meta#endpoints', via: [:get, :post]
     match 'emojis', to: 'emojis#index', via: [:get, :post]
+    match 'get-online-users-count', to: 'meta#online_users_count', via: [:get, :post]
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
     post 'i/notifications', to: 'notifications#index'
@@ -514,9 +515,17 @@ namespace :api, format: false do
     post 'notes/global-timeline', to: 'notes#global_timeline'
     post 'notes/show', to: 'notes#show'
     post 'notes/children', to: 'notes#children'
+    post 'notes/replies', to: 'notes#replies'
+    post 'notes/conversation', to: 'notes#conversation'
+    post 'notes/renotes', to: 'notes#renotes'
+    post 'notes/unrenote', to: 'notes#unrenote'
     post 'notes/state', to: 'notes#state'
+    post 'notes/translate', to: 'notes#translate'
+    post 'notes/reactions', to: 'notes#note_reactions'
     post 'notes/reactions/create', to: 'notes#reactions_create'
     post 'notes/reactions/delete', to: 'notes#reactions_delete'
+    post 'notes/thread-muting/create', to: 'notes#thread_muting_create'
+    post 'notes/thread-muting/delete', to: 'notes#thread_muting_delete'
 
     post 'drive/files/create', to: 'drive#create'
     post 'drive', to: 'drive#unavailable'

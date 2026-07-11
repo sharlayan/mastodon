@@ -14,6 +14,11 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     render json: self.class.compat_endpoint_names
   end
 
+  def online_users_count
+    count = User.where(last_active_at: User::Activity::ONLINE_STATUS_THRESHOLD.ago..).count { |user| user.online_status == 'online' }
+    render json: { count: count }
+  end
+
   def self.compat_endpoint_names
     @compat_endpoint_names ||= Rails.application.routes.routes.filter_map do |route|
       controller = route.defaults[:controller]
