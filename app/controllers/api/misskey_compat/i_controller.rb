@@ -149,6 +149,8 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
 
   def unread_announcement?
     BoardAnnouncement.published
+      .for_account(current_account)
+      .where(silence: false)
       .where.not(id: BoardAnnouncementRead.where(account: current_account).select(:board_announcement_id))
       .exists?
   end

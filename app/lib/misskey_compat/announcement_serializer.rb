@@ -8,26 +8,32 @@ class MisskeyCompat::AnnouncementSerializer
   end
 
   def serialize(announcement, current_account: nil)
-    {
+    data = {
       id: MisskeyCompat::MiId.encode(announcement.id),
       createdAt: (announcement.published_at || announcement.created_at).iso8601,
       updatedAt: announcement.updated_at&.iso8601,
       title: announcement.title,
       text: announcement.text,
       imageUrl: image_url_for(announcement),
-      icon: 'info',
-      display: 'dialog',
+      icon: announcement.icon,
+      display: announcement.display,
       forYou: false,
-      needConfirmationToRead: false,
-      silence: false,
-      isRead: current_account ? announcement.read?(current_account) : undefined_read,
-    }.compact
+      needConfirmationToRead: announcement.need_confirmation_to_read,
+      silence: announcement.silence,
+    }
+
+    read = read_state(announcement, current_account)
+    data[:isRead] = read unless read.nil?
+    data
   end
 
   private
 
-  def undefined_read
-    nil
+  def read_state(announcement, current_account)
+    return nil if current_account.nil?
+    return announcement.read_by_current_user if announcement.respond_to?(:read_by_current_user)
+
+    announcement.read?(current_account)
   end
 
   def image_url_for(announcement)
