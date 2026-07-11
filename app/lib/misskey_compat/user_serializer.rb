@@ -22,6 +22,7 @@ class MisskeyCompat::UserSerializer
       onlineStatus: 'unknown',
       emojis: emojis_map(account.emojis),
       avatarDecorations: avatar_decorations_for(account),
+      instance: instance_info(account),
     }
 
     if detailed
@@ -107,6 +108,24 @@ class MisskeyCompat::UserSerializer
     return true unless account.local? && account.user
 
     account.user.settings['show_reactions'] != false
+  end
+
+  def instance_info(account)
+    return nil if account.local?
+
+    domain = account.domain
+    return nil if domain.blank?
+
+    metadata = InstanceMetadata.find_by(domain: domain)
+
+    {
+      name: metadata&.instance_name_with_fallback || domain,
+      softwareName: metadata&.software,
+      softwareVersion: metadata&.version,
+      iconUrl: nil,
+      faviconUrl: metadata&.favicon_url_with_fallback || "https://#{domain}/favicon.ico",
+      themeColor: metadata&.theme_color_with_fallback,
+    }
   end
 
   def avatar_decorations_for(account)
