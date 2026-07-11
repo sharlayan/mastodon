@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseController
+  include Redisable
+
   before_action :require_user!
   before_action :set_antenna!, only: [:show, :update, :destroy, :notes]
 
@@ -36,6 +38,7 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
   def notes
     statuses = AntennaFeed.new(@antenna).get(pagination_limit, params[:untilId].presence, params[:sinceId].presence).to_a
     Status.preload_cacheable_associations(statuses)
+    mark_read!(@antenna, statuses.first&.id) if params[:untilId].blank?
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) }
   end
 
@@ -122,9 +125,32 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
       withFile: antenna.with_media_only,
       excludeNotesInSensitiveChannel: false,
       isActive: antenna.available,
-      hasUnreadNote: false,
+      hasUnreadNote: unread?(antenna),
       notify: false,
     }
+  end
+
+  def unread?(antenna)
+    latest_note_id(antenna) > last_read_id(antenna)
+  end
+
+  def latest_note_id(antenna)
+    redis.zrevrange(FeedManager.instance.key(:antenna, antenna.id), 0, 0).first.to_i
+  end
+
+  def last_read_id(antenna)
+    redis.get(read_key(antenna)).to_i
+  end
+
+  def mark_read!(antenna, note_id)
+    note_id ||= latest_note_id(antenna)
+    return if note_id.to_i.zero?
+
+    redis.set(read_key(antenna), note_id) if note_id.to_i > last_read_id(antenna)
+  end
+
+  def read_key(antenna)
+    "antenna:#{antenna.id}:read"
   end
 
   def derive_src_and_users(antenna)
