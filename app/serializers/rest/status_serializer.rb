@@ -215,7 +215,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
     return nil if object.account.domain.blank?
 
     begin
-      metadata = InstanceMetadata.find_by(domain: object.account.domain)
+      metadata = InstanceMetadata.cached_by_domain(object.account.domain)
 
       if metadata.nil?
         InstanceMetadataUpdateWorker.perform_async(object.account.domain)

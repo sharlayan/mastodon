@@ -13,6 +13,8 @@ class StatusRelationshipsPresenter
     # basically never outlives the statuses collection it is passed
     @statuses = statuses
 
+    InstanceMetadata.preload_domains(metadata_domains(statuses)) if Setting.instance_metadata_enabled
+
     if current_account_id.nil?
       @preloaded_account_relations = {}
       @filters_map     = {}
@@ -47,6 +49,10 @@ class StatusRelationshipsPresenter
   end
 
   private
+
+  def metadata_domains(statuses)
+    statuses.compact.flat_map { |s| [s.account, s.proper.account, s.proper.quote&.quoted_account] }.compact.filter_map(&:domain)
+  end
 
   def build_filters_map(statuses, current_account_id)
     active_filters = CustomFilter.cached_filters_for(current_account_id)

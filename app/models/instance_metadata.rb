@@ -46,6 +46,24 @@ class InstanceMetadata < ApplicationRecord
     find_or_create_by(domain: domain)
   end
 
+  def self.cached_by_domain(domain)
+    return nil if domain.blank?
+
+    cache = RequestStore.store[:instance_metadata_by_domain] ||= {}
+    return cache[domain] if cache.key?(domain)
+
+    cache[domain] = find_by(domain: domain)
+  end
+
+  def self.preload_domains(domains)
+    cache = RequestStore.store[:instance_metadata_by_domain] ||= {}
+    missing = domains.compact.uniq.reject { |domain| domain.blank? || cache.key?(domain) }
+    return if missing.empty?
+
+    where(domain: missing).find_each { |metadata| cache[metadata.domain] = metadata }
+    missing.each { |domain| cache[domain] ||= nil }
+  end
+
   def default_theme_color
     software_normalized = software&.downcase || 'mastodon'
     DEFAULT_THEME_COLORS[software_normalized] || DEFAULT_THEME_COLORS['mastodon']

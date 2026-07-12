@@ -218,7 +218,7 @@ class REST::AccountSerializer < ActiveModel::Serializer
     return false unless Setting.instance_metadata_enabled
     return false if object.domain.blank?
 
-    InstanceMetadata.find_by(domain: object.domain)&.misskey_based? || false
+    InstanceMetadata.cached_by_domain(object.domain)&.misskey_based? || false
   end
 
   def avatar_decorations
