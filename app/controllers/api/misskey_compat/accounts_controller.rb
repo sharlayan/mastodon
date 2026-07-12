@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseController
-  before_action :require_user!, only: [:followers, :following, :search]
+  before_action :require_user!, only: [:followers, :following, :search, :search_by_username_and_host, :update_memo]
 
   def index
     scope = apply_user_origin(Account.discoverable.without_suspended)
@@ -37,6 +37,36 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     )
 
     render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: ActiveModel::Type::Boolean.new.cast(params[:detail])) }
+  end
+
+  def search_by_username_and_host
+    username = params[:username].to_s.strip.delete_prefix('@')
+    host = params[:host].to_s.strip.delete_prefix('@').presence
+    return render json: [] if username.blank? && host.blank?
+
+    scope = Account.without_suspended
+    scope = scope.where('lower(accounts.username) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(username.downcase)}%") if username.present?
+    scope = apply_host_filter(scope, host) if params.key?(:host)
+    accounts = scope.limit(pagination_limit).to_a
+
+    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: ActiveModel::Type::Boolean.new.cast(params[:detail]), viewer: current_account) }
+  end
+
+  def update_memo
+    target = Account.find(params[:userId])
+    memo = params[:memo].to_s
+
+    if memo.blank?
+      current_account.account_notes.find_by(target_account: target)&.destroy
+    else
+      note = current_account.account_notes.find_or_initialize_by(target_account: target)
+      note.comment = memo
+      note.save! if note.changed?
+    end
+
+    head 204
+  rescue ActiveRecord::RecordNotFound
+    render_error('No such user', 'NO_SUCH_USER', 404)
   end
 
   def followers
@@ -142,6 +172,12 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
     host = custom.domain.presence || '.'
     ":#{reaction.name}@#{host}:"
+  end
+
+  def apply_host_filter(scope, host)
+    return scope.where(domain: nil) if host.blank? || host.casecmp?(Rails.configuration.x.local_domain)
+
+    scope.where('lower(accounts.domain) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(host.downcase)}%")
   end
 
   def normalized_hostname

@@ -26,6 +26,20 @@ class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
     render json: accounts.map { |account| { id: MisskeyCompat::MiId.encode(account.id), user: serialize_user(account) } }
   end
 
+  def notes
+    role = UserRole.find_by(id: params[:roleId])
+    return render_error('No such role', 'NO_SUCH_ROLE', 404) if role.nil? || role.everyone? || role.nobody?
+
+    account_ids = discoverable_members(role.id).reselect(:id)
+    scope = Status.where(account_id: account_ids, visibility: [:public, :unlisted], reblog_of_id: nil)
+      .not_excluded_by_account(current_account)
+    statuses = scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id).to_a
+    Status.preload_cacheable_associations(statuses)
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
+
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
+  end
+
   private
 
   def explorable_roles

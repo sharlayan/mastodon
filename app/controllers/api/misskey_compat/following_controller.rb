@@ -13,6 +13,15 @@ class Api::MisskeyCompat::FollowingController < Api::MisskeyCompat::BaseControll
     render json: paginated_requests.map { |request| serialize_request(request) }
   end
 
+  def update
+    follow = current_account.active_relationships.find_by(target_account: @target)
+    return render_error('You are not following that user', 'NOT_FOLLOWING', 400) if follow.nil?
+
+    follow.update!(notify: params[:notify].to_s == 'normal') if params.key?(:notify)
+
+    render json: MisskeyCompat::UserSerializer.serialize(@target)
+  end
+
   def destroy
     UnfollowService.new.call(current_account, @target)
     render json: MisskeyCompat::UserSerializer.serialize(@target, detailed: true)

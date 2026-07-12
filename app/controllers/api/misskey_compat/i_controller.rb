@@ -27,7 +27,42 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     head 204
   end
 
+  def pin
+    status = pinnable_status
+    return if performed?
+
+    StatusPin.create!(account: current_account, status: status)
+    distribute_pin_activity!(status, ActivityPub::AddNoteSerializer)
+    render json: me_json
+  rescue ActiveRecord::RecordInvalid
+    render_error('You can not pin this note', 'CANNOT_PIN', 400)
+  end
+
+  def unpin
+    status = pinnable_status
+    return if performed?
+
+    pin = StatusPin.find_by(account: current_account, status: status)
+    if pin
+      pin.destroy!
+      distribute_pin_activity!(status, ActivityPub::RemoveNoteSerializer)
+    end
+    render json: me_json
+  end
+
   private
+
+  def pinnable_status
+    status = Status.find_by(id: params[:noteId])
+    render_error('No such note', 'NO_SUCH_NOTE', 404) and return if status.nil? || status.account_id != current_account.id
+
+    status
+  end
+
+  def distribute_pin_activity!(status, serializer)
+    json = ActiveModelSerializers::SerializableResource.new(status, serializer: serializer, adapter: ActivityPub::Adapter).as_json
+    ActivityPub::RawDistributionWorker.perform_async(json.to_json, current_account.id)
+  end
 
   def me_json
     data = MisskeyCompat::UserSerializer.serialize(current_account, detailed: true, me_user: current_user)

@@ -13,7 +13,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   INVALID_PARAM_ID = '3d81ceae-475f-4600-b2a8-2bc116157532'
 
-  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId replyId renoteId listId antennaId announcementId avatarId bannerId folderId fileId channelId).freeze
+  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId replyId renoteId listId antennaId announcementId avatarId bannerId folderId fileId channelId draftId).freeze
   MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
 
   RequesterIdentity = Struct.new(:id)
@@ -151,6 +151,9 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       canUseTranslator: TranslationService.configured?,
       canUseReaction: true,
       canHideAds: false,
+      canScheduleNote: true,
+      scheduleNoteMax: ScheduledStatus::TOTAL_LIMIT,
+      scheduleNoteMaxDays: 0,
       avatarDecorationLimit: avatar_decoration_limit,
     }
   end

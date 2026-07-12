@@ -3,7 +3,8 @@
 class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   USER_ACTIONS = %i(
     timeline hybrid_timeline mentions my_favorites
-    create destroy state search search_by_tag translate unrenote
+    create update destroy state search search_by_tag translate unrenote
+    scheduled_list scheduled_cancel
     reactions_create reactions_delete
     thread_muting_create thread_muting_delete
     favorites_create favorites_delete polls_vote polls_recommendation
@@ -134,11 +135,38 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
         PostStatusService.new.call(current_account, post_options)
       end
 
+    return render json: { scheduledNoteId: MisskeyCompat::MiId.encode(status.id) } if status.is_a?(ScheduledStatus)
+
     render json: { createdNote: serialize(status) }
   rescue ActiveRecord::RecordNotFound
     render_error('No such note', 'NO_SUCH_NOTE', 404)
   rescue Mastodon::NotPermittedError
     render_error('Forbidden', 'ACCESS_DENIED', 403)
+  end
+
+  def update
+    note = Status.find_by(id: params[:noteId])
+    render_error('No such note', 'NO_SUCH_NOTE', 404) and return if note.nil? || note.account_id != current_account.id
+
+    UpdateStatusService.new.call(note, current_account.id, update_options)
+    head 204
+  rescue Mastodon::NotPermittedError
+    render_error('Forbidden', 'ACCESS_DENIED', 403)
+  end
+
+  def scheduled_list
+    scope = current_account.scheduled_statuses.includes(:media_attachments).order(id: :desc)
+    scheduled = scope.limit(pagination_limit).offset(params[:offset].to_i).to_a
+
+    render json: scheduled.map { |scheduled_status| serialize_scheduled(scheduled_status) }
+  end
+
+  def scheduled_cancel
+    scheduled = current_account.scheduled_statuses.find_by(id: params[:draftId])
+    render_error('No such note', 'NO_SUCH_NOTE', 404) and return if scheduled.nil?
+
+    scheduled.destroy!
+    head 204
   end
 
   def destroy
@@ -300,7 +328,22 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       local_only: ActiveModel::Type::Boolean.new.cast(params[:localOnly]),
       quoted_status: quoted,
       poll: poll_options,
+      scheduled_at: scheduled_at_option,
     }.compact
+  end
+
+  def update_options
+    {
+      text: params[:text].to_s,
+      spoiler_text: params[:cw].to_s,
+      media_ids: Array(params[:fileIds]).map(&:to_s).presence,
+    }
+  end
+
+  def scheduled_at_option
+    return nil if params[:scheduledAt].blank?
+
+    Time.at(params[:scheduledAt].to_i / 1000.0).utc
   end
 
   def poll_options
@@ -356,6 +399,30 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def serialize(status)
     MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account)
+  end
+
+  def serialize_scheduled(scheduled_status)
+    params_hash = scheduled_status.params || {}
+
+    {
+      id: MisskeyCompat::MiId.encode(scheduled_status.id),
+      updatedAt: scheduled_status.scheduled_at&.iso8601,
+      scheduledAt: scheduled_status.scheduled_at&.iso8601,
+      reason: nil,
+      channel: nil,
+      renote: nil,
+      reply: nil,
+      data: {
+        text: params_hash['text'],
+        useCw: params_hash['spoiler_text'].present?,
+        cw: params_hash['spoiler_text'].presence,
+        visibility: MisskeyCompat::NoteSerializer::VISIBILITY_MAP.fetch(params_hash['visibility'], 'public'),
+        localOnly: ActiveModel::Type::Boolean.new.cast(params_hash['local_only']) || false,
+        files: scheduled_status.media_attachments.map { |media| MisskeyCompat::DriveFileSerializer.serialize(media) },
+        poll: nil,
+        visibleUserIds: [],
+      },
+    }
   end
 
   def serialize_collection(statuses)
