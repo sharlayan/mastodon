@@ -13,6 +13,7 @@
 ActiveRecord::Schema[8.1].define(version: 2026_07_13_104100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "account_aliases", force: :cascade do |t|
     t.bigint "account_id", null: false
@@ -187,6 +188,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_104100) do
     t.string "avatar_remote_url"
     t.integer "avatar_storage_schema_version"
     t.datetime "avatar_updated_at", precision: nil
+    t.string "birthday", limit: 32
     t.string "collections_url"
     t.datetime "created_at", precision: nil, null: false
     t.boolean "discoverable"
@@ -210,6 +212,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_104100) do
     t.string "inbox_url", default: "", null: false
     t.boolean "indexable", default: false, null: false
     t.datetime "last_webfingered_at", precision: nil
+    t.string "location", limit: 256
     t.boolean "locked", default: false, null: false
     t.boolean "memorial", default: false, null: false
     t.boolean "mfm", default: false, null: false
@@ -1100,6 +1103,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_104100) do
     t.index ["status_id"], name: "index_mentions_on_status_id"
   end
 
+  create_table "misskey_registry_items", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "domain"
+    t.string "key", default: "", null: false
+    t.string "scope", default: [], null: false, array: true
+    t.datetime "updated_at", null: false
+    t.jsonb "value"
+    t.index ["account_id", "domain", "scope"], name: "idx_on_account_id_domain_scope_aaf77e84e7"
+  end
+
   create_table "mutes", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", precision: nil, null: false
@@ -1596,6 +1610,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_104100) do
     t.index ["in_reply_to_account_id"], name: "index_statuses_on_in_reply_to_account_id", where: "(in_reply_to_account_id IS NOT NULL)"
     t.index ["in_reply_to_id"], name: "index_statuses_on_in_reply_to_id", where: "(in_reply_to_id IS NOT NULL)"
     t.index ["reblog_of_id", "account_id"], name: "index_statuses_on_reblog_of_id_and_account_id"
+    t.index ["text"], name: "index_statuses_on_text_trgm", opclass: :gin_trgm_ops, using: :gin
     t.index ["uri"], name: "index_statuses_on_uri", unique: true, opclass: :text_pattern_ops, where: "(uri IS NOT NULL)"
   end
 
@@ -1922,6 +1937,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_104100) do
   add_foreign_key "media_attachments", "statuses", on_delete: :nullify
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade
   add_foreign_key "mentions", "statuses", on_delete: :cascade
+  add_foreign_key "misskey_registry_items", "accounts", on_delete: :cascade
   add_foreign_key "mutes", "accounts", column: "target_account_id", name: "fk_eecff219ea", on_delete: :cascade
   add_foreign_key "mutes", "accounts", name: "fk_b8d8daf315", on_delete: :cascade
   add_foreign_key "notification_permissions", "accounts", column: "from_account_id", on_delete: :cascade
