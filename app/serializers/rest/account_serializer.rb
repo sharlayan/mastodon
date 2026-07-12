@@ -28,6 +28,9 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   attribute :mfm, if: :mfm?
 
+  attribute :server_features, if: :instance_metadata_enabled?
+  attribute :software, if: :instance_metadata_enabled?
+
   attribute :online_status
 
   class AccountDecorator < SimpleDelegator
@@ -219,6 +222,24 @@ class REST::AccountSerializer < ActiveModel::Serializer
     return false if object.domain.blank?
 
     InstanceMetadata.cached_by_domain(object.domain)&.misskey_based? || false
+  end
+
+  def instance_metadata_enabled?
+    Setting.instance_metadata_enabled
+  end
+
+  def server_features
+    return InstanceMetadata.local_server_features if object.local?
+    return InstanceMetadata.blank_server_features if object.domain.blank?
+
+    InstanceMetadata.cached_by_domain(object.domain)&.server_features || InstanceMetadata.blank_server_features
+  end
+
+  def software
+    return 'mastodon' if object.local?
+    return nil if object.domain.blank?
+
+    InstanceMetadata.cached_by_domain(object.domain)&.software
   end
 
   def avatar_decorations

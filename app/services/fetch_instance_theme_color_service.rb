@@ -94,9 +94,9 @@ class FetchInstanceThemeColorService < BaseService
 
     # nodeinfo가 도달 가능했을 때만 갱신, 아니면 일시적 실패가 known-true 플래그를 초기화함.
     if fetch_nodeinfo.present?
-      nodeinfo_features = extract_nodeinfo_features
-      attributes[:supports_avatar_decorations] = nodeinfo_features.include?('avatarDecorations')
-      attributes[:features] = nodeinfo_features
+      wire_features = extract_nodeinfo_features
+      attributes[:supports_avatar_decorations] = wire_features.include?('avatarDecorations')
+      attributes[:features] = InstanceMetadata.features_from_wire(wire_features)
     end
 
     @metadata.update(attributes)

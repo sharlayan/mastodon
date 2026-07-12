@@ -88,7 +88,17 @@ export interface BaseApiAccountJSON {
   followed_message?: string | null;
   avatar_decorations?: ApiAvatarDecorationJSON[];
   mfm?: boolean;
+  server_features?: ApiServerFeaturesJSON;
+  software?: string | null;
   online_status: ApiOnlineStatus;
+}
+
+export interface ApiServerFeaturesJSON {
+  emoji_reaction: boolean;
+  quote: boolean;
+  status_reference: boolean;
+  circle: boolean;
+  avatar_decorations: boolean;
 }
 
 export type ApiOnlineStatus = 'unknown' | 'online' | 'active' | 'offline';

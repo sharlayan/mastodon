@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'request_store'
+
 # == Schema Information
 #
 # Table name: instance_metadata
@@ -41,6 +43,57 @@ class InstanceMetadata < ApplicationRecord
 
   REACTION_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick akkoma pleroma kmyblue).freeze
   QUOTE_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick kmyblue).freeze
+
+  FEATURE_WIRE_MAP = {
+    emoji_reaction: 'emoji_reaction',
+    quote: 'quote',
+    circle: 'circle',
+    status_reference: 'status_reference',
+    mfm: 'mfm',
+    avatar_decorations: 'avatarDecorations',
+  }.freeze
+
+  WIRE_FEATURE_MAP = FEATURE_WIRE_MAP.to_h { |internal, wire| [wire, internal.to_s] }.freeze
+
+  def self.features_to_wire(internal_features)
+    Array(internal_features).filter_map { |feature| FEATURE_WIRE_MAP[feature.to_sym] }
+  end
+
+  def self.features_from_wire(wire_features)
+    return [] unless wire_features.is_a?(Array)
+
+    wire_features.filter_map { |feature| WIRE_FEATURE_MAP[feature] }.uniq
+  end
+
+  def self.advertised_features
+    features = []
+    features << :emoji_reaction if Setting.reactions_enabled
+    features << :quote
+    features << :circle if Setting.circles_enabled
+    features << :mfm if Setting.mfm_enabled
+    features << :avatar_decorations if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
+    features
+  end
+
+  def self.local_server_features
+    {
+      emoji_reaction: Setting.reactions_enabled,
+      quote: true,
+      status_reference: false,
+      circle: Setting.circles_enabled,
+      avatar_decorations: Setting.avatar_decorations_enabled,
+    }
+  end
+
+  def self.blank_server_features
+    {
+      emoji_reaction: false,
+      quote: false,
+      status_reference: false,
+      circle: false,
+      avatar_decorations: false,
+    }
+  end
 
   def self.for_domain(domain)
     find_or_create_by(domain: domain)

@@ -121,6 +121,14 @@ export const accountDefaultValues: AccountShape = {
   followed_message: null,
   avatar_decorations: [],
   mfm: false,
+  server_features: {
+    emoji_reaction: false,
+    quote: false,
+    status_reference: false,
+    circle: false,
+    avatar_decorations: false,
+  },
+  software: null,
   online_status: 'unknown',
   // This comes from `ApiMutedAccountJSON`, but we should eventually
   // store that in a different object.

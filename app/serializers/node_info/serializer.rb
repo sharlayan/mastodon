@@ -2,6 +2,7 @@
 
 class NodeInfo::Serializer < ActiveModel::Serializer
   include RoutingHelper
+  include SharlayanCapabilitiesHelper
 
   attributes :version, :software, :protocols, :services, :usage, :open_registrations, :metadata
 
@@ -41,12 +42,14 @@ class NodeInfo::Serializer < ActiveModel::Serializer
     meta = {
       nodeName: Setting.site_title,
       nodeDescription: Setting.site_short_description,
+      features: capabilities_for_nodeinfo,
+      upstream: {
+        name: 'mastodon',
+        version: Mastodon::Version.to_s,
+      },
     }
 
-    if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
-      meta[:features] = (meta[:features] || []) + ['avatarDecorations']
-      meta[:avatarDecorations] = true
-    end
+    meta[:avatarDecorations] = true if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
 
     meta
   end
