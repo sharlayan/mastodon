@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
+  MAX_MUTED_WORDS_BYTES = 64.kilobytes
+  MAX_MUTED_INSTANCES = 100
+  MAX_MUTED_EMOJIS = 1_000
+
+  requires_write_scope :update, :read_announcement, :pin, :unpin
+
   before_action :require_user!
 
   def show
@@ -155,13 +161,17 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
 
     raise ArgumentError, "#{key} must be an array" unless value.is_a?(Array)
 
-    current_user.update!(settings_attributes: { key => JSON.generate(value) })
+    encoded = JSON.generate(value)
+    raise ArgumentError, "#{key} is too large" if encoded.bytesize > MAX_MUTED_WORDS_BYTES
+
+    current_user.update!(settings_attributes: { key => encoded })
   end
 
   def apply_muted_instances!
     return if params[:mutedInstances].nil?
 
     raise ArgumentError, 'mutedInstances must be an array' unless params[:mutedInstances].is_a?(Array)
+    raise ArgumentError, 'mutedInstances has too many items' if params[:mutedInstances].size > MAX_MUTED_INSTANCES
 
     desired = params[:mutedInstances].filter_map { |host| host.to_s.downcase.strip.presence }.uniq
     existing = current_account.domain_mutes.pluck(:domain)
@@ -178,6 +188,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     return if params[:mutedEmojis].nil?
 
     raise ArgumentError, 'mutedEmojis must be an array' unless params[:mutedEmojis].is_a?(Array)
+    raise ArgumentError, 'mutedEmojis has too many items' if params[:mutedEmojis].size > MAX_MUTED_EMOJIS
 
     MisskeyCompat::MutedEmojiConverter.apply(current_account, params[:mutedEmojis])
   end

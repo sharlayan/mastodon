@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseController
+  requires_write_scope :mark_all_as_read, :create
+
   include RoutingHelper
 
   before_action :require_user!

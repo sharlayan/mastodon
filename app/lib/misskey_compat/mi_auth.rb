@@ -13,7 +13,8 @@ module MisskeyCompat::MiAuth
   end
 
   def valid_session?(session)
-    session.to_s.match?(/\A[0-9a-fA-F-]{8,64}\z/)
+    value = session.to_s
+    value.length <= 64 && value.match?(/\A[0-9a-fA-F-]+\z/) && value.delete('-').length >= 32
   end
 
   def safe_callback?(callback)

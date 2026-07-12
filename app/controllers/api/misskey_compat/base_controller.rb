@@ -18,6 +18,12 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   RequesterIdentity = Struct.new(:id)
 
+  class_attribute :misskey_write_actions, instance_writer: false, default: []
+
+  def self.requires_write_scope(*actions)
+    self.misskey_write_actions = (misskey_write_actions + actions.map(&:to_s)).uniq.freeze
+  end
+
   rescue_from ArgumentError do |e|
     render_invalid_param('#/', e.to_s)
   end
@@ -57,7 +63,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
     token = params[:i].presence
     @current_token = token ? Doorkeeper::AccessToken.by_token(token.to_s) : nil
-    @current_token = nil if @current_token&.revoked?
+    @current_token = nil unless @current_token&.accessible?
     @current_token
   end
 
@@ -74,7 +80,16 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   end
 
   def require_user!
-    render_error('Authentication required', 'CREDENTIAL_REQUIRED', 401) if current_user.nil?
+    if current_user.nil?
+      code = params[:i].present? ? 'AUTHENTICATION_FAILED' : 'CREDENTIAL_REQUIRED'
+      render_error('Authentication required', code, 401)
+    elsif !current_token.scopes.exists?(required_token_scope)
+      render_error('Insufficient token scope', 'PERMISSION_DENIED', 403)
+    end
+  end
+
+  def required_token_scope
+    misskey_write_actions.include?(action_name) ? 'write' : 'read'
   end
 
   def render_error(message, code, status, id: nil, kind: 'client', info: nil)

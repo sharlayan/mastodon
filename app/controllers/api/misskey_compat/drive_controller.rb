@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
+  requires_write_scope :create
+
   before_action :require_user!, only: [:create, :attached_notes]
 
   def unavailable

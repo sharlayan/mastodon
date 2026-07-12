@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
+  requires_write_scope :create, :update, :destroy, :push, :pull
+
   before_action :require_user!
   before_action :set_list!, only: [:show, :update, :destroy, :push, :pull, :timeline, :memberships]
 

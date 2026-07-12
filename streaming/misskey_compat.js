@@ -1,9 +1,12 @@
 'use strict';
 
 const MISSKEY_PREFIX = 'misskey:';
+const MAX_CHANNEL_SUBSCRIPTIONS = 50;
+const MAX_NOTE_SUBSCRIPTIONS = 100;
 
 const MI_ID_TIME2000 = 946684800000;
 
+/* eslint-disable jsdoc/reject-function-type -- Dependency signatures are defined by the streaming server. */
 /**
  * Decode a Misskey-compat aidx id back to the underlying Mastodon id.
  * Mirrors MisskeyCompat::MiId#decode.
@@ -42,6 +45,8 @@ const extractTag = (params) => {
   return undefined;
 };
 
+const canReadStatuses = (request) => Array.isArray(request.scopes) && (request.scopes.includes('read') || request.scopes.includes('read:statuses'));
+
 /**
  * @param {string} channel
  * @param {Object} params
@@ -68,17 +73,20 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
     return Promise.reject(new Error(`Unsupported misskey channel: ${channel}`));
   }
 };
+/* eslint-enable jsdoc/reject-function-type */
 
+/* eslint-disable jsdoc/reject-function-type -- Dependency signatures are defined by the streaming server. */
 /**
  * @param {Object} deps
  * @param {Function} deps.subscribe
  * @param {Function} deps.unsubscribe
- * @param {Function} deps.subscriptionHeartbeat
+ * @param {function(string[]): function(): void} deps.subscriptionHeartbeat
  * @param {Function} deps.channelNameToIds
+ * @param {Function} deps.authorizeStatusAccess
  * @param {function(): Promise.<boolean>} deps.isEnabled
  * @param {import('pino').Logger} deps.logger
  */
-const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, isEnabled, logger }) => {
+const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, isEnabled, logger }) => {
   const send = (ws, type, body) => {
     if (ws.readyState !== ws.OPEN) return;
     ws.send(JSON.stringify({ type, body }));
@@ -96,14 +104,19 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
   const subNote = (session, body) => {
     if (!body || (typeof body.id !== 'string' && typeof body.id !== 'number')) return;
+    if (!canReadStatuses(session.request)) return;
 
     const noteId = String(body.id);
     const notes = noteStore(session);
 
-    if (notes.has(noteId)) return;
+    if (notes.has(noteId) || notes.size >= MAX_NOTE_SUBSCRIPTIONS) return;
 
     isEnabled().then((enabled) => {
-      if (!enabled || notes.has(noteId)) return;
+      if (!enabled || notes.has(noteId)) return false;
+
+      return authorizeStatusAccess(decodeMiId(noteId), session.request);
+    }).then((authorized) => {
+      if (!authorized || notes.has(noteId) || notes.size >= MAX_NOTE_SUBSCRIPTIONS) return;
 
       const channel = `${MISSKEY_PREFIX}note:${noteId}`;
 
@@ -135,19 +148,20 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
   const connect = (session, body) => {
     if (!body || typeof body.id !== 'string' || typeof body.channel !== 'string') return;
+    if (!canReadStatuses(session.request)) return;
 
     const { channel, id } = body;
     const params = body.params || {};
     const channels = store(session).channels;
 
-    if (channels.has(id)) return;
+    if (channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
 
     isEnabled().then((enabled) => {
       if (!enabled || channels.has(id)) return undefined;
 
       return resolveChannel(channel, params, session.request, channelNameToIds);
     }).then((channelIds) => {
-      if (!channelIds || channels.has(id)) return;
+      if (!channelIds || channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
 
       const misskeyChannelIds = channelIds.map((c) => MISSKEY_PREFIX + c);
 
@@ -218,5 +232,6 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
   return { handleMessage, cleanup, isMisskeyType };
 };
+/* eslint-enable jsdoc/reject-function-type */
 
 export { createMisskeyCompat };

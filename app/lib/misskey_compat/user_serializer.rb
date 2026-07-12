@@ -3,11 +3,11 @@
 class MisskeyCompat::UserSerializer
   include RoutingHelper
 
-  def self.serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil)
-    new.serialize(account, detailed: detailed, viewer: viewer, me_user: me_user, context: context)
+  def self.serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil)
+    new.serialize(account, detailed: detailed, viewer: viewer, me_user: me_user, context: context, relationships: relationships)
   end
 
-  def serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil)
+  def serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil)
     @context = context
     data = {
       id: MisskeyCompat::MiId.encode(account.id),
@@ -28,7 +28,7 @@ class MisskeyCompat::UserSerializer
 
     if detailed
       data.merge!(detailed_fields(account))
-      data.merge!(viewer_fields(account, viewer)) if viewer && viewer.id != account.id
+      data.merge!(viewer_fields(account, viewer, relationships)) if viewer && viewer.id != account.id
       data.merge!(me_fields(me_user)) if me_user && me_user.account_id == account.id
     end
 
@@ -37,7 +37,9 @@ class MisskeyCompat::UserSerializer
 
   private
 
-  def viewer_fields(account, viewer)
+  def viewer_fields(account, viewer, relationships)
+    return preloaded_viewer_fields(account, relationships) if relationships
+
     {
       isFollowing: viewer.following?(account),
       isFollowed: viewer.followed_by?(account),
@@ -47,6 +49,21 @@ class MisskeyCompat::UserSerializer
       isBlocked: account.blocking?(viewer),
       isMuted: viewer.muting?(account),
       isRenoteMuted: viewer.muting_reblogs?(account),
+    }
+  end
+
+  def preloaded_viewer_fields(account, relationships)
+    following = relationships.following[account.id]
+
+    {
+      isFollowing: following.present?,
+      isFollowed: relationships.followed_by[account.id] || false,
+      hasPendingFollowRequestFromYou: relationships.requested[account.id].present?,
+      hasPendingFollowRequestToYou: relationships.requested_by[account.id].present?,
+      isBlocking: relationships.blocking[account.id] || false,
+      isBlocked: relationships.blocked_by[account.id] || false,
+      isMuted: relationships.muting[account.id].present?,
+      isRenoteMuted: following.present? && following[:reblogs] == false,
     }
   end
 
@@ -134,7 +151,7 @@ class MisskeyCompat::UserSerializer
   end
 
   def build_instance_info(domain)
-    metadata = InstanceMetadata.find_by(domain: domain)
+    metadata = InstanceMetadata.cached_by_domain(domain)
     favicon = metadata&.favicon_url_with_fallback || "https://#{domain}/favicon.ico"
 
     {

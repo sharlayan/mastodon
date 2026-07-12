@@ -22,7 +22,11 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
   end
 
   def online_users_count
-    count = User.where(last_active_at: User::Activity::ONLINE_STATUS_THRESHOLD.ago..).count { |user| user.online_status == 'online' }
+    return if rate_limited?(:misskey_compat_api)
+
+    count = Rails.cache.fetch('misskey_compat:online_users_count', expires_in: 1.minute) do
+      User.where(last_active_at: User::Activity::ONLINE_STATUS_THRESHOLD.ago..).select(:id, :settings, :last_active_at).count { |user| user.online_status == 'online' }
+    end
     render json: { count: count }
   end
 

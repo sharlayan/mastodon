@@ -4,16 +4,17 @@ class Api::MisskeyCompat::MiauthController < Api::MisskeyCompat::BaseController
   include Redisable
 
   def check
-    token = with_redis { |r| r.get(MisskeyCompat::MiAuth.redis_key(params[:session])) }
+    return render json: { ok: false } unless MisskeyCompat::MiAuth.valid_session?(params[:session])
+    return if rate_limited?(:misskey_compat_api)
+
+    token = with_redis { |r| r.getdel(MisskeyCompat::MiAuth.redis_key(params[:session])) }
     return render json: { ok: false } if token.blank?
 
     access_token = Doorkeeper::AccessToken.by_token(token)
-    return render json: { ok: false } if access_token.nil? || access_token.revoked?
+    return render json: { ok: false } unless access_token&.accessible?
 
     user = User.find_by(id: access_token.resource_owner_id)
     return render json: { ok: false } if user.nil?
-
-    with_redis { |r| r.del(MisskeyCompat::MiAuth.redis_key(params[:session])) }
 
     render json: {
       ok: true,

@@ -39,8 +39,9 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
 
     scope = apply_user_origin(tag.accounts.discoverable.without_suspended)
     accounts = apply_user_sort(scope).limit(pagination_limit).to_a
+    relationships = AccountRelationshipsPresenter.new(accounts, current_account.id)
 
-    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account) }
+    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account, relationships: relationships) }
   end
 
   private

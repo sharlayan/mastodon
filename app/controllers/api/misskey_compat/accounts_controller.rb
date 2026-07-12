@@ -1,14 +1,17 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseController
+  requires_write_scope :update_memo, :report_abuse
+
   before_action :require_user!, only: [:followers, :following, :search, :search_by_username_and_host, :update_memo]
 
   def index
     scope = apply_user_origin(Account.discoverable.without_suspended)
     scope = scope.where(domain: normalized_hostname) if normalized_hostname
     accounts = apply_user_sort(scope).limit(pagination_limit).offset(params[:offset].to_i).to_a
+    relationships = account_relationships(accounts)
 
-    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account) }
+    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account, relationships: relationships) }
   end
 
   def notes
@@ -48,8 +51,9 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     scope = scope.where('lower(accounts.username) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(username.downcase)}%") if username.present?
     scope = apply_host_filter(scope, host) if params.key?(:host)
     accounts = scope.limit(pagination_limit).to_a
+    relationships = account_relationships(accounts)
 
-    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: ActiveModel::Type::Boolean.new.cast(params[:detail]), viewer: current_account) }
+    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: ActiveModel::Type::Boolean.new.cast(params[:detail]), viewer: current_account, relationships: relationships) }
   end
 
   def update_memo
@@ -148,6 +152,10 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   private
+
+  def account_relationships(accounts)
+    AccountRelationshipsPresenter.new(accounts, current_account.id) if current_account
+  end
 
   def serialize_reaction(reaction, account, context)
     {

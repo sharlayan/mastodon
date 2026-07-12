@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::BlockingController < Api::MisskeyCompat::BaseController
+  requires_write_scope :create, :destroy
+
   before_action :require_user!
   before_action :set_target!, only: [:create, :destroy]
 
   def index
-    blocks = paginated_blocks
-    render json: blocks.map { |block| serialize(block) }
+    blocks = paginated_blocks.to_a
+    relationships = AccountRelationshipsPresenter.new(blocks.map(&:target_account), current_account.id)
+    render json: blocks.map { |block| serialize(block, relationships) }
   end
 
   def create
@@ -21,12 +24,12 @@ class Api::MisskeyCompat::BlockingController < Api::MisskeyCompat::BaseControlle
 
   private
 
-  def serialize(block)
+  def serialize(block, relationships)
     {
       id: MisskeyCompat::MiId.encode(block.id),
       createdAt: block.created_at.iso8601,
       blockeeId: MisskeyCompat::MiId.encode(block.target_account_id),
-      blockee: MisskeyCompat::UserSerializer.serialize(block.target_account, detailed: true, viewer: current_account),
+      blockee: MisskeyCompat::UserSerializer.serialize(block.target_account, detailed: true, viewer: current_account, relationships: relationships),
     }
   end
 

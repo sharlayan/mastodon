@@ -388,7 +388,7 @@ const startServer = async () => {
    * @returns {Promise<ResolvedAccount>}
    */
   const accountFromToken = async (token, req) => {
-    const result = await pgPool.query('SELECT oauth_access_tokens.id, oauth_access_tokens.resource_owner_id, users.account_id, users.chosen_languages, oauth_access_tokens.scopes, COALESCE(user_roles.permissions, 0) AS permissions FROM oauth_access_tokens INNER JOIN users ON oauth_access_tokens.resource_owner_id = users.id INNER JOIN accounts ON accounts.id = users.account_id LEFT OUTER JOIN user_roles ON user_roles.id = users.role_id WHERE oauth_access_tokens.token = $1 AND oauth_access_tokens.revoked_at IS NULL AND users.disabled IS FALSE AND accounts.suspended_at IS NULL LIMIT 1', [token]);
+    const result = await pgPool.query("SELECT oauth_access_tokens.id, oauth_access_tokens.resource_owner_id, users.account_id, users.chosen_languages, oauth_access_tokens.scopes, COALESCE(user_roles.permissions, 0) AS permissions FROM oauth_access_tokens INNER JOIN users ON oauth_access_tokens.resource_owner_id = users.id INNER JOIN accounts ON accounts.id = users.account_id LEFT OUTER JOIN user_roles ON user_roles.id = users.role_id WHERE oauth_access_tokens.token = $1 AND oauth_access_tokens.revoked_at IS NULL AND (oauth_access_tokens.expires_in IS NULL OR oauth_access_tokens.created_at + oauth_access_tokens.expires_in * INTERVAL '1 second' > NOW()) AND users.disabled IS FALSE AND accounts.suspended_at IS NULL LIMIT 1", [token]);
 
     if (result.rows.length === 0) {
       throw new AuthenticationError('Invalid access token');
@@ -645,6 +645,39 @@ const startServer = async () => {
     if (result.rows.length === 0) {
       throw new AuthenticationError('Antenna not found');
     }
+  };
+
+  /**
+   * @param {string|undefined} statusId
+   * @param {Request} req
+   * @returns {Promise.<boolean>}
+   */
+  const authorizeStatusAccess = async (statusId, req) => {
+    if (!statusId || !/^\d+$/.test(statusId)) return false;
+
+    const result = await pgPool.query(`
+      SELECT 1
+      FROM statuses
+      WHERE statuses.id = $1
+        AND (
+          statuses.account_id = $2
+          OR statuses.visibility IN (0, 1)
+          OR statuses.visibility = 2 AND EXISTS (
+            SELECT 1 FROM follows
+            WHERE follows.account_id = $2
+              AND follows.target_account_id = statuses.account_id
+          )
+          OR statuses.visibility IN (3, 4) AND EXISTS (
+            SELECT 1 FROM mentions
+            WHERE mentions.status_id = statuses.id
+              AND mentions.account_id = $2
+              AND mentions.silent = FALSE
+          )
+        )
+      LIMIT 1
+    `, [statusId, req.accountId]);
+
+    return result.rows.length > 0;
   };
 
   /**
@@ -1422,6 +1455,7 @@ const startServer = async () => {
     unsubscribe,
     subscriptionHeartbeat,
     channelNameToIds,
+    authorizeStatusAccess,
     isEnabled: isMisskeyCompatEnabled,
     logger,
   });

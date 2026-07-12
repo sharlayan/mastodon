@@ -64,6 +64,36 @@ RSpec.describe 'Misskey-compat security hardening' do
     end
   end
 
+  describe 'OAuth token enforcement' do
+    it 'rejects an expired token' do
+      expired = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write', created_at: 2.days.ago, expires_in: 1.hour).token
+
+      post '/api/i', params: { i: expired }, as: :json
+
+      expect(response).to have_http_status(401)
+      expect(response.parsed_body.dig('error', 'code')).to eq('AUTHENTICATION_FAILED')
+    end
+
+    it 'does not allow a read-only token to mutate data' do
+      read_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token
+
+      post '/api/notes/create', params: { i: read_token, text: 'scope bypass' }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig('error', 'code')).to eq('PERMISSION_DENIED')
+      expect(account.statuses.where(text: 'scope bypass')).to_not exist
+    end
+
+    it 'does not allow a write-only token to read private account data' do
+      write_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write').token
+
+      post '/api/i', params: { i: write_token }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig('error', 'code')).to eq('PERMISSION_DENIED')
+    end
+  end
+
   describe 'POST /api/users/show (feature gate)' do
     it 'is unavailable when the compat layer is disabled' do
       Setting.misskey_compat_enabled = false

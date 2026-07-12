@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
+  requires_write_scope :register, :unregister
+
   before_action :require_user!
 
   def register

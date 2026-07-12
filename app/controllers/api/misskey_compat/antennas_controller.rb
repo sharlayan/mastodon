@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseController
+  requires_write_scope :create, :update, :destroy
+
   include Redisable
 
   before_action :require_user!

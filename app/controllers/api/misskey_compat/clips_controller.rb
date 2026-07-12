@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
+  requires_write_scope :create, :update, :destroy, :add_note, :remove_note, :favorite, :unfavorite
+
   OWNER_ACTIONS = %i(index create update destroy add_note remove_note my_favorites favorite unfavorite).freeze
 
   before_action :require_clips_enabled!

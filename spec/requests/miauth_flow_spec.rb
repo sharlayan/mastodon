@@ -24,10 +24,28 @@ RSpec.describe 'MiAuth web flow' do
       expect(response.body).to include("#{callback}?session=#{session_id}")
     end
 
+    it 'allows the issued token to be claimed only once' do
+      post "/miauth/#{session_id}", params: { name: 'Flare', callback: callback }
+
+      post "/api/miauth/#{session_id}/check", as: :json
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body['ok']).to be true
+
+      post "/api/miauth/#{session_id}/check", as: :json
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq('ok' => false)
+    end
+
     it 'ignores unsafe callback schemes on approve' do
       post "/miauth/#{session_id}", params: { name: 'Flare', callback: 'javascript:alert(1)' }
       expect(response).to have_http_status(200)
       expect(response.body).to_not include('javascript:alert(1)')
+    end
+
+    it 'rejects session identifiers with insufficient entropy' do
+      get '/miauth/12345678', params: { name: 'Flare', callback: callback }
+
+      expect(response).to have_http_status(404)
     end
   end
 

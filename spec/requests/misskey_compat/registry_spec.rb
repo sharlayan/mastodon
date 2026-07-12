@@ -145,5 +145,13 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
       post '/api/i/registry/get-all', params: { scope: %w(client base) }, as: :json
       expect(response).to have_http_status(401)
     end
+
+    it 'rejects oversized registry values' do
+      set_item('large', 'x' * (Api::MisskeyCompat::RegistryController::MAX_VALUE_BYTES + 1))
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
+      expect(account.misskey_registry_items).to_not exist
+    end
   end
 end

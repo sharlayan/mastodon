@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
+  requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
+                       :reactions_create, :reactions_delete, :create, :update,
+                       :scheduled_cancel, :destroy, :favorites_create,
+                       :favorites_delete, :polls_vote
+
   USER_ACTIONS = %i(
     timeline hybrid_timeline mentions my_favorites
     create update destroy state search search_by_tag translate unrenote
@@ -30,6 +35,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def show
+    return if current_account.nil? && rate_limited?(:misskey_compat_api)
+
     @note = MisskeyCompat::ThreadResolveService.new.call(@note, on_behalf_of: current_account)
     render json: serialize(@note)
   end
@@ -384,7 +391,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def specified_mention_prefix(text)
-    ids = Array(params[:visibleUserIds]).map(&:to_s).compact_blank
+    ids = Array(params[:visibleUserIds]).first(100).map(&:to_s).compact_blank
     return '' if ids.empty?
 
     Account.where(id: ids).filter_map do |account|

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
+  requires_write_scope :create, :destroy, :renote_create, :renote_destroy
+
   before_action :require_user!
   before_action :set_target!, except: [:index, :renote_list]
 
@@ -8,9 +10,10 @@ class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
     mutes = current_account.mute_relationships.includes(:target_account).order(id: :desc)
     mutes = mutes.where(id: ...params[:untilId].to_i) if params[:untilId].present?
     mutes = mutes.where('mutes.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
-    mutes = mutes.limit(pagination_limit(default: 30, max: 100))
+    mutes = mutes.limit(pagination_limit(default: 30, max: 100)).to_a
+    relationships = AccountRelationshipsPresenter.new(mutes.map(&:target_account), current_account.id)
 
-    render json: mutes.map { |mute| serialize_muting(mute) }
+    render json: mutes.map { |mute| serialize_muting(mute, relationships) }
   end
 
   def create
@@ -27,9 +30,10 @@ class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
     follows = current_account.active_relationships.includes(:target_account).where(show_reblogs: false).order(id: :desc)
     follows = follows.where(id: ...params[:untilId].to_i) if params[:untilId].present?
     follows = follows.where('follows.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
-    follows = follows.limit(pagination_limit(default: 30, max: 100))
+    follows = follows.limit(pagination_limit(default: 30, max: 100)).to_a
+    relationships = AccountRelationshipsPresenter.new(follows.map(&:target_account), current_account.id)
 
-    render json: follows.map { |follow| serialize_renote_muting(follow) }
+    render json: follows.map { |follow| serialize_renote_muting(follow, relationships) }
   end
 
   def renote_create
@@ -46,22 +50,22 @@ class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
 
   private
 
-  def serialize_muting(mute)
+  def serialize_muting(mute, relationships)
     {
       id: MisskeyCompat::MiId.encode(mute.id),
       createdAt: mute.created_at.iso8601,
       expiresAt: nil,
       muteeId: MisskeyCompat::MiId.encode(mute.target_account_id),
-      mutee: MisskeyCompat::UserSerializer.serialize(mute.target_account, detailed: true, viewer: current_account),
+      mutee: MisskeyCompat::UserSerializer.serialize(mute.target_account, detailed: true, viewer: current_account, relationships: relationships),
     }
   end
 
-  def serialize_renote_muting(follow)
+  def serialize_renote_muting(follow, relationships)
     {
       id: MisskeyCompat::MiId.encode(follow.id),
       createdAt: follow.created_at.iso8601,
       muteeId: MisskeyCompat::MiId.encode(follow.target_account_id),
-      mutee: MisskeyCompat::UserSerializer.serialize(follow.target_account, detailed: true, viewer: current_account),
+      mutee: MisskeyCompat::UserSerializer.serialize(follow.target_account, detailed: true, viewer: current_account, relationships: relationships),
     }
   end
 
