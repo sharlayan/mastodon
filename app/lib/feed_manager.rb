@@ -72,6 +72,20 @@ class FeedManager
     !!filter(timeline_type, status, receiver)
   end
 
+  def filter_home_statuses(statuses, receiver, followed_tag_ids)
+    return statuses if statuses.empty?
+
+    crutches = build_crutches(receiver.id, statuses)
+
+    statuses.reject do |status|
+      if status.tags.any? { |tag| followed_tag_ids.include?(tag.id) }
+        filter_from_tags?(status, receiver.id, crutches)
+      else
+        filter_from_home(status, receiver.id, crutches, :home)
+      end
+    end
+  end
+
   # Add a status to a home feed and send a streaming API update
   # @param [Account] account
   # @param [Status] status

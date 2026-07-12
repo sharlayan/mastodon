@@ -83,14 +83,7 @@ class HomeFeed < Feed
       .includes(:tags)
       .to_a_paginated_by_id(limit, min_id: min_id, max_id: max_id, since_id: since_id)
 
-    tag_set = tag_following_ids.to_set
-    statuses.reject! do |status|
-      if status.tags.any? { |tag| tag_set.include?(tag.id) }
-        FeedManager.instance.filter?(:tags, status, @account)
-      else
-        FeedManager.instance.filter?(:home, status, @account)
-      end
-    end
+    statuses = FeedManager.instance.filter_home_statuses(statuses, @account, tag_following_ids.to_set)
 
     statuses.sort_by { |status| -status.id }
   end
