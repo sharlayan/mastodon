@@ -55,7 +55,8 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
 
     statuses = visible_statuses(clip)
     Status.preload_cacheable_associations(statuses)
-    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) }
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
   rescue ActiveRecord::RecordNotFound
     render_error('No such clip', 'NO_SUCH_CLIP', 404)
   end

@@ -11,26 +11,30 @@ class MisskeyCompat::NoteSerializer
     'limited' => 'specified',
   }.freeze
 
-  def self.serialize(status, current_account: nil, embed_relations: true)
-    new.serialize(status, current_account: current_account, embed_relations: embed_relations)
+  def self.serialize(status, current_account: nil, embed_relations: true, context: nil)
+    new.serialize(status, current_account: current_account, embed_relations: embed_relations, context: context)
   end
 
-  def serialize(status, current_account: nil, embed_relations: true)
-    return serialize_renote(status, current_account: current_account, embed_relations: embed_relations) if pure_renote?(status)
+  def serialize(status, current_account: nil, embed_relations: true, context: nil)
+    @context = context || MisskeyCompat::SerializationContext.new(current_account: current_account)
+    @current_account = @context.current_account
+
+    return serialize_renote(status, embed_relations: embed_relations) if pure_renote?(status)
 
     emojis = {}
     reaction_emojis = {}
-    reactions, my_reaction = reactions_for(status, current_account, reaction_emojis)
+    reactions, my_reaction = reactions_for(status, reaction_emojis)
     merge_text_emojis(status, emojis)
-    @current_account = current_account
+    mentions = load_mentions(status)
+    media = status.ordered_media_attachments
 
     {
       id: MisskeyCompat::MiId.encode(status.id),
       createdAt: status.created_at.iso8601,
-      text: text_for(status),
+      text: text_for(status, mentions),
       cw: status.spoiler_text.presence,
       userId: MisskeyCompat::MiId.encode(status.account_id),
-      user: MisskeyCompat::UserSerializer.serialize(status.account),
+      user: @context.user(status.account),
       visibility: VISIBILITY_MAP.fetch(status.visibility, 'public'),
       localOnly: status.local_only?,
       reactionAcceptance: nil,
@@ -40,14 +44,14 @@ class MisskeyCompat::NoteSerializer
       renoteCount: status.reblogs_count,
       repliesCount: status.replies_count,
       replyId: MisskeyCompat::MiId.encode(status.in_reply_to_id),
-      reply: embed_relations ? embedded_note(status.thread, current_account) : nil,
+      reply: embed_relations ? embedded_note(status.thread) : nil,
       renoteId: quoted_id(status),
-      renote: embed_relations ? embedded_note(quoted_status(status), current_account) : nil,
+      renote: embed_relations ? embedded_note(quoted_status(status)) : nil,
       isHidden: false,
-      mentions: status.mentions.map { |m| MisskeyCompat::MiId.encode(m.account_id) },
+      mentions: mentions.map { |m| MisskeyCompat::MiId.encode(m.account_id) },
       visibleUserIds: [],
-      fileIds: status.ordered_media_attachments.map { |m| MisskeyCompat::MiId.encode(m.id) },
-      files: status.ordered_media_attachments.map { |m| MisskeyCompat::DriveFileSerializer.serialize(m, sensitive: status.sensitive?) },
+      fileIds: media.map { |m| MisskeyCompat::MiId.encode(m.id) },
+      files: media.map { |m| MisskeyCompat::DriveFileSerializer.serialize(m, sensitive: status.sensitive?) },
       tags: status.tags.map(&:name),
       poll: poll_for(status),
       emojis: emojis,
@@ -62,17 +66,17 @@ class MisskeyCompat::NoteSerializer
     status.reblog? && status.spoiler_text.blank? && status.text.blank? && status.ordered_media_attachments.empty?
   end
 
-  def serialize_renote(status, current_account:, embed_relations: true)
+  def serialize_renote(status, embed_relations: true)
     {
       id: MisskeyCompat::MiId.encode(status.id),
       createdAt: status.created_at.iso8601,
       text: nil,
       cw: nil,
       userId: MisskeyCompat::MiId.encode(status.account_id),
-      user: MisskeyCompat::UserSerializer.serialize(status.account),
+      user: @context.user(status.account),
       visibility: VISIBILITY_MAP.fetch(status.visibility, 'public'),
       renoteId: MisskeyCompat::MiId.encode(status.reblog_of_id),
-      renote: embed_relations ? serialize(status.reblog, current_account: current_account, embed_relations: false) : nil,
+      renote: embed_relations ? serialize(status.reblog, embed_relations: false, context: @context) : nil,
       reactions: {},
       reactionEmojis: {},
       renoteCount: status.reblogs_count,
@@ -85,22 +89,30 @@ class MisskeyCompat::NoteSerializer
     status.quote&.quoted_status
   end
 
-  def embedded_note(status, current_account)
+  def embedded_note(status)
     return nil if status.nil?
-    return nil unless StatusPolicy.new(current_account, status).show?
+    return nil unless StatusPolicy.new(@current_account, status).show?
 
-    serialize(status, current_account: current_account, embed_relations: false)
+    serialize(status, embed_relations: false, context: @context)
   rescue Mastodon::NotPermittedError
     nil
   end
 
-  def text_for(status)
-    text = PlainTextFormatter.new(status.text, status.local?).to_s.presence
-    text && qualify_mentions(text, status)
+  def load_mentions(status)
+    if status.association(:mentions).loaded?
+      status.mentions.to_a
+    else
+      status.mentions.includes(:account).to_a
+    end
   end
 
-  def qualify_mentions(text, status)
-    status.mentions.includes(:account).find_each do |mention|
+  def text_for(status, mentions)
+    text = PlainTextFormatter.new(status.text, status.local?).to_s.presence
+    text && qualify_mentions(text, mentions)
+  end
+
+  def qualify_mentions(text, mentions)
+    mentions.each do |mention|
       account = mention.account
       next if account.nil?
 
@@ -119,11 +131,11 @@ class MisskeyCompat::NoteSerializer
     MisskeyCompat::MiId.encode(status.quote&.quoted_status_id)
   end
 
-  def reactions_for(status, current_account, reaction_emojis)
+  def reactions_for(status, reaction_emojis)
     reactions = {}
     my_reaction = nil
 
-    status.reactions(current_account&.id).each do |reaction|
+    @context.reactions_for(status).each do |reaction|
       custom = reaction.custom_emoji
 
       if custom.present?
@@ -156,7 +168,7 @@ class MisskeyCompat::NoteSerializer
     poll = status.preloadable_poll
     return nil if poll.nil?
 
-    own_votes = @current_account ? poll.own_votes(@current_account) : []
+    own_votes = @context.own_votes(poll)
 
     {
       multiple: poll.multiple?,

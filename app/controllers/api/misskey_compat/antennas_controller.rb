@@ -39,7 +39,8 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
     statuses = AntennaFeed.new(@antenna).get(pagination_limit, params[:untilId].presence, params[:sinceId].presence).to_a
     Status.preload_cacheable_associations(statuses)
     mark_read!(@antenna, statuses.first&.id) if params[:untilId].blank?
-    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) }
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
   end
 
   private

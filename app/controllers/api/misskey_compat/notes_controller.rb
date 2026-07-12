@@ -34,8 +34,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def children
-    descendants = @note.descendants(pagination_limit, current_account)
-    render json: descendants.map { |status| serialize(status) }
+    descendants = @note.descendants(pagination_limit, current_account).to_a
+    Status.preload_cacheable_associations(descendants)
+    preload_relations(descendants)
+    render json: serialize_collection(descendants)
   end
 
   def replies
@@ -48,7 +50,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     statuses = statuses.drop(params[:offset].to_i).first(pagination_limit(default: 10, max: 100))
     Status.preload_cacheable_associations(statuses)
     preload_relations(statuses)
-    render json: statuses.map { |status| serialize(status) }
+    render json: serialize_collection(statuses)
   end
 
   def renotes
@@ -181,10 +183,15 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     favourites = current_account.favourites.includes(status: :account).order(id: :desc)
     favourites = favourites.where(id: ...(until_id.to_i)) if until_id.present?
     favourites = favourites.where('favourites.id > ?', since_id.to_i) if since_id.present?
-    favourites = favourites.limit(pagination_limit)
+    favourites = favourites.limit(pagination_limit).to_a
+
+    statuses = favourites.map(&:status)
+    Status.preload_cacheable_associations(statuses)
+    preload_relations(statuses)
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
     render json: favourites.map { |fav|
-      { id: MisskeyCompat::MiId.encode(fav.id), createdAt: fav.created_at.iso8601, noteId: MisskeyCompat::MiId.encode(fav.status_id), note: serialize(fav.status) }
+      { id: MisskeyCompat::MiId.encode(fav.id), createdAt: fav.created_at.iso8601, noteId: MisskeyCompat::MiId.encode(fav.status_id), note: MisskeyCompat::NoteSerializer.serialize(fav.status, context: context) }
     }
   end
 
@@ -227,7 +234,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     statuses = scope.to_a.select { |status| StatusPolicy.new(current_account, status).show? }
     Status.preload_cacheable_associations(statuses)
     preload_relations(statuses)
-    render json: statuses.map { |status| serialize(status) }
+    render json: serialize_collection(statuses)
   end
 
   def serialize_note_reaction(reaction)
@@ -335,15 +342,20 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account)
   end
 
+  def serialize_collection(statuses)
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
+    statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
+  end
+
   def render_notes(statuses)
     statuses = statuses.to_a
     Status.preload_cacheable_associations(statuses)
     preload_relations(statuses)
-    render json: statuses.map { |status| serialize(status) }
+    render json: serialize_collection(statuses)
   end
 
   def preload_relations(statuses)
-    ActiveRecord::Associations::Preloader.new(records: statuses, associations: [:thread, { quote: :quoted_status }]).call
+    ActiveRecord::Associations::Preloader.new(records: statuses, associations: [:thread, { quote: :quoted_status }, { mentions: :account }]).call
 
     related = statuses.filter_map(&:thread) + statuses.filter_map { |status| status.quote&.quoted_status }
     Status.preload_cacheable_associations(related) if related.any?

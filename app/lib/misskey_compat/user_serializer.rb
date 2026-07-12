@@ -3,11 +3,12 @@
 class MisskeyCompat::UserSerializer
   include RoutingHelper
 
-  def self.serialize(account, detailed: false, viewer: nil, me_user: nil)
-    new.serialize(account, detailed: detailed, viewer: viewer, me_user: me_user)
+  def self.serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil)
+    new.serialize(account, detailed: detailed, viewer: viewer, me_user: me_user, context: context)
   end
 
-  def serialize(account, detailed: false, viewer: nil, me_user: nil)
+  def serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil)
+    @context = context
     data = {
       id: MisskeyCompat::MiId.encode(account.id),
       name: account.display_name.presence || account.username,
@@ -125,6 +126,14 @@ class MisskeyCompat::UserSerializer
     domain = account.domain
     return nil if domain.blank?
 
+    if @context
+      @context.instance_info(domain) { build_instance_info(domain) }
+    else
+      build_instance_info(domain)
+    end
+  end
+
+  def build_instance_info(domain)
     metadata = InstanceMetadata.find_by(domain: domain)
     favicon = metadata&.favicon_url_with_fallback || "https://#{domain}/favicon.ico"
 

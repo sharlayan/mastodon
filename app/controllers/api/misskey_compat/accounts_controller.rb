@@ -8,8 +8,9 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     filter = AccountStatusesFilter.new(account, current_account, statuses_filter_params)
     statuses = filter.results.to_a_paginated_by_id(pagination_limit, max_id: params[:untilId].presence, since_id: params[:sinceId].presence).to_a
     Status.preload_cacheable_associations(statuses)
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
-    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) }
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
   rescue ActiveRecord::RecordNotFound
     render_error('No such user', 'NO_SUCH_USER', 404)
   end
@@ -64,7 +65,11 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     scope = scope.where('status_reactions.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     reactions = scope.limit(pagination_limit).select { |reaction| reaction.status && StatusPolicy.new(current_account, reaction.status).show? }
 
-    render json: reactions.map { |reaction| serialize_reaction(reaction, account) }
+    statuses = reactions.map(&:status)
+    Status.preload_cacheable_associations(statuses)
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
+
+    render json: reactions.map { |reaction| serialize_reaction(reaction, account, context) }
   rescue ActiveRecord::RecordNotFound
     render_error('No such user', 'NO_SUCH_USER', 404)
   end
@@ -82,8 +87,9 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     scope = scope.where('statuses.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     statuses = scope.limit(pagination_limit).to_a
     Status.preload_cacheable_associations(statuses)
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
-    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) }
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
   rescue ActiveRecord::RecordNotFound
     render_error('No such user', 'NO_SUCH_USER', 404)
   end
@@ -105,13 +111,13 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
   private
 
-  def serialize_reaction(reaction, account)
+  def serialize_reaction(reaction, account, context)
     {
       id: MisskeyCompat::MiId.encode(reaction.id),
       createdAt: reaction.created_at.iso8601,
-      user: MisskeyCompat::UserSerializer.serialize(account),
+      user: context.user(account),
       type: reaction_type(reaction),
-      note: MisskeyCompat::NoteSerializer.serialize(reaction.status, current_account: current_account),
+      note: MisskeyCompat::NoteSerializer.serialize(reaction.status, context: context),
     }
   end
 

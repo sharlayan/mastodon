@@ -44,7 +44,8 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
   def timeline
     statuses = ListFeed.new(@list).get(pagination_limit, params[:untilId].presence, params[:sinceId].presence).to_a
     Status.preload_cacheable_associations(statuses)
-    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account) }
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
   end
 
   def memberships
