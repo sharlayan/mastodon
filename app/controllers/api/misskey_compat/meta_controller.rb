@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
-  before_action :require_user!, only: :stats
-
   def show
     return unless object_body!
 
@@ -14,6 +12,13 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
 
   def endpoints
     render json: self.class.compat_endpoint_names
+  end
+
+  def endpoint
+    known = self.class.compat_endpoint_names.include?(params[:endpoint].to_s)
+    return render_error('No such endpoint', 'NO_SUCH_ENDPOINT', 404) unless known
+
+    render json: { params: [] }
   end
 
   def online_users_count

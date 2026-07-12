@@ -486,6 +486,8 @@ namespace :api, format: false do
     post 'meta', to: 'meta#show'
     match 'endpoints', to: 'meta#endpoints', via: [:get, :post]
     match 'emojis', to: 'emojis#index', via: [:get, :post]
+    match 'emoji', to: 'emojis#show', via: [:get, :post]
+    match 'endpoint', to: 'meta#endpoint', via: [:get, :post]
     match 'get-online-users-count', to: 'meta#online_users_count', via: [:get, :post]
     post 'stats', to: 'meta#stats'
     post 'i', to: 'i#show'
@@ -611,6 +613,7 @@ namespace :api, format: false do
     post 'users/lists/push', to: 'lists#push'
     post 'users/lists/pull', to: 'lists#pull'
     post 'users/lists/get-memberships', to: 'lists#memberships'
+    post 'users/lists/create-from-public', to: 'lists#create_from_public'
     post 'notes/user-list-timeline', to: 'lists#timeline'
 
     post 'antennas/list', to: 'antennas#index'
@@ -702,5 +705,7 @@ namespace :api, format: false do
     match 'channels/unfollow', to: 'channels#noop', via: [:post]
     match 'channels/favorite', to: 'channels#noop', via: [:post]
     match 'channels/unfavorite', to: 'channels#noop', via: [:post]
+    post 'channels/mute/create', to: 'channels#noop'
+    post 'channels/mute/delete', to: 'channels#noop'
   end
 end

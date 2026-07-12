@@ -17,6 +17,10 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
     render json: serialize(list)
   end
 
+  def create_from_public
+    render_error('Importing public lists is not supported on this server', 'UNSUPPORTED_ENDPOINT', 501, kind: 'server')
+  end
+
   def update
     @list.update!(title: params[:name].to_s) if params[:name].present?
     render json: serialize(@list)
