@@ -32,6 +32,29 @@ RSpec.describe FollowService do
       end
     end
 
+    describe 'locked account with auto-accept enabled' do
+      let(:bob_user) { Fabricate(:user, account_attributes: { locked: true, username: 'bob' }) }
+      let(:bob) { bob_user.account }
+
+      before do
+        bob_user.settings['auto_accept_followed'] = true
+        bob_user.save!
+        bob.follow!(sender)
+      end
+
+      context 'when the source account is silenced' do
+        before do
+          sender.touch(:silenced_at)
+          subject.call(sender, bob)
+        end
+
+        it 'keeps the follow request pending' do
+          expect(sender.following?(bob)).to be false
+          expect(sender.requested?(bob)).to be true
+        end
+      end
+    end
+
     describe 'unlocked account, from silenced account' do
       let(:bob) { Fabricate(:account, username: 'bob') }
 
