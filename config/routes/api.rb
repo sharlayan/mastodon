@@ -487,6 +487,7 @@ namespace :api, format: false do
     match 'endpoints', to: 'meta#endpoints', via: [:get, :post]
     match 'emojis', to: 'emojis#index', via: [:get, :post]
     match 'get-online-users-count', to: 'meta#online_users_count', via: [:get, :post]
+    post 'stats', to: 'meta#stats'
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
     post 'i/notifications', to: 'notifications#index'

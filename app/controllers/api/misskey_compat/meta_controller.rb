@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
+  before_action :require_user!, only: :stats
+
   def show
     return unless object_body!
 
@@ -17,6 +19,19 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
   def online_users_count
     count = User.where(last_active_at: User::Activity::ONLINE_STATUS_THRESHOLD.ago..).count { |user| user.online_status == 'online' }
     render json: { count: count }
+  end
+
+  def stats
+    render json: {
+      notesCount: cached_stat('misskey_compat:stats:notes_count') { Status.count },
+      originalNotesCount: instance_presenter.status_count,
+      usersCount: cached_stat('misskey_compat:stats:users_count') { Account.count },
+      originalUsersCount: instance_presenter.user_count,
+      reactionsCount: cached_stat('misskey_compat:stats:reactions_count') { StatusReaction.count },
+      instances: instance_presenter.domain_count,
+      driveUsageLocal: 0,
+      driveUsageRemote: 0,
+    }
   end
 
   def self.compat_endpoint_names
@@ -113,6 +128,10 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
         miauth: true,
       }
     )
+  end
+
+  def cached_stat(key, &block)
+    Rails.cache.fetch(key, expires_in: 1.hour, &block)
   end
 
   def upload_url(upload, style: :original)
