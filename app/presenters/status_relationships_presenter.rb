@@ -3,7 +3,7 @@
 class StatusRelationshipsPresenter
   PINNABLE_VISIBILITIES = %w(public unlisted private).freeze
 
-  attr_reader :reblogs_map, :favourites_map, :reactions_map, :mutes_map,
+  attr_reader :reblogs_map, :favourites_map, :reactions_map, :reaction_groups_map, :mutes_map,
               :pins_map, :bookmarks_map, :filters_map, :attributes_map
 
   def initialize(statuses, current_account_id = nil, **options)
@@ -14,6 +14,10 @@ class StatusRelationshipsPresenter
     @statuses = statuses
 
     InstanceMetadata.preload_domains(metadata_domains(statuses)) if Setting.instance_metadata_enabled
+
+    statuses   = statuses.compact
+    status_ids = statuses.flat_map { |s| [s.id, s.reblog_of_id, s.proper.quote&.quoted_status_id] }.uniq.compact
+    @reaction_groups_map = Status.reaction_groups_map(status_ids, current_account_id)
 
     if current_account_id.nil?
       @preloaded_account_relations = {}
@@ -27,8 +31,6 @@ class StatusRelationshipsPresenter
     else
       @preloaded_account_relations = nil
 
-      statuses            = statuses.compact
-      status_ids          = statuses.flat_map { |s| [s.id, s.reblog_of_id, s.proper.quote&.quoted_status_id] }.uniq.compact
       conversation_ids    = statuses.flat_map { |s| [s.proper.conversation_id, s.proper.quote&.quoted_status&.conversation_id] }.uniq.compact
       pinnable_status_ids = statuses.flat_map { |s| [s.proper, s.proper.quote&.quoted_status] }.compact.filter_map { |s| s.id if s.account_id == current_account_id && PINNABLE_VISIBILITIES.include?(s.visibility) }
 

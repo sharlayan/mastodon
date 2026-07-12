@@ -35,8 +35,7 @@ module InstanceMetadataSerializable
   end
 
   def fetch_or_create_metadata(domain)
-    InstanceMetadata.cached_by_domain(domain) ||
-      InstanceMetadata.create(domain: domain)
+    InstanceMetadata.cached_find_or_create_by_domain(domain)
   rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved => e
     Rails.logger.warn("Could not create InstanceMetadata for #{domain}: #{e.message}")
     nil

@@ -10,7 +10,7 @@ class Api::V1::AntennasController < Api::BaseController
   before_action :set_antenna, except: [:index, :create]
 
   def index
-    @antennas = Antenna.where(account: current_account).all
+    @antennas = Antenna.where(account: current_account).includes(:antenna_accounts, :antenna_domains, antenna_tags: :tag)
     render json: @antennas, each_serializer: REST::AntennaSerializer
   end
 

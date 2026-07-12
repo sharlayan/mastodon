@@ -519,7 +519,10 @@ class Account < ApplicationRecord
   private
 
   def should_update_instance_metadata?
-    domain.present? && (InstanceMetadata.where(domain: domain).none? || InstanceMetadata.find_by(domain: domain)&.theme_color_needs_update?)
+    return false if domain.blank?
+
+    metadata = InstanceMetadata.find_by(domain: domain)
+    metadata.nil? || metadata.theme_color_needs_update?
   end
 
   def schedule_instance_metadata_update

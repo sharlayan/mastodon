@@ -7,6 +7,7 @@ RSpec.describe StatusRelationshipsPresenter do
     before do
       allow(Status).to receive(:reblogs_map).with(match_array(status_ids), current_account_id).and_return(default_map)
       allow(Status).to receive(:favourites_map).with(status_ids, current_account_id).and_return(default_map)
+      allow(Status).to receive(:reaction_groups_map).with(status_ids, current_account_id).and_return(default_map)
       allow(Status).to receive(:bookmarks_map).with(status_ids, current_account_id).and_return(default_map)
       allow(Status).to receive(:mutes_map).with(anything, current_account_id).and_return(default_map)
       allow(Status).to receive(:pins_map).with(anything, current_account_id).and_return(default_map)

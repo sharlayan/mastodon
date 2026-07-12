@@ -8,7 +8,8 @@ class Api::V1::BoardAnnouncementsController < Api::BaseController
   before_action :set_announcement, only: [:show, :read]
 
   def index
-    render json: @announcements, each_serializer: REST::BoardAnnouncementSerializer
+    relationships = BoardAnnouncementRelationshipsPresenter.new(@announcements, current_account)
+    render json: @announcements, each_serializer: REST::BoardAnnouncementSerializer, relationships: relationships
   end
 
   def show

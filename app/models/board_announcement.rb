@@ -51,6 +51,37 @@ class BoardAnnouncement < ApplicationRecord
     def coalesced_timestamp
       Arel.sql('COALESCE(board_announcements.published_at, board_announcements.created_at)')
     end
+
+    def reaction_groups_map(announcement_ids, account = nil)
+      records = BoardAnnouncementReaction
+        .where(board_announcement_id: announcement_ids)
+        .group(:board_announcement_id, :name, :custom_emoji_id)
+        .order(Arel.sql('MIN(board_announcement_reactions.created_at)').asc)
+        .select(
+          [:board_announcement_id, :name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
+            values << value_for_reaction_me_column(account)
+          end
+        ).to_a
+
+      ActiveRecord::Associations::Preloader.new(records: records, associations: :custom_emoji).call
+      records.group_by(&:board_announcement_id)
+    end
+
+    private
+
+    def value_for_reaction_me_column(account)
+      return 'FALSE AS me' if account.nil?
+
+      <<~SQL.squish
+        EXISTS(
+          SELECT 1
+          FROM board_announcement_reactions inner_reactions
+          WHERE inner_reactions.account_id = #{account.id.to_i}
+            AND inner_reactions.board_announcement_id = board_announcement_reactions.board_announcement_id
+            AND inner_reactions.name = board_announcement_reactions.name
+        ) AS me
+      SQL
+    end
   end
 
   def to_log_human_identifier

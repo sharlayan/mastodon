@@ -14,15 +14,17 @@ class REST::ClipSerializer < ActiveModel::Serializer
   end
 
   def statuses_count
-    object.clip_statuses.count
+    relationships ? relationships.statuses_count_map.fetch(object.id, 0) : object.clip_statuses.count
   end
 
   def favourites_count
-    object.clip_favourites.count
+    relationships ? relationships.favourites_count_map.fetch(object.id, 0) : object.clip_favourites.count
   end
 
   def favourited
-    if instance_options[:favourited_map]
+    if relationships
+      relationships.favourited_map[object.id] || false
+    elsif instance_options[:favourited_map]
       instance_options[:favourited_map][object.id] || false
     else
       object.favourited_by?(current_user.account)
@@ -31,5 +33,9 @@ class REST::ClipSerializer < ActiveModel::Serializer
 
   def current_user?
     !current_user.nil?
+  end
+
+  def relationships
+    instance_options[:relationships]
   end
 end

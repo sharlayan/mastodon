@@ -12,7 +12,7 @@ class Api::V1::Clips::FavouritesController < Api::BaseController
 
   def index
     @clips = load_clips
-    render json: @clips, each_serializer: REST::ClipSerializer, favourited_map: favourited_map
+    render json: @clips, each_serializer: REST::ClipSerializer, relationships: ClipRelationshipsPresenter.new(@clips, current_account.id)
   end
 
   def create
@@ -38,10 +38,6 @@ class Api::V1::Clips::FavouritesController < Api::BaseController
 
   def load_clips
     preload_collection(results.map(&:clip), Clip).select { |clip| clip.visible_to?(current_account) }
-  end
-
-  def favourited_map
-    @clips.to_h { |clip| [clip.id, true] }
   end
 
   def results

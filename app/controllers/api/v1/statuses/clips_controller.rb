@@ -7,8 +7,8 @@ class Api::V1::Statuses::ClipsController < Api::BaseController
   before_action :set_status
 
   def index
-    @clips = current_account.clips.where(id: ClipStatus.where(status_id: @status.id).select(:clip_id))
-    render json: @clips, each_serializer: REST::ClipSerializer
+    @clips = current_account.clips.where(id: ClipStatus.where(status_id: @status.id).select(:clip_id)).to_a
+    render json: @clips, each_serializer: REST::ClipSerializer, relationships: ClipRelationshipsPresenter.new(@clips, current_account.id)
   end
 
   private

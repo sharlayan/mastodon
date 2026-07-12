@@ -108,6 +108,14 @@ class InstanceMetadata < ApplicationRecord
     cache[domain] = find_by(domain: domain)
   end
 
+  def self.cached_find_or_create_by_domain(domain)
+    metadata = cached_by_domain(domain)
+    return metadata if metadata.present?
+
+    metadata = for_domain(domain)
+    RequestStore.store[:instance_metadata_by_domain][domain] = metadata
+  end
+
   def self.preload_domains(domains)
     cache = RequestStore.store[:instance_metadata_by_domain] ||= {}
     missing = domains.compact.uniq.reject { |domain| domain.blank? || cache.key?(domain) }

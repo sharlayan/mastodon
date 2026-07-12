@@ -141,7 +141,11 @@ class REST::StatusSerializer < ActiveModel::Serializer
   end
 
   def reactions
-    object.proper.reactions(current_user&.account&.id)
+    if relationships
+      relationships.reaction_groups_map[object.proper.id] || []
+    else
+      object.proper.reactions(current_user&.account&.id)
+    end
   end
 
   def reblogged
