@@ -769,6 +769,11 @@ const startServer = async () => {
       const accountDomain = payload.account.acct.split('@')[1];
       // @ts-expect-error
       const statusAccountId = payload.account.id;
+      // @ts-expect-error
+      const reblogAccountDomain = payload.reblog?.account?.acct.split('@')[1];
+      // @ts-expect-error
+      const reblogAccountId = payload.reblog?.account?.id;
+      const domainTargets = [[accountDomain, statusAccountId], [reblogAccountDomain, reblogAccountId]].filter(([domain, accountId]) => domain && accountId);
 
       // TODO: Move this logic out of the message handling loop
       pgPool.connect((err, client, releasePgConnection) => {
@@ -792,13 +797,20 @@ const startServer = async () => {
                           account.id].concat(targetAccountIds)),
         ];
 
-        if (accountDomain) {
+        if (domainTargets.length > 0) {
+          const domains = domainTargets.map(([domain]) => domain);
+          const domainAccountIds = domainTargets.map(([, accountId]) => accountId);
+
           // @ts-expect-error
           queries.push(client.query(
-            `SELECT 1 FROM account_domain_blocks WHERE account_id = $1 AND domain = $2
+            `SELECT 1 FROM account_domain_blocks WHERE account_id = $1 AND domain = ANY($2::text[])
              UNION
-             SELECT 1 FROM account_domain_mutes WHERE account_id = $1 AND domain = $2
-             AND NOT EXISTS (SELECT 1 FROM follows WHERE account_id = $1 AND target_account_id = $3)`, [req.accountId, accountDomain, statusAccountId]));
+             SELECT 1
+             FROM account_domain_mutes
+             INNER JOIN unnest($2::text[], $3::bigint[]) AS targets(domain, account_id)
+               ON targets.domain = account_domain_mutes.domain
+             WHERE account_domain_mutes.account_id = $1
+               AND NOT EXISTS (SELECT 1 FROM follows WHERE account_id = $1 AND target_account_id = targets.account_id)`, [req.accountId, domains, domainAccountIds]));
         }
 
         // @ts-expect-error
@@ -813,7 +825,7 @@ const startServer = async () => {
           // Handling blocks & mutes and domain blocks: If one of those applies,
           // then we don't transmit the payload of the event to the client
           // @ts-expect-error
-          if (values[0].rows.length > 0 || (accountDomain && values[1].rows.length > 0)) {
+          if (values[0].rows.length > 0 || (domainTargets.length > 0 && values[1].rows.length > 0)) {
             return;
           }
 
@@ -830,7 +842,7 @@ const startServer = async () => {
           // @ts-ignore
           if (!req.cachedFilters) {
             // @ts-expect-error
-            const filterRows = values[accountDomain ? 2 : 1].rows;
+            const filterRows = values[domainTargets.length > 0 ? 2 : 1].rows;
 
             req.cachedFilters = filterRows.reduce((cache, filter) => {
               if (cache[filter.id]) {
