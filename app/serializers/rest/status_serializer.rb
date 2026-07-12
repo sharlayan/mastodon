@@ -133,17 +133,15 @@ class REST::StatusSerializer < ActiveModel::Serializer
   end
 
   def reacted
-    # TODO: error check
-    # current_user.account.reacted?(object)
-    target_status = object.reblog || object
-    current_user.account.reacted?(target_status)
+    if relationships
+      relationships.reactions_map[object.proper.id] || false
+    else
+      current_user.account.reacted?(object)
+    end
   end
 
   def reactions
-    # TODO: error check
-    # object.reactions(current_user&.account&.id)
-    target = object.reblog || object
-    target.reactions(current_user&.account&.id)
+    object.proper.reactions(current_user&.account&.id)
   end
 
   def reblogged

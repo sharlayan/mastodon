@@ -209,15 +209,9 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   def mfm?
     return false if object.unavailable?
-    return false unless account_contains_mfm?
+    return false unless object.mfm?
 
     object.local? || instance_supports_mfm?
-  end
-
-  def account_contains_mfm?
-    return true if MfmDetector.contains_mfm?(object.note)
-
-    object.fields.any? { |field| MfmDetector.contains_mfm?(field.value) }
   end
 
   def instance_supports_mfm?

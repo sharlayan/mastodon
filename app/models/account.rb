@@ -490,6 +490,7 @@ class Account < ApplicationRecord
   end
 
   before_validation :prepare_contents, if: :local?
+  before_save :recompute_mfm, if: :mfm_source_changed?
   before_create :generate_keys
   before_destroy :clean_feed_manager
 
@@ -525,6 +526,15 @@ class Account < ApplicationRecord
   def prepare_contents
     display_name&.strip!
     note&.strip!
+  end
+
+  def mfm_source_changed?
+    will_save_change_to_note? || will_save_change_to_fields?
+  end
+
+  def recompute_mfm
+    self.mfm = MfmDetector.contains_mfm?(note) ||
+               fields.any? { |field| MfmDetector.contains_mfm?(field.value) }
   end
 
   def generate_keys
