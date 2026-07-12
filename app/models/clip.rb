@@ -24,6 +24,8 @@ class Clip < ApplicationRecord
 
   has_many :clip_statuses, inverse_of: :clip, dependent: :destroy
   has_many :statuses, through: :clip_statuses
+  has_many :clip_favourites, inverse_of: :clip, dependent: :destroy
+  has_many :favouriting_accounts, through: :clip_favourites, source: :account
 
   validates :title, presence: true, length: { maximum: TITLE_LENGTH_LIMIT }
   validates :description, length: { maximum: DESCRIPTION_LENGTH_LIMIT }
@@ -34,6 +36,12 @@ class Clip < ApplicationRecord
 
   def visible_to?(account)
     public? || account&.id == account_id
+  end
+
+  def favourited_by?(account)
+    return false if account.nil?
+
+    clip_favourites.exists?(account_id: account.id)
   end
 
   private

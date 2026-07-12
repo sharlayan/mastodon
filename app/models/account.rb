@@ -17,6 +17,7 @@
 #  avatar_remote_url             :string
 #  avatar_storage_schema_version :integer
 #  avatar_updated_at             :datetime
+#  birthday                      :string(32)
 #  collections_url               :string
 #  discoverable                  :boolean
 #  display_name                  :string           default(""), not null
@@ -39,6 +40,7 @@
 #  inbox_url                     :string           default(""), not null
 #  indexable                     :boolean          default(FALSE), not null
 #  last_webfingered_at           :datetime
+#  location                      :string(256)
 #  locked                        :boolean          default(FALSE), not null
 #  memorial                      :boolean          default(FALSE), not null
 #  mfm                           :boolean          default(FALSE), not null

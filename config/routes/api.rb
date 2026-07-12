@@ -328,6 +328,15 @@ namespace :api, format: false do
 
     resources :clips, only: [:index, :create, :show, :update, :destroy] do
       resources :statuses, only: [:index, :create, :destroy], module: :clips
+
+      scope module: :clips do
+        resource :favourite, only: :create, controller: :favourites
+        post :unfavourite, to: 'favourites#destroy'
+      end
+
+      collection do
+        get :favourites, to: 'clips/favourites#index'
+      end
     end
 
     resources :antennas, only: [:index, :create, :show, :update, :destroy] do

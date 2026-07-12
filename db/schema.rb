@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_085000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_12_143100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -572,6 +572,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_085000) do
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_circles_on_account_id"
+  end
+
+  create_table "clip_favourites", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "clip_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "clip_id"], name: "index_clip_favourites_on_account_id_and_clip_id", unique: true
+    t.index ["account_id"], name: "index_clip_favourites_on_account_id"
+    t.index ["clip_id"], name: "index_clip_favourites_on_clip_id"
   end
 
   create_table "clip_statuses", force: :cascade do |t|
@@ -1846,6 +1856,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_085000) do
   add_foreign_key "circle_statuses", "circles", on_delete: :cascade
   add_foreign_key "circle_statuses", "statuses", on_delete: :cascade
   add_foreign_key "circles", "accounts", on_delete: :cascade
+  add_foreign_key "clip_favourites", "accounts", on_delete: :cascade
+  add_foreign_key "clip_favourites", "clips", on_delete: :cascade
   add_foreign_key "clip_statuses", "clips", on_delete: :cascade
   add_foreign_key "clip_statuses", "statuses", on_delete: :cascade
   add_foreign_key "clips", "accounts", on_delete: :cascade
