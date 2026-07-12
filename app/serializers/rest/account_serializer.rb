@@ -201,7 +201,7 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   def online_status
     return 'unknown' unless Setting.online_status_enabled
-    return 'unknown' if object.unavailable? || object.user.nil?
+    return 'unknown' if current_user.nil? || object.unavailable? || object.user.nil?
 
     object.user.online_status
   end
