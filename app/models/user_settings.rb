@@ -22,6 +22,7 @@ class UserSettings
   setting :visible_reactions, default: 6
   setting :default_quote_policy, default: 'nobody', in: %w(public followers nobody) # patch for default no-quote my statuses
   setting :bridge_unlisted_to_bsky, default: false # deliver unlisted statuses to bsky.brid.gy as public
+  setting :auto_quote_from_url, default: false # auto-promote fetchable ActivityPub post links in the body to a quote
   setting :email_subscriptions, default: false
   setting :content_font_size, default: 'medium', in: %w(medium large x_large xx_large)
   setting :hide_online_status, default: true

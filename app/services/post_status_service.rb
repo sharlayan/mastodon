@@ -11,6 +11,9 @@ class PostStatusService < BaseService
   # If the job is not executed within this timeframe, it will lose its arguments
   EMAIL_DISTRIBUTION_TTL = 1.hour.to_i
 
+  # How many URLs in the post body to probe when auto-detecting an implicit quote
+  IMPLICIT_QUOTE_URL_SCAN_LIMIT = 3
+
   class UnexpectedMentionsError < StandardError
     attr_reader :accounts
 
@@ -94,7 +97,8 @@ class PostStatusService < BaseService
     @sensitive    = (@options[:sensitive].nil? ? @account.user&.setting_default_sensitive : @options[:sensitive]) || @options[:spoiler_text].present?
     @visibility   = @options[:visibility] || @account.user&.setting_default_privacy
     load_circle! if @visibility&.to_sym == :circle
-    @visibility   = :unlisted if @visibility&.to_sym == :public && @account.silenced?
+    @visibility = :unlisted if @visibility&.to_sym == :public && @account.silenced?
+    detect_implicit_quote!
     @visibility   = :private if @quoted_status&.private_visibility? && %i(public unlisted).include?(@visibility&.to_sym)
     @scheduled_at = @options[:scheduled_at]&.to_datetime
     @scheduled_at = nil if scheduled_in_the_past?
@@ -150,17 +154,61 @@ class PostStatusService < BaseService
     raise ActiveRecord::RecordInvalid, status
   end
 
+  def detect_implicit_quote!
+    return if @quoted_status.present?
+    return unless auto_quote_from_url_enabled?
+
+    @quoted_status  = quotable_status_from_text
+    @implicit_quote = @quoted_status.present?
+  end
+
+  def auto_quote_from_url_enabled?
+    Setting.auto_quote_from_url && @account.user&.setting_auto_quote_from_url
+  end
+
+  def quotable_status_from_text
+    @text.to_s.scan(FetchLinkCardService::URL_PATTERN).filter_map { |match| match[1] }.uniq.take(IMPLICIT_QUOTE_URL_SCAN_LIMIT).each do |url|
+      status = resolve_status_from_url(url)
+      return status if status.present? && quotable?(status)
+    end
+
+    nil
+  end
+
+  def resolve_status_from_url(url)
+    resource = ResolveURLService.new.call(url, on_behalf_of: @account)
+    resource.is_a?(Status) ? resource : nil
+  rescue => e
+    Rails.logger.debug { "Error resolving implicit quote URL #{url}: #{e}" }
+    nil
+  end
+
+  def quotable?(status)
+    return false if status.id == @in_reply_to&.id
+    return false unless StatusPolicy.new(@account, status).show?
+
+    status.account_id == @account.id || status.distributable?
+  end
+
   def attach_quote!(status)
     return if @quoted_status.nil?
 
-    status.quote = Quote.create(quoted_status: @quoted_status, status: status)
+    status.quote = Quote.create(quoted_status: @quoted_status, status: status, legacy: @implicit_quote || false)
     status.quote.ensure_quoted_access
+
+    status.quote.accept! if accept_quote_without_request?
+  end
+
+  def accept_quote_without_request?
+    return true if @implicit_quote
 
     if !@quoted_status.local? && @quoted_status.account.domain.present?
       instance_metadata = InstanceMetadata.for_domain(@quoted_status.account.domain)
-      status.quote.accept! if instance_metadata.present? && instance_metadata.misskey_based?
-    elsif @quoted_status.local? && StatusPolicy.new(@status.account, @quoted_status).quote?
-      status.quote.accept!
+      instance_metadata.present? && instance_metadata.misskey_based?
+    elsif @quoted_status.local?
+      StatusPolicy.new(@status.account, @quoted_status).quote?
+    else
+      false
     end
   end
 
@@ -213,7 +261,7 @@ class PostStatusService < BaseService
     process_email_subscriptions!
     ActivityPub::DistributionWorker.perform_async(@status.id) unless @status.local_only? || @status.limited_personal?
     PollExpirationNotifyWorker.perform_at(@status.poll.expires_at, @status.poll.id) if @status.poll
-    ActivityPub::QuoteRequestWorker.perform_async(@status.quote.id) if @status.quote&.quoted_status.present? && !@status.quote&.quoted_status&.local?
+    ActivityPub::QuoteRequestWorker.perform_async(@status.quote.id) if @status.quote&.quoted_status.present? && !@status.quote&.quoted_status&.local? && !@status.quote.legacy?
   end
 
   def process_email_subscriptions!

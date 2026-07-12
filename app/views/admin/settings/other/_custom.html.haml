@@ -18,6 +18,16 @@
             hint: t('admin.settings.clips.enabled_hint'),
             sharlayan_only: true
 
+%h2= t('admin.settings.auto_quote_from_url.title')
+
+.fields-group
+  = f.input :auto_quote_from_url,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.auto_quote_from_url.enabled'),
+            hint: t('admin.settings.auto_quote_from_url.enabled_hint'),
+            sharlayan_only: true
+
 %h2= t('admin.settings.antenna.title')
 
 .fields-group

@@ -1144,6 +1144,10 @@ en:
         title: Circles
         enabled: Enable circles
         enabled_hint: Allow users to create circles and publish posts visible only to selected followers.
+      auto_quote_from_url:
+        title: Auto quote from URL
+        enabled: Allow auto quote from post links
+        enabled_hint: Let users opt in to automatically turning fetchable fediverse post links in their posts into quotes, without asking the quoted author for permission. Each user must still enable it in their own preferences.
       clips:
         title: Clips
         enabled: Enable clips

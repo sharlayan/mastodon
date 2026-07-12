@@ -59,6 +59,13 @@
                  label: I18n.t('simple_form.labels.defaults.setting_bridge_unlisted_to_bsky'),
                  wrapper: :with_label
 
+    - if Setting.auto_quote_from_url
+      .fields-group
+        = ff.input :auto_quote_from_url,
+                   hint: I18n.t('simple_form.hints.defaults.setting_auto_quote_from_url'),
+                   label: I18n.t('simple_form.labels.defaults.setting_auto_quote_from_url'),
+                   wrapper: :with_label
+
     - content_types = %w(text/plain text/markdown)
     - content_types << 'text/x-mfm' if Setting.mfm_allow_composition
     .fields-group

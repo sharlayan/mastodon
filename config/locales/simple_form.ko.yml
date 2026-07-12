@@ -62,6 +62,7 @@ ko:
         setting_default_quote_policy_private: 마스토돈에서 작성된 팔로워 전용 게시물은 다른 사용자가 인용할 수 없습니다.
         setting_default_quote_policy_unlisted: 사람들에게 인용된 경우, 인용한 게시물도 유행 타임라인에서 감추게 됩니다.
         setting_auto_accept_followed: 계정이 잠겨 있어도, 내가 이미 팔로우하고 있는 계정의 팔로우 요청은 자동으로 수락합니다.
+        setting_auto_quote_from_url: 게시물 본문에 가져올 수 있는 다른 연합우주 게시물 링크가 있으면, 작성자에게 허용을 묻지 않고 자동으로 인용으로 변환합니다. 인용되는 원문 작성자에게 승인을 요청하지 않습니다.
         setting_bridge_unlisted_to_bsky: 제한된 공개(조용한 공개) 게시물을 연합우주에서는 조용히 유지하면서, 블루스카이 브릿지(bsky.brid.gy)에는 전체 공개로 전달하여 블루스카이로 연동되도록 합니다. 브릿지 계정을 팔로우해야 작동합니다.
         setting_show_online_status: 다른 사람이 당신이 온라인인지, 최근 활동했는지, 오프라인인지 볼 수 있습니다. 끄면 모두에게 상태가 알 수 없음으로 표시됩니다.
         setting_default_sensitive: 민감한 미디어는 기본적으로 가려져 있으며 클릭해서 볼 수 있습니다
@@ -269,6 +270,7 @@ ko:
         setting_default_privacy: 게시물 공개 범위
         setting_default_quote_policy: 인용할 수 있는 사람
         setting_auto_accept_followed: 팔로우 중인 계정의 팔로우 요청 자동 수락
+        setting_auto_quote_from_url: 게시물의 연합우주 게시물 링크를 자동으로 인용
         setting_bridge_unlisted_to_bsky: 제한된 공개 게시물을 블루스카이에 전체 공개로 전달
         setting_show_online_status: 내 온라인 상태 공유
         setting_default_sensitive: 미디어를 언제나 민감한 콘텐츠로 설정
