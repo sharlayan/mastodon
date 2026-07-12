@@ -707,5 +707,15 @@ namespace :api, format: false do
     match 'channels/unfavorite', to: 'channels#noop', via: [:post]
     post 'channels/mute/create', to: 'channels#noop'
     post 'channels/mute/delete', to: 'channels#noop'
+
+    match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
+    post 'i/claim-achievement', to: 'stub#no_content'
+    match 'users/achievements', to: 'stub#empty', via: [:get, :post]
+    post 'invite/create', to: 'stub#noop'
+    post 'invite/delete', to: 'stub#no_content'
+    match 'invite/list', to: 'stub#empty', via: [:get, :post]
+    match 'invite/limit', to: 'stub#invite_limit', via: [:get, :post]
+    match 'fetch-rss', to: 'stub#noop', via: [:get, :post]
+    post 'fetch-external-resources', to: 'stub#noop'
   end
 end

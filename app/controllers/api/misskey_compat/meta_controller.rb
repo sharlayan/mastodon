@@ -45,7 +45,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
       next unless controller&.start_with?('api/misskey_compat')
 
       path = route.path.spec.to_s.delete_suffix('(.:format)')
-      next if path.include?(':')
+      next if path.include?(':') || path.include?('*')
 
       path.delete_prefix('/api/').presence
     end.uniq
