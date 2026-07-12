@@ -41,6 +41,7 @@
 #  last_webfingered_at           :datetime
 #  locked                        :boolean          default(FALSE), not null
 #  memorial                      :boolean          default(FALSE), not null
+#  mfm                           :boolean          default(FALSE), not null
 #  note                          :text             default(""), not null
 #  outbox_url                    :string           default(""), not null
 #  private_key                   :text

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_12_085000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -212,6 +212,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
     t.datetime "last_webfingered_at", precision: nil
     t.boolean "locked", default: false, null: false
     t.boolean "memorial", default: false, null: false
+    t.boolean "mfm", default: false, null: false
     t.bigint "moved_to_account_id"
     t.text "note", default: "", null: false
     t.string "outbox_url", default: "", null: false
@@ -482,8 +483,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
   create_table "board_announcements", force: :cascade do |t|
     t.bigint "account_id"
     t.datetime "created_at", null: false
+    t.string "display", default: "normal", null: false
+    t.boolean "for_existing_users", default: false, null: false
+    t.string "icon", default: "info", null: false
+    t.boolean "need_confirmation_to_read", default: false, null: false
     t.boolean "published", default: false, null: false
     t.datetime "published_at"
+    t.boolean "silence", default: false, null: false
     t.integer "sort_priority", default: 0, null: false
     t.text "text", default: "", null: false
     t.text "text_html", default: "", null: false
@@ -1702,6 +1708,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
     t.bigint "invite_id"
+    t.datetime "last_active_at"
     t.datetime "last_emailed_at", precision: nil
     t.datetime "last_sign_in_at", precision: nil
     t.string "locale"

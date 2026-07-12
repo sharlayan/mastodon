@@ -26,7 +26,6 @@
 #  created_at                       :datetime         not null
 #  updated_at                       :datetime         not null
 #  account_id                       :bigint(8)
-#  drive_file_id                    :bigint(8)
 #  scheduled_status_id              :bigint(8)
 #  status_id                        :bigint(8)
 #
