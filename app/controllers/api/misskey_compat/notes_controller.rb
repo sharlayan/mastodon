@@ -320,7 +320,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     quoted = quoted_status
 
     {
-      text: status_text,
+      text: composed_text(status_text),
+      content_type: composed_content_type,
       spoiler_text: params[:cw].presence,
       visibility: mastodon_visibility(params[:visibility]),
       in_reply_to_id: params[:replyId].presence,
@@ -334,10 +335,23 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def update_options
     {
-      text: params[:text].to_s,
+      text: composed_text(params[:text].to_s),
+      content_type: composed_content_type,
       spoiler_text: params[:cw].to_s,
       media_ids: Array(params[:fileIds]).map(&:to_s).presence,
     }
+  end
+
+  def composed_content_type
+    mfm_composition_allowed? ? 'text/x-mfm' : 'text/markdown'
+  end
+
+  def composed_text(text)
+    mfm_composition_allowed? ? text : MfmMarkdownConverter.convert(text)
+  end
+
+  def mfm_composition_allowed?
+    Setting.mfm_enabled && Setting.mfm_allow_composition
   end
 
   def scheduled_at_option
