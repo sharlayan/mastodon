@@ -3,7 +3,7 @@
 class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   USER_ACTIONS = %i(
     timeline hybrid_timeline mentions my_favorites
-    create destroy state search translate unrenote
+    create destroy state search search_by_tag translate unrenote
     reactions_create reactions_delete
     thread_muting_create thread_muting_delete
     favorites_create favorites_delete polls_vote polls_recommendation
@@ -167,6 +167,15 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       .not_excluded_by_account(current_account)
       .where('statuses.text ILIKE ?', like)
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
+  end
+
+  def search_by_tag
+    tag = Tag.find_normalized(params[:tag].to_s)
+    return render json: [] if tag.nil?
+
+    statuses = TagFeed.new(tag, current_account, tag_feed_options).get(pagination_limit(default: 10, max: 100), until_id, since_id)
+    statuses = statuses.reject(&:reply?) if params[:reply].to_s == 'false'
+    render_notes statuses
   end
 
   def favorites_create
@@ -336,6 +345,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def public_feed(**options)
     PublicFeed.new(current_account, { with_replies: true, with_reblogs: true }.merge(options))
+  end
+
+  def tag_feed_options
+    {
+      only_media: ActiveModel::Type::Boolean.new.cast(params[:withFiles]),
+      local: params[:host].to_s == '.',
+    }
   end
 
   def serialize(status)

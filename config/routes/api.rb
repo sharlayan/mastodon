@@ -547,6 +547,7 @@ namespace :api, format: false do
     post 'notes/mentions', to: 'notes#mentions'
     post 'notes/featured', to: 'notes#featured'
     post 'notes/search', to: 'notes#search'
+    post 'notes/search-by-tag', to: 'notes#search_by_tag'
     post 'notes/favorites/create', to: 'notes#favorites_create'
     post 'notes/favorites/delete', to: 'notes#favorites_delete'
     post 'notes/polls/vote', to: 'notes#polls_vote'
@@ -557,6 +558,7 @@ namespace :api, format: false do
     post 'roles/show', to: 'roles#show'
     post 'roles/users', to: 'roles#users'
 
+    post 'users', to: 'accounts#index'
     post 'users/notes', to: 'accounts#notes'
     post 'users/reactions', to: 'accounts#reactions'
     post 'users/featured-notes', to: 'accounts#featured_notes'
@@ -584,6 +586,9 @@ namespace :api, format: false do
     post 'renote-mute/delete', to: 'mutes#renote_destroy'
 
     match 'hashtags/trend', to: 'hashtags#trend', via: [:get, :post]
+    match 'hashtags/search', to: 'hashtags#search', via: [:get, :post]
+    match 'hashtags/show', to: 'hashtags#show', via: [:get, :post]
+    post 'hashtags/users', to: 'hashtags#users'
 
     post 'users/lists/list', to: 'lists#index'
     post 'users/lists/show', to: 'lists#show'

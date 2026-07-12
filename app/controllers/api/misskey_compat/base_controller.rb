@@ -105,6 +105,34 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     limit.clamp(1, max)
   end
 
+  def apply_user_origin(scope)
+    case params[:origin].to_s
+    when 'local'
+      scope.local
+    when 'remote'
+      scope.remote
+    else
+      scope
+    end
+  end
+
+  def apply_user_sort(scope)
+    case params[:sort].to_s
+    when '-follower'
+      scope.order('account_stats.followers_count ASC')
+    when '+createdAt'
+      scope.order('accounts.id DESC')
+    when '-createdAt'
+      scope.order('accounts.id ASC')
+    when '+updatedAt'
+      scope.order(Arel.sql('account_stats.last_status_at DESC NULLS LAST'))
+    when '-updatedAt'
+      scope.order(Arel.sql('account_stats.last_status_at ASC NULLS FIRST'))
+    else
+      scope.order('account_stats.followers_count DESC')
+    end
+  end
+
   def compat_policies
     {
       gtlAvailable: true,

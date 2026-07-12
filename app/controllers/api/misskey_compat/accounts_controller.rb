@@ -3,6 +3,14 @@
 class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseController
   before_action :require_user!, only: [:followers, :following, :search]
 
+  def index
+    scope = apply_user_origin(Account.discoverable.without_suspended)
+    scope = scope.where(domain: normalized_hostname) if normalized_hostname
+    accounts = apply_user_sort(scope).limit(pagination_limit).offset(params[:offset].to_i).to_a
+
+    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account) }
+  end
+
   def notes
     account = Account.find(params[:userId])
     filter = AccountStatusesFilter.new(account, current_account, statuses_filter_params)
@@ -134,6 +142,15 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
     host = custom.domain.presence || '.'
     ":#{reaction.name}@#{host}:"
+  end
+
+  def normalized_hostname
+    return @normalized_hostname if defined?(@normalized_hostname)
+
+    host = params[:hostname].to_s.strip
+    @normalized_hostname = host.present? ? TagManager.instance.normalize_domain(host) : nil
+  rescue Addressable::URI::InvalidURIError
+    @normalized_hostname = host
   end
 
   def collections_hidden?(target, hidden)
