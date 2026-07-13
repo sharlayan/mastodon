@@ -25,6 +25,20 @@ RSpec.describe 'Media' do
           expect(response)
             .to redirect_to(media_attachment.file.url(:original))
         end
+
+        context 'when a roleplay hidden record exists outside roleplay mode' do
+          before do
+            RpHiddenStatus.create!(status: status)
+          end
+
+          it 'serves the media for the normally visible status' do
+            ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+              get medium_path(id: media_attachment.shortcode)
+            end
+
+            expect(response).to have_http_status(200)
+          end
+        end
       end
 
       context 'when not attached to a status' do

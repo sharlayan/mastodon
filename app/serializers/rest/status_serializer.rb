@@ -23,6 +23,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
   attribute :local_only, if: :local?
   attribute :limited_scope, if: :limited_scope?
   attribute :instance_metadata, if: :show_instance_info?
+  attribute :rp_hidden, if: :rp_admin?
   has_many :filtered, serializer: REST::FilterResultSerializer, if: :current_user?
 
   attribute :content, unless: :source_requested?
@@ -197,6 +198,14 @@ class REST::StatusSerializer < ActiveModel::Serializer
 
   def source_requested?
     instance_options[:source_requested]
+  end
+
+  def rp_admin?
+    instance_options[:rp_admin]
+  end
+
+  def rp_hidden
+    object.rp_hidden?
   end
 
   def ordered_mentions

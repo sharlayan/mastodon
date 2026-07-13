@@ -79,6 +79,7 @@ class Form::AdminSettings
     instance_metadata_enabled
     antenna_enabled
     online_status_enabled
+    soft_hide_deletion
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -127,6 +128,7 @@ class Form::AdminSettings
     instance_metadata_enabled
     antenna_enabled
     online_status_enabled
+    soft_hide_deletion
   ).freeze
 
   UPLOAD_KEYS = %i(
@@ -216,6 +218,12 @@ class Form::AdminSettings
 
     KEYS.each do |key|
       next if PSEUDO_KEYS.include?(key) || !instance_variable_defined?(:"@#{key}")
+
+      if roleplay_mode? && ROLEPLAY_FORCED_SETTINGS.key?(key)
+        setting = Setting.where(var: key).first_or_initialize(var: key)
+        setting.update(value: ROLEPLAY_FORCED_SETTINGS[key])
+        next
+      end
 
       cache_digest_value(key) if DIGEST_KEYS.include?(key)
 

@@ -70,6 +70,7 @@ defaults: &defaults
   board_announcements_enabled: true
   antenna_enabled: true
   online_status_enabled: false
+  soft_hide_deletion: false
 
 development:
   <<: *defaults

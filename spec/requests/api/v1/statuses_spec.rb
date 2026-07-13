@@ -602,6 +602,98 @@ RSpec.describe '/api/v1/statuses' do
           expect(RemovalWorker).to have_enqueued_sidekiq_job(status.id, { 'redraft' => false })
         end
       end
+
+      context 'when in community mode with soft-hide deletion enabled' do
+        around do |example|
+          ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+        end
+
+        before do
+          Setting.soft_hide_deletion = true
+        end
+
+        after do
+          Setting.soft_hide_deletion = false
+        end
+
+        it 'queues a soft-hide instead of removing the status', :aggregate_failures do
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(HideStatusWorker).to have_enqueued_sidekiq_job(status.id, { 'hidden_by_account_id' => user.account.id })
+          expect(RemovalWorker).to_not have_enqueued_sidekiq_job(any_args)
+        end
+
+        it 'soft-hides the status when the job runs', :aggregate_failures, :inline_jobs do
+          subject
+
+          expect(Status.find_by(id: status.id)).to be_nil
+          expect(Status.with_rp_hidden.find_by(id: status.id)).to eq(status)
+          expect(RpHiddenStatus.exists?(status_id: status.id)).to be(true)
+        end
+
+        context 'when the owner deletes another account status' do
+          let(:status) { Fabricate(:status) }
+
+          before do
+            user.update!(role: UserRole.find_by(name: 'Owner'))
+          end
+
+          it 'queues the status for soft-hide', :aggregate_failures do
+            subject
+
+            expect(response).to have_http_status(200)
+            expect(HideStatusWorker).to have_enqueued_sidekiq_job(status.id, { 'hidden_by_account_id' => user.account.id })
+            expect(RemovalWorker).to_not have_enqueued_sidekiq_job(any_args)
+          end
+        end
+
+        context 'when a non-owner administrator deletes another account status' do
+          let(:status) { Fabricate(:status) }
+
+          before do
+            user.update!(role: UserRole.find_by(name: 'Admin'))
+          end
+
+          it 'denies the request' do
+            subject
+
+            expect(response).to have_http_status(404)
+            expect(HideStatusWorker).to_not have_enqueued_sidekiq_job(any_args)
+          end
+        end
+      end
+
+      context 'when in community mode with soft-hide deletion disabled' do
+        around do |example|
+          ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+        end
+
+        it 'removes the status as usual', :aggregate_failures do
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(Status.find_by(id: status.id)).to be_nil
+          expect(HideStatusWorker).to_not have_enqueued_sidekiq_job(any_args)
+          expect(RemovalWorker).to have_enqueued_sidekiq_job(status.id, { 'redraft' => true })
+        end
+
+        context 'when the owner targets another account status' do
+          let(:status) { Fabricate(:status) }
+
+          before do
+            user.update!(role: UserRole.find_by(name: 'Owner'))
+          end
+
+          it 'does not widen the status lookup' do
+            subject
+
+            expect(response).to have_http_status(404)
+            expect(HideStatusWorker).to_not have_enqueued_sidekiq_job(any_args)
+            expect(RemovalWorker).to_not have_enqueued_sidekiq_job(any_args)
+          end
+        end
+      end
     end
 
     describe 'PUT /api/v1/statuses/:id' do

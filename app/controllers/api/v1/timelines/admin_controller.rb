@@ -18,17 +18,21 @@ class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
 
     render json: @statuses,
            each_serializer: REST::StatusSerializer,
-           relationships: @relationships
+           relationships: @relationships,
+           rp_admin: owner_viewer?
   end
 
   private
 
   def load_statuses
-    preload_collection(admin_statuses, Status)
+    preload_collection(admin_statuses, Status).tap do |statuses|
+      ActiveRecord::Associations::Preloader.new(records: statuses, associations: :rp_hidden_status).call if owner_viewer?
+    end
   end
 
   def admin_statuses
-    scope = Status.where(account: Account.local).order(id: :desc)
+    base = owner_viewer? ? Status.with_rp_hidden : Status
+    scope = base.where(account: Account.local).order(id: :desc)
 
     scope = scope.where.not(visibility: hidden_visibilities) if hidden_visibilities.any?
 

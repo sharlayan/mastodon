@@ -31,7 +31,7 @@ const initialState = ImmutableMap({
   show_others_online_status: false,
   inline_compose_timelines: false,
   inline_compose_tabs: ImmutableList(),
-  use_publish_toot: !roleplayMode,
+  use_publish_toot: false,
   rewrite_mentions: 'no',
   content_warnings : ImmutableMap({
     filter       : null,

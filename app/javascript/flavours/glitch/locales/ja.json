@@ -338,6 +338,8 @@
   "settings.wide_view": "ワイドビュー(デスクトップ レイアウトのみ)",
   "settings.wide_view_hint": "使用可能なスペースを埋めるためにカラムを伸ばします。",
   "status.add_to_clip": "クリップに追加",
+  "status.delete_admin": "削除（管理者）",
+  "status.rp_hidden": "削除済み",
   "status.direct_dm": "@{name} さんにDMを送信",
   "status.filtered": "フィルタリングされた",
   "status.has_audio": "添付されたオーディオファイルが表示されます",

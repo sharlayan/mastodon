@@ -373,6 +373,8 @@
   "settings.wide_view": "넓은 뷰 (데스크탑 모드 전용)",
   "settings.wide_view_hint": "컬럼들을 늘려서 활용 가능한 공간을 사용합니다.",
   "status.add_to_clip": "클립에 추가",
+  "status.delete_admin": "삭제 (관리자)",
+  "status.rp_hidden": "삭제됨",
   "status.direct_dm": "@{name} 님에게 DM 보내기",
   "status.filtered": "걸러짐",
   "status.has_audio": "소리 파일이 첨부되어 있습니다",

@@ -70,6 +70,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:force_round_avatar_decoration]     = (roleplay_mode? && Setting.force_round_avatar) || object_account_user.settings['avatar_decorations.force_round']
       store[:force_round_avatar]                = roleplay_mode? && Setting.force_round_avatar
       store[:admin_timeline_owner_viewer]       = roleplay_mode? && admin_timeline_owner_viewer?
+      store[:soft_hide_deletion]                = roleplay_mode? && Setting.soft_hide_deletion
       store[:color_scheme]                      = object_account_user.settings['web.color_scheme']
       store[:contrast]                          = object_account_user.settings['web.contrast']
       store[:custom_emoji_mute_hidden]          = object_account_user.settings['web.custom_emoji_mute_hidden']

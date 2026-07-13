@@ -356,6 +356,7 @@
   "settings.wide_view": "Wide view (Desktop mode only)",
   "settings.wide_view_hint": "Stretches columns to better fill the available space.",
   "status.add_to_clip": "Add to clip",
+  "status.delete_admin": "Delete (Admin)",
   "status.direct_dm": "Send DM to @{name}",
   "status.filtered": "Filtered",
   "status.has_audio": "Features attached audio files",
@@ -368,5 +369,6 @@
   "status.local_only": "Only visible from your instance",
   "status.mfm_fold_expand": "Expand MFM post",
   "status.react": "React",
+  "status.rp_hidden": "Deleted",
   "status.show_filter_reason": "Show anyway"
 }

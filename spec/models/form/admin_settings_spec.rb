@@ -24,6 +24,29 @@ RSpec.describe Form::AdminSettings do
         .to change(Setting, :circles_enabled).from(false).to(true)
     end
 
+    context 'when roleplay mode is enabled' do
+      around do |example|
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+      end
+
+      before do
+        Setting.force_local_only = false
+        Setting.peers_api_enabled = true
+      end
+
+      after do
+        Setting.force_local_only = false
+        Setting.peers_api_enabled = true
+      end
+
+      it 'persists forced values instead of submitted values' do
+        described_class.new(force_local_only: '0', peers_api_enabled: '1').save
+
+        expect(Setting.force_local_only).to be(true)
+        expect(Setting.peers_api_enabled).to be(false)
+      end
+    end
+
     describe 'updating digest values' do
       context 'when updating custom css to real value' do
         subject { described_class.new(custom_css: css) }

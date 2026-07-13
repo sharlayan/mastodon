@@ -2,6 +2,7 @@
 
 class REST::MediaAttachmentSerializer < ActiveModel::Serializer
   include RoutingHelper
+  include RoleplayModeHelper
 
   # Please update `app/javascript/mastodon/api_types/media_attachments.ts` when making changes to the attributes
 
@@ -16,6 +17,8 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
   def url
     if object.not_processed?
       nil
+    elsif rp_hidden_media?
+      medium_url(object.id)
     elsif object.needs_redownload? || object.discarded?
       media_proxy_url(object.id, :original)
     else
@@ -28,7 +31,9 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
   end
 
   def preview_url
-    if object.needs_redownload? || object.discarded?
+    if rp_hidden_media?
+      medium_url(object.id)
+    elsif object.needs_redownload? || object.discarded?
       media_proxy_url(object.id, :small)
     elsif object.thumbnail.present?
       full_asset_url(object.thumbnail.url(:original))
@@ -47,5 +52,13 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
 
   def meta
     object.file.meta
+  end
+
+  private
+
+  def rp_hidden_media?
+    return false unless instance_options[:rp_admin] || (!roleplay_mode? && Setting.soft_hide_deletion)
+
+    object.status_id.present? && RpHiddenStatus.exists?(status_id: object.status_id)
   end
 end

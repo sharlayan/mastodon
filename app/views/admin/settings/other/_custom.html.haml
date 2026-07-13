@@ -52,3 +52,14 @@
             label: t('admin.settings.auto_quote_from_url.enabled'),
             hint: t('admin.settings.auto_quote_from_url.enabled_hint'),
             sharlayan_only: true
+
+- if roleplay_mode?
+  %h2= t('admin.settings.community_mode.title')
+
+  .fields-group
+    = f.input :soft_hide_deletion,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.soft_hide_deletion.enabled'),
+              hint: t('admin.settings.soft_hide_deletion.enabled_hint'),
+              sharlayan_only: true

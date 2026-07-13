@@ -1161,6 +1161,11 @@ ko:
         title: API 제한 우회
         enabled: 특정 권한에 API 제한 우회 허용
         enabled_hint: 활성화하면 관리자 또는 DevOps 권한을 가진 사용자가 API 제한(rate limit)을 받지 않습니다. 비활성화하면 모든 사용자에게 제한이 적용됩니다.
+      community_mode:
+        title: 커뮤니티 모드
+      soft_hide_deletion:
+        enabled: 삭제된 게시물을 owner용으로 보존
+        enabled_hint: 활성화하면 게시물을 삭제해도 파기하지 않습니다. 대신 게시물과 첨부 미디어를 작성자를 포함한 모두에게 숨기고, 최고 관리자(owner)만 관리 타임라인에서 '삭제됨' 표시와 함께 열람할 수 있습니다. 비활성화하면 게시물이 영구 삭제됩니다.
       domain_blocks:
         all: 모두에게
         disabled: 아무에게도 안 함

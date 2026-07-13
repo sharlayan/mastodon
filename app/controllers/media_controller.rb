@@ -2,6 +2,7 @@
 
 class MediaController < ApplicationController
   include Authorization
+  include RoleplayModeHelper
 
   skip_before_action :require_functional!, unless: :limited_federation_mode?
 
@@ -16,19 +17,39 @@ class MediaController < ApplicationController
   end
 
   def show
-    redirect_to @media_attachment.file.url(:original)
+    if permitted_status&.rp_hidden?
+      serve_hidden_media
+    else
+      redirect_to @media_attachment.file.url(:original)
+    end
   end
 
   def player; end
 
   private
 
+  def permitted_status
+    return @permitted_status if defined?(@permitted_status)
+
+    scope = roleplay_mode? ? Status.with_rp_hidden : Status
+    @permitted_status = scope.find_by(id: @media_attachment.status_id)
+  end
+
+  def serve_hidden_media
+    case Paperclip::Attachment.default_options[:storage]
+    when :s3
+      redirect_to @media_attachment.file.expiring_url(60, :original)
+    else
+      send_file @media_attachment.file.path(:original), type: @media_attachment.file_content_type, disposition: 'inline'
+    end
+  end
+
   def set_media_attachment
     @media_attachment = MediaAttachment.local.attached.identified(params[:id])
   end
 
   def verify_permitted_status!
-    authorize @media_attachment.status, :show?
+    authorize permitted_status, :show?
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     not_found
   end

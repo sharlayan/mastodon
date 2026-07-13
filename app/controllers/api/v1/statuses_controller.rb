@@ -3,6 +3,7 @@
 class Api::V1::StatusesController < Api::BaseController
   include Authorization
   include Api::InteractionPoliciesConcern
+  include RoleplayModeHelper
 
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }, except: [:create, :update, :destroy]
   before_action -> { doorkeeper_authorize! :write, :'write:statuses' }, only:   [:create, :update, :destroy]
@@ -79,23 +80,39 @@ class Api::V1::StatusesController < Api::BaseController
   end
 
   def destroy
-    @status = Status.where(account: current_account).find(params[:id])
+    @status = if owner_soft_hide_deletion?
+                Status.find(params[:id])
+              else
+                Status.where(account: current_account).find(params[:id])
+              end
     authorize @status, :destroy?
 
     # JSON is generated before `discard_with_reblogs` in order to have the proper URL
     # for media attachments, as it would otherwise redirect to the media proxy
     json = render_to_body json: @status, serializer: REST::StatusSerializer, source_requested: true
 
-    @status.discard_with_reblogs
-    StatusPin.find_by(status: @status)&.destroy
-    @status.account.statuses_count = @status.account.statuses_count - 1
+    if roleplay_mode? && Setting.soft_hide_deletion
+      @status.account.statuses_count = @status.account.statuses_count - 1
+      HideStatusWorker.perform_async(@status.id, { 'hidden_by_account_id' => current_account.id })
+    else
+      @status.discard_with_reblogs
+      StatusPin.find_by(status: @status)&.destroy
+      @status.account.statuses_count = @status.account.statuses_count - 1
 
-    RemovalWorker.perform_async(@status.id, { 'redraft' => !truthy_param?(:delete_media) })
+      RemovalWorker.perform_async(@status.id, { 'redraft' => !truthy_param?(:delete_media) })
+    end
 
     render json: json
   end
 
   private
+
+  def owner_soft_hide_deletion?
+    return false unless roleplay_mode? && Setting.soft_hide_deletion
+
+    role = current_user.role
+    !role.everyone? && role.position == UserRole.assignable.maximum(:position)
+  end
 
   def set_statuses
     @statuses = Status.permitted_statuses_from_ids(status_ids, current_account)

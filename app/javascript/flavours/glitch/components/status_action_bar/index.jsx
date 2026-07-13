@@ -25,7 +25,7 @@ import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
-import { me, maxReactions, quickBoosting, reactionsEnabled, clipsEnabled, roleplayMode } from 'flavours/glitch/initial_state';
+import { adminTimelineOwnerViewer, clipsEnabled, me, maxReactions, quickBoosting, reactionsEnabled, roleplayMode, softHideDeletion } from 'flavours/glitch/initial_state';
 
 import { IconButton } from '../icon_button';
 import { injectIntl } from '../intl';
@@ -38,6 +38,7 @@ import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
 
 const messages = defineMessages({
   delete: { id: 'status.delete', defaultMessage: 'Delete' },
+  deleteAdmin: { id: 'status.delete_admin', defaultMessage: 'Delete (Admin)' },
   redraft: { id: 'status.redraft', defaultMessage: 'Delete & re-draft' },
   edit: { id: 'status.edit', defaultMessage: 'Edit' },
   direct: { id: 'status.direct', defaultMessage: 'Privately mention @{name}' },
@@ -252,6 +253,7 @@ class StatusActionBar extends ImmutablePureComponent {
     const mutingConversation = status.get('muted');
     const writtenByMe        = status.getIn(['account', 'id']) === me;
     const isRemote           = status.getIn(['account', 'username']) !== status.getIn(['account', 'acct']);
+    const canOwnerDelete     = roleplayMode && softHideDeletion && adminTimelineOwnerViewer && !writtenByMe && !isRemote && !status.get('rp_hidden');
     const isQuotingMe        = quotedAccountId === me;
 
     let menu = [];
@@ -311,6 +313,11 @@ class StatusActionBar extends ImmutablePureComponent {
         menu.push({ text: intl.formatMessage(messages.delete), action: this.handleDeleteClick, dangerous: true });
         menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
       } else {
+        if (canOwnerDelete) {
+          menu.push({ text: intl.formatMessage(messages.deleteAdmin), action: this.handleDeleteClick, dangerous: true });
+          menu.push(null);
+        }
+
         menu.push({ text: intl.formatMessage(messages.mention, { name: status.getIn(['account', 'username']) }), action: this.handleMentionClick });
         menu.push({ text: intl.formatMessage(roleplayMode ? messages.directDm : messages.direct, { name: status.getIn(['account', 'username']) }), action: this.handleDirectClick });
         menu.push(null);

@@ -147,7 +147,8 @@ class UserRole < ApplicationRecord
   def self.everyone
     UserRole.find(EVERYONE_ROLE_ID)
   rescue ActiveRecord::RecordNotFound
-    UserRole.create!(id: EVERYONE_ROLE_ID, permissions: Flags::DEFAULT)
+    default_permissions = ENV['OC_ROLEPLAY_OPTION'] == 'true' ? Flags::NONE : Flags::DEFAULT
+    UserRole.create!(id: EVERYONE_ROLE_ID, permissions: default_permissions)
   end
 
   def self.that_can(*any_of_privileges)
@@ -179,7 +180,10 @@ class UserRole < ApplicationRecord
   end
 
   def extra_permissions_as_keys=(value)
-    self.extra_permissions = value.filter_map(&:presence).reduce(ExtraFlags::NONE) { |bitmask, privilege| EXTRA_FLAGS.key?(privilege.to_sym) ? (bitmask | EXTRA_FLAGS[privilege.to_sym]) : bitmask }
+    privileges = value.filter_map(&:presence)
+    privileges.delete('view_admin_timeline') unless RoleplayModeHelper.roleplay_mode?
+
+    self.extra_permissions = privileges.reduce(ExtraFlags::NONE) { |bitmask, privilege| EXTRA_FLAGS.key?(privilege.to_sym) ? (bitmask | EXTRA_FLAGS[privilege.to_sym]) : bitmask }
   end
 
   def can_extra?(*any_of_privileges)

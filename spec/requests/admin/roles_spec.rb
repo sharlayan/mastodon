@@ -132,12 +132,48 @@ RSpec.describe 'Admin Roles' do
   context 'when signed in as admin' do
     before { sign_in Fabricate(:admin_user) }
 
+    describe 'GET /admin/roles/new' do
+      it 'hides the management timeline permission outside roleplay mode' do
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+          get new_admin_role_path
+        end
+
+        expect(response).to have_http_status(200)
+        expect(response.body).to_not include('view_admin_timeline')
+      end
+
+      it 'shows the management timeline permission in roleplay mode' do
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+          get new_admin_role_path
+        end
+
+        expect(response).to have_http_status(200)
+        expect(response.body).to include('view_admin_timeline')
+      end
+    end
+
     describe 'POST /admin/roles' do
       it 'gracefully handles invalid nested params' do
         post admin_roles_path(user_role: 'invalid')
 
         expect(response)
           .to have_http_status(400)
+      end
+
+      it 'does not assign the management timeline permission outside roleplay mode' do
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+          post admin_roles_path, params: { user_role: { name: 'Normal role', position: 2, extra_permissions_as_keys: %w(view_admin_timeline) } }
+        end
+
+        expect(UserRole.find_by(name: 'Normal role').can_extra?(:view_admin_timeline)).to be(false)
+      end
+
+      it 'assigns the management timeline permission in roleplay mode' do
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+          post admin_roles_path, params: { user_role: { name: 'Community role', position: 2, extra_permissions_as_keys: %w(view_admin_timeline) } }
+        end
+
+        expect(UserRole.find_by(name: 'Community role').can_extra?(:view_admin_timeline)).to be(true)
       end
     end
   end

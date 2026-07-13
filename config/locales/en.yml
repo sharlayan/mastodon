@@ -1188,6 +1188,11 @@ en:
         title: API Rate Limit Bypass
         enabled: Allow privileged roles to bypass API rate limits
         enabled_hint: When enabled, users with the Administrator or DevOps permission are not subject to API rate limits. Leave disabled to apply rate limits to everyone.
+      community_mode:
+        title: Community mode
+      soft_hide_deletion:
+        enabled: Preserve deleted posts for the owner
+        enabled_hint: When enabled, deleting a post does not destroy it. Instead the post and its media are hidden from everyone (including the author) and only the owner can view them from the management timeline, where they are flagged as deleted. Leave disabled to delete posts permanently.
       domain_blocks:
         all: To everyone
         disabled: To no one
