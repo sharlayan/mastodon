@@ -18,7 +18,10 @@ class FetchInstanceThemeColorService < BaseService
     Errno::ECONNREFUSED,
     Errno::EHOSTUNREACH,
     Errno::ETIMEDOUT,
+    Mastodon::LengthValidationError,
   ].freeze
+
+  INSTANCE_NAME_MAX_LENGTH = 100
 
   ALLOWED_FAVICON_CONTENT_TYPES = %w(
     image/png
@@ -140,22 +143,61 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def fetch_homepage_html
-    @homepage_html ||= begin
-      url = "https://#{@domain}"
-      request = Request.new(:get, url)
-      request.add_headers('User-Agent' => Mastodon::Version.user_agent)
-      html = nil
-      request.perform do |response|
-        html = response.body_with_limit if response.code == 200
+    return @homepage_html if defined?(@homepage_fetched)
+
+    @homepage_fetched = true
+    @homepage_html = nil
+    @homepage_charset = nil
+
+    url = "https://#{@domain}"
+    request = Request.new(:get, url)
+    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
+    request.perform do |response|
+      if response.code == 200
+        @homepage_charset = response.charset
+        @homepage_html = response.body_with_limit
       end
-      html
     end
+
+    @homepage_html
   rescue *NETWORK_ERRORS
-    nil
+    @homepage_html = nil
   end
 
   def parsed_homepage
-    @parsed_homepage ||= Nokogiri::HTML(fetch_homepage_html) if fetch_homepage_html
+    return @parsed_homepage if defined?(@parsed_homepage)
+
+    html = fetch_homepage_html
+    @parsed_homepage = html.present? ? Nokogiri::HTML(html, nil, detect_html_encoding(html)) : nil
+  end
+
+  def detect_html_encoding(html)
+    [header_encoding(@homepage_charset), charlock_encoding(html)].compact.each do |enc|
+      return enc if html.dup.force_encoding(enc).valid_encoding?
+    end
+
+    nil
+  end
+
+  def charlock_encoding(html)
+    guess = encoding_detector.detect(html, @homepage_charset)
+    return nil if guess.nil?
+
+    guess[:confidence].to_i > 60 ? guess[:encoding] : nil
+  end
+
+  def header_encoding(charset)
+    return nil if charset.blank?
+
+    Encoding.find(charset).name
+  rescue ArgumentError
+    nil
+  end
+
+  def encoding_detector
+    @encoding_detector ||= CharlockHolmes::EncodingDetector.new.tap do |detector|
+      detector.strip_tags = true
+    end
   end
 
   def fetch_nodeinfo
@@ -289,21 +331,34 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def determine_instance_name(misskey_name)
-    return misskey_name if usable_instance_name?(misskey_name)
+    name = normalize_instance_name(misskey_name)
+    return name if usable_instance_name?(name)
 
     nodeinfo = fetch_nodeinfo
-    nodeinfo_name = nodeinfo&.dig('metadata', 'nodeName')
-    return nodeinfo_name if usable_instance_name?(nodeinfo_name)
+    name = normalize_instance_name(nodeinfo&.dig('metadata', 'nodeName'))
+    return name if usable_instance_name?(name)
 
-    html_name = extract_instance_name_from_html
-    return html_name if usable_instance_name?(html_name)
+    name = normalize_instance_name(extract_instance_name_from_html)
+    return name if usable_instance_name?(name)
 
-    api_name = fetch_instance_name_from_api
-    return api_name if usable_instance_name?(api_name)
+    name = normalize_instance_name(fetch_instance_name_from_api)
+    return name if usable_instance_name?(name)
 
     @domain
   rescue *NETWORK_ERRORS, JSON::ParserError
     @domain
+  end
+
+  def normalize_instance_name(name)
+    return nil if name.nil?
+
+    text = name.to_s
+    text = text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') unless text.encoding == Encoding::UTF_8
+    text = text.scrub('').gsub(/\s+/, ' ').strip
+
+    return nil if text.blank?
+
+    text.truncate(INSTANCE_NAME_MAX_LENGTH)
   end
 
   def usable_instance_name?(name)

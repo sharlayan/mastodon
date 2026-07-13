@@ -337,6 +337,33 @@ RSpec.describe FetchInstanceThemeColorService do
       result = subject.call(domain)
       expect(result.instance_name_with_fallback).to eq(domain)
     end
+
+    it 'decodes a non-UTF-8 HTML title using the declared charset' do
+      name = 'サーバーの名前'
+      html = %(<html><head><meta charset="Shift_JIS"><title>#{name}</title></head><body></body></html>).encode('Shift_JIS')
+      stub_request(:get, "https://#{domain}").to_return(status: 200, body: html, headers: { 'Content-Type' => 'text/html; charset=Shift_JIS' })
+
+      result = subject.call(domain)
+      expect(result.instance_name).to eq(name)
+      expect(result.instance_name.encoding).to eq(Encoding::UTF_8)
+    end
+
+    it 'truncates an overly long instance name' do
+      long_name = 'a' * 500
+      html = %(<html><head><title>#{long_name}</title></head><body></body></html>)
+      stub_request(:get, "https://#{domain}").to_return(status: 200, body: html, headers: { 'Content-Type' => 'text/html' })
+
+      result = subject.call(domain)
+      expect(result.instance_name.length).to eq(described_class::INSTANCE_NAME_MAX_LENGTH)
+    end
+
+    it 'collapses surrounding and inner whitespace in the instance name' do
+      html = "<html><head><title>  Multi\n  Line   Name  </title></head><body></body></html>"
+      stub_request(:get, "https://#{domain}").to_return(status: 200, body: html, headers: { 'Content-Type' => 'text/html' })
+
+      result = subject.call(domain)
+      expect(result.instance_name).to eq('Multi Line Name')
+    end
   end
 
   describe 'error handling' do

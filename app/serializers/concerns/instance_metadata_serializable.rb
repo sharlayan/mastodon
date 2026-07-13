@@ -43,11 +43,8 @@ module InstanceMetadataSerializable
 
   def should_update_metadata?(metadata)
     return false if metadata.nil?
-    return true if metadata.software.blank?
-    return true if metadata.instance_name.blank?
-    return true if metadata.metadata_needs_update?
 
-    false
+    metadata.metadata_needs_update?
   end
 
   def schedule_metadata_update(domain)
