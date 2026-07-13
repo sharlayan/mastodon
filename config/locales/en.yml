@@ -1177,9 +1177,9 @@ en:
         enabled: Allow privileged roles to bypass API rate limits
         enabled_hint: When enabled, users with the Administrator or DevOps permission are not subject to API rate limits. Leave disabled to apply rate limits to everyone.
       misskey_compat:
-        title: Misskey-compatible API (Flare)
+        title: Misskey-compatible API
         enabled: Enable the Misskey-compatible API layer
-        enabled_hint: When enabled, this server also answers a subset of the Misskey API so clients like Flare can sign in, add reactions, and render MFM. Turning this on makes Flare detect this host as Misskey. Leave disabled to keep standard Mastodon behavior.
+        enabled_hint: When enabled, this server also answers a subset of the Misskey API so MiAuth-login apps like Aria for misskey and Flare can sign in, add reactions, and render MFM. Turning this on makes those apps detect this host as Misskey. Leave disabled to keep standard Mastodon behavior.
       domain_blocks:
         all: To everyone
         disabled: To no one

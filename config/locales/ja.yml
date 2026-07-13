@@ -1007,9 +1007,9 @@ ja:
         enabled: 特定の権限にAPIレート制限のバイパスを許可
         enabled_hint: 有効にすると、管理者またはDevOps権限を持つユーザーはAPIレート制限を受けなくなります。無効の場合はすべてのユーザーに制限が適用されます。
       misskey_compat:
-        title: Misskey互換API (Flare)
+        title: Misskey互換API
         enabled: Misskey互換APIレイヤーを有効化
-        enabled_hint: 有効にすると、このサーバーはMisskey APIの一部にも応答し、Flareなどのクライアントがログイン・リアクション・MFM表示を行えるようになります。有効にするとFlareはこのホストをMisskeyとして認識します。無効の場合は標準のMastodonの動作を維持します。
+        enabled_hint: 有効にすると、このサーバーはMisskey APIの一部にも応答し、Aria for misskeyやFlareなどのMiAuthログイン対応アプリがログイン・リアクション・MFM表示を行えるようになります。有効にするとこれらのアプリはこのホストをMisskeyとして認識します。無効の場合は標準のMastodonの動作を維持します。
       domain_blocks:
         all: 誰にでも許可
         disabled: 誰にも許可しない
