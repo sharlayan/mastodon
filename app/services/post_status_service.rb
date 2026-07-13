@@ -48,6 +48,7 @@ class PostStatusService < BaseService
     @text        = @options[:text] || ''
     @in_reply_to = @options[:thread]
     @quoted_status = @options[:quoted_status]
+    @implicit_quote = @options[:implicit_quote_from_url] == true
 
     with_idempotency do
       validate_media!
@@ -167,7 +168,12 @@ class PostStatusService < BaseService
   end
 
   def quotable_status_from_text
-    @text.to_s.scan(FetchLinkCardService::URL_PATTERN).filter_map { |match| match[1] }.uniq.take(IMPLICIT_QUOTE_URL_SCAN_LIMIT).each do |url|
+    urls = @text.to_s.scan(FetchLinkCardService::URL_PATTERN).filter_map { |match| match[1] }.uniq.take(IMPLICIT_QUOTE_URL_SCAN_LIMIT)
+    return if urls.empty?
+
+    RateLimiter.new(@account, family: :implicit_quotes).record!
+
+    urls.each do |url|
       status = resolve_status_from_url(url)
       return status if status.present? && quotable?(status)
     end
@@ -389,7 +395,9 @@ class PostStatusService < BaseService
     @options.dup.tap do |options_hash|
       options_hash[:in_reply_to_id]  = options_hash.delete(:thread)&.id
       options_hash[:application_id]  = options_hash.delete(:application)&.id
-      options_hash[:quoted_status_id] = options_hash.delete(:quoted_status)&.id
+      options_hash.delete(:quoted_status)
+      options_hash[:quoted_status_id] = @quoted_status&.id
+      options_hash[:implicit_quote_from_url] = true if @implicit_quote
       options_hash[:scheduled_at]    = nil
       options_hash[:idempotency]     = nil
       options_hash[:with_rate_limit] = false

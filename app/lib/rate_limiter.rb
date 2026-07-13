@@ -33,6 +33,11 @@ class RateLimiter
       limit: 100,
       period: 1.hour.freeze,
     }.freeze,
+
+    implicit_quotes: {
+      limit: 30,
+      period: 5.minutes.freeze,
+    }.freeze,
   }.freeze
 
   def initialize(by, options = {})

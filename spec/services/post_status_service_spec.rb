@@ -62,6 +62,22 @@ RSpec.describe PostStatusService do
       expect(status2.id).to eq status1.id
     end
 
+    it 'preserves an implicit quote for publication' do
+      user = Fabricate(:user)
+      quoted_status = Fabricate(:status)
+      resolve_url_service = instance_double(ResolveURLService, call: quoted_status)
+      Setting.auto_quote_from_url = true
+      allow(user).to receive(:setting_auto_quote_from_url).and_return(true)
+      allow(ResolveURLService).to receive(:new).and_return(resolve_url_service)
+
+      status = subject.call(user.account, text: 'https://example.com/@alice/1', scheduled_at: future)
+
+      expect(status.params).to include(
+        'quoted_status_id' => quoted_status.id,
+        'implicit_quote_from_url' => true
+      )
+    end
+
     context 'when scheduled_at is less than min offset' do
       let(:invalid_scheduled_time) { 4.minutes.from_now }
 
@@ -334,6 +350,44 @@ RSpec.describe PostStatusService do
 
     expect { subject.call(account, text: 'test', quoted_status: quoted_status) }
       .to enqueue_sidekiq_job(ActivityPub::QuoteRequestWorker)
+  end
+
+  context 'with automatic URL quotes enabled' do
+    let(:user) { Fabricate(:user) }
+    let(:quoted_status) { Fabricate(:status) }
+    let(:rate_limiter) { instance_double(RateLimiter) }
+    let(:resolve_url_service) { instance_double(ResolveURLService) }
+    let(:events) { [] }
+
+    before do
+      Setting.auto_quote_from_url = true
+      allow(user).to receive(:setting_auto_quote_from_url).and_return(true)
+      allow(RateLimiter).to receive(:new).with(user.account, family: :implicit_quotes).and_return(rate_limiter)
+      allow(rate_limiter).to receive(:record!) { events << :rate_limit }
+      allow(ResolveURLService).to receive(:new).and_return(resolve_url_service)
+      allow(resolve_url_service).to receive(:call) do
+        events << :resolve
+        quoted_status
+      end
+    end
+
+    it 'rate limits before resolving and creates a legacy quote' do
+      status = subject.call(user.account, text: 'https://example.com/@alice/1')
+
+      expect(events).to eq %i(rate_limit resolve)
+      expect(status.quote).to be_legacy
+      expect(status.quote).to be_accepted
+    end
+
+    it 'does not resolve a URL when the detection rate limit is exceeded' do
+      allow(rate_limiter).to receive(:record!).and_raise(Mastodon::RateLimitExceededError)
+
+      expect do
+        subject.call(user.account, text: 'https://example.com/@alice/1')
+      end.to raise_error(Mastodon::RateLimitExceededError)
+
+      expect(events).to be_empty
+    end
   end
 
   it 'allows quotes with spoilers and no text' do
