@@ -60,6 +60,7 @@ defaults: &defaults
   force_round_avatar: false
   circles_enabled: false
   clips_enabled: false
+  auto_quote_from_url: false
   avatar_decorations_enabled: false
   avatar_decorations_federation_enabled: false
   avatar_decorations_local_only_view: false
@@ -68,6 +69,7 @@ defaults: &defaults
   rate_limit_bypass_enabled: false
   board_announcements_enabled: true
   antenna_enabled: true
+  online_status_enabled: false
 
 development:
   <<: *defaults

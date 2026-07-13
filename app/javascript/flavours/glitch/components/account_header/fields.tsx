@@ -20,6 +20,7 @@ import type { EmojiHTMLProps } from '../emoji/html';
 import { EmojiHTML } from '../emoji/html';
 import { Icon } from '../icon';
 import { IconButton } from '../icon_button';
+import { MfmRenderer, hasAnyMfmFn } from '../mfm';
 import { MiniCard } from '../mini_card';
 import { useElementHandledLink } from '../status/handled_link';
 
@@ -91,11 +92,19 @@ export const AccountHeaderFields: FC<{ accountId: string }> = ({
     return null;
   }
 
+  const mfmEnabled = account?.mfm ?? false;
+
   return (
     <CustomEmojiProvider emojis={emojis}>
       <dl className={classes.fieldList} ref={wrapperRef}>
         {fields.map((field, key) => (
-          <FieldCard key={key} field={field} htmlHandlers={htmlHandlers} />
+          <FieldCard
+            key={key}
+            field={field}
+            htmlHandlers={htmlHandlers}
+            mfmEnabled={mfmEnabled}
+            emojis={emojis}
+          />
         ))}
       </dl>
     </CustomEmojiProvider>
@@ -105,15 +114,23 @@ export const AccountHeaderFields: FC<{ accountId: string }> = ({
 const FieldCard: FC<{
   htmlHandlers: ReturnType<typeof useElementHandledLink>;
   field: AccountField;
-}> = ({ htmlHandlers, field }) => {
+  mfmEnabled: boolean;
+  emojis: ReturnType<typeof cleanExtraEmojis>;
+}> = ({ htmlHandlers, field, mfmEnabled, emojis }) => {
   const intl = useIntl();
   const {
     name_emojified,
     nameHasEmojis,
     value_emojified,
+    value_plain,
     valueHasEmojis,
     verified_at,
   } = field;
+
+  const valueIsMfm = useMemo(
+    () => mfmEnabled && hasAnyMfmFn(value_plain),
+    [mfmEnabled, value_plain],
+  );
 
   const { wrapperRef, isLabelOverflowing, isValueOverflowing } =
     useFieldOverflow();
@@ -145,13 +162,19 @@ const FieldCard: FC<{
         />
       }
       value={
-        <FieldHTML
-          text={value_emojified}
-          textHasCustomEmoji={valueHasEmojis}
-          isOverflowing={isValueOverflowing}
-          onOverflowClick={handleOverflowClick}
-          {...htmlHandlers}
-        />
+        valueIsMfm ? (
+          <span className='translate' data-contents>
+            <MfmRenderer text={value_plain} emojis={emojis} isProfile />
+          </span>
+        ) : (
+          <FieldHTML
+            text={value_emojified}
+            textHasCustomEmoji={valueHasEmojis}
+            isOverflowing={isValueOverflowing}
+            onOverflowClick={handleOverflowClick}
+            {...htmlHandlers}
+          />
+        )
       }
       ref={wrapperRef}
     >

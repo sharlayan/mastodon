@@ -8,7 +8,8 @@ class Api::V1::BoardAnnouncementsController < Api::BaseController
   before_action :set_announcement, only: [:show, :read]
 
   def index
-    render json: @announcements, each_serializer: REST::BoardAnnouncementSerializer
+    relationships = BoardAnnouncementRelationshipsPresenter.new(@announcements, current_account)
+    render json: @announcements, each_serializer: REST::BoardAnnouncementSerializer, relationships: relationships
   end
 
   def show
@@ -17,6 +18,8 @@ class Api::V1::BoardAnnouncementsController < Api::BaseController
 
   def unread_count
     count = BoardAnnouncement.published
+      .for_account(current_account)
+      .where(silence: false)
       .where.not(id: BoardAnnouncementRead.where(account_id: current_account.id).select(:board_announcement_id))
       .count
     render json: { count: count }
@@ -34,12 +37,12 @@ class Api::V1::BoardAnnouncementsController < Api::BaseController
   end
 
   def set_announcements
-    @announcements = BoardAnnouncement.published.reverse_chronological.includes(:attachments).page(params[:page])
+    @announcements = BoardAnnouncement.published.for_account(current_account).reverse_chronological.includes(:attachments).page(params[:page])
     preload_read_state
   end
 
   def set_announcement
-    @announcement = BoardAnnouncement.published.find(params[:id])
+    @announcement = BoardAnnouncement.published.for_account(current_account).find(params[:id])
   end
 
   def preload_read_state

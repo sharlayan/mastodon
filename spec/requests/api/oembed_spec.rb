@@ -19,6 +19,16 @@ RSpec.describe 'API OEmbed' do
         expect(response.headers['Cache-Control'])
           .to include('private, no-store')
       end
+
+      context 'when local status page access requires authentication' do
+        before { Setting.local_status_page_access = 'authenticated' }
+
+        it 'returns an authentication error' do
+          get '/api/oembed', params: { url: short_account_status_url(status.account, status) }
+
+          expect(response).to have_http_status(422)
+        end
+      end
     end
 
     context 'when status is not public' do

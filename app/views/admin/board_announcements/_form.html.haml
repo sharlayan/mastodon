@@ -38,6 +38,39 @@
   .board-announcement-media{ data: media_data }
 
 .fields-group
+  = form.input :icon,
+               collection: BoardAnnouncement::ICONS,
+               label_method: ->(value) { t("admin.board_announcements.icons.#{value}") },
+               include_blank: false,
+               wrapper: :with_label
+
+.fields-group
+  = form.input :display,
+               collection: BoardAnnouncement::DISPLAYS,
+               label_method: ->(value) { t("admin.board_announcements.displays.#{value}") },
+               include_blank: false,
+               hint: t('admin.board_announcements.display_hint'),
+               wrapper: :with_label
+
+.fields-group
+  = form.input :need_confirmation_to_read,
+               as: :boolean,
+               hint: t('admin.board_announcements.need_confirmation_to_read_hint'),
+               wrapper: :with_label
+
+.fields-group
+  = form.input :silence,
+               as: :boolean,
+               hint: t('admin.board_announcements.silence_hint'),
+               wrapper: :with_label
+
+.fields-group
+  = form.input :for_existing_users,
+               as: :boolean,
+               hint: t('admin.board_announcements.for_existing_users_hint'),
+               wrapper: :with_label
+
+.fields-group
   = form.input :sort_priority,
                as: :integer,
                hint: t('admin.board_announcements.sort_priority_hint'),

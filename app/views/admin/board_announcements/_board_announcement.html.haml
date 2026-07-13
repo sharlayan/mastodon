@@ -14,6 +14,11 @@
       - if board_announcement.sort_priority != 0
         ·
         #{t('admin.board_announcements.sort_priority')}: #{board_announcement.sort_priority}
+      - if board_announcement.display == 'banner'
+        ·
+        = t('admin.board_announcements.displays.banner')
+      ·
+      = t('admin.board_announcements.read_count', count: board_announcement.reads_count)
 
     .announcements-list__item__actions
       - if can?(:update, board_announcement)

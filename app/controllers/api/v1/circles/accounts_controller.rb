@@ -16,9 +16,17 @@ class Api::V1::Circles::AccountsController < Api::BaseController
   end
 
   def create
-    ApplicationRecord.transaction do
-      Account.where(id: account_ids).find_each do |account|
-        @circle.circle_accounts.create!(account: account)
+    ids = account_ids
+    raise Mastodon::ValidationError, I18n.t('circles.errors.too_many_accounts') if ids.size > Circle::ACCOUNTS_PER_REQUEST_LIMIT
+
+    accounts = Account.where(id: ids).to_a
+
+    @circle.with_lock do
+      existing_ids = @circle.circle_accounts.pluck(:account_id)
+      raise Mastodon::ValidationError, I18n.t('circles.errors.too_many_accounts') if (existing_ids | accounts.map(&:id)).size > Circle::ACCOUNTS_PER_CIRCLE_LIMIT
+
+      accounts.each do |account|
+        @circle.circle_accounts.create_or_find_by!(account: account)
       end
     end
 
@@ -41,15 +49,15 @@ class Api::V1::Circles::AccountsController < Api::BaseController
   end
 
   def load_accounts
-    if unlimited?
-      @circle.accounts.without_suspended.includes(:account_stat, :user).all
-    else
-      @circle.accounts.without_suspended.includes(:account_stat, :user).paginate_by_max_id(limit_param(DEFAULT_ACCOUNTS_LIMIT), params[:max_id], params[:since_id])
-    end
+    @circle.accounts.without_suspended.includes(:account_stat, :user).paginate_by_max_id(
+      accounts_limit,
+      params[:max_id],
+      params[:since_id]
+    )
   end
 
   def account_ids
-    Array(resource_params[:account_ids])
+    Array(resource_params[:account_ids]).filter_map { |id| Integer(id, exception: false) }.uniq
   end
 
   def resource_params
@@ -57,14 +65,10 @@ class Api::V1::Circles::AccountsController < Api::BaseController
   end
 
   def next_path
-    return if unlimited?
-
     api_v1_circle_accounts_url pagination_params(max_id: pagination_max_id) if records_continue?
   end
 
   def prev_path
-    return if unlimited?
-
     api_v1_circle_accounts_url pagination_params(since_id: pagination_since_id) unless @accounts.empty?
   end
 
@@ -73,10 +77,10 @@ class Api::V1::Circles::AccountsController < Api::BaseController
   end
 
   def records_continue?
-    @accounts.size == limit_param(DEFAULT_ACCOUNTS_LIMIT)
+    @accounts.size == accounts_limit
   end
 
-  def unlimited?
-    params[:limit] == '0'
+  def accounts_limit
+    params[:limit] == '0' ? Circle::ACCOUNTS_PER_REQUEST_LIMIT : limit_param(DEFAULT_ACCOUNTS_LIMIT, Circle::ACCOUNTS_PER_REQUEST_LIMIT)
   end
 end

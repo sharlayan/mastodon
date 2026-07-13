@@ -75,6 +75,51 @@ RSpec.describe REST::AccountSerializer do
     end
   end
 
+  describe '#online_status' do
+    before do
+      allow(Setting).to receive(:[]).and_call_original
+      allow(Setting).to receive(:[]).with('online_status_enabled').and_return(true)
+      user.settings['hide_online_status'] = false
+      user.last_active_at = 1.minute.ago
+    end
+
+    it 'returns the status to an authenticated viewer' do
+      expect(subject['online_status']).to eq('online')
+    end
+
+    context 'when the viewer is anonymous' do
+      let(:current_user) { nil }
+
+      it 'does not expose the status in a public cacheable response' do
+        expect(subject['online_status']).to eq('unknown')
+      end
+    end
+
+    context 'when the server feature is disabled' do
+      before { allow(Setting).to receive(:[]).with('online_status_enabled').and_return(false) }
+
+      it 'does not expose the status' do
+        expect(subject['online_status']).to eq('unknown')
+      end
+    end
+
+    context 'when the user hides their status' do
+      before { user.settings['hide_online_status'] = true }
+
+      it 'does not expose the status' do
+        expect(subject['online_status']).to eq('unknown')
+      end
+    end
+
+    context 'when the account is remote' do
+      let(:account) { Fabricate(:account, domain: 'remote.example') }
+
+      it 'does not expose the status' do
+        expect(subject['online_status']).to eq('unknown')
+      end
+    end
+  end
+
   describe '#feature_approval' do
     context 'when account is local' do
       context 'when account is discoverable' do

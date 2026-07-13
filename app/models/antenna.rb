@@ -57,7 +57,8 @@ class Antenna < ApplicationRecord
     return [] if target.nil?
 
     domain  = target.account.domain || Rails.configuration.x.local_domain
-    tag_ids = target.tags.pluck(:id)
+    tag_ids = target.tags.map(&:id)
+    text    = target.searchable_text.to_s
 
     domain_antenna_ids  = AntennaDomain.includes_only.where(name: domain).pluck(:antenna_id)
     account_antenna_ids = AntennaAccount.includes_only.where(account_id: target.account_id).pluck(:antenna_id)
@@ -68,8 +69,8 @@ class Antenna < ApplicationRecord
       .where('antennas.any_domains = TRUE OR antennas.id IN (?)', domain_antenna_ids.presence || [-1])
       .where('antennas.any_accounts = TRUE OR antennas.id IN (?)', account_antenna_ids.presence || [-1])
       .where('antennas.any_tags = TRUE OR antennas.id IN (?)', tag_antenna_ids.presence || [-1])
-      .includes(account: :user)
-      .select { |antenna| antenna.matches?(status) }
+      .includes(:antenna_accounts, :antenna_domains, :antenna_tags, account: :user)
+      .select { |antenna| antenna.matches?(status, domain: domain, tag_ids: tag_ids, text: text) }
   end
 
   def keywords
@@ -100,15 +101,15 @@ class Antenna < ApplicationRecord
     !(any_accounts? && any_domains? && any_tags? && any_keywords?)
   end
 
-  def matches?(status)
+  def matches?(status, domain: nil, tag_ids: nil, text: nil)
     return false if status.nil?
     return false unless configured?
 
     target  = status.reblog? ? status.reblog : status
     account = target.account
-    domain  = account.domain || Rails.configuration.x.local_domain
-    tag_ids = target.tags.pluck(:id)
-    text    = target.searchable_text.to_s
+    domain  ||= account.domain || Rails.configuration.x.local_domain
+    tag_ids ||= target.tags.map(&:id)
+    text    ||= target.searchable_text.to_s
 
     return false unless match_domain?(domain)
     return false unless match_account?(account.id)
@@ -128,19 +129,19 @@ class Antenna < ApplicationRecord
   def match_domain?(domain)
     return true if any_domains?
 
-    antenna_domains.includes_only.pluck(:name).include?(domain)
+    antenna_domains.reject(&:exclude?).any? { |item| item.name == domain }
   end
 
   def match_account?(account_id)
     return true if any_accounts?
 
-    antenna_accounts.includes_only.pluck(:account_id).include?(account_id)
+    antenna_accounts.reject(&:exclude?).any? { |item| item.account_id == account_id }
   end
 
   def match_tags?(tag_ids)
     return true if any_tags?
 
-    (antenna_tags.includes_only.pluck(:tag_id) & tag_ids).any?
+    antenna_tags.reject(&:exclude?).any? { |item| tag_ids.include?(item.tag_id) }
   end
 
   def match_keywords?(text)

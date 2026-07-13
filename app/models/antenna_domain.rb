@@ -15,6 +15,7 @@ class AntennaDomain < ApplicationRecord
   belongs_to :antenna
 
   validates :name, presence: true
+  validates :name, uniqueness: { scope: :antenna_id }
 
   scope :includes_only, -> { where(exclude: false) }
   scope :excludes_only, -> { where(exclude: true) }

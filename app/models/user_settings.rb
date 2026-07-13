@@ -15,17 +15,21 @@ class UserSettings
   setting :show_application, default: true
   setting :default_language, default: nil
   setting :default_sensitive, default: false
+  setting :auto_accept_followed, default: false
   setting :default_privacy, default: nil, in: %w(public unlisted private)
   setting :default_content_type, default: 'text/plain'
   setting :hide_followers_count, default: false
   setting :visible_reactions, default: 6
   setting :default_quote_policy, default: 'nobody', in: %w(public followers nobody) # patch for default no-quote my statuses
   setting :bridge_unlisted_to_bsky, default: false # deliver unlisted statuses to bsky.brid.gy as public
+  setting :auto_quote_from_url, default: false # auto-promote fetchable ActivityPub post links in the body to a quote
   setting :email_subscriptions, default: false
   setting :content_font_size, default: 'medium', in: %w(medium large x_large xx_large)
+  setting :hide_online_status, default: true
 
   setting_inverse_alias :indexable, :noindex
   setting_inverse_alias :show_followers_count, :hide_followers_count
+  setting_inverse_alias :show_online_status, :hide_online_status
 
   namespace :web do
     setting :advanced_layout, default: false
@@ -75,6 +79,7 @@ class UserSettings
     setting :status_trends, default: false
     setting :appeal, default: true
     setting :software_updates, default: 'critical', in: %w(none critical patch all)
+    setting :end_of_support, default: true
   end
 
   namespace :interactions do

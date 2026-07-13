@@ -76,6 +76,15 @@ class Api::BaseController < ApplicationController
     end
   end
 
+  def require_local_content_access!(mode)
+    return if mode == 'public'
+
+    require_user!
+    return if performed?
+
+    not_found if mode == 'disabled' && !current_user.can?(:view_feeds)
+  end
+
   # Redefine `require_functional!` to properly output JSON instead of HTML redirects
   def require_functional!
     return if current_user.functional?

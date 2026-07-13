@@ -152,6 +152,25 @@ RSpec.describe FeedManager do
         expect(subject.filter?(:home, reblog, alice)).to be true
       end
 
+      it 'returns true for reblog of a domain muted from home' do
+        alice.mute_domain!('example.com', hide_from_home: true)
+        alice.follow!(jeff)
+        status = Fabricate(:status, account: bob)
+        reblog = Fabricate(:status, reblog: status, account: jeff)
+
+        expect(subject.filter?(:home, reblog, alice)).to be true
+      end
+
+      it 'returns false for reblog from a followed account on a domain muted from home' do
+        alice.mute_domain!('example.com', hide_from_home: true)
+        alice.follow!(bob)
+        alice.follow!(jeff)
+        status = Fabricate(:status, account: bob)
+        reblog = Fabricate(:status, reblog: status, account: jeff)
+
+        expect(subject.filter?(:home, reblog, alice)).to be false
+      end
+
       it 'returns true for German post when follow is set to English only' do
         alice.follow!(bob, languages: %w(en))
         status = Fabricate(:status, text: 'Hallo Welt', account: bob, language: 'de')
@@ -200,6 +219,47 @@ RSpec.describe FeedManager do
         status = Fabricate(:status, text: 'I post a lot', account: bob)
         reblog = Fabricate(:status, reblog: status, account: jeff)
         expect(subject.filter?(:home, reblog, alice)).to be false
+      end
+    end
+
+    context 'with followed tags feed' do
+      it 'filters a status from a domain muted from home' do
+        alice.mute_domain!('example.com', hide_from_home: true)
+        status = Fabricate(:status, account: bob)
+
+        expect(subject.filter?(:tags, status, alice)).to be true
+      end
+
+      it 'keeps a status when the domain mute is not enabled for home' do
+        alice.mute_domain!('example.com', hide_from_home: false)
+        status = Fabricate(:status, account: bob)
+
+        expect(subject.filter?(:tags, status, alice)).to be false
+      end
+
+      it 'keeps a status from a followed account on a muted domain' do
+        alice.mute_domain!('example.com', hide_from_home: true)
+        alice.follow!(bob)
+        status = Fabricate(:status, account: bob)
+
+        expect(subject.filter?(:tags, status, alice)).to be false
+      end
+
+      it 'filters a reblog of a status from a domain muted from home' do
+        alice.mute_domain!('example.com', hide_from_home: true)
+        status = Fabricate(:status, account: bob)
+        reblog = Fabricate(:status, account: jeff, reblog: status)
+
+        expect(subject.filter?(:tags, reblog, alice)).to be true
+      end
+
+      it 'keeps a reblog when following the original author on a muted domain' do
+        alice.mute_domain!('example.com', hide_from_home: true)
+        alice.follow!(bob)
+        status = Fabricate(:status, account: bob)
+        reblog = Fabricate(:status, account: jeff, reblog: status)
+
+        expect(subject.filter?(:tags, reblog, alice)).to be false
       end
     end
 

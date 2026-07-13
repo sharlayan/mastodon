@@ -167,6 +167,26 @@ RSpec.describe 'Statuses' do
               .to include(content: include(status.text))
           end
         end
+
+        context 'when local status page access is disabled' do
+          let(:format) { 'html' }
+
+          before { Setting.local_status_page_access = 'disabled' }
+
+          it 'returns not found for a regular user' do
+            subject
+
+            expect(response).to have_http_status(404)
+          end
+
+          it 'allows a user with the view feeds permission' do
+            user.update!(role: Fabricate(:user_role, permissions: UserRole::FLAGS[:view_feeds]))
+
+            subject
+
+            expect(response).to have_http_status(200)
+          end
+        end
       end
 
       context 'when status is private' do

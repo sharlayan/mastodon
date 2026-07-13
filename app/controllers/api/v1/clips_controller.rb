@@ -9,8 +9,8 @@ class Api::V1::ClipsController < Api::BaseController
   before_action :set_clip, only: [:show, :update, :destroy]
 
   def index
-    @clips = Clip.where(account: current_account).all
-    render json: @clips, each_serializer: REST::ClipSerializer
+    @clips = Clip.where(account: current_account).to_a
+    render json: @clips, each_serializer: REST::ClipSerializer, relationships: ClipRelationshipsPresenter.new(@clips, current_account.id)
   end
 
   def show

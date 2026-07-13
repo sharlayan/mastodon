@@ -22,10 +22,18 @@ export interface ApiBoardAnnouncementReactionJSON {
   static_url?: string;
 }
 
+export type ApiBoardAnnouncementIcon = 'info' | 'warning' | 'error' | 'success';
+
+export type ApiBoardAnnouncementDisplay = 'normal' | 'banner';
+
 export interface ApiBoardAnnouncementJSON {
   id: string;
   title: string;
   content: string;
+  icon: ApiBoardAnnouncementIcon;
+  display: ApiBoardAnnouncementDisplay;
+  need_confirmation_to_read: boolean;
+  silence: boolean;
   published_at: string;
   updated_at: string;
   read: boolean;

@@ -7,9 +7,9 @@ class Api::V1::StatusesController < Api::BaseController
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }, except: [:create, :update, :destroy]
   before_action -> { doorkeeper_authorize! :write, :'write:statuses' }, only:   [:create, :update, :destroy]
   before_action :require_user!, except: [:index, :show]
-  before_action :require_user!, only: [:show], if: -> { Setting.local_status_page_access != 'public' }
   before_action :set_statuses, only:         [:index]
   before_action :set_status, only:           [:show]
+  before_action :require_status_page_access!, only: [:show]
   before_action :set_thread, only:           [:create]
   before_action :set_quoted_status, only:    [:create]
   before_action :check_statuses_limit, only: [:index]
@@ -106,6 +106,10 @@ class Api::V1::StatusesController < Api::BaseController
     authorize @status, :show?
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     not_found
+  end
+
+  def require_status_page_access!
+    require_local_content_access!(Setting.local_status_page_access) if @status.local?
   end
 
   def set_thread

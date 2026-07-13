@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class NodeInfo::SerializerTwoOne < ActiveModel::Serializer
+  include SharlayanCapabilitiesHelper
+
   attributes :version, :software, :protocols, :services, :usage, :metadata
   attribute :open_registrations, key: :openRegistrations
 
@@ -67,6 +69,11 @@ class NodeInfo::SerializerTwoOne < ActiveModel::Serializer
       'enableServiceWorker' => true,
       'proxyAccountName' => '',
       'themeColor' => Setting.theme_color.presence || '#6364ff',
+      'features' => capabilities_for_nodeinfo,
+      'upstream' => {
+        'name' => 'mastodon',
+        'version' => Mastodon::Version.to_s,
+      },
     }
   end
 

@@ -28,6 +28,7 @@ const initialState = ImmutableMap({
   show_schedule_button: !roleplayMode,
   tag_misleading_links: true,
   show_follow_list_bio: true,
+  show_others_online_status: false,
   inline_compose_timelines: false,
   inline_compose_tabs: ImmutableList(),
   use_publish_toot: !roleplayMode,

@@ -22,6 +22,7 @@ import { Hotkeys } from 'flavours/glitch/components/hotkeys';
 import { HoverCardController } from 'flavours/glitch/components/hover_card_controller';
 import { Permalink } from 'flavours/glitch/components/permalink';
 import { PictureInPicture } from 'flavours/glitch/features/picture_in_picture';
+import { BoardAnnouncementBanner } from 'flavours/glitch/features/board_announcements/banner';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
 import { layoutFromWindow } from 'flavours/glitch/is_mobile';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
@@ -749,6 +750,8 @@ class UI extends PureComponent {
               ) }}
             />
           </div>)}
+
+          <BoardAnnouncementBanner />
 
           <SwitchingColumnsArea
             identity={this.props.identity}

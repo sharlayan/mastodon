@@ -26,6 +26,18 @@ RSpec.describe DeliveryAntennaService do
     expect(antenna_feed_of(antenna)).to include(status.id)
   end
 
+  it 'skips delivery when antennas are disabled' do
+    Setting.antenna_enabled = false
+    antenna = Fabricate(:antenna, account: owner, any_keywords: false, keywords: %w(commission))
+    status = Fabricate(:status, account: author, text: 'open for commission', visibility: :public)
+
+    subject.call(status, false, mode: :home)
+
+    expect(antenna_feed_of(antenna)).to_not include(status.id)
+  ensure
+    Setting.antenna_enabled = true
+  end
+
   it 'does not insert a non-matching status' do
     antenna = Fabricate(:antenna, account: owner, any_keywords: false, keywords: %w(commission))
     status = Fabricate(:status, account: author, text: 'just chatting', visibility: :public)

@@ -15,6 +15,8 @@ class Circle < ApplicationRecord
   include Paginable
 
   PER_ACCOUNT_LIMIT = 100
+  ACCOUNTS_PER_CIRCLE_LIMIT = 100
+  ACCOUNTS_PER_REQUEST_LIMIT = 100
 
   belongs_to :account
 

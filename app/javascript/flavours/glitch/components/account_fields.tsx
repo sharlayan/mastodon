@@ -7,12 +7,12 @@ import { Icon } from 'flavours/glitch/components/icon';
 import type { Account } from 'flavours/glitch/models/account';
 
 import { EmojiHTML } from './emoji/html';
+import { MfmRenderer, hasAnyMfmFn } from './mfm';
 import { useElementHandledLink } from './status/handled_link';
 
-export const AccountFields: React.FC<Pick<Account, 'fields' | 'emojis'>> = ({
-  fields,
-  emojis,
-}) => {
+export const AccountFields: React.FC<
+  Pick<Account, 'fields' | 'emojis'> & { mfm?: boolean }
+> = ({ fields, emojis, mfm = false }) => {
   const intl = useIntl();
   const htmlHandlers = useElementHandledLink();
 
@@ -49,12 +49,20 @@ export const AccountFields: React.FC<Pick<Account, 'fields' | 'emojis'>> = ({
                 <Icon id='check' icon={CheckIcon} className='verified__mark' />
               </span>
             )}{' '}
-            <EmojiHTML
-              as='span'
-              htmlString={pair.value_emojified}
-              extraEmojis={emojis}
-              {...htmlHandlers}
-            />
+            {mfm && hasAnyMfmFn(pair.value_plain ?? '') ? (
+              <MfmRenderer
+                text={pair.value_plain ?? ''}
+                emojis={emojis}
+                isProfile
+              />
+            ) : (
+              <EmojiHTML
+                as='span'
+                htmlString={pair.value_emojified}
+                extraEmojis={emojis}
+                {...htmlHandlers}
+              />
+            )}
           </dd>
         </dl>
       ))}

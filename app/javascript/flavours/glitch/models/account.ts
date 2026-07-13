@@ -59,6 +59,7 @@ export interface AccountShape extends Required<
   moved: string | null;
   url: string;
   avatar_decorations: ApiAvatarDecorationJSON[];
+  mfm: boolean;
 }
 export type AccountShapeFull = Omit<
   AccountShape,
@@ -119,6 +120,16 @@ export const accountDefaultValues: AccountShape = {
   email_subscriptions: false,
   followed_message: null,
   avatar_decorations: [],
+  mfm: false,
+  server_features: {
+    emoji_reaction: false,
+    quote: false,
+    status_reference: false,
+    circle: false,
+    avatar_decorations: false,
+  },
+  software: null,
+  online_status: 'unknown',
   // This comes from `ApiMutedAccountJSON`, but we should eventually
   // store that in a different object.
   mute_expires_at: null,

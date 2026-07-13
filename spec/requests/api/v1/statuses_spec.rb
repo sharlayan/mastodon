@@ -58,6 +58,36 @@ RSpec.describe '/api/v1/statuses' do
           .to start_with('application/json')
       end
 
+      context 'when local status page access is disabled' do
+        before do
+          Setting.local_status_page_access = 'disabled'
+        end
+
+        it 'returns not found for a regular user viewing a local status' do
+          subject
+
+          expect(response).to have_http_status(404)
+        end
+
+        it 'allows a user with the view feeds permission' do
+          user.update!(role: Fabricate(:user_role, permissions: UserRole::FLAGS[:view_feeds]))
+
+          subject
+
+          expect(response).to have_http_status(200)
+        end
+
+        context 'with a remote status' do
+          let(:status) { Fabricate(:status, account: Fabricate(:account, domain: 'example.com')) }
+
+          it 'does not apply the local restriction' do
+            subject
+
+            expect(response).to have_http_status(200)
+          end
+        end
+      end
+
       context 'when post includes filtered terms' do
         let(:status) { Fabricate(:status, text: 'this toot is about that banned word') }
 

@@ -58,6 +58,41 @@ RSpec.describe ReactService, type: :service do
     end
   end
 
+  describe 'distribution for a followers-only status' do
+    let(:author) { Fabricate(:account) }
+    let(:status) { Fabricate(:status, account: author, visibility: :private) }
+    let(:authorized_follower) { Fabricate(:account, protocol: :activitypub, domain: 'authorized.example', inbox_url: 'https://authorized.example/inbox') }
+    let(:reactor_follower) { Fabricate(:account, protocol: :activitypub, domain: 'reactor.example', inbox_url: 'https://reactor.example/inbox') }
+
+    before do
+      sender.follow!(author)
+      authorized_follower.follow!(author)
+      reactor_follower.follow!(sender)
+      subject.call(sender, status, '👍')
+    end
+
+    it 'delivers only to the original status audience' do
+      expect(ActivityPub::DeliveryWorker).to have_enqueued_sidekiq_job(anything, sender.id, authorized_follower.inbox_url)
+      expect(ActivityPub::DeliveryWorker).to_not have_enqueued_sidekiq_job(anything, sender.id, reactor_follower.inbox_url)
+      expect(ActivityPub::ReactionsDistributionWorker).to_not have_enqueued_sidekiq_job
+    end
+  end
+
+  describe 'distribution for a remote followers-only status' do
+    let(:author) { Fabricate(:account, protocol: :activitypub, domain: 'author.example', inbox_url: 'https://author.example/inbox') }
+    let(:status) { Fabricate(:status, account: author, visibility: :private) }
+
+    before do
+      sender.follow!(author)
+      subject.call(sender, status, '👍')
+    end
+
+    it 'delivers directly to the status author' do
+      expect(ActivityPub::DeliveryWorker).to have_enqueued_sidekiq_job(anything, sender.id, author.inbox_url)
+      expect(ActivityPub::ReactionsDistributionWorker).to_not have_enqueued_sidekiq_job
+    end
+  end
+
   describe 'idempotency' do
     let(:status) { Fabricate(:status) }
 

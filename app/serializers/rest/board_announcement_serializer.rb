@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::BoardAnnouncementSerializer < ActiveModel::Serializer
-  attributes :id, :title, :content, :published_at, :updated_at
+  attributes :id, :title, :content, :icon, :display, :need_confirmation_to_read, :silence, :published_at, :updated_at
 
   attribute :read, if: :current_user?
 
@@ -18,7 +18,11 @@ class REST::BoardAnnouncementSerializer < ActiveModel::Serializer
   end
 
   def reactions
-    object.reactions(current_user&.account)
+    if relationships
+      relationships.reaction_groups_map[object.id] || []
+    else
+      object.reactions(current_user&.account)
+    end
   end
 
   def content
@@ -31,5 +35,9 @@ class REST::BoardAnnouncementSerializer < ActiveModel::Serializer
     else
       object.read?(current_user.account)
     end
+  end
+
+  def relationships
+    instance_options[:relationships]
   end
 end

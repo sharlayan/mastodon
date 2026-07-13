@@ -35,6 +35,14 @@ module User::HasSettings
     settings['bridge_unlisted_to_bsky']
   end
 
+  def setting_auto_quote_from_url
+    settings['auto_quote_from_url']
+  end
+
+  def setting_auto_accept_followed
+    settings['auto_accept_followed']
+  end
+
   def setting_boost_modal
     settings['web.reblog_modal']
   end

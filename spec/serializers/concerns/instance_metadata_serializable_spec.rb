@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'request_store'
 
 RSpec.describe InstanceMetadataSerializable do
   # Create a test serializer that includes the concern
@@ -26,6 +27,7 @@ RSpec.describe InstanceMetadataSerializable do
   let(:serializable_object) { Struct.new(:id, :read_attribute_for_serialization).new(1, ->(_) { 1 }) }
 
   before do
+    RequestStore.clear!
     allow(InstanceMetadataUpdateWorker).to receive(:perform_async)
   end
 
@@ -66,8 +68,8 @@ RSpec.describe InstanceMetadataSerializable do
         expect(InstanceMetadata.exists?(domain: domain)).to be true
       end
 
-      it 'schedules update when software is missing' do
-        Fabricate(:instance_metadata, domain: domain, software: nil)
+      it 'schedules update when never fetched' do
+        Fabricate(:instance_metadata, domain: domain, software: nil, metadata_updated_at: nil)
 
         serializer = test_serializer_class.new(serializable_object, domain: domain)
         serializer.instance_metadata
@@ -75,13 +77,13 @@ RSpec.describe InstanceMetadataSerializable do
         expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with(domain)
       end
 
-      it 'schedules update when instance_name is missing' do
-        Fabricate(:instance_metadata, domain: domain, software: 'mastodon', instance_name: nil, metadata_updated_at: 1.hour.ago)
+      it 'does not re-schedule fresh metadata even when fields are missing' do
+        Fabricate(:instance_metadata, domain: domain, software: nil, instance_name: nil, metadata_updated_at: 1.hour.ago)
 
         serializer = test_serializer_class.new(serializable_object, domain: domain)
         serializer.instance_metadata
 
-        expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with(domain)
+        expect(InstanceMetadataUpdateWorker).to_not have_received(:perform_async)
       end
 
       it 'schedules update when metadata is outdated' do

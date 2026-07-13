@@ -39,6 +39,9 @@ export const AccountBio: React.FC<AccountBioProps> = ({
     const account = state.accounts.get(accountId);
     return account?.emojis;
   });
+  const mfmEnabled = useAppSelector(
+    (state) => state.accounts.get(accountId)?.mfm ?? false,
+  );
 
   const plainText = useMemo(() => {
     if (!note) return '';
@@ -47,14 +50,15 @@ export const AccountBio: React.FC<AccountBioProps> = ({
   }, [note]);
 
   const hasMfm = useMemo(() => {
+    if (!mfmEnabled) return false;
     if (!plainText) return false;
     try {
-      const ast = mfm.parseSimple(plainText);
+      const ast = mfm.parse(plainText);
       return mfm.extract(ast, (node) => node.type === 'fn').length > 0;
     } catch {
       return false;
     }
-  }, [plainText]);
+  }, [plainText, mfmEnabled]);
 
   if (note.length === 0) {
     return null;

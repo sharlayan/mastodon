@@ -9,8 +9,12 @@ import { fromJS } from 'immutable';
 import { Helmet } from '@unhead/react/helmet';
 
 import ArticleIcon from '@/material-icons/400-24px/article.svg?react';
+import CheckCircleIcon from '@/material-icons/400-24px/check_circle.svg?react';
+import ErrorIcon from '@/material-icons/400-24px/error.svg?react';
 import ExpandMoreIcon from '@/material-icons/400-24px/expand_more.svg?react';
+import InfoIcon from '@/material-icons/400-24px/info.svg?react';
 import RefreshIcon from '@/material-icons/400-24px/refresh.svg?react';
+import WarningIcon from '@/material-icons/400-24px/warning.svg?react';
 import {
   fetchBoardAnnouncements,
   readBoardAnnouncement,
@@ -21,7 +25,10 @@ import {
   moveColumn,
 } from 'flavours/glitch/actions/columns';
 import { openModal } from 'flavours/glitch/actions/modal';
-import type { ApiBoardAnnouncementJSON } from 'flavours/glitch/api_types/board_announcements';
+import type {
+  ApiBoardAnnouncementJSON,
+  ApiBoardAnnouncementIcon,
+} from 'flavours/glitch/api_types/board_announcements';
 import { Column } from 'flavours/glitch/components/column';
 import type { ColumnRef } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
@@ -96,6 +103,16 @@ const handleBoardAttribute: OnAttributeHandler = (name, value) => {
   return undefined;
 };
 
+const ICON_COMPONENTS: Record<
+  ApiBoardAnnouncementIcon,
+  React.FC<React.SVGProps<SVGSVGElement>>
+> = {
+  info: InfoIcon,
+  warning: WarningIcon,
+  error: ErrorIcon,
+  success: CheckCircleIcon,
+};
+
 const messages = defineMessages({
   heading: {
     id: 'column.board_announcements',
@@ -104,6 +121,10 @@ const messages = defineMessages({
   refresh: {
     id: 'board_announcements.refresh',
     defaultMessage: 'Refresh',
+  },
+  markRead: {
+    id: 'board_announcements.mark_read',
+    defaultMessage: 'Got it',
   },
 });
 
@@ -145,6 +166,10 @@ const Announcement: React.FC<{
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
   }, []);
+
+  const handleMarkRead = useCallback(() => {
+    void dispatch(readBoardAnnouncement({ id: announcement.id }));
+  }, [dispatch, announcement.id]);
 
   const handleContentClick = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -204,6 +229,11 @@ const Announcement: React.FC<{
 
   const heading = (
     <>
+      <Icon
+        id={`board-announcement-${announcement.icon}`}
+        icon={ICON_COMPONENTS[announcement.icon]}
+        className={`board-announcement__icon board-announcement__icon--${announcement.icon}`}
+      />
       <h2 className='board-announcement__title'>{announcement.title}</h2>
       {date}
     </>
@@ -211,10 +241,14 @@ const Announcement: React.FC<{
 
   return (
     <article
-      className={classNames('board-announcement', {
-        'board-announcement--wide': wide,
-        'board-announcement--collapsed': !expanded,
-      })}
+      className={classNames(
+        'board-announcement',
+        `board-announcement--icon-${announcement.icon}`,
+        {
+          'board-announcement--wide': wide,
+          'board-announcement--collapsed': !expanded,
+        },
+      )}
     >
       <button
         type='button'
@@ -244,6 +278,13 @@ const Announcement: React.FC<{
             reactions={announcement.reactions}
             id={announcement.id}
           />
+          {announcement.need_confirmation_to_read && !announcement.read && (
+            <div className='board-announcement__confirm'>
+              <button type='button' className='button' onClick={handleMarkRead}>
+                {intl.formatMessage(messages.markRead)}
+              </button>
+            </div>
+          )}
         </>
       )}
     </article>
@@ -273,7 +314,7 @@ const BoardAnnouncements: React.FC<{
 
   useEffect(() => {
     items
-      .filter((item) => !item.read)
+      .filter((item) => !item.read && !item.need_confirmation_to_read)
       .forEach((item) => {
         void dispatch(readBoardAnnouncement({ id: item.id }));
       });

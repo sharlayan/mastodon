@@ -99,6 +99,15 @@ class LocalSettingsPage extends PureComponent {
           <FormattedMessage id='settings.show_follow_list_bio' defaultMessage='Show bio and follow message in follow lists' />
           <span className='hint'><FormattedMessage id='settings.show_follow_list_bio.hint' defaultMessage='Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists' /></span>
         </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
+          item={['show_others_online_status']}
+          id='mastodon-settings--show_others_online_status'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.show_others_online_status' defaultMessage="Show other people's online status" />
+          <span className='hint'><FormattedMessage id='settings.show_others_online_status.hint' defaultMessage='Display an online, recently active, or offline indicator on the avatars of users who share their status' /></span>
+        </LocalSettingsPageItem>
 
         <section>
           <h2><FormattedMessage id='settings.layout_opts' defaultMessage='Layout options' /></h2>

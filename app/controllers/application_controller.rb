@@ -28,6 +28,7 @@ class ApplicationController < ActionController::Base
 
   before_action :store_referrer, except: :raise_not_found, if: :devise_controller?
   before_action :require_functional!, if: :user_signed_in?
+  after_action :update_user_activity, if: :user_signed_in?
 
   before_action :set_cache_control_defaults
 
@@ -58,6 +59,12 @@ class ApplicationController < ActionController::Base
     settings_two_factor_authentication_methods_path(path_params)
   end
 
+  def update_user_activity
+    return unless Setting.online_status_enabled
+
+    current_user.update_last_active!
+  end
+
   def require_functional!
     return if current_user.functional?
 
@@ -84,6 +91,15 @@ class ApplicationController < ActionController::Base
         end
       end
     end
+  end
+
+  def require_local_content_access!(mode)
+    return if mode == 'public'
+
+    authenticate_user!
+    return if performed?
+
+    not_found if mode == 'disabled' && !current_user.can?(:view_feeds)
   end
 
   def skip_csrf_meta_tags?

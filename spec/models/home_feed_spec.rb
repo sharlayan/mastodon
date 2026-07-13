@@ -84,6 +84,14 @@ RSpec.describe HomeFeed do
         expect(results.map(&:id)).to eq [15, 14, 12, 10, 3]
       end
 
+      it 'builds filtering relationships once for the candidate collection' do
+        allow(FeedManager.instance).to receive(:build_crutches).and_call_original
+
+        subject.get(5)
+
+        expect(FeedManager.instance).to have_received(:build_crutches).once
+      end
+
       it 'with since_id present' do
         results = subject.get(5, nil, 3, nil)
         expect(results.map(&:id)).to eq [15, 14, 12, 10]

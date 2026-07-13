@@ -15,14 +15,14 @@ class Api::V1::Antennas::TagsController < Api::BaseController
 
   def create
     ApplicationRecord.transaction do
+      validate_limit!
+
       tags_from_names.each do |tag|
         @antenna.antenna_tags.create_or_find_by!(tag_id: tag.id) do |antenna_tag|
           antenna_tag.exclude = false
         end
       end
     end
-
-    raise Mastodon::ValidationError, I18n.t('antennas.errors.too_many_tags') if @antenna.antenna_tags.includes_only.count > Antenna::TAGS_PER_ANTENNA_LIMIT
 
     render json: @antenna.tags.merge(AntennaTag.includes_only), each_serializer: REST::TagSerializer
   end
@@ -44,6 +44,11 @@ class Api::V1::Antennas::TagsController < Api::BaseController
   end
 
   def tag_names
-    Array(params.permit(tags: [])[:tags]).filter_map { |tag| tag.to_s.strip.delete_prefix('#').presence }
+    Array(params.permit(tags: [])[:tags]).filter_map { |tag| tag.to_s.strip.delete_prefix('#').presence }.uniq
+  end
+
+  def validate_limit!
+    existing_names = @antenna.tags.merge(AntennaTag.includes_only).pluck(:name)
+    raise Mastodon::ValidationError, I18n.t('antennas.errors.too_many_tags') if (existing_names | tag_names).size > Antenna::TAGS_PER_ANTENNA_LIMIT
   end
 end

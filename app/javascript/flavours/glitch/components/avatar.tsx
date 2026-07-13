@@ -1,8 +1,11 @@
 import { useState, useCallback } from 'react';
 
+import { defineMessages, useIntl } from 'react-intl';
+
 import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 
+import type { ApiOnlineStatus } from 'flavours/glitch/api_types/accounts';
 import { useHovering } from 'flavours/glitch/hooks/useHovering';
 import {
   autoPlayGif,
@@ -14,10 +17,20 @@ import {
   showFederatedAvatarDecorations,
 } from 'flavours/glitch/initial_state';
 import type { Account, AccountShapeFull } from 'flavours/glitch/models/account';
+import { useAppSelector } from 'flavours/glitch/store';
 
 import { useAccount } from '../hooks/useAccount';
 
 import { AvatarDecoration } from './avatar_decoration';
+
+const messages = defineMessages({
+  online: { id: 'account.online_status.online', defaultMessage: 'Online' },
+  active: {
+    id: 'account.online_status.active',
+    defaultMessage: 'Recently active',
+  },
+  offline: { id: 'account.online_status.offline', defaultMessage: 'Offline' },
+});
 
 interface Props {
   account?: Pick<
@@ -25,6 +38,7 @@ interface Props {
     'id' | 'acct' | 'avatar' | 'avatar_static'
   > & {
     avatar_decorations?: Account['avatar_decorations'];
+    online_status?: ApiOnlineStatus;
   };
   alt?: string;
   size?: number;
@@ -51,6 +65,7 @@ export const Avatar: React.FC<Props> = ({
   counterBorderColor,
   forceShowDecorations = false,
 }) => {
+  const intl = useIntl();
   const { hovering, handleMouseEnter, handleMouseLeave } = useHovering(animate);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -70,6 +85,21 @@ export const Avatar: React.FC<Props> = ({
   const handleError = useCallback(() => {
     setError(true);
   }, [setError]);
+
+  const showOthersOnlineStatus = useAppSelector(
+    (state) =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      state.local_settings.getIn(
+        ['show_others_online_status'],
+        false,
+      ) as boolean,
+  );
+  const onlineStatus = account?.online_status;
+  const showOnlineStatus =
+    showOthersOnlineStatus &&
+    (onlineStatus === 'online' ||
+      onlineStatus === 'active' ||
+      onlineStatus === 'offline');
 
   const isRemote = account?.acct.includes('@') ?? false;
   const isGuest = !me;
@@ -111,6 +141,16 @@ export const Avatar: React.FC<Props> = ({
         >
           {counter}
         </span>
+      )}
+
+      {showOnlineStatus && (
+        <span
+          className={classNames(
+            'account__avatar__online',
+            `account__avatar__online--${onlineStatus}`,
+          )}
+          title={intl.formatMessage(messages[onlineStatus])}
+        />
       )}
     </span>
   );

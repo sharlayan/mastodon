@@ -37,6 +37,8 @@ module Account::Associations
         has_many :circles, dependent: :destroy
         has_many :circle_accounts, dependent: :destroy
         has_many :clips, dependent: :destroy
+        has_many :clip_favourites, dependent: :destroy
+        has_many :favourite_clips, through: :clip_favourites, source: :clip
         has_many :antennas, inverse_of: :account, dependent: :destroy
         has_many :polls
         has_many :report_notes

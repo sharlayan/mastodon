@@ -69,7 +69,12 @@ class FollowService < BaseService
     follow_request = @source_account.request_follow!(@target_account, **follow_options.merge(rate_limit: @options[:with_rate_limit], bypass_limit: @options[:bypass_limit]))
 
     if @target_account.local?
-      LocalNotificationWorker.perform_async(@target_account.id, follow_request.id, follow_request.class.name, 'follow_request')
+      if @target_account.auto_accept_follow_from?(@source_account)
+        AuthorizeFollowService.new.call(@source_account, @target_account)
+        LocalNotificationWorker.perform_async(@target_account.id, ::Follow.find_by(account: @source_account, target_account: @target_account).id, 'Follow', 'follow')
+      else
+        LocalNotificationWorker.perform_async(@target_account.id, follow_request.id, follow_request.class.name, 'follow_request')
+      end
     elsif @target_account.activitypub?
       ActivityPub::DeliveryWorker.perform_async(build_json(follow_request), @source_account.id, @target_account.inbox_url, { 'bypass_availability' => true })
     end

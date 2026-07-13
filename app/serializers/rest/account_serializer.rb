@@ -26,6 +26,13 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   attribute :avatar_decorations, if: :decorations_enabled?
 
+  attribute :mfm, if: :mfm?
+
+  attribute :server_features, if: :instance_metadata_enabled?
+  attribute :software, if: :instance_metadata_enabled?
+
+  attribute :online_status
+
   class AccountDecorator < SimpleDelegator
     def self.model_name
       Account.model_name
@@ -190,6 +197,49 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   def decorations_enabled?
     Setting.avatar_decorations_enabled && !object.avatar_decorations_blocked
+  end
+
+  def online_status
+    return 'unknown' unless Setting.online_status_enabled
+    return 'unknown' if current_user.nil? || object.unavailable? || object.user.nil?
+
+    object.user.online_status
+  end
+
+  def mfm
+    true
+  end
+
+  def mfm?
+    return false if object.unavailable?
+    return false unless object.mfm?
+
+    object.local? || instance_supports_mfm?
+  end
+
+  def instance_supports_mfm?
+    return false unless Setting.instance_metadata_enabled
+    return false if object.domain.blank?
+
+    InstanceMetadata.cached_by_domain(object.domain)&.misskey_based? || false
+  end
+
+  def instance_metadata_enabled?
+    Setting.instance_metadata_enabled
+  end
+
+  def server_features
+    return InstanceMetadata.local_server_features if object.local?
+    return InstanceMetadata.blank_server_features if object.domain.blank?
+
+    InstanceMetadata.cached_by_domain(object.domain)&.server_features || InstanceMetadata.blank_server_features
+  end
+
+  def software
+    return 'mastodon' if object.local?
+    return nil if object.domain.blank?
+
+    InstanceMetadata.cached_by_domain(object.domain)&.software
   end
 
   def avatar_decorations

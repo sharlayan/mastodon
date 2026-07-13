@@ -35,8 +35,7 @@ module InstanceMetadataSerializable
   end
 
   def fetch_or_create_metadata(domain)
-    InstanceMetadata.find_by(domain: domain) ||
-      InstanceMetadata.create(domain: domain)
+    InstanceMetadata.cached_find_or_create_by_domain(domain)
   rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved => e
     Rails.logger.warn("Could not create InstanceMetadata for #{domain}: #{e.message}")
     nil
@@ -44,11 +43,8 @@ module InstanceMetadataSerializable
 
   def should_update_metadata?(metadata)
     return false if metadata.nil?
-    return true if metadata.software.blank?
-    return true if metadata.instance_name.blank?
-    return true if metadata.metadata_needs_update?
 
-    false
+    metadata.metadata_needs_update?
   end
 
   def schedule_metadata_update(domain)

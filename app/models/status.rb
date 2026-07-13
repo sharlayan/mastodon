@@ -155,10 +155,22 @@ class Status < ApplicationRecord
   scope :not_domain_muted_by_account, lambda { |account|
     return self if account.muted_from_timeline_domains.blank?
 
+    followed_account_ids = Follow.where(account_id: account.id).select(:target_account_id)
+
     left_outer_joins(:account)
       .where('accounts.domain is NULL or statuses.account_id in (?) or accounts.domain not in (?)',
-             Follow.where(account_id: account.id).select(:target_account_id),
+             followed_account_ids,
              account.muted_from_timeline_domains)
+      .where(<<~SQL.squish, followed_account_ids, account.muted_from_timeline_domains)
+        statuses.reblog_of_id IS NULL OR NOT EXISTS (
+          SELECT 1
+          FROM statuses reblogged_statuses
+          INNER JOIN accounts reblogged_accounts ON reblogged_accounts.id = reblogged_statuses.account_id
+          WHERE reblogged_statuses.id = statuses.reblog_of_id
+            AND reblogged_statuses.account_id NOT IN (?)
+            AND reblogged_accounts.domain IN (?)
+        )
+      SQL
   }
   scope :tagged_with_all, lambda { |tag_ids|
     Array(tag_ids).map(&:to_i).reduce(self) do |result, id|
@@ -444,6 +456,24 @@ class Status < ApplicationRecord
       StatusReaction.select(:status_id).where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
     end
 
+    def reaction_groups_map(status_ids, account_id = nil)
+      scope = StatusReaction.where(status_id: status_ids)
+      excluded_account_ids = Account.find_by(id: account_id)&.excluded_from_timeline_account_ids if account_id.present?
+      scope = scope.where.not(account_id: excluded_account_ids) if excluded_account_ids.present?
+
+      records = scope
+        .group(:status_id, :name, :custom_emoji_id)
+        .order(Arel.sql('MIN(status_reactions.created_at)').asc)
+        .select(
+          [:status_id, :name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
+            values << value_for_reaction_me_column(account_id)
+          end
+        ).to_a
+
+      ActiveRecord::Associations::Preloader.new(records: records, associations: { custom_emoji: :local_counterpart }).call
+      records.group_by(&:status_id)
+    end
+
     def bookmarks_map(status_ids, account_id)
       Bookmark.select(:status_id).where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
     end
@@ -451,6 +481,29 @@ class Status < ApplicationRecord
     def reblogs_map(status_ids, account_id)
       unscoped.select(:reblog_of_id).where(reblog_of_id: status_ids).where(account_id: account_id).to_h { |s| [s.reblog_of_id, true] }
     end
+
+    private
+
+    def value_for_reaction_me_column(account_id)
+      return 'FALSE AS me' if account_id.nil?
+
+      <<~SQL.squish
+        EXISTS(
+          SELECT 1
+          FROM status_reactions inner_reactions
+          WHERE inner_reactions.account_id = #{account_id.to_i}
+            AND inner_reactions.status_id = status_reactions.status_id
+            AND inner_reactions.name = status_reactions.name
+            AND (
+              inner_reactions.custom_emoji_id = status_reactions.custom_emoji_id
+              OR inner_reactions.custom_emoji_id IS NULL
+                AND status_reactions.custom_emoji_id IS NULL
+            )
+        ) AS me
+      SQL
+    end
+
+    public
 
     def mutes_map(conversation_ids, account_id)
       ConversationMute.select(:conversation_id).where(conversation_id: conversation_ids).where(account_id: account_id).to_h { |m| [m.conversation_id, true] }

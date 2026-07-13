@@ -26,7 +26,7 @@ class REST::AntennaSerializer < ActiveModel::Serializer
   end
 
   def accounts
-    object.antenna_accounts.includes_only.pluck(:account_id).map(&:to_s)
+    object.antenna_accounts.reject(&:exclude?).map { |item| item.account_id.to_s }
   end
 
   def exclude_accounts
@@ -34,7 +34,7 @@ class REST::AntennaSerializer < ActiveModel::Serializer
   end
 
   def domains
-    object.antenna_domains.includes_only.pluck(:name)
+    object.antenna_domains.reject(&:exclude?).map(&:name)
   end
 
   def exclude_domains
@@ -42,7 +42,7 @@ class REST::AntennaSerializer < ActiveModel::Serializer
   end
 
   def tags
-    object.tags.merge(AntennaTag.includes_only).pluck(:name)
+    object.antenna_tags.reject(&:exclude?).filter_map { |item| item.tag&.name }
   end
 
   def exclude_tags

@@ -22,6 +22,25 @@ RSpec.describe PublishScheduledStatusWorker do
 
         expect(ScheduledStatus.find_by(id: scheduled_status.id)).to be_nil
       end
+
+      context 'with an implicit quote' do
+        let(:quoted_status) { Fabricate(:status, account: Fabricate(:account, domain: 'example.com')) }
+        let(:scheduled_status) do
+          Fabricate(
+            :scheduled_status,
+            account: user.account,
+            params: { text: 'Hello world, future!', quoted_status_id: quoted_status.id, implicit_quote_from_url: true }
+          )
+        end
+
+        it 'publishes a legacy accepted quote without requesting approval' do
+          status = scheduled_status.account.statuses.first
+
+          expect(status.quote).to be_legacy
+          expect(status.quote).to be_accepted
+          expect(ActivityPub::QuoteRequestWorker.jobs).to be_empty
+        end
+      end
     end
 
     context 'when the account is disabled' do

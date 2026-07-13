@@ -17,6 +17,7 @@
 #  avatar_remote_url             :string
 #  avatar_storage_schema_version :integer
 #  avatar_updated_at             :datetime
+#  birthday                      :string(32)
 #  collections_url               :string
 #  discoverable                  :boolean
 #  display_name                  :string           default(""), not null
@@ -39,8 +40,10 @@
 #  inbox_url                     :string           default(""), not null
 #  indexable                     :boolean          default(FALSE), not null
 #  last_webfingered_at           :datetime
+#  location                      :string(256)
 #  locked                        :boolean          default(FALSE), not null
 #  memorial                      :boolean          default(FALSE), not null
+#  mfm                           :boolean          default(FALSE), not null
 #  note                          :text             default(""), not null
 #  outbox_url                    :string           default(""), not null
 #  private_key                   :text
@@ -490,6 +493,7 @@ class Account < ApplicationRecord
   end
 
   before_validation :prepare_contents, if: :local?
+  before_save :recompute_mfm, if: :mfm_source_changed?
   before_create :generate_keys
   before_destroy :clean_feed_manager
 
@@ -515,7 +519,10 @@ class Account < ApplicationRecord
   private
 
   def should_update_instance_metadata?
-    domain.present? && (InstanceMetadata.where(domain: domain).none? || InstanceMetadata.find_by(domain: domain)&.theme_color_needs_update?)
+    return false if domain.blank?
+
+    metadata = InstanceMetadata.find_by(domain: domain)
+    metadata.nil? || metadata.theme_color_needs_update?
   end
 
   def schedule_instance_metadata_update
@@ -525,6 +532,15 @@ class Account < ApplicationRecord
   def prepare_contents
     display_name&.strip!
     note&.strip!
+  end
+
+  def mfm_source_changed?
+    will_save_change_to_note? || will_save_change_to_fields?
+  end
+
+  def recompute_mfm
+    self.mfm = MfmDetector.contains_mfm?(note) ||
+               fields.any? { |field| MfmDetector.contains_mfm?(field.value) }
   end
 
   def generate_keys

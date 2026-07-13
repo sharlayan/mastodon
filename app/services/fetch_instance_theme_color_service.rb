@@ -18,7 +18,10 @@ class FetchInstanceThemeColorService < BaseService
     Errno::ECONNREFUSED,
     Errno::EHOSTUNREACH,
     Errno::ETIMEDOUT,
+    Mastodon::LengthValidationError,
   ].freeze
+
+  INSTANCE_NAME_MAX_LENGTH = 100
 
   ALLOWED_FAVICON_CONTENT_TYPES = %w(
     image/png
@@ -94,9 +97,9 @@ class FetchInstanceThemeColorService < BaseService
 
     # nodeinfo가 도달 가능했을 때만 갱신, 아니면 일시적 실패가 known-true 플래그를 초기화함.
     if fetch_nodeinfo.present?
-      nodeinfo_features = extract_nodeinfo_features
-      attributes[:supports_avatar_decorations] = nodeinfo_features.include?('avatarDecorations')
-      attributes[:features] = nodeinfo_features
+      wire_features = extract_nodeinfo_features
+      attributes[:supports_avatar_decorations] = wire_features.include?('avatarDecorations')
+      attributes[:features] = InstanceMetadata.features_from_wire(wire_features)
     end
 
     @metadata.update(attributes)
@@ -140,22 +143,61 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def fetch_homepage_html
-    @homepage_html ||= begin
-      url = "https://#{@domain}"
-      request = Request.new(:get, url)
-      request.add_headers('User-Agent' => Mastodon::Version.user_agent)
-      html = nil
-      request.perform do |response|
-        html = response.body_with_limit if response.code == 200
+    return @homepage_html if defined?(@homepage_fetched)
+
+    @homepage_fetched = true
+    @homepage_html = nil
+    @homepage_charset = nil
+
+    url = "https://#{@domain}"
+    request = Request.new(:get, url)
+    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
+    request.perform do |response|
+      if response.code == 200
+        @homepage_charset = response.charset
+        @homepage_html = response.body_with_limit
       end
-      html
     end
+
+    @homepage_html
   rescue *NETWORK_ERRORS
-    nil
+    @homepage_html = nil
   end
 
   def parsed_homepage
-    @parsed_homepage ||= Nokogiri::HTML(fetch_homepage_html) if fetch_homepage_html
+    return @parsed_homepage if defined?(@parsed_homepage)
+
+    html = fetch_homepage_html
+    @parsed_homepage = html.present? ? Nokogiri::HTML(html, nil, detect_html_encoding(html)) : nil
+  end
+
+  def detect_html_encoding(html)
+    [header_encoding(@homepage_charset), charlock_encoding(html)].compact.each do |enc|
+      return enc if html.dup.force_encoding(enc).valid_encoding?
+    end
+
+    nil
+  end
+
+  def charlock_encoding(html)
+    guess = encoding_detector.detect(html, @homepage_charset)
+    return nil if guess.nil?
+
+    guess[:confidence].to_i > 60 ? guess[:encoding] : nil
+  end
+
+  def header_encoding(charset)
+    return nil if charset.blank?
+
+    Encoding.find(charset).name
+  rescue ArgumentError
+    nil
+  end
+
+  def encoding_detector
+    @encoding_detector ||= CharlockHolmes::EncodingDetector.new.tap do |detector|
+      detector.strip_tags = true
+    end
   end
 
   def fetch_nodeinfo
@@ -180,15 +222,83 @@ class FetchInstanceThemeColorService < BaseService
   def extract_favicon_url
     return @favicon_from_api if @favicon_from_api.present?
 
+    manifest_icon = extract_icon_from_manifest
+    return manifest_icon if manifest_icon.present?
+
     return "https://#{@domain}/favicon.ico" unless parsed_homepage
 
-    app_icon = parsed_homepage.at_css('link[rel="apple-touch-icon"], link[rel="apple-touch-icon-precomposed"]')
-    return resolve_url(app_icon['href']) if app_icon&.[]('href') && resolve_url(app_icon['href'])
+    app_icon = last_icon_href('link[rel~="apple-touch-icon-precomposed"]') || last_icon_href('link[rel~="apple-touch-icon"]')
+    return app_icon if app_icon.present?
 
-    favicon_link = parsed_homepage.at_css('link[rel="icon"], link[rel="shortcut icon"]')
-    return resolve_url(favicon_link['href']) || "https://#{@domain}/favicon.ico" if favicon_link && favicon_link['href']
+    favicon_link = last_icon_href('link[rel~="icon"]')
+    return favicon_link || "https://#{@domain}/favicon.ico" if favicon_link.present?
 
     "https://#{@domain}/favicon.ico"
+  end
+
+  def last_icon_href(selector)
+    return nil unless parsed_homepage
+
+    link = parsed_homepage.css(selector).to_a.reverse.find { |node| node['href'].present? }
+    return nil if link.nil?
+
+    resolved = resolve_url(link['href'])
+    return nil if resolved.blank? || resolved.start_with?('data:')
+
+    resolved
+  end
+
+  def extract_icon_from_manifest
+    manifest = fetch_manifest
+    return nil if manifest.nil?
+
+    icons = manifest['icons']
+    return nil unless icons.is_a?(Array)
+
+    candidates = icons.select { |icon| icon.is_a?(Hash) && icon['src'].present? }
+    return nil if candidates.empty?
+
+    best = candidates.max_by { |icon| manifest_icon_area(icon['sizes']) }
+    src = best['src']
+
+    resolved = resolve_url(src)
+    return nil if resolved.blank? || resolved.start_with?('data:')
+
+    resolved
+  rescue *NETWORK_ERRORS, JSON::ParserError
+    nil
+  end
+
+  def manifest_icon_area(sizes)
+    return 0 if sizes.blank?
+
+    sizes.to_s.split.filter_map do |size|
+      match = size.match(/\A(\d+)x(\d+)\z/i)
+      match ? match[1].to_i * match[2].to_i : nil
+    end.max || 0
+  end
+
+  def fetch_manifest
+    return @manifest if defined?(@manifest_fetched)
+
+    @manifest_fetched = true
+    @manifest = fetch_manifest_uncached
+  end
+
+  def fetch_manifest_uncached
+    url = "https://#{@domain}/manifest.json"
+
+    request = Request.new(:get, url)
+    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
+
+    manifest = nil
+    request.perform do |response|
+      manifest = JSON.parse(response.body_with_limit) if response.code == 200
+    end
+
+    manifest
+  rescue *NETWORK_ERRORS, JSON::ParserError
+    nil
   end
 
   def extract_nodeinfo_features
@@ -221,21 +331,34 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def determine_instance_name(misskey_name)
-    return misskey_name if usable_instance_name?(misskey_name)
+    name = normalize_instance_name(misskey_name)
+    return name if usable_instance_name?(name)
 
     nodeinfo = fetch_nodeinfo
-    nodeinfo_name = nodeinfo&.dig('metadata', 'nodeName')
-    return nodeinfo_name if usable_instance_name?(nodeinfo_name)
+    name = normalize_instance_name(nodeinfo&.dig('metadata', 'nodeName'))
+    return name if usable_instance_name?(name)
 
-    html_name = extract_instance_name_from_html
-    return html_name if usable_instance_name?(html_name)
+    name = normalize_instance_name(extract_instance_name_from_html)
+    return name if usable_instance_name?(name)
 
-    api_name = fetch_instance_name_from_api
-    return api_name if usable_instance_name?(api_name)
+    name = normalize_instance_name(fetch_instance_name_from_api)
+    return name if usable_instance_name?(name)
 
     @domain
   rescue *NETWORK_ERRORS, JSON::ParserError
     @domain
+  end
+
+  def normalize_instance_name(name)
+    return nil if name.nil?
+
+    text = name.to_s
+    text = text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') unless text.encoding == Encoding::UTF_8
+    text = text.scrub('').gsub(/\s+/, ' ').strip
+
+    return nil if text.blank?
+
+    text.truncate(INSTANCE_NAME_MAX_LENGTH)
   end
 
   def usable_instance_name?(name)
@@ -286,11 +409,11 @@ class FetchInstanceThemeColorService < BaseService
 
         meta_data = JSON.parse(response_body)
 
+        @favicon_from_api = resolve_url(meta_data['iconUrl']) if meta_data['iconUrl'].present?
+
         return meta_data['name'] if meta_data['name'].present?
 
         return meta_data['nodeName'] if meta_data['nodeName'].present?
-
-        @favicon_from_api = meta_data['iconUrl'] if meta_data['iconUrl'].present?
       end
     end
 
@@ -432,6 +555,7 @@ class FetchInstanceThemeColorService < BaseService
 
   def download_and_save_favicon(favicon_url)
     return nil if favicon_url.blank?
+    return nil if favicon_url.start_with?('data:')
 
     begin
       URI.parse(favicon_url)

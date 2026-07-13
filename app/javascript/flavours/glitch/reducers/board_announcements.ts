@@ -62,7 +62,9 @@ export const boardAnnouncementsReducer = createReducer<BoardAnnouncementsState>(
         state.items = action.payload;
         state.isLoading = false;
         state.loaded = true;
-        state.unreadCount = action.payload.filter((item) => !item.read).length;
+        state.unreadCount = action.payload.filter(
+          (item) => !item.read && !item.silence,
+        ).length;
       })
       .addCase(
         fetchBoardAnnouncementsUnreadCount.fulfilled,

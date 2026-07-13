@@ -20,6 +20,34 @@ RSpec.describe 'API V1 Accounts Statuses' do
         .to start_with('application/json')
     end
 
+    context 'when local account status access is disabled' do
+      before do
+        Setting.local_account_statuses_access = 'disabled'
+      end
+
+      it 'returns not found for a regular user viewing a local account' do
+        get "/api/v1/accounts/#{user.account.id}/statuses", headers: headers
+
+        expect(response).to have_http_status(404)
+      end
+
+      it 'allows a user with the view feeds permission' do
+        user.update!(role: Fabricate(:user_role, permissions: UserRole::FLAGS[:view_feeds]))
+
+        get "/api/v1/accounts/#{user.account.id}/statuses", headers: headers
+
+        expect(response).to have_http_status(200)
+      end
+
+      it 'does not restrict a remote account' do
+        account = Fabricate(:account, domain: 'example.com')
+
+        get "/api/v1/accounts/#{account.id}/statuses", headers: headers
+
+        expect(response).to have_http_status(200)
+      end
+    end
+
     context 'with only media' do
       let(:status_attachments) { [Fabricate(:media_attachment, account: user.account)] }
       let(:removed_status_attachments) { [Fabricate(:media_attachment, account: user.account)] }

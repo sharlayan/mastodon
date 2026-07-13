@@ -367,10 +367,21 @@ en:
       author: 'Author: %{name}'
       created_msg: Announcement successfully created!
       destroyed_msg: Announcement successfully deleted!
+      display_hint: A banner announcement is also shown at the top of the timeline until dismissed.
+      displays:
+        banner: Banner
+        normal: Normal
       edit:
         title: Edit announcement
       empty: No announcements found.
+      for_existing_users_hint: Only show this announcement to accounts that existed when it was published (hide from newer sign-ups).
+      icons:
+        error: Error
+        info: Info
+        success: Success
+        warning: Warning
       markdown_hint: You can use Markdown for formatting.
+      need_confirmation_to_read_hint: Require users to press a confirmation button before it is marked as read.
       media:
         add: Add media
         copied: Markdown copied to clipboard
@@ -385,6 +396,10 @@ en:
       publish_hint: Make this announcement visible to users.
       published: Published
       published_msg: Announcement successfully published!
+      read_count:
+        one: "%{count} read"
+        other: "%{count} reads"
+      silence_hint: Add silently without showing an unread badge or banner.
       sort_priority: Sort priority
       sort_priority_hint: Announcements are ordered newest first by default. A higher priority pins the announcement above others (default 0).
       title: Board announcements
@@ -1137,10 +1152,18 @@ en:
         title: Board Announcements
         enabled: Enable board announcements
         enabled_hint: Allow users to view the site-internal bulletin board announcements page. When disabled, the page and navigation link are hidden.
+      extensions:
+        title: Extensions
+      special_features:
+        title: Special features
       circles:
         title: Circles
         enabled: Enable circles
         enabled_hint: Allow users to create circles and publish posts visible only to selected followers.
+      auto_quote_from_url:
+        title: Auto quote from URL
+        enabled: Allow auto quote from post links
+        enabled_hint: Let users opt in to automatically turning fetchable fediverse post links in their posts into quotes, without asking the quoted author for permission. Each user must still enable it in their own preferences.
       clips:
         title: Clips
         enabled: Enable clips
@@ -1157,6 +1180,10 @@ en:
         title: Instance Information Bar
         enabled: Enable instance information bar and metadata collection
         enabled_hint: When enabled, posts from other servers show an instance information bar (name, theme color, favicon) and the server collects metadata about federated instances. When disabled, the bar is hidden and no instance metadata is fetched.
+      online_status:
+        title: Online Status
+        enabled: Enable online status indicators
+        enabled_hint: When enabled, users who opt in can share whether they are online, recently active, or offline, shown as a dot on their avatar. When disabled, no online status is collected or shown to anyone, regardless of user settings.
       rate_limit_bypass:
         title: API Rate Limit Bypass
         enabled: Allow privileged roles to bypass API rate limits
@@ -1205,6 +1232,7 @@ en:
       critical_update: Critical — please update quickly
       description: It is recommended to keep your Mastodon installation up to date to benefit from the latest fixes and features. Moreover, it is sometimes critical to update Mastodon in a timely manner to avoid security issues. For these reasons, Mastodon checks for updates every 30 minutes, and will notify you according to your email notification preferences.
       documentation_link: Learn more
+      nearing_eol: Support for the branch you are currently running will stop on %{date}, please consider updating.
       release_notes: Release notes
       supported_until: Support ends on %{date}
       title: Available updates
@@ -1213,6 +1241,7 @@ en:
         major: Major release
         minor: Minor release
         patch: Patch release — bugfixes and easy to apply changes
+      unsupported_branch: The branch you are currently running is unsupported, please update as soon as possible.
       unsupported_since: Unsupported since %{date}
       version: Version
     statuses:
@@ -1480,6 +1509,15 @@ en:
     auto_close_registrations:
       body: Due to a lack of recent moderator activity, registrations on %{instance} have been automatically switched to requiring manual review, to prevent %{instance} from being used as a platform for potential bad actors. You can switch it back to open registrations at any time.
       subject: Registrations for %{instance} have been automatically switched to requiring approval
+    end_of_support_out_of_support_warning:
+      body: The Mastodon version currently in use on your server is not supported anymore. We recommend you to update as soon as possible!
+      subject: Mastodon %{branch} used on %{instance} is now unsupported!
+    end_of_support_three_months_warning:
+      body: The Mastodon version currently in use on your server will stop being supported in 3 months. You may want to update to a newer branch ahead of time.
+      subject: Support for Mastodon %{branch} used on %{instance} to end in 3 months.
+    end_of_support_two_weeks_warning:
+      body: The Mastodon version currently in use on your server will stop being supported in 2 weeks. We recommend you update to a newer branch ahead of time.
+      subject: Support for Mastodon %{branch} used on %{instance} to end in 2 weeks.
     new_appeal:
       actions:
         delete_statuses: to delete their posts
@@ -2019,6 +2057,7 @@ en:
   circles:
     errors:
       limit: You have reached the maximum number of circles
+      too_many_accounts: You have reached the maximum number of accounts for this circle
   clips:
     errors:
       limit: You have reached the maximum number of clips
@@ -2156,6 +2195,7 @@ en:
     administration_emails: Admin email notifications
     email_events: Events for email notifications
     email_events_hint: 'Select events that you want to receive notifications for:'
+    moderation_emails: Moderation email notifications
   number:
     human:
       decimal_units:

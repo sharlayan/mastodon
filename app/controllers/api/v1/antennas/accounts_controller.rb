@@ -16,6 +16,8 @@ class Api::V1::Antennas::AccountsController < Api::BaseController
 
   def create
     ApplicationRecord.transaction do
+      validate_limit!
+
       account_ids.each do |account_id|
         @antenna.antenna_accounts.create_or_find_by!(account_id: account_id) do |antenna_account|
           antenna_account.exclude = false
@@ -23,7 +25,6 @@ class Api::V1::Antennas::AccountsController < Api::BaseController
       end
     end
 
-    validate_limit!
     render_empty
   end
 
@@ -43,7 +44,7 @@ class Api::V1::Antennas::AccountsController < Api::BaseController
   end
 
   def account_ids
-    Array(resource_params[:account_ids])
+    Array(resource_params[:account_ids]).filter_map { |account_id| account_id.to_s.strip.presence }.uniq
   end
 
   def resource_params
@@ -51,6 +52,7 @@ class Api::V1::Antennas::AccountsController < Api::BaseController
   end
 
   def validate_limit!
-    raise Mastodon::ValidationError, I18n.t('antennas.errors.too_many_accounts') if @antenna.antenna_accounts.includes_only.count > Antenna::ACCOUNTS_PER_ANTENNA_LIMIT
+    existing_ids = @antenna.antenna_accounts.includes_only.pluck(:account_id).map(&:to_s)
+    raise Mastodon::ValidationError, I18n.t('antennas.errors.too_many_accounts') if (existing_ids | account_ids).size > Antenna::ACCOUNTS_PER_ANTENNA_LIMIT
   end
 end

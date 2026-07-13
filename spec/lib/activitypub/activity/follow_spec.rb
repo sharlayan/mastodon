@@ -82,6 +82,24 @@ RSpec.describe ActivityPub::Activity::Follow do
           expect(sender.follow_requests.find_by(target_account: recipient).uri).to eq 'foo'
         end
       end
+
+      context 'when a silenced account follows a locked account with auto-accept enabled' do
+        let(:recipient_user) { Fabricate(:user, account_attributes: { locked: true }) }
+        let(:recipient) { recipient_user.account }
+
+        before do
+          recipient_user.settings['auto_accept_followed'] = true
+          recipient_user.save!
+          recipient.follow!(sender)
+          sender.touch(:silenced_at)
+          subject.perform
+        end
+
+        it 'keeps the follow request pending' do
+          expect(sender.following?(recipient)).to be false
+          expect(sender.requested?(recipient)).to be true
+        end
+      end
     end
 
     context 'when recipient blocks sender' do

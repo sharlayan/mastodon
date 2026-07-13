@@ -365,10 +365,21 @@ ko:
       author: '작성자: %{name}'
       created_msg: 공지사항이 성공적으로 작성되었습니다!
       destroyed_msg: 공지사항이 성공적으로 삭제되었습니다!
+      display_hint: 배너 공지는 확인 전까지 타임라인 상단에도 표시됩니다.
+      displays:
+        banner: 배너
+        normal: 일반
       edit:
         title: 공지사항 편집
       empty: 공지사항을 찾을 수 없습니다.
+      for_existing_users_hint: 이 공지를 게시 시점에 이미 존재하던 계정에게만 표시합니다(이후 가입자에게는 숨김).
+      icons:
+        error: 오류
+        info: 정보
+        success: 성공
+        warning: 경고
       markdown_hint: 서식을 위해 마크다운을 사용할 수 있습니다.
+      need_confirmation_to_read_hint: 읽음으로 처리되기 전에 사용자가 확인 버튼을 누르도록 요구합니다.
       media:
         add: 미디어 추가
         copied: 마크다운이 클립보드에 복사되었습니다
@@ -383,6 +394,9 @@ ko:
       publish_hint: 이 공지사항을 사용자에게 표시합니다.
       published: 게시됨
       published_msg: 공지사항이 성공적으로 게시되었습니다!
+      read_count:
+        other: "%{count}명 읽음"
+      silence_hint: 미읽음 배지나 배너 없이 조용히 추가합니다.
       sort_priority: 정렬 우선도
       sort_priority_hint: 공지사항은 기본적으로 최신순으로 정렬됩니다. 값이 높을수록 다른 공지보다 위에 고정됩니다(기본값 0).
       title: 게시판 공지사항
@@ -1111,10 +1125,18 @@ ko:
         title: 게시판형 공지사항
         enabled: 게시판형 공지사항 활성화
         enabled_hint: 사용자가 사이트 내 게시판형 공지사항 페이지를 볼 수 있도록 합니다. 비활성화하면 페이지와 네비게이션 링크가 숨겨집니다.
+      extensions:
+        title: 확장 기능
+      special_features:
+        title: 특수 기능
       circles:
         title: 서클
         enabled: 서클 기능 활성화
         enabled_hint: 사용자가 서클을 만들고 선택한 팔로워에게만 보이는 게시물을 작성할 수 있도록 합니다.
+      auto_quote_from_url:
+        title: URL 자동 인용
+        enabled: 게시물 링크 자동 인용 허용
+        enabled_hint: 사용자가 게시물에 포함된 가져올 수 있는 연합우주 게시물 링크를 원문 작성자에게 허용을 묻지 않고 자동으로 인용으로 변환하도록 선택할 수 있게 합니다. 각 사용자는 개인 환경설정에서 별도로 켜야 합니다.
       clips:
         title: 클립
         enabled: 클립 기능 활성화
@@ -1131,6 +1153,10 @@ ko:
         title: 서버 정보 바
         enabled: 서버 정보 바 및 인스턴스 메타데이터 수집 활성화
         enabled_hint: 활성화하면 다른 서버의 게시물에 서버 정보 바(이름, 테마 색상, 파비콘)가 표시되고 연합 인스턴스의 메타데이터를 수집합니다. 비활성화하면 정보 바가 숨겨지고 인스턴스 메타데이터를 가져오지 않습니다.
+      online_status:
+        title: 온라인 상태
+        enabled: 온라인 상태 표시 활성화
+        enabled_hint: 활성화하면, 사용하기로 선택한 사용자가 온라인·최근 활동·오프라인 상태를 아바타의 점으로 공유할 수 있습니다. 비활성화하면 사용자 설정과 관계없이 온라인 상태를 수집하지도, 누구에게도 표시하지도 않습니다.
       rate_limit_bypass:
         title: API 제한 우회
         enabled: 특정 권한에 API 제한 우회 허용
@@ -1949,6 +1975,7 @@ ko:
   circles:
     errors:
       limit: 서클 최대 개수를 초과합니다
+      too_many_accounts: 이 서클의 계정 최대 개수를 초과합니다
   clips:
     errors:
       limit: 클립 최대 개수를 초과합니다

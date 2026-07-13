@@ -8,7 +8,7 @@ class Api::V1::Accounts::ClipsController < Api::BaseController
   def index
     cache_if_unauthenticated!
     @clips = load_clips
-    render json: @clips, each_serializer: REST::ClipSerializer
+    render json: @clips, each_serializer: REST::ClipSerializer, relationships: ClipRelationshipsPresenter.new(@clips, current_account&.id)
   end
 
   private

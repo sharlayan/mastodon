@@ -18,7 +18,13 @@ import {
   MFM_SENSITIVE_FOLD_TAGS,
 } from './mfm_constants';
 import { MfmHoverContext } from './mfm_hover_context';
-import { validTime, validColor, safeParseFloat, clamp } from './mfm_security';
+import {
+  validTime,
+  validColor,
+  safeParseFloat,
+  clamp,
+  parseUnixTimestamp,
+} from './mfm_security';
 import { MfmSparkle } from './mfm_sparkle';
 
 export function hasSensitiveFoldTags(text: string): boolean {
@@ -66,11 +72,11 @@ export const MfmRenderer: React.FC<MfmRendererProps> = ({
 }) => {
   const ast = useMemo(() => {
     try {
-      return isProfile ? mfm.parseSimple(text) : mfm.parse(text);
+      return mfm.parse(text);
     } catch {
       return null;
     }
-  }, [text, isProfile]);
+  }, [text]);
 
   const [hovered, setHovered] = useState(false);
   const handleMouseEnter = useCallback(() => {
@@ -581,9 +587,8 @@ function renderMfmFunction(
       if (firstChild?.type !== 'text') {
         return <span key={key}>{children}</span>;
       }
-      const timestamp = parseInt(firstChild.props.text, 10);
-      if (isNaN(timestamp)) return <span key={key}>{children}</span>;
-      const date = new Date(timestamp * 1000);
+      const date = parseUnixTimestamp(firstChild.props.text);
+      if (!date) return <span key={key}>{children}</span>;
       return (
         <time key={key} dateTime={date.toISOString()} className='mfm-unixtime'>
           {date.toLocaleString()}

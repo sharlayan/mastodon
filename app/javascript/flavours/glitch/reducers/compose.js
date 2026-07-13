@@ -791,6 +791,7 @@ export const composeReducer = (state = initialState, action) => {
       map.set('sensitive', getParam('sensitive') || false);
       map.set('language', language || state.get('default_language'));
       map.set('scheduled_at', s.get('scheduled_at'));
+      map.setIn(['advanced_options', 'do_not_federate'], !!getParam('local_only'));
 
       if (spoilerText.length > 0) {
         map.set('spoiler', true);

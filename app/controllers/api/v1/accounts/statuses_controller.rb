@@ -2,8 +2,8 @@
 
 class Api::V1::Accounts::StatusesController < Api::BaseController
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }
-  before_action :require_user!, if: :require_auth?
   before_action :set_account
+  before_action :require_account_statuses_access!
 
   after_action :insert_pagination_headers
 
@@ -15,8 +15,8 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
 
   private
 
-  def require_auth?
-    Setting.local_account_statuses_access != 'public'
+  def require_account_statuses_access!
+    require_local_content_access!(Setting.local_account_statuses_access) if @account.local?
   end
 
   def set_account

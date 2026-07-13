@@ -72,6 +72,20 @@ class FeedManager
     !!filter(timeline_type, status, receiver)
   end
 
+  def filter_home_statuses(statuses, receiver, followed_tag_ids)
+    return statuses if statuses.empty?
+
+    crutches = build_crutches(receiver.id, statuses)
+
+    statuses.reject do |status|
+      if status.tags.any? { |tag| followed_tag_ids.include?(tag.id) }
+        filter_from_tags?(status, receiver.id, crutches)
+      else
+        filter_from_home(status, receiver.id, crutches, :home)
+      end
+    end
+  end
+
   # Add a status to a home feed and send a streaming API update
   # @param [Account] account
   # @param [Status] status
@@ -601,7 +615,13 @@ class FeedManager
       ((crutches[:active_mentions][status.id] || []) + [status.account_id])                                                      # For mentioned accounts or status account:
         .any? { |target_account_id| crutches[:blocking][target_account_id] || crutches[:muting][target_account_id] } ||          #   - Target account is muted or blocked?
       crutches[:blocked_by][status.account_id] ||                                                                                # Blocked by status account?
-      crutches[:domain_blocking][status.account.domain]                                                                          # Blocking domain of status account?
+      crutches[:domain_blocking][status.account.domain] ||                                                                       # Blocking domain of status account?
+      domain_muted_from_home?(status.account, crutches) ||
+      (status.reblog? && domain_muted_from_home?(status.reblog.account, crutches))
+  end
+
+  def domain_muted_from_home?(account, crutches)
+    crutches[:domain_muting_home][account.domain] && !crutches[:following][account.id]
   end
 
   # Adds a status to an account's feed, returning true if a status was
@@ -737,10 +757,12 @@ class FeedManager
   end
 
   def crutches_following(recipient_id, statuses, list)
+    target_account_ids = statuses.flat_map { |status| [status.account_id, status.in_reply_to_account_id, status.reblog&.account_id] }.compact
+
     if list.blank? || list.show_followed?
-      Follow.where(account_id: recipient_id, target_account_id: statuses.filter_map(&:in_reply_to_account_id)).pluck(:target_account_id).index_with(true)
+      Follow.where(account_id: recipient_id, target_account_id: target_account_ids).pluck(:target_account_id).index_with(true)
     elsif list.show_list?
-      ListAccount.where(list_id: list.id, account_id: statuses.filter_map(&:in_reply_to_account_id)).pluck(:account_id).index_with(true)
+      ListAccount.where(list_id: list.id, account_id: target_account_ids).pluck(:account_id).index_with(true)
     else
       {}
     end

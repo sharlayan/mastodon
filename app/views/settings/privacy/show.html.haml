@@ -19,6 +19,10 @@
   .fields-group
     = f.input :unlocked, as: :boolean, wrapper: :with_label
 
+  = f.simple_fields_for :settings, current_user.settings do |ff|
+    .fields-group
+      = ff.input :auto_accept_followed, wrapper: :with_label, glitch_only: true
+
   %h2= t('privacy.search')
 
   %p.lead= t('privacy.search_hint_html')
@@ -38,6 +42,9 @@
     - unless Setting.hide_followers_count
       .fields-group
         = ff.input :show_followers_count, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_show_followers_count'), hint: I18n.t('simple_form.hints.defaults.setting_show_followers_count'), glitch_only: true
+
+    .fields-group
+      = ff.input :show_online_status, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_show_online_status'), hint: I18n.t('simple_form.hints.defaults.setting_show_online_status')
 
     .fields-group
       = ff.input :show_application, wrapper: :with_label

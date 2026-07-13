@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_104100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -212,6 +212,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
     t.datetime "last_webfingered_at", precision: nil
     t.boolean "locked", default: false, null: false
     t.boolean "memorial", default: false, null: false
+    t.boolean "mfm", default: false, null: false
     t.bigint "moved_to_account_id"
     t.text "note", default: "", null: false
     t.string "outbox_url", default: "", null: false
@@ -322,6 +323,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
     t.boolean "exclude", default: false, null: false
     t.string "name", default: "", null: false
     t.datetime "updated_at", null: false
+    t.index ["antenna_id", "name"], name: "index_antenna_domains_on_antenna_id_and_name", unique: true
     t.index ["antenna_id"], name: "index_antenna_domains_on_antenna_id"
   end
 
@@ -482,8 +484,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
   create_table "board_announcements", force: :cascade do |t|
     t.bigint "account_id"
     t.datetime "created_at", null: false
+    t.string "display", default: "normal", null: false
+    t.boolean "for_existing_users", default: false, null: false
+    t.string "icon", default: "info", null: false
+    t.boolean "need_confirmation_to_read", default: false, null: false
     t.boolean "published", default: false, null: false
     t.datetime "published_at"
+    t.boolean "silence", default: false, null: false
     t.integer "sort_priority", default: 0, null: false
     t.text "text", default: "", null: false
     t.text "text_html", default: "", null: false
@@ -566,6 +573,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_circles_on_account_id"
+  end
+
+  create_table "clip_favourites", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "clip_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "clip_id"], name: "index_clip_favourites_on_account_id_and_clip_id", unique: true
+    t.index ["account_id"], name: "index_clip_favourites_on_account_id"
+    t.index ["clip_id"], name: "index_clip_favourites_on_clip_id"
   end
 
   create_table "clip_statuses", force: :cascade do |t|
@@ -1455,6 +1472,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
     t.index ["var"], name: "index_site_uploads_on_var", unique: true
   end
 
+  create_table "software_deprecations", force: :cascade do |t|
+    t.string "branch", null: false
+    t.datetime "created_at", null: false
+    t.date "end_of_support", null: false
+    t.datetime "updated_at", null: false
+    t.integer "warning_issued", null: false
+    t.index ["branch"], name: "index_software_deprecations_on_branch", unique: true
+  end
+
   create_table "software_updates", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.date "end_of_support"
@@ -1702,6 +1728,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
     t.string "email", default: "", null: false
     t.string "encrypted_password", default: "", null: false
     t.bigint "invite_id"
+    t.datetime "last_active_at"
     t.datetime "last_emailed_at", precision: nil
     t.datetime "last_sign_in_at", precision: nil
     t.string "locale"
@@ -1839,6 +1866,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_06_122112) do
   add_foreign_key "circle_statuses", "circles", on_delete: :cascade
   add_foreign_key "circle_statuses", "statuses", on_delete: :cascade
   add_foreign_key "circles", "accounts", on_delete: :cascade
+  add_foreign_key "clip_favourites", "accounts", on_delete: :cascade
+  add_foreign_key "clip_favourites", "clips", on_delete: :cascade
   add_foreign_key "clip_statuses", "clips", on_delete: :cascade
   add_foreign_key "clip_statuses", "statuses", on_delete: :cascade
   add_foreign_key "clips", "accounts", on_delete: :cascade
