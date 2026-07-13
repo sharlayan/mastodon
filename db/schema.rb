@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_12_143100) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_13_104100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -323,6 +323,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_12_143100) do
     t.boolean "exclude", default: false, null: false
     t.string "name", default: "", null: false
     t.datetime "updated_at", null: false
+    t.index ["antenna_id", "name"], name: "index_antenna_domains_on_antenna_id_and_name", unique: true
     t.index ["antenna_id"], name: "index_antenna_domains_on_antenna_id"
   end
 

@@ -2,6 +2,8 @@
 
 class DeliveryAntennaService
   def call(status, update, mode: :home)
+    return unless Setting.antenna_enabled
+
     @status = status
     @update = update
     @mode   = mode

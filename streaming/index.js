@@ -631,7 +631,15 @@ const startServer = async () => {
   const authorizeAntennaAccess = async (antennaId, req) => {
     const { accountId } = req;
 
-    const result = await pgPool.query('SELECT id, account_id FROM antennas WHERE id = $1 AND account_id = $2 LIMIT 1', [antennaId, accountId]);
+    const result = await pgPool.query(`
+      SELECT antennas.id, antennas.account_id
+      FROM antennas
+      LEFT JOIN settings ON settings.var = 'antenna_enabled'
+      WHERE antennas.id = $1
+        AND antennas.account_id = $2
+        AND COALESCE(settings.value, '--- true\n') = '--- true\n'
+      LIMIT 1
+    `, [antennaId, accountId]);
 
     if (result.rows.length === 0) {
       throw new AuthenticationError('Antenna not found');

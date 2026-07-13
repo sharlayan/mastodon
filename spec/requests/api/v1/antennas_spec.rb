@@ -67,4 +67,55 @@ RSpec.describe 'Antennas' do
       expect(antenna.antenna_domains.includes_only.pluck(:name)).to include('example.com')
     end
   end
+
+  describe 'POST /api/v1/antennas/:id/accounts' do
+    subject { post "/api/v1/antennas/#{antenna.id}/accounts", headers: headers, params: { account_ids: [extra_account.id.to_s] } }
+
+    let(:antenna) { Fabricate(:antenna, account: user.account) }
+    let(:existing_account) { Fabricate(:account) }
+    let(:extra_account) { Fabricate(:account) }
+
+    before do
+      stub_const 'Antenna::ACCOUNTS_PER_ANTENNA_LIMIT', 1
+      antenna.antenna_accounts.create!(account: existing_account)
+    end
+
+    it 'rejects limit overflow without creating extra conditions' do
+      expect { subject }.to_not(change { antenna.antenna_accounts.includes_only.count })
+      expect(response).to have_http_status(422)
+    end
+  end
+
+  describe 'POST /api/v1/antennas/:id/domains over limit' do
+    subject { post "/api/v1/antennas/#{antenna.id}/domains", headers: headers, params: { domains: ['extra.example'] } }
+
+    let(:antenna) { Fabricate(:antenna, account: user.account) }
+
+    before do
+      stub_const 'Antenna::DOMAINS_PER_ANTENNA_LIMIT', 1
+      antenna.antenna_domains.create!(name: 'existing.example')
+    end
+
+    it 'rejects limit overflow without creating extra conditions' do
+      expect { subject }.to_not(change { antenna.antenna_domains.includes_only.count })
+      expect(response).to have_http_status(422)
+    end
+  end
+
+  describe 'POST /api/v1/antennas/:id/tags' do
+    subject { post "/api/v1/antennas/#{antenna.id}/tags", headers: headers, params: { tags: ['extra'] } }
+
+    let(:antenna) { Fabricate(:antenna, account: user.account) }
+    let(:existing_tag) { Fabricate(:tag, name: 'existing') }
+
+    before do
+      stub_const 'Antenna::TAGS_PER_ANTENNA_LIMIT', 1
+      antenna.antenna_tags.create!(tag: existing_tag)
+    end
+
+    it 'rejects limit overflow without creating extra conditions' do
+      expect { subject }.to_not(change { antenna.antenna_tags.includes_only.count })
+      expect(response).to have_http_status(422)
+    end
+  end
 end

@@ -15,14 +15,14 @@ class Api::V1::Antennas::DomainsController < Api::BaseController
 
   def create
     ApplicationRecord.transaction do
+      validate_limit!
+
       domains.each do |domain|
         @antenna.antenna_domains.create_or_find_by!(name: domain) do |antenna_domain|
           antenna_domain.exclude = false
         end
       end
     end
-
-    raise Mastodon::ValidationError, I18n.t('antennas.errors.too_many_domains') if @antenna.antenna_domains.includes_only.count > Antenna::DOMAINS_PER_ANTENNA_LIMIT
 
     render json: { domains: @antenna.antenna_domains.includes_only.pluck(:name) }
   end
@@ -39,6 +39,11 @@ class Api::V1::Antennas::DomainsController < Api::BaseController
   end
 
   def domains
-    Array(params.permit(domains: [])[:domains]).filter_map { |domain| domain.to_s.strip.presence }
+    Array(params.permit(domains: [])[:domains]).filter_map { |domain| domain.to_s.strip.presence }.uniq
+  end
+
+  def validate_limit!
+    existing_domains = @antenna.antenna_domains.includes_only.pluck(:name)
+    raise Mastodon::ValidationError, I18n.t('antennas.errors.too_many_domains') if (existing_domains | domains).size > Antenna::DOMAINS_PER_ANTENNA_LIMIT
   end
 end
