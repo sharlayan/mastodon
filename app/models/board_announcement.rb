@@ -30,7 +30,7 @@ class BoardAnnouncement < ApplicationRecord
   scope :banner, -> { where(display: 'banner') }
   scope :for_account, lambda { |account|
     where(for_existing_users: false)
-      .or(where(for_existing_users: true).where("#{coalesced_timestamp} <= ?", account.created_at))
+      .or(where(for_existing_users: true).where("#{coalesced_timestamp} >= ?", account.created_at))
   }
 
   belongs_to :account, optional: true

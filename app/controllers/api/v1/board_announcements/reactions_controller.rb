@@ -29,6 +29,6 @@ class Api::V1::BoardAnnouncements::ReactionsController < Api::BaseController
   end
 
   def set_announcement
-    @announcement = BoardAnnouncement.published.find(params[:board_announcement_id])
+    @announcement = BoardAnnouncement.published.for_account(current_account).find(params[:board_announcement_id])
   end
 end
