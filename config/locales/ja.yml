@@ -970,6 +970,10 @@ ja:
         title: 掲示板型お知らせ
         enabled: 掲示板型お知らせを有効にする
         enabled_hint: ユーザーがサイト内の掲示板型お知らせページを閲覧できるようにします。無効にするとページとナビゲーションリンクが非表示になります。
+      extensions:
+        title: 拡張機能
+      special_features:
+        title: 特殊機能
       circles:
         title: サークル
         enabled: サークル機能を有効にする

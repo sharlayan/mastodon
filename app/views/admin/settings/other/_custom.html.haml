@@ -1,4 +1,14 @@
-%h2= t('admin.settings.circles.title')
+%h2= t('admin.settings.rate_limit_bypass.title')
+
+.fields-group
+  = f.input :rate_limit_bypass_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.rate_limit_bypass.enabled'),
+            hint: t('admin.settings.rate_limit_bypass.enabled_hint'),
+            sharlayan_only: true
+
+%h2= t('admin.settings.extensions.title')
 
 .fields-group
   = f.input :circles_enabled,
@@ -8,8 +18,6 @@
             hint: t('admin.settings.circles.enabled_hint'),
             sharlayan_only: true
 
-%h2= t('admin.settings.clips.title')
-
 .fields-group
   = f.input :clips_enabled,
             as: :boolean,
@@ -17,18 +25,6 @@
             label: t('admin.settings.clips.enabled'),
             hint: t('admin.settings.clips.enabled_hint'),
             sharlayan_only: true
-
-%h2= t('admin.settings.auto_quote_from_url.title')
-
-.fields-group
-  = f.input :auto_quote_from_url,
-            as: :boolean,
-            wrapper: :with_label,
-            label: t('admin.settings.auto_quote_from_url.enabled'),
-            hint: t('admin.settings.auto_quote_from_url.enabled_hint'),
-            sharlayan_only: true
-
-%h2= t('admin.settings.antenna.title')
 
 .fields-group
   = f.input :antenna_enabled,
@@ -38,7 +34,7 @@
             hint: t('admin.settings.antenna.enabled_hint'),
             sharlayan_only: true
 
-%h2= t('admin.settings.instance_metadata.title')
+%h2= t('admin.settings.special_features.title')
 
 .fields-group
   = f.input :instance_metadata_enabled,
@@ -48,12 +44,10 @@
             hint: t('admin.settings.instance_metadata.enabled_hint'),
             sharlayan_only: true
 
-%h2= t('admin.settings.rate_limit_bypass.title')
-
 .fields-group
-  = f.input :rate_limit_bypass_enabled,
+  = f.input :auto_quote_from_url,
             as: :boolean,
             wrapper: :with_label,
-            label: t('admin.settings.rate_limit_bypass.enabled'),
-            hint: t('admin.settings.rate_limit_bypass.enabled_hint'),
+            label: t('admin.settings.auto_quote_from_url.enabled'),
+            hint: t('admin.settings.auto_quote_from_url.enabled_hint'),
             sharlayan_only: true

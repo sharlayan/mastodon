@@ -1140,6 +1140,10 @@ en:
         title: Board Announcements
         enabled: Enable board announcements
         enabled_hint: Allow users to view the site-internal bulletin board announcements page. When disabled, the page and navigation link are hidden.
+      extensions:
+        title: Extensions
+      special_features:
+        title: Special features
       circles:
         title: Circles
         enabled: Enable circles

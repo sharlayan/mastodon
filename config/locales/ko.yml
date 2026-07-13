@@ -1113,6 +1113,10 @@ ko:
         title: 게시판형 공지사항
         enabled: 게시판형 공지사항 활성화
         enabled_hint: 사용자가 사이트 내 게시판형 공지사항 페이지를 볼 수 있도록 합니다. 비활성화하면 페이지와 네비게이션 링크가 숨겨집니다.
+      extensions:
+        title: 확장 기능
+      special_features:
+        title: 특수 기능
       circles:
         title: 서클
         enabled: 서클 기능 활성화
