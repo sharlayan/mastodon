@@ -5,8 +5,8 @@ class Api::V1::Statuses::ContextsController < Api::BaseController
   include AsyncRefreshesConcern
 
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }
-  before_action :require_user!, if: -> { Setting.local_status_page_access != 'public' }
   before_action :set_status
+  before_action :require_status_page_access!
 
   # This API was originally unlimited, pagination cannot be introduced without
   # breaking backwards-compatibility. Arbitrarily high number to cover most
@@ -64,5 +64,9 @@ class Api::V1::Statuses::ContextsController < Api::BaseController
     authorize @status, :show?
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     not_found
+  end
+
+  def require_status_page_access!
+    require_local_content_access!(Setting.local_status_page_access) if @status.local?
   end
 end

@@ -1958,6 +1958,7 @@ ko:
   circles:
     errors:
       limit: 서클 최대 개수를 초과합니다
+      too_many_accounts: 이 서클의 계정 최대 개수를 초과합니다
   clips:
     errors:
       limit: 클립 최대 개수를 초과합니다

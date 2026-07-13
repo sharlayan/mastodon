@@ -1760,6 +1760,7 @@ ja:
   circles:
     errors:
       limit: サークルの上限数に達しています
+      too_many_accounts: このサークルのアカウント上限数に達しています
   clips:
     errors:
       limit: クリップの上限数に達しています

@@ -9,8 +9,8 @@ class StatusesController < ApplicationController
   vary_by -> { public_fetch_mode? ? 'Accept, Accept-Language, Cookie' : 'Accept, Accept-Language, Cookie, Signature' }
 
   before_action :require_account_signature!, only: [:show, :activity], if: -> { request.format == :json && authorized_fetch_mode? }
-  before_action :authenticate_user!, only: [:show, :embed], if: -> { Setting.local_status_page_access != 'public' }
   before_action :set_status
+  before_action :require_status_page_access!, only: [:show, :embed]
   before_action :redirect_to_original, only: :show
   before_action :verify_embed_allowed, only: :embed
 
@@ -71,6 +71,10 @@ class StatusesController < ApplicationController
 
   def redirect_to_original
     redirect_to(ActivityPub::TagManager.instance.url_for(@status.reblog), allow_other_host: true) if @status.reblog?
+  end
+
+  def require_status_page_access!
+    require_local_content_access!(Setting.local_status_page_access) if @status.local?
   end
 
   def activity_serializer

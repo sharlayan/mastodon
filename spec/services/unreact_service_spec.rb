@@ -65,4 +65,24 @@ RSpec.describe UnreactService, type: :service do
       expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '')
     end
   end
+
+  describe 'distribution for a followers-only status' do
+    let(:author) { Fabricate(:account) }
+    let(:status) { Fabricate(:status, account: author, visibility: :private) }
+    let(:authorized_follower) { Fabricate(:account, protocol: :activitypub, domain: 'authorized.example', inbox_url: 'https://authorized.example/inbox') }
+    let(:reactor_follower) { Fabricate(:account, protocol: :activitypub, domain: 'reactor.example', inbox_url: 'https://reactor.example/inbox') }
+
+    before do
+      authorized_follower.follow!(author)
+      reactor_follower.follow!(sender)
+      sender.status_reactions.create!(status: status, name: '👍')
+      subject.call(sender, status, '👍')
+    end
+
+    it 'delivers only to the original status audience' do
+      expect(ActivityPub::DeliveryWorker).to have_enqueued_sidekiq_job(anything, sender.id, authorized_follower.inbox_url)
+      expect(ActivityPub::DeliveryWorker).to_not have_enqueued_sidekiq_job(anything, sender.id, reactor_follower.inbox_url)
+      expect(ActivityPub::ReactionsDistributionWorker).to_not have_enqueued_sidekiq_job
+    end
+  end
 end

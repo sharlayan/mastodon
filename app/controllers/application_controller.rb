@@ -93,6 +93,15 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def require_local_content_access!(mode)
+    return if mode == 'public'
+
+    authenticate_user!
+    return if performed?
+
+    not_found if mode == 'disabled' && !current_user.can?(:view_feeds)
+  end
+
   def skip_csrf_meta_tags?
     false
   end

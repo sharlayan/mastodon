@@ -8,9 +8,13 @@ module ActivityPub::ReactionDistribution
     return if status.local_only?
 
     case status.visibility.to_sym
-    when :public, :unlisted, :private
+    when :public, :unlisted
       target_inbox = status.account.local? ? '' : status.account.preferred_inbox_url
       ActivityPub::ReactionsDistributionWorker.perform_async(json, reaction.account_id, target_inbox)
+    when :private
+      reaction_private_inboxes(status).each do |inbox_url|
+        ActivityPub::DeliveryWorker.perform_async(json, reaction.account_id, inbox_url)
+      end
     when :direct, :limited
       reaction_direct_inboxes(status).each do |inbox_url|
         ActivityPub::DeliveryWorker.perform_async(json, reaction.account_id, inbox_url)
@@ -23,6 +27,12 @@ module ActivityPub::ReactionDistribution
   def reaction_direct_inboxes(status)
     inboxes = status.active_mentions.includes(:account).map(&:account).select(&:activitypub?).map(&:preferred_inbox_url)
     inboxes << status.account.preferred_inbox_url if status.account.activitypub?
+    inboxes.uniq
+  end
+
+  def reaction_private_inboxes(status)
+    inboxes = reaction_direct_inboxes(status)
+    inboxes.concat(status.account.followers.inboxes) if status.account.local?
     inboxes.uniq
   end
 end

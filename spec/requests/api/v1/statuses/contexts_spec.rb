@@ -30,6 +30,18 @@ RSpec.describe 'API V1 Statuses Contexts' do
         end
       end
 
+      context 'when local status page access is disabled' do
+        let(:status) { Fabricate(:status, account: user.account) }
+
+        before { Setting.local_status_page_access = 'disabled' }
+
+        it 'returns not found for a regular user' do
+          get "/api/v1/statuses/#{status.id}/context", headers: headers
+
+          expect(response).to have_http_status(404)
+        end
+      end
+
       context 'with a public status that is a reply' do
         let(:status) { Fabricate(:status, account: user.account, thread: Fabricate(:status)) }
 
@@ -50,6 +62,18 @@ RSpec.describe 'API V1 Statuses Contexts' do
     end
 
     context 'without an oauth token' do
+      context 'when local status page access requires authentication' do
+        let(:status) { Fabricate(:status, visibility: :public) }
+
+        before { Setting.local_status_page_access = 'authenticated' }
+
+        it 'returns an authentication error' do
+          get "/api/v1/statuses/#{status.id}/context"
+
+          expect(response).to have_http_status(422)
+        end
+      end
+
       context 'with a public status' do
         let(:status) { Fabricate(:status, visibility: :public) }
 
