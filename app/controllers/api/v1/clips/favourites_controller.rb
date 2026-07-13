@@ -6,7 +6,8 @@ class Api::V1::Clips::FavouritesController < Api::BaseController
   before_action -> { doorkeeper_authorize! :write, :'write:lists' }, except: [:index]
 
   before_action :require_user!
-  before_action :set_clip, only: [:create, :destroy]
+  before_action :set_clip, only: [:create]
+  before_action :set_favouritable_clip, only: [:destroy]
 
   after_action :insert_pagination_headers, only: [:index]
 
@@ -17,6 +18,8 @@ class Api::V1::Clips::FavouritesController < Api::BaseController
 
   def create
     current_account.clip_favourites.find_or_create_by!(clip: @clip)
+    render json: @clip, serializer: REST::ClipSerializer
+  rescue ActiveRecord::RecordNotUnique
     render json: @clip, serializer: REST::ClipSerializer
   end
 
@@ -34,6 +37,13 @@ class Api::V1::Clips::FavouritesController < Api::BaseController
   def set_clip
     @clip = Clip.find(params[:clip_id])
     not_found unless @clip.visible_to?(current_account)
+  end
+
+  def set_favouritable_clip
+    @clip = Clip.find(params[:clip_id])
+    return if @clip.visible_to?(current_account)
+
+    not_found unless current_account.clip_favourites.exists?(clip_id: @clip.id)
   end
 
   def load_clips
