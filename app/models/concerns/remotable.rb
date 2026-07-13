@@ -7,7 +7,7 @@ module Remotable
     def remotable_attachment(attachment_name, limit, suppress_errors: true, download_on_assign: true, attribute_name: nil)
       attribute_name ||= :"#{attachment_name}_remote_url"
 
-      define_method(:"download_#{attachment_name}!") do |url = nil|
+      define_method(:"download_#{attachment_name}!") do |url = nil, size_limit: limit|
         url ||= self[attribute_name]
 
         return if url.blank?
@@ -24,7 +24,7 @@ module Remotable
           Request.new(:get, url).perform do |response|
             raise Mastodon::UnexpectedResponseError, response unless (200...300).cover?(response.code)
 
-            public_send(:"#{attachment_name}=", ResponseWithLimit.new(response, limit))
+            public_send(:"#{attachment_name}=", ResponseWithLimit.new(response, size_limit))
           end
         rescue Mastodon::UnexpectedResponseError, *Mastodon::HTTP_CONNECTION_ERRORS => e
           Rails.logger.debug { "Error fetching remote #{attachment_name}: #{e}" }

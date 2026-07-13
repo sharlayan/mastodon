@@ -302,6 +302,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     return [] if @object['attachment'].nil?
 
     media_attachments = []
+    download_budget = RemoteMediaDownloadBudget.new
 
     as_array(@object['attachment']).each do |attachment|
       media_attachment_parser = ActivityPub::Parser::MediaAttachmentParser.new(attachment)
@@ -320,10 +321,16 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
         media_attachments << media_attachment
 
-        next if unsupported_media_type?(media_attachment_parser.file_content_type) || skip_download?
+        next if unsupported_media_type?(media_attachment_parser.file_content_type) || skip_download? || !download_budget.available?
 
-        media_attachment.download_file!
-        media_attachment.download_thumbnail!
+        media_attachment.download_file!(size_limit: download_budget.size_limit(MediaAttachment::VIDEO_LIMIT))
+        download_budget.consume(media_attachment.file_file_size)
+
+        if download_budget.available?
+          media_attachment.download_thumbnail!(size_limit: download_budget.size_limit(MediaAttachment::IMAGE_LIMIT))
+          download_budget.consume(media_attachment.thumbnail_file_size)
+        end
+
         media_attachment.save
       rescue Mastodon::UnexpectedResponseError, *Mastodon::HTTP_CONNECTION_ERRORS
         RedownloadMediaWorker.perform_in(rand(PROCESSING_DELAY), media_attachment.id)

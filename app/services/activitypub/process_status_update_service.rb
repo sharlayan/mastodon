@@ -92,7 +92,7 @@ class ActivityPub::ProcessStatusUpdateService < BaseService
     as_array(@json['attachment']).each do |attachment|
       media_attachment_parser = ActivityPub::Parser::MediaAttachmentParser.new(attachment)
 
-      next if media_attachment_parser.remote_url.blank? || @next_media_attachments.size > Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT
+      next if media_attachment_parser.remote_url.blank? || @next_media_attachments.size >= Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT
 
       begin
         media_attachment   = previous_media_attachments.find { |previous_media_attachment| previous_media_attachment.remote_url == media_attachment_parser.remote_url }
@@ -124,11 +124,21 @@ class ActivityPub::ProcessStatusUpdateService < BaseService
   end
 
   def download_media_files!
-    @next_media_attachments.each do |media_attachment|
-      next if media_attachment.skip_download
+    download_budget = RemoteMediaDownloadBudget.new
 
-      media_attachment.download_file! if media_attachment.remote_url_previously_changed?
-      media_attachment.download_thumbnail! if media_attachment.thumbnail_remote_url_previously_changed?
+    @next_media_attachments.each do |media_attachment|
+      next if media_attachment.skip_download || !download_budget.available?
+
+      if media_attachment.remote_url_previously_changed?
+        media_attachment.download_file!(size_limit: download_budget.size_limit(MediaAttachment::VIDEO_LIMIT))
+        download_budget.consume(media_attachment.file_file_size)
+      end
+
+      if media_attachment.thumbnail_remote_url_previously_changed? && download_budget.available?
+        media_attachment.download_thumbnail!(size_limit: download_budget.size_limit(MediaAttachment::IMAGE_LIMIT))
+        download_budget.consume(media_attachment.thumbnail_file_size)
+      end
+
       media_attachment.save
     rescue Mastodon::UnexpectedResponseError, *Mastodon::HTTP_CONNECTION_ERRORS
       RedownloadMediaWorker.perform_in(rand(PROCESSING_DELAY), media_attachment.id)

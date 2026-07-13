@@ -216,4 +216,19 @@ RSpec.describe Remotable do
       end
     end
   end
+
+  describe '#download_hoge!' do
+    before do
+      stub_request(:get, url).to_return(status: 200, headers: headers)
+      allow(foo).to receive(:public_send)
+    end
+
+    it 'uses an explicit size limit when provided' do
+      allow(ResponseWithLimit).to receive(:new).and_call_original
+
+      foo.download_hoge!(url, size_limit: 512)
+
+      expect(ResponseWithLimit).to have_received(:new).with(anything, 512)
+    end
+  end
 end

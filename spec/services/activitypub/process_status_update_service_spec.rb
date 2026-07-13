@@ -402,6 +402,49 @@ RSpec.describe ActivityPub::ProcessStatusUpdateService do
         expect(status.edits.reload.last.ordered_media_attachment_ids)
           .to_not be_empty
       end
+
+      context 'when the remote media download budget is exhausted' do
+        before do
+          budget = instance_double(RemoteMediaDownloadBudget, available?: false)
+          allow(RemoteMediaDownloadBudget).to receive(:new).and_return(budget)
+        end
+
+        it 'keeps attachment metadata without downloading the file' do
+          subject.call(status, json, json)
+
+          expect(status.reload.ordered_media_attachments.first)
+            .to be_present
+            .and have_attributes(remote_url: 'https://example.com/foo.png', file_file_name: nil)
+          expect(a_request(:get, 'https://example.com/foo.png')).to_not have_been_made
+        end
+      end
+    end
+
+    context 'when an update contains more than the remote media limit' do
+      let(:payload) do
+        {
+          '@context': 'https://www.w3.org/ns/activitystreams',
+          id: 'foo',
+          type: 'Note',
+          content: 'Hello universe',
+          updated: '2021-09-08T22:39:25Z',
+          attachment: Array.new(Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT + 1) do |index|
+            { type: 'Image', mediaType: 'image/png', url: "https://example.com/#{index}.png" }
+          end,
+        }
+      end
+
+      before do
+        allow(DomainBlock).to receive(:reject_media?).with('example.com').and_return(true)
+      end
+
+      it 'keeps exactly the configured number of attachments' do
+        subject.call(status, json, json)
+
+        expect(status.reload.media_attachments.count).to eq(Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT)
+        expect(status.ordered_media_attachment_ids.size).to eq(Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT)
+        expect(status.media_attachments).to_not exist(remote_url: "https://example.com/#{Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT}.png")
+      end
     end
 
     context 'when originally without media attachments and text is removed' do
