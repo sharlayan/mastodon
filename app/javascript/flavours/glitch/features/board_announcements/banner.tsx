@@ -18,6 +18,7 @@ import type {
 import { EmojiHTML } from 'flavours/glitch/components/emoji/html';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
+import { useIdentity } from 'flavours/glitch/identity_context';
 import { boardAnnouncementsEnabled } from 'flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
@@ -78,19 +79,20 @@ const Banner: React.FC<{ banner: ApiBoardAnnouncementJSON }> = ({ banner }) => {
 
 export const BoardAnnouncementBanner: React.FC = () => {
   const dispatch = useAppDispatch();
+  const { signedIn } = useIdentity();
 
   const items = useAppSelector((state) => state.boardAnnouncements.items);
   const loaded = useAppSelector((state) => state.boardAnnouncements.loaded);
 
   useEffect(() => {
-    if (!boardAnnouncementsEnabled || loaded) {
+    if (!boardAnnouncementsEnabled || !signedIn || loaded) {
       return;
     }
 
     void dispatch(fetchBoardAnnouncements());
-  }, [dispatch, loaded]);
+  }, [dispatch, signedIn, loaded]);
 
-  if (!boardAnnouncementsEnabled) {
+  if (!boardAnnouncementsEnabled || !signedIn) {
     return null;
   }
 
