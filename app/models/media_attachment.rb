@@ -7,6 +7,7 @@
 #  id                               :bigint(8)        not null, primary key
 #  blurhash                         :string
 #  description                      :text
+#  drive_access_key                 :string
 #  file_content_type                :string
 #  file_file_name                   :string
 #  file_file_size                   :integer
@@ -26,6 +27,7 @@
 #  created_at                       :datetime         not null
 #  updated_at                       :datetime         not null
 #  account_id                       :bigint(8)
+#  drive_file_id                    :bigint(8)
 #  scheduled_status_id              :bigint(8)
 #  status_id                        :bigint(8)
 #
@@ -182,6 +184,7 @@ class MediaAttachment < ApplicationRecord
   belongs_to :account,          inverse_of: :media_attachments, optional: true
   belongs_to :status,           inverse_of: :media_attachments, optional: true
   belongs_to :scheduled_status, inverse_of: :media_attachments, optional: true
+  belongs_to :drive_file,       inverse_of: :media_attachments, optional: true
 
   has_attached_file :file,
                     styles: ->(f) { file_styles f },
@@ -191,7 +194,7 @@ class MediaAttachment < ApplicationRecord
   before_file_validate :set_type_and_extension
   before_file_validate :check_video_dimensions
 
-  validates_attachment_content_type :file, content_type: IMAGE_MIME_TYPES + VIDEO_MIME_TYPES + AUDIO_MIME_TYPES
+  validates_attachment_content_type :file, content_type: IMAGE_MIME_TYPES + VIDEO_MIME_TYPES + AUDIO_MIME_TYPES, unless: :drive_pointer?
   validates_attachment_size :file, less_than: ->(m) { m.larger_media_format? ? VIDEO_LIMIT : IMAGE_LIMIT }
   remotable_attachment :file, VIDEO_LIMIT, suppress_errors: false, download_on_assign: false, attribute_name: :remote_url
 
@@ -206,8 +209,9 @@ class MediaAttachment < ApplicationRecord
 
   validates :account, presence: true
   validates :description, length: { maximum: MAX_DESCRIPTION_LENGTH }, if: :local?
-  validates :file, presence: true, if: :local?
-  validates :thumbnail, absence: true, if: -> { local? && !audio_or_video? }
+  validates :drive_access_key, uniqueness: true, format: { with: /\A[-_A-Za-z0-9]{43}\z/ }, if: :drive_pointer?
+  validates :file, presence: true, if: -> { local? && !drive_pointer? }
+  validates :thumbnail, absence: true, if: -> { local? && !audio_or_video? && !drive_pointer? }
 
   scope :attached, -> { where.not(status_id: nil).or(where.not(scheduled_status_id: nil)) }
   scope :cached, -> { remote.where.not(file_file_name: nil) }
@@ -230,6 +234,10 @@ class MediaAttachment < ApplicationRecord
 
   def local?
     remote_url.blank?
+  end
+
+  def drive_pointer?
+    drive_file_id.present?
   end
 
   def not_processed?
@@ -290,6 +298,8 @@ class MediaAttachment < ApplicationRecord
     delay_processing? && attachment_name == :file
   end
 
+  before_validation :generate_drive_access_key, if: :drive_pointer?
+  before_save :lock_drive_file
   before_create :set_unknown_type
   before_create :set_processing
 
@@ -349,6 +359,14 @@ class MediaAttachment < ApplicationRecord
 
   private
 
+  def lock_drive_file
+    DriveFile.lock.find(drive_file_id) if drive_file_id.present?
+  end
+
+  def generate_drive_access_key
+    self.drive_access_key ||= SecureRandom.urlsafe_base64(32)
+  end
+
   def set_unknown_type
     self.type = :unknown if file.blank? && !type_changed?
   end
@@ -367,18 +385,6 @@ class MediaAttachment < ApplicationRecord
 
   def set_processing
     self.processing = delay_processing? ? :queued : :complete
-  end
-
-  def check_video_dimensions
-    return unless (video? || gifv?) && file.queued_for_write[:original].present?
-
-    movie = ffmpeg_data(file.queued_for_write[:original].path)
-
-    return unless movie.valid?
-
-    raise Mastodon::StreamValidationError, 'Video has no video stream' if movie.width.nil? || movie.frame_rate.nil?
-    raise Mastodon::DimensionsValidationError, "#{movie.width}x#{movie.height} videos are not supported" if movie.width * movie.height > MAX_VIDEO_MATRIX_LIMIT
-    raise Mastodon::DimensionsValidationError, "#{movie.frame_rate.floor}fps videos are not supported" if movie.frame_rate.floor > MAX_VIDEO_FRAME_RATE
   end
 
   def set_meta
@@ -422,13 +428,6 @@ class MediaAttachment < ApplicationRecord
       duration: movie.duration,
       bitrate: movie.bitrate,
     }.compact
-  end
-
-  # We call this method about 3 different times on potentially different
-  # paths but ultimately the same file, so it makes sense to memoize the
-  # result while disregarding the path
-  def ffmpeg_data(path = nil)
-    @ffmpeg_data ||= VideoMetadataExtractor.new(path)
   end
 
   def enqueue_processing

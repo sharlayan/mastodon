@@ -41,8 +41,10 @@ class BackupService < BaseService
         item.delete(:@context)
 
         unless item[:type] == 'Announce' || item[:object][:attachment].blank?
-          item[:object][:attachment].each do |attachment|
-            attachment[:url] = Addressable::URI.parse(attachment[:url]).path.delete_prefix('/system/')
+          media_attachments = status.ordered_media_attachments
+
+          item[:object][:attachment].each_with_index do |attachment, index|
+            attachment[:url] = media_archive_path(media_attachments[index], attachment[:url])
           end
         end
 
@@ -87,14 +89,13 @@ class BackupService < BaseService
   end
 
   def dump_media_attachments!(zipfile)
-    MediaAttachment.attached.where(account: account).find_in_batches do |media_attachments|
+    MediaAttachment.attached.where(account: account).includes(:drive_file).find_in_batches do |media_attachments|
       media_attachments.each do |m|
-        path = m.file&.path
-        next unless path
+        attachment = m.drive_pointer? ? m.drive_file.file : m.file
+        path = media_archive_path(m, attachment.url(:original))
+        next if path.blank? || zipfile.find_entry(path)
 
-        path = path.gsub(%r{\A.*/system/}, '')
-        path = path.gsub(%r{\A/+}, '')
-        download_to_zip(zipfile, m.file, path)
+        download_to_zip(zipfile, attachment, path)
       end
 
       GC.start
@@ -209,5 +210,13 @@ class BackupService < BaseService
     end
   rescue Errno::ENOENT, Seahorse::Client::NetworkingError => e
     Rails.logger.warn "Could not backup file #{filename}: #{e}"
+  end
+
+  def media_archive_path(media_attachment, source_url)
+    if media_attachment&.drive_pointer?
+      File.join('drive_files', media_attachment.drive_file_id.to_s, media_attachment.file_file_name)
+    else
+      Addressable::URI.parse(source_url).path.delete_prefix('/system/').delete_prefix('/')
+    end
   end
 end

@@ -15,6 +15,11 @@ class MediaProxyController < ApplicationController
   rescue_from(*Mastodon::HTTP_CONNECTION_ERRORS, with: :internal_server_error)
 
   def show
+    if @media_attachment.drive_pointer?
+      redirect_to full_media_attachment_url(@media_attachment, preview_requested? ? :small : :original)
+      return
+    end
+
     if @media_attachment.needs_redownload? && !reject_media?
       with_redis_lock("media_download:#{params[:id]}") do
         @media_attachment.reload # Reload once we have acquired a lock, in case the file was downloaded in the meantime

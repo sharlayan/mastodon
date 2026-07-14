@@ -113,6 +113,12 @@ namespace :admin do
     end
   end
 
+  resources :drive_files, only: [:index, :destroy], path: 'drive/files' do
+    collection do
+      delete :destroy_orphaned
+    end
+  end
+
   resources :instances, only: [:index, :show, :destroy], constraints: { id: %r{[^/]+} }, format: 'html' do
     member do
       post :clear_delivery_errors

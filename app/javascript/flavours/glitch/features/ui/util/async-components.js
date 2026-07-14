@@ -335,6 +335,10 @@ export function ClipTimeline () {
   return import('../../clips/timeline');
 }
 
+export function Drive () {
+  return import('../../drive');
+}
+
 export function Circles () {
   return import('../../circles');
 }

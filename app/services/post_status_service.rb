@@ -95,7 +95,7 @@ class PostStatusService < BaseService
     # Strip MFM content type if server MFM is disabled
     @content_type = 'text/plain' if @content_type == 'text/x-mfm' && !Setting.mfm_enabled
     @mfm = Setting.mfm_enabled && (@content_type == 'text/x-mfm' || MfmDetector.contains_mfm?(@text))
-    @sensitive    = (@options[:sensitive].nil? ? @account.user&.setting_default_sensitive : @options[:sensitive]) || @options[:spoiler_text].present?
+    @sensitive    = (@options[:sensitive].nil? ? @account.user&.setting_default_sensitive : @options[:sensitive]) || @options[:spoiler_text].present? || sensitive_drive_media?
     @visibility   = @options[:visibility] || @account.user&.setting_default_privacy
     load_circle! if @visibility&.to_sym == :circle
     @visibility = :unlisted if @visibility&.to_sym == :public && @account.silenced?
@@ -130,6 +130,7 @@ class PostStatusService < BaseService
     # The following transaction block is needed to wrap the UPDATEs to
     # the media attachments when the status is created
     ApplicationRecord.transaction do
+      DriveFile.lock_for_media_attachments(@media)
       @status.save!
       @circle.statuses << @status if @circle.present?
       attach_clips!(@status)
@@ -250,6 +251,7 @@ class PostStatusService < BaseService
       # the media attachments when the scheduled status is created
 
       ApplicationRecord.transaction do
+        DriveFile.lock_for_media_attachments(@media)
         @status = @account.scheduled_statuses.create!(scheduled_status_attributes)
       end
     else
@@ -292,7 +294,7 @@ class PostStatusService < BaseService
 
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many') if @options[:media_ids].size > Status::MEDIA_ATTACHMENTS_LIMIT
 
-    @media = @account.media_attachments.where(status_id: nil).where(id: @options[:media_ids].take(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i))
+    @media = @account.media_attachments.includes(:drive_file).where(status_id: nil).where(id: @options[:media_ids].take(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i))
 
     not_found_ids = @options[:media_ids].map(&:to_i) - @media.map(&:id)
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.not_found', ids: not_found_ids.join(', ')) if not_found_ids.any?
@@ -303,6 +305,10 @@ class PostStatusService < BaseService
 
   def process_mentions_service
     ProcessMentionsService.new
+  end
+
+  def sensitive_drive_media?
+    @media.any? { |media| media.drive_file&.sensitive? }
   end
 
   def process_hashtags_service
@@ -401,6 +407,7 @@ class PostStatusService < BaseService
       options_hash[:scheduled_at]    = nil
       options_hash[:idempotency]     = nil
       options_hash[:with_rate_limit] = false
+      options_hash[:sensitive]       = @sensitive
     end
   end
 end

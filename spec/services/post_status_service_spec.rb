@@ -49,6 +49,14 @@ RSpec.describe PostStatusService do
       expect(Status.where(text: 'Hi future!')).to_not exist
     end
 
+    it 'stores sensitive params for a sensitive drive file' do
+      media = sensitive_drive_pointer(account)
+
+      status = subject.call(account, text: 'drive', media_ids: [media.id], sensitive: false, scheduled_at: future)
+
+      expect(status.params['sensitive']).to be true
+    end
+
     it 'does not change statuses_count of account or replies_count of thread previous status' do
       expect { subject.call(account, text: 'Hi future!', scheduled_at: future, thread: previous_status) }
         .to not_change { account.statuses_count }
@@ -109,6 +117,15 @@ RSpec.describe PostStatusService do
     status = create_status_with_options(sensitive: true)
 
     expect(status).to be_persisted
+    expect(status).to be_sensitive
+  end
+
+  it 'creates a sensitive status for a sensitive drive file' do
+    account = Fabricate(:account)
+    media = sensitive_drive_pointer(account)
+
+    status = subject.call(account, text: 'drive', media_ids: [media.id], sensitive: false)
+
     expect(status).to be_sensitive
   end
 
@@ -423,5 +440,20 @@ RSpec.describe PostStatusService do
 
   def create_status_with_options(**options)
     subject.call(Fabricate(:account), options.merge(text: 'test'))
+  end
+
+  def sensitive_drive_pointer(account)
+    drive_file = DriveFile.find(DriveFile.insert_all!([{
+      account_id: account.id,
+      file_content_type: 'image/jpeg',
+      file_file_name: 'attachment.jpg',
+      file_file_size: 1,
+      storage_file_size: 1,
+      sensitive: true,
+      type: DriveFile.types[:image],
+      created_at: Time.current,
+      updated_at: Time.current,
+    }]).rows.first.first)
+    drive_file.build_pointer(account).tap(&:save!)
   end
 end

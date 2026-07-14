@@ -7,15 +7,22 @@ class PublishScheduledStatusWorker
 
   def perform(scheduled_status_id)
     scheduled_status = ScheduledStatus.find(scheduled_status_id)
-    scheduled_status.destroy!
 
-    return true if scheduled_status.account.user_disabled?
+    if scheduled_status.account.user_disabled?
+      scheduled_status.destroy!
+      return true
+    end
 
     PostStatusService.new.call(
       scheduled_status.account,
       options_with_objects(scheduled_status.params.with_indifferent_access)
     )
-  rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordInvalid
+
+    scheduled_status.destroy!
+  rescue ActiveRecord::RecordNotFound
+    true
+  rescue ActiveRecord::RecordInvalid
+    scheduled_status&.destroy!
     true
   end
 

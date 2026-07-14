@@ -4,6 +4,24 @@ require 'rails_helper'
 
 RSpec.describe 'Media' do
   describe 'GET /media/:id' do
+    context 'when the media attachment is a Drive pointer' do
+      let(:account) { Fabricate(:account) }
+      let(:status) { Fabricate(:status, account: account) }
+      let(:drive_file) { account.drive_files.create!(file: attachment_fixture('attachment.jpg')) }
+      let(:media_attachment) do
+        drive_file.build_pointer(account).tap do |pointer|
+          pointer.status = status
+          pointer.save!
+        end
+      end
+
+      it 'redirects to the Drive resolver' do
+        get medium_path(id: media_attachment.id)
+
+        expect(response).to redirect_to(%r{/drive_media/#{media_attachment.drive_access_key}/original\z})
+      end
+    end
+
     context 'when the media attachment does not exist' do
       it 'responds with not found' do
         get '/media/missing'
@@ -89,6 +107,26 @@ RSpec.describe 'Media' do
   end
 
   describe 'GET /media/:medium_id/player' do
+    context 'when the media attachment is a Drive pointer' do
+      let(:account) { Fabricate(:account) }
+      let(:status) { Fabricate(:status, account: account) }
+      let(:drive_file) { account.drive_files.create!(file: attachment_fixture('attachment.jpg')) }
+      let(:media) do
+        drive_file.build_pointer(account).tap do |pointer|
+          pointer.type = :video
+          pointer.status = status
+          pointer.save!
+        end
+      end
+
+      it 'renders the player with Drive resolver URLs' do
+        get player_medium_path(media)
+
+        expect(response).to have_http_status(200)
+        expect(response.body).to include("/drive_media/#{media.drive_access_key}/original", "/drive_media/#{media.drive_access_key}/small")
+      end
+    end
+
     context 'when media type is not large format type' do
       let(:media) { Fabricate :media_attachment }
 

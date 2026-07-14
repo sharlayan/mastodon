@@ -34,6 +34,39 @@
             hint: t('admin.settings.antenna.enabled_hint'),
             sharlayan_only: true
 
+.fields-group
+  = f.input :drive_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.drive.enabled'),
+            hint: t('admin.settings.drive.enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
+  = f.input :drive_quota,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.drive.quota'),
+            hint: t('admin.settings.drive.quota_hint'),
+            input_html: { min: 0 },
+            sharlayan_only: true
+
+.fields-group
+  = f.input :drive_max_file_size,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.drive.max_file_size'),
+            hint: t('admin.settings.drive.max_file_size_hint'),
+            input_html: { min: 1 },
+            sharlayan_only: true
+
+.fields-group
+  = f.input :drive_allowed_extensions,
+            wrapper: :with_label,
+            label: t('admin.settings.drive.allowed_extensions'),
+            hint: t('admin.settings.drive.allowed_extensions_hint', extensions: DriveFile::FORBIDDEN_EXTENSIONS.join(', ')),
+            sharlayan_only: true
+
 %h2= t('admin.settings.special_features.title')
 
 .fields-group

@@ -147,6 +147,30 @@ namespace :api, format: false do
     end
 
     resources :media, only: [:create, :update, :show, :destroy]
+
+    namespace :drive do
+      resources :files, only: [:index, :show, :create, :update, :destroy] do
+        member do
+          post :attach
+          get :attached_notes
+        end
+
+        collection do
+          get :find
+          get :find_by_hash
+          get :check_existence
+          post :move_bulk
+          post :upload_from_url
+        end
+      end
+      resources :folders, only: [:index, :show, :create, :update, :destroy] do
+        collection do
+          get :find
+        end
+      end
+      get :usage, to: 'usage#show'
+    end
+
     resources :blocks, only: [:index]
     resources :mutes, only: [:index]
     resources :favourites, only: [:index]

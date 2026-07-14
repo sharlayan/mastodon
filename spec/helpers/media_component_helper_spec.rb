@@ -14,6 +14,26 @@ RSpec.describe MediaComponentHelper do
     it 'renders a react component for the video' do
       expect(parsed_html.div['data-component']).to eq('Video')
     end
+
+    context 'with a Drive pointer' do
+      let(:account) { Fabricate(:account) }
+      let(:status) { Fabricate(:status, account: account) }
+      let(:drive_file) { account.drive_files.create!(file: attachment_fixture('attachment.jpg')) }
+      let(:media) do
+        drive_file.build_pointer(account).tap do |pointer|
+          pointer.type = :video
+          pointer.status = status
+          pointer.save!
+        end
+      end
+
+      it 'uses Drive resolver URLs' do
+        props = JSON.parse(parsed_html.div['data-props'])
+
+        expect(URI(props['src']).path).to eq("/drive_media/#{media.drive_access_key}/original")
+        expect(URI(props['preview']).path).to eq("/drive_media/#{media.drive_access_key}/small")
+      end
+    end
   end
 
   describe 'render_audio_component' do

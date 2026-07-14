@@ -1,0 +1,44 @@
+- content_for :page_title do
+  = t('admin.drive_files.title')
+
+.simple_form
+  %p.hint= t('admin.drive_files.description_html')
+
+  .filter-subset
+    %strong= t('admin.drive_files.filter')
+    %ul
+      %li= link_to t('admin.drive_files.all'), admin_drive_files_path, class: params[:orphaned].blank? ? 'selected' : nil
+      %li= link_to t('admin.drive_files.orphaned'), admin_drive_files_path(orphaned: '1'), class: params[:orphaned] == '1' ? 'selected' : nil
+
+  = link_to t('admin.drive_files.destroy_orphaned'), destroy_orphaned_admin_drive_files_path, data: { confirm: t('admin.drive_files.destroy_orphaned_confirm'), method: :delete }, class: 'button button--destructive'
+
+%hr.spacer
+
+.table-wrapper
+  %table.table
+    %thead
+      %tr
+        %th= t('admin.drive_files.file')
+        %th= t('admin.drive_files.owner')
+        %th= t('admin.drive_files.size')
+        %th= t('admin.drive_files.status')
+        %th
+    %tbody
+      - @drive_files.each do |drive_file|
+        %tr
+          %td
+            = link_to drive_file.file_file_name.presence || "##{drive_file.id}", drive_file.file.url(:original), target: '_blank', rel: 'noopener noreferrer'
+          %td
+            - if drive_file.account
+              = admin_account_link_to drive_file.account
+          %td= number_to_human_size(drive_file.file_file_size.to_i)
+          %td
+            - if drive_file.attached?
+              %span.positive-hint= t('admin.drive_files.attached')
+            - else
+              %span.negative-hint= t('admin.drive_files.orphaned')
+          %td
+            - unless drive_file.attached?
+              = link_to t('admin.drive_files.destroy'), admin_drive_file_path(drive_file, filter_params), data: { confirm: t('admin.reports.are_you_sure'), method: :delete }, class: 'table-action-link'
+
+= paginate @drive_files

@@ -81,6 +81,25 @@ RSpec.describe UpdateStatusService do
       expect(status.edits.ordered.pluck(:ordered_media_attachment_ids))
         .to eq [[detached_media_attachment.id], [attached_media_attachment.id]]
     end
+
+    it 'marks the status sensitive when a sensitive drive file is added' do
+      drive_file = DriveFile.find(DriveFile.insert_all!([{
+        account_id: status.account_id,
+        file_content_type: 'image/jpeg',
+        file_file_name: 'attachment.jpg',
+        file_file_size: 1,
+        storage_file_size: 1,
+        sensitive: true,
+        type: DriveFile.types[:image],
+        created_at: Time.current,
+        updated_at: Time.current,
+      }]).rows.first.first)
+      pointer = drive_file.build_pointer(status.account).tap(&:save!)
+
+      subject.call(status, status.account_id, text: 'Foo', media_ids: [pointer.id.to_s], sensitive: false)
+
+      expect(status.reload).to be_sensitive
+    end
   end
 
   context 'when already-attached media changes' do

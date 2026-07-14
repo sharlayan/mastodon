@@ -238,6 +238,7 @@ Rails.application.routes.draw do
   resource :statuses_cleanup, controller: :statuses_cleanup, only: [:show, :update]
 
   get '/media_proxy/:id/(*any)', to: 'media_proxy#show', as: :media_proxy, format: false
+  get '/drive_media/:id/(:style)', to: 'drive_media#show', as: :drive_media, format: false
   resources :backups, only: [] do
     member { get :download, format: false }
   end

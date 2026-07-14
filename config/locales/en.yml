@@ -867,6 +867,21 @@ en:
         expired: Expired
         title: Filter
       title: Invites
+    drive_files:
+      all: All
+      attached: Attached
+      attached_error: This drive file is attached to a living post and cannot be deleted.
+      description_html: Files stored in per-account drive libraries. Orphaned files are no longer attached to any living post and can be cleaned up.
+      destroy: Delete
+      destroy_orphaned: Delete all orphaned files
+      destroy_orphaned_confirm: Permanently delete every orphaned drive file?
+      file: File
+      filter: Filter
+      orphaned: Orphaned
+      owner: Owner
+      size: Size
+      status: Status
+      title: Drive files
     ip_blocks:
       add_new: Create rule
       created_msg: Successfully added new IP rule
@@ -1156,6 +1171,17 @@ en:
         title: Clips
         enabled: Enable clips
         enabled_hint: Allow users to create clips and collect posts into named collections. When disabled, existing clips are kept but cannot be accessed.
+      drive:
+        title: Drive
+        enabled: Enable drive
+        enabled_hint: Allow users to store uploads in a persistent per-account library and attach them to posts as symbolic links without duplicating bytes. When disabled, the drive button and API are unavailable.
+        quota: Drive quota per account (MB)
+        quota_hint: Maximum total size of a single account's drive library, in megabytes. Set to 0 for unlimited.
+        max_file_size: Maximum size per file (MB)
+        max_file_size_hint: Maximum size of a single drive upload, in megabytes. Media files are still bound by the server's image and video limits.
+        allowed_extensions: Additional allowed file extensions
+        allowed_extensions_hint: 'Image, video and audio uploads are always allowed. List any extra extensions to allow, separated by commas (for example: pdf, zip, txt). These extensions can never be allowed, because the files are served from this server''s own domain: %{extensions}.'
+        allowed_extensions_invalid: 'cannot include these extensions: %{extensions}'
       reactions:
         title: Reactions
         enabled: Enable emoji reactions

@@ -320,7 +320,7 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
     attribute :height, if: :height?
     attribute :duration, if: :duration?
 
-    has_one :icon, serializer: ActivityPub::ImageSerializer, if: :thumbnail?
+    has_one :icon, serializer: ActivityPub::MediaAttachmentPreviewSerializer, if: :thumbnail?
 
     def type
       'Document'
@@ -335,7 +335,7 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
     end
 
     def url
-      object.local? ? full_asset_url(object.file.url(:original, false)) : object.remote_url
+      object.local? ? full_media_attachment_url(object, include_filename: false) : object.remote_url
     end
 
     def focal_point?
@@ -347,11 +347,11 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
     end
 
     def icon
-      object.thumbnail
+      object.drive_pointer? ? object : object.thumbnail
     end
 
     def thumbnail?
-      object.thumbnail.present?
+      object.drive_pointer? ? object.drive_file&.preview_available? : object.thumbnail.present?
     end
 
     def width?

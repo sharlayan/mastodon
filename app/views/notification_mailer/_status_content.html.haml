@@ -10,8 +10,8 @@
     %p.email-status-media
       - status.ordered_media_attachments.each do |a|
         - if a.image? && !a.needs_redownload?
-          %img{ src: full_asset_url(a.file.url(:original)), alt: a.description }
+          %img{ src: full_media_attachment_url(a), alt: a.description }
         - elsif status.local?
-          = link_to full_asset_url(a.file.url(:original)), full_asset_url(a.file.url(:original))
+          = link_to full_media_attachment_url(a), full_media_attachment_url(a)
         - else
           = link_to a.remote_url, a.remote_url
