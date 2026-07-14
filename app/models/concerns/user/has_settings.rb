@@ -43,6 +43,10 @@ module User::HasSettings
     settings['auto_accept_followed']
   end
 
+  def setting_prevent_ai_learning
+    settings['prevent_ai_learning']
+  end
+
   def setting_boost_modal
     settings['web.reblog_modal']
   end

@@ -17,6 +17,7 @@ import { AuthenticationError, RequestError, extractStatusAndMessage as extractEr
 import { logger, httpLogger, initializeLogLevel, attachWebsocketHttpLogger, createWebsocketLogger } from './logging.js';
 import { setupMetrics } from './metrics.js';
 import * as Redis from './redis.js';
+import { createMisskeyCompat } from './misskey_compat.js';
 import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -391,7 +392,7 @@ const startServer = async () => {
    * @returns {Promise<ResolvedAccount>}
    */
   const accountFromToken = async (token, req) => {
-    const result = await pgPool.query('SELECT oauth_access_tokens.id, oauth_access_tokens.resource_owner_id, users.account_id, users.chosen_languages, oauth_access_tokens.scopes, COALESCE(user_roles.permissions, 0) AS permissions, COALESCE(user_roles.extra_permissions, 0) | COALESCE((SELECT extra_permissions FROM user_roles WHERE id = -99), 0) AS extra_permissions FROM oauth_access_tokens INNER JOIN users ON oauth_access_tokens.resource_owner_id = users.id INNER JOIN accounts ON accounts.id = users.account_id LEFT OUTER JOIN user_roles ON user_roles.id = users.role_id WHERE oauth_access_tokens.token = $1 AND oauth_access_tokens.revoked_at IS NULL AND users.disabled IS FALSE AND accounts.suspended_at IS NULL LIMIT 1', [token]);
+    const result = await pgPool.query("SELECT oauth_access_tokens.id, oauth_access_tokens.resource_owner_id, users.account_id, users.chosen_languages, oauth_access_tokens.scopes, COALESCE(user_roles.permissions, 0) AS permissions, COALESCE(user_roles.extra_permissions, 0) | COALESCE((SELECT extra_permissions FROM user_roles WHERE id = -99), 0) AS extra_permissions FROM oauth_access_tokens INNER JOIN users ON oauth_access_tokens.resource_owner_id = users.id INNER JOIN accounts ON accounts.id = users.account_id LEFT OUTER JOIN user_roles ON user_roles.id = users.role_id WHERE oauth_access_tokens.token = $1 AND oauth_access_tokens.revoked_at IS NULL AND (oauth_access_tokens.expires_in IS NULL OR oauth_access_tokens.created_at + oauth_access_tokens.expires_in * INTERVAL '1 second' > NOW()) AND users.disabled IS FALSE AND accounts.suspended_at IS NULL LIMIT 1", [token]);
 
     if (result.rows.length === 0) {
       throw new AuthenticationError('Invalid access token');
@@ -418,21 +419,24 @@ const startServer = async () => {
    * @param {Request} req
    * @returns {Promise<ResolvedAccount>}
    */
-  const accountFromRequest = (req) => new Promise((resolve, reject) => {
+  const accountFromRequest = async (req) => {
     const authorization = req.headers.authorization;
     const query         = parseQueryString(req);
-    const accessToken   = query?.access_token || req.headers['sec-websocket-protocol'];
+    const accessToken   = query?.access_token;
+    const protocolToken = req.headers['sec-websocket-protocol'];
+    const standardToken = accessToken ? firstParam(accessToken) : protocolToken ? firstParam(protocolToken) : undefined;
 
-    if (!authorization && !accessToken) {
-      reject(new AuthenticationError('Missing access token'));
-      return;
+    if (authorization || standardToken) {
+      const token = authorization ? authorization.replace(/^Bearer /, '') : standardToken;
+      return accountFromToken(token, req);
     }
 
-    const token = authorization ? authorization.replace(/^Bearer /, '') : accessToken;
+    const misskeyToken = query?.i ? firstParam(query.i) : undefined;
+    if (!misskeyToken) throw new AuthenticationError('Missing access token');
+    if (!await isMisskeyCompatEnabled()) throw new AuthenticationError('Misskey compatibility is disabled');
 
-    // @ts-expect-error
-    resolve(accountFromToken(token, req));
-  });
+    return accountFromToken(misskeyToken, req);
+  };
 
   /**
    * @param {Request} req
@@ -655,6 +659,39 @@ const startServer = async () => {
   };
 
   /**
+   * @param {string|undefined} statusId
+   * @param {Request} req
+   * @returns {Promise.<boolean>}
+   */
+  const authorizeStatusAccess = async (statusId, req) => {
+    if (!statusId || !/^\d+$/.test(statusId)) return false;
+
+    const result = await pgPool.query(`
+      SELECT 1
+      FROM statuses
+      WHERE statuses.id = $1
+        AND (
+          statuses.account_id = $2
+          OR statuses.visibility IN (0, 1)
+          OR statuses.visibility = 2 AND EXISTS (
+            SELECT 1 FROM follows
+            WHERE follows.account_id = $2
+              AND follows.target_account_id = statuses.account_id
+          )
+          OR statuses.visibility IN (3, 4) AND EXISTS (
+            SELECT 1 FROM mentions
+            WHERE mentions.status_id = statuses.id
+              AND mentions.account_id = $2
+              AND mentions.silent = FALSE
+          )
+        )
+      LIMIT 1
+    `, [statusId, req.accountId]);
+
+    return result.rows.length > 0;
+  };
+
+  /**
    * @param {string} kind
    * @param {Request} req
    * @returns {Promise.<{ localAccess: boolean, remoteAccess: boolean }>}
@@ -687,6 +724,32 @@ const startServer = async () => {
     });
 
     return access;
+  };
+
+  let misskeyCompatSetting = { value: false, checkedAt: 0 };
+
+  /**
+   * Reads the `misskey_compat_enabled` server setting, cached briefly to avoid
+   * a database query per incoming message. Defaults to disabled when the
+   * setting row is absent (matching the settings.yml default).
+   * @returns {Promise.<boolean>}
+   */
+  const isMisskeyCompatEnabled = async () => {
+    const now = Date.now();
+
+    if (now - misskeyCompatSetting.checkedAt < 15000) {
+      return misskeyCompatSetting.value;
+    }
+
+    try {
+      const result = await pgPool.query("SELECT value FROM settings WHERE var = 'misskey_compat_enabled' LIMIT 1");
+      const enabled = result.rows.length > 0 && result.rows[0].value === "--- true\n";
+      misskeyCompatSetting = { value: enabled, checkedAt: now };
+      return enabled;
+    } catch (err) {
+      logger.error({ err }, 'Failed to read misskey_compat_enabled setting');
+      return false;
+    }
   };
 
   /**
@@ -1415,6 +1478,16 @@ const startServer = async () => {
     metrics.connectedChannels.labels({ type: 'websocket', channel: 'system' }).inc(2);
   };
 
+  const misskeyCompat = createMisskeyCompat({
+    subscribe,
+    unsubscribe,
+    subscriptionHeartbeat,
+    channelNameToIds,
+    authorizeStatusAccess,
+    isEnabled: isMisskeyCompatEnabled,
+    logger,
+  });
+
   /**
    * @param {import('ws').WebSocket & { isAlive: boolean }} ws
    * @param {Request} req
@@ -1448,6 +1521,8 @@ const startServer = async () => {
       subscriptions.forEach(channelIds => {
         removeSubscription(session, channelIds.split(';'));
       });
+
+      misskeyCompat.cleanup(session);
 
       // Decrement the metrics for connected clients:
       metrics.connectedClients.labels({ type: 'websocket' }).dec();
@@ -1497,6 +1572,8 @@ const startServer = async () => {
           firstParam(stream),
           params
         );
+      } else if (misskeyCompat.isMisskeyType(type)) {
+        misskeyCompat.handleMessage(session, json);
       } else {
         // Unknown action type
       }

@@ -1,0 +1,23 @@
+- content_for :page_title, t('misskey_compat.scratchpad.title')
+
+.simple_form
+  %h2= t('misskey_compat.scratchpad.title')
+  %p.hint= t('misskey_compat.scratchpad.description')
+
+  - if @error.present?
+    .flash-message.alert= @error
+
+  = form_tag scratchpad_path, method: :post do
+    .fields-group
+      .input.text
+        = label_tag :code, t('misskey_compat.scratchpad.code_label')
+        = text_area_tag :code, @code, rows: 10, autofocus: true, spellcheck: false, autocomplete: 'off', autocapitalize: 'off'
+
+    .actions
+      = button_tag t('misskey_compat.scratchpad.run'), type: :submit, class: 'button'
+
+  - if @result.present?
+    .fields-group
+      .input.text
+        = label_tag :result, t('misskey_compat.scratchpad.result_label')
+        = text_area_tag :result, @result, rows: 6, readonly: true, spellcheck: false

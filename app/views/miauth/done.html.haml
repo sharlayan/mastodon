@@ -1,0 +1,19 @@
+- content_for :page_title do
+  MiAuth
+
+- if @callback.present?
+  - content_for :header_tags do
+    %meta{ 'http-equiv' => 'refresh', 'content' => "0; url=#{@callback}" }/
+
+.form-container.simple_form
+  .oauth-prompt
+    %h3 승인 완료
+
+    - if @callback.present?
+      %p 인증이 완료되었습니다. 자동으로 앱으로 돌아갑니다.
+      %p 앱으로 돌아가지 않으면 아래 버튼을 눌러 주세요.
+
+      .actions
+        = link_to '앱으로 돌아가기', @callback, class: 'btn button'
+    - else
+      %p 인증이 완료되었습니다. 앱으로 돌아가 주세요.

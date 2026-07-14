@@ -1023,6 +1023,10 @@ ja:
       soft_hide_deletion:
         enabled: 削除された投稿をオーナー用に保存
         enabled_hint: 有効にすると、投稿を削除しても破棄されません。代わりに投稿と添付メディアを投稿者を含む全員から隠し、最高管理者（オーナー）のみが管理タイムラインで「削除済み」表示とともに閲覧できます。無効の場合は投稿が完全に削除されます。
+      misskey_compat:
+        title: Misskey互換API
+        enabled: Misskey互換APIレイヤーを有効化
+        enabled_hint: 有効にすると、このサーバーはMisskey APIの一部にも応答し、Aria for misskeyやFlareなどのMiAuthログイン対応アプリがログイン・リアクション・MFM表示を行えるようになります。有効にするとこれらのアプリはこのホストをMisskeyとして認識します。無効の場合は標準のMastodonの動作を維持します。
       domain_blocks:
         all: 誰にでも許可
         disabled: 誰にも許可しない
@@ -1836,6 +1840,16 @@ ja:
       followers: すべてのフォロワーを現在のアカウントから新しいアカウントに引き継ぎます
       only_redirect_html: または、<a href="%{path}">フォロワーを残したまま引っ越す</a>こともできます。
       redirect: プロフィールに引っ越し済みの通知が表示され、検索結果から除外されます
+  misskey_compat:
+    scratchpad:
+      code_label: AiScript コード
+      description: Misskey 互換アプリに表示されたコードを下に貼り付けて実行すると、プッシュ通知が登録されます。完了したら結果をコピーしてアプリに貼り付けてください。
+      no_session: 有効なセッションを確認できませんでした。このブラウザで再度ログインしてからお試しください。
+      result_label: '結果（アプリに貼り付けてください）:'
+      run: 実行
+      title: スクラッチパッド
+      unsupported: このスクラッチパッドはプッシュ通知の登録（sw/register）のみ対応しています。貼り付けられたコードを認識できませんでした。
+      wrong_account: このコードは @%{expected} 向けですが、現在 @%{current} でログインしています。該当アカウントでログインしてからお試しください。
   moderation:
     title: モデレーション
   multi_accounts:

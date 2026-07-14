@@ -1193,6 +1193,10 @@ en:
       soft_hide_deletion:
         enabled: Preserve deleted posts for the owner
         enabled_hint: When enabled, deleting a post does not destroy it. Instead the post and its media are hidden from everyone (including the author) and only the owner can view them from the management timeline, where they are flagged as deleted. Leave disabled to delete posts permanently.
+      misskey_compat:
+        title: Misskey-compatible API
+        enabled: Enable the Misskey-compatible API layer
+        enabled_hint: When enabled, this server also answers a subset of the Misskey API so MiAuth-login apps like Aria for misskey and Flare can sign in, add reactions, and render MFM. Turning this on makes those apps detect this host as Misskey. Leave disabled to keep standard Mastodon behavior.
       domain_blocks:
         all: To everyone
         disabled: To no one
@@ -2117,6 +2121,16 @@ en:
       only_redirect_html: Alternatively, you can <a href="%{path}">only put up a redirect on your profile</a>.
       other_data: No other data will be moved automatically (including your posts and the list of accounts you follow)
       redirect: Your current account's profile will be updated with a redirect notice and be excluded from searches
+  misskey_compat:
+    scratchpad:
+      code_label: AiScript code
+      description: Paste the code shown in your Misskey-compatible app below and run it to register push notifications. When it finishes, copy the result and paste it back into the app.
+      no_session: Could not determine your active session. Please sign in again from this browser and retry.
+      result_label: 'Result (copy this back into the app):'
+      run: Run
+      title: Scratchpad
+      unsupported: This scratchpad only supports push notification registration (sw/register). The pasted code was not recognized.
+      wrong_account: This code targets @%{expected}, but you are signed in as @%{current}. Sign in with the matching account and retry.
   moderation:
     title: Moderation
   move_handler:

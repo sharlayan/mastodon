@@ -51,6 +51,16 @@
             wrapper: :with_label,
             label: t('admin.settings.auto_quote_from_url.enabled'),
             hint: t('admin.settings.auto_quote_from_url.enabled_hint'),
+            sharlayan_only: true,
+
+%h2= t('admin.settings.misskey_compat.title')
+
+.fields-group
+  = f.input :misskey_compat_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.misskey_compat.enabled'),
+            hint: t('admin.settings.misskey_compat.enabled_hint'),
             sharlayan_only: true
 
 - if roleplay_mode?

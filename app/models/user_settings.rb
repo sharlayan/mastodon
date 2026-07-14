@@ -16,6 +16,9 @@ class UserSettings
   setting :default_language, default: nil
   setting :default_sensitive, default: false
   setting :auto_accept_followed, default: false
+  setting :show_reactions, default: true
+  setting :hide_online_status, default: false
+  setting :prevent_ai_learning, default: false
   setting :default_privacy, default: nil, in: %w(public unlisted private)
   setting :default_content_type, default: 'text/plain'
   setting :hide_followers_count, default: false
@@ -25,6 +28,8 @@ class UserSettings
   setting :auto_quote_from_url, default: false # auto-promote fetchable ActivityPub post links in the body to a quote
   setting :email_subscriptions, default: false
   setting :content_font_size, default: 'medium', in: %w(medium large x_large xx_large)
+  setting :misskey_muted_words, default: '[]'
+  setting :misskey_hard_muted_words, default: '[]'
   setting :hide_online_status, default: true
 
   setting_inverse_alias :indexable, :noindex

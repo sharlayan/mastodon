@@ -510,7 +510,7 @@ class FeedManager
   # @param [String] timeline_key
   # @return [Boolean]
   def push_update_required?(timeline_key)
-    redis.exists?("subscribed:#{timeline_key}")
+    redis.exists?("subscribed:#{timeline_key}") || (Setting.misskey_compat_enabled && redis.exists?("subscribed:misskey:#{timeline_key}"))
   end
 
   # Check if the account is blocking or muting any of the given accounts

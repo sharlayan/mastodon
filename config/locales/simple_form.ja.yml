@@ -62,6 +62,9 @@ ja:
         setting_default_quote_policy_unlisted: 誰かがあなたを引用すると、その投稿もトレンドから非表示になります。
         setting_auto_accept_followed: アカウントが承認制でも、すでにフォローしているアカウントからのフォローリクエストは自動的に承認します。
         setting_auto_quote_from_url: 投稿本文に取得可能な他の連合投稿へのリンクが含まれている場合、作成者に許可を求めずに自動的に引用へ変換します。引用される元の投稿者に承認を求めることはありません。
+        setting_hide_online_status: 対応しているアプリ（Misskey互換クライアントなど）でオンライン状態を非表示にします。
+        setting_prevent_ai_learning: 投稿やメディアをAIの学習に使用しないようにクローラーへ要求します。あくまで要求であり、強制はできません。
+        setting_show_reactions: プロフィールで自分がリアクションした投稿を他の人に表示できるようにします。
         setting_bridge_unlisted_to_bsky: 未収載（ホーム）の投稿は連合上では静かなままにしつつ、Blueskyブリッジ（bsky.brid.gy）には公開として配送し、Blueskyへ転送されるようにします。ブリッジアカウントのフォローが必要です。
         setting_show_online_status: あなたがオンラインか、最近アクティブか、オフラインかを他の人が確認できます。無効にすると、状態はすべての人に不明として表示されます。
         setting_default_sensitive: 閲覧注意状態のメディアはデフォルトでは内容が伏せられ、クリックして初めて閲覧できるようになります
@@ -248,6 +251,9 @@ ja:
         setting_default_quote_policy: 引用できるユーザー
         setting_auto_accept_followed: フォロー中のアカウントからのフォローリクエストを自動承認する
         setting_auto_quote_from_url: 投稿内の連合投稿リンクを自動的に引用する
+        setting_hide_online_status: オンライン状態を隠す
+        setting_prevent_ai_learning: AIの学習への使用を防ぐ
+        setting_show_reactions: プロフィールに自分のリアクションを表示する
         setting_bridge_unlisted_to_bsky: 未収載の投稿を公開としてBlueskyに転送する
         setting_show_online_status: 自分のオンライン状態を共有する
         setting_default_sensitive: メディアを常に閲覧注意としてマークする

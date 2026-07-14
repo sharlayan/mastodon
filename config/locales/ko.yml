@@ -1166,6 +1166,10 @@ ko:
       soft_hide_deletion:
         enabled: 삭제된 게시물을 owner용으로 보존
         enabled_hint: 활성화하면 게시물을 삭제해도 파기하지 않습니다. 대신 게시물과 첨부 미디어를 작성자를 포함한 모두에게 숨기고, 최고 관리자(owner)만 관리 타임라인에서 '삭제됨' 표시와 함께 열람할 수 있습니다. 비활성화하면 게시물이 영구 삭제됩니다.
+      misskey_compat:
+        title: Misskey 호환 API
+        enabled: Misskey 호환 API 레이어 활성화
+        enabled_hint: 활성화하면 이 서버가 Misskey API의 일부도 응답하여 Aria for misskey 및 Flare와 같은 MiAuth 로그인 지원 앱이 로그인·리액션·MFM 렌더링을 할 수 있습니다. 켜면 이러한 앱이 이 호스트를 Misskey로 인식합니다. 비활성화하면 기본 Mastodon 동작을 유지합니다.
       domain_blocks:
         all: 모두에게
         disabled: 아무에게도 안 함
@@ -2035,6 +2039,16 @@ ko:
       only_redirect_html: 대신, <a href="%{path}">프로필에 리디렉션만 표시</a>할 수도 있습니다.
       other_data: 다른 데이터는 자동으로 이전되지 않을 것입니다 (게시물, 팔로우 목록 등)
       redirect: 현재 계정 프로필은 리다이렉트 알림과 함께 업데이트 되며 검색에서 제외 됩니다
+  misskey_compat:
+    scratchpad:
+      code_label: AiScript 코드
+      description: Misskey 호환 앱에 표시된 코드를 아래에 붙여넣고 실행하면 푸시 알림이 등록됩니다. 완료되면 결과를 복사해 앱에 다시 붙여넣으세요.
+      no_session: 활성 세션을 확인할 수 없습니다. 이 브라우저에서 다시 로그인한 뒤 시도하세요.
+      result_label: '결과 (앱에 다시 붙여넣기):'
+      run: 실행
+      title: 스크래치패드
+      unsupported: 이 스크래치패드는 푸시 알림 등록(sw/register)만 지원합니다. 붙여넣은 코드를 인식하지 못했습니다.
+      wrong_account: 이 코드는 @%{expected} 계정을 대상으로 하지만 현재 @%{current}(으)로 로그인되어 있습니다. 해당 계정으로 로그인한 뒤 시도하세요.
   moderation:
     title: 중재
   move_handler:

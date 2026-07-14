@@ -31,7 +31,7 @@ import { ParentQuote } from 'flavours/glitch/features/direct_timeline/components
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import Bundle from 'flavours/glitch/features/ui/components/bundle';
 import { MediaGallery, Video, Audio } from 'flavours/glitch/features/ui/util/async-components';
-import { me, deleteModal, maxReactions, reactionsEnabled } from 'flavours/glitch/initial_state';
+import { me, deleteModal, reactionsEnabled } from 'flavours/glitch/initial_state';
 import { makeGetStatus } from 'flavours/glitch/selectors';
 
 const messages = defineMessages({
@@ -220,7 +220,7 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
   const signedIn = !!me;
   const reactions = status.get('reactions');
   const hasReactions = reactions && reactions.some(reaction => reaction.get('count') > 0);
-  const canReact = signedIn && reactions.filter(reaction => reaction.get('count') > 0 && reaction.get('me')).size < maxReactions;
+  const canReact = signedIn && reactionsEnabled;
 
   const fullTime = intl.formatDate(status.get('created_at'), {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',

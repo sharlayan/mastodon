@@ -22,7 +22,7 @@ import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend
 import { IconButton } from '../../../components/icon_button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
-import { adminTimelineOwnerViewer, me, maxReactions, quickBoosting, reactionsEnabled, roleplayMode, softHideDeletion } from '../../../initial_state';
+import { adminTimelineOwnerViewer, me, quickBoosting, reactionsEnabled, roleplayMode, softHideDeletion } from '../../../initial_state';
 import { BoostButton } from '@/flavours/glitch/components/status/boost_button';
 import { quoteItemState } from '@/flavours/glitch/components/status/boost_button_utils';
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
@@ -286,7 +286,7 @@ class ActionBar extends PureComponent {
       replyIconComponent = ReplyAllIcon;
     }
 
-    const canReact = signedIn && status.get('reactions').filter(r => r.get('count') > 0 && r.get('me')).size < maxReactions;
+    const canReact = signedIn;
     const reactButton = (
       <IconButton
         className='add-reaction-icon'

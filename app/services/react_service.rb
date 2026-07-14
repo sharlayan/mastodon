@@ -3,6 +3,7 @@
 class ReactService < BaseService
   include Authorization
   include Payloadable
+  include Redisable
   include ActivityPub::ReactionDistribution
 
   def call(account, status, emoji)
@@ -28,6 +29,8 @@ class ReactService < BaseService
     reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
     return reaction if reaction
 
+    evict_existing_reactions(account, status)
+
     begin
       reaction = StatusReaction.create!(account: account, status: status, name: name, custom_emoji: custom_emoji)
     rescue ActiveRecord::RecordNotUnique
@@ -38,12 +41,33 @@ class ReactService < BaseService
 
     create_notification(reaction)
     BroadcastStatusUpdateWorker.perform_async(status.id)
+    MisskeyCompat::Streaming.broadcast_reaction(redis, reaction.status, reaction, account, 'reacted')
     increment_statistics
 
     reaction
   end
 
   private
+
+  def evict_existing_reactions(account, status)
+    return unless account.local?
+
+    target = status.reblog? ? status.reblog : status
+    existing = StatusReaction.where(account: account, status: target).order(id: :asc).to_a
+    overflow = existing.size + 1 - StatusReactionValidator::LIMIT
+    return if overflow <= 0
+
+    existing.first(overflow).each do |reaction|
+      UnreactService.new.call(account, target, reaction_emoji_string(reaction))
+    end
+  end
+
+  def reaction_emoji_string(reaction)
+    custom = reaction.custom_emoji
+    return reaction.name if custom.nil?
+
+    custom.domain.present? ? "#{reaction.name}@#{custom.domain}" : reaction.name
+  end
 
   def create_notification(reaction)
     status = reaction.status

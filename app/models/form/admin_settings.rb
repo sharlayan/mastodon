@@ -78,6 +78,7 @@ class Form::AdminSettings
     board_announcements_enabled
     instance_metadata_enabled
     antenna_enabled
+    misskey_compat_enabled
     online_status_enabled
     soft_hide_deletion
   ).freeze
@@ -127,6 +128,7 @@ class Form::AdminSettings
     board_announcements_enabled
     instance_metadata_enabled
     antenna_enabled
+    misskey_compat_enabled
     online_status_enabled
     soft_hide_deletion
   ).freeze
