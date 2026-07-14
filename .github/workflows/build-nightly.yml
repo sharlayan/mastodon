@@ -11,7 +11,7 @@ permissions:
 jobs:
   compute-suffix:
     runs-on: ubuntu-latest
-    if: github.repository == 'glitch-soc/mastodon'
+    if: github.repository == 'sharlayan/mastodon'
     steps:
       - id: version_vars
         env:
@@ -26,6 +26,7 @@ jobs:
     uses: ./.github/workflows/build-container-image.yml
     with:
       file_to_build: Dockerfile
+      ref: develop
       cache: false
       push_to_images: |
         ghcr.io/${{ github.repository_owner }}/mastodon
@@ -45,6 +46,7 @@ jobs:
     uses: ./.github/workflows/build-container-image.yml
     with:
       file_to_build: streaming/Dockerfile
+      ref: develop
       cache: false
       push_to_images: |
         ghcr.io/${{ github.repository_owner }}/mastodon-streaming
