@@ -1,0 +1,46 @@
+name: Build Sharlayan image
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to publish (e.g. v1.0). Leave empty for a branch build.'
+        type: string
+        required: false
+      mark_latest:
+        description: 'Also tag this image as :latest'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-image:
+    uses: ./.github/workflows/build-container-image.yml
+    with:
+      file_to_build: Dockerfile
+      push_to_images: |
+        ghcr.io/${{ github.repository_owner }}/mastodon
+      version_metadata: ${{ inputs.release_tag || github.sha }}
+      flavor: |
+        latest=${{ inputs.mark_latest }}
+      tags: |
+        type=ref,event=branch
+        type=sha,format=short
+        type=raw,value=${{ inputs.release_tag }},enable=${{ inputs.release_tag != '' }}
+    secrets: inherit
+
+  build-image-streaming:
+    uses: ./.github/workflows/build-container-image.yml
+    with:
+      file_to_build: streaming/Dockerfile
+      push_to_images: |
+        ghcr.io/${{ github.repository_owner }}/mastodon-streaming
+      flavor: |
+        latest=${{ inputs.mark_latest }}
+      tags: |
+        type=ref,event=branch
+        type=sha,format=short
+        type=raw,value=${{ inputs.release_tag }},enable=${{ inputs.release_tag != '' }}
+    secrets: inherit
