@@ -25,7 +25,7 @@ export function useAccountHandle(
 
 export const DisplayNameDefault: FC<
   Omit<DisplayNameProps, 'variant'> & ComponentPropsWithoutRef<'span'>
-> = ({ account, localDomain, className, ...props }) => {
+> = ({ account, localDomain, className, children, ...props }) => {
   const username = useAccountHandle(account, localDomain);
 
   return (
@@ -38,6 +38,7 @@ export const DisplayNameDefault: FC<
       <span className='display-name__account'>
         {username ?? <Skeleton width='7ch' />}
       </span>
+      {children}
     </DisplayNameWithoutDomain>
   );
 };
