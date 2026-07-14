@@ -413,21 +413,24 @@ const startServer = async () => {
    * @param {Request} req
    * @returns {Promise<ResolvedAccount>}
    */
-  const accountFromRequest = (req) => new Promise((resolve, reject) => {
+  const accountFromRequest = async (req) => {
     const authorization = req.headers.authorization;
     const query         = parseQueryString(req);
-    const accessToken   = query?.access_token || query?.i || req.headers['sec-websocket-protocol'];
+    const accessToken   = query?.access_token;
+    const protocolToken = req.headers['sec-websocket-protocol'];
+    const standardToken = accessToken ? firstParam(accessToken) : protocolToken ? firstParam(protocolToken) : undefined;
 
-    if (!authorization && !accessToken) {
-      reject(new AuthenticationError('Missing access token'));
-      return;
+    if (authorization || standardToken) {
+      const token = authorization ? authorization.replace(/^Bearer /, '') : standardToken;
+      return accountFromToken(token, req);
     }
 
-    const token = authorization ? authorization.replace(/^Bearer /, '') : accessToken;
+    const misskeyToken = query?.i ? firstParam(query.i) : undefined;
+    if (!misskeyToken) throw new AuthenticationError('Missing access token');
+    if (!await isMisskeyCompatEnabled()) throw new AuthenticationError('Misskey compatibility is disabled');
 
-    // @ts-expect-error
-    resolve(accountFromToken(token, req));
-  });
+    return accountFromToken(misskeyToken, req);
+  };
 
   /**
    * @param {Request} req

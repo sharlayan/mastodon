@@ -67,6 +67,15 @@ RSpec.describe Web::PushNotificationWorker do
         .to have_been_made
     end
 
+    it 'does not send Misskey-compatible push notifications when compatibility is disabled' do
+      Setting.misskey_compat_enabled = false
+      legacy_subscription.update!(data: legacy_subscription.data.merge('compat' => 'misskey'))
+
+      subject.perform(legacy_subscription.id, notification.id)
+
+      expect(a_request(:post, endpoint)).to_not have_been_made
+    end
+
     # We allow subject stub to encrypt the same input than the RFC8291 example
     # rubocop:disable RSpec/SubjectStub
     it 'Standard push calls the relevant service with the standard headers' do

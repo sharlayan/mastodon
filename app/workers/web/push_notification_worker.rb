@@ -14,6 +14,7 @@ class Web::PushNotificationWorker
     @subscription = Web::PushSubscription.find(subscription_id)
     @notification = Notification.find(notification_id)
 
+    return if @subscription.misskey_compat? && !Setting.misskey_compat_enabled
     return if @notification.updated_at < TTL.ago
 
     # Clean up old Web::PushSubscriptions that were added before validation of
