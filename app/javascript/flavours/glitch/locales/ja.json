@@ -224,6 +224,7 @@
   "navigation_bar.extensions": "拡張機能",
   "navigation_bar.reaction_mutes": "絵文字リアクション拒否",
   "navigation_bar.roleplay_public_timeline": "公開タイムライン",
+  "navigation_bar.roleplay_public_timeline_short": "公開",
   "navigation_panel.collapse_extensions": "拡張機能メニューを折りたたむ",
   "navigation_panel.expand_extensions": "拡張機能メニューを展開する",
   "mention_search.label": "メッセージを送る相手を検索",

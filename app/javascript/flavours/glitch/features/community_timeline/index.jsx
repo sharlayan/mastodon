@@ -11,7 +11,7 @@ import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { DismissableBanner } from 'flavours/glitch/components/dismissable_banner';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
-import { domain, localLiveFeedAccess } from 'flavours/glitch/initial_state';
+import { domain, localLiveFeedAccess, roleplayMode } from 'flavours/glitch/initial_state';
 import { canViewFeed } from 'flavours/glitch/permissions';
 
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
@@ -25,6 +25,7 @@ import ColumnSettingsContainer from './containers/column_settings_container';
 
 const messages = defineMessages({
   title: { id: 'column.community', defaultMessage: 'Local timeline' },
+  titleRoleplay: { id: 'navigation_bar.roleplay_public_timeline', defaultMessage: 'Public timeline' },
 });
 
 const mapStateToProps = (state, { columnId }) => {
@@ -127,6 +128,7 @@ class CommunityTimeline extends PureComponent {
     const { intl, hasUnread, columnId, multiColumn, onlyMedia } = this.props;
     const { signedIn, permissions } = this.props.identity;
     const pinned = !!columnId;
+    const title = intl.formatMessage(roleplayMode ? messages.titleRoleplay : messages.title);
 
     const emptyMessage = canViewFeed(signedIn, permissions, localLiveFeedAccess) ? (
       <FormattedMessage
@@ -141,12 +143,12 @@ class CommunityTimeline extends PureComponent {
     );
 
     return (
-      <Column bindToDocument={!multiColumn} ref={this.setRef} label={intl.formatMessage(messages.title)}>
+      <Column bindToDocument={!multiColumn} ref={this.setRef} label={title}>
         <ColumnHeader
           icon='users'
           iconComponent={PeopleIcon}
           active={hasUnread}
-          title={intl.formatMessage(messages.title)}
+          title={title}
           onPin={this.handlePin}
           onMove={this.handleMove}
           onClick={this.handleHeaderClick}
@@ -169,7 +171,7 @@ class CommunityTimeline extends PureComponent {
         />
 
         <Helmet>
-          <title>{intl.formatMessage(messages.title)}</title>
+          <title>{title}</title>
           <meta name='robots' content='noindex' />
         </Helmet>
       </Column>

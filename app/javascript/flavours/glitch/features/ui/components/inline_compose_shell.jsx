@@ -20,13 +20,14 @@ import { fetchLists } from 'flavours/glitch/actions/lists_typed';
 import { Icon } from 'flavours/glitch/components/icon';
 import { TabList, TabLink } from 'flavours/glitch/components/tab_list';
 import ComposeFormContainer from 'flavours/glitch/features/compose/containers/compose_form_container';
-import { me, antennaEnabled } from 'flavours/glitch/initial_state';
+import { me, antennaEnabled, roleplayMode } from 'flavours/glitch/initial_state';
 import { getOrderedLists } from 'flavours/glitch/selectors/lists';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 const messages = defineMessages({
   home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
   local: { id: 'navigation_bar.community_timeline', defaultMessage: 'Local' },
+  localRoleplay: { id: 'navigation_bar.roleplay_public_timeline_short', defaultMessage: 'Public' },
   federated: { id: 'navigation_bar.public_timeline', defaultMessage: 'Federated' },
   add: { id: 'inline_compose.add_tab', defaultMessage: 'Add a feed' },
   remove: { id: 'inline_compose.remove_tab', defaultMessage: 'Remove tab' },
@@ -52,9 +53,12 @@ export const InlineComposeShell = () => {
   const tabs = useMemo(() => {
     const base = [
       { to: '/home', label: intl.formatMessage(messages.home), icon: 'home', iconComponent: HomeIcon },
-      { to: '/public/local', label: intl.formatMessage(messages.local), icon: 'users', iconComponent: PeopleIcon },
-      { to: '/public', label: intl.formatMessage(messages.federated), icon: 'globe', iconComponent: PublicIcon },
+      { to: '/public/local', label: intl.formatMessage(roleplayMode ? messages.localRoleplay : messages.local), icon: 'users', iconComponent: PeopleIcon },
     ];
+
+    if (!roleplayMode) {
+      base.push({ to: '/public', label: intl.formatMessage(messages.federated), icon: 'globe', iconComponent: PublicIcon });
+    }
 
     const dynamic = savedTabList.map((tab) => {
       if (tab.type === 'list') {
