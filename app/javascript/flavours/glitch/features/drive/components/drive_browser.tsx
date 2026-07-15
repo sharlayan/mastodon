@@ -63,6 +63,7 @@ export const DriveBrowser: React.FC<{
     uploadFiles,
     deleteFile,
     renameFile,
+    transferFileToPosts,
     moveFile,
     createFolder,
     renameFolder,
@@ -328,6 +329,7 @@ export const DriveBrowser: React.FC<{
                 onSelect={onSelectFile}
                 onDelete={deleteFile}
                 onRename={renameFile}
+                onTransferToPosts={transferFileToPosts}
               />
             ))}
           </div>

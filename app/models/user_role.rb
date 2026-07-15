@@ -7,6 +7,7 @@
 #  id                :bigint(8)        not null, primary key
 #  collection_limit  :integer          default(10), not null
 #  color             :string           default(""), not null
+#  drive_quota       :integer
 #  extra_permissions :bigint(8)        default(0), not null
 #  highlighted       :boolean          default(FALSE), not null
 #  name              :string           default(""), not null
@@ -122,6 +123,7 @@ class UserRole < ApplicationRecord
   validates :color, format: { with: CSS_COLORS }, if: :color?
   validates :position, numericality: { in: (-POSITION_LIMIT..POSITION_LIMIT) }
   validates :collection_limit, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
 
   validate :validate_permissions_elevation
   validate :validate_extra_permissions_elevation
@@ -189,6 +191,11 @@ class UserRole < ApplicationRecord
     overrides?(role) && highlighted? && can?(*Flags::CATEGORIES[:moderation])
   end
 
+  def drive_quota_bytes
+    quota = drive_quota.nil? ? Setting.drive_quota.to_i : drive_quota
+    quota.positive? ? quota.megabytes : 0
+  end
+
   def computed_permissions
     # If called on the everyone role, no further computation needed
     return permissions if everyone?
@@ -249,6 +256,7 @@ class UserRole < ApplicationRecord
 
     errors.add(:permissions_as_keys, :own_role) if permissions_changed?
     errors.add(:extra_permissions_as_keys, :own_role) if extra_permissions_changed?
+    errors.add(:drive_quota, :own_role) if drive_quota_changed? && !administrator?
     errors.add(:position, :own_role) if position_changed?
     errors.add(:require_2fa, :own_role) if require_2fa_changed? && !administrator?
   end

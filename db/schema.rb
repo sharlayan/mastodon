@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_15_061400) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_15_204800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -909,7 +909,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_061400) do
     t.datetime "created_at", null: false
     t.string "emoji_type", null: false
     t.string "name", null: false
-    t.integer "position"
+    t.integer "position", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["account_id", "name"], name: "index_favorite_emojis_on_account_id_and_name", unique: true
     t.index ["account_id"], name: "index_favorite_emojis_on_account_id"
@@ -1248,13 +1248,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_061400) do
     t.integer "expires_in"
     t.datetime "last_used_at", precision: nil
     t.inet "last_used_ip"
-    t.boolean "multi_account", default: false, null: false
     t.string "refresh_token"
     t.bigint "resource_owner_id"
     t.datetime "revoked_at", precision: nil
     t.string "scopes"
     t.string "token", null: false
-    t.index ["multi_account"], name: "index_oauth_access_tokens_on_multi_account"
     t.index ["refresh_token"], name: "index_oauth_access_tokens_on_refresh_token", unique: true, opclass: :text_pattern_ops, where: "(refresh_token IS NOT NULL)"
     t.index ["resource_owner_id"], name: "index_oauth_access_tokens_on_resource_owner_id", where: "(resource_owner_id IS NOT NULL)"
     t.index ["token"], name: "index_oauth_access_tokens_on_token", unique: true
@@ -1637,7 +1635,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_061400) do
     t.boolean "local"
     t.boolean "local_only"
     t.boolean "mfm", default: false, null: false
-    t.text "mfm_html"
     t.text "mfm_text"
     t.bigint "ordered_media_attachment_ids", array: true
     t.bigint "poll_id"
@@ -1758,6 +1755,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_061400) do
     t.integer "collection_limit", default: 10, null: false
     t.string "color", default: "", null: false
     t.datetime "created_at", null: false
+    t.integer "drive_quota"
     t.bigint "extra_permissions", default: 0, null: false
     t.boolean "highlighted", default: false, null: false
     t.string "name", default: "", null: false

@@ -3,7 +3,7 @@
 class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   before_action -> { doorkeeper_authorize! :read }, only: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
   before_action -> { doorkeeper_authorize! :write, :'write:media' }, except: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
-  before_action :set_file, only: [:show, :update, :destroy, :attach, :attached_notes]
+  before_action :set_file, only: [:show, :update, :destroy, :attach, :transfer_to_posts, :attached_notes]
   after_action :insert_pagination_headers, only: :index
 
   LIMIT = 40
@@ -65,26 +65,23 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   def create
     return render json: { error: 'File is required', code: 'INVALID_PARAM' }, status: 422 if params[:file].blank?
 
-    digest = Digest::SHA256.file(uploaded_path).hexdigest
-    md5 = Digest::MD5.file(uploaded_path).hexdigest
-    @file = current_account.with_lock do
-      existing = current_account.drive_files.find_by(sha256: digest)
-      next update_existing_file(existing) if existing
-
-      candidate = current_account.drive_files.build(file_params.merge(sha256: digest, md5: md5))
-      candidate.display_name = uploaded_name
-      raise ActiveRecord::RecordInvalid, candidate unless candidate.valid?
-      raise Mastodon::ValidationError, quota_error[:error] unless within_quota?(candidate.quota_storage_file_size)
-
-      candidate.tap(&:save!)
-    end
+    @file = CreateDriveFileService.new.call(
+      account: current_account,
+      user: current_user,
+      file: params[:file],
+      thumbnail: params[:thumbnail],
+      name: params[:name],
+      folder_id: params[:folder_id],
+      folder_id_provided: params.key?(:folder_id),
+      description: params[:description],
+      sensitive: params[:sensitive]
+    )
 
     render json: @file, serializer: REST::DriveFileSerializer
-  rescue ActiveRecord::RecordNotUnique
-    @file = update_existing_file(current_account.drive_files.find_by!(sha256: digest))
-    render json: @file, serializer: REST::DriveFileSerializer
-  rescue Mastodon::ValidationError => e
-    render json: { error: e.message, code: 'NO_FREE_SPACE' }, status: 422
+  rescue CreateDriveFileService::NoFreeSpaceError
+    render json: quota_error.merge(code: 'NO_FREE_SPACE'), status: 422
+  rescue CreateDriveFileService::NoSuchFolderError
+    render json: { error: 'No such folder', code: 'NO_SUCH_FOLDER' }, status: 404
   rescue Paperclip::Errors::NotIdentifiedByImageMagickError
     render json: { error: 'File type of uploaded media could not be verified', code: 'INVALID_FILE_TYPE' }, status: 422
   rescue Paperclip::Error => e
@@ -115,6 +112,15 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
       @file.build_pointer(current_account).tap(&:save!)
     end
     render json: attachment, serializer: REST::MediaAttachmentSerializer
+  end
+
+  def transfer_to_posts
+    count = TransferDriveFileToMediaAttachmentsService.new.call(@file)
+    render json: { transferred: count }
+  rescue TransferDriveFileToMediaAttachmentsService::NotAttachedError
+    render json: { error: 'Drive file is not attached to a post', code: 'NOT_ATTACHED' }, status: 422
+  rescue TransferDriveFileToMediaAttachmentsService::UnsupportedFileError
+    render json: { error: 'Drive file cannot be converted to a media attachment', code: 'INVALID_FILE_TYPE' }, status: 422
   end
 
   private
@@ -195,32 +201,6 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
 
   def pagination_params(core_params)
     params.slice(:limit, :folder_id, :type, :orphaned, :sort, :since_date, :until_date).permit(:limit, :folder_id, :type, :orphaned, :sort, :since_date, :until_date).merge(core_params)
-  end
-
-  def uploaded_path
-    params[:file].respond_to?(:path) ? params[:file].path : params[:file].tempfile.path
-  end
-
-  def within_quota?(incoming_size)
-    quota = Setting.drive_quota.to_i.megabytes
-    return true if quota <= 0
-
-    used = current_account.drive_files.sum(:storage_file_size).to_i
-    used + incoming_size.to_i <= quota
-  end
-
-  def update_existing_file(file)
-    file.display_name = uploaded_name if file.custom_name.nil?
-    file.update!(drive_metadata_params.compact_blank.except(:name))
-    file
-  end
-
-  def uploaded_name
-    params[:name].presence || params[:file].original_filename
-  end
-
-  def file_params
-    params.permit(:file, :description, :folder_id, :sensitive)
   end
 
   def drive_metadata_params

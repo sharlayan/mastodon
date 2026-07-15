@@ -16,6 +16,7 @@ import { useIdentity } from 'flavours/glitch/identity_context';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import { DriveBrowser } from './components/drive_browser';
+import { DriveSettings } from './components/drive_settings';
 import { useDrive } from './use_drive';
 
 const messages = defineMessages({
@@ -83,7 +84,9 @@ const Drive: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         title={intl.formatMessage(messages.heading)}
         multiColumn={multiColumn}
         showBackButton
-      />
+      >
+        <DriveSettings folders={drive.folders} onError={drive.onError} />
+      </ColumnHeader>
 
       <div className='scrollable'>
         <DriveBrowser

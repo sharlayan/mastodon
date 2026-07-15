@@ -133,6 +133,14 @@ RSpec.describe 'Admin Roles' do
     before { sign_in Fabricate(:admin_user) }
 
     describe 'POST /admin/roles' do
+      it 'creates a role with a drive quota' do
+        expect do
+          post admin_roles_path, params: { user_role: { name: 'Drive role', position: 0, drive_quota: 2048 } }
+        end.to change(UserRole, :count).by(1)
+
+        expect(UserRole.order(:id).last.drive_quota).to eq(2048)
+      end
+
       it 'gracefully handles invalid nested params' do
         post admin_roles_path(user_role: 'invalid')
 

@@ -186,6 +186,7 @@ en:
       user_role:
         collection_limit: Limits the number of Collections that a single user with this role can create. Please note that when you decrease this number, users who are already at this limit will not lose any Collections. But they will not be able to create additional ones.
         color: Color to be used for the role throughout the UI, as RGB in hex format
+        drive_quota: Maximum total size of each user's Drive library in megabytes. Leave blank to use the server default. Set to 0 for unlimited.
         extra_permissions_as_keys: Additional Sharlayan-specific permissions granted to this role
         highlighted: This makes the role publicly visible
         name: Public name of the role, if role is set to be displayed as a badge
@@ -447,6 +448,7 @@ en:
       user_role:
         collection_limit: Maximum number of Collections per user
         color: Badge color
+        drive_quota: Drive quota per user (MB)
         extra_permissions_as_keys: Additional permissions
         highlighted: Display role as badge on user profiles
         name: Name

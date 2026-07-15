@@ -41,6 +41,17 @@ class DriveFile < ApplicationRecord
 
   EXTENSION_PATTERN = /\A[a-z0-9]{1,10}\z/
 
+  IMAGE_WEBP_STYLES = {
+    original: {
+      format: 'webp',
+      content_type: 'image/webp',
+    }.merge(MediaAttachment::IMAGE_STYLES[:original]).freeze,
+
+    small: {
+      format: 'webp',
+    }.merge(MediaAttachment::IMAGE_STYLES[:small]).freeze,
+  }.freeze
+
   FORBIDDEN_EXTENSIONS = %w(
     asp aspx bash bat cgi cmd com css dll exe hta htm html jar js jsp lnk
     mjs msi phar php php3 php4 php5 phtml pl ps1 py reg rb scr sh svg swf
@@ -197,19 +208,32 @@ class DriveFile < ApplicationRecord
     private
 
     def file_styles(attachment)
-      if attachment.instance.file_content_type == 'image/gif' || MediaAttachment::VIDEO_CONVERTIBLE_MIME_TYPES.include?(attachment.instance.file_content_type)
+      content_type = attachment.instance.file_content_type
+
+      if content_type == 'image/gif' || MediaAttachment::VIDEO_CONVERTIBLE_MIME_TYPES.include?(content_type)
         MediaAttachment::VIDEO_CONVERTED_STYLES
-      elsif MediaAttachment::IMAGE_CONVERTIBLE_MIME_TYPES.include?(attachment.instance.file_content_type)
-        MediaAttachment::IMAGE_CONVERTED_STYLES
-      elsif MediaAttachment::IMAGE_MIME_TYPES.include?(attachment.instance.file_content_type)
-        MediaAttachment::IMAGE_STYLES
-      elsif MediaAttachment::VIDEO_MIME_TYPES.include?(attachment.instance.file_content_type)
+      elsif MediaAttachment::IMAGE_MIME_TYPES.include?(content_type) || MediaAttachment::IMAGE_CONVERTIBLE_MIME_TYPES.include?(content_type)
+        if content_type == 'image/webp' || compress_to_webp?(attachment)
+          IMAGE_WEBP_STYLES
+        elsif MediaAttachment::IMAGE_CONVERTIBLE_MIME_TYPES.include?(content_type)
+          MediaAttachment::IMAGE_CONVERTED_STYLES
+        else
+          MediaAttachment::IMAGE_STYLES
+        end
+      elsif MediaAttachment::VIDEO_MIME_TYPES.include?(content_type)
         MediaAttachment::VIDEO_STYLES
-      elsif MediaAttachment::AUDIO_MIME_TYPES.include?(attachment.instance.file_content_type)
+      elsif MediaAttachment::AUDIO_MIME_TYPES.include?(content_type)
         MediaAttachment::AUDIO_STYLES
       else
         {}
       end
+    end
+
+    def compress_to_webp?(attachment)
+      return false unless attachment.queued_for_write.key?(:original)
+
+      user = attachment.instance.account&.user
+      user.present? && user.settings[:drive_upload_original_image] == false
     end
 
     def file_processors(instance)

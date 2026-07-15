@@ -6,12 +6,11 @@ class DriveMediaController < ApplicationController
   skip_before_action :require_functional!, raise: false
 
   before_action :set_media_attachment
-  before_action :set_drive_file
 
   def show
     attachment, resolved_style = resolve_attachment
 
-    if @drive_file.unknown?
+    if source_record.unknown?
       serve_as_download(attachment, resolved_style)
     elsif local_storage?
       serve_from_disk(attachment, resolved_style)
@@ -27,14 +26,13 @@ class DriveMediaController < ApplicationController
   end
 
   def set_media_attachment
-    @media_attachment = MediaAttachment.where.not(drive_file_id: nil).find_by!(drive_access_key: params[:id])
+    @media_attachment = MediaAttachment.find_by!(drive_access_key: params[:id])
   rescue ActiveRecord::RecordNotFound
     not_found
   end
 
-  def set_drive_file
-    @drive_file = @media_attachment.drive_file
-    not_found if @drive_file.nil?
+  def source_record
+    @source_record ||= @media_attachment.drive_file || @media_attachment
   end
 
   def requested_style
@@ -43,15 +41,15 @@ class DriveMediaController < ApplicationController
 
   def resolve_attachment
     if requested_style == :small
-      if @drive_file.file.styles.key?(:small)
-        [@drive_file.file, :small]
-      elsif @drive_file.thumbnail.present?
-        [@drive_file.thumbnail, :original]
+      if source_record.file.styles.key?(:small)
+        [source_record.file, :small]
+      elsif source_record.thumbnail.present?
+        [source_record.thumbnail, :original]
       else
-        [@drive_file.file, :original]
+        [source_record.file, :original]
       end
     else
-      [@drive_file.file, :original]
+      [source_record.file, :original]
     end
   end
 
@@ -64,8 +62,8 @@ class DriveMediaController < ApplicationController
 
     return not_found if path.blank? || !File.exist?(path)
 
-    content_type = style == :small ? @drive_file.preview_content_type : attachment.instance_read(:content_type)
-    filename = @drive_file.display_name.to_s
+    content_type = resolved_content_type(attachment, style)
+    filename = source_record.respond_to?(:display_name) ? source_record.display_name.to_s : source_record.file_file_name.to_s
 
     return send_file(path, type: content_type, disposition: 'inline', filename: filename) if sendfile_header?
 
@@ -84,7 +82,14 @@ class DriveMediaController < ApplicationController
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Content-Security-Policy'] = "default-src 'none'; sandbox"
 
-    send_data download_data(attachment, style), type: attachment.instance_read(:content_type), disposition: 'attachment', filename: @drive_file.display_name
+    send_data download_data(attachment, style), type: attachment.instance_read(:content_type), disposition: 'attachment', filename: source_record.file_file_name
+  end
+
+  def resolved_content_type(attachment, style)
+    definition = attachment.styles[style]
+    return attachment.instance_read(:content_type) if definition.nil?
+
+    definition[:content_type].presence || Rack::Mime.mime_type(".#{definition[:format]}", attachment.instance_read(:content_type))
   end
 
   def download_data(attachment, style)

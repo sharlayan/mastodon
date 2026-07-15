@@ -37,6 +37,13 @@ RSpec.describe UserRole do
       it { is_expected.to validate_numericality_of(:collection_limit).only_integer.is_greater_than_or_equal_to(0) }
     end
 
+    describe 'drive_quota' do
+      subject { Fabricate.build :user_role }
+
+      it { is_expected.to allow_values(nil, 0, 500).for(:drive_quota) }
+      it { is_expected.to_not allow_values(-1, 1.5).for(:drive_quota) }
+    end
+
     context 'when current_account is set' do
       subject { Fabricate :user_role }
 
@@ -53,6 +60,7 @@ RSpec.describe UserRole do
 
         it { is_expected.to_not allow_value(100).for(:permissions).against(:permissions_as_keys).with_message(:own_role) }
         it { is_expected.to_not allow_value(100).for(:position).with_message(:own_role) }
+        it { is_expected.to_not allow_value(100).for(:drive_quota).with_message(:own_role) }
         it { is_expected.to_not allow_value(true).for(:require_2fa).with_message(:own_role) }
       end
 
@@ -63,8 +71,33 @@ RSpec.describe UserRole do
 
         it { is_expected.to_not allow_value(100).for(:permissions).against(:permissions_as_keys).with_message(:own_role) }
         it { is_expected.to_not allow_value(100).for(:position).with_message(:own_role) }
+        it { is_expected.to allow_value(100).for(:drive_quota) }
         it { is_expected.to allow_value(true).for(:require_2fa) }
       end
+    end
+  end
+
+  describe '#drive_quota_bytes' do
+    subject { Fabricate.build(:user_role, drive_quota: role_quota) }
+
+    before { Setting.drive_quota = 500 }
+
+    context 'when the role quota is blank' do
+      let(:role_quota) { nil }
+
+      it { expect(subject.drive_quota_bytes).to eq(500.megabytes) }
+    end
+
+    context 'when the role has an override' do
+      let(:role_quota) { 100 }
+
+      it { expect(subject.drive_quota_bytes).to eq(100.megabytes) }
+    end
+
+    context 'when the role quota is unlimited' do
+      let(:role_quota) { 0 }
+
+      it { expect(subject.drive_quota_bytes).to be_zero }
     end
   end
 

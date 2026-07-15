@@ -113,6 +113,8 @@ module Paperclip
       case @format
       when 'jpg'
         { Q: 90, interlace: true }
+      when 'webp'
+        { Q: 80 }
       else
         {}
       end

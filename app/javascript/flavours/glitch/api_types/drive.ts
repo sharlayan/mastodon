@@ -30,3 +30,9 @@ export interface ApiDriveUsageJSON {
   limit: number;
   file_count: number;
 }
+
+export interface ApiDriveSettingsJSON {
+  keep_original_filename: boolean;
+  default_folder_id: string | null;
+  upload_original_image: boolean;
+}

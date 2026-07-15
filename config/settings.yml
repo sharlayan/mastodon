@@ -69,7 +69,7 @@ defaults: &defaults
   antenna_enabled: true
   online_status_enabled: false
   drive_enabled: false
-  drive_quota: 1024
+  drive_quota: 500
   drive_max_file_size: 20
   drive_allowed_extensions: ''
 

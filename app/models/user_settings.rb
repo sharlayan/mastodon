@@ -30,6 +30,9 @@ class UserSettings
   setting :content_font_size, default: 'medium', in: %w(medium large x_large xx_large)
   setting :misskey_muted_words, default: '[]'
   setting :misskey_hard_muted_words, default: '[]'
+  setting :drive_keep_original_filename, default: true
+  setting :drive_default_folder_id, default: nil
+  setting :drive_upload_original_image, default: true
   setting :hide_online_status, default: true
 
   setting_inverse_alias :indexable, :noindex

@@ -39,10 +39,10 @@ RSpec.describe REST::MediaAttachmentSerializer do
     expect(URI(image['thumbnailURL']).path).to eq(preview_path)
   end
 
-  it 'uses drive resolver URLs in Misskey-compatible output' do
+  it 'uses the original DriveFile URLs in Misskey-compatible output' do
     result = MisskeyCompat::DriveFileSerializer.serialize(attachment)
 
-    expect(URI(result[:url]).path).to eq(original_path)
-    expect(URI(result[:thumbnailUrl]).path).to eq(preview_path)
+    expect(URI(result[:url]).path).to eq(drive_file.file.url(:original))
+    expect(URI(result[:thumbnailUrl]).path).to eq(drive_file.file.url(:small))
   end
 end

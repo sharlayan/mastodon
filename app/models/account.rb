@@ -516,6 +516,10 @@ class Account < ApplicationRecord
     feature_policy_for_account(other_account).in?(%i(automatic manual))
   end
 
+  def drive_quota_bytes
+    (user&.role || UserRole.everyone).drive_quota_bytes
+  end
+
   private
 
   def should_update_instance_metadata?

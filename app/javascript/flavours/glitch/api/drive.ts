@@ -8,6 +8,7 @@ import api, {
 import type {
   ApiDriveFileJSON,
   ApiDriveFolderJSON,
+  ApiDriveSettingsJSON,
   ApiDriveUsageJSON,
 } from 'flavours/glitch/api_types/drive';
 
@@ -55,6 +56,11 @@ export const apiMoveDriveFile = (id: string, folderId: string | null) =>
 export const apiDeleteDriveFile = (id: string) =>
   apiRequestDelete(`v1/drive/files/${id}`);
 
+export const apiTransferDriveFileToPosts = (id: string) =>
+  apiRequestPost<{ transferred: number }>(
+    `v1/drive/files/${id}/transfer_to_posts`,
+  );
+
 export const apiGetDriveFolders = () =>
   apiRequestGet<ApiDriveFolderJSON[]>('v1/drive/folders');
 
@@ -78,3 +84,9 @@ export const apiDeleteDriveFolder = (id: string) =>
 
 export const apiGetDriveUsage = () =>
   apiRequestGet<ApiDriveUsageJSON>('v1/drive/usage');
+
+export const apiGetDriveSettings = () =>
+  apiRequestGet<ApiDriveSettingsJSON>('v1/drive/settings');
+
+export const apiUpdateDriveSettings = (settings: ApiDriveSettingsJSON) =>
+  apiRequestPut<ApiDriveSettingsJSON>('v1/drive/settings', settings);

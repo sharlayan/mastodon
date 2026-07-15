@@ -103,6 +103,18 @@ RSpec.describe 'Drive media', :attachment_processing do
     expect(response).to have_http_status(404)
   end
 
+  it 'keeps serving an access key after its pointer becomes a regular media attachment' do
+    pointer.file = drive_file.file
+    pointer.drive_file = nil
+    pointer.save!
+    drive_file.destroy!
+
+    get drive_media_path(pointer.drive_access_key, :original)
+
+    expect(response).to have_http_status(200)
+    expect(response.body.b).to eq(File.binread(pointer.file.path(:original)))
+  end
+
   def stub_drive_attachment(method_name, *arguments, result)
     allow(Paperclip::Attachment).to receive(:new).and_wrap_original do |original, *constructor_arguments|
       original.call(*constructor_arguments).tap do |attachment|

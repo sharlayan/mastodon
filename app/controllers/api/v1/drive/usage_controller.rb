@@ -18,7 +18,6 @@ class Api::V1::Drive::UsageController < Api::V1::Drive::BaseController
   end
 
   def quota_bytes
-    quota = Setting.drive_quota.to_i
-    quota.positive? ? quota.megabytes : 0
+    current_account.drive_quota_bytes
   end
 end

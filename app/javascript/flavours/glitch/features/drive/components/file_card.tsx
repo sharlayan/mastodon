@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 
 import { useIntl, defineMessages, FormattedMessage } from 'react-intl';
 
+import CloudDownloadIcon from '@/material-icons/400-24px/cloud_download.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import LinkOffIcon from '@/material-icons/400-24px/link_off.svg?react';
@@ -32,6 +33,15 @@ const messages = defineMessages({
     id: 'drive.delete_attached_error',
     defaultMessage: 'Files attached to a post cannot be deleted.',
   },
+  transferToPosts: {
+    id: 'drive.transfer_to_posts',
+    defaultMessage: 'Move to post attachments',
+  },
+  transferToPostsConfirm: {
+    id: 'drive.transfer_to_posts_confirm',
+    defaultMessage:
+      'Move this file out of Drive? A separate media copy will be assigned to every post using it, and the Drive file will be removed.',
+  },
 });
 
 const formatSize = (size: number | null) => {
@@ -56,7 +66,16 @@ export const FileCard: React.FC<{
   onSelect: (file: ApiDriveFileJSON) => void;
   onDelete: (fileId: string) => void;
   onRename: (fileId: string, name: string) => void;
-}> = ({ file, manageable, draggable, onSelect, onDelete, onRename }) => {
+  onTransferToPosts: (fileId: string) => void;
+}> = ({
+  file,
+  manageable,
+  draggable,
+  onSelect,
+  onDelete,
+  onRename,
+  onTransferToPosts,
+}) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
 
@@ -123,6 +142,17 @@ export const FileCard: React.FC<{
     [dispatch, file.name, file.file_name, handleRenameSubmit],
   );
 
+  const handleTransferToPosts = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+
+      if (window.confirm(intl.formatMessage(messages.transferToPostsConfirm))) {
+        onTransferToPosts(file.id);
+      }
+    },
+    [file.id, intl, onTransferToPosts],
+  );
+
   const size = formatSize(file.size);
 
   return (
@@ -171,6 +201,18 @@ export const FileCard: React.FC<{
             >
               <Icon id='pencil' icon={EditIcon} />
             </button>
+
+            {!file.orphaned && file.type !== 'unknown' && (
+              <button
+                type='button'
+                className='drive__file__action'
+                onClick={handleTransferToPosts}
+                aria-label={intl.formatMessage(messages.transferToPosts)}
+                title={intl.formatMessage(messages.transferToPosts)}
+              >
+                <Icon id='cloud-download' icon={CloudDownloadIcon} />
+              </button>
+            )}
 
             <button
               type='button'

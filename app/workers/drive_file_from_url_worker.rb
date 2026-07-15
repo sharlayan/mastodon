@@ -49,7 +49,12 @@ class DriveFileFromURLWorker
       existing = account.drive_files.find_by(sha256: digest)
 
       if existing
-        existing.update!(folder_id: @options[:folder_id].presence) if @options[:folder_id].present?
+        existing.update!(
+          folder_id: @options[:folder_id].presence || existing.folder_id,
+          sensitive: ActiveModel::Type::Boolean.new.cast(@options[:sensitive]),
+          description: @options[:description],
+          created_at: Time.current
+        )
       elsif !within_quota?(account, candidate.quota_storage_file_size)
         raise Mastodon::ValidationError, 'Drive storage quota exceeded'
       else
@@ -64,7 +69,7 @@ class DriveFileFromURLWorker
   end
 
   def within_quota?(account, incoming_size)
-    quota = Setting.drive_quota.to_i.megabytes
+    quota = account.drive_quota_bytes
     return true if quota <= 0
 
     used = account.drive_files.sum(:storage_file_size).to_i

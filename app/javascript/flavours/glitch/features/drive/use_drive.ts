@@ -15,6 +15,7 @@ import {
   apiMoveDriveFile,
   apiMoveDriveFolder,
   apiRenameDriveFile,
+  apiTransferDriveFileToPosts,
   apiUpdateDriveFolder,
   apiUploadDriveFile,
 } from 'flavours/glitch/api/drive';
@@ -31,6 +32,11 @@ const messages = defineMessages({
   attachedFile: {
     id: 'drive.delete_attached_error',
     defaultMessage: 'Files attached to a post cannot be deleted.',
+  },
+  transferred: {
+    id: 'drive.transfer_to_posts_success',
+    defaultMessage:
+      'The file was moved out of Drive and copied to {count, plural, one {# post attachment} other {# post attachments}}.',
   },
 });
 
@@ -225,6 +231,25 @@ export const useDrive = () => {
     [onError],
   );
 
+  const transferFileToPosts = useCallback(
+    (id: string) => {
+      apiTransferDriveFileToPosts(id)
+        .then(({ transferred }) => {
+          setFiles((prev) => prev.filter((file) => file.id !== id));
+          refreshUsage();
+          dispatch(
+            showAlert({
+              message: messages.transferred,
+              values: { count: transferred },
+            }),
+          );
+          return transferred;
+        })
+        .catch(onError);
+    },
+    [dispatch, onError, refreshUsage],
+  );
+
   const moveFile = useCallback(
     (id: string, folderId: string | null) => {
       const file = files.find((candidate) => candidate.id === id);
@@ -358,6 +383,7 @@ export const useDrive = () => {
     files,
     folders,
     usage,
+    onError,
     childFolders,
     ancestors,
     currentFolder,
@@ -373,6 +399,7 @@ export const useDrive = () => {
     uploadFiles,
     deleteFile,
     renameFile,
+    transferFileToPosts,
     moveFile,
     createFolder,
     renameFolder,
