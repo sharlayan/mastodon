@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_13_205800) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_15_204800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -775,6 +775,53 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_205800) do
     t.index ["domain"], name: "index_domain_blocks_on_domain", unique: true
   end
 
+  create_table "drive_file_names", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "drive_file_id", null: false
+    t.string "name", limit: 128, default: "", null: false
+    t.datetime "updated_at", null: false
+    t.index ["drive_file_id"], name: "index_drive_file_names_on_drive_file_id", unique: true
+  end
+
+  create_table "drive_files", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "blurhash"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "file_content_type"
+    t.string "file_file_name"
+    t.integer "file_file_size"
+    t.json "file_meta"
+    t.integer "file_storage_schema_version"
+    t.datetime "file_updated_at"
+    t.bigint "folder_id"
+    t.string "md5"
+    t.boolean "sensitive", default: false, null: false
+    t.string "sha256"
+    t.bigint "storage_file_size", default: 0, null: false
+    t.string "thumbnail_content_type"
+    t.string "thumbnail_file_name"
+    t.integer "thumbnail_file_size"
+    t.integer "thumbnail_storage_schema_version"
+    t.datetime "thumbnail_updated_at"
+    t.integer "type", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "folder_id", "id"], name: "index_drive_files_on_account_id_and_folder_id_and_id"
+    t.index ["account_id", "md5"], name: "index_drive_files_on_account_id_and_md5"
+    t.index ["account_id", "sha256"], name: "index_drive_files_on_account_and_sha256_unique", unique: true
+    t.index ["account_id"], name: "index_drive_files_on_account_id"
+  end
+
+  create_table "drive_folders", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.string "name", default: "", null: false
+    t.bigint "parent_id"
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "parent_id", "id"], name: "index_drive_folders_on_account_id_and_parent_id_and_id"
+    t.index ["account_id"], name: "index_drive_folders_on_account_id"
+  end
+
   create_table "email_domain_blocks", force: :cascade do |t|
     t.boolean "allow_with_approval", default: false, null: false
     t.datetime "created_at", precision: nil, null: false
@@ -1068,6 +1115,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_205800) do
     t.string "blurhash"
     t.datetime "created_at", precision: nil, null: false
     t.text "description"
+    t.string "drive_access_key"
+    t.bigint "drive_file_id"
     t.string "file_content_type"
     t.string "file_file_name"
     t.integer "file_file_size"
@@ -1088,6 +1137,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_205800) do
     t.integer "type", default: 0, null: false
     t.datetime "updated_at", precision: nil, null: false
     t.index ["account_id", "status_id"], name: "index_media_attachments_on_account_id_and_status_id", order: { status_id: :desc }
+    t.index ["drive_access_key"], name: "index_media_attachments_on_drive_access_key", unique: true, where: "(drive_access_key IS NOT NULL)"
+    t.index ["drive_file_id"], name: "index_media_attachments_on_drive_file_id", where: "(drive_file_id IS NOT NULL)"
     t.index ["scheduled_status_id"], name: "index_media_attachments_on_scheduled_status_id", where: "(scheduled_status_id IS NOT NULL)"
     t.index ["shortcode"], name: "index_media_attachments_on_shortcode", unique: true, opclass: :text_pattern_ops, where: "(shortcode IS NOT NULL)"
     t.index ["status_id"], name: "index_media_attachments_on_status_id"
@@ -1714,6 +1765,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_205800) do
     t.integer "collection_limit", default: 10, null: false
     t.string "color", default: "", null: false
     t.datetime "created_at", null: false
+    t.integer "drive_quota"
     t.bigint "extra_permissions", default: 0, null: false
     t.boolean "highlighted", default: false, null: false
     t.string "name", default: "", null: false
@@ -1908,6 +1960,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_205800) do
   add_foreign_key "custom_filter_statuses", "custom_filters", on_delete: :cascade
   add_foreign_key "custom_filter_statuses", "statuses", on_delete: :cascade
   add_foreign_key "custom_filters", "accounts", on_delete: :cascade
+  add_foreign_key "drive_file_names", "drive_files", on_delete: :cascade
+  add_foreign_key "drive_files", "accounts", on_delete: :cascade
+  add_foreign_key "drive_files", "drive_folders", column: "folder_id", on_delete: :nullify
+  add_foreign_key "drive_folders", "accounts", on_delete: :cascade
+  add_foreign_key "drive_folders", "drive_folders", column: "parent_id", on_delete: :cascade
   add_foreign_key "email_domain_blocks", "email_domain_blocks", column: "parent_id", on_delete: :cascade
   add_foreign_key "email_subscriptions", "accounts", on_delete: :cascade
   add_foreign_key "fasp_backfill_requests", "fasp_providers"
@@ -1940,6 +1997,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_13_205800) do
   add_foreign_key "login_activities", "users", on_delete: :cascade
   add_foreign_key "markers", "users", on_delete: :cascade
   add_foreign_key "media_attachments", "accounts", name: "fk_96dd81e81b", on_delete: :nullify
+  add_foreign_key "media_attachments", "drive_files", validate: false
   add_foreign_key "media_attachments", "scheduled_statuses", on_delete: :nullify
   add_foreign_key "media_attachments", "statuses", on_delete: :nullify
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade

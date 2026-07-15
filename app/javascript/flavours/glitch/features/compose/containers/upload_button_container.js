@@ -31,6 +31,13 @@ const mapDispatchToProps = dispatch => ({
       modalProps: { noEsc: true, noClose: true },
     }));
   },
+
+  onDriveOpen() {
+    dispatch(openModal({
+      modalType: 'DRIVE',
+      modalProps: {},
+    }));
+  },
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(UploadButton);

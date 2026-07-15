@@ -135,12 +135,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def create
-    status =
+    status = ApplicationRecord.transaction do
       if renote_id.present? && params[:text].blank?
         ReblogService.new.call(current_account, quoted_status)
       else
-        PostStatusService.new.call(current_account, post_options)
+        PostStatusService.new.call(current_account, post_options.merge(media_ids: resolved_media_ids))
       end
+    end
 
     return render json: { scheduledNoteId: MisskeyCompat::MiId.encode(status.id) } if status.is_a?(ScheduledStatus)
 
@@ -149,16 +150,26 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     render_error('No such note', 'NO_SUCH_NOTE', 404)
   rescue Mastodon::NotPermittedError
     render_error('Forbidden', 'ACCESS_DENIED', 403)
+  rescue MisskeyCompat::DriveFileResolver::NoSuchFileError
+    render_error('No such file', 'NO_SUCH_FILE', 404)
+  rescue MisskeyCompat::DriveFileResolver::AmbiguousFileError
+    render_invalid_param('#/properties/fileIds', 'ambiguous file id')
   end
 
   def update
     note = Status.find_by(id: params[:noteId])
     render_error('No such note', 'NO_SUCH_NOTE', 404) and return if note.nil? || note.account_id != current_account.id
 
-    UpdateStatusService.new.call(note, current_account.id, update_options)
+    ApplicationRecord.transaction do
+      UpdateStatusService.new.call(note, current_account.id, update_options.merge(media_ids: resolved_media_ids(status: note)))
+    end
     head 204
   rescue Mastodon::NotPermittedError
     render_error('Forbidden', 'ACCESS_DENIED', 403)
+  rescue MisskeyCompat::DriveFileResolver::NoSuchFileError
+    render_error('No such file', 'NO_SUCH_FILE', 404)
+  rescue MisskeyCompat::DriveFileResolver::AmbiguousFileError
+    render_invalid_param('#/properties/fileIds', 'ambiguous file id')
   end
 
   def scheduled_list
@@ -332,7 +343,6 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       spoiler_text: params[:cw].presence,
       visibility: mastodon_visibility(params[:visibility]),
       in_reply_to_id: params[:replyId].presence,
-      media_ids: Array(params[:fileIds]).map(&:to_s).presence,
       local_only: ActiveModel::Type::Boolean.new.cast(params[:localOnly]),
       quoted_status: quoted,
       poll: poll_options,
@@ -345,8 +355,16 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       text: composed_text(params[:text].to_s),
       content_type: composed_content_type,
       spoiler_text: params[:cw].to_s,
-      media_ids: Array(params[:fileIds]).map(&:to_s).presence,
     }
+  end
+
+  def resolved_media_ids(status: nil)
+    MisskeyCompat::DriveFileResolver.new.call(
+      account: current_account,
+      file_ids: params[:fileIds],
+      status: status,
+      allow_drive_files: Setting.drive_enabled
+    ).presence
   end
 
   def composed_content_type

@@ -81,6 +81,10 @@ class Form::AdminSettings
     misskey_compat_enabled
     online_status_enabled
     soft_hide_deletion
+    drive_enabled
+    drive_quota
+    drive_max_file_size
+    drive_allowed_extensions
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -89,6 +93,8 @@ class Form::AdminSettings
     backups_retention_period
     min_age
     avatar_decorations_max_count
+    drive_quota
+    drive_max_file_size
   ).freeze
 
   BOOLEAN_KEYS = %i(
@@ -131,6 +137,7 @@ class Form::AdminSettings
     misskey_compat_enabled
     online_status_enabled
     soft_hide_deletion
+    drive_enabled
   ).freeze
 
   UPLOAD_KEYS = %i(
@@ -178,6 +185,9 @@ class Form::AdminSettings
   validates :remote_topic_feed_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@remote_topic_feed_access) }
   validates :media_cache_retention_period, :content_cache_retention_period, :backups_retention_period, numericality: { only_integer: true }, allow_blank: true, if: -> { defined?(@media_cache_retention_period) || defined?(@content_cache_retention_period) || defined?(@backups_retention_period) }
   validates :min_age, numericality: { only_integer: true }, allow_blank: true, if: -> { defined?(@min_age) }
+  validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@drive_quota) }
+  validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
+  validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }
   validates :site_short_description, length: { maximum: DESCRIPTION_LIMIT }, if: -> { defined?(@site_short_description) }
   validates :thumbnail_description, length: { maximum: DESCRIPTION_LIMIT }, if: -> { defined?(@thumbnail_description) }
   validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }
@@ -251,6 +261,13 @@ class Form::AdminSettings
   end
 
   private
+
+  def validate_drive_allowed_extensions
+    extensions = DriveFile.parse_extensions(@drive_allowed_extensions)
+    rejected = extensions.grep_v(DriveFile::EXTENSION_PATTERN) + (extensions & DriveFile::FORBIDDEN_EXTENSIONS)
+
+    errors.add(:drive_allowed_extensions, I18n.t('admin.settings.drive.allowed_extensions_invalid', extensions: rejected.uniq.join(', '))) if rejected.any?
+  end
 
   def cache_digest_value(key)
     Rails.cache.delete(:"setting_digest_#{key}")

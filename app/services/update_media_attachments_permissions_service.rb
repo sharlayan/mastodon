@@ -8,12 +8,15 @@ class UpdateMediaAttachmentsPermissionsService < BaseService
     # Prevent useless S3 calls if ACLs are disabled
     return if Paperclip::Attachment.default_options[:storage] == :s3 && ENV['S3_PERMISSION'] == ''
 
-    attachment_names = MediaAttachment.attachment_definitions.keys
+    processed_records = Set.new
 
-    media_attachments_scope.find_each do |media_attachment|
-      attachment_names.each do |attachment_name|
-        attachment = media_attachment.public_send(attachment_name)
-        styles     = MediaAttachment::DEFAULT_STYLES | attachment.styles.keys
+    media_attachments_scope.includes(:drive_file).find_each do |media_attachment|
+      record = media_attachment.drive_pointer? ? media_attachment.drive_file : media_attachment
+      next unless processed_records.add?([record.class.name, record.id])
+
+      record.class.attachment_definitions.each_key do |attachment_name|
+        attachment = record.public_send(attachment_name)
+        styles     = MediaAttachment::DEFAULT_STYLES | attachment.styles.keys.map(&:to_sym)
 
         next if attachment.blank?
 

@@ -23,6 +23,7 @@ import { HoverCardController } from 'flavours/glitch/components/hover_card_contr
 import { Permalink } from 'flavours/glitch/components/permalink';
 import { PictureInPicture } from 'flavours/glitch/features/picture_in_picture';
 import { BoardAnnouncementBanner } from 'flavours/glitch/features/board_announcements/banner';
+import { isWithinDriveDropzone } from 'flavours/glitch/features/drive/dnd';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
 import { layoutFromWindow } from 'flavours/glitch/is_mobile';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
@@ -33,7 +34,7 @@ import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../act
 import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
-import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, circlesEnabled, clipsEnabled, collectionsEnabled, antennaEnabled } from '../../initial_state';
+import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, circlesEnabled, clipsEnabled, collectionsEnabled, antennaEnabled, driveEnabled } from '../../initial_state';
 
 import BundleColumnError from './components/bundle_column_error';
 import { NavigationBar } from './components/navigation_bar';
@@ -78,6 +79,7 @@ import {
   Clips,
   ClipEdit,
   ClipTimeline,
+  Drive,
   Circles,
   CircleEdit,
   CircleMembers,
@@ -308,6 +310,7 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/reaction_mutes' component={ReactionMutes} content={children} />
             <WrappedRoute path='/lists' component={Lists} content={children} />
             {clipsEnabled && <WrappedRoute path='/clips' component={Clips} content={children} />}
+            {driveEnabled && <WrappedRoute path='/drive' component={Drive} content={children} />}
             {circlesEnabled && <WrappedRoute path='/circles' component={Circles} content={children} />}
 
             <Route path='/overview' component={CustomHomepage} />
@@ -371,7 +374,7 @@ class UI extends PureComponent {
   };
 
   handleDragEnter = (e) => {
-    if (!this.props.isUploadEnabled) {
+    if (!this.props.isUploadEnabled || isWithinDriveDropzone(e.target)) {
       return;
     }
     e.preventDefault();
@@ -390,7 +393,7 @@ class UI extends PureComponent {
   };
 
   handleDragOver = (e) => {
-    if (!this.props.isUploadEnabled) {
+    if (!this.props.isUploadEnabled || isWithinDriveDropzone(e.target)) {
       return;
     }
     if (this.dataTransferIsText(e.dataTransfer)) return false;
@@ -408,7 +411,7 @@ class UI extends PureComponent {
   };
 
   handleDrop = (e) => {
-    if (!this.props.isUploadEnabled) {
+    if (!this.props.isUploadEnabled || isWithinDriveDropzone(e.target)) {
       return;
     }
     if (this.dataTransferIsText(e.dataTransfer)) return;
@@ -424,6 +427,10 @@ class UI extends PureComponent {
   };
 
   handleDragLeave = (e) => {
+    if (isWithinDriveDropzone(e.target)) {
+      return;
+    }
+
     e.preventDefault();
     e.stopPropagation();
 

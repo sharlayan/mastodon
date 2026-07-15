@@ -72,6 +72,10 @@ defaults: &defaults
   antenna_enabled: true
   online_status_enabled: false
   soft_hide_deletion: false
+  drive_enabled: false
+  drive_quota: 500
+  drive_max_file_size: 20
+  drive_allowed_extensions: ''
 
 development:
   <<: *defaults

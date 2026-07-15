@@ -7,6 +7,7 @@ import { openModal } from 'flavours/glitch/actions/modal';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { Icon } from 'flavours/glitch/components/icon';
 import { useIdentity } from 'flavours/glitch/identity_context';
+import { driveEnabled } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import {
   canManageReports,
@@ -60,6 +61,7 @@ const messages = defineMessages({
     id: 'navigation_bar.switch_account',
     defaultMessage: 'Switch account',
   },
+  drive: { id: 'navigation_bar.drive', defaultMessage: 'Drive' },
 });
 
 export const MoreLink: React.FC = () => {
@@ -69,6 +71,15 @@ export const MoreLink: React.FC = () => {
 
   const menu = useMemo(() => {
     const arr: MenuItem[] = [
+      ...(driveEnabled
+        ? ([
+            {
+              to: '/drive',
+              text: intl.formatMessage(messages.drive),
+            },
+            null,
+          ] as MenuItem[])
+        : []),
       {
         href: '/filters',
         text: intl.formatMessage(messages.filters),

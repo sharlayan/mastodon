@@ -47,6 +47,39 @@ RSpec.describe Form::AdminSettings do
       end
     end
 
+    it 'saves drive settings with their declared types' do
+      expect { described_class.new(drive_enabled: '1', drive_quota: '2048').save }
+        .to change(Setting, :drive_enabled).from(false).to(true)
+        .and change(Setting, :drive_quota).from(500).to(2048)
+    end
+
+    it 'rejects a negative drive quota' do
+      settings = described_class.new(drive_quota: '-1')
+
+      expect(settings).to_not be_valid
+      expect(settings.errors[:drive_quota]).to be_present
+    end
+
+    it 'saves the drive upload limits' do
+      expect { described_class.new(drive_max_file_size: '32', drive_allowed_extensions: 'pdf, zip').save }
+        .to change(Setting, :drive_max_file_size).from(20).to(32)
+        .and change(Setting, :drive_allowed_extensions).from('').to('pdf, zip')
+    end
+
+    it 'rejects a drive file size limit of zero' do
+      settings = described_class.new(drive_max_file_size: '0')
+
+      expect(settings).to_not be_valid
+      expect(settings.errors[:drive_max_file_size]).to be_present
+    end
+
+    it 'rejects allowed extensions that could be served as script or markup' do
+      settings = described_class.new(drive_allowed_extensions: 'pdf, html, svg')
+
+      expect(settings).to_not be_valid
+      expect(settings.errors[:drive_allowed_extensions].join).to include('html', 'svg')
+    end
+
     describe 'updating digest values' do
       context 'when updating custom css to real value' do
         subject { described_class.new(custom_css: css) }

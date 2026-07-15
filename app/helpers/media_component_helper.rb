@@ -4,12 +4,12 @@ module MediaComponentHelper
   def render_video_component(status, **)
     video = status.ordered_media_attachments.first
 
-    meta = video.file.meta || {}
+    meta = video.file_meta || {}
 
     component_params = {
       sensitive: sensitive_viewer?(status, current_account),
-      src: full_asset_url(video.file.url(:original)),
-      preview: full_asset_url(video.thumbnail.present? ? video.thumbnail.url : video.file.url(:small)),
+      src: full_media_attachment_url(video),
+      preview: full_media_attachment_preview_url(video),
       alt: video.description,
       lang: status.language,
       blurhash: video.blurhash,
@@ -28,11 +28,11 @@ module MediaComponentHelper
   def render_audio_component(status, **)
     audio = status.ordered_media_attachments.first
 
-    meta = audio.file.meta || {}
+    meta = audio.file_meta || {}
 
     component_params = {
-      src: full_asset_url(audio.file.url(:original)),
-      poster: full_asset_url(audio.thumbnail.present? ? audio.thumbnail.url : status.account.avatar_static_url),
+      src: full_media_attachment_url(audio),
+      poster: full_media_attachment_preview_url(audio) || full_asset_url(status.account.avatar_static_url),
       alt: audio.description,
       lang: status.language,
       blurhash: audio.blurhash,

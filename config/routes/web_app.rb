@@ -17,6 +17,7 @@
   /deck/(*any)
   /directory
   /domain_blocks
+  /drive
   /explore/(*any)
   /favourites
   /reactions

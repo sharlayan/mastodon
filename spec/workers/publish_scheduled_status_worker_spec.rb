@@ -23,6 +23,24 @@ RSpec.describe PublishScheduledStatusWorker do
         expect(ScheduledStatus.find_by(id: scheduled_status.id)).to be_nil
       end
 
+      context 'with a drive attachment' do
+        let(:drive_file) { DriveFile.create!(account: user.account, file: attachment_fixture('attachment.jpg')) }
+        let(:pointer) { drive_file.build_pointer(user.account) }
+        let(:scheduled_status) do
+          Fabricate(:scheduled_status, account: user.account, params: { text: 'Hello world, future!' }).tap do |record|
+            pointer.scheduled_status = record
+            pointer.save!
+            record.update!(params: record.params.merge('media_ids' => [pointer.id.to_s]))
+          end
+        end
+
+        it 'keeps the drive file protected while moving its pointer to the status' do
+          expect(pointer.reload.scheduled_status_id).to be_nil
+          expect(pointer.status_id).to eq(scheduled_status.account.statuses.first.id)
+          expect(drive_file.reload).to be_attached
+        end
+      end
+
       context 'with an implicit quote' do
         let(:quoted_status) { Fabricate(:status, account: Fabricate(:account, domain: 'example.com')) }
         let(:scheduled_status) do

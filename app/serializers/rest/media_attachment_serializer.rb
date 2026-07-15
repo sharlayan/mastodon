@@ -19,6 +19,8 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
       nil
     elsif rp_hidden_media?
       medium_url(object.id)
+    elsif object.drive_pointer?
+      full_media_attachment_url(object)
     elsif object.needs_redownload? || object.discarded?
       media_proxy_url(object.id, :original)
     else
@@ -33,6 +35,8 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
   def preview_url
     if rp_hidden_media?
       medium_url(object.id)
+    elsif object.drive_pointer?
+      full_media_attachment_preview_url(object)
     elsif object.needs_redownload? || object.discarded?
       media_proxy_url(object.id, :small)
     elsif object.thumbnail.present?

@@ -36,6 +36,12 @@
   = form.input :collection_limit,
                wrapper: :with_label
 
+.fields-group
+  = form.input :drive_quota,
+               input_html: { min: 0, disabled: current_user.role == form.object && !current_user.role.administrator? },
+               placeholder: Setting.drive_quota,
+               wrapper: :with_label
+
 %hr.spacer/
 
 - unless current_user.role == form.object

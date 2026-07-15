@@ -715,6 +715,21 @@ ja:
         expired: 期限切れ
         title: フィルター
       title: 招待
+    drive_files:
+      all: すべて
+      attached: 添付済み
+      attached_error: このドライブファイルは生きている投稿に添付されているため削除できません。
+      description_html: アカウントごとのドライブライブラリに保存されたファイルです。孤立ファイルはどの生きている投稿にも添付されていないファイルで、整理できます。
+      destroy: 削除
+      destroy_orphaned: 孤立ファイルをすべて削除
+      destroy_orphaned_confirm: すべての孤立ドライブファイルを完全に削除しますか？
+      file: ファイル
+      filter: フィルター
+      orphaned: 孤立
+      owner: 所有者
+      size: サイズ
+      status: 状態
+      title: ドライブファイル
     ip_blocks:
       add_new: ルールを作成
       created_msg: IPルールを追加しました
@@ -998,6 +1013,17 @@ ja:
         title: クリップ
         enabled: クリップ機能を有効にする
         enabled_hint: ユーザーがクリップを作成し、投稿を名前付きのコレクションにまとめられるようにします。無効にすると既存のクリップは保持されますが、アクセスできなくなります。
+      drive:
+        title: ドライブ
+        enabled: ドライブ機能を有効にする
+        enabled_hint: ユーザーがアップロードをアカウントごとの永続ライブラリに保存し、バイトを複製せずにシンボリックリンクとして投稿に添付できるようにします。無効にするとドライブボタンとAPIは利用できません。
+        quota: アカウントごとのドライブ容量上限 (MB)
+        quota_hint: 1アカウントのドライブライブラリの合計容量の上限（メガバイト）です。0で無制限になります。
+        max_file_size: 1ファイルあたりの容量上限 (MB)
+        max_file_size_hint: ドライブにアップロードする1ファイルの容量上限（メガバイト）です。メディアファイルにはサーバーの画像・動画の上限も適用されます。
+        allowed_extensions: 追加で許可する拡張子
+        allowed_extensions_hint: '画像・動画・音声は常に許可されます。その他に許可する拡張子をカンマ区切りで入力してください（例: pdf, zip, txt）。ファイルはこのサーバーのドメインから配信されるため、次の拡張子は許可できません: %{extensions}。'
+        allowed_extensions_invalid: '次の拡張子は許可できません: %{extensions}'
       reactions:
         title: 絵文字リアクション
         enabled: 絵文字リアクションを有効にする

@@ -81,8 +81,8 @@ class SEO::SocialMediaPostingSerializer < ActiveModel::Serializer
 
       {
         type: 'ImageObject',
-        content_url: full_asset_url(attachment.file.url(:original, false)),
-        thumbnail_url: attachment.thumbnail.present? ? full_asset_url(attachment.thumbnail.url(:original)) : full_asset_url(attachment.file.url(:small)),
+        content_url: full_media_attachment_url(attachment, include_filename: false),
+        thumbnail_url: full_media_attachment_preview_url(attachment),
         description: attachment.description,
       }
     end
@@ -95,8 +95,8 @@ class SEO::SocialMediaPostingSerializer < ActiveModel::Serializer
       {
         type: 'VideoObject',
         upload_date: attachment.created_at.iso8601,
-        content_url: full_asset_url(attachment.file.url(:original, false)),
-        thumbnail_url: attachment.thumbnail.present? ? full_asset_url(attachment.thumbnail.url(:original)) : full_asset_url(attachment.file.url(:small)),
+        content_url: full_media_attachment_url(attachment, include_filename: false),
+        thumbnail_url: full_media_attachment_preview_url(attachment),
         embed_url: player_medium_url(attachment),
         description: attachment.description,
       }
@@ -110,8 +110,8 @@ class SEO::SocialMediaPostingSerializer < ActiveModel::Serializer
       {
         type: 'AudioObject',
         upload_date: attachment.created_at.iso8601,
-        content_url: full_asset_url(attachment.file.url(:original, false)),
-        thumbnail_url: attachment.thumbnail.present? ? full_asset_url(attachment.thumbnail.url(:original)) : full_asset_url(attachment.file.url(:small)),
+        content_url: full_media_attachment_url(attachment, include_filename: false),
+        thumbnail_url: full_media_attachment_preview_url(attachment),
         embed_url: player_medium_url(attachment),
         description: attachment.description,
       }

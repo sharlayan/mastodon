@@ -13,7 +13,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   INVALID_PARAM_ID = '3d81ceae-475f-4600-b2a8-2bc116157532'
 
-  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId replyId renoteId listId antennaId announcementId avatarId bannerId folderId fileId channelId draftId).freeze
+  MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId channelId draftId).freeze
   MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
 
   RequesterIdentity = Struct.new(:id)
@@ -118,6 +118,20 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     limit = params[:limit].to_i
     limit = default if limit <= 0
     limit.clamp(1, max)
+  end
+
+  def apply_compat_date_range(scope)
+    scope = scope.where(created_at: ...(compat_time(params[:untilDate]))) if params[:untilDate].present?
+    scope = scope.where(created_at: (compat_time(params[:sinceDate]))..) if params[:sinceDate].present?
+    scope
+  end
+
+  def compat_time(value)
+    numeric = Float(value)
+    numeric /= 1000 if numeric > 10_000_000_000
+    Time.zone.at(numeric)
+  rescue ArgumentError, TypeError
+    Time.zone.parse(value.to_s)
   end
 
   def apply_user_origin(scope)

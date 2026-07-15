@@ -27,6 +27,26 @@ RSpec.describe 'Media Proxy' do
       end
     end
 
+    context 'when the media attachment is a Drive pointer' do
+      let(:account) { Fabricate(:account) }
+      let(:status) { Fabricate(:status, account: account) }
+      let(:drive_file) { account.drive_files.create!(file: attachment_fixture('attachment.jpg')) }
+      let(:media_attachment) do
+        drive_file.build_pointer(account).tap do |pointer|
+          pointer.status = status
+          pointer.save!
+        end
+      end
+
+      it 'redirects original and preview requests to the Drive resolver' do
+        get "/media_proxy/#{media_attachment.id}"
+        expect(response).to redirect_to(%r{/drive_media/#{media_attachment.drive_access_key}/original\z})
+
+        get "/media_proxy/#{media_attachment.id}/small"
+        expect(response).to redirect_to(%r{/drive_media/#{media_attachment.drive_access_key}/small\z})
+      end
+    end
+
     context 'when there is not an attached status' do
       let(:media_attachment) { Fabricate(:media_attachment, status: status, remote_url: 'http://example.com/attachment.png') }
 

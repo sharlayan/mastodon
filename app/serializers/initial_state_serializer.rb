@@ -175,6 +175,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       circles_enabled: Setting.circles_enabled,
       clips_enabled: Setting.clips_enabled,
       antenna_enabled: !roleplay_mode? && Setting.antenna_enabled,
+      drive_enabled: Setting.drive_enabled,
       board_announcements_enabled: Setting.board_announcements_enabled,
       avatar_decorations_enabled: Setting.avatar_decorations_enabled,
       avatar_decorations_federation_enabled: Setting.avatar_decorations_federation_enabled,

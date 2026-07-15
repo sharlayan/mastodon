@@ -39,6 +39,8 @@ module Account::Associations
         has_many :clips, dependent: :destroy
         has_many :clip_favourites, dependent: :destroy
         has_many :favourite_clips, through: :clip_favourites, source: :clip
+        has_many :drive_files, dependent: :destroy
+        has_many :drive_folders, dependent: :destroy
         has_many :antennas, inverse_of: :account, dependent: :destroy
         has_many :misskey_registry_items, dependent: :destroy
         has_many :polls

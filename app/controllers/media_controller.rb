@@ -3,6 +3,7 @@
 class MediaController < ApplicationController
   include Authorization
   include RoleplayModeHelper
+  include RoutingHelper
 
   skip_before_action :require_functional!, unless: :limited_federation_mode?
 
@@ -17,10 +18,11 @@ class MediaController < ApplicationController
   end
 
   def show
-    if permitted_status&.rp_hidden?
+    if permitted_status&.rp_hidden? && !@media_attachment.drive_pointer?
       serve_hidden_media
     else
-      redirect_to @media_attachment.file.url(:original)
+      target = @media_attachment.drive_pointer? ? full_media_attachment_url(@media_attachment) : @media_attachment.file.url(:original)
+      redirect_to target, allow_other_host: true
     end
   end
 

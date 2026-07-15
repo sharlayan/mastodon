@@ -167,6 +167,7 @@ ja:
         role: そのロールは、ユーザーが持つ権限を制御します。
       user_role:
         color: UI 全体でロールの表示に使用される色（16進数RGB形式）
+        drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
         extra_permissions_as_keys: このロールに付与されるSharlayan独自の追加権限
         highlighted: これによりロールが公開されます。
         name: ロールのバッジを表示する際の表示名
@@ -398,6 +399,7 @@ ja:
         time_zone: タイムゾーン
       user_role:
         color: バッジの色
+        drive_quota: ユーザーごとのドライブ容量 (MB)
         extra_permissions_as_keys: 追加権限
         highlighted: プロフィールにロールのバッジを表示する
         name: 名前

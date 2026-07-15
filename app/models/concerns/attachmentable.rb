@@ -62,6 +62,18 @@ module Attachmentable
     end
   end
 
+  def check_video_dimensions
+    return unless (video? || gifv?) && file.queued_for_write[:original].present?
+
+    movie = ffmpeg_data(file.queued_for_write[:original].path)
+
+    return unless movie.valid?
+
+    raise Mastodon::StreamValidationError, 'Video has no video stream' if movie.width.nil? || movie.frame_rate.nil?
+    raise Mastodon::DimensionsValidationError, "#{movie.width}x#{movie.height} videos are not supported" if movie.width * movie.height > MediaAttachment::MAX_VIDEO_MATRIX_LIMIT
+    raise Mastodon::DimensionsValidationError, "#{movie.frame_rate.floor}fps videos are not supported" if movie.frame_rate.floor > MediaAttachment::MAX_VIDEO_FRAME_RATE
+  end
+
   def appropriate_extension(attachment)
     mime_type = MIME::Types[attachment.content_type]
 
@@ -78,6 +90,10 @@ module Attachmentable
     Paperclip.run('file', '-b --mime :file', file: attachment.queued_for_write[:original].path).split(/[:;\s]+/).first.chomp
   rescue Terrapin::CommandLineError
     ''
+  end
+
+  def ffmpeg_data(path = nil)
+    @ffmpeg_data ||= VideoMetadataExtractor.new(path)
   end
 
   def obfuscate_file_name(attachment)

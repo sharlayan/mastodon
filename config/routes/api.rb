@@ -148,6 +148,32 @@ namespace :api, format: false do
     end
 
     resources :media, only: [:create, :update, :show, :destroy]
+
+    namespace :drive do
+      resources :files, only: [:index, :show, :create, :update, :destroy] do
+        member do
+          post :attach
+          post :transfer_to_posts
+          get :attached_notes
+        end
+
+        collection do
+          get :find
+          get :find_by_hash
+          get :check_existence
+          post :move_bulk
+          post :upload_from_url
+        end
+      end
+      resources :folders, only: [:index, :show, :create, :update, :destroy] do
+        collection do
+          get :find
+        end
+      end
+      get :usage, to: 'usage#show'
+      resource :settings, only: [:show, :update], controller: :settings
+    end
+
     resources :blocks, only: [:index]
     resources :mutes, only: [:index]
     resources :favourites, only: [:index]
@@ -539,18 +565,21 @@ namespace :api, format: false do
     post 'drive/files/create', to: 'drive#create'
     post 'drive/files/attached-notes', to: 'drive#attached_notes'
     post 'drive', to: 'drive#unavailable'
-    post 'drive/files', to: 'drive#unavailable'
-    post 'drive/files/show', to: 'drive#unavailable'
-    post 'drive/files/update', to: 'drive#unavailable'
-    post 'drive/files/delete', to: 'drive#unavailable'
-    post 'drive/files/find', to: 'drive#unavailable'
-    post 'drive/files/upload-from-url', to: 'drive#unavailable'
-    post 'drive/files/move-bulk', to: 'drive#unavailable'
-    post 'drive/folders', to: 'drive#unavailable'
-    post 'drive/folders/show', to: 'drive#unavailable'
-    post 'drive/folders/create', to: 'drive#unavailable'
-    post 'drive/folders/update', to: 'drive#unavailable'
-    post 'drive/folders/delete', to: 'drive#unavailable'
+    post 'drive/files', to: 'drive#index'
+    post 'drive/files/show', to: 'drive#show'
+    post 'drive/files/update', to: 'drive#update'
+    post 'drive/files/delete', to: 'drive#destroy'
+    post 'drive/files/find', to: 'drive#find'
+    post 'drive/files/find-by-hash', to: 'drive#find_by_hash'
+    post 'drive/files/check-existence', to: 'drive#check_existence'
+    post 'drive/files/upload-from-url', to: 'drive#upload_from_url'
+    post 'drive/files/move-bulk', to: 'drive#move_bulk'
+    post 'drive/folders', to: 'drive_folders#index'
+    post 'drive/folders/show', to: 'drive_folders#show'
+    post 'drive/folders/create', to: 'drive_folders#create'
+    post 'drive/folders/update', to: 'drive_folders#update'
+    post 'drive/folders/delete', to: 'drive_folders#destroy'
+    post 'drive/folders/find', to: 'drive_folders#find'
 
     post 'notes/create', to: 'notes#create'
     post 'notes/delete', to: 'notes#destroy'

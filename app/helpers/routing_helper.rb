@@ -20,6 +20,26 @@ module RoutingHelper
     URI.join(asset_host, source).to_s
   end
 
+  def full_media_attachment_url(attachment, style = :original, include_filename: true)
+    source = if attachment.drive_pointer?
+               drive_media_url(attachment.drive_access_key, style)
+             else
+               attachment.file.url(style, include_filename)
+             end
+
+    full_asset_url(source)
+  end
+
+  def full_media_attachment_preview_url(attachment)
+    if attachment.drive_pointer?
+      full_media_attachment_url(attachment, :small)
+    elsif attachment.thumbnail.present?
+      full_asset_url(attachment.thumbnail.url(:original))
+    elsif attachment.file.styles.key?(:small)
+      full_asset_url(attachment.file.url(:small))
+    end
+  end
+
   def expiring_asset_url(attachment, expires_in)
     case Paperclip::Attachment.default_options[:storage]
     when :s3, :azure

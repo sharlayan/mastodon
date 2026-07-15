@@ -52,6 +52,35 @@ RSpec.describe BackupService do
     expect_bookmarks_export
   end
 
+  context 'with a Drive pointer attachment' do
+    let!(:drive_file) { user.account.drive_files.create!(file: attachment_fixture('attachment.jpg')) }
+    let!(:drive_status) { Fabricate(:status, account: user.account, text: 'Drive attachment', visibility: :public) }
+    let(:drive_attachment) do
+      drive_file.build_pointer(user.account).tap do |pointer|
+        pointer.status = drive_status
+        pointer.save!
+      end
+    end
+
+    it 'stores the physical Drive file once under the outbox attachment path' do
+      drive_attachment
+      second_status = Fabricate(:status, account: user.account, text: 'Same Drive attachment', visibility: :public)
+      drive_file.build_pointer(user.account).tap do |pointer|
+        pointer.status = second_status
+        pointer.save!
+      end
+
+      service_call
+
+      archive_path = "drive_files/#{drive_file.id}/#{drive_file.file_file_name}"
+      drive_uris = [drive_status, second_status].map { |status| ActivityPub::TagManager.instance.uri_for(status) }
+      drive_items = export_json(:outbox).fetch('orderedItems').select { |item| drive_uris.include?(item.dig('object', 'id')) }
+
+      expect(drive_items.map { |item| item.dig('object', 'attachment', 0, 'url') }).to all(eq(archive_path))
+      expect(read_zip_file(backup, archive_path)).to eq(File.binread(drive_file.file.path(:original)))
+    end
+  end
+
   def process_backup
     change(backup, :processed).from(false).to(true)
   end

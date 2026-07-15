@@ -50,7 +50,7 @@ class MisskeyCompat::NoteSerializer
       isHidden: false,
       mentions: mentions.map { |m| MisskeyCompat::MiId.encode(m.account_id) },
       visibleUserIds: [],
-      fileIds: media.map { |m| MisskeyCompat::MiId.encode(m.id) },
+      fileIds: media.map { |m| MisskeyCompat::MiId.encode(m.drive_file_id || m.id) },
       files: media.map { |m| MisskeyCompat::DriveFileSerializer.serialize(m, sensitive: status.sensitive?) },
       tags: status.tags.map(&:name),
       poll: poll_for(status),

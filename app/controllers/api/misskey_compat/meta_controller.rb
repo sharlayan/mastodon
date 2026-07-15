@@ -11,11 +11,11 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
   end
 
   def endpoints
-    render json: self.class.compat_endpoint_names
+    render json: advertised_endpoint_names
   end
 
   def endpoint
-    known = self.class.compat_endpoint_names.include?(params[:endpoint].to_s)
+    known = advertised_endpoint_names.include?(params[:endpoint].to_s)
     return render_error('No such endpoint', 'NO_SUCH_ENDPOINT', 404) unless known
 
     render json: { params: [] }
@@ -56,6 +56,12 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def advertised_endpoint_names
+    self.class.compat_endpoint_names.reject do |name|
+      name == 'drive' || (name.start_with?('drive/') && !Setting.drive_enabled && name != 'drive/files/create')
+    end
+  end
 
   def detail_param
     value = params[:detail]

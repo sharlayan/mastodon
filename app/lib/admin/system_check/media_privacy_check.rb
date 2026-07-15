@@ -76,7 +76,7 @@ class Admin::SystemCheck::MediaPrivacyCheck < Admin::SystemCheck::BaseCheck
 
   def media_attachment
     @media_attachment ||= begin
-      attachment = Account.representative.media_attachments.take
+      attachment = Account.representative.media_attachments.find_by(drive_file_id: nil)
       if attachment.present?
         attachment.touch
         attachment
