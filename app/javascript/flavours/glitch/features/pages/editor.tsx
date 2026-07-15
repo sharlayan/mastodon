@@ -26,6 +26,8 @@ import {
   SelectField,
   CheckboxField,
 } from 'flavours/glitch/components/form_fields';
+import { domain, me } from 'flavours/glitch/initial_state';
+import { useAppSelector } from 'flavours/glitch/store';
 
 import { BlockAddButtons } from './components/block_add_buttons';
 import { EditorBlock } from './components/editor_block';
@@ -42,7 +44,11 @@ const messages = defineMessages({
   newHeading: { id: 'pages.new', defaultMessage: 'New page' },
   editHeading: { id: 'pages.edit', defaultMessage: 'Edit page' },
   title: { id: 'pages.field.title', defaultMessage: 'Title' },
-  name: { id: 'pages.field.name', defaultMessage: 'URL slug' },
+  name: { id: 'pages.field.name', defaultMessage: 'Display address' },
+  addressHint: {
+    id: 'pages.field.address_hint',
+    defaultMessage: 'You will be able to access it at: {url}',
+  },
   summary: { id: 'pages.field.summary', defaultMessage: 'Summary' },
   eyeCatching: {
     id: 'pages.field.eye_catching',
@@ -68,9 +74,12 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const history = useHistory();
   const { id } = useParams<{ id?: string }>();
   const isEditing = !!id;
+  const account = useAppSelector((state) =>
+    me ? state.accounts.get(me) : undefined,
+  );
 
   const [title, setTitle] = useState('');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(() => Date.now().toString());
   const [summary, setSummary] = useState('');
   const [font, setFont] = useState<ApiPageFont>('sans-serif');
   const [alignCenter, setAlignCenter] = useState(false);
@@ -230,6 +239,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const heading = intl.formatMessage(
     isEditing ? messages.editHeading : messages.newHeading,
   );
+  const pageUrl = `https://${domain}/@${account?.username ?? ''}/pages/${name}`;
 
   return (
     <Column bindToDocument={!multiColumn} label={heading}>
@@ -260,6 +270,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               required
               maxLength={256}
               label={intl.formatMessage(messages.name)}
+              hint={intl.formatMessage(messages.addressHint, {
+                url: pageUrl,
+              })}
               value={name}
               onChange={handleNameChange}
             />

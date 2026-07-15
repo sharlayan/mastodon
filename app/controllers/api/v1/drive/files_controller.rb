@@ -180,7 +180,7 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
     ids = files.map(&:id)
     return Set.new if ids.empty?
 
-    MediaAttachment.attached.where(drive_file_id: ids).distinct.pluck(:drive_file_id).to_set
+    MediaAttachment.in_use.where(drive_file_id: ids).distinct.pluck(:drive_file_id).to_set
   end
 
   def next_path

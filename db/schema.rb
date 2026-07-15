@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_15_204800) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_075500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1286,7 +1286,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_15_204800) do
     t.index ["page_id"], name: "index_page_likes_on_page_id"
   end
 
-  create_table "pages", force: :cascade do |t|
+  create_table "pages", id: :bigint, default: -> { "timestamp_id('pages'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.boolean "align_center", default: false, null: false
     t.jsonb "content", default: [], null: false

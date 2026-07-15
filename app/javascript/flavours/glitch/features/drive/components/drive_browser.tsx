@@ -38,7 +38,9 @@ export const DriveBrowser: React.FC<{
   drive: DriveState;
   manageable: boolean;
   onSelectFile: (file: ApiDriveFileJSON) => void;
-}> = ({ drive, manageable, onSelectFile }) => {
+  acceptedTypes?: ApiDriveFileJSON['type'][];
+  accept?: string;
+}> = ({ drive, manageable, onSelectFile, acceptedTypes, accept }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +73,10 @@ export const DriveBrowser: React.FC<{
     deleteFolder,
     isDescendantOf,
   } = drive;
+
+  const visibleFiles = acceptedTypes
+    ? files.filter((file) => acceptedTypes.includes(file.type))
+    : files;
 
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -249,6 +255,7 @@ export const DriveBrowser: React.FC<{
           ref={fileInputRef}
           type='file'
           multiple
+          accept={accept}
           style={{ display: 'none' }}
           onChange={handleFileInputChange}
         />
@@ -295,7 +302,7 @@ export const DriveBrowser: React.FC<{
 
       {loading ? (
         <LoadingIndicator />
-      ) : files.length === 0 ? (
+      ) : visibleFiles.length === 0 ? (
         <EmptyState
           title={
             orphanedOnly ? (
@@ -320,7 +327,7 @@ export const DriveBrowser: React.FC<{
       ) : (
         <>
           <div className='drive__grid'>
-            {files.map((file) => (
+            {visibleFiles.map((file) => (
               <FileCard
                 key={file.id}
                 file={file}

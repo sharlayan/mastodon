@@ -213,13 +213,28 @@ class MediaAttachment < ApplicationRecord
   validates :file, presence: true, if: -> { local? && !drive_pointer? }
   validates :thumbnail, absence: true, if: -> { local? && !audio_or_video? && !drive_pointer? }
 
+  PAGE_REFERENCE_SQL = <<~SQL.squish.freeze
+    EXISTS (
+      SELECT 1
+      FROM pages
+      WHERE pages.eye_catching_media_attachment_id = media_attachments.id
+         OR jsonb_path_exists(
+              pages.content,
+              '$.** ? (@.fileId == $media_id)',
+              jsonb_build_object('media_id', to_jsonb(media_attachments.id::text))
+            )
+    )
+  SQL
+
   scope :attached, -> { where.not(status_id: nil).or(where.not(scheduled_status_id: nil)) }
   scope :cached, -> { remote.where.not(file_file_name: nil) }
   scope :created_before, ->(value) { where(arel_table[:created_at].lt(value)) }
+  scope :referenced_by_page, -> { where(PAGE_REFERENCE_SQL) }
+  scope :in_use, -> { attached.or(referenced_by_page) }
   scope :local, -> { where(remote_url: '') }
   scope :ordered, -> { order(id: :asc) }
   scope :remote, -> { where.not(remote_url: '') }
-  scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil) }
+  scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil).where.not(PAGE_REFERENCE_SQL) }
   scope :updated_before, ->(value) { where(arel_table[:updated_at].lt(value)) }
   scope :without_local_interaction, lambda {
     where.not(Favourite.joins(:account).merge(Account.local).where(Favourite.arel_table[:status_id].eq(MediaAttachment.arel_table[:status_id])).select(1).arel.exists)

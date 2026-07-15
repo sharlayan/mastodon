@@ -94,7 +94,7 @@ class DriveFile < ApplicationRecord
   scope :ordered, -> { order(id: :desc) }
 
   scope :orphaned, lambda {
-    where.not(id: MediaAttachment.attached.where.not(drive_file_id: nil).select(:drive_file_id))
+    where.not(id: MediaAttachment.in_use.where.not(drive_file_id: nil).select(:drive_file_id))
   }
 
   before_destroy :prevent_destroy_if_attached, prepend: true
@@ -138,7 +138,7 @@ class DriveFile < ApplicationRecord
   end
 
   def attached?
-    media_attachments.attached.exists?
+    media_attachments.in_use.exists?
   end
 
   def preview_available?

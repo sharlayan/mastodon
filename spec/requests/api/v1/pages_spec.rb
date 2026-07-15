@@ -24,6 +24,8 @@ RSpec.describe 'Pages' do
         expect { subject }.to change(Page, :count).by(1)
         expect(response).to have_http_status(200)
         expect(response.parsed_body[:eye_catching_media_attachment_id]).to eq(media_attachment.id.to_s)
+        page = Page.last
+        expect(Mastodon::Snowflake.to_time(page.id)).to be_within(1.second).of(page.created_at)
       end
     end
 

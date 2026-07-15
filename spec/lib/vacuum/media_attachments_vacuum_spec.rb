@@ -16,8 +16,11 @@ RSpec.describe Vacuum::MediaAttachmentsVacuum do
     let!(:new_local_media) { Fabricate(:media_attachment, status: local_status) }
     let!(:old_unattached_media) { Fabricate(:media_attachment, account_id: nil, created_at: 10.days.ago) }
     let!(:new_unattached_media) { Fabricate(:media_attachment, account_id: nil, created_at: 1.hour.ago) }
+    let!(:old_page_media) { Fabricate(:media_attachment, created_at: 10.days.ago) }
+    let!(:page) { Fabricate(:page, account: old_page_media.account, content: [{ id: 'image', type: 'image', fileId: old_page_media.id.to_s }]) }
 
     it 'handles attachments based on metadata details' do
+      page
       subject.perform
 
       expect(old_remote_media.reload.file) # Remote and past retention period
@@ -31,6 +34,8 @@ RSpec.describe Vacuum::MediaAttachmentsVacuum do
       expect { old_unattached_media.reload } # Unattached and past TTL
         .to raise_error(ActiveRecord::RecordNotFound)
       expect(new_unattached_media.reload) # Unattached and within TTL
+        .to be_persisted
+      expect(old_page_media.reload) # Referenced by a page
         .to be_persisted
     end
   end

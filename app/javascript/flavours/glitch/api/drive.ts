@@ -11,6 +11,7 @@ import type {
   ApiDriveSettingsJSON,
   ApiDriveUsageJSON,
 } from 'flavours/glitch/api_types/drive';
+import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
 
 export const apiGetDriveFiles = async (
   params?: {
@@ -55,6 +56,9 @@ export const apiMoveDriveFile = (id: string, folderId: string | null) =>
 
 export const apiDeleteDriveFile = (id: string) =>
   apiRequestDelete(`v1/drive/files/${id}`);
+
+export const apiAttachDriveFile = (id: string) =>
+  apiRequestPost<ApiMediaAttachmentJSON>(`v1/drive/files/${id}/attach`);
 
 export const apiTransferDriveFileToPosts = (id: string) =>
   apiRequestPost<{ transferred: number }>(
