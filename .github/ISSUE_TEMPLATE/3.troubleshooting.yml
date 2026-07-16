@@ -60,7 +60,7 @@ body:
       value: |
         최소한 다음 정보를 포함해 주세요:
         - 운영체제: (예: Ubuntu 24.04.2)
-        - Ruby 버전: (`ruby --version`에서 확인, 예: v4.0.5)
+        - Ruby 버전: (`ruby --version`에서 확인, 예: v4.0.6)
         - Node.js 버전: (`node --version`에서 확인, 예: v22.16.0)
     validations:
       required: false

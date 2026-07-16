@@ -115,8 +115,11 @@ class UpdateStatusService < BaseService
   end
 
   def update_immediate_attributes!
-    @status.text         = @options[:text].presence || @options.delete(:spoiler_text) || '' if @options.key?(:text)
-    @status.mfm_text     = (@status.mfm? ? @status.text : nil) if @options.key?(:text)
+    if @options.key?(:text)
+      @status.text = @options[:text].presence || ''
+      @status.text = @options.delete(:spoiler_text) || '' if @status.text.blank? && @status.quote.blank?
+      @status.mfm_text = @status.mfm? ? @status.text : nil
+    end
     @status.spoiler_text = @options[:spoiler_text] || '' if @options.key?(:spoiler_text)
     if @options.key?(:sensitive) || @options.key?(:spoiler_text) || @options.key?(:media_ids)
       requested_sensitive = @options.key?(:sensitive) ? @options[:sensitive] : @status.sensitive?

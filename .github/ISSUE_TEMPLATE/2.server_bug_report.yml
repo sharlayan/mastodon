@@ -59,7 +59,7 @@ body:
         로그나 오류 추적과 같은 추가적인 기술적 세부사항
       value: |
         자체 Mastodon 서버에서 발생한 경우 다음 항목을 작성해 주세요:
-        - Ruby 버전: (`ruby --version`에서 확인, 예: v4.0.5)
+        - Ruby 버전: (`ruby --version`에서 확인, 예: v4.0.6)
         - Node.js 버전: (`node --version`에서 확인, 예: v22.16.0)
     validations:
       required: false
