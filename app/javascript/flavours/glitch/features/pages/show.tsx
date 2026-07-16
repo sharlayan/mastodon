@@ -11,6 +11,8 @@ import { useIdentity } from '@/flavours/glitch/identity_context';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
+import FullscreenIcon from '@/material-icons/400-24px/fullscreen.svg?react';
+import FullscreenExitIcon from '@/material-icons/400-24px/fullscreen_exit.svg?react';
 import StarIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import StarBorderIcon from '@/material-icons/400-24px/star.svg?react';
 import {
@@ -38,6 +40,11 @@ const messages = defineMessages({
   },
   like: { id: 'pages.like', defaultMessage: 'Like' },
   unlike: { id: 'pages.unlike', defaultMessage: 'Unlike' },
+  wideView: { id: 'pages.wide_view', defaultMessage: 'Wide view' },
+  exitWideView: {
+    id: 'pages.exit_wide_view',
+    defaultMessage: 'Exit wide view',
+  },
 });
 
 const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
@@ -48,6 +55,15 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const [page, setPage] = useState<ApiPageJSON | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
+  const [wideView, setWideView] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.toggle('page-wide-view', wideView);
+
+    return () => {
+      document.body.classList.remove('page-wide-view');
+    };
+  }, [wideView]);
 
   useEffect(() => {
     let active = true;
@@ -102,6 +118,10 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       .catch(() => undefined);
   }, [id, page]);
 
+  const handleWideViewToggle = useCallback(() => {
+    setWideView((value) => !value);
+  }, []);
+
   if (error) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
   }
@@ -112,7 +132,11 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     : intl.formatMessage(messages.heading);
 
   return (
-    <Column bindToDocument={!multiColumn} label={title}>
+    <Column
+      bindToDocument={!multiColumn}
+      className='page-show-column'
+      label={title}
+    >
       <ColumnHeader
         title={title}
         icon='description'
@@ -120,27 +144,46 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         multiColumn={multiColumn}
         showBackButton
         extraButton={
-          isOwner && (
-            <>
-              <Link
-                to={`/pages/${id}/edit`}
-                className='column-header__button'
-                title={intl.formatMessage(messages.edit)}
-                aria-label={intl.formatMessage(messages.edit)}
-              >
-                <Icon id='pencil' icon={EditIcon} />
-              </Link>
-              <button
-                type='button'
-                className='column-header__button'
-                title={intl.formatMessage(messages.delete)}
-                aria-label={intl.formatMessage(messages.delete)}
-                onClick={handleDelete}
-              >
-                <Icon id='trash' icon={DeleteIcon} />
-              </button>
-            </>
-          )
+          <>
+            {isOwner && (
+              <>
+                <Link
+                  to={`/pages/${id}/edit`}
+                  className='column-header__button'
+                  title={intl.formatMessage(messages.edit)}
+                  aria-label={intl.formatMessage(messages.edit)}
+                >
+                  <Icon id='pencil' icon={EditIcon} />
+                </Link>
+                <button
+                  type='button'
+                  className='column-header__button'
+                  title={intl.formatMessage(messages.delete)}
+                  aria-label={intl.formatMessage(messages.delete)}
+                  onClick={handleDelete}
+                >
+                  <Icon id='trash' icon={DeleteIcon} />
+                </button>
+              </>
+            )}
+            <button
+              type='button'
+              className='column-header__button'
+              title={intl.formatMessage(
+                wideView ? messages.exitWideView : messages.wideView,
+              )}
+              aria-label={intl.formatMessage(
+                wideView ? messages.exitWideView : messages.wideView,
+              )}
+              aria-pressed={wideView}
+              onClick={handleWideViewToggle}
+            >
+              <Icon
+                id={wideView ? 'compress' : 'expand'}
+                icon={wideView ? FullscreenExitIcon : FullscreenIcon}
+              />
+            </button>
+          </>
         }
       />
 
@@ -151,13 +194,28 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               'page--center': currentPage.align_center,
             })}
           >
-            {currentPage.eye_catching_media_attachment && (
-              <img
-                className='page__eye-catching'
-                src={currentPage.eye_catching_media_attachment.url}
-                alt=''
-              />
-            )}
+            {currentPage.eye_catching_media_attachment &&
+              (currentPage.eye_catching_media_attachment.type === 'gifv' ? (
+                <video
+                  className='page__eye-catching'
+                  src={currentPage.eye_catching_media_attachment.url}
+                  aria-label={
+                    currentPage.eye_catching_media_attachment.description ?? ''
+                  }
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+              ) : (
+                <img
+                  className='page__eye-catching'
+                  src={currentPage.eye_catching_media_attachment.url}
+                  alt={
+                    currentPage.eye_catching_media_attachment.description ?? ''
+                  }
+                />
+              ))}
 
             <h1 className='page__title'>{currentPage.title}</h1>
 

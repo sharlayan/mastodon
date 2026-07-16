@@ -17,26 +17,12 @@ import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 
+import { PageListItem } from './components/page_list_item';
+
 const messages = defineMessages({
   heading: { id: 'column.pages', defaultMessage: 'Pages' },
   create: { id: 'pages.create', defaultMessage: 'Create page' },
 });
-
-export const PageListItem: React.FC<{ page: ApiPageJSON }> = ({ page }) => (
-  <div className='lists__item'>
-    <Link to={`/pages/${page.id}`} className='lists__item__title'>
-      <Icon id='description' icon={DescriptionIcon} />
-      <span>{page.title || page.name}</span>
-      <span className='lists__item__count'>
-        <FormattedMessage
-          id='pages.likes_count'
-          defaultMessage='{count, plural, one {# like} other {# likes}}'
-          values={{ count: page.likes_count }}
-        />
-      </span>
-    </Link>
-  </div>
-);
 
 const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();

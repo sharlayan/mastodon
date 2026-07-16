@@ -2,24 +2,21 @@ import { useEffect, useState } from 'react';
 
 import { FormattedMessage } from 'react-intl';
 
-import { Link } from 'react-router-dom';
-
 import { apiGetAccountPages } from '@/flavours/glitch/api/pages';
 import type { ApiPageJSON } from '@/flavours/glitch/api_types/pages';
 import { AccountHeader } from '@/flavours/glitch/components/account_header';
 import { ColumnBackButton } from '@/flavours/glitch/components/column_back_button';
-import { Icon } from '@/flavours/glitch/components/icon';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { RemoteHint } from '@/flavours/glitch/components/remote_hint';
 import {
   ItemList,
   Scrollable,
 } from '@/flavours/glitch/components/scrollable_list/components';
+import { PageListItem } from '@/flavours/glitch/features/pages/components/page_list_item';
 import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bundle_column_error';
 import Column from '@/flavours/glitch/features/ui/components/column';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';
-import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 
 const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   const accountId = useAccountId();
@@ -70,12 +67,7 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
         ) : (
           <ItemList>
             {pages.map((page) => (
-              <div key={page.id} className='lists__item'>
-                <Link to={`/pages/${page.id}`} className='lists__item__title'>
-                  <Icon id='description' icon={DescriptionIcon} />
-                  <span>{page.title || page.name}</span>
-                </Link>
-              </div>
+              <PageListItem key={page.id} page={page} />
             ))}
           </ItemList>
         )}
