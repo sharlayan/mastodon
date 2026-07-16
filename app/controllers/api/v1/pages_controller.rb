@@ -63,6 +63,7 @@ class Api::V1::PagesController < Api::BaseController
 
   def set_page
     @page = Page.find(params[:id])
+    not_found if @page.draft? && @page.account_id != current_account&.id
   end
 
   def authorize_owner!
@@ -70,7 +71,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def page_params
-    params.permit(:title, :name, :summary, :align_center, :hide_title_when_pinned, :font, :eye_catching_media_attachment_id).merge(content_params)
+    params.permit(:title, :name, :summary, :category, :draft, :align_center, :hide_title_when_pinned, :font, :eye_catching_media_attachment_id).merge(content_params)
   end
 
   def content_params

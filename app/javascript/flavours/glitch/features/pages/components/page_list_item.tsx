@@ -30,14 +30,22 @@ export const PageListItem: React.FC<{ page: ApiPageJSON }> = ({ page }) => {
             <span className='page-list-item__author'>
               {page.account.display_name || page.account.username} · @
               {page.account.acct}
+              {page.category && <> · {page.category}</>}
             </span>
           </span>
-          <span className='lists__item__count'>
-            <FormattedMessage
-              id='pages.likes_count'
-              defaultMessage='{count, plural, one {# like} other {# likes}}'
-              values={{ count: page.likes_count }}
-            />
+          <span className='page-list-item__aside'>
+            {page.draft && (
+              <span className='page-list-item__draft'>
+                <FormattedMessage id='pages.draft' defaultMessage='Draft' />
+              </span>
+            )}
+            <span className='lists__item__count'>
+              <FormattedMessage
+                id='pages.likes_count'
+                defaultMessage='{count, plural, one {# like} other {# likes}}'
+                values={{ count: page.likes_count }}
+              />
+            </span>
           </span>
         </span>
       </Link>

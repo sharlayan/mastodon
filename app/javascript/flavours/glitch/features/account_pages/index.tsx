@@ -12,6 +12,7 @@ import {
   ItemList,
   Scrollable,
 } from '@/flavours/glitch/components/scrollable_list/components';
+import { CategoryFilter } from '@/flavours/glitch/features/pages/components/category_filter';
 import { PageListItem } from '@/flavours/glitch/features/pages/components/page_list_item';
 import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bundle_column_error';
 import Column from '@/flavours/glitch/features/ui/components/column';
@@ -24,11 +25,13 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   const forceEmptyState = suspended || blockedBy || hidden;
 
   const [fetchedPages, setFetchedPages] = useState<ApiPageJSON[] | null>(null);
+  const [category, setCategory] = useState('');
 
   useEffect(() => {
     if (accountId && !forceEmptyState) {
       apiGetAccountPages(accountId)
         .then((data) => {
+          setCategory('');
           setFetchedPages(data);
           return data;
         })
@@ -43,6 +46,10 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   }
 
   const pages = forceEmptyState ? [] : fetchedPages;
+  const visiblePages =
+    pages && category
+      ? pages.filter((page) => page.category === category)
+      : pages;
 
   return (
     <Column>
@@ -53,11 +60,19 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
           <AccountHeader accountId={accountId} hideTabs={forceEmptyState} />
         )}
 
-        {pages === null ? (
+        {pages && (
+          <CategoryFilter
+            pages={pages}
+            value={category}
+            onChange={setCategory}
+          />
+        )}
+
+        {visiblePages === null ? (
           <div className='scrollable__append'>
             <LoadingIndicator />
           </div>
-        ) : pages.length === 0 ? (
+        ) : visiblePages.length === 0 ? (
           <div className='empty-column-indicator'>
             <FormattedMessage
               id='empty_column.account_pages'
@@ -66,7 +81,7 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
           </div>
         ) : (
           <ItemList>
-            {pages.map((page) => (
+            {visiblePages.map((page) => (
               <PageListItem key={page.id} page={page} />
             ))}
           </ItemList>

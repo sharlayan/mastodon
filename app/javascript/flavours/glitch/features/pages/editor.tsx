@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
-import { useParams, useHistory } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 import { Helmet } from '@unhead/react/helmet';
 
@@ -26,6 +26,7 @@ import {
   SelectField,
   CheckboxField,
 } from 'flavours/glitch/components/form_fields';
+import { useAppHistory } from 'flavours/glitch/components/router';
 import { domain, me } from 'flavours/glitch/initial_state';
 import { useAppSelector } from 'flavours/glitch/store';
 
@@ -50,6 +51,16 @@ const messages = defineMessages({
     defaultMessage: 'You will be able to access it at: {url}',
   },
   summary: { id: 'pages.field.summary', defaultMessage: 'Summary' },
+  category: { id: 'pages.field.category', defaultMessage: 'Category' },
+  categoryHint: {
+    id: 'pages.field.category_hint',
+    defaultMessage: 'Enter up to 30 characters. Leave blank for no category.',
+  },
+  draft: { id: 'pages.field.draft', defaultMessage: 'Keep as draft' },
+  draftHint: {
+    id: 'pages.field.draft_hint',
+    defaultMessage: 'Draft pages are visible only to you.',
+  },
   eyeCatching: {
     id: 'pages.field.eye_catching',
     defaultMessage: 'Header image',
@@ -71,7 +82,7 @@ const TOP_LEVEL_TYPES: ApiPageBlockType[] = [
 
 const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
-  const history = useHistory();
+  const history = useAppHistory();
   const { id } = useParams<{ id?: string }>();
   const isEditing = !!id;
   const account = useAppSelector((state) =>
@@ -81,6 +92,8 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [title, setTitle] = useState('');
   const [name, setName] = useState(() => Date.now().toString());
   const [summary, setSummary] = useState('');
+  const [category, setCategory] = useState('');
+  const [draft, setDraft] = useState(false);
   const [font, setFont] = useState<ApiPageFont>('sans-serif');
   const [alignCenter, setAlignCenter] = useState(false);
   const [content, setContent] = useState<ApiPageBlock[]>([]);
@@ -103,6 +116,8 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setTitle(page.title);
         setName(page.name);
         setSummary(page.summary ?? '');
+        setCategory(page.category ?? '');
+        setDraft(page.draft);
         setFont(page.font);
         setAlignCenter(page.align_center);
         setContent(page.content);
@@ -134,6 +149,20 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleSummaryChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
       setSummary(event.target.value);
+    },
+    [],
+  );
+
+  const handleCategoryChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setCategory(event.target.value);
+    },
+    [],
+  );
+
+  const handleDraftChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setDraft(event.target.checked);
     },
     [],
   );
@@ -204,6 +233,8 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       title,
       name,
       summary: summary || null,
+      category: category || null,
+      draft,
       font,
       align_center: alignCenter,
       content,
@@ -216,7 +247,12 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     request
       .then((page) => {
-        history.push(`/pages/${page.id}`);
+        if (isEditing && history.location.state?.fromPageShow) {
+          history.goBack();
+        } else {
+          history.replace(`/pages/${page.id}`);
+        }
+
         return page;
       })
       .catch(() => {
@@ -229,6 +265,8 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     title,
     name,
     summary,
+    category,
+    draft,
     font,
     alignCenter,
     content,
@@ -285,6 +323,27 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               label={intl.formatMessage(messages.summary)}
               value={summary}
               onChange={handleSummaryChange}
+            />
+          </div>
+
+          <div className='fields-group'>
+            <TextInputField
+              id='page_category'
+              maxLength={30}
+              label={intl.formatMessage(messages.category)}
+              hint={intl.formatMessage(messages.categoryHint)}
+              value={category}
+              onChange={handleCategoryChange}
+            />
+          </div>
+
+          <div className='fields-group'>
+            <CheckboxField
+              id='page_draft'
+              label={intl.formatMessage(messages.draft)}
+              hint={intl.formatMessage(messages.draftHint)}
+              checked={draft}
+              onChange={handleDraftChange}
             />
           </div>
 

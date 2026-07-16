@@ -6,7 +6,9 @@
 #
 #  id                               :bigint(8)        not null, primary key
 #  align_center                     :boolean          default(FALSE), not null
+#  category                         :string
 #  content                          :jsonb            not null
+#  draft                            :boolean          default(FALSE), not null
 #  font                             :string           default("sans-serif"), not null
 #  hide_title_when_pinned           :boolean          default(FALSE), not null
 #  likes_count                      :integer          default(0), not null
@@ -26,6 +28,7 @@ class Page < ApplicationRecord
   TITLE_LENGTH_LIMIT = 256
   NAME_LENGTH_LIMIT = 256
   SUMMARY_LENGTH_LIMIT = 256
+  CATEGORY_LENGTH_LIMIT = 30
   NAME_RE = %r{\A[^\s:/?#\[\]@!$&'()*+,;=\\%\x00-\x20]{1,256}\z}
   FONTS = %w(sans-serif serif).freeze
   BLOCK_TYPES = %w(text section image note).freeze
@@ -35,15 +38,19 @@ class Page < ApplicationRecord
 
   has_many :page_likes, inverse_of: :page, dependent: :destroy
 
+  before_validation :normalize_category
+
   validates :title, length: { maximum: TITLE_LENGTH_LIMIT }
   validates :name, presence: true, length: { maximum: NAME_LENGTH_LIMIT }, format: { with: NAME_RE }, uniqueness: { scope: :account_id }
   validates :summary, length: { maximum: SUMMARY_LENGTH_LIMIT }
+  validates :category, length: { maximum: CATEGORY_LENGTH_LIMIT }
   validates :font, inclusion: { in: FONTS }
   validate :validate_content
   validate :validate_eye_catching_media_attachment
   validate :validate_account_pages_limit, on: :create
 
-  scope :featured, -> { where('likes_count > 0').order(likes_count: :desc) }
+  scope :published, -> { where(draft: false) }
+  scope :featured, -> { published.where('likes_count > 0').order(likes_count: :desc) }
 
   def liked_by?(account)
     account.present? && page_likes.exists?(account_id: account.id)
@@ -60,6 +67,10 @@ class Page < ApplicationRecord
   end
 
   private
+
+  def normalize_category
+    self.category = category&.strip.presence
+  end
 
   def attached_media_ids
     @attached_media_ids ||= collect_blocks(content).filter_map { |block| block['fileId'] if block['type'] == 'image' }.uniq

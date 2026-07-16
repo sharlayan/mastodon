@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_075500) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_111700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1289,8 +1289,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_075500) do
   create_table "pages", id: :bigint, default: -> { "timestamp_id('pages'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.boolean "align_center", default: false, null: false
+    t.string "category"
     t.jsonb "content", default: [], null: false
     t.datetime "created_at", null: false
+    t.boolean "draft", default: false, null: false
     t.bigint "eye_catching_media_attachment_id"
     t.string "font", default: "sans-serif", null: false
     t.boolean "hide_title_when_pinned", default: false, null: false

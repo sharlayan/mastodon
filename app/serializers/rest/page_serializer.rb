@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::PageSerializer < ActiveModel::Serializer
-  attributes :id, :title, :name, :summary, :content, :align_center,
+  attributes :id, :title, :name, :summary, :category, :draft, :content, :align_center,
              :hide_title_when_pinned, :font, :account_id,
              :eye_catching_media_attachment_id, :likes_count,
              :created_at, :updated_at

@@ -38,18 +38,24 @@ export const messages = defineMessages({
 
 const BackButton: React.FC<{
   hasTitle: boolean;
-}> = ({ hasTitle }) => {
+  onClick?: () => void;
+}> = ({ hasTitle, onClick }) => {
   const history = useAppHistory();
   const intl = useIntl();
   const columnIndex = useColumnIndexContext();
 
   const handleBackClick = useCallback(() => {
+    if (onClick) {
+      onClick();
+      return;
+    }
+
     if (history.location.state?.fromMastodon) {
       history.goBack();
     } else {
       history.push('/');
     }
-  }, [history]);
+  }, [history, onClick]);
 
   return (
     <button
@@ -88,6 +94,7 @@ export interface Props {
   appendContent?: React.ReactNode;
   collapseIssues?: boolean;
   onClick?: () => void;
+  onBack?: () => void;
   onMove?: (arg0: number) => void;
   onPin?: () => void;
 }
@@ -107,6 +114,7 @@ export const ColumnHeader: React.FC<Props> = ({
   appendContent,
   collapseIssues,
   onClick,
+  onBack,
   onMove,
   onPin,
 }) => {
@@ -227,7 +235,7 @@ export const ColumnHeader: React.FC<Props> = ({
     !pinned &&
     ((multiColumn && history.location.state?.fromMastodon) || showBackButton)
   ) {
-    backButton = <BackButton hasTitle={!!title} />;
+    backButton = <BackButton hasTitle={!!title} onClick={onBack} />;
   }
 
   const collapsedContent = [extraContent];

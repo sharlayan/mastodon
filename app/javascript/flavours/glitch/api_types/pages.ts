@@ -44,6 +44,8 @@ export interface ApiPageJSON {
   title: string;
   name: string;
   summary: string | null;
+  category: string | null;
+  draft: boolean;
   content: ApiPageBlock[];
   align_center: boolean;
   hide_title_when_pinned: boolean;

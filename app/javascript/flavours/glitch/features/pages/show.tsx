@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
 import classNames from 'classnames';
-import { useParams, useHistory, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 
 import { Helmet } from '@unhead/react/helmet';
 
@@ -11,10 +11,10 @@ import { useIdentity } from '@/flavours/glitch/identity_context';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
+import FavoriteIcon from '@/material-icons/400-24px/favorite-fill.svg?react';
+import FavoriteBorderIcon from '@/material-icons/400-24px/favorite.svg?react';
 import FullscreenIcon from '@/material-icons/400-24px/fullscreen.svg?react';
 import FullscreenExitIcon from '@/material-icons/400-24px/fullscreen_exit.svg?react';
-import StarIcon from '@/material-icons/400-24px/star-fill.svg?react';
-import StarBorderIcon from '@/material-icons/400-24px/star.svg?react';
 import {
   apiGetPage,
   apiDeletePage,
@@ -22,10 +22,13 @@ import {
   apiUnlikePage,
 } from 'flavours/glitch/api/pages';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
+import { Avatar } from 'flavours/glitch/components/avatar';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { FormattedDateWrapper } from 'flavours/glitch/components/formatted_date';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
+import { useAppHistory } from 'flavours/glitch/components/router';
 import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
 
 import { PageBlockList } from './components/blocks';
@@ -45,11 +48,13 @@ const messages = defineMessages({
     id: 'pages.exit_wide_view',
     defaultMessage: 'Exit wide view',
   },
+  createdAt: { id: 'pages.created_at', defaultMessage: 'Created' },
+  updatedAt: { id: 'pages.updated_at', defaultMessage: 'Updated' },
 });
 
 const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
-  const history = useHistory();
+  const history = useAppHistory();
   const { accountId } = useIdentity();
   const { id } = useParams<{ id: string }>();
 
@@ -122,11 +127,20 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setWideView((value) => !value);
   }, []);
 
+  const handleBack = useCallback(() => {
+    if (history.location.state?.fromMastodon) {
+      history.goBack();
+    } else {
+      history.push('/pages');
+    }
+  }, [history]);
+
   if (error) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
   }
 
   const isOwner = !!currentPage && currentPage.account_id === accountId;
+  const eyeCatchingMedia = currentPage?.eye_catching_media_attachment;
   const title = currentPage
     ? currentPage.title
     : intl.formatMessage(messages.heading);
@@ -143,12 +157,16 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         iconComponent={DescriptionIcon}
         multiColumn={multiColumn}
         showBackButton
+        onBack={handleBack}
         extraButton={
           <>
             {isOwner && (
               <>
                 <Link
-                  to={`/pages/${id}/edit`}
+                  to={{
+                    pathname: `/pages/${id}/edit`,
+                    state: { fromPageShow: true },
+                  }}
                   className='column-header__button'
                   title={intl.formatMessage(messages.edit)}
                   aria-label={intl.formatMessage(messages.edit)}
@@ -194,34 +212,62 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               'page--center': currentPage.align_center,
             })}
           >
-            {currentPage.eye_catching_media_attachment &&
-              (currentPage.eye_catching_media_attachment.type === 'gifv' ? (
-                <video
-                  className='page__eye-catching'
-                  src={currentPage.eye_catching_media_attachment.url}
-                  aria-label={
-                    currentPage.eye_catching_media_attachment.description ?? ''
-                  }
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                />
-              ) : (
-                <img
-                  className='page__eye-catching'
-                  src={currentPage.eye_catching_media_attachment.url}
-                  alt={
-                    currentPage.eye_catching_media_attachment.description ?? ''
-                  }
-                />
-              ))}
+            {eyeCatchingMedia && (
+              <div className='page__eye-catching-container'>
+                {eyeCatchingMedia.type === 'gifv' ? (
+                  <video
+                    className='page__eye-catching'
+                    src={eyeCatchingMedia.url}
+                    aria-label={eyeCatchingMedia.description ?? ''}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    className='page__eye-catching'
+                    src={eyeCatchingMedia.url}
+                    alt={eyeCatchingMedia.description ?? ''}
+                  />
+                )}
+                <div className='page__eye-catching-author'>
+                  <Avatar account={currentPage.account} size={32} withLink />
+                  <span className='page__eye-catching-author-text'>
+                    <strong>
+                      {currentPage.account.display_name ||
+                        currentPage.account.username}
+                    </strong>
+                    <span>@{currentPage.account.acct}</span>
+                  </span>
+                </div>
+              </div>
+            )}
 
-            <h1 className='page__title'>{currentPage.title}</h1>
+            <div className='page__title-row'>
+              <h1 className='page__title'>{currentPage.title}</h1>
+              {currentPage.category && (
+                <span className='page__category'>{currentPage.category}</span>
+              )}
+            </div>
 
-            <Link to={`/@${currentPage.account.acct}`} className='page__byline'>
-              @{currentPage.account.acct}
-            </Link>
+            {(!eyeCatchingMedia || currentPage.draft) && (
+              <div className='page__byline-row'>
+                {!eyeCatchingMedia && (
+                  <Link
+                    to={`/@${currentPage.account.acct}`}
+                    className='page__byline'
+                  >
+                    @{currentPage.account.acct}
+                  </Link>
+                )}
+                {currentPage.draft && (
+                  <span className='page__draft'>
+                    <FormattedMessage id='pages.draft' defaultMessage='Draft' />
+                  </span>
+                )}
+              </div>
+            )}
 
             {currentPage.summary && (
               <p className='page__summary'>{currentPage.summary}</p>
@@ -236,6 +282,34 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             </div>
 
             <div className='page__footer'>
+              <dl className='page__dates'>
+                <div>
+                  <dt>{intl.formatMessage(messages.createdAt)}</dt>
+                  <dd>
+                    <FormattedDateWrapper
+                      value={currentPage.created_at}
+                      year='numeric'
+                      month='long'
+                      day='2-digit'
+                      hour='2-digit'
+                      minute='2-digit'
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt>{intl.formatMessage(messages.updatedAt)}</dt>
+                  <dd>
+                    <FormattedDateWrapper
+                      value={currentPage.updated_at}
+                      year='numeric'
+                      month='long'
+                      day='2-digit'
+                      hour='2-digit'
+                      minute='2-digit'
+                    />
+                  </dd>
+                </div>
+              </dl>
               <button
                 type='button'
                 className={classNames('page__like-button', {
@@ -245,8 +319,8 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 disabled={isOwner}
               >
                 <Icon
-                  id='star'
-                  icon={currentPage.liked ? StarIcon : StarBorderIcon}
+                  id='favorite'
+                  icon={currentPage.liked ? FavoriteIcon : FavoriteBorderIcon}
                 />
                 <span>
                   <FormattedMessage

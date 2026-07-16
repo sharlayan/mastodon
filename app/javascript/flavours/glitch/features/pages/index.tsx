@@ -17,6 +17,7 @@ import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 
+import { CategoryFilter } from './components/category_filter';
 import { PageListItem } from './components/page_list_item';
 
 const messages = defineMessages({
@@ -29,6 +30,7 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { signedIn } = useIdentity();
   const [tab, setTab] = useState<'mine' | 'featured'>('mine');
   const [pages, setPages] = useState<ApiPageJSON[]>([]);
+  const [category, setCategory] = useState('');
 
   useEffect(() => {
     if (!signedIn && tab === 'mine') {
@@ -48,6 +50,7 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleTabClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       setTab(event.currentTarget.dataset.tab as 'mine' | 'featured');
+      setCategory('');
     },
     [],
   );
@@ -55,6 +58,9 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const emptyMessage = (
     <FormattedMessage id='pages.no_pages_yet' defaultMessage='No pages yet.' />
   );
+  const visiblePages = category
+    ? pages.filter((page) => page.category === category)
+    : pages;
 
   return (
     <Column
@@ -99,6 +105,8 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         </button>
       </div>
 
+      <CategoryFilter pages={pages} value={category} onChange={setCategory} />
+
       <ScrollableList
         scrollKey='pages'
         emptyMessage={emptyMessage}
@@ -107,7 +115,7 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         {tab === 'mine' && !signedIn ? (
           <NotSignedInIndicator />
         ) : (
-          pages.map((page) => <PageListItem key={page.id} page={page} />)
+          visiblePages.map((page) => <PageListItem key={page.id} page={page} />)
         )}
       </ScrollableList>
 
