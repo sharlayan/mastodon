@@ -42,10 +42,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def children
-    descendants = @note.descendants(pagination_limit, current_account).to_a
-    Status.preload_cacheable_associations(descendants)
-    preload_relations(descendants)
-    render json: serialize_collection(descendants)
+    scope = Status.where(in_reply_to_id: @note.id)
+    render_visible_notes paginate_notes(scope)
   end
 
   def replies
