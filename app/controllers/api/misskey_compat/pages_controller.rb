@@ -19,6 +19,10 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
     render_invalid_param('#/properties/eyeCatchingImageId', 'ambiguous file id')
   end
 
+  rescue_from Page::ContentLimitError do
+    render_invalid_param('#/properties/content', 'content exceeds the allowed limits')
+  end
+
   def featured
     pages = Page.featured.includes(:account, :eye_catching_media_attachment).limit(10)
     render json: serialize_many(pages)
@@ -89,7 +93,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
 
   def set_page
     @page = Page.find_by(id: params[:pageId])
-    hidden_page = @page && !@page.public_visibility? && (@page.account_id != current_account&.id || %w(like unlike).include?(action_name))
+    hidden_page = @page && (@page.account.unavailable? || (!@page.public_visibility? && (@page.account_id != current_account&.id || %w(like unlike).include?(action_name))))
     render_no_such_page if @page.nil? || hidden_page
   end
 
@@ -99,10 +103,10 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
 
   def find_shown_page
     if params[:pageId].present?
-      Page.includes(:account, :eye_catching_media_attachment).find_by(id: params[:pageId])
+      Page.available_accounts.includes(:account, :eye_catching_media_attachment).find_by(id: params[:pageId])
     elsif params[:name].present? && params[:username].present?
       account = Account.where(domain: nil).where('LOWER(username) = ?', params[:username].to_s.downcase).first
-      account&.pages&.published&.includes(:account, :eye_catching_media_attachment)&.find_by(name: params[:name])
+      account&.pages&.published&.includes(:account, :eye_catching_media_attachment)&.find_by(name: params[:name]) unless account&.unavailable?
     end
   end
 
@@ -156,13 +160,16 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
     normalized_ids.map { |id| @resolved_page_media_ids[id] }
   end
 
-  def sanitize_blocks(blocks)
+  def sanitize_blocks(blocks, depth = 1)
+    raise Page::ContentLimitError if depth > Page::MAX_BLOCK_DEPTH && Array(blocks).present?
+    return [] if depth > Page::MAX_BLOCK_DEPTH
+
     Array(blocks).filter_map do |block|
       block = block.to_unsafe_h if block.respond_to?(:to_unsafe_h)
       next unless block.is_a?(Hash)
 
       clean = block.stringify_keys.slice(*ALLOWED_BLOCK_KEYS)
-      clean['children'] = sanitize_blocks(clean['children']) if clean.key?('children')
+      clean['children'] = sanitize_blocks(clean['children'], depth + 1) if clean.key?('children')
       clean
     end
   end

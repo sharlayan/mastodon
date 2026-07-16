@@ -18,6 +18,19 @@ RSpec.describe DriveFileFromURLWorker do
     end
   end
 
+  describe '.enqueue' do
+    it 'suppresses duplicate account and URL jobs while one is queued' do
+      allow(described_class).to receive(:perform_async)
+      key = described_class.deduplication_key(account.id, 'https://example.com/image.jpg')
+
+      expect(described_class.enqueue(account.id, 'https://example.com/image.jpg')).to be true
+      expect(described_class.enqueue(account.id, 'https://example.com/image.jpg')).to be false
+      expect(described_class).to have_received(:perform_async).once
+    ensure
+      RedisConnection.with { |redis| redis.del(key) } if key
+    end
+  end
+
   it 'persists URL upload metadata used by Aria polling' do
     worker.perform(account.id, 'https://example.com/avatar.gif', {
       'folder_id' => folder.id.to_s,

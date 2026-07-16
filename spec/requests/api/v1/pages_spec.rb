@@ -115,6 +115,23 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'content limits' do
+    it 'rejects content deeper than the server traversal budget' do
+      root = { type: 'section', children: [] }
+      current = root
+      Page::MAX_BLOCK_DEPTH.times do
+        child = { type: 'section', children: [] }
+        current[:children] = [child]
+        current = child
+      end
+
+      post '/api/v1/pages', params: { title: 'Deep', name: 'deep', content: [root] }, headers: headers, as: :json
+
+      expect(response).to have_http_status(422)
+      expect(Page).to_not exist(name: 'deep')
+    end
+  end
+
   describe 'password visibility' do
     let(:header_media) { Fabricate(:media_attachment, account: user.account) }
     let!(:password_page) do
@@ -214,6 +231,23 @@ RSpec.describe 'Pages' do
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(page.id.to_s)
+    end
+  end
+
+  describe 'suspended account visibility' do
+    let!(:page) { Fabricate(:page, likes_count: 10) }
+
+    before { page.account.suspend! }
+
+    it 'hides direct, featured, and unlock responses' do
+      get "/api/v1/pages/#{page.id}"
+      expect(response).to have_http_status(404)
+
+      get '/api/v1/pages/featured'
+      expect(response.parsed_body.pluck(:id)).to_not include(page.id.to_s)
+
+      post "/api/v1/pages/#{page.id}/unlock", params: { password: 'irrelevant' }
+      expect(response).to have_http_status(404)
     end
   end
 end

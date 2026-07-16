@@ -81,8 +81,18 @@ class DriveMediaController < ApplicationController
   def serve_as_download(attachment, style)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Content-Security-Policy'] = "default-src 'none'; sandbox"
+    filename = source_record.respond_to?(:display_name) ? source_record.display_name.to_s : source_record.file_file_name.to_s
 
-    send_data download_data(attachment, style), type: attachment.instance_read(:content_type), disposition: 'attachment', filename: source_record.file_file_name
+    if local_storage?
+      path = attachment.path(style)
+      return not_found if path.blank? || !File.exist?(path)
+
+      send_file path, type: 'application/octet-stream', disposition: 'attachment', filename: filename
+    else
+      disposition = ActionDispatch::Http::ContentDisposition.format(disposition: 'attachment', filename: filename)
+      url = attachment.s3_object(style).presigned_url(:get, expires_in: 1.hour.to_i, response_content_type: 'application/octet-stream', response_content_disposition: disposition).to_s
+      redirect_to url, allow_other_host: true
+    end
   end
 
   def resolved_content_type(attachment, style)
@@ -90,14 +100,6 @@ class DriveMediaController < ApplicationController
     return attachment.instance_read(:content_type) if definition.nil?
 
     definition[:content_type].presence || Rack::Mime.mime_type(".#{definition[:format]}", attachment.instance_read(:content_type))
-  end
-
-  def download_data(attachment, style)
-    return File.binread(attachment.path(style)) if local_storage?
-
-    adapter = Paperclip.io_adapters.for(attachment)
-    adapter.rewind
-    adapter.read
   end
 
   def sendfile_header?

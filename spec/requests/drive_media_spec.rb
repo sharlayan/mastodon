@@ -92,6 +92,26 @@ RSpec.describe 'Drive media', :attachment_processing do
     expect(response).to redirect_to('https://private.example/drive/signed-object.png')
   end
 
+  it 'redirects unknown S3 files with forced download response parameters' do
+    Setting.drive_allowed_extensions = 'txt'
+    file = DriveFile.create!(account: account, file: attachment_fixture('bookmark-imports.txt'))
+    file_pointer = file.build_pointer(account).tap(&:save!)
+    object = Class.new { def presigned_url(*) end }.new
+    allow(object).to receive(:presigned_url).and_return('https://private.example/drive/signed-download.txt')
+    stub_object_storage
+    stub_drive_attachment(:s3_object, :original, object)
+
+    ClimateControl.modify S3_ENABLED: 'true', S3_PERMISSION: 'public-read' do
+      get drive_media_path(file_pointer.drive_access_key, :original)
+    end
+
+    expect(object).to have_received(:presigned_url).with(
+      :get,
+      hash_including(expires_in: 1.hour.to_i, response_content_type: 'application/octet-stream', response_content_disposition: start_with('attachment'))
+    )
+    expect(response).to redirect_to('https://private.example/drive/signed-download.txt')
+  end
+
   def stub_object_storage
     allow(Paperclip::Attachment.default_options).to receive(:[]).and_call_original
     allow(Paperclip::Attachment.default_options).to receive(:[]).with(:storage).and_return(:s3)
@@ -118,7 +138,13 @@ RSpec.describe 'Drive media', :attachment_processing do
   def stub_drive_attachment(method_name, *arguments, result)
     allow(Paperclip::Attachment).to receive(:new).and_wrap_original do |original, *constructor_arguments|
       original.call(*constructor_arguments).tap do |attachment|
-        allow(attachment).to receive(method_name).with(*arguments).and_return(result) if constructor_arguments.first == :file
+        next unless constructor_arguments.first == :file
+
+        if attachment.respond_to?(method_name)
+          allow(attachment).to receive(method_name).with(*arguments).and_return(result)
+        else
+          attachment.define_singleton_method(method_name) { |*| result }
+        end
       end
     end
   end

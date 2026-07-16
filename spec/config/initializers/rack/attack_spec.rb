@@ -176,4 +176,34 @@ RSpec.describe Rack::Attack, type: :request do
 
     it_behaves_like 'throttled endpoint'
   end
+
+  describe 'throttle page unlock requests with JSON bodies' do
+    let(:page) { Fabricate(:page, visibility: 'password', access_password: 'correct-password') }
+    let(:path) { "/api/v1/pages/#{page.id}/unlock" }
+
+    before do
+      Setting.pages_enabled = true
+      travel_to Time.zone.at((Time.now.to_i / 5.minutes).to_i * 5.minutes)
+    end
+
+    it 'applies the page-specific limit without reading Rack form params' do
+      10.times { post path, params: { password: 'wrong-password' }, as: :json, headers: { 'REMOTE_ADDR' => remote_ip } }
+      post path, params: { password: 'wrong-password' }, as: :json, headers: { 'REMOTE_ADDR' => remote_ip }
+
+      expect(response).to have_http_status(429)
+    end
+  end
+
+  describe 'throttle Drive upload routes' do
+    let(:path) { '/api/v1/drive/files/upload_from_url' }
+
+    before { travel_to Time.zone.at((Time.now.to_i / 30.minutes).to_i * 30.minutes) }
+
+    it 'limits unauthenticated requests before upload processing' do
+      100.times { post path, params: { url: 'https://example.com/file' }, as: :json, headers: { 'REMOTE_ADDR' => remote_ip } }
+      post path, params: { url: 'https://example.com/file' }, as: :json, headers: { 'REMOTE_ADDR' => remote_ip }
+
+      expect(response).to have_http_status(429)
+    end
+  end
 end

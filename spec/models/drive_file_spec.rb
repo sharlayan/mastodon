@@ -26,6 +26,16 @@ RSpec.describe DriveFile, :attachment_processing do
     end
   end
 
+  describe '.max_download_size' do
+    it 'does not exceed either the configured limit or the core absolute limit' do
+      Setting.drive_max_file_size = 20
+      expect(described_class.max_download_size).to eq(20.megabytes)
+
+      Setting.drive_max_file_size = 200
+      expect(described_class.max_download_size).to eq(MediaAttachment::VIDEO_LIMIT)
+    end
+  end
+
   describe '#quota_storage_file_size' do
     it 'stores the total size of every processed file style' do
       file = described_class.create!(account: account, file: attachment_fixture('attachment.jpg'))

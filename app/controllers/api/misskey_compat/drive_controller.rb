@@ -5,6 +5,7 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
 
   before_action :require_user!, except: :unavailable
   before_action :require_drive_enabled!, only: [:index, :show, :update, :destroy, :find, :find_by_hash, :check_existence, :move_bulk, :upload_from_url]
+  before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
 
   LIMIT = 100
   BULK_LIMIT = 100
@@ -109,8 +110,9 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
 
   def upload_from_url
     return render_invalid_param('#/properties/url', 'url required') if params[:url].blank?
+    return render_error('Drive storage quota exceeded', 'NO_FREE_SPACE', 422) if drive_quota_full?
 
-    DriveFileFromURLWorker.perform_async(current_account.id, params[:url].to_s, {
+    DriveFileFromURLWorker.enqueue(current_account.id, params[:url].to_s, {
       'folder_id' => upload_folder_id,
       'sensitive' => ActiveModel::Type::Boolean.new.cast(params[:isSensitive]),
       'description' => params[:comment],
@@ -119,6 +121,17 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def enforce_upload_rate_limit!
+    return if current_user.can_extra?(:bypass_rate_limit)
+
+    rate_limited?(:drive_uploads)
+  end
+
+  def drive_quota_full?
+    quota = current_account.drive_quota_bytes
+    quota.positive? && current_account.drive_files.sum(:storage_file_size).to_i >= quota
+  end
 
   def require_drive_enabled!
     render_error('Drive is not available on this server', 'UNAVAILABLE', 400) unless Setting.drive_enabled

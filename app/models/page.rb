@@ -26,6 +26,8 @@
 class Page < ApplicationRecord
   include Paginable
 
+  class ContentLimitError < StandardError; end
+
   PER_ACCOUNT_LIMIT = 100
   TITLE_LENGTH_LIMIT = 256
   NAME_LENGTH_LIMIT = 256
@@ -35,6 +37,11 @@ class Page < ApplicationRecord
   FONTS = %w(sans-serif serif).freeze
   VISIBILITIES = %w(public password private).freeze
   BLOCK_TYPES = %w(text section image note).freeze
+  MAX_BLOCKS = 500
+  MAX_BLOCK_DEPTH = 10
+  MAX_CONTENT_BYTES = 512.kilobytes
+  MAX_TEXT_LENGTH = 20_000
+  MAX_SECTION_TITLE_LENGTH = 500
 
   belongs_to :account
   belongs_to :eye_catching_media_attachment, class_name: 'MediaAttachment', optional: true
@@ -54,12 +61,14 @@ class Page < ApplicationRecord
   validates :visibility, inclusion: { in: VISIBILITIES }
   validates :access_password, length: { in: Devise.password_length }, allow_nil: true
   validate :validate_content
+  validate :validate_attached_media
   validate :validate_access_password
   validate :validate_eye_catching_media_attachment
   validate :validate_account_pages_limit, on: :create
 
-  scope :publicly_accessible, -> { where(visibility: 'public') }
-  scope :listed, -> { where(visibility: %w(public password)) }
+  scope :available_accounts, -> { joins(:account).merge(Account.without_suspended) }
+  scope :publicly_accessible, -> { available_accounts.where(visibility: 'public') }
+  scope :listed, -> { available_accounts.where(visibility: %w(public password)) }
   scope :published, -> { publicly_accessible }
   scope :featured, -> { publicly_accessible.where('likes_count > 0').order(likes_count: :desc) }
 
@@ -134,23 +143,63 @@ class Page < ApplicationRecord
   end
 
   def attached_media_ids
-    @attached_media_ids ||= collect_blocks(content).filter_map { |block| block['fileId'] if block['type'] == 'image' }.uniq
+    collect_blocks(content).filter_map { |block| block['fileId'] if block['type'] == 'image' }.uniq
   end
 
-  def collect_blocks(blocks, acc = [])
-    Array(blocks).each do |block|
+  def collect_blocks(blocks)
+    result = []
+    pending = Array(blocks).reverse
+
+    until pending.empty?
+      block = pending.pop
       next unless block.is_a?(Hash)
 
-      acc << block
-      collect_blocks(block['children'], acc) if block['children'].is_a?(Array)
+      result << block
+      pending.concat(block['children'].reverse) if block['children'].is_a?(Array)
     end
-    acc
+
+    result
   end
 
   def validate_content
-    return if content.is_a?(Array) && collect_blocks(content).all? { |block| BLOCK_TYPES.include?(block['type']) }
+    unless content.is_a?(Array) && content.to_json.bytesize <= MAX_CONTENT_BYTES
+      errors.add(:content, :invalid)
+      return
+    end
 
-    errors.add(:content, :invalid)
+    count = 0
+    pending = content.reverse.map { |block| [block, 1] }
+
+    until pending.empty?
+      block, depth = pending.pop
+      count += 1
+
+      unless block.is_a?(Hash) && BLOCK_TYPES.include?(block['type']) && count <= MAX_BLOCKS && depth <= MAX_BLOCK_DEPTH && valid_block_strings?(block)
+        errors.add(:content, :invalid)
+        return
+      end
+
+      children = block['children']
+      unless children.nil? || children.is_a?(Array)
+        errors.add(:content, :invalid)
+        return
+      end
+
+      pending.concat(children.reverse.map { |child| [child, depth + 1] }) if children
+    end
+  end
+
+  def valid_block_strings?(block)
+    (!block.key?('text') || (block['text'].is_a?(String) && block['text'].length <= MAX_TEXT_LENGTH)) &&
+      (!block.key?('title') || (block['title'].is_a?(String) && block['title'].length <= MAX_SECTION_TITLE_LENGTH))
+  end
+
+  def validate_attached_media
+    ids = attached_media_ids
+    return if ids.empty? || account_id.blank?
+
+    valid_ids = ids.all? { |id| id.to_s.match?(/\A\d+\z/) } && account.media_attachments.where(id: ids).count == ids.size
+    errors.add(:content, :invalid) unless valid_ids
   end
 
   def validate_account_pages_limit

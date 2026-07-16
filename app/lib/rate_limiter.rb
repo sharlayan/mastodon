@@ -24,6 +24,11 @@ class RateLimiter
       period: 5.minutes.freeze,
     }.freeze,
 
+    drive_uploads: {
+      limit: 100,
+      period: 30.minutes.freeze,
+    }.freeze,
+
     account_refetch: {
       limit: 10,
       period: 1.hour.freeze,

@@ -217,12 +217,13 @@ class MediaAttachment < ApplicationRecord
     EXISTS (
       SELECT 1
       FROM pages
-      WHERE pages.eye_catching_media_attachment_id = media_attachments.id
+      WHERE pages.account_id = media_attachments.account_id
+        AND (pages.eye_catching_media_attachment_id = media_attachments.id
          OR jsonb_path_exists(
               pages.content,
               '$.** ? (@.fileId == $media_id)',
               jsonb_build_object('media_id', to_jsonb(media_attachments.id::text))
-            )
+            ))
     )
   SQL
 

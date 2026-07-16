@@ -83,6 +83,19 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to_not include('pages/show', 'i/pages', 'i/page-likes', 'users/pages')
     end
+
+    it 'hides pages owned by a suspended account' do
+      account.suspend!
+
+      post '/api/pages/featured', params: {}, as: :json
+      expect(response.parsed_body).to be_empty
+
+      post '/api/users/pages', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
+      expect(response.parsed_body).to be_empty
+
+      post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(published_page.id) }, as: :json
+      expect(response).to have_http_status(404)
+    end
   end
 
   describe 'writing pages' do
@@ -166,6 +179,21 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
 
       expect(response).to have_http_status(403)
       expect(response.parsed_body.dig(:error, :code)).to eq('ACCESS_DENIED')
+    end
+
+    it 'rejects content deeper than the server traversal budget' do
+      root = { type: 'section', children: [] }
+      current = root
+      Page::MAX_BLOCK_DEPTH.times do
+        child = { type: 'section', children: [] }
+        current[:children] = [child]
+        current = child
+      end
+
+      post '/api/pages/create', params: { i: write_token, title: 'Deep', name: 'deep', content: [root] }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
     end
   end
 
