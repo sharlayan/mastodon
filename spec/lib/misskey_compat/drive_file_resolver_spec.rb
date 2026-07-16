@@ -33,4 +33,24 @@ RSpec.describe MisskeyCompat::DriveFileResolver, :attachment_processing do
       described_class.new.call(account: account, file_ids: [drive_file.id], allow_drive_files: false)
     end.to raise_error(described_class::NoSuchFileError)
   end
+
+  it 'validates every id before creating DriveFile pointers' do
+    drive_file = DriveFile.create!(account: account, file: attachment_fixture('attachment.jpg'))
+
+    expect do
+      described_class.new.call(account: account, file_ids: [drive_file.id, 999_999], allow_drive_files: true)
+    end.to raise_error(described_class::NoSuchFileError)
+      .and(not_change { account.media_attachments.where.not(drive_file_id: nil).count })
+  end
+
+  it 'removes newly-created pointers when the consumer fails' do
+    drive_file = DriveFile.create!(account: account, file: attachment_fixture('attachment.jpg'))
+
+    expect do
+      described_class.new.with_resolved(account: account, file_ids: [drive_file.id], allow_drive_files: true) do
+        raise Mastodon::ValidationError, 'invalid post'
+      end
+    end.to raise_error(Mastodon::ValidationError)
+      .and(not_change { account.media_attachments.where.not(drive_file_id: nil).count })
+  end
 end

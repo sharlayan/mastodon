@@ -135,13 +135,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def create
-    status = ApplicationRecord.transaction do
-      if renote_id.present? && params[:text].blank?
-        ReblogService.new.call(current_account, quoted_status)
-      else
-        PostStatusService.new.call(current_account, post_options.merge(media_ids: resolved_media_ids))
-      end
-    end
+    status = if renote_id.present? && params[:text].blank?
+               ReblogService.new.call(current_account, quoted_status)
+             else
+               with_resolved_media_ids do |media_ids|
+                 PostStatusService.new.call(current_account, post_options.merge(media_ids: media_ids))
+               end
+             end
 
     return render json: { scheduledNoteId: MisskeyCompat::MiId.encode(status.id) } if status.is_a?(ScheduledStatus)
 
@@ -160,8 +160,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     note = Status.find_by(id: params[:noteId])
     render_error('No such note', 'NO_SUCH_NOTE', 404) and return if note.nil? || note.account_id != current_account.id
 
-    ApplicationRecord.transaction do
-      UpdateStatusService.new.call(note, current_account.id, update_options.merge(media_ids: resolved_media_ids(status: note)))
+    with_resolved_media_ids(status: note) do |media_ids|
+      UpdateStatusService.new.call(note, current_account.id, update_options.merge(media_ids: media_ids))
     end
     head 204
   rescue Mastodon::NotPermittedError
@@ -358,13 +358,14 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     }
   end
 
-  def resolved_media_ids(status: nil)
-    MisskeyCompat::DriveFileResolver.new.call(
+  def with_resolved_media_ids(status: nil, &block)
+    MisskeyCompat::DriveFileResolver.new.with_resolved(
       account: current_account,
       file_ids: params[:fileIds],
       status: status,
-      allow_drive_files: Setting.drive_enabled
-    ).presence
+      allow_drive_files: Setting.drive_enabled,
+      &block
+    )
   end
 
   def composed_content_type

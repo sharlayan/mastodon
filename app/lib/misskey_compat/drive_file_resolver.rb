@@ -5,23 +5,37 @@ class MisskeyCompat::DriveFileResolver
   class AmbiguousFileError < StandardError; end
 
   def call(account:, file_ids:, allow_drive_files:, status: nil)
+    @created_pointer_ids = []
     ids = Array(file_ids).map(&:to_s).uniq
     return [] if ids.empty?
 
-    media_by_id = eligible_media(account, ids, status).index_by { |media| media.id.to_s }
-    drive_by_id = allow_drive_files ? account.drive_files.where(id: ids).order(:id).lock.index_by { |file| file.id.to_s } : {}
-    pointer_by_drive_id = existing_pointers(status, drive_by_id.keys)
+    ApplicationRecord.transaction do
+      media_by_id = eligible_media(account, ids, status).index_by { |media| media.id.to_s }
+      drive_by_id = allow_drive_files ? account.drive_files.where(id: ids).order(:id).lock.index_by { |file| file.id.to_s } : {}
+      pointer_by_drive_id = existing_pointers(status, drive_by_id.keys)
 
-    media = ids.map do |id|
-      media = media_by_id[id]
-      drive_file = drive_by_id[id]
-      raise AmbiguousFileError if media && drive_file
-      raise NoSuchFileError if media.nil? && drive_file.nil?
+      ids.each do |id|
+        media = media_by_id[id]
+        drive_file = drive_by_id[id]
+        raise AmbiguousFileError if media && drive_file
+        raise NoSuchFileError if media.nil? && drive_file.nil?
+      end
 
-      media || pointer_by_drive_id[id] || drive_file.build_pointer(account).tap(&:save!)
+      media = ids.map do |id|
+        media_by_id[id] || pointer_by_drive_id[id] || create_pointer(drive_by_id[id], account)
+      end
+
+      media.map { |item| item.id.to_s }
     end
+  end
 
-    media.map { |item| item.id.to_s }
+  def with_resolved(**)
+    yield call(**).presence
+  rescue
+    cleanup_created_pointers
+    raise
+  ensure
+    @created_pointer_ids = []
   end
 
   private
@@ -35,5 +49,18 @@ class MisskeyCompat::DriveFileResolver
     return {} if status.nil? || drive_ids.empty?
 
     status.media_attachments.where(drive_file_id: drive_ids).index_by { |media| media.drive_file_id.to_s }
+  end
+
+  def create_pointer(drive_file, account)
+    drive_file.build_pointer(account).tap do |pointer|
+      pointer.save!
+      @created_pointer_ids << pointer.id
+    end
+  end
+
+  def cleanup_created_pointers
+    return if @created_pointer_ids.blank?
+
+    MediaAttachment.where(id: @created_pointer_ids, status_id: nil, scheduled_status_id: nil).destroy_all
   end
 end

@@ -47,4 +47,21 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
       expect(status.text).to eq('public post')
     end
   end
+
+  it 'queues timeline and federation distribution outside the controller transaction' do
+    transaction_depth = ApplicationRecord.connection.open_transactions
+    queued_at_depth = {}
+
+    allow(DistributionWorker).to receive(:perform_async) do
+      queued_at_depth[:timeline] = ApplicationRecord.connection.open_transactions
+    end
+    allow(ActivityPub::DistributionWorker).to receive(:perform_async) do
+      queued_at_depth[:federation] = ApplicationRecord.connection.open_transactions
+    end
+
+    post '/api/notes/create', params: { i: token, text: 'distributed post', visibility: 'public' }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(queued_at_depth).to eq(timeline: transaction_depth, federation: transaction_depth)
+  end
 end
