@@ -46,8 +46,6 @@ en:
           attributes:
             data:
               malformed: is malformed
-        circle_account:
-          must_be_follower: must be a follower account
         list_account:
           attributes:
             account_id:
@@ -72,8 +70,6 @@ en:
               elevated: cannot be higher than your current role
         user_role:
           attributes:
-            drive_quota:
-              own_role: cannot be changed with your current role
             permissions_as_keys:
               dangerous: include permissions that are not safe for the base role
               elevated: cannot include permissions your current role does not possess

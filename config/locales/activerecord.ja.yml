@@ -46,8 +46,6 @@ ja:
           attributes:
             data:
               malformed: は不正です
-        circle_account:
-          must_be_follower: フォローしているアカウントでなければなりません
         list_account:
           attributes:
             account_id:
@@ -72,8 +70,6 @@ ja:
               elevated: 現在と同じロールには変更できません
         user_role:
           attributes:
-            drive_quota:
-              own_role: 現在のロールでは変更できません
             permissions_as_keys:
               dangerous: 基本ロールにとって安全でない権限を含みます
               elevated: 現在のロールが所有していない権限は含めることはできません

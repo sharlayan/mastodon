@@ -46,8 +46,6 @@ ko:
           attributes:
             data:
               malformed: 데이터가 올바르지 않습니다
-        circle_account:
-          must_be_follower: 나를 팔로우하고 있어야 합니다
         list_account:
           attributes:
             account_id:
@@ -72,8 +70,6 @@ ko:
               elevated: 당신의 현재 역할보다 높을 수 없습니다
         user_role:
           attributes:
-            drive_quota:
-              own_role: 당신의 현재 역할에서는 변경할 수 없습니다
             permissions_as_keys:
               dangerous: 기본 역할로 사용하기에 안전하지 않은 권한을 포함하고 있습니다
               elevated: 당신의 현재 역할이 가지고 있지 않은 권한은 포함할 수 없습니다
