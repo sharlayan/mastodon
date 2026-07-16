@@ -9,7 +9,7 @@ class Api::V1::Accounts::PagesController < Api::BaseController
   def index
     cache_if_unauthenticated!
     @pages = load_pages
-    render json: @pages, each_serializer: REST::PageSerializer
+    render json: @pages, each_serializer: REST::PageSerializer, include_locked_header: true
   end
 
   def show

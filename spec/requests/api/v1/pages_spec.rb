@@ -109,8 +109,9 @@ RSpec.describe 'Pages' do
   end
 
   describe 'password visibility' do
+    let(:header_media) { Fabricate(:media_attachment, account: user.account) }
     let!(:password_page) do
-      Fabricate(:page, account: user.account, visibility: 'password', access_password: 'correct-password', content: [{ 'id' => 'secret', 'type' => 'text', 'text' => 'Hidden body' }])
+      Fabricate(:page, account: user.account, visibility: 'password', access_password: 'correct-password', content: [{ 'id' => 'secret', 'type' => 'text', 'text' => 'Hidden body' }], eye_catching_media_attachment: header_media)
     end
 
     it 'uses the Mastodon Devise encryptor and does not store the plaintext password' do
@@ -152,6 +153,14 @@ RSpec.describe 'Pages' do
 
       result = response.parsed_body.find { |page| page[:id] == password_page.id.to_s }
       expect(result).to include('visibility' => 'password', 'locked' => true, 'content' => [], 'attached_media' => [])
+      expect(result).to include('eye_catching_media_attachment_id' => header_media.id.to_s)
+      expect(result.dig(:eye_catching_media_attachment, :id)).to eq(header_media.id.to_s)
+    end
+
+    it 'hides protected header media outside page lists' do
+      get "/api/v1/pages/#{password_page.id}"
+
+      expect(response.parsed_body).to include('locked' => true, 'eye_catching_media_attachment_id' => nil, 'eye_catching_media_attachment' => nil)
     end
 
     it 'rejects a wrong password' do

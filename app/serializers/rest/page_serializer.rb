@@ -21,7 +21,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def eye_catching_media_attachment_id
-    object.eye_catching_media_attachment_id&.to_s unless locked
+    object.eye_catching_media_attachment_id&.to_s if header_visible?
   end
 
   def locked
@@ -33,7 +33,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def eye_catching_media_attachment
-    object.eye_catching_media_attachment unless locked
+    object.eye_catching_media_attachment if header_visible?
   end
 
   def attached_media
@@ -46,5 +46,9 @@ class REST::PageSerializer < ActiveModel::Serializer
 
   def current_user?
     scope.present?
+  end
+
+  def header_visible?
+    !locked || instance_options[:include_locked_header]
   end
 end
