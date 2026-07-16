@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class REST::PageSerializer < ActiveModel::Serializer
+  include RoleplayModeHelper
+
   attributes :id, :title, :name, :summary, :category, :draft, :visibility, :locked, :content, :align_center,
              :hide_title_when_pinned, :font, :account_id,
              :eye_catching_media_attachment_id, :likes_count,
@@ -25,7 +27,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def locked
-    object.password_visibility? && object.account_id != scope&.account_id && !instance_options[:page_unlocked]
+    object.password_visibility? && object.account_id != scope&.account_id && !instance_options[:page_unlocked] && !roleplay_owner?
   end
 
   def content
@@ -46,5 +48,17 @@ class REST::PageSerializer < ActiveModel::Serializer
 
   def current_user?
     scope.present?
+  end
+
+  def roleplay_owner?
+    return false unless roleplay_mode?
+
+    role = scope&.role
+    return false if role.nil? || role.everyone?
+
+    cache = RequestStore.store[:page_serializer_roleplay_owner] ||= {}
+    cache.fetch(role.id) do
+      cache[role.id] = role.position == UserRole.assignable.maximum(:position)
+    end
   end
 end
