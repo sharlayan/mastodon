@@ -1,13 +1,21 @@
+import { useCallback } from 'react';
+
 import type {
   ApiPageImageBlock,
   ApiPageJSON,
 } from 'flavours/glitch/api_types/pages';
 
+import type { PageMediaOpenHandler } from './index';
+
 export const ImageBlock: React.FC<{
   block: ApiPageImageBlock;
   page: ApiPageJSON;
-}> = ({ block, page }) => {
+  onOpenMedia: PageMediaOpenHandler;
+}> = ({ block, page, onOpenMedia }) => {
   const media = page.attached_media.find((item) => item.id === block.fileId);
+  const handleOpenMedia = useCallback(() => {
+    onOpenMedia(`block:${block.id}`);
+  }, [block.id, onOpenMedia]);
 
   if (!media) {
     return null;
@@ -17,7 +25,11 @@ export const ImageBlock: React.FC<{
 
   return (
     <div className='page__block page__block--image'>
-      <a href={media.url} target='_blank' rel='noopener noreferrer'>
+      <button
+        type='button'
+        className='page__media-button'
+        onClick={handleOpenMedia}
+      >
         {media.type === 'gifv' ? (
           <video
             src={media.url}
@@ -31,7 +43,7 @@ export const ImageBlock: React.FC<{
         ) : (
           <img src={media.url} alt={description} title={description} />
         )}
-      </a>
+      </button>
     </div>
   );
 };

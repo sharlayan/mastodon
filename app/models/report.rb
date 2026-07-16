@@ -40,6 +40,8 @@ class Report < ApplicationRecord
 
   has_many :collection_reports, dependent: :delete_all
   has_many :collections, through: :collection_reports
+  has_many :page_reports, dependent: :delete_all
+  has_many :pages, through: :page_reports
   has_many :notes, class_name: 'ReportNote', inverse_of: :report, dependent: :destroy
   has_many :notifications, as: :activity, dependent: :destroy
 

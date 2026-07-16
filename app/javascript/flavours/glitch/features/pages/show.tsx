@@ -5,6 +5,8 @@ import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 import classNames from 'classnames';
 import { useParams, Link } from 'react-router-dom';
 
+import { fromJS } from 'immutable';
+
 import { Helmet } from '@unhead/react/helmet';
 
 import { useIdentity } from '@/flavours/glitch/identity_context';
@@ -13,15 +15,21 @@ import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import FavoriteIcon from '@/material-icons/400-24px/favorite-fill.svg?react';
 import FavoriteBorderIcon from '@/material-icons/400-24px/favorite.svg?react';
+import FlagIcon from '@/material-icons/400-24px/flag.svg?react';
 import FullscreenIcon from '@/material-icons/400-24px/fullscreen.svg?react';
 import FullscreenExitIcon from '@/material-icons/400-24px/fullscreen_exit.svg?react';
+import { openModal } from 'flavours/glitch/actions/modal';
 import {
   apiGetPage,
   apiDeletePage,
   apiLikePage,
   apiUnlikePage,
 } from 'flavours/glitch/api/pages';
-import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
+import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
+import type {
+  ApiPageBlock,
+  ApiPageJSON,
+} from 'flavours/glitch/api_types/pages';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
@@ -30,8 +38,44 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useAppHistory } from 'flavours/glitch/components/router';
 import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
+import { useAppDispatch } from 'flavours/glitch/store';
 
+import type { PageMediaOpenHandler } from './components/blocks';
 import { PageBlockList } from './components/blocks';
+
+interface PageMediaEntry {
+  key: string;
+  media: ApiMediaAttachmentJSON;
+}
+
+const collectPageMedia = (page: ApiPageJSON): PageMediaEntry[] => {
+  const entries: PageMediaEntry[] = [];
+
+  if (page.eye_catching_media_attachment) {
+    entries.push({
+      key: 'eye-catching',
+      media: page.eye_catching_media_attachment,
+    });
+  }
+
+  const collectBlocks = (blocks: ApiPageBlock[]) => {
+    for (const block of blocks) {
+      if (block.type === 'image' && block.fileId) {
+        const media = page.attached_media.find(
+          (item) => item.id === block.fileId,
+        );
+        if (media) {
+          entries.push({ key: `block:${block.id}`, media });
+        }
+      } else if (block.type === 'section') {
+        collectBlocks(block.children);
+      }
+    }
+  };
+
+  collectBlocks(page.content);
+  return entries;
+};
 
 const messages = defineMessages({
   heading: { id: 'column.pages', defaultMessage: 'Pages' },
@@ -50,10 +94,12 @@ const messages = defineMessages({
   },
   createdAt: { id: 'pages.created_at', defaultMessage: 'Created' },
   updatedAt: { id: 'pages.updated_at', defaultMessage: 'Updated' },
+  report: { id: 'pages.report', defaultMessage: 'Report page' },
 });
 
 const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
   const history = useAppHistory();
   const { accountId } = useIdentity();
   const { id } = useParams<{ id: string }>();
@@ -127,6 +173,19 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setWideView((value) => !value);
   }, []);
 
+  const handleReport = useCallback(() => {
+    if (!currentPage) {
+      return;
+    }
+
+    dispatch(
+      openModal({
+        modalType: 'REPORT_PAGE',
+        modalProps: { page: currentPage },
+      }),
+    );
+  }, [currentPage, dispatch]);
+
   const handleBack = useCallback(() => {
     if (history.location.state?.fromMastodon) {
       history.goBack();
@@ -134,6 +193,32 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       history.push('/pages');
     }
   }, [history]);
+
+  const handleOpenMedia = useCallback<PageMediaOpenHandler>(
+    (key) => {
+      if (!currentPage) {
+        return;
+      }
+
+      const entries = collectPageMedia(currentPage);
+      const index = entries.findIndex((entry) => entry.key === key);
+
+      dispatch(
+        openModal({
+          modalType: 'MEDIA',
+          modalProps: {
+            media: fromJS(entries.map((entry) => entry.media)),
+            index: index < 0 ? 0 : index,
+          },
+        }),
+      );
+    },
+    [currentPage, dispatch],
+  );
+
+  const handleOpenEyeCatchingMedia = useCallback(() => {
+    handleOpenMedia('eye-catching');
+  }, [handleOpenMedia]);
 
   if (error) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
@@ -184,6 +269,17 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 </button>
               </>
             )}
+            {accountId && !isOwner && (
+              <button
+                type='button'
+                className='column-header__button'
+                title={intl.formatMessage(messages.report)}
+                aria-label={intl.formatMessage(messages.report)}
+                onClick={handleReport}
+              >
+                <Icon id='flag' icon={FlagIcon} />
+              </button>
+            )}
             <button
               type='button'
               className='column-header__button'
@@ -214,23 +310,29 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           >
             {eyeCatchingMedia && (
               <div className='page__eye-catching-container'>
-                {eyeCatchingMedia.type === 'gifv' ? (
-                  <video
-                    className='page__eye-catching'
-                    src={eyeCatchingMedia.url}
-                    aria-label={eyeCatchingMedia.description ?? ''}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                  />
-                ) : (
-                  <img
-                    className='page__eye-catching'
-                    src={eyeCatchingMedia.url}
-                    alt={eyeCatchingMedia.description ?? ''}
-                  />
-                )}
+                <button
+                  type='button'
+                  className='page__media-button'
+                  onClick={handleOpenEyeCatchingMedia}
+                >
+                  {eyeCatchingMedia.type === 'gifv' ? (
+                    <video
+                      className='page__eye-catching'
+                      src={eyeCatchingMedia.url}
+                      aria-label={eyeCatchingMedia.description ?? ''}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      className='page__eye-catching'
+                      src={eyeCatchingMedia.url}
+                      alt={eyeCatchingMedia.description ?? ''}
+                    />
+                  )}
+                </button>
                 <div className='page__eye-catching-author'>
                   <Avatar account={currentPage.account} size={32} withLink />
                   <span className='page__eye-catching-author-text'>
@@ -278,6 +380,7 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 blocks={currentPage.content}
                 page={currentPage}
                 depth={0}
+                onOpenMedia={handleOpenMedia}
               />
             </div>
 

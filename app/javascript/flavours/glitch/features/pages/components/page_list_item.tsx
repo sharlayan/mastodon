@@ -26,11 +26,18 @@ export const PageListItem: React.FC<{ page: ApiPageJSON }> = ({ page }) => {
           <span className='page-list-item__text'>
             <span className='page-list-item__title'>
               {page.title || page.name}
+              {page.category && (
+                <>
+                  {' · '}
+                  <span className='page-list-item__category'>
+                    {page.category}
+                  </span>
+                </>
+              )}
             </span>
             <span className='page-list-item__author'>
               {page.account.display_name || page.account.username} · @
               {page.account.acct}
-              {page.category && <> · {page.category}</>}
             </span>
           </span>
           <span className='page-list-item__aside'>

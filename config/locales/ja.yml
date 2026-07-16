@@ -793,6 +793,7 @@ ja:
       category: カテゴリー
       category_description_html: 選択した理由は通報されたアカウントへの連絡時に引用されます
       collections: コレクション (%{count})
+      pages: ページ (%{count})
       comment:
         none: なし
       comment_description_html: "%{name}からの詳細情報:"
@@ -827,6 +828,7 @@ ja:
       skip_to_actions: アクションに移動
       status: ステータス
       statuses_description_html: 問題の投稿は通報されたアカウントへの連絡時に引用されます
+      view_page: ページを表示
       summary:
         action_preambles:
           delete_html: "<strong>@%{acct}</strong>さんの投稿を<strong>削除</strong>します。この操作は:"

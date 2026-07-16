@@ -26,6 +26,16 @@
     object-fit: cover;
   }
 
+  &__media-button {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: zoom-in;
+  }
+
   &__eye-catching-author {
     position: absolute;
     inset-inline: 0;
@@ -330,8 +340,7 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 16px 13px;
-    padding-inline-end: 0;
+    padding: 8px 13px;
   }
 
   &__text {
@@ -339,6 +348,10 @@
     flex: 1 1 auto;
     flex-direction: column;
     min-width: 0;
+  }
+
+  &__title {
+    font-size: 1.25em;
   }
 
   &__title,
@@ -364,6 +377,10 @@
     font-size: 11px;
     font-weight: 500;
     line-height: 16px;
+  }
+
+  &__category {
+    font-size: 11px;
   }
 
   &__author {
@@ -400,8 +417,7 @@
     }
 
     .page-list-item__details {
-      padding-block: 10px;
-      background: rgba(0, 0, 0, 50%);
+      background: rgba(0, 0, 0, 70%);
       backdrop-filter: blur(5px);
     }
 

@@ -8,18 +8,28 @@ import { NoteBlock } from './note_block';
 import { SectionBlock } from './section_block';
 import { TextBlock } from './text_block';
 
+export type PageMediaOpenHandler = (key: string) => void;
+
 export const PageBlock: React.FC<{
   block: ApiPageBlock;
   page: ApiPageJSON;
   depth: number;
-}> = ({ block, page, depth }) => {
+  onOpenMedia: PageMediaOpenHandler;
+}> = ({ block, page, depth, onOpenMedia }) => {
   switch (block.type) {
     case 'text':
       return <TextBlock block={block} />;
     case 'section':
-      return <SectionBlock block={block} page={page} depth={depth} />;
+      return (
+        <SectionBlock
+          block={block}
+          page={page}
+          depth={depth}
+          onOpenMedia={onOpenMedia}
+        />
+      );
     case 'image':
-      return <ImageBlock block={block} page={page} />;
+      return <ImageBlock block={block} page={page} onOpenMedia={onOpenMedia} />;
     case 'note':
       return <NoteBlock block={block} />;
   }
@@ -29,10 +39,17 @@ export const PageBlockList: React.FC<{
   blocks: ApiPageBlock[];
   page: ApiPageJSON;
   depth: number;
-}> = ({ blocks, page, depth }) => (
+  onOpenMedia: PageMediaOpenHandler;
+}> = ({ blocks, page, depth, onOpenMedia }) => (
   <>
     {blocks.map((block) => (
-      <PageBlock key={block.id} block={block} page={page} depth={depth} />
+      <PageBlock
+        key={block.id}
+        block={block}
+        page={page}
+        depth={depth}
+        onOpenMedia={onOpenMedia}
+      />
     ))}
   </>
 );

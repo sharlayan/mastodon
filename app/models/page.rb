@@ -37,6 +37,7 @@ class Page < ApplicationRecord
   belongs_to :eye_catching_media_attachment, class_name: 'MediaAttachment', optional: true
 
   has_many :page_likes, inverse_of: :page, dependent: :destroy
+  has_many :page_reports, dependent: :delete_all
 
   before_validation :normalize_category
 

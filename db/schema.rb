@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_111700) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_131400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1286,6 +1286,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_111700) do
     t.index ["page_id"], name: "index_page_likes_on_page_id"
   end
 
+  create_table "page_reports", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "page_id", null: false
+    t.bigint "report_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["page_id", "report_id"], name: "index_page_reports_on_page_id_and_report_id", unique: true
+    t.index ["page_id"], name: "index_page_reports_on_page_id"
+    t.index ["report_id"], name: "index_page_reports_on_report_id"
+  end
+
   create_table "pages", id: :bigint, default: -> { "timestamp_id('pages'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.boolean "align_center", default: false, null: false
@@ -2041,6 +2051,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_111700) do
   add_foreign_key "oauth_applications", "users", column: "owner_id", name: "fk_b0988c7c0a", on_delete: :cascade
   add_foreign_key "page_likes", "accounts", on_delete: :cascade
   add_foreign_key "page_likes", "pages", on_delete: :cascade
+  add_foreign_key "page_reports", "pages", on_delete: :cascade
+  add_foreign_key "page_reports", "reports", on_delete: :cascade
   add_foreign_key "pages", "accounts", on_delete: :cascade
   add_foreign_key "pages", "media_attachments", column: "eye_catching_media_attachment_id", on_delete: :nullify
   add_foreign_key "poll_votes", "accounts", on_delete: :cascade

@@ -62,6 +62,20 @@ RSpec.describe Admin::ModerationAction do
           expect(Tombstone.last.uri).to eq collection.uri
         end
       end
+
+      context 'with attached pages' do
+        let(:status_ids) { [] }
+        let(:pages) { Fabricate.times(2, :page, account: target_account) }
+
+        before do
+          report.pages = pages
+        end
+
+        it 'deletes the pages and creates an action log' do
+          expect { subject.save! }.to change(Page, :count).by(-2)
+            .and change(Admin::ActionLog, :count).by(3)
+        end
+      end
     end
 
     context 'when `type` is `mark_as_sensitive`' do

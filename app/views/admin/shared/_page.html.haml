@@ -1,0 +1,13 @@
+.batch-table__row
+  .batch-table__row__content
+    .status__card
+      .status__content
+        %h6= page.title.presence || page.name
+        - if page.summary.present?
+          %p= page.summary
+
+      .detailed-status__meta
+        %time.formatted{ datetime: page.created_at.iso8601, title: l(page.created_at) }><= l(page.created_at)
+        &nbsp;·
+        = link_to "/pages/#{page.id}", class: 'detailed-status__link', target: 'blank', rel: 'noopener' do
+          = t('admin.reports.view_page')
