@@ -2004,6 +2004,7 @@ ko:
       limit: 클립 최대 개수를 초과합니다
   pages:
     errors:
+      invalid_password: 비밀번호가 올바르지 않습니다
       limit: 페이지 최대 개수를 초과합니다
       own_page: 자신의 페이지에는 좋아요를 누를 수 없습니다
   lists:

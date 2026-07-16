@@ -41,7 +41,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
 
   def show
     page = find_shown_page
-    return render_no_such_page if page.nil? || (page.draft? && page.account_id != current_account&.id)
+    return render_no_such_page if page.nil? || (!page.public_visibility? && page.account_id != current_account&.id)
 
     render json: serialize(page)
   end
@@ -89,8 +89,8 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
 
   def set_page
     @page = Page.find_by(id: params[:pageId])
-    hidden_draft = @page&.draft? && (@page.account_id != current_account&.id || %w(like unlike).include?(action_name))
-    render_no_such_page if @page.nil? || hidden_draft
+    hidden_page = @page && !@page.public_visibility? && (@page.account_id != current_account&.id || %w(like unlike).include?(action_name))
+    render_no_such_page if @page.nil? || hidden_page
   end
 
   def authorize_owner!

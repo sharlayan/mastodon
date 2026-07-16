@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::PageSerializer < ActiveModel::Serializer
-  attributes :id, :title, :name, :summary, :category, :draft, :content, :align_center,
+  attributes :id, :title, :name, :summary, :category, :draft, :visibility, :locked, :content, :align_center,
              :hide_title_when_pinned, :font, :account_id,
              :eye_catching_media_attachment_id, :likes_count,
              :created_at, :updated_at
@@ -21,14 +21,30 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def eye_catching_media_attachment_id
-    object.eye_catching_media_attachment_id&.to_s
+    object.eye_catching_media_attachment_id&.to_s unless locked
+  end
+
+  def locked
+    object.password_visibility? && object.account_id != scope&.account_id && !instance_options[:page_unlocked]
+  end
+
+  def content
+    locked ? [] : object.content
+  end
+
+  def eye_catching_media_attachment
+    object.eye_catching_media_attachment unless locked
+  end
+
+  def attached_media
+    locked ? [] : object.attached_media
   end
 
   def liked
-    object.liked_by?(current_user.account)
+    object.liked_by?(scope.account)
   end
 
   def current_user?
-    current_user.present?
+    scope.present?
   end
 end

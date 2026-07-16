@@ -18,9 +18,12 @@ import FavoriteBorderIcon from '@/material-icons/400-24px/favorite.svg?react';
 import FlagIcon from '@/material-icons/400-24px/flag.svg?react';
 import FullscreenIcon from '@/material-icons/400-24px/fullscreen.svg?react';
 import FullscreenExitIcon from '@/material-icons/400-24px/fullscreen_exit.svg?react';
+import LockIcon from '@/material-icons/400-24px/lock.svg?react';
+import PreviewOffIcon from '@/material-icons/400-24px/preview_off.svg?react';
 import { openModal } from 'flavours/glitch/actions/modal';
 import {
   apiGetPage,
+  apiUnlockPage,
   apiGetAccountPages,
   apiDeletePage,
   apiLikePage,
@@ -97,6 +100,20 @@ const messages = defineMessages({
   createdAt: { id: 'pages.created_at', defaultMessage: 'Created' },
   updatedAt: { id: 'pages.updated_at', defaultMessage: 'Updated' },
   report: { id: 'pages.report', defaultMessage: 'Report page' },
+  password: { id: 'pages.password', defaultMessage: 'Password' },
+  unlock: { id: 'pages.unlock', defaultMessage: 'View page' },
+  invalidPassword: {
+    id: 'pages.invalid_password',
+    defaultMessage: 'The password is incorrect.',
+  },
+  passwordVisibility: {
+    id: 'pages.visibility.password',
+    defaultMessage: 'Password protected',
+  },
+  privateVisibility: {
+    id: 'pages.visibility.private',
+    defaultMessage: 'Only me',
+  },
 });
 
 const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
@@ -113,6 +130,9 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   } | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
   const [wideView, setWideView] = useState(false);
+  const [password, setPassword] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle('page-wide-view', wideView);
@@ -210,6 +230,34 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleWideViewToggle = useCallback(() => {
     setWideView((value) => !value);
   }, []);
+
+  const handleUnlock = useCallback(
+    (event: React.SyntheticEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setUnlocking(true);
+      setPasswordError(false);
+
+      apiUnlockPage(id, password)
+        .then((data) => {
+          setPage(data);
+          setPassword('');
+          setUnlocking(false);
+          return data;
+        })
+        .catch(() => {
+          setPasswordError(true);
+          setUnlocking(false);
+        });
+    },
+    [id, password],
+  );
+
+  const handlePasswordChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setPassword(event.target.value);
+    },
+    [],
+  );
 
   const handleReport = useCallback(() => {
     if (!currentPage) {
@@ -319,7 +367,7 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 </button>
               </>
             )}
-            {accountId && !isOwner && (
+            {accountId && !isOwner && !currentPage?.locked && (
               <button
                 type='button'
                 className='column-header__button'
@@ -418,27 +466,42 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             )}
 
             <div className='page__title-row'>
-              <h1 className='page__title'>{currentPage.title}</h1>
+              <h1 className='page__title'>
+                <span className='page__title-text'>{currentPage.title}</span>
+                {currentPage.visibility !== 'public' && (
+                  <Icon
+                    id={
+                      currentPage.visibility === 'password'
+                        ? 'lock'
+                        : 'preview-off'
+                    }
+                    icon={
+                      currentPage.visibility === 'password'
+                        ? LockIcon
+                        : PreviewOffIcon
+                    }
+                    className='page__visibility-icon'
+                    aria-label={intl.formatMessage(
+                      currentPage.visibility === 'password'
+                        ? messages.passwordVisibility
+                        : messages.privateVisibility,
+                    )}
+                  />
+                )}
+              </h1>
               {currentPage.category && (
                 <span className='page__category'>{currentPage.category}</span>
               )}
             </div>
 
-            {(!eyeCatchingMedia || currentPage.draft) && (
+            {!eyeCatchingMedia && (
               <div className='page__byline-row'>
-                {!eyeCatchingMedia && (
-                  <Link
-                    to={`/@${currentPage.account.acct}`}
-                    className='page__byline'
-                  >
-                    @{currentPage.account.acct}
-                  </Link>
-                )}
-                {currentPage.draft && (
-                  <span className='page__draft'>
-                    <FormattedMessage id='pages.draft' defaultMessage='Draft' />
-                  </span>
-                )}
+                <Link
+                  to={`/@${currentPage.account.acct}`}
+                  className='page__byline'
+                >
+                  @{currentPage.account.acct}
+                </Link>
               </div>
             )}
 
@@ -446,65 +509,95 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               <p className='page__summary'>{currentPage.summary}</p>
             )}
 
-            <div className='page__content'>
-              <PageBlockList
-                blocks={currentPage.content}
-                page={currentPage}
-                depth={0}
-                onOpenMedia={handleOpenMedia}
-              />
-            </div>
-
-            <div className='page__footer'>
-              <dl className='page__dates'>
-                <div>
-                  <dt>{intl.formatMessage(messages.createdAt)}</dt>
-                  <dd>
-                    <FormattedDateWrapper
-                      value={currentPage.created_at}
-                      year='numeric'
-                      month='long'
-                      day='2-digit'
-                      hour='2-digit'
-                      minute='2-digit'
-                    />
-                  </dd>
-                </div>
-                <div>
-                  <dt>{intl.formatMessage(messages.updatedAt)}</dt>
-                  <dd>
-                    <FormattedDateWrapper
-                      value={currentPage.updated_at}
-                      year='numeric'
-                      month='long'
-                      day='2-digit'
-                      hour='2-digit'
-                      minute='2-digit'
-                    />
-                  </dd>
-                </div>
-              </dl>
-              <button
-                type='button'
-                className={classNames('page__like-button', {
-                  active: currentPage.liked,
-                })}
-                onClick={handleLikeToggle}
-                disabled={isOwner}
-              >
-                <Icon
-                  id='favorite'
-                  icon={currentPage.liked ? FavoriteIcon : FavoriteBorderIcon}
+            {currentPage.locked ? (
+              <form className='page__password-form' onSubmit={handleUnlock}>
+                <label htmlFor='page_access_password'>
+                  {intl.formatMessage(messages.password)}
+                </label>
+                <input
+                  id='page_access_password'
+                  type='password'
+                  minLength={8}
+                  maxLength={72}
+                  required
+                  autoComplete='current-password'
+                  value={password}
+                  onChange={handlePasswordChange}
                 />
-                <span>
-                  <FormattedMessage
-                    id='pages.likes_count'
-                    defaultMessage='{count, plural, one {# like} other {# likes}}'
-                    values={{ count: currentPage.likes_count }}
+                {passwordError && (
+                  <span className='page__password-error'>
+                    {intl.formatMessage(messages.invalidPassword)}
+                  </span>
+                )}
+                <button type='submit' className='button' disabled={unlocking}>
+                  {intl.formatMessage(messages.unlock)}
+                </button>
+              </form>
+            ) : (
+              <>
+                <div className='page__content'>
+                  <PageBlockList
+                    blocks={currentPage.content}
+                    page={currentPage}
+                    depth={0}
+                    onOpenMedia={handleOpenMedia}
                   />
-                </span>
-              </button>
-            </div>
+                </div>
+
+                <div className='page__footer'>
+                  <dl className='page__dates'>
+                    <div>
+                      <dt>{intl.formatMessage(messages.createdAt)}</dt>
+                      <dd>
+                        <FormattedDateWrapper
+                          value={currentPage.created_at}
+                          year='numeric'
+                          month='long'
+                          day='2-digit'
+                          hour='2-digit'
+                          minute='2-digit'
+                        />
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{intl.formatMessage(messages.updatedAt)}</dt>
+                      <dd>
+                        <FormattedDateWrapper
+                          value={currentPage.updated_at}
+                          year='numeric'
+                          month='long'
+                          day='2-digit'
+                          hour='2-digit'
+                          minute='2-digit'
+                        />
+                      </dd>
+                    </div>
+                  </dl>
+                  <button
+                    type='button'
+                    className={classNames('page__like-button', {
+                      active: currentPage.liked,
+                    })}
+                    onClick={handleLikeToggle}
+                    disabled={isOwner}
+                  >
+                    <Icon
+                      id='favorite'
+                      icon={
+                        currentPage.liked ? FavoriteIcon : FavoriteBorderIcon
+                      }
+                    />
+                    <span>
+                      <FormattedMessage
+                        id='pages.likes_count'
+                        defaultMessage='{count, plural, one {# like} other {# likes}}'
+                        values={{ count: currentPage.likes_count }}
+                      />
+                    </span>
+                  </button>
+                </div>
+              </>
+            )}
           </article>
         </div>
       ) : (

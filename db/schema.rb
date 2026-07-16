@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_131400) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_16_153300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1297,6 +1297,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_131400) do
   end
 
   create_table "pages", id: :bigint, default: -> { "timestamp_id('pages'::text)" }, force: :cascade do |t|
+    t.string "access_password_digest"
     t.bigint "account_id", null: false
     t.boolean "align_center", default: false, null: false
     t.string "category"
@@ -1311,10 +1312,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_131400) do
     t.text "summary"
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
+    t.string "visibility", default: "public", null: false
     t.index ["account_id", "name"], name: "index_pages_on_account_id_and_name", unique: true
     t.index ["account_id"], name: "index_pages_on_account_id"
     t.index ["eye_catching_media_attachment_id"], name: "index_pages_on_eye_catching_media_attachment_id"
     t.index ["likes_count"], name: "index_pages_on_likes_count"
+    t.index ["visibility"], name: "index_pages_on_visibility"
   end
 
   create_table "pghero_space_stats", force: :cascade do |t|

@@ -4,10 +4,11 @@ class Api::V1::PagesController < Api::BaseController
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId note detailed).freeze
 
   before_action :require_feature_enabled!
-  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :show, :featured]
-  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :show, :featured]
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: :index
+  before_action -> { authorize_if_got_token! :read, :'read:accounts' }, only: [:show, :featured, :unlock]
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :show, :featured, :unlock]
 
-  before_action :require_user!, except: [:show, :featured]
+  before_action :require_user!, except: [:show, :featured, :unlock]
   before_action :set_page, only: [:show, :update, :destroy, :like, :unlike]
 
   def index
@@ -16,7 +17,21 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def show
+    not_found if @page.private_visibility? && @page.account_id != current_account&.id
     render json: @page, serializer: REST::PageSerializer
+  end
+
+  def unlock
+    @page = Page.find(params[:id])
+    not_found unless @page.password_visibility? || @page.account_id == current_account&.id
+
+    unlocked = @page.account_id == current_account&.id || @page.valid_access_password?(params[:password]) || @page.valid_access_token?(params[:access_token])
+    render json: { error: I18n.t('pages.errors.invalid_password') }, status: 403 and return unless unlocked
+
+    render json: {
+      page: ActiveModelSerializers::SerializableResource.new(@page, serializer: REST::PageSerializer, scope_name: :current_user, scope: current_user, page_unlocked: true),
+      access_token: @page.access_token,
+    }
   end
 
   def featured
@@ -26,13 +41,13 @@ class Api::V1::PagesController < Api::BaseController
 
   def create
     @page = current_account.pages.create!(page_params)
-    render json: @page, serializer: REST::PageSerializer
+    render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
   def update
     authorize_owner!
     @page.update!(page_params)
-    render json: @page, serializer: REST::PageSerializer
+    render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
   def destroy
@@ -42,17 +57,19 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def like
+    not_found unless page_accessible?
     render json: { error: I18n.t('pages.errors.own_page') }, status: 422 and return if @page.account_id == current_account.id
 
     PageLike.find_or_create_by!(account: current_account, page: @page)
     @page.reload
-    render json: @page, serializer: REST::PageSerializer
+    render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
   def unlike
+    not_found unless page_accessible?
     PageLike.find_by(account: current_account, page: @page)&.destroy
     @page.reload
-    render json: @page, serializer: REST::PageSerializer
+    render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
   private
@@ -63,7 +80,7 @@ class Api::V1::PagesController < Api::BaseController
 
   def set_page
     @page = Page.find(params[:id])
-    not_found if @page.draft? && @page.account_id != current_account&.id
+    not_found if @page.private_visibility? && @page.account_id != current_account&.id
   end
 
   def authorize_owner!
@@ -71,7 +88,16 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def page_params
-    params.permit(:title, :name, :summary, :category, :draft, :align_center, :hide_title_when_pinned, :font, :eye_catching_media_attachment_id).merge(content_params)
+    permitted = params.permit(:title, :name, :summary, :category, :draft, :visibility, :password, :align_center, :hide_title_when_pinned, :font, :eye_catching_media_attachment_id).merge(content_params)
+    if permitted.key?(:draft) && !permitted.key?(:visibility)
+      permitted[:visibility] = ActiveModel::Type::Boolean.new.cast(permitted[:draft]) ? 'private' : 'public'
+    end
+    permitted[:access_password] = permitted.delete(:password) if permitted.key?(:password)
+    permitted
+  end
+
+  def page_accessible?
+    @page.public_visibility? || @page.account_id == current_account&.id || (@page.password_visibility? && @page.valid_access_token?(params[:access_token]))
   end
 
   def content_params

@@ -2086,6 +2086,7 @@ en:
       limit: You have reached the maximum number of clips
   pages:
     errors:
+      invalid_password: The password is incorrect
       limit: You have reached the maximum number of pages
       own_page: You cannot like your own page
   lists:

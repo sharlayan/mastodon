@@ -38,6 +38,7 @@ export type ApiPageBlock =
 export type ApiPageBlockType = ApiPageBlock['type'];
 
 export type ApiPageFont = 'sans-serif' | 'serif';
+export type ApiPageVisibility = 'public' | 'password' | 'private';
 
 export interface ApiPageJSON {
   id: string;
@@ -46,6 +47,9 @@ export interface ApiPageJSON {
   summary: string | null;
   category: string | null;
   draft: boolean;
+  visibility: ApiPageVisibility;
+  locked: boolean;
+  password?: string;
   content: ApiPageBlock[];
   align_center: boolean;
   hide_title_when_pinned: boolean;
@@ -59,4 +63,9 @@ export interface ApiPageJSON {
   liked?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ApiPageUnlockJSON {
+  page: ApiPageJSON;
+  access_token: string;
 }

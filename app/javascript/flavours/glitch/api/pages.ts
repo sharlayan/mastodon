@@ -5,7 +5,26 @@ import {
   apiRequestDelete,
 } from 'flavours/glitch/api';
 import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
-import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
+import type {
+  ApiPageJSON,
+  ApiPageUnlockJSON,
+} from 'flavours/glitch/api_types/pages';
+
+const accessTokenKey = (pageId: string) => `page-access:${pageId}`;
+
+const getPageAccessToken = (pageId: string) => {
+  try {
+    return sessionStorage.getItem(accessTokenKey(pageId));
+  } catch {
+    return null;
+  }
+};
+
+const storePageAccessToken = (pageId: string, token: string) => {
+  try {
+    sessionStorage.setItem(accessTokenKey(pageId), token);
+  } catch {}
+};
 
 export const apiGetPages = () => apiRequestGet<ApiPageJSON[]>('v1/pages');
 
@@ -20,8 +39,33 @@ export const apiGetAccountPage = (accountId: string, name: string) =>
     `v1/accounts/${accountId}/pages/${encodeURIComponent(name)}`,
   );
 
-export const apiGetPage = (pageId: string) =>
-  apiRequestGet<ApiPageJSON>(`v1/pages/${pageId}`);
+export const apiGetPage = async (pageId: string) => {
+  const page = await apiRequestGet<ApiPageJSON>(`v1/pages/${pageId}`);
+  const accessToken = page.locked ? getPageAccessToken(pageId) : null;
+
+  if (!accessToken) {
+    return page;
+  }
+
+  try {
+    return await apiUnlockPage(pageId, undefined, accessToken);
+  } catch {
+    return page;
+  }
+};
+
+export const apiUnlockPage = async (
+  pageId: string,
+  password?: string,
+  accessToken?: string,
+) => {
+  const result = await apiRequestPost<ApiPageUnlockJSON>(
+    `v1/pages/${pageId}/unlock`,
+    { password, access_token: accessToken },
+  );
+  storePageAccessToken(pageId, result.access_token);
+  return result.page;
+};
 
 export const apiCreatePage = (page: Partial<ApiPageJSON>) =>
   apiRequestPost<ApiPageJSON>('v1/pages', page);
@@ -33,10 +77,14 @@ export const apiDeletePage = (pageId: string) =>
   apiRequestDelete(`v1/pages/${pageId}`);
 
 export const apiLikePage = (pageId: string) =>
-  apiRequestPost<ApiPageJSON>(`v1/pages/${pageId}/like`);
+  apiRequestPost<ApiPageJSON>(`v1/pages/${pageId}/like`, {
+    access_token: getPageAccessToken(pageId),
+  });
 
 export const apiUnlikePage = (pageId: string) =>
-  apiRequestPost<ApiPageJSON>(`v1/pages/${pageId}/unlike`);
+  apiRequestPost<ApiPageJSON>(`v1/pages/${pageId}/unlike`, {
+    access_token: getPageAccessToken(pageId),
+  });
 
 export const apiUploadPageMedia = (file: File) => {
   const data = new FormData();

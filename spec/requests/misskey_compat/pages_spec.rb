@@ -21,6 +21,7 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
   describe 'reading pages' do
     let!(:published_page) { Fabricate(:page, account: account, likes_count: 2) }
     let!(:draft_page) { Fabricate(:page, account: account, draft: true, likes_count: 10) }
+    let!(:password_page) { Fabricate(:page, account: account, visibility: 'password', access_password: 'correct-password', likes_count: 20) }
 
     it 'returns featured published pages in Misskey format' do
       post '/api/pages/featured', params: {}, as: :json
@@ -41,7 +42,8 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to contain_exactly(
         MisskeyCompat::MiId.encode(published_page.id),
-        MisskeyCompat::MiId.encode(draft_page.id)
+        MisskeyCompat::MiId.encode(draft_page.id),
+        MisskeyCompat::MiId.encode(password_page.id)
       )
     end
 
@@ -61,6 +63,13 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
 
     it 'hides a draft from anonymous pages/show' do
       post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(draft_page.id) }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_PAGE')
+    end
+
+    it 'hides a password page from public Misskey endpoints' do
+      post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(password_page.id) }, as: :json
 
       expect(response).to have_http_status(404)
       expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_PAGE')

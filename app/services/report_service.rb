@@ -106,7 +106,7 @@ class ReportService < BaseService
   end
 
   def reported_page_ids
-    @target_account.pages.published.find(Array(@page_ids)).pluck(:id)
+    @target_account.pages.listed.find(Array(@page_ids)).pluck(:id)
   end
 
   def payload

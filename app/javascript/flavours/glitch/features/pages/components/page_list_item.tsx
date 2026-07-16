@@ -1,10 +1,24 @@
-import { FormattedMessage } from 'react-intl';
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 import { Link, useLocation } from 'react-router-dom';
 
+import LockIcon from '@/material-icons/400-24px/lock.svg?react';
+import PreviewOffIcon from '@/material-icons/400-24px/preview_off.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 import { Avatar } from 'flavours/glitch/components/avatar';
+import { Icon } from 'flavours/glitch/components/icon';
+
+const messages = defineMessages({
+  passwordVisibility: {
+    id: 'pages.visibility.password',
+    defaultMessage: 'Password protected',
+  },
+  privateVisibility: {
+    id: 'pages.visibility.private',
+    defaultMessage: 'Only me',
+  },
+});
 
 export const PageListItem: React.FC<{
   page: ApiPageJSON;
@@ -17,6 +31,7 @@ export const PageListItem: React.FC<{
   active = false,
   replaceHistory = false,
 }) => {
+  const intl = useIntl();
   const location = useLocation();
   const headerUrl = page.eye_catching_media_attachment?.url;
   const pathname = `/pages/${page.id}`;
@@ -43,7 +58,23 @@ export const PageListItem: React.FC<{
           <Avatar account={page.account} size={32} />
           <span className='page-list-item__text'>
             <span className='page-list-item__title'>
-              {page.title || page.name}
+              <span className='page-list-item__title-text'>
+                {page.title || page.name}
+              </span>
+              {page.visibility !== 'public' && (
+                <Icon
+                  id={page.visibility === 'password' ? 'lock' : 'preview-off'}
+                  icon={
+                    page.visibility === 'password' ? LockIcon : PreviewOffIcon
+                  }
+                  className='page-list-item__visibility-icon'
+                  aria-label={intl.formatMessage(
+                    page.visibility === 'password'
+                      ? messages.passwordVisibility
+                      : messages.privateVisibility,
+                  )}
+                />
+              )}
               {showCategory && page.category && (
                 <>
                   {' · '}
@@ -59,11 +90,6 @@ export const PageListItem: React.FC<{
             </span>
           </span>
           <span className='page-list-item__aside'>
-            {page.draft && (
-              <span className='page-list-item__draft'>
-                <FormattedMessage id='pages.draft' defaultMessage='Draft' />
-              </span>
-            )}
             <span className='lists__item__count'>
               <FormattedMessage
                 id='pages.likes_count'

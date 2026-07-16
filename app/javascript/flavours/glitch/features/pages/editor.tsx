@@ -17,6 +17,7 @@ import type {
   ApiPageBlock,
   ApiPageBlockType,
   ApiPageFont,
+  ApiPageVisibility,
 } from 'flavours/glitch/api_types/pages';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
@@ -56,10 +57,24 @@ const messages = defineMessages({
     id: 'pages.field.category_hint',
     defaultMessage: 'Enter up to 30 characters. Leave blank for no category.',
   },
-  draft: { id: 'pages.field.draft', defaultMessage: 'Keep as draft' },
-  draftHint: {
-    id: 'pages.field.draft_hint',
-    defaultMessage: 'Draft pages are visible only to you.',
+  visibility: { id: 'pages.field.visibility', defaultMessage: 'Visibility' },
+  visibilityPublic: {
+    id: 'pages.visibility.public',
+    defaultMessage: 'Public',
+  },
+  visibilityPassword: {
+    id: 'pages.visibility.password',
+    defaultMessage: 'Password protected',
+  },
+  visibilityPrivate: {
+    id: 'pages.visibility.private',
+    defaultMessage: 'Only me',
+  },
+  password: { id: 'pages.field.password', defaultMessage: 'Password' },
+  passwordHint: {
+    id: 'pages.field.password_hint',
+    defaultMessage:
+      'Use 8–72 characters. Leave blank to keep the current password.',
   },
   eyeCatching: {
     id: 'pages.field.eye_catching',
@@ -93,7 +108,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [name, setName] = useState(() => Date.now().toString());
   const [summary, setSummary] = useState('');
   const [category, setCategory] = useState('');
-  const [draft, setDraft] = useState(false);
+  const [visibility, setVisibility] = useState<ApiPageVisibility>('public');
+  const [password, setPassword] = useState('');
+  const [hasExistingPassword, setHasExistingPassword] = useState(false);
   const [font, setFont] = useState<ApiPageFont>('sans-serif');
   const [alignCenter, setAlignCenter] = useState(false);
   const [content, setContent] = useState<ApiPageBlock[]>([]);
@@ -117,7 +134,8 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setName(page.name);
         setSummary(page.summary ?? '');
         setCategory(page.category ?? '');
-        setDraft(page.draft);
+        setVisibility(page.visibility);
+        setHasExistingPassword(page.visibility === 'password');
         setFont(page.font);
         setAlignCenter(page.align_center);
         setContent(page.content);
@@ -160,9 +178,16 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
-  const handleDraftChange = useCallback(
+  const handleVisibilityChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setVisibility(event.target.value as ApiPageVisibility);
+    },
+    [],
+  );
+
+  const handlePasswordChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      setDraft(event.target.checked);
+      setPassword(event.target.value);
     },
     [],
   );
@@ -234,7 +259,8 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       name,
       summary: summary || null,
       category: category || null,
-      draft,
+      visibility,
+      ...(password ? { password } : {}),
       font,
       align_center: alignCenter,
       content,
@@ -266,7 +292,8 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     name,
     summary,
     category,
-    draft,
+    visibility,
+    password,
     font,
     alignCenter,
     content,
@@ -338,14 +365,40 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           </div>
 
           <div className='fields-group'>
-            <CheckboxField
-              id='page_draft'
-              label={intl.formatMessage(messages.draft)}
-              hint={intl.formatMessage(messages.draftHint)}
-              checked={draft}
-              onChange={handleDraftChange}
-            />
+            <SelectField
+              id='page_visibility'
+              label={intl.formatMessage(messages.visibility)}
+              value={visibility}
+              onChange={handleVisibilityChange}
+            >
+              <option value='public'>
+                {intl.formatMessage(messages.visibilityPublic)}
+              </option>
+              <option value='password'>
+                {intl.formatMessage(messages.visibilityPassword)}
+              </option>
+              <option value='private'>
+                {intl.formatMessage(messages.visibilityPrivate)}
+              </option>
+            </SelectField>
           </div>
+
+          {visibility === 'password' && (
+            <div className='fields-group'>
+              <TextInputField
+                id='page_password'
+                type='password'
+                minLength={8}
+                maxLength={72}
+                required={!hasExistingPassword}
+                autoComplete='new-password'
+                label={intl.formatMessage(messages.password)}
+                hint={intl.formatMessage(messages.passwordHint)}
+                value={password}
+                onChange={handlePasswordChange}
+              />
+            </div>
+          )}
 
           <div className='fields-group'>
             <span className='page-editor__label'>

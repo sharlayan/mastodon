@@ -1806,6 +1806,7 @@ ja:
       limit: クリップの上限数に達しています
   pages:
     errors:
+      invalid_password: パスワードが正しくありません
       limit: ページの上限数に達しています
       own_page: 自分のページにはいいねできません
   lists:

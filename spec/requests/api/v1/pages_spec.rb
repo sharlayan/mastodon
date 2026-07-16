@@ -108,6 +108,88 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'password visibility' do
+    let!(:password_page) do
+      Fabricate(:page, account: user.account, visibility: 'password', access_password: 'correct-password', content: [{ 'id' => 'secret', 'type' => 'text', 'text' => 'Hidden body' }])
+    end
+
+    it 'uses the Mastodon Devise encryptor and does not store the plaintext password' do
+      expect(password_page.access_password_digest).to start_with('$2')
+      expect(password_page.access_password_digest).to_not include('correct-password')
+      expect(password_page.valid_access_password?('correct-password')).to be true
+    end
+
+    it 'creates a protected page through the REST API' do
+      expect do
+        post '/api/v1/pages', params: {
+          title: 'Protected page',
+          name: 'protected-page',
+          visibility: 'password',
+          password: 'another-password',
+          content: [],
+        }, headers: headers
+      end.to change(Page.where(visibility: 'password'), :count).by(1)
+
+      expect(Page.find_by!(name: 'protected-page').valid_access_password?('another-password')).to be true
+    end
+
+    it 'keeps the existing password when an edit omits it' do
+      put "/api/v1/pages/#{password_page.id}", params: { title: 'Updated', visibility: 'password' }, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(password_page.reload.valid_access_password?('correct-password')).to be true
+    end
+
+    it 'clears the password when changing visibility' do
+      put "/api/v1/pages/#{password_page.id}", params: { visibility: 'public' }, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(password_page.reload.access_password_digest).to be_nil
+    end
+
+    it 'lists locked metadata without protected content' do
+      get "/api/v1/accounts/#{user.account_id}/pages"
+
+      result = response.parsed_body.find { |page| page[:id] == password_page.id.to_s }
+      expect(result).to include('visibility' => 'password', 'locked' => true, 'content' => [], 'attached_media' => [])
+    end
+
+    it 'rejects a wrong password' do
+      post "/api/v1/pages/#{password_page.id}/unlock", params: { password: 'wrong-password' }
+
+      expect(response).to have_http_status(403)
+    end
+
+    it 'returns the page and a reusable access token for the correct password' do
+      post "/api/v1/pages/#{password_page.id}/unlock", params: { password: 'correct-password' }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:page, :locked)).to be false
+      expect(response.parsed_body.dig(:page, :content, 0, :text)).to eq('Hidden body')
+
+      token = response.parsed_body[:access_token]
+      post "/api/v1/pages/#{password_page.id}/unlock", params: { access_token: token }
+      expect(response).to have_http_status(200)
+    end
+
+    it 'invalidates an access token when the page changes' do
+      post "/api/v1/pages/#{password_page.id}/unlock", params: { password: 'correct-password' }
+      token = response.parsed_body[:access_token]
+
+      put "/api/v1/pages/#{password_page.id}", params: { title: 'Changed' }, headers: headers
+      post "/api/v1/pages/#{password_page.id}/unlock", params: { access_token: token }
+
+      expect(response).to have_http_status(403)
+    end
+
+    it 'excludes password pages from featured pages' do
+      password_page.update_column(:likes_count, 10)
+      get '/api/v1/pages/featured'
+
+      expect(response.parsed_body.pluck(:id)).to_not include(password_page.id.to_s)
+    end
+  end
+
   describe 'GET /api/v1/accounts/:account_id/pages/:name' do
     let(:page) { Fabricate(:page) }
 

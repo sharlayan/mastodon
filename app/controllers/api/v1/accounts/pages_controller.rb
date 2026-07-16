@@ -29,12 +29,12 @@ class Api::V1::Accounts::PagesController < Api::BaseController
 
   def set_page
     not_found if @account.unavailable?
-    @page = @account.pages.published.find_by!(name: params[:name])
+    @page = @account.pages.listed.find_by!(name: params[:name])
   end
 
   def load_pages
     return [] if @account.unavailable?
 
-    @account.pages.published.order(id: :desc).to_a
+    @account.pages.listed.order(id: :desc).to_a
   end
 end

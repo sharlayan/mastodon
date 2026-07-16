@@ -370,6 +370,7 @@ namespace :api, format: false do
       member do
         post :like
         post :unlike
+        post :unlock
       end
 
       collection do
