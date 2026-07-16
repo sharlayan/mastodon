@@ -212,6 +212,6 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   end
 
   def in_usage_error
-    { error: 'Drive file is currently attached to a status', code: 'ATTACHED' }
+    { error: 'Drive file is currently in use', code: 'ATTACHED' }
   end
 end
