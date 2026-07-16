@@ -116,14 +116,19 @@ const messages = defineMessages({
   },
 });
 
-const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
+const PageShow: React.FC<{
+  multiColumn?: boolean;
+  pageId?: string;
+  initialPage?: ApiPageJSON;
+}> = ({ multiColumn, pageId, initialPage }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const history = useAppHistory();
   const { accountId } = useIdentity();
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
+  const id = pageId ?? routeId;
 
-  const [page, setPage] = useState<ApiPageJSON | null>(null);
+  const [page, setPage] = useState<ApiPageJSON | null>(initialPage ?? null);
   const [accountPagesResult, setAccountPagesResult] = useState<{
     accountId: string;
     pages: ApiPageJSON[];
@@ -348,7 +353,10 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 <Link
                   to={{
                     pathname: `/pages/${id}/edit`,
-                    state: { fromPageShow: true },
+                    state: {
+                      fromPageShow: true,
+                      pageName: currentPage.name,
+                    },
                   }}
                   className='column-header__button'
                   title={intl.formatMessage(messages.edit)}

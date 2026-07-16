@@ -29,7 +29,8 @@ class Api::V1::Accounts::PagesController < Api::BaseController
 
   def set_page
     not_found if @account.unavailable?
-    @page = @account.pages.listed.find_by!(name: params[:name])
+    @page = @account.pages.find_by!(name: params[:name])
+    not_found if @page.private_visibility? && @page.account_id != current_account&.id
   end
 
   def load_pages

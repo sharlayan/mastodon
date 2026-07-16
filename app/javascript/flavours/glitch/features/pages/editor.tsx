@@ -273,10 +273,16 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     request
       .then((page) => {
-        if (isEditing && history.location.state?.fromPageShow) {
+        if (
+          isEditing &&
+          history.location.state?.fromPageShow &&
+          history.location.state.pageName === page.name
+        ) {
           history.goBack();
         } else {
-          history.replace(`/pages/${page.id}`);
+          history.replace(
+            `/@${page.account.acct}/pages/${encodeURIComponent(page.name)}`,
+          );
         }
 
         return page;

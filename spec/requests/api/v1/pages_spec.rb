@@ -89,6 +89,13 @@ RSpec.describe 'Pages' do
 
       expect(response).to have_http_status(404)
     end
+
+    it 'allows the owner to open a draft through the account-scoped slug route' do
+      get "/api/v1/accounts/#{draft_page.account_id}/pages/#{draft_page.name}", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq(draft_page.id.to_s)
+    end
   end
 
   describe 'category validation' do

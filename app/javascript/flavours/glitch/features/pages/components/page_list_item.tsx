@@ -34,7 +34,7 @@ export const PageListItem: React.FC<{
   const intl = useIntl();
   const location = useLocation();
   const headerUrl = page.eye_catching_media_attachment?.url;
-  const pathname = `/pages/${page.id}`;
+  const pathname = `/@${page.account.acct}/pages/${encodeURIComponent(page.name)}`;
 
   return (
     <div
