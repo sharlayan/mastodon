@@ -17,11 +17,13 @@ RSpec.describe 'Reports' do
     let(:rule_ids)       { nil }
     let(:status_ids)     { nil }
     let(:collection_ids) { nil }
+    let(:page_ids)       { nil }
 
     let(:params) do
       {
         status_ids:,
         collection_ids:,
+        page_ids:,
         account_id: target_account.id,
         comment: 'reasons',
         category:,
@@ -141,6 +143,48 @@ RSpec.describe 'Reports' do
           expect(response).to have_http_status(404)
           expect(response.content_type)
             .to start_with('application/json')
+        end
+      end
+    end
+
+    context 'with attached page' do
+      let(:page) { Fabricate(:page, account: target_account) }
+      let(:page_ids) { [page.id] }
+
+      it 'creates a report including the page ids', :aggregate_failures, :inline_jobs do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(response.content_type)
+          .to start_with('application/json')
+        expect(response.parsed_body).to match(
+          a_hash_including(
+            page_ids: [page.id.to_s],
+            category: category,
+            comment: 'reasons'
+          )
+        )
+      end
+
+      context 'when a page does not belong to the reported account' do
+        let(:page) { Fabricate(:page) }
+
+        it 'returns http not found' do
+          subject
+
+          expect(response).to have_http_status(404)
+          expect(response.content_type)
+            .to start_with('application/json')
+        end
+      end
+
+      context 'when the page is a draft' do
+        let(:page) { Fabricate(:page, account: target_account, draft: true) }
+
+        it 'returns http not found' do
+          subject
+
+          expect(response).to have_http_status(404)
         end
       end
     end

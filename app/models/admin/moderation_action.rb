@@ -22,6 +22,10 @@ class Admin::ModerationAction < Admin::BaseAction
     report.collections
   end
 
+  def pages
+    report.pages
+  end
+
   def process_action!
     case type
     when 'delete'
@@ -34,10 +38,12 @@ class Admin::ModerationAction < Admin::BaseAction
   def handle_delete!
     statuses.each { |status| authorize([:admin, status], :destroy?) }
     collections.each { |collection| authorize([:admin, collection], :destroy?) }
+    pages.each { |page| authorize([:admin, page], :destroy?) }
 
     ApplicationRecord.transaction do
       delete_statuses!
       delete_collections!
+      delete_pages!
 
       resolve_report!
       process_strike!(:delete_statuses)
@@ -74,6 +80,13 @@ class Admin::ModerationAction < Admin::BaseAction
     collections.each do |collection|
       collection.destroy!
       log_action(:destroy, collection)
+    end
+  end
+
+  def delete_pages!
+    pages.each do |page|
+      page.destroy!
+      log_action(:destroy, page)
     end
   end
 

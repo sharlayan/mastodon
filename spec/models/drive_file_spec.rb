@@ -96,6 +96,14 @@ RSpec.describe DriveFile, :attachment_processing do
 
       expect(drive_file).to be_attached
     end
+
+    it 'is true for a page image' do
+      pointer = drive_file.build_pointer(account)
+      pointer.save!
+      Fabricate(:page, account: account, content: [{ id: 'image', type: 'image', fileId: pointer.id.to_s }])
+
+      expect(drive_file).to be_attached
+    end
   end
 
   describe '.orphaned' do
@@ -106,6 +114,14 @@ RSpec.describe DriveFile, :attachment_processing do
 
       expect(described_class.orphaned).to_not include(drive_file)
     end
+
+    it 'excludes files used by pages' do
+      pointer = drive_file.build_pointer(account)
+      pointer.save!
+      Fabricate(:page, account: account, eye_catching_media_attachment: pointer)
+
+      expect(described_class.orphaned).to_not include(drive_file)
+    end
   end
 
   describe '#destroy' do
@@ -113,6 +129,16 @@ RSpec.describe DriveFile, :attachment_processing do
       pointer = drive_file.build_pointer(account)
       pointer.scheduled_status = Fabricate(:scheduled_status, account: account)
       pointer.save!
+
+      expect(drive_file.destroy).to be false
+      expect(described_class).to exist(drive_file.id)
+      expect(MediaAttachment).to exist(pointer.id)
+    end
+
+    it 'refuses to destroy a file used by a page' do
+      pointer = drive_file.build_pointer(account)
+      pointer.save!
+      Fabricate(:page, account: account, content: [{ id: 'image', type: 'image', fileId: pointer.id.to_s }])
 
       expect(drive_file.destroy).to be false
       expect(described_class).to exist(drive_file.id)

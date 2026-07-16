@@ -54,6 +54,18 @@ RSpec.describe 'Drive files API' do
         .to eq(attached_file.id.to_s => false, unused_file.id.to_s => true)
     end
 
+    it 'flags files used by pages as not orphaned' do
+      page_file = insert_drive_file
+      unused_file = insert_drive_file
+      attach_to_page(page_file, eye_catching: true)
+
+      subject
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.index_by { |file| file[:id] }.transform_values { |file| file[:orphaned] })
+        .to eq(page_file.id.to_s => false, unused_file.id.to_s => true)
+    end
+
     context 'when filtering to orphaned files' do
       let(:params) { { orphaned: true } }
 
@@ -233,6 +245,22 @@ RSpec.describe 'Drive files API' do
     end
   end
 
+  describe 'DELETE /api/v1/drive/files/:id' do
+    it 'refuses to delete a file used by a page image block' do
+      drive_file = insert_drive_file
+      pointer = attach_to_page(drive_file)
+
+      expect do
+        delete "/api/v1/drive/files/#{drive_file.id}", headers: headers
+      end.to not_change(DriveFile, :count).and not_change(MediaAttachment, :count)
+
+      expect(response).to have_http_status(422)
+      expect(response.parsed_body[:code]).to eq('ATTACHED')
+      expect(DriveFile).to exist(drive_file.id)
+      expect(MediaAttachment).to exist(pointer.id)
+    end
+  end
+
   describe 'POST /api/v1/drive/files/:id/transfer_to_posts', :attachment_processing do
     let(:drive_file) { user.account.drive_files.create!(file: attachment_fixture('attachment.jpg')) }
     let(:status) { Fabricate(:status, account: user.account) }
@@ -317,6 +345,17 @@ RSpec.describe 'Drive files API' do
   def attach_to_status(drive_file)
     status = Fabricate(:status, account: user.account)
     drive_file.build_pointer(user.account).tap { |media| media.update!(status_id: status.id) }
+  end
+
+  def attach_to_page(drive_file, eye_catching: false)
+    pointer = drive_file.build_pointer(user.account).tap(&:save!)
+    attributes = if eye_catching
+                   { eye_catching_media_attachment: pointer }
+                 else
+                   { content: [{ id: 'image', type: 'image', fileId: pointer.id.to_s }] }
+                 end
+    Fabricate(:page, account: user.account, **attributes)
+    pointer
   end
 
   def insert_drive_file(account_id: user.account.id, folder_id: nil, storage_file_size: 1)

@@ -23,15 +23,15 @@ const messages = defineMessages({
   },
   unattached: {
     id: 'drive.unattached',
-    defaultMessage: 'Not used in any post',
+    defaultMessage: 'Not used in any post or page',
   },
   attached: {
     id: 'drive.delete_attached',
-    defaultMessage: 'Attached to a post, cannot be deleted',
+    defaultMessage: 'In use by a post or page, cannot be deleted',
   },
   attachedError: {
     id: 'drive.delete_attached_error',
-    defaultMessage: 'Files attached to a post cannot be deleted.',
+    defaultMessage: 'Files used by a post or page cannot be deleted.',
   },
   transferToPosts: {
     id: 'drive.transfer_to_posts',

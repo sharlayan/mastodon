@@ -112,6 +112,14 @@ export function AccountClips() {
   return import('../../account_clips');
 }
 
+export function AccountPages() {
+  return import('../../account_pages');
+}
+
+export function AccountPage() {
+  return import('../../account_pages/show');
+}
+
 export function AccountEdit() {
   return import('../../account_edit')
   .then((module) => ({ default: module.AccountEdit }));
@@ -221,6 +229,11 @@ export function SettingsModal () {
 export function ReportCollectionModal () {
   return import('../components/report_collection_modal')
     .then((module) => ({ default: module.ReportCollectionModal }));;
+}
+
+export function ReportPageModal () {
+  return import('../components/report_page_modal')
+    .then((module) => ({ default: module.ReportPageModal }));;
 }
 
 export function IgnoreNotificationsModal () {
@@ -337,6 +350,18 @@ export function ClipEdit () {
 
 export function ClipTimeline () {
   return import('../../clips/timeline');
+}
+
+export function Pages () {
+  return import('../../pages');
+}
+
+export function PageEdit () {
+  return import('../../pages/editor');
+}
+
+export function PageShow () {
+  return import('../../pages/show');
 }
 
 export function Drive () {

@@ -18,6 +18,7 @@ import type { FocusTarget } from './navigation_focus_target';
 
 interface MastodonLocationState {
   fromMastodon?: boolean;
+  fromPageShow?: boolean;
   mastodonModalKey?: string;
   // Controls which element is focused after a navigation.
   // Set to `false` to prevent navigation focus.

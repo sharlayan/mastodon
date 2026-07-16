@@ -8,6 +8,7 @@ class ReportService < BaseService
     @target_account = target_account
     @status_ids     = options.delete(:status_ids).presence || []
     @collection_ids = options.delete(:collection_ids).presence || []
+    @page_ids       = options.delete(:page_ids).presence || []
     @comment        = options.delete(:comment).presence || ''
     @category       = options[:rule_ids].present? ? 'violation' : (options.delete(:category).presence || 'other')
     @rule_ids       = options.delete(:rule_ids).presence
@@ -34,6 +35,7 @@ class ReportService < BaseService
       target_account: @target_account,
       status_ids: reported_status_ids,
       collection_ids: reported_collection_ids,
+      page_ids: reported_page_ids,
       comment: @comment,
       uri: @options[:uri],
       forwarded: forward_to_origin?,
@@ -101,6 +103,10 @@ class ReportService < BaseService
 
   def reported_collection_ids
     @target_account.collections.find(Array(@collection_ids)).pluck(:id)
+  end
+
+  def reported_page_ids
+    @target_account.pages.listed.find(Array(@page_ids)).pluck(:id)
   end
 
   def payload

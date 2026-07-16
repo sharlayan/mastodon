@@ -103,6 +103,10 @@ class Rack::Attack
     req.throttleable_remote_ip if req.post? && req.path == '/api/v1/accounts'
   end
 
+  throttle('throttle_page_password_attempts', limit: 10, period: 5.minutes) do |req|
+    "#{req.throttleable_remote_ip}:#{req.path}" if req.post? && req.path.match?(%r{\A/api/v1/pages/\d+/unlock\z}) && req.params['password'].present?
+  end
+
   throttle('throttle_authenticated_paging', limit: 1_000, period: 15.minutes) do |req|
     req.authenticated_user_id if req.paging_request? && !req.bypasses_rate_limit?
   end

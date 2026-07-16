@@ -26,6 +26,7 @@ module Admin
         @form         = Admin::StatusBatchAction.new
         @statuses     = @report.statuses.with_includes
         @collections  = @report.collections
+        @pages        = @report.pages
         @collection_form = Admin::CollectionBatchAction.new
 
         render 'admin/reports/show'

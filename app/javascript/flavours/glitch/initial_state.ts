@@ -40,6 +40,7 @@ interface InitialStateMeta {
   force_local_only: boolean;
   circles_enabled: boolean;
   clips_enabled: boolean;
+  pages_enabled: boolean;
   antenna_enabled: boolean;
   drive_enabled: boolean;
   board_announcements_enabled: boolean;
@@ -222,6 +223,7 @@ export const roleplayMode = getMeta('roleplay_mode') === true;
 export const circlesEnabled = getMeta('circles_enabled') === true;
 export const clipsEnabled = getMeta('clips_enabled') === true;
 export const collectionsEnabled = !roleplayMode;
+export const pagesEnabled = getMeta('pages_enabled') === true;
 export const antennaEnabled = getMeta('antenna_enabled') === true;
 export const driveEnabled = getMeta('drive_enabled') === true;
 export const boardAnnouncementsEnabled =

@@ -83,6 +83,17 @@
         - else
           = render partial: 'admin/shared/collection_batch_row', collection: @collections, as: :collection, locals: { f: f }
 
+%details{ open: @pages.any? }
+  %summary
+    = t 'admin.reports.pages', count: @pages.size
+
+  .batch-table
+    .batch-table__body
+      - if @pages.empty?
+        = nothing_here 'nothing-here--under-tabs'
+      - else
+        = render partial: 'admin/shared/page', collection: @pages, as: :page
+
 - if @report.unresolved?
   %hr.spacer/
 

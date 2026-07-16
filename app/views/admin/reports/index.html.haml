@@ -71,6 +71,10 @@
                 = material_symbol('category')
                 = report.collections.size
 
+              %span.report-card__summary__item__content__icon{ title: t('admin.reports.pages', count: report.pages.size) }
+                = material_symbol('description')
+                = report.pages.size
+
               - if report.forwarded?
                 ·
                 = t('admin.reports.forwarded_to', domain: target_account.domain)

@@ -18,6 +18,7 @@ module Admin
       @form         = Admin::StatusBatchAction.new
       @collection_form = Admin::CollectionBatchAction.new
       @collections  = @report.collections
+      @pages        = @report.pages
       @statuses     = @report.statuses.with_includes
     end
 
@@ -52,7 +53,7 @@ module Admin
     private
 
     def filtered_reports
-      ReportFilter.new(filter_params).results.order(id: :desc).includes(:account, :target_account, :collections)
+      ReportFilter.new(filter_params).results.order(id: :desc).includes(:account, :target_account, :collections, :pages)
     end
 
     def filter_params
@@ -60,7 +61,7 @@ module Admin
     end
 
     def set_report
-      @report = Report.includes(collections: :accepted_collection_items).find(params[:id])
+      @report = Report.includes(:pages, collections: :accepted_collection_items).find(params[:id])
     end
   end
 end

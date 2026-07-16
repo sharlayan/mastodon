@@ -302,6 +302,7 @@ namespace :api, format: false do
         resources :lists, only: :index
         resources :circles, only: :index
         resources :clips, only: :index
+        resources :pages, only: [:index, :show], param: :name
         resources :antennas, only: :index
         resources :exclude_antennas, only: :index
         resources :identity_proofs, only: :index
@@ -363,6 +364,18 @@ namespace :api, format: false do
 
       collection do
         get :favourites, to: 'clips/favourites#index'
+      end
+    end
+
+    resources :pages, only: [:index, :create, :show, :update, :destroy] do
+      member do
+        post :like
+        post :unlike
+        post :unlock
+      end
+
+      collection do
+        get :featured
       end
     end
 
@@ -670,16 +683,16 @@ namespace :api, format: false do
     post 'users/clips', to: 'clips#by_user'
     post 'notes/clips', to: 'notes#clips'
 
-    post 'pages/featured', to: 'pages#empty'
-    post 'i/pages', to: 'pages#empty'
-    post 'i/page-likes', to: 'pages#empty'
-    post 'users/pages', to: 'pages#empty'
-    post 'pages/show', to: 'pages#unsupported'
-    post 'pages/like', to: 'pages#unsupported'
-    post 'pages/unlike', to: 'pages#unsupported'
-    post 'pages/create', to: 'pages#unsupported'
-    post 'pages/update', to: 'pages#unsupported'
-    post 'pages/delete', to: 'pages#unsupported'
+    post 'pages/featured', to: 'pages#featured'
+    post 'i/pages', to: 'pages#index'
+    post 'i/page-likes', to: 'pages#likes'
+    post 'users/pages', to: 'pages#by_user'
+    post 'pages/show', to: 'pages#show'
+    post 'pages/like', to: 'pages#like'
+    post 'pages/unlike', to: 'pages#unlike'
+    post 'pages/create', to: 'pages#create'
+    post 'pages/update', to: 'pages#update'
+    post 'pages/delete', to: 'pages#destroy'
 
     post 'chat/history', to: 'chat#empty'
     post 'chat/read-all', to: 'chat#noop'

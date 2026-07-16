@@ -10,6 +10,7 @@ class REST::Admin::ReportSerializer < ActiveModel::Serializer
   has_one :action_taken_by_account, serializer: REST::Admin::AccountSerializer
 
   has_many :statuses, serializer: REST::StatusSerializer
+  has_many :pages, serializer: REST::PageSerializer
   has_many :rules, serializer: REST::RuleSerializer
 
   def id

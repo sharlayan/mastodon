@@ -22,7 +22,8 @@ const messages = defineMessages({
   other_description: { id: 'report.reasons.other_description', defaultMessage: 'The issue does not fit into other categories' },
   status: { id: 'report.category.title_status', defaultMessage: "Tell us what's going on with this post" },
   account: { id: 'report.category.title_account', defaultMessage: "Tell us what's going on with this profile" },
-  collection: { id: 'report.category.title_collection', defaultMessage: "Tell us what's going on with this collection"}
+  collection: { id: 'report.category.title_collection', defaultMessage: "Tell us what's going on with this collection" },
+  page: { id: 'report.category.title_page', defaultMessage: "Tell us what's going on with this page" },
 });
 
 const mapStateToProps = state => ({
@@ -36,7 +37,7 @@ class Category extends PureComponent {
     rules: PropTypes.arrayOf(PropTypes.object),
     category: PropTypes.string,
     onChangeCategory: PropTypes.func.isRequired,
-    startedFrom: PropTypes.oneOf(['status', 'account']),
+    startedFrom: PropTypes.oneOf(['status', 'account', 'collection', 'page']),
     intl: PropTypes.object.isRequired,
   };
 
@@ -76,7 +77,7 @@ class Category extends PureComponent {
       'other',
     ];
 
-    if (startedFrom === 'collection') {
+    if (startedFrom === 'collection' || startedFrom === 'page') {
       options = options.filter(item => item !== 'dislike');
     }
 

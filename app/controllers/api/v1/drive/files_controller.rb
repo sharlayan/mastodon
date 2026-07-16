@@ -180,7 +180,7 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
     ids = files.map(&:id)
     return Set.new if ids.empty?
 
-    MediaAttachment.attached.where(drive_file_id: ids).distinct.pluck(:drive_file_id).to_set
+    MediaAttachment.in_use.where(drive_file_id: ids).distinct.pluck(:drive_file_id).to_set
   end
 
   def next_path
@@ -212,6 +212,6 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   end
 
   def in_usage_error
-    { error: 'Drive file is currently attached to a status', code: 'ATTACHED' }
+    { error: 'Drive file is currently in use', code: 'ATTACHED' }
   end
 end

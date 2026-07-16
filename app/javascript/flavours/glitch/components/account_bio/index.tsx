@@ -11,8 +11,6 @@ import { useElementHandledLink } from '../status/handled_link';
 
 import classes from './styles.module.scss';
 
-const mfmDomParser = new DOMParser();
-
 interface AccountBioProps {
   className?: string;
   accountId: string;
@@ -43,11 +41,9 @@ export const AccountBio: React.FC<AccountBioProps> = ({
     (state) => state.accounts.get(accountId)?.mfm ?? false,
   );
 
-  const plainText = useMemo(() => {
-    if (!note) return '';
-    const doc = mfmDomParser.parseFromString(note, 'text/html');
-    return doc.body.textContent || '';
-  }, [note]);
+  const plainText = useAppSelector(
+    (state) => state.accounts.get(accountId)?.note_plain ?? '',
+  );
 
   const hasMfm = useMemo(() => {
     if (!mfmEnabled) return false;
