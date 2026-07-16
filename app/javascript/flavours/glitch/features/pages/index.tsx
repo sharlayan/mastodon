@@ -105,7 +105,9 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         </button>
       </div>
 
-      <CategoryFilter pages={pages} value={category} onChange={setCategory} />
+      {tab === 'mine' && (
+        <CategoryFilter pages={pages} value={category} onChange={setCategory} />
+      )}
 
       <ScrollableList
         scrollKey='pages'
@@ -115,7 +117,13 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         {tab === 'mine' && !signedIn ? (
           <NotSignedInIndicator />
         ) : (
-          visiblePages.map((page) => <PageListItem key={page.id} page={page} />)
+          visiblePages.map((page) => (
+            <PageListItem
+              key={page.id}
+              page={page}
+              showCategory={tab !== 'featured'}
+            />
+          ))
         )}
       </ScrollableList>
 

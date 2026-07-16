@@ -21,6 +21,7 @@ import FullscreenExitIcon from '@/material-icons/400-24px/fullscreen_exit.svg?re
 import { openModal } from 'flavours/glitch/actions/modal';
 import {
   apiGetPage,
+  apiGetAccountPages,
   apiDeletePage,
   apiLikePage,
   apiUnlikePage,
@@ -42,6 +43,7 @@ import { useAppDispatch } from 'flavours/glitch/store';
 
 import type { PageMediaOpenHandler } from './components/blocks';
 import { PageBlockList } from './components/blocks';
+import { PageListItem } from './components/page_list_item';
 
 interface PageMediaEntry {
   key: string;
@@ -105,13 +107,19 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { id } = useParams<{ id: string }>();
 
   const [page, setPage] = useState<ApiPageJSON | null>(null);
+  const [accountPagesResult, setAccountPagesResult] = useState<{
+    accountId: string;
+    pages: ApiPageJSON[];
+  } | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
   const [wideView, setWideView] = useState(false);
 
   useEffect(() => {
+    document.documentElement.classList.toggle('page-wide-view', wideView);
     document.body.classList.toggle('page-wide-view', wideView);
 
     return () => {
+      document.documentElement.classList.remove('page-wide-view');
       document.body.classList.remove('page-wide-view');
     };
   }, [wideView]);
@@ -139,7 +147,37 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [id]);
 
   const currentPage = page?.id === id ? page : null;
+  const currentPageAccountId = currentPage?.account_id;
   const error = errorId === id;
+
+  useEffect(() => {
+    if (!currentPageAccountId) {
+      return;
+    }
+
+    let active = true;
+
+    apiGetAccountPages(currentPageAccountId)
+      .then((data) => {
+        if (active) {
+          setAccountPagesResult({
+            accountId: currentPageAccountId,
+            pages: data,
+          });
+        }
+
+        return data;
+      })
+      .catch(() => {
+        if (active) {
+          setAccountPagesResult({ accountId: currentPageAccountId, pages: [] });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentPageAccountId]);
 
   const handleDelete = useCallback(() => {
     if (!window.confirm(intl.formatMessage(messages.confirmDelete))) {
@@ -229,6 +267,18 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const title = currentPage
     ? currentPage.title
     : intl.formatMessage(messages.heading);
+  const accountPages =
+    accountPagesResult && accountPagesResult.accountId === currentPageAccountId
+      ? accountPagesResult.pages
+      : null;
+  const visibleAccountPages = currentPage
+    ? [
+        ...(accountPages?.some((accountPage) => accountPage.id === id)
+          ? []
+          : [currentPage]),
+        ...(accountPages ?? []),
+      ]
+    : [];
 
   return (
     <Column
@@ -303,6 +353,27 @@ const PageShow: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
       {currentPage ? (
         <div className='scrollable'>
+          <aside
+            className='page-show__sidebar'
+            aria-label={intl.formatMessage({
+              id: 'account.pages',
+              defaultMessage: 'Pages',
+            })}
+          >
+            <h2>
+              <FormattedMessage id='account.pages' defaultMessage='Pages' />
+            </h2>
+            <div className='page-show__sidebar-list'>
+              {visibleAccountPages.map((accountPage) => (
+                <PageListItem
+                  key={accountPage.id}
+                  page={accountPage}
+                  active={accountPage.id === id}
+                  replaceHistory
+                />
+              ))}
+            </div>
+          </aside>
           <article
             className={classNames('page', `page--font-${currentPage.font}`, {
               'page--center': currentPage.align_center,
