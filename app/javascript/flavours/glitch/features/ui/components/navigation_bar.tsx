@@ -23,6 +23,8 @@ import { registrationsOpen, sso_redirect } from 'flavours/glitch/initial_state';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
+import { useConfirmDraftBeforePublish } from '../hooks/use_confirm_draft_before_publish';
+
 export const messages = defineMessages({
   home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
   search: { id: 'tabs_bar.search', defaultMessage: 'Search' },
@@ -43,7 +45,8 @@ const IconLabelButton: React.FC<{
   icon?: React.ReactNode;
   activeIcon?: React.ReactNode;
   title: string;
-}> = ({ to, icon, activeIcon, title }) => {
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+}> = ({ to, icon, activeIcon, title, onClick }) => {
   const match = useRouteMatch(
     typeof to === 'string' ? to : (to.pathname ?? ''),
   );
@@ -54,9 +57,24 @@ const IconLabelButton: React.FC<{
       activeClassName='active'
       to={to}
       aria-label={title}
+      onClick={onClick}
     >
       {match && activeIcon ? activeIcon : icon}
     </NavLink>
+  );
+};
+
+const PublishButton = () => {
+  const intl = useIntl();
+  const handleClick = useConfirmDraftBeforePublish();
+
+  return (
+    <IconLabelButton
+      title={intl.formatMessage(messages.publish)}
+      to={{ pathname: '/publish', state: { focusTarget: false } }}
+      icon={<Icon id='' icon={AddIcon} />}
+      onClick={handleClick as React.MouseEventHandler<HTMLAnchorElement>}
+    />
   );
 };
 
@@ -190,11 +208,7 @@ export const NavigationBar: React.FC = () => {
               to='/explore'
               icon={<Icon id='' icon={SearchIcon} />}
             />
-            <IconLabelButton
-              title={intl.formatMessage(messages.publish)}
-              to={{ pathname: '/publish', state: { focusTarget: false } }}
-              icon={<Icon id='' icon={AddIcon} />}
-            />
+            <PublishButton />
             <NotificationsButton />
           </>
         )}

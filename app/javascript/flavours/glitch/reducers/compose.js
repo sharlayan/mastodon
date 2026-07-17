@@ -51,6 +51,7 @@ import {
   COMPOSE_EMOJI_INSERT,
   COMPOSE_DOODLE_SET,
   COMPOSE_RESET,
+  COMPOSE_DISCARD,
   COMPOSE_POLL_ADD,
   COMPOSE_POLL_REMOVE,
   COMPOSE_POLL_OPTION_CHANGE,
@@ -587,6 +588,8 @@ export const composeReducer = (state = initialState, action) => {
       );
       map.set('idempotencyKey', uuid());
     });
+  case COMPOSE_DISCARD:
+    return clearAll(state);
   case COMPOSE_SUBMIT_REQUEST:
     return state.set('is_submitting', true);
   case COMPOSE_SUBMIT_SUCCESS:

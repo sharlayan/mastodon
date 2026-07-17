@@ -28,6 +28,7 @@ import { AntennaPanel } from 'flavours/glitch/features/navigation_panel/componen
 import { ExtensionsPanel } from 'flavours/glitch/features/navigation_panel/components/extensions_panel';
 import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 import { getNavigationSkipLinkId } from 'flavours/glitch/features/ui/components/skip_links';
+import { useConfirmDraftBeforePublish } from 'flavours/glitch/features/ui/hooks/use_confirm_draft_before_publish';
 import { useBreakpoint } from 'flavours/glitch/features/ui/hooks/useBreakpoint';
 import { useAccount } from 'flavours/glitch/hooks/useAccount';
 import { useIdentity } from 'flavours/glitch/identity_context';
@@ -163,6 +164,7 @@ export const useSharlayanPrimaryNavigation = (
         | undefined,
   );
   const isMobileLayout = useBreakpoint('openable');
+  const confirmDraftBeforePublish = useConfirmDraftBeforePublish();
   const orderedKeys = useMemo(
     () => computeNavigationOrder(navOrder?.toArray()),
     [navOrder],
@@ -292,6 +294,7 @@ export const useSharlayanPrimaryNavigation = (
               text={intl.formatMessage(messages.compose)}
               className='button navigation-panel__compose-button'
               id={getNavigationSkipLinkId()}
+              onClick={confirmDraftBeforePublish}
             />
           </li>
         )}

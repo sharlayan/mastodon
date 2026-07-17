@@ -30,6 +30,7 @@ interface ConfirmationModalProps {
   cancel?: React.ReactNode;
   secondary?: React.ReactNode;
   onSecondary?: () => void;
+  onCancel?: () => void;
   onConfirm: () => void | Promise<void>;
   noCloseOnConfirm?: boolean;
   extraContent?: React.ReactNode;
@@ -50,6 +51,7 @@ export const ConfirmationModal: React.FC<
   cancel,
   onClose,
   onConfirm,
+  onCancel,
   secondary,
   onSecondary,
   extraContent,
@@ -78,6 +80,11 @@ export const ConfirmationModal: React.FC<
     onSecondary?.();
   }, [onClose, onSecondary]);
 
+  const handleCancel = useCallback(() => {
+    onClose();
+    onCancel?.();
+  }, [onCancel, onClose]);
+
   return (
     <ModalShell onSubmit={handleSubmit}>
       <ModalShellBody className={className}>
@@ -94,7 +101,7 @@ export const ConfirmationModal: React.FC<
       </ModalShellBody>
 
       <ModalShellActions>
-        <button onClick={onClose} className='link-button' type='button'>
+        <button onClick={handleCancel} className='link-button' type='button'>
           {cancel ?? (
             <FormattedMessage
               id='confirmation_modal.cancel'

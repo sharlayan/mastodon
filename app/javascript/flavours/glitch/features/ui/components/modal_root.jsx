@@ -43,6 +43,7 @@ import {
   ConfirmMissingAltTextModal,
   ConfirmRevokeQuoteModal,
   QuietPostQuoteInfoModal,
+  ConfirmResumeDraftModal,
 } from './confirmation_modals';
 import DeprecatedSettingsModal from './deprecated_settings_modal';
 import DoodleModal from './doodle_modal';
@@ -79,6 +80,7 @@ export const MODAL_COMPONENTS = {
   'CONFIRM_PRIVATE_QUOTE_NOTIFY': () => Promise.resolve({ default: PrivateQuoteNotify }),
   'CONFIRM_REVOKE_QUOTE': () => Promise.resolve({ default: ConfirmRevokeQuoteModal }),
   'CONFIRM_QUIET_QUOTE': () => Promise.resolve({ default: QuietPostQuoteInfoModal }),
+  'CONFIRM_RESUME_DRAFT': () => Promise.resolve({ default: ConfirmResumeDraftModal }),
   'MUTE': MuteModal,
   'BLOCK': BlockModal,
   'DOMAIN_BLOCK': DomainBlockModal,
