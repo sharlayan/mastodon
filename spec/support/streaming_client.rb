@@ -7,6 +7,7 @@ class StreamingClient
     SUBPROTOCOL = 1
     AUTHORIZATION_HEADER = 2
     QUERY_PARAMETER = 3
+    MISSKEY_QUERY_PARAMETER = 4
   end
 
   class Connection
@@ -141,6 +142,8 @@ class StreamingClient
       @connection.protocols = access_token
     when AUTHENTICATION::AUTHORIZATION_HEADER
       @connection.set_header('Authorization', "Bearer #{access_token}")
+    when AUTHENTICATION::MISSKEY_QUERY_PARAMETER
+      @connection.set_query_param('i', access_token)
     else
       raise 'Invalid authentication method'
     end

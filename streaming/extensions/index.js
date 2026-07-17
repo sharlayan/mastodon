@@ -22,21 +22,25 @@ const createStreamingExtensions = (deps) => {
   return {
     authenticateFallback: (req, query, accountFromToken) => authenticateFallback(req, query, accountFromToken, misskey.isEnabled),
     standardTokenFromRequest,
-    registerChannels: (req) => antenna.channelNameFromPath(req.path),
-    authorizeChannel: (req, name, params) => antenna.authorizeChannel(deps.pgPool, req, name, params),
-    streamName: antenna.streamName,
+    channel: {
+      fromPath: (req) => antenna.channelNameFromPath(req.path),
+      authorize: (req, name, params) => antenna.authorizeChannel(deps.pgPool, req, name, params),
+      streamName: antenna.streamName,
+    },
     filterPayload(req, payload) {
       return {
         acceptedLanguage: acceptsLanguage(req.chosenLanguages, payload.language),
         domain: createDomainFilter(req, payload),
       };
     },
-    handleMessage(session, json) {
-      if (!misskey.isMisskeyType(json.type)) return false;
-      misskey.handleMessage(session, json);
-      return true;
+    attachSession(session, parseJSON) {
+      session.websocket.on('close', () => misskey.cleanup(session));
+      session.websocket.on('message', (data, isBinary) => {
+        if (isBinary) return;
+        const json = parseJSON(data.toString('utf8'), session.request);
+        if (json && misskey.isMisskeyType(json.type)) misskey.handleMessage(session, json);
+      });
     },
-    cleanup: misskey.cleanup,
     dispatchCallbacks,
   };
 };

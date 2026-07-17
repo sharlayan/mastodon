@@ -48,6 +48,34 @@ RSpec.describe 'Streaming', :inline_jobs, :streaming do
     end
   end
 
+  context 'when Misskey compatibility is disabled' do
+    before do
+      Setting.misskey_compat_enabled = false
+    end
+
+    after do
+      Setting.misskey_compat_enabled = true
+    end
+
+    it 'keeps standard OAuth authentication available' do
+      streaming_client.connect
+
+      expect(streaming_client.status).to eq(101)
+      expect(streaming_client.open?).to be(true)
+    end
+
+    context 'with a Misskey i query parameter' do
+      let(:authentication_method) { StreamingClient::AUTHENTICATION::MISSKEY_QUERY_PARAMETER }
+
+      it 'receives an 401 unauthorized error' do
+        streaming_client.connect
+
+        expect(streaming_client.status).to eq(401)
+        expect(streaming_client.open?).to be(false)
+      end
+    end
+  end
+
   context 'with a revoked access token' do
     before do
       token.revoke

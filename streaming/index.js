@@ -449,7 +449,7 @@ const startServer = async () => {
     case '/api/v1/streaming/list':
       return 'list';
     default:
-      return extensions.registerChannels(req);
+      return extensions.channel.fromPath(req);
     }
   };
 
@@ -765,15 +765,7 @@ const startServer = async () => {
                           account.id].concat(targetAccountIds)),
         ];
 
-        if (extensionFilter.domain.hasQuery) {
-          queries.push(extensionFilter.domain.query(client));
-        }
-
-        // @ts-expect-error
-        if (!payload.filtered && !req.cachedFilters) {
-          // @ts-expect-error
-          queries.push(client.query('SELECT filter.id AS id, filter.phrase AS title, filter.context AS context, filter.expires_at AS expires_at, filter.action AS filter_action, keyword.keyword AS keyword, keyword.whole_word AS whole_word FROM custom_filter_keywords keyword JOIN custom_filters filter ON keyword.custom_filter_id = filter.id WHERE filter.account_id = $1 AND (filter.expires_at IS NULL OR filter.expires_at > NOW())', [req.accountId]));
-        }
+        queries.push(extensionFilter.domain.query(client));
 
         Promise.all(queries).then(values => {
           releasePgConnection();
@@ -781,7 +773,7 @@ const startServer = async () => {
           // Handling blocks & mutes and domain blocks: If one of those applies,
           // then we don't transmit the payload of the event to the client
           // @ts-expect-error
-          if (values[0].rows.length > 0 || extensionFilter.domain.blocked(values)) {
+          if (values[0].rows.length > 0 || values[1].blocked) {
             return;
           }
 
@@ -798,7 +790,7 @@ const startServer = async () => {
           // @ts-ignore
           if (!req.cachedFilters) {
             // @ts-expect-error
-            const filterRows = extensionFilter.domain.filterRows(values);
+            const filterRows = values[1].filterRows;
 
             req.cachedFilters = filterRows.reduce((cache, filter) => {
               if (cache[filter.id]) {
@@ -1174,7 +1166,7 @@ const startServer = async () => {
 
       break;
     default:
-      extensions.authorizeChannel(req, name, params).then(result => {
+      extensions.channel.authorize(req, name, params).then(result => {
         if (result) resolve(result);
         else reject(new RequestError('Unknown stream type'));
       }).catch(reject);
@@ -1187,7 +1179,7 @@ const startServer = async () => {
    * @returns {string[]}
    */
   const streamNameFromChannelName = (channelName, params) => {
-    const extensionName = extensions.streamName(channelName, params);
+    const extensionName = extensions.channel.streamName(channelName, params);
     if (extensionName) {
       return extensionName;
     } else if (channelName === 'list' && params.list) {
@@ -1362,14 +1354,14 @@ const startServer = async () => {
       subscriptions: {},
     };
 
+    extensions.attachSession(session, parseJSON);
+
     ws.on('close', function onWebsocketClose() {
       const subscriptions = Object.keys(session.subscriptions);
 
       subscriptions.forEach(channelIds => {
         removeSubscription(session, channelIds.split(';'));
       });
-
-      extensions.cleanup(session);
 
       // Decrement the metrics for connected clients:
       metrics.connectedClients.labels({ type: 'websocket' }).dec();
@@ -1419,7 +1411,7 @@ const startServer = async () => {
           firstParam(stream),
           params
         );
-      } else if (!extensions.handleMessage(session, json)) {
+      } else {
         // Unknown action type
       }
     });
