@@ -203,8 +203,8 @@ class Form::AdminSettings
 
       stored_value = if UPLOAD_KEYS.include?(key)
                        SiteUpload.where(var: key).first_or_initialize(var: key)
-                     elsif roleplay_mode? && ROLEPLAY_FORCED_SETTINGS.key?(key)
-                       ROLEPLAY_FORCED_SETTINGS[key]
+                     elsif roleplay_mode? && Sharlayan::RoleplayForcedSettings::SETTINGS.key?(key)
+                       Sharlayan::RoleplayForcedSettings::SETTINGS[key]
                      elsif OVERRIDEN_SETTINGS.include?(key)
                        public_send(OVERRIDEN_SETTINGS[key])
                      else
@@ -233,9 +233,9 @@ class Form::AdminSettings
     KEYS.each do |key|
       next if PSEUDO_KEYS.include?(key) || !instance_variable_defined?(:"@#{key}")
 
-      if roleplay_mode? && ROLEPLAY_FORCED_SETTINGS.key?(key)
+      if roleplay_mode? && Sharlayan::RoleplayForcedSettings::SETTINGS.key?(key)
         setting = Setting.where(var: key).first_or_initialize(var: key)
-        setting.update(value: ROLEPLAY_FORCED_SETTINGS[key])
+        setting.update(value: Sharlayan::RoleplayForcedSettings::SETTINGS[key])
         next
       end
 

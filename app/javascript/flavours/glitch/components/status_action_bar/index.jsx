@@ -25,7 +25,8 @@ import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
-import { adminTimelineOwnerViewer, clipsEnabled, me, quickBoosting, reactionsEnabled, roleplayMode, softHideDeletion } from 'flavours/glitch/initial_state';
+import { clipsEnabled, me, quickBoosting, reactionsEnabled } from 'flavours/glitch/initial_state';
+import { adminTimelineOwnerViewer, roleplayMode, softHideDeletion } from 'flavours/glitch/sharlayan/roleplay';
 
 import { IconButton } from '../icon_button';
 import { injectIntl } from '../intl';

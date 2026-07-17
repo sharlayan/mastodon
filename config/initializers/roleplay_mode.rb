@@ -6,7 +6,7 @@ Rails.application.config.after_initialize do
   begin
     next unless ActiveRecord::Base.connection.table_exists?('settings')
 
-    RoleplayModeHelper::ROLEPLAY_FORCED_SETTINGS.each do |var, value|
+    Sharlayan::RoleplayForcedSettings::SETTINGS.each do |var, value|
       setting = Setting.where(var: var.to_s).first_or_initialize(var: var.to_s)
       setting.update(value: value) unless setting.value == value
     end

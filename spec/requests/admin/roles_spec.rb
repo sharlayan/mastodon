@@ -175,13 +175,73 @@ RSpec.describe 'Admin Roles' do
 
         expect(UserRole.find_by(name: 'Normal role').can_extra?(:view_admin_timeline)).to be(false)
       end
+    end
+  end
 
-      it 'assigns the management timeline permission in roleplay mode' do
-        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
-          post admin_roles_path, params: { user_role: { name: 'Community role', position: 2, extra_permissions_as_keys: %w(view_admin_timeline) } }
-        end
+  describe 'POST /admin/roles assigning the management timeline permission in roleplay mode' do
+    around do |example|
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+    end
 
-        expect(UserRole.find_by(name: 'Community role').can_extra?(:view_admin_timeline)).to be(true)
+    before { sign_in Fabricate(:user, role: acting_role) }
+
+    let(:acting_role) do
+      Fabricate(:user_role, name: 'Acting role', position: acting_position, permissions_as_keys: acting_permissions, extra_permissions_as_keys: acting_extra_permissions)
+    end
+
+    let(:created_role) { UserRole.find_by(name: 'Community role') }
+
+    def create_community_role
+      post admin_roles_path, params: { user_role: { name: 'Community role', position: 2, extra_permissions_as_keys: %w(view_admin_timeline) } }
+    end
+
+    context 'when an administrator lacks the management timeline permission' do
+      let(:acting_position) { 100 }
+      let(:acting_permissions) { %w(manage_roles) }
+      let(:acting_extra_permissions) { [] }
+
+      it 'refuses to elevate the new role beyond the grantor' do
+        create_community_role
+
+        expect(created_role).to be_nil
+      end
+    end
+
+    context 'when an administrator holds the management timeline permission' do
+      let(:acting_position) { 100 }
+      let(:acting_permissions) { %w(manage_roles) }
+      let(:acting_extra_permissions) { %w(view_admin_timeline) }
+
+      it 'assigns the permission to the new role' do
+        create_community_role
+
+        expect(created_role.can_extra?(:view_admin_timeline)).to be(true)
+      end
+    end
+
+    context 'when a moderator lacks the management timeline permission' do
+      let(:acting_position) { 10 }
+      let(:acting_permissions) { %w(manage_users) }
+      let(:acting_extra_permissions) { [] }
+
+      it 'forbids creating the role' do
+        create_community_role
+
+        expect(response).to have_http_status(403)
+        expect(created_role).to be_nil
+      end
+    end
+
+    context 'when a moderator holds the management timeline permission' do
+      let(:acting_position) { 10 }
+      let(:acting_permissions) { %w(manage_users) }
+      let(:acting_extra_permissions) { %w(view_admin_timeline) }
+
+      it 'forbids creating the role despite holding the permission' do
+        create_community_role
+
+        expect(response).to have_http_status(403)
+        expect(created_role).to be_nil
       end
     end
   end
