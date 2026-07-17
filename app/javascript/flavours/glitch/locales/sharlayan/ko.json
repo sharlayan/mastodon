@@ -340,6 +340,7 @@
   "settings.contrast.high": "고대비",
   "settings.fullwidth_view": "컬럼을 창 넓이에 맞추기 (데스크탑 모드 전용)",
   "settings.fullwidth_view_hint": "컬럼들을 창 크기에 맞추어 각 컬럼의 너비를 조절합니다.",
+  "settings.hide_compose_language": "작성창에서 언어 선택기 숨기기",
   "settings.hide_mfm_compose_hint": "작성창에서 MFM 미리보기와 문법 링크 숨기기",
   "settings.inline_compose_timelines": "타임라인 상단에 작성창 표시",
   "settings.inline_compose_timelines.hint": "트위터 방식: 홈, 로컬, 연합 타임라인 위에 작성창을 표시합니다 (단일 컬럼 모드에서만)",

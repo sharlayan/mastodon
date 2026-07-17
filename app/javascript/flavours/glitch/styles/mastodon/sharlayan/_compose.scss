@@ -59,9 +59,6 @@
   min-height: 25px;
 }
 
-.privacy-dropdown__dropdown,
-.language-dropdown__dropdown,
-.visibility-dropdown__dropdown,
 .schedule-button__dropdown {
   box-shadow: var(--dropdown-shadow);
   background: var(--color-bg-primary);
@@ -72,16 +69,10 @@
   z-index: 2;
 }
 
-.privacy-dropdown__dropdown.top,
-.language-dropdown__dropdown.top,
-.visibility-dropdown__dropdown.top,
 .schedule-button__dropdown.top {
   transform-origin: 50% 100%;
 }
 
-.privacy-dropdown__dropdown.bottom,
-.language-dropdown__dropdown.bottom,
-.visibility-dropdown__dropdown.bottom,
 .schedule-button__dropdown.bottom {
   transform-origin: 50% 0;
 }
@@ -189,8 +180,4 @@
 .scheduled-status-card__meta .scheduled-status-card__visibility-quote {
   font-size: 13px;
   color: var(--color-text-tertiary);
-}
-
-.compose-form:not(.compose-form--inline) .reply-indicator__cancel {
-  display: none;
 }

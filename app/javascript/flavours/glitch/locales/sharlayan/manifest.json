@@ -340,6 +340,7 @@
   "settings.contrast.high",
   "settings.fullwidth_view",
   "settings.fullwidth_view_hint",
+  "settings.hide_compose_language",
   "settings.hide_mfm_compose_hint",
   "settings.inline_compose_timelines",
   "settings.inline_compose_timelines.hint",

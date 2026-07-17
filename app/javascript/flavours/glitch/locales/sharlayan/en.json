@@ -340,6 +340,7 @@
   "settings.contrast.high": "High contrast",
   "settings.fullwidth_view": "Stretch columns to full width (Desktop mode only)",
   "settings.fullwidth_view_hint": "Stretches columns to fill all the available space.",
+  "settings.hide_compose_language": "Hide the language selector in the compose box",
   "settings.hide_mfm_compose_hint": "Hide MFM preview and syntax link in the compose box",
   "settings.inline_compose_timelines": "Show the compose box at the top of timelines",
   "settings.inline_compose_timelines.hint": "Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)",

@@ -67,6 +67,7 @@ const mapStateToProps = state => ({
   preselectDate: state.getIn(['compose', 'preselectDate']),
   preselectOnReply: state.getIn(['local_settings', 'preselect_on_reply']),
   usePublishToot: state.getIn(['local_settings', 'use_publish_toot']),
+  hideLanguage: state.getIn(['local_settings', 'hide_compose_language']),
   showScheduleButton: state.getIn(['local_settings', 'show_schedule_button']),
   isSubmitting: state.getIn(['compose', 'is_submitting']),
   isEditing: state.getIn(['compose', 'id']) !== null,

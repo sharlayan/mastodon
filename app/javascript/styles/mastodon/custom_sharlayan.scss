@@ -1,4 +1,8 @@
-@use 'sharlayan/accounts';
-@use 'sharlayan/avatars';
-@use 'sharlayan/misc';
-@use 'sharlayan/admin';
+@use 'sass:meta';
+
+html {
+  @include meta.load-css('sharlayan/accounts');
+  @include meta.load-css('sharlayan/avatars');
+  @include meta.load-css('sharlayan/misc');
+  @include meta.load-css('sharlayan/admin');
+}

@@ -240,6 +240,14 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
         <LocalSettingsPageItem
           settings={settings}
+          item={['hide_compose_language']}
+          id='mastodon-settings--hide_compose_language'
+          onChange={onChange}
+        >
+          <FormattedMessage id='settings.hide_compose_language' defaultMessage='Hide the language selector in the compose box' />
+        </LocalSettingsPageItem>
+        <LocalSettingsPageItem
+          settings={settings}
           item={['mention_reblogger']}
           id='mastodon-settings--mention_reblogger'
           onChange={onChange}

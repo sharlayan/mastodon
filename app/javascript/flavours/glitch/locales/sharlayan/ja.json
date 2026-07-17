@@ -340,6 +340,7 @@
   "settings.contrast.high": "ハイコントラスト",
   "settings.fullwidth_view": "Stretch columns to full width (Desktop mode only)",
   "settings.fullwidth_view_hint": "Stretches columns to fill all the available space.",
+  "settings.hide_compose_language": "投稿ボックスの言語選択を非表示",
   "settings.hide_mfm_compose_hint": "投稿ボックスのMFMプレビューと構文リンクを非表示",
   "settings.inline_compose_timelines": "タイムラインの上部に投稿ボックスを表示",
   "settings.inline_compose_timelines.hint": "Twitter風: ホーム・ローカル・連合タイムラインの上部に投稿ボックスを表示します（シングルカラムモードのみ）",

@@ -379,6 +379,8 @@ ja:
       invalid_password: パスワードが正しくありません
       limit: ページの上限数に達しています
       own_page: 自分のページにはいいねできません
+  pagination:
+    truncate_html: "&hellip;"
   settings:
     avatar_decorations: アバターデコレーション
     custom_css: カスタムCSS
