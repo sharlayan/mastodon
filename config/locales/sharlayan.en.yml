@@ -374,6 +374,16 @@ en:
       happens, tick <strong>Disable custom CSS</strong> on the login form to recover.
   exports:
     clips: Clips
+    pages: Pages
+  page_backups:
+    title: Pages backup
+    description: Download a ZIP backup of your pages and their images, or restore one here. Imported page passwords remain protected by their existing password.
+    download: Download pages backup
+    upload: Restore pages backup
+    merge: Add to existing pages
+    overwrite: Replace all existing pages
+    imported: Pages backup restored.
+    invalid_archive: This is not a valid pages backup.
   generic:
     edit: Edit
   imports:

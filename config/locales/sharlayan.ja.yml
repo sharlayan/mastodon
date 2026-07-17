@@ -321,6 +321,16 @@ ja:
     preamble_html: ウェブインターフェースで、自分のセッションにのみ適用されるCSSを設定できます。不正または悪意のあるCSSはレイアウトを壊す可能性があります。その場合はログインフォームで<strong>カスタムCSSを無効にする</strong>にチェックを入れて復旧できます。
   exports:
     clips: クリップ
+    pages: ページ
+  page_backups:
+    title: ページのバックアップ
+    description: ページと画像を ZIP でバックアップし、ここから復元できます。パスワード保護ページは元のパスワードを維持します。
+    download: ページのバックアップをダウンロード
+    upload: ページのバックアップを復元
+    merge: 既存のページに追加
+    overwrite: 既存のページをすべて置き換える
+    imported: ページのバックアップを復元しました。
+    invalid_archive: 有効なページのバックアップファイルではありません。
   generic:
     edit: 編集
   imports:

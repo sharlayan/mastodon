@@ -49,6 +49,11 @@
           %th= t('exports.clips')
           %td= number_with_delimiter @export_summary.total_clips
           %td= table_link_to 'download', t('exports.json'), settings_exports_clips_path(format: :json)
+      - if Setting.pages_enabled
+        %tr
+          %th= t('exports.pages')
+          %td= number_with_delimiter current_account.pages.count
+          %td= table_link_to 'download', t('page_backups.title'), settings_page_backup_path
 
 %hr.spacer/
 
