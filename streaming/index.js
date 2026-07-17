@@ -18,7 +18,7 @@ import { logger, httpLogger, initializeLogLevel, attachWebsocketHttpLogger, crea
 import { setupMetrics } from './metrics.js';
 import * as Redis from './redis.js';
 import { ACCESS_TOKEN_QUERY } from './extensions/auth.js';
-import { CHANNEL_NAMES as EXTENSION_CHANNEL_NAMES, createStreamingExtensions } from './extensions/index.js';
+import { createStreamingExtensions } from './extensions/index.js';
 import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -124,7 +124,6 @@ const CHANNEL_NAMES = [
   'public:remote:media',
   'hashtag',
   'hashtag:local',
-  ...EXTENSION_CHANNEL_NAMES,
 ];
 
 const startServer = async () => {
@@ -410,16 +409,21 @@ const startServer = async () => {
    * @param {Request} req
    * @returns {Promise<ResolvedAccount>}
    */
-  const accountFromRequest = async (req) => {
+  const accountFromRequest = (req) => new Promise((resolve, reject) => {
+    const authorization = req.headers.authorization;
     const query         = parseQueryString(req);
-    const standardToken = extensions.standardTokenFromRequest(req, query);
+    const accessToken   = query?.access_token || req.headers['sec-websocket-protocol'];
 
-    if (standardToken) {
-      return accountFromToken(standardToken, req);
+    if (!authorization && !accessToken) {
+      resolve(extensions.authenticateFallback(req, query, accountFromToken));
+      return;
     }
 
-    return extensions.authenticateFallback(req, query, accountFromToken);
-  };
+    const token = authorization ? authorization.replace(/^Bearer /, '') : accessToken;
+
+    // @ts-expect-error
+    resolve(accountFromToken(token, req));
+  });
 
   /**
    * @param {Request} req
@@ -724,10 +728,11 @@ const startServer = async () => {
         return;
       }
 
-      const extensionFilter = extensions.filterPayload(req, payload);
+      const accountDomain = extensions.preparePayload(req, payload);
 
       // Filter based on language:
-      if (!extensionFilter.acceptedLanguage) {
+      // @ts-expect-error
+      if (Array.isArray(req.chosenLanguages) && req.chosenLanguages.indexOf(payload.language) === -1) {
         // @ts-expect-error
         log.debug(`Message ${payload.id} filtered by language (${payload.language})`);
         return;
@@ -765,7 +770,15 @@ const startServer = async () => {
                           account.id].concat(targetAccountIds)),
         ];
 
-        queries.push(extensionFilter.domain.query(client));
+        if (accountDomain) {
+          queries.push(accountDomain.query(client));
+        }
+
+        // @ts-expect-error
+        if (!payload.filtered && !req.cachedFilters) {
+          // @ts-expect-error
+          queries.push(client.query('SELECT filter.id AS id, filter.phrase AS title, filter.context AS context, filter.expires_at AS expires_at, filter.action AS filter_action, keyword.keyword AS keyword, keyword.whole_word AS whole_word FROM custom_filter_keywords keyword JOIN custom_filters filter ON keyword.custom_filter_id = filter.id WHERE filter.account_id = $1 AND (filter.expires_at IS NULL OR filter.expires_at > NOW())', [req.accountId]));
+        }
 
         Promise.all(queries).then(values => {
           releasePgConnection();
@@ -773,7 +786,7 @@ const startServer = async () => {
           // Handling blocks & mutes and domain blocks: If one of those applies,
           // then we don't transmit the payload of the event to the client
           // @ts-expect-error
-          if (values[0].rows.length > 0 || values[1].blocked) {
+          if (values[0].rows.length > 0 || (accountDomain && values[1].rows.length > 0)) {
             return;
           }
 
@@ -790,7 +803,7 @@ const startServer = async () => {
           // @ts-ignore
           if (!req.cachedFilters) {
             // @ts-expect-error
-            const filterRows = values[1].filterRows;
+            const filterRows = values[accountDomain ? 2 : 1].rows;
 
             req.cachedFilters = filterRows.reduce((cache, filter) => {
               if (cache[filter.id]) {
@@ -1044,7 +1057,6 @@ const startServer = async () => {
    * @typedef StreamParams
    * @property {string} [tag]
    * @property {string} [list]
-   * @property {string} [antenna]
    * @property {string} [only_media]
    */
 
@@ -1179,10 +1191,7 @@ const startServer = async () => {
    * @returns {string[]}
    */
   const streamNameFromChannelName = (channelName, params) => {
-    const extensionName = extensions.channel.streamName(channelName, params);
-    if (extensionName) {
-      return extensionName;
-    } else if (channelName === 'list' && params.list) {
+    if (channelName === 'list' && params.list) {
       return [channelName, params.list];
     } else if (['hashtag', 'hashtag:local'].includes(channelName) && params.tag) {
       return [channelName, params.tag];
@@ -1214,7 +1223,7 @@ const startServer = async () => {
         return;
       }
 
-      const onSend = streamToWs(request, websocket, streamNameFromChannelName(channelName, params));
+      const onSend = streamToWs(request, websocket, Reflect.get(options, 'streamName') || streamNameFromChannelName(channelName, params));
       const stopHeartbeat = subscriptionHeartbeat(channelIds);
       const listener = streamFrom(channelIds, request, logger, onSend, undefined, 'websocket', options);
 
@@ -1325,6 +1334,8 @@ const startServer = async () => {
     subscriptionHeartbeat,
     channelNameToIds,
     logger,
+    parseJSON,
+    wss,
   });
 
   /**
@@ -1353,8 +1364,6 @@ const startServer = async () => {
       logger: log,
       subscriptions: {},
     };
-
-    extensions.attachSession(session, parseJSON);
 
     ws.on('close', function onWebsocketClose() {
       const subscriptions = Object.keys(session.subscriptions);

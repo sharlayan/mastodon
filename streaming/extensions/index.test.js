@@ -77,20 +77,15 @@ test('domain filter checks status and boost authors with follow exceptions', asy
 
   const result = await filter.query(client, true);
 
-  assert.equal(result.blocked, false);
-  assert.deepEqual(result.filterRows, []);
+  assert.deepEqual(result.rows, []);
   assert.deepEqual(calls[0].params, ['1', ['example.com', 'example.net'], ['2', '3']]);
   assert.match(calls[0].sql, /NOT EXISTS \(SELECT 1 FROM follows/);
 });
 
-test('domain filter keeps a stable result when there are no remote domains', async () => {
-  const calls = [];
-  const filter = createDomainFilter({ accountId: '1', cachedFilters: {} }, { account: { id: '2', acct: 'alice' } });
-  const result = await filter.query({ query: async (...args) => { calls.push(args); return { rows: [] }; } }, false);
+test('domain filter keeps a stable result when there are no remote domains', () => {
+  const result = createDomainFilter({ accountId: '1', cachedFilters: {} }, { account: { id: '2', acct: 'alice' } });
 
-  assert.equal(result.blocked, false);
-  assert.deepEqual(result.filterRows, []);
-  assert.equal(calls.length, 0);
+  assert.equal(result, undefined);
 });
 
 test('Redis callback failures do not stop later callbacks', () => {

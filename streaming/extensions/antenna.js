@@ -29,10 +29,8 @@ const authorizeChannel = async (pgPool, req, name, params) => {
 
   return {
     channelIds: [`timeline:antenna:${params.antenna}`],
-    options: { needsFiltering: false, allowLocalOnly: true },
+    options: { needsFiltering: false, allowLocalOnly: true, streamName: [name, params.antenna] },
   };
 };
 
-const streamName = (channelName, params) => channelName === CHANNEL_NAME && params.antenna ? [channelName, params.antenna] : undefined;
-
-export { CHANNEL_NAME, authorizeChannel, channelNameFromPath, streamName };
+export { CHANNEL_NAME, authorizeChannel, channelNameFromPath };

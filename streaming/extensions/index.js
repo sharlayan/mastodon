@@ -1,7 +1,6 @@
 import { authenticateFallback, standardTokenFromRequest } from './auth.js';
 import * as antenna from './antenna.js';
 import { createDomainFilter } from './domain_filter.js';
-import { acceptsLanguage } from './language.js';
 import { createMisskeyExtension } from './misskey.js';
 
 const CHANNEL_NAMES = [antenna.CHANNEL_NAME];
@@ -18,6 +17,15 @@ const dispatchCallbacks = (callbacks, message, onError) => {
 
 const createStreamingExtensions = (deps) => {
   const misskey = createMisskeyExtension(deps);
+  deps.wss.on('connection', (websocket, request, logger) => {
+    const session = { websocket, request, logger, subscriptions: {} };
+    websocket.on('close', () => misskey.cleanup(session));
+    websocket.on('message', (data, isBinary) => {
+      if (isBinary) return;
+      const json = deps.parseJSON(data.toString('utf8'), request);
+      if (json && misskey.isMisskeyType(json.type)) misskey.handleMessage(session, json);
+    });
+  });
 
   return {
     authenticateFallback: (req, query, accountFromToken) => authenticateFallback(req, query, accountFromToken, misskey.isEnabled),
@@ -25,21 +33,10 @@ const createStreamingExtensions = (deps) => {
     channel: {
       fromPath: (req) => antenna.channelNameFromPath(req.path),
       authorize: (req, name, params) => antenna.authorizeChannel(deps.pgPool, req, name, params),
-      streamName: antenna.streamName,
     },
-    filterPayload(req, payload) {
-      return {
-        acceptedLanguage: acceptsLanguage(req.chosenLanguages, payload.language),
-        domain: createDomainFilter(req, payload),
-      };
-    },
-    attachSession(session, parseJSON) {
-      session.websocket.on('close', () => misskey.cleanup(session));
-      session.websocket.on('message', (data, isBinary) => {
-        if (isBinary) return;
-        const json = parseJSON(data.toString('utf8'), session.request);
-        if (json && misskey.isMisskeyType(json.type)) misskey.handleMessage(session, json);
-      });
+    preparePayload(req, payload) {
+      if (!payload.language) payload.language = 'und';
+      return createDomainFilter(req, payload);
     },
     dispatchCallbacks,
   };
