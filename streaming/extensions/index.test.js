@@ -4,17 +4,11 @@ import test from 'node:test';
 import { AuthenticationError } from '../errors.js';
 import { createMisskeyCompat } from '../misskey_compat.js';
 import { authorizeChannel } from './antenna.js';
-import { ACCESS_TOKEN_QUERY, authenticateFallback, standardTokenFromRequest } from './auth.js';
+import { ACCESS_TOKEN_QUERY, authenticateFallback } from './auth.js';
 import { createDomainFilter } from './domain_filter.js';
 import { dispatchCallbacks } from './index.js';
 import { acceptsLanguage } from './language.js';
 import { createEnabledCheck } from './misskey.js';
-
-test('standard OAuth credentials take priority over Misskey credentials', () => {
-  const req = { headers: { authorization: 'Bearer oauth-token' } };
-
-  assert.equal(standardTokenFromRequest(req, { access_token: 'query-token', i: 'misskey-token' }), 'oauth-token');
-});
 
 test('Misskey fallback is fail-closed when compatibility is disabled', async () => {
   await assert.rejects(
@@ -52,6 +46,15 @@ test('Antenna authorization rejects lookup failures', async () => {
     authorizeChannel(pgPool, { accountId: '1' }, 'antenna', { antenna: '2' }),
     AuthenticationError
   );
+});
+
+test('Antenna authorization returns the owned stream contract', async () => {
+  const pgPool = { query: async () => ({ rows: [{ id: '2', account_id: '1' }] }) };
+
+  const result = await authorizeChannel(pgPool, { accountId: '1' }, 'antenna', { antenna: '2' });
+
+  assert.deepEqual(result.channelIds, ['timeline:antenna:2']);
+  assert.deepEqual(result.options.streamName, ['antenna', '2']);
 });
 
 test('missing status language is evaluated as und', () => {

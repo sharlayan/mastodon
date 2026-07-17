@@ -1,9 +1,8 @@
-import { authenticateFallback, standardTokenFromRequest } from './auth.js';
+import { authenticateFallback } from './auth.js';
 import * as antenna from './antenna.js';
 import { createDomainFilter } from './domain_filter.js';
+import { normalizeLanguage } from './language.js';
 import { createMisskeyExtension } from './misskey.js';
-
-const CHANNEL_NAMES = [antenna.CHANNEL_NAME];
 
 const dispatchCallbacks = (callbacks, message, onError) => {
   callbacks.forEach(callback => {
@@ -29,17 +28,16 @@ const createStreamingExtensions = (deps) => {
 
   return {
     authenticateFallback: (req, query, accountFromToken) => authenticateFallback(req, query, accountFromToken, misskey.isEnabled),
-    standardTokenFromRequest,
     channel: {
       fromPath: (req) => antenna.channelNameFromPath(req.path),
       authorize: (req, name, params) => antenna.authorizeChannel(deps.pgPool, req, name, params),
     },
     preparePayload(req, payload) {
-      if (!payload.language) payload.language = 'und';
+      payload.language = normalizeLanguage(payload.language);
       return createDomainFilter(req, payload);
     },
     dispatchCallbacks,
   };
 };
 
-export { CHANNEL_NAMES, createStreamingExtensions, dispatchCallbacks };
+export { createStreamingExtensions, dispatchCallbacks };
