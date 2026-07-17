@@ -50,6 +50,7 @@ class Status < ApplicationRecord
   include Status::Visibility
   include Status::InteractionPolicyConcern
   include Sharlayan::StatusExtensions
+  include Sharlayan::Status::RoleplayHidden
 
   CACHEABLE_ASSOCIATIONS = [
     :application,
@@ -122,7 +123,6 @@ class Status < ApplicationRecord
   has_one :poll, inverse_of: :status, dependent: :destroy
   has_one :trend, class_name: 'StatusTrend', inverse_of: :status, dependent: nil
   has_one :quote, inverse_of: :status, dependent: :destroy
-  has_one :rp_hidden_status, inverse_of: :status, dependent: :delete
 
   validates :uri, uniqueness: true, presence: true, unless: :local?
   validates :text, presence: true, unless: -> { with_media? || reblog? || with_quote? }
@@ -133,13 +133,7 @@ class Status < ApplicationRecord
 
   accepts_nested_attributes_for :poll
 
-  default_scope do
-    scope = recent.kept
-    RoleplayModeHelper.roleplay_mode? ? scope.not_rp_hidden : scope
-  end
-
   scope :recent, -> { reorder(id: :desc) }
-  scope :not_rp_hidden, -> { where('NOT EXISTS (SELECT 1 FROM rp_hidden_statuses WHERE rp_hidden_statuses.status_id = statuses.id)') }
   scope :remote, -> { where(local: false).where.not(uri: nil) }
   scope :local,  -> { where(local: true).or(where(uri: nil)) }
   scope :with_accounts, ->(ids) { where(id: ids).includes(:account) }
@@ -374,10 +368,6 @@ class Status < ApplicationRecord
   end
 
   class << self
-    def with_rp_hidden
-      unscoped.recent.kept
-    end
-
     def as_direct_timeline(account, limit = 20, max_id = nil, since_id = nil)
       # direct timeline is mix of direct message from_me and to_me.
       # 2 queries are executed with pagination.
@@ -457,10 +447,6 @@ class Status < ApplicationRecord
     discard_time = Time.current
     Status.unscoped.where(reblog_of_id: id, deleted_at: [nil, deleted_at]).in_batches.update_all(deleted_at: discard_time) unless reblog?
     update_attribute(:deleted_at, discard_time)
-  end
-
-  def rp_hidden?
-    association(:rp_hidden_status).loaded? ? rp_hidden_status.present? : RpHiddenStatus.exists?(status_id: id)
   end
 
   def unlink_from_conversations!
