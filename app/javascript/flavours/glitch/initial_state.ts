@@ -1,9 +1,19 @@
 import type { ApiAnnualReportState } from './api/annual_report';
 import type { ApiAccountJSON } from './api_types/accounts';
+import { readSharlayanInitialState } from './sharlayan/initial_state';
+import type {
+  SharlayanInitialState,
+  SharlayanInitialStateMeta,
+} from './sharlayan/initial_state';
+
+export type {
+  ApiCustomEmojiMuteJSON,
+  ApiReactionMuteJSON,
+} from './sharlayan/initial_state';
 
 type InitialStateLanguage = [code: string, name: string, localName: string];
 
-interface InitialStateMeta {
+interface InitialStateMeta extends SharlayanInitialStateMeta {
   access_token: string;
   advanced_layout?: boolean;
   auto_play_gif: boolean;
@@ -24,7 +34,6 @@ interface InitialStateMeta {
   limited_federation_mode: boolean;
   locale: string;
   mascot: string | null;
-  max_reactions: number;
   me?: string;
   moved_to_account_id?: string;
   owner?: string;
@@ -37,22 +46,6 @@ interface InitialStateMeta {
   single_user_mode: boolean;
   source_url: string;
   streaming_api_base_url: string;
-  force_local_only: boolean;
-  circles_enabled: boolean;
-  clips_enabled: boolean;
-  pages_enabled: boolean;
-  antenna_enabled: boolean;
-  drive_enabled: boolean;
-  board_announcements_enabled: boolean;
-  avatar_decorations_enabled: boolean;
-  avatar_decorations_federation_enabled: boolean;
-  color_scheme?: 'auto' | 'light' | 'dark';
-  contrast?: 'auto' | 'high';
-  show_avatar_decorations?: boolean;
-  show_federated_avatar_decorations?: boolean;
-  avatar_decoration_shape?: 'none' | 'round' | 'square';
-  local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
-  local_status_page_access: 'public' | 'authenticated' | 'disabled';
   local_live_feed_access: 'public' | 'authenticated' | 'disabled';
   remote_live_feed_access: 'public' | 'authenticated' | 'disabled';
   local_topic_feed_access: 'public' | 'authenticated';
@@ -63,40 +56,12 @@ interface InitialStateMeta {
   use_blurhash: boolean;
   use_pending_items?: boolean;
   version: string;
-  visible_reactions: number;
   sso_redirect: string;
   status_page_url: string;
   terms_of_service_enabled: boolean;
   emoji_style?: string;
   wrapstodon?: InitialStateWrapstodon | null;
   default_content_type: string;
-  show_instance_info: boolean;
-  custom_emoji_size: boolean;
-  reaction_custom_emoji_size: boolean;
-  reaction_local_emoji_only: boolean;
-  reactions_enabled: boolean;
-  mfm_enabled: boolean;
-  mfm_animations: boolean;
-  mfm_fold_mode: 'show' | 'sensitive' | 'all';
-  mfm_allow_composition: boolean;
-  custom_emoji_mute_hidden?: boolean;
-  custom_emoji_mutes?: ApiCustomEmojiMuteJSON[];
-  reaction_mutes?: ApiReactionMuteJSON[];
-}
-
-export interface ApiCustomEmojiMuteJSON {
-  id: string;
-  prefix: string;
-  domain: string;
-  reject_reactions: boolean;
-  hide_in_picker: boolean;
-}
-
-export interface ApiReactionMuteJSON {
-  id: string;
-  target_account_id: string | null;
-  target_acct: string | null;
-  target_domain: string | null;
 }
 
 interface IntialStateRole {
@@ -129,7 +94,7 @@ interface InitialStateCompose {
   me?: string;
 }
 
-export interface InitialState {
+export interface InitialState extends SharlayanInitialState {
   accounts: Record<string, ApiAccountJSON>;
   languages: InitialStateLanguage[];
   compose: InitialStateCompose;
@@ -141,7 +106,6 @@ export interface InitialState {
   local_settings: any;
   max_feed_hashtags: number;
   poll_limits: PollLimits;
-  max_reactions: number;
 }
 
 const element = document.getElementById('initial-state');
@@ -181,8 +145,6 @@ function getMeta<K extends keyof InitialStateMeta>(
 export const activityApiEnabled = getMeta('activity_api_enabled');
 export const autoPlayGif = getMeta('auto_play_gif');
 export const boostModal = getMeta('boost_modal');
-export const colorScheme = getMeta('color_scheme') ?? 'auto';
-export const contrast = getMeta('contrast') ?? 'auto';
 export const quickBoosting = getMeta('quick_boosting');
 export const deleteModal = getMeta('delete_modal');
 export const missingAltTextModal = getMeta('missing_alt_text_modal');
@@ -196,7 +158,6 @@ export const expandSpoilers = getMeta('expand_spoilers');
 export const forceSingleColumn = !getMeta('advanced_layout');
 export const limitedFederationMode = getMeta('limited_federation_mode');
 export const mascot = getMeta('mascot');
-export const maxReactions = initialState?.max_reactions ?? 1;
 export const me = getMeta('me');
 export const movedToAccountId = getMeta('moved_to_account_id');
 export const owner = getMeta('owner');
@@ -209,18 +170,6 @@ export const trendsEnabled = getMeta('trends_enabled');
 export const showTrends = getMeta('show_trends');
 export const singleUserMode = getMeta('single_user_mode');
 export const source_url = getMeta('source_url');
-export const localAccountStatusesAccess = getMeta(
-  'local_account_statuses_access',
-);
-export const localStatusPageAccess = getMeta('local_status_page_access');
-export const forceLocalOnly = getMeta('force_local_only');
-export const circlesEnabled = getMeta('circles_enabled') === true;
-export const clipsEnabled = getMeta('clips_enabled') === true;
-export const pagesEnabled = getMeta('pages_enabled') === true;
-export const antennaEnabled = getMeta('antenna_enabled') === true;
-export const driveEnabled = getMeta('drive_enabled') === true;
-export const boardAnnouncementsEnabled =
-  getMeta('board_announcements_enabled') === true;
 export const localLiveFeedAccess = getMeta('local_live_feed_access');
 export const remoteLiveFeedAccess = getMeta('remote_live_feed_access');
 export const localTopicFeedAccess = getMeta('local_topic_feed_access');
@@ -230,36 +179,43 @@ export const landingPage = getMeta('landing_page');
 export const useBlurhash = getMeta('use_blurhash');
 export const usePendingItems = getMeta('use_pending_items');
 export const version = getMeta('version');
-export const visibleReactions = getMeta('visible_reactions');
 export const criticalUpdatesPending = initialState?.critical_updates_pending;
 export const statusPageUrl = getMeta('status_page_url');
 export const sso_redirect = getMeta('sso_redirect');
 export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
-export const showInstanceInfo = getMeta('show_instance_info');
-export const customEmojiSize = getMeta('custom_emoji_size');
-export const customEmojiMutes = getMeta('custom_emoji_mutes') ?? [];
-export const customEmojiMuteHidden =
-  getMeta('custom_emoji_mute_hidden') === true;
-export const reactionMutes = getMeta('reaction_mutes') ?? [];
-export const reactionCustomEmojiSize = getMeta('reaction_custom_emoji_size');
-export const reactionLocalEmojiOnly = getMeta('reaction_local_emoji_only');
-export const reactionsEnabled = getMeta('reactions_enabled') !== false;
-export const mfmEnabled = getMeta('mfm_enabled') !== false;
-export const mfmAllowComposition = getMeta('mfm_allow_composition') === true;
-export const mfmAnimations = getMeta('mfm_animations') !== false;
-export const mfmFoldMode =
-  (getMeta('mfm_fold_mode') as string | undefined) ?? 'sensitive';
 export const wrapstodon = getMeta('wrapstodon');
-export const avatarDecorationsEnabled = getMeta('avatar_decorations_enabled');
-export const avatarDecorationsFederationEnabled = getMeta(
-  'avatar_decorations_federation_enabled',
-);
-export const showAvatarDecorations =
-  getMeta('show_avatar_decorations') ?? false;
-export const showFederatedAvatarDecorations =
-  getMeta('show_federated_avatar_decorations') ?? false;
-export const avatarDecorationShape =
-  getMeta('avatar_decoration_shape') ?? (me ? 'none' : 'round');
+export const {
+  colorScheme,
+  contrast,
+  maxReactions,
+  localAccountStatusesAccess,
+  localStatusPageAccess,
+  forceLocalOnly,
+  circlesEnabled,
+  clipsEnabled,
+  pagesEnabled,
+  antennaEnabled,
+  driveEnabled,
+  boardAnnouncementsEnabled,
+  visibleReactions,
+  showInstanceInfo,
+  customEmojiSize,
+  customEmojiMutes,
+  customEmojiMuteHidden,
+  reactionMutes,
+  reactionCustomEmojiSize,
+  reactionLocalEmojiOnly,
+  reactionsEnabled,
+  mfmEnabled,
+  mfmAllowComposition,
+  mfmAnimations,
+  mfmFoldMode,
+  avatarDecorationsEnabled,
+  avatarDecorationsFederationEnabled,
+  showAvatarDecorations,
+  showFederatedAvatarDecorations,
+  avatarDecorationShape,
+} = readSharlayanInitialState(initialState, Boolean(me));
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

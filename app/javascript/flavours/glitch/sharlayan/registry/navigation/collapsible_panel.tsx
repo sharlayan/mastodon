@@ -1,66 +1,46 @@
-import { useState, useCallback, useId } from 'react';
+import { useCallback, useId, useState } from 'react';
 
 import KeyboardArrowDownIcon from '@/material-icons/400-24px/keyboard_arrow_down.svg?react';
 import KeyboardArrowUpIcon from '@/material-icons/400-24px/keyboard_arrow_up.svg?react';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
-import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 
-export const CollapsiblePanel: React.FC<{
+export const SharlayanCollapsiblePanel: React.FC<{
   children: React.ReactNode[];
-  to: string;
   title: string;
   collapseTitle: string;
   expandTitle: string;
   icon: string;
   iconComponent: IconProp;
-  activeIconComponent?: IconProp;
-  loading?: boolean;
-}> = ({
-  children,
-  to,
-  icon,
-  iconComponent,
-  activeIconComponent,
-  title,
-  collapseTitle,
-  expandTitle,
-  loading,
-}) => {
+}> = ({ children, icon, iconComponent, title, collapseTitle, expandTitle }) => {
   const [expanded, setExpanded] = useState(false);
   const accessibilityId = useId();
-
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((event?: React.MouseEvent) => {
+    event?.preventDefault();
     setExpanded((value) => !value);
-  }, [setExpanded]);
+  }, []);
 
   return (
     <li className='navigation-panel__list-panel'>
       <div className='navigation-panel__list-panel__header'>
         <ColumnLink
           transparent
-          to={to}
           icon={icon}
           iconComponent={iconComponent}
-          activeIconComponent={activeIconComponent}
           text={title}
           id={`${accessibilityId}-title`}
+          onClick={handleClick}
         />
 
-        {(loading || children.length > 0) && (
+        {children.length > 0 && (
           <>
             <div className='navigation-panel__list-panel__header__sep' />
-
             <IconButton
               icon='down'
               expanded={expanded}
               iconComponent={
-                loading
-                  ? LoadingIndicator
-                  : expanded
-                    ? KeyboardArrowUpIcon
-                    : KeyboardArrowDownIcon
+                expanded ? KeyboardArrowUpIcon : KeyboardArrowDownIcon
               }
               title={expanded ? collapseTitle : expandTitle}
               onClick={handleClick}
@@ -72,7 +52,7 @@ export const CollapsiblePanel: React.FC<{
 
       {children.length > 0 && expanded && (
         <div
-          className='navigation-panel__list-panel__items'
+          className='navigation-panel__list-panel__items navigation-panel__list-panel__items--with-icons'
           role='region'
           id={`${accessibilityId}-content`}
           aria-labelledby={`${accessibilityId}-title`}
