@@ -16,6 +16,12 @@ import { useAppSelector } from '@/flavours/glitch/store';
 import { Footer } from 'flavours/glitch/features/custom_homepage/components/footer';
 import { Header } from 'flavours/glitch/features/custom_homepage/components/header';
 import { CollapsibleNavigationPanel } from 'flavours/glitch/features/navigation_panel';
+import {
+  AntennaTimeline,
+  BoardAnnouncements,
+  ConversationThread,
+  ReactedStatuses,
+} from 'flavours/glitch/sharlayan/registry/routes';
 
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import {
@@ -26,14 +32,10 @@ import {
   PublicTimeline,
   HashtagTimeline,
   DirectTimeline,
-  ConversationThread,
   FavouritedStatuses,
   BookmarkedStatuses,
   ListTimeline,
-  AntennaTimeline,
   Directory,
-  ReactedStatuses,
-  BoardAnnouncements,
 } from '../util/async-components';
 import { useColumnsContext } from '../util/columns_context';
 

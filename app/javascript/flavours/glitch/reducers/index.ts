@@ -3,23 +3,17 @@ import { Record as ImmutableRecord, mergeDeep } from 'immutable';
 import { loadingBarReducer } from 'react-redux-loading-bar';
 import { combineReducers } from 'redux-immutable';
 
-import { accountSwitchesReducer } from './account_switches';
+import { sharlayanReducers } from '../sharlayan/registry/reducers';
+
 import { accountsReducer } from './accounts';
 import { accountsFamiliarFollowersReducer } from './accounts_familiar_followers';
 import { accountsMapReducer } from './accounts_map';
 import { alertsReducer } from './alerts';
 import announcements from './announcements';
-import antennas from './antennas';
-import { boardAnnouncementsReducer } from './board_announcements';
-import { circlesReducer } from './circles';
-import { clipsReducer } from './clips';
 import { composeReducer } from './compose';
 import { contextsReducer } from './contexts';
 import conversations from './conversations';
-import { customEmojiMutesReducer } from './custom_emoji_mutes';
-import direct_compose from './direct_compose';
 import { dropdownMenuReducer } from './dropdown_menu';
-import favorite_emojis from './favorite_emojis';
 import filters from './filters';
 import height_cache from './height_cache';
 import history from './history';
@@ -37,9 +31,7 @@ import notifications from './notifications';
 import { pictureInPictureReducer } from './picture_in_picture';
 import { pollsReducer } from './polls';
 import push_notifications from './push_notifications';
-import { reactionMutesReducer } from './reaction_mutes';
 import { relationshipsReducer } from './relationships';
-import scheduled_statuses from './scheduled_statuses';
 import { searchReducer } from './search';
 import { serverReducer } from './server';
 import settings from './settings';
@@ -53,9 +45,7 @@ import trends from './trends';
 import user_lists from './user_lists';
 
 const reducers = {
-  accountSwitches: accountSwitchesReducer,
   announcements,
-  boardAnnouncements: boardAnnouncementsReducer,
   dropdownMenu: dropdownMenuReducer,
   timelines,
   meta,
@@ -80,20 +70,12 @@ const reducers = {
   notifications,
   notificationGroups: notificationGroupsReducer,
   height_cache,
-  favorite_emojis,
   lists: listsReducer,
-  clips: clipsReducer,
-  circles: circlesReducer,
-  antennas,
   followedTags: followedTagsReducer,
-  custom_emoji_mutes: customEmojiMutesReducer,
-  reaction_mutes: reactionMutesReducer,
   filters,
   conversations,
-  direct_compose,
   suggestions: suggestionsReducer,
   polls: pollsReducer,
-  scheduled_statuses,
   trends,
   markers: markersReducer,
   picture_in_picture: pictureInPictureReducer,
@@ -101,6 +83,7 @@ const reducers = {
   notificationPolicy: notificationPolicyReducer,
   notificationRequests: notificationRequestsReducer,
   navigation: navigationReducer,
+  ...sharlayanReducers,
   ...sliceReducers,
 };
 
