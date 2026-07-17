@@ -4,11 +4,11 @@ import { useIntl, defineMessages } from 'react-intl';
 
 import SmallDescriptionIcon from '@/material-icons/400-20px/description.svg?react';
 import SmallMarkdownIcon from '@/material-icons/400-20px/markdown.svg?react';
-import BrushIcon from '@/material-icons/400-24px/brush.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import MarkdownIcon from '@/material-icons/400-24px/markdown.svg?react';
 import { changeComposeContentType } from 'flavours/glitch/actions/compose';
 import { mfmAllowComposition } from 'flavours/glitch/initial_state';
+import { extendContentTypeOptions, getSharlayanContentTypeIcon } from 'flavours/glitch/sharlayan/compose/content_type';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import { DropdownIconButton } from './dropdown_icon_button';
@@ -19,8 +19,6 @@ const messages = defineMessages({
   plain_text_meta: { id: 'compose.content-type.plain_meta', defaultMessage: 'Write with no advanced formatting' },
   markdown_label: { id: 'compose.content-type.markdown', defaultMessage: 'Markdown' },
   markdown_meta: { id: 'compose.content-type.markdown_meta', defaultMessage: 'Format your posts using Markdown' },
-  mfm_label: { id: 'compose.content-type.mfm', defaultMessage: 'MFM' },
-  mfm_meta: { id: 'compose.content-type.mfm_meta', defaultMessage: 'Format your posts using Markup language For Misskey' },
 });
 
 export const ContentTypeButton = () => {
@@ -43,26 +41,23 @@ export const ContentTypeButton = () => {
     { icon: 'arrow-circle-down', iconComponent: MarkdownIcon, value: 'text/markdown', text: intl.formatMessage(messages.markdown_label), meta: intl.formatMessage(messages.markdown_meta) },
   ];
 
-  if (mfmAllowComposition) {
-    options.push({ icon: 'brush', iconComponent: BrushIcon, value: 'text/x-mfm', text: intl.formatMessage(messages.mfm_label), meta: intl.formatMessage(messages.mfm_meta) });
-  }
+  extendContentTypeOptions(options, intl, mfmAllowComposition);
 
-  const icon = {
+  const upstreamIcon = {
     'text/plain': 'file-text',
     'text/markdown': 'arrow-circle-down',
-    'text/x-mfm': 'brush',
   }[contentType] ?? 'file-text';
 
-  const iconComponent = {
+  const upstreamIconComponent = {
     'text/plain': SmallDescriptionIcon,
     'text/markdown': SmallMarkdownIcon,
-    'text/x-mfm': BrushIcon,
   }[contentType] ?? SmallDescriptionIcon;
+  const sharlayanIcon = getSharlayanContentTypeIcon(contentType);
 
   return (
     <DropdownIconButton
-      icon={icon}
-      iconComponent={iconComponent}
+      icon={sharlayanIcon?.icon ?? upstreamIcon}
+      iconComponent={sharlayanIcon?.iconComponent ?? upstreamIconComponent}
       onChange={handleChange}
       options={options}
       title={intl.formatMessage(messages.change_content_type)}

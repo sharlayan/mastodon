@@ -59,7 +59,6 @@ import {
   COMPOSE_CHANGE_MEDIA_ORDER,
   COMPOSE_SET_STATUS,
   COMPOSE_FOCUS,
-  COMPOSE_SCHEDULED_AT_CHANGE,
 } from '../actions/compose';
 import { REDRAFT } from '../actions/statuses';
 import { STORE_HYDRATE } from '../actions/store';
@@ -69,6 +68,7 @@ import { unescapeHTML } from '../utils/html';
 import { overwrite } from '../utils/js_helpers';
 import { privacyPreference } from '../utils/privacy_preference';
 import { uuid } from '../uuid';
+import { reduceScheduledCompose } from '../sharlayan/compose/scheduled_state';
 
 const initialState = ImmutableMap({
   mounted: 0,
@@ -417,6 +417,9 @@ const calculateProgress = (loaded, total) => Math.min(Math.round((loaded / total
 
 /** @type {import('@reduxjs/toolkit').Reducer<typeof initialState>} */
 export const composeReducer = (state = initialState, action) => {
+  const scheduledComposeState = reduceScheduledCompose(state, action);
+  if (scheduledComposeState) return scheduledComposeState;
+
   if (changeComposeVisibility.match(action)) {
     return state
       .set('privacy', action.payload)
@@ -770,60 +773,6 @@ export const composeReducer = (state = initialState, action) => {
       .set('focusDate', new Date())
       .update('text', text => text.length > 0 ? text : action.defaultText)
       .update('caretPosition', position => action.caretStart ? 0 : position);
-  case 'COMPOSE_SET_SCHEDULED': {
-    const s = action.scheduledStatus;
-    const params = s.get('params') || ImmutableMap();
-    const getParam = (key) => (params.get ? params.get(key) : params[key]);
-    const text = getParam('status') ?? getParam('text') ?? '';
-    const spoilerText = getParam('spoiler_text') || '';
-    const visibility = getParam('visibility') || 'public';
-    const language = getParam('language');
-    const pollParam = getParam('poll');
-    const mediaAttachments = s.get('media_attachments') || state.get('media_attachments');
-    const maxOptions = action.maxOptions || 4;
-
-    return state.withMutations(map => {
-      map.set('id', s.get('id'));
-      map.set('text', text);
-      map.set('in_reply_to', null);
-      map.set('privacy', visibility);
-      map.set('media_attachments', (mediaAttachments && mediaAttachments.size > 0 ? mediaAttachments : ImmutableList()).map(media => (media.set ? media.set('unattached', true) : media)));
-      map.set('focusDate', new Date());
-      map.set('caretPosition', null);
-      map.set('idempotencyKey', uuid());
-      map.set('sensitive', getParam('sensitive') || false);
-      map.set('language', language || state.get('default_language'));
-      map.set('scheduled_at', s.get('scheduled_at'));
-      map.setIn(['advanced_options', 'do_not_federate'], !!getParam('local_only'));
-
-      if (spoilerText.length > 0) {
-        map.set('spoiler', true);
-        map.set('spoiler_text', spoilerText);
-      } else {
-        map.set('spoiler', false);
-        map.set('spoiler_text', '');
-      }
-
-      if (pollParam && (pollParam.options || pollParam.get?.('options'))) {
-        const optionsRaw = pollParam.options ?? pollParam.get?.('options');
-        const optionsArr = Array.isArray(optionsRaw) ? optionsRaw : optionsRaw?.toArray?.() ?? [];
-        let options = ImmutableList(optionsArr.map(opt => (typeof opt === 'string' ? opt : (opt?.title ?? opt?.get?.('title') ?? '')))).filter(Boolean);
-        if (options.size < maxOptions) {
-          options = options.push('');
-        }
-        const expiresIn = pollParam.expires_in ?? pollParam.get?.('expires_in') ?? 24 * 3600;
-        map.set('poll', ImmutableMap({
-          options,
-          multiple: pollParam.multiple ?? pollParam.get?.('multiple') ?? false,
-          expires_in: expiresIn,
-        }));
-      } else {
-        map.set('poll', null);
-      }
-    });
-  }
-  case COMPOSE_SCHEDULED_AT_CHANGE:
-    return state.set('scheduled_at', action.scheduledAt);
   case COMPOSE_CHANGE_MEDIA_ORDER:
     return state.update('media_attachments', list => {
       const indexA = list.findIndex(x => x.get('id') === action.a);

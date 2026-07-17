@@ -9,6 +9,8 @@ import { countableText } from 'flavours/glitch/features/compose/util/counter';
 import { tagHistory } from 'flavours/glitch/settings';
 import { emojiMartSearch } from '@/flavours/glitch/features/emoji/picker';
 import { isCustomEmojiMuted } from '@/flavours/glitch/utils/custom_emoji_mutes';
+import { createDriveFileAttachment } from '@/flavours/glitch/sharlayan/compose/drive_attachment';
+import { getSharlayanComposeSubmission } from '@/flavours/glitch/sharlayan/compose/submission';
 import { recoverHashtags } from 'flavours/glitch/utils/hashtag';
 
 import { showAlert, showAlertForError } from './alerts';
@@ -264,21 +266,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       });
     }
 
-    const circleId = !overridePrivacy && effectiveStatusId === null ? getState().getIn(['compose', 'circle_id']) : null;
-    const visibility = circleId ? 'circle' : (overridePrivacy || getState().getIn(['compose', 'privacy']));
-    const rawPoll = getState().getIn(['compose', 'poll'], null);
-    const poll = rawPoll ? (() => {
-      const options = rawPoll.get('options');
-      const sanitizedOptions = options
-        ? options.map(o => (o && typeof o === 'string' ? o.trim() : String(o).trim())).filter(Boolean).toArray()
-        : [];
-      return {
-        options: sanitizedOptions,
-        expires_in: rawPoll.get('expires_in'),
-        multiple: rawPoll.get('multiple'),
-        hide_totals: rawPoll.get('hide_totals'),
-      };
-    })() : null;
+    const { circleId, clipIds, poll, quoteApprovalPolicy, scheduledAt: newStatusScheduledAt, visibility } = getSharlayanComposeSubmission({ getState, effectiveStatusId, overridePrivacy });
 
     const doSubmit = () => api().request({
       url: effectiveStatusId === null ? '/api/v1/statuses' : `/api/v1/statuses/${effectiveStatusId}`,
@@ -294,12 +282,12 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         sensitive: getState().getIn(['compose', 'sensitive']) || (spoiler_text.length > 0 && media.size !== 0),
         visibility: visibility,
         circle_id: circleId,
-        clip_ids: effectiveStatusId === null ? getState().getIn(['compose', 'clip_ids']).toArray() : undefined,
+        clip_ids: clipIds,
         poll,
         language: getState().getIn(['compose', 'language']),
         quoted_status_id: getState().getIn(['compose', 'quoted_status_id']),
-        quote_approval_policy: visibility === 'private' || visibility === 'direct' || visibility === 'circle' ? 'nobody' : getState().getIn(['compose', 'quote_policy']),
-        scheduled_at: effectiveStatusId === null ? getState().getIn(['compose', 'scheduled_at']) : undefined,
+        quote_approval_policy: quoteApprovalPolicy,
+        scheduled_at: newStatusScheduledAt,
       },
       headers: {
         'Idempotency-Key': getState().getIn(['compose', 'idempotencyKey']),
@@ -490,32 +478,7 @@ export const uploadComposeProcessing = () => ({
   type: COMPOSE_UPLOAD_PROCESSING,
 });
 
-export function attachDriveFile(driveFileId, sensitive = false) {
-  return function (dispatch, getState) {
-    if (getState().compose.get('quoted_status_id')) {
-      dispatch(showAlert({ message: messages.uploadQuote }));
-      return;
-    }
-
-    const uploadLimit = getState().getIn(['server', 'server', 'item', 'configuration', 'statuses', 'max_media_attachments']);
-    const media = getState().getIn(['compose', 'media_attachments']);
-    const pending = getState().getIn(['compose', 'pending_media_attachments']);
-
-    if (media.size + pending + 1 > uploadLimit) {
-      dispatch(showAlert({ message: messages.uploadErrorLimit }));
-      return;
-    }
-
-    dispatch(uploadComposeRequest());
-
-    api().post(`/api/v1/drive/files/${driveFileId}/attach`).then(({ data }) => {
-      dispatch(uploadComposeSuccess(data, null));
-      if (sensitive && !getState().getIn(['compose', 'sensitive'])) {
-        dispatch(changeComposeSensitivity());
-      }
-    }).catch(error => dispatch(uploadComposeFail(error)));
-  };
-}
+export const attachDriveFile = createDriveFileAttachment({ api, changeComposeSensitivity, showAlert, uploadComposeFail, uploadComposeRequest, uploadComposeSuccess, messages });
 
 export const uploadThumbnail = (id, file) => (dispatch) => {
   dispatch(uploadThumbnailRequest());

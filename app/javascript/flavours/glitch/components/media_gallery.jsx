@@ -14,16 +14,9 @@ import { AltTextBadge } from 'flavours/glitch/components/alt_text_badge';
 import { Blurhash } from 'flavours/glitch/components/blurhash';
 import { SpoilerButton } from 'flavours/glitch/components/spoiler_button';
 import { formatTime } from 'flavours/glitch/features/video';
+import { getMediaGalleryGrid, getMediaGalleryItemDimensions, shouldAutoplayMedia } from 'flavours/glitch/sharlayan/media_gallery';
 
 import { autoPlayGif, displayMedia, useBlurhash } from '../initial_state';
-
-const colCount = function(size) {
-  return Math.max(Math.ceil(Math.sqrt(size)), 2);
-};
-
-const rowCount = function(size) {
-  return Math.ceil(size / colCount(size));
-};
 
 class Item extends PureComponent {
 
@@ -66,11 +59,11 @@ class Item extends PureComponent {
   };
 
   getAutoPlay() {
-    if (this.props.disableGifvAutoplay && this.props.attachment.get('type') === 'gifv') {
-      return false;
-    }
-
-    return this.props.autoplay || autoPlayGif;
+    return shouldAutoplayMedia({
+      attachmentType: this.props.attachment.get('type'),
+      autoplay: this.props.autoplay || autoPlayGif,
+      disableGifvAutoplay: this.props.disableGifvAutoplay,
+    });
   }
 
   hoverToPlay () {
@@ -106,20 +99,7 @@ class Item extends PureComponent {
 
     let badges = [], thumbnail;
 
-    let width  = 50;
-    let height = 50;
-
-    const cols = colCount(size);
-    const remaining = (-size % cols + cols) % cols;
-    const largeCount = Math.floor(remaining / 3);
-    const mediumCount = remaining % 3;
-
-    if (size === 1 || index < largeCount) {
-      width = 100;
-      height = 100;
-    } else if (size === 2 || index < largeCount + mediumCount) {
-      height = 100;
-    }
+    const { width, height } = getMediaGalleryItemDimensions(size, index);
 
     const description = attachment.getIn(['translation', 'description']) || attachment.get('description');
 
@@ -347,9 +327,8 @@ class MediaGallery extends PureComponent {
     if (this.isStandaloneEligible()) { // TODO: cropImages setting
       style.aspectRatio = `${this.props.media.getIn([0, 'meta', 'small', 'aspect'])}`;
     } else {
-      const cols = colCount(size);
-      const rows = rowCount(size);
-      style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      const { columns, rows } = getMediaGalleryGrid(size);
+      style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
       style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
       style.aspectRatio = '16 / 9';
@@ -369,7 +348,7 @@ class MediaGallery extends PureComponent {
 
         {(visible && !uncached) && (
           <div className='media-gallery__actions'>
-            <button className='media-gallery__actions__pill' onClick={this.handleOpen}><FormattedMessage id='media_gallery.hide' defaultMessage='Hide' /></button>
+            <button type='button' className='media-gallery__actions__pill' onClick={this.handleOpen}><FormattedMessage id='media_gallery.hide' defaultMessage='Hide' /></button>
           </div>
         )}
       </div>
