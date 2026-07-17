@@ -1,14 +1,15 @@
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import { LOCAL_SETTING_IMPORT } from 'flavours/glitch/actions/local_settings';
+import { roleplayMode } from 'flavours/glitch/initial_state';
 
 export const sharlayanLocalSettingsDefaults = ImmutableMap({
   zoom_emojis_on_hover: true,
   mention_reblogger: false,
   hide_mfm_compose_hint: false,
-  hide_compose_language: false,
-  show_clip_choice: true,
-  show_schedule_button: true,
+  hide_compose_language: roleplayMode,
+  show_clip_choice: !roleplayMode,
+  show_schedule_button: !roleplayMode,
   show_follow_list_bio: true,
   show_others_online_status: false,
   inline_compose_timelines: false,

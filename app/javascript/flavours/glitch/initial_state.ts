@@ -191,6 +191,7 @@ export const {
   localAccountStatusesAccess,
   localStatusPageAccess,
   forceLocalOnly,
+  roleplayMode,
   circlesEnabled,
   clipsEnabled,
   pagesEnabled,

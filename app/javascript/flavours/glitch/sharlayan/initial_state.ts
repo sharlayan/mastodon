@@ -31,6 +31,7 @@ export interface SharlayanInitialStateMeta {
   avatar_decoration_shape?: 'none' | 'round' | 'square';
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
+  roleplay_mode: boolean;
   visible_reactions: number;
   show_instance_info: boolean;
   custom_emoji_size: boolean;
@@ -66,6 +67,7 @@ export const readSharlayanInitialState = (
     localAccountStatusesAccess: getMeta('local_account_statuses_access'),
     localStatusPageAccess: getMeta('local_status_page_access'),
     forceLocalOnly: getMeta('force_local_only'),
+    roleplayMode: getMeta('roleplay_mode') === true,
     circlesEnabled: getMeta('circles_enabled') === true,
     clipsEnabled: getMeta('clips_enabled') === true,
     pagesEnabled: getMeta('pages_enabled') === true,

@@ -19,6 +19,7 @@ const meta: SharlayanInitialStateMeta = {
   avatar_decoration_shape: 'square',
   local_account_statuses_access: 'authenticated',
   local_status_page_access: 'public',
+  roleplay_mode: false,
   visible_reactions: 8,
   show_instance_info: true,
   custom_emoji_size: true,
