@@ -50,7 +50,7 @@ interface InitialStateMeta {
   contrast?: 'auto' | 'high';
   show_avatar_decorations?: boolean;
   show_federated_avatar_decorations?: boolean;
-  force_round_avatar_decoration?: boolean;
+  avatar_decoration_shape?: 'none' | 'round' | 'square';
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
   local_live_feed_access: 'public' | 'authenticated' | 'disabled';
@@ -258,8 +258,8 @@ export const showAvatarDecorations =
   getMeta('show_avatar_decorations') ?? false;
 export const showFederatedAvatarDecorations =
   getMeta('show_federated_avatar_decorations') ?? false;
-export const forceRoundAvatarDecoration =
-  getMeta('force_round_avatar_decoration') ?? !me;
+export const avatarDecorationShape =
+  getMeta('avatar_decoration_shape') ?? (me ? 'none' : 'round');
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

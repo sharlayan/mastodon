@@ -74,8 +74,12 @@
                  label: t('simple_form.labels.defaults.setting_show_federated_avatar_decorations'),
                  hint: t('simple_form.hints.defaults.setting_show_federated_avatar_decorations'),
                  sharlayan_only: true
-    = ff.input :'avatar_decorations.force_round',
+    = ff.input :'avatar_decorations.shape',
+               as: :radio_buttons,
+               collection: %w(none round square),
+               include_blank: false,
+               label_method: ->(shape) { t("simple_form.labels.defaults.setting_avatar_decoration_shape_#{shape}") },
                wrapper: :with_label,
-               label: t('simple_form.labels.defaults.setting_force_round_avatar_decoration'),
-               hint: t('simple_form.hints.defaults.setting_force_round_avatar_decoration'),
+               label: t('simple_form.labels.defaults.setting_avatar_decoration_shape'),
+               hint: t('simple_form.hints.defaults.setting_avatar_decoration_shape'),
                sharlayan_only: true

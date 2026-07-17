@@ -474,8 +474,8 @@ en:
           interface text is unaffected.
         setting_custom_emoji_size: Display Original size of Long Horizontally Custom
           Emoji
-        setting_force_round_avatar_decoration: Force profile images to be circular
-          (border-radius 50%) when a decoration is active.
+        setting_avatar_decoration_shape: Force the profile image shape while an avatar
+          decoration is active.
         setting_hide_online_status: Hide your online status from apps that support
           it (such as Misskey-compatible clients).
         setting_mfm_animations: Play animations in MFM content (spin, bounce, shake,
@@ -529,8 +529,10 @@ en:
           cannot quote your post.
         setting_default_quote_policy_unlisted: When someone quotes your post, the
           quoted post is hidden from trends.
-        setting_force_round_avatar_decoration: Force round profile image with avatar
-          decoration
+        setting_avatar_decoration_shape: Profile image shape with decoration
+        setting_avatar_decoration_shape_none: Don't force
+        setting_avatar_decoration_shape_round: Round
+        setting_avatar_decoration_shape_square: Square
         setting_hide_online_status: Hide online status
         setting_mfm_animations: Enable MFM animations
         setting_mfm_enabled: Enable MFM rendering

@@ -9,8 +9,8 @@ import type { ApiOnlineStatus } from 'flavours/glitch/api_types/accounts';
 import { useHovering } from 'flavours/glitch/hooks/useHovering';
 import {
   autoPlayGif,
+  avatarDecorationShape,
   avatarDecorationsEnabled,
-  forceRoundAvatarDecoration,
   me,
   showAvatarDecorations,
   showFederatedAvatarDecorations,
@@ -115,7 +115,9 @@ export const Avatar: React.FC<Props> = ({
         'account__avatar--loading': loading,
         'account__avatar--decorated': hasDecorations,
         'account__avatar--force-round':
-          hasDecorations && forceRoundAvatarDecoration,
+          hasDecorations && avatarDecorationShape === 'round',
+        'account__avatar--force-square':
+          hasDecorations && avatarDecorationShape === 'square',
       })}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

@@ -431,8 +431,8 @@ ko:
           브릿지(bsky.brid.gy)에는 전체 공개로 전달하여 블루스카이로 연동되도록 합니다. 브릿지 계정을 팔로우해야 작동합니다.
         setting_content_font_size: 게시물 본문의 글자 크기만 조절합니다. 다른 인터페이스 텍스트에는 영향을 주지 않습니다.
         setting_custom_emoji_size: 가로로 긴 커스텀 에모지의 가로 길이를 늘려서 표시합니다.
-        setting_force_round_avatar_decoration: 아바타 장식이 활성화된 경우 프로필 이미지를 원형(border-radius
-          50%)으로 강제 설정합니다.
+        setting_avatar_decoration_shape: 아바타 장식이 활성화된 경우 프로필 이미지 모양을 강제로
+          지정합니다.
         setting_hide_online_status: 지원하는 앱(미스키 호환 클라이언트 등)에서 내 온라인 상태를 숨깁니다.
         setting_mfm_animations: MFM 콘텐츠의 애니메이션을 재생합니다 (spin, bounce, shake 등). 비활성화하면
           정적 대체 표시로 전환됩니다.
@@ -471,7 +471,10 @@ ko:
         setting_default_quote_policy_private: 팔로워만으로 설정할 경우 다른 사람이 인용할 수 없습니다.
         setting_default_quote_policy_unlisted: 사용자의 게시물을 인용할 경우 인용된 게시물은 인기 게시물에서
           숨겨집니다.
-        setting_force_round_avatar_decoration: 장식 활성 시 프로필 이미지 원형 강제 적용
+        setting_avatar_decoration_shape: 장식 활성 시 프로필 이미지 모양
+        setting_avatar_decoration_shape_none: 사용 안 함
+        setting_avatar_decoration_shape_round: 원형
+        setting_avatar_decoration_shape_square: 사각형
         setting_hide_online_status: 온라인 상태 숨기기
         setting_mfm_animations: MFM 애니메이션 활성화
         setting_mfm_enabled: MFM 렌더링 활성화

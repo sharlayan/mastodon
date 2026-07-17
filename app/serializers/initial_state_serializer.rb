@@ -66,7 +66,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:wrapstodon] = wrapstodon
       store[:show_avatar_decorations]           = object_account_user.settings['avatar_decorations.show']
       store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']
-      store[:force_round_avatar_decoration]     = object_account_user.settings['avatar_decorations.force_round']
+      store[:avatar_decoration_shape]           = object_account_user.settings['avatar_decorations.shape']
       store[:color_scheme]                      = object_account_user.settings['web.color_scheme']
       store[:contrast]                          = object_account_user.settings['web.contrast']
       store[:custom_emoji_mute_hidden]          = object_account_user.settings['web.custom_emoji_mute_hidden']

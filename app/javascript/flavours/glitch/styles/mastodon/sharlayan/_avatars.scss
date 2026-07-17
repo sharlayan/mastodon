@@ -28,6 +28,14 @@
   border-radius: 50% !important;
 }
 
+.account__avatar--force-square {
+  border-radius: 0 !important;
+}
+
+.account__avatar--force-square img:not(.account__avatar__decoration) {
+  border-radius: 0 !important;
+}
+
 .account__avatar__decoration-layer {
   position: absolute;
   top: 0;
@@ -41,6 +49,10 @@
 
 .account__avatar__decoration-layer--force-round {
   border-radius: 50%;
+}
+
+.account__avatar__decoration-layer--force-square {
+  border-radius: 0;
 }
 
 .account__avatar__decoration {
@@ -102,6 +114,10 @@
 
 .status__avatar:has(.account__avatar--force-round) {
   border-radius: 50%;
+}
+
+.status__avatar:has(.account__avatar--force-square) {
+  border-radius: 0;
 }
 
 .detailed-status__display-name:has(.account__avatar--decorated) {
