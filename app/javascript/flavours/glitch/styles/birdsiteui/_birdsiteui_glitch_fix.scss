@@ -67,6 +67,19 @@
     box-shadow: unset !important;
   }
 
+  .notification__filter-bar .icon-add_reaction {
+    background-color: currentColor;
+    background-image: none;
+    -webkit-mask-image: var(--icon-emoji);
+    mask-image: var(--icon-emoji);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: var(--size-icon) var(--size-icon);
+    mask-size: var(--size-icon) var(--size-icon);
+  }
+
   .status__action-bar .icon-mood,
   .detailed-status__action-bar .icon-mood {
     background: var(--color-dim);
