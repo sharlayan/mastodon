@@ -76,6 +76,35 @@ RSpec.describe 'Channel Subscriptions', :inline_jobs, :streaming do
         stream: ['user:notification']
       )
     end
+
+    it 'rejects an antenna owned by another account' do
+      antenna = Fabricate(:antenna, account: bob_account)
+
+      streaming_client.authenticate(access_token.token)
+      streaming_client.connect
+      streaming_client.subscribe('antenna', antenna: antenna.id.to_s)
+
+      expect(streaming_client.wait_for_message).to include(
+        error: 'Not authorized to stream this antenna',
+        status: 401
+      )
+    end
+
+    it 'rejects an antenna when the feature is disabled' do
+      antenna = Fabricate(:antenna, account: user_account)
+      Setting.antenna_enabled = false
+
+      streaming_client.authenticate(access_token.token)
+      streaming_client.connect
+      streaming_client.subscribe('antenna', antenna: antenna.id.to_s)
+
+      expect(streaming_client.wait_for_message).to include(
+        error: 'Not authorized to stream this antenna',
+        status: 401
+      )
+    ensure
+      Setting.antenna_enabled = true
+    end
   end
 
   context 'when the access token has read:statuses scope' do

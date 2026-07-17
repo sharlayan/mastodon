@@ -17,7 +17,8 @@ import { AuthenticationError, RequestError, extractStatusAndMessage as extractEr
 import { logger, httpLogger, initializeLogLevel, attachWebsocketHttpLogger, createWebsocketLogger } from './logging.js';
 import { setupMetrics } from './metrics.js';
 import * as Redis from './redis.js';
-import { createMisskeyCompat } from './misskey_compat.js';
+import { ACCESS_TOKEN_QUERY } from './extensions/auth.js';
+import { CHANNEL_NAMES as EXTENSION_CHANNEL_NAMES, createStreamingExtensions } from './extensions/index.js';
 import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -114,7 +115,6 @@ const CHANNEL_NAMES = [
   'user',
   'user:notification',
   'list',
-  'antenna',
   'direct',
   'public',
   'public:media',
@@ -124,6 +124,7 @@ const CHANNEL_NAMES = [
   'public:remote:media',
   'hashtag',
   'hashtag:local',
+  ...EXTENSION_CHANNEL_NAMES,
 ];
 
 const startServer = async () => {
@@ -306,12 +307,8 @@ const startServer = async () => {
     const json = parseJSON(message, null);
     if (!json) return;
 
-    callbacks.forEach(callback => {
-      try {
-        callback(json);
-      } catch (err) {
-        logger.error({ err }, `Error processing Redis message on channel ${key}`);
-      }
+    extensions.dispatchCallbacks(callbacks, json, (/** @type {Error} */ err) => {
+      logger.error({ err }, `Error processing Redis message on channel ${key}`);
     });
   };
   redisSubscribeClient.on("message", onRedisMessage);
@@ -388,7 +385,7 @@ const startServer = async () => {
    * @returns {Promise<ResolvedAccount>}
    */
   const accountFromToken = async (token, req) => {
-    const result = await pgPool.query("SELECT oauth_access_tokens.id, oauth_access_tokens.resource_owner_id, users.account_id, users.chosen_languages, oauth_access_tokens.scopes, COALESCE(user_roles.permissions, 0) AS permissions FROM oauth_access_tokens INNER JOIN users ON oauth_access_tokens.resource_owner_id = users.id INNER JOIN accounts ON accounts.id = users.account_id LEFT OUTER JOIN user_roles ON user_roles.id = users.role_id WHERE oauth_access_tokens.token = $1 AND oauth_access_tokens.revoked_at IS NULL AND (oauth_access_tokens.expires_in IS NULL OR oauth_access_tokens.created_at + oauth_access_tokens.expires_in * INTERVAL '1 second' > NOW()) AND users.disabled IS FALSE AND accounts.suspended_at IS NULL LIMIT 1", [token]);
+    const result = await pgPool.query(ACCESS_TOKEN_QUERY, [token]);
 
     if (result.rows.length === 0) {
       throw new AuthenticationError('Invalid access token');
@@ -414,22 +411,14 @@ const startServer = async () => {
    * @returns {Promise<ResolvedAccount>}
    */
   const accountFromRequest = async (req) => {
-    const authorization = req.headers.authorization;
     const query         = parseQueryString(req);
-    const accessToken   = query?.access_token;
-    const protocolToken = req.headers['sec-websocket-protocol'];
-    const standardToken = accessToken ? firstParam(accessToken) : protocolToken ? firstParam(protocolToken) : undefined;
+    const standardToken = extensions.standardTokenFromRequest(req, query);
 
-    if (authorization || standardToken) {
-      const token = authorization ? authorization.replace(/^Bearer /, '') : standardToken;
-      return accountFromToken(token, req);
+    if (standardToken) {
+      return accountFromToken(standardToken, req);
     }
 
-    const misskeyToken = query?.i ? firstParam(query.i) : undefined;
-    if (!misskeyToken) throw new AuthenticationError('Missing access token');
-    if (!await isMisskeyCompatEnabled()) throw new AuthenticationError('Misskey compatibility is disabled');
-
-    return accountFromToken(misskeyToken, req);
+    return extensions.authenticateFallback(req, query, accountFromToken);
   };
 
   /**
@@ -459,10 +448,8 @@ const startServer = async () => {
       return 'direct';
     case '/api/v1/streaming/list':
       return 'list';
-    case '/api/v1/streaming/antenna':
-      return 'antenna';
     default:
-      return undefined;
+      return extensions.registerChannels(req);
     }
   };
 
@@ -628,62 +615,6 @@ const startServer = async () => {
   };
 
   /**
-   * @param {string} antennaId
-   * @param {Request} req
-   * @returns {Promise.<void>}
-   */
-  const authorizeAntennaAccess = async (antennaId, req) => {
-    const { accountId } = req;
-
-    const result = await pgPool.query(`
-      SELECT antennas.id, antennas.account_id
-      FROM antennas
-      LEFT JOIN settings ON settings.var = 'antenna_enabled'
-      WHERE antennas.id = $1
-        AND antennas.account_id = $2
-        AND COALESCE(settings.value, '--- true\n') = '--- true\n'
-      LIMIT 1
-    `, [antennaId, accountId]);
-
-    if (result.rows.length === 0) {
-      throw new AuthenticationError('Antenna not found');
-    }
-  };
-
-  /**
-   * @param {string|undefined} statusId
-   * @param {Request} req
-   * @returns {Promise.<boolean>}
-   */
-  const authorizeStatusAccess = async (statusId, req) => {
-    if (!statusId || !/^\d+$/.test(statusId)) return false;
-
-    const result = await pgPool.query(`
-      SELECT 1
-      FROM statuses
-      WHERE statuses.id = $1
-        AND (
-          statuses.account_id = $2
-          OR statuses.visibility IN (0, 1)
-          OR statuses.visibility = 2 AND EXISTS (
-            SELECT 1 FROM follows
-            WHERE follows.account_id = $2
-              AND follows.target_account_id = statuses.account_id
-          )
-          OR statuses.visibility IN (3, 4) AND EXISTS (
-            SELECT 1 FROM mentions
-            WHERE mentions.status_id = statuses.id
-              AND mentions.account_id = $2
-              AND mentions.silent = FALSE
-          )
-        )
-      LIMIT 1
-    `, [statusId, req.accountId]);
-
-    return result.rows.length > 0;
-  };
-
-  /**
    * @param {string} kind
    * @param {Request} req
    * @returns {Promise.<{ localAccess: boolean, remoteAccess: boolean }>}
@@ -716,32 +647,6 @@ const startServer = async () => {
     });
 
     return access;
-  };
-
-  let misskeyCompatSetting = { value: false, checkedAt: 0 };
-
-  /**
-   * Reads the `misskey_compat_enabled` server setting, cached briefly to avoid
-   * a database query per incoming message. Defaults to disabled when the
-   * setting row is absent (matching the settings.yml default).
-   * @returns {Promise.<boolean>}
-   */
-  const isMisskeyCompatEnabled = async () => {
-    const now = Date.now();
-
-    if (now - misskeyCompatSetting.checkedAt < 15000) {
-      return misskeyCompatSetting.value;
-    }
-
-    try {
-      const result = await pgPool.query("SELECT value FROM settings WHERE var = 'misskey_compat_enabled' LIMIT 1");
-      const enabled = result.rows.length > 0 && result.rows[0].value === "--- true\n";
-      misskeyCompatSetting = { value: enabled, checkedAt: now };
-      return enabled;
-    } catch (err) {
-      logger.error({ err }, 'Failed to read misskey_compat_enabled setting');
-      return false;
-    }
   };
 
   /**
@@ -819,9 +724,10 @@ const startServer = async () => {
         return;
       }
 
+      const extensionFilter = extensions.filterPayload(req, payload);
+
       // Filter based on language:
-      // @ts-expect-error
-      if (Array.isArray(req.chosenLanguages) && req.chosenLanguages.indexOf(payload.language || 'und') === -1) {
+      if (!extensionFilter.acceptedLanguage) {
         // @ts-expect-error
         log.debug(`Message ${payload.id} filtered by language (${payload.language})`);
         return;
@@ -836,15 +742,6 @@ const startServer = async () => {
       // Filter based on domain blocks, blocks, mutes, or custom filters:
       // @ts-expect-error
       const targetAccountIds = [payload.account.id].concat(payload.mentions.map(item => item.id));
-      // @ts-expect-error
-      const accountDomain = payload.account.acct.split('@')[1];
-      // @ts-expect-error
-      const statusAccountId = payload.account.id;
-      // @ts-expect-error
-      const reblogAccountDomain = payload.reblog?.account?.acct.split('@')[1];
-      // @ts-expect-error
-      const reblogAccountId = payload.reblog?.account?.id;
-      const domainTargets = [[accountDomain, statusAccountId], [reblogAccountDomain, reblogAccountId]].filter(([domain, accountId]) => domain && accountId);
 
       // TODO: Move this logic out of the message handling loop
       pgPool.connect((err, client, releasePgConnection) => {
@@ -868,20 +765,8 @@ const startServer = async () => {
                           account.id].concat(targetAccountIds)),
         ];
 
-        if (domainTargets.length > 0) {
-          const domains = domainTargets.map(([domain]) => domain);
-          const domainAccountIds = domainTargets.map(([, accountId]) => accountId);
-
-          // @ts-expect-error
-          queries.push(client.query(
-            `SELECT 1 FROM account_domain_blocks WHERE account_id = $1 AND domain = ANY($2::text[])
-             UNION
-             SELECT 1
-             FROM account_domain_mutes
-             INNER JOIN unnest($2::text[], $3::bigint[]) AS targets(domain, account_id)
-               ON targets.domain = account_domain_mutes.domain
-             WHERE account_domain_mutes.account_id = $1
-               AND NOT EXISTS (SELECT 1 FROM follows WHERE account_id = $1 AND target_account_id = targets.account_id)`, [req.accountId, domains, domainAccountIds]));
+        if (extensionFilter.domain.hasQuery) {
+          queries.push(extensionFilter.domain.query(client));
         }
 
         // @ts-expect-error
@@ -896,7 +781,7 @@ const startServer = async () => {
           // Handling blocks & mutes and domain blocks: If one of those applies,
           // then we don't transmit the payload of the event to the client
           // @ts-expect-error
-          if (values[0].rows.length > 0 || (domainTargets.length > 0 && values[1].rows.length > 0)) {
+          if (values[0].rows.length > 0 || extensionFilter.domain.blocked(values)) {
             return;
           }
 
@@ -913,7 +798,7 @@ const startServer = async () => {
           // @ts-ignore
           if (!req.cachedFilters) {
             // @ts-expect-error
-            const filterRows = values[domainTargets.length > 0 ? 2 : 1].rows;
+            const filterRows = extensionFilter.domain.filterRows(values);
 
             req.cachedFilters = filterRows.reduce((cache, filter) => {
               if (cache[filter.id]) {
@@ -1288,24 +1173,11 @@ const startServer = async () => {
       });
 
       break;
-    case 'antenna':
-      if (!params.antenna) {
-        reject(new RequestError('Missing antenna id parameter'));
-        return;
-      }
-
-      authorizeAntennaAccess(params.antenna, req).then(() => {
-        resolve({
-          channelIds: [`timeline:antenna:${params.antenna}`],
-          options: { needsFiltering: false, allowLocalOnly: true },
-        });
-      }).catch(() => {
-        reject(new AuthenticationError('Not authorized to stream this antenna'));
-      });
-
-      break;
     default:
-      reject(new RequestError('Unknown stream type'));
+      extensions.authorizeChannel(req, name, params).then(result => {
+        if (result) resolve(result);
+        else reject(new RequestError('Unknown stream type'));
+      }).catch(reject);
     }
   });
 
@@ -1315,10 +1187,11 @@ const startServer = async () => {
    * @returns {string[]}
    */
   const streamNameFromChannelName = (channelName, params) => {
-    if (channelName === 'list' && params.list) {
+    const extensionName = extensions.streamName(channelName, params);
+    if (extensionName) {
+      return extensionName;
+    } else if (channelName === 'list' && params.list) {
       return [channelName, params.list];
-    } else if (channelName === 'antenna' && params.antenna) {
-      return [channelName, params.antenna];
     } else if (['hashtag', 'hashtag:local'].includes(channelName) && params.tag) {
       return [channelName, params.tag];
     } else {
@@ -1453,13 +1326,12 @@ const startServer = async () => {
     metrics.connectedChannels.labels({ type: 'websocket', channel: 'system' }).inc(2);
   };
 
-  const misskeyCompat = createMisskeyCompat({
+  const extensions = createStreamingExtensions({
+    pgPool,
     subscribe,
     unsubscribe,
     subscriptionHeartbeat,
     channelNameToIds,
-    authorizeStatusAccess,
-    isEnabled: isMisskeyCompatEnabled,
     logger,
   });
 
@@ -1497,7 +1369,7 @@ const startServer = async () => {
         removeSubscription(session, channelIds.split(';'));
       });
 
-      misskeyCompat.cleanup(session);
+      extensions.cleanup(session);
 
       // Decrement the metrics for connected clients:
       metrics.connectedClients.labels({ type: 'websocket' }).dec();
@@ -1547,9 +1419,7 @@ const startServer = async () => {
           firstParam(stream),
           params
         );
-      } else if (misskeyCompat.isMisskeyType(type)) {
-        misskeyCompat.handleMessage(session, json);
-      } else {
+      } else if (!extensions.handleMessage(session, json)) {
         // Unknown action type
       }
     });

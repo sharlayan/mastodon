@@ -61,6 +61,17 @@ RSpec.describe 'Streaming', :inline_jobs, :streaming do
     end
   end
 
+  context 'with an expired access token' do
+    let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, application: application, scopes: scopes, expires_in: 1.minute, created_at: 2.minutes.ago) }
+
+    it 'receives an 401 unauthorized error' do
+      streaming_client.connect
+
+      expect(streaming_client.status).to eq(401)
+      expect(streaming_client.open?).to be(false)
+    end
+  end
+
   context 'when revoking an access token after connection' do
     it 'disconnects the client' do
       streaming_client.connect
