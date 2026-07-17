@@ -81,7 +81,7 @@ class Api::V1::StatusesController < Api::BaseController
 
   def destroy
     @status = if owner_soft_hide_deletion?
-                Status.find(params[:id])
+                Status.with_rp_hidden.find(params[:id])
               else
                 Status.where(account: current_account).find(params[:id])
               end
@@ -91,7 +91,12 @@ class Api::V1::StatusesController < Api::BaseController
     # for media attachments, as it would otherwise redirect to the media proxy
     json = render_to_body json: @status, serializer: REST::StatusSerializer, source_requested: true
 
-    if roleplay_mode? && Setting.soft_hide_deletion
+    if purge_rp_hidden?
+      @status.discard_with_reblogs
+      StatusPin.find_by(status: @status)&.destroy
+
+      PurgeStatusWorker.perform_async(@status.id)
+    elsif roleplay_mode? && Setting.soft_hide_deletion
       @status.account.statuses_count = @status.account.statuses_count - 1
       HideStatusWorker.perform_async(@status.id, { 'hidden_by_account_id' => current_account.id })
     else
@@ -106,6 +111,10 @@ class Api::V1::StatusesController < Api::BaseController
   end
 
   private
+
+  def purge_rp_hidden?
+    owner_soft_hide_deletion? && @status.rp_hidden?
+  end
 
   def owner_soft_hide_deletion?
     return false unless roleplay_mode? && Setting.soft_hide_deletion

@@ -142,6 +142,9 @@
   "confirmations.delete_circle.message": "本当にこのサークルを完全に削除しますか？",
   "confirmations.delete_circle.title": "サークルを削除しますか？",
   "confirmations.domain_mute.confirm": "ドメインをミュート",
+  "confirmations.purge.confirm": "削除",
+  "confirmations.purge.message": "この投稿を復元できないように削除します。続行しますか？",
+  "confirmations.purge.title": "投稿を削除しますか？",
   "confirmations.resume_draft.message": "書きかけの投稿があります。続きを書くか、新しい投稿を作成できます。",
   "confirmations.resume_draft.reset": "リセットして新しい投稿を作成",
   "confirmations.resume_draft.resume": "続きを書く",
@@ -389,5 +392,7 @@
   "settings.use_publish_toot": "投稿ボタンのラベルに「トゥート」を使用",
   "status.add_to_clip": "クリップに追加",
   "status.mfm_fold_expand": "MFM投稿を展開して表示",
-  "status.react": "リアクション"
+  "status.purge_admin": "削除",
+  "status.react": "リアクション",
+  "status.rp_hidden": "削除済み"
 }

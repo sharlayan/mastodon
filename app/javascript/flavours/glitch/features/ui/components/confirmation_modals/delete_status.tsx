@@ -34,15 +34,29 @@ const messages = defineMessages({
     id: 'confirmations.delete.confirm',
     defaultMessage: 'Delete',
   },
+  purgeTitle: {
+    id: 'confirmations.purge.title',
+    defaultMessage: 'Remove post?',
+  },
+  purgeMessage: {
+    id: 'confirmations.purge.message',
+    defaultMessage:
+      'This post will be deleted permanently and cannot be restored. Do you want to continue?',
+  },
+  purgeConfirm: {
+    id: 'confirmations.purge.confirm',
+    defaultMessage: 'Remove',
+  },
 });
 
 export const ConfirmDeleteStatusModal: React.FC<
   {
     statusId: string;
     withRedraft: boolean;
+    purge?: boolean;
     onDeleteSuccess?: () => void;
   } & BaseConfirmationModalProps
-> = ({ statusId, withRedraft, onClose, onDeleteSuccess }) => {
+> = ({ statusId, withRedraft, purge = false, onClose, onDeleteSuccess }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
 
@@ -58,17 +72,29 @@ export const ConfirmDeleteStatusModal: React.FC<
       });
   }, [dispatch, statusId, withRedraft, onDeleteSuccess, onClose]);
 
+  const variant = purge
+    ? {
+        title: messages.purgeTitle,
+        message: messages.purgeMessage,
+        confirm: messages.purgeConfirm,
+      }
+    : withRedraft
+      ? {
+          title: messages.deleteAndRedraftTitle,
+          message: messages.deleteAndRedraftMessage,
+          confirm: messages.deleteAndRedraftConfirm,
+        }
+      : {
+          title: messages.deleteTitle,
+          message: messages.deleteMessage,
+          confirm: messages.deleteConfirm,
+        };
+
   return (
     <ConfirmationModal
-      title={intl.formatMessage(
-        withRedraft ? messages.deleteAndRedraftTitle : messages.deleteTitle,
-      )}
-      message={intl.formatMessage(
-        withRedraft ? messages.deleteAndRedraftMessage : messages.deleteMessage,
-      )}
-      confirm={intl.formatMessage(
-        withRedraft ? messages.deleteAndRedraftConfirm : messages.deleteConfirm,
-      )}
+      title={intl.formatMessage(variant.title)}
+      message={intl.formatMessage(variant.message)}
+      confirm={intl.formatMessage(variant.confirm)}
       onConfirm={onConfirm}
       onClose={onClose}
     />

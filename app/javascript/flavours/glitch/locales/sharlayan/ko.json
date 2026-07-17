@@ -142,6 +142,9 @@
   "confirmations.delete_circle.message": "이 서클을 영구적으로 삭제하시겠습니까?",
   "confirmations.delete_circle.title": "서클을 삭제할까요?",
   "confirmations.domain_mute.confirm": "도메인 전체를 뮤트",
+  "confirmations.purge.confirm": "제거",
+  "confirmations.purge.message": "이 게시글을 복구할 수 없도록 삭제합니다. 진행하시겠습니까?",
+  "confirmations.purge.title": "게시글을 제거할까요?",
   "confirmations.resume_draft.message": "이전에 작성하던 글이 있습니다. 이어서 작성하거나 새 게시글을 작성할 수 있습니다.",
   "confirmations.resume_draft.reset": "버리고 새 글 작성하기",
   "confirmations.resume_draft.resume": "이어서 작성하기",
@@ -389,5 +392,7 @@
   "settings.use_publish_toot": "작성 버튼 텍스트로 \"뿌우\" 사용",
   "status.add_to_clip": "클립에 추가",
   "status.mfm_fold_expand": "MFM 게시물 펼쳐서 보기",
-  "status.react": "리액션"
+  "status.purge_admin": "제거",
+  "status.react": "리액션",
+  "status.rp_hidden": "삭제됨"
 }

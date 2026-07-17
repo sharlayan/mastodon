@@ -30,6 +30,7 @@ import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
 const messages = defineMessages({
   delete: { id: 'status.delete', defaultMessage: 'Delete' },
   deleteAdmin: { id: 'status.delete_admin', defaultMessage: 'Delete (Admin)' },
+  purgeAdmin: { id: 'status.purge_admin', defaultMessage: 'Remove' },
   redraft: { id: 'status.redraft', defaultMessage: 'Delete & re-draft' },
   edit: { id: 'status.edit', defaultMessage: 'Edit' },
   direct: { id: 'status.direct', defaultMessage: 'Privately mention @{name}' },
@@ -193,6 +194,7 @@ class ActionBar extends PureComponent {
     const writtenByMe        = status.getIn(['account', 'id']) === me;
     const isRemote           = status.getIn(['account', 'username']) !== status.getIn(['account', 'acct']);
     const canOwnerDelete     = roleplayMode && softHideDeletion && adminTimelineOwnerViewer && !writtenByMe && !isRemote && !status.get('rp_hidden');
+    const canOwnerPurge      = roleplayMode && softHideDeletion && adminTimelineOwnerViewer && !isRemote && !!status.get('rp_hidden');
 
     let menu = [];
 
@@ -227,21 +229,28 @@ class ActionBar extends PureComponent {
       menu.push(null);
 
       if (writtenByMe) {
-        if (pinnableStatus) {
-          menu.push({ text: intl.formatMessage(status.get('pinned') ? messages.unpin : messages.pin), action: this.handlePinClick });
-          menu.push(null);
-        }
+        if (canOwnerPurge) {
+          menu.push({ text: intl.formatMessage(messages.purgeAdmin), action: this.handleDeleteClick, dangerous: true });
+        } else {
+          if (pinnableStatus) {
+            menu.push({ text: intl.formatMessage(status.get('pinned') ? messages.unpin : messages.pin), action: this.handlePinClick });
+            menu.push(null);
+          }
 
-        menu.push({ text: intl.formatMessage(mutingConversation ? messages.unmuteConversation : messages.muteConversation), action: this.handleConversationMuteClick });
-        if (!['private', 'direct'].includes(status.get('visibility'))) {
-          menu.push({ text: intl.formatMessage(messages.quotePolicyChange), action: this.handleQuotePolicyChange });
+          menu.push({ text: intl.formatMessage(mutingConversation ? messages.unmuteConversation : messages.muteConversation), action: this.handleConversationMuteClick });
+          if (!['private', 'direct'].includes(status.get('visibility'))) {
+            menu.push({ text: intl.formatMessage(messages.quotePolicyChange), action: this.handleQuotePolicyChange });
+          }
+          menu.push(null);
+          menu.push({ text: intl.formatMessage(messages.edit), action: this.handleEditClick });
+          menu.push({ text: intl.formatMessage(messages.delete), action: this.handleDeleteClick, dangerous: true });
+          menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
         }
-        menu.push(null);
-        menu.push({ text: intl.formatMessage(messages.edit), action: this.handleEditClick });
-        menu.push({ text: intl.formatMessage(messages.delete), action: this.handleDeleteClick, dangerous: true });
-        menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
       } else {
-        if (canOwnerDelete) {
+        if (canOwnerPurge) {
+          menu.push({ text: intl.formatMessage(messages.purgeAdmin), action: this.handleDeleteClick, dangerous: true });
+          menu.push(null);
+        } else if (canOwnerDelete) {
           menu.push({ text: intl.formatMessage(messages.deleteAdmin), action: this.handleDeleteClick, dangerous: true });
           menu.push(null);
         }

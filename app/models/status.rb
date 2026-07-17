@@ -73,7 +73,7 @@ class Status < ApplicationRecord
 
   # If `override_timestamps` is set at creation time, Snowflake ID creation
   # will be based on current time instead of `created_at`
-  attr_accessor :override_timestamps
+  attr_accessor :override_timestamps, :skip_counter_decrement
 
   update_index('statuses', :proper)
   update_index('public_statuses', :proper)
@@ -557,7 +557,7 @@ class Status < ApplicationRecord
   end
 
   def decrement_counter_caches
-    return if direct_visibility? || new_record?
+    return if direct_visibility? || new_record? || skip_counter_decrement
 
     account&.decrement_count!(:statuses_count)
     reblog&.decrement_count!(:reblogs_count) if reblog?

@@ -662,6 +662,50 @@ RSpec.describe '/api/v1/statuses' do
             expect(HideStatusWorker).to_not have_enqueued_sidekiq_job(any_args)
           end
         end
+
+        context 'when the status is already soft-hidden' do
+          let(:status) { Fabricate(:status) }
+
+          before do
+            user.update!(role: UserRole.find_by(name: 'Owner'))
+            RpHiddenStatus.create!(status: status)
+          end
+
+          it 'queues a permanent removal instead of another soft-hide', :aggregate_failures do
+            subject
+
+            expect(response).to have_http_status(200)
+            expect(PurgeStatusWorker).to have_enqueued_sidekiq_job(status.id)
+            expect(HideStatusWorker).to_not have_enqueued_sidekiq_job(any_args)
+          end
+
+          it 'destroys the status when the job runs', :aggregate_failures, :inline_jobs do
+            subject
+
+            expect(Status.unscoped.find_by(id: status.id)).to be_nil
+            expect(RpHiddenStatus.exists?(status_id: status.id)).to be(false)
+          end
+
+          it 'does not decrement the statuses count a second time', :inline_jobs do
+            status.account.update!(statuses_count: 4)
+
+            expect { subject }
+              .to_not(change { status.account.reload.statuses_count })
+          end
+
+          context 'when a non-owner administrator targets it' do
+            before do
+              user.update!(role: UserRole.find_by(name: 'Admin'))
+            end
+
+            it 'denies the request', :aggregate_failures do
+              subject
+
+              expect(response).to have_http_status(404)
+              expect(PurgeStatusWorker).to_not have_enqueued_sidekiq_job(any_args)
+            end
+          end
+        end
       end
 
       context 'when in community mode with soft-hide deletion disabled' do
