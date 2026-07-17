@@ -14,7 +14,6 @@
 #  local                        :boolean
 #  local_only                   :boolean
 #  mfm                          :boolean          default(FALSE), not null
-#  mfm_html                     :text
 #  mfm_text                     :text
 #  ordered_media_attachment_ids :bigint(8)        is an Array
 #  quote_approval_policy        :integer          default(0), not null
