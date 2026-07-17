@@ -11,7 +11,8 @@ import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { DismissableBanner } from 'flavours/glitch/components/dismissable_banner';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
-import { domain, localLiveFeedAccess, roleplayMode } from 'flavours/glitch/initial_state';
+import { domain, localLiveFeedAccess } from 'flavours/glitch/initial_state';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import { canViewFeed } from 'flavours/glitch/permissions';
 
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';

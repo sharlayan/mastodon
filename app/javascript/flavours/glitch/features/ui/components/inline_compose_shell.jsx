@@ -20,7 +20,8 @@ import { fetchLists } from 'flavours/glitch/actions/lists_typed';
 import { Icon } from 'flavours/glitch/components/icon';
 import { TabList, TabLink } from 'flavours/glitch/components/tab_list';
 import ComposeFormContainer from 'flavours/glitch/features/compose/containers/compose_form_container';
-import { me, antennaEnabled, roleplayMode } from 'flavours/glitch/initial_state';
+import { me, antennaEnabled } from 'flavours/glitch/initial_state';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import { getOrderedLists } from 'flavours/glitch/selectors/lists';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 

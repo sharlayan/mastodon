@@ -34,7 +34,7 @@ import { Icon } from '@/flavours/glitch/components/icon';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { computeNavigationOrder, isNavigationItemAlwaysVisible, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
 import { useIdentity } from '@/flavours/glitch/identity_context';
-import { collectionsEnabled, roleplayMode } from '@/flavours/glitch/initial_state';
+import { collectionsEnabled, roleplayMode } from '@/flavours/glitch/sharlayan/roleplay';
 import { isAdministrator } from '@/flavours/glitch/permissions';
 
 const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, locked, intl, onToggle, onMove }) => {
