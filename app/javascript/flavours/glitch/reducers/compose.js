@@ -589,7 +589,7 @@ export const composeReducer = (state = initialState, action) => {
       map.set('idempotencyKey', uuid());
     });
   case COMPOSE_DISCARD:
-    return clearAll(state);
+    return clearAll(state).setIn(['advanced_options', 'threaded_mode'], false);
   case COMPOSE_SUBMIT_REQUEST:
     return state.set('is_submitting', true);
   case COMPOSE_SUBMIT_SUCCESS:
