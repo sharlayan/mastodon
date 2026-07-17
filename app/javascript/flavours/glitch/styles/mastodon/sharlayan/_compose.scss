@@ -190,3 +190,7 @@
   font-size: 13px;
   color: var(--color-text-tertiary);
 }
+
+.compose-form:not(.compose-form--inline) .reply-indicator__cancel {
+  display: none;
+}

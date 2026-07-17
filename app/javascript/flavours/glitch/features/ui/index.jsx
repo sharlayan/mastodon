@@ -33,7 +33,7 @@ import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
 import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain } from '../../initial_state';
-import { renderSharlayanRoutes } from 'flavours/glitch/sharlayan/registry/routes';
+import { renderSharlayanRoutes } from 'flavours/glitch/sharlayan/registry/routes/render';
 import { SharlayanUiExtensions, shouldIgnoreSharlayanDropTarget } from 'flavours/glitch/sharlayan/registry/ui';
 
 import BundleColumnError from './components/bundle_column_error';

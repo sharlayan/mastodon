@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
-import { createRef, useMemo } from 'react';
+import { createRef } from 'react';
 
-import { defineMessages, useIntl } from 'react-intl';
+import { defineMessages } from 'react-intl';
 
 import classNames from 'classnames';
 
@@ -10,42 +10,34 @@ import ImmutablePureComponent from 'react-immutable-pure-component';
 
 import { length } from 'stringz';
 
-import { openModal } from 'flavours/glitch/actions/modal';
-import { forceLocalOnly, me, missingAltTextModal } from 'flavours/glitch/initial_state';
-import { useAppDispatch } from 'flavours/glitch/store';
+import { missingAltTextModal } from 'flavours/glitch/initial_state';
 
 import AutosuggestInput from 'flavours/glitch/components/autosuggest_input';
 import AutosuggestTextarea from 'flavours/glitch/components/autosuggest_textarea';
-import { Avatar } from 'flavours/glitch/components/avatar';
 import { Button } from 'flavours/glitch/components/button';
-import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { injectIntl } from '@/flavours/glitch/components/intl';
-import { useAccount } from 'flavours/glitch/hooks/useAccount';
 import EmojiPickerDropdown from '../containers/emoji_picker_dropdown_container';
 import PollButtonContainer from '../containers/poll_button_container';
 import SpoilerButtonContainer from '../containers/spoiler_button_container';
 import UploadButtonContainer from '../containers/upload_button_container';
 import { countableText } from '../util/counter';
-import { overflowStart } from '../util/overflow';
+import { getComposeOverflowStart } from 'flavours/glitch/sharlayan/compose/calculations';
+import { SharlayanComposeControls, SharlayanComposeHint, SharlayanComposeSubmit } from 'flavours/glitch/sharlayan/compose/components';
 
 import { CharacterCounter } from './character_counter';
 import { ContentTypeButton } from './content_type_button';
 import { EditIndicator } from './edit_indicator';
 import { FederationButton } from './federation_button';
 import { LanguageDropdown } from './language_dropdown';
-import { MfmComposeHint } from './mfm_compose_hint';
 import { NavigationBar } from './navigation_bar';
 import { PollForm } from "./poll_form";
 import { ReplyIndicator } from './reply_indicator';
-import { ScheduleButton } from './schedule_button';
 import { SecondaryPrivacyButton } from './secondary_privacy_button';
 import { ThreadModeButton } from './thread_mode_button';
 import { UploadForm } from './upload_form';
 import { Warning } from './warning';
 import { ComposeQuotedStatus } from './quoted_post';
 import { VisibilityButton } from './visibility_button';
-import { CircleButton } from './circle_button';
-import { ClipButton } from './clip_button';
 
 const allowedAroundShortCode = '><\u0085\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000\u2028\u2029\u0009\u000a\u000b\u000c\u000d';
 
@@ -53,40 +45,9 @@ const messages = defineMessages({
   placeholder: { id: 'compose_form.placeholder', defaultMessage: 'What is on your mind?' },
   spoiler_placeholder: { id: 'compose_form.spoiler_placeholder', defaultMessage: 'Content warning (optional)' },
   publish: { id: 'compose_form.publish', defaultMessage: 'Post' },
-  publishToot: { id: 'compose_form.publish_toot', defaultMessage: '뿌우' },
-  schedule: { id: 'compose_form.schedule_submit', defaultMessage: 'Schedule' },
   saveChanges: { id: 'compose_form.save_changes', defaultMessage: 'Update' },
   reply: { id: 'compose_form.reply', defaultMessage: 'Reply' },
-  profile: { id: 'column_header.profile', defaultMessage: 'Profile' },
-  switchAccount: { id: 'navigation_bar.switch_account', defaultMessage: 'Switch account' },
-  scheduled: { id: 'navigation_bar.scheduled', defaultMessage: 'Scheduled posts' },
 });
-
-const ComposeFormAvatar = () => {
-  const intl = useIntl();
-  const dispatch = useAppDispatch();
-  const account = useAccount(me);
-  const acct = account?.get('acct');
-
-  const menu = useMemo(() => [
-    { text: intl.formatMessage(messages.profile), to: `/@${acct}` },
-    { text: intl.formatMessage(messages.switchAccount), action: () => dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })) },
-    null,
-    { text: intl.formatMessage(messages.scheduled), to: '/scheduled' },
-  ], [intl, dispatch, acct]);
-
-  if (!account) {
-    return null;
-  }
-
-  return (
-    <Dropdown items={menu} placement='bottom-start' scrollKey='compose-form-avatar'>
-      <button type='button' className='compose-form__dropdowns__avatar'>
-        <Avatar account={account} size={32} />
-      </button>
-    </Dropdown>
-  );
-};
 
 class ComposeForm extends ImmutablePureComponent {
   static propTypes = {
@@ -102,12 +63,9 @@ class ComposeForm extends ImmutablePureComponent {
     caretPosition: PropTypes.number,
     preselectDate: PropTypes.instanceOf(Date),
     preselectOnReply: PropTypes.bool,
-    usePublishToot: PropTypes.bool,
-    showScheduleButton: PropTypes.bool,
     isSubmitting: PropTypes.bool,
     isChangingUpload: PropTypes.bool,
     isEditing: PropTypes.bool,
-    isEditingScheduled: PropTypes.bool,
     isUploading: PropTypes.bool,
     onChange: PropTypes.func.isRequired,
     onSubmit: PropTypes.func.isRequired,
@@ -125,12 +83,9 @@ class ComposeForm extends ImmutablePureComponent {
     media: ImmutablePropTypes.list,
     isInReply: PropTypes.bool,
     singleColumn: PropTypes.bool,
-    isInline: PropTypes.bool,
     lang: PropTypes.string,
     maxChars: PropTypes.number,
     redirectOnSuccess: PropTypes.bool,
-    scheduledAt: PropTypes.string,
-    onScheduleChange: PropTypes.func,
   };
 
   static defaultProps = {
@@ -315,35 +270,6 @@ class ComposeForm extends ImmutablePureComponent {
     this.props.onPickEmoji(position, data, needsSpace);
   };
 
-  renderSubmit () {
-    const { intl, isSubmitting } = this.props;
-
-    return (
-      <div className='compose-form__submit'>
-        <SecondaryPrivacyButton
-          disabled={!this.canSubmit()}
-          privacy={this.props.sideArm}
-          isEditing={this.props.isEditing}
-          onClick={this.handleSecondarySubmit}
-        />
-        <Button
-          type='submit'
-          compact
-          disabled={!this.canSubmit()}
-          loading={isSubmitting}
-        >
-          {intl.formatMessage(
-            this.props.isEditing
-              ? messages.saveChanges
-              : (this.props.scheduledAt
-                ? messages.schedule
-                : (this.props.isInReply ? messages.reply : (this.props.usePublishToot ? messages.publishToot : messages.publish)))
-          )}
-        </Button>
-      </div>
-    );
-  }
-
   render () {
     const { intl, onPaste, onDrop, autoFocus, withoutNavigation, maxChars, isSubmitting } = this.props;
 
@@ -357,7 +283,7 @@ class ComposeForm extends ImmutablePureComponent {
         })}
         onSubmit={this.handleSubmit}
       >
-        <ReplyIndicator isInline={this.props.isInline} />
+        <ReplyIndicator />
         {!withoutNavigation && <NavigationBar />}
         <Warning />
 
@@ -365,25 +291,31 @@ class ComposeForm extends ImmutablePureComponent {
           <EditIndicator />
 
           <div className='compose-form__dropdowns'>
-            <div className='compose-form__dropdowns__left'>
-              {this.props.isInline && <ComposeFormAvatar />}
-              <VisibilityButton disabled={this.props.isEditing} />
-              <CircleButton disabled={this.props.isEditing} />
-              <ClipButton disabled={this.props.isEditing} />
-              <LanguageDropdown />
-              {(this.props.showScheduleButton || this.props.isEditingScheduled) && (
-                <ScheduleButton
+            <SharlayanComposeControls
+              isEditing={this.props.isEditing}
+              isEditingScheduled={this.props.isEditingScheduled}
+              isInline={this.props.isInline}
+              onScheduleChange={this.props.onScheduleChange}
+              scheduledAt={this.props.scheduledAt}
+              showScheduleButton={this.props.showScheduleButton}
+              languageDropdown={<LanguageDropdown />}
+              visibilityButton={<VisibilityButton disabled={this.props.isEditing} />}
+              submit={(
+                <SharlayanComposeSubmit
+                  baseMessages={messages}
+                  buttonComponent={Button}
+                  canSubmit={this.canSubmit()}
+                  isEditing={!!this.props.isEditing}
+                  isInReply={this.props.isInReply}
+                  isSubmitting={this.props.isSubmitting}
+                  onSecondarySubmit={this.handleSecondarySubmit}
                   scheduledAt={this.props.scheduledAt}
-                  onScheduleChange={this.props.onScheduleChange}
-                  disabled={this.props.isEditing && !this.props.isEditingScheduled}
-                  isEditing={this.props.isEditing && !this.props.isEditingScheduled}
+                  secondaryPrivacyButtonComponent={SecondaryPrivacyButton}
+                  sideArm={this.props.sideArm}
+                  usePublishToot={this.props.usePublishToot}
                 />
               )}
-            </div>
-
-            <div className='compose-form__dropdowns__submit'>
-              {this.renderSubmit()}
-            </div>
+            />
           </div>
 
           {this.props.spoiler && (
@@ -429,7 +361,7 @@ class ComposeForm extends ImmutablePureComponent {
             autoFocus={autoFocus}
             lang={this.props.lang}
             className='compose-form__input'
-            overflowStart={overflowStart(this.props.text, maxChars - (this.props.spoiler ? length(this.props.spoilerText) : 0))}
+            overflowStart={getComposeOverflowStart({ text: this.props.text, maxChars, spoiler: this.props.spoiler, spoilerText: this.props.spoilerText })}
           />
 
           <PollForm />
@@ -444,15 +376,29 @@ class ComposeForm extends ImmutablePureComponent {
                 {!this.props.spoilerAlwaysOn && <SpoilerButtonContainer />}
                 <ContentTypeButton />
                 <EmojiPickerDropdown onPickEmoji={this.handleEmojiPick} />
-                {!forceLocalOnly && <FederationButton />}
+                <FederationButton />
                 <ThreadModeButton />
                 <CharacterCounter max={maxChars} text={this.getFulltextForCharacterCounting()} />
               </div>
 
-              {!this.props.isInline && this.renderSubmit()}
+              {!this.props.isInline && (
+                <SharlayanComposeSubmit
+                  baseMessages={messages}
+                  buttonComponent={Button}
+                  canSubmit={this.canSubmit()}
+                  isEditing={!!this.props.isEditing}
+                  isInReply={this.props.isInReply}
+                  isSubmitting={this.props.isSubmitting}
+                  onSecondarySubmit={this.handleSecondarySubmit}
+                  scheduledAt={this.props.scheduledAt}
+                  secondaryPrivacyButtonComponent={SecondaryPrivacyButton}
+                  sideArm={this.props.sideArm}
+                  usePublishToot={this.props.usePublishToot}
+                ></SharlayanComposeSubmit>
+              )}
             </div>
 
-            <MfmComposeHint />
+            <SharlayanComposeHint />
           </div>
         </div>
       </form>

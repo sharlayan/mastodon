@@ -1,5 +1,3 @@
-import React from 'react';
-
 import {
   antennaEnabled,
   circlesEnabled,
@@ -7,7 +5,6 @@ import {
   driveEnabled,
   pagesEnabled,
 } from 'flavours/glitch/initial_state';
-import { WrappedRoute } from 'flavours/glitch/features/ui/util/react_router_helpers';
 
 const alwaysEnabled = () => true;
 
@@ -49,15 +46,3 @@ export const sharlayanRouteDescriptors = [
   { key: 'drive', path: '/drive', featureGate: () => driveEnabled, lazyComponent: () => import('../../../features/drive') },
   { key: 'circles', path: '/circles', featureGate: () => circlesEnabled, lazyComponent: () => import('../../../features/circles') },
 ];
-
-export const renderSharlayanRoutes = (content) =>
-  sharlayanRouteDescriptors
-    .filter(({ featureGate }) => featureGate())
-    .map(({ key, lazyComponent, featureGate, ...route }) => (
-      <WrappedRoute
-        key={key}
-        {...route}
-        component={lazyComponent}
-        content={content}
-      />
-    ));

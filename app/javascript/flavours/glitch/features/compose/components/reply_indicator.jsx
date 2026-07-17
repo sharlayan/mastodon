@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 
-import PropTypes from 'prop-types';
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
 import { useDispatch, useSelector } from 'react-redux';
@@ -20,7 +19,7 @@ const messages = defineMessages({
   cancel: { id: 'reply_indicator.cancel', defaultMessage: 'Cancel' },
 });
 
-export const ReplyIndicator = ({ isInline }) => {
+export const ReplyIndicator = () => {
   const intl = useIntl();
   const dispatch = useDispatch();
   const inReplyToId = useSelector(state => state.getIn(['compose', 'in_reply_to']));
@@ -49,11 +48,9 @@ export const ReplyIndicator = ({ isInline }) => {
             <DisplayName account={account} />
           </Permalink>
 
-          {isInline && (
-            <div className='reply-indicator__cancel'>
-              <IconButton title={intl.formatMessage(messages.cancel)} icon='times' iconComponent={CloseIcon} onClick={handleCancelClick} inverted />
-            </div>
-          )}
+          <div className='reply-indicator__cancel'>
+            <IconButton title={intl.formatMessage(messages.cancel)} icon='times' iconComponent={CloseIcon} onClick={handleCancelClick} inverted />
+          </div>
         </div>
 
         <EmbeddedStatusContent
@@ -70,8 +67,4 @@ export const ReplyIndicator = ({ isInline }) => {
       </div>
     </div>
   );
-};
-
-ReplyIndicator.propTypes = {
-  isInline: PropTypes.bool,
 };
