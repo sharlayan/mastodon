@@ -1,5 +1,13 @@
 @use 'sass:color';
 @use 'variables' as *;
+@use 'sharlayan/accounts';
+@use 'sharlayan/avatars';
+@use 'sharlayan/clips';
+@use 'sharlayan/compose';
+@use 'sharlayan/misc';
+@use 'sharlayan/navigation';
+@use 'sharlayan/reactions';
+@use 'sharlayan/admin';
 
 html {
   /* instance badge */

@@ -1,0 +1,24 @@
+.detailed-status__display-name:has(.account__avatar--decorated) {
+  overflow: visible;
+}
+
+.account-switcher-modal__item__avatar {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.account__header.inactive .account__header__image,
+.account__header.inactive .account__avatar {
+  filter: grayscale(100%);
+}
+
+.account__header__bar .avatar {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.account__header__bar .avatar .account__avatar {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--avatar-border-radius);
+}
