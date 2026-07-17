@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::PagesController < Api::BaseController
+  include Api::PagesRoleplayAccessConcern
+
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId note detailed).freeze
 
   before_action :require_feature_enabled!

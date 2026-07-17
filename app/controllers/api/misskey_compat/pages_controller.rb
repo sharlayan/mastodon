@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
+  include Api::PagesRoleplayAccessConcern
+
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId note detailed).freeze
   OWNER_ACTIONS = %i(index likes create update destroy like unlike).freeze
 
