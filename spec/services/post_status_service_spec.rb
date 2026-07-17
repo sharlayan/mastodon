@@ -129,6 +129,21 @@ RSpec.describe PostStatusService do
     expect(status).to be_sensitive
   end
 
+  it 'stores MFM attributes only while MFM is enabled' do
+    account = Fabricate(:account)
+    Setting.mfm_enabled = true
+
+    status = subject.call(account, text: '$[x2 test]', content_type: 'text/x-mfm')
+
+    expect(status).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 test]')
+
+    Setting.mfm_enabled = false
+
+    status = subject.call(account, text: '$[x2 disabled]', content_type: 'text/x-mfm')
+
+    expect(status).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+  end
+
   it 'creates a status with spoiler text' do
     spoiler_text = 'spoiler text'
 
@@ -177,6 +192,38 @@ RSpec.describe PostStatusService do
       expect(status)
         .to be_persisted
         .and have_attributes(visibility: 'limited', limited_scope: 'personal')
+    end
+
+    it 'persists circle and clip membership atomically with the status' do
+      clip = Clip.create!(account: account, title: 'Posts')
+      Setting.circles_enabled = true
+      Setting.clips_enabled = true
+
+      status = subject.call(account, text: 'saved together', visibility: :circle, circle_id: circle.id, clip_ids: [clip.id])
+
+      expect(circle.statuses).to include(status)
+      expect(clip.statuses).to include(status)
+    end
+
+    it 'rolls back the status and circle membership when clip membership fails' do
+      clip = Clip.create!(account: account, title: 'Posts')
+      clips = account.clips
+      selected_clips = instance_double(ActiveRecord::Relation)
+      clip_statuses = clip.statuses
+      Setting.circles_enabled = true
+      Setting.clips_enabled = true
+      allow(account).to receive(:clips).and_return(clips)
+      allow(clips).to receive(:where).with(id: [clip.id]).and_return(selected_clips)
+      allow(selected_clips).to receive(:find_each).and_yield(clip)
+      allow(clip).to receive(:statuses).and_return(clip_statuses)
+      allow(clip_statuses).to receive(:<<).and_raise(ActiveRecord::RecordInvalid)
+
+      expect do
+        subject.call(account, text: 'rolled back', visibility: :circle, circle_id: circle.id, clip_ids: [clip.id])
+      end.to raise_error(ActiveRecord::RecordInvalid)
+
+      expect(account.statuses.where(text: 'rolled back')).to_not exist
+      expect(circle.statuses.where(text: 'rolled back')).to_not exist
     end
   end
 
@@ -283,6 +330,27 @@ RSpec.describe PostStatusService do
 
     expect(DistributionWorker).to have_received(:perform_async).with(status.id)
     expect(ActivityPub::DistributionWorker).to have_received(:perform_async).with(status.id)
+  end
+
+  it 'enqueues distribution after the status transaction commits' do
+    baseline_transactions = ApplicationRecord.connection.open_transactions
+    transaction_states = []
+    allow(DistributionWorker).to receive(:perform_async) { transaction_states << ApplicationRecord.connection.open_transactions }
+    allow(ActivityPub::DistributionWorker).to receive(:perform_async) { transaction_states << ApplicationRecord.connection.open_transactions }
+
+    subject.call(Fabricate(:account), text: 'committed')
+
+    expect(transaction_states).to eq [baseline_transactions, baseline_transactions]
+  end
+
+  it 'does not federate a personal circle status' do
+    account = Fabricate(:account)
+    circle = Circle.create!(account: account, title: 'Empty')
+    Setting.circles_enabled = true
+
+    expect do
+      subject.call(account, text: 'personal', visibility: :circle, circle_id: circle.id)
+    end.to_not enqueue_sidekiq_job(ActivityPub::DistributionWorker)
   end
 
   it 'crawls links' do
@@ -404,6 +472,13 @@ RSpec.describe PostStatusService do
       end.to raise_error(Mastodon::RateLimitExceededError)
 
       expect(events).to be_empty
+    end
+
+    it 'does not inspect URLs when an explicit quote is supplied' do
+      status = subject.call(user.account, text: 'https://example.com/@alice/1', quoted_status: quoted_status)
+
+      expect(events).to be_empty
+      expect(status.quote).to_not be_legacy
     end
   end
 
