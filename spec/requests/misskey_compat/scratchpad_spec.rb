@@ -73,6 +73,8 @@ RSpec.describe 'Misskey-compat scratchpad' do
       expect(subscription.data['compat']).to eq('misskey')
       expect(response.body).to include(CGI.escapeHTML('"state":"subscribed"'))
       expect(response.body).to include(CGI.escapeHTML(%("userId":"#{MisskeyCompat::MiId.encode(account.id)}")))
+      expect(response.body).to include('class="input-copy"')
+      expect(response.body).to include(CGI.escapeHTML(I18n.t('generic.copy')))
     end
 
     it 'reports already-subscribed on repeat' do
