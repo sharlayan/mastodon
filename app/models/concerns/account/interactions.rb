@@ -40,7 +40,6 @@ module Account::Interactions
     has_many :muted_by, -> { order(mutes: { id: :desc }) }, through: :muted_by_relationships, source: :account
     has_many :conversation_mutes, dependent: :destroy
     has_many :domain_blocks, class_name: 'AccountDomainBlock', dependent: :destroy
-    has_many :domain_mutes, class_name: 'AccountDomainMute', dependent: :destroy
     has_many :announcement_mutes, dependent: :destroy
   end
 
@@ -95,16 +94,6 @@ module Account::Interactions
     domain_blocks.find_or_create_by!(domain: other_domain)
   end
 
-  def mute_domain!(other_domain, hide_from_home: nil)
-    hide_from_home = false if hide_from_home.nil?
-
-    domain_mute = domain_mutes.create_with(hide_from_home: hide_from_home).find_or_initialize_by(domain: other_domain)
-    domain_mute.save!
-    domain_mute.update(hide_from_home: hide_from_home) if domain_mute.hide_from_home? != hide_from_home
-
-    domain_mute
-  end
-
   def unfollow!(other_account)
     follow = active_relationships.find_by(target_account: other_account)
     follow&.destroy
@@ -128,11 +117,6 @@ module Account::Interactions
   def unblock_domain!(other_domain)
     block = domain_blocks.find_by(domain: normalized_domain(other_domain))
     block&.destroy
-  end
-
-  def unmute_domain!(other_domain)
-    mute = domain_mutes.find_by(domain: normalized_domain(other_domain))
-    mute&.destroy
   end
 
   def following?(other_account)
@@ -208,20 +192,8 @@ module Account::Interactions
     follow_requests.exists?(target_account: other_account)
   end
 
-  def auto_accept_follow_from?(other_account)
-    local? && !other_account.silenced? && user&.setting_auto_accept_followed && following?(other_account)
-  end
-
   def favourited?(status)
     status.proper.favourites.exists?(account: self)
-  end
-
-  def reacted?(status, name = nil, custom_emoji = nil)
-    if name.nil?
-      status.proper.status_reactions.exists?(account: self)
-    else
-      status.proper.status_reactions.exists?(account: self, name: name, custom_emoji: custom_emoji)
-    end
   end
 
   def bookmarked?(status)

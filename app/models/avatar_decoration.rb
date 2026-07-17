@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'request_store'
+
 # == Schema Information
 #
 # Table name: avatar_decorations

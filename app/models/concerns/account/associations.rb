@@ -21,9 +21,7 @@ module Account::Associations
         has_many :featured_in_collections, through: :collection_items, class_name: 'Collection', source: :collection
         has_many :conversations, class_name: 'AccountConversation'
         has_many :custom_filters
-        has_many :favorite_emojis
         has_many :favourites
-        has_many :status_reactions
         has_many :featured_tags, -> { includes(:tag) }
         has_many :list_accounts
         has_many :instance_moderation_notes
@@ -34,17 +32,6 @@ module Account::Associations
         has_many :notification_requests
         has_many :notifications
         has_many :owned_lists, class_name: 'List'
-        has_many :circles, dependent: :destroy
-        has_many :circle_accounts, dependent: :destroy
-        has_many :clips, dependent: :destroy
-        has_many :clip_favourites, dependent: :destroy
-        has_many :favourite_clips, through: :clip_favourites, source: :clip
-        has_many :drive_files, dependent: :destroy
-        has_many :drive_folders, dependent: :destroy
-        has_many :pages, dependent: :destroy
-        has_many :page_likes, dependent: :destroy
-        has_many :antennas, inverse_of: :account, dependent: :destroy
-        has_many :misskey_registry_items, dependent: :destroy
         has_many :polls
         has_many :report_notes
         has_many :reports
@@ -53,9 +40,6 @@ module Account::Associations
         has_many :statuses
         has_many :keypairs
         has_many :email_subscriptions
-        has_many :avatar_decoration_mutes
-        has_many :reaction_mutes, dependent: :destroy
-        has_many :custom_emoji_mutes, dependent: :destroy
 
         has_one :deletion_request, class_name: 'AccountDeletionRequest'
         has_one :follow_recommendation_suppression
@@ -70,8 +54,6 @@ module Account::Associations
         has_many :targeted_account_notes, class_name: 'AccountNote'
         has_many :targeted_moderation_notes, class_name: 'AccountModerationNote'
         has_many :targeted_reports, class_name: 'Report'
-        has_many :avatar_decoration_mutes_targeting_account, class_name: 'AvatarDecorationMute'
-        has_many :reaction_mutes_targeting_account, class_name: 'ReactionMute', dependent: :destroy
       end
     end
 
@@ -95,9 +77,5 @@ module Account::Associations
 
     # BulkImport records owned by account
     has_many :bulk_imports, inverse_of: :account, dependent: :delete_all
-
-    # Account switch authorizations
-    has_many :account_switch_authorizations, inverse_of: :account, dependent: :destroy
-    has_many :switchable_accounts, through: :account_switch_authorizations, source: :target_account
   end
 end

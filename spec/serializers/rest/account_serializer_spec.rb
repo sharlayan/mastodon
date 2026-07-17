@@ -120,6 +120,43 @@ RSpec.describe REST::AccountSerializer do
     end
   end
 
+  describe 'Sharlayan profile extensions' do
+    before do
+      allow(Setting).to receive(:[]).and_call_original
+      allow(Setting).to receive(:[]).with('avatar_decorations_enabled').and_return(true)
+      allow(Setting).to receive(:[]).with('instance_metadata_enabled').and_return(true)
+    end
+
+    it 'filters avatar decorations from blocked domains' do
+      decoration = Fabricate(:avatar_decoration)
+      decoration.update_columns(host: 'blocked.example', remote_id: 'blocked', image_remote_url: 'https://blocked.example/deco.png')
+      Fabricate(:avatar_decoration_domain_block, domain: 'blocked.example')
+      account.update!(avatar_decorations: [{ 'id' => decoration.id }])
+
+      expect(subject['avatar_decorations']).to be_empty
+    end
+
+    context 'with a remote MFM profile' do
+      let(:account) { Fabricate(:account, domain: 'misskey.example', mfm: true) }
+
+      it 'exposes the MFM flag only for a compatible server' do
+        Fabricate(:instance_metadata, domain: account.domain, software: 'misskey')
+        account.update_column(:mfm, true)
+        RequestStore.store.delete(:instance_metadata_by_domain)
+
+        expect(subject['mfm']).to be true
+      end
+
+      it 'does not expose the MFM flag for an incompatible server' do
+        Fabricate(:instance_metadata, domain: account.domain, software: 'mastodon')
+        account.update_column(:mfm, true)
+        RequestStore.store.delete(:instance_metadata_by_domain)
+
+        expect(subject).to_not have_key('mfm')
+      end
+    end
+  end
+
   describe '#feature_approval' do
     context 'when account is local' do
       context 'when account is discoverable' do

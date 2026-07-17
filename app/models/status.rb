@@ -50,6 +50,7 @@ class Status < ApplicationRecord
   include Status::ThreadingConcern
   include Status::Visibility
   include Status::InteractionPolicyConcern
+  include Sharlayan::StatusExtensions
 
   CACHEABLE_ASSOCIATIONS = [
     :application,
@@ -66,7 +67,6 @@ class Status < ApplicationRecord
   ].freeze
 
   MEDIA_ATTACHMENTS_LIMIT = 4
-  REMOTE_MEDIA_ATTACHMENTS_LIMIT = 16
 
   rate_limit by: :account, family: :statuses
 
@@ -95,14 +95,12 @@ class Status < ApplicationRecord
 
   has_many :favourites, inverse_of: :status, dependent: :destroy
   has_many :bookmarks, inverse_of: :status, dependent: :destroy
-  has_many :clip_statuses, inverse_of: :status, dependent: :destroy
   has_many :reblogs, foreign_key: 'reblog_of_id', class_name: 'Status', inverse_of: :reblog, dependent: :destroy
   has_many :reblogged_by_accounts, through: :reblogs, class_name: 'Account', source: :account
   has_many :replies, foreign_key: 'in_reply_to_id', class_name: 'Status', inverse_of: :thread, dependent: nil
   has_many :mentions, dependent: :destroy, inverse_of: :status
   has_many :mentioned_accounts, through: :mentions, source: :account, class_name: 'Account'
   has_many :media_attachments, dependent: :nullify
-  has_many :status_reactions, inverse_of: :status, dependent: :destroy
   has_many :tagged_objects, dependent: :destroy
   has_many :quotes, foreign_key: 'quoted_status_id', inverse_of: :quoted_status, dependent: :nullify
 
@@ -152,26 +150,6 @@ class Status < ApplicationRecord
   scope :tagged_with, ->(tag_ids) { joins(:statuses_tags).where(statuses_tags: { tag_id: tag_ids }) }
   scope :not_excluded_by_account, ->(account) { where.not(account_id: account.excluded_from_timeline_account_ids) }
   scope :not_domain_blocked_by_account, ->(account) { account.excluded_from_timeline_domains.blank? ? left_outer_joins(:account) : left_outer_joins(:account).merge(Account.not_domain_blocked_by_account(account)) }
-  scope :not_domain_muted_by_account, lambda { |account|
-    return self if account.muted_from_timeline_domains.blank?
-
-    followed_account_ids = Follow.where(account_id: account.id).select(:target_account_id)
-
-    left_outer_joins(:account)
-      .where('accounts.domain is NULL or statuses.account_id in (?) or accounts.domain not in (?)',
-             followed_account_ids,
-             account.muted_from_timeline_domains)
-      .where(<<~SQL.squish, followed_account_ids, account.muted_from_timeline_domains)
-        statuses.reblog_of_id IS NULL OR NOT EXISTS (
-          SELECT 1
-          FROM statuses reblogged_statuses
-          INNER JOIN accounts reblogged_accounts ON reblogged_accounts.id = reblogged_statuses.account_id
-          WHERE reblogged_statuses.id = statuses.reblog_of_id
-            AND reblogged_statuses.account_id NOT IN (?)
-            AND reblogged_accounts.domain IN (?)
-        )
-      SQL
-  }
   scope :tagged_with_all, lambda { |tag_ids|
     Array(tag_ids).map(&:to_i).reduce(self) do |result, id|
       result.where(<<~SQL.squish, tag_id: id)
@@ -318,17 +296,6 @@ class Status < ApplicationRecord
     @emojis = CustomEmoji.from_text(fields.join(' '), account.domain)
   end
 
-  def reactions(account_id = nil)
-    # TODO: error check (maybe cause 500 in reaction notification)
-    grouped_ordered_status_reactions(account_id).select(
-      [:status_id, :name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
-        values << value_for_reaction_me_column(account_id)
-      end
-    ).to_a.tap do |records|
-      ActiveRecord::Associations::Preloader.new(records: records, associations: { custom_emoji: :local_counterpart }).call
-    end
-  end
-
   def ordered_media_attachments
     if ordered_media_attachment_ids.nil?
       # NOTE: sort Ruby-side to avoid hitting the database when the status is
@@ -337,11 +304,7 @@ class Status < ApplicationRecord
     else
       map = media_attachments.index_by(&:id)
       ordered_media_attachment_ids.filter_map { |media_attachment_id| map[media_attachment_id] }
-    end.take(media_attachments_limit)
-  end
-
-  def media_attachments_limit
-    local? ? MEDIA_ATTACHMENTS_LIMIT : REMOTE_MEDIA_ATTACHMENTS_LIMIT
+    end.take(sharlayan_media_attachments_limit)
   end
 
   def replies_count
@@ -354,10 +317,6 @@ class Status < ApplicationRecord
 
   def favourites_count
     status_stat&.favourites_count || 0
-  end
-
-  def reactions_count
-    status_stat&.reactions_count || 0
   end
 
   def quotes_count
@@ -451,29 +410,6 @@ class Status < ApplicationRecord
       Favourite.select(:status_id).where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
     end
 
-    def reactions_map(status_ids, account_id)
-      # TODO: error check
-      StatusReaction.select(:status_id).where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
-    end
-
-    def reaction_groups_map(status_ids, account_id = nil)
-      scope = StatusReaction.where(status_id: status_ids)
-      excluded_account_ids = Account.find_by(id: account_id)&.excluded_from_timeline_account_ids if account_id.present?
-      scope = scope.where.not(account_id: excluded_account_ids) if excluded_account_ids.present?
-
-      records = scope
-        .group(:status_id, :name, :custom_emoji_id)
-        .order(Arel.sql('MIN(status_reactions.created_at)').asc)
-        .select(
-          [:status_id, :name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
-            values << value_for_reaction_me_column(account_id)
-          end
-        ).to_a
-
-      ActiveRecord::Associations::Preloader.new(records: records, associations: { custom_emoji: :local_counterpart }).call
-      records.group_by(&:status_id)
-    end
-
     def bookmarks_map(status_ids, account_id)
       Bookmark.select(:status_id).where(status_id: status_ids).where(account_id: account_id).to_h { |f| [f.status_id, true] }
     end
@@ -481,29 +417,6 @@ class Status < ApplicationRecord
     def reblogs_map(status_ids, account_id)
       unscoped.select(:reblog_of_id).where(reblog_of_id: status_ids).where(account_id: account_id).to_h { |s| [s.reblog_of_id, true] }
     end
-
-    private
-
-    def value_for_reaction_me_column(account_id)
-      return 'FALSE AS me' if account_id.nil?
-
-      <<~SQL.squish
-        EXISTS(
-          SELECT 1
-          FROM status_reactions inner_reactions
-          WHERE inner_reactions.account_id = #{account_id.to_i}
-            AND inner_reactions.status_id = status_reactions.status_id
-            AND inner_reactions.name = status_reactions.name
-            AND (
-              inner_reactions.custom_emoji_id = status_reactions.custom_emoji_id
-              OR inner_reactions.custom_emoji_id IS NULL
-                AND status_reactions.custom_emoji_id IS NULL
-            )
-        ) AS me
-      SQL
-    end
-
-    public
 
     def mutes_map(conversation_ids, account_id)
       ConversationMute.select(:conversation_id).where(conversation_id: conversation_ids).where(account_id: account_id).to_h { |m| [m.conversation_id, true] }
@@ -550,43 +463,6 @@ class Status < ApplicationRecord
   end
 
   private
-
-  def grouped_ordered_status_reactions(account_id = nil)
-    scope = status_reactions
-
-    if account_id.present?
-      excluded_account_ids = Account.find_by(id: account_id)&.excluded_from_timeline_account_ids
-      scope = scope.where.not(account_id: excluded_account_ids) if excluded_account_ids.present?
-    end
-
-    scope
-      .group(:status_id, :name, :custom_emoji_id)
-      .order(
-        Arel.sql('MIN(created_at)').asc
-      )
-  end
-
-  def value_for_reaction_me_column(account_id)
-    # error check
-    if account_id.nil?
-      'FALSE AS me'
-    else
-      <<~SQL.squish
-        EXISTS(
-          SELECT 1
-          FROM status_reactions inner_reactions
-          WHERE inner_reactions.account_id = #{account_id}
-            AND inner_reactions.status_id = status_reactions.status_id
-            AND inner_reactions.name = status_reactions.name
-            AND (
-              inner_reactions.custom_emoji_id = status_reactions.custom_emoji_id
-              OR inner_reactions.custom_emoji_id IS NULL
-                AND status_reactions.custom_emoji_id IS NULL
-            )
-        ) AS me
-      SQL
-    end
-  end
 
   def update_status_stat!(attrs)
     return if marked_for_destruction? || destroyed?

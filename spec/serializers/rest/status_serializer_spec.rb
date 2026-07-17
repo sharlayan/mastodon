@@ -58,6 +58,22 @@ RSpec.describe REST::StatusSerializer do
       end
     end
 
+    context 'with cached instance metadata' do
+      before do
+        allow(Setting).to receive(:[]).and_call_original
+        allow(Setting).to receive(:[]).with('instance_metadata_enabled').and_return(true)
+        Fabricate(:instance_metadata, domain: bob.domain, software: 'misskey', metadata_updated_at: Time.current)
+        RequestStore.store.delete(:instance_metadata_by_domain)
+      end
+
+      it 'serializes the cached metadata without scheduling a refresh' do
+        allow(InstanceMetadataUpdateWorker).to receive(:perform_async)
+
+        expect(subject['instance_metadata']).to include('domain' => bob.domain, 'software' => 'misskey')
+        expect(InstanceMetadataUpdateWorker).to_not have_received(:perform_async)
+      end
+    end
+
     context 'with untrusted counts' do
       before do
         status.status_stat.tap do |status_stat|

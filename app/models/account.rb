@@ -112,6 +112,7 @@ class Account < ApplicationRecord
   include Account::StatusesSearch
   include Account::Suspensions
   include Account::AttributionDomains
+  include Sharlayan::AccountExtensions
   include DomainMaterializable
   include DomainNormalizable
   include Paginable
@@ -136,7 +137,6 @@ class Account < ApplicationRecord
   validates :display_name, length: { maximum: DISPLAY_NAME_LENGTH_LIMIT }, if: -> { local? && will_save_change_to_display_name? }
   validates :note, note_length: { maximum: NOTE_LENGTH_LIMIT }, if: -> { local? && will_save_change_to_note? }
   validates :fields, length: { maximum: DEFAULT_FIELDS_SIZE }, if: -> { local? && will_save_change_to_fields? }
-  validates :followed_message, length: { maximum: 256 }, if: -> { local? && will_save_change_to_followed_message? }
   validates_with EmptyProfileFieldNamesValidator, if: -> { local? && will_save_change_to_fields? }
   with_options on: :create, if: :local? do
     validates :followers_url, absence: true
@@ -428,10 +428,6 @@ class Account < ApplicationRecord
     Rails.cache.fetch("exclude_domains_for:#{id}") { domain_blocks.pluck(:domain) }
   end
 
-  def muted_from_timeline_domains
-    Rails.cache.fetch("mute_domains_for:#{id}") { domain_mutes.pluck(:domain) }
-  end
-
   def preferred_inbox_url
     shared_inbox_url.presence || inbox_url
   end
@@ -493,7 +489,6 @@ class Account < ApplicationRecord
   end
 
   before_validation :prepare_contents, if: :local?
-  before_save :recompute_mfm, if: :mfm_source_changed?
   before_create :generate_keys
   before_destroy :clean_feed_manager
 
@@ -504,11 +499,7 @@ class Account < ApplicationRecord
     save!
   end
 
-  after_commit :schedule_instance_metadata_update, on: [:create, :update], if: :should_update_instance_metadata?
-
-  def featureable?
-    local? && discoverable?
-  end
+  include Sharlayan::AccountLifecycle
 
   def featureable_by?(other_account)
     return discoverable? && (!locked? || followed_by?(other_account) || other_account.id == id) if local?
@@ -516,35 +507,11 @@ class Account < ApplicationRecord
     feature_policy_for_account(other_account).in?(%i(automatic manual))
   end
 
-  def drive_quota_bytes
-    (user&.role || UserRole.everyone).drive_quota_bytes
-  end
-
   private
-
-  def should_update_instance_metadata?
-    return false if domain.blank?
-
-    metadata = InstanceMetadata.find_by(domain: domain)
-    metadata.nil? || metadata.theme_color_needs_update?
-  end
-
-  def schedule_instance_metadata_update
-    InstanceMetadataUpdateWorker.perform_async(domain)
-  end
 
   def prepare_contents
     display_name&.strip!
     note&.strip!
-  end
-
-  def mfm_source_changed?
-    will_save_change_to_note? || will_save_change_to_fields?
-  end
-
-  def recompute_mfm
-    self.mfm = MfmDetector.contains_mfm?(note) ||
-               fields.any? { |field| MfmDetector.contains_mfm?(field.value) }
   end
 
   def generate_keys
@@ -561,7 +528,7 @@ class Account < ApplicationRecord
   end
 
   def emojifiable_text
-    [note, display_name, followed_message, fields.map(&:name), fields.map(&:value)].join(' ')
+    [note, display_name, sharlayan_emojifiable_text, fields.map(&:name), fields.map(&:value)].join(' ')
   end
 
   def clean_feed_manager
