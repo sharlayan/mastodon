@@ -1,5 +1,3 @@
-import { Set as ImmutableSet } from 'immutable';
-
 import api, { getLinks } from '../api';
 
 import {
@@ -8,6 +6,12 @@ import {
   importFetchedStatus,
 } from './importer';
 import { expandTimeline, updateTimeline } from './timelines';
+import {
+  deleteGroupedConversationMembers,
+  expandGroupedConversationStatuses,
+  groupedConversationParams,
+  updateGroupedConversationTimeline,
+} from '../sharlayan/conversations/actions';
 
 export const CONVERSATIONS_MOUNT   = 'CONVERSATIONS_MOUNT';
 export const CONVERSATIONS_UNMOUNT = 'CONVERSATIONS_UNMOUNT';
@@ -41,12 +45,12 @@ export const markConversationRead = (conversationId) => (dispatch) => {
 };
 
 export const expandConversationStatuses = (conversationId, { maxId } = {}) =>
-  expandTimeline(`conversation:${conversationId}`, `/api/v1/conversations/${conversationId}/statuses`, { max_id: maxId });
+  expandGroupedConversationStatuses(expandTimeline, conversationId, { maxId });
 
 export const expandConversations = ({ maxId } = {}) => (dispatch, getState) => {
   dispatch(expandConversationsRequest());
 
-  const params = { max_id: maxId, grouped: '1' };
+  const params = groupedConversationParams(maxId);
 
   if (!maxId) {
     params.since_id = getState().getIn(['conversations', 'items', 0, 'last_status']);
@@ -93,24 +97,13 @@ export const updateConversations = conversation => (dispatch, getState) => {
     conversation,
   });
 
-  if (conversation.last_status) {
-    const accountIds = ImmutableSet(conversation.accounts.map(account => account.id));
-    const group = getState().getIn(['conversations', 'items']).find(item => item.get('accounts').toSet().equals(accountIds));
-
-    if (group) {
-      const timelineId = `conversation:${group.get('id')}`;
-
-      if (getState().getIn(['timelines', timelineId])) {
-        dispatch(updateTimeline(timelineId, conversation.last_status));
-      }
-    }
-  }
+  updateGroupedConversationTimeline({ dispatch, getState, updateTimeline, conversation });
 };
 
 export const deleteConversation = (conversationId, memberIds = [conversationId]) => (dispatch) => {
   dispatch(deleteConversationRequest(conversationId));
 
-  Promise.all(memberIds.map(id => api().delete(`/api/v1/conversations/${id}`)))
+  deleteGroupedConversationMembers(api, memberIds)
     .then(() => dispatch(deleteConversationSuccess(conversationId)))
     .catch(error => dispatch(deleteConversationFail(conversationId, error)));
 };

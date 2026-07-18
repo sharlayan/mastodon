@@ -14,6 +14,12 @@ import {
   CONVERSATIONS_DELETE_SUCCESS,
 } from '../actions/conversations';
 import { compareId } from '../compare_id';
+import {
+  findGroupedConversationIndex,
+  mergeGroupedConversation,
+  mergeGroupedConversationMemberIds,
+  sharlayanConversationToMap,
+} from '../sharlayan/conversations/reducer';
 
 const initialState = ImmutableMap({
   items: ImmutableList(),
@@ -22,39 +28,26 @@ const initialState = ImmutableMap({
   mounted: 0,
 });
 
-const conversationToMap = item => ImmutableMap({
+const conversationToMap = item => sharlayanConversationToMap(ImmutableMap({
   id: item.id,
   unread: item.unread,
   accounts: ImmutableList(item.accounts.map(a => a.id)),
   last_status: item.last_status ? item.last_status.id : null,
-  member_ids: ImmutableList(item.member_ids || [item.id]),
-});
-
-const sameRecipients = (a, b) => a.size === b.size && a.toSet().equals(b.toSet());
+}), item);
 
 const updateConversation = (state, item) => state.update('items', list => {
-  const newItem  = conversationToMap(item);
-  const groupIdx = list.findIndex(x => sameRecipients(x.get('accounts'), newItem.get('accounts')));
+  const newItem = conversationToMap(item);
+  const grouped = mergeGroupedConversation(list, newItem);
 
-  if (groupIdx === -1) {
+  if (grouped) return grouped;
+
+  const index = list.findIndex(x => x.get('id') === item.id);
+
+  if (index === -1) {
     return list.unshift(newItem);
+  } else {
+    return list.set(index, newItem);
   }
-
-  const merged = list.get(groupIdx).withMutations(map => {
-    const memberIds = map.get('member_ids', ImmutableList());
-
-    if (!memberIds.includes(item.id)) {
-      map.set('member_ids', memberIds.push(item.id));
-    }
-
-    map.set('unread', item.unread);
-
-    if (item.last_status) {
-      map.set('last_status', item.last_status.id);
-    }
-  });
-
-  return list.delete(groupIdx).unshift(merged);
 });
 
 const expandNormalizedConversations = (state, conversations, next, isLoadingRecent) => {
@@ -64,7 +57,7 @@ const expandNormalizedConversations = (state, conversations, next, isLoadingRece
     if (!items.isEmpty()) {
       mutable.update('items', list => {
         list = list.map(oldItem => {
-          const newItemIndex = items.findIndex(x => sameRecipients(x.get('accounts'), oldItem.get('accounts')));
+          const newItemIndex = findGroupedConversationIndex(items, oldItem);
 
           if (newItemIndex === -1) {
             return oldItem;
@@ -73,9 +66,7 @@ const expandNormalizedConversations = (state, conversations, next, isLoadingRece
           const newItem = items.get(newItemIndex);
           items = items.delete(newItemIndex);
 
-          const memberIds = oldItem.get('member_ids').toSet().union(newItem.get('member_ids').toSet()).toList();
-
-          return newItem.set('member_ids', memberIds);
+          return mergeGroupedConversationMemberIds(oldItem, newItem);
         });
 
         list = list.concat(items);
