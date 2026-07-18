@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ActivityPub::Activity::Create < ActivityPub::Activity
+  prepend Sharlayan::ActivityPubCreateExtensions
+
   DISTRIBUTE_DELAY = 1.minute
   PROCESSING_DELAY = (30.seconds)..(10.minutes)
 
@@ -113,10 +115,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       override_timestamps: @options[:override_timestamps],
       reply: @status_parser.reply,
       sensitive: @account.sensitized? || @status_parser.sensitive || false,
-      mfm: @status_parser.mfm?,
-      mfm_text: @status_parser.mfm? ? @status_parser.mfm_source_text : nil,
+      **sharlayan_status_params(@status_parser),
       visibility: @status_parser.visibility,
-      limited_scope: @status_parser.limited_scope,
       thread: replied_to_status,
       conversation: conversation_from_uri(@object['conversation']),
       media_attachment_ids: attachment_ids,
@@ -240,7 +240,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
     @quote_approval_uri = @status_parser.quote_approval_uri
     @quote_approval_uri = nil if unsupported_uri_scheme?(@quote_approval_uri) || TagManager.instance.local_url?(@quote_approval_uri)
-    @quote = Quote.new(account: @account, approval_uri: nil, legacy: @status_parser.legacy_quote?, state: @status_parser.deleted_quote? ? :deleted : :pending, from_misskey: @status_parser.from_misskey?)
+    @quote = Quote.new(account: @account, approval_uri: nil, legacy: @status_parser.legacy_quote?, state: @status_parser.deleted_quote? ? :deleted : :pending, **sharlayan_quote_attributes(@status_parser))
   end
 
   def process_hashtag(tag)
@@ -323,13 +323,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
         next if unsupported_media_type?(media_attachment_parser.file_content_type) || skip_download? || !download_budget.available?
 
-        media_attachment.download_file!(size_limit: download_budget.size_limit(MediaAttachment::VIDEO_LIMIT))
-        download_budget.consume(media_attachment.file_file_size)
-
-        if download_budget.available?
-          media_attachment.download_thumbnail!(size_limit: download_budget.size_limit(MediaAttachment::IMAGE_LIMIT))
-          download_budget.consume(media_attachment.thumbnail_file_size)
-        end
+        download_remote_media_with_budget!(media_attachment, download_budget)
 
         media_attachment.save
       rescue Mastodon::UnexpectedResponseError, *Mastodon::HTTP_CONNECTION_ERRORS
@@ -466,10 +460,6 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   def related_to_local_activity?
     fetch? || followed_by_local_accounts? || accepted_through_relay? ||
       responds_to_followed_account? || addresses_local_accounts?
-  end
-
-  def accepted_through_relay?
-    requested_through_relay? && !DomainBlock.reject_relay?(@account.domain)
   end
 
   def responds_to_followed_account?

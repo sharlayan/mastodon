@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class StatusReachFinder
+  prepend Sharlayan::StatusReachFinderExtensions
+
   # @param [Status] status
   # @param [Hash] options
   # @option options [Boolean] :unsafe
@@ -10,7 +12,7 @@ class StatusReachFinder
   end
 
   def inboxes
-    (reached_account_inboxes + private_mention_inboxes + followers_inboxes + relay_inboxes).uniq
+    (reached_account_inboxes + followers_inboxes + relay_inboxes).uniq
   end
 
   private
@@ -40,7 +42,6 @@ class StatusReachFinder
         arr.flatten!
         arr.compact!
         arr.uniq!
-        arr.reject! { |account_id| private_mentioned_account_ids.include?(account_id) }
       end
     end
   end
@@ -59,12 +60,6 @@ class StatusReachFinder
 
   def mentioned_account_ids
     @status.mentions.pluck(:account_id)
-  end
-
-  def private_mentioned_account_ids
-    return [] unless @status.private_visibility?
-
-    @private_mentioned_account_ids ||= @status.active_mentions.pluck(:account_id)
   end
 
   # Beware: Quotes can be created without the author having had access to the status
@@ -89,15 +84,7 @@ class StatusReachFinder
 
   def followers_inboxes
     scope = followers_scope
-    return individual_inboxes_for(scope) if @status.private_visibility?
-
     inboxes_without_suspended_for(scope)
-  end
-
-  def private_mention_inboxes
-    return [] unless @status.private_visibility?
-
-    individual_inboxes_for(Account.where(id: private_mentioned_account_ids))
   end
 
   def relay_inboxes
@@ -129,12 +116,5 @@ class StatusReachFinder
   def inboxes_without_suspended_for(scope)
     scope.merge!(Account.without_suspended) unless unsafe?
     scope.inboxes
-  end
-
-  def individual_inboxes_for(scope)
-    scope = scope.activitypub
-    scope = scope.merge(Account.without_suspended) unless unsafe?
-
-    DeliveryFailureTracker.without_unavailable(scope.where.not(inbox_url: [nil, '']).pluck(:inbox_url))
   end
 end
