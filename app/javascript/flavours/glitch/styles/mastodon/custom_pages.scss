@@ -318,6 +318,17 @@
     resize: vertical;
   }
 
+  &__character-count {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-top: 4px;
+    color: var(--color-text-tertiary);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
   &__section__children {
     display: flex;
     flex-direction: column;

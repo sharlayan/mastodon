@@ -4,9 +4,9 @@ class Api::V1::PagesController < Api::BaseController
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId note detailed).freeze
 
   before_action :require_feature_enabled!
-  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: :index
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories]
   before_action -> { authorize_if_got_token! :read, :'read:accounts' }, only: [:show, :featured, :unlock]
-  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :show, :featured, :unlock]
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock]
 
   before_action :require_user!, except: [:show, :featured, :unlock]
   before_action :set_page, only: [:show, :update, :destroy, :like, :unlike]
@@ -18,6 +18,10 @@ class Api::V1::PagesController < Api::BaseController
   def index
     @pages = current_account.pages.order(id: :desc).to_a
     render json: @pages, each_serializer: REST::PageSerializer
+  end
+
+  def categories
+    render json: current_account.pages.where.not(category: [nil, '']).distinct.pluck(:category)
   end
 
   def show

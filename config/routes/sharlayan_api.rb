@@ -132,6 +132,7 @@ namespace :api, format: false do
       end
 
       collection do
+        get :categories
         get :featured
       end
     end

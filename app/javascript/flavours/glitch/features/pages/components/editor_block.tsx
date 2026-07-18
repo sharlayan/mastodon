@@ -2,6 +2,8 @@ import { useCallback } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
+import { length } from 'stringz';
+
 import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
@@ -25,6 +27,14 @@ const messages = defineMessages({
   textPlaceholder: {
     id: 'pages.block.text_placeholder',
     defaultMessage: 'Write text (MFM supported)…',
+  },
+  characterCountWithSpaces: {
+    id: 'pages.block.character_count_with_spaces',
+    defaultMessage: 'With spaces: {count}',
+  },
+  characterCountWithoutSpaces: {
+    id: 'pages.block.character_count_without_spaces',
+    defaultMessage: 'Without spaces: {count}',
   },
   sectionPlaceholder: {
     id: 'pages.block.section_placeholder',
@@ -61,6 +71,9 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
 }) => {
   const intl = useIntl();
   const blockId = block.id;
+  const characterCount = block.type === 'text' ? length(block.text) : undefined;
+  const characterCountWithoutSpaces =
+    block.type === 'text' ? length(block.text.replace(/\s/gu, '')) : undefined;
 
   const handleMoveUp = useCallback(() => {
     onMove(blockId, -1);
@@ -149,12 +162,26 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
       </div>
 
       {block.type === 'text' && (
-        <textarea
-          className='page-editor__textarea'
-          value={block.text}
-          placeholder={intl.formatMessage(messages.textPlaceholder)}
-          onChange={handleTextChange}
-        />
+        <>
+          <textarea
+            className='page-editor__textarea'
+            value={block.text}
+            placeholder={intl.formatMessage(messages.textPlaceholder)}
+            onChange={handleTextChange}
+          />
+          <div className='page-editor__character-count'>
+            <span>
+              {intl.formatMessage(messages.characterCountWithSpaces, {
+                count: characterCount,
+              })}
+            </span>
+            <span>
+              {intl.formatMessage(messages.characterCountWithoutSpaces, {
+                count: characterCountWithoutSpaces,
+              })}
+            </span>
+          </div>
+        </>
       )}
 
       {block.type === 'note' && (

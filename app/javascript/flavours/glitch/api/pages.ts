@@ -28,6 +28,9 @@ const storePageAccessToken = (pageId: string, token: string) => {
 
 export const apiGetPages = () => apiRequestGet<ApiPageJSON[]>('v1/pages');
 
+export const apiGetPageCategories = () =>
+  apiRequestGet<string[]>('v1/pages/categories');
+
 export const apiGetFeaturedPages = () =>
   apiRequestGet<ApiPageJSON[]>('v1/pages/featured');
 

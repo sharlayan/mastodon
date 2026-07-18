@@ -115,6 +115,23 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'GET /api/v1/pages/categories' do
+    before do
+      Fabricate(:page, account: user.account, category: 'Guides')
+      Fabricate(:page, account: user.account, category: 'Guides')
+      Fabricate(:page, account: user.account, category: 'Stories')
+      Fabricate(:page, account: user.account, category: nil)
+      Fabricate(:page, category: 'Other account')
+    end
+
+    it 'returns the current account categories without duplicates' do
+      get '/api/v1/pages/categories', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to contain_exactly('Guides', 'Stories')
+    end
+  end
+
   describe 'content limits' do
     it 'rejects content deeper than the server traversal budget' do
       root = { type: 'section', children: [] }
