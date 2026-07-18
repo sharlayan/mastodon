@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access,
-                  @typescript-eslint/no-unsafe-call */
-
 import { useCallback, useMemo, useRef } from 'react';
 import type { FC, ReactNode } from 'react';
 
@@ -14,7 +11,10 @@ import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bund
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';
 import { useLayout } from '@/flavours/glitch/hooks/useLayout';
-import { useAppSelector } from '@/flavours/glitch/store';
+import {
+  SHARLAYAN_FOLLOW_LIST_BIO_CHAR_LIMIT,
+  useSharlayanFollowListBio,
+} from '@/flavours/glitch/sharlayan/account/list_item';
 
 import { ProfileColumnHeader } from '../../account/components/profile_column_header';
 
@@ -56,10 +56,7 @@ export const AccountList: FC<AccountListProps> = ({
   const { blockedBy, hidden, suspended } = useAccountVisibility(accountId);
   const forceEmptyState = blockedBy || hidden || suspended;
 
-  const showBio = useAppSelector(
-    (state) =>
-      state.local_settings.getIn(['show_follow_list_bio'], true) as boolean,
-  );
+  const showBio = useSharlayanFollowListBio();
 
   const children = useMemo(() => {
     if (forceEmptyState) {
@@ -71,7 +68,7 @@ export const AccountList: FC<AccountListProps> = ({
           key={followerId}
           accountId={followerId}
           withBio={showBio}
-          bioCharLimit={100}
+          bioCharLimit={SHARLAYAN_FOLLOW_LIST_BIO_CHAR_LIMIT}
           withFollowedMessage={showBio}
           badge={withoutFollowsYouBadge ? false : null}
         />
@@ -83,7 +80,7 @@ export const AccountList: FC<AccountListProps> = ({
           key={prependAccountId}
           accountId={prependAccountId}
           withBio={showBio}
-          bioCharLimit={100}
+          bioCharLimit={SHARLAYAN_FOLLOW_LIST_BIO_CHAR_LIMIT}
           withFollowedMessage={showBio}
           badge={withoutFollowsYouBadge ? false : null}
         />,

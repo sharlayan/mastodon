@@ -15,12 +15,12 @@ import { useAppDispatch } from '@/flavours/glitch/store';
 import IconVerified from '@/images/icons/icon_verified.svg?react';
 import MoreIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 
+import { renderSharlayanFieldValue } from '../../sharlayan/account/field_value';
 import { CustomEmojiProvider } from '../emoji/context';
 import type { EmojiHTMLProps } from '../emoji/html';
 import { EmojiHTML } from '../emoji/html';
 import { Icon } from '../icon';
 import { IconButton } from '../icon_button';
-import { MfmRenderer, hasAnyMfmFn } from '../mfm';
 import { MiniCard } from '../mini_card';
 import { useElementHandledLink } from '../status/handled_link';
 
@@ -127,11 +127,6 @@ const FieldCard: FC<{
     verified_at,
   } = field;
 
-  const valueIsMfm = useMemo(
-    () => mfmEnabled && hasAnyMfmFn(value_plain),
-    [mfmEnabled, value_plain],
-  );
-
   const { wrapperRef, isLabelOverflowing, isValueOverflowing } =
     useFieldOverflow();
 
@@ -162,11 +157,11 @@ const FieldCard: FC<{
         />
       }
       value={
-        valueIsMfm ? (
-          <span className='translate' data-contents>
-            <MfmRenderer text={value_plain} emojis={emojis} isProfile />
-          </span>
-        ) : (
+        renderSharlayanFieldValue({
+          valuePlain: value_plain,
+          emojis,
+          mfmEnabled,
+        }) ?? (
           <FieldHTML
             text={value_emojified}
             textHasCustomEmoji={valueHasEmojis}

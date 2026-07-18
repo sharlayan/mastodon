@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 
-import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
+import { FormattedMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
-
-import escapeTextContentForBrowser from 'escape-html';
 
 import {
   FollowsYouBadge,
@@ -16,6 +14,10 @@ import { useRelationship } from 'flavours/glitch/hooks/useRelationship';
 import { domain } from 'flavours/glitch/initial_state';
 import type { Relationship } from 'flavours/glitch/models/relationship';
 
+import {
+  sharlayanAccountBioHtml,
+  SharlayanFollowedMessage,
+} from '../../sharlayan/account/list_item';
 import { Avatar } from '../avatar';
 import { useAccountHandle } from '../display_name/default';
 import { DisplayNameSimple } from '../display_name/simple';
@@ -28,13 +30,6 @@ import { RelativeTimestamp } from '../relative_timestamp';
 import { ShortNumber } from '../short_number';
 
 import classes from './styles.module.scss';
-
-const messages = defineMessages({
-  followMessage: {
-    id: 'account.follow_message',
-    defaultMessage: 'Follow message',
-  },
-});
 
 export interface RenderButtonOptions {
   accountId: string | undefined;
@@ -82,16 +77,6 @@ export const AccountListItem: React.FC<Props> = ({
     () => account?.created_at.includes(new Date().getFullYear().toString()),
     [account?.created_at],
   );
-
-  const bioHtmlString = useMemo(() => {
-    if (typeof bioCharLimit !== 'number') {
-      return account?.note_emojified ?? '';
-    }
-    const plain = account?.note_plain ?? '';
-    const truncated =
-      plain.length > bioCharLimit ? `${plain.slice(0, bioCharLimit)}…` : plain;
-    return escapeTextContentForBrowser(truncated);
-  }, [account?.note_emojified, account?.note_plain, bioCharLimit]);
 
   if (!accountId || !account) {
     return null;
@@ -205,24 +190,18 @@ export const AccountListItem: React.FC<Props> = ({
       {withBio && account.note.length > 0 && (
         <EmojiHTML
           className={classNames(classes.bio, 'translate')}
-          htmlString={bioHtmlString}
+          htmlString={sharlayanAccountBioHtml(account, bioCharLimit)}
           extraEmojis={account.emojis}
         />
       )}
-      {withFollowedMessage &&
-        account.followed_message &&
-        relationship?.following && (
-          <div className={classes.followMessage}>
-            <span className={classes.followMessageLabel}>
-              {intl.formatMessage(messages.followMessage)}
-            </span>
-            <EmojiHTML
-              as='p'
-              htmlString={escapeTextContentForBrowser(account.followed_message)}
-              extraEmojis={account.emojis}
-            />
-          </div>
-        )}
+      {withFollowedMessage && (
+        <SharlayanFollowedMessage
+          account={account}
+          relationship={relationship}
+          className={classes.followMessage}
+          labelClassName={classes.followMessageLabel}
+        />
+      )}
       {firstVerifiedField && (
         <VerifiedBadge
           link={firstVerifiedField.value}
