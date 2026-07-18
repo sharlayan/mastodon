@@ -24,6 +24,7 @@
 #
 class AccountStatusesCleanupPolicy < ApplicationRecord
   include Redisable
+  include Sharlayan::AccountStatusesCleanupPolicyExtensions
 
   ALLOWED_MIN_STATUS_AGE = [
     1.week.seconds,
@@ -36,8 +37,8 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
     2.years.seconds,
   ].freeze
 
-  EXCEPTION_BOOLS      = %w(keep_direct keep_pinned keep_polls keep_media keep_self_fav keep_self_reaction keep_self_bookmark keep_self_clip).freeze
-  EXCEPTION_THRESHOLDS = %w(min_favs min_reactions min_reblogs).freeze
+  EXCEPTION_BOOLS      = (%w(keep_direct keep_pinned keep_polls keep_media keep_self_fav keep_self_bookmark) + Sharlayan::AccountStatusesCleanupPolicyExtensions::EXCEPTION_BOOLS).freeze
+  EXCEPTION_THRESHOLDS = (%w(min_favs min_reblogs) + Sharlayan::AccountStatusesCleanupPolicyExtensions::EXCEPTION_THRESHOLDS).freeze
 
   # Depending on the cleanup policy, the query to discover the next
   # statuses to delete my get expensive if the account has a lot of old
@@ -54,7 +55,6 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
 
   validates :min_status_age, inclusion: { in: ALLOWED_MIN_STATUS_AGE }
   validates :min_favs, numericality: { greater_than_or_equal_to: 1, allow_nil: true }
-  validates :min_reactions, numericality: { greater_than_or_equal_to: 1, allow_nil: true }
   validates :min_reblogs, numericality: { greater_than_or_equal_to: 1, allow_nil: true }
   validate :validate_local_account
 
@@ -64,15 +64,14 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
     scope = account_statuses
     scope.merge!(old_enough_scope(max_id))
     scope = scope.where(id: min_id..) if min_id.present?
-    scope.merge!(without_popular_scope) unless min_favs.nil? && min_reactions.nil? && min_reblogs.nil?
+    scope.merge!(without_popular_scope) unless min_favs.nil? && min_reblogs.nil?
     scope.merge!(without_direct_scope) if keep_direct?
     scope.merge!(without_pinned_scope) if keep_pinned?
     scope.merge!(without_poll_scope) if keep_polls?
     scope.merge!(without_media_scope) if keep_media?
     scope.merge!(without_self_fav_scope) if keep_self_fav?
-    scope.merge!(without_self_reaction_scope) if keep_self_reaction?
     scope.merge!(without_self_bookmark_scope) if keep_self_bookmark?
-    scope.merge!(without_self_clip_scope) if keep_self_clip?
+    scope = apply_sharlayan_cleanup_scopes(scope)
 
     scope.reorder(id: :asc).limit(limit)
   end
@@ -113,12 +112,10 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
       return unless keep_self_bookmark?
     when :unfav
       return unless keep_self_fav?
-    when :unreact
-      return unless keep_self_reaction?
     when :unpin
       return unless keep_pinned?
-    when :unclip
-      return unless keep_self_clip?
+    when :unreact, :unclip
+      return unless sharlayan_cleanup_exception_enabled?(action)
     end
 
     record_last_inspected(status.id)
@@ -158,20 +155,12 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
     Status.where.not(self_status_reference_exists(Favourite))
   end
 
-  def without_self_reaction_scope
-    Status.where('NOT EXISTS (SELECT * FROM status_reactions reaction WHERE reaction.account_id = statuses.account_id AND reaction.status_id = statuses.id)')
-  end
-
   def without_self_bookmark_scope
     Status.where.not(self_status_reference_exists(Bookmark))
   end
 
   def without_pinned_scope
     Status.where.not(self_status_reference_exists(StatusPin))
-  end
-
-  def without_self_clip_scope
-    Status.where('NOT EXISTS (SELECT * FROM clip_statuses cs JOIN clips c ON c.id = cs.clip_id WHERE cs.status_id = statuses.id AND c.account_id = statuses.account_id)')
   end
 
   def without_media_scope
@@ -186,7 +175,6 @@ class AccountStatusesCleanupPolicy < ApplicationRecord
     scope = Status.left_joins(:status_stat)
     scope = scope.where('COALESCE(status_stats.reblogs_count, 0) < ?', min_reblogs) unless min_reblogs.nil?
     scope = scope.where('COALESCE(status_stats.favourites_count, 0) < ?', min_favs) unless min_favs.nil?
-    scope = scope.where('COALESCE(status_stats.reactions_count, 0) < ?', min_reactions) unless min_reactions.nil?
     scope
   end
 

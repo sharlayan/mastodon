@@ -25,20 +25,14 @@
 
 class CustomEmoji < ApplicationRecord
   include Attachmentable
+  include Sharlayan::CustomEmojiExtensions
 
-  attr_accessor :aliases_raw
-
-  LOCAL_LIMIT = (ENV['MAX_EMOJI_SIZE'] || 20.megabytes).to_i
-  LIMIT       = [LOCAL_LIMIT, (ENV['MAX_REMOTE_EMOJI_SIZE'] || 20.megabytes).to_i].max
-
-  SHORTCODE_RE_FRAGMENT = '[a-zA-Z0-9_]{1,}'
-
-  SCAN_RE = /(?<=[^a-zA-Z0-9_]|\n|^)
-    :(#{SHORTCODE_RE_FRAGMENT}):
-    (?=[^a-zA-Z0-9_]|$)/x
-  SHORTCODE_ONLY_RE = /\A#{SHORTCODE_RE_FRAGMENT}\z/
-
-  IMAGE_MIME_TYPES = %w(image/png image/gif image/webp image/jpeg).freeze
+  LOCAL_LIMIT = Sharlayan::CustomEmojiExtensions::LOCAL_LIMIT
+  LIMIT = Sharlayan::CustomEmojiExtensions::LIMIT
+  SHORTCODE_RE_FRAGMENT = Sharlayan::CustomEmojiExtensions::SHORTCODE_RE_FRAGMENT
+  SCAN_RE = Sharlayan::CustomEmojiExtensions::SCAN_RE
+  SHORTCODE_ONLY_RE = Sharlayan::CustomEmojiExtensions::SHORTCODE_ONLY_RE
+  IMAGE_MIME_TYPES = Sharlayan::CustomEmojiExtensions::IMAGE_MIME_TYPES
 
   belongs_to :category, class_name: 'CustomEmojiCategory', optional: true
 
@@ -48,16 +42,10 @@ class CustomEmoji < ApplicationRecord
 
   normalizes :domain, with: ->(domain) { domain.downcase.strip }
 
-  ALIASES_MAX_COUNT  = 20
-  ALIAS_MAX_LENGTH   = 100
-  LICENSE_MAX_LENGTH = 500
-
   validates_attachment :image, content_type: { content_type: IMAGE_MIME_TYPES }, presence: true
   validates_attachment_size :image, less_than: LIMIT, unless: :local?
   validates_attachment_size :image, less_than: LOCAL_LIMIT, if: :local?
   validates :shortcode, uniqueness: { scope: :domain }, format: { with: SHORTCODE_ONLY_RE }, length: { minimum: 1 }
-  validates :license, length: { maximum: LICENSE_MAX_LENGTH }, allow_blank: true
-  validate :validate_aliases_count_and_length
 
   scope :local, -> { where(domain: nil) }
   scope :remote, -> { where.not(domain: nil) }
@@ -102,30 +90,11 @@ class CustomEmoji < ApplicationRecord
 
       EntityCache.instance.emoji(shortcodes, domain)
     end
-
-    def search(shortcode)
-      pattern = "%#{sanitize_sql_like(shortcode)}%"
-      where(arel_table[:shortcode].matches(pattern))
-        .or(where('EXISTS (SELECT 1 FROM unnest(custom_emojis.aliases) AS alias WHERE alias ILIKE :pattern)', pattern: pattern))
-    end
   end
 
   private
 
   def remove_entity_cache
     Rails.cache.delete(EntityCache.instance.to_key(:emoji, shortcode, domain))
-  end
-
-  def validate_aliases_count_and_length
-    return if aliases.blank?
-
-    errors.add(:aliases, :too_many, max: ALIASES_MAX_COUNT) if aliases.size > ALIASES_MAX_COUNT
-
-    aliases.each do |a|
-      if a.length > ALIAS_MAX_LENGTH
-        errors.add(:aliases, :too_long, max: ALIAS_MAX_LENGTH)
-        break
-      end
-    end
   end
 end
