@@ -9,8 +9,6 @@ import {
   pasteLinkCompose,
   cancelPasteLinkCompose,
   setDragUploadEnabled,
-  changeComposeCircle,
-  toggleComposeClip,
 } from '@/flavours/glitch/actions/compose_typed';
 import { timelineDelete } from 'flavours/glitch/actions/timelines_typed';
 
@@ -51,7 +49,6 @@ import {
   COMPOSE_EMOJI_INSERT,
   COMPOSE_DOODLE_SET,
   COMPOSE_RESET,
-  COMPOSE_DISCARD,
   COMPOSE_POLL_ADD,
   COMPOSE_POLL_REMOVE,
   COMPOSE_POLL_OPTION_CHANGE,
@@ -68,7 +65,12 @@ import { unescapeHTML } from '../utils/html';
 import { overwrite } from '../utils/js_helpers';
 import { privacyPreference } from '../utils/privacy_preference';
 import { uuid } from '../uuid';
-import { reduceScheduledCompose } from '../sharlayan/compose/scheduled_state';
+import {
+  reduceSharlayanCompose,
+  resetScheduledComposeState,
+  resetSharlayanComposeState,
+  sharlayanComposeInitialState,
+} from '../sharlayan/compose/state';
 
 const initialState = ImmutableMap({
   mounted: 0,
@@ -80,8 +82,6 @@ const initialState = ImmutableMap({
   spoiler: false,
   spoiler_text: '',
   privacy: null,
-  circle_id: null,
-  clip_ids: ImmutableList(),
   id: null,
   content_type: defaultContentType || 'text/plain',
   text: '',
@@ -130,9 +130,7 @@ const initialState = ImmutableMap({
   quote_policy: 'public',
   default_quote_policy: 'public', // Set in hydration.
   fetching_link: null,
-
-  scheduled_at: null,
-});
+}).merge(sharlayanComposeInitialState);
 
 const initialPoll = ImmutableMap({
   options: ImmutableList(['', '']),
@@ -176,7 +174,7 @@ function apiStatusToTextHashtags (state, status) {
 }
 
 function clearAll(state) {
-  return state.withMutations(map => {
+  return resetSharlayanComposeState(state.withMutations(map => {
     map.set('id', null);
     map.set('text', '');
     if (defaultContentType) map.set('content_type', defaultContentType);
@@ -190,8 +188,6 @@ function clearAll(state) {
       map => map.mergeWith(overwrite, state.get('default_advanced_options')),
     );
     map.set('privacy', state.get('default_privacy'));
-    map.set('circle_id', null);
-    map.set('clip_ids', ImmutableList());
     map.set('sensitive', state.get('default_sensitive'));
     map.set('language', state.get('default_language'));
     map.update('media_attachments', list => list.clear());
@@ -200,9 +196,8 @@ function clearAll(state) {
     map.set('idempotencyKey', uuid());
     map.set('quoted_status_id', null);
     map.set('quote_policy', state.get('default_quote_policy'));
-    map.set('scheduled_at', null);
     map.set('isDragDisabled', false);
-  });
+  }));
 }
 
 function continueThread (state, status) {
@@ -417,24 +412,17 @@ const calculateProgress = (loaded, total) => Math.min(Math.round((loaded / total
 
 /** @type {import('@reduxjs/toolkit').Reducer<typeof initialState>} */
 export const composeReducer = (state = initialState, action) => {
-  const scheduledComposeState = reduceScheduledCompose(state, action);
-  if (scheduledComposeState) return scheduledComposeState;
+  const sharlayanState = reduceSharlayanCompose(state, action, {
+    createIdempotencyKey: uuid,
+    resetCompose: clearAll,
+  });
+  if (sharlayanState) return sharlayanState;
 
   if (changeComposeVisibility.match(action)) {
     return state
       .set('privacy', action.payload)
       .set('circle_id', null)
       .set('idempotencyKey', uuid());
-  } else if (changeComposeCircle.match(action)) {
-    return state
-      .set('circle_id', action.payload)
-      .set('idempotencyKey', uuid());
-  } else if (toggleComposeClip.match(action)) {
-    return state.update('clip_ids', list => (
-      list.includes(action.payload)
-        ? list.filter(id => id !== action.payload)
-        : list.push(action.payload)
-    ));
   } else if (changeUploadCompose.fulfilled.match(action)) {
     return state
       .set('is_changing_upload', false)
@@ -574,7 +562,7 @@ export const composeReducer = (state = initialState, action) => {
     state = state.setIn(['advanced_options', 'threaded_mode'], false);
     // eslint-disable-next-line no-fallthrough -- fall-through to `COMPOSE_RESET` is intended
   case COMPOSE_RESET:
-    return state.withMutations(map => {
+    return resetScheduledComposeState(state.withMutations(map => {
       map.set('in_reply_to', null);
       if (defaultContentType) map.set('content_type', defaultContentType);
       map.set('text', '');
@@ -584,15 +572,12 @@ export const composeReducer = (state = initialState, action) => {
       map.set('id', null);
       map.set('poll', null);
       map.set('language', state.get('default_language'));
-      map.set('scheduled_at', null);
       map.update(
         'advanced_options',
         map => map.mergeWith(overwrite, state.get('default_advanced_options')),
       );
       map.set('idempotencyKey', uuid());
-    });
-  case COMPOSE_DISCARD:
-    return clearAll(state).setIn(['advanced_options', 'threaded_mode'], false);
+    }));
   case COMPOSE_SUBMIT_REQUEST:
     return state.set('is_submitting', true);
   case COMPOSE_SUBMIT_SUCCESS:

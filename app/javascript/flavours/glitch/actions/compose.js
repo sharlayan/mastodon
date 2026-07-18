@@ -10,13 +10,18 @@ import { tagHistory } from 'flavours/glitch/settings';
 import { emojiMartSearch } from '@/flavours/glitch/features/emoji/picker';
 import { isCustomEmojiMuted } from '@/flavours/glitch/utils/custom_emoji_mutes';
 import { createDriveFileAttachment } from '@/flavours/glitch/sharlayan/compose/drive_attachment';
+import {
+  getScheduledSubmissionContext,
+  handleScheduledComposeSuccess,
+  runScheduledComposeSubmission,
+} from '@/flavours/glitch/sharlayan/compose/scheduled_submission';
+import { changeScheduledAt, discardCompose } from '@/flavours/glitch/sharlayan/compose/state';
 import { getSharlayanComposeSubmission } from '@/flavours/glitch/sharlayan/compose/submission';
 import { recoverHashtags } from 'flavours/glitch/utils/hashtag';
 
 import { showAlert, showAlertForError } from './alerts';
 import { useEmoji } from './emojis';
 import { importFetchedAccounts, importFetchedStatus } from './importer';
-import { addScheduledStatus, SCHEDULED_STATUS_DELETE_SUCCESS } from './scheduled_statuses';
 import { openModal } from './modal';
 import { updateTimeline } from './timelines';
 import { insertStatusIntoAccountTimelines } from './timelines_typed';
@@ -35,7 +40,6 @@ export const COMPOSE_REPLY_CANCEL    = 'COMPOSE_REPLY_CANCEL';
 export const COMPOSE_DIRECT          = 'COMPOSE_DIRECT';
 export const COMPOSE_MENTION         = 'COMPOSE_MENTION';
 export const COMPOSE_RESET           = 'COMPOSE_RESET';
-export const COMPOSE_DISCARD         = 'COMPOSE_DISCARD';
 
 export const COMPOSE_UPLOAD_REQUEST    = 'COMPOSE_UPLOAD_REQUEST';
 export const COMPOSE_UPLOAD_SUCCESS    = 'COMPOSE_UPLOAD_SUCCESS';
@@ -87,7 +91,6 @@ export const COMPOSE_CHANGE_MEDIA_ORDER       = 'COMPOSE_CHANGE_MEDIA_ORDER';
 
 export const COMPOSE_SET_STATUS = 'COMPOSE_SET_STATUS';
 export const COMPOSE_FOCUS = 'COMPOSE_FOCUS';
-export const COMPOSE_SCHEDULED_AT_CHANGE = 'COMPOSE_SCHEDULED_AT_CHANGE';
 
 const messages = defineMessages({
   uploadErrorLimit: { id: 'upload_error.limit', defaultMessage: 'File upload limit exceeded.' },
@@ -97,7 +100,6 @@ const messages = defineMessages({
   published: { id: 'compose.published.body', defaultMessage: 'Post published.' },
   saved: { id: 'compose.saved.body', defaultMessage: 'Post saved.' },
   blankPostError: { id: 'compose.error.blank_post', defaultMessage: 'Post can\'t be blank.' },
-  scheduledFor: { id: 'compose.scheduled_for', defaultMessage: 'Scheduled for {time}' },
 });
 
 export const ensureComposeIsVisible = (getState) => {
@@ -165,11 +167,7 @@ export function resetCompose() {
   };
 }
 
-export function discardCompose() {
-  return {
-    type: COMPOSE_DISCARD,
-  };
-}
+export { discardCompose };
 
 export const focusCompose = (defaultText = '', caretStart = false) => (dispatch, getState) => {
   dispatch({
@@ -239,10 +237,10 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       return;
     }
 
-    const scheduledAt = getState().getIn(['compose', 'scheduled_at']);
-    const isRedraftingScheduled = !!(statusId && scheduledAt);
-    const editingScheduledId = isRedraftingScheduled ? statusId : null;
-    const effectiveStatusId = isRedraftingScheduled ? null : statusId;
+    const { editingScheduledId, effectiveStatusId } = getScheduledSubmissionContext({
+      scheduledAt: getState().getIn(['compose', 'scheduled_at']),
+      statusId,
+    });
 
     dispatch(submitComposeRequest());
 
@@ -309,17 +307,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         successCallback(response.data);
       }
 
-      if (isScheduled) {
-        dispatch(addScheduledStatus(response.data));
-        const scheduledDate = new Date(response.data.scheduled_at);
-        const timeStr = scheduledDate.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
-        dispatch(showAlert({
-          message: messages.scheduledFor,
-          values: { time: timeStr },
-          dismissAfter: 5000,
-        }));
-        return;
-      }
+      if (handleScheduledComposeSuccess({ data: response.data, dispatch })) return;
 
       // To make the app more responsive, immediately push the status
       // into the columns
@@ -365,16 +353,12 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       dispatch(submitComposeFail(error));
     });
 
-    if (isRedraftingScheduled) {
-      api().delete(`/api/v1/scheduled_statuses/${editingScheduledId}`).then(() => {
-        dispatch({ type: SCHEDULED_STATUS_DELETE_SUCCESS, id: editingScheduledId });
-        doSubmit();
-      }).catch((err) => {
-        dispatch(submitComposeFail(err));
-      });
-    } else {
-      doSubmit();
-    }
+    void runScheduledComposeSubmission({
+      dispatch,
+      editingScheduledId,
+      onFailure: submitComposeFail,
+      submit: doSubmit,
+    });
   };
 }
 
@@ -398,12 +382,7 @@ export function submitComposeFail(error) {
   };
 }
 
-export function changeScheduledAt(scheduledAt) {
-  return {
-    type: COMPOSE_SCHEDULED_AT_CHANGE,
-    scheduledAt: scheduledAt || null,
-  };
-}
+export { changeScheduledAt };
 
 export function doodleSet(options) {
   return {
