@@ -1,11 +1,13 @@
 import PropTypes from 'prop-types';
-import { useCallback, useRef, useState, useEffect, useLayoutEffect, forwardRef } from 'react';
+import { useCallback, useRef, useState, useEffect, forwardRef } from 'react';
 
 import classNames from 'classnames';
 
 import ImmutablePropTypes from 'react-immutable-proptypes';
 
 import Textarea from 'react-textarea-autosize';
+
+import { SharlayanOverflowHighlight } from 'flavours/glitch/sharlayan/compose/overflow_highlight';
 
 import AutosuggestAccountContainer from '../features/compose/containers/autosuggest_account_container';
 
@@ -40,8 +42,6 @@ const AutosuggestTextarea = forwardRef(({
   const [textareaElement, setTextareaElement] = useState(null);
   const lastTokenRef = useRef(null);
   const tokenStartRef = useRef(0);
-  const highlightsRef = useRef(null);
-  const highlightsContentRef = useRef(null);
 
   const handleChange = useCallback((e) => {
     const [ tokenStart, token ] = textAtCursorMatchesToken(e.target.value, e.target.selectionStart, ['@', '＠', ':', '#', '＃']);
@@ -156,43 +156,6 @@ const AutosuggestTextarea = forwardRef(({
     }
   }, [lang]);
 
-  useLayoutEffect(() => {
-    if (!textareaElement) {
-      return undefined;
-    }
-
-    const syncScroll = () => {
-      const content = highlightsContentRef.current;
-
-      if (content) {
-        content.style.transform = `translateY(${-textareaElement.scrollTop}px)`;
-      }
-    };
-
-    const syncMetrics = () => {
-      const highlights = highlightsRef.current;
-
-      if (!highlights) {
-        return;
-      }
-
-      highlights.style.width = `${textareaElement.clientWidth}px`;
-      highlights.style.height = `${textareaElement.clientHeight}px`;
-      syncScroll();
-    };
-
-    syncMetrics();
-
-    const observer = new ResizeObserver(syncMetrics);
-    observer.observe(textareaElement);
-    textareaElement.addEventListener('scroll', syncScroll, { passive: true });
-
-    return () => {
-      observer.disconnect();
-      textareaElement.removeEventListener('scroll', syncScroll);
-    };
-  }, [textareaElement, value, overflowStart]);
-
   const renderSuggestion = (suggestion, i) => {
     let inner, key;
 
@@ -219,18 +182,9 @@ const AutosuggestTextarea = forwardRef(({
     setTextareaElement(element);
   }, []);
 
-  const hasOverflow = overflowStart >= 0 && overflowStart < value.length;
-
   return (
     <div className={classNames('autosuggest-textarea', className)}>
-      {hasOverflow && (
-        <div className='autosuggest-textarea__highlights' ref={highlightsRef} aria-hidden='true'>
-          <div className='autosuggest-textarea__highlights__content' ref={highlightsContentRef} dir='auto'>
-            {value.slice(0, overflowStart)}
-            <mark className='autosuggest-textarea__highlights__over'>{value.slice(overflowStart)}</mark>
-          </div>
-        </div>
-      )}
+      <SharlayanOverflowHighlight overflowStart={overflowStart} textareaElement={textareaElement} value={value} />
       <Textarea
         ref={handleRef}
         className='autosuggest-textarea__textarea'
