@@ -32,6 +32,13 @@
 
 .layout-single-column,
 .layout-multiple-columns {
+  .columns-area__panels__pane--compositional
+    .compose-form
+    .autosuggest-textarea__highlights {
+    font-size: var(--font-size-mid);
+    line-height: var(--line-height-mid);
+  }
+
   .status {
     --status-gutter-width: calc(var(--size-avatar) + var(--gap-default));
   }

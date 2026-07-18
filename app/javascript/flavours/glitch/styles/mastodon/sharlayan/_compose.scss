@@ -39,6 +39,10 @@
   box-decoration-break: clone;
 }
 
+.columns-area--mobile .autosuggest-textarea__highlights {
+  font-size: 16px;
+}
+
 .compose-form__dropdowns .schedule-button {
   position: relative;
 }
