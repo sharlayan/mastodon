@@ -273,6 +273,8 @@
   "pages.block.move_up": "Move up",
   "pages.block.note_placeholder": "Post ID or URL",
   "pages.block.remove": "Remove block",
+  "pages.block.remove_confirm": "Delete",
+  "pages.block.remove_confirm_title": "Delete this item?",
   "pages.block.section_placeholder": "Section title",
   "pages.block.text_placeholder": "Write text (MFM supported)…",
   "pages.block_type.image": "Image",

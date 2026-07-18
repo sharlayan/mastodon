@@ -273,6 +273,8 @@
   "pages.block.move_up": "위로 이동",
   "pages.block.note_placeholder": "게시물 ID 또는 URL",
   "pages.block.remove": "블록 삭제",
+  "pages.block.remove_confirm": "삭제",
+  "pages.block.remove_confirm_title": "이 항목을 삭제하시겠습니까?",
   "pages.block.section_placeholder": "섹션 제목",
   "pages.block.text_placeholder": "텍스트 입력 (MFM 지원)…",
   "pages.block_type.image": "이미지",

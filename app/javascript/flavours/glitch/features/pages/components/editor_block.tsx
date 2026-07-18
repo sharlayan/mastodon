@@ -7,12 +7,14 @@ import { length } from 'stringz';
 import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
+import { openModal } from 'flavours/glitch/actions/modal';
 import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
 import type {
   ApiPageBlock,
   ApiPageBlockType,
 } from 'flavours/glitch/api_types/pages';
 import { Icon } from 'flavours/glitch/components/icon';
+import { useAppDispatch } from 'flavours/glitch/store';
 
 import { BlockAddButtons } from './block_add_buttons';
 import { blockTypeMessages } from './block_messages';
@@ -24,6 +26,14 @@ const messages = defineMessages({
   moveUp: { id: 'pages.block.move_up', defaultMessage: 'Move up' },
   moveDown: { id: 'pages.block.move_down', defaultMessage: 'Move down' },
   remove: { id: 'pages.block.remove', defaultMessage: 'Remove block' },
+  removeConfirmTitle: {
+    id: 'pages.block.remove_confirm_title',
+    defaultMessage: 'Delete this item?',
+  },
+  removeConfirm: {
+    id: 'pages.block.remove_confirm',
+    defaultMessage: 'Delete',
+  },
   textPlaceholder: {
     id: 'pages.block.text_placeholder',
     defaultMessage: 'Write text (MFM supported)…',
@@ -70,6 +80,7 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
   getMedia,
 }) => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
   const blockId = block.id;
   const characterCount = block.type === 'text' ? length(block.text) : undefined;
   const characterCountWithoutSpaces =
@@ -84,8 +95,19 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
   }, [onMove, blockId]);
 
   const handleRemove = useCallback(() => {
-    onRemove(blockId);
-  }, [onRemove, blockId]);
+    dispatch(
+      openModal({
+        modalType: 'CONFIRM',
+        modalProps: {
+          title: intl.formatMessage(messages.removeConfirmTitle),
+          confirm: intl.formatMessage(messages.removeConfirm),
+          onConfirm: () => {
+            onRemove(blockId);
+          },
+        },
+      }),
+    );
+  }, [dispatch, intl, onRemove, blockId]);
 
   const handleTextChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {

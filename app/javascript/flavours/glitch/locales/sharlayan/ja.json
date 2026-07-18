@@ -273,6 +273,8 @@
   "pages.block.move_up": "上へ移動",
   "pages.block.note_placeholder": "投稿IDまたはURL",
   "pages.block.remove": "ブロックを削除",
+  "pages.block.remove_confirm": "削除",
+  "pages.block.remove_confirm_title": "この項目を削除しますか？",
   "pages.block.section_placeholder": "セクションのタイトル",
   "pages.block.text_placeholder": "テキストを入力（MFM対応）…",
   "pages.block_type.image": "画像",

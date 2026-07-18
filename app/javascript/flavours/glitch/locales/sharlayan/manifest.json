@@ -273,6 +273,8 @@
   "pages.block.move_up",
   "pages.block.note_placeholder",
   "pages.block.remove",
+  "pages.block.remove_confirm",
+  "pages.block.remove_confirm_title",
   "pages.block.section_placeholder",
   "pages.block.text_placeholder",
   "pages.block_type.image",
