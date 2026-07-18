@@ -13,6 +13,16 @@ import MoodIcon from '@/material-icons/400-20px/mood.svg?react';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { Popover } from '@/flavours/glitch/components/popover';
+import {
+  emojiPickerFavoriteProps,
+  emojiPickerFavoritesCategoryLabel,
+  shouldIgnoreEmojiDropdownClose,
+} from '@/sharlayan/emoji_picker/favorites';
+import {
+  computeEmojiPickerStyle,
+  EmojiPickerSizeObserver,
+  loadEmojiPickerSize,
+} from '@/sharlayan/emoji_picker/picker_size';
 
 import { EmojiPicker as EmojiPickerAsync } from '../../ui/util/async-components';
 
@@ -30,10 +40,6 @@ const messages = defineMessages({
   objects: { id: 'emoji_button.objects', defaultMessage: 'Objects' },
   symbols: { id: 'emoji_button.symbols', defaultMessage: 'Symbols' },
   flags: { id: 'emoji_button.flags', defaultMessage: 'Flags' },
-  favorites: { id: 'emoji_button.favorites', defaultMessage: 'Favorites' },
-  add_to_favorites: { id: 'emoji_button.add_to_favorites', defaultMessage: 'Add to Favorites' },
-  already_in_favorites: { id: 'emoji_button.already_in_favorites', defaultMessage: 'Already in Favorites' },
-  remove_from_favorites: { id: 'emoji_button.remove_from_favorites', defaultMessage: 'Remove from Favorites' },
 });
 
 let EmojiPicker, Emoji; // load asynchronously
@@ -158,21 +164,6 @@ class ModifierPicker extends PureComponent {
 
 class EmojiPickerMenuImpl extends PureComponent {
 
-  constructor(props) {
-    super(props);
-
-    const savedSize = this.loadSavedSize();
-
-    this.state = {
-      modifierOpen: false,
-      readyToFocus: false,
-      pickerSize: savedSize,
-    };
-
-    this.resizeObserver = null;
-    this.resizeTimeout = null;
-  }
-
   static propTypes = {
     favorite_emojis: ImmutablePropTypes.list,
     frequentlyUsedEmojis: PropTypes.arrayOf(PropTypes.string),
@@ -194,33 +185,35 @@ class EmojiPickerMenuImpl extends PureComponent {
     frequentlyUsedEmojis: [],
   };
 
-  componentDidMount() {
-    this.setupResizeObserver();
+  state = {
+    modifierOpen: false,
+    readyToFocus: false,
+    pickerSize: loadEmojiPickerSize(),
+  };
 
+  sizeObserver = new EmojiPickerSizeObserver((pickerSize) => {
+    this.setState({ pickerSize });
+  });
+
+  componentDidMount() {
     // Because of https://github.com/react-bootstrap/react-bootstrap/issues/2614 we need
     // to wait for a frame before focusing
     requestAnimationFrame(() => {
       this.setState({ readyToFocus: true });
-
       if (this.node) {
         const element = this.node.querySelector('input[type="search"]');
-        if (element) {
-          element.focus();
-        }
+        if (element) element.focus();
       }
     });
   }
 
   componentWillUnmount() {
-    this.cleanupResizeObserver();
+    this.sizeObserver.dispose();
   }
 
   setRef = c => {
     this.node = c;
-
-    if (c && !this.resizeObserver) {
-      this.setupResizeObserver();
-    }
+    this.sizeObserver.observe(this.node);
   };
 
   getI18n = () => {
@@ -240,7 +233,7 @@ class EmojiPickerMenuImpl extends PureComponent {
         symbols: intl.formatMessage(messages.symbols),
         flags: intl.formatMessage(messages.flags),
         custom: intl.formatMessage(messages.custom),
-        favorites: intl.formatMessage(messages.favorites),
+        favorites: emojiPickerFavoritesCategoryLabel(intl),
       },
     };
   };
@@ -268,55 +261,6 @@ class EmojiPickerMenuImpl extends PureComponent {
     this.props.onSkinTone(modifier);
   };
 
-  loadSavedSize = () => {
-    try {
-      const saved = localStorage.getItem('mastodon-emojipicker-size');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  saveSizeDebounced = (width, height) => {
-    if (this.resizeTimeout) {
-      clearTimeout(this.resizeTimeout);
-    }
-
-    this.resizeTimeout = setTimeout(() => {
-      try {
-        localStorage.setItem('mastodon-emojipicker-size', JSON.stringify({ width, height }));
-      } catch (e) {
-        // ignore save fail
-      }
-    }, 500); // 500ms debounce
-  };
-
-  setupResizeObserver = () => {
-    if (!this.node || this.resizeObserver) return;
-
-    this.resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        this.saveSizeDebounced(width, height);
-        this.setState({ pickerSize: { width, height } });
-      }
-    });
-
-    this.resizeObserver.observe(this.node);
-  };
-
-  cleanupResizeObserver = () => {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
-    }
-
-    if (this.resizeTimeout) {
-      clearTimeout(this.resizeTimeout);
-      this.resizeTimeout = null;
-    }
-  };
-
   render() {
     const { loading, style, intl, favorite_emojis, skinTone, frequentlyUsedEmojis, onAddFavorite, onRemoveFavorite } = this.props;
 
@@ -328,18 +272,7 @@ class EmojiPickerMenuImpl extends PureComponent {
 
     const { modifierOpen, pickerSize } = this.state;
 
-    const categoriesSort = ['recent', 'people', 'nature', 'foods', 'activity', 'places', 'objects', 'symbols', 'flags'];
-    if (favorite_emojis && favorite_emojis.size > 0) {
-      categoriesSort.unshift('favorites');
-    }
-
-    const pickerStyle = pickerSize
-      ? {
-          ...style,
-          width: pickerSize.width,
-          height: pickerSize.height
-        }
-      : style;
+    const pickerStyle = computeEmojiPickerStyle(style, pickerSize);
 
     return (
       <div className={classNames('emoji-picker-dropdown__menu', { selecting: modifierOpen })} style={pickerStyle} ref={this.setRef}>
@@ -358,12 +291,11 @@ class EmojiPickerMenuImpl extends PureComponent {
           notFound={notFoundFn}
           autoFocus={this.state.readyToFocus}
           emojiTooltip
-          favoriteEmojis={favorite_emojis}
-          onAddFavorite={onAddFavorite}
-          onRemoveFavorite={onRemoveFavorite}
-          addToFavoritesLabel={intl.formatMessage(messages.add_to_favorites)}
-          alreadyInFavoritesLabel={intl.formatMessage(messages.already_in_favorites)}
-          removeFromFavoritesLabel={intl.formatMessage(messages.remove_from_favorites)}
+          {...emojiPickerFavoriteProps(intl, {
+            favoriteEmojis: favorite_emojis,
+            onAddFavorite,
+            onRemoveFavorite,
+          })}
         />
 
         <ModifierPicker
@@ -376,6 +308,7 @@ class EmojiPickerMenuImpl extends PureComponent {
       </div>
     );
   }
+
 }
 
 const EmojiPickerMenu = injectIntl(EmojiPickerMenuImpl);
@@ -421,7 +354,7 @@ class EmojiPickerDropdown extends PureComponent {
   };
 
   onHideDropdown = e => {
-    if (e?.target?.closest?.('.emoji-context-menu')) return;
+    if (shouldIgnoreEmojiDropdownClose(e)) return;
     this.setState({ active: false });
   };
 
@@ -464,7 +397,7 @@ class EmojiPickerDropdown extends PureComponent {
           onClose={this.onHideDropdown}
         >
           {({ props, placement }) => (
-            <div {...props} className={`dropdown-animation ${placement}`}>
+            <div  {...props} className={`dropdown-animation ${placement}`}>
               <EmojiPickerMenu
                 favorite_emojis={this.props.favorite_emojis}
                 loading={loading}
