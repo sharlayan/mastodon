@@ -9,7 +9,6 @@ RSpec.describe Notification do
     let(:reblog)       { Fabricate(:status, reblog: status) }
     let(:favourite)    { Fabricate(:favourite, status: status) }
     let(:mention)      { Fabricate(:mention, status: status) }
-    let(:reaction)     { Fabricate(:status_reaction, status: status) }
 
     context 'when Activity is reblog' do
       let(:activity) { reblog }
@@ -22,14 +21,6 @@ RSpec.describe Notification do
     context 'when Activity is favourite' do
       let(:type)     { :favourite }
       let(:activity) { favourite }
-
-      it 'returns status' do
-        expect(notification.target_status).to eq status
-      end
-    end
-
-    context 'when Activity is react' do
-      let(:activity) { reaction }
 
       it 'returns status' do
         expect(notification.target_status).to eq status
@@ -59,11 +50,6 @@ RSpec.describe Notification do
     it 'returns :favourite for a Favourite' do
       notification = described_class.new(activity: Favourite.new)
       expect(notification.type).to eq :favourite
-    end
-
-    it 'returns :reaction for a Reaction' do
-      notification = described_class.new(activity: StatusReaction.new)
-      expect(notification.type).to eq :reaction
     end
 
     it 'returns :follow for a Follow' do
@@ -263,7 +249,6 @@ RSpec.describe Notification do
       let(:follow) { Fabricate(:follow) }
       let(:follow_request) { Fabricate(:follow_request) }
       let(:favourite) { Fabricate(:favourite) }
-      let(:reaction) { Fabricate(:status_reaction) }
       let(:poll) { Fabricate(:poll) }
 
       let(:notifications) do
@@ -274,7 +259,6 @@ RSpec.describe Notification do
           Fabricate(:notification, type: :follow, activity: follow),
           Fabricate(:notification, type: :follow_request, activity: follow_request),
           Fabricate(:notification, type: :favourite, activity: favourite),
-          Fabricate(:notification, type: :reaction, activity: reaction),
           Fabricate(:notification, type: :poll, activity: poll),
         ]
       end
@@ -289,7 +273,6 @@ RSpec.describe Notification do
               follow_attributes,
               follow_request_attributes,
               favourite_attributes,
-              reaction_attributes,
               poll_attributes
             )
         end
@@ -345,21 +328,6 @@ RSpec.describe Notification do
             poll: have_loaded_association(:status),
             target_status: eq(poll.status).and(have_loaded_association(:account))
           ).and(have_loaded_association(:poll))
-        end
-
-        def reaction_attributes
-          have_attributes(
-            type: :reaction,
-            status_reaction: have_loaded_association(:status),
-            target_status: eq(reaction.status).and(have_loaded_association(:account))
-          ).and(have_loaded_association(:status_reaction))
-        end
-
-        it 'replaces reaction' do
-          # reaction is the 7th notification in the collection (index 6)
-          expect(subject[6].type).to eq :reaction
-          expect(subject[6].target_status.association(:account)).to be_loaded
-          expect(subject[6].target_status).to eq reaction.status
         end
       end
     end

@@ -1,9 +1,9 @@
 import type { MouseEventHandler } from 'react';
-import { useCallback } from 'react';
 
 import classNames from 'classnames';
-import { useRouteMatch, NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
+import { useSharlayanColumnLinkActive } from '@/sharlayan/navigation/column_link_active';
 import { Icon } from 'flavours/glitch/components/icon';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import type { MastodonLocationDescriptor } from 'flavours/glitch/components/router';
@@ -37,13 +37,7 @@ export const ColumnLink: React.FC<{
   transparent,
   ...other
 }) => {
-  const location = useLocation();
-  const toPath = (typeof to === 'string' ? to : to?.pathname) ?? '';
-  const routeMatch = useRouteMatch(toPath);
-  const match =
-    toPath === '/public' || toPath === '/public/local'
-      ? location.pathname === toPath
-      : routeMatch;
+  const { match, isActive: navLinkIsActive } = useSharlayanColumnLinkActive(to);
   const className = classNames('column-link', {
     'column-link--transparent': transparent,
   });
@@ -73,10 +67,6 @@ export const ColumnLink: React.FC<{
     ));
   const active = !!match;
 
-  const navLinkIsActive = useCallback(() => {
-    return location.pathname === toPath;
-  }, [location.pathname, toPath]);
-
   if (href) {
     return (
       <a
@@ -92,14 +82,12 @@ export const ColumnLink: React.FC<{
       </a>
     );
   } else if (to) {
-    const shouldUseCustomIsActive =
-      toPath === '/public' || toPath === '/public/local';
     return (
       <NavLink
         to={to}
         onClick={onClick}
         className={className}
-        isActive={shouldUseCustomIsActive ? navLinkIsActive : undefined}
+        isActive={navLinkIsActive}
         {...other}
       >
         {active ? activeIconElement : iconElement}

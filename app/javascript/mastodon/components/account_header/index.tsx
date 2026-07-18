@@ -1,15 +1,11 @@
 import { useCallback } from 'react';
 
-import { useIntl, defineMessages } from 'react-intl';
-
 import classNames from 'classnames';
 
 import { Helmet } from '@unhead/react/helmet';
-import escapeTextContentForBrowser from 'escape-html';
 
 import { openModal } from '@/mastodon/actions/modal';
 import { useLayout } from '@/mastodon/hooks/useLayout';
-import { useRelationship } from '@/mastodon/hooks/useRelationship';
 import { useVisibility } from '@/mastodon/hooks/useVisibility';
 import {
   autoPlayGif,
@@ -18,12 +14,12 @@ import {
 } from '@/mastodon/initial_state';
 import type { Account } from '@/mastodon/models/account';
 import { getAccountHidden } from '@/mastodon/selectors/accounts';
+import { SharlayanFollowedMessage } from '@/mastodon/sharlayan/account/follow_message';
 import { useAppSelector, useAppDispatch } from '@/mastodon/store';
 
 import { AccountBio } from '../account_bio';
 import { Avatar } from '../avatar';
 import { AnimateEmojiProvider } from '../emoji/context';
-import { EmojiHTML } from '../emoji/html';
 import { FamiliarFollowers } from '../familiar_followers';
 
 import { AccountBanners } from './banners';
@@ -35,13 +31,6 @@ import { AccountNumberFields } from './number_fields';
 import classes from './styles.module.scss';
 import { AccountSubscriptionForm } from './subscription_form';
 import { AccountTabs } from './tabs';
-
-const messages = defineMessages({
-  followMessage: {
-    id: 'account.follow_message',
-    defaultMessage: 'Follow message',
-  },
-});
 
 const titleFromAccount = (account: Account) => {
   const displayName = account.display_name;
@@ -59,11 +48,9 @@ export const AccountHeader: React.FC<{
   accountId: string;
   hideTabs?: boolean;
 }> = ({ accountId, hideTabs }) => {
-  const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
   const hidden = useAppSelector((state) => getAccountHidden(state, accountId));
-  const relationship = useRelationship(accountId);
 
   const handleOpenAvatar = useCallback(
     (e: React.MouseEvent) => {
@@ -166,20 +153,11 @@ export const AccountHeader: React.FC<{
 
               <AccountHeaderFields accountId={accountId} />
 
-              {account.followed_message && relationship?.following && (
-                <div className='account__header__follow-message'>
-                  <span className='account__header__follow-message__label'>
-                    {intl.formatMessage(messages.followMessage)}
-                  </span>
-                  <EmojiHTML
-                    as='p'
-                    htmlString={escapeTextContentForBrowser(
-                      account.followed_message,
-                    )}
-                    extraEmojis={account.emojis}
-                  />
-                </div>
-              )}
+              <SharlayanFollowedMessage
+                accountId={accountId}
+                className='account__header__follow-message'
+                labelClassName='account__header__follow-message__label'
+              />
 
               {!me && account.email_subscriptions && (
                 <AccountSubscriptionForm accountId={accountId} />
