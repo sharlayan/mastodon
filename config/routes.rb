@@ -51,20 +51,13 @@ Rails.application.routes.draw do
   end
 
   get '/nodeinfo/2.0', to: 'well_known/node_info#show', as: :nodeinfo_schema
-  get '/nodeinfo/2.1', to: 'well_known/node_info#show_two_one', as: :nodeinfo_2_1_schema
-
-  get '/proxy/*any', to: 'misskey_compat/media_proxy#show', format: false
 
   get 'manifest', to: 'manifests#show', defaults: { format: 'json' }
   get 'intent', to: 'intents#show'
   get 'custom.css', to: 'custom_css#show'
   resources :custom_css, only: :show, path: :css
-  get 'user_custom.css', to: 'user_custom_css#show', as: :user_custom_css
 
   get 'remote_interaction_helper', to: 'remote_interaction_helper#index'
-
-  get 'miauth/:session', to: 'miauth#show', as: :miauth
-  post 'miauth/:session', to: 'miauth#create'
 
   resource :instance_actor, path: 'actor', only: [:show] do
     scope module: :activitypub do
@@ -158,6 +151,8 @@ Rails.application.routes.draw do
     end
   end
 
+  draw(:sharlayan_web)
+
   constraints(encoded_path: /%40.*/) do
     get '/:encoded_path', to: redirect { |params|
       "/#{params[:encoded_path].gsub('%40', '@')}"
@@ -168,9 +163,6 @@ Rails.application.routes.draw do
     with_options to: 'accounts#show' do
       get '/@:username', as: :short_account
       get '/@:username/featured'
-      get '/@:username/clips'
-      get '/@:username/pages'
-      get '/@:username/pages/:name'
       get '/@:username/collections'
       get '/@:username/with_replies', as: :short_account_with_replies
       get '/@:username/media', as: :short_account_media
@@ -185,12 +177,6 @@ Rails.application.routes.draw do
     get '/@:account_username/:id/embed', to: 'statuses#embed', as: :embed_short_account_status
     get '/@:account_username/wrapstodon/:year/:share_key', to: 'wrapstodon#show', as: :public_wrapstodon
   end
-
-  get '/avatar/:acct', to: 'misskey_compat/avatars#show', constraints: { acct: %r{[^/]+} }, format: false, as: :misskey_compat_avatar
-  get '/url', to: 'misskey_compat/url_preview#show', as: :misskey_compat_url_preview
-  get '/scratchpad', to: 'misskey_compat/scratchpad#show', as: :scratchpad
-  post '/scratchpad', to: 'misskey_compat/scratchpad#run'
-  get '/notes/:id', to: 'misskey_compat/notes#show', constraints: { id: /[0-9a-z]+/ }, as: :misskey_compat_note
 
   get '/@:username_with_domain/(*any)', to: 'home#index', constraints: { username_with_domain: %r{([^/])+?} }, as: :account_with_domain, format: false
   get '/settings', to: redirect('/settings/profile')
@@ -240,7 +226,6 @@ Rails.application.routes.draw do
   resource :statuses_cleanup, controller: :statuses_cleanup, only: [:show, :update]
 
   get '/media_proxy/:id/(*any)', to: 'media_proxy#show', as: :media_proxy, format: false
-  get '/drive_media/:id/(:style)', to: 'drive_media#show', as: :drive_media, format: false
   resources :backups, only: [] do
     member { get :download, format: false }
   end
@@ -251,18 +236,6 @@ Rails.application.routes.draw do
   draw(:admin)
 
   get '/admin', to: redirect('/admin/dashboard', status: 302)
-
-  # Multi-account switching
-  namespace :multi_accounts do
-    resource :entry, only: [:show], controller: :entries
-    resource :callback, only: [:show], controller: :callbacks
-
-    scope :auth, controller: :auth do
-      get 'sign_in', action: :new, as: :auth_sign_in
-      post 'sign_in', action: :create
-      post 'verify_otp', action: :verify_otp, as: :auth_verify_otp
-    end
-  end
 
   draw(:api)
 

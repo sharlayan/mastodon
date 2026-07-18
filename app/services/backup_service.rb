@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class BackupService < BaseService
+  prepend Sharlayan::BackupServiceExtensions
+
   include Payloadable
   include ContextHelper
 
@@ -77,7 +79,7 @@ class BackupService < BaseService
       dump_likes!(zip)
       dump_bookmarks!(zip)
       dump_actor!(zip)
-      Sharlayan::PageBackupService.new(account).write_to_zip(zip) if Setting.pages_enabled
+      dump_sharlayan_data!(zip)
     end
   end
 
@@ -90,13 +92,14 @@ class BackupService < BaseService
   end
 
   def dump_media_attachments!(zipfile)
-    MediaAttachment.attached.where(account: account).includes(:drive_file).find_in_batches do |media_attachments|
+    MediaAttachment.attached.where(account: account).find_in_batches do |media_attachments|
       media_attachments.each do |m|
-        attachment = m.drive_pointer? ? m.drive_file.file : m.file
-        path = media_archive_path(m, attachment.url(:original))
-        next if path.blank? || zipfile.find_entry(path)
+        path = m.file&.path
+        next unless path
 
-        download_to_zip(zipfile, attachment, path)
+        path = path.gsub(%r{\A.*/system/}, '')
+        path = path.gsub(%r{\A/+}, '')
+        download_to_zip(zipfile, m.file, path)
       end
 
       GC.start
@@ -211,13 +214,5 @@ class BackupService < BaseService
     end
   rescue Errno::ENOENT, Seahorse::Client::NetworkingError => e
     Rails.logger.warn "Could not backup file #{filename}: #{e}"
-  end
-
-  def media_archive_path(media_attachment, source_url)
-    if media_attachment&.drive_pointer?
-      File.join('drive_files', media_attachment.drive_file_id.to_s, media_attachment.file_file_name)
-    else
-      Addressable::URI.parse(source_url).path.delete_prefix('/system/').delete_prefix('/')
-    end
   end
 end

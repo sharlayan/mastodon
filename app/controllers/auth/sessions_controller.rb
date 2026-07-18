@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Auth::SessionsController < Devise::SessionsController
+  prepend Sharlayan::SessionsControllerExtensions
+
   include Redisable
 
   MAX_2FA_ATTEMPTS_PER_HOUR = 10
@@ -11,8 +13,6 @@ class Auth::SessionsController < Devise::SessionsController
   skip_before_action :require_no_authentication, only: [:create]
   skip_before_action :require_functional!
   skip_before_action :update_user_sign_in
-
-  before_action :handle_account_switch, only: [:new], if: -> { params[:switch_to].present? }
 
   around_action :preserve_stored_location, only: :destroy, if: :continue_after?
 
@@ -35,7 +35,6 @@ class Auth::SessionsController < Devise::SessionsController
   end
 
   def destroy
-    cookies.delete(:switch_parent_stack)
     super
     session.delete(:challenge_passed_at)
     flash.delete(:notice)
@@ -73,8 +72,6 @@ class Auth::SessionsController < Devise::SessionsController
   end
 
   def require_no_authentication
-    return if params[:switch_to].present? && user_signed_in?
-
     super
 
     # Delete flash message that isn't entirely useful and may be confusing in
@@ -83,72 +80,6 @@ class Auth::SessionsController < Devise::SessionsController
   end
 
   private
-
-  def handle_account_switch
-    unless user_signed_in?
-      redirect_to new_user_session_path
-      return
-    end
-
-    target_account = Account.find_by(id: params[:switch_to])
-
-    unless target_account
-      redirect_to root_path, alert: I18n.t('account_switcher.switch_failed')
-      return
-    end
-
-    target_user = target_account.user
-
-    unless target_user&.active_for_authentication?
-      redirect_to root_path, alert: I18n.t('account_switcher.switch_failed')
-      return
-    end
-
-    parent_stack = switch_parent_stack
-    new_stack = compute_switch_stack(parent_stack, target_account)
-
-    if new_stack.nil? || new_stack.length > 5
-      redirect_to root_path, alert: I18n.t('account_switcher.switch_unauthorized')
-      return
-    end
-
-    sign_out(current_user)
-    sign_in(target_user)
-    persist_switch_parent_stack(new_stack)
-    target_user.update_sign_in!(new_sign_in: true)
-
-    redirect_to root_path
-  end
-
-  # Returns the new switch_parent_stack after switching to target_account,
-  # or nil if no valid authorization path exists.
-  def compute_switch_stack(parent_stack, target_account)
-    # Reverse switch: target is the direct parent in the stack
-    if parent_stack.last == target_account.id
-      return nil unless AccountSwitchAuthorization.exists?(
-        account_id: target_account.id,
-        target_account_id: current_account.id
-      )
-
-      return parent_stack[0..-2]
-    end
-
-    # Direct forward: current account authorized target
-    return parent_stack + [current_account.id] if current_account.account_switch_authorizations.exists?(target_account: target_account)
-
-    # Ancestor-mediated (sibling or cousin): some ancestor in the stack authorized target.
-    # Collapse stack to that ancestor so the chain stays coherent.
-    parent_stack.reverse_each do |ancestor_id|
-      next unless AccountSwitchAuthorization.exists?(
-        account_id: ancestor_id, target_account_id: target_account.id
-      )
-
-      idx = parent_stack.index(ancestor_id)
-      return parent_stack[0..idx]
-    end
-
-    nil
-  end
 
   def preserve_stored_location
     original_stored_location = stored_location_for(:user)
@@ -204,7 +135,6 @@ class Auth::SessionsController < Devise::SessionsController
   def on_authentication_success(user, security_measure)
     @on_authentication_success_called = true
 
-    disable_custom_css_if_requested(user)
     clear_2fa_attempt_from_user(user)
     clear_attempt_from_session
 
@@ -224,13 +154,6 @@ class Auth::SessionsController < Devise::SessionsController
 
   def suspicious_sign_in?(user)
     SuspiciousSignInDetector.new(user).suspicious?(request)
-  end
-
-  def disable_custom_css_if_requested(user)
-    return unless ActiveModel::Type::Boolean.new.cast(params[:disable_css])
-
-    user.settings['web.use_custom_css'] = false
-    user.save
   end
 
   def on_authentication_failure(user, security_measure, failure_reason)

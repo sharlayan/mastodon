@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Web::PushNotificationWorker
+  prepend Sharlayan::PushNotificationWorkerExtensions
+
   include Sidekiq::Worker
   include RoutingHelper
 
@@ -8,7 +10,6 @@ class Web::PushNotificationWorker
 
   TTL     = 48.hours
   URGENCY = 'normal'
-  IGNORED_DOMAINS = ENV.fetch('PUSH_NOTIFICATION_IGNORED_DOMAINS', 'ntfy.sh').split(',').map(&:strip).reject(&:empty?).freeze
 
   def perform(subscription_id, notification_id)
     @subscription = Web::PushSubscription.find(subscription_id)
@@ -40,20 +41,6 @@ class Web::PushNotificationWorker
   end
 
   private
-
-  def should_ignore_domain?
-    domain = endpoint_domain
-    IGNORED_DOMAINS.include?(domain) if domain
-  end
-
-  def endpoint_domain
-    return nil unless @subscription&.endpoint
-
-    uri = URI.parse(@subscription.endpoint)
-    uri.host
-  rescue URI::InvalidURIError
-    nil
-  end
 
   def perform_legacy_request
     payload = web_push_request.legacy_encrypt(push_notification_json)
@@ -102,15 +89,7 @@ class Web::PushNotificationWorker
       # that isn't about rate-limiting or timeouts, we can
       # assume that the subscription is invalid or expired
       # and must be removed
-      if should_ignore_domain?
-        Rails.logger.info { "Ignoring response for domain #{endpoint_domain}: #{response.code}" }
-        return true
-      end
-
-      if response.code == 507
-        Rails.logger.info { "Received 507 response for subscription #{@subscription.id}, treating as success" }
-        return true
-      end
+      return true if sharlayan_success_response?(response)
 
       if (400..499).cover?(response.code) && ![408, 429].include?(response.code)
         @subscription.destroy!
@@ -126,11 +105,7 @@ class Web::PushNotificationWorker
 
   def push_notification_json
     I18n.with_locale(@subscription.locale.presence || I18n.default_locale) do
-      if @subscription.misskey_compat?
-        MisskeyCompat::PushSerializer.serialize(@notification, @subscription.user.account).to_json
-      else
-        serialized_notification.to_json
-      end
+      serialized_notification.to_json
     end
   end
 

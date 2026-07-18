@@ -5,22 +5,15 @@
 # - Have alternative format representations
 
 %w(
-  /antennas/(*any)
   /blocks
-  /board_announcements
   /bookmarks
-  /circles/(*any)
-  /clips/(*any)
   /collections/(*any)
-  /conversations/(*any)
-  /custom_emoji_mutes
+  /conversations
   /deck/(*any)
   /directory
   /domain_blocks
-  /drive
   /explore/(*any)
   /favourites
-  /reactions
   /follow_requests
   /followed_tags
   /getting-started
@@ -32,9 +25,7 @@
   /mutes
   /notifications_v2/(*any)
   /notifications/(*any)
-  /pages/(*any)
   /pinned
-  /reaction_mutes
   /profile/(*any)
   /public
   /public/local
@@ -46,3 +37,5 @@
   /overview
   /overview/about
 ).each { |path| get path, to: 'home#index' }
+
+draw(:sharlayan_web_app)
