@@ -15,6 +15,13 @@ export const AntennaTimeline = () => import('../../../features/antenna_timeline'
 export const ReactedStatuses = () => import('../../../features/reacted_statuses');
 export const BoardAnnouncements = () => import('../../../features/board_announcements');
 
+export const sharlayanColumnComponents = {
+  CONVERSATION: ConversationThread,
+  ANTENNA: AntennaTimeline,
+  REACTIONS: ReactedStatuses,
+  BOARD_ANNOUNCEMENTS: BoardAnnouncements,
+};
+
 export const sharlayanRouteDescriptors = [
   { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: alwaysEnabled, lazyComponent: PublicTimeline },
   { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: alwaysEnabled, lazyComponent: CommunityTimeline },

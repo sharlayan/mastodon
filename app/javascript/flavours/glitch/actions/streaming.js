@@ -1,10 +1,9 @@
 // @ts-check
 
-import { me } from '../initial_state';
 import { getLocale } from '../locales';
+import { createAntennaStreamConnector, handleSharlayanStreamingEvent } from '../sharlayan/compose/streaming';
 import { connectStream } from '../stream';
 
-import { showAlert } from './alerts';
 import {
   fetchAnnouncements,
   updateAnnouncements,
@@ -14,7 +13,7 @@ import {
 import { updateConversations } from './conversations';
 import { processNewNotificationForGroups, refreshStaleNotificationGroups, pollRecentNotifications as pollRecentGroupNotifications } from './notification_groups';
 import { updateNotifications } from './notifications';
-import { updateStatus, updateStatusReaction } from './statuses';
+import { updateStatus } from './statuses';
 import {
   updateTimeline,
   deleteFromTimelines,
@@ -25,7 +24,6 @@ import {
   fillPublicTimelineGaps,
   fillCommunityTimelineGaps,
   fillListTimelineGaps,
-  fillAntennaTimelineGaps,
 } from './timelines';
 
 /**
@@ -101,6 +99,8 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
 
       onReceive(data) {
         try {
+          if (handleSharlayanStreamingEvent({ bogusQuotePolicy, data, dispatch, getState, messages })) return;
+
           switch (data.event) {
           case 'update':
             // @ts-expect-error
@@ -109,10 +109,6 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
           case 'status.update':
             // @ts-expect-error
             dispatch(updateStatus(JSON.parse(data.payload), { bogusQuotePolicy }));
-            break;
-          case 'status.reaction':
-            // @ts-expect-error
-            dispatch(updateStatusReaction(JSON.parse(data.payload), { bogusQuotePolicy }));
             break;
           case 'delete':
             dispatch(deleteFromTimelines(data.payload));
@@ -123,40 +119,6 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
             dispatch(updateNotifications(notificationJSON, messages, locale));
             // TODO: remove this once the groups feature replaces the previous one
             dispatch(processNewNotificationForGroups(notificationJSON));
-            break;
-          }
-          case 'linked_notification': {
-            // @ts-expect-error
-            const linked = JSON.parse(data.payload);
-
-            // Skip toast if the linked account is the currently active account
-            if (String(linked.linked_account_id) !== String(me)) {
-              // Check inApp preference from localStorage
-              const rootAccountId = getState().accountSwitches?.get('rootAccountId') ?? me;
-              let inAppEnabled = false;
-              try {
-                const prefs = JSON.parse(localStorage.getItem(`linked_notif_prefs_${rootAccountId}`) ?? '{}');
-                inAppEnabled = prefs[String(linked.linked_account_id)]?.inApp ?? false;
-              } catch { /* ignore */ }
-
-              if (inAppEnabled) {
-                const fromName = linked.notification.account.display_name || linked.notification.account.username;
-                const msgTemplate = messages[`notification.${linked.notification.type}`];
-                const rawMessage = typeof msgTemplate === 'string' ? msgTemplate.replace(/\{name\}/g, fromName) : fromName;
-                const MAX_MSG_LENGTH = 120;
-                const message = rawMessage.length > MAX_MSG_LENGTH ? rawMessage.slice(0, MAX_MSG_LENGTH - 1) + '…' : rawMessage;
-                dispatch(showAlert({ title: `@${linked.linked_account_acct}`, message }));
-              }
-            }
-
-            // Update lastSeenId so the poller won't show duplicates
-            if (me) {
-              const key = `linked_notif_last_id_${me}_${linked.linked_account_id}`;
-              const prev = localStorage.getItem(key);
-              if (!prev || Number(linked.notification.id) > Number(prev)) {
-                localStorage.setItem(key, linked.notification.id);
-              }
-            }
             break;
           }
           case 'notifications_merged': {
@@ -263,12 +225,4 @@ export const connectListStream = listId =>
     fillGaps: () => fillListTimelineGaps(listId)
   });
 
-/**
- * @param {string} antennaId
- * @returns {function(): void}
- */
-export const connectAntennaStream = antennaId =>
-  connectTimelineStream(`antenna:${antennaId}`, 'antenna', { antenna: antennaId }, {
-    // @ts-expect-error
-    fillGaps: () => fillAntennaTimelineGaps(antennaId)
-  });
+export const connectAntennaStream = createAntennaStreamConnector({ connectTimeline: connectTimelineStream });

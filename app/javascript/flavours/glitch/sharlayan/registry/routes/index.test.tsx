@@ -1,6 +1,10 @@
-import type { sharlayanRouteDescriptors as RouteDescriptors } from '.';
+import type {
+  sharlayanColumnComponents as ColumnComponents,
+  sharlayanRouteDescriptors as RouteDescriptors,
+} from '.';
 
 let sharlayanRouteDescriptors: typeof RouteDescriptors;
+let sharlayanColumnComponents: typeof ColumnComponents;
 
 beforeAll(async () => {
   Object.defineProperty(window, 'matchMedia', {
@@ -12,10 +16,20 @@ beforeAll(async () => {
     })),
   });
 
-  ({ sharlayanRouteDescriptors } = await import('.'));
+  ({ sharlayanColumnComponents, sharlayanRouteDescriptors } =
+    await import('.'));
 });
 
 describe('Sharlayan route registry', () => {
+  it('registers every custom multi-column component in one descriptor', () => {
+    expect(Object.keys(sharlayanColumnComponents)).toEqual([
+      'CONVERSATION',
+      'ANTENNA',
+      'REACTIONS',
+      'BOARD_ANNOUNCEMENTS',
+    ]);
+  });
+
   it('uses unique keys', () => {
     const keys = sharlayanRouteDescriptors.map(({ key }) => key);
 
