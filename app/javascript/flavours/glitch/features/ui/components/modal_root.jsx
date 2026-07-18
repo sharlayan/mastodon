@@ -156,6 +156,7 @@ export default class ModalRoot extends PureComponent {
 
   handleClose = (ignoreFocus = false) => {
     const { onClose } = this.props;
+    this._modal?.onModalClose?.();
     const message = this._modal?.getCloseConfirmationMessage?.();
     onClose(message, ignoreFocus);
   };

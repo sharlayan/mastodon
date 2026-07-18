@@ -775,6 +775,58 @@ html.content-font-size__xx_large {
   }
 }
 
+.inline-compose-modal {
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 12px;
+  box-shadow: var(--dropdown-shadow);
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 0 0 auto;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border-primary);
+
+    h1 {
+      margin: 0;
+      color: var(--color-text-primary);
+      font-size: 17px;
+      line-height: 24px;
+    }
+  }
+
+  &__body {
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .compose-form {
+    margin: 0;
+
+    .reply-indicator__cancel {
+      display: none;
+    }
+
+    .compose-form__highlightable {
+      background: transparent;
+      border: unset;
+    }
+  }
+
+  @media screen and (width <= $mobile-breakpoint) {
+    width: 100%;
+    max-height: calc(100vh - 24px);
+    border-radius: 12px 12px 0 0;
+    border-bottom: 0;
+  }
+}
+
 .compose-form--inline {
   .reply-indicator__header {
     display: flex;
@@ -819,47 +871,5 @@ html.content-font-size__xx_large {
       box-sizing: border-box;
       min-height: 25px;
     }
-  }
-}
-
-.inline-compose-modal {
-  width: min(600px, calc(100vw - 32px));
-  max-height: calc(100vh - 64px);
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--color-bg-primary);
-  border: 1px solid var(--color-border-primary);
-  border-radius: 12px;
-  box-shadow: var(--dropdown-shadow);
-
-  &__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex: 0 0 auto;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--color-border-primary);
-
-    h1 {
-      margin: 0;
-      color: var(--color-text-primary);
-      font-size: 17px;
-      line-height: 24px;
-    }
-  }
-
-  &__body {
-    overflow-y: auto;
-  }
-
-  .compose-form {
-    margin: 0;
-  }
-
-  @media screen and (width <= $mobile-breakpoint) {
-    width: 100%;
-    max-height: calc(100vh - 24px);
-    border-radius: 12px 12px 0 0;
-    border-bottom: 0;
   }
 }

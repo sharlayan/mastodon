@@ -60,12 +60,20 @@ describe('Sharlayan compose state', () => {
     let state = composeReducer(undefined, changeScheduledAt('2026-07-18T01:00:00Z'));
     state = state
       .set('text', 'draft')
+      .set('in_reply_to', 'status-id')
+      .set('media_attachments', ImmutableList(['media-id']))
+      .set('circle_id', 'circle-id')
+      .set('clip_ids', ImmutableList(['clip-id']))
       .setIn(['advanced_options', 'threaded_mode'], true);
 
     expect(state.get('scheduled_at')).toBe('2026-07-18T01:00:00Z');
 
     state = composeReducer(state, discardCompose());
     expect(state.get('text')).toBe('');
+    expect(state.get('in_reply_to')).toBeNull();
+    expect(state.get('media_attachments')).toEqual(ImmutableList());
+    expect(state.get('circle_id')).toBeNull();
+    expect(state.get('clip_ids')).toEqual(ImmutableList());
     expect(state.get('scheduled_at')).toBeNull();
     expect(state.getIn(['advanced_options', 'threaded_mode'])).toBe(false);
   });
