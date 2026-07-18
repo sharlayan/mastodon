@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 class StatusPolicy < ApplicationPolicy
-  include RoleplayModeHelper
+  include Sharlayan::StatusRoleplayPolicy
 
   def show?
     return false if author.unavailable?
     return false if local_only? && (current_account.nil? || !current_account.local?)
-    return rp_owner? if roleplay_mode? && rp_hidden?
+    return roleplay_owner? if roleplay_mode? && roleplay_hidden?
     return true if roleplay_admin?
 
     if requires_mention?
@@ -19,23 +19,23 @@ class StatusPolicy < ApplicationPolicy
   end
 
   def quote?
-    !(roleplay_mode? && rp_hidden?) && show? && !blocking_author? && record.quote_policy_for_account(current_account) != :denied
+    roleplay_hidden_interaction_allowed? && show? && !blocking_author? && record.quote_policy_for_account(current_account) != :denied
   end
 
   def reblog?
-    !(roleplay_mode? && rp_hidden?) && !requires_mention? && (!private? || owned?) && show? && !blocking_author?
+    roleplay_hidden_interaction_allowed? && !requires_mention? && (!private? || owned?) && show? && !blocking_author?
   end
 
   def favourite?
-    !(roleplay_mode? && rp_hidden?) && show? && !blocking_author?
+    roleplay_hidden_interaction_allowed? && show? && !blocking_author?
   end
 
   def react?
-    !(roleplay_mode? && rp_hidden?) && show? && !blocking_author?
+    roleplay_hidden_interaction_allowed? && show? && !blocking_author?
   end
 
   def destroy?
-    owned? || (roleplay_mode? && Setting.soft_hide_deletion && record.local? && rp_owner?)
+    owned? || roleplay_owner_soft_hide_deletion?
   end
 
   def unreblog?
@@ -47,12 +47,6 @@ class StatusPolicy < ApplicationPolicy
   end
 
   private
-
-  def rp_hidden?
-    return @rp_hidden if defined?(@rp_hidden)
-
-    @rp_hidden = record.rp_hidden?
-  end
 
   def requires_mention?
     record.direct_visibility? || record.limited_visibility?
@@ -106,16 +100,5 @@ class StatusPolicy < ApplicationPolicy
 
   def local_only?
     record.local_only?
-  end
-
-  def roleplay_admin?
-    roleplay_mode? && role.administrator?
-  end
-
-  def rp_owner?
-    return false unless roleplay_mode?
-    return false if role.everyone?
-
-    role.position == UserRole.assignable.maximum(:position)
   end
 end

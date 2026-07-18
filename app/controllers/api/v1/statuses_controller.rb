@@ -3,7 +3,7 @@
 class Api::V1::StatusesController < Api::BaseController
   include Authorization
   include Api::InteractionPoliciesConcern
-  include RoleplayModeHelper
+  include Api::StatusesRoleplayDeletionConcern
 
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }, except: [:create, :update, :destroy]
   before_action -> { doorkeeper_authorize! :write, :'write:statuses' }, only:   [:create, :update, :destroy]
@@ -80,48 +80,25 @@ class Api::V1::StatusesController < Api::BaseController
   end
 
   def destroy
-    @status = if owner_soft_hide_deletion?
-                Status.with_rp_hidden.find(params[:id])
-              else
-                Status.where(account: current_account).find(params[:id])
-              end
+    return destroy_with_roleplay_soft_hide if roleplay_soft_hide_deletion?
+
+    @status = Status.where(account: current_account).find(params[:id])
     authorize @status, :destroy?
 
     # JSON is generated before `discard_with_reblogs` in order to have the proper URL
     # for media attachments, as it would otherwise redirect to the media proxy
     json = render_to_body json: @status, serializer: REST::StatusSerializer, source_requested: true
 
-    if purge_rp_hidden?
-      @status.discard_with_reblogs
-      StatusPin.find_by(status: @status)&.destroy
+    @status.discard_with_reblogs
+    StatusPin.find_by(status: @status)&.destroy
+    @status.account.statuses_count = @status.account.statuses_count - 1
 
-      PurgeStatusWorker.perform_async(@status.id)
-    elsif roleplay_mode? && Setting.soft_hide_deletion
-      @status.account.statuses_count = @status.account.statuses_count - 1
-      HideStatusWorker.perform_async(@status.id, { 'hidden_by_account_id' => current_account.id })
-    else
-      @status.discard_with_reblogs
-      StatusPin.find_by(status: @status)&.destroy
-      @status.account.statuses_count = @status.account.statuses_count - 1
-
-      RemovalWorker.perform_async(@status.id, { 'redraft' => !truthy_param?(:delete_media) })
-    end
+    RemovalWorker.perform_async(@status.id, { 'redraft' => !truthy_param?(:delete_media) })
 
     render json: json
   end
 
   private
-
-  def purge_rp_hidden?
-    owner_soft_hide_deletion? && @status.rp_hidden?
-  end
-
-  def owner_soft_hide_deletion?
-    return false unless roleplay_mode? && Setting.soft_hide_deletion
-
-    role = current_user.role
-    !role.everyone? && role.position == UserRole.assignable.maximum(:position)
-  end
 
   def set_statuses
     @statuses = Status.permitted_statuses_from_ids(status_ids, current_account)

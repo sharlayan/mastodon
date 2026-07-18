@@ -13,6 +13,7 @@ namespace :api, format: false do
 
     namespace :timelines do
       resources :antenna, only: :show
+      resource :admin, only: :show, controller: :admin
     end
 
     resources :favorite_emojis, only: [:index, :create, :destroy], param: :name
