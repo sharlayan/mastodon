@@ -74,13 +74,15 @@ const DiscardDraftConfirmationModal: React.FC<
 export const ConfirmReplyModal: React.FC<
   {
     status: Status;
+    onConfirm?: () => void;
   } & BaseConfirmationModalProps
-> = ({ status, onClose }) => {
+> = ({ status, onConfirm: onConfirmed, onClose }) => {
   const dispatch = useAppDispatch();
 
   const onConfirm = useCallback(() => {
     dispatch(replyCompose(status));
-  }, [dispatch, status]);
+    onConfirmed?.();
+  }, [dispatch, status, onConfirmed]);
 
   return (
     <DiscardDraftConfirmationModal onConfirm={onConfirm} onClose={onClose} />
