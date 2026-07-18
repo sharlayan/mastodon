@@ -46,7 +46,7 @@ const messages = defineMessages({
   quote_cancel: { id: 'status.quote.cancel', defaultMessage: 'Cancel quote' },
 });
 
-export const textForScreenReader = ({ intl, status, rebloggedByText = false, isQuote = false, expanded = false }) => {
+export const textForScreenReader = ({intl, status, rebloggedByText = false, isQuote = false, expanded = false}) => {
   const displayName = status.getIn(['account', 'display_name']);
 
   const spoilerText = status.getIn(['translation', 'spoiler_text']) || status.get('spoiler_text');
@@ -221,7 +221,7 @@ class Status extends ImmutablePureComponent {
     return updated ? update : null;
   }
 
-  componentDidMount() {
+  componentDidMount () {
     const { node } = this;
 
     // Prevent a crash when node is undefined. Not completely sure why this
@@ -448,15 +448,15 @@ class Status extends ImmutablePureComponent {
     this.props.onTranslate(this.props.status);
   };
 
-  renderLoadingMediaGallery() {
+  renderLoadingMediaGallery () {
     return <div className='media-gallery' style={{ height: '110px' }} />;
   }
 
-  renderLoadingVideoPlayer() {
+  renderLoadingVideoPlayer () {
     return <div className='video-player' style={{ height: '110px' }} />;
   }
 
-  renderLoadingAudioPlayer() {
+  renderLoadingAudioPlayer () {
     return <div className='audio-player' style={{ height: '110px' }} />;
   }
 
@@ -491,7 +491,6 @@ class Status extends ImmutablePureComponent {
       history,
       ...other
     } = this.props;
-
     let attachments = null;
 
     let media = [];
@@ -502,7 +501,6 @@ class Status extends ImmutablePureComponent {
     }
 
     const isExpanded = settings.getIn(['content_warnings', 'shared_state']) ? !status.get('hidden') : this.state.isExpanded;
-
     const expanded = isExpanded || status.get('spoiler_text').length === 0;
 
     const handlers = {
@@ -526,7 +524,6 @@ class Status extends ImmutablePureComponent {
     const connectToRoot = rootId && rootId === status.get('in_reply_to_id');
     const connectReply = nextInReplyToId && nextInReplyToId === status.get('id');
     const matchedFilters = status.get('matched_filters');
-
     const instanceInfo = status.get('instance_metadata');
 
     if (hidden) {
@@ -746,7 +743,7 @@ class Status extends ImmutablePureComponent {
           {...selectorAttribs}
           tabIndex={unfocusable ? null : 0}
           data-featured={featured ? 'true' : null}
-          aria-label={textForScreenReader({ intl, status, rebloggedByText, isQuote: isQuotedPost, expanded: !status.get('hidden') })}
+          aria-label={textForScreenReader({intl, status, rebloggedByText, isQuote: isQuotedPost, expanded: !status.get('hidden')})}
           ref={this.handleRef}
           data-nosnippet={status.getIn(['account', 'noindex'], true) || undefined}
         >
@@ -755,15 +752,15 @@ class Status extends ImmutablePureComponent {
           <div
             className={
               classNames('status', `status-${status.get('visibility')}`,
-                {
-                  'status-reply': !!status.get('in_reply_to_id'),
-                  'status--in-thread': !!rootId,
-                  'status--first-in-thread': previousId && (!connectUp || connectToRoot),
-                  muted: this.props.muted,
-                  'status--is-quote': isQuotedPost,
-                  'status--has-quote': !!status.get('quote'),
-                  'status--highlighted-entry': this.props.shouldHighlightOnMount,
-                })
+              {
+                'status-reply': !!status.get('in_reply_to_id'),
+                'status--in-thread': !!rootId,
+                'status--first-in-thread': previousId && (!connectUp || connectToRoot),
+                muted: this.props.muted,
+                'status--is-quote': isQuotedPost,
+                'status--has-quote': !!status.get('quote'),
+                'status--highlighted-entry': this.props.shouldHighlightOnMount,
+              })
             }
             data-id={status.get('id')}
           >
@@ -801,23 +798,24 @@ class Status extends ImmutablePureComponent {
             {!expanded && <MentionsPlaceholder status={status} />}
 
             {(showActions && !isQuotedPost) &&
-              <>
-                <StatusReactions
-                  statusId={status.get('id')}
-                  reactions={status.get('reactions')}
-                  numVisible={visibleReactions}
-                  addReaction={this.props.onReactionAdd}
-                  removeReaction={this.props.onReactionRemove}
-                  canReact={this.props.identity.signedIn && reactionsEnabled}
-                />
-                <StatusActionBar
-                  status={status}
-                  account={status.get('account')}
-                  showReplyCount={settings.get('show_reply_count')}
-                  onFilter={matchedFilters ? this.handleFilterClick : null}
-                  {...other}
-                />
-              </>
+              <StatusReactions
+                statusId={status.get('id')}
+                reactions={status.get('reactions')}
+                numVisible={visibleReactions}
+                addReaction={this.props.onReactionAdd}
+                removeReaction={this.props.onReactionRemove}
+                canReact={this.props.identity.signedIn && reactionsEnabled}
+              />
+            }
+
+            {(showActions && !isQuotedPost) &&
+              <StatusActionBar
+                status={status}
+                account={status.get('account')}
+                showReplyCount={settings.get('show_reply_count')}
+                onFilter={matchedFilters ? this.handleFilterClick : null}
+                {...other}
+              />
             }
           </div>
         </div>

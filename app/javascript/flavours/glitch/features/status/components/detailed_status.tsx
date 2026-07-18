@@ -98,7 +98,6 @@ export const DetailedStatus: React.FC<{
   const [height, setHeight] = useState(0);
   const [showDespiteFilter, setShowDespiteFilter] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
-  const { signedIn } = useIdentity();
 
   const letterboxMedia = useAppSelector(
     (state) =>
@@ -115,6 +114,8 @@ export const DetailedStatus: React.FC<{
         false,
       ) as boolean,
   );
+
+  const { signedIn } = useIdentity();
 
   const handleOpenVideo = useCallback(
     (options: VideoModalOptions) => {

@@ -3,6 +3,8 @@ import { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
 import { me } from '../initial_state';
 
+import { applySharlayanStatusReactions, sharlayanStatusInputSelectors } from '../sharlayan/selectors/status_reactions';
+
 import { getFilters } from './filters';
 
 export { makeGetAccount } from "./accounts";
@@ -13,37 +15,19 @@ const getStatusInputSelectors = [
   (state, { id }) => state.getIn(['statuses', state.getIn(['statuses', id, 'reblog'])]),
   (state, { id }) => state.getIn(['accounts', state.getIn(['statuses', id, 'account'])]),
   (state, { id }) => state.getIn(['accounts', state.getIn(['statuses', state.getIn(['statuses', id, 'reblog']), 'account'])]),
-  (state, { id }) => getReactionUsers(state, id),
-  (state, { id }) => {
-    const reblogId = state.getIn(['statuses', id, 'reblog']);
-    return reblogId ? getReactionUsers(state, reblogId) : null;
-  },
   getFilters,
   (_, { contextType }) => ['detailed', 'bookmarks', 'favourites', 'search'].includes(contextType),
+  ...sharlayanStatusInputSelectors,
 ];
-
-const getReactionUsers = (state, id) => {
-  const reactions = state.getIn(['statuses', id, 'reactions']);
-  if (!reactions) return null;
-
-  return reactions.map(reaction => {
-    const users = reaction.get('users');
-    if (!users) return null;
-    return users
-      .map(user => user && state.getIn(['accounts', user.get('id')]))
-      .filter(account => !!account);
-  });
-};
 
 function getStatusResultFunction(
   statusBase,
   statusReblog,
   accountBase,
   accountReblog,
-  reactedUsers,
-  reactedUsersReblog,
   filters,
-  warnInsteadOfHide
+  warnInsteadOfHide,
+  ...sharlayanReactionArgs
 ) {
   if (!statusBase) {
     return {
@@ -92,34 +76,14 @@ function getStatusResultFunction(
     statusReblog = null;
   }
 
-  let reactions = statusReblog
-    ? statusReblog.get('reactions')
-    : statusBase.get('reactions');
-
-  const usersPerReaction = statusReblog
-    ? reactedUsersReblog
-    : reactedUsers;
-
-  if (reactions && usersPerReaction) {
-    reactions = reactions.map((reaction, i) => {
-      const resolvedUsers = usersPerReaction.get(i);
-      if (resolvedUsers) {
-        return reaction.set('users', resolvedUsers);
-      }
-      return reaction;
-    });
-  }
-
   return {
     status: statusBase.withMutations(map => {
-      map.set('reblog', statusReblog ? statusReblog.set('reactions', reactions) : statusReblog);
+      map.set('reblog', statusReblog);
       map.set('account', accountBase);
       map.set('matched_filters', filtered);
       map.set('matched_media_filters', mediaFiltered);
 
-      if (!statusReblog) {
-        map.set('reactions', reactions);
-      }
+      applySharlayanStatusReactions(map, statusBase, statusReblog, ...sharlayanReactionArgs);
     }),
     loadingState: statusBase.get('isLoading') ? 'loading' : 'complete'
   };
