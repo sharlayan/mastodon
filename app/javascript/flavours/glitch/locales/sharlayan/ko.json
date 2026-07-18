@@ -346,6 +346,8 @@
   "settings.contrast": "대비",
   "settings.contrast.auto": "시스템 설정 따르기",
   "settings.contrast.high": "고대비",
+  "settings.disable_inline_compose_reply_modal": "답글 작성에 팝업 사용 안 함",
+  "settings.disable_inline_compose_reply_modal.hint": "인라인 작성창이 활성화된 경우 타임라인 답글은 상단 작성창을 사용하며 상세 글에서는 타임라인으로 돌아갑니다",
   "settings.fullwidth_view": "컬럼을 창 넓이에 맞추기 (데스크탑 모드 전용)",
   "settings.fullwidth_view_hint": "컬럼들을 창 크기에 맞추어 각 컬럼의 너비를 조절합니다.",
   "settings.hide_compose_language": "작성창에서 언어 선택기 숨기기",

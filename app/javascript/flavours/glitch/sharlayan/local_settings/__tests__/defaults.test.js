@@ -13,6 +13,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('show_follow_list_bio')).toBe(true);
     expect(state.get('show_others_online_status')).toBe(false);
     expect(state.get('inline_compose_timelines')).toBe(false);
+    expect(state.get('disable_inline_compose_reply_modal')).toBe(false);
     expect(state.get('use_publish_toot')).toBe(false);
     expect(state.get('hide_compose_language')).toBe(false);
     expect(state.get('hide_mfm_compose_hint')).toBe(false);

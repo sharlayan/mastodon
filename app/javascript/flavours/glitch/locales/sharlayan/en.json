@@ -346,6 +346,8 @@
   "settings.contrast": "Contrast",
   "settings.contrast.auto": "Sync with system",
   "settings.contrast.high": "High contrast",
+  "settings.disable_inline_compose_reply_modal": "Do not use a popup for replies",
+  "settings.disable_inline_compose_reply_modal.hint": "When inline compose is enabled, use the compose box at the top of the timeline for replies; detailed posts will return to the timeline",
   "settings.fullwidth_view": "Stretch columns to full width (Desktop mode only)",
   "settings.fullwidth_view_hint": "Stretches columns to fill all the available space.",
   "settings.hide_compose_language": "Hide the language selector in the compose box",

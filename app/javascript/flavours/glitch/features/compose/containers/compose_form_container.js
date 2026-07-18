@@ -98,15 +98,16 @@ const mapDispatchToProps = (dispatch, props) => ({
     if (missingAltText) {
       dispatch(openModal({
         modalType: 'CONFIRM_MISSING_ALT_TEXT',
-        modalProps: { overridePrivacy },
+        modalProps: { overridePrivacy, onSubmitSuccess: props.onSubmitSuccess },
       }));
     } else if (quoteToPrivate) {
       dispatch(openModal({
         modalType: 'CONFIRM_PRIVATE_QUOTE_NOTIFY',
-        modalProps: {},
+        modalProps: { onSubmitSuccess: props.onSubmitSuccess },
       }));
     } else {
       dispatch(submitCompose(overridePrivacy, (status) => {
+        props.onSubmitSuccess?.(status);
         if (props.redirectOnSuccess) {
           window.location.assign(status.url);
         }

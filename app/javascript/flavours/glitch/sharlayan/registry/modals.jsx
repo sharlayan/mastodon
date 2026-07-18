@@ -1,5 +1,6 @@
 import { ConfirmDeleteCircleModal } from 'flavours/glitch/features/ui/components/confirmation_modals';
 import { ConversationParticipantsModal } from 'flavours/glitch/features/ui/components/conversation_participants_modal';
+import { InlineComposeModal } from 'flavours/glitch/features/ui/components/inline_compose_modal';
 import { MfmPreviewModal } from 'flavours/glitch/features/ui/components/mfm_preview_modal';
 
 const accountEditModal = (type) => () =>
@@ -8,6 +9,7 @@ const accountEditModal = (type) => () =>
   }));
 
 export const sharlayanModalComponents = {
+  INLINE_COMPOSE: () => Promise.resolve({ default: InlineComposeModal }),
   CONFIRM_DELETE_CIRCLE: () =>
     Promise.resolve({ default: ConfirmDeleteCircleModal }),
   DOMAIN_MUTE: () =>

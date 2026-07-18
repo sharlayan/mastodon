@@ -346,6 +346,8 @@
   "settings.contrast",
   "settings.contrast.auto",
   "settings.contrast.high",
+  "settings.disable_inline_compose_reply_modal",
+  "settings.disable_inline_compose_reply_modal.hint",
   "settings.fullwidth_view",
   "settings.fullwidth_view_hint",
   "settings.hide_compose_language",

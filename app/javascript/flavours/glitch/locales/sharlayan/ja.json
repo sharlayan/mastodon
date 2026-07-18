@@ -346,6 +346,8 @@
   "settings.contrast": "コントラスト",
   "settings.contrast.auto": "システム設定に従う",
   "settings.contrast.high": "ハイコントラスト",
+  "settings.disable_inline_compose_reply_modal": "返信の作成にポップアップを使用しない",
+  "settings.disable_inline_compose_reply_modal.hint": "インライン投稿欄が有効な場合、タイムラインの返信には上部の投稿欄を使用し、投稿の詳細画面からはタイムラインに戻ります",
   "settings.fullwidth_view": "Stretch columns to full width (Desktop mode only)",
   "settings.fullwidth_view_hint": "Stretches columns to fill all the available space.",
   "settings.hide_compose_language": "投稿ボックスの言語選択を非表示",

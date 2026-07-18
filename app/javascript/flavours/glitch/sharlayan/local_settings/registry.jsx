@@ -80,6 +80,7 @@ const localSettingsSlots = {
   ],
   'compose-before-spoilers': [
     { setting: ['inline_compose_timelines'], id: 'mastodon-settings--inline_compose_timelines', message: { id: 'settings.inline_compose_timelines', defaultMessage: 'Show the compose box at the top of timelines' }, hint: { id: 'settings.inline_compose_timelines.hint', defaultMessage: 'Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)' } },
+    { setting: ['disable_inline_compose_reply_modal'], id: 'mastodon-settings--disable_inline_compose_reply_modal', message: { id: 'settings.disable_inline_compose_reply_modal', defaultMessage: 'Do not use a popup for replies' }, hint: { id: 'settings.disable_inline_compose_reply_modal.hint', defaultMessage: 'When inline compose is enabled, use the compose box at the top of the timeline for replies; detailed posts will return to the timeline' } },
     { setting: ['use_publish_toot'], id: 'mastodon-settings--use_publish_toot', message: { id: 'settings.use_publish_toot', defaultMessage: 'Use "뿌우" as the publish button label' } },
   ],
   'compose-after-spoilers': [

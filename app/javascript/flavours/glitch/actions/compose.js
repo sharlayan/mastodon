@@ -10,7 +10,7 @@ import { tagHistory } from 'flavours/glitch/settings';
 import { emojiMartSearch } from '@/flavours/glitch/features/emoji/picker';
 import { createDriveFileAttachment } from '@/flavours/glitch/sharlayan/compose/drive_attachment';
 import { createFetchComposeEmojiSuggestions } from '@/flavours/glitch/sharlayan/compose/emoji_suggestions';
-import { exitDetailedForInlineCompose } from '@/flavours/glitch/sharlayan/compose/inline_reply_navigation';
+import { handleReplyForInlineCompose } from '@/flavours/glitch/sharlayan/compose/inline_reply_navigation';
 import {
   getScheduledSubmissionContext,
   handleScheduledComposeSuccess,
@@ -140,7 +140,7 @@ export function replyCompose(status) {
       prependCWRe: prependCWRe,
     });
 
-    if (!exitDetailedForInlineCompose(getState)) {
+    if (!handleReplyForInlineCompose(dispatch, getState)) {
       ensureComposeIsVisible(getState);
     }
   };
