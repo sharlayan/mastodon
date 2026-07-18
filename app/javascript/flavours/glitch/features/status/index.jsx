@@ -252,30 +252,15 @@ class Status extends ImmutablePureComponent {
     }
   };
 
-  exitDetailedForInlineCompose = () => {
-    const { settings, multiColumn, history } = this.props;
-
-    if (multiColumn || !settings.get('inline_compose_timelines', false)) {
-      return;
-    }
-
-    if (history.location.state?.fromMastodon) {
-      history.goBack();
-    } else {
-      history.push('/');
-    }
-  };
-
   handleReplyClick = (status) => {
     const { askReplyConfirmation, dispatch } = this.props;
     const { signedIn } = this.props.identity;
 
     if (signedIn) {
       if (askReplyConfirmation) {
-        dispatch(openModal({ modalType: 'CONFIRM_REPLY', modalProps: { status, onConfirm: this.exitDetailedForInlineCompose } }));
+        dispatch(openModal({ modalType: 'CONFIRM_REPLY', modalProps: { status } }));
       } else {
         dispatch(replyCompose(status));
-        this.exitDetailedForInlineCompose();
       }
     } else {
       dispatch(openModal({
