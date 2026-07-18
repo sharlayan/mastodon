@@ -3,6 +3,7 @@ import {
   getComposeControlState,
   getComposeOverflowStart,
   getSharlayanSubmitLabel,
+  shouldShowComposeLanguage,
   shouldShowScheduleButton,
 } from './calculations';
 
@@ -72,6 +73,11 @@ describe('Sharlayan compose calculations', () => {
   it('keeps the schedule control visible while editing a scheduled post', () => {
     expect(shouldShowScheduleButton(false, true)).toBe(true);
     expect(shouldShowScheduleButton(false, false)).toBe(false);
+  });
+
+  it('keeps the upstream language selector unless the local setting hides it', () => {
+    expect(shouldShowComposeLanguage(false)).toBe(true);
+    expect(shouldShowComposeLanguage(true)).toBe(false);
   });
 
   it.each([

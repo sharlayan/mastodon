@@ -21,6 +21,7 @@ import {
   getComposeControlState,
   getSharlayanSubmitLabel,
 } from './calculations';
+import { SharlayanComposeLanguage } from './language';
 
 const messages = defineMessages({
   publish: { id: 'compose_form.publish', defaultMessage: 'Post' },
@@ -167,7 +168,7 @@ export const SharlayanComposeControls = ({
         {visibilityButton}
         <CircleButton disabled={controlState.selectionDisabled} />
         <ClipButton disabled={controlState.selectionDisabled} />
-        {languageDropdown}
+        <SharlayanComposeLanguage>{languageDropdown}</SharlayanComposeLanguage>
         {controlState.scheduleVisible && (
           <ScheduleButton
             scheduledAt={scheduledAt}

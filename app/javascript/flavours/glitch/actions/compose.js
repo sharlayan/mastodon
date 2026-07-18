@@ -8,8 +8,8 @@ import { browserHistory } from 'flavours/glitch/components/router';
 import { countableText } from 'flavours/glitch/features/compose/util/counter';
 import { tagHistory } from 'flavours/glitch/settings';
 import { emojiMartSearch } from '@/flavours/glitch/features/emoji/picker';
-import { isCustomEmojiMuted } from '@/flavours/glitch/utils/custom_emoji_mutes';
 import { createDriveFileAttachment } from '@/flavours/glitch/sharlayan/compose/drive_attachment';
+import { createFetchComposeEmojiSuggestions } from '@/flavours/glitch/sharlayan/compose/emoji_suggestions';
 import {
   getScheduledSubmissionContext,
   handleScheduledComposeSuccess,
@@ -606,14 +606,7 @@ const fetchComposeSuggestionsAccounts = throttle((dispatch, token) => {
   });
 }, 200, { leading: true, trailing: true });
 
-const fetchComposeSuggestionsEmojis = async (dispatch, getState, token) => {
-  // Right now we are hard-coding the locale to English since the picker search only supports English.
-  // Once we replace the legacy picker we can remove this and use the actual locale of the user.
-  const results = await emojiMartSearch(token, 'en', 5);
-  const pickerMutes = getState().custom_emoji_mutes.items.filter((mute) => mute.hide_in_picker);
-  const filtered = results.filter((result) => !(result.custom && isCustomEmojiMuted(result.id, undefined, pickerMutes)));
-  dispatch(readyComposeSuggestionsEmojis(token, filtered));
-};
+const fetchComposeSuggestionsEmojis = createFetchComposeEmojiSuggestions({ emojiSearch: emojiMartSearch, readySuggestions: readyComposeSuggestionsEmojis });
 
 const fetchComposeSuggestionsTags = throttle((dispatch, token) => {
   if (fetchComposeSuggestionsTagsController) {

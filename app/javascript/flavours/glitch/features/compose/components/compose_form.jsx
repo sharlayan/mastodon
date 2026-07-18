@@ -63,7 +63,6 @@ class ComposeForm extends ImmutablePureComponent {
     caretPosition: PropTypes.number,
     preselectDate: PropTypes.instanceOf(Date),
     preselectOnReply: PropTypes.bool,
-    hideLanguage: PropTypes.bool,
     isSubmitting: PropTypes.bool,
     isChangingUpload: PropTypes.bool,
     isEditing: PropTypes.bool,
@@ -299,7 +298,7 @@ class ComposeForm extends ImmutablePureComponent {
               onScheduleChange={this.props.onScheduleChange}
               scheduledAt={this.props.scheduledAt}
               showScheduleButton={this.props.showScheduleButton}
-              languageDropdown={this.props.hideLanguage ? null : <LanguageDropdown />}
+              languageDropdown={<LanguageDropdown />}
               visibilityButton={<VisibilityButton disabled={this.props.isEditing} />}
               submit={(
                 <SharlayanComposeSubmit

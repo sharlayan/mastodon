@@ -92,6 +92,10 @@ export function shouldShowScheduleButton(
   return Boolean(showScheduleButton || isEditingScheduled);
 }
 
+export function shouldShowComposeLanguage(hideComposeLanguage?: boolean) {
+  return !hideComposeLanguage;
+}
+
 export function getComposeControlState({
   isEditing,
   isEditingScheduled,
