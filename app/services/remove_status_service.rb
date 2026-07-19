@@ -4,7 +4,7 @@ class RemoveStatusService < BaseService
   include Redisable
   include Payloadable
   include Lockable
-  include RoleplayModeHelper
+  include Sharlayan::AdminTimelineFanOut
 
   # Delete a status
   # @param   [Status] status
@@ -149,14 +149,6 @@ class RemoveStatusService < BaseService
 
     redis.publish('timeline:public', @payload)
     redis.publish(@status.local? ? 'timeline:public:local' : 'timeline:public:remote', @payload)
-  end
-
-  def remove_from_admin
-    return unless roleplay_mode? && @account.local?
-
-    return if skip_streaming?
-
-    redis.publish('timeline:admin', @payload)
   end
 
   def remove_from_media

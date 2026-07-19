@@ -19,23 +19,23 @@ class StatusPolicy < ApplicationPolicy
   end
 
   def quote?
-    roleplay_hidden_interaction_allowed? && show? && !blocking_author? && record.quote_policy_for_account(current_account) != :denied
+    show? && !blocking_author? && record.quote_policy_for_account(current_account) != :denied
   end
 
   def reblog?
-    roleplay_hidden_interaction_allowed? && !requires_mention? && (!private? || owned?) && show? && !blocking_author?
+    !requires_mention? && (!private? || owned?) && show? && !blocking_author?
   end
 
   def favourite?
-    roleplay_hidden_interaction_allowed? && show? && !blocking_author?
+    show? && !blocking_author?
   end
 
   def react?
-    roleplay_hidden_interaction_allowed? && show? && !blocking_author?
+    show? && !blocking_author?
   end
 
   def destroy?
-    owned? || roleplay_owner_soft_hide_deletion?
+    owned?
   end
 
   def unreblog?

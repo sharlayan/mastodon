@@ -5,6 +5,29 @@ module Sharlayan::StatusRoleplayPolicy
 
   included do
     include RoleplayModeHelper
+    prepend PublicMethods
+  end
+
+  module PublicMethods
+    def quote?
+      roleplay_hidden_interaction_allowed? && super
+    end
+
+    def reblog?
+      roleplay_hidden_interaction_allowed? && super
+    end
+
+    def favourite?
+      roleplay_hidden_interaction_allowed? && super
+    end
+
+    def react?
+      roleplay_hidden_interaction_allowed? && super
+    end
+
+    def destroy?
+      super || roleplay_owner_soft_hide_deletion?
+    end
   end
 
   private

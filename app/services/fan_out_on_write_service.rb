@@ -2,7 +2,7 @@
 
 class FanOutOnWriteService < BaseService
   include Redisable
-  include RoleplayModeHelper
+  include Sharlayan::AdminTimelineFanOut
 
   # Push a status into home and mentions feeds
   # @param [Status] status
@@ -22,7 +22,7 @@ class FanOutOnWriteService < BaseService
     fan_out_to_local_recipients!
     fan_out_to_public_recipients! if broadcastable?
     fan_out_to_public_streams! if broadcastable?
-    broadcast_to_admin_stream! if roleplay_mode? && @status.account.local?
+    broadcast_to_admin_stream!
   end
 
   private
@@ -172,10 +172,6 @@ class FanOutOnWriteService < BaseService
       MisskeyCompat::Streaming.broadcast_note(redis, 'timeline:public', @status)
       MisskeyCompat::Streaming.broadcast_note(redis, @status.local? ? 'timeline:public:local' : 'timeline:public:remote', @status)
     end
-  end
-
-  def broadcast_to_admin_stream!
-    redis.publish('timeline:admin', anonymous_payload)
   end
 
   def deliver_to_conversation!

@@ -75,6 +75,14 @@ RSpec.describe FanOutOnWriteService do
           .and enqueue_sidekiq_job(LocalNotificationWorker).with(eve.id, anything, 'Mention', 'mention', { 'silenced' => true })
       end
     end
+
+    it 'publishes to the admin timeline only in roleplay mode' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') { subject.call(status) }
+      expect(redis).to_not have_received(:publish).with('timeline:admin', anything)
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { subject.call(status) }
+      expect(redis).to have_received(:publish).with('timeline:admin', anything).once
+    end
   end
 
   context 'when status is limited' do

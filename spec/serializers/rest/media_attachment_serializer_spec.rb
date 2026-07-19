@@ -23,6 +23,24 @@ RSpec.describe REST::MediaAttachmentSerializer do
     expect(URI(result['preview_url']).path).to eq(preview_path)
   end
 
+  it 'routes hidden media through the authenticated endpoint before Drive resolution' do
+    RpHiddenStatus.create!(status: status)
+
+    result = serialized_record_json(attachment, described_class, options: { rp_admin: true })
+
+    expect(URI(result['url']).path).to eq("/media/#{attachment.id}")
+    expect(URI(result['preview_url']).path).to eq("/media/#{attachment.id}")
+  end
+
+  it 'keeps normal Drive resolution when roleplay media access is not enabled' do
+    RpHiddenStatus.create!(status: status)
+
+    result = serialized_record_json(attachment, described_class)
+
+    expect(URI(result['url']).path).to eq(original_path)
+    expect(URI(result['preview_url']).path).to eq(preview_path)
+  end
+
   it 'uses drive resolver URLs in ActivityPub output' do
     result = serialized_record_json(status, ActivityPub::NoteSerializer, adapter: ActivityPub::Adapter)
     document = result.fetch('attachment').first

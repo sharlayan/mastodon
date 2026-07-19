@@ -20,21 +20,17 @@ import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend
 
 import { IconButton } from '../../../components/icon_button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
-import { SharlayanStatusReactionButton } from 'flavours/glitch/sharlayan/status_action_bar';
+import { SharlayanStatusReactionButton, sharlayanDirectMessage, sharlayanRoleplayStatusAction, sharlayanRoleplayStatusMenuItem } from 'flavours/glitch/sharlayan/status_action_bar';
 import { me, quickBoosting, reactionsEnabled } from '../../../initial_state';
-import { adminTimelineOwnerViewer, roleplayMode, softHideDeletion } from '../../../sharlayan/roleplay';
 import { BoostButton } from '@/flavours/glitch/components/status/boost_button';
 import { quoteItemState } from '@/flavours/glitch/components/status/boost_button_utils';
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
 
 const messages = defineMessages({
   delete: { id: 'status.delete', defaultMessage: 'Delete' },
-  deleteAdmin: { id: 'status.delete_admin', defaultMessage: 'Delete (Admin)' },
-  purgeAdmin: { id: 'status.purge_admin', defaultMessage: 'Remove' },
   redraft: { id: 'status.redraft', defaultMessage: 'Delete & re-draft' },
   edit: { id: 'status.edit', defaultMessage: 'Edit' },
   direct: { id: 'status.direct', defaultMessage: 'Privately mention @{name}' },
-  directDm: { id: 'status.direct_dm', defaultMessage: 'Send DM to @{name}' },
   mention: { id: 'status.mention', defaultMessage: 'Mention @{name}' },
   reply: { id: 'status.reply', defaultMessage: 'Reply' },
   favourite: { id: 'status.favourite', defaultMessage: 'Favorite' },
@@ -186,8 +182,8 @@ class ActionBar extends PureComponent {
     const mutingConversation = status.get('muted');
     const writtenByMe        = status.getIn(['account', 'id']) === me;
     const isRemote           = status.getIn(['account', 'username']) !== status.getIn(['account', 'acct']);
-    const canOwnerDelete     = roleplayMode && softHideDeletion && adminTimelineOwnerViewer && !writtenByMe && !isRemote && !status.get('rp_hidden');
-    const canOwnerPurge      = roleplayMode && softHideDeletion && adminTimelineOwnerViewer && !isRemote && !!status.get('rp_hidden');
+    const roleplayAction     = sharlayanRoleplayStatusAction({ status, writtenByMe, isRemote });
+    const roleplayMenuItem   = sharlayanRoleplayStatusMenuItem(intl, roleplayAction, this.handleDeleteClick);
 
     let menu = [];
 
@@ -222,8 +218,8 @@ class ActionBar extends PureComponent {
       menu.push(null);
 
       if (writtenByMe) {
-        if (canOwnerPurge) {
-          menu.push({ text: intl.formatMessage(messages.purgeAdmin), action: this.handleDeleteClick, dangerous: true });
+        if (roleplayAction === 'purge') {
+          menu.push(roleplayMenuItem);
         } else {
           if (pinnableStatus) {
             menu.push({ text: intl.formatMessage(status.get('pinned') ? messages.unpin : messages.pin), action: this.handlePinClick });
@@ -240,16 +236,13 @@ class ActionBar extends PureComponent {
           menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
         }
       } else {
-        if (canOwnerPurge) {
-          menu.push({ text: intl.formatMessage(messages.purgeAdmin), action: this.handleDeleteClick, dangerous: true });
-          menu.push(null);
-        } else if (canOwnerDelete) {
-          menu.push({ text: intl.formatMessage(messages.deleteAdmin), action: this.handleDeleteClick, dangerous: true });
+        if (roleplayMenuItem) {
+          menu.push(roleplayMenuItem);
           menu.push(null);
         }
 
         menu.push({ text: intl.formatMessage(messages.mention, { name: status.getIn(['account', 'username']) }), action: this.handleMentionClick });
-        menu.push({ text: intl.formatMessage(roleplayMode ? messages.directDm : messages.direct, { name: status.getIn(['account', 'username']) }), action: this.handleDirectClick });
+        menu.push({ text: sharlayanDirectMessage(intl, status.getIn(['account', 'username'])), action: this.handleDirectClick });
         menu.push(null);
 
         if (quotedAccountId === me) {

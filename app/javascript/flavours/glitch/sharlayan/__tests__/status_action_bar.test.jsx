@@ -1,6 +1,7 @@
 import { fromJS } from 'immutable';
 
 let sharlayanAddToClipMenuItem;
+let sharlayanRoleplayStatusAction;
 let SharlayanStatusReactionButton;
 
 beforeAll(async () => {
@@ -13,7 +14,7 @@ beforeAll(async () => {
     })),
   });
 
-  ({ sharlayanAddToClipMenuItem, SharlayanStatusReactionButton } =
+  ({ sharlayanAddToClipMenuItem, sharlayanRoleplayStatusAction, SharlayanStatusReactionButton } =
     await import('../status_action_bar'));
 });
 
@@ -48,5 +49,24 @@ describe('Sharlayan status action bar helpers', () => {
     const status = fromJS({ id: '1' });
     const output = SharlayanStatusReactionButton({ enabled: false, status, permissions: 1, onReactionAdd: vi.fn() });
     expect(output).toBeNull();
+  });
+
+  it('keeps roleplay deletion actions off when any feature gate is disabled', () => {
+    const status = fromJS({ rp_hidden: false });
+    const input = { status, writtenByMe: false, isRemote: false, roleplayEnabled: true, softHideEnabled: true, ownerViewer: true };
+
+    expect(sharlayanRoleplayStatusAction(input)).toBe('delete');
+    expect(sharlayanRoleplayStatusAction({ ...input, roleplayEnabled: false })).toBeNull();
+    expect(sharlayanRoleplayStatusAction({ ...input, softHideEnabled: false })).toBeNull();
+    expect(sharlayanRoleplayStatusAction({ ...input, ownerViewer: false })).toBeNull();
+    expect(sharlayanRoleplayStatusAction({ ...input, isRemote: true })).toBeNull();
+  });
+
+  it('only exposes purge for a hidden local status', () => {
+    const status = fromJS({ rp_hidden: true });
+    const input = { status, writtenByMe: true, isRemote: false, roleplayEnabled: true, softHideEnabled: true, ownerViewer: true };
+
+    expect(sharlayanRoleplayStatusAction(input)).toBe('purge');
+    expect(sharlayanRoleplayStatusAction({ ...input, isRemote: true })).toBeNull();
   });
 });
