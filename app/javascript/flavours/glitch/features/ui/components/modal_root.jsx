@@ -46,7 +46,7 @@ import {
   ConfirmResumeDraftModal,
 } from './confirmation_modals';
 import DeprecatedSettingsModal from './deprecated_settings_modal';
-import DoodleModal from './doodle_modal';
+import DoodleModal from 'flavours/glitch/sharlayan/compose/layered_doodle_modal';
 import { FavouriteModal } from './favourite_modal';
 import { ImageModal } from './image_modal';
 import { MediaModal } from './media_modal';

@@ -3002,7 +3002,7 @@ __metadata:
     "@vitest/ui": "npm:^4.1.0"
     arrow-key-navigation: "npm:^1.2.0"
     async-mutex: "npm:^0.5.0"
-    atrament: "npm:0.2.4"
+    atrament: "npm:5.1.0"
     axios: "npm:^1.4.0"
     babel-plugin-transform-react-remove-prop-types: "npm:^0.4.24"
     blurhash: "npm:^2.0.5"
@@ -3053,6 +3053,7 @@ __metadata:
     msw-storybook-addon: "npm:^2.0.6"
     oxfmt: "npm:^0.47.0"
     path-complete-extname: "npm:^1.0.0"
+    perfect-freehand: "npm:1.2.3"
     playwright: "npm:^1.60.0"
     postcss-preset-env: "npm:^11.0.0"
     prop-types: "npm:^15.8.1"
@@ -5996,10 +5997,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"atrament@npm:0.2.4":
-  version: 0.2.4
-  resolution: "atrament@npm:0.2.4"
-  checksum: 10c0/ddd86e3e9c546e3286862f2c1854e796e597e261444623579069426b14c1125dbd210b4158c3967a8c5f9fad07f7ae6cba2b159a860da45ce175c9c9c8888bb2
+"atrament@npm:5.1.0":
+  version: 5.1.0
+  resolution: "atrament@npm:5.1.0"
+  checksum: 10c0/e2d2289aad85812c31ebd232ddf56e0c42a9b4b450ef905ee78f555e6655f9256866d5fe0bdd8dc32a9e9c82177861942bf2aac6aa61f1e69112613ccc4856f8
   languageName: node
   linkType: hard
 
@@ -11312,6 +11313,13 @@ __metadata:
   version: 2.1.0
   resolution: "perfect-debounce@npm:2.1.0"
   checksum: 10c0/c4f833816f249129cea996d60b1351b640cf06954ab4eecaca440234ef70f4aefe6483637049750f5b00e15a5036307ea77f831c9779d6ad878457680af49b6d
+  languageName: node
+  linkType: hard
+
+"perfect-freehand@npm:1.2.3":
+  version: 1.2.3
+  resolution: "perfect-freehand@npm:1.2.3"
+  checksum: 10c0/89005beef0bd99258eb924046927201e26cafd0bd9c47eb30f4559d31be966d69c01382d1bdd09757a2912ff446f6bf0eadc87a1d53425aff07b449b3cb151fa
   languageName: node
   linkType: hard
 
