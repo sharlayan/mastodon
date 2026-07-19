@@ -1,4 +1,5 @@
 import {
+  createAdminStreamConnector,
   createAntennaStreamConnector,
   getLinkedNotificationAlert,
   handleSharlayanStreamingEvent,
@@ -79,5 +80,22 @@ describe('compose streaming extensions', () => {
 
     expect(connectTimeline).toHaveBeenCalledWith('antenna:7', 'antenna', { antenna: '7' }, expect.any(Object));
     expect(options.fillGaps()).toEqual({ id: '7' });
+  });
+
+  it('preserves admin timeline filters and gap fill', () => {
+    const connectTimeline = vi.fn((_timeline, _channel, _params, options) => options);
+    const adminTimelineId = vi.fn(() => 'admin:filtered');
+    const fillGaps = vi.fn(filters => filters);
+    const connectAdminStream = createAdminStreamConnector({ adminTimelineId, connectTimeline, fillGaps });
+    const filters = { hidePublic: true, groupDirect: true };
+    const options = connectAdminStream(filters);
+
+    expect(adminTimelineId).toHaveBeenCalledWith({ hidePublic: true, hideUnlisted: undefined, hidePrivate: undefined, groupDirect: true });
+    expect(connectTimeline).toHaveBeenCalledWith('admin:filtered', 'admin', {}, expect.any(Object));
+    expect(options.accept({ visibility: 'public' })).toBe(false);
+    expect(options.accept({ visibility: 'private' })).toBe(true);
+    expect(options.accept({ visibility: 'limited' })).toBe(false);
+    expect(options.accept({ visibility: 'direct', in_reply_to_id: '1' })).toBe(false);
+    expect(options.fillGaps()).toEqual({ hidePublic: true, hideUnlisted: undefined, hidePrivate: undefined, groupDirect: true });
   });
 });

@@ -197,9 +197,12 @@ ja:
     roles:
       extra_categories:
         api: API
+        moderation: モデレーション
       extra_privileges:
         bypass_rate_limit: APIレート制限のバイパス
         bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
+        view_admin_timeline: 管理タイムラインの閲覧
+        view_admin_timeline_description: コミュニティ（ロールプレイ）モードで、この権限を持つユーザーは管理タイムラインを閲覧できます。ただしオーナー（最高管理者）アカウントが参加しているダイレクトの会話は、閲覧者がオーナーでない限り非表示になります
       privileges:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
@@ -284,6 +287,20 @@ ja:
         title: 絵文字リアクション
       special_features:
         title: 特殊機能
+      community_mode_override:
+        title: コミュニティモード強制設定
+        preamble: コミュニティモードが有効な間、これらのオプションは各ユーザーの個人設定を上書きし、全ユーザーに対して機能を強制的に適用します。
+        force_avatar_decorations: アバターデコレーション表示の強制
+        force_avatar_decorations_hint: 各ユーザーの「アバターデコレーションを表示」設定を無視し、全ユーザーにアバターデコレーションを表示します。上記でアバターデコレーションが有効になっている必要があります。
+        force_round_avatar: アバター画像を円形に強制
+        force_round_avatar_hint: テーマに関係なく、全ユーザーのアバター画像を円形で表示します。
+        force_mfm_enabled: MFMレンダリングの強制
+        force_mfm_enabled_hint: 各ユーザーのMFM設定を無視し、全ユーザーにMFM書式をレンダリングします。
+      community_mode:
+        title: コミュニティモード
+      soft_hide_deletion:
+        enabled: 削除された投稿をオーナー用に保存
+        enabled_hint: 有効にすると、投稿を削除しても破棄されません。代わりに投稿と添付メディアを投稿者を含む全員から隠し、最高管理者（オーナー）のみが管理タイムラインで「削除済み」表示とともに閲覧できます。無効の場合は投稿が完全に削除されます。
     username_blocks:
       created_msg: ユーザー名ルールを作成しました
       no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
@@ -300,6 +317,7 @@ ja:
   appearance:
     customized: Customized - Emojis
     misskey_flavour: Customized - Misskey Flavour
+    community_mode_forced_hint: このオプションは現在サーバーによって強制的に有効化されています。設定を変更しても反映されません。
   auth:
     disable_custom_css: カスタムCSSを無効にする
     progress:

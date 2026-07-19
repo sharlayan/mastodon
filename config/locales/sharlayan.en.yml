@@ -207,10 +207,15 @@ en:
     roles:
       extra_categories:
         api: API
+        moderation: Moderation
       extra_privileges:
         bypass_rate_limit: Bypass API rate limits
         bypass_rate_limit_description: When API rate limit bypass is enabled in server
           settings, users with this permission are not subject to API rate limits
+        view_admin_timeline: View the admin timeline
+        view_admin_timeline_description: In community (roleplay) mode, users with
+          this permission can view the admin timeline. Direct conversations involving
+          an owner account remain hidden unless the viewer is an owner
       privileges:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
@@ -331,6 +336,28 @@ en:
         title: Reactions
       special_features:
         title: Special features
+      community_mode_override:
+        title: Community Mode Overrides
+        preamble: While Community Mode is active, these options override each user's
+          personal preference and force the feature on for everyone.
+        force_avatar_decorations: Force avatar decoration display
+        force_avatar_decorations_hint: Ignore each user's "show avatar decorations"
+          preference and display avatar decorations for everyone. Requires avatar
+          decorations to be enabled above.
+        force_round_avatar: Force round avatar images
+        force_round_avatar_hint: Display every avatar image as a circle for all users,
+          regardless of theme.
+        force_mfm_enabled: Force MFM rendering
+        force_mfm_enabled_hint: Ignore each user's MFM preference and render MFM formatting
+          for everyone.
+      community_mode:
+        title: Community mode
+      soft_hide_deletion:
+        enabled: Preserve deleted posts for the owner
+        enabled_hint: When enabled, deleting a post does not destroy it. Instead the
+          post and its media are hidden from everyone (including the author) and only
+          the owner can view them from the management timeline, where they are flagged
+          as deleted. Leave disabled to delete posts permanently.
     username_blocks:
       created_msg: Successfully created username rule
       no_username_block_selected: No username rules were changed as none were selected
@@ -349,6 +376,8 @@ en:
   appearance:
     customized: Customized - Emojis
     misskey_flavour: Customized - Misskey Flavour
+    community_mode_forced_hint: This option is currently enabled and enforced by the
+      server. Changing it will have no effect.
   auth:
     disable_custom_css: Disable custom CSS
     progress:

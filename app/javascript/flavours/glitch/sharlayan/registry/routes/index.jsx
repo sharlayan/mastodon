@@ -11,6 +11,7 @@ const alwaysEnabled = () => true;
 export const PublicTimeline = () => import('../../../features/public_timeline');
 export const CommunityTimeline = () => import('../../../features/community_timeline');
 export const ConversationThread = () => import('../../../features/direct_timeline/conversation');
+export const AdminTimeline = () => import('../../../features/admin_timeline');
 export const AntennaTimeline = () => import('../../../features/antenna_timeline');
 export const ReactedStatuses = () => import('../../../features/reacted_statuses');
 export const BoardAnnouncements = () => import('../../../features/board_announcements');
@@ -18,6 +19,7 @@ export const BoardAnnouncements = () => import('../../../features/board_announce
 export const sharlayanColumnComponents = {
   CONVERSATION: ConversationThread,
   ANTENNA: AntennaTimeline,
+  ADMIN_TIMELINE: AdminTimeline,
   REACTIONS: ReactedStatuses,
   BOARD_ANNOUNCEMENTS: BoardAnnouncements,
 };
@@ -26,6 +28,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: alwaysEnabled, lazyComponent: PublicTimeline },
   { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: alwaysEnabled, lazyComponent: CommunityTimeline },
   { key: 'conversation', path: '/conversations/:conversationId', featureGate: alwaysEnabled, lazyComponent: ConversationThread },
+  { key: 'admin-timeline', path: '/timelines/admin', featureGate: alwaysEnabled, lazyComponent: AdminTimeline },
   { key: 'clip-new', path: '/clips/new', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-edit', path: '/clips/:id/edit', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-show', path: '/clips/:id', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/timeline') },

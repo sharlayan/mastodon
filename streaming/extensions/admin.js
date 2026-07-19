@@ -1,0 +1,23 @@
+import { AuthenticationError } from '../errors.js';
+
+const CHANNEL_NAME = 'admin';
+const EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE = 1 << 1;
+
+const channelNameFromPath = (path) => path === '/api/v1/streaming/admin' ? CHANNEL_NAME : undefined;
+
+const authorizeChannel = (req, name) => {
+  if (name !== CHANNEL_NAME) return undefined;
+  if (process.env.OC_ROLEPLAY_OPTION !== 'true') {
+    throw new AuthenticationError('Management timeline is disabled');
+  }
+  if (!(req.extraPermissions & EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE)) {
+    throw new AuthenticationError('Not authorized to stream the management timeline');
+  }
+
+  return {
+    channelIds: ['timeline:admin'],
+    options: { needsFiltering: false, allowLocalOnly: true },
+  };
+};
+
+export { CHANNEL_NAME, authorizeChannel, channelNameFromPath };

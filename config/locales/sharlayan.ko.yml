@@ -196,10 +196,14 @@ ko:
     roles:
       extra_categories:
         api: API
+        moderation: 모더레이션
       extra_privileges:
         bypass_rate_limit: API 제한 우회
         bypass_rate_limit_description: 서버 설정에서 API 제한 우회가 활성화된 경우, 이 권한을 가진 사용자는 API
           요청 제한을 받지 않습니다
+        view_admin_timeline: 관리 타임라인 열람
+        view_admin_timeline_description: 커뮤니티(롤플레이) 모드에서 이 권한을 가진 사용자는 관리 타임라인을 볼
+          수 있습니다. 다만 최고 관리자(owner) 계정이 참여한 다이렉트 대화는 열람자가 owner가 아닌 한 숨겨집니다
       privileges:
         invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
     settings:
@@ -300,6 +304,23 @@ ko:
         title: 에모지 리액션
       special_features:
         title: 특수 기능
+      community_mode_override:
+        title: 커뮤니티 모드 강제 설정
+        preamble: 커뮤니티 모드가 활성화된 동안, 아래 옵션은 각 사용자의 개인 설정을 무시하고 모든 사용자에게 해당 기능을 강제로
+          적용합니다.
+        force_avatar_decorations: 아바타 장식 표시 강제
+        force_avatar_decorations_hint: 각 사용자의 "아바타 장식 표시" 설정을 무시하고 모든 사용자에게 아바타 장식을
+          표시합니다. 위에서 아바타 장식이 활성화되어 있어야 합니다.
+        force_round_avatar: 아바타 이미지 원형 강제
+        force_round_avatar_hint: 테마와 상관없이 모든 사용자의 아바타 이미지를 원형으로 표시합니다.
+        force_mfm_enabled: MFM 렌더링 강제
+        force_mfm_enabled_hint: 각 사용자의 MFM 설정을 무시하고 모든 사용자에게 MFM 서식을 렌더링합니다.
+      community_mode:
+        title: 커뮤니티 모드
+      soft_hide_deletion:
+        enabled: 삭제된 게시물을 owner용으로 보존
+        enabled_hint: 활성화하면 게시물을 삭제해도 파기하지 않습니다. 대신 게시물과 첨부 미디어를 작성자를 포함한 모두에게 숨기고,
+          최고 관리자(owner)만 관리 타임라인에서 '삭제됨' 표시와 함께 열람할 수 있습니다. 비활성화하면 게시물이 영구 삭제됩니다.
     username_blocks:
       created_msg: 사용자명 규칙을 생성했습니다
       no_username_block_selected: 아무 것도 선택 되지 않아 어떤 사용자명 규칙도 변경 되지 않았습니다
@@ -316,6 +337,8 @@ ko:
   appearance:
     customized: 서버 전용 - 에모지
     misskey_flavour: 서버 전용 - 미스키 풍미
+    community_mode_forced_hint: 현재 서버에서 이 옵션을 강제로 사용하도록 설정하여 활성화된 상태입니다. 옵션을 변경하더라도
+      적용되지 않습니다.
   auth:
     disable_custom_css: 커스텀 CSS 비활성화
     progress:

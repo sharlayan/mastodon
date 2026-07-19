@@ -1,5 +1,6 @@
-import { authenticateFallback } from './auth.js';
+import * as admin from './admin.js';
 import * as antenna from './antenna.js';
+import { authenticateFallback } from './auth.js';
 import { createDomainFilter } from './domain_filter.js';
 import { normalizeLanguage } from './language.js';
 import { createMisskeyExtension } from './misskey.js';
@@ -29,8 +30,10 @@ const createStreamingExtensions = (deps) => {
   return {
     authenticateFallback: (req, query, accountFromToken) => authenticateFallback(req, query, accountFromToken, misskey.isEnabled),
     channel: {
-      fromPath: (req) => antenna.channelNameFromPath(req.path),
-      authorize: (req, name, params) => antenna.authorizeChannel(deps.pgPool, req, name, params),
+      fromPath: (req) => antenna.channelNameFromPath(req.path) ?? admin.channelNameFromPath(req.path),
+      authorize: async (req, name, params) =>
+        (await antenna.authorizeChannel(deps.pgPool, req, name, params)) ??
+        admin.authorizeChannel(req, name),
     },
     preparePayload(req, payload) {
       payload.language = normalizeLanguage(payload.language);

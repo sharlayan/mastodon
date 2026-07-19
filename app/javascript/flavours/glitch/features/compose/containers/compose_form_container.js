@@ -15,7 +15,6 @@ import { pasteLinkCompose } from 'flavours/glitch/actions/compose_typed';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { PRIVATE_QUOTE_MODAL_ID } from 'flavours/glitch/features/ui/components/confirmation_modals/private_quote_notify';
 import { me } from 'flavours/glitch/initial_state';
-import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import { privacyPreference } from 'flavours/glitch/utils/privacy_preference';
 
 import ComposeForm from '../components/compose_form';
@@ -68,7 +67,6 @@ const mapStateToProps = state => ({
   preselectDate: state.getIn(['compose', 'preselectDate']),
   preselectOnReply: state.getIn(['local_settings', 'preselect_on_reply']),
   usePublishToot: state.getIn(['local_settings', 'use_publish_toot']),
-  hideLanguage: roleplayMode && state.getIn(['local_settings', 'hide_compose_language']),
   showScheduleButton: state.getIn(['local_settings', 'show_schedule_button']),
   isSubmitting: state.getIn(['compose', 'is_submitting']),
   isEditing: state.getIn(['compose', 'id']) !== null,

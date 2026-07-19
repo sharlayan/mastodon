@@ -25,6 +25,7 @@ describe('Sharlayan route registry', () => {
     expect(Object.keys(sharlayanColumnComponents)).toEqual([
       'CONVERSATION',
       'ANTENNA',
+      'ADMIN_TIMELINE',
       'REACTIONS',
       'BOARD_ANNOUNCEMENTS',
     ]);
