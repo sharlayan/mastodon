@@ -43,6 +43,12 @@ module Sharlayan::FeedManagerExtensions
 
   private
 
+  def filter_from_list?(status, list)
+    return false if Setting.misskey_compat_enabled && status.reply? && status.in_reply_to_account_id != status.account_id && ListAccount.exists?(list_id: list.id, account_id: status.account_id, with_replies: true)
+
+    super
+  end
+
   def filter_from_home(status, receiver_id, crutches, timeline_type = :home)
     result = super
     return result if result || !status.reblog?

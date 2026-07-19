@@ -242,6 +242,7 @@ namespace :api, format: false do
     post 'i/favorites', to: 'notes#my_favorites'
 
     post 'ap/show', to: 'ap#show'
+    post 'ap/get', to: 'ap#get'
 
     post 'roles/list', to: 'roles#index'
     post 'roles/show', to: 'roles#show'
@@ -279,6 +280,7 @@ namespace :api, format: false do
     post 'renote-mute/delete', to: 'mutes#renote_destroy'
 
     match 'hashtags/trend', to: 'hashtags#trend', via: [:get, :post]
+    post 'hashtags/list', to: 'hashtags#index'
     match 'hashtags/search', to: 'hashtags#search', via: [:get, :post]
     match 'hashtags/show', to: 'hashtags#show', via: [:get, :post]
     post 'hashtags/users', to: 'hashtags#users'
@@ -291,6 +293,7 @@ namespace :api, format: false do
     post 'users/lists/push', to: 'lists#push'
     post 'users/lists/pull', to: 'lists#pull'
     post 'users/lists/get-memberships', to: 'lists#memberships'
+    post 'users/lists/update-membership', to: 'lists#update_membership'
     post 'users/lists/create-from-public', to: 'lists#create_from_public'
     post 'notes/user-list-timeline', to: 'lists#timeline'
 
@@ -302,6 +305,7 @@ namespace :api, format: false do
     post 'antennas/notes', to: 'antennas#notes'
 
     post 'announcements', to: 'announcements#index'
+    post 'announcements/show', to: 'announcements#show'
     post 'i/read-announcement', to: 'i#read_announcement'
 
     post 'clips/list', to: 'clips#index'
