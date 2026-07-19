@@ -1,35 +1,19 @@
-import { useCallback } from 'react';
+import { FormattedMessage } from 'react-intl';
 
-import PropTypes from 'prop-types';
-import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
-
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 
 import BarChart4BarsIcon from '@/material-icons/400-24px/bar_chart_4_bars.svg?react';
-import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import PhotoLibraryIcon from '@/material-icons/400-24px/photo_library.svg?react';
-import { cancelReplyCompose } from 'flavours/glitch/actions/compose';
 import { Avatar } from 'flavours/glitch/components/avatar';
-import { DisplayName } from 'flavours/glitch/components/display_name';
 import { Icon } from 'flavours/glitch/components/icon';
-import { IconButton } from 'flavours/glitch/components/icon_button';
 import { Permalink } from 'flavours/glitch/components/permalink';
 import { EmbeddedStatusContent } from 'flavours/glitch/features/notifications_v2/components/embedded_status_content';
+import { SharlayanReplyIndicatorHeader } from 'flavours/glitch/sharlayan/compose/reply_indicator_header';
 
-const messages = defineMessages({
-  cancel: { id: 'reply_indicator.cancel', defaultMessage: 'Cancel' },
-});
-
-export const ReplyIndicator = ({ isInline }) => {
-  const intl = useIntl();
-  const dispatch = useDispatch();
+export const ReplyIndicator = () => {
   const inReplyToId = useSelector(state => state.getIn(['compose', 'in_reply_to']));
   const status = useSelector(state => state.getIn(['statuses', inReplyToId]));
   const account = useSelector(state => state.getIn(['accounts', status?.get('account')]));
-
-  const handleCancelClick = useCallback(() => {
-    dispatch(cancelReplyCompose());
-  }, [dispatch]);
 
   if (!status) {
     return null;
@@ -44,17 +28,7 @@ export const ReplyIndicator = ({ isInline }) => {
       </Permalink>
 
       <div className='reply-indicator__main'>
-        <div className='reply-indicator__header'>
-          <Permalink href={account.get('url')} to={`/@${account.get('acct')}`} className='detailed-status__display-name'>
-            <DisplayName account={account} />
-          </Permalink>
-
-          {isInline && (
-            <div className='reply-indicator__cancel'>
-              <IconButton title={intl.formatMessage(messages.cancel)} icon='times' iconComponent={CloseIcon} onClick={handleCancelClick} inverted />
-            </div>
-          )}
-        </div>
+        <SharlayanReplyIndicatorHeader account={account} />
 
         <EmbeddedStatusContent
           className='reply-indicator__content translate'
@@ -70,8 +44,4 @@ export const ReplyIndicator = ({ isInline }) => {
       </div>
     </div>
   );
-};
-
-ReplyIndicator.propTypes = {
-  isInline: PropTypes.bool,
 };

@@ -99,7 +99,7 @@ class UserSettings
   namespace :avatar_decorations do
     setting :show, default: false
     setting :show_federated, default: false
-    setting :force_round, default: false
+    setting :shape, default: 'none', in: %w(none round square)
   end
 
   def initialize(original_hash)

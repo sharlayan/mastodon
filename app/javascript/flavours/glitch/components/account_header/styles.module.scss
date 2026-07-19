@@ -53,6 +53,10 @@
     border-radius: 50%;
   }
 
+  &:global(.account__avatar--force-square) {
+    border-radius: 0;
+  }
+
   .moved & {
     filter: grayscale(100%);
   }

@@ -1,8 +1,8 @@
 import classNames from 'classnames';
 
 import {
+  avatarDecorationShape,
   avatarDecorationsEnabled,
-  forceRoundAvatarDecoration,
   me,
   showAvatarDecorations,
   showFederatedAvatarDecorations,
@@ -46,7 +46,9 @@ export const AvatarDecoration: React.FC<Props> = ({
     <div
       className={classNames('account__avatar__decoration-layer', {
         'account__avatar__decoration-layer--force-round':
-          forceRoundAvatarDecoration,
+          avatarDecorationShape === 'round',
+        'account__avatar__decoration-layer--force-square':
+          avatarDecorationShape === 'square',
       })}
       aria-hidden='true'
     >

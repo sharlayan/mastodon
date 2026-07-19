@@ -7,7 +7,7 @@
 #  id         :bigint(8)        not null, primary key
 #  emoji_type :string           not null
 #  name       :string           not null
-#  position   :integer
+#  position   :integer          default(0), not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #  account_id :bigint(8)        not null

@@ -3,13 +3,14 @@
 class REST::AccountSerializer < ActiveModel::Serializer
   include RoutingHelper
   include FormattingHelper
+  include Sharlayan::RESTAccountSerialization
 
   # Please update `app/javascript/mastodon/api_types/accounts.ts` when making changes to the attributes
 
   attributes :id, :username, :acct, :display_name, :locked, :bot, :discoverable, :indexable, :group, :created_at,
              :note, :url, :uri, :avatar, :avatar_static, :avatar_description, :header, :header_static, :header_description,
              :followers_count, :following_count, :statuses_count, :last_status_at, :hide_collections,
-             :show_media, :show_media_replies, :show_featured, :followed_message
+             :show_media, :show_media_replies, :show_featured
 
   has_one :moved_to_account, key: :moved, serializer: REST::AccountSerializer, if: :moved_and_not_nested?
 
@@ -23,15 +24,6 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   attribute :feature_approval
   attribute :email_subscriptions, if: -> { Rails.application.config.x.email_subscriptions && Setting.email_subscriptions }
-
-  attribute :avatar_decorations, if: :decorations_enabled?
-
-  attribute :mfm, if: :mfm?
-
-  attribute :server_features, if: :instance_metadata_enabled?
-  attribute :software, if: :instance_metadata_enabled?
-
-  attribute :online_status
 
   class AccountDecorator < SimpleDelegator
     def self.model_name
@@ -193,80 +185,5 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   def email_subscriptions
     object.user_can?(:manage_email_subscriptions) && object.user_email_subscriptions_enabled?
-  end
-
-  def decorations_enabled?
-    Setting.avatar_decorations_enabled && !object.avatar_decorations_blocked
-  end
-
-  def online_status
-    return 'unknown' unless Setting.online_status_enabled
-    return 'unknown' if current_user.nil? || object.unavailable? || object.user.nil?
-
-    object.user.online_status
-  end
-
-  def mfm
-    true
-  end
-
-  def mfm?
-    return false if object.unavailable?
-    return false unless object.mfm?
-
-    object.local? || instance_supports_mfm?
-  end
-
-  def instance_supports_mfm?
-    return false unless Setting.instance_metadata_enabled
-    return false if object.domain.blank?
-
-    InstanceMetadata.cached_by_domain(object.domain)&.misskey_based? || false
-  end
-
-  def instance_metadata_enabled?
-    Setting.instance_metadata_enabled
-  end
-
-  def server_features
-    return InstanceMetadata.local_server_features if object.local?
-    return InstanceMetadata.blank_server_features if object.domain.blank?
-
-    InstanceMetadata.cached_by_domain(object.domain)&.server_features || InstanceMetadata.blank_server_features
-  end
-
-  def software
-    return 'mastodon' if object.local?
-    return nil if object.domain.blank?
-
-    InstanceMetadata.cached_by_domain(object.domain)&.software
-  end
-
-  def avatar_decorations
-    return [] if object.unavailable? || object.avatar_decorations.blank?
-
-    decoration_ids = object.avatar_decorations.filter_map { |d| d['id'] }
-    return [] if decoration_ids.empty?
-
-    decorations_by_id = AvatarDecoration.find_many_cached(decoration_ids).index_by(&:id)
-    blocked_domains = AvatarDecorationDomainBlock.blocked_domains_cached
-
-    object.avatar_decorations.filter_map do |config|
-      decoration = decorations_by_id[config['id']]
-      next if decoration.nil?
-      next if decoration.host.present? && blocked_domains.include?(decoration.host)
-
-      {
-        id: decoration.id.to_s,
-        url: decoration.image_url,
-        static_url: decoration.image_static_url,
-        angle: config['angle'] || 0.0,
-        flip_h: config['flip_h'] || false,
-        offset_x: config['offset_x'] || 0.0,
-        offset_y: config['offset_y'] || 0.0,
-        scale: config['scale'] || 1.0,
-        opacity: config['opacity'] || 1.0,
-      }
-    end
   end
 end

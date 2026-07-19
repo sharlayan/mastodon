@@ -4,16 +4,24 @@ class Api::V1::PagesController < Api::BaseController
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId note detailed).freeze
 
   before_action :require_feature_enabled!
-  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: :index
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories]
   before_action -> { authorize_if_got_token! :read, :'read:accounts' }, only: [:show, :featured, :unlock]
-  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :show, :featured, :unlock]
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock]
 
   before_action :require_user!, except: [:show, :featured, :unlock]
   before_action :set_page, only: [:show, :update, :destroy, :like, :unlike]
 
+  rescue_from Page::ContentLimitError do
+    render json: { error: 'Page content exceeds the allowed limits' }, status: 422
+  end
+
   def index
     @pages = current_account.pages.order(id: :desc).to_a
     render json: @pages, each_serializer: REST::PageSerializer
+  end
+
+  def categories
+    render json: current_account.pages.where.not(category: [nil, '']).distinct.pluck(:category)
   end
 
   def show
@@ -23,7 +31,7 @@ class Api::V1::PagesController < Api::BaseController
 
   def unlock
     @page = Page.find(params[:id])
-    not_found unless @page.password_visibility? || @page.account_id == current_account&.id
+    return not_found if @page.account.unavailable? || (!@page.password_visibility? && @page.account_id != current_account&.id)
 
     unlocked = @page.account_id == current_account&.id || @page.valid_access_password?(params[:password]) || @page.valid_access_token?(params[:access_token])
     render json: { error: I18n.t('pages.errors.invalid_password') }, status: 403 and return unless unlocked
@@ -80,6 +88,8 @@ class Api::V1::PagesController < Api::BaseController
 
   def set_page
     @page = Page.find(params[:id])
+    return not_found if @page.account.unavailable?
+
     not_found if @page.private_visibility? && @page.account_id != current_account&.id
   end
 
@@ -106,13 +116,16 @@ class Api::V1::PagesController < Api::BaseController
     { content: sanitize_blocks(params[:content]) }
   end
 
-  def sanitize_blocks(blocks)
+  def sanitize_blocks(blocks, depth = 1)
+    raise Page::ContentLimitError if depth > Page::MAX_BLOCK_DEPTH && Array(blocks).present?
+    return [] if depth > Page::MAX_BLOCK_DEPTH
+
     Array(blocks).filter_map do |block|
       block = block.to_unsafe_h if block.respond_to?(:to_unsafe_h)
       next unless block.is_a?(Hash)
 
       block = block.stringify_keys.slice(*ALLOWED_BLOCK_KEYS)
-      block['children'] = sanitize_blocks(block['children']) if block.key?('children')
+      block['children'] = sanitize_blocks(block['children'], depth + 1) if block.key?('children')
       block
     end
   end

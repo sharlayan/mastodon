@@ -22,8 +22,6 @@ import { Hotkeys } from 'flavours/glitch/components/hotkeys';
 import { HoverCardController } from 'flavours/glitch/components/hover_card_controller';
 import { Permalink } from 'flavours/glitch/components/permalink';
 import { PictureInPicture } from 'flavours/glitch/features/picture_in_picture';
-import { BoardAnnouncementBanner } from 'flavours/glitch/features/board_announcements/banner';
-import { isWithinDriveDropzone } from 'flavours/glitch/features/drive/dnd';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
 import { layoutFromWindow } from 'flavours/glitch/is_mobile';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
@@ -34,7 +32,10 @@ import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../act
 import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
-import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, circlesEnabled, clipsEnabled, collectionsEnabled, pagesEnabled, antennaEnabled, driveEnabled } from '../../initial_state';
+import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain } from '../../initial_state';
+import { collectionsEnabled } from 'flavours/glitch/sharlayan/roleplay';
+import { renderSharlayanRoutes } from 'flavours/glitch/sharlayan/registry/routes/render';
+import { SharlayanUiExtensions, shouldIgnoreSharlayanDropTarget } from 'flavours/glitch/sharlayan/registry/ui';
 
 import BundleColumnError from './components/bundle_column_error';
 import { NavigationBar } from './components/navigation_bar';
@@ -48,8 +49,6 @@ import {
   Status,
   GettingStarted,
   KeyboardShortcuts,
-  PublicTimeline,
-  CommunityTimeline,
   AccountTimeline,
   AccountGallery,
   HomeTimeline,
@@ -58,46 +57,25 @@ import {
   Reblogs,
   Favourites,
   DirectTimeline,
-  AdminTimeline,
-  ConversationThread,
   HashtagTimeline,
   Notifications,
   NotificationRequests,
   NotificationRequest,
   FollowRequests,
   FavouritedStatuses,
-  ReactedStatuses,
   BookmarkedStatuses,
-  ScheduledTimeline,
-  BoardAnnouncements,
   FollowedTags,
   LinkTimeline,
   ListTimeline,
   Lists,
   ListEdit,
   ListMembers,
-  Clips,
-  ClipEdit,
-  ClipTimeline,
-  Pages,
-  PageEdit,
-  PageShow,
-  Drive,
-  Circles,
-  CircleEdit,
-  CircleMembers,
-  Antennas,
-  AntennaEdit,
-  AntennaTimeline,
   Collections,
   CollectionDetail,
   CollectionsEditor,
   Blocks,
   DomainBlocks,
-  DomainMutes,
   Mutes,
-  CustomEmojiMutes,
-  ReactionMutes,
   PinnedStatuses,
   Directory,
   OnboardingProfile,
@@ -108,9 +86,6 @@ import {
   PrivacyPolicy,
   TermsOfService,
   AccountFeatured,
-  AccountClips,
-  AccountPage,
-  AccountPages,
   AccountEdit,
   AccountEditFeaturedTags,
   Quotes,
@@ -237,44 +212,20 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/terms-of-service/:date?' component={TermsOfService} content={children} />
 
             <WrappedRoute path={['/home', '/timelines/home']} component={HomeTimeline} content={children} />
-            <WrappedRoute path={['/public', '/timelines/public']} exact component={PublicTimeline} content={children} />
-            <WrappedRoute path={['/public/local', '/timelines/public/local']} exact component={CommunityTimeline} content={children} />
-            <WrappedRoute path='/conversations/:conversationId' component={ConversationThread} content={children} />
+            {renderSharlayanRoutes(children)}
             <WrappedRoute path={['/conversations', '/timelines/direct']} component={DirectTimeline} content={children} />
-            <WrappedRoute path='/timelines/admin' component={AdminTimeline} content={children} />
             <WrappedRoute path='/tags/:id' component={HashtagTimeline} content={children} />
             <WrappedRoute path='/links/:url' component={LinkTimeline} content={children} />
             <WrappedRoute path='/lists/new' component={ListEdit} content={children} />
             <WrappedRoute path='/lists/:id/edit' component={ListEdit} content={children} />
             <WrappedRoute path='/lists/:id/members' component={ListMembers} content={children} />
             <WrappedRoute path='/lists/:id' component={ListTimeline} content={children} />
-
-            {clipsEnabled && <WrappedRoute path='/clips/new' component={ClipEdit} content={children} />}
-            {clipsEnabled && <WrappedRoute path='/clips/:id/edit' component={ClipEdit} content={children} />}
-            {clipsEnabled && <WrappedRoute path='/clips/:id' component={ClipTimeline} content={children} />}
-
-            {pagesEnabled && <WrappedRoute path='/pages/new' component={PageEdit} content={children} />}
-            {pagesEnabled && <WrappedRoute path='/pages/:id/edit' component={PageEdit} content={children} />}
-            {pagesEnabled && <WrappedRoute path='/pages/:id' component={PageShow} content={children} />}
-            {pagesEnabled && <WrappedRoute path='/pages' exact component={Pages} content={children} />}
-
-            {circlesEnabled && <WrappedRoute path='/circles/new' component={CircleEdit} content={children} />}
-            {circlesEnabled && <WrappedRoute path='/circles/:id/edit' component={CircleEdit} content={children} />}
-            {circlesEnabled && <WrappedRoute path='/circles/:id/members' component={CircleMembers} content={children} />}
-
-            {antennaEnabled && <WrappedRoute path='/antennas/:id/edit' component={AntennaEdit} content={children} />}
-            {antennaEnabled && <WrappedRoute path='/antennas/:id' component={AntennaTimeline} content={children} />}
-            {antennaEnabled && <WrappedRoute path='/timelines/antenna/:id' component={AntennaTimeline} content={children} />}
-            {antennaEnabled && <WrappedRoute path='/antennas' component={Antennas} content={children} />}
             <WrappedRoute path='/notifications' component={Notifications} content={children} exact />
             <WrappedRoute path='/notifications/requests' component={NotificationRequests} content={children} exact />
             <WrappedRoute path='/notifications/requests/:id' component={NotificationRequest} content={children} exact />
             <WrappedRoute path='/favourites' component={FavouritedStatuses} content={children} />
-            <WrappedRoute path='/reactions' component={ReactedStatuses} content={children} />
 
             <WrappedRoute path='/bookmarks' component={BookmarkedStatuses} content={children} />
-            <WrappedRoute path={['/scheduled', '/timelines/scheduled']} component={ScheduledTimeline} content={children} />
-            <WrappedRoute path='/board_announcements' component={BoardAnnouncements} content={children} />
             <WrappedRoute path='/pinned' component={PinnedStatuses} content={children} />
 
             <WrappedRoute path='/start/profile' exact component={OnboardingProfile} content={children} />
@@ -289,9 +240,6 @@ class SwitchingColumnsArea extends PureComponent {
 
             <WrappedRoute path={['/@:acct', '/accounts/:id']} exact component={AccountTimeline} content={children} />
             <WrappedRoute path={['/@:acct/featured', '/accounts/:id/featured']} component={AccountFeatured} content={children} />
-            {clipsEnabled && <WrappedRoute path={['/@:acct/clips', '/accounts/:id/clips']} component={AccountClips} content={children} />}
-            {pagesEnabled && <WrappedRoute path={['/@:acct/pages/:name', '/accounts/:id/pages/:name']} component={AccountPage} content={children} />}
-            {pagesEnabled && <WrappedRoute path={['/@:acct/pages', '/accounts/:id/pages']} exact component={AccountPages} content={children} />}
             {collectionsEnabled && <WrappedRoute path={['/@:acct/collections']} component={Collections} content={children} key='collections-list' />}
             {collectionsEnabled && <WrappedRoute path={['/collections/new', '/collections/:id/edit']} component={CollectionsEditor} content={children} key='collections-editor' />}
             {collectionsEnabled && <WrappedRoute path='/collections/:id' component={CollectionDetail} content={children} key='collections-detail' />}
@@ -315,15 +263,9 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/follow_requests' component={FollowRequests} content={children} />
             <WrappedRoute path='/blocks' component={Blocks} content={children} />
             <WrappedRoute path='/domain_blocks' component={DomainBlocks} content={children} />
-            <WrappedRoute path='/domain_mutes' component={DomainMutes} content={children} />
             <WrappedRoute path='/followed_tags' component={FollowedTags} content={children} />
             <WrappedRoute path='/mutes' component={Mutes} content={children} />
-            <WrappedRoute path='/custom_emoji_mutes' component={CustomEmojiMutes} content={children} />
-            <WrappedRoute path='/reaction_mutes' component={ReactionMutes} content={children} />
             <WrappedRoute path='/lists' component={Lists} content={children} />
-            {clipsEnabled && <WrappedRoute path='/clips' component={Clips} content={children} />}
-            {driveEnabled && <WrappedRoute path='/drive' component={Drive} content={children} />}
-            {circlesEnabled && <WrappedRoute path='/circles' component={Circles} content={children} />}
 
             <Route path='/overview' component={CustomHomepage} />
             <Route component={BundleColumnError} />
@@ -386,7 +328,7 @@ class UI extends PureComponent {
   };
 
   handleDragEnter = (e) => {
-    if (!this.props.isUploadEnabled || isWithinDriveDropzone(e.target)) {
+    if (!this.props.isUploadEnabled || shouldIgnoreSharlayanDropTarget(e.target)) {
       return;
     }
     e.preventDefault();
@@ -405,7 +347,7 @@ class UI extends PureComponent {
   };
 
   handleDragOver = (e) => {
-    if (!this.props.isUploadEnabled || isWithinDriveDropzone(e.target)) {
+    if (!this.props.isUploadEnabled || shouldIgnoreSharlayanDropTarget(e.target)) {
       return;
     }
     if (this.dataTransferIsText(e.dataTransfer)) return false;
@@ -423,7 +365,7 @@ class UI extends PureComponent {
   };
 
   handleDrop = (e) => {
-    if (!this.props.isUploadEnabled || isWithinDriveDropzone(e.target)) {
+    if (!this.props.isUploadEnabled || shouldIgnoreSharlayanDropTarget(e.target)) {
       return;
     }
     if (this.dataTransferIsText(e.dataTransfer)) return;
@@ -439,7 +381,7 @@ class UI extends PureComponent {
   };
 
   handleDragLeave = (e) => {
-    if (isWithinDriveDropzone(e.target)) {
+    if (shouldIgnoreSharlayanDropTarget(e.target)) {
       return;
     }
 
@@ -770,7 +712,7 @@ class UI extends PureComponent {
             />
           </div>)}
 
-          <BoardAnnouncementBanner />
+          <SharlayanUiExtensions />
 
           <SwitchingColumnsArea
             identity={this.props.identity}

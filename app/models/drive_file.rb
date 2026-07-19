@@ -202,7 +202,9 @@ class DriveFile < ApplicationRecord
 
     def max_download_size
       configured = Setting.drive_max_file_size.to_i.megabytes
-      [configured, MediaAttachment::VIDEO_LIMIT].max
+      return MediaAttachment::VIDEO_LIMIT unless configured.positive?
+
+      [configured, MediaAttachment::VIDEO_LIMIT].min
     end
 
     private

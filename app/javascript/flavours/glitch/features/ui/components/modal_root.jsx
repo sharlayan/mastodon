@@ -9,10 +9,8 @@ import {
   MuteModal,
   BlockModal,
   DomainBlockModal,
-  DomainMuteModal,
   ReportModal,
   ReportCollectionModal,
-  ReportPageModal,
   SettingsModal,
   EmbedModal,
   ListAdder,
@@ -33,7 +31,6 @@ import {
   ConfirmationModal,
   ConfirmDeleteStatusModal,
   ConfirmDeleteListModal,
-  ConfirmDeleteCircleModal,
   ConfirmDeleteCollectionModal,
   ConfirmReplyModal,
   ConfirmEditStatusModal,
@@ -46,18 +43,18 @@ import {
   ConfirmMissingAltTextModal,
   ConfirmRevokeQuoteModal,
   QuietPostQuoteInfoModal,
+  ConfirmResumeDraftModal,
 } from './confirmation_modals';
 import DeprecatedSettingsModal from './deprecated_settings_modal';
 import DoodleModal from './doodle_modal';
 import { FavouriteModal } from './favourite_modal';
 import { ImageModal } from './image_modal';
 import { MediaModal } from './media_modal';
-import { MfmPreviewModal } from './mfm_preview_modal';
-import { ConversationParticipantsModal } from './conversation_participants_modal';
 import { ModalPlaceholder } from './modal_placeholder';
 import VideoModal from './video_modal';
 import { VisibilityModal } from './visibility_modal';
 import { PrivateQuoteNotify } from './confirmation_modals/private_quote_notify';
+import { sharlayanModalComponents } from 'flavours/glitch/sharlayan/registry/modals';
 
 export const MODAL_COMPONENTS = {
   'MEDIA': () => Promise.resolve({ default: MediaModal }),
@@ -70,7 +67,6 @@ export const MODAL_COMPONENTS = {
   'CONFIRM': () => Promise.resolve({ default: ConfirmationModal }),
   'CONFIRM_DELETE_STATUS': () => Promise.resolve({ default: ConfirmDeleteStatusModal }),
   'CONFIRM_DELETE_LIST': () => Promise.resolve({ default: ConfirmDeleteListModal }),
-  'CONFIRM_DELETE_CIRCLE': () => Promise.resolve({ default: ConfirmDeleteCircleModal }),
   'CONFIRM_DELETE_COLLECTION': () => Promise.resolve({ default: ConfirmDeleteCollectionModal }),
   'CONFIRM_REPLY': () => Promise.resolve({ default: ConfirmReplyModal }),
   'CONFIRM_EDIT_STATUS': () => Promise.resolve({ default: ConfirmEditStatusModal }),
@@ -84,18 +80,13 @@ export const MODAL_COMPONENTS = {
   'CONFIRM_PRIVATE_QUOTE_NOTIFY': () => Promise.resolve({ default: PrivateQuoteNotify }),
   'CONFIRM_REVOKE_QUOTE': () => Promise.resolve({ default: ConfirmRevokeQuoteModal }),
   'CONFIRM_QUIET_QUOTE': () => Promise.resolve({ default: QuietPostQuoteInfoModal }),
+  'CONFIRM_RESUME_DRAFT': () => Promise.resolve({ default: ConfirmResumeDraftModal }),
   'MUTE': MuteModal,
-  'DOMAIN_MUTE': DomainMuteModal,
   'BLOCK': BlockModal,
   'DOMAIN_BLOCK': DomainBlockModal,
   'REPORT': ReportModal,
   'REPORT_COLLECTION': ReportCollectionModal,
-  'REPORT_PAGE': ReportPageModal,
   'COLLECTION_ADDER': () => import('@/flavours/glitch/features/collection_adder').then(module => ({ default: module.CollectionAdder })),
-  'CLIP_ADD': () => import('@/flavours/glitch/features/clip_adder').then(module => ({ default: module.ClipAdder })),
-  'DRIVE': () => import('@/flavours/glitch/features/drive_modal').then(module => ({ default: module.DriveModal })),
-  'DRIVE_FOLDER_NAME': () => import('@/flavours/glitch/features/drive/components/name_modal').then(module => ({ default: module.DriveFolderNameModal })),
-  'DRIVE_FILE_NAME': () => import('@/flavours/glitch/features/drive/components/name_modal').then(module => ({ default: module.DriveFileNameModal })),
   'SHARE_COLLECTION': () => import('@/flavours/glitch/features/collections/components/share_modal').then(module => ({ default: module.CollectionShareModal })),
   'REVOKE_COLLECTION_INCLUSION': () => import('@/flavours/glitch/features/collections/detail/revoke_collection_inclusion_modal').then(module => ({ default: module.RevokeCollectionInclusionModal })),
   'SETTINGS': SettingsModal,
@@ -112,16 +103,11 @@ export const MODAL_COMPONENTS = {
   'IGNORE_NOTIFICATIONS': IgnoreNotificationsModal,
   'ANNUAL_REPORT': AnnualReportModal,
   'COMPOSE_PRIVACY': () => Promise.resolve({ default: VisibilityModal }),
-  'MFM_PREVIEW': () => Promise.resolve({ default: MfmPreviewModal }),
-  'CONVERSATION_PARTICIPANTS': () => Promise.resolve({ default: ConversationParticipantsModal }),
-  'ACCOUNT_SWITCHER': () => import('@/flavours/glitch/features/account_switcher').then(module => ({ default: module.AccountSwitcherModal })),
   'ACCOUNT_NOTE': () => import('@/flavours/glitch/features/account_timeline/modals/note_modal').then(module => ({ default: module.AccountNoteModal })),
   'ACCOUNT_FIELD_OVERFLOW': () => import('@/flavours/glitch/features/account_timeline/modals/field_modal').then(module => ({ default: module.AccountFieldModal })),
   'ACCOUNT_JOIN_DATE': () => import('@/flavours/glitch/features/account_timeline/modals/join_modal').then(module => ({ default: module.AccountJoinModal })),
   'ACCOUNT_EDIT_NAME': accountEditModal('NameModal'),
   'ACCOUNT_EDIT_BIO': accountEditModal('BioModal'),
-  'ACCOUNT_EDIT_DECORATION': accountEditModal('DecorationModal'),
-  'ACCOUNT_EDIT_FOLLOW_MESSAGE': accountEditModal('FollowMessageModal'),
   'ACCOUNT_EDIT_PROFILE_DISPLAY': accountEditModal('ProfileDisplayModal'),
   'ACCOUNT_EDIT_VERIFY_LINKS': accountEditModal('VerifiedModal'),
   'ACCOUNT_EDIT_FIELD_EDIT': accountEditModal('EditFieldModal'),
@@ -131,6 +117,7 @@ export const MODAL_COMPONENTS = {
   'ACCOUNT_EDIT_IMAGE_DELETE': accountEditModal('ImageDeleteModal'),
   'ACCOUNT_EDIT_IMAGE_UPLOAD': accountEditModal('ImageUploadModal'),
   'ACCOUNT_HIDE_FEATURED_TAB': () => import('@/flavours/glitch/features/ui/components/confirmation_modals/hide_featured_tab').then(module => ({ default: module.ConfirmHideFeaturedTabModal })),
+  ...sharlayanModalComponents,
 };
 
 /** @arg {keyof import('@/flavours/glitch/features/account_edit/modals')} type */
@@ -169,6 +156,7 @@ export default class ModalRoot extends PureComponent {
 
   handleClose = (ignoreFocus = false) => {
     const { onClose } = this.props;
+    this._modal?.onModalClose?.();
     const message = this._modal?.getCloseConfirmationMessage?.();
     onClose(message, ignoreFocus);
   };

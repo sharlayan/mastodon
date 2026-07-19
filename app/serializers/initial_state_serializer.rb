@@ -2,7 +2,7 @@
 
 class InitialStateSerializer < ActiveModel::Serializer
   include RoutingHelper
-  include RoleplayModeHelper
+  include Sharlayan::InitialStateRoleplay
 
   attributes :meta, :compose, :accounts,
              :media_attachments, :settings,
@@ -60,17 +60,14 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:reaction_custom_emoji_size]  = object_account_user.settings_reaction_custom_emoji_size
       store[:reaction_local_emoji_only]   = Setting.reaction_local_emoji_only
       store[:reactions_enabled]           = Setting.reactions_enabled
-      store[:mfm_enabled]                 = (roleplay_mode? && Setting.force_mfm_enabled) || object_account_user.settings_mfm_enabled
+      store[:mfm_enabled]                 = object_account_user.settings_mfm_enabled
       store[:mfm_animations]              = object_account_user.settings_mfm_animations
       store[:mfm_fold_mode]               = object_account_user.settings_mfm_fold_mode
       store[:mfm_allow_composition]       = Setting.mfm_allow_composition
       store[:wrapstodon] = wrapstodon
-      store[:show_avatar_decorations]           = (roleplay_mode? && Setting.force_avatar_decorations) || object_account_user.settings['avatar_decorations.show']
+      store[:show_avatar_decorations]           = object_account_user.settings['avatar_decorations.show']
       store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']
-      store[:force_round_avatar_decoration]     = (roleplay_mode? && Setting.force_round_avatar) || object_account_user.settings['avatar_decorations.force_round']
-      store[:force_round_avatar]                = roleplay_mode? && Setting.force_round_avatar
-      store[:admin_timeline_owner_viewer]       = roleplay_mode? && admin_timeline_owner_viewer?
-      store[:soft_hide_deletion]                = roleplay_mode? && Setting.soft_hide_deletion
+      store[:avatar_decoration_shape]           = object_account_user.settings['avatar_decorations.shape']
       store[:color_scheme]                      = object_account_user.settings['web.color_scheme']
       store[:contrast]                          = object_account_user.settings['web.contrast']
       store[:custom_emoji_mute_hidden]          = object_account_user.settings['web.custom_emoji_mute_hidden']
@@ -88,7 +85,7 @@ class InitialStateSerializer < ActiveModel::Serializer
 
     store[:owner] = object.owner&.id&.to_s if Rails.configuration.x.single_user_mode
 
-    store
+    apply_sharlayan_roleplay_meta!(store)
   end
 
   def compose
@@ -175,7 +172,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       circles_enabled: Setting.circles_enabled,
       clips_enabled: Setting.clips_enabled,
       pages_enabled: Setting.pages_enabled,
-      antenna_enabled: !roleplay_mode? && Setting.antenna_enabled,
+      antenna_enabled: Setting.antenna_enabled,
       drive_enabled: Setting.drive_enabled,
       board_announcements_enabled: Setting.board_announcements_enabled,
       avatar_decorations_enabled: Setting.avatar_decorations_enabled,
@@ -186,7 +183,6 @@ class InitialStateSerializer < ActiveModel::Serializer
       remote_live_feed_access: Setting.remote_live_feed_access,
       local_topic_feed_access: Setting.local_topic_feed_access,
       remote_topic_feed_access: Setting.remote_topic_feed_access,
-      roleplay_mode: roleplay_mode?,
     }
   end
 
@@ -196,14 +192,6 @@ class InitialStateSerializer < ActiveModel::Serializer
 
   def object_account_user
     object.current_account.user
-  end
-
-  def admin_timeline_owner_viewer?
-    role = object_account_user&.role
-    return false if role.nil? || role.everyone?
-
-    top_position = UserRole.assignable.maximum(:position)
-    role.position == top_position
   end
 
   def serialized_account(account)

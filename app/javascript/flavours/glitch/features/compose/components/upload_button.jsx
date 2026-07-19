@@ -8,18 +8,17 @@ import { connect } from 'react-redux';
 
 import PhotoLibraryIcon from '@/material-icons/400-20px/photo_library.svg?react';
 import BrushIcon from '@/material-icons/400-24px/brush.svg?react';
-import CloudIcon from '@/material-icons/400-24px/cloud.svg?react';
 import UploadFileIcon from '@/material-icons/400-24px/upload_file.svg?react';
 
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { driveEnabled } from '@/flavours/glitch/initial_state';
+import { addDriveUploadOption, selectDriveUploadOption } from '@/flavours/glitch/sharlayan/compose/drive_option';
 
 import { DropdownIconButton } from './dropdown_icon_button';
 
 const messages = defineMessages({
   upload: { id: 'upload_button.label', defaultMessage: 'Add images, a video or an audio file' },
   doodle: { id: 'compose.attach.doodle', defaultMessage: 'Draw something' },
-  drive: { id: 'compose.attach.drive', defaultMessage: 'Attach from drive' },
 });
 
 const makeMapStateToProps = () => {
@@ -52,8 +51,8 @@ class UploadButton extends ImmutablePureComponent {
   handleSelect = (value) => {
     if (value === 'upload') {
       this.fileElement.click();
-    } else if (value === 'drive') {
-      this.props.onDriveOpen();
+    } else if (selectDriveUploadOption(value, this.props.onDriveOpen)) {
+      return;
     } else {
       this.props.onDoodleOpen();
     }
@@ -83,14 +82,7 @@ class UploadButton extends ImmutablePureComponent {
       },
     ];
 
-    if (driveEnabled) {
-      options.push({
-        icon: 'cloud',
-        iconComponent: CloudIcon,
-        value: 'drive',
-        text: intl.formatMessage(messages.drive),
-      });
-    }
+    addDriveUploadOption(options, intl, driveEnabled);
 
     return (
       <div className='compose-form__upload-button'>

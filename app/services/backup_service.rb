@@ -77,6 +77,7 @@ class BackupService < BaseService
       dump_likes!(zip)
       dump_bookmarks!(zip)
       dump_actor!(zip)
+      Sharlayan::PageBackupService.new(account).write_to_zip(zip) if Setting.pages_enabled
     end
   end
 

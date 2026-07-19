@@ -21,8 +21,8 @@ import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import { StatusQuoteManager } from 'flavours/glitch/components/status_quoted';
 import { Search } from 'flavours/glitch/features/compose/components/search';
 import { useSearchParam } from 'flavours/glitch/hooks/useSearchParam';
-import { collectionsEnabled } from 'flavours/glitch/initial_state';
 import type { Hashtag as HashtagType } from 'flavours/glitch/models/tags';
+import { collectionsEnabled } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { CollectionListItem } from '../collections/components/collection_list_item';

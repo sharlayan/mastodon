@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::PageSerializer < ActiveModel::Serializer
-  include RoleplayModeHelper
+  include Sharlayan::RESTPageRoleplaySerialization
 
   attributes :id, :title, :name, :summary, :category, :draft, :visibility, :locked, :content, :align_center,
              :hide_title_when_pinned, :font, :account_id,
@@ -23,7 +23,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def eye_catching_media_attachment_id
-    object.eye_catching_media_attachment_id&.to_s unless locked
+    object.eye_catching_media_attachment_id&.to_s if header_visible?
   end
 
   def locked
@@ -35,7 +35,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def eye_catching_media_attachment
-    object.eye_catching_media_attachment unless locked
+    object.eye_catching_media_attachment if header_visible?
   end
 
   def attached_media
@@ -50,15 +50,7 @@ class REST::PageSerializer < ActiveModel::Serializer
     scope.present?
   end
 
-  def roleplay_owner?
-    return false unless roleplay_mode?
-
-    role = scope&.role
-    return false if role.nil? || role.everyone?
-
-    cache = RequestStore.store[:page_serializer_roleplay_owner] ||= {}
-    cache.fetch(role.id) do
-      cache[role.id] = role.position == UserRole.assignable.maximum(:position)
-    end
+  def header_visible?
+    !locked || instance_options[:include_locked_header]
   end
 end

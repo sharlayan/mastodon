@@ -69,6 +69,25 @@ RSpec.describe DeleteAccountService do
     end
   end
 
+  describe 'custom content purge', :attachment_processing do
+    let(:account) { Fabricate(:user).account }
+    let!(:page) { Fabricate(:page, account: account) }
+    let!(:liked_page) { Fabricate(:page) }
+    let!(:page_like) { PageLike.create!(account: account, page: liked_page) }
+    let!(:folder) { account.drive_folders.create!(name: 'Private') }
+    let!(:drive_file) { account.drive_files.create!(folder: folder, file: attachment_fixture('attachment.jpg')) }
+
+    it 'removes Pages and Drive data while retaining the unavailable account record' do
+      described_class.new.call(account, reserve_username: true, reserve_email: true, skip_side_effects: true)
+
+      expect(account.reload).to be_unavailable
+      expect(Page).to_not exist(page.id)
+      expect(PageLike).to_not exist(page_like.id)
+      expect(DriveFile).to_not exist(drive_file.id)
+      expect(DriveFolder).to_not exist(folder.id)
+    end
+  end
+
   describe '#call on local account', :inline_jobs do
     before do
       stub_request(:post, remote_alice.inbox_url).to_return(status: 201)

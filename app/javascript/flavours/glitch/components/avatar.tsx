@@ -9,14 +9,14 @@ import type { ApiOnlineStatus } from 'flavours/glitch/api_types/accounts';
 import { useHovering } from 'flavours/glitch/hooks/useHovering';
 import {
   autoPlayGif,
+  avatarDecorationShape,
   avatarDecorationsEnabled,
-  forceRoundAvatar,
-  forceRoundAvatarDecoration,
   me,
   showAvatarDecorations,
   showFederatedAvatarDecorations,
 } from 'flavours/glitch/initial_state';
 import type { Account, AccountShapeFull } from 'flavours/glitch/models/account';
+import { forceRoundAvatar } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppSelector } from 'flavours/glitch/store';
 
 import { useAccount } from '../hooks/useAccount';
@@ -116,7 +116,12 @@ export const Avatar: React.FC<Props> = ({
         'account__avatar--loading': loading,
         'account__avatar--decorated': hasDecorations,
         'account__avatar--force-round':
-          forceRoundAvatar || (hasDecorations && forceRoundAvatarDecoration),
+          forceRoundAvatar ||
+          (hasDecorations && avatarDecorationShape === 'round'),
+        'account__avatar--force-square':
+          !forceRoundAvatar &&
+          hasDecorations &&
+          avatarDecorationShape === 'square',
       })}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

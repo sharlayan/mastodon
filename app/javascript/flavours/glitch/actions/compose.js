@@ -8,13 +8,21 @@ import { browserHistory } from 'flavours/glitch/components/router';
 import { countableText } from 'flavours/glitch/features/compose/util/counter';
 import { tagHistory } from 'flavours/glitch/settings';
 import { emojiMartSearch } from '@/flavours/glitch/features/emoji/picker';
-import { isCustomEmojiMuted } from '@/flavours/glitch/utils/custom_emoji_mutes';
+import { createDriveFileAttachment } from '@/flavours/glitch/sharlayan/compose/drive_attachment';
+import { createFetchComposeEmojiSuggestions } from '@/flavours/glitch/sharlayan/compose/emoji_suggestions';
+import { handleReplyForInlineCompose } from '@/flavours/glitch/sharlayan/compose/inline_reply_navigation';
+import {
+  getScheduledSubmissionContext,
+  handleScheduledComposeSuccess,
+  runScheduledComposeSubmission,
+} from '@/flavours/glitch/sharlayan/compose/scheduled_submission';
+import { changeScheduledAt, discardCompose } from '@/flavours/glitch/sharlayan/compose/state';
+import { getSharlayanComposeSubmission } from '@/flavours/glitch/sharlayan/compose/submission';
 import { recoverHashtags } from 'flavours/glitch/utils/hashtag';
 
 import { showAlert, showAlertForError } from './alerts';
 import { useEmoji } from './emojis';
 import { importFetchedAccounts, importFetchedStatus } from './importer';
-import { addScheduledStatus, SCHEDULED_STATUS_DELETE_SUCCESS } from './scheduled_statuses';
 import { openModal } from './modal';
 import { updateTimeline } from './timelines';
 import { insertStatusIntoAccountTimelines } from './timelines_typed';
@@ -84,7 +92,6 @@ export const COMPOSE_CHANGE_MEDIA_ORDER       = 'COMPOSE_CHANGE_MEDIA_ORDER';
 
 export const COMPOSE_SET_STATUS = 'COMPOSE_SET_STATUS';
 export const COMPOSE_FOCUS = 'COMPOSE_FOCUS';
-export const COMPOSE_SCHEDULED_AT_CHANGE = 'COMPOSE_SCHEDULED_AT_CHANGE';
 
 const messages = defineMessages({
   uploadErrorLimit: { id: 'upload_error.limit', defaultMessage: 'File upload limit exceeded.' },
@@ -94,7 +101,6 @@ const messages = defineMessages({
   published: { id: 'compose.published.body', defaultMessage: 'Post published.' },
   saved: { id: 'compose.saved.body', defaultMessage: 'Post saved.' },
   blankPostError: { id: 'compose.error.blank_post', defaultMessage: 'Post can\'t be blank.' },
-  scheduledFor: { id: 'compose.scheduled_for', defaultMessage: 'Scheduled for {time}' },
 });
 
 export const ensureComposeIsVisible = (getState) => {
@@ -134,7 +140,9 @@ export function replyCompose(status) {
       prependCWRe: prependCWRe,
     });
 
-    ensureComposeIsVisible(getState);
+    if (!handleReplyForInlineCompose(dispatch, getState)) {
+      ensureComposeIsVisible(getState);
+    }
   };
 }
 
@@ -161,6 +169,8 @@ export function resetCompose() {
     type: COMPOSE_RESET,
   };
 }
+
+export { discardCompose };
 
 export const focusCompose = (defaultText = '', caretStart = false) => (dispatch, getState) => {
   dispatch({
@@ -230,10 +240,10 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       return;
     }
 
-    const scheduledAt = getState().getIn(['compose', 'scheduled_at']);
-    const isRedraftingScheduled = !!(statusId && scheduledAt);
-    const editingScheduledId = isRedraftingScheduled ? statusId : null;
-    const effectiveStatusId = isRedraftingScheduled ? null : statusId;
+    const { editingScheduledId, effectiveStatusId } = getScheduledSubmissionContext({
+      scheduledAt: getState().getIn(['compose', 'scheduled_at']),
+      statusId,
+    });
 
     dispatch(submitComposeRequest());
 
@@ -257,21 +267,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       });
     }
 
-    const circleId = !overridePrivacy && effectiveStatusId === null ? getState().getIn(['compose', 'circle_id']) : null;
-    const visibility = circleId ? 'circle' : (overridePrivacy || getState().getIn(['compose', 'privacy']));
-    const rawPoll = getState().getIn(['compose', 'poll'], null);
-    const poll = rawPoll ? (() => {
-      const options = rawPoll.get('options');
-      const sanitizedOptions = options
-        ? options.map(o => (o && typeof o === 'string' ? o.trim() : String(o).trim())).filter(Boolean).toArray()
-        : [];
-      return {
-        options: sanitizedOptions,
-        expires_in: rawPoll.get('expires_in'),
-        multiple: rawPoll.get('multiple'),
-        hide_totals: rawPoll.get('hide_totals'),
-      };
-    })() : null;
+    const { circleId, clipIds, poll, quoteApprovalPolicy, scheduledAt: newStatusScheduledAt, visibility } = getSharlayanComposeSubmission({ getState, effectiveStatusId, overridePrivacy });
 
     const doSubmit = () => api().request({
       url: effectiveStatusId === null ? '/api/v1/statuses' : `/api/v1/statuses/${effectiveStatusId}`,
@@ -287,12 +283,12 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         sensitive: getState().getIn(['compose', 'sensitive']) || (spoiler_text.length > 0 && media.size !== 0),
         visibility: visibility,
         circle_id: circleId,
-        clip_ids: effectiveStatusId === null ? getState().getIn(['compose', 'clip_ids']).toArray() : undefined,
+        clip_ids: clipIds,
         poll,
         language: getState().getIn(['compose', 'language']),
         quoted_status_id: getState().getIn(['compose', 'quoted_status_id']),
-        quote_approval_policy: visibility === 'private' || visibility === 'direct' || visibility === 'circle' ? 'nobody' : getState().getIn(['compose', 'quote_policy']),
-        scheduled_at: effectiveStatusId === null ? getState().getIn(['compose', 'scheduled_at']) : undefined,
+        quote_approval_policy: quoteApprovalPolicy,
+        scheduled_at: newStatusScheduledAt,
       },
       headers: {
         'Idempotency-Key': getState().getIn(['compose', 'idempotencyKey']),
@@ -314,17 +310,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         successCallback(response.data);
       }
 
-      if (isScheduled) {
-        dispatch(addScheduledStatus(response.data));
-        const scheduledDate = new Date(response.data.scheduled_at);
-        const timeStr = scheduledDate.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
-        dispatch(showAlert({
-          message: messages.scheduledFor,
-          values: { time: timeStr },
-          dismissAfter: 5000,
-        }));
-        return;
-      }
+      if (handleScheduledComposeSuccess({ data: response.data, dispatch })) return;
 
       // To make the app more responsive, immediately push the status
       // into the columns
@@ -370,16 +356,12 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
       dispatch(submitComposeFail(error));
     });
 
-    if (isRedraftingScheduled) {
-      api().delete(`/api/v1/scheduled_statuses/${editingScheduledId}`).then(() => {
-        dispatch({ type: SCHEDULED_STATUS_DELETE_SUCCESS, id: editingScheduledId });
-        doSubmit();
-      }).catch((err) => {
-        dispatch(submitComposeFail(err));
-      });
-    } else {
-      doSubmit();
-    }
+    void runScheduledComposeSubmission({
+      dispatch,
+      editingScheduledId,
+      onFailure: submitComposeFail,
+      submit: doSubmit,
+    });
   };
 }
 
@@ -403,12 +385,7 @@ export function submitComposeFail(error) {
   };
 }
 
-export function changeScheduledAt(scheduledAt) {
-  return {
-    type: COMPOSE_SCHEDULED_AT_CHANGE,
-    scheduledAt: scheduledAt || null,
-  };
-}
+export { changeScheduledAt };
 
 export function doodleSet(options) {
   return {
@@ -483,32 +460,7 @@ export const uploadComposeProcessing = () => ({
   type: COMPOSE_UPLOAD_PROCESSING,
 });
 
-export function attachDriveFile(driveFileId, sensitive = false) {
-  return function (dispatch, getState) {
-    if (getState().compose.get('quoted_status_id')) {
-      dispatch(showAlert({ message: messages.uploadQuote }));
-      return;
-    }
-
-    const uploadLimit = getState().getIn(['server', 'server', 'item', 'configuration', 'statuses', 'max_media_attachments']);
-    const media = getState().getIn(['compose', 'media_attachments']);
-    const pending = getState().getIn(['compose', 'pending_media_attachments']);
-
-    if (media.size + pending + 1 > uploadLimit) {
-      dispatch(showAlert({ message: messages.uploadErrorLimit }));
-      return;
-    }
-
-    dispatch(uploadComposeRequest());
-
-    api().post(`/api/v1/drive/files/${driveFileId}/attach`).then(({ data }) => {
-      dispatch(uploadComposeSuccess(data, null));
-      if (sensitive && !getState().getIn(['compose', 'sensitive'])) {
-        dispatch(changeComposeSensitivity());
-      }
-    }).catch(error => dispatch(uploadComposeFail(error)));
-  };
-}
+export const attachDriveFile = createDriveFileAttachment({ api, changeComposeSensitivity, showAlert, uploadComposeFail, uploadComposeRequest, uploadComposeSuccess, messages });
 
 export const uploadThumbnail = (id, file) => (dispatch) => {
   dispatch(uploadThumbnailRequest());
@@ -657,14 +609,7 @@ const fetchComposeSuggestionsAccounts = throttle((dispatch, token) => {
   });
 }, 200, { leading: true, trailing: true });
 
-const fetchComposeSuggestionsEmojis = async (dispatch, getState, token) => {
-  // Right now we are hard-coding the locale to English since the picker search only supports English.
-  // Once we replace the legacy picker we can remove this and use the actual locale of the user.
-  const results = await emojiMartSearch(token, 'en', 5);
-  const pickerMutes = getState().custom_emoji_mutes.items.filter((mute) => mute.hide_in_picker);
-  const filtered = results.filter((result) => !(result.custom && isCustomEmojiMuted(result.id, undefined, pickerMutes)));
-  dispatch(readyComposeSuggestionsEmojis(token, filtered));
-};
+const fetchComposeSuggestionsEmojis = createFetchComposeEmojiSuggestions({ emojiSearch: emojiMartSearch, readySuggestions: readyComposeSuggestionsEmojis });
 
 const fetchComposeSuggestionsTags = throttle((dispatch, token) => {
   if (fetchComposeSuggestionsTagsController) {

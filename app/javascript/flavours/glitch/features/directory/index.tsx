@@ -26,7 +26,7 @@ import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { RadioButton } from 'flavours/glitch/components/radio_button';
 import { ScrollContainer } from 'flavours/glitch/containers/scroll_container';
 import { useSearchParam } from 'flavours/glitch/hooks/useSearchParam';
-import { roleplayMode } from 'flavours/glitch/initial_state';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { AccountCard } from './components/account_card';

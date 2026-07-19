@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -9,6 +9,7 @@ import { Helmet } from '@unhead/react/helmet';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import {
   apiGetPage,
+  apiGetPageCategories,
   apiCreatePage,
   apiUpdatePage,
 } from 'flavours/glitch/api/pages';
@@ -56,6 +57,14 @@ const messages = defineMessages({
   categoryHint: {
     id: 'pages.field.category_hint',
     defaultMessage: 'Enter up to 30 characters. Leave blank for no category.',
+  },
+  previousCategory: {
+    id: 'pages.field.previous_category',
+    defaultMessage: 'Previously used categories',
+  },
+  previousCategoryPlaceholder: {
+    id: 'pages.field.previous_category_placeholder',
+    defaultMessage: 'Select a category',
   },
   visibility: { id: 'pages.field.visibility', defaultMessage: 'Visibility' },
   visibilityPublic: {
@@ -108,6 +117,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [name, setName] = useState(() => Date.now().toString());
   const [summary, setSummary] = useState('');
   const [category, setCategory] = useState('');
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<ApiPageVisibility>('public');
   const [password, setPassword] = useState('');
   const [hasExistingPassword, setHasExistingPassword] = useState(false);
@@ -122,6 +132,15 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   >({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    apiGetPageCategories()
+      .then((categories) => {
+        setCategoryOptions(categories);
+        return categories;
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -173,6 +192,13 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleCategoryChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
+      setCategory(event.target.value);
+    },
+    [],
+  );
+
+  const handlePreviousCategoryChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
       setCategory(event.target.value);
     },
     [],
@@ -273,10 +299,16 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     request
       .then((page) => {
-        if (isEditing && history.location.state?.fromPageShow) {
+        if (
+          isEditing &&
+          history.location.state?.fromPageShow &&
+          history.location.state.pageName === page.name
+        ) {
           history.goBack();
         } else {
-          history.replace(`/pages/${page.id}`);
+          history.replace(
+            `/@${page.account.acct}/pages/${encodeURIComponent(page.name)}`,
+          );
         }
 
         return page;
@@ -305,6 +337,10 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     isEditing ? messages.editHeading : messages.newHeading,
   );
   const pageUrl = `https://${domain}/@${account?.username ?? ''}/pages/${name}`;
+  const sortedCategoryOptions = useMemo(
+    () => categoryOptions.toSorted((a, b) => a.localeCompare(b, intl.locale)),
+    [categoryOptions, intl.locale],
+  );
 
   return (
     <Column bindToDocument={!multiColumn} label={heading}>
@@ -354,6 +390,24 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           </div>
 
           <div className='fields-group'>
+            {sortedCategoryOptions.length > 0 && (
+              <SelectField
+                id='page_previous_category'
+                label={intl.formatMessage(messages.previousCategory)}
+                value={sortedCategoryOptions.includes(category) ? category : ''}
+                onChange={handlePreviousCategoryChange}
+              >
+                <option value=''>
+                  {intl.formatMessage(messages.previousCategoryPlaceholder)}
+                </option>
+                {sortedCategoryOptions.map((categoryOption) => (
+                  <option key={categoryOption} value={categoryOption}>
+                    {categoryOption}
+                  </option>
+                ))}
+              </SelectField>
+            )}
+
             <TextInputField
               id='page_category'
               maxLength={30}

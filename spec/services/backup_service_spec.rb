@@ -52,6 +52,22 @@ RSpec.describe BackupService do
     expect_bookmarks_export
   end
 
+  context 'with pages enabled' do
+    before do
+      Setting.pages_enabled = true
+      Fabricate(:page, account: user.account, content: [{ 'id' => 'text', 'type' => 'text', 'text' => 'Saved page' }])
+    end
+
+    it 'includes a portable Pages backup' do
+      service_call
+
+      pages_backup = JSON.parse(read_zip_file(backup, 'pages.json'))
+
+      expect(pages_backup).to include('format' => 'sharlayan-pages-backup')
+      expect(pages_backup.fetch('pages')).to include(include('content' => [{ 'id' => 'text', 'type' => 'text', 'text' => 'Saved page' }]))
+    end
+  end
+
   context 'with a Drive pointer attachment' do
     let!(:drive_file) { user.account.drive_files.create!(file: attachment_fixture('attachment.jpg')) }
     let!(:drive_status) { Fabricate(:status, account: user.account, text: 'Drive attachment', visibility: :public) }

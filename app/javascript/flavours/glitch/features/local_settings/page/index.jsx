@@ -2,21 +2,19 @@
 import PropTypes from 'prop-types';
 import { PureComponent } from 'react';
 
-import { defineMessages, FormattedMessage, FormattedDate } from 'react-intl';
+import { defineMessages, FormattedMessage } from 'react-intl';
 
 import ImmutablePropTypes from 'react-immutable-proptypes';
 
 
 //  Our imports
-import { Button } from '@/flavours/glitch/components/button';
 import { injectIntl } from '@/flavours/glitch/components/intl';
-import { expandSpoilers, me, roleplayMode } from 'flavours/glitch/initial_state';
+import { expandSpoilers } from 'flavours/glitch/initial_state';
+import { getSharlayanLocalSettingsPage, SharlayanLocalSettingsSlot } from 'flavours/glitch/sharlayan/local_settings/registry';
 import { preferenceLink } from 'flavours/glitch/utils/backend_links';
 
 import DeprecatedLocalSettingsPageItem from './deprecated_item';
 import LocalSettingsPageItem from './item';
-import NavigationPanelSettings from './navigation_panel';
-import QuickPreferences from './quick_preferences';
 
 //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
@@ -43,8 +41,6 @@ class LocalSettingsPage extends PureComponent {
     index    : PropTypes.number,
     intl     : PropTypes.object.isRequired,
     onChange : PropTypes.func.isRequired,
-    onSyncToServer : PropTypes.func.isRequired,
-    onSyncFromServer : PropTypes.func.isRequired,
     settings : ImmutablePropTypes.map.isRequired,
   };
 
@@ -90,24 +86,7 @@ class LocalSettingsPage extends PureComponent {
         >
           <FormattedMessage id='settings.rewrite_mentions' defaultMessage='Rewrite mentions in displayed statuses' />
         </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['show_follow_list_bio']}
-          id='mastodon-settings--show_follow_list_bio'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.show_follow_list_bio' defaultMessage='Show bio and follow message in follow lists' />
-          <span className='hint'><FormattedMessage id='settings.show_follow_list_bio.hint' defaultMessage='Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists' /></span>
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['show_others_online_status']}
-          id='mastodon-settings--show_others_online_status'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.show_others_online_status' defaultMessage="Show other people's online status" />
-          <span className='hint'><FormattedMessage id='settings.show_others_online_status.hint' defaultMessage='Display an online, recently active, or offline indicator on the avatars of users who share their status' /></span>
-        </LocalSettingsPageItem>
+        <SharlayanLocalSettingsSlot slot='general-after-rewrite' settings={settings} onChange={onChange} />
 
         <section>
           <h2><FormattedMessage id='settings.layout_opts' defaultMessage='Layout options' /></h2>
@@ -133,15 +112,7 @@ class LocalSettingsPage extends PureComponent {
 
         <section>
           <h2><FormattedMessage id='settings.status_icons' defaultMessage='Toot icons' /></h2>
-          <LocalSettingsPageItem
-            settings={settings}
-            item={['hicolor_privacy_icons']}
-            id='mastodon-settings--hicolor_privacy_icons'
-            onChange={onChange}
-          >
-            <FormattedMessage id='settings.hicolor_privacy_icons' defaultMessage='High color privacy icons' />
-            <span className='hint'><FormattedMessage id='settings.hicolor_privacy_icons.hint' defaultMessage='Display privacy icons in bright and easily distinguishable colors' /></span>
-          </LocalSettingsPageItem>
+          <SharlayanLocalSettingsSlot slot='general-status-icons' settings={settings} onChange={onChange} />
           <LocalSettingsPageItem
             settings={settings}
             item={['status_icons', 'language']}
@@ -207,29 +178,10 @@ class LocalSettingsPage extends PureComponent {
         </section>
       </div>
     ),
-    () => (
-      <QuickPreferences />
-    ),
     ({ intl, onChange, settings }) => (
       <div className='glitch local-settings__page compose_box_opts'>
         <h1><FormattedMessage id='settings.compose_box_opts' defaultMessage='Compose box' /></h1>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['inline_compose_timelines']}
-          id='mastodon-settings--inline_compose_timelines'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.inline_compose_timelines' defaultMessage='Show the compose box at the top of timelines' />
-          <span className='hint'><FormattedMessage id='settings.inline_compose_timelines.hint' defaultMessage='Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)' /></span>
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['use_publish_toot']}
-          id='mastodon-settings--use_publish_toot'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.use_publish_toot' defaultMessage='Use "뿌우" as the publish button label' />
-        </LocalSettingsPageItem>
+        <SharlayanLocalSettingsSlot slot='compose-before-spoilers' settings={settings} onChange={onChange} />
         <LocalSettingsPageItem
           settings={settings}
           item={['always_show_spoilers_field']}
@@ -238,14 +190,7 @@ class LocalSettingsPage extends PureComponent {
         >
           <FormattedMessage id='settings.always_show_spoilers_field' defaultMessage='Always enable the Content Warning field' />
         </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['mention_reblogger']}
-          id='mastodon-settings--mention_reblogger'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.mention_reblogger' defaultMessage='Mention booster when replying to a boosted post' />
-        </LocalSettingsPageItem>
+        <SharlayanLocalSettingsSlot slot='compose-after-spoilers' settings={settings} onChange={onChange} />
         <LocalSettingsPageItem
           settings={settings}
           item={['prepend_cw_re']}
@@ -279,40 +224,7 @@ class LocalSettingsPage extends PureComponent {
         >
           <FormattedMessage id='settings.show_content_type_choice' defaultMessage='Show content-type choice when authoring toots' />
         </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['hide_mfm_compose_hint']}
-          id='mastodon-settings--hide_mfm_compose_hint'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.hide_mfm_compose_hint' defaultMessage='Hide MFM preview and syntax link in the compose box' />
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['show_clip_choice']}
-          id='mastodon-settings--show_clip_choice'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.show_clip_choice' defaultMessage='Show clip selection in the compose box' />
-        </LocalSettingsPageItem>
-        {roleplayMode && (
-          <LocalSettingsPageItem
-            settings={settings}
-            item={['hide_compose_language']}
-            id='mastodon-settings--hide_compose_language'
-            onChange={onChange}
-          >
-            <FormattedMessage id='settings.hide_compose_language' defaultMessage='Hide the language selector in the compose box' />
-          </LocalSettingsPageItem>
-        )}
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['show_schedule_button']}
-          id='mastodon-settings--show_schedule_button'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.show_schedule_button' defaultMessage='Show schedule button in the compose box' />
-        </LocalSettingsPageItem>
+        <SharlayanLocalSettingsSlot slot='compose-before-published-toast' settings={settings} onChange={onChange} />
         <LocalSettingsPageItem
           settings={settings}
           item={['show_published_toast']}
@@ -420,15 +332,7 @@ class LocalSettingsPage extends PureComponent {
         >
           <FormattedMessage id='settings.media_fullwidth' defaultMessage='Full-width media previews' />
         </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['media', 'no_autoplay_gifv']}
-          id='mastodon-settings--media-no_autoplay_gifv'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.media_no_autoplay_gifv' defaultMessage='Do not autoplay attached GIFs' />
-          <span className='hint'><FormattedMessage id='settings.media_no_autoplay_gifv_hint' defaultMessage='Attached GIF media will play on hover or click instead of automatically, even when GIF autoplay is enabled' /></span>
-        </LocalSettingsPageItem>
+        <SharlayanLocalSettingsSlot slot='media-after-fullwidth' settings={settings} onChange={onChange} />
         <LocalSettingsPageItem
           settings={settings}
           item={['inline_preview_cards']}
@@ -468,68 +372,14 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
       </div>
     ),
-    ({ onChange, onSyncToServer, onSyncFromServer, settings }) => (
-      <div className='glitch local-settings__page sync'>
-        <h1><FormattedMessage id='settings.sync' defaultMessage='Server sync' /></h1>
-        <p className='hint'>
-          <FormattedMessage id='settings.sync.hint' defaultMessage='App settings are normally stored only in this browser. Enable server sync to manually save them to your account and load them on another device.' />
-        </p>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['sync_to_server']}
-          id='mastodon-settings--sync_to_server'
-          onChange={onChange}
-          disabled={!me}
-        >
-          <FormattedMessage id='settings.sync.enable' defaultMessage='Enable server sync' />
-        </LocalSettingsPageItem>
-        <div className='local-settings__page__sync-actions'>
-          <Button
-            onClick={onSyncToServer}
-            disabled={!me || !settings.get('sync_to_server')}
-          >
-            <FormattedMessage id='settings.sync.save' defaultMessage='Save to server' />
-          </Button>
-          <Button
-            onClick={onSyncFromServer}
-            disabled={!me || !settings.get('sync_to_server')}
-          >
-            <FormattedMessage id='settings.sync.load' defaultMessage='Load from server' />
-          </Button>
-        </div>
-        {settings.get('synced_at') && (
-          <p className='hint local-settings__page__sync-status'>
-            <FormattedMessage
-              id='settings.sync.last_synced'
-              defaultMessage='Last saved: {date}'
-              values={{
-                date: (
-                  <FormattedDate
-                    value={settings.get('synced_at')}
-                    year='numeric'
-                    month='short'
-                    day='2-digit'
-                    hour='2-digit'
-                    minute='2-digit'
-                  />
-                ),
-              }}
-            />
-          </p>
-        )}
-      </div>
-    ),
-    ({ intl, onChange, settings }) => (
-      <NavigationPanelSettings intl={intl} onChange={onChange} settings={settings} />
-    ),
   ];
 
   render () {
     const { pages } = this;
-    const { index, intl, onChange, onSyncToServer, onSyncFromServer, settings } = this.props;
-    const CurrentPage = pages[index] || pages[0];
+    const { index, intl, onChange, settings } = this.props;
+    const CurrentPage = getSharlayanLocalSettingsPage(index, pages) || pages[0];
 
-    return <CurrentPage intl={intl} onChange={onChange} onSyncToServer={onSyncToServer} onSyncFromServer={onSyncFromServer} settings={settings} />;
+    return <CurrentPage intl={intl} onChange={onChange} settings={settings} />;
   }
 
 }

@@ -16,6 +16,8 @@ import { useAppSelector } from '@/flavours/glitch/store';
 import { Footer } from 'flavours/glitch/features/custom_homepage/components/footer';
 import { Header } from 'flavours/glitch/features/custom_homepage/components/header';
 import { CollapsibleNavigationPanel } from 'flavours/glitch/features/navigation_panel';
+import { sharlayanColumnComponents } from 'flavours/glitch/sharlayan/registry/routes';
+import { SharlayanColumnsAreaExtensions } from 'flavours/glitch/sharlayan/registry/ui';
 
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import {
@@ -26,15 +28,10 @@ import {
   PublicTimeline,
   HashtagTimeline,
   DirectTimeline,
-  AdminTimeline,
-  ConversationThread,
   FavouritedStatuses,
   BookmarkedStatuses,
   ListTimeline,
-  AntennaTimeline,
   Directory,
-  ReactedStatuses,
-  BoardAnnouncements,
 } from '../util/async-components';
 import { useColumnsContext } from '../util/columns_context';
 
@@ -43,7 +40,6 @@ import { BundleColumnError } from './bundle_column_error';
 import { ColumnLoading } from './column_loading';
 import { ComposePanel, RedirectToMobileComposeIfNeeded } from './compose_panel';
 import DrawerLoading from './drawer_loading';
-import { InlineComposeShell } from './inline_compose_shell';
 
 const componentMap = {
   COMPOSE: Compose,
@@ -54,15 +50,11 @@ const componentMap = {
   COMMUNITY: CommunityTimeline,
   HASHTAG: HashtagTimeline,
   DIRECT: DirectTimeline,
-  ADMIN_TIMELINE: AdminTimeline,
-  CONVERSATION: ConversationThread,
   FAVOURITES: FavouritedStatuses,
   BOOKMARKS: BookmarkedStatuses,
   LIST: ListTimeline,
-  ANTENNA: AntennaTimeline,
   DIRECTORY: Directory,
-  REACTIONS: ReactedStatuses,
-  BOARD_ANNOUNCEMENTS: BoardAnnouncements,
+  ...sharlayanColumnComponents,
 } as const;
 
 const TabsBarPortal = () => {
@@ -146,7 +138,7 @@ export const ColumnsArea = forwardRef<
             <TabsBarPortal />
           </div>
 
-          <InlineComposeShell />
+          <SharlayanColumnsAreaExtensions />
 
           <div className='columns-area columns-area--mobile'>{children}</div>
         </main>

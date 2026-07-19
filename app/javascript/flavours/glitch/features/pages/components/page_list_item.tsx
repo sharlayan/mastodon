@@ -34,7 +34,7 @@ export const PageListItem: React.FC<{
   const intl = useIntl();
   const location = useLocation();
   const headerUrl = page.eye_catching_media_attachment?.url;
-  const pathname = `/pages/${page.id}`;
+  const pathname = `/@${page.account.acct}/pages/${encodeURIComponent(page.name)}`;
 
   return (
     <div
@@ -58,9 +58,6 @@ export const PageListItem: React.FC<{
           <Avatar account={page.account} size={32} />
           <span className='page-list-item__text'>
             <span className='page-list-item__title'>
-              <span className='page-list-item__title-text'>
-                {page.title || page.name}
-              </span>
               {page.visibility !== 'public' && (
                 <Icon
                   id={page.visibility === 'password' ? 'lock' : 'preview-off'}
@@ -75,6 +72,9 @@ export const PageListItem: React.FC<{
                   )}
                 />
               )}
+              <span className='page-list-item__title-text'>
+                {page.title || page.name}
+              </span>
               {showCategory && page.category && (
                 <>
                   {' · '}

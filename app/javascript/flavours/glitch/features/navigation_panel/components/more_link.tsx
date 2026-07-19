@@ -13,6 +13,7 @@ import {
   canManageReports,
   canViewAdminDashboard,
 } from 'flavours/glitch/permissions';
+import { extendSharlayanMoreMenuItems } from 'flavours/glitch/sharlayan/registry/navigation/more_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 const messages = defineMessages({
@@ -21,20 +22,8 @@ const messages = defineMessages({
     id: 'navigation_bar.domain_blocks',
     defaultMessage: 'Blocked domains',
   },
-  domainMutes: {
-    id: 'navigation_bar.domain_mutes',
-    defaultMessage: 'Muted domains',
-  },
   mutes: { id: 'navigation_bar.mutes', defaultMessage: 'Muted users' },
   filters: { id: 'navigation_bar.filters', defaultMessage: 'Muted words' },
-  customEmojiMutes: {
-    id: 'navigation_bar.custom_emoji_mutes',
-    defaultMessage: 'Muted custom emoji',
-  },
-  reactionMutes: {
-    id: 'navigation_bar.reaction_mutes',
-    defaultMessage: 'Reaction mutes',
-  },
   administration: {
     id: 'navigation_bar.administration',
     defaultMessage: 'Administration',
@@ -57,11 +46,6 @@ const messages = defineMessages({
     id: 'navigation_bar.privacy_and_reach',
     defaultMessage: 'Privacy and reach',
   },
-  switchAccount: {
-    id: 'navigation_bar.switch_account',
-    defaultMessage: 'Switch account',
-  },
-  drive: { id: 'navigation_bar.drive', defaultMessage: 'Drive' },
 });
 
 export const MoreLink: React.FC = () => {
@@ -71,15 +55,6 @@ export const MoreLink: React.FC = () => {
 
   const menu = useMemo(() => {
     const arr: MenuItem[] = [
-      ...(driveEnabled
-        ? ([
-            {
-              to: '/drive',
-              text: intl.formatMessage(messages.drive),
-            },
-            null,
-          ] as MenuItem[])
-        : []),
       {
         href: '/filters',
         text: intl.formatMessage(messages.filters),
@@ -89,24 +64,12 @@ export const MoreLink: React.FC = () => {
         text: intl.formatMessage(messages.mutes),
       },
       {
-        to: '/custom_emoji_mutes',
-        text: intl.formatMessage(messages.customEmojiMutes),
-      },
-      {
-        to: '/reaction_mutes',
-        text: intl.formatMessage(messages.reactionMutes),
-      },
-      {
         to: '/blocks',
         text: intl.formatMessage(messages.blocks),
       },
       {
         to: '/domain_blocks',
         text: intl.formatMessage(messages.domainBlocks),
-      },
-      {
-        to: '/domain_mutes',
-        text: intl.formatMessage(messages.domainMutes),
       },
       null,
       {
@@ -141,24 +104,21 @@ export const MoreLink: React.FC = () => {
       });
     }
 
-    const handleSwitchAccountClick = () => {
-      dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} }));
-    };
-
     const handleLogoutClick = () => {
       dispatch(openModal({ modalType: 'CONFIRM_LOG_OUT', modalProps: {} }));
     };
 
-    arr.push(
-      null,
-      {
-        text: intl.formatMessage(messages.switchAccount),
-        action: handleSwitchAccountClick,
-      },
-      {
-        text: intl.formatMessage(messages.logout),
-        action: handleLogoutClick,
-      },
+    arr.push(null, {
+      text: intl.formatMessage(messages.logout),
+      action: handleLogoutClick,
+    });
+
+    extendSharlayanMoreMenuItems(
+      arr,
+      intl.formatMessage,
+      () =>
+        dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })),
+      driveEnabled,
     );
 
     return arr;

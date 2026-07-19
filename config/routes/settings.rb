@@ -23,6 +23,7 @@ namespace :settings do
   end
 
   resource :export, only: [:show, :create]
+  resource :page_backup, only: [:show, :create, :update]
 
   namespace :exports, constraints: { format: :csv } do
     resources :follows, only: :index, controller: :following_accounts

@@ -35,8 +35,9 @@ const messages = defineMessages({
 export const ConfirmMissingAltTextModal: React.FC<
   {
     overridePrivacy: null | string;
+    onSubmitSuccess?: (status: unknown) => void;
   } & BaseConfirmationModalProps
-> = ({ onClose, overridePrivacy }) => {
+> = ({ onClose, overridePrivacy, onSubmitSuccess }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const mediaId = useAppSelector(
@@ -66,8 +67,8 @@ export const ConfirmMissingAltTextModal: React.FC<
   }, [dispatch, mediaId]);
 
   const handleSecondary = useCallback(() => {
-    dispatch(submitCompose(overridePrivacy));
-  }, [dispatch, overridePrivacy]);
+    dispatch(submitCompose(overridePrivacy, onSubmitSuccess));
+  }, [dispatch, onSubmitSuccess, overridePrivacy]);
 
   return (
     <ConfirmationModal

@@ -12,8 +12,7 @@ import {
   clipsEnabled,
   pagesEnabled,
 } from 'flavours/glitch/initial_state';
-
-import { CollapsiblePanel } from './collapsible_panel';
+import { SharlayanCollapsiblePanel } from 'flavours/glitch/sharlayan/registry/navigation/collapsible_panel';
 
 const messages = defineMessages({
   extensions: {
@@ -105,15 +104,14 @@ export const ExtensionsPanel: React.FC = () => {
   }
 
   return (
-    <CollapsiblePanel
+    <SharlayanCollapsiblePanel
       icon='puzzle-piece'
       iconComponent={ExtensionIcon}
-      showItemIcons
       title={intl.formatMessage(messages.extensions)}
       collapseTitle={intl.formatMessage(messages.collapse)}
       expandTitle={intl.formatMessage(messages.expand)}
     >
       {children}
-    </CollapsiblePanel>
+    </SharlayanCollapsiblePanel>
   );
 };

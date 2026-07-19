@@ -1,0 +1,522 @@
+---
+ko:
+  account_switcher:
+    switch_failed: 계정을 찾을 수 없습니다.
+    switch_unauthorized: 이 계정으로 전환할 권한이 없습니다.
+  accounts:
+    refetch_local_error: 로컬 계정은 새로고침할 수 없습니다
+  activerecord:
+    errors:
+      models:
+        circle_account:
+          must_be_follower: 나를 팔로우하고 있어야 합니다
+        custom_emoji:
+          attributes:
+            aliases:
+              too_long: "%{max}자를 초과하는 별명이 포함되어 있습니다"
+              too_many: 별명은 최대 %{max}개까지 입력할 수 있습니다
+        user_role:
+          attributes:
+            drive_quota:
+              own_role: 당신의 현재 역할에서는 변경할 수 없습니다
+  admin:
+    accounts:
+      block_avatar_decorations: 장식 표시 끄기
+      blocked_avatar_decorations_msg: "%{username}의 아바타 장식을 표시하지 않습니다"
+      refresh_avatar_decorations: 아바타 장식 업데이트
+      refreshed_avatar_decorations_msg: "%{username}의 아바타 장식 업데이트를 요청했습니다"
+      unblock_avatar_decorations: 장식 표시 켜기
+      unblocked_avatar_decorations_msg: "%{username}의 아바타 장식을 표시합니다"
+    action_logs:
+      actions:
+        update_collection_html: "%{name} 님이 %{target}의 컬렉션을 수정했습니다"
+    avatar_decoration_domain_blocks:
+      added_at: 추가됨
+      block: 도메인 차단
+      created_msg: 도메인 아바타 장식 차단이 성공적으로 생성되었습니다
+      destroyed_msg: 도메인 아바타 장식 차단이 성공적으로 제거되었습니다
+      domain: 도메인
+      domain_hint: 이 서버의 모든 아바타 장식을 차단합니다
+      title: 아바타 장식 차단 도메인
+      unblock: 차단 해제
+    avatar_decorations:
+      add_new: 새 아바타 장식 추가
+      all_decorations: 모든 아바타 장식
+      approve: 승인
+      approved: 승인됨
+      approved_msg: 아바타 장식이 성공적으로 승인되었습니다
+      assign_category: 카테고리 지정
+      category: 카테고리
+      create_new_category: 새 카테고리 만들기
+      created_msg: 아바타 장식이 성공적으로 생성되었습니다
+      current_image: 현재 이미지
+      delete: 삭제
+      description: 설명
+      destroyed_msg: 아바타 장식이 성공적으로 삭제되었습니다
+      edit: 편집
+      image: 이미지
+      image_hint: PNG, GIF 또는 WebP, 최대 %{size}. 투명 오버레이 이미지여야 합니다.
+      local: 로컬
+      name: 이름
+      new_category: 새 카테고리
+      new_category_hint: 값을 입력하면 새 카테고리가 생성되며, 위의 선택보다 우선합니다.
+      no_category: 카테고리 없음
+      no_decoration_selected: 선택된 아바타 장식이 없습니다
+      no_role_required: 제한 없음 (모든 사용자)
+      origin: 출처
+      pending_approval: 승인 대기 중
+      pending_title: 승인 대기 중인 아바타 장식
+      preview: 미리보기
+      redownload: 원격 서버에서 업데이트
+      redownload_failed_msg: 원격 서버에서 아바타 장식 이미지를 업데이트하지 못했습니다
+      redownloaded_msg: 원격 서버에서 아바타 장식 이미지를 성공적으로 업데이트했습니다
+      replace_image: 이미지 교체
+      required_role: 역할 제한
+      required_role_hint: 이 역할 이상의 사용자만 이 장식을 적용할 수 있습니다.
+      status: 상태
+      title: 아바타 장식
+      uncategorized: 분류되지 않음
+      update_category: 카테고리 업데이트
+      updated_msg: 아바타 장식이 성공적으로 업데이트되었습니다
+    board_announcements:
+      attachments: 미디어 첨부
+      attachments_hint: 미디어를 업로드한 뒤 항목을 클릭하면 마크다운이 클립보드에 복사되어 본문에 붙여넣을 수 있습니다.
+      author: '작성자: %{name}'
+      created_msg: 공지사항이 성공적으로 작성되었습니다!
+      destroyed_msg: 공지사항이 성공적으로 삭제되었습니다!
+      display_hint: 배너 공지는 확인 전까지 타임라인 상단에도 표시됩니다.
+      displays:
+        banner: 배너
+        normal: 일반
+      edit:
+        title: 공지사항 편집
+      empty: 공지사항을 찾을 수 없습니다.
+      for_existing_users_hint: 이 공지를 게시 시점에 이미 존재하던 계정에게만 표시합니다(이후 가입자에게는 숨김).
+      icons:
+        error: 오류
+        info: 정보
+        success: 성공
+        warning: 경고
+      markdown_hint: 서식을 위해 마크다운을 사용할 수 있습니다.
+      media:
+        add: 미디어 추가
+        copied: 마크다운이 클립보드에 복사되었습니다
+        copy_hint: 클릭하면 마크다운이 복사됩니다
+        error: 업로드에 실패했습니다
+        remove: 제거
+        uploading: 업로드 중…
+      need_confirmation_to_read_hint: 읽음으로 처리되기 전에 사용자가 확인 버튼을 누르도록 요구합니다.
+      new:
+        create: 공지사항 작성
+        title: 새 공지사항
+      publish: 게시
+      publish_hint: 이 공지사항을 사용자에게 표시합니다.
+      published: 게시됨
+      published_msg: 공지사항이 성공적으로 게시되었습니다!
+      read_count:
+        one: "%{count} read"
+        other: "%{count}명 읽음"
+      silence_hint: 미읽음 배지나 배너 없이 조용히 추가합니다.
+      sort_priority: 정렬 우선도
+      sort_priority_hint: 공지사항은 기본적으로 최신순으로 정렬됩니다. 값이 높을수록 다른 공지보다 위에 고정됩니다(기본값 0).
+      title: 게시판 공지사항
+      unpublish: 게시 취소
+      unpublished_msg: 공지사항이 성공적으로 게시 취소되었습니다!
+      updated_msg: 공지사항이 성공적으로 수정되었습니다!
+    custom_emojis:
+      aliases: 별명(aliases)
+      aliases_hint: '쉼표로 구분하여 입력하세요. (예: 블롭, 귀여워, かわいい)'
+      bulk_edit:
+        title: 커스텀 에모지 일괄 편집
+        visible: 피커에 표시
+      bulk_edit_link: 일괄 편집
+      bulk_update_partial: "%{updated}개 업데이트됨, %{failed}개 실패"
+      bulk_updated_msg:
+        one: "%{count} emoji successfully updated!"
+        other: "%{count}개의 에모지가 성공적으로 업데이트되었습니다!"
+      edit:
+        title: 커스텀 에모지 편집
+      license: 라이선스/출처
+      license_hint: 에모지의 저작자, 라이선스, 출처 등을 입력하세요
+      reset_cache: 캐시 초기화
+      reset_cache_done_msg: 커스텀 에모지 캐시가 초기화되었습니다
+      shortcode_readonly_hint: 짧은 코드는 생성 후 변경할 수 없습니다.
+    domain_blocks:
+      block_trends: 유행에서 제외
+      block_trends_hint: 이 도메인의 게시물과 해시태그를 유행 집계에서 제외합니다
+      hidden: 공개 목록에서 숨기기
+      hidden_hint: 도메인 제한 목록을 공개하더라도 이 도메인 차단은 공개 목록에서 숨깁니다
+      reject_favourite: 좋아요 거부
+      reject_favourite_hint: 이 도메인에서 오는 좋아요와 에모지 반응을 무시합니다
+      reject_relay: 릴레이 게시물 거부
+      reject_relay_hint: 릴레이를 통해서만 들어온 이 도메인의 게시물을 받지 않습니다
+    drive_files:
+      all: 전체
+      attached: 첨부됨
+      attached_error: 이 드라이브 파일은 살아있는 게시물에 첨부되어 있어 삭제할 수 없습니다.
+      description_html: 계정별 드라이브 라이브러리에 보관된 파일입니다. orphan 파일은 더 이상 살아있는 게시물에 첨부되지
+        않은 파일로, 정리할 수 있습니다.
+      destroy: 삭제
+      destroy_orphaned: orphan 파일 모두 삭제
+      destroy_orphaned_confirm: 모든 orphan 드라이브 파일을 영구히 삭제할까요?
+      file: 파일
+      filter: 필터
+      orphaned: orphan
+      owner: 소유자
+      size: 크기
+      status: 상태
+      title: 드라이브 파일
+    instances:
+      content_policies:
+        policies:
+          block_trends: 유행에서 제외
+          reject_favourite: 좋아요 거부
+          reject_relay: 릴레이 게시물 거부
+      metadata:
+        favicon_url: 파비콘 URL
+        last_updated: 마지막 업데이트
+        never_updated: 업데이트 되지 않음
+        outdated_warning: 정보가 오래되었습니다!
+        refresh: 새 정보 요청
+        refreshing: 요청 중...
+        software: 소프트웨어
+        theme_color: 테마 색상
+        title: 인스턴스 정보
+        unknown: 알 수 없음
+        version: 버전
+      metadata_refresh_scheduled: 메타데이터 갱신 요청 예약됨.
+    not_permitted: 이 작업을 수행할 권한이 없습니다
+    reports:
+      actions:
+        delete_description_html: 신고된 게시물, 컬렉션 또는 페이지는 삭제될 것이며 이 처벌기록은 같은 계정의 향후 규정
+          위반에 대해 참고사항으로 쓰일 수 있도록 저장됩니다.
+      pages: 페이지(%{count}개)
+      reported_content: 신고된 콘텐츠
+      view_page: 페이지 보기
+    roles:
+      extra_categories:
+        api: API
+      extra_privileges:
+        bypass_rate_limit: API 제한 우회
+        bypass_rate_limit_description: 서버 설정에서 API 제한 우회가 활성화된 경우, 이 권한을 가진 사용자는 API
+          요청 제한을 받지 않습니다
+      privileges:
+        invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
+    settings:
+      allow_user_custom_css:
+        desc_html: 사용자가 웹 인터페이스에서 본인 세션에만 적용되는 커스텀 CSS를 직접 지정할 수 있도록 허용합니다. 비활성화하면
+          저장된 사용자 CSS도 더 이상 적용되지 않습니다.
+        title: 사용자 커스텀 CSS 허용
+      antenna:
+        enabled: 안테나 기능 활성화
+        enabled_hint: 사용자가 조건(계정, 도메인, 태그, 키워드)에 맞는 게시물을 자동으로 수집하는 안테나를 만들 수 있도록 합니다.
+          비활성화하면 안테나 페이지와 네비게이션 링크, API를 사용할 수 없습니다.
+        title: 안테나
+      auto_quote_from_url:
+        enabled: 게시물 링크 자동 인용 허용
+        enabled_hint: 사용자가 게시물에 포함된 가져올 수 있는 연합우주 게시물 링크를 원문 작성자에게 허용을 묻지 않고 자동으로
+          인용으로 변환하도록 선택할 수 있게 합니다. 각 사용자는 개인 환경설정에서 별도로 켜야 합니다.
+        title: URL 자동 인용
+      avatar_decorations:
+        enabled: 아바타 장식 활성화
+        enabled_hint: 사용자가 아바타 장식을 사용할 수 있도록 합니다
+        federation_enabled: 아바타 장식 연합 활성화
+        federation_enabled_hint: 원격 Misskey 호환 서버에서 아바타 장식을 가져와 표시합니다
+        local_only_view: 원격 아바타 장식만
+        local_only_view_hint: 로컬 아바타 장식을 비활성화하고 연합 서버에서 받은 아바타 장식만 표시합니다
+        max_count: 사용자당 최대 장식 수
+        max_count_hint: 사용자가 동시에 활성화할 수 있는 최대 장식 수 (0~16)
+        title: 아바타 장식
+      board_announcements:
+        enabled: 게시판형 공지사항 활성화
+        enabled_hint: 사용자가 사이트 내 게시판형 공지사항 페이지를 볼 수 있도록 합니다. 비활성화하면 페이지와 네비게이션 링크가
+          숨겨집니다.
+        title: 게시판형 공지사항
+      circles:
+        enabled: 서클 기능 활성화
+        enabled_hint: 사용자가 서클을 만들고 선택한 팔로워에게만 보이는 게시물을 작성할 수 있도록 합니다.
+        title: 서클
+      clips:
+        enabled: 클립 기능 활성화
+        enabled_hint: 사용자가 클립을 만들고 게시물을 이름 붙인 컬렉션으로 모을 수 있도록 합니다. 비활성화하면 기존 클립은 유지되지만
+          접근할 수 없습니다.
+        title: 클립
+      custom:
+        title: 커스텀
+      discovery:
+        preamble: 흥미로운 콘텐츠를 표시하는 것은 Mastodon에서 아무도 모르는 새로운 사용자를 온보딩하는 데 중요합니다. 서버에서
+          다양한 발견 기능이 작동하는 방식을 제어합니다.
+      drive:
+        allowed_extensions: 추가로 허용할 확장자
+        allowed_extensions_hint: '이미지·동영상·오디오는 항상 허용됩니다. 그 외에 허용할 확장자를 쉼표로 구분해 적어주세요(예:
+          pdf, zip, txt). 파일이 이 서버의 도메인에서 그대로 제공되므로 다음 확장자는 허용할 수 없습니다: %{extensions}.'
+        allowed_extensions_invalid: '다음 확장자는 허용할 수 없습니다: %{extensions}'
+        enabled: 드라이브 기능 활성화
+        enabled_hint: 사용자가 업로드를 계정별 영속 라이브러리에 보관하고, 바이트 복제 없이 심볼릭 링크로 게시물에 첨부할 수 있도록
+          합니다. 비활성화하면 드라이브 버튼과 API를 사용할 수 없습니다.
+        max_file_size: 파일 하나당 용량 상한 (MB)
+        max_file_size_hint: 드라이브에 올리는 파일 하나의 용량 상한(메가바이트)입니다. 미디어 파일은 서버의 이미지·동영상
+          상한도 함께 적용받습니다.
+        quota: 계정별 드라이브 용량 상한 (MB)
+        quota_hint: 한 계정의 드라이브 라이브러리 총 용량 상한(메가바이트)입니다. 0으로 두면 무제한입니다.
+        title: 드라이브
+      extensions:
+        title: 확장 기능
+      instance_metadata:
+        enabled: 서버 정보 바 및 인스턴스 메타데이터 수집 활성화
+        enabled_hint: 활성화하면 다른 서버의 게시물에 서버 정보 바(이름, 테마 색상, 파비콘)가 표시되고 연합 인스턴스의 메타데이터를
+          수집합니다. 비활성화하면 정보 바가 숨겨지고 인스턴스 메타데이터를 가져오지 않습니다.
+        title: 서버 정보 바
+      misskey_compat:
+        enabled: Misskey 호환 API 레이어 활성화
+        enabled_hint: 활성화하면 이 서버가 Misskey API의 일부도 응답하여 Aria for misskey 및 Flare와
+          같은 MiAuth 로그인 지원 앱이 로그인·리액션·MFM 렌더링을 할 수 있습니다. 켜면 이러한 앱이 이 호스트를 Misskey로
+          인식합니다. 비활성화하면 기본 Mastodon 동작을 유지합니다.
+        title: Misskey 호환 API
+      online_status:
+        enabled: 온라인 상태 표시 활성화
+        enabled_hint: 활성화하면, 사용하기로 선택한 사용자가 온라인·최근 활동·오프라인 상태를 아바타의 점으로 공유할 수 있습니다.
+          비활성화하면 사용자 설정과 관계없이 온라인 상태를 수집하지도, 누구에게도 표시하지도 않습니다.
+        title: 온라인 상태
+      pages:
+        enabled: 페이지 기능 활성화
+        enabled_hint: 사용자가 블록 기반 공개 페이지를 만들 수 있도록 합니다. 비활성화하면 기존 페이지는 유지되지만 접근할 수
+          없습니다.
+        title: 페이지
+      rate_limit_bypass:
+        enabled: 특정 권한에 API 제한 우회 허용
+        enabled_hint: 활성화하면 관리자 또는 DevOps 권한을 가진 사용자가 API 제한(rate limit)을 받지 않습니다.
+          비활성화하면 모든 사용자에게 제한이 적용됩니다.
+        title: API 제한 우회
+      reaction_local_emoji_only:
+        desc_html: 커스텀 에모지로 반응하려면 동일한 에모지가 로컬에도 존재해야 하도록 요구합니다. 원격 커스텀 에모지는 여전히 목록에
+          표시되지만, 로컬에 동일한 에모지가 없는 경우 해당 에모지로의 반응이 차단됩니다. 유니코드 에모지와 로컬 커스텀 에모지는 영향을
+          받지 않습니다.
+        title: 반응을 로컬 커스텀 에모지로 제한
+      reactions:
+        enabled: 에모지 리액션 활성화
+        enabled_hint: 사용자가 게시물에 에모지로 반응할 수 있도록 합니다. 비활성화하면 리액션 버튼이 숨겨지고 새 리액션이 거부됩니다.
+          기존 리액션은 계속 표시됩니다.
+        title: 에모지 리액션
+      special_features:
+        title: 특수 기능
+    username_blocks:
+      created_msg: 사용자명 규칙을 생성했습니다
+      no_username_block_selected: 아무 것도 선택 되지 않아 어떤 사용자명 규칙도 변경 되지 않았습니다
+      not_permitted: 허용하지 않음
+      updated_msg: 사용자명 규칙을 변경했습니다
+  antennas:
+    errors:
+      limit: 안테나 최대 개수를 초과합니다
+      too_many_accounts: 이 안테나의 계정 최대 개수를 초과합니다
+      too_many_domains: 이 안테나의 도메인 최대 개수를 초과합니다
+      too_many_keywords: 이 안테나의 키워드 최대 개수를 초과합니다
+      too_many_tags: 이 안테나의 해시태그 최대 개수를 초과합니다
+      too_short_keyword: 키워드는 최소 %{count}자 이상이어야 합니다
+  appearance:
+    customized: 서버 전용 - 에모지
+    misskey_flavour: 서버 전용 - 미스키 풍미
+  auth:
+    disable_custom_css: 커스텀 CSS 비활성화
+    progress:
+      list: 가입 진행 상황
+  circles:
+    errors:
+      limit: 서클 최대 개수를 초과합니다
+      too_many_accounts: 이 서클의 계정 최대 개수를 초과합니다
+  clips:
+    errors:
+      limit: 클립 최대 개수를 초과합니다
+  content_font_sizes:
+    large: 크게
+    medium: 보통
+    x_large: 아주 크게
+    xx_large: 매우 크게
+  custom_css:
+    disabled_by_admin: 서버 관리자가 사용자 커스텀 CSS를 비활성화했습니다. 위의 서버 전체 스타일 적용 여부는 계속 선택할 수
+      있습니다.
+    preamble_html: 웹 인터페이스에서 본인 세션에만 적용되는 CSS를 직접 지정할 수 있습니다. 잘못되었거나 악의적인 CSS는 레이아웃을
+      망가뜨릴 수 있으며, 그럴 경우 로그인 폼에서 <strong>커스텀 CSS 비활성화</strong>를 선택해 복구할 수 있습니다.
+  exports:
+    clips: 클립
+    pages: 페이지
+  page_backups:
+    title: 페이지 백업
+    description: 페이지와 이미지를 ZIP으로 백업하거나 여기에서 복원할 수 있습니다. 가져온 비밀번호 보호 페이지는 기존 비밀번호를 유지합니다.
+    download: 페이지 백업 다운로드
+    upload: 페이지 백업 복원
+    merge: 기존 페이지에 추가
+    overwrite: 기존 페이지 모두 교체
+    imported: 페이지 백업을 복원했습니다.
+    invalid_archive: 올바른 페이지 백업 파일이 아닙니다.
+  generic:
+    edit: 수정
+  imports:
+    overwrite_preambles:
+      clips_html:
+        one: You are about to <strong>replace your clips</strong> with contents of
+          <strong>%{filename}</strong>. Up to <strong>%{count} clip</strong> will
+          be added to new clips.
+        other: 나의 <strong>클립</strong>을 <strong>%{filename}</strong>의 내용으로 덮어 씌우려고
+          합니다. 최대 <strong>%{count} 개의 클립</strong>이 새 클립으로 추가됩니다.
+    preambles:
+      clips_html:
+        one: You are about to add up to <strong>%{count} clip</strong> from <strong>%{filename}</strong>
+          to your <strong>clips</strong>.
+        other: "<strong>%{filename}</strong>에서 가져온 <strong>%{count}개의 클립</strong>을
+          내 <strong>클립</strong>에 추가하려고 합니다."
+    titles:
+      clips: 클립 가져오는 중
+    types:
+      clips: 클립
+  misskey_compat:
+    scratchpad:
+      code_label: AiScript 코드
+      description: Misskey 호환 앱에 표시된 코드를 아래에 붙여넣고 실행하면 푸시 알림이 등록됩니다. 완료되면 결과를 복사해
+        앱에 다시 붙여넣으세요.
+      no_session: 활성 세션을 확인할 수 없습니다. 이 브라우저에서 다시 로그인한 뒤 시도하세요.
+      result_label: '결과 (앱에 다시 붙여넣기):'
+      run: 실행
+      title: 스크래치패드
+      unsupported: 이 스크래치패드는 푸시 알림 등록(sw/register)만 지원합니다. 붙여넣은 코드를 인식하지 못했습니다.
+      wrong_account: 이 코드는 @%{expected} 계정을 대상으로 하지만 현재 @%{current}(으)로 로그인되어 있습니다.
+        해당 계정으로 로그인한 뒤 시도하세요.
+  multi_accounts:
+    auth:
+      add_account: 계정 추가
+      authorization_complete: 인증이 완료되었습니다. 이 창을 닫으셔도 됩니다.
+      completing_authorization: 인증을 완료하는 중...
+      same_account: 현재 로그인한 계정과 동일한 계정은 추가할 수 없습니다.
+      sign_in_hint: 추가할 계정으로 로그인하세요.
+      success_close_message: 계정이 추가되었습니다. 이 창을 닫으셔도 됩니다.
+      success_message: 계정이 성공적으로 추가되었습니다. 창을 닫는 중...
+  notification_mailer:
+    follow_accepted:
+      body: "%{name} 님이 팔로우 요청을 수락했습니다"
+      subject: "%{name} 님이 팔로우 요청을 수락했습니다"
+      title: 팔로우 수락됨
+    quoted_update:
+      subject: "%{name} 님이 인용한 게시물을 수정했습니다"
+    reaction:
+      subject: "%{name} 님이 게시물에 반응을 남겼습니다"
+    severed_relationships:
+      subject: 관리 조치로 인해 연결이 끊어졌습니다
+  number:
+    human:
+      decimal_units:
+        units:
+          unit: ''
+  pages:
+    errors:
+      invalid_password: 비밀번호가 올바르지 않습니다
+      limit: 페이지 최대 개수를 초과합니다
+      own_page: 자신의 페이지에는 좋아요를 누를 수 없습니다
+  pagination:
+    truncate_html: "&hellip;"
+  settings:
+    avatar_decorations: 아바타 장식
+    custom_css: 커스텀 CSS
+  simple_form:
+    hints:
+      account:
+        followed_message: 팔로우 받았을 때 상대방에게 보여줄 단문 메시지를 설정할 수 있습니다. 팔로우를 승인제로 한 경우,
+          팔로우 요청을 수락했을 때 보여줍니다.
+      defaults:
+        custom_css_text: 본인 세션에만 적용되는 일반 CSS입니다. 최대 100 KB.
+        setting_auto_accept_followed: 계정이 잠겨 있어도, 내가 이미 팔로우하고 있는 계정의 팔로우 요청은 자동으로
+          수락합니다.
+        setting_auto_quote_from_url: 게시물 본문에 가져올 수 있는 다른 연합우주 게시물 링크가 있으면, 작성자에게 허용을
+          묻지 않고 자동으로 인용으로 변환합니다. 인용되는 원문 작성자에게 승인을 요청하지 않습니다.
+        setting_bridge_unlisted_to_bsky: 제한된 공개(조용한 공개) 게시물을 연합우주에서는 조용히 유지하면서, 블루스카이
+          브릿지(bsky.brid.gy)에는 전체 공개로 전달하여 블루스카이로 연동되도록 합니다. 브릿지 계정을 팔로우해야 작동합니다.
+        setting_content_font_size: 게시물 본문의 글자 크기만 조절합니다. 다른 인터페이스 텍스트에는 영향을 주지 않습니다.
+        setting_custom_emoji_size: 가로로 긴 커스텀 에모지의 가로 길이를 늘려서 표시합니다.
+        setting_avatar_decoration_shape: 아바타 장식이 활성화된 경우 프로필 이미지 모양을 강제로
+          지정합니다.
+        setting_hide_online_status: 지원하는 앱(미스키 호환 클라이언트 등)에서 내 온라인 상태를 숨깁니다.
+        setting_mfm_animations: MFM 콘텐츠의 애니메이션을 재생합니다 (spin, bounce, shake 등). 비활성화하면
+          정적 대체 표시로 전환됩니다.
+        setting_mfm_enabled: Misskey 및 호환 서버의 MFM 형식 콘텐츠를 애니메이션과 스타일로 렌더링합니다
+        setting_mfm_fold_mode: MFM 게시물을 접는 기준을 선택합니다. '민감한'은 애니메이션, 크기 조정, 테두리 효과가
+          있는 게시물을 접습니다. '모두'는 모든 MFM 게시물을 접습니다.
+        setting_prevent_ai_learning: 크롤러에게 내 게시물과 미디어를 AI 학습에 사용하지 말 것을 요청합니다. 요청일
+          뿐이며 강제할 수는 없습니다.
+        setting_reaction_custom_emoji_size: 리액션 버튼에서 가로로 긴 커스텀 에모지의 가로 길이를 늘려 서 표시합니다.
+        setting_show_avatar_decorations: 아바타 장식을 표시합니다.
+        setting_show_federated_avatar_decorations: Misskey 호환 서버에서 받은 장식을 표시합니다.
+        setting_show_instance_info: 다른 서버의 게시물에 인스턴스 이름, 테마 색상 및 파비콘 표시
+        setting_show_online_status: 다른 사람이 당신이 온라인인지, 최근 활동했는지, 오프라인인지 볼 수 있습니다. 끄면
+          모두에게 상태가 알 수 없음으로 표시됩니다.
+        setting_show_reactions: 다른 사람이 내 프로필에서 내가 리액션한 게시물을 볼 수 있도록 허용합니다.
+        setting_use_custom_css: 활성화하면 아래에 작성한 커스텀 CSS가 웹 인터페이스에 적용됩니다.
+        setting_use_server_css: 활성화하면 관리자가 설정한 서버 전체 커스텀 스타일이 적용됩니다.
+        warn_quote_policy_html: "<strong>Warning:</strong><br>If you limit who can
+          quote, software other than Mastodon, maybe quoted if they don't accept the
+          FEP-044f (Fediverse Enhancement Proposals)<br>%{instance} default is 'Nobody'"
+      form_admin_settings:
+        theme_color: 브라우저의 주소 표시줄과 앱 UI에 사용되는 강조 색상.
+      user_role:
+        drive_quota: 이 역할을 가진 사용자별 드라이브 라이브러리의 최대 용량을 MB 단위로 지정합니다. 비워 두면 서버 기본값을
+          사용하고, 0이면 무제한입니다.
+        extra_permissions_as_keys: 이 역할에 부여되는 Sharlayan 전용 추가 권한입니다
+    labels:
+      defaults:
+        custom_css_text: 커스텀 CSS
+        followed_message: 팔로우 받았을 때 메시지
+        setting_auto_accept_followed: 팔로우 중인 계정의 팔로우 요청 자동 수락
+        setting_auto_quote_from_url: 게시물의 연합우주 게시물 링크를 자동으로 인용
+        setting_bridge_unlisted_to_bsky: 제한된 공개 게시물을 블루스카이에 전체 공개로 전달
+        setting_content_font_size: 게시물 글자 크기
+        setting_custom_emoji_size: 커스텀 에모지 원본 비율 표시
+        setting_default_quote_policy_private: 팔로워만으로 설정할 경우 다른 사람이 인용할 수 없습니다.
+        setting_default_quote_policy_unlisted: 사용자의 게시물을 인용할 경우 인용된 게시물은 인기 게시물에서
+          숨겨집니다.
+        setting_avatar_decoration_shape: 장식 활성 시 프로필 이미지 모양
+        setting_avatar_decoration_shape_none: 사용 안 함
+        setting_avatar_decoration_shape_round: 원형
+        setting_avatar_decoration_shape_square: 사각형
+        setting_hide_online_status: 온라인 상태 숨기기
+        setting_mfm_animations: MFM 애니메이션 활성화
+        setting_mfm_enabled: MFM 렌더링 활성화
+        setting_mfm_fold_mode: MFM 게시물 접기
+        setting_mfm_fold_mode_all: 모두 접기
+        setting_mfm_fold_mode_sensitive: 민감한 MFM 접기 (권장)
+        setting_mfm_fold_mode_show: 그대로 표시
+        setting_prevent_ai_learning: AI 학습에 사용 방지
+        setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
+        setting_show_avatar_decorations: 아바타 장식 표시
+        setting_show_federated_avatar_decorations: 연합 서버의 아바타 장식 표시
+        setting_show_instance_info: 게시물에 인스턴스 정보 표시 (글리치 풍미에만 적용됨)
+        setting_show_online_status: 내 온라인 상태 공유
+        setting_show_reactions: 프로필에 내 리액션 표시
+        setting_use_custom_css: 내 커스텀 CSS 적용
+        setting_use_server_css: 서버 커스텀 CSS 적용
+        warn_quote_policy_html: "<strong>주의:</strong><br>인용할 수 있는 사용자를 제한하더라도 Mastodon
+          이외의 소프트웨어가 FEP-044f 제안을 수용하지 않으면 인용될 수 있음을 이해해 주시기 바랍니다.<br>%{instance}
+          서버의 경우 기본값이 '나만' 으로 지정되어 있습니다."
+      form_admin_settings:
+        local_account_statuses_access: 로컬 계정에 대한 게시물 접근
+        local_status_page_access: 개별 게시물 페이지 접근
+        theme_color: 테마 색상
+      user_role:
+        drive_quota: 사용자당 드라이브 용량 (MB)
+        extra_permissions_as_keys: 추가 권한
+  statuses_cleanup:
+    ignore_reactions: 반응 무시
+    interaction_exceptions_explanation: 즐겨찾기 또는 부스트 기준을 일시적으로 초과한 게시물은 나중에 기준 이하로
+      떨어져도 유지될 수 있습니다.
+    keep_self_clip: 클립에 담은 게시물 유지
+    keep_self_clip_hint: 내 클립에 담아둔 본인의 게시물을 삭제하지 않습니다
+    keep_self_reaction: 내가 반응한 게시물 유지
+    keep_self_reaction_hint: 스스로 반응을 누른 본인의 게시물을 삭제하지 않습니다
+    min_reactions: 해당 횟수 이상 반응을 받은 게시물 유지
+    min_reactions_hint: 이 횟수 이상 반응을 받은 게시물은 삭제하지 않습니다. 반응 수와 관계없이 게시물을 지우고 싶다면 공백으로
+      두세요
+  two_factor_authentication:
+    resume_app_authorization: 앱 인증 재개
+    role_requirement: "%{domain}에서 Mastodon을 사용하려면 2단계 인증을 설정해야 합니다."
+  unsubscriptions:
+    notification_emails:
+      follow_accepted: follow accepted notification emails
+  wrapstodon:
+    description: "%{name}님의 올해 Mastodon 활동을 확인해보세요!"

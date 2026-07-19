@@ -57,6 +57,56 @@ RSpec.describe StatusReaction do
     end
   end
 
+  describe '.reaction_groups_map batch preloading' do
+    def count_queries
+      count = 0
+      subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') do |_, _, _, _, payload|
+        count += 1 unless payload[:name] == 'SCHEMA' || payload[:cached] || /^(BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)/.match?(payload[:sql])
+      end
+      yield
+      count
+    ensure
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+    end
+
+    let(:reactors) { Fabricate.times(3, :account) }
+
+    before do
+      reactors.each { |reactor| described_class.create!(account: reactor, status: status, name: '👍') }
+    end
+
+    it 'preloads users and account_ids so grouped records need no further queries' do
+      record = Status.reaction_groups_map([status.id])[status.id].first
+
+      expect(count_queries { record.account_ids }).to eq(0)
+      expect(count_queries { record.users }).to eq(0)
+      expect(record.account_ids).to match_array(reactors.map { |reactor| reactor.id.to_s })
+      expect(record.users).to match_array(reactors)
+    end
+
+    it 'keeps the query count flat as the number of reaction groups grows' do
+      one_group = count_queries { Status.reaction_groups_map([status.id]) }
+
+      emojis = %w(😀 😁 😂 🤣)
+      Fabricate.times(4, :account).each_with_index do |reactor, index|
+        described_class.create!(account: reactor, status: status, name: emojis[index])
+      end
+      many_groups = count_queries { Status.reaction_groups_map([status.id]) }
+
+      expect(many_groups).to eq(one_group)
+    end
+
+    it 'caps preloaded users at the display limit while keeping full account_ids' do
+      extra = Fabricate.times(StatusReaction::USERS_DISPLAY_LIMIT, :account)
+      extra.each { |reactor| described_class.create!(account: reactor, status: status, name: '👍') }
+
+      record = Status.reaction_groups_map([status.id])[status.id].first
+
+      expect(record.users.size).to eq(StatusReaction::USERS_DISPLAY_LIMIT)
+      expect(record.account_ids.size).to eq(3 + StatusReaction::USERS_DISPLAY_LIMIT)
+    end
+  end
+
   describe 'cache counters' do
     it 'increments reactions_count on create' do
       expect { described_class.create!(account: account, status: status, name: '👍') }

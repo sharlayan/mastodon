@@ -6,7 +6,6 @@ ja:
         attribution_domains: 1行につき1つずつ入力してください。この設定は関わりのないwebサイトに対して虚偽の帰属表示が行われることを防止する役割があります。
         display_name: フルネーム、ハンドルネームなど
         fields: ホームページ、代名詞、年齢など何でも構いません。
-        followed_message: フォローされた時に相手に表示する短いメッセージを設定できます。フォローを承認制にしている場合、フォローリクエストを許可した時に表示されます。
         indexable: "「公開」で送信された投稿がMastodonの検索結果にヒットするようになります。ここのチェック状態にかかわらず、ほかのユーザーにブーストやお気に入り登録された投稿はそのユーザーから検索されることがあります。"
         note: '自己紹介には #ハッシュタグ や、ほかのアカウントのユーザー名 (@user) を使用できます'
         show_collections: チェックを入れるとフォローとフォロワーの一覧を誰でも見られるようにします。チェックをはずすとこれらの情報を非公開にできますが、あなたがフォローしているユーザーからは、あなたがフォロワーになっていることがわかります。
@@ -60,13 +59,6 @@ ja:
         setting_boost_modal: 有効にすると、ブーストによって、まず、ブーストの公開範囲を設定できる確認ダイアログが表示されます。
         setting_default_quote_policy_private: Mastodon で作成されたフォロワーのみの投稿は他人から引用できません。
         setting_default_quote_policy_unlisted: 誰かがあなたを引用すると、その投稿もトレンドから非表示になります。
-        setting_auto_accept_followed: アカウントが承認制でも、すでにフォローしているアカウントからのフォローリクエストは自動的に承認します。
-        setting_auto_quote_from_url: 投稿本文に取得可能な他の連合投稿へのリンクが含まれている場合、作成者に許可を求めずに自動的に引用へ変換します。引用される元の投稿者に承認を求めることはありません。
-        setting_hide_online_status: 対応しているアプリ（Misskey互換クライアントなど）でオンライン状態を非表示にします。
-        setting_prevent_ai_learning: 投稿やメディアをAIの学習に使用しないようにクローラーへ要求します。あくまで要求であり、強制はできません。
-        setting_show_reactions: プロフィールで自分がリアクションした投稿を他の人に表示できるようにします。
-        setting_bridge_unlisted_to_bsky: 未収載（ホーム）の投稿は連合上では静かなままにしつつ、Blueskyブリッジ（bsky.brid.gy）には公開として配送し、Blueskyへ転送されるようにします。ブリッジアカウントのフォローが必要です。
-        setting_show_online_status: あなたがオンラインか、最近アクティブか、オフラインかを他の人が確認できます。無効にすると、状態はすべての人に不明として表示されます。
         setting_default_sensitive: 閲覧注意状態のメディアはデフォルトでは内容が伏せられ、クリックして初めて閲覧できるようになります
         setting_emoji_style: 絵文字の表示方法。「自動」の場合、可能ならネイティブの絵文字を使用し、レガシーなブラウザではTwemojiで代替します。
         setting_quick_boosting_html: 有効にすると、%{boost_icon} ブーストアイコンのクリックで即座にブーストされます。ブースト/引用ドロップダウンは開きません。引用アクションは %{options_icon} (オプション) メニューに移されます。
@@ -74,13 +66,6 @@ ja:
         setting_use_pending_items: 新着があってもタイムラインを自動的にスクロールしないようにします
         username: アルファベット大文字と小文字、数字、アンダーバー「_」が使えます
         whole_word: キーワードまたはフレーズが英数字のみの場合、単語全体と一致する場合のみ適用されるようになります
-        setting_show_avatar_decorations: アバターデコレーションを表示します。デフォルトではオフです。
-        setting_show_federated_avatar_decorations: Misskey互換サーバーから受信したアバターデコレーションも表示します
-        setting_force_round_avatar_decoration: デコレーション表示時にプロフィール画像を円形（border-radius 50%）に強制します。
-        setting_content_font_size: 投稿本文の文字サイズのみを調整します。その他のUIテキストには影響しません。
-        custom_css_text: 自分のセッションにのみ適用されるプレーンなCSSです。最大100 KB。
-        setting_use_server_css: 有効にすると、管理者が設定したサーバー全体のカスタムスタイルが適用されます。
-        setting_use_custom_css: 有効にすると、下に記入したカスタムCSSがウェブインターフェースに適用されます。
       domain_allow:
         domain: 登録するとこのサーバーからデータを受信したり、このドメインから受信するデータを処理して保存できるようになります
       email_domain_block:
@@ -117,7 +102,6 @@ ja:
         site_title: ドメイン名以外でサーバーを参照する方法
         status_page_url: 障害発生時などにユーザーがサーバーの状態を確認できるページのURL
         theme: ログインしていない人と新規ユーザーに表示されるテーマ。
-        theme_color: ブラウザのアドレスバーやアプリUIで使われるアクセントカラー。
         thumbnail: サーバー情報と共に表示される、アスペクト比が約 2:1 の画像。
         trendable_by_default: トレンドの審査を省略します。トレンドは掲載後でも個別に除外できます。
         trends: トレンドは、サーバー上で人気を集めている投稿、ハッシュタグ、ニュース記事などが表示されます。
@@ -167,8 +151,6 @@ ja:
         role: そのロールは、ユーザーが持つ権限を制御します。
       user_role:
         color: UI 全体でロールの表示に使用される色（16進数RGB形式）
-        drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
-        extra_permissions_as_keys: このロールに付与されるSharlayan独自の追加権限
         highlighted: これによりロールが公開されます。
         name: ロールのバッジを表示する際の表示名
         permissions_as_keys: このロールを持つユーザーは次の機能にアクセスできます
@@ -228,7 +210,6 @@ ja:
         expires_in: 有効期限
         fields: プロフィール補足情報
         filter_action: フィルターの動作
-        followed_message: フォローされた時のメッセージ
         header: ヘッダー
         honeypot: "%{label} (入力しない)"
         inbox_url: リレーサーバーの inbox URL
@@ -250,13 +231,6 @@ ja:
         setting_default_language: 投稿する言語
         setting_default_privacy: 投稿の公開範囲
         setting_default_quote_policy: 引用できるユーザー
-        setting_auto_accept_followed: フォロー中のアカウントからのフォローリクエストを自動承認する
-        setting_auto_quote_from_url: 投稿内の連合投稿リンクを自動的に引用する
-        setting_hide_online_status: オンライン状態を隠す
-        setting_prevent_ai_learning: AIの学習への使用を防ぐ
-        setting_show_reactions: プロフィールに自分のリアクションを表示する
-        setting_bridge_unlisted_to_bsky: 未収載の投稿を公開としてBlueskyに転送する
-        setting_show_online_status: 自分のオンライン状態を共有する
         setting_default_sensitive: メディアを常に閲覧注意としてマークする
         setting_delete_modal: 投稿を削除する前に警告する
         setting_disable_hover_cards: マウスオーバーでプロフィールをポップアップしない
@@ -278,13 +252,6 @@ ja:
         setting_unfollow_modal: フォローを解除する前に確認ダイアログを表示する
         setting_use_blurhash: 非表示のメディアを色付きのぼかしで表示する
         setting_use_pending_items: 手動更新モード
-        setting_show_avatar_decorations: アバターデコレーションを表示
-        setting_show_federated_avatar_decorations: 連合サーバーからのアバターデコレーションを表示
-        setting_force_round_avatar_decoration: デコレーション表示時にプロフィール画像を円形に強制
-        setting_content_font_size: 投稿の文字サイズ
-        custom_css_text: カスタムCSS
-        setting_use_server_css: サーバーのカスタムCSSを適用
-        setting_use_custom_css: 自分のカスタムCSSを適用
         severity: 重大性
         sign_in_token_attempt: セキュリティコード
         title: タイトル
@@ -327,7 +294,6 @@ ja:
         site_title: サーバーの名前
         status_page_url: サーバーの状態ページのURL
         theme: デフォルトテーマ
-        theme_color: テーマカラー
         thumbnail: サーバーのサムネイル
         trendable_by_default: 審査前のトレンドの掲載を許可する
         trends: トレンドを有効にする
@@ -399,8 +365,6 @@ ja:
         time_zone: タイムゾーン
       user_role:
         color: バッジの色
-        drive_quota: ユーザーごとのドライブ容量 (MB)
-        extra_permissions_as_keys: 追加権限
         highlighted: プロフィールにロールのバッジを表示する
         name: 名前
         permissions_as_keys: 権限

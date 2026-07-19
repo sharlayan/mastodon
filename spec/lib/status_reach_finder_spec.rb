@@ -16,11 +16,67 @@ RSpec.describe StatusReachFinder do
         let(:bob) { Fabricate(:account, username: 'bob', domain: 'foo.bar', protocol: :activitypub, inbox_url: 'https://foo.bar/inbox') }
 
         before do
-          status.mentions.create!(account: bob)
+          status.mentions.create!(account: bob, silent: false)
         end
 
         it 'includes the inbox of the mentioned account' do
           expect(subject.inboxes).to include 'https://foo.bar/inbox'
+        end
+
+        context 'when the status is private' do
+          let(:visibility) { :private }
+          let(:bob) do
+            Fabricate(
+              :account,
+              username: 'bob',
+              domain: 'foo.bar',
+              protocol: :activitypub,
+              inbox_url: 'https://foo.bar/users/bob/inbox',
+              shared_inbox_url: 'https://foo.bar/inbox'
+            )
+          end
+
+          it 'delivers the mention to the account inbox instead of the shared inbox' do
+            expect(subject.inboxes)
+              .to include('https://foo.bar/users/bob/inbox')
+              .and not_include('https://foo.bar/inbox')
+          end
+        end
+      end
+
+      context 'when the status is private' do
+        let(:visibility) { :private }
+        let(:bob) do
+          Fabricate(
+            :account,
+            username: 'bob',
+            domain: 'foo.bar',
+            protocol: :activitypub,
+            inbox_url: 'https://foo.bar/users/bob/inbox',
+            shared_inbox_url: 'https://foo.bar/inbox'
+          )
+        end
+        let(:carol) do
+          Fabricate(
+            :account,
+            username: 'carol',
+            domain: 'foo.bar',
+            protocol: :activitypub,
+            inbox_url: 'https://foo.bar/users/carol/inbox',
+            shared_inbox_url: 'https://foo.bar/inbox'
+          )
+        end
+
+        before do
+          Fabricate(:follow, account: bob, target_account: alice)
+          Fabricate(:follow, account: carol, target_account: alice)
+          status.mentions.create!(account: bob, silent: false)
+        end
+
+        it 'delivers to each follower inbox without using their shared inbox' do
+          expect(subject.inboxes)
+            .to include('https://foo.bar/users/bob/inbox', 'https://foo.bar/users/carol/inbox')
+            .and not_include('https://foo.bar/inbox')
         end
       end
 

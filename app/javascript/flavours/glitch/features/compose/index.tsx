@@ -25,11 +25,8 @@ import { Icon } from 'flavours/glitch/components/icon';
 import glitchedElephant1 from 'flavours/glitch/images/mbstobon-ui-0.png';
 import glitchedElephant2 from 'flavours/glitch/images/mbstobon-ui-1.png';
 import glitchedElephant3 from 'flavours/glitch/images/mbstobon-ui-2.png';
-import {
-  mascot,
-  reduceMotion,
-  roleplayMode,
-} from 'flavours/glitch/initial_state';
+import { mascot, reduceMotion } from 'flavours/glitch/initial_state';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { messages as navbarMessages } from '../ui/components/navigation_bar';

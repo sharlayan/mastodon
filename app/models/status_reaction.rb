@@ -37,14 +37,26 @@ class StatusReaction < ApplicationRecord
   after_destroy :decrement_cache_counters
   after_destroy :invalidate_cleanup_info
 
+  USERS_DISPLAY_LIMIT = 11
+
   def users
+    return @preloaded_users if defined?(@preloaded_users)
+
     account_ids = StatusReaction.where(status_id: status_id, name: name, custom_emoji_id: custom_emoji_id).select(:account_id)
-    Account.where(id: account_ids).limit(11)
+    Account.where(id: account_ids).limit(USERS_DISPLAY_LIMIT)
   end
 
   def account_ids
+    return @preloaded_account_ids if defined?(@preloaded_account_ids)
+
     StatusReaction.where(status_id: status_id, name: name, custom_emoji_id: custom_emoji_id).pluck(:account_id).map(&:to_s)
   end
+
+  def preloaded_account_ids=(ids)
+    @preloaded_account_ids = ids.map(&:to_s)
+  end
+
+  attr_writer :preloaded_users
 
   private
 

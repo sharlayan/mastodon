@@ -6,11 +6,17 @@ const upstreamTranslations = require(
 const currentTranslations = require(
   path.join(__dirname, '../app/javascript/flavours/glitch/locales/en.json'),
 );
+const sharlayanTranslations = require(
+  path.join(
+    __dirname,
+    '../app/javascript/flavours/glitch/locales/sharlayan/en.json',
+  ),
+);
 
 exports.format = (msgs) => {
-  const results = {};
+  const results = { ...currentTranslations };
   for (const [id, msg] of Object.entries(msgs)) {
-    if (!upstreamTranslations[id]) {
+    if (!upstreamTranslations[id] && !sharlayanTranslations[id]) {
       results[id] = currentTranslations[id] || msg.defaultMessage;
     }
   }

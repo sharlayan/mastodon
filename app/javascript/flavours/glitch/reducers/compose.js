@@ -9,8 +9,6 @@ import {
   pasteLinkCompose,
   cancelPasteLinkCompose,
   setDragUploadEnabled,
-  changeComposeCircle,
-  toggleComposeClip,
 } from '@/flavours/glitch/actions/compose_typed';
 import { timelineDelete } from 'flavours/glitch/actions/timelines_typed';
 
@@ -58,7 +56,6 @@ import {
   COMPOSE_CHANGE_MEDIA_ORDER,
   COMPOSE_SET_STATUS,
   COMPOSE_FOCUS,
-  COMPOSE_SCHEDULED_AT_CHANGE,
 } from '../actions/compose';
 import { REDRAFT } from '../actions/statuses';
 import { STORE_HYDRATE } from '../actions/store';
@@ -68,6 +65,12 @@ import { unescapeHTML } from '../utils/html';
 import { overwrite } from '../utils/js_helpers';
 import { privacyPreference } from '../utils/privacy_preference';
 import { uuid } from '../uuid';
+import {
+  reduceSharlayanCompose,
+  resetScheduledComposeState,
+  resetSharlayanComposeState,
+  sharlayanComposeInitialState,
+} from '../sharlayan/compose/state';
 
 const initialState = ImmutableMap({
   mounted: 0,
@@ -79,8 +82,6 @@ const initialState = ImmutableMap({
   spoiler: false,
   spoiler_text: '',
   privacy: null,
-  circle_id: null,
-  clip_ids: ImmutableList(),
   id: null,
   content_type: defaultContentType || 'text/plain',
   text: '',
@@ -129,9 +130,7 @@ const initialState = ImmutableMap({
   quote_policy: 'public',
   default_quote_policy: 'public', // Set in hydration.
   fetching_link: null,
-
-  scheduled_at: null,
-});
+}).merge(sharlayanComposeInitialState);
 
 const initialPoll = ImmutableMap({
   options: ImmutableList(['', '']),
@@ -175,7 +174,7 @@ function apiStatusToTextHashtags (state, status) {
 }
 
 function clearAll(state) {
-  return state.withMutations(map => {
+  return resetSharlayanComposeState(state.withMutations(map => {
     map.set('id', null);
     map.set('text', '');
     if (defaultContentType) map.set('content_type', defaultContentType);
@@ -189,8 +188,6 @@ function clearAll(state) {
       map => map.mergeWith(overwrite, state.get('default_advanced_options')),
     );
     map.set('privacy', state.get('default_privacy'));
-    map.set('circle_id', null);
-    map.set('clip_ids', ImmutableList());
     map.set('sensitive', state.get('default_sensitive'));
     map.set('language', state.get('default_language'));
     map.update('media_attachments', list => list.clear());
@@ -199,9 +196,8 @@ function clearAll(state) {
     map.set('idempotencyKey', uuid());
     map.set('quoted_status_id', null);
     map.set('quote_policy', state.get('default_quote_policy'));
-    map.set('scheduled_at', null);
     map.set('isDragDisabled', false);
-  });
+  }));
 }
 
 function continueThread (state, status) {
@@ -416,21 +412,17 @@ const calculateProgress = (loaded, total) => Math.min(Math.round((loaded / total
 
 /** @type {import('@reduxjs/toolkit').Reducer<typeof initialState>} */
 export const composeReducer = (state = initialState, action) => {
+  const sharlayanState = reduceSharlayanCompose(state, action, {
+    createIdempotencyKey: uuid,
+    resetCompose: clearAll,
+  });
+  if (sharlayanState) return sharlayanState;
+
   if (changeComposeVisibility.match(action)) {
     return state
       .set('privacy', action.payload)
       .set('circle_id', null)
       .set('idempotencyKey', uuid());
-  } else if (changeComposeCircle.match(action)) {
-    return state
-      .set('circle_id', action.payload)
-      .set('idempotencyKey', uuid());
-  } else if (toggleComposeClip.match(action)) {
-    return state.update('clip_ids', list => (
-      list.includes(action.payload)
-        ? list.filter(id => id !== action.payload)
-        : list.push(action.payload)
-    ));
   } else if (changeUploadCompose.fulfilled.match(action)) {
     return state
       .set('is_changing_upload', false)
@@ -570,7 +562,7 @@ export const composeReducer = (state = initialState, action) => {
     state = state.setIn(['advanced_options', 'threaded_mode'], false);
     // eslint-disable-next-line no-fallthrough -- fall-through to `COMPOSE_RESET` is intended
   case COMPOSE_RESET:
-    return state.withMutations(map => {
+    return resetScheduledComposeState(state.withMutations(map => {
       map.set('in_reply_to', null);
       if (defaultContentType) map.set('content_type', defaultContentType);
       map.set('text', '');
@@ -580,13 +572,12 @@ export const composeReducer = (state = initialState, action) => {
       map.set('id', null);
       map.set('poll', null);
       map.set('language', state.get('default_language'));
-      map.set('scheduled_at', null);
       map.update(
         'advanced_options',
         map => map.mergeWith(overwrite, state.get('default_advanced_options')),
       );
       map.set('idempotencyKey', uuid());
-    });
+    }));
   case COMPOSE_SUBMIT_REQUEST:
     return state.set('is_submitting', true);
   case COMPOSE_SUBMIT_SUCCESS:
@@ -767,60 +758,6 @@ export const composeReducer = (state = initialState, action) => {
       .set('focusDate', new Date())
       .update('text', text => text.length > 0 ? text : action.defaultText)
       .update('caretPosition', position => action.caretStart ? 0 : position);
-  case 'COMPOSE_SET_SCHEDULED': {
-    const s = action.scheduledStatus;
-    const params = s.get('params') || ImmutableMap();
-    const getParam = (key) => (params.get ? params.get(key) : params[key]);
-    const text = getParam('status') ?? getParam('text') ?? '';
-    const spoilerText = getParam('spoiler_text') || '';
-    const visibility = getParam('visibility') || 'public';
-    const language = getParam('language');
-    const pollParam = getParam('poll');
-    const mediaAttachments = s.get('media_attachments') || state.get('media_attachments');
-    const maxOptions = action.maxOptions || 4;
-
-    return state.withMutations(map => {
-      map.set('id', s.get('id'));
-      map.set('text', text);
-      map.set('in_reply_to', null);
-      map.set('privacy', visibility);
-      map.set('media_attachments', (mediaAttachments && mediaAttachments.size > 0 ? mediaAttachments : ImmutableList()).map(media => (media.set ? media.set('unattached', true) : media)));
-      map.set('focusDate', new Date());
-      map.set('caretPosition', null);
-      map.set('idempotencyKey', uuid());
-      map.set('sensitive', getParam('sensitive') || false);
-      map.set('language', language || state.get('default_language'));
-      map.set('scheduled_at', s.get('scheduled_at'));
-      map.setIn(['advanced_options', 'do_not_federate'], !!getParam('local_only'));
-
-      if (spoilerText.length > 0) {
-        map.set('spoiler', true);
-        map.set('spoiler_text', spoilerText);
-      } else {
-        map.set('spoiler', false);
-        map.set('spoiler_text', '');
-      }
-
-      if (pollParam && (pollParam.options || pollParam.get?.('options'))) {
-        const optionsRaw = pollParam.options ?? pollParam.get?.('options');
-        const optionsArr = Array.isArray(optionsRaw) ? optionsRaw : optionsRaw?.toArray?.() ?? [];
-        let options = ImmutableList(optionsArr.map(opt => (typeof opt === 'string' ? opt : (opt?.title ?? opt?.get?.('title') ?? '')))).filter(Boolean);
-        if (options.size < maxOptions) {
-          options = options.push('');
-        }
-        const expiresIn = pollParam.expires_in ?? pollParam.get?.('expires_in') ?? 24 * 3600;
-        map.set('poll', ImmutableMap({
-          options,
-          multiple: pollParam.multiple ?? pollParam.get?.('multiple') ?? false,
-          expires_in: expiresIn,
-        }));
-      } else {
-        map.set('poll', null);
-      }
-    });
-  }
-  case COMPOSE_SCHEDULED_AT_CHANGE:
-    return state.set('scheduled_at', action.scheduledAt);
   case COMPOSE_CHANGE_MEDIA_ORDER:
     return state.update('media_attachments', list => {
       const indexA = list.findIndex(x => x.get('id') === action.a);

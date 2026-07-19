@@ -38,8 +38,6 @@ import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import {
   avatarDecorationsEnabled,
-  collectionsEnabled,
-  roleplayMode,
   showAvatarDecorations,
 } from '@/flavours/glitch/initial_state';
 import type { Account } from '@/flavours/glitch/models/account';
@@ -49,6 +47,10 @@ import {
   PERMISSION_MANAGE_FEDERATION,
   PERMISSION_MANAGE_USERS,
 } from '@/flavours/glitch/permissions';
+import {
+  collectionsEnabled,
+  roleplayMode,
+} from '@/flavours/glitch/sharlayan/roleplay';
 import type { AppDispatch } from '@/flavours/glitch/store';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import BlockIcon from '@/material-icons/400-24px/block.svg?react';

@@ -36,10 +36,12 @@ const messages = defineMessages({
 
 export const PrivateQuoteNotify = forwardRef<
   HTMLDivElement,
-  BaseConfirmationModalProps
+  BaseConfirmationModalProps & {
+    onSubmitSuccess?: (status: unknown) => void;
+  }
 >(
   (
-    { onClose },
+    { onClose, onSubmitSuccess },
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _ref,
   ) => {
@@ -52,13 +54,13 @@ export const PrivateQuoteNotify = forwardRef<
 
     const dispatch = useAppDispatch();
     const handleConfirm = useCallback(() => {
-      dispatch(submitCompose());
+      dispatch(submitCompose(null, onSubmitSuccess));
       if (dismiss) {
         dispatch(
           changeSetting(['dismissed_banners', PRIVATE_QUOTE_MODAL_ID], true),
         );
       }
-    }, [dismiss, dispatch]);
+    }, [dismiss, dispatch, onSubmitSuccess]);
 
     return (
       <ConfirmationModal

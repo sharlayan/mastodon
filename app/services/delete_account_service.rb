@@ -15,6 +15,8 @@ class DeleteAccountService < BaseService
     conversations
     custom_filters
     domain_blocks
+    drive_files
+    drive_folders
     featured_tags
     follow_requests
     list_accounts
@@ -23,6 +25,8 @@ class DeleteAccountService < BaseService
     muted_by_relationships
     notifications
     owned_lists
+    page_likes
+    pages
     passive_relationships
     report_notes
     scheduled_statuses
@@ -148,7 +152,9 @@ class DeleteAccountService < BaseService
     purge_profile!
     purge_statuses!
     purge_mentions!
+    purge_pages!
     purge_media_attachments!
+    purge_drive!
     purge_polls!
     purge_generated_notifications!
     purge_favourites!
@@ -176,6 +182,16 @@ class DeleteAccountService < BaseService
 
       media_attachment.destroy
     end
+  end
+
+  def purge_pages!
+    @account.page_likes.in_batches.delete_all
+    @account.pages.in_batches.destroy_all
+  end
+
+  def purge_drive!
+    @account.drive_files.in_batches.destroy_all
+    @account.drive_folders.in_batches.destroy_all
   end
 
   def purge_polls!

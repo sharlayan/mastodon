@@ -20,4 +20,7 @@
     .fields-group
       .input.text
         = label_tag :result, t('misskey_compat.scratchpad.result_label')
-        = text_area_tag :result, @result, rows: 6, readonly: true, spellcheck: false
+        .input-copy
+          .input-copy__wrapper
+            = copyable_input value: @result, id: :result
+          %button.button{ type: :button }= t('generic.copy')

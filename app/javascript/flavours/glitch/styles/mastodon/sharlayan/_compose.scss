@@ -1,0 +1,183 @@
+.autosuggest-textarea {
+  position: relative;
+}
+
+.autosuggest-textarea__textarea {
+  position: relative;
+  z-index: 1;
+}
+
+.autosuggest-textarea__highlights {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px;
+  padding-bottom: 0;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: normal;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+}
+
+.autosuggest-textarea__highlights__content {
+  margin: 0;
+  will-change: transform;
+}
+
+.autosuggest-textarea__highlights__over {
+  color: transparent;
+  background: color-mix(in srgb, var(--color-bg-warning-base) 35%, transparent);
+  border-radius: 2px;
+  box-decoration-break: clone;
+}
+
+.compose-form__dropdowns .schedule-button {
+  position: relative;
+}
+
+.compose-form__dropdowns .schedule-button__scheduled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.compose-form__buttons {
+  gap: 4px;
+}
+
+.dropdown-button {
+  display: inline-flex;
+  box-sizing: border-box;
+  min-height: 25px;
+}
+
+.schedule-button__dropdown {
+  box-shadow: var(--dropdown-shadow);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  padding: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.schedule-button__dropdown.top {
+  transform-origin: 50% 100%;
+}
+
+.schedule-button__dropdown.bottom {
+  transform-origin: 50% 0;
+}
+
+.schedule-button__dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+
+.schedule-button__dropdown .schedule-button__label-text {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.schedule-button__dropdown .schedule-button__input {
+  font-size: 14px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.schedule-button__dropdown .schedule-button__input--error {
+  border-color: var(--color-text-error);
+}
+
+.schedule-button__dropdown .schedule-button__warning {
+  font-size: 12px;
+  color: var(--color-text-error);
+  display: block;
+  margin-top: 2px;
+}
+
+.schedule-button__dropdown .schedule-button__dropdown-actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.schedule-button__dropdown .schedule-button__clear {
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.schedule-button__dropdown .schedule-button__clear:hover {
+  background: var(--color-bg-secondary);
+}
+
+.schedule-button__dropdown .schedule-button__confirm {
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-on-brand-base);
+  background: var(--color-bg-brand-base);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.schedule-button__dropdown .schedule-button__confirm:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.schedule-button__dropdown .schedule-button__confirm:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.scheduled-status-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text-secondary);
+}
+
+.scheduled-status-card__meta .status__info__time,
+.scheduled-status-card__meta .status__visibility,
+.scheduled-status-card__meta .status__language {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scheduled-status-card__meta .status__info__time .icon,
+.scheduled-status-card__meta .status__visibility .icon,
+.scheduled-status-card__meta .status__language .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.scheduled-status-card__meta .scheduled-status-card__visibility-quote {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}

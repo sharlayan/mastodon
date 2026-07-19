@@ -89,6 +89,13 @@ RSpec.describe 'Pages' do
 
       expect(response).to have_http_status(404)
     end
+
+    it 'allows the owner to open a draft through the account-scoped slug route' do
+      get "/api/v1/accounts/#{draft_page.account_id}/pages/#{draft_page.name}", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq(draft_page.id.to_s)
+    end
   end
 
   describe 'category validation' do
@@ -108,9 +115,44 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'GET /api/v1/pages/categories' do
+    before do
+      Fabricate(:page, account: user.account, category: 'Guides')
+      Fabricate(:page, account: user.account, category: 'Guides')
+      Fabricate(:page, account: user.account, category: 'Stories')
+      Fabricate(:page, account: user.account, category: nil)
+      Fabricate(:page, category: 'Other account')
+    end
+
+    it 'returns the current account categories without duplicates' do
+      get '/api/v1/pages/categories', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to contain_exactly('Guides', 'Stories')
+    end
+  end
+
+  describe 'content limits' do
+    it 'rejects content deeper than the server traversal budget' do
+      root = { type: 'section', children: [] }
+      current = root
+      Page::MAX_BLOCK_DEPTH.times do
+        child = { type: 'section', children: [] }
+        current[:children] = [child]
+        current = child
+      end
+
+      post '/api/v1/pages', params: { title: 'Deep', name: 'deep', content: [root] }, headers: headers, as: :json
+
+      expect(response).to have_http_status(422)
+      expect(Page).to_not exist(name: 'deep')
+    end
+  end
+
   describe 'password visibility' do
+    let(:header_media) { Fabricate(:media_attachment, account: user.account) }
     let!(:password_page) do
-      Fabricate(:page, account: user.account, visibility: 'password', access_password: 'correct-password', content: [{ 'id' => 'secret', 'type' => 'text', 'text' => 'Hidden body' }])
+      Fabricate(:page, account: user.account, visibility: 'password', access_password: 'correct-password', content: [{ 'id' => 'secret', 'type' => 'text', 'text' => 'Hidden body' }], eye_catching_media_attachment: header_media)
     end
 
     it 'uses the Mastodon Devise encryptor and does not store the plaintext password' do
@@ -152,6 +194,14 @@ RSpec.describe 'Pages' do
 
       result = response.parsed_body.find { |page| page[:id] == password_page.id.to_s }
       expect(result).to include('visibility' => 'password', 'locked' => true, 'content' => [], 'attached_media' => [])
+      expect(result).to include('eye_catching_media_attachment_id' => header_media.id.to_s)
+      expect(result.dig(:eye_catching_media_attachment, :id)).to eq(header_media.id.to_s)
+    end
+
+    it 'hides protected header media outside page lists' do
+      get "/api/v1/pages/#{password_page.id}"
+
+      expect(response.parsed_body).to include('locked' => true, 'eye_catching_media_attachment_id' => nil, 'eye_catching_media_attachment' => nil)
     end
 
     it 'rejects a wrong password' do
@@ -241,6 +291,23 @@ RSpec.describe 'Pages' do
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(page.id.to_s)
+    end
+  end
+
+  describe 'suspended account visibility' do
+    let!(:page) { Fabricate(:page, likes_count: 10) }
+
+    before { page.account.suspend! }
+
+    it 'hides direct, featured, and unlock responses' do
+      get "/api/v1/pages/#{page.id}"
+      expect(response).to have_http_status(404)
+
+      get '/api/v1/pages/featured'
+      expect(response.parsed_body.pluck(:id)).to_not include(page.id.to_s)
+
+      post "/api/v1/pages/#{page.id}/unlock", params: { password: 'irrelevant' }
+      expect(response).to have_http_status(404)
     end
   end
 end

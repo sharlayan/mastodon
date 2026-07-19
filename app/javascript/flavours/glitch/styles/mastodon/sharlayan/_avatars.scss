@@ -1,0 +1,168 @@
+.status__info .status__display-name:has(.account__avatar--decorated) {
+  overflow: visible;
+}
+
+.account__avatar img:not(.account__avatar__decoration) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--avatar-border-radius);
+  display: inline-block;
+}
+
+.account__avatar img.account__avatar__decoration {
+  border-radius: initial;
+  display: inline;
+}
+
+.account__avatar--decorated {
+  overflow: visible;
+  background: transparent !important;
+}
+
+.account__avatar--force-round {
+  border-radius: 50% !important;
+}
+
+.account__avatar--force-round img:not(.account__avatar__decoration) {
+  border-radius: 50% !important;
+}
+
+.account__avatar--force-square {
+  border-radius: 0 !important;
+}
+
+.account__avatar--force-square img:not(.account__avatar__decoration) {
+  border-radius: 0 !important;
+}
+
+.account__avatar__decoration-layer {
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.account__avatar__decoration-layer--force-round {
+  border-radius: 50%;
+}
+
+.account__avatar__decoration-layer--force-square {
+  border-radius: 0;
+}
+
+.account__avatar__decoration {
+  position: absolute;
+  top: -50%;
+  inset-inline-start: -50%;
+  width: 200%;
+  height: 200%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.account__avatar__online {
+  position: absolute;
+  bottom: 0;
+  inset-inline-end: 0;
+  width: 30%;
+  height: 30%;
+  min-width: 8px;
+  min-height: 8px;
+  max-width: 14px;
+  max-height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-secondary);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.account__avatar__online--online {
+  background: var(--color-bg-success-base);
+}
+
+.account__avatar__online--active {
+  background: var(--color-bg-warning-base);
+}
+
+.account__avatar__online--offline {
+  background: var(--color-text-secondary);
+}
+
+.avatar-decoration-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--color-bg-secondary);
+}
+
+.batch-table__row__content__image .avatar-decoration-preview {
+  width: 128px;
+  height: 128px;
+}
+
+.fields-group .avatar-decoration-preview {
+  width: 256px;
+  height: 256px;
+}
+
+.status__avatar:has(.account__avatar--force-round) {
+  border-radius: 50%;
+}
+
+.status__avatar:has(.account__avatar--force-square) {
+  border-radius: 0;
+}
+
+.detailed-status__display-name:has(.account__avatar--decorated) {
+  overflow: visible;
+}
+
+.account-switcher-modal__item__avatar {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.account__header.inactive .account__header__image,
+.account__header.inactive .account__avatar {
+  filter: grayscale(100%);
+}
+
+.account__header__bar .avatar {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.account__header__bar .avatar .account__avatar {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--avatar-border-radius);
+}
+
+.account__header__tabs:has(.account__avatar--decorated) {
+  overflow: visible;
+}
+
+.status__wrapper:has(.account__avatar--decorated) {
+  overflow: hidden;
+}
+
+.detailed-status:has(.account__avatar--decorated) {
+  overflow: visible;
+}
+
+.notification-ungrouped:has(.account__avatar--decorated),
+.notification-group:has(.account__avatar--decorated) {
+  overflow: hidden;
+}
+
+.notification-ungrouped:has(.account__avatar--decorated) .status__wrapper,
+.notification-group:has(.account__avatar--decorated) .status__wrapper {
+  overflow: visible;
+}

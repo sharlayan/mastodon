@@ -3,6 +3,7 @@
 class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   before_action -> { doorkeeper_authorize! :read }, only: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
   before_action -> { doorkeeper_authorize! :write, :'write:media' }, except: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
+  before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
   before_action :set_file, only: [:show, :update, :destroy, :attach, :transfer_to_posts, :attached_notes]
   after_action :insert_pagination_headers, only: :index
 
@@ -53,13 +54,15 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
     return render json: { error: 'url is required', code: 'INVALID_PARAM' }, status: 422 if params[:url].blank?
     return render json: { error: 'No such folder', code: 'NO_SUCH_FOLDER' }, status: 404 unless valid_target_folder?
 
-    DriveFileFromURLWorker.perform_async(current_account.id, params[:url].to_s, {
+    return render json: quota_error.merge(code: 'NO_FREE_SPACE'), status: 422 if drive_quota_full?
+
+    accepted = DriveFileFromURLWorker.enqueue(current_account.id, params[:url].to_s, {
       'folder_id' => params[:folder_id].presence,
       'sensitive' => truthy_param?(:sensitive),
       'description' => params[:comment].presence || params[:description].presence,
     })
 
-    render json: { accepted: true }, status: 202
+    render json: { accepted: accepted }, status: 202
   end
 
   def create
@@ -124,6 +127,17 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   end
 
   private
+
+  def enforce_upload_rate_limit!
+    return if current_user.can_extra?(:bypass_rate_limit)
+
+    RateLimiter.new(current_account, family: :drive_uploads).record!
+  end
+
+  def drive_quota_full?
+    quota = current_account.drive_quota_bytes
+    quota.positive? && current_account.drive_files.sum(:storage_file_size).to_i >= quota
+  end
 
   def set_file
     @file = current_account.drive_files.find(params[:id])

@@ -6,9 +6,6 @@ ja:
     contact_unavailable: N/A
     hosted_on: Mastodon hosted on %{domain}
     title: このサーバーについて
-  account_switcher:
-    switch_failed: アカウントが見つかりません。
-    switch_unauthorized: このアカウントに切り替える権限がありません。
   accounts:
     errors:
       cannot_be_added_to_collections: このアカウントはコレクションに追加できません。
@@ -23,7 +20,6 @@ ja:
     posts:
       other: 投稿
     posts_tab_heading: 投稿
-    refetch_local_error: ローカルアカウントは更新できません
     self_follow_error: 自分のアカウントをフォローすることはできません
   admin:
     account_actions:
@@ -41,10 +37,6 @@ ja:
       approved_msg: "%{username}さんの登録申請を承認しました"
       are_you_sure: 本当に実行しますか？
       avatar: アイコン
-      block_avatar_decorations: アバターデコレーションをブロック
-      unblock_avatar_decorations: アバターデコレーションのブロックを解除
-      blocked_avatar_decorations_msg: "%{username}のアバターデコレーションをブロックしました"
-      unblocked_avatar_decorations_msg: "%{username}のアバターデコレーションのブロックを解除しました"
       by_domain: ドメイン
       change_email:
         changed_msg: メールアドレスを変更しました!
@@ -125,8 +117,6 @@ ja:
       push_subscription_expires: PuSH購読期限
       redownload: プロフィールを更新
       redownloaded_msg: "%{username}のプロフィールを正常に更新しました"
-      refresh_avatar_decorations: アバターデコレーションを更新
-      refreshed_avatar_decorations_msg: "%{username}のアバターデコレーション更新をキューに追加しました"
       reject: 却下
       rejected_msg: "%{username}さんの登録申請を却下しました"
       remote_suspension_irreversible: このアカウントのデータは不可逆的に削除されました。
@@ -344,102 +334,10 @@ ja:
       unpublish: 非公開にする
       unpublished_msg: お知らせを非掲載にしました
       updated_msg: お知らせを更新しました
-    board_announcements:
-      attachments: メディア添付
-      attachments_hint: メディアをアップロードし、項目をクリックするとMarkdownがクリップボードにコピーされ、本文に貼り付けられます。
-      author: '作成者: %{name}'
-      created_msg: お知らせを作成しました
-      destroyed_msg: お知らせを削除しました
-      display_hint: バナーのお知らせは、閉じるまでタイムラインの上部にも表示されます。
-      displays:
-        banner: バナー
-        normal: 通常
-      edit:
-        title: お知らせを編集
-      empty: お知らせはありません
-      for_existing_users_hint: このお知らせを公開時点で存在していたアカウントにのみ表示します（以降の新規登録者には非表示）。
-      icons:
-        error: エラー
-        info: 情報
-        success: 成功
-        warning: 警告
-      markdown_hint: 書式設定にMarkdownを使用できます。
-      need_confirmation_to_read_hint: 既読にする前に、ユーザーに確認ボタンを押させます。
-      media:
-        add: メディアを追加
-        copied: Markdownをクリップボードにコピーしました
-        copy_hint: クリックでMarkdownをコピー
-        error: アップロードに失敗しました
-        remove: 削除
-        uploading: アップロード中…
-      new:
-        create: お知らせを作成
-        title: お知らせを追加
-      publish: 公開する
-      publish_hint: このお知らせをユーザーに表示します。
-      published: 公開済み
-      published_msg: お知らせを掲載しました
-      read_count:
-        other: "%{count}人が既読"
-      silence_hint: 未読バッジやバナーを表示せずに静かに追加します。
-      sort_priority: 並び順の優先度
-      sort_priority_hint: お知らせはデフォルトで新しい順に並びます。値が大きいほど他のお知らせより上に固定されます（デフォルト0）。
-      title: 掲示板のお知らせ
-      unpublish: 非公開にする
-      unpublished_msg: お知らせを非掲載にしました
-      updated_msg: お知らせを更新しました
     collections:
       accounts: アカウント
       collection_title: "%{name} によるコレクション"
     critical_update_pending: 重要な更新が保留中です
-    avatar_decorations:
-      add_new: 新しいデコレーションを追加
-      all_decorations: すべてのデコレーション
-      approve: 承認
-      approved: 承認済み
-      approved_msg: デコレーションが承認されました
-      category: カテゴリ
-      new_category: 新しいカテゴリ
-      new_category_hint: 入力すると新しいカテゴリが作成され、上の選択より優先されます。
-      no_category: カテゴリなし
-      uncategorized: 未分類
-      assign_category: カテゴリを割り当て
-      create_new_category: 新しいカテゴリを作成
-      update_category: カテゴリを更新
-      created_msg: デコレーションが作成されました
-      current_image: 現在の画像
-      delete: 削除
-      description: 説明
-      destroyed_msg: デコレーションが削除されました
-      edit: 編集
-      image: 画像
-      image_hint: PNG、GIF、WebP、最大%{size}。透過オーバーレイ画像を推奨します。
-      local: ローカル
-      name: 名前
-      origin: 由来
-      pending_approval: 承認待ち
-      pending_title: 承認待ちのデコレーション
-      preview: プレビュー
-      redownload: リモートサーバーから画像を更新
-      redownloaded_msg: リモートサーバーからデコレーション画像を正常に更新しました
-      redownload_failed_msg: リモートサーバーからデコレーション画像の更新に失敗しました
-      replace_image: 画像を置き換え
-      title: アバターデコレーション
-      no_decoration_selected: デコレーションが選択されていません
-      no_role_required: 制限なし（全員）
-      required_role: ロール制限
-      required_role_hint: このロール以上のユーザーのみこのデコレーションを適用できます。
-      status: ステータス
-      updated_msg: デコレーションが更新されました
-    avatar_decoration_domain_blocks:
-      added_at: 追加日
-      block: ドメインをブロック
-      created_msg: ドメインのデコレーションブロックが作成されました
-      destroyed_msg: ドメインのデコレーションブロックが解除されました
-      domain: ドメイン
-      domain_hint: このサーバーからのすべてのデコレーションをブロック
-      title: ブロック済みデコレーションドメイン
-      unblock: ブロック解除
     custom_emojis:
       assign_category: カテゴリーを割り当て
       by_domain: ドメイン
@@ -509,8 +407,6 @@ ja:
       undo: 連合許可を外す
     domain_blocks:
       add_new: ドメインブロックを追加
-      block_trends: トレンドから除外
-      block_trends_hint: このドメインの投稿とハッシュタグをトレンドの集計から除外します
       confirm_suspension:
         cancel: キャンセル
         confirm: 停止
@@ -527,8 +423,6 @@ ja:
       existing_domain_block: あなたは既に%{name}さんに厳しい制限を課しています。
       existing_domain_block_html: 既に%{name}に対して、より厳しい制限を課しています。先に<a href="%{unblock_url}">その制限を解除</a>する必要があります。
       export: エクスポート
-      hidden: 公開リストから隠す
-      hidden_hint: ドメインブロックの公開を有効にしていても、このドメインブロックを公開リストから隠します
       import: インポート
       new:
         create: ブロックを作成
@@ -547,12 +441,8 @@ ja:
       private_comment_hint: このコメントは同じサーバーのモデレーターも閲覧できます。
       public_comment: コメント (公開)
       public_comment_hint: ドメインブロックの公開を有効にしている場合、このコメントも公開されます。
-      reject_favourite: お気に入りを拒否
-      reject_favourite_hint: このドメインからのお気に入りと絵文字リアクションを無視します
       reject_media: メディアファイルを拒否
       reject_media_hint: ローカルに保存されたメディアファイルを削除し、今後のダウンロードを拒否します。停止とは無関係です
-      reject_relay: リレー投稿を拒否
-      reject_relay_hint: リレー経由でのみ届いたこのドメインの投稿を受け入れません
       reject_reports: 通報を拒否
       reject_reports_hint: このドメインからの通報をすべて無視します。停止とは無関係です
       undo: ドメインブロックを戻す
@@ -653,10 +543,7 @@ ja:
         description_html: このドメインとそのサブドメインのすべてのアカウントに適用されるコンテンツポリシーを定義できます。
         limited_federation_mode_description_html: このドメインとの連合を許可するかどうかを選択できます。
         policies:
-          block_trends: トレンドから除外
-          reject_favourite: お気に入りを拒否
           reject_media: メディアを拒否する
-          reject_relay: リレー投稿を拒否
           reject_reports: 通報を拒否
           silence: 制限
           suspend: サスペンド
@@ -715,21 +602,6 @@ ja:
         expired: 期限切れ
         title: フィルター
       title: 招待
-    drive_files:
-      all: すべて
-      attached: 添付済み
-      attached_error: このドライブファイルは生きている投稿に添付されているため削除できません。
-      description_html: アカウントごとのドライブライブラリに保存されたファイルです。孤立ファイルはどの生きている投稿にも添付されていないファイルで、整理できます。
-      destroy: 削除
-      destroy_orphaned: 孤立ファイルをすべて削除
-      destroy_orphaned_confirm: すべての孤立ドライブファイルを完全に削除しますか？
-      file: ファイル
-      filter: フィルター
-      orphaned: 孤立
-      owner: 所有者
-      size: サイズ
-      status: 状態
-      title: ドライブファイル
     ip_blocks:
       add_new: ルールを作成
       created_msg: IPルールを追加しました
@@ -793,7 +665,6 @@ ja:
       category: カテゴリー
       category_description_html: 選択した理由は通報されたアカウントへの連絡時に引用されます
       collections: コレクション (%{count})
-      pages: ページ (%{count})
       comment:
         none: なし
       comment_description_html: "%{name}からの詳細情報:"
@@ -828,7 +699,6 @@ ja:
       skip_to_actions: アクションに移動
       status: ステータス
       statuses_description_html: 問題の投稿は通報されたアカウントへの連絡時に引用されます
-      view_page: ページを表示
       summary:
         action_preambles:
           delete_html: "<strong>@%{acct}</strong>さんの投稿を<strong>削除</strong>します。この操作は:"
@@ -869,14 +739,6 @@ ja:
       edit: "『%{name}』のロールを編集"
       everyone: デフォルトの権限
       everyone_full_description_html: これは、割り当てられたロールを持っていないものであっても、 <strong>すべてのユーザー</strong> に影響を与える <strong>基本ロール</strong>です。 他のすべてのロールは、そこから権限を継承します。
-      extra_categories:
-        api: API
-        moderation: モデレーション
-      extra_privileges:
-        bypass_rate_limit: APIレート制限のバイパス
-        bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
-        view_admin_timeline: 管理タイムラインの閲覧
-        view_admin_timeline_description: コミュニティ（ロールプレイ）モードで、この権限を持つユーザーは管理タイムラインを閲覧できます。ただしオーナー（最高管理者）アカウントが参加しているダイレクトの会話は、閲覧者がオーナーでない限り非表示になります
       permissions_count:
         other: "%{count}件の権限"
       privileges:
@@ -943,12 +805,6 @@ ja:
       allow_referrer_origin:
         desc: ユーザが外部サイトへのリンクをクリックする際、ユーザーのブラウザはあなたのMastodonサーバーのアドレスを紹介者として送信することがあります。 これによりあなたのユーザーが特定されてしまう場合、例えば個人用のMastodonサーバーなどである場合などは無効にしてください。
         title: 外部サイトが Mastodon サーバーをトラフィックソースとして表示することを許可する
-      allow_user_custom_css:
-        desc_html: ユーザーがウェブインターフェースで、自分のセッションにのみ適用されるカスタムCSSを設定できるようにします。無効にすると、保存済みのユーザーCSSも適用されなくなります。
-        title: ユーザーのカスタムCSSを許可する
-      reaction_local_emoji_only:
-        desc_html: カスタム絵文字でリアクションするには、同じ絵文字がローカルにも存在することを必須にします。リモートのカスタム絵文字は引き続き一覧に表示されますが、ローカルに同じ絵文字がない場合、その絵文字でのリアクションはブロックされます。Unicode絵文字とローカルのカスタム絵文字には影響しません。
-        title: リアクションをローカルのカスタム絵文字に制限する
       appearance:
         preamble: ウェブインターフェースをカスタマイズします。
         title: 外観
@@ -962,8 +818,6 @@ ja:
         danger_zone: 危険な操作
         preamble: ユーザーが生成したコンテンツがどのように Mastodon に保存されるかを管理します。
         title: コンテンツの保持
-      custom:
-        title: カスタム
       default_noindex:
         desc_html: この設定を自分で変更していない全ユーザーに影響します
         title: デフォルトで検索エンジンによるインデックスを拒否する
@@ -976,89 +830,6 @@ ja:
         publish_statistics: 統計情報を公開する
         title: 見つける
         trends: トレンド
-      avatar_decorations:
-        title: アバターデコレーション
-        enabled: アバターデコレーションを有効にする
-        enabled_hint: ユーザーがアバターデコレーションを表示できるようにします
-        federation_enabled: デコレーションの連合を有効にする
-        federation_enabled_hint: リモートのMisskey互換サーバーからデコレーションを取得・表示します
-        local_only_view: リモートデコレーションのみ
-        local_only_view_hint: ローカルデコレーションを無効にし、連合サーバーから受信したデコレーションのみ表示します
-        max_count: ユーザーあたりの最大デコレーション数
-        max_count_hint: ユーザーが同時に有効化できるデコレーションの最大数 (0〜16)
-      community_mode_override:
-        title: コミュニティモード強制設定
-        preamble: コミュニティモードが有効な間、これらのオプションは各ユーザーの個人設定を上書きし、全ユーザーに対して機能を強制的に適用します。
-        force_avatar_decorations: アバターデコレーション表示の強制
-        force_avatar_decorations_hint: 各ユーザーの「アバターデコレーションを表示」設定を無視し、全ユーザーにアバターデコレーションを表示します。上記でアバターデコレーションが有効になっている必要があります。
-        force_round_avatar: アバター画像を円形に強制
-        force_round_avatar_hint: テーマに関係なく、全ユーザーのアバター画像を円形で表示します。
-        force_mfm_enabled: MFMレンダリングの強制
-        force_mfm_enabled_hint: 各ユーザーのMFM設定を無視し、全ユーザーにMFM書式をレンダリングします。
-      board_announcements:
-        title: 掲示板型お知らせ
-        enabled: 掲示板型お知らせを有効にする
-        enabled_hint: ユーザーがサイト内の掲示板型お知らせページを閲覧できるようにします。無効にするとページとナビゲーションリンクが非表示になります。
-      extensions:
-        title: 拡張機能
-      special_features:
-        title: 特殊機能
-      circles:
-        title: サークル
-        enabled: サークル機能を有効にする
-        enabled_hint: ユーザーがサークルを作成し、選択したフォロワーだけに表示される投稿を作成できるようにします。
-      auto_quote_from_url:
-        title: URLからの自動引用
-        enabled: 投稿リンクからの自動引用を許可する
-        enabled_hint: ユーザーが、投稿に含まれる取得可能な連合投稿リンクを、引用元の作成者に許可を求めずに自動的に引用へ変換することを選べるようにします。各ユーザーは自身の環境設定で別途有効にする必要があります。
-      clips:
-        title: クリップ
-        enabled: クリップ機能を有効にする
-        enabled_hint: ユーザーがクリップを作成し、投稿を名前付きのコレクションにまとめられるようにします。無効にすると既存のクリップは保持されますが、アクセスできなくなります。
-      drive:
-        title: ドライブ
-        enabled: ドライブ機能を有効にする
-        enabled_hint: ユーザーがアップロードをアカウントごとの永続ライブラリに保存し、バイトを複製せずにシンボリックリンクとして投稿に添付できるようにします。無効にするとドライブボタンとAPIは利用できません。
-        quota: アカウントごとのドライブ容量上限 (MB)
-        quota_hint: 1アカウントのドライブライブラリの合計容量の上限（メガバイト）です。0で無制限になります。
-        max_file_size: 1ファイルあたりの容量上限 (MB)
-        max_file_size_hint: ドライブにアップロードする1ファイルの容量上限（メガバイト）です。メディアファイルにはサーバーの画像・動画の上限も適用されます。
-        allowed_extensions: 追加で許可する拡張子
-        allowed_extensions_hint: '画像・動画・音声は常に許可されます。その他に許可する拡張子をカンマ区切りで入力してください（例: pdf, zip, txt）。ファイルはこのサーバーのドメインから配信されるため、次の拡張子は許可できません: %{extensions}。'
-        allowed_extensions_invalid: '次の拡張子は許可できません: %{extensions}'
-      pages:
-        title: ページ
-        enabled: ページ機能を有効にする
-        enabled_hint: ユーザーがブロックベースの公開ページを作成できるようにします。無効にすると既存のページは保持されますが、アクセスできなくなります。
-      reactions:
-        title: 絵文字リアクション
-        enabled: 絵文字リアクションを有効にする
-        enabled_hint: ユーザーが投稿に絵文字でリアクションできるようにします。無効にするとリアクションボタンが非表示になり、新しいリアクションは拒否されます。既存のリアクションは引き続き表示されます。
-      antenna:
-        title: アンテナ
-        enabled: アンテナ機能を有効にする
-        enabled_hint: ユーザーが条件（アカウント・ドメイン・タグ・キーワード）に一致する投稿を自動的に収集するアンテナを作成できるようにします。無効にするとアンテナページ・ナビゲーションリンク・APIが利用できなくなります。
-      instance_metadata:
-        title: サーバー情報バー
-        enabled: サーバー情報バーとメタデータ収集を有効にする
-        enabled_hint: 有効にすると、他のサーバーの投稿にサーバー情報バー（名前・テーマカラー・ファビコン）が表示され、連合インスタンスのメタデータを収集します。無効にするとバーは非表示になり、インスタンスのメタデータを取得しません。
-      online_status:
-        title: オンライン状態
-        enabled: オンライン状態表示を有効にする
-        enabled_hint: 有効にすると、利用を選んだユーザーがオンライン・最近アクティブ・オフラインの状態をアバターのドットで共有できます。無効にすると、ユーザー設定に関わらずオンライン状態を収集も表示もしません。
-      rate_limit_bypass:
-        title: APIレート制限のバイパス
-        enabled: 特定の権限にAPIレート制限のバイパスを許可
-        enabled_hint: 有効にすると、管理者またはDevOps権限を持つユーザーはAPIレート制限を受けなくなります。無効の場合はすべてのユーザーに制限が適用されます。
-      community_mode:
-        title: コミュニティモード
-      soft_hide_deletion:
-        enabled: 削除された投稿をオーナー用に保存
-        enabled_hint: 有効にすると、投稿を削除しても破棄されません。代わりに投稿と添付メディアを投稿者を含む全員から隠し、最高管理者（オーナー）のみが管理タイムラインで「削除済み」表示とともに閲覧できます。無効の場合は投稿が完全に削除されます。
-      misskey_compat:
-        title: Misskey互換API
-        enabled: Misskey互換APIレイヤーを有効化
-        enabled_hint: 有効にすると、このサーバーはMisskey APIの一部にも応答し、Aria for misskeyやFlareなどのMiAuthログイン対応アプリがログイン・リアクション・MFM表示を行えるようになります。有効にするとこれらのアプリはこのホストをMisskeyとして認識します。無効の場合は標準のMastodonの動作を維持します。
       domain_blocks:
         all: 誰にでも許可
         disabled: 誰にも許可しない
@@ -1237,7 +1008,6 @@ ja:
       published_on_html: "%{date} に公開"
       save_draft: 下書きを保存
       title: サービス利用規約
-    not_permitted: この操作を実行する権限がありません
     title: 管理
     trends:
       allow: 許可
@@ -1317,7 +1087,6 @@ ja:
         contains: 含む
         equals: 一致
       contains_html: "%{string}を含む"
-      created_msg: ユーザー名ルールを作成しました
       delete: 削除
       edit:
         title: ユーザー名ルールの編集
@@ -1325,10 +1094,7 @@ ja:
       new:
         create: ルールを作成
         title: ユーザー名ルールを作成
-      no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
-      not_permitted: 権限がありません
       title: ユーザー名ルール
-      updated_msg: ユーザー名ルールを更新しました
     warning_presets:
       add_new: 追加
       delete: 削除
@@ -1402,7 +1168,6 @@ ja:
   appearance:
     advanced_settings: 詳細設定
     animations_and_accessibility: アニメーションとアクセシビリティー
-    community_mode_forced_hint: このオプションは現在サーバーによって強制的に有効化されています。設定を変更しても反映されません。
     boosting_preferences: ブースト設定
     boosting_preferences_info_html: "<strong>Tip:</strong> 設定に関係なく、<kbd>Shift</kbd> を押しながら %{icon} Boostアイコンを<kbd>クリック</kbd>すると、すぐにブーストされます。"
     discovery: 見つける
@@ -1443,7 +1208,6 @@ ja:
       welcome_title: ようこそ、%{name}さん！
       wrong_email_hint: メールアドレスが正しくない場合は、アカウント設定画面で変更できます。
     delete_account: アカウントの削除
-    disable_custom_css: カスタムCSSを無効にする
     delete_account_html: アカウントを削除したい場合、<a href="%{path}">こちら</a>から手続きが行えます。削除する前に、確認画面があります。
     description:
       prefix_invited_by_user: "@%{name}さんがあなたをこのMastodonサーバーに招待しました"
@@ -1528,17 +1292,9 @@ ja:
   contrast:
     auto: 自動
     high: 高
-  content_font_sizes:
-    large: 大きい
-    medium: 標準
-    x_large: とても大きい
-    xx_large: 極大
   crypto:
     errors:
       invalid_key: 有効なEd25519またはCurve25519キーではありません
-  custom_css:
-    disabled_by_admin: サーバー管理者がユーザーのカスタムCSSを無効にしています。上のサーバー全体のスタイルを適用するかどうかは引き続き選択できます。
-    preamble_html: ウェブインターフェースで、自分のセッションにのみ適用されるCSSを設定できます。不正または悪意のあるCSSはレイアウトを壊す可能性があります。その場合はログインフォームで<strong>カスタムCSSを無効にする</strong>にチェックを入れて復旧できます。
   date:
     formats:
       default: "%Y年%m月%d日"
@@ -1638,7 +1394,6 @@ ja:
       size: 容量
     blocks: ブロック
     bookmarks: ブックマーク
-    clips: クリップ
     csv: CSV
     domain_blocks: 非表示にしたドメイン
     lists: リスト
@@ -1726,8 +1481,6 @@ ja:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のアカウント</strong>で<strong>ブロックリストを置き換えようとしています</strong>。
       bookmarks_html:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}の投稿</strong>で<strong>ブックマークを置き換えようとしています</strong>。
-      clips_html:
-        other: あなたは<strong>%{filename}</strong>の内容で<strong>クリップを置き換えようとしています</strong>。最大<strong>%{count}のクリップ</strong>が新しいクリップに追加されます。
       domain_blocking_html:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のドメイン</strong>で<strong>ドメインブロックリストを置き換えようとしています</strong>。
       following_html:
@@ -1741,8 +1494,6 @@ ja:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のアカウント</strong>を<strong>ブロックしようとしています</strong>。
       bookmarks_html:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}の投稿</strong>を<strong>ブックマークに追加しようとしています</strong>。
-      clips_html:
-        other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のクリップ</strong>を<strong>クリップに追加しようとしています</strong>。
       domain_blocking_html:
         other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のドメイン</strong>を<strong>ブロックしようとしています</strong>。
       following_html:
@@ -1764,7 +1515,6 @@ ja:
     titles:
       blocking: ブロックのインポート
       bookmarks: ブックマークのインポート
-      clips: クリップのインポート
       domain_blocking: ドメイン非表示のインポート
       following: フォローのインポート
       lists: リストのインポート
@@ -1776,7 +1526,6 @@ ja:
     types:
       blocking: ブロックしたアカウントリスト
       bookmarks: ブックマーク
-      clips: クリップ
       domain_blocking: 非表示にしたドメインリスト
       following: フォロー中のアカウントリスト
       lists: リスト
@@ -1807,26 +1556,6 @@ ja:
   link_preview:
     potentially_sensitive_content:
       hide_button: 非表示
-  antennas:
-    errors:
-      limit: アンテナの上限数に達しています
-      too_many_accounts: このアンテナのアカウント上限数に達しています
-      too_many_domains: このアンテナのドメイン上限数に達しています
-      too_many_keywords: このアンテナのキーワード上限数に達しています
-      too_many_tags: このアンテナのハッシュタグ上限数に達しています
-      too_short_keyword: キーワードは%{count}文字以上である必要があります
-  circles:
-    errors:
-      limit: サークルの上限数に達しています
-      too_many_accounts: このサークルのアカウント上限数に達しています
-  clips:
-    errors:
-      limit: クリップの上限数に達しています
-  pages:
-    errors:
-      invalid_password: パスワードが正しくありません
-      limit: ページの上限数に達しています
-      own_page: 自分のページにはいいねできません
   lists:
     errors:
       limit: リストの上限数に達しています
@@ -1877,27 +1606,8 @@ ja:
       followers: すべてのフォロワーを現在のアカウントから新しいアカウントに引き継ぎます
       only_redirect_html: または、<a href="%{path}">フォロワーを残したまま引っ越す</a>こともできます。
       redirect: プロフィールに引っ越し済みの通知が表示され、検索結果から除外されます
-  misskey_compat:
-    scratchpad:
-      code_label: AiScript コード
-      description: Misskey 互換アプリに表示されたコードを下に貼り付けて実行すると、プッシュ通知が登録されます。完了したら結果をコピーしてアプリに貼り付けてください。
-      no_session: 有効なセッションを確認できませんでした。このブラウザで再度ログインしてからお試しください。
-      result_label: '結果（アプリに貼り付けてください）:'
-      run: 実行
-      title: スクラッチパッド
-      unsupported: このスクラッチパッドはプッシュ通知の登録（sw/register）のみ対応しています。貼り付けられたコードを認識できませんでした。
-      wrong_account: このコードは @%{expected} 向けですが、現在 @%{current} でログインしています。該当アカウントでログインしてからお試しください。
   moderation:
     title: モデレーション
-  multi_accounts:
-    auth:
-      add_account: アカウントを追加
-      sign_in_hint: 追加したいアカウントでログインしてください。
-      same_account: 現在ログイン中のアカウントと同じアカウントは追加できません。
-      success_message: アカウントが正常に追加されました。ウィンドウを閉じています...
-      success_close_message: アカウントが追加されました。このウィンドウを閉じてください。
-      completing_authorization: 認証を完了しています...
-      authorization_complete: 認証が完了しました。このウィンドウを閉じてください。
   move_handler:
     carry_blocks_over_text: このユーザーは、あなたがブロックしていた%{acct}から引っ越しました。
     carry_mutes_over_text: このユーザーは、あなたがミュートしていた%{acct}から引っ越しました。
@@ -1918,10 +1628,6 @@ ja:
       body: "%{name}さんにフォローされています！"
       subject: "%{name}さんにフォローされています"
       title: 新たなフォロワー
-    follow_accepted:
-      body: "%{name}さんがフォローリクエストを承認しました"
-      subject: "%{name}さんがフォローリクエストを承認しました"
-      title: フォロー承認
     follow_request:
       action: フォローリクエストの管理
       body: "%{name}さんがあなたにフォローをリクエストしました"
@@ -2097,7 +1803,6 @@ ja:
     appearance: 外観
     authorized_apps: 認証済みアプリ
     back: Mastodonに戻る
-    custom_css: カスタムCSS
     delete: アカウントの削除
     development: 開発
     edit_profile: プロフィールを編集
@@ -2108,7 +1813,6 @@ ja:
     migrate: アカウントの引っ越し
     notifications: メール通知
     preferences: ユーザー設定
-    avatar_decorations: アバターデコレーション
     profile: プロフィール
     relationships: フォロー・フォロワー
     severed_relationships: 途切れたフォロー関係
@@ -2181,8 +1885,6 @@ ja:
     keep_polls_hint: アンケート付きの投稿を削除せずに残します
     keep_self_bookmark: ブックマークした投稿を保持
     keep_self_bookmark_hint: 自分自身でブックマークした投稿を削除せずに残します
-    keep_self_clip: クリップに追加した投稿を保持
-    keep_self_clip_hint: 自分のクリップに追加した投稿を削除せずに残します
     keep_self_fav: お気に入りに登録した投稿を保持
     keep_self_fav_hint: 自分自身でお気に入りに登録した投稿を削除せずに残します
     min_age:

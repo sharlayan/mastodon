@@ -1,0 +1,501 @@
+---
+ja:
+  account_switcher:
+    switch_failed: アカウントが見つかりません。
+    switch_unauthorized: このアカウントに切り替える権限がありません。
+  accounts:
+    refetch_local_error: ローカルアカウントは更新できません
+  activerecord:
+    errors:
+      models:
+        circle_account:
+          must_be_follower: フォローしているアカウントでなければなりません
+        custom_emoji:
+          attributes:
+            aliases:
+              too_long: contains an alias exceeding %{max} characters
+              too_many: is too long (maximum is %{max} aliases)
+        user_role:
+          attributes:
+            drive_quota:
+              own_role: 現在のロールでは変更できません
+  admin:
+    accounts:
+      block_avatar_decorations: アバターデコレーションをブロック
+      blocked_avatar_decorations_msg: "%{username}のアバターデコレーションをブロックしました"
+      refresh_avatar_decorations: アバターデコレーションを更新
+      refreshed_avatar_decorations_msg: "%{username}のアバターデコレーション更新をキューに追加しました"
+      unblock_avatar_decorations: アバターデコレーションのブロックを解除
+      unblocked_avatar_decorations_msg: "%{username}のアバターデコレーションのブロックを解除しました"
+    action_logs:
+      actions:
+        update_collection_html: "%{name} さんが %{target} によるコレクションを更新しました"
+    avatar_decoration_domain_blocks:
+      added_at: 追加日
+      block: ドメインをブロック
+      created_msg: ドメインのデコレーションブロックが作成されました
+      destroyed_msg: ドメインのデコレーションブロックが解除されました
+      domain: ドメイン
+      domain_hint: このサーバーからのすべてのデコレーションをブロック
+      title: ブロック済みデコレーションドメイン
+      unblock: ブロック解除
+    avatar_decorations:
+      add_new: 新しいデコレーションを追加
+      all_decorations: すべてのデコレーション
+      approve: 承認
+      approved: 承認済み
+      approved_msg: デコレーションが承認されました
+      assign_category: カテゴリを割り当て
+      category: カテゴリ
+      create_new_category: 新しいカテゴリを作成
+      created_msg: デコレーションが作成されました
+      current_image: 現在の画像
+      delete: 削除
+      description: 説明
+      destroyed_msg: デコレーションが削除されました
+      edit: 編集
+      image: 画像
+      image_hint: PNG、GIF、WebP、最大%{size}。透過オーバーレイ画像を推奨します。
+      local: ローカル
+      name: 名前
+      new_category: 新しいカテゴリ
+      new_category_hint: 入力すると新しいカテゴリが作成され、上の選択より優先されます。
+      no_category: カテゴリなし
+      no_decoration_selected: デコレーションが選択されていません
+      no_role_required: 制限なし（全員）
+      origin: 由来
+      pending_approval: 承認待ち
+      pending_title: 承認待ちのデコレーション
+      preview: プレビュー
+      redownload: リモートサーバーから画像を更新
+      redownload_failed_msg: リモートサーバーからデコレーション画像の更新に失敗しました
+      redownloaded_msg: リモートサーバーからデコレーション画像を正常に更新しました
+      replace_image: 画像を置き換え
+      required_role: ロール制限
+      required_role_hint: このロール以上のユーザーのみこのデコレーションを適用できます。
+      status: ステータス
+      title: アバターデコレーション
+      uncategorized: 未分類
+      update_category: カテゴリを更新
+      updated_msg: デコレーションが更新されました
+    board_announcements:
+      attachments: メディア添付
+      attachments_hint: メディアをアップロードし、項目をクリックするとMarkdownがクリップボードにコピーされ、本文に貼り付けられます。
+      author: '作成者: %{name}'
+      created_msg: お知らせを作成しました
+      destroyed_msg: お知らせを削除しました
+      display_hint: バナーのお知らせは、閉じるまでタイムラインの上部にも表示されます。
+      displays:
+        banner: バナー
+        normal: 通常
+      edit:
+        title: お知らせを編集
+      empty: お知らせはありません
+      for_existing_users_hint: このお知らせを公開時点で存在していたアカウントにのみ表示します（以降の新規登録者には非表示）。
+      icons:
+        error: エラー
+        info: 情報
+        success: 成功
+        warning: 警告
+      markdown_hint: 書式設定にMarkdownを使用できます。
+      media:
+        add: メディアを追加
+        copied: Markdownをクリップボードにコピーしました
+        copy_hint: クリックでMarkdownをコピー
+        error: アップロードに失敗しました
+        remove: 削除
+        uploading: アップロード中…
+      need_confirmation_to_read_hint: 既読にする前に、ユーザーに確認ボタンを押させます。
+      new:
+        create: お知らせを作成
+        title: お知らせを追加
+      publish: 公開する
+      publish_hint: このお知らせをユーザーに表示します。
+      published: 公開済み
+      published_msg: お知らせを掲載しました
+      read_count:
+        one: "%{count} read"
+        other: "%{count}人が既読"
+      silence_hint: 未読バッジやバナーを表示せずに静かに追加します。
+      sort_priority: 並び順の優先度
+      sort_priority_hint: お知らせはデフォルトで新しい順に並びます。値が大きいほど他のお知らせより上に固定されます（デフォルト0）。
+      title: 掲示板のお知らせ
+      unpublish: 非公開にする
+      unpublished_msg: お知らせを非掲載にしました
+      updated_msg: お知らせを更新しました
+    custom_emojis:
+      aliases: Aliases
+      aliases_hint: Comma-separated list of alternative names for search (e.g. blob,
+        cute, kawaii)
+      bulk_edit:
+        title: Bulk edit custom emojis
+        visible: Visible in picker
+      bulk_edit_link: Bulk edit
+      bulk_update_partial: "%{updated} updated, %{failed} failed"
+      bulk_updated_msg:
+        one: "%{count} emoji successfully updated!"
+        other: "%{count} emojis successfully updated!"
+      edit:
+        title: Edit custom emoji
+      license: License / Attribution
+      license_hint: Author, license, or source information for this emoji
+      reset_cache: Reset cache
+      reset_cache_done_msg: Custom emoji cache has been reset
+      shortcode_readonly_hint: The shortcode cannot be changed after creation.
+    domain_blocks:
+      block_trends: トレンドから除外
+      block_trends_hint: このドメインの投稿とハッシュタグをトレンドの集計から除外します
+      hidden: 公開リストから隠す
+      hidden_hint: ドメインブロックの公開を有効にしていても、このドメインブロックを公開リストから隠します
+      reject_favourite: お気に入りを拒否
+      reject_favourite_hint: このドメインからのお気に入りと絵文字リアクションを無視します
+      reject_relay: リレー投稿を拒否
+      reject_relay_hint: リレー経由でのみ届いたこのドメインの投稿を受け入れません
+    drive_files:
+      all: すべて
+      attached: 添付済み
+      attached_error: このドライブファイルは生きている投稿に添付されているため削除できません。
+      description_html: アカウントごとのドライブライブラリに保存されたファイルです。孤立ファイルはどの生きている投稿にも添付されていないファイルで、整理できます。
+      destroy: 削除
+      destroy_orphaned: 孤立ファイルをすべて削除
+      destroy_orphaned_confirm: すべての孤立ドライブファイルを完全に削除しますか？
+      file: ファイル
+      filter: フィルター
+      orphaned: 孤立
+      owner: 所有者
+      size: サイズ
+      status: 状態
+      title: ドライブファイル
+    instances:
+      content_policies:
+        policies:
+          block_trends: トレンドから除外
+          reject_favourite: お気に入りを拒否
+          reject_relay: リレー投稿を拒否
+      metadata:
+        favicon_url: Favicon URL
+        last_updated: Last Updated
+        never_updated: Never Updated
+        outdated_warning: Outdated!
+        refresh: Request Update
+        refreshing: Requesting...
+        software: Software
+        theme_color: Theme Color
+        title: Instance Metadata
+        unknown: Unknown
+        version: Version
+      metadata_refresh_scheduled: Metadata Refresh Scheduled.
+    not_permitted: この操作を実行する権限がありません
+    reports:
+      actions:
+        delete_description_html: The reported posts, collections, and/or pages will
+          be deleted and a strike will be recorded to help you escalate on future
+          infractions by the same account.
+      pages: ページ (%{count})
+      reported_content: Reported content
+      view_page: ページを表示
+    roles:
+      extra_categories:
+        api: API
+      extra_privileges:
+        bypass_rate_limit: APIレート制限のバイパス
+        bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
+      privileges:
+        invite_bypass_approval_description: Allows people invited to the server by
+          these users to bypass moderation approval
+    settings:
+      allow_user_custom_css:
+        desc_html: ユーザーがウェブインターフェースで、自分のセッションにのみ適用されるカスタムCSSを設定できるようにします。無効にすると、保存済みのユーザーCSSも適用されなくなります。
+        title: ユーザーのカスタムCSSを許可する
+      antenna:
+        enabled: アンテナ機能を有効にする
+        enabled_hint: ユーザーが条件（アカウント・ドメイン・タグ・キーワード）に一致する投稿を自動的に収集するアンテナを作成できるようにします。無効にするとアンテナページ・ナビゲーションリンク・APIが利用できなくなります。
+        title: アンテナ
+      auto_quote_from_url:
+        enabled: 投稿リンクからの自動引用を許可する
+        enabled_hint: ユーザーが、投稿に含まれる取得可能な連合投稿リンクを、引用元の作成者に許可を求めずに自動的に引用へ変換することを選べるようにします。各ユーザーは自身の環境設定で別途有効にする必要があります。
+        title: URLからの自動引用
+      avatar_decorations:
+        enabled: アバターデコレーションを有効にする
+        enabled_hint: ユーザーがアバターデコレーションを表示できるようにします
+        federation_enabled: デコレーションの連合を有効にする
+        federation_enabled_hint: リモートのMisskey互換サーバーからデコレーションを取得・表示します
+        local_only_view: リモートデコレーションのみ
+        local_only_view_hint: ローカルデコレーションを無効にし、連合サーバーから受信したデコレーションのみ表示します
+        max_count: ユーザーあたりの最大デコレーション数
+        max_count_hint: ユーザーが同時に有効化できるデコレーションの最大数 (0〜16)
+        title: アバターデコレーション
+      board_announcements:
+        enabled: 掲示板型お知らせを有効にする
+        enabled_hint: ユーザーがサイト内の掲示板型お知らせページを閲覧できるようにします。無効にするとページとナビゲーションリンクが非表示になります。
+        title: 掲示板型お知らせ
+      circles:
+        enabled: サークル機能を有効にする
+        enabled_hint: ユーザーがサークルを作成し、選択したフォロワーだけに表示される投稿を作成できるようにします。
+        title: サークル
+      clips:
+        enabled: クリップ機能を有効にする
+        enabled_hint: ユーザーがクリップを作成し、投稿を名前付きのコレクションにまとめられるようにします。無効にすると既存のクリップは保持されますが、アクセスできなくなります。
+        title: クリップ
+      custom:
+        title: カスタム
+      discovery:
+        preamble: 必ずしも知っている人がMastodonに居ない新規ユーザーに定着してもらうには、興味深いコンテンツを表示することが役に立ちます。あなたのサーバーの種々のディスカバリー機能の動作を設定してください。
+      drive:
+        allowed_extensions: 追加で許可する拡張子
+        allowed_extensions_hint: '画像・動画・音声は常に許可されます。その他に許可する拡張子をカンマ区切りで入力してください（例:
+          pdf, zip, txt）。ファイルはこのサーバーのドメインから配信されるため、次の拡張子は許可できません: %{extensions}。'
+        allowed_extensions_invalid: '次の拡張子は許可できません: %{extensions}'
+        enabled: ドライブ機能を有効にする
+        enabled_hint: ユーザーがアップロードをアカウントごとの永続ライブラリに保存し、バイトを複製せずにシンボリックリンクとして投稿に添付できるようにします。無効にするとドライブボタンとAPIは利用できません。
+        max_file_size: 1ファイルあたりの容量上限 (MB)
+        max_file_size_hint: ドライブにアップロードする1ファイルの容量上限（メガバイト）です。メディアファイルにはサーバーの画像・動画の上限も適用されます。
+        quota: アカウントごとのドライブ容量上限 (MB)
+        quota_hint: 1アカウントのドライブライブラリの合計容量の上限（メガバイト）です。0で無制限になります。
+        title: ドライブ
+      extensions:
+        title: 拡張機能
+      instance_metadata:
+        enabled: サーバー情報バーとメタデータ収集を有効にする
+        enabled_hint: 有効にすると、他のサーバーの投稿にサーバー情報バー（名前・テーマカラー・ファビコン）が表示され、連合インスタンスのメタデータを収集します。無効にするとバーは非表示になり、インスタンスのメタデータを取得しません。
+        title: サーバー情報バー
+      misskey_compat:
+        enabled: Misskey互換APIレイヤーを有効化
+        enabled_hint: 有効にすると、このサーバーはMisskey APIの一部にも応答し、Aria for misskeyやFlareなどのMiAuthログイン対応アプリがログイン・リアクション・MFM表示を行えるようになります。有効にするとこれらのアプリはこのホストをMisskeyとして認識します。無効の場合は標準のMastodonの動作を維持します。
+        title: Misskey互換API
+      online_status:
+        enabled: オンライン状態表示を有効にする
+        enabled_hint: 有効にすると、利用を選んだユーザーがオンライン・最近アクティブ・オフラインの状態をアバターのドットで共有できます。無効にすると、ユーザー設定に関わらずオンライン状態を収集も表示もしません。
+        title: オンライン状態
+      pages:
+        enabled: ページ機能を有効にする
+        enabled_hint: ユーザーがブロックベースの公開ページを作成できるようにします。無効にすると既存のページは保持されますが、アクセスできなくなります。
+        title: ページ
+      rate_limit_bypass:
+        enabled: 特定の権限にAPIレート制限のバイパスを許可
+        enabled_hint: 有効にすると、管理者またはDevOps権限を持つユーザーはAPIレート制限を受けなくなります。無効の場合はすべてのユーザーに制限が適用されます。
+        title: APIレート制限のバイパス
+      reaction_local_emoji_only:
+        desc_html: カスタム絵文字でリアクションするには、同じ絵文字がローカルにも存在することを必須にします。リモートのカスタム絵文字は引き続き一覧に表示されますが、ローカルに同じ絵文字がない場合、その絵文字でのリアクションはブロックされます。Unicode絵文字とローカルのカスタム絵文字には影響しません。
+        title: リアクションをローカルのカスタム絵文字に制限する
+      reactions:
+        enabled: 絵文字リアクションを有効にする
+        enabled_hint: ユーザーが投稿に絵文字でリアクションできるようにします。無効にするとリアクションボタンが非表示になり、新しいリアクションは拒否されます。既存のリアクションは引き続き表示されます。
+        title: 絵文字リアクション
+      special_features:
+        title: 特殊機能
+    username_blocks:
+      created_msg: ユーザー名ルールを作成しました
+      no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
+      not_permitted: 権限がありません
+      updated_msg: ユーザー名ルールを更新しました
+  antennas:
+    errors:
+      limit: アンテナの上限数に達しています
+      too_many_accounts: このアンテナのアカウント上限数に達しています
+      too_many_domains: このアンテナのドメイン上限数に達しています
+      too_many_keywords: このアンテナのキーワード上限数に達しています
+      too_many_tags: このアンテナのハッシュタグ上限数に達しています
+      too_short_keyword: キーワードは%{count}文字以上である必要があります
+  appearance:
+    customized: Customized - Emojis
+    misskey_flavour: Customized - Misskey Flavour
+  auth:
+    disable_custom_css: カスタムCSSを無効にする
+    progress:
+      list: Sign up progress
+  circles:
+    errors:
+      limit: サークルの上限数に達しています
+      too_many_accounts: このサークルのアカウント上限数に達しています
+  clips:
+    errors:
+      limit: クリップの上限数に達しています
+  content_font_sizes:
+    large: 大きい
+    medium: 標準
+    x_large: とても大きい
+    xx_large: 極大
+  custom_css:
+    disabled_by_admin: サーバー管理者がユーザーのカスタムCSSを無効にしています。上のサーバー全体のスタイルを適用するかどうかは引き続き選択できます。
+    preamble_html: ウェブインターフェースで、自分のセッションにのみ適用されるCSSを設定できます。不正または悪意のあるCSSはレイアウトを壊す可能性があります。その場合はログインフォームで<strong>カスタムCSSを無効にする</strong>にチェックを入れて復旧できます。
+  exports:
+    clips: クリップ
+    pages: ページ
+  page_backups:
+    title: ページのバックアップ
+    description: ページと画像を ZIP でバックアップし、ここから復元できます。パスワード保護ページは元のパスワードを維持します。
+    download: ページのバックアップをダウンロード
+    upload: ページのバックアップを復元
+    merge: 既存のページに追加
+    overwrite: 既存のページをすべて置き換える
+    imported: ページのバックアップを復元しました。
+    invalid_archive: 有効なページのバックアップファイルではありません。
+  generic:
+    edit: 編集
+  imports:
+    overwrite_preambles:
+      clips_html:
+        one: You are about to <strong>replace your clips</strong> with contents of
+          <strong>%{filename}</strong>. Up to <strong>%{count} clip</strong> will
+          be added to new clips.
+        other: あなたは<strong>%{filename}</strong>の内容で<strong>クリップを置き換えようとしています</strong>。最大<strong>%{count}のクリップ</strong>が新しいクリップに追加されます。
+    preambles:
+      clips_html:
+        one: You are about to add up to <strong>%{count} clip</strong> from <strong>%{filename}</strong>
+          to your <strong>clips</strong>.
+        other: あなたは<strong>%{filename}</strong>から最大<strong>%{count}のクリップ</strong>を<strong>クリップに追加しようとしています</strong>。
+    titles:
+      clips: クリップのインポート
+    types:
+      clips: クリップ
+  misskey_compat:
+    scratchpad:
+      code_label: AiScript コード
+      description: Misskey 互換アプリに表示されたコードを下に貼り付けて実行すると、プッシュ通知が登録されます。完了したら結果をコピーしてアプリに貼り付けてください。
+      no_session: 有効なセッションを確認できませんでした。このブラウザで再度ログインしてからお試しください。
+      result_label: '結果（アプリに貼り付けてください）:'
+      run: 実行
+      title: スクラッチパッド
+      unsupported: このスクラッチパッドはプッシュ通知の登録（sw/register）のみ対応しています。貼り付けられたコードを認識できませんでした。
+      wrong_account: このコードは @%{expected} 向けですが、現在 @%{current} でログインしています。該当アカウントでログインしてからお試しください。
+  multi_accounts:
+    auth:
+      add_account: アカウントを追加
+      authorization_complete: 認証が完了しました。このウィンドウを閉じてください。
+      completing_authorization: 認証を完了しています...
+      same_account: 現在ログイン中のアカウントと同じアカウントは追加できません。
+      sign_in_hint: 追加したいアカウントでログインしてください。
+      success_close_message: アカウントが追加されました。このウィンドウを閉じてください。
+      success_message: アカウントが正常に追加されました。ウィンドウを閉じています...
+  notification_mailer:
+    follow_accepted:
+      body: "%{name}さんがフォローリクエストを承認しました"
+      subject: "%{name}さんがフォローリクエストを承認しました"
+      title: フォロー承認
+    quoted_update:
+      subject: "%{name} edited a post you have quoted"
+    reaction:
+      subject: "%{name} reacted to your post"
+    severed_relationships:
+      subject: You have lost connections due to a moderation decision
+  number:
+    human:
+      decimal_units:
+        units:
+          unit: ''
+  pages:
+    errors:
+      invalid_password: パスワードが正しくありません
+      limit: ページの上限数に達しています
+      own_page: 自分のページにはいいねできません
+  pagination:
+    truncate_html: "&hellip;"
+  settings:
+    avatar_decorations: アバターデコレーション
+    custom_css: カスタムCSS
+  simple_form:
+    hints:
+      account:
+        followed_message: フォローされた時に相手に表示する短いメッセージを設定できます。フォローを承認制にしている場合、フォローリクエストを許可した時に表示されます。
+      defaults:
+        custom_css_text: 自分のセッションにのみ適用されるプレーンなCSSです。最大100 KB。
+        setting_auto_accept_followed: アカウントが承認制でも、すでにフォローしているアカウントからのフォローリクエストは自動的に承認します。
+        setting_auto_quote_from_url: 投稿本文に取得可能な他の連合投稿へのリンクが含まれている場合、作成者に許可を求めずに自動的に引用へ変換します。引用される元の投稿者に承認を求めることはありません。
+        setting_bridge_unlisted_to_bsky: 未収載（ホーム）の投稿は連合上では静かなままにしつつ、Blueskyブリッジ（bsky.brid.gy）には公開として配送し、Blueskyへ転送されるようにします。ブリッジアカウントのフォローが必要です。
+        setting_content_font_size: 投稿本文の文字サイズのみを調整します。その他のUIテキストには影響しません。
+        setting_custom_emoji_size: Display Original size of Long Horizontally Custom
+          Emoji
+        setting_avatar_decoration_shape: デコレーション表示時にプロフィール画像の形を強制します。
+        setting_hide_online_status: 対応しているアプリ（Misskey互換クライアントなど）でオンライン状態を非表示にします。
+        setting_mfm_animations: Play animations in MFM content (spin, bounce, shake,
+          etc.). Disabling this will show static fallbacks instead.
+        setting_mfm_enabled: Render MFM-formatted content from Misskey and compatible
+          servers with animations and styles
+        setting_mfm_fold_mode: Choose when to fold (collapse) MFM posts behind an
+          expand toggle. 'Sensitive' folds posts with animation, scale, or border
+          effects. 'All' folds every MFM post.
+        setting_prevent_ai_learning: 投稿やメディアをAIの学習に使用しないようにクローラーへ要求します。あくまで要求であり、強制はできません。
+        setting_reaction_custom_emoji_size: Display Original size of Long Horizontally
+          Custom Emoji on Reaction Button
+        setting_show_avatar_decorations: アバターデコレーションを表示します。デフォルトではオフです。
+        setting_show_federated_avatar_decorations: Misskey互換サーバーから受信したアバターデコレーションも表示します
+        setting_show_instance_info: Display instance name, theme color, and favicon
+          for posts from other servers
+        setting_show_online_status: あなたがオンラインか、最近アクティブか、オフラインかを他の人が確認できます。無効にすると、状態はすべての人に不明として表示されます。
+        setting_show_reactions: プロフィールで自分がリアクションした投稿を他の人に表示できるようにします。
+        setting_use_custom_css: 有効にすると、下に記入したカスタムCSSがウェブインターフェースに適用されます。
+        setting_use_server_css: 有効にすると、管理者が設定したサーバー全体のカスタムスタイルが適用されます。
+        warn_quote_policy_html: "<strong>Warning:</strong><br>If you limit who can
+          quote, software other than Mastodon, maybe quoted if they don't accept the
+          FEP-044f (Fediverse Enhancement Proposals)<br>%{instance} default is 'Nobody'"
+      form_admin_settings:
+        theme_color: ブラウザのアドレスバーやアプリUIで使われるアクセントカラー。
+      user_role:
+        drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
+        extra_permissions_as_keys: このロールに付与されるSharlayan独自の追加権限
+    labels:
+      defaults:
+        custom_css_text: カスタムCSS
+        followed_message: フォローされた時のメッセージ
+        setting_auto_accept_followed: フォロー中のアカウントからのフォローリクエストを自動承認する
+        setting_auto_quote_from_url: 投稿内の連合投稿リンクを自動的に引用する
+        setting_bridge_unlisted_to_bsky: 未収載の投稿を公開としてBlueskyに転送する
+        setting_content_font_size: 投稿の文字サイズ
+        setting_custom_emoji_size: Show Origin Size Custom Emoji
+        setting_default_quote_policy_private: When set to followers only, other people
+          cannot quote your post.
+        setting_default_quote_policy_unlisted: When someone quotes your post, the
+          quoted post is hidden from trends.
+        setting_avatar_decoration_shape: デコレーション表示時のプロフィール画像の形
+        setting_avatar_decoration_shape_none: 使用しない
+        setting_avatar_decoration_shape_round: 円形
+        setting_avatar_decoration_shape_square: 四角形
+        setting_hide_online_status: オンライン状態を隠す
+        setting_mfm_animations: Enable MFM animations
+        setting_mfm_enabled: Enable MFM rendering
+        setting_mfm_fold_mode: MFM post folding
+        setting_mfm_fold_mode_all: Fold all MFM
+        setting_mfm_fold_mode_sensitive: Fold sensitive MFM (recommended)
+        setting_mfm_fold_mode_show: Show as-is
+        setting_prevent_ai_learning: AIの学習への使用を防ぐ
+        setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction
+          Button
+        setting_show_avatar_decorations: アバターデコレーションを表示
+        setting_show_federated_avatar_decorations: 連合サーバーからのアバターデコレーションを表示
+        setting_show_instance_info: Show instance information on posts
+        setting_show_online_status: 自分のオンライン状態を共有する
+        setting_show_reactions: プロフィールに自分のリアクションを表示する
+        setting_use_custom_css: 自分のカスタムCSSを適用
+        setting_use_server_css: サーバーのカスタムCSSを適用
+        warn_quote_policy_html: "<strong>Warning:</strong><br>Limiting who can quote
+          does not prevent software that does not support FEP-044f from quoting.<br>The
+          default on %{instance} is 'Nobody'."
+      form_admin_settings:
+        local_account_statuses_access: Access to local account feeds
+        local_status_page_access: Access to individual status pages
+        theme_color: テーマカラー
+      user_role:
+        drive_quota: ユーザーごとのドライブ容量 (MB)
+        extra_permissions_as_keys: 追加権限
+  statuses_cleanup:
+    ignore_reactions: Ignore reactions
+    interaction_exceptions_explanation: お気に入りやブーストの数が一度でも基準値に逹っした投稿は、その後数が減っても削除されません。
+    keep_self_clip: クリップに追加した投稿を保持
+    keep_self_clip_hint: 自分のクリップに追加した投稿を削除せずに残します
+    keep_self_reaction: Keep posts you reacted to
+    keep_self_reaction_hint: Doesn't delete your own posts if you have reacted to
+      them
+    min_reactions: Keep posts reacted at least
+    min_reactions_hint: Doesn't delete any of your posts that has received at least
+      this number of reactions. Leave blank to delete posts regardless of their number
+      of reactions
+  two_factor_authentication:
+    resume_app_authorization: Resume application authorization
+    role_requirement: "%{domain} requires you to set up Two-Factor Authentication
+      before you can use Mastodon."
+  unsubscriptions:
+    notification_emails:
+      follow_accepted: follow accepted notification emails
+  wrapstodon:
+    description: See how %{name} used Mastodon this year!

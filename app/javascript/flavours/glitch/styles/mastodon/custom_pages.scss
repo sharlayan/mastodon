@@ -22,7 +22,7 @@
   &__eye-catching {
     display: block;
     width: 100%;
-    max-height: 320px;
+    max-height: 300px;
     object-fit: cover;
   }
 
@@ -316,6 +316,17 @@
   &__textarea {
     min-height: 80px;
     resize: vertical;
+  }
+
+  &__character-count {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-top: 4px;
+    color: var(--color-text-tertiary);
+    font-size: 12px;
+    line-height: 18px;
   }
 
   &__section__children {

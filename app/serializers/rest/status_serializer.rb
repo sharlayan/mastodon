@@ -2,28 +2,21 @@
 
 class REST::StatusSerializer < ActiveModel::Serializer
   include FormattingHelper
-  include InstanceMetadataSerializable
+  include Sharlayan::RESTStatusSerialization
 
   # Please update `app/javascript/mastodon/api_types/statuses.ts` when making changes to the attributes
 
   attributes :id, :created_at, :in_reply_to_id, :in_reply_to_account_id,
              :sensitive, :spoiler_text, :visibility, :language,
              :uri, :url, :replies_count, :reblogs_count,
-             :favourites_count, :reactions_count, :quotes_count,
-             :edited_at, :mfm
-
-  attribute :mfm_text, if: :mfm_text?
+             :favourites_count, :quotes_count, :edited_at
 
   attribute :favourited, if: :current_user?
-  attribute :reacted, if: :current_user?
   attribute :reblogged, if: :current_user?
   attribute :muted, if: :current_user?
   attribute :bookmarked, if: :current_user?
   attribute :pinned, if: :pinnable?
   attribute :local_only, if: :local?
-  attribute :limited_scope, if: :limited_scope?
-  attribute :instance_metadata, if: :show_instance_info?
-  attribute :rp_hidden, if: :rp_admin?
   has_many :filtered, serializer: REST::FilterResultSerializer, if: :current_user?
 
   attribute :content, unless: :source_requested?
@@ -38,7 +31,6 @@ class REST::StatusSerializer < ActiveModel::Serializer
   has_many :ordered_mentions, key: :mentions
   has_many :tags
   has_many :emojis, serializer: REST::CustomEmojiSerializer
-  has_many :reactions, serializer: REST::ReactionSerializer
   has_many :tagged_collections, serializer: REST::CollectionSerializer
 
   # Due to a ActiveModel::Serializer quirk, if you change any of the following, have a look at
@@ -85,10 +77,6 @@ class REST::StatusSerializer < ActiveModel::Serializer
     end
   end
 
-  def limited_scope?
-    object.limited_visibility? && object.limited_scope.present?
-  end
-
   def sensitive
     if current_user? && current_user.account_id == object.account_id
       object.sensitive
@@ -117,10 +105,6 @@ class REST::StatusSerializer < ActiveModel::Serializer
     object.untrusted_favourites_count || relationships&.attributes_map&.dig(object.id, :favourites_count) || object.favourites_count
   end
 
-  def reactions_count
-    relationships&.attributes_map&.dig(object.id, :reactions_count) || object.reactions_count
-  end
-
   def quotes_count
     relationships&.attributes_map&.dig(object.id, :quotes_count) || object.quotes_count
   end
@@ -130,22 +114,6 @@ class REST::StatusSerializer < ActiveModel::Serializer
       relationships.favourites_map[object.id] || false
     else
       current_user.account.favourited?(object)
-    end
-  end
-
-  def reacted
-    if relationships
-      relationships.reactions_map[object.proper.id] || false
-    else
-      current_user.account.reacted?(object)
-    end
-  end
-
-  def reactions
-    if relationships
-      relationships.reaction_groups_map[object.proper.id] || []
-    else
-      object.proper.reactions(current_user&.account&.id)
     end
   end
 
@@ -200,14 +168,6 @@ class REST::StatusSerializer < ActiveModel::Serializer
     instance_options[:source_requested]
   end
 
-  def rp_admin?
-    instance_options[:rp_admin]
-  end
-
-  def rp_hidden
-    object.rp_hidden?
-  end
-
   def ordered_mentions
     object.active_mentions.to_a.sort_by(&:id)
   end
@@ -224,49 +184,10 @@ class REST::StatusSerializer < ActiveModel::Serializer
     }
   end
 
-  def instance_metadata
-    return nil if object.account.domain.blank?
-
-    begin
-      metadata = InstanceMetadata.cached_by_domain(object.account.domain)
-
-      if metadata.nil?
-        InstanceMetadataUpdateWorker.perform_async(object.account.domain)
-        return default_metadata(object.account.domain)
-      end
-
-      InstanceMetadataUpdateWorker.perform_async(object.account.domain) if (metadata.software.blank? && metadata.metadata_updated_at.nil?) || metadata.metadata_updated_at < 1.day.ago
-
-      {
-        domain: metadata.domain,
-        instance_name: metadata.instance_name_with_fallback,
-        software: metadata.software,
-        version: metadata.version,
-        theme_color: metadata.theme_color_with_fallback,
-        favicon_url: metadata.favicon_url_with_fallback,
-      }
-    rescue => e
-      Rails.logger.error("Failed to fetch instance_metadata for domain #{object.account.domain}: #{e.message}")
-      nil
-    end
-  end
-
-  def show_instance_info?
-    Setting.instance_metadata_enabled && object.account.domain.present?
-  end
-
-  def mfm_text?
-    object.mfm? && object.mfm_text.present?
-  end
-
   private
 
   def relationships
     instance_options && instance_options[:relationships]
-  end
-
-  def metadata_domain
-    object.account.domain
   end
 
   class ApplicationSerializer < ActiveModel::Serializer

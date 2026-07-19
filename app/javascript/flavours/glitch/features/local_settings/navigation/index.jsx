@@ -5,27 +5,22 @@ import { PureComponent } from 'react';
 import { defineMessages } from 'react-intl';
 
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
-import CloudSyncIcon from '@/material-icons/400-24px/cloud_sync.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import ImageIcon from '@/material-icons/400-24px/image.svg?react';
-import ListIcon from '@/material-icons/400-24px/list.svg?react';
 import ManufacturingIcon from '@/material-icons/400-24px/manufacturing.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings-fill.svg?react';
-import TuneIcon from '@/material-icons/400-24px/tune.svg?react';
 import WarningIcon from '@/material-icons/400-24px/warning.svg?react';
 import { injectIntl } from '@/flavours/glitch/components/intl';
+import { renderSharlayanLocalSettingsNavigationItems } from 'flavours/glitch/sharlayan/local_settings/registry';
 import { preferencesLink } from 'flavours/glitch/utils/backend_links';
 
 import LocalSettingsNavigationItem from './item';
 
 const messages = defineMessages({
-  quick_preferences: { id: 'settings.quick_preferences', defaultMessage: 'Quick preferences' },
   general: {  id: 'settings.general', defaultMessage: 'General' },
   compose: {  id: 'settings.compose_box_opts', defaultMessage: 'Compose box' },
   content_warnings: { id: 'settings.content_warnings', defaultMessage: 'Content Warnings' },
   media: { id: 'settings.media', defaultMessage: 'Media' },
-  navigation_panel: { id: 'settings.navigation_panel', defaultMessage: 'Navigation panel' },
-  sync: { id: 'settings.sync', defaultMessage: 'Server sync' },
   preferences: { id: 'settings.preferences', defaultMessage: 'Preferences' },
   close: { id: 'settings.close', defaultMessage: 'Close' },
 });
@@ -53,14 +48,7 @@ class LocalSettingsNavigation extends PureComponent {
           iconComponent={ManufacturingIcon}
           title={intl.formatMessage(messages.general)}
         />
-        <LocalSettingsNavigationItem
-          active={index === 1}
-          index={1}
-          onNavigate={onNavigate}
-          icon='sliders'
-          iconComponent={TuneIcon}
-          title={intl.formatMessage(messages.quick_preferences)}
-        />
+        {renderSharlayanLocalSettingsNavigationItems('after-general', { NavigationItem: LocalSettingsNavigationItem, index, intl, onNavigate })}
         <LocalSettingsNavigationItem
           active={index === 2}
           index={2}
@@ -85,22 +73,7 @@ class LocalSettingsNavigation extends PureComponent {
           iconComponent={ImageIcon}
           title={intl.formatMessage(messages.media)}
         />
-        <LocalSettingsNavigationItem
-          active={index === 5}
-          index={5}
-          onNavigate={onNavigate}
-          icon='cloud'
-          iconComponent={CloudSyncIcon}
-          title={intl.formatMessage(messages.sync)}
-        />
-        <LocalSettingsNavigationItem
-          active={index === 6}
-          index={6}
-          onNavigate={onNavigate}
-          icon='list'
-          iconComponent={ListIcon}
-          title={intl.formatMessage(messages.navigation_panel)}
-        />
+        {renderSharlayanLocalSettingsNavigationItems('after-media', { NavigationItem: LocalSettingsNavigationItem, index, intl, onNavigate })}
         <LocalSettingsNavigationItem
           active={index === 7}
           className='preferences'

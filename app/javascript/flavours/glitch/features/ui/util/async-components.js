@@ -38,28 +38,8 @@ export function Lists () {
   return import('../../lists');
 }
 
-export function Antennas () {
-  return import('../../antennas');
-}
-
-export function AntennaEdit () {
-  return import('../../antennas/edit');
-}
-
-export function AntennaTimeline () {
-  return import('../../antenna_timeline');
-}
-
 export function DirectTimeline() {
   return import('../../direct_timeline');
-}
-
-export function AdminTimeline() {
-  return import('../../admin_timeline');
-}
-
-export function ConversationThread() {
-  return import('../../direct_timeline/conversation');
 }
 
 export function Collections() {
@@ -108,18 +88,6 @@ export function AccountFeatured() {
   return import('../../account_featured');
 }
 
-export function AccountClips() {
-  return import('../../account_clips');
-}
-
-export function AccountPages() {
-  return import('../../account_pages');
-}
-
-export function AccountPage() {
-  return import('../../account_pages/show');
-}
-
 export function AccountEdit() {
   return import('../../account_edit')
   .then((module) => ({ default: module.AccountEdit }));
@@ -158,24 +126,12 @@ export function FavouritedStatuses () {
   return import('../../favourited_statuses');
 }
 
-export function ReactedStatuses () {
-  return import('../../reacted_statuses');
-}
-
 export function FollowedTags () {
   return import('../../followed_tags');
 }
 
 export function BookmarkedStatuses () {
   return import('../../bookmarked_statuses');
-}
-
-export function ScheduledTimeline () {
-  return import('../../scheduled_timeline');
-}
-
-export function BoardAnnouncements () {
-  return import('../../board_announcements');
 }
 
 export function Blocks () {
@@ -186,20 +142,8 @@ export function DomainBlocks () {
   return import('../../domain_blocks');
 }
 
-export function DomainMutes () {
-  return import('../../domain_mutes');
-}
-
 export function Mutes () {
   return import('../../mutes');
-}
-
-export function CustomEmojiMutes () {
-  return import('../../custom_emoji_mutes');
-}
-
-export function ReactionMutes () {
-  return import('../../reaction_mutes');
 }
 
 export function MuteModal () {
@@ -214,10 +158,6 @@ export function DomainBlockModal () {
   return import('../components/domain_block_modal');
 }
 
-export function DomainMuteModal () {
-  return import('../components/domain_mute_modal');
-}
-
 export function ReportModal () {
   return import('../components/report_modal');
 }
@@ -229,11 +169,6 @@ export function SettingsModal () {
 export function ReportCollectionModal () {
   return import('../components/report_collection_modal')
     .then((module) => ({ default: module.ReportCollectionModal }));;
-}
-
-export function ReportPageModal () {
-  return import('../components/report_page_modal')
-    .then((module) => ({ default: module.ReportPageModal }));;
 }
 
 export function IgnoreNotificationsModal () {
@@ -338,44 +273,4 @@ export function ListEdit () {
 
 export function ListMembers () {
   return import('../../lists/members');
-}
-
-export function Clips () {
-  return import('../../clips');
-}
-
-export function ClipEdit () {
-  return import('../../clips/new');
-}
-
-export function ClipTimeline () {
-  return import('../../clips/timeline');
-}
-
-export function Pages () {
-  return import('../../pages');
-}
-
-export function PageEdit () {
-  return import('../../pages/editor');
-}
-
-export function PageShow () {
-  return import('../../pages/show');
-}
-
-export function Drive () {
-  return import('../../drive');
-}
-
-export function Circles () {
-  return import('../../circles');
-}
-
-export function CircleEdit () {
-  return import('../../circles/new');
-}
-
-export function CircleMembers () {
-  return import('../../circles/members');
 }

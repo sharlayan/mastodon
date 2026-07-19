@@ -82,6 +82,11 @@ RSpec.describe 'API routes' do
       expect(post('/api/v1/statuses/123/unmute'))
         .to route_to('api/v1/statuses/mutes#destroy', status_id: '123')
     end
+
+    it 'routes reactions containing a domain suffix' do
+      expect(post('/api/v1/statuses/123/react/blob@example.com'))
+        .to route_to('api/v1/statuses/reactions#create', status_id: '123', id: 'blob@example.com')
+    end
   end
 
   describe 'Timeline routes' do
@@ -98,6 +103,33 @@ RSpec.describe 'API routes' do
     it 'routes to tag timeline' do
       expect(get('/api/v1/timelines/tag/test'))
         .to route_to('api/v1/timelines/tag#show', id: 'test')
+    end
+
+    it 'routes to an antenna timeline' do
+      expect(get('/api/v1/timelines/antenna/123'))
+        .to route_to('api/v1/timelines/antenna#show', id: '123')
+    end
+  end
+
+  describe 'Sharlayan collection routes' do
+    it 'routes clip favourites before clip identifiers' do
+      expect(get('/api/v1/clips/favourites'))
+        .to route_to('api/v1/clips/favourites#index')
+    end
+
+    it 'routes drive file lookup before file identifiers' do
+      expect(get('/api/v1/drive/files/find'))
+        .to route_to('api/v1/drive/files#find')
+    end
+
+    it 'routes account pages by name' do
+      expect(get('/api/v1/accounts/123/pages/example'))
+        .to route_to('api/v1/accounts/pages#show', account_id: '123', name: 'example')
+    end
+
+    it 'keeps Misskey admin stubs inside the compatibility namespace' do
+      expect(post('/api/admin/example'))
+        .to route_to('api/misskey_compat/stub#noop', any: 'example')
     end
   end
 end

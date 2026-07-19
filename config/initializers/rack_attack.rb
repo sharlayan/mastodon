@@ -95,6 +95,12 @@ class Rack::Attack
     req.authenticated_user_id if req.post? && req.path.match?(%r{\A/api/v\d+/media\z}i) && !req.bypasses_rate_limit?
   end
 
+  throttle('throttle_drive_uploads', limit: 100, period: 30.minutes) do |req|
+    next unless req.post? && req.path.match?(%r{\A/api/(?:v1/drive/files(?:/upload_from_url)?|drive/files/(?:create|upload-from-url))\z}i) && !req.bypasses_rate_limit?
+
+    req.authenticated_user_id ? "user:#{req.authenticated_user_id}" : "ip:#{req.throttleable_remote_ip}"
+  end
+
   throttle('throttle_media_proxy', limit: 100, period: 10.minutes) do |req|
     req.throttleable_remote_ip if req.path.start_with?('/media_proxy')
   end
@@ -104,7 +110,7 @@ class Rack::Attack
   end
 
   throttle('throttle_page_password_attempts', limit: 10, period: 5.minutes) do |req|
-    "#{req.throttleable_remote_ip}:#{req.path}" if req.post? && req.path.match?(%r{\A/api/v1/pages/\d+/unlock\z}) && req.params['password'].present?
+    "#{req.authenticated_user_id || req.throttleable_remote_ip}:#{req.path}" if req.post? && req.path.match?(%r{\A/api/v1/pages/\d+/unlock\z})
   end
 
   throttle('throttle_authenticated_paging', limit: 1_000, period: 15.minutes) do |req|

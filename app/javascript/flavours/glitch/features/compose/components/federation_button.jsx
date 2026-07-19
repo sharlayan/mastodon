@@ -7,6 +7,7 @@ import SmallShareOffIcon from '@/material-icons/400-20px/share_off.svg?react';
 import ShareIcon from '@/material-icons/400-24px/share.svg?react';
 import ShareOffIcon from '@/material-icons/400-24px/share_off.svg?react';
 import { changeComposeAdvancedOption } from 'flavours/glitch/actions/compose';
+import { forceLocalOnly } from 'flavours/glitch/initial_state';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import { DropdownIconButton } from './dropdown_icon_button';
@@ -25,6 +26,10 @@ export const FederationButton = () => {
   const isEditing = useAppSelector((state) => state.getIn(['compose', 'id']) !== null);
   const do_not_federate = useAppSelector((state) => state.getIn(['compose', 'advanced_options', 'do_not_federate']));
   const dispatch = useAppDispatch();
+
+  if (forceLocalOnly) {
+    return null;
+  }
 
   const handleChange = useCallback((value) => {
     dispatch(changeComposeAdvancedOption('do_not_federate', value === 'local-only'));

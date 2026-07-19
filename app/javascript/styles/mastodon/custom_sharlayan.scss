@@ -1,0 +1,8 @@
+@use 'sass:meta';
+
+html {
+  @include meta.load-css('sharlayan/accounts');
+  @include meta.load-css('sharlayan/avatars');
+  @include meta.load-css('sharlayan/misc');
+  @include meta.load-css('sharlayan/admin');
+}

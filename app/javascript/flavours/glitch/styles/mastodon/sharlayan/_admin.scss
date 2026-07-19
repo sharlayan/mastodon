@@ -1,0 +1,144 @@
+.action-buttons {
+  overflow: visible;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-buttons > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.avatar-decoration-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--color-bg-secondary, #eee);
+}
+
+.batch-table__row__content__image .avatar-decoration-preview {
+  width: 128px;
+  height: 128px;
+}
+
+.fields-group .avatar-decoration-preview {
+  width: 256px;
+  height: 256px;
+}
+
+.bulk-edit-list {
+  border: 1px solid var(--color-border-primary);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  overflow: hidden;
+}
+
+.batch-table__toolbar--bottom {
+  position: static;
+  border-radius: 0;
+  border-top: none;
+  background: transparent;
+  height: auto;
+  padding-block: 8px;
+}
+
+.bulk-edit-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-block-end: 1px solid var(--color-border-primary);
+  background: var(--color-bg-primary);
+}
+
+.bulk-edit-row:last-child {
+  border-block-end: none;
+  border-radius: 0 0 4px 4px;
+}
+
+.bulk-edit-row:hover {
+  background: var(--color-bg-secondary);
+}
+
+.bulk-edit-row__emoji {
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bulk-edit-row__emoji img.emojione {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.bulk-edit-row__info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bulk-edit-row__shortcode {
+  font-size: 0.9em;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bulk-edit-row__fields {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bulk-edit-input,
+.bulk-edit-select {
+  flex: 1 1 140px;
+  min-width: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 0.85em;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: 4px;
+  padding: 4px 8px;
+  height: auto;
+  outline: var(--outline-focus-default);
+  outline-color: transparent;
+  transition:
+    outline-color 0.15s ease-out,
+    border-color 0.15s ease-out;
+}
+
+.bulk-edit-input:focus,
+.bulk-edit-input:focus-visible,
+.bulk-edit-select:focus,
+.bulk-edit-select:focus-visible {
+  outline-color: var(--color-border-brand);
+  border-color: var(--color-border-brand);
+}
+
+.bulk-edit-input::placeholder,
+.bulk-edit-select::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.bulk-edit-select {
+  appearance: none;
+  padding-inline-end: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23666' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  cursor: pointer;
+}

@@ -79,7 +79,13 @@ export const ColumnLink: React.FC<{
 
   if (href) {
     return (
-      <a href={href} className={className} data-method={method} {...other}>
+      <a
+        href={href}
+        onClick={onClick}
+        className={className}
+        data-method={method}
+        {...other}
+      >
         {active ? activeIconElement : iconElement}
         <span>{text}</span>
         {badgeElement}
@@ -91,6 +97,7 @@ export const ColumnLink: React.FC<{
     return (
       <NavLink
         to={to}
+        onClick={onClick}
         className={className}
         isActive={shouldUseCustomIsActive ? navLinkIsActive : undefined}
         {...other}

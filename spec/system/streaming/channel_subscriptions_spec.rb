@@ -76,6 +76,63 @@ RSpec.describe 'Channel Subscriptions', :inline_jobs, :streaming do
         stream: ['user:notification']
       )
     end
+
+    it 'rejects an antenna owned by another account' do
+      antenna = Fabricate(:antenna, account: bob_account)
+
+      streaming_client.authenticate(access_token.token)
+      streaming_client.connect
+      streaming_client.subscribe('antenna', antenna: antenna.id.to_s)
+
+      expect(streaming_client.wait_for_message).to include(
+        error: 'Not authorized to stream this antenna',
+        status: 401
+      )
+    end
+
+    it 'rejects an antenna when the feature is disabled' do
+      antenna = Fabricate(:antenna, account: user_account)
+      Setting.antenna_enabled = false
+
+      streaming_client.authenticate(access_token.token)
+      streaming_client.connect
+      streaming_client.subscribe('antenna', antenna: antenna.id.to_s)
+
+      expect(streaming_client.wait_for_message).to include(
+        error: 'Not authorized to stream this antenna',
+        status: 401
+      )
+    ensure
+      Setting.antenna_enabled = true
+    end
+  end
+
+  context 'when extension feature gates are disabled' do
+    let(:scopes) { 'read' }
+
+    before do
+      Setting.antenna_enabled = false
+      Setting.misskey_compat_enabled = false
+    end
+
+    after do
+      Setting.antenna_enabled = true
+      Setting.misskey_compat_enabled = true
+    end
+
+    it 'keeps upstream public channel subscription and delivery available' do
+      streaming_client.authenticate(access_token.token)
+      streaming_client.connect
+      streaming_client.subscribe('public:local')
+
+      status = PostStatusService.new.call(bob_account, text: 'Upstream path')
+
+      expect(streaming_client.wait_for_message).to include(
+        stream: be_an(Array).and(contain_exactly('public:local')),
+        event: 'update',
+        payload: include(id: status.id.to_s)
+      )
+    end
   end
 
   context 'when the access token has read:statuses scope' do

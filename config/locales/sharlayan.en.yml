@@ -1,0 +1,586 @@
+---
+en:
+  account_switcher:
+    switch_failed: Account not found.
+    switch_unauthorized: You are not authorized to switch to this account.
+  accounts:
+    refetch_local_error: Cannot refresh a local account
+  activerecord:
+    errors:
+      models:
+        circle_account:
+          must_be_follower: must be a follower account
+        custom_emoji:
+          attributes:
+            aliases:
+              too_long: contains an alias exceeding %{max} characters
+              too_many: is too long (maximum is %{max} aliases)
+        user_role:
+          attributes:
+            drive_quota:
+              own_role: cannot be changed with your current role
+  admin:
+    accounts:
+      block_avatar_decorations: Block avatar decorations
+      blocked_avatar_decorations_msg: Avatar decorations blocked for %{username}
+      refresh_avatar_decorations: Refresh avatar decorations
+      refreshed_avatar_decorations_msg: Successfully enqueued avatar decoration refresh
+        for %{username}
+      unblock_avatar_decorations: Unblock avatar decorations
+      unblocked_avatar_decorations_msg: Avatar decorations unblocked for %{username}
+    action_logs:
+      actions:
+        update_collection_html: "%{name} updated collection by %{target}"
+    avatar_decoration_domain_blocks:
+      added_at: Added
+      block: Block domain
+      created_msg: Domain decoration block created successfully
+      destroyed_msg: Domain decoration block removed successfully
+      domain: Domain
+      domain_hint: Block all decorations from this server
+      title: Blocked decoration domains
+      unblock: Unblock
+    avatar_decorations:
+      add_new: Add new decoration
+      all_decorations: All decorations
+      approve: Approve
+      approved: Approved
+      approved_msg: Decoration approved successfully
+      assign_category: Assign category
+      category: Category
+      create_new_category: Create new category
+      created_msg: Decoration created successfully
+      current_image: Current image
+      delete: Delete
+      description: Description
+      destroyed_msg: Decoration deleted successfully
+      edit: Edit
+      image: Image
+      image_hint: PNG, GIF or WebP, max %{size}. Should be a transparent overlay image.
+      local: Local
+      name: Name
+      new_category: New category
+      new_category_hint: If filled, a new category will be created (overrides the
+        selection above).
+      no_category: No category
+      no_decoration_selected: No avatar decoration selected
+      no_role_required: No restriction (everyone)
+      origin: Origin
+      pending_approval: Pending approval
+      pending_title: Decorations pending approval
+      preview: Preview
+      redownload: Refresh from remote server
+      redownload_failed_msg: Failed to refresh decoration image from remote server
+      redownloaded_msg: Successfully refreshed decoration image from remote server
+      replace_image: Replace image
+      required_role: Role restriction
+      required_role_hint: Only users with this role or higher can apply this decoration.
+      status: Status
+      title: Avatar Decorations
+      uncategorized: Uncategorized
+      update_category: Update category
+      updated_msg: Decoration updated successfully
+    board_announcements:
+      attachments: Media attachments
+      attachments_hint: Upload media, then click an item to copy its Markdown into
+        the body.
+      author: 'Author: %{name}'
+      created_msg: Announcement successfully created!
+      destroyed_msg: Announcement successfully deleted!
+      display_hint: A banner announcement is also shown at the top of the timeline
+        until dismissed.
+      displays:
+        banner: Banner
+        normal: Normal
+      edit:
+        title: Edit announcement
+      empty: No announcements found.
+      for_existing_users_hint: Only show this announcement to accounts that existed
+        when it was published (hide from newer sign-ups).
+      icons:
+        error: Error
+        info: Info
+        success: Success
+        warning: Warning
+      markdown_hint: You can use Markdown for formatting.
+      media:
+        add: Add media
+        copied: Markdown copied to clipboard
+        copy_hint: Click to copy Markdown
+        error: Upload failed
+        remove: Remove
+        uploading: Uploading…
+      need_confirmation_to_read_hint: Require users to press a confirmation button
+        before it is marked as read.
+      new:
+        create: Create announcement
+        title: New announcement
+      publish: Publish
+      publish_hint: Make this announcement visible to users.
+      published: Published
+      published_msg: Announcement successfully published!
+      read_count:
+        one: "%{count} read"
+        other: "%{count} reads"
+      silence_hint: Add silently without showing an unread badge or banner.
+      sort_priority: Sort priority
+      sort_priority_hint: Announcements are ordered newest first by default. A higher
+        priority pins the announcement above others (default 0).
+      title: Board announcements
+      unpublish: Unpublish
+      unpublished_msg: Announcement successfully unpublished!
+      updated_msg: Announcement successfully updated!
+    custom_emojis:
+      aliases: Aliases
+      aliases_hint: Comma-separated list of alternative names for search (e.g. blob,
+        cute, kawaii)
+      bulk_edit:
+        title: Bulk edit custom emojis
+        visible: Visible in picker
+      bulk_edit_link: Bulk edit
+      bulk_update_partial: "%{updated} updated, %{failed} failed"
+      bulk_updated_msg:
+        one: "%{count} emoji successfully updated!"
+        other: "%{count} emojis successfully updated!"
+      edit:
+        title: Edit custom emoji
+      license: License / Attribution
+      license_hint: Author, license, or source information for this emoji
+      reset_cache: Reset cache
+      reset_cache_done_msg: Custom emoji cache has been reset
+      shortcode_readonly_hint: The shortcode cannot be changed after creation.
+    domain_blocks:
+      block_trends: Block from trends
+      block_trends_hint: Exclude posts and hashtags from this domain from trend calculations
+      hidden: Hide from public list
+      hidden_hint: Hide this domain block from the public list of domain limitations,
+        even when advertising it is enabled
+      reject_favourite: Reject favourites
+      reject_favourite_hint: Ignore favourites and emoji reactions coming from this
+        domain
+      reject_relay: Reject relayed posts
+      reject_relay_hint: Drop posts from this domain that only arrive through a relay
+    drive_files:
+      all: All
+      attached: Attached
+      attached_error: This drive file is attached to a living post and cannot be deleted.
+      description_html: Files stored in per-account drive libraries. Orphaned files
+        are no longer attached to any living post and can be cleaned up.
+      destroy: Delete
+      destroy_orphaned: Delete all orphaned files
+      destroy_orphaned_confirm: Permanently delete every orphaned drive file?
+      file: File
+      filter: Filter
+      orphaned: Orphaned
+      owner: Owner
+      size: Size
+      status: Status
+      title: Drive files
+    instances:
+      content_policies:
+        policies:
+          block_trends: Block from trends
+          reject_favourite: Reject favourites
+          reject_relay: Reject relayed posts
+      metadata:
+        favicon_url: Favicon URL
+        last_updated: Last Updated
+        never_updated: Never Updated
+        outdated_warning: Outdated!
+        refresh: Request Update
+        refreshing: Requesting...
+        software: Software
+        theme_color: Theme Color
+        title: Instance Metadata
+        unknown: Unknown
+        version: Version
+      metadata_refresh_scheduled: Metadata Refresh Scheduled.
+    not_permitted: You are not permitted to perform this action
+    reports:
+      actions:
+        delete_description_html: The reported posts, collections, and/or pages will
+          be deleted and a strike will be recorded to help you escalate on future
+          infractions by the same account.
+      pages: Pages (%{count})
+      reported_content: Reported content
+      view_page: View page
+    roles:
+      extra_categories:
+        api: API
+      extra_privileges:
+        bypass_rate_limit: Bypass API rate limits
+        bypass_rate_limit_description: When API rate limit bypass is enabled in server
+          settings, users with this permission are not subject to API rate limits
+      privileges:
+        invite_bypass_approval_description: Allows people invited to the server by
+          these users to bypass moderation approval
+    settings:
+      allow_user_custom_css:
+        desc_html: Let users define their own custom CSS that is applied only to their
+          own session in the web interface. When disabled, any stored user CSS stops
+          being applied.
+        title: Allow user custom CSS
+      antenna:
+        enabled: Enable antennas
+        enabled_hint: Allow users to create antennas that automatically collect posts
+          matching conditions (accounts, domains, tags, keywords). When disabled,
+          the antenna page, navigation link and API are unavailable.
+        title: Antennas
+      auto_quote_from_url:
+        enabled: Allow auto quote from post links
+        enabled_hint: Let users opt in to automatically turning fetchable fediverse
+          post links in their posts into quotes, without asking the quoted author
+          for permission. Each user must still enable it in their own preferences.
+        title: Auto quote from URL
+      avatar_decorations:
+        enabled: Enable avatar decorations
+        enabled_hint: Allow users to display avatar decorations on their profiles
+        federation_enabled: Enable decoration federation
+        federation_enabled_hint: Fetch and display decorations from remote Misskey-compatible
+          servers
+        local_only_view: Remote decorations only
+        local_only_view_hint: Disable local decorations; only show decorations received
+          from federated servers
+        max_count: Maximum decorations per user
+        max_count_hint: Maximum number of decorations a user may activate at once
+          (0–16)
+        title: Avatar Decorations
+      board_announcements:
+        enabled: Enable board announcements
+        enabled_hint: Allow users to view the site-internal bulletin board announcements
+          page. When disabled, the page and navigation link are hidden.
+        title: Board Announcements
+      circles:
+        enabled: Enable circles
+        enabled_hint: Allow users to create circles and publish posts visible only
+          to selected followers.
+        title: Circles
+      clips:
+        enabled: Enable clips
+        enabled_hint: Allow users to create clips and collect posts into named collections.
+          When disabled, existing clips are kept but cannot be accessed.
+        title: Clips
+      custom:
+        title: Custom
+      discovery:
+        preamble: Surfacing interesting content is instrumental in onboarding new
+          users who may not know anyone on Mastodon. Control how various discovery
+          features work on your server.
+      drive:
+        allowed_extensions: Additional allowed file extensions
+        allowed_extensions_hint: 'Image, video and audio uploads are always allowed.
+          List any extra extensions to allow, separated by commas (for example: pdf,
+          zip, txt). These extensions can never be allowed, because the files are
+          served from this server''s own domain: %{extensions}.'
+        allowed_extensions_invalid: 'cannot include these extensions: %{extensions}'
+        enabled: Enable drive
+        enabled_hint: Allow users to store uploads in a persistent per-account library
+          and attach them to posts as symbolic links without duplicating bytes. When
+          disabled, the drive button and API are unavailable.
+        max_file_size: Maximum size per file (MB)
+        max_file_size_hint: Maximum size of a single drive upload, in megabytes. Media
+          files are still bound by the server's image and video limits.
+        quota: Drive quota per account (MB)
+        quota_hint: Maximum total size of a single account's drive library, in megabytes.
+          Set to 0 for unlimited.
+        title: Drive
+      extensions:
+        title: Extensions
+      instance_metadata:
+        enabled: Enable instance information bar and metadata collection
+        enabled_hint: When enabled, posts from other servers show an instance information
+          bar (name, theme color, favicon) and the server collects metadata about
+          federated instances. When disabled, the bar is hidden and no instance metadata
+          is fetched.
+        title: Instance Information Bar
+      misskey_compat:
+        enabled: Enable the Misskey-compatible API layer
+        enabled_hint: When enabled, this server also answers a subset of the Misskey
+          API so MiAuth-login apps like Aria for misskey and Flare can sign in, add
+          reactions, and render MFM. Turning this on makes those apps detect this
+          host as Misskey. Leave disabled to keep standard Mastodon behavior.
+        title: Misskey-compatible API
+      online_status:
+        enabled: Enable online status indicators
+        enabled_hint: When enabled, users who opt in can share whether they are online,
+          recently active, or offline, shown as a dot on their avatar. When disabled,
+          no online status is collected or shown to anyone, regardless of user settings.
+        title: Online Status
+      pages:
+        enabled: Enable pages
+        enabled_hint: Allow users to create block-based public pages. When disabled,
+          existing pages are kept but cannot be accessed.
+        title: Pages
+      rate_limit_bypass:
+        enabled: Allow privileged roles to bypass API rate limits
+        enabled_hint: When enabled, users with the Administrator or DevOps permission
+          are not subject to API rate limits. Leave disabled to apply rate limits
+          to everyone.
+        title: API Rate Limit Bypass
+      reaction_local_emoji_only:
+        desc_html: Require a custom emoji to also exist locally before users can react
+          with it. Remote custom emojis still appear in the picker, but reacting with
+          one that has no local counterpart is blocked. Unicode emoji and local custom
+          emoji are unaffected.
+        title: Restrict reactions to local custom emoji
+      reactions:
+        enabled: Enable emoji reactions
+        enabled_hint: Allow users to react to posts with emoji. When disabled, the
+          reaction button is hidden and new reactions are rejected. Existing reactions
+          remain visible.
+        title: Reactions
+      special_features:
+        title: Special features
+    username_blocks:
+      created_msg: Successfully created username rule
+      no_username_block_selected: No username rules were changed as none were selected
+      not_permitted: Not permitted
+      updated_msg: Successfully updated username rule
+  antennas:
+    errors:
+      limit: You have reached the maximum number of antennas
+      too_many_accounts: You have reached the maximum number of accounts for this
+        antenna
+      too_many_domains: You have reached the maximum number of domains for this antenna
+      too_many_keywords: You have reached the maximum number of keywords for this
+        antenna
+      too_many_tags: You have reached the maximum number of hashtags for this antenna
+      too_short_keyword: Keywords must be at least %{count} characters long
+  appearance:
+    customized: Customized - Emojis
+    misskey_flavour: Customized - Misskey Flavour
+  auth:
+    disable_custom_css: Disable custom CSS
+    progress:
+      list: Sign up progress
+  circles:
+    errors:
+      limit: You have reached the maximum number of circles
+      too_many_accounts: You have reached the maximum number of accounts for this
+        circle
+  clips:
+    errors:
+      limit: You have reached the maximum number of clips
+  content_font_sizes:
+    large: Large
+    medium: Medium
+    x_large: Extra large
+    xx_large: Huge
+  custom_css:
+    disabled_by_admin: The server administrator has disabled user custom CSS. You
+      can still choose whether to apply the server-wide styles above.
+    preamble_html: Define your own CSS that will be applied only to your own session
+      in the web interface. Invalid or malicious CSS can break the layout; if that
+      happens, tick <strong>Disable custom CSS</strong> on the login form to recover.
+  exports:
+    clips: Clips
+    pages: Pages
+  page_backups:
+    title: Pages backup
+    description: Download a ZIP backup of your pages and their images, or restore one here. Imported page passwords remain protected by their existing password.
+    download: Download pages backup
+    upload: Restore pages backup
+    merge: Add to existing pages
+    overwrite: Replace all existing pages
+    imported: Pages backup restored.
+    invalid_archive: This is not a valid pages backup.
+  generic:
+    edit: Edit
+  imports:
+    overwrite_preambles:
+      clips_html:
+        one: You are about to <strong>replace your clips</strong> with contents of
+          <strong>%{filename}</strong>. Up to <strong>%{count} clip</strong> will
+          be added to new clips.
+        other: You are about to <strong>replace your clips</strong> with contents
+          of <strong>%{filename}</strong>. Up to <strong>%{count} clips</strong> will
+          be added to new clips.
+    preambles:
+      clips_html:
+        one: You are about to add up to <strong>%{count} clip</strong> from <strong>%{filename}</strong>
+          to your <strong>clips</strong>.
+        other: You are about to add up to <strong>%{count} clips</strong> from <strong>%{filename}</strong>
+          to your <strong>clips</strong>.
+    titles:
+      clips: Importing clips
+    types:
+      clips: Clips
+  misskey_compat:
+    scratchpad:
+      code_label: AiScript code
+      description: Paste the code shown in your Misskey-compatible app below and run
+        it to register push notifications. When it finishes, copy the result and paste
+        it back into the app.
+      no_session: Could not determine your active session. Please sign in again from
+        this browser and retry.
+      result_label: 'Result (copy this back into the app):'
+      run: Run
+      title: Scratchpad
+      unsupported: This scratchpad only supports push notification registration (sw/register).
+        The pasted code was not recognized.
+      wrong_account: This code targets @%{expected}, but you are signed in as @%{current}.
+        Sign in with the matching account and retry.
+  multi_accounts:
+    auth:
+      add_account: Add account
+      authorization_complete: Authorization complete. You may close this window.
+      completing_authorization: Completing authorization...
+      same_account: Cannot add the same account you are currently logged in as.
+      sign_in_hint: Sign in to the account you want to add.
+      success_close_message: Account added. You may close this window.
+      success_message: Account added successfully. Closing window...
+  notification_mailer:
+    follow_accepted:
+      body: "%{name} accepted your follow request"
+      subject: "%{name} accepted your follow request"
+      title: Follow accepted
+    quoted_update:
+      subject: "%{name} edited a post you have quoted"
+    reaction:
+      subject: "%{name} reacted to your post"
+    severed_relationships:
+      subject: You have lost connections due to a moderation decision
+  number:
+    human:
+      decimal_units:
+        units:
+          unit: ''
+  pages:
+    errors:
+      invalid_password: The password is incorrect
+      limit: You have reached the maximum number of pages
+      own_page: You cannot like your own page
+  settings:
+    avatar_decorations: Avatar Decorations
+    custom_css: Custom CSS
+  simple_form:
+    hints:
+      account:
+        followed_message: This message will be sent to users when you accept their
+          follow request.
+      defaults:
+        custom_css_text: Plain CSS, applied only to your own session. Maximum 100
+          KB.
+        setting_auto_accept_followed: Automatically approve follow requests from accounts
+          you already follow, even while your account is locked.
+        setting_auto_quote_from_url: When your post contains a link to another fediverse
+          post that can be fetched, it is automatically turned into a quote without
+          asking the author for permission. The quoted author is not asked to approve
+          it.
+        setting_bridge_unlisted_to_bsky: Your unlisted posts stay quiet on the fediverse,
+          but are delivered to the Bluesky bridge (bsky.brid.gy) as public so they
+          get bridged to Bluesky. Requires following the bridge account.
+        setting_content_font_size: Adjust the font size of post bodies only. Other
+          interface text is unaffected.
+        setting_custom_emoji_size: Display Original size of Long Horizontally Custom
+          Emoji
+        setting_avatar_decoration_shape: Force the profile image shape while an avatar
+          decoration is active.
+        setting_hide_online_status: Hide your online status from apps that support
+          it (such as Misskey-compatible clients).
+        setting_mfm_animations: Play animations in MFM content (spin, bounce, shake,
+          etc.). Disabling this will show static fallbacks instead.
+        setting_mfm_enabled: Render MFM-formatted content from Misskey and compatible
+          servers with animations and styles
+        setting_mfm_fold_mode: Choose when to fold (collapse) MFM posts behind an
+          expand toggle. 'Sensitive' folds posts with animation, scale, or border
+          effects. 'All' folds every MFM post.
+        setting_prevent_ai_learning: Ask crawlers not to use your posts and media
+          for AI training. This is a request only and cannot be enforced.
+        setting_reaction_custom_emoji_size: Display Original size of Long Horizontally
+          Custom Emoji on Reaction Button
+        setting_show_avatar_decorations: Display avatar decoration frames on profiles.
+          Off by default.
+        setting_show_federated_avatar_decorations: Also show decorations received
+          from Misskey-compatible servers
+        setting_show_instance_info: Display instance name, theme color, and favicon
+          for posts from other servers
+        setting_show_online_status: Others can see whether you are online, recently
+          active, or offline. When disabled, your status appears as unknown to everyone.
+        setting_show_reactions: Allow others to see which posts you have reacted to
+          on your profile.
+        setting_use_custom_css: When enabled, your own custom CSS below is applied
+          to the web interface.
+        setting_use_server_css: When enabled, the server-wide custom styles set by
+          the administrator are applied.
+        warn_quote_policy_html: "<strong>Warning:</strong><br>If you limit who can
+          quote, software other than Mastodon, maybe quoted if they don't accept the
+          FEP-044f (Fediverse Enhancement Proposals)<br>%{instance} default is 'Nobody'"
+      form_admin_settings:
+        theme_color: The accent color used by browsers for the address bar and app
+          UI.
+      user_role:
+        drive_quota: Maximum total size of each user's Drive library in megabytes.
+          Leave blank to use the server default. Set to 0 for unlimited.
+        extra_permissions_as_keys: Additional Sharlayan-specific permissions granted
+          to this role
+    labels:
+      defaults:
+        custom_css_text: Custom CSS
+        followed_message: Follow message
+        setting_auto_accept_followed: Auto-accept follow requests from accounts you
+          follow
+        setting_auto_quote_from_url: Automatically quote fediverse post links in your
+          posts
+        setting_bridge_unlisted_to_bsky: Bridge unlisted posts to Bluesky as public
+        setting_content_font_size: Post text size
+        setting_custom_emoji_size: Show Origin Size Custom Emoji
+        setting_default_quote_policy_private: When set to followers only, other people
+          cannot quote your post.
+        setting_default_quote_policy_unlisted: When someone quotes your post, the
+          quoted post is hidden from trends.
+        setting_avatar_decoration_shape: Profile image shape with decoration
+        setting_avatar_decoration_shape_none: Don't force
+        setting_avatar_decoration_shape_round: Round
+        setting_avatar_decoration_shape_square: Square
+        setting_hide_online_status: Hide online status
+        setting_mfm_animations: Enable MFM animations
+        setting_mfm_enabled: Enable MFM rendering
+        setting_mfm_fold_mode: MFM post folding
+        setting_mfm_fold_mode_all: Fold all MFM
+        setting_mfm_fold_mode_sensitive: Fold sensitive MFM (recommended)
+        setting_mfm_fold_mode_show: Show as-is
+        setting_prevent_ai_learning: Prevent use in AI training
+        setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction
+          Button
+        setting_show_avatar_decorations: Show avatar decorations
+        setting_show_federated_avatar_decorations: Show avatar decorations from federated
+          servers
+        setting_show_instance_info: Show instance information on posts
+        setting_show_online_status: Share my online status
+        setting_show_reactions: Show my reactions on my profile
+        setting_use_custom_css: Apply my custom CSS
+        setting_use_server_css: Apply server custom CSS
+        warn_quote_policy_html: "<strong>Warning:</strong><br>Limiting who can quote
+          does not prevent software that does not support FEP-044f from quoting.<br>The
+          default on %{instance} is 'Nobody'."
+      form_admin_settings:
+        local_account_statuses_access: Access to local account feeds
+        local_status_page_access: Access to individual status pages
+        theme_color: Theme color
+      user_role:
+        drive_quota: Drive quota per user (MB)
+        extra_permissions_as_keys: Additional permissions
+  statuses_cleanup:
+    ignore_reactions: Ignore reactions
+    interaction_exceptions_explanation: Posts which temporarily exceed the favorite
+      or boost threshold may be retained even if they are later decreased.
+    keep_self_clip: Keep posts in your clips
+    keep_self_clip_hint: Doesn't delete your own posts if you have added them to one
+      of your clips
+    keep_self_reaction: Keep posts you reacted to
+    keep_self_reaction_hint: Doesn't delete your own posts if you have reacted to
+      them
+    min_reactions: Keep posts reacted at least
+    min_reactions_hint: Doesn't delete any of your posts that has received at least
+      this number of reactions. Leave blank to delete posts regardless of their number
+      of reactions
+  two_factor_authentication:
+    resume_app_authorization: Resume application authorization
+    role_requirement: "%{domain} requires you to set up Two-Factor Authentication
+      before you can use Mastodon."
+  unsubscriptions:
+    notification_emails:
+      follow_accepted: follow accepted notification emails
+  wrapstodon:
+    description: See how %{name} used Mastodon this year!
