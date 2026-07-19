@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Drive::FoldersController < Api::V1::Drive::BaseController
-  before_action -> { doorkeeper_authorize! :read }, only: [:index, :show, :find]
-  before_action -> { doorkeeper_authorize! :write, :'write:media' }, except: [:index, :show, :find]
+  before_action -> { doorkeeper_authorize! :read, :'read:drive' }, only: [:index, :show, :find]
+  before_action -> { doorkeeper_authorize! :write, :'write:media', :'write:drive' }, except: [:index, :show, :find]
   before_action :set_folder, only: [:show, :update, :destroy]
 
   LIMIT = 40
@@ -23,16 +23,20 @@ class Api::V1::Drive::FoldersController < Api::V1::Drive::BaseController
 
   def create
     @folder = current_account.drive_folders.create!(folder_params)
+    broadcast_drive_folder(@folder, 'folderCreated')
     render json: @folder, serializer: REST::DriveFolderSerializer
   end
 
   def update
     @folder.update!(folder_params)
+    broadcast_drive_folder(@folder, 'folderUpdated')
     render json: @folder, serializer: REST::DriveFolderSerializer
   end
 
   def destroy
+    deleted_id = @folder.id
     @folder.destroy!
+    broadcast_drive_folder(deleted_id, 'folderDeleted')
     render_empty
   end
 

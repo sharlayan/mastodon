@@ -136,6 +136,7 @@ ja:
         follow: フォロー、ミュート、ブロック
         follows: フォロー
         lists: リスト
+        drive: ドライブ
         media: メディアの添付
         mutes: ミュート
         notifications: 通知
@@ -176,6 +177,7 @@ ja:
       read:accounts: アカウント情報の読み取り
       read:blocks: ブロックの読み取り
       read:bookmarks: ブックマークの読み取り
+      read:drive: ドライブのファイルとフォルダーの読み取り
       read:favourites: お気に入りの読み取り
       read:filters: フィルターの読み取り
       read:follows: フォローの読み取り
@@ -190,6 +192,7 @@ ja:
       write:blocks: ユーザーのブロックやドメインの非表示
       write:bookmarks: 投稿のブックマーク登録
       write:conversations: 会話のミュートと削除
+      write:drive: ドライブのファイルとフォルダーの管理
       write:favourites: お気に入りの投稿
       write:filters: フィルターの変更
       write:follows: あなたの代わりにフォロー、アンフォロー

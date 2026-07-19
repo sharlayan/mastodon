@@ -136,6 +136,7 @@ en:
         follow: Follows, Mutes and Blocks
         follows: Follows
         lists: Lists
+        drive: Drive
         media: Media attachments
         mutes: Mutes
         notifications: Notifications
@@ -176,6 +177,7 @@ en:
       read:accounts: see accounts information
       read:blocks: see your blocks
       read:bookmarks: see your bookmarks
+      read:drive: see your Drive files and folders
       read:favourites: see your favorites
       read:filters: see your filters
       read:follows: see your follows
@@ -190,6 +192,7 @@ en:
       write:blocks: block accounts and domains
       write:bookmarks: bookmark posts
       write:conversations: mute and delete conversations
+      write:drive: manage your Drive files and folders
       write:favourites: favorite posts
       write:filters: create filters
       write:follows: follow people
