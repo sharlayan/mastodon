@@ -3,6 +3,8 @@
 require 'singleton'
 
 class FeedManager
+  prepend Sharlayan::FeedManagerExtensions
+
   include Singleton
   include Redisable
 
@@ -58,8 +60,6 @@ class FeedManager
       filter_from_direct?(status, receiver.id) ? :filter : nil
     when :tags
       filter_from_tags?(status, receiver.id, build_crutches(receiver.id, [status])) ? :filter : nil
-    when :antenna
-      filter_from_tags?(status, receiver.account_id, build_crutches(receiver.account_id, [status])) ? :filter : nil
     end
   end
 
@@ -70,20 +70,6 @@ class FeedManager
   # @return [Boolean]
   def filter?(timeline_type, status, receiver)
     !!filter(timeline_type, status, receiver)
-  end
-
-  def filter_home_statuses(statuses, receiver, followed_tag_ids)
-    return statuses if statuses.empty?
-
-    crutches = build_crutches(receiver.id, statuses)
-
-    statuses.reject do |status|
-      if status.tags.any? { |tag| followed_tag_ids.include?(tag.id) }
-        filter_from_tags?(status, receiver.id, crutches)
-      else
-        filter_from_home(status, receiver.id, crutches, :home)
-      end
-    end
   end
 
   # Add a status to a home feed and send a streaming API update
@@ -136,22 +122,6 @@ class FeedManager
     return false unless remove_from_feed(:list, list.id, status, aggregate_reblogs: list.account.user&.aggregates_reblogs?)
 
     redis.publish("timeline:list:#{list.id}", { event: :delete, payload: status.id.to_s }.to_json) unless update
-    true
-  end
-
-  def push_to_antenna(antenna, status, update: false)
-    return false unless antenna.account.user&.signed_in_recently?
-    return false unless add_to_feed(:antenna, antenna.id, status, aggregate_reblogs: antenna.account.user&.aggregates_reblogs?)
-
-    trim(:antenna, antenna.id)
-    PushUpdateWorker.perform_async(antenna.account_id, status.id, "timeline:antenna:#{antenna.id}", { 'update' => update }) if push_update_required?("timeline:antenna:#{antenna.id}")
-    true
-  end
-
-  def unpush_from_antenna(antenna, status, update: false)
-    return false unless remove_from_feed(:antenna, antenna.id, status, aggregate_reblogs: antenna.account.user&.aggregates_reblogs?)
-
-    redis.publish("timeline:antenna:#{antenna.id}", { event: :delete, payload: status.id.to_s }.to_json) unless update
     true
   end
 
@@ -510,7 +480,7 @@ class FeedManager
   # @param [String] timeline_key
   # @return [Boolean]
   def push_update_required?(timeline_key)
-    redis.exists?("subscribed:#{timeline_key}") || (Setting.misskey_compat_enabled && redis.exists?("subscribed:misskey:#{timeline_key}"))
+    redis.exists?("subscribed:#{timeline_key}")
   end
 
   # Check if the account is blocking or muting any of the given accounts
@@ -553,7 +523,6 @@ class FeedManager
       should_filter   = crutches[:hiding_reblogs][status.account_id]                                                             # if the reblogger's reblogs are suppressed
       should_filter ||= crutches[:blocked_by][status.reblog.account_id]                                                          # or if the author of the reblogged status is blocking me
       should_filter ||= crutches[:domain_blocking][status.reblog.account.domain]                                                 # or the author's domain is blocked
-      should_filter ||= crutches[:domain_muting_home][status.reblog.account.domain] unless crutches[:following][status.reblog.account_id] # or the author's domain is muted and I'm not following them
     else
       should_filter = false
     end
@@ -615,13 +584,7 @@ class FeedManager
       ((crutches[:active_mentions][status.id] || []) + [status.account_id])                                                      # For mentioned accounts or status account:
         .any? { |target_account_id| crutches[:blocking][target_account_id] || crutches[:muting][target_account_id] } ||          #   - Target account is muted or blocked?
       crutches[:blocked_by][status.account_id] ||                                                                                # Blocked by status account?
-      crutches[:domain_blocking][status.account.domain] ||                                                                       # Blocking domain of status account?
-      domain_muted_from_home?(status.account, crutches) ||
-      (status.reblog? && domain_muted_from_home?(status.reblog.account, crutches))
-  end
-
-  def domain_muted_from_home?(account, crutches)
-    crutches[:domain_muting_home][account.domain] && !crutches[:following][account.id]
+      crutches[:domain_blocking][status.account.domain]                                                                          # Blocking domain of status account?
   end
 
   # Adds a status to an account's feed, returning true if a status was
@@ -745,7 +708,6 @@ class FeedManager
     crutches[:muting]               = Mute.where(account_id: receiver_id, target_account_id: check_for_blocks).pluck(:target_account_id).index_with(true)
     crutches[:domain_blocking]      = AccountDomainBlock.where(account_id: receiver_id, domain: statuses.flat_map { |s| [s.account.domain, s.reblog&.account&.domain] }.compact).pluck(:domain).index_with(true)
     crutches[:blocked_by]           = Block.where(target_account_id: receiver_id, account_id: statuses.map { |s| [s.account_id, s.reblog&.account_id] }.flatten.compact).pluck(:account_id).index_with(true)
-    crutches[:domain_muting_home]   = AccountDomainMute.where(hide_from_home: true, account_id: receiver_id, domain: statuses.flat_map { |s| [s.account.domain, s.reblog&.account&.domain] }.compact).pluck(:domain).index_with(true)
     crutches[:exclusive_list_users] = crutches_exclusive_list_users(receiver_id, statuses) if list.blank?
 
     crutches
@@ -757,12 +719,10 @@ class FeedManager
   end
 
   def crutches_following(recipient_id, statuses, list)
-    target_account_ids = statuses.flat_map { |status| [status.account_id, status.in_reply_to_account_id, status.reblog&.account_id] }.compact
-
     if list.blank? || list.show_followed?
-      Follow.where(account_id: recipient_id, target_account_id: target_account_ids).pluck(:target_account_id).index_with(true)
+      Follow.where(account_id: recipient_id, target_account_id: statuses.filter_map(&:in_reply_to_account_id)).pluck(:target_account_id).index_with(true)
     elsif list.show_list?
-      ListAccount.where(list_id: list.id, account_id: target_account_ids).pluck(:account_id).index_with(true)
+      ListAccount.where(list_id: list.id, account_id: statuses.filter_map(&:in_reply_to_account_id)).pluck(:account_id).index_with(true)
     else
       {}
     end

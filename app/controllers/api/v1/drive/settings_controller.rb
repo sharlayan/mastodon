@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Drive::SettingsController < Api::V1::Drive::BaseController
-  before_action -> { doorkeeper_authorize! :read }, only: :show
-  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: :update
+  before_action -> { doorkeeper_authorize! :read, :'read:drive' }, only: :show
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts', :'write:drive' }, only: :update
 
   def show
     render_settings

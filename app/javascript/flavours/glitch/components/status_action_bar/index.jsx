@@ -8,7 +8,6 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 import { connect } from 'react-redux';
 
-import AddReactionIcon from '@/material-icons/400-24px/add_reaction.svg?react';
 import BookmarkIcon from '@/material-icons/400-24px/bookmark-fill.svg?react';
 import BookmarkBorderIcon from '@/material-icons/400-24px/bookmark.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
@@ -22,11 +21,10 @@ import { PERMISSION_MANAGE_USERS, PERMISSION_MANAGE_FEDERATION } from 'flavours/
 import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend_links';
 import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 
-import { openModal } from 'flavours/glitch/actions/modal';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
-import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import { clipsEnabled, me, quickBoosting, reactionsEnabled } from 'flavours/glitch/initial_state';
 import { adminTimelineOwnerViewer, roleplayMode, softHideDeletion } from 'flavours/glitch/sharlayan/roleplay';
+import { SharlayanStatusReactionButton, sharlayanAddToClipMenuItem } from 'flavours/glitch/sharlayan/status_action_bar';
 
 import { IconButton } from '../icon_button';
 import { injectIntl } from '../intl';
@@ -53,11 +51,9 @@ const messages = defineMessages({
   more: { id: 'status.more', defaultMessage: 'More' },
   replyAll: { id: 'status.replyAll', defaultMessage: 'Reply to thread' },
   favourite: { id: 'status.favourite', defaultMessage: 'Favorite' },
-  react: { id: 'status.react', defaultMessage: 'React' },
   removeFavourite: { id: 'status.remove_favourite', defaultMessage: 'Remove from favorites' },
   bookmark: { id: 'status.bookmark', defaultMessage: 'Bookmark' },
   removeBookmark: { id: 'status.remove_bookmark', defaultMessage: 'Remove bookmark' },
-  addToClip: { id: 'status.add_to_clip', defaultMessage: 'Add to clip' },
   open: { id: 'status.open', defaultMessage: 'Expand this status' },
   report: { id: 'status.report', defaultMessage: 'Report @{name}' },
   muteConversation: { id: 'status.mute_conversation', defaultMessage: 'Mute conversation' },
@@ -160,19 +156,8 @@ class StatusActionBar extends ImmutablePureComponent {
     }
   };
 
-  handleEmojiPick = data => {
-    this.props.onReactionAdd(this.props.status.get('id'), data.native.replace(/:/g, ''), data.imageUrl);
-  };
-
   handleBookmarkClick = (e) => {
     this.props.onBookmark(this.props.status, e);
-  };
-
-  handleAddToClipClick = () => {
-    this.props.dispatch(openModal({
-      modalType: 'CLIP_ADD',
-      modalProps: { statusId: this.props.status.get('id') },
-    }));
   };
 
   handleDeleteClick = () => {
@@ -244,8 +229,6 @@ class StatusActionBar extends ImmutablePureComponent {
     this.props.onFilter();
   };
 
-  handleNoOp = () => {}; // hack for reaction add button
-
   render () {
     const { status, statusQuoteState, quotedAccountId, contextType, intl, withDismiss, withCounters, showReplyCount, scrollKey } = this.props;
     const { signedIn, permissions } = this.props.identity;
@@ -274,8 +257,9 @@ class StatusActionBar extends ImmutablePureComponent {
       menu.push({ text: intl.formatMessage(messages.share), action: this.handleShareClick });
     }
 
-    if (signedIn && clipsEnabled) {
-      menu.push({ text: intl.formatMessage(messages.addToClip), action: this.handleAddToClipClick });
+    const clipMenuItem = sharlayanAddToClipMenuItem(intl, { enabled: signedIn && clipsEnabled, statusId: status.get('id'), dispatch: this.props.dispatch });
+    if (clipMenuItem) {
+      menu.push(clipMenuItem);
     }
 
     if (publicStatus && !isRemote) {
@@ -383,18 +367,6 @@ class StatusActionBar extends ImmutablePureComponent {
       </div>
     );
 
-    const canReact = permissions;
-    const reactButton = (
-      <IconButton
-        className='status__action-bar-button'
-        onClick={this.handleNoOp} // EmojiPickerDropdown handles that
-        title={intl.formatMessage(messages.react)}
-        disabled={!canReact}
-        icon='add_reaction'
-        iconComponent={AddReactionIcon}
-      />
-    );
-
     const bookmarkTitle = intl.formatMessage(status.get('bookmarked') ? messages.removeBookmark : messages.bookmark);
     const favouriteTitle = intl.formatMessage(status.get('favourited') ? messages.removeFavourite : messages.favourite);
 
@@ -419,15 +391,7 @@ class StatusActionBar extends ImmutablePureComponent {
         <div className='status__action-bar__button-wrapper'>
           <IconButton className='status__action-bar-button star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StarIcon : StarBorderIcon} onClick={this.handleFavouriteClick} counter={withCounters ? status.get('favourites_count') : undefined} />
         </div>
-        {reactionsEnabled && (
-          <div className='status__action-bar__button-wrapper'>
-            {
-              permissions
-                ? <EmojiPickerDropdown className='status__action-bar-button' onPickEmoji={this.handleEmojiPick} button={reactButton} disabled={!canReact} inverted={false} />
-                : reactButton
-            }
-          </div>
-        )}
+        <SharlayanStatusReactionButton enabled={reactionsEnabled} status={status} canReact={permissions} onReactionAdd={this.props.onReactionAdd} wrapperClassName='status__action-bar__button-wrapper' buttonClassName='status__action-bar-button' dropdownClassName='status__action-bar-button' inverted={false} />
         <div className='status__action-bar__button-wrapper'>
           <IconButton className='status__action-bar-button bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? BookmarkIcon : BookmarkBorderIcon} onClick={this.handleBookmarkClick} />
         </div>

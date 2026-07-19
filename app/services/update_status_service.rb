@@ -3,6 +3,7 @@
 class UpdateStatusService < BaseService
   include Redisable
   include LanguagesHelper
+  prepend Sharlayan::UpdateStatusServiceExtensions
 
   class NoChangesSubmittedError < StandardError; end
 
@@ -50,10 +51,9 @@ class UpdateStatusService < BaseService
   def update_media_attachments!
     previous_media_attachments = @status.ordered_media_attachments.to_a
     next_media_attachments     = validate_media!
-    @next_media_attachments    = next_media_attachments
     added_media_attachments    = next_media_attachments - previous_media_attachments
 
-    DriveFile.lock_for_media_attachments(added_media_attachments)
+    prepare_sharlayan_media_attachments(next_media_attachments, added_media_attachments)
 
     (@options[:media_attributes] || []).each do |attributes|
       media = next_media_attachments.find { |attachment| attachment.id == attributes[:id].to_i }
@@ -118,16 +118,13 @@ class UpdateStatusService < BaseService
     if @options.key?(:text)
       @status.text = @options[:text].presence || ''
       @status.text = @options.delete(:spoiler_text) || '' if @status.text.blank? && @status.quote.blank?
-      @status.mfm_text = @status.mfm? ? @status.text : nil
     end
     @status.spoiler_text = @options[:spoiler_text] || '' if @options.key?(:spoiler_text)
-    if @options.key?(:sensitive) || @options.key?(:spoiler_text) || @options.key?(:media_ids)
-      requested_sensitive = @options.key?(:sensitive) ? @options[:sensitive] : @status.sensitive?
-      @status.sensitive = requested_sensitive || @options[:spoiler_text].present? || sensitive_drive_media?
-    end
+    @status.sensitive    = @options[:sensitive] || @options[:spoiler_text].present? if @options.key?(:sensitive) || @options.key?(:spoiler_text)
     @status.language     = valid_locale_cascade(@options[:language], @status.language, @status.account.user&.preferred_posting_language, I18n.default_locale)
     @status.content_type = @options[:content_type] || @status.content_type
     @status.quote_approval_policy = @options[:quote_approval_policy] if @options[:quote_approval_policy].present?
+    apply_sharlayan_immediate_attributes
 
     # We raise here to rollback the entire transaction
     raise NoChangesSubmittedError unless significant_changes?
@@ -141,11 +138,6 @@ class UpdateStatusService < BaseService
 
     @status.reset_preview_card!
     LinkCrawlWorker.perform_async(@status.id)
-  end
-
-  def sensitive_drive_media?
-    media_attachments = @next_media_attachments || @status.ordered_media_attachments.includes(:drive_file)
-    media_attachments.any? { |media| media.drive_file&.sensitive? }
   end
 
   def update_metadata!

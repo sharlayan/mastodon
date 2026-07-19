@@ -13,57 +13,18 @@ import ColorsIcon from '@/material-icons/400-24px/colors.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import UndoIcon from '@/material-icons/400-24px/undo.svg?react';
-import RedoIcon from '@/material-icons/400-24px/redo.svg?react';
 import { doodleSet, uploadCompose } from 'flavours/glitch/actions/compose';
 import { Button } from 'flavours/glitch/components/button';
 import { IconButton } from 'flavours/glitch/components/icon_button';
+// palette nicked from MyPaint, CC0
 const palette = [
   ['rgb(  0,    0,    0)', 'Black'],
-  ['rgb( 21,   21,   21)', '#151515'],
   ['rgb( 38,   38,   38)', 'Gray 15'],
-  ['rgb( 42,   42,   42)', '#2A2A2A'],
-  ['rgb( 63,   63,   63)', '#3F3F3F'],
   ['rgb( 77,   77,   77)', 'Grey 30'],
-  ['rgb( 85,   85,   85)', '#555555'],
-  ['rgb(106,  106,  106)', '#6A6A6A'],
   ['rgb(128,  128,  128)', 'Grey 50'],
-  ['rgb(148,  148,  148)', '#949494'],
   ['rgb(171,  171,  171)', 'Grey 67'],
-  ['rgb(191,  191,  191)', '#BFBFBF'],
-  ['rgb(212,  212,  212)', '#D4D4D4'],
   ['rgb(217,  217,  217)', 'Grey 85'],
-  ['rgb(233,  233,  233)', '#E9E9E9'],
   ['rgb(255,  255,  255)', 'White'],
-
-  ['rgb( 48,   54,   78)', '#30364E'],
-  ['rgb( 30,   30,   35)', '#1E1E23'],
-  ['rgb(130,  255,   65)', '#82FF41'],
-  ['rgb( 80,  235,   90)', '#50EB5A'],
-  ['rgb( 40,  195,  115)', '#28C373'],
-  ['rgb( 40,  150,  135)', '#289687'],
-  ['rgb( 40,  115,  135)', '#287387'],
-  ['rgb( 40,   90,  135)', '#285A87'],
-  ['rgb( 30,   60,  110)', '#1E3C6E'],
-  ['rgb( 30,   35,   85)', '#1E2355'],
-  ['rgb( 40,   40,   90)', '#28285A'],
-  ['rgb( 51,   63,  107)', '#333F6B'],
-  ['rgb( 69,   86,  148)', '#455694'],
-  ['rgb( 96,  105,  136)', '#606988'],
-  ['rgb( 90,   80,  120)', '#5A5078'],
-  ['rgb( 70,   60,  120)', '#463C78'],
-  ['rgb( 55,   45,   90)', '#372D5A'],
-  ['rgb(125,   85,  145)', '#7d5591'],
-  ['rgb(155,   85,  155)', '#98559b'],
-  ['rgb(205,  115,  155)', '#cd739b'],
-
-  ['rgb(177,  121,  124)', '#B1797C'],
-  ['rgb(219,  160,  156)', '#DBA09C'],
-  ['rgb(221,  181,  161)', '#DDB5A1'],
-  ['rgb(251,  201,  190)', '#FBC9BE'],
-  ['rgb(251,  220,  192)', '#FBDCC0'],
-
-  /* deafult colors */
-  // palette nicked from MyPaint, CC0
   ['rgb(128,    0,    0)', 'Maroon'],
   ['rgb(209,    0,    0)', 'English-red'],
   ['rgb(255,   54,   34)', 'Tomato'],
@@ -127,6 +88,7 @@ const palette = [
   ['rgb(255,   20,  147)', 'Deep pink'],
   ['rgb(255,  102,  204)', 'Rose pink'],
   ['rgb(255,  203,  219)', 'Pink'],
+  ['rgb(255,  255,  255)', 'White'],
   ['rgb(229,   17,    1)', 'RGB Red'],
   ['rgb(  0,  255,    0)', 'RGB Green'],
   ['rgb(  0,    0,  255)', 'RGB Blue'],
@@ -136,7 +98,13 @@ const palette = [
 ];
 
 // re-arrange to the right order for display
-let palReordered = palette;
+let palReordered = [];
+for (let row = 0; row < 7; row++) {
+  for (let col = 0; col < 11; col++) {
+    palReordered.push(palette[col * 7 + row]);
+  }
+  palReordered.push(null); // null indicates a <br />
+}
 
 // Utility for converting base64 image to binary for upload
 // https://stackoverflow.com/questions/35940290/how-to-convert-base64-string-to-javascript-file-object-like-as-from-file-input-f
@@ -292,13 +260,6 @@ class DoodleModal extends ImmutablePureComponent {
       this.undo();
     }
 
-    // added redo
-    if ((e.key === 'y' && (e.ctrlKey || e.metaKey)) ||
-        (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)) {
-      e.preventDefault();
-      this.redo();
-    }
-
     if (e.key === 'Control' || e.key === 'Meta') {
       this.controlHeld = false;
       this.swapped = false;
@@ -333,7 +294,6 @@ class DoodleModal extends ImmutablePureComponent {
     this.controlHeld = false;
     this.shiftHeld = false;
     this.swapped = false;
-    this.redos = [];
     window.addEventListener('keyup', this.handleKeyUp, false);
     window.addEventListener('keydown', this.handleKeyDown, false);
   }
@@ -453,7 +413,6 @@ class DoodleModal extends ImmutablePureComponent {
     this.ctx.fillStyle = this.bg;
     this.ctx.fillRect(-1, -1, this.canvas.width+2, this.canvas.height+2);
     this.undos = [];
-    this.redos = [];
 
     this.doSaveUndo();
   };
@@ -463,25 +422,12 @@ class DoodleModal extends ImmutablePureComponent {
    */
   undo = () => {
     if (this.undos.length > 1) {
-      const current = this.undos.pop();
-      this.redos.push(current);
-      const buf = this.undos[this.undos.length - 1];
+      this.undos.pop();
+      const buf = this.undos.pop();
 
       this.sketcher.clear();
       this.ctx.putImageData(buf, 0, 0);
-    }
-  };
-
-  /**
-   * added Redo
-   */
-  redo = () => {
-    if (this.redos.length > 0) {
-      const buf = this.redos.pop();
-      this.undos.push(buf);
-
-      this.sketcher.clear();
-      this.ctx.putImageData(buf, 0, 0);
+      this.doSaveUndo();
     }
   };
 
@@ -490,7 +436,6 @@ class DoodleModal extends ImmutablePureComponent {
    */
   doSaveUndo = () => {
     this.undos.push(this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height));
-    this.redos = [];
   };
 
   /**
@@ -605,70 +550,68 @@ class DoodleModal extends ImmutablePureComponent {
 
     return (
       <div className='modal-root__modal doodle-modal'>
-        <div className='doodle-modal__top'>
-          <div className='doodle-modal__top__left'>
-            <IconButton icon='pencil' iconComponent={EditIcon} title='Draw' label='Draw' onClick={this.setModeDraw} size={18} active={this.mode === 'draw'} inverted />
-            <IconButton icon='bath' iconComponent={ColorsIcon} title='Fill' label='Fill' onClick={this.setModeFill} size={18} active={this.mode === 'fill'} inverted />
-            <IconButton icon='undo' iconComponent={UndoIcon} title='Undo' label='Undo' onClick={this.undo} size={18} inverted />
-            <IconButton icon='redo' iconComponent={RedoIcon} title='Redo' label='Redo' onClick={this.redo} size={18} inverted />
-            <IconButton icon='trash' iconComponent={DeleteIcon} title='Clear' label='Clear' onClick={this.handleClearBtn} size={18} inverted />
-          </div>
-          <div className='doodle-modal__top__right'>
-            <select aria-label='Canvas size' onInput={this.changeSize} defaultValue={this.size}>
-              { Object.values(mapValues(DOODLE_SIZES, (val, k) =>
-                <option key={k} value={k}>{val[2]}</option>,
-              )) }
-            </select>
-          </div>
+        <div className='doodle-modal__container'>
+          <canvas ref={this.setCanvasRef} />
         </div>
-        <div className='doodle-wrapper'>
-          <div className='doodle-modal__container'>
-            <canvas ref={this.setCanvasRef} />
+
+        <div className='doodle-modal__action-bar'>
+          <div className='doodle-toolbar'>
+            <Button text='Done' onClick={this.onDoneButton} />
+            <Button text='Cancel' onClick={this.onCancelButton} />
           </div>
-          <div className='doodle-modal__action-bar'>
-            <div className='doodle-palette'>
-              {
-                palReordered.map((c, i) =>
-                  c === null ?
-                    <br key={i} /> :
-                    <button
-                      key={i}
-                      style={{ backgroundColor: c[0] }}
-                      onClick={this.onPaletteClick}
-                      onContextMenu={this.onPaletteRClick}
-                      data-color={c[0]}
-                      title={c[1]}
-                      className={classNames({
-                        'foreground': this.fg === c[0],
-                        'background': this.bg === c[0],
-                      })}
-                    />,
-                )
-              }
-            </div>
-            <div className='doodle-options'>
-              <label htmlFor='dd_weight'>두께</label>
-              <span className='val'>
-                <input type='number' min={1} id='dd_weight' value={this.weight} onChange={this.setWeight} />
-              </span>
-            </div>
-            <div className='doodle-options'>
-              <label htmlFor='dd_smoothing'>부드럽게</label>
+          <div className='filler' />
+          <div className='doodle-toolbar with-inputs'>
+            <div>
+              <label htmlFor='dd_smoothing'>Smoothing</label>
               <span className='val'>
                 <input type='checkbox' id='dd_smoothing' onChange={this.tglSmooth} checked={this.smoothing} />
               </span>
             </div>
-            <div className='doodle-options'>
-              <label htmlFor='dd_adaptive'>길이에 따른 굵기 조절</label>
+            <div>
+              <label htmlFor='dd_adaptive'>Adaptive</label>
               <span className='val'>
                 <input type='checkbox' id='dd_adaptive' onChange={this.tglAdaptive} checked={this.adaptiveStroke} />
               </span>
             </div>
-            <div className='filler' />
-            <div className='doodle-toolbar doodle-confirm'>
-              <Button text='Done' onClick={this.onDoneButton} />
-              <Button text='Cancel' onClick={this.onCancelButton} />
+            <div>
+              <label htmlFor='dd_weight'>Weight</label>
+              <span className='val'>
+                <input type='number' min={1} id='dd_weight' value={this.weight} onChange={this.setWeight} />
+              </span>
             </div>
+            <div>
+              <select aria-label='Canvas size' onInput={this.changeSize} defaultValue={this.size}>
+                { Object.values(mapValues(DOODLE_SIZES, (val, k) =>
+                  <option key={k} value={k}>{val[2]}</option>,
+                )) }
+              </select>
+            </div>
+          </div>
+          <div className='doodle-toolbar'>
+            <IconButton icon='pencil' iconComponent={EditIcon} title='Draw' label='Draw' onClick={this.setModeDraw} size={18} active={this.mode === 'draw'} inverted />
+            <IconButton icon='bath' iconComponent={ColorsIcon} title='Fill' label='Fill' onClick={this.setModeFill} size={18} active={this.mode === 'fill'} inverted />
+            <IconButton icon='undo' iconComponent={UndoIcon} title='Undo' label='Undo' onClick={this.undo} size={18} inverted />
+            <IconButton icon='trash' iconComponent={DeleteIcon} title='Clear' label='Clear' onClick={this.handleClearBtn} size={18} inverted />
+          </div>
+          <div className='doodle-palette'>
+            {
+              palReordered.map((c, i) =>
+                c === null ?
+                  <br key={i} /> :
+                  <button
+                    key={i}
+                    style={{ backgroundColor: c[0] }}
+                    onClick={this.onPaletteClick}
+                    onContextMenu={this.onPaletteRClick}
+                    data-color={c[0]}
+                    title={c[1]}
+                    className={classNames({
+                      'foreground': this.fg === c[0],
+                      'background': this.bg === c[0],
+                    })}
+                  />,
+              )
+            }
           </div>
         </div>
       </div>

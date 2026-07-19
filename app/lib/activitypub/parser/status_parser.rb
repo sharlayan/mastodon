@@ -3,6 +3,7 @@
 class ActivityPub::Parser::StatusParser
   include FormattingHelper
   include JsonLdHelper
+  prepend Sharlayan::ActivityPubStatusParserExtensions
 
   NORMALIZED_LOCALE_NAMES = LanguagesHelper::SUPPORTED_LOCALES.keys.index_by(&:downcase).freeze
 
@@ -39,7 +40,7 @@ class ActivityPub::Parser::StatusParser
 
   def text
     if @object['content'].present?
-      sanitize_misskey_quote_br(@object['content'])
+      @object['content']
     elsif content_language_map?
       @object['contentMap'].values.first
     end
@@ -98,17 +99,6 @@ class ActivityPub::Parser::StatusParser
     @object['sensitive']
   end
 
-  def mfm?
-    mfm_source_text.present? || MfmDetector.contains_mfm?(text)
-  end
-
-  def mfm_source_text
-    source = @object['source']
-    return source['content'].presence if source.is_a?(Hash) && source['mediaType']&.include?('misskeymarkdown')
-
-    @object['_misskey_content'].presence
-  end
-
   def visibility
     if audience_to.any? { |to| ActivityPub::TagManager.instance.public_collection?(to) }
       :public
@@ -121,10 +111,6 @@ class ActivityPub::Parser::StatusParser
     else
       :direct
     end
-  end
-
-  def limited_scope
-    ActivityPub::TagManager.instance.limited_scope_from_uri(@object['limitedScope'])
   end
 
   def language
@@ -141,13 +127,6 @@ class ActivityPub::Parser::StatusParser
   end
 
   def quote_policy
-    # quote auto allow from misskey notes
-    if from_misskey? && [:public, :unlisted].include?(visibility)
-      flags = InteractionPolicy::POLICY_FLAGS[:followers]
-      flags <<= 16
-      return flags
-    end
-
     flags = 0
     policy = @object.dig('interactionPolicy', 'canQuote')
     return flags if policy.blank?
@@ -184,16 +163,6 @@ class ActivityPub::Parser::StatusParser
 
   def quote_approval_uri
     as_array(@object['quoteAuthorization']).first
-  end
-
-  def from_misskey?
-    return false unless @json.is_a?(Hash)
-
-    # check in @context array
-    context = as_array(@json['@context'])
-    context.any? do |ctx|
-      ctx.is_a?(Hash) && ctx.key?('misskey')
-    end
   end
 
   def converted_object_type?
@@ -253,11 +222,5 @@ class ActivityPub::Parser::StatusParser
 
   def name_language_map?
     @object['nameMap'].is_a?(Hash) && !@object['nameMap'].empty?
-  end
-
-  def sanitize_misskey_quote_br(content)
-    return content if content.blank? || !from_misskey?
-
-    content.gsub(%r{<br\s*/>\s*(?=<span\s+class=["']quote-inline["']>)}, '')
   end
 end

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
-  requires_write_scope :create, :update, :destroy, :push, :pull
+  requires_write_scope :create, :update, :destroy, :push, :pull, :update_membership
 
   before_action :require_user!
-  before_action :set_list!, only: [:show, :update, :destroy, :push, :pull, :timeline, :memberships]
+  before_action :set_list!, only: [:show, :update, :destroy, :push, :pull, :timeline, :memberships, :update_membership]
 
   def index
     render json: current_account.owned_lists.order(id: :desc).map { |list| serialize(list) }
@@ -60,8 +60,21 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
     members = members.limit(pagination_limit)
 
     render json: members.map { |la|
-      { id: MisskeyCompat::MiId.encode(la.id), createdAt: la.created_at.iso8601, userId: MisskeyCompat::MiId.encode(la.account_id), user: MisskeyCompat::UserSerializer.serialize(la.account) }
+      { id: MisskeyCompat::MiId.encode(la.id), createdAt: Mastodon::Snowflake.to_time(la.id).iso8601, userId: MisskeyCompat::MiId.encode(la.account_id), user: MisskeyCompat::UserSerializer.serialize(la.account), withReplies: la.with_replies }
     }
+  end
+
+  def update_membership
+    account = Account.find_by(id: params[:userId])
+    return render_error('No such user', 'NO_SUCH_USER', 404, id: '588e7f72-c744-4a61-b180-d354e912bda2') if account.nil?
+
+    membership = @list.list_accounts.find_by(account: account)
+    return render_error('User is not a member of the list', 'NO_SUCH_MEMBERSHIP', 404) if membership.nil?
+
+    return render_invalid_param('#/properties/withReplies/type', 'must be boolean') unless params[:withReplies].nil? || [true, false].include?(params[:withReplies])
+
+    membership.update!(with_replies: params[:withReplies]) unless params[:withReplies].nil?
+    head 204
   end
 
   private

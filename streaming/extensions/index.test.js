@@ -160,6 +160,57 @@ test('Misskey cleanup removes channel and note subscriptions', () => {
   assert.equal(session.misskeyNotes.size, 0);
 });
 
+test('Misskey drive channel subscribes to the account stream and forwards typed events', async () => {
+  const subscribed = [];
+  let captured;
+  const sent = [];
+  const compat = createMisskeyCompat({
+    subscribe: (channel, listener) => { subscribed.push(channel); captured = listener; },
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => assert.fail('drive channel must not hit channelNameToIds'),
+    authorizeStatusAccess: async () => true,
+    isEnabled: async () => true,
+    logger: { error: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['read:drive'] },
+    websocket: { readyState: 1, OPEN: 1, send: (m) => sent.push(JSON.parse(m)) },
+  };
+
+  compat.handleMessage(session, { type: 'connect', body: { id: 'ch1', channel: 'drive' } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(subscribed, ['misskey:drive:7']);
+
+  captured({ event: 'drive', payload: { type: 'fileCreated', body: { id: 'abc' } } });
+  captured({ event: 'note', payload: { id: 'ignored' } });
+
+  assert.deepEqual(sent, [{ type: 'channel', body: { id: 'ch1', type: 'fileCreated', body: { id: 'abc' } } }]);
+});
+
+test('Misskey drive channel rejects tokens without a drive-capable scope', async () => {
+  let subscribedCount = 0;
+  const compat = createMisskeyCompat({
+    subscribe: () => { subscribedCount += 1; },
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: [] }),
+    authorizeStatusAccess: async () => true,
+    isEnabled: async () => true,
+    logger: { error: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['read:statuses'] },
+    websocket: { readyState: 1, OPEN: 1, send: () => {} },
+  };
+
+  compat.handleMessage(session, { type: 'connect', body: { id: 'ch1', channel: 'drive' } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(subscribedCount, 0);
+});
+
 test('Misskey enabled lookup failures remain disabled', async () => {
   const errors = [];
   const enabled = createEnabledCheck(

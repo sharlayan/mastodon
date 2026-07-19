@@ -3,21 +3,17 @@
 class InitialStateSerializer < ActiveModel::Serializer
   include RoutingHelper
   include Sharlayan::InitialStateRoleplay
+  prepend Sharlayan::InitialStateSerializerExtensions
 
   attributes :meta, :compose, :accounts,
              :media_attachments, :settings,
              :max_feed_hashtags, :poll_limits,
-             :languages, :max_reactions,
-             :features
+             :languages, :features
 
   attribute :critical_updates_pending, if: -> { object&.role&.can?(:view_devops) && SoftwareUpdate.check_enabled? }
 
   has_one :push_subscription, serializer: REST::WebPushSubscriptionSerializer
   has_one :role, serializer: REST::RoleSerializer
-
-  def max_reactions
-    StatusReactionValidator::LIMIT
-  end
 
   def max_feed_hashtags
     TagFeed::LIMIT_PER_MODE
@@ -53,26 +49,8 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:use_pending_items] = object_account_user.setting_use_pending_items
       store[:default_content_type] = object_account_user.setting_default_content_type
       store[:show_trends]       = Setting.trends && object_account_user.setting_trends
-      store[:visible_reactions] = object_account_user.setting_visible_reactions
       store[:emoji_style]       = object_account_user.settings['web.emoji_style']
-      store[:show_instance_info]          = object_account_user.settings_show_instance_info
-      store[:custom_emoji_size]           = object_account_user.settings_custom_emoji_size
-      store[:reaction_custom_emoji_size]  = object_account_user.settings_reaction_custom_emoji_size
-      store[:reaction_local_emoji_only]   = Setting.reaction_local_emoji_only
-      store[:reactions_enabled]           = Setting.reactions_enabled
-      store[:mfm_enabled]                 = object_account_user.settings_mfm_enabled
-      store[:mfm_animations]              = object_account_user.settings_mfm_animations
-      store[:mfm_fold_mode]               = object_account_user.settings_mfm_fold_mode
-      store[:mfm_allow_composition]       = Setting.mfm_allow_composition
-      store[:wrapstodon] = wrapstodon
-      store[:show_avatar_decorations]           = object_account_user.settings['avatar_decorations.show']
-      store[:show_federated_avatar_decorations] = object_account_user.settings['avatar_decorations.show_federated']
-      store[:avatar_decoration_shape]           = object_account_user.settings['avatar_decorations.shape']
-      store[:color_scheme]                      = object_account_user.settings['web.color_scheme']
-      store[:contrast]                          = object_account_user.settings['web.contrast']
-      store[:custom_emoji_mute_hidden]          = object_account_user.settings['web.custom_emoji_mute_hidden']
-      store[:custom_emoji_mutes]                = object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions, hide_in_picker: mute.hide_in_picker } }
-      store[:reaction_mutes]                    = object.current_account.reaction_mutes.includes(:target_account).order(id: :desc).map { |mute| { id: mute.id.to_s, target_account_id: mute.target_account_id&.to_s, target_acct: mute.target_account&.acct, target_domain: mute.target_domain } }
+      store[:wrapstodon]        = wrapstodon
     else
       store[:auto_play_gif] = Setting.auto_play_gif
       store[:display_media] = Setting.display_media
@@ -85,7 +63,7 @@ class InitialStateSerializer < ActiveModel::Serializer
 
     store[:owner] = object.owner&.id&.to_s if Rails.configuration.x.single_user_mode
 
-    apply_sharlayan_roleplay_meta!(store)
+    store
   end
 
   def compose
@@ -168,26 +146,11 @@ class InitialStateSerializer < ActiveModel::Serializer
       trends_enabled: Setting.trends,
       version: instance_presenter.version,
       terms_of_service_enabled: TermsOfService.current.present?,
-      force_local_only: Setting.force_local_only,
-      circles_enabled: Setting.circles_enabled,
-      clips_enabled: Setting.clips_enabled,
-      pages_enabled: Setting.pages_enabled,
-      antenna_enabled: Setting.antenna_enabled,
-      drive_enabled: Setting.drive_enabled,
-      board_announcements_enabled: Setting.board_announcements_enabled,
-      avatar_decorations_enabled: Setting.avatar_decorations_enabled,
-      avatar_decorations_federation_enabled: Setting.avatar_decorations_federation_enabled,
-      local_account_statuses_access: Setting.local_account_statuses_access,
-      local_status_page_access: Setting.local_status_page_access,
       local_live_feed_access: Setting.local_live_feed_access,
       remote_live_feed_access: Setting.remote_live_feed_access,
       local_topic_feed_access: Setting.local_topic_feed_access,
       remote_topic_feed_access: Setting.remote_topic_feed_access,
     }
-  end
-
-  def object_account
-    object.current_account
   end
 
   def object_account_user

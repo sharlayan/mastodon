@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class CreateDriveFileService < BaseService
+  include Redisable
+
   class NoFreeSpaceError < StandardError; end
   class NoSuchFolderError < StandardError; end
 
@@ -14,17 +16,31 @@ class CreateDriveFileService < BaseService
     @sha256 = Digest::SHA256.file(uploaded_path).hexdigest
     @md5 = Digest::MD5.file(uploaded_path).hexdigest
 
-    account.with_lock do
+    drive_file = account.with_lock do
       existing = account.drive_files.find_by(sha256: @sha256)
-      next update_existing_file(existing) if existing
+      if existing
+        @created = false
+        next update_existing_file(existing)
+      end
 
+      @created = true
       create_file
     end
+
+    broadcast(drive_file)
+    drive_file
   rescue ActiveRecord::RecordNotUnique
-    update_existing_file(account.drive_files.find_by!(sha256: @sha256))
+    @created = false
+    update_existing_file(account.drive_files.find_by!(sha256: @sha256)).tap { |file| broadcast(file) }
   end
 
   private
+
+  def broadcast(drive_file)
+    return if drive_file.nil?
+
+    MisskeyCompat::Streaming.broadcast_drive_file(redis, @account, drive_file, @created ? 'fileCreated' : 'fileUpdated')
+  end
 
   def create_file
     candidate = @account.drive_files.build(@attributes.except(:file, :thumbnail).merge(sha256: @sha256, md5: @md5))

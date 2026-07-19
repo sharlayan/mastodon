@@ -1,0 +1,109 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe 'Misskey-compat signin-flow endpoint' do
+  before { Setting.misskey_compat_enabled = true }
+  after  { Setting.misskey_compat_enabled = false }
+
+  let(:username) { 'alice' }
+  let(:password) { 'wonderland-123' }
+  let!(:user)    { Fabricate(:user, password: password, account_attributes: { username: username }) }
+
+  describe 'POST /api/signin-flow' do
+    context 'when the compat gate is off' do
+      before { Setting.misskey_compat_enabled = false }
+
+      it 'is not routed as an available endpoint' do
+        post '/api/signin-flow', params: { username: username, password: password }, as: :json
+
+        expect(response).to have_http_status(404)
+        expect(response.parsed_body.dig('error', 'code')).to eq('ENDPOINT_DISABLED')
+      end
+    end
+
+    it 'is not advertised in the endpoints list (parity with Misskey)' do
+      post '/api/endpoints', params: {}, as: :json
+
+      expect(response.parsed_body).to_not include('signin-flow')
+    end
+
+    it 'asks for the password first when none is supplied and 2FA is off' do
+      post '/api/signin-flow', params: { username: username }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq('finished' => false, 'next' => 'captcha')
+    end
+
+    it 'finishes with a usable access token on a correct password' do
+      post '/api/signin-flow', params: { username: username, password: password }, as: :json
+
+      expect(response).to have_http_status(200)
+      body = response.parsed_body
+      expect(body['finished']).to be(true)
+      expect(body['id']).to eq(MisskeyCompat::MiId.encode(user.account_id))
+
+      token = Doorkeeper::AccessToken.by_token(body['i'])
+      expect(token&.resource_owner_id).to eq(user.id)
+      expect(token.scopes.to_s).to include('read', 'write')
+    end
+
+    it 'is case-insensitive on the username and tolerates a leading @' do
+      post '/api/signin-flow', params: { username: "@#{username.upcase}", password: password }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body['finished']).to be(true)
+    end
+
+    it 'rejects an unknown user with the Misskey NO_SUCH_USER id' do
+      post '/api/signin-flow', params: { username: 'nobody', password: password }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::NO_SUCH_USER_ID)
+    end
+
+    it 'rejects a wrong password with the Misskey INCORRECT_PASSWORD id' do
+      post '/api/signin-flow', params: { username: username, password: 'nope' }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
+    end
+
+    it 'rejects a suspended account' do
+      user.account.suspend!
+
+      post '/api/signin-flow', params: { username: username, password: password }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::SUSPENDED_ID)
+    end
+
+    context 'with TOTP two-factor enabled' do
+      let!(:user) do
+        Fabricate(:user, password: password, otp_required_for_login: true, otp_secret: User.generate_otp_secret, account_attributes: { username: username })
+      end
+
+      it 'asks for the TOTP step after a correct password' do
+        post '/api/signin-flow', params: { username: username, password: password }, as: :json
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to eq('finished' => false, 'next' => 'totp')
+      end
+
+      it 'finishes when the TOTP token is valid' do
+        post '/api/signin-flow', params: { username: username, password: password, token: user.current_otp }, as: :json
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body['finished']).to be(true)
+        expect(Doorkeeper::AccessToken.by_token(response.parsed_body['i'])&.resource_owner_id).to eq(user.id)
+      end
+
+      it 'rejects an invalid TOTP token with the Misskey INCORRECT_TOTP id' do
+        post '/api/signin-flow', params: { username: username, password: password, token: '000000' }, as: :json
+
+        expect(response).to have_http_status(403)
+        expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_TOKEN_ID)
+      end
+    end
+  end
+end

@@ -1,4 +1,4 @@
-import { useEffect, forwardRef, useState } from 'react';
+import { useEffect, forwardRef } from 'react';
 
 import { FormattedMessage } from 'react-intl';
 
@@ -15,22 +15,20 @@ import {
   FollowersYouKnowCounter,
 } from 'flavours/glitch/components/counters';
 import { DisplayName } from 'flavours/glitch/components/display_name';
-import { EmojiInfoTooltip } from 'flavours/glitch/components/emoji_info_tooltip';
 import { FollowButton } from 'flavours/glitch/components/follow_button';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { Permalink } from 'flavours/glitch/components/permalink';
 import { ShortNumber } from 'flavours/glitch/components/short_number';
 import { domain } from 'flavours/glitch/initial_state';
 import { getAccountHidden } from 'flavours/glitch/selectors/accounts';
+import { useSharlayanEmojiInfoTooltip } from 'flavours/glitch/sharlayan/emoji_info_tooltip';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 export const HoverCardAccount = forwardRef<
   HTMLDivElement,
   { accountId?: string }
 >(({ accountId }, ref) => {
-  const [containerElement, setContainerElement] = useState<HTMLElement | null>(
-    null,
-  );
+  const { setContainerElement, tooltip } = useSharlayanEmojiInfoTooltip();
 
   const dispatch = useAppDispatch();
 
@@ -190,7 +188,7 @@ export const HoverCardAccount = forwardRef<
       ) : (
         <LoadingIndicator />
       )}
-      <EmojiInfoTooltip containerRef={{ current: containerElement }} enabled />
+      {tooltip}
     </div>
   );
 });

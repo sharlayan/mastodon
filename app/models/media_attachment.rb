@@ -184,7 +184,6 @@ class MediaAttachment < ApplicationRecord
   belongs_to :account,          inverse_of: :media_attachments, optional: true
   belongs_to :status,           inverse_of: :media_attachments, optional: true
   belongs_to :scheduled_status, inverse_of: :media_attachments, optional: true
-  belongs_to :drive_file,       inverse_of: :media_attachments, optional: true
 
   has_attached_file :file,
                     styles: ->(f) { file_styles f },
@@ -209,33 +208,16 @@ class MediaAttachment < ApplicationRecord
 
   validates :account, presence: true
   validates :description, length: { maximum: MAX_DESCRIPTION_LENGTH }, if: :local?
-  validates :drive_access_key, uniqueness: true, format: { with: /\A[-_A-Za-z0-9]{43}\z/ }, if: :drive_pointer?
   validates :file, presence: true, if: -> { local? && !drive_pointer? }
   validates :thumbnail, absence: true, if: -> { local? && !audio_or_video? && !drive_pointer? }
-
-  PAGE_REFERENCE_SQL = <<~SQL.squish.freeze
-    EXISTS (
-      SELECT 1
-      FROM pages
-      WHERE pages.account_id = media_attachments.account_id
-        AND (pages.eye_catching_media_attachment_id = media_attachments.id
-         OR jsonb_path_exists(
-              pages.content,
-              '$.** ? (@.fileId == $media_id)',
-              jsonb_build_object('media_id', to_jsonb(media_attachments.id::text))
-            ))
-    )
-  SQL
 
   scope :attached, -> { where.not(status_id: nil).or(where.not(scheduled_status_id: nil)) }
   scope :cached, -> { remote.where.not(file_file_name: nil) }
   scope :created_before, ->(value) { where(arel_table[:created_at].lt(value)) }
-  scope :referenced_by_page, -> { where(PAGE_REFERENCE_SQL) }
-  scope :in_use, -> { attached.or(referenced_by_page) }
   scope :local, -> { where(remote_url: '') }
   scope :ordered, -> { order(id: :asc) }
   scope :remote, -> { where.not(remote_url: '') }
-  scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil).where.not(PAGE_REFERENCE_SQL) }
+  scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil) }
   scope :updated_before, ->(value) { where(arel_table[:updated_at].lt(value)) }
   scope :without_local_interaction, lambda {
     where.not(Favourite.joins(:account).merge(Account.local).where(Favourite.arel_table[:status_id].eq(MediaAttachment.arel_table[:status_id])).select(1).arel.exists)
@@ -250,10 +232,6 @@ class MediaAttachment < ApplicationRecord
 
   def local?
     remote_url.blank?
-  end
-
-  def drive_pointer?
-    drive_file_id.present?
   end
 
   def not_processed?
@@ -314,8 +292,6 @@ class MediaAttachment < ApplicationRecord
     delay_processing? && attachment_name == :file
   end
 
-  before_validation :generate_drive_access_key, if: :drive_pointer?
-  before_save :lock_drive_file
   before_create :set_unknown_type
   before_create :set_processing
 
@@ -326,6 +302,8 @@ class MediaAttachment < ApplicationRecord
   after_commit :reset_parent_cache, on: :update
 
   after_post_process :set_meta
+
+  include Sharlayan::MediaAttachmentExtensions
 
   class << self
     def identified(identifier)
@@ -374,14 +352,6 @@ class MediaAttachment < ApplicationRecord
   end
 
   private
-
-  def lock_drive_file
-    DriveFile.lock.find(drive_file_id) if drive_file_id.present?
-  end
-
-  def generate_drive_access_key
-    self.drive_access_key ||= SecureRandom.urlsafe_base64(32)
-  end
 
   def set_unknown_type
     self.type = :unknown if file.blank? && !type_changed?

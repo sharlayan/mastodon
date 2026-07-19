@@ -24,6 +24,16 @@ class RateLimiter
       period: 5.minutes.freeze,
     }.freeze,
 
+    misskey_compat_signin: {
+      limit: 25,
+      period: 5.minutes.freeze,
+    }.freeze,
+
+    misskey_compat_ap_get: {
+      limit: 30,
+      period: 1.hour.freeze,
+    }.freeze,
+
     drive_uploads: {
       limit: 100,
       period: 30.minutes.freeze,

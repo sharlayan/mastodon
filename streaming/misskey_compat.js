@@ -47,6 +47,10 @@ const extractTag = (params) => {
 
 const canReadStatuses = (request) => Array.isArray(request.scopes) && (request.scopes.includes('read') || request.scopes.includes('read:statuses'));
 
+const canReadDrive = (request) => Array.isArray(request.scopes) && (request.scopes.includes('read') || request.scopes.includes('read:drive'));
+
+const isSelfChannel = (channel) => channel === 'drive';
+
 /**
  * @param {string} channel
  * @param {Object} params
@@ -69,6 +73,8 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
     return channelNameToIds(request, 'antenna', { antenna: decodeMiId(params.antennaId) }).then((r) => r.channelIds);
   case 'hashtag':
     return channelNameToIds(request, 'hashtag', { tag: extractTag(params) }).then((r) => r.channelIds);
+  case 'drive':
+    return Promise.resolve([`drive:${request.accountId}`]);
   default:
     return Promise.reject(new Error(`Unsupported misskey channel: ${channel}`));
   }
@@ -148,9 +154,11 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
   const connect = (session, body) => {
     if (!body || typeof body.id !== 'string' || typeof body.channel !== 'string') return;
-    if (!canReadStatuses(session.request)) return;
 
     const { channel, id } = body;
+    const authorized = channel === 'drive' ? canReadDrive(session.request) : canReadStatuses(session.request);
+    if (!authorized) return;
+
     const params = body.params || {};
     const channels = store(session).channels;
 
@@ -165,10 +173,15 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
       const misskeyChannelIds = channelIds.map((c) => MISSKEY_PREFIX + c);
 
-      const listener = (json) => {
-        if (!json || json.event !== 'note') return;
-        send(session.websocket, 'channel', { id, type: 'note', body: json.payload });
-      };
+      const listener = isSelfChannel(channel)
+        ? (json) => {
+          if (!json || json.event !== 'drive') return;
+          send(session.websocket, 'channel', { id, type: json.payload.type, body: json.payload.body });
+        }
+        : (json) => {
+          if (!json || json.event !== 'note') return;
+          send(session.websocket, 'channel', { id, type: 'note', body: json.payload });
+        };
 
       misskeyChannelIds.forEach((c) => subscribe(c, listener));
       const stopHeartbeat = subscriptionHeartbeat(misskeyChannelIds);

@@ -1,0 +1,24 @@
+.batch-table__row__content__text.custom-emoji-info-col
+  %samp.custom-emoji-shortcode :#{custom_emoji.shortcode}:
+  - if custom_emoji.aliases.present?
+    .custom-emoji-tags
+      - custom_emoji.aliases.each do |tag|
+        %span.custom-emoji-tag= tag
+  .custom-emoji-category
+    %span.information-badge= custom_emoji.category&.name || t('admin.custom_emojis.uncategorized')
+
+.custom-emoji-status-col
+  - if custom_emoji.disabled?
+    %span= t('admin.custom_emojis.disabled')
+  - else
+    %span= t('admin.custom_emojis.enabled')
+  &bull;
+  - if custom_emoji.visible_in_picker?
+    %span= t('admin.custom_emojis.listed')
+  - else
+    %span= t('admin.custom_emojis.unlisted')
+  &bull;
+  %span= t('admin.accounts.location.local')
+
+.custom-emoji-actions-col
+  = link_to material_symbol('edit'), edit_admin_custom_emoji_path(custom_emoji), class: 'icon-button', title: t('generic.edit')

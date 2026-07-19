@@ -1,10 +1,20 @@
 # frozen_string_literal: true
 
 class Api::V1::Drive::BaseController < Api::BaseController
+  include Redisable
+
   before_action :require_feature_enabled!
   before_action :require_user!
 
   private
+
+  def broadcast_drive_file(drive_file, type)
+    MisskeyCompat::Streaming.broadcast_drive_file(redis, current_account, drive_file, type)
+  end
+
+  def broadcast_drive_folder(drive_folder, type)
+    MisskeyCompat::Streaming.broadcast_drive_folder(redis, current_account, drive_folder, type)
+  end
 
   def require_feature_enabled!
     not_found unless Setting.drive_enabled

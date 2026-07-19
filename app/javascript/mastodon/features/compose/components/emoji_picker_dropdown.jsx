@@ -13,6 +13,11 @@ import MoodIcon from '@/material-icons/400-20px/mood.svg?react';
 import { IconButton } from '@/mastodon/components/icon_button';
 import { injectIntl } from '@/mastodon/components/intl';
 import { Popover } from '@/mastodon/components/popover';
+import {
+  emojiPickerFavoriteProps,
+  emojiPickerFavoritesCategoryLabel,
+  shouldIgnoreEmojiDropdownClose,
+} from '@/sharlayan/emoji_picker/favorites';
 
 import { EmojiPicker as EmojiPickerAsync } from '../../ui/util/async-components';
 
@@ -30,10 +35,6 @@ const messages = defineMessages({
   objects: { id: 'emoji_button.objects', defaultMessage: 'Objects' },
   symbols: { id: 'emoji_button.symbols', defaultMessage: 'Symbols' },
   flags: { id: 'emoji_button.flags', defaultMessage: 'Flags' },
-  favorites: { id: 'emoji_button.favorites', defaultMessage: 'Favorites' },
-  add_to_favorites: { id: 'emoji_button.add_to_favorites', defaultMessage: 'Add to Favorites' },
-  already_in_favorites: { id: 'emoji_button.already_in_favorites', defaultMessage: 'Already in Favorites' },
-  remove_from_favorites: { id: 'emoji_button.remove_from_favorites', defaultMessage: 'Remove from Favorites' },
 });
 
 let EmojiPicker, Emoji; // load asynchronously
@@ -217,7 +218,7 @@ class EmojiPickerMenuImpl extends PureComponent {
         symbols: intl.formatMessage(messages.symbols),
         flags: intl.formatMessage(messages.flags),
         custom: intl.formatMessage(messages.custom),
-        favorites: intl.formatMessage(messages.favorites),
+        favorites: emojiPickerFavoritesCategoryLabel(intl),
       },
     };
   };
@@ -273,12 +274,11 @@ class EmojiPickerMenuImpl extends PureComponent {
           notFound={notFoundFn}
           autoFocus={this.state.readyToFocus}
           emojiTooltip
-          favoriteEmojis={favorite_emojis}
-          onAddFavorite={onAddFavorite}
-          onRemoveFavorite={onRemoveFavorite}
-          addToFavoritesLabel={intl.formatMessage(messages.add_to_favorites)}
-          alreadyInFavoritesLabel={intl.formatMessage(messages.already_in_favorites)}
-          removeFromFavoritesLabel={intl.formatMessage(messages.remove_from_favorites)}
+          {...emojiPickerFavoriteProps(intl, {
+            favoriteEmojis: favorite_emojis,
+            onAddFavorite,
+            onRemoveFavorite,
+          })}
         />
 
         <ModifierPicker
@@ -336,7 +336,7 @@ class EmojiPickerDropdown extends PureComponent {
   };
 
   onHideDropdown = e => {
-    if (e?.target?.closest?.('.emoji-context-menu')) return;
+    if (shouldIgnoreEmojiDropdownClose(e)) return;
     this.setState({ active: false });
   };
 
@@ -378,7 +378,7 @@ class EmojiPickerDropdown extends PureComponent {
           onClose={this.onHideDropdown}
         >
           {({ props, placement }) => (
-            <div {...props} className={`dropdown-animation ${placement}`}>
+            <div  {...props} className={`dropdown-animation ${placement}`}>
               <EmojiPickerMenu
                 favorite_emojis={this.props.favorite_emojis}
                 loading={loading}

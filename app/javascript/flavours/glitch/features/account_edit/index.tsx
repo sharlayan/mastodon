@@ -23,6 +23,7 @@ import {
   fetchProfile,
   patchProfile,
 } from '@/flavours/glitch/reducers/slices/profile_edit';
+import { SharlayanAccountEditSections } from '@/flavours/glitch/sharlayan/account/edit_sections';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 
 import { AccountEditColumn, AccountEditEmptyColumn } from './components/column';
@@ -105,19 +106,6 @@ export const messages = defineMessages({
     id: 'account_edit.featured_hashtags.edit_label',
     defaultMessage: 'Add hashtags',
   },
-  followMessageTitle: {
-    id: 'account_edit.follow_message.title',
-    defaultMessage: 'Follow message',
-  },
-  followMessagePlaceholder: {
-    id: 'account_edit.follow_message.placeholder',
-    defaultMessage:
-      'Add a message shown to users when you accept their follow request.',
-  },
-  followMessageEditLabel: {
-    id: 'account_edit.follow_message.edit_label',
-    defaultMessage: 'Edit follow message',
-  },
   profileTabTitle: {
     id: 'account_edit.profile_tab.title',
     defaultMessage: 'Profile display settings',
@@ -125,18 +113,6 @@ export const messages = defineMessages({
   profileTabSubtitle: {
     id: 'account_edit.profile_tab.subtitle',
     defaultMessage: 'Customize how your profile is displayed.',
-  },
-  decorationsTitle: {
-    id: 'account_edit.decorations.title',
-    defaultMessage: 'Profile decorations',
-  },
-  decorationsPlaceholder: {
-    id: 'account_edit.decorations.placeholder',
-    defaultMessage: 'Add decorative overlays to your avatar.',
-  },
-  decorationsEditLabel: {
-    id: 'account_edit.decorations.edit_label',
-    defaultMessage: 'Edit decorations',
   },
   advancedSettingsTitle: {
     id: 'account_edit.advanced_settings.title',
@@ -194,14 +170,8 @@ export const AccountEdit: FC = () => {
   const handleCustomFieldsVerifiedHelp = useCallback(() => {
     handleOpenModal('ACCOUNT_EDIT_VERIFY_LINKS');
   }, [handleOpenModal]);
-  const handleFollowMessageEdit = useCallback(() => {
-    handleOpenModal('ACCOUNT_EDIT_FOLLOW_MESSAGE');
-  }, [handleOpenModal]);
   const handleProfileDisplayEdit = useCallback(() => {
     handleOpenModal('ACCOUNT_EDIT_PROFILE_DISPLAY');
-  }, [handleOpenModal]);
-  const handleDecorationsEdit = useCallback(() => {
-    handleOpenModal('ACCOUNT_EDIT_DECORATION');
   }, [handleOpenModal]);
 
   const history = useHistory();
@@ -228,8 +198,6 @@ export const AccountEdit: FC = () => {
   const hasBio = !!profile.bio;
   const hasFields = profile.fields.length > 0;
   const hasTags = profile.featuredTags.length > 0;
-  const hasFollowMessage = !!profile.followedMessage;
-  const hasDecorations = profile.avatarDecorations.length > 0;
 
   return (
     <AccountEditColumn
@@ -288,53 +256,10 @@ export const AccountEdit: FC = () => {
           />
         </AccountEditSection>
 
-        <AccountEditSection
-          title={messages.followMessageTitle}
-          description={messages.followMessagePlaceholder}
-          showDescription={!hasFollowMessage}
-          buttons={
-            <EditButton
-              onClick={handleFollowMessageEdit}
-              label={intl.formatMessage(messages.followMessageEditLabel)}
-              icon={hasFollowMessage}
-            />
-          }
-        >
-          {hasFollowMessage && <span>{profile.followedMessage}</span>}
-        </AccountEditSection>
-
-        <AccountEditSection
-          title={messages.decorationsTitle}
-          description={messages.decorationsPlaceholder}
-          showDescription={!hasDecorations}
-          buttons={
-            <EditButton
-              onClick={handleDecorationsEdit}
-              label={intl.formatMessage(messages.decorationsEditLabel)}
-              icon={hasDecorations}
-            />
-          }
-        >
-          {hasDecorations && (
-            <span>
-              {profile.avatarDecorations.length === 1
-                ? intl.formatMessage(
-                    {
-                      id: 'account_edit.decorations.count_one',
-                      defaultMessage: '{count} decoration',
-                    },
-                    { count: profile.avatarDecorations.length },
-                  )
-                : intl.formatMessage(
-                    {
-                      id: 'account_edit.decorations.count_other',
-                      defaultMessage: '{count} decorations',
-                    },
-                    { count: profile.avatarDecorations.length },
-                  )}
-            </span>
-          )}
-        </AccountEditSection>
+        <SharlayanAccountEditSections
+          followedMessage={profile.followedMessage}
+          decorationCount={profile.avatarDecorations.length}
+        />
 
         <AccountEditSection
           title={messages.customFieldsTitle}

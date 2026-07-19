@@ -6,12 +6,11 @@ class Form::AdminSettings
   include AuthorizedFetchHelper
   include RoleplayModeHelper
 
-  KEYS = %i(
+  KEYS = (%i(
     site_contact_username
     site_contact_email
     site_title
     site_short_description
-    theme_color
     site_extended_description
     site_terms
     registrations_mode
@@ -49,56 +48,23 @@ class Form::AdminSettings
     app_icon
     favicon
     min_age
-    force_local_only
-    local_account_statuses_access
-    local_status_page_access
     local_live_feed_access
     remote_live_feed_access
     local_topic_feed_access
     remote_topic_feed_access
     landing_page
     wrapstodon
-    reaction_local_emoji_only
-    reactions_enabled
-    mfm_enabled
-    mfm_allow_composition
-    force_mfm_enabled
-    force_avatar_decorations
-    force_round_avatar
-    circles_enabled
-    clips_enabled
-    auto_quote_from_url
-    pages_enabled
-    rate_limit_bypass_enabled
-    avatar_decorations_enabled
-    avatar_decorations_federation_enabled
-    avatar_decorations_local_only_view
-    avatar_decorations_max_count
-    allow_user_custom_css
     email_footer_text
-    board_announcements_enabled
-    instance_metadata_enabled
-    antenna_enabled
-    misskey_compat_enabled
-    online_status_enabled
-    soft_hide_deletion
-    drive_enabled
-    drive_quota
-    drive_max_file_size
-    drive_allowed_extensions
-  ).freeze
+  ) + Sharlayan::AdminSettingsExtensions::KEYS).freeze
 
-  INTEGER_KEYS = %i(
+  INTEGER_KEYS = (%i(
     media_cache_retention_period
     content_cache_retention_period
     backups_retention_period
     min_age
-    avatar_decorations_max_count
-    drive_quota
-    drive_max_file_size
-  ).freeze
+  ) + Sharlayan::AdminSettingsExtensions::INTEGER_KEYS).freeze
 
-  BOOLEAN_KEYS = %i(
+  BOOLEAN_KEYS = (%i(
     allow_referrer_origin
     timeline_preview
     activity_api_enabled
@@ -114,33 +80,9 @@ class Form::AdminSettings
     noindex
     require_invite_text
     captcha_enabled
-    force_local_only
     authorized_fetch
     wrapstodon
-    reaction_local_emoji_only
-    reactions_enabled
-    mfm_enabled
-    mfm_allow_composition
-    force_mfm_enabled
-    force_avatar_decorations
-    force_round_avatar
-    circles_enabled
-    clips_enabled
-    auto_quote_from_url
-    pages_enabled
-    avatar_decorations_enabled
-    avatar_decorations_federation_enabled
-    avatar_decorations_local_only_view
-    rate_limit_bypass_enabled
-    allow_user_custom_css
-    board_announcements_enabled
-    instance_metadata_enabled
-    antenna_enabled
-    misskey_compat_enabled
-    online_status_enabled
-    soft_hide_deletion
-    drive_enabled
-  ).freeze
+  ) + Sharlayan::AdminSettingsExtensions::BOOLEAN_KEYS).freeze
 
   UPLOAD_KEYS = %i(
     thumbnail
@@ -170,6 +112,8 @@ class Form::AdminSettings
   ALTERNATE_FEED_ACCESS_MODES = %w(public authenticated).freeze
   LANDING_PAGE = %w(trends overview local_feed about).freeze
 
+  include Sharlayan::AdminSettingsExtensions
+
   attr_accessor(*KEYS)
 
   validates :registrations_mode, inclusion: { in: REGISTRATION_MODES }, if: -> { defined?(@registrations_mode) }
@@ -179,20 +123,14 @@ class Form::AdminSettings
   validates :bootstrap_timeline_accounts, existing_username: { multiple: true }, if: -> { defined?(@bootstrap_timeline_accounts) }
   validates :show_domain_blocks, inclusion: { in: DOMAIN_BLOCK_AUDIENCES }, if: -> { defined?(@show_domain_blocks) }
   validates :show_domain_blocks_rationale, inclusion: { in: DOMAIN_BLOCK_AUDIENCES }, if: -> { defined?(@show_domain_blocks_rationale) }
-  validates :local_account_statuses_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@local_account_statuses_access) }
-  validates :local_status_page_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@local_status_page_access) }
   validates :local_live_feed_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@local_live_feed_access) }
   validates :remote_live_feed_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@remote_live_feed_access) }
   validates :local_topic_feed_access, inclusion: { in: ALTERNATE_FEED_ACCESS_MODES }, if: -> { defined?(@local_topic_feed_access) }
   validates :remote_topic_feed_access, inclusion: { in: FEED_ACCESS_MODES }, if: -> { defined?(@remote_topic_feed_access) }
   validates :media_cache_retention_period, :content_cache_retention_period, :backups_retention_period, numericality: { only_integer: true }, allow_blank: true, if: -> { defined?(@media_cache_retention_period) || defined?(@content_cache_retention_period) || defined?(@backups_retention_period) }
   validates :min_age, numericality: { only_integer: true }, allow_blank: true, if: -> { defined?(@min_age) }
-  validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@drive_quota) }
-  validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
-  validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }
   validates :site_short_description, length: { maximum: DESCRIPTION_LIMIT }, if: -> { defined?(@site_short_description) }
   validates :thumbnail_description, length: { maximum: DESCRIPTION_LIMIT }, if: -> { defined?(@thumbnail_description) }
-  validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }
   validates :status_page_url, url: true, allow_blank: true
   validate :validate_site_uploads
   validates :landing_page, inclusion: { in: LANDING_PAGE }, if: -> { defined?(@landing_page) }
@@ -263,13 +201,6 @@ class Form::AdminSettings
   end
 
   private
-
-  def validate_drive_allowed_extensions
-    extensions = DriveFile.parse_extensions(@drive_allowed_extensions)
-    rejected = extensions.grep_v(DriveFile::EXTENSION_PATTERN) + (extensions & DriveFile::FORBIDDEN_EXTENSIONS)
-
-    errors.add(:drive_allowed_extensions, I18n.t('admin.settings.drive.allowed_extensions_invalid', extensions: rejected.uniq.join(', '))) if rejected.any?
-  end
 
   def cache_digest_value(key)
     Rails.cache.delete(:"setting_digest_#{key}")

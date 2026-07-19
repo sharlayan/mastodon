@@ -35,6 +35,32 @@ module MisskeyCompat
       Rails.logger.warn("[misskey_compat] reaction broadcast failed for #{status&.id}: #{e.class} #{e.message}")
     end
 
+    def broadcast_drive_file(redis, account, drive_file, type)
+      body = type == 'fileDeleted' ? MisskeyCompat::MiId.encode(drive_id(drive_file)) : MisskeyCompat::DriveFileSerializer.serialize(drive_file)
+      broadcast_drive(redis, account, type, body)
+    end
+
+    def broadcast_drive_folder(redis, account, drive_folder, type)
+      body = type == 'folderDeleted' ? MisskeyCompat::MiId.encode(drive_id(drive_folder)) : MisskeyCompat::DriveFolderSerializer.serialize(drive_folder)
+      broadcast_drive(redis, account, type, body)
+    end
+
+    def broadcast_drive(redis, account, type, body)
+      return unless Setting.misskey_compat_enabled
+      return if account.nil? || body.nil?
+
+      channel = "misskey:drive:#{account.id}"
+      return unless redis.exists?("subscribed:#{channel}")
+
+      redis.publish(channel, JSON.generate({ event: 'drive', payload: { type: type, body: body } }))
+    rescue => e
+      Rails.logger.warn("[misskey_compat] drive broadcast failed for #{account&.id}: #{e.class} #{e.message}")
+    end
+
+    def drive_id(record)
+      record.respond_to?(:id) ? record.id : record
+    end
+
     def reaction_key(reaction)
       custom = reaction.custom_emoji
       return reaction.name if custom.nil?

@@ -6,7 +6,6 @@ import { defineMessages, useIntl } from 'react-intl';
 import {
   followAccount,
   pinAccount,
-  refetchAccount,
   unblockAccount,
   unmuteAccount,
   unpinAccount,
@@ -22,24 +21,15 @@ import {
   initDomainBlockModal,
   unblockDomain,
 } from '@/flavours/glitch/actions/domain_blocks';
-import {
-  initDomainMuteModal,
-  unmuteDomain,
-} from '@/flavours/glitch/actions/domain_mutes';
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { initMuteModal } from '@/flavours/glitch/actions/mutes';
 import { initReport } from '@/flavours/glitch/actions/reports';
-import { apiRequestPost } from '@/flavours/glitch/api';
 import {
   canAccountBeAdded,
   canAccountBeAddedByFollowers,
 } from '@/flavours/glitch/features/collections/utils';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
-import {
-  avatarDecorationsEnabled,
-  showAvatarDecorations,
-} from '@/flavours/glitch/initial_state';
 import type { Account } from '@/flavours/glitch/models/account';
 import type { MenuItem } from '@/flavours/glitch/models/dropdown_menu';
 import type { Relationship } from '@/flavours/glitch/models/relationship';
@@ -47,6 +37,13 @@ import {
   PERMISSION_MANAGE_FEDERATION,
   PERMISSION_MANAGE_USERS,
 } from '@/flavours/glitch/permissions';
+import {
+  sharlayanAdminAccountDecorationItems,
+  sharlayanAdminDomainDecorationItems,
+  sharlayanDomainMuteItems,
+  sharlayanReactionMuteItems,
+  sharlayanRefetchProfileItems,
+} from '@/flavours/glitch/sharlayan/account/header_menu';
 import {
   collectionsEnabled,
   roleplayMode,
@@ -57,10 +54,8 @@ import BlockIcon from '@/material-icons/400-24px/block.svg?react';
 import LinkIcon from '@/material-icons/400-24px/link_2.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
-import RefreshIcon from '@/material-icons/400-24px/refresh.svg?react';
 import ReportIcon from '@/material-icons/400-24px/report.svg?react';
 import ShareIcon from '@/material-icons/400-24px/share.svg?react';
-import VolumeOffIcon from '@/material-icons/400-24px/volume_off.svg?react';
 
 import { Dropdown } from '../dropdown_menu';
 
@@ -228,14 +223,6 @@ const redesignMessages = defineMessages({
     id: 'account.menu.unblock_domain',
     defaultMessage: 'Unblock {domain}',
   },
-  domainMute: {
-    id: 'account.menu.mute_domain',
-    defaultMessage: 'Mute {domain}',
-  },
-  domainUnmute: {
-    id: 'account.menu.unmute_domain',
-    defaultMessage: 'Unmute {domain}',
-  },
   report: { id: 'account.menu.report', defaultMessage: 'Report account' },
   hideReblogs: {
     id: 'account.menu.hide_reblogs',
@@ -261,34 +248,6 @@ const redesignMessages = defineMessages({
     id: 'account.menu.remove_follower',
     defaultMessage: 'Remove follower',
   },
-  muteDecorations: {
-    id: 'account.menu.mute_decorations',
-    defaultMessage: "Hide {name}'s decorations",
-  },
-  unmuteDecorations: {
-    id: 'account.menu.unmute_decorations',
-    defaultMessage: "Show {name}'s decorations",
-  },
-  adminBlockDecorations: {
-    id: 'account.menu.admin_block_decorations',
-    defaultMessage: "Hide {name}'s decorations for everyone",
-  },
-  adminBlockDomainDecorations: {
-    id: 'account.menu.admin_block_domain_decorations',
-    defaultMessage: 'Block decorations from {domain}',
-  },
-  refetchProfile: {
-    id: 'account.menu.refetch_profile',
-    defaultMessage: 'Refresh profile data',
-  },
-  muteReactions: {
-    id: 'account.menu.mute_reactions',
-    defaultMessage: "Don't receive reactions from {name}",
-  },
-  muteDomainReactions: {
-    id: 'account.menu.mute_domain_reactions',
-    defaultMessage: "Don't receive reactions from {domain}",
-  },
 });
 
 function getMenuItems({
@@ -302,7 +261,17 @@ function getMenuItems({
   const items: MenuItem[] = [];
   const isRemote = account.acct !== account.username;
   const remoteDomain = isRemote ? account.acct.split('@')[1] : null;
+  const sharlayanContext = {
+    account,
+    relationship,
+    dispatch,
+    intl,
+    signedIn,
+    isRemote,
+    remoteDomain,
+  };
 
+  // Share and copy link options
   if (account.url) {
     if ('share' in navigator) {
       items.push({
@@ -325,6 +294,7 @@ function getMenuItems({
     });
   }
 
+  // Open on remote page.
   if (isRemote) {
     items.push({
       text: intl.formatMessage(redesignMessages.openOriginalPage, {
@@ -334,16 +304,9 @@ function getMenuItems({
     });
   }
 
-  if (isRemote && signedIn) {
-    items.push({
-      text: intl.formatMessage(redesignMessages.refetchProfile),
-      action: () => {
-        dispatch(refetchAccount(account.id));
-      },
-      icon: RefreshIcon,
-    });
-  }
+  items.push(...sharlayanRefetchProfileItems(sharlayanContext));
 
+  // Mention and direct message options
   if (signedIn && !account.suspended) {
     items.push(
       null,
@@ -444,6 +407,7 @@ function getMenuItems({
     null,
   );
 
+  // Timeline options
   if (relationship?.following && !relationship.muting) {
     items.push(
       {
@@ -573,68 +537,10 @@ function getMenuItems({
       icon: BlockIcon,
       iconId: 'domain-block',
     });
-    items.push({
-      text: intl.formatMessage(
-        relationship?.domain_muting
-          ? redesignMessages.domainUnmute
-          : redesignMessages.domainMute,
-        {
-          domain: remoteDomain,
-        },
-      ),
-      action: () => {
-        if (relationship?.domain_muting) {
-          dispatch(unmuteDomain(remoteDomain));
-        } else {
-          dispatch(initDomainMuteModal(account));
-        }
-      },
-      dangerous: true,
-      icon: VolumeOffIcon,
-      iconId: 'domain-mute',
-    });
+    items.push(...sharlayanDomainMuteItems(sharlayanContext));
   }
 
-  if (
-    avatarDecorationsEnabled &&
-    showAvatarDecorations &&
-    account.avatar_decorations.length > 0
-  ) {
-    items.push(null, {
-      text: intl.formatMessage(redesignMessages.muteDecorations, {
-        name: account.username,
-      }),
-      action: () => {
-        void apiRequestPost('v1/avatar_decoration_mutes', {
-          account_id: account.id,
-        });
-      },
-    });
-  }
-
-  items.push(null, {
-    text: intl.formatMessage(redesignMessages.muteReactions, {
-      name: account.username,
-    }),
-    action: () => {
-      void apiRequestPost('v1/reaction_mutes', {
-        account_id: account.id,
-      });
-    },
-  });
-
-  if (remoteDomain) {
-    items.push({
-      text: intl.formatMessage(redesignMessages.muteDomainReactions, {
-        domain: remoteDomain,
-      }),
-      action: () => {
-        void apiRequestPost('v1/reaction_mutes', {
-          domain: remoteDomain,
-        });
-      },
-    });
-  }
+  items.push(...sharlayanReactionMuteItems(sharlayanContext));
 
   if (
     (permissions & PERMISSION_MANAGE_USERS) === PERMISSION_MANAGE_USERS ||
@@ -651,15 +557,7 @@ function getMenuItems({
         href: `/admin/accounts/${account.id}`,
       });
 
-      if (avatarDecorationsEnabled && account.avatar_decorations.length > 0) {
-        items.push({
-          text: intl.formatMessage(redesignMessages.adminBlockDecorations, {
-            name: account.username,
-          }),
-          href: `/admin/accounts/${account.id}?block_decorations=1`,
-          dangerous: true,
-        });
-      }
+      items.push(...sharlayanAdminAccountDecorationItems(sharlayanContext));
     }
     if (
       remoteDomain &&
@@ -673,18 +571,7 @@ function getMenuItems({
         href: `/admin/instances/${remoteDomain}`,
       });
 
-      if (avatarDecorationsEnabled) {
-        items.push({
-          text: intl.formatMessage(
-            redesignMessages.adminBlockDomainDecorations,
-            {
-              domain: remoteDomain,
-            },
-          ),
-          href: `/admin/avatar_decoration_domain_blocks`,
-          dangerous: true,
-        });
-      }
+      items.push(...sharlayanAdminDomainDecorationItems(sharlayanContext));
     }
   }
 

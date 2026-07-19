@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
-  before_action -> { doorkeeper_authorize! :read }, only: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
-  before_action -> { doorkeeper_authorize! :write, :'write:media' }, except: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
+  before_action -> { doorkeeper_authorize! :read, :'read:drive' }, only: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
+  before_action -> { doorkeeper_authorize! :write, :'write:media', :'write:drive' }, except: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
   before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
   before_action :set_file, only: [:show, :update, :destroy, :attach, :transfer_to_posts, :attached_notes]
   after_action :insert_pagination_headers, only: :index
@@ -47,6 +47,7 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
     DriveFile.where(id: @files.map(&:id)).update_all(folder_id: params[:folder_id].presence, updated_at: Time.now.utc) if @files.any?
 
     @files = current_account.drive_files.where(id: @files.map(&:id)).includes(:custom_name).to_a
+    @files.each { |file| broadcast_drive_file(file, 'fileUpdated') }
     render json: @files, each_serializer: REST::DriveFileSerializer, attached_ids: attached_ids_for(@files)
   end
 
@@ -98,12 +99,16 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
 
     @file.display_name = name unless name.nil?
     @file.update!(attributes)
+    broadcast_drive_file(@file, 'fileUpdated')
 
     render json: @file, serializer: REST::DriveFileSerializer
   end
 
   def destroy
+    deleted_id = @file.id
+
     if @file.destroy
+      broadcast_drive_file(deleted_id, 'fileDeleted')
       render_empty
     else
       render json: in_usage_error, status: 422

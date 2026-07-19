@@ -6,7 +6,6 @@ import { defineMessages, useIntl } from 'react-intl';
 import {
   followAccount,
   pinAccount,
-  refetchAccount,
   unblockAccount,
   unmuteAccount,
   unpinAccount,
@@ -35,13 +34,13 @@ import {
   PERMISSION_MANAGE_FEDERATION,
   PERMISSION_MANAGE_USERS,
 } from '@/mastodon/permissions';
+import { sharlayanRefetchProfileItems } from '@/mastodon/sharlayan/account/header_menu';
 import type { AppDispatch } from '@/mastodon/store';
 import { useAppDispatch, useAppSelector } from '@/mastodon/store';
 import BlockIcon from '@/material-icons/400-24px/block.svg?react';
 import LinkIcon from '@/material-icons/400-24px/link_2.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
-import RefreshIcon from '@/material-icons/400-24px/refresh.svg?react';
 import ReportIcon from '@/material-icons/400-24px/report.svg?react';
 import ShareIcon from '@/material-icons/400-24px/share.svg?react';
 
@@ -232,10 +231,6 @@ const redesignMessages = defineMessages({
     id: 'account.menu.remove_follower',
     defaultMessage: 'Remove follower',
   },
-  refetchProfile: {
-    id: 'account.menu.refetch_profile',
-    defaultMessage: 'Refresh profile data',
-  },
 });
 
 function getMenuItems({
@@ -266,12 +261,14 @@ function getMenuItems({
     items.push({
       text: intl.formatMessage(redesignMessages.copy),
       action: () => {
+        void navigator.clipboard.writeText(account.url);
         dispatch(showAlert({ message: redesignMessages.copied }));
       },
       icon: LinkIcon,
     });
   }
 
+  // Open on remote page.
   if (isRemote) {
     items.push({
       text: intl.formatMessage(redesignMessages.openOriginalPage, {
@@ -281,16 +278,17 @@ function getMenuItems({
     });
   }
 
-  if (isRemote && signedIn && !account.suspended) {
-    items.push({
-      text: intl.formatMessage(redesignMessages.refetchProfile),
-      action: () => {
-        dispatch(refetchAccount(account.id));
-      },
-      icon: RefreshIcon,
-    });
-  }
+  items.push(
+    ...sharlayanRefetchProfileItems({
+      account,
+      dispatch,
+      intl,
+      signedIn,
+      isRemote,
+    }),
+  );
 
+  // Mention and direct message options
   if (signedIn && !account.suspended) {
     items.push(
       null,

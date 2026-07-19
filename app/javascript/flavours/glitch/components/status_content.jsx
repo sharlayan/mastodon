@@ -1,5 +1,4 @@
 import PropTypes from 'prop-types';
-import React from 'react';
 import { PureComponent } from 'react';
 
 import { FormattedMessage } from 'react-intl';
@@ -15,27 +14,12 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { Poll } from 'flavours/glitch/components/poll';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
 import { languages as preloadedLanguages } from 'flavours/glitch/initial_state';
+import { SharlayanStatusContentTooltip, renderSharlayanMfmContent, sharlayanStatusContentState } from 'flavours/glitch/sharlayan/status_content';
 
 import { EmojiHTML } from './emoji/html';
-import { MfmRenderer, hasSensitiveFoldTags, hasAnyMfmFn, MFM_FOLD_LENGTH_THRESHOLD } from './mfm';
 import { injectIntl } from './intl';
 import { HandledLink } from './status/handled_link';
 import { compareUrls } from '../utils/compare_urls';
-
-import { EmojiInfoTooltip } from './emoji_info_tooltip';
-
-const mfmDomParser = new DOMParser();
-
-function extractPlainTextFromHtml(html) {
-  const doc = mfmDomParser.parseFromString(html, 'text/html');
-  for (const br of doc.querySelectorAll('br')) {
-    br.replaceWith('\n');
-  }
-  for (const p of doc.querySelectorAll('p')) {
-    p.after('\n');
-  }
-  return doc.body.textContent || '';
-}
 
 const MAX_HEIGHT = 706; // 22px * 32 (+ 2px padding at the top)
 
@@ -87,9 +71,7 @@ class TranslateButton extends PureComponent {
 
 const mapStateToProps = state => ({
   languages: state.server.translationLanguages.item,
-  localMfmEnabled: state.getIn(['meta', 'mfm_enabled']) !== false,
-  localMfmAnimations: state.getIn(['meta', 'mfm_animations']) !== false,
-  localMfmFoldMode: state.getIn(['meta', 'mfm_fold_mode']) ?? 'sensitive',
+  ...sharlayanStatusContentState(state),
 });
 
 class StatusContent extends PureComponent {
@@ -113,10 +95,10 @@ class StatusContent extends PureComponent {
     history: PropTypes.object.isRequired
   };
 
-  contentRef = React.createRef();
+  contentRef = { current: null };
 
   _updateStatusLinks () {
-    const node = this.contentRef.current;
+    const node = this.node;
 
     if (!node) {
       return;
@@ -176,6 +158,11 @@ class StatusContent extends PureComponent {
     this.props.onTranslate();
   };
 
+  setRef = (c) => {
+    this.node = c;
+    this.contentRef.current = c;
+  };
+
   handleElement = (element, { key, ...props }, children) => {
     if (element instanceof HTMLAnchorElement) {
       const mention = this.props.status.get('mentions').find(
@@ -214,9 +201,6 @@ class StatusContent extends PureComponent {
 
     const content = (statusContent ?? getStatusContent(status)).replace(/(<br\s*\/?>)+[\s\n]*$/, '');
     const language = status.getIn(['translation', 'language']) || status.get('language');
-    const isMfm = status.get('mfm') && this.props.mfmEnabled !== false && this.props.localMfmEnabled !== false;
-    const mfmAnimationsEnabled = this.props.localMfmAnimations !== false;
-    const mfmFoldMode = this.props.localMfmFoldMode ?? 'sensitive';
     const classNames = classnames('status__content', {
       'status__content--with-action': this.props.onClick && this.props.history,
       'status__content--collapsed': renderReadMore,
@@ -236,28 +220,14 @@ class StatusContent extends PureComponent {
       <Poll pollId={status.get('poll')} statusUrl={status.get('uri')} accountId={status.getIn(['account', 'id'])} lang={language} />
     );
 
-    // MFM content: use stored mfm_text if available, otherwise extract from HTML
-    const mfmSourceText = status.get('mfm_text') || extractPlainTextFromHtml(content);
-    const hasMfmFn = isMfm && hasAnyMfmFn(mfmSourceText);
-    const shouldFoldMfm = isMfm && (
-      (mfmFoldMode === 'all' && hasMfmFn) ||
-      (mfmFoldMode === 'sensitive' && hasSensitiveFoldTags(mfmSourceText)) ||
-      mfmSourceText.length > MFM_FOLD_LENGTH_THRESHOLD
-    );
-    const contentElement = isMfm ? (
-      <div className='status__content__text status__content__text--visible translate' lang={language}>
-        {shouldFoldMfm ? (
-          <details className='status__content__mfm-fold'>
-            <summary>
-              <FormattedMessage id='status.mfm_fold_expand' defaultMessage='Expand MFM post' />
-            </summary>
-            <MfmRenderer text={mfmSourceText} emojis={status.get('emojis')} animationsEnabled={mfmAnimationsEnabled} />
-          </details>
-        ) : (
-          <MfmRenderer text={mfmSourceText} emojis={status.get('emojis')} animationsEnabled={mfmAnimationsEnabled} />
-        )}
-      </div>
-    ) : (
+    const contentElement = renderSharlayanMfmContent(status, {
+      content,
+      language,
+      mfmEnabled: this.props.mfmEnabled,
+      localMfmEnabled: this.props.localMfmEnabled,
+      localMfmAnimations: this.props.localMfmAnimations,
+      localMfmFoldMode: this.props.localMfmFoldMode,
+    }) ?? (
       <EmojiHTML
         className='status__content__text status__content__text--visible translate'
         lang={language}
@@ -272,9 +242,9 @@ class StatusContent extends PureComponent {
         <>
           <div
             className={classNames}
+            ref={this.setRef}
             onMouseDown={this.handleMouseDown}
             onMouseUp={this.handleMouseUp}
-            ref={this.contentRef}
             key='status-content'
           >
             {contentElement}
@@ -285,24 +255,18 @@ class StatusContent extends PureComponent {
 
           {readMoreButton}
 
-          <EmojiInfoTooltip
-            containerRef={this.contentRef}
-            enabled
-          />
+          <SharlayanStatusContentTooltip containerRef={this.contentRef} />
         </>
       );
     } else {
       return (
-        <div className={classNames} ref={this.contentRef}>
+        <div className={classNames} ref={this.setRef}>
           {contentElement}
 
           {poll}
           {translateButton}
 
-          <EmojiInfoTooltip
-            containerRef={this.contentRef}
-            enabled
-          />
+          <SharlayanStatusContentTooltip containerRef={this.contentRef} />
         </div>
       );
     }

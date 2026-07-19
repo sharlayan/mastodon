@@ -3,8 +3,9 @@
 class ActivityPub::NoteSerializer < ActivityPub::Serializer
   include FormattingHelper
   include JsonLdHelper
+  prepend Sharlayan::ActivityPubNoteSerialization
 
-  context_extensions :atom_uri, :conversation, :sensitive, :voters_count, :quotes, :interaction_policies, :direct_message, :limited_scope
+  context_extensions :atom_uri, :conversation, :sensitive, :voters_count, :quotes, :interaction_policies, :direct_message
 
   attributes :id, :type, :summary,
              :in_reply_to, :published, :url,
@@ -17,11 +18,6 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
   attribute :updated, if: :edited?
 
   attribute :direct_message, if: :non_public?
-  attribute :limited_scope, key: :limitedScope, if: :limited_scope?
-
-  # MFM source fields (Misskey-compatible): included only for local MFM posts
-  attribute :_misskey_content, if: :local_mfm?
-  attribute :source, if: :local_mfm?
 
   has_many :virtual_attachments, key: :attachment
   has_many :virtual_tags, key: :tag
@@ -67,49 +63,13 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
     !object.distributable?
   end
 
-  def limited_scope
-    ActivityPub::TagManager.instance.limited_scope(object)
-  end
-
-  def limited_scope?
-    object.limited_visibility? && limited_scope.present?
-  end
-
   def content
-    if local_mfm?
-      mfm_to_html_content
-    else
-      status_content_format(object)
-    end
+    status_content_format(object)
   end
 
   def content_map
     { object.language => content }
   end
-
-  def local_mfm?
-    object.local? && object.mfm?
-  end
-
-  def _misskey_content
-    object.text
-  end
-
-  def source
-    {
-      content: object.text,
-      mediaType: 'text/x.misskeymarkdown',
-    }
-  end
-
-  private
-
-  def mfm_to_html_content
-    base_html = status_content_format(object)
-    MfmHtmlConverter.convert_in_html(base_html)
-  end
-
-  public
 
   def replies
     replies = object.self_replies(5).pluck(:id, :uri)
@@ -176,14 +136,10 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
   end
 
   def to
-    return ActivityPub::TagManager.instance.cc(object) if instance_options[:promote_to_public]
-
     ActivityPub::TagManager.instance.to(object)
   end
 
   def cc
-    return ActivityPub::TagManager.instance.to(object) if instance_options[:promote_to_public]
-
     ActivityPub::TagManager.instance.cc(object)
   end
 

@@ -1,15 +1,13 @@
 import PropTypes from 'prop-types';
 import { useRef, useMemo, useCallback } from 'react';
 
-import { FormattedMessage } from 'react-intl';
-
 import { useSelector, useDispatch } from 'react-redux';
 
 import { debounce } from 'lodash';
 
 import { expandConversations } from 'flavours/glitch/actions/conversations';
-import { MentionSearch } from 'flavours/glitch/components/mention_search';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
+import { SharlayanConversationsListPrepend } from 'flavours/glitch/sharlayan/conversations/list_prepend';
 
 import { Conversation } from './conversation';
 
@@ -31,20 +29,8 @@ export const ConversationsList = ({ scrollKey, prepend, ...other }) => {
     }
   }, [debouncedLoadMore, lastStatusId]);
 
-  const listPrepend = (
-    <>
-      <div className='conversations-list__new'>
-        <h4 className='conversations-list__new-heading'>
-          <FormattedMessage id='direct.start_conversation' defaultMessage='Start a new conversation' />
-        </h4>
-        <MentionSearch />
-      </div>
-      {prepend}
-    </>
-  );
-
   return (
-    <ScrollableList {...other} prepend={listPrepend} alwaysPrepend scrollKey={scrollKey} isLoading={isLoading} showLoading={isLoading && conversations.isEmpty()} hasMore={hasMore} onLoadMore={handleLoadMore} disableAutoLoad ref={listRef}>
+    <ScrollableList {...other} prepend={<SharlayanConversationsListPrepend prepend={prepend} />} alwaysPrepend scrollKey={scrollKey} isLoading={isLoading} showLoading={isLoading && conversations.isEmpty()} hasMore={hasMore} onLoadMore={handleLoadMore} disableAutoLoad ref={listRef}>
       {conversations.map(item => (
         <Conversation
           key={item.get('id')}

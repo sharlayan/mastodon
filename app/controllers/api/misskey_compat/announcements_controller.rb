@@ -14,6 +14,15 @@ class Api::MisskeyCompat::AnnouncementsController < Api::MisskeyCompat::BaseCont
     render json: announcements.map { |announcement| MisskeyCompat::AnnouncementSerializer.serialize(announcement, current_account: current_account) }
   end
 
+  def show
+    announcement = BoardAnnouncement.published.for_account(current_account).includes(:attachments).find(params[:announcementId])
+    preload_read_state([announcement])
+
+    render json: MisskeyCompat::AnnouncementSerializer.serialize(announcement, current_account: current_account)
+  rescue ActiveRecord::RecordNotFound
+    render_error('No such announcement', 'NO_SUCH_ANNOUNCEMENT', 404, id: 'b57b5e1d-4f49-404a-9edb-46b00268f121')
+  end
+
   private
 
   def preload_read_state(announcements)

@@ -22,6 +22,7 @@ class Notification < ApplicationRecord
   include Notification::Groups
   include Paginable
   include Redisable
+  prepend Sharlayan::NotificationExtensions
 
   LEGACY_TYPE_CLASS_MAP = {
     'Mention' => :mention,
@@ -29,10 +30,9 @@ class Notification < ApplicationRecord
     'Follow' => :follow,
     'FollowRequest' => :follow_request,
     'Favourite' => :favourite,
-    'StatusReaction' => :reaction,
     'Poll' => :poll,
     'Quote' => :quote,
-  }.freeze
+  }.merge(Sharlayan::NotificationExtensions::LEGACY_TYPE_CLASS_MAP).freeze
 
   # Please update app/javascript/mastodon/api_types/notifications.ts if you change this
   PROPERTIES = {
@@ -56,15 +56,9 @@ class Notification < ApplicationRecord
       filterable: true,
       baseline: true,
     }.freeze,
-    follow_accepted: {
-      filterable: false,
-    }.freeze,
     favourite: {
       filterable: true,
       baseline: true,
-    }.freeze,
-    reaction: {
-      filterable: true,
     }.freeze,
     poll: {
       filterable: false,
@@ -110,7 +104,7 @@ class Notification < ApplicationRecord
       filterable: false,
       baseline: false,
     }.freeze,
-  }.freeze
+  }.merge(Sharlayan::NotificationExtensions::PROPERTIES).freeze
 
   TYPES = PROPERTIES.keys.freeze
 
@@ -120,12 +114,11 @@ class Notification < ApplicationRecord
     mention: [mention: :status],
     quote: [quote: :status],
     favourite: [favourite: :status],
-    reaction: [status_reaction: [:status, :custom_emoji]],
     poll: [poll: :status],
     update: :status,
     quoted_update: :status,
     'admin.report': [report: :target_account],
-  }.freeze
+  }.merge(Sharlayan::NotificationExtensions::TARGET_STATUS_INCLUDES_BY_TYPE).freeze
 
   belongs_to :account, optional: true
   belongs_to :from_account, class_name: 'Account', optional: true
@@ -137,7 +130,6 @@ class Notification < ApplicationRecord
     belongs_to :follow, inverse_of: :notification
     belongs_to :follow_request, inverse_of: :notification
     belongs_to :favourite, inverse_of: :notification
-    belongs_to :status_reaction, inverse_of: :notification
     belongs_to :poll, inverse_of: false
     belongs_to :report, inverse_of: false
     belongs_to :account_relationship_severance_event, inverse_of: false
@@ -164,8 +156,6 @@ class Notification < ApplicationRecord
       status&.reblog
     when :favourite
       favourite&.status
-    when :reaction
-      status_reaction&.status
     when :mention
       mention&.status
     when :quote
@@ -242,8 +232,6 @@ class Notification < ApplicationRecord
     end
   end
 
-  alias reaction status_reaction
-
   after_initialize :set_from_account
   before_validation :set_from_account
 
@@ -257,9 +245,7 @@ class Notification < ApplicationRecord
     case activity_type
     when 'Status'
       self.from_account_id = type == :quoted_update ? activity&.quote&.quoted_account_id : activity&.account_id
-    when 'Follow'
-      self.from_account_id = type == :follow_accepted ? activity&.target_account_id : activity&.account_id
-    when 'Favourite', 'StatusReaction', 'FollowRequest', 'Poll', 'Report', 'Quote', 'Collection'
+    when 'Follow', 'Favourite', 'FollowRequest', 'Poll', 'Report', 'Quote', 'Collection'
       self.from_account_id = activity&.account_id
     when 'CollectionItem'
       self.from_account_id = activity&.collection&.account_id

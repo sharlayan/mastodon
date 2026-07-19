@@ -132,6 +132,7 @@ ko:
         follow: 팔로우, 뮤트와 차단
         follows: 팔로우
         lists: 리스트
+        drive: 드라이브
         media: 첨부된 미디어
         mutes: 뮤트
         notifications: 알림
@@ -172,6 +173,7 @@ ko:
       read:accounts: 계정 정보 보기
       read:blocks: 차단 보기
       read:bookmarks: 내 북마크 보기
+      read:drive: 드라이브 파일과 폴더 보기
       read:favourites: 좋아요 보기
       read:filters: 필터 보기
       read:follows: 팔로우 보기
@@ -186,6 +188,7 @@ ko:
       write:blocks: 계정 및 도메인 차단
       write:bookmarks: 게시물을 북마크에 넣기
       write:conversations: 뮤트 및 대화 삭제
+      write:drive: 드라이브 파일과 폴더 관리
       write:favourites: 게시물 좋아요
       write:filters: 필터 만들기
       write:follows: 사람을 팔로우

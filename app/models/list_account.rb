@@ -5,6 +5,7 @@
 # Table name: list_accounts
 #
 #  id                :bigint(8)        not null, primary key
+#  with_replies      :boolean          default(FALSE), not null
 #  account_id        :bigint(8)        not null
 #  follow_id         :bigint(8)
 #  follow_request_id :bigint(8)

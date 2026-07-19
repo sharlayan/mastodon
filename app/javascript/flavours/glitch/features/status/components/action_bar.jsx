@@ -6,7 +6,6 @@ import { defineMessages } from 'react-intl';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
 
-import AddReactionIcon from '@/material-icons/400-24px/add_reaction.svg?react';
 import BookmarkIcon from '@/material-icons/400-24px/bookmark-fill.svg?react';
 import BookmarkBorderIcon from '@/material-icons/400-24px/bookmark.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
@@ -21,7 +20,7 @@ import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend
 
 import { IconButton } from '../../../components/icon_button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
-import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
+import { SharlayanStatusReactionButton } from 'flavours/glitch/sharlayan/status_action_bar';
 import { me, quickBoosting, reactionsEnabled } from '../../../initial_state';
 import { adminTimelineOwnerViewer, roleplayMode, softHideDeletion } from '../../../sharlayan/roleplay';
 import { BoostButton } from '@/flavours/glitch/components/status/boost_button';
@@ -39,7 +38,6 @@ const messages = defineMessages({
   mention: { id: 'status.mention', defaultMessage: 'Mention @{name}' },
   reply: { id: 'status.reply', defaultMessage: 'Reply' },
   favourite: { id: 'status.favourite', defaultMessage: 'Favorite' },
-  react: { id: 'status.react', defaultMessage: 'React' },
   removeFavourite: { id: 'status.remove_favourite', defaultMessage: 'Remove from favorites' },
   bookmark: { id: 'status.bookmark', defaultMessage: 'Bookmark' },
   removeBookmark: { id: 'status.remove_bookmark', defaultMessage: 'Remove bookmark' },
@@ -106,10 +104,6 @@ class ActionBar extends PureComponent {
 
   handleFavouriteClick = (e) => {
     this.props.onFavourite(this.props.status, e);
-  };
-
-  handleEmojiPick = (e) => {
-    this.props.onReactionAdd(this.props.status.get('id'), e.native.replace(/:/g, ''), e.imageUrl);
   };
 
   handleBookmarkClick = (e) => {
@@ -182,8 +176,6 @@ class ActionBar extends PureComponent {
     const url = this.props.status.get('url');
     navigator.clipboard.writeText(url);
   };
-
-  handleNoOp = () => {}; // hack for reaction add button
 
   render () {
     const { status, statusQuoteState, quotedAccountId, intl } = this.props;
@@ -296,18 +288,6 @@ class ActionBar extends PureComponent {
       replyIconComponent = ReplyAllIcon;
     }
 
-    const canReact = signedIn;
-    const reactButton = (
-      <IconButton
-        className='add-reaction-icon'
-        onClick={this.handleNoOp} // EmojiPickerDropdown handles that
-        title={intl.formatMessage(messages.react)}
-        disabled={!canReact}
-        icon='add_reaction'
-        iconComponent={AddReactionIcon}
-      />
-    );
-
     const bookmarkTitle = intl.formatMessage(status.get('bookmarked') ? messages.removeBookmark : messages.bookmark);
     const favouriteTitle = intl.formatMessage(status.get('favourited') ? messages.removeFavourite : messages.favourite);
 
@@ -318,15 +298,7 @@ class ActionBar extends PureComponent {
           <BoostButton statusId={status.get('id')} />
         </div>
         <div className='detailed-status__button'><IconButton className='star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StarIcon : StarBorderIcon} onClick={this.handleFavouriteClick} /></div>
-        {reactionsEnabled && (
-          <div className='detailed-status__button'>
-            {
-              signedIn
-                ? <EmojiPickerDropdown onPickEmoji={this.handleEmojiPick} button={reactButton} disabled={!canReact} />
-                : reactButton
-            }
-          </div>
-        )}
+        <SharlayanStatusReactionButton enabled={reactionsEnabled} status={status} canReact={signedIn} onReactionAdd={this.props.onReactionAdd} wrapperClassName='detailed-status__button' buttonClassName='add-reaction-icon' />
         <div className='detailed-status__button'><IconButton className='bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? BookmarkIcon : BookmarkBorderIcon} onClick={this.handleBookmarkClick} /></div>
 
         <div className='detailed-status__action-bar-dropdown'>
