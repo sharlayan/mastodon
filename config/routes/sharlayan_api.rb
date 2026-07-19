@@ -183,6 +183,7 @@ namespace :api, format: false do
     post 'i/registry/keys-with-type', to: 'registry#keys_with_type'
     post 'i/registry/scopes-with-domain', to: 'registry#scopes_with_domain'
     post 'miauth/:session/check', to: 'miauth#check'
+    post 'signin-flow', to: 'signin#create'
 
     post 'sw/register', to: 'sw#register'
     post 'sw/unregister', to: 'sw#unregister'
