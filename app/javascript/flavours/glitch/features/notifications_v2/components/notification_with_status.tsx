@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import classNames from 'classnames';
 
@@ -10,6 +10,7 @@ import {
 } from 'flavours/glitch/actions/interactions';
 import {
   navigateToStatus,
+  navigateToStatusOrConversation,
   toggleStatusSpoilers,
 } from 'flavours/glitch/actions/statuses';
 import { Hotkeys } from 'flavours/glitch/components/hotkeys';
@@ -32,6 +33,7 @@ export const NotificationWithStatus: React.FC<{
   labelSeeMoreHref?: string | undefined;
   unread: boolean;
   collapsed?: boolean;
+  openAsConversation?: boolean;
 }> = ({
   icon,
   iconId,
@@ -43,6 +45,7 @@ export const NotificationWithStatus: React.FC<{
   type,
   unread,
   collapsed,
+  openAsConversation,
 }) => {
   const dispatch = useAppDispatch();
 
@@ -69,10 +72,18 @@ export const NotificationWithStatus: React.FC<{
       getStatusHidden(state, { id: statusId, contextType: 'notifications' }),
   );
 
+  const handleOpen = useCallback(() => {
+    if (openAsConversation) {
+      dispatch(navigateToStatusOrConversation(statusId));
+    } else {
+      dispatch(navigateToStatus(statusId));
+    }
+  }, [dispatch, statusId, openAsConversation]);
+
   const handlers = useMemo(
     () => ({
       open: () => {
-        dispatch(navigateToStatus(statusId));
+        handleOpen();
       },
 
       reply: () => {
@@ -92,7 +103,7 @@ export const NotificationWithStatus: React.FC<{
         dispatch(toggleStatusSpoilers(statusId));
       },
     }),
-    [dispatch, statusId],
+    [dispatch, statusId, handleOpen],
   );
 
   if (!statusId || isFiltered) return null;
@@ -124,6 +135,7 @@ export const NotificationWithStatus: React.FC<{
           skipPrepend
           avatarSize={40}
           unfocusable
+          onClick={openAsConversation ? handleOpen : undefined}
           // patch for old notification style
           collapsed={collapsed ?? false}
         />

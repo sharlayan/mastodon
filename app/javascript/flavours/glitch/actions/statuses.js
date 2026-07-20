@@ -378,3 +378,27 @@ export const navigateToStatus = (statusId) => {
     }
   };
 };
+
+export const navigateToStatusOrConversation = (statusId) => {
+  return (dispatch, getState) => {
+    const state = getState();
+    const visibility = state.statuses.getIn([statusId, 'visibility']);
+
+    if (visibility !== 'direct') {
+      dispatch(navigateToStatus(statusId));
+      return;
+    }
+
+    api().get(`/api/v1/conversations/with_status/${statusId}`).then(response => {
+      if (response.data?.id) {
+        browserHistory.push(`/conversations/${response.data.id}`);
+      } else {
+        dispatch(navigateToStatus(statusId));
+      }
+
+      return response;
+    }).catch(() => {
+      dispatch(navigateToStatus(statusId));
+    });
+  };
+};
