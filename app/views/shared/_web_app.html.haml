@@ -5,6 +5,9 @@
 
   - if (blog_view_account = page_blog_view_account(local_assigns[:page_blog_view_target_account]))
     %meta{ name: 'pageBlogViewAccount', content: blog_view_account }
+    %meta{ name: 'pageBlogViewSkin', content: page_blog_view_skin(local_assigns[:page_blog_view_target_account]) }
+    %meta{ name: 'pageBlogViewViewerSkin', content: current_skin }
+    = page_blog_view_theme_style_tags(local_assigns[:page_blog_view_target_account])
 
   %meta{ name: 'applicationServerKey', content: Rails.configuration.x.vapid.public_key }
 

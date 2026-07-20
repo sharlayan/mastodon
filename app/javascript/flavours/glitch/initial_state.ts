@@ -126,6 +126,12 @@ export const hasMultiColumnPath: boolean =
 const pageBlogViewAccount = document
   .querySelector('head meta[name=pageBlogViewAccount]')
   ?.getAttribute('content');
+export const pageBlogViewSkin = document
+  .querySelector('head meta[name=pageBlogViewSkin]')
+  ?.getAttribute('content');
+export const pageBlogViewViewerSkin = document
+  .querySelector('head meta[name=pageBlogViewViewerSkin]')
+  ?.getAttribute('content');
 
 export const isServerPageBlogViewPath = (pathname: string): boolean =>
   Boolean(

@@ -34,6 +34,8 @@ import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle
 import {
   domain,
   ignoreOthersPagesView,
+  pageBlogViewSkin,
+  pageBlogViewViewerSkin,
   title as siteTitle,
 } from 'flavours/glitch/initial_state';
 import { useAppDispatch } from 'flavours/glitch/store';
@@ -362,6 +364,25 @@ const PageShow: React.FC<{
       document.body.classList.remove('page-wide-view', 'page-blog-view');
     };
   }, [wideView, useBlogView]);
+
+  useEffect(() => {
+    if (!useBlogView || !pageBlogViewSkin) {
+      return;
+    }
+
+    if (pageBlogViewViewerSkin) {
+      document.body.classList.remove(`skin-${pageBlogViewViewerSkin}`);
+    }
+    document.body.classList.add(`skin-${pageBlogViewSkin}`);
+
+    return () => {
+      document.body.classList.remove(`skin-${pageBlogViewSkin}`);
+      if (pageBlogViewViewerSkin) {
+        document.body.classList.add(`skin-${pageBlogViewViewerSkin}`);
+      }
+      document.getElementById('page-blog-theme')?.remove();
+    };
+  }, [useBlogView]);
 
   if (error) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;

@@ -17,10 +17,10 @@ module ThemeHelper
     content_tag(:script, entry[:contents], type: 'text/javascript')
   end
 
-  def theme_style_tags(flavour_and_skin)
+  def theme_style_tags(flavour_and_skin, **)
     flavour, theme = flavour_and_skin
 
-    vite_stylesheet_tag "skins/#{flavour}/#{theme}", type: :virtual, media: 'all', crossorigin: 'anonymous'
+    vite_stylesheet_tag "skins/#{flavour}/#{theme}", type: :virtual, media: 'all', crossorigin: 'anonymous', **
   end
 
   def theme_color_tags(color_scheme)
