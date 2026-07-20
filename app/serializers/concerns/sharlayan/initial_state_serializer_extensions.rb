@@ -54,6 +54,7 @@ module Sharlayan::InitialStateSerializerExtensions
       color_scheme: object_account_user.settings['web.color_scheme'],
       contrast: object_account_user.settings['web.contrast'],
       custom_emoji_mute_hidden: object_account_user.settings['web.custom_emoji_mute_hidden'],
+      ignore_others_pages_view: object_account_user.settings['web.ignore_others_pages_view'],
       custom_emoji_mutes: object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions, hide_in_picker: mute.hide_in_picker } },
       reaction_mutes: object.current_account.reaction_mutes.includes(:target_account).order(id: :desc).map { |mute| { id: mute.id.to_s, target_account_id: mute.target_account_id&.to_s, target_acct: mute.target_account&.acct, target_domain: mute.target_domain } },
     }

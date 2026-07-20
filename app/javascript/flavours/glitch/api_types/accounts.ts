@@ -91,6 +91,8 @@ export interface BaseApiAccountJSON {
   server_features?: ApiServerFeaturesJSON;
   software?: string | null;
   online_status: ApiOnlineStatus;
+  pages_view?: 'list' | 'blog';
+  pages_blog_list_position?: 'left' | 'right';
 }
 
 export interface ApiServerFeaturesJSON {

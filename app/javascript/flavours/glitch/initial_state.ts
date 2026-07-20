@@ -123,6 +123,17 @@ export const hasMultiColumnPath: boolean =
   initialPath === '/home' ||
   initialPath.startsWith('/deck');
 
+const pageBlogViewAccount = document
+  .querySelector('head meta[name=pageBlogViewAccount]')
+  ?.getAttribute('content');
+
+export const isServerPageBlogViewPath = (pathname: string): boolean =>
+  Boolean(
+    pageBlogViewAccount &&
+    (pathname.startsWith(`/@${pageBlogViewAccount}/pages/`) ||
+      /^\/pages\/[0-9]+$/.test(pathname)),
+  );
+
 // Glitch-soc-specific “local settings”
 if (initialState) {
   try {
@@ -203,6 +214,7 @@ export const {
   customEmojiSize,
   customEmojiMutes,
   customEmojiMuteHidden,
+  ignoreOthersPagesView,
   reactionMutes,
   reactionCustomEmojiSize,
   reactionLocalEmojiOnly,

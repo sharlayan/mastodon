@@ -43,6 +43,7 @@ export interface SharlayanInitialStateMeta {
   mfm_fold_mode: 'show' | 'sensitive' | 'all';
   mfm_allow_composition: boolean;
   custom_emoji_mute_hidden?: boolean;
+  ignore_others_pages_view?: boolean;
   custom_emoji_mutes?: ApiCustomEmojiMuteJSON[];
   reaction_mutes?: ApiReactionMuteJSON[];
 }
@@ -79,6 +80,7 @@ export const readSharlayanInitialState = (
     customEmojiSize: getMeta('custom_emoji_size'),
     customEmojiMutes: getMeta('custom_emoji_mutes') ?? [],
     customEmojiMuteHidden: getMeta('custom_emoji_mute_hidden') === true,
+    ignoreOthersPagesView: getMeta('ignore_others_pages_view') === true,
     reactionMutes: getMeta('reaction_mutes') ?? [],
     reactionCustomEmojiSize: getMeta('reaction_custom_emoji_size'),
     reactionLocalEmojiOnly: getMeta('reaction_local_emoji_only'),

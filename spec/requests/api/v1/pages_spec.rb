@@ -133,6 +133,18 @@ RSpec.describe 'Pages' do
   end
 
   describe 'content limits' do
+    it 'preserves the image no-upscale option' do
+      post '/api/v1/pages', params: {
+        title: 'Original image size',
+        name: 'original-image-size',
+        content: [{ id: 'image', type: 'image', fileId: nil, noUpscale: true }],
+      }, headers: headers, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:content, 0, :noUpscale)).to be true
+      expect(Page.find_by!(name: 'original-image-size').content.dig(0, 'noUpscale')).to be true
+    end
+
     it 'rejects content deeper than the server traversal budget' do
       root = { type: 'section', children: [] }
       current = root

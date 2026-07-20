@@ -20,6 +20,7 @@ export interface ApiPageImageBlock {
   id: string;
   type: 'image';
   fileId: string | null;
+  noUpscale?: boolean;
 }
 
 export interface ApiPageNoteBlock {

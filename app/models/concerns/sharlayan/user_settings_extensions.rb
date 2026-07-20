@@ -38,6 +38,9 @@ module Sharlayan::UserSettingsExtensions
         setting :mfm_animations, default: false
         setting :mfm_fold_mode, default: 'sensitive', in: %w(show sensitive all)
         setting :custom_emoji_mute_hidden, default: false
+        setting :pages_view, default: 'list', in: %w(list blog)
+        setting :pages_blog_list_position, default: 'left', in: %w(left right)
+        setting :ignore_others_pages_view, default: false
         setting :use_server_css, default: true
         setting :use_custom_css, default: false
       end

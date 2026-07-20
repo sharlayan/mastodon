@@ -32,7 +32,7 @@ import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../act
 import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
-import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain } from '../../initial_state';
+import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, isServerPageBlogViewPath } from '../../initial_state';
 import { renderSharlayanRoutes } from 'flavours/glitch/sharlayan/registry/routes/render';
 import { SharlayanUiExtensions, shouldIgnoreSharlayanDropTarget } from 'flavours/glitch/sharlayan/registry/ui';
 
@@ -130,6 +130,7 @@ class SwitchingColumnsArea extends PureComponent {
     singleColumn: PropTypes.bool,
     layout: PropTypes.string.isRequired,
     forceOnboarding: PropTypes.bool,
+    pageBlogView: PropTypes.bool,
   };
 
   componentDidMount () {
@@ -167,7 +168,7 @@ class SwitchingColumnsArea extends PureComponent {
   };
 
   render () {
-    const { children, singleColumn, forceOnboarding } = this.props;
+    const { children, pageBlogView, singleColumn, forceOnboarding } = this.props;
     const { signedIn } = this.props.identity;
     const pathName = this.props.location.pathname;
 
@@ -194,7 +195,7 @@ class SwitchingColumnsArea extends PureComponent {
 
     return (
       <ColumnsContextProvider multiColumn={!singleColumn}>
-        <ColumnsArea ref={this.setRef} singleColumn={singleColumn} domain={domain} minimalShell={!signedIn && landingPage === 'overview' && pathName.startsWith('/overview')}>
+        <ColumnsArea ref={this.setRef} singleColumn={singleColumn} domain={domain} pageBlogView={pageBlogView} minimalShell={!signedIn && landingPage === 'overview' && pathName.startsWith('/overview')}>
           <WrappedSwitch>
             <Redirect from='/' to={{pathname: rootRedirect, state: {...this.props.location.state, focusTarget: false}}} exact />
 
@@ -688,18 +689,20 @@ class UI extends PureComponent {
     };
 
     const minimalShell = !this.props.identity.signedIn && landingPage === 'overview' && location.pathname.startsWith('/overview');
+    const pageBlogView = isServerPageBlogViewPath(location.pathname);
+    const suppressStandardShell = minimalShell || pageBlogView;
 
     return (
       <Hotkeys global handlers={handlers}>
         <div className={className} ref={this.setRef}>
-          {!minimalShell && (
+          {!suppressStandardShell && (
             <SkipLinks
               multiColumn={layout === 'multi-column'}
               onFocusGettingStartedColumn={this.handleHotkeyGoToStart}
             />
           )}
 
-          {moved && (<div className='flash-message alert'>
+          {!pageBlogView && moved && (<div className='flash-message alert'>
             <FormattedMessage
               id='moved_to_warning'
               defaultMessage='This account is marked as moved to {moved_to_link}, and may thus not accept new follows.'
@@ -711,7 +714,7 @@ class UI extends PureComponent {
             />
           </div>)}
 
-          <SharlayanUiExtensions />
+          {!pageBlogView && <SharlayanUiExtensions />}
 
           <SwitchingColumnsArea
             identity={this.props.identity}
@@ -719,18 +722,19 @@ class UI extends PureComponent {
             singleColumn={layout === 'mobile' || layout === 'single-column'}
             layout={layout}
             forceOnboarding={firstLaunch && newAccount}
+            pageBlogView={pageBlogView}
           >
             {children}
           </SwitchingColumnsArea>
 
-          {!minimalShell && <NavigationBar />}
-          {layout !== 'mobile' && <PictureInPicture />}
+          {!suppressStandardShell && <NavigationBar />}
+          {!pageBlogView && layout !== 'mobile' && <PictureInPicture />}
           <AlertsController />
-          {!disableHoverCards && <HoverCardController />}
-          <HashtagMenuController />
+          {!pageBlogView && !disableHoverCards && <HoverCardController />}
+          {!pageBlogView && <HashtagMenuController />}
           <LoadingBarContainer className='loading-bar' />
           <ModalContainer />
-          <UploadArea active={draggingOver} onClose={this.closeUploadModal} />
+          {!pageBlogView && <UploadArea active={draggingOver} onClose={this.closeUploadModal} />}
         </div>
       </Hotkeys>
     );

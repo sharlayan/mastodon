@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
-  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId note detailed).freeze
+  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed).freeze
   OWNER_ACTIONS = %i(index likes create update destroy like unlike).freeze
 
   requires_write_scope :create, :update, :destroy, :like, :unlike
@@ -169,6 +169,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
       next unless block.is_a?(Hash)
 
       clean = block.stringify_keys.slice(*ALLOWED_BLOCK_KEYS)
+      clean['noUpscale'] = ActiveModel::Type::Boolean.new.cast(clean['noUpscale']) if clean['type'] == 'image' && clean.key?('noUpscale')
       clean['children'] = sanitize_blocks(clean['children'], depth + 1) if clean.key?('children')
       clean
     end

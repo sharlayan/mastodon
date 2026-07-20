@@ -385,6 +385,8 @@ ja:
         units:
           unit: ''
   pages:
+    settings:
+      heading: ページ
     errors:
       invalid_password: パスワードが正しくありません
       limit: ページの上限数に達しています
@@ -415,6 +417,9 @@ ja:
         setting_mfm_fold_mode: Choose when to fold (collapse) MFM posts behind an
           expand toggle. 'Sensitive' folds posts with animation, scale, or border
           effects. 'All' folds every MFM post.
+        setting_pages_view: 他のユーザーがあなたのPagesを開くときのレイアウトを選びます。
+        setting_pages_blog_list_position: 広い画面でPages一覧を表示する位置を選びます。狭い画面ではPageの下に表示されます。
+        setting_ignore_others_pages_view: 他のユーザーのPagesを開くときは常に標準レイアウトを使います。
         setting_prevent_ai_learning: 投稿やメディアをAIの学習に使用しないようにクローラーへ要求します。あくまで要求であり、強制はできません。
         setting_reaction_custom_emoji_size: Display Original size of Long Horizontally
           Custom Emoji on Reaction Button
@@ -458,6 +463,13 @@ ja:
         setting_mfm_fold_mode_all: Fold all MFM
         setting_mfm_fold_mode_sensitive: Fold sensitive MFM (recommended)
         setting_mfm_fold_mode_show: Show as-is
+        setting_pages_view: 訪問者向けPagesレイアウト
+        setting_pages_view_blog: ブログ
+        setting_pages_view_list: 標準
+        setting_pages_blog_list_position: Pages一覧の位置
+        setting_pages_blog_list_position_left: 左
+        setting_pages_blog_list_position_right: 右
+        setting_ignore_others_pages_view: 他のユーザーのPagesレイアウト設定に従わない
         setting_prevent_ai_learning: AIの学習への使用を防ぐ
         setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction
           Button

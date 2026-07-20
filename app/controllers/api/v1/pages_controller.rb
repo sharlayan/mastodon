@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::PagesController < Api::BaseController
-  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId note detailed).freeze
+  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed).freeze
 
   before_action :require_feature_enabled!
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories]
@@ -125,6 +125,7 @@ class Api::V1::PagesController < Api::BaseController
       next unless block.is_a?(Hash)
 
       block = block.stringify_keys.slice(*ALLOWED_BLOCK_KEYS)
+      block['noUpscale'] = ActiveModel::Type::Boolean.new.cast(block['noUpscale']) if block['type'] == 'image' && block.key?('noUpscale')
       block['children'] = sanitize_blocks(block['children'], depth + 1) if block.key?('children')
       block
     end

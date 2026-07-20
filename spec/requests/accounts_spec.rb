@@ -313,6 +313,45 @@ RSpec.describe 'Accounts show response' do
     end
   end
 
+  describe 'Pages blog view pre-render guard' do
+    around do |example|
+      previous_pages_enabled = Setting.pages_enabled
+      Setting.pages_enabled = true
+      example.run
+      Setting.pages_enabled = previous_pages_enabled
+    end
+
+    before do
+      account.user.settings['web.pages_view'] = 'blog'
+      account.user.save!
+    end
+
+    it 'exposes the target account for a public Page view' do
+      get "/@#{account.username}/pages/example"
+
+      expect(response.parsed_body.at('meta[name="pageBlogViewAccount"]')&.[]('content')).to eq(account.acct)
+    end
+
+    it 'does not expose the guard when the visitor ignores account settings' do
+      visitor = Fabricate(:user)
+      visitor.settings['web.ignore_others_pages_view'] = true
+      visitor.save!
+      sign_in(visitor)
+
+      get "/@#{account.username}/pages/example"
+
+      expect(response.parsed_body.at('meta[name="pageBlogViewAccount"]')).to be_nil
+    end
+
+    it 'exposes the guard for the owner Page route' do
+      sign_in(account.user)
+
+      get '/pages/123'
+
+      expect(response.parsed_body.at('meta[name="pageBlogViewAccount"]')&.[]('content')).to eq(account.acct)
+    end
+  end
+
   def status_tag_for(status)
     ActivityPub::TagManager.instance.url_for(status)
   end

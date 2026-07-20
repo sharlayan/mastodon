@@ -108,7 +108,7 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
         type: 'section',
         title: 'Section',
         children: [
-          { id: 'image', type: 'image', fileId: MisskeyCompat::MiId.encode(media.id) },
+          { id: 'image', type: 'image', fileId: MisskeyCompat::MiId.encode(media.id), noUpscale: true },
           { id: 'note', type: 'note', note: MisskeyCompat::MiId.encode(status.id), detailed: true },
         ],
       }]
@@ -126,11 +126,11 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response).to have_http_status(200)
       page = Page.find(MisskeyCompat::MiId.decode(response.parsed_body[:id]))
       expect(page.content[0]['children']).to include(
-        include('fileId' => media.id.to_s),
+        include('fileId' => media.id.to_s, 'noUpscale' => true),
         include('note' => status.id.to_s)
       )
       expect(response.parsed_body.dig(:content, 0, :children)).to include(
-        include(fileId: MisskeyCompat::MiId.encode(media.id)),
+        include(fileId: MisskeyCompat::MiId.encode(media.id), noUpscale: true),
         include(note: MisskeyCompat::MiId.encode(status.id))
       )
       expect(response.parsed_body[:eyeCatchingImageId]).to eq(MisskeyCompat::MiId.encode(media.id))

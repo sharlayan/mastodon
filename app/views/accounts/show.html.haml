@@ -16,4 +16,4 @@
   = opengraph 'og:type', 'profile'
   = render 'og', account: @account, url: short_account_url(@account, only_path: false)
 
-= render partial: 'shared/web_app'
+= render partial: 'shared/web_app', locals: { page_blog_view_target_account: @account }

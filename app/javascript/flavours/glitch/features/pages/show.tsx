@@ -42,6 +42,11 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useAppHistory } from 'flavours/glitch/components/router';
 import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
+import {
+  domain,
+  ignoreOthersPagesView,
+  title as siteTitle,
+} from 'flavours/glitch/initial_state';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import type { PageMediaOpenHandler } from './components/blocks';
@@ -140,16 +145,6 @@ const PageShow: React.FC<{
   const [passwordError, setPasswordError] = useState(false);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('page-wide-view', wideView);
-    document.body.classList.toggle('page-wide-view', wideView);
-
-    return () => {
-      document.documentElement.classList.remove('page-wide-view');
-      document.body.classList.remove('page-wide-view');
-    };
-  }, [wideView]);
-
-  useEffect(() => {
     let active = true;
 
     apiGetPage(id)
@@ -174,6 +169,13 @@ const PageShow: React.FC<{
   const currentPage = page?.id === id ? page : null;
   const currentPageAccountId = currentPage?.account_id;
   const error = errorId === id;
+  const isOwner = !!currentPage && currentPage.account_id === accountId;
+  const useBlogView =
+    !!currentPage &&
+    (isOwner || !ignoreOthersPagesView) &&
+    currentPage.account.pages_view === 'blog';
+  const blogListPosition =
+    currentPage?.account.pages_blog_list_position ?? 'left';
 
   useEffect(() => {
     if (!currentPageAccountId) {
@@ -311,11 +313,27 @@ const PageShow: React.FC<{
     handleOpenMedia('eye-catching');
   }, [handleOpenMedia]);
 
+  useEffect(() => {
+    const fullPageView = wideView || useBlogView;
+
+    document.documentElement.classList.toggle('page-wide-view', fullPageView);
+    document.body.classList.toggle('page-wide-view', fullPageView);
+    document.documentElement.classList.toggle('page-blog-view', useBlogView);
+    document.body.classList.toggle('page-blog-view', useBlogView);
+
+    return () => {
+      document.documentElement.classList.remove(
+        'page-wide-view',
+        'page-blog-view',
+      );
+      document.body.classList.remove('page-wide-view', 'page-blog-view');
+    };
+  }, [wideView, useBlogView]);
+
   if (error) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
   }
 
-  const isOwner = !!currentPage && currentPage.account_id === accountId;
   const eyeCatchingMedia = currentPage?.eye_catching_media_attachment;
   const title = currentPage
     ? currentPage.title
@@ -332,6 +350,15 @@ const PageShow: React.FC<{
         ...(accountPages ?? []),
       ]
     : [];
+  const currentPageIndex = visibleAccountPages.findIndex(
+    (accountPage) => accountPage.id === id,
+  );
+  const previousPage =
+    currentPageIndex > 0 ? visibleAccountPages[currentPageIndex - 1] : null;
+  const nextPage =
+    currentPageIndex >= 0 && currentPageIndex < visibleAccountPages.length - 1
+      ? visibleAccountPages[currentPageIndex + 1]
+      : null;
 
   return (
     <Column
@@ -339,274 +366,437 @@ const PageShow: React.FC<{
       className='page-show-column'
       label={title}
     >
-      <ColumnHeader
-        title={title}
-        icon='description'
-        iconComponent={DescriptionIcon}
-        multiColumn={multiColumn}
-        showBackButton
-        onBack={handleBack}
-        extraButton={
-          <>
-            {isOwner && (
-              <>
-                <Link
-                  to={{
-                    pathname: `/pages/${id}/edit`,
-                    state: {
-                      fromPageShow: true,
-                      pageName: currentPage.name,
-                    },
-                  }}
-                  className='column-header__button'
-                  title={intl.formatMessage(messages.edit)}
-                  aria-label={intl.formatMessage(messages.edit)}
-                >
-                  <Icon id='pencil' icon={EditIcon} />
-                </Link>
+      {!useBlogView && (
+        <ColumnHeader
+          title={title}
+          icon='description'
+          iconComponent={DescriptionIcon}
+          multiColumn={multiColumn}
+          showBackButton
+          onBack={handleBack}
+          extraButton={
+            <>
+              {isOwner && (
+                <>
+                  <Link
+                    to={{
+                      pathname: `/pages/${id}/edit`,
+                      state: {
+                        fromPageShow: true,
+                        pageName: currentPage.name,
+                      },
+                    }}
+                    className='column-header__button'
+                    title={intl.formatMessage(messages.edit)}
+                    aria-label={intl.formatMessage(messages.edit)}
+                  >
+                    <Icon id='pencil' icon={EditIcon} />
+                  </Link>
+                  <button
+                    type='button'
+                    className='column-header__button'
+                    title={intl.formatMessage(messages.delete)}
+                    aria-label={intl.formatMessage(messages.delete)}
+                    onClick={handleDelete}
+                  >
+                    <Icon id='trash' icon={DeleteIcon} />
+                  </button>
+                </>
+              )}
+              {accountId && !isOwner && !currentPage?.locked && (
                 <button
                   type='button'
                   className='column-header__button'
-                  title={intl.formatMessage(messages.delete)}
-                  aria-label={intl.formatMessage(messages.delete)}
-                  onClick={handleDelete}
+                  title={intl.formatMessage(messages.report)}
+                  aria-label={intl.formatMessage(messages.report)}
+                  onClick={handleReport}
                 >
-                  <Icon id='trash' icon={DeleteIcon} />
+                  <Icon id='flag' icon={FlagIcon} />
                 </button>
-              </>
-            )}
-            {accountId && !isOwner && !currentPage?.locked && (
+              )}
               <button
                 type='button'
                 className='column-header__button'
-                title={intl.formatMessage(messages.report)}
-                aria-label={intl.formatMessage(messages.report)}
-                onClick={handleReport}
+                title={intl.formatMessage(
+                  wideView ? messages.exitWideView : messages.wideView,
+                )}
+                aria-label={intl.formatMessage(
+                  wideView ? messages.exitWideView : messages.wideView,
+                )}
+                aria-pressed={wideView}
+                onClick={handleWideViewToggle}
               >
-                <Icon id='flag' icon={FlagIcon} />
+                <Icon
+                  id={wideView ? 'compress' : 'expand'}
+                  icon={wideView ? FullscreenExitIcon : FullscreenIcon}
+                />
               </button>
-            )}
-            <button
-              type='button'
-              className='column-header__button'
-              title={intl.formatMessage(
-                wideView ? messages.exitWideView : messages.wideView,
-              )}
-              aria-label={intl.formatMessage(
-                wideView ? messages.exitWideView : messages.wideView,
-              )}
-              aria-pressed={wideView}
-              onClick={handleWideViewToggle}
-            >
-              <Icon
-                id={wideView ? 'compress' : 'expand'}
-                icon={wideView ? FullscreenExitIcon : FullscreenIcon}
-              />
-            </button>
-          </>
-        }
-      />
+            </>
+          }
+        />
+      )}
 
       {currentPage ? (
         <div className='scrollable'>
-          <aside
-            className='page-show__sidebar'
-            aria-label={intl.formatMessage({
-              id: 'account.pages',
-              defaultMessage: 'Pages',
-            })}
-          >
-            <h2>
-              <FormattedMessage id='account.pages' defaultMessage='Pages' />
-            </h2>
-            <div className='page-show__sidebar-list'>
-              {visibleAccountPages.map((accountPage) => (
-                <PageListItem
-                  key={accountPage.id}
-                  page={accountPage}
-                  active={accountPage.id === id}
-                  replaceHistory
-                />
-              ))}
-            </div>
-          </aside>
-          <article
-            className={classNames('page', `page--font-${currentPage.font}`, {
-              'page--center': currentPage.align_center,
-            })}
-          >
-            {eyeCatchingMedia && (
-              <div className='page__eye-catching-container'>
-                <button
-                  type='button'
-                  className='page__media-button'
-                  onClick={handleOpenEyeCatchingMedia}
+          {useBlogView && (
+            <header className='page-show__blog-header'>
+              <Link
+                to={`/@${currentPage.account.acct}`}
+                className='page-show__blog-owner'
+                style={
+                  currentPage.account.header
+                    ? ({
+                        '--page-blog-owner-header': `url(${JSON.stringify(currentPage.account.header)})`,
+                      } as React.CSSProperties)
+                    : undefined
+                }
+              >
+                <Avatar account={currentPage.account} size={40} />
+                <span className='page-show__blog-owner-text'>
+                  <strong>
+                    {currentPage.account.display_name ||
+                      currentPage.account.username}
+                  </strong>
+                  <span>@{currentPage.account.acct}</span>
+                </span>
+              </Link>
+              {accountId && (
+                <nav
+                  className='page-show__blog-navigation'
+                  aria-label={intl.formatMessage({
+                    id: 'pages.blog_header.navigation',
+                    defaultMessage: 'Page links',
+                  })}
                 >
-                  {eyeCatchingMedia.type === 'gifv' ? (
-                    <video
-                      className='page__eye-catching'
-                      src={eyeCatchingMedia.url}
-                      aria-label={eyeCatchingMedia.description ?? ''}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
+                  <Link to='/home'>
+                    <FormattedMessage
+                      id='pages.blog_header.home'
+                      defaultMessage='Back to home timeline'
                     />
-                  ) : (
-                    <img
-                      className='page__eye-catching'
-                      src={eyeCatchingMedia.url}
-                      alt={eyeCatchingMedia.description ?? ''}
+                  </Link>
+                  <span aria-hidden='true'>|</span>
+                  <Link to='/pages'>
+                    <FormattedMessage
+                      id='pages.blog_header.my_pages'
+                      defaultMessage='Back to my pages'
                     />
-                  )}
-                </button>
-                <div className='page__eye-catching-author'>
-                  <Avatar account={currentPage.account} size={32} withLink />
-                  <span className='page__eye-catching-author-text'>
-                    <strong>
-                      {currentPage.account.display_name ||
-                        currentPage.account.username}
-                    </strong>
-                    <span>@{currentPage.account.acct}</span>
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <div className='page__title-row'>
-              <h1 className='page__title'>
-                <span className='page__title-text'>{currentPage.title}</span>
-                {currentPage.visibility !== 'public' && (
-                  <Icon
-                    id={
-                      currentPage.visibility === 'password'
-                        ? 'lock'
-                        : 'preview-off'
-                    }
-                    icon={
-                      currentPage.visibility === 'password'
-                        ? LockIcon
-                        : PreviewOffIcon
-                    }
-                    className='page__visibility-icon'
-                    aria-label={intl.formatMessage(
-                      currentPage.visibility === 'password'
-                        ? messages.passwordVisibility
-                        : messages.privateVisibility,
-                    )}
-                  />
-                )}
-              </h1>
-              {currentPage.category && (
-                <span className='page__category'>{currentPage.category}</span>
+                  </Link>
+                  <span aria-hidden='true'>|</span>
+                  <Link to={`/@${currentPage.account.acct}`}>
+                    <FormattedMessage
+                      id='pages.blog_header.owner_profile'
+                      defaultMessage="Back to {user}'s profile"
+                      values={{
+                        user:
+                          currentPage.account.display_name ||
+                          currentPage.account.username,
+                      }}
+                    />
+                  </Link>
+                </nav>
               )}
-            </div>
-
-            {!eyeCatchingMedia && (
-              <div className='page__byline-row'>
-                <Link
-                  to={`/@${currentPage.account.acct}`}
-                  className='page__byline'
-                >
-                  @{currentPage.account.acct}
-                </Link>
-              </div>
-            )}
-
-            {currentPage.summary && (
-              <p className='page__summary'>{currentPage.summary}</p>
-            )}
-
-            {currentPage.locked ? (
-              <form className='page__password-form' onSubmit={handleUnlock}>
-                <label htmlFor='page_access_password'>
-                  {intl.formatMessage(messages.password)}
-                </label>
-                <input
-                  id='page_access_password'
-                  type='password'
-                  minLength={8}
-                  maxLength={72}
-                  required
-                  autoComplete='current-password'
-                  value={password}
-                  onChange={handlePasswordChange}
-                />
-                {passwordError && (
-                  <span className='page__password-error'>
-                    {intl.formatMessage(messages.invalidPassword)}
-                  </span>
-                )}
-                <button type='submit' className='button' disabled={unlocking}>
-                  {intl.formatMessage(messages.unlock)}
-                </button>
-              </form>
-            ) : (
-              <>
-                <div className='page__content'>
-                  <PageBlockList
-                    blocks={currentPage.content}
-                    page={currentPage}
-                    depth={0}
-                    onOpenMedia={handleOpenMedia}
-                  />
+            </header>
+          )}
+          <div
+            className={classNames('page-show__content', {
+              'page-show__content--blog': useBlogView,
+              'page-show__content--blog-right':
+                useBlogView && blogListPosition === 'right',
+            })}
+          >
+            <aside
+              className='page-show__sidebar'
+              aria-label={intl.formatMessage({
+                id: 'account.pages',
+                defaultMessage: 'Pages',
+              })}
+            >
+              <h2>
+                <FormattedMessage id='account.pages' defaultMessage='Pages' />
+              </h2>
+              {useBlogView ? (
+                <>
+                  <ol className='page-show__blog-list'>
+                    {visibleAccountPages.map((accountPage) => (
+                      <li key={accountPage.id}>
+                        <Link
+                          to={`/@${accountPage.account.acct}/pages/${encodeURIComponent(accountPage.name)}`}
+                          aria-current={
+                            accountPage.id === id ? 'page' : undefined
+                          }
+                        >
+                          {accountPage.title.length > 0
+                            ? accountPage.title
+                            : accountPage.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className='page-show__sidebar-list'>
+                    {visibleAccountPages.map((accountPage) => (
+                      <PageListItem
+                        key={accountPage.id}
+                        page={accountPage}
+                        active={accountPage.id === id}
+                        replaceHistory
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className='page-show__sidebar-list'>
+                  {visibleAccountPages.map((accountPage) => (
+                    <PageListItem
+                      key={accountPage.id}
+                      page={accountPage}
+                      active={accountPage.id === id}
+                      replaceHistory
+                    />
+                  ))}
                 </div>
-
-                <div className='page__footer'>
-                  <dl className='page__dates'>
-                    <div>
-                      <dt>{intl.formatMessage(messages.createdAt)}</dt>
-                      <dd>
-                        <FormattedDateWrapper
-                          value={currentPage.created_at}
-                          year='numeric'
-                          month='long'
-                          day='2-digit'
-                          hour='2-digit'
-                          minute='2-digit'
-                        />
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>{intl.formatMessage(messages.updatedAt)}</dt>
-                      <dd>
-                        <FormattedDateWrapper
-                          value={currentPage.updated_at}
-                          year='numeric'
-                          month='long'
-                          day='2-digit'
-                          hour='2-digit'
-                          minute='2-digit'
-                        />
-                      </dd>
-                    </div>
-                  </dl>
+              )}
+            </aside>
+            <article
+              className={classNames('page', `page--font-${currentPage.font}`, {
+                'page--center': currentPage.align_center,
+                'page--blog': useBlogView,
+              })}
+            >
+              {eyeCatchingMedia && (
+                <div className='page__eye-catching-container'>
                   <button
                     type='button'
-                    className={classNames('page__like-button', {
-                      active: currentPage.liked,
-                    })}
-                    onClick={handleLikeToggle}
-                    disabled={isOwner}
+                    className='page__media-button'
+                    onClick={handleOpenEyeCatchingMedia}
                   >
-                    <Icon
-                      id='favorite'
-                      icon={
-                        currentPage.liked ? FavoriteIcon : FavoriteBorderIcon
-                      }
-                    />
-                    <span>
-                      <FormattedMessage
-                        id='pages.likes_count'
-                        defaultMessage='{count, plural, one {# like} other {# likes}}'
-                        values={{ count: currentPage.likes_count }}
+                    {eyeCatchingMedia.type === 'gifv' ? (
+                      <video
+                        className='page__eye-catching'
+                        src={eyeCatchingMedia.url}
+                        aria-label={eyeCatchingMedia.description ?? ''}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
                       />
-                    </span>
+                    ) : (
+                      <img
+                        className='page__eye-catching'
+                        src={eyeCatchingMedia.url}
+                        alt={eyeCatchingMedia.description ?? ''}
+                      />
+                    )}
                   </button>
+                  <div className='page__eye-catching-author'>
+                    <Avatar account={currentPage.account} size={32} withLink />
+                    <span className='page__eye-catching-author-text'>
+                      <strong>
+                        {currentPage.account.display_name ||
+                          currentPage.account.username}
+                      </strong>
+                      <span>@{currentPage.account.acct}</span>
+                    </span>
+                  </div>
                 </div>
-              </>
-            )}
-          </article>
+              )}
+
+              <div className='page__title-row'>
+                <h1 className='page__title'>
+                  <span className='page__title-text'>{currentPage.title}</span>
+                  {currentPage.visibility !== 'public' && (
+                    <Icon
+                      id={
+                        currentPage.visibility === 'password'
+                          ? 'lock'
+                          : 'preview-off'
+                      }
+                      icon={
+                        currentPage.visibility === 'password'
+                          ? LockIcon
+                          : PreviewOffIcon
+                      }
+                      className='page__visibility-icon'
+                      aria-label={intl.formatMessage(
+                        currentPage.visibility === 'password'
+                          ? messages.passwordVisibility
+                          : messages.privateVisibility,
+                      )}
+                    />
+                  )}
+                </h1>
+                {currentPage.category && (
+                  <span className='page__category'>{currentPage.category}</span>
+                )}
+              </div>
+
+              {!eyeCatchingMedia && (
+                <div className='page__byline-row'>
+                  <Link
+                    to={`/@${currentPage.account.acct}`}
+                    className='page__byline'
+                  >
+                    @{currentPage.account.acct}
+                  </Link>
+                </div>
+              )}
+
+              {currentPage.summary && (
+                <p className='page__summary'>{currentPage.summary}</p>
+              )}
+
+              {currentPage.locked ? (
+                <form className='page__password-form' onSubmit={handleUnlock}>
+                  <label htmlFor='page_access_password'>
+                    {intl.formatMessage(messages.password)}
+                  </label>
+                  <input
+                    id='page_access_password'
+                    type='password'
+                    minLength={8}
+                    maxLength={72}
+                    required
+                    autoComplete='current-password'
+                    value={password}
+                    onChange={handlePasswordChange}
+                  />
+                  {passwordError && (
+                    <span className='page__password-error'>
+                      {intl.formatMessage(messages.invalidPassword)}
+                    </span>
+                  )}
+                  <button type='submit' className='button' disabled={unlocking}>
+                    {intl.formatMessage(messages.unlock)}
+                  </button>
+                </form>
+              ) : (
+                <>
+                  <div className='page__content'>
+                    <PageBlockList
+                      blocks={currentPage.content}
+                      page={currentPage}
+                      depth={0}
+                      onOpenMedia={handleOpenMedia}
+                    />
+                  </div>
+
+                  <div className='page__footer'>
+                    <dl className='page__dates'>
+                      <div>
+                        <dt>{intl.formatMessage(messages.createdAt)}</dt>
+                        <dd>
+                          <FormattedDateWrapper
+                            value={currentPage.created_at}
+                            year='numeric'
+                            month='long'
+                            day='2-digit'
+                            hour='2-digit'
+                            minute='2-digit'
+                          />
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>{intl.formatMessage(messages.updatedAt)}</dt>
+                        <dd>
+                          <FormattedDateWrapper
+                            value={currentPage.updated_at}
+                            year='numeric'
+                            month='long'
+                            day='2-digit'
+                            hour='2-digit'
+                            minute='2-digit'
+                          />
+                        </dd>
+                      </div>
+                    </dl>
+                    <div className='page__footer-actions'>
+                      {useBlogView && isOwner && (
+                        <Link
+                          to={{
+                            pathname: `/pages/${id}/edit`,
+                            state: {
+                              fromPageShow: true,
+                              pageName: currentPage.name,
+                            },
+                          }}
+                          className='button page__edit-button'
+                        >
+                          <Icon id='pencil' icon={EditIcon} />
+                          <FormattedMessage
+                            id='pages.edit'
+                            defaultMessage='Edit page'
+                          />
+                        </Link>
+                      )}
+                      <button
+                        type='button'
+                        className={classNames('page__like-button', {
+                          active: currentPage.liked,
+                        })}
+                        onClick={handleLikeToggle}
+                        disabled={isOwner}
+                      >
+                        <Icon
+                          id='favorite'
+                          icon={
+                            currentPage.liked
+                              ? FavoriteIcon
+                              : FavoriteBorderIcon
+                          }
+                        />
+                        <span>
+                          <FormattedMessage
+                            id='pages.likes_count'
+                            defaultMessage='{count, plural, one {# like} other {# likes}}'
+                            values={{ count: currentPage.likes_count }}
+                          />
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+              {useBlogView && Boolean(previousPage ?? nextPage) && (
+                <nav
+                  className='page__pagination'
+                  aria-label={intl.formatMessage({
+                    id: 'pages.pagination',
+                    defaultMessage: 'Page navigation',
+                  })}
+                >
+                  {previousPage ? (
+                    <Link
+                      className='page__link-prev'
+                      to={`/@${previousPage.account.acct}/pages/${encodeURIComponent(previousPage.name)}`}
+                    >
+                      <FormattedMessage
+                        id='pages.previous'
+                        defaultMessage='Previous page'
+                      />
+                    </Link>
+                  ) : (
+                    <span />
+                  )}
+                  {nextPage && (
+                    <Link
+                      className='page__link-next'
+                      to={`/@${nextPage.account.acct}/pages/${encodeURIComponent(nextPage.name)}`}
+                    >
+                      <FormattedMessage
+                        id='pages.next'
+                        defaultMessage='Next page'
+                      />
+                    </Link>
+                  )}
+                </nav>
+              )}
+            </article>
+          </div>
+          {useBlogView && (
+            <footer className='page-show__blog-footer'>
+              <Link to='/about'>{siteTitle ?? domain}</Link>
+              {siteTitle && domain && <span>{domain}</span>}
+            </footer>
+          )}
         </div>
       ) : (
         <LoadingIndicator />
