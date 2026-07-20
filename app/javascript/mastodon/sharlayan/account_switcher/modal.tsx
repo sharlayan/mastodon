@@ -9,19 +9,20 @@ import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
 import CheckIcon from '@/material-icons/400-24px/person_shield.svg?react';
+import { Avatar } from 'mastodon/components/avatar';
+import { DisplayName } from 'mastodon/components/display_name';
+import { Toggle } from 'mastodon/components/form_fields';
+import { Icon } from 'mastodon/components/icon';
+import { IconButton } from 'mastodon/components/icon_button';
+import { me } from 'mastodon/initial_state';
+import { useAppSelector, useAppDispatch } from 'mastodon/store';
+
 import {
   fetchAccountSwitches,
   deleteAccountSwitch,
   enableLinkedPushForward,
   disableLinkedPushForward,
-} from 'flavours/glitch/actions/account_switches';
-import { Avatar } from 'flavours/glitch/components/avatar';
-import { DisplayName } from 'flavours/glitch/components/display_name';
-import { Toggle } from 'flavours/glitch/components/form_fields';
-import { Icon } from 'flavours/glitch/components/icon';
-import { IconButton } from 'flavours/glitch/components/icon_button';
-import { me } from 'flavours/glitch/initial_state';
-import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
+} from './actions';
 
 const messages = defineMessages({
   title: {

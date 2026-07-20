@@ -1,0 +1,18 @@
+[
+  "account_switcher.add_account",
+  "account_switcher.back_to",
+  "account_switcher.close",
+  "account_switcher.current_account",
+  "account_switcher.notification_from",
+  "account_switcher.notifications",
+  "account_switcher.notif_hint",
+  "account_switcher.parent_account",
+  "account_switcher.receive_notifications",
+  "account_switcher.receive_push_notifications",
+  "account_switcher.remove_account",
+  "account_switcher.remove_account_confirm",
+  "account_switcher.switch_account_confirm",
+  "account_switcher.switch_to",
+  "account_switcher.title",
+  "navigation_bar.switch_account"
+]

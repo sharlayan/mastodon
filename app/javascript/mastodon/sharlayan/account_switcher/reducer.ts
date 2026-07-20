@@ -9,7 +9,7 @@ import {
   fetchAccountSwitches,
   deleteAccountSwitch,
   setLinkedUnreadCounts,
-} from 'flavours/glitch/actions/account_switches';
+} from './actions';
 
 const AuthorizationRecord = ImmutableRecord({
   id: '',

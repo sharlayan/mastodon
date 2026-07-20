@@ -12,7 +12,7 @@ import ErrorBoundary from 'mastodon/components/error_boundary';
 import { FocusTargetProvider } from '@/mastodon/components/navigation_focus_target';
 import { Router } from 'mastodon/components/router';
 import UI from 'mastodon/features/ui';
-import { LinkedNotificationsPoller } from 'mastodon/features/ui/components/linked_notifications_poller';
+import { LinkedNotificationsPoller } from 'mastodon/sharlayan/account_switcher/linked_notifications_poller';
 import { IdentityContext, createIdentityContext } from 'mastodon/identity_context';
 import { initialState, title as siteTitle } from 'mastodon/initial_state';
 import { IntlProvider } from 'mastodon/locales';

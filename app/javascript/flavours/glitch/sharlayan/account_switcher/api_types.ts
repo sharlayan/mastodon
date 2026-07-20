@@ -1,4 +1,4 @@
-import type { ApiAccountJSON } from './accounts';
+import type { ApiAccountJSON } from 'flavours/glitch/api_types/accounts';
 
 export interface ApiAccountSwitchAuthorizationJSON {
   id: string;

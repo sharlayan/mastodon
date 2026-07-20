@@ -1,13 +1,14 @@
 import { createAction } from '@reduxjs/toolkit';
 
-import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
+import { importFetchedAccounts } from 'mastodon/actions/importer';
+import { createDataLoadingThunk } from 'mastodon/store/typed_functions';
+
 import {
   apiGetAccountSwitches,
   apiDeleteAccountSwitch,
   apiCreatePushForward,
   apiDeletePushForward,
-} from 'flavours/glitch/api/account_switches';
-import { createDataLoadingThunk } from 'flavours/glitch/store/typed_functions';
+} from './api';
 
 export const setLinkedUnreadCounts = createAction<Record<string, number>>(
   'accountSwitches/setLinkedUnreadCounts',

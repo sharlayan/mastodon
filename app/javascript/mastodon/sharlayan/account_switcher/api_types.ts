@@ -1,4 +1,4 @@
-import type { ApiAccountJSON } from './accounts';
+import type { ApiAccountJSON } from 'mastodon/api_types/accounts';
 
 export interface ApiAccountSwitchAuthorizationJSON {
   id: string;

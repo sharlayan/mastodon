@@ -3,7 +3,8 @@ import {
   apiRequestDelete,
   apiRequestPost,
 } from 'flavours/glitch/api';
-import type { ApiAccountSwitchesResponseJSON } from 'flavours/glitch/api_types/account_switches';
+
+import type { ApiAccountSwitchesResponseJSON } from './api_types';
 
 export const apiGetAccountSwitches = () =>
   apiRequestGet<ApiAccountSwitchesResponseJSON>('v1/account_switches');

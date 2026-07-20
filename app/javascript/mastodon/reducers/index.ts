@@ -3,7 +3,8 @@ import { Record as ImmutableRecord, mergeDeep } from 'immutable';
 import { loadingBarReducer } from 'react-redux-loading-bar';
 import { combineReducers } from 'redux-immutable';
 
-import { accountSwitchesReducer } from './account_switches';
+import { accountSwitchesReducer } from '../sharlayan/account_switcher/reducer';
+
 import { accountsReducer } from './accounts';
 import { accountsFamiliarFollowersReducer } from './accounts_familiar_followers';
 import { accountsMapReducer } from './accounts_map';

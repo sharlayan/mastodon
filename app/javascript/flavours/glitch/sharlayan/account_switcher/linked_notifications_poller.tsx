@@ -1,12 +1,10 @@
 import { useEffect, useCallback, useRef } from 'react';
 
-import {
-  fetchAccountSwitches,
-  setLinkedUnreadCounts,
-} from 'mastodon/actions/account_switches';
-import { apiGetLinkedUnreadCounts } from 'mastodon/api/account_switches';
-import { me } from 'mastodon/initial_state';
-import { useAppDispatch, useAppSelector } from 'mastodon/store';
+import { me } from 'flavours/glitch/initial_state';
+import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
+
+import { fetchAccountSwitches, setLinkedUnreadCounts } from './actions';
+import { apiGetLinkedUnreadCounts } from './api';
 
 const POLL_INTERVAL_MS = 30_000;
 

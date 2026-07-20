@@ -1,5 +1,6 @@
 import { apiRequestGet, apiRequestDelete, apiRequestPost } from 'mastodon/api';
-import type { ApiAccountSwitchesResponseJSON } from 'mastodon/api_types/account_switches';
+
+import type { ApiAccountSwitchesResponseJSON } from './api_types';
 
 export const apiGetAccountSwitches = () =>
   apiRequestGet<ApiAccountSwitchesResponseJSON>('v1/account_switches');

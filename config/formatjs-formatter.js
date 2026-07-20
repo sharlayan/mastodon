@@ -12,11 +12,22 @@ const sharlayanTranslations = require(
     '../app/javascript/flavours/glitch/locales/sharlayan/en.json',
   ),
 );
+const commonSharlayanTranslations = require(
+  path.join(__dirname, '../app/javascript/mastodon/locales/sharlayan/en.json'),
+);
 
 exports.format = (msgs) => {
-  const results = { ...currentTranslations };
+  const results = Object.fromEntries(
+    Object.entries(currentTranslations).filter(
+      ([id]) => !commonSharlayanTranslations[id],
+    ),
+  );
   for (const [id, msg] of Object.entries(msgs)) {
-    if (!upstreamTranslations[id] && !sharlayanTranslations[id]) {
+    if (
+      !upstreamTranslations[id] &&
+      !sharlayanTranslations[id] &&
+      !commonSharlayanTranslations[id]
+    ) {
       results[id] = currentTranslations[id] || msg.defaultMessage;
     }
   }

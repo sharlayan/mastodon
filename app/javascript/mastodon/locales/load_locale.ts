@@ -8,6 +8,9 @@ const localeLoadingSemaphore = new Semaphore(1);
 const localeFiles = import.meta.glob<{ default: LocaleData['messages'] }>([
   './*.json',
 ]);
+const sharlayanLocaleFiles = import.meta.glob<{
+  default: LocaleData['messages'];
+}>(['./sharlayan/*.json']);
 
 export async function loadLocale() {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- we want to match empty strings
@@ -30,6 +33,21 @@ export async function loadLocale() {
 
     const { default: localeData } = await localeFile();
 
-    setLocale({ messages: localeData, locale });
+    const sharlayanLocaleFile = Object.hasOwn(
+      sharlayanLocaleFiles,
+      `./sharlayan/${locale}.json`,
+    )
+      ? sharlayanLocaleFiles[`./sharlayan/${locale}.json`]
+      : sharlayanLocaleFiles['./sharlayan/en.json'];
+
+    if (!sharlayanLocaleFile)
+      throw new Error('Could not load the Sharlayan locale JSON file');
+
+    const { default: sharlayanLocaleData } = await sharlayanLocaleFile();
+
+    setLocale({
+      messages: { ...localeData, ...sharlayanLocaleData },
+      locale,
+    });
   });
 }
