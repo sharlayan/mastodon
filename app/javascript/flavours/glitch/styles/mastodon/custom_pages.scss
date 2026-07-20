@@ -1158,6 +1158,10 @@ html.page-blog-view .app-holder > div {
 }
 
 html .scrollable {
+  .page__footer-actions {
+    justify-content: center;
+  }
+
   .page-show__category-menu {
     // margin: 12px 16px;
     display: none;
@@ -1168,7 +1172,7 @@ html .scrollable {
   }
 }
 
-@media screen and (width <= 1486px) {
+@media screen and (width <= 1540px) {
   .page-show__blog-header {
     margin: 20px 16px 0;
     width: calc(100% - 32px);
