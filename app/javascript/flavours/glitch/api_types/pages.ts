@@ -54,6 +54,7 @@ export interface ApiPageJSON {
   content: ApiPageBlock[];
   align_center: boolean;
   hide_title_when_pinned: boolean;
+  is_main: boolean;
   font: ApiPageFont;
   account_id: string;
   account: ApiAccountJSON;

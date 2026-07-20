@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_19_224800) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_20_202500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1308,6 +1308,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_19_224800) do
     t.bigint "eye_catching_media_attachment_id"
     t.string "font", default: "sans-serif", null: false
     t.boolean "hide_title_when_pinned", default: false, null: false
+    t.boolean "is_main", default: false, null: false
     t.integer "likes_count", default: 0, null: false
     t.string "name", null: false
     t.text "summary"
@@ -1316,6 +1317,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_19_224800) do
     t.string "visibility", default: "public", null: false
     t.index ["account_id", "name"], name: "index_pages_on_account_id_and_name", unique: true
     t.index ["account_id"], name: "index_pages_on_account_id"
+    t.index ["account_id"], name: "index_pages_on_account_id_where_is_main", unique: true, where: "is_main"
     t.index ["eye_catching_media_attachment_id"], name: "index_pages_on_eye_catching_media_attachment_id"
     t.index ["likes_count"], name: "index_pages_on_likes_count"
     t.index ["visibility"], name: "index_pages_on_visibility"

@@ -4,6 +4,7 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
+import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import LockIcon from '@/material-icons/400-24px/lock.svg?react';
 import PreviewOffIcon from '@/material-icons/400-24px/preview_off.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
@@ -29,6 +30,7 @@ const messages = defineMessages({
     id: 'pages.visibility.private',
     defaultMessage: 'Only me',
   },
+  main: { id: 'pages.main', defaultMessage: 'Main page' },
 });
 
 export const PageShowContent: React.FC<{
@@ -45,6 +47,7 @@ export const PageShowContent: React.FC<{
   onOpenMedia: PageMediaOpenHandler;
   onOpenEyeCatchingMedia: () => void;
   onLikeToggle: () => void;
+  onMainToggle: () => void;
 }> = ({
   page,
   isOwner,
@@ -59,6 +62,7 @@ export const PageShowContent: React.FC<{
   onOpenMedia,
   onOpenEyeCatchingMedia,
   onLikeToggle,
+  onMainToggle,
 }) => {
   const intl = useIntl();
   const eyeCatchingMedia = page.eye_catching_media_attachment;
@@ -113,6 +117,14 @@ export const PageShowContent: React.FC<{
 
       <div className='page__title-row'>
         <h1 className='page__title'>
+          {page.is_main && (
+            <Icon
+              id='home'
+              icon={HomeIcon}
+              className='page__main-icon'
+              aria-label={intl.formatMessage(messages.main)}
+            />
+          )}
           <span className='page__title-text'>{page.title}</span>
           {page.visibility !== 'public' && (
             <Icon
@@ -175,6 +187,7 @@ export const PageShowContent: React.FC<{
             previousPage={previousPage}
             nextPage={nextPage}
             onLikeToggle={onLikeToggle}
+            onMainToggle={onMainToggle}
           />
         </>
       )}

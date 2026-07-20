@@ -36,6 +36,6 @@ class Api::V1::Accounts::PagesController < Api::BaseController
   def load_pages
     return [] if @account.unavailable?
 
-    @account.pages.listed.order(id: :desc).to_a
+    @account.pages.listed.order(is_main: :desc, id: :desc).to_a
   end
 end

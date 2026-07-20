@@ -130,8 +130,9 @@ const pageBlogViewAccount = document
 export const isServerPageBlogViewPath = (pathname: string): boolean =>
   Boolean(
     pageBlogViewAccount &&
-    (pathname.startsWith(`/@${pageBlogViewAccount}/pages/`) ||
-      /^\/pages\/[0-9]+$/.test(pathname)),
+    (pathname === `/@${pageBlogViewAccount}/pages` ||
+      pathname.startsWith(`/@${pageBlogViewAccount}/pages/`) ||
+      /^\/pages(?:\/[0-9]+(?:\/edit)?|\/new)$/.test(pathname)),
   );
 
 // Glitch-soc-specific “local settings”

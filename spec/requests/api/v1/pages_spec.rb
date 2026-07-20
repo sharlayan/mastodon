@@ -252,6 +252,28 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'main pages' do
+    let!(:public_page) { Fabricate(:page, account: user.account) }
+    let!(:password_page) do
+      Fabricate(:page, account: user.account, visibility: 'password', access_password: 'correct-password')
+    end
+    let!(:draft_page) { Fabricate(:page, account: user.account, draft: true) }
+
+    it 'only allows public, published pages to be made main pages' do
+      post "/api/v1/pages/#{public_page.id}/main", headers: headers
+      expect(response).to have_http_status(200)
+      expect(public_page.reload.is_main).to be true
+
+      post "/api/v1/pages/#{password_page.id}/main", headers: headers
+      expect(response).to have_http_status(404)
+      expect(password_page.reload.is_main).to be false
+
+      post "/api/v1/pages/#{draft_page.id}/main", headers: headers
+      expect(response).to have_http_status(404)
+      expect(draft_page.reload.is_main).to be false
+    end
+  end
+
   describe 'GET /api/v1/accounts/:account_id/pages/:name' do
     let(:page) { Fabricate(:page) }
 

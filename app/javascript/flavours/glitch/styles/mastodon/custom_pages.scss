@@ -197,6 +197,13 @@
     flex: 0 0 auto;
   }
 
+  &__main-icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    color: var(--color-text-brand);
+  }
+
   &__title-text {
     min-width: 0;
     overflow-wrap: anywhere;
@@ -352,10 +359,22 @@
     gap: 6px;
     background: transparent;
     border: 1px solid var(--color-border-primary);
-    border-radius: 999px;
+    border-radius: calc(1px * infinity);
     padding: 6px 14px;
     color: var(--color-text-primary);
     cursor: pointer;
+
+    &:focus {
+      border-radius: calc(1px * infinity);
+    }
+
+    &:active {
+      background-color: var(--color-bg-brand-base);
+    }
+
+    &:hover {
+      background-color: var(--color-bg-secondary);
+    }
 
     &.active {
       color: var(--color-text-favourite-highlight);
@@ -775,6 +794,20 @@ html.page-wide-view {
 }
 
 html.page-blog-view {
+  .page-index-column,
+  .page-editor-column {
+    width: 100%;
+    max-width: 1160px;
+    margin-inline: auto;
+  }
+
+  .page-index-column > .scrollable,
+  .page-editor-column > .scrollable {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+  }
+
   .page-show-column > .scrollable {
     box-sizing: border-box;
     display: block;
@@ -830,6 +863,14 @@ html.page-blog-view {
     padding: 0;
     list-style: none;
 
+    li {
+      border-bottom: 1px solid var(--color-border-primary);
+
+      &:last-child {
+        border-bottom: unset;
+      }
+    }
+
     a {
       display: block;
       padding: 8px 10px;
@@ -867,10 +908,10 @@ html.page-blog-view {
   align-items: end;
   justify-content: space-between;
   gap: 0;
-  width: calc(100% - 32px);
+  width: 100%;
   min-height: 96px;
   max-width: 1160px;
-  margin: 20px 16px 0;
+  margin: 20px auto 0;
   border: 1px solid var(--color-border-primary);
   border-radius: 12px;
   background: var(--color-bg-primary);
@@ -999,58 +1040,139 @@ html.page-blog-view {
   }
 }
 
-@media screen and (width < 640px) {
-  .page-show__blog-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+.page-show__sidebar {
+  display: none;
+}
 
-  .page-show__blog-owner {
-    box-sizing: border-box;
-    width: 100%;
-  }
+.page-show__sidebar--bottom {
+  display: block;
+  margin: 24px 16px 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-primary);
 
-  .page-show__blog-navigation {
-    box-sizing: border-box;
-    justify-content: flex-start;
-    width: 100%;
-    padding: 12px 20px;
-    text-align: start;
+  .page-list-item:last-child {
+    border-bottom: 0;
   }
 }
 
-@media screen and (width <= 640px) {
-  html.page-blog-view .page-show-column > .scrollable {
-    padding-inline: 0;
-  }
-
-  html.page-blog-view .page.page--blog {
-    border-radius: unset;
-    border: unset;
-
-    .page__eye-catching-container {
-      border-radius: unset;
-    }
-  }
-
-  .page-show__blog-header {
-    margin: 0;
-    border: 0;
-    border-radius: 0;
-    width: 100%;
-
-    .page-show__blog-owner::before {
-      mask-image: unset;
-    }
-  }
+html.page-wide-view .page-show__sidebar--bottom {
+  display: none;
 }
 
 .page-show__content {
   display: contents;
 }
 
-.page-show__sidebar {
+.page-show__category-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 16px 0;
+
+  a,
+  button {
+    padding: 5px 10px;
+    border: 0;
+    border-radius: 999px;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    text-decoration: none;
+
+    &:hover,
+    &:focus,
+    &.active {
+      color: var(--color-text-brand);
+    }
+
+    &.active {
+      font-weight: 600;
+    }
+  }
+}
+
+.page-list-item__main-icon {
+  width: 16px;
+  height: 16px;
+  margin-inline-start: 4px;
+  color: var(--color-text-brand);
+  vertical-align: text-bottom;
+}
+
+.page-show__category-menu--bottom {
   display: none;
+}
+
+.page-show__back-to-top {
+  position: sticky;
+  bottom: 16px;
+  z-index: 10;
+  display: inline-flex;
+  align-self: flex-end;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  margin: 0 16px 16px auto;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--color-text-primary);
+  background: var(--color-bg-overlay);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+  cursor: pointer;
+  font-weight: 600;
+
+  &:hover,
+  &:focus {
+    background: var(--color-bg-secondary);
+  }
+}
+
+html.page-blog-view .page-show__category-menu {
+  width: 100%;
+  max-width: 1160px;
+  margin-inline: auto;
+}
+
+body.layout-multiple-columns.page-wide-view {
+  .columns-area:not(.columns-area--mobile) {
+    width: 100%;
+    overflow-x: hidden;
+
+    > :not(.page-show-column) {
+      display: none;
+    }
+  }
+
+  .page-show-column {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}
+
+html.page-blog-view .app-holder > div {
+  align-items: start;
+}
+
+html .scrollable {
+  .page-show__category-menu {
+    // margin: 12px 16px;
+    display: none;
+  }
+
+  aside.page-show__sidebar {
+    margin-bottom: 16px;
+  }
+}
+
+@media screen and (width <= 1486px) {
+  .page-show__blog-header {
+    margin: 20px 16px 0;
+    width: calc(100% - 32px);
+  }
 }
 
 @media screen and (width >= 760px) {
@@ -1058,7 +1180,7 @@ html.page-blog-view {
     .page-show-column > .scrollable {
       box-sizing: border-box;
       display: grid;
-      grid-template-columns: minmax(220px, 360px) minmax(0, 1200px);
+      grid-template-columns: minmax(300px, 360px) minmax(0, 1200px);
       justify-content: center;
       gap: 16px;
       width: 100%;
@@ -1101,10 +1223,99 @@ html.page-blog-view {
   }
 }
 
+@media screen and (width <= 640px) {
+  html.page-blog-view {
+    .page-show__blog-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .page-show__blog-owner {
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .page-show__blog-navigation {
+      box-sizing: border-box;
+      justify-content: flex-start;
+      width: 100%;
+      padding: 12px 20px;
+      text-align: start;
+    }
+
+    .page.page--blog {
+      border-radius: unset;
+      border: unset;
+
+      .page__eye-catching-container {
+        border-radius: unset;
+      }
+    }
+
+    div.page__footer {
+      flex-direction: column;
+      align-items: center;
+
+      .page__dates {
+        width: 100%;
+      }
+
+      .page__footer-actions {
+        justify-content: center;
+      }
+    }
+
+    .page-show-column > .scrollable {
+      padding-inline: 0;
+    }
+
+    .page-show__blog-header {
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      width: 100%;
+
+      .page-show__blog-owner::before {
+        mask-image: unset;
+      }
+    }
+  }
+}
+
+@media screen and (width <= 480px) {
+  html.page-blog-view {
+    .page__footer-actions {
+      justify-content: center;
+    }
+
+    .page-show__category-menu {
+      margin-inline: 16px;
+      margin-bottom: 16px;
+      width: calc(100% - 32px);
+    }
+  }
+}
+
+@media screen and (width <= 1174px) {
+  html.page-blog-view {
+    .page-show__category-menu--top {
+      display: none;
+    }
+
+    .page-show__category-menu--bottom {
+      display: flex;
+    }
+  }
+}
+
 @media screen and (width >= 1175px) {
   html.page-blog-view {
     .page-show__blog-header,
     .page-show__blog-footer {
+      max-width: 1486px;
+    }
+
+    .page-show__category-menu {
       max-width: 1486px;
     }
 
@@ -1146,7 +1357,7 @@ html.page-blog-view {
       }
 
       &.page-show__content--blog-right {
-        grid-template-columns: minmax(0, 1174px) minmax(220px, 280px);
+        grid-template-columns: minmax(0, 1174px) minmax(300px, 360px);
 
         .page {
           grid-column: 1;
@@ -1160,24 +1371,4 @@ html.page-blog-view {
       }
     }
   }
-}
-
-body.layout-multiple-columns.page-wide-view {
-  .columns-area:not(.columns-area--mobile) {
-    width: 100%;
-    overflow-x: hidden;
-
-    > :not(.page-show-column) {
-      display: none;
-    }
-  }
-
-  .page-show-column {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-}
-
-.app-holder > div {
-  align-items: start;
 }

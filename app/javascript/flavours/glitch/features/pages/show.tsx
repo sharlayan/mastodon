@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
@@ -10,6 +10,7 @@ import { fromJS } from 'immutable';
 import { Helmet } from '@unhead/react/helmet';
 
 import { useIdentity } from '@/flavours/glitch/identity_context';
+import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
 import { openModal } from 'flavours/glitch/actions/modal';
 import {
   apiGetPage,
@@ -18,12 +19,15 @@ import {
   apiDeletePage,
   apiLikePage,
   apiUnlikePage,
+  apiSetMainPage,
+  apiUnsetMainPage,
 } from 'flavours/glitch/api/pages';
 import type {
   ApiPageBlock,
   ApiPageJSON,
 } from 'flavours/glitch/api_types/pages';
 import { Column } from 'flavours/glitch/components/column';
+import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useAppHistory } from 'flavours/glitch/components/router';
 import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
@@ -35,6 +39,7 @@ import {
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import type { PageMediaOpenHandler } from './components/blocks';
+import { PageShowCategoryMenu } from './components/page_show_category_menu';
 import { PageShowContent } from './components/page_show_content';
 import { PageShowHeader } from './components/page_show_header';
 import { PageShowSidebar } from './components/page_show_sidebar';
@@ -79,6 +84,7 @@ const messages = defineMessages({
     id: 'pages.delete_confirm',
     defaultMessage: 'Are you sure you want to delete this page?',
   },
+  backToTop: { id: 'pages.back_to_top', defaultMessage: 'Back to top' },
 });
 
 const PageShow: React.FC<{
@@ -100,9 +106,52 @@ const PageShow: React.FC<{
   } | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
   const [wideView, setWideView] = useState(false);
+  const [category, setCategory] = useState('');
   const [password, setPassword] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const scrollableRef = useRef<HTMLDivElement>(null);
+
+  const updateBackToTopVisibility = useCallback(() => {
+    const scrollTarget = multiColumn
+      ? scrollableRef.current
+      : document.scrollingElement;
+
+    setShowBackToTop((scrollTarget?.scrollHeight ?? 0) > 1400);
+  }, [multiColumn]);
+
+  useEffect(() => {
+    const scrollable = scrollableRef.current;
+
+    if (!scrollable) {
+      return;
+    }
+
+    const observer = new ResizeObserver(updateBackToTopVisibility);
+    observer.observe(scrollable);
+    Array.from(scrollable.children).forEach((child) => {
+      observer.observe(child);
+    });
+    window.addEventListener('resize', updateBackToTopVisibility);
+    const animationFrame = window.requestAnimationFrame(
+      updateBackToTopVisibility,
+    );
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateBackToTopVisibility);
+      window.cancelAnimationFrame(animationFrame);
+    };
+  }, [page, updateBackToTopVisibility]);
+
+  const handleBackToTop = useCallback(() => {
+    const scrollTarget = multiColumn
+      ? scrollableRef.current
+      : document.scrollingElement;
+
+    scrollTarget?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [multiColumn]);
 
   useEffect(() => {
     let active = true;
@@ -189,6 +238,30 @@ const PageShow: React.FC<{
     request(id)
       .then((data) => {
         setPage(data);
+        return data;
+      })
+      .catch(() => undefined);
+  }, [id, page]);
+
+  const handleMainToggle = useCallback(() => {
+    if (!page) return;
+
+    const request = page.is_main ? apiUnsetMainPage : apiSetMainPage;
+
+    request(id)
+      .then((data) => {
+        setPage(data);
+        setAccountPagesResult((result) =>
+          result
+            ? {
+                ...result,
+                pages: result.pages.map((accountPage) => ({
+                  ...accountPage,
+                  is_main: accountPage.id === data.id,
+                })),
+              }
+            : result,
+        );
         return data;
       })
       .catch(() => undefined);
@@ -309,6 +382,11 @@ const PageShow: React.FC<{
         ...(accountPages ?? []),
       ]
     : [];
+  const filteredAccountPages = category
+    ? visibleAccountPages.filter(
+        (accountPage) => accountPage.category === category,
+      )
+    : visibleAccountPages;
   const currentPageIndex = visibleAccountPages.findIndex(
     (accountPage) => accountPage.id === id,
   );
@@ -339,9 +417,15 @@ const PageShow: React.FC<{
             onBack={handleBack}
             onDelete={handleDelete}
             onReport={handleReport}
+            onMainToggle={handleMainToggle}
             onWideViewToggle={handleWideViewToggle}
           />
-          <div className='scrollable'>
+          <div ref={scrollableRef} className='scrollable'>
+            <PageShowCategoryMenu
+              pages={visibleAccountPages}
+              value={category}
+              onChange={setCategory}
+            />
             <div
               className={classNames('page-show__content', {
                 'page-show__content--blog': useBlogView,
@@ -351,7 +435,7 @@ const PageShow: React.FC<{
             >
               <PageShowSidebar
                 page={currentPage}
-                pages={visibleAccountPages}
+                pages={filteredAccountPages}
                 isBlogView={useBlogView}
               />
               <PageShowContent
@@ -368,8 +452,25 @@ const PageShow: React.FC<{
                 onOpenMedia={handleOpenMedia}
                 onOpenEyeCatchingMedia={handleOpenEyeCatchingMedia}
                 onLikeToggle={handleLikeToggle}
+                onMainToggle={handleMainToggle}
               />
             </div>
+            {!useBlogView && (
+              <PageShowSidebar
+                page={currentPage}
+                pages={filteredAccountPages}
+                isBlogView={false}
+                position='bottom'
+              />
+            )}
+            {useBlogView && (
+              <PageShowCategoryMenu
+                pages={visibleAccountPages}
+                value={category}
+                onChange={setCategory}
+                position='bottom'
+              />
+            )}
             {useBlogView && (
               <footer className='page-show__blog-footer'>
                 <Link to='/about'>{siteTitle ?? domain}</Link>
@@ -377,6 +478,16 @@ const PageShow: React.FC<{
               </footer>
             )}
           </div>
+          {showBackToTop && (
+            <button
+              type='button'
+              className='page-show__back-to-top'
+              onClick={handleBackToTop}
+            >
+              <Icon id='arrow-upward' icon={ArrowUpwardIcon} />
+              {intl.formatMessage(messages.backToTop)}
+            </button>
+          )}
         </>
       ) : (
         <LoadingIndicator />

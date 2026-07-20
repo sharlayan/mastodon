@@ -10,12 +10,13 @@ export const PageShowSidebar: React.FC<{
   page: ApiPageJSON;
   pages: ApiPageJSON[];
   isBlogView: boolean;
-}> = ({ page, pages, isBlogView }) => {
+  position?: 'side' | 'bottom';
+}> = ({ page, pages, isBlogView, position = 'side' }) => {
   const intl = useIntl();
 
   return (
     <aside
-      className='page-show__sidebar'
+      className={`page-show__sidebar page-show__sidebar--${position}`}
       aria-label={intl.formatMessage({
         id: 'account.pages',
         defaultMessage: 'Pages',

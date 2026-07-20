@@ -129,6 +129,8 @@ namespace :api, format: false do
       member do
         post :like
         post :unlike
+        post :main, action: :set_main
+        delete :main, action: :unset_main
         post :unlock
       end
 
