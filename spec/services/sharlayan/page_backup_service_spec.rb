@@ -16,6 +16,13 @@ RSpec.describe Sharlayan::PageBackupService do
     end
   end
 
+  def zip_archive(&)
+    Tempfile.create(['pages-backup', '.zip']) do |file|
+      Zip::File.open(file.path, create: true, &)
+      File.binread(file.path)
+    end
+  end
+
   it 'exports and restores page data without retaining source IDs' do
     page = Fabricate(:page, account: account, name: 'guide', title: 'Guide', content: [{ 'id' => 'text', 'type' => 'text', 'text' => 'Saved text' }])
     page.update!(visibility: 'private', category: 'notes')
@@ -49,5 +56,20 @@ RSpec.describe Sharlayan::PageBackupService do
     archive_upload('not a zip') do |upload|
       expect { service.import!(upload) }.to raise_error(described_class::InvalidArchive)
     end
+  end
+
+  it 'rejects an oversized manifest before parsing or replacing pages' do
+    Fabricate(:page, account: account, name: 'existing')
+    archive = zip_archive do |zip|
+      zip.get_output_stream(described_class::MANIFEST) do |io|
+        io.write({ format: described_class::FORMAT, version: described_class::VERSION, pages: [], media: [], padding: 'a' * (described_class::MAX_MANIFEST_SIZE + 1) }.to_json)
+      end
+    end
+
+    archive_upload(archive) do |upload|
+      expect { service.import!(upload, overwrite: true) }.to raise_error(described_class::InvalidArchive)
+    end
+
+    expect(account.pages.find_by(name: 'existing')).to be_present
   end
 end
