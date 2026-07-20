@@ -39,6 +39,17 @@ RSpec.describe Page do
       expect(page).to_not be_valid
     end
 
+    it 'accepts supported YouTube URLs and sizes, and rejects invalid values' do
+      page = Fabricate.build(:page, account: account, content: [{ type: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', size: 'large' }])
+
+      expect(page).to be_valid
+
+      page.content = [{ type: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', size: 'huge' }]
+
+      expect(page).to_not be_valid
+      expect(page.errors.of_kind?(:content, :invalid)).to be true
+    end
+
     it 'rejects image blocks referencing another account media' do
       media = Fabricate(:media_attachment)
       page = Fabricate.build(:page, account: account, content: [{ type: 'image', fileId: media.id.to_s }])

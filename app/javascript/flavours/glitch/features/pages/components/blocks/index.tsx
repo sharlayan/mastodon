@@ -7,6 +7,7 @@ import { ImageBlock } from './image_block';
 import { NoteBlock } from './note_block';
 import { SectionBlock } from './section_block';
 import { TextBlock } from './text_block';
+import { YoutubeBlock } from './youtube_block';
 
 export type PageMediaOpenHandler = (key: string) => void;
 
@@ -32,6 +33,8 @@ export const PageBlock: React.FC<{
       return <ImageBlock block={block} page={page} onOpenMedia={onOpenMedia} />;
     case 'note':
       return <NoteBlock block={block} />;
+    case 'youtube':
+      return <YoutubeBlock block={block} />;
   }
 };
 

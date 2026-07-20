@@ -15,6 +15,8 @@ export const createBlock = (type: PageBlockType): ApiPageBlock => {
       return { id, type: 'image', fileId: null, noUpscale: false };
     case 'note':
       return { id, type: 'note', note: null, detailed: false };
+    case 'youtube':
+      return { id, type: 'youtube', url: '', size: 'medium' };
   }
 };
 
