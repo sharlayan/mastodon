@@ -1,4 +1,4 @@
-import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
+import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 import { Link, useLocation } from 'react-router-dom';
@@ -87,15 +87,6 @@ export const PageListItem: React.FC<{
             <span className='page-list-item__author'>
               {page.account.display_name || page.account.username} · @
               {page.account.acct}
-            </span>
-          </span>
-          <span className='page-list-item__aside'>
-            <span className='lists__item__count'>
-              <FormattedMessage
-                id='pages.likes_count'
-                defaultMessage='{count, plural, one {# like} other {# likes}}'
-                values={{ count: page.likes_count }}
-              />
             </span>
           </span>
         </span>
