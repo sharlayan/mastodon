@@ -455,7 +455,7 @@ const PageShow: React.FC<{
                 onMainToggle={handleMainToggle}
               />
             </div>
-            {!useBlogView && (
+            {!useBlogView && !wideView && (
               <PageShowSidebar
                 page={currentPage}
                 pages={filteredAccountPages}
