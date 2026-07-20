@@ -1,6 +1,6 @@
 {
   "account.clips": "Clips",
-  "account.follow_message": "Message to followers",
+  "account.follow_message.short": "Message to followers",
   "account.hidden_from_home": "Hidden from home timeline",
   "account.menu.admin_block_decorations": "Hide {name}'s decorations for everyone",
   "account.menu.admin_block_domain_decorations": "Block decorations from {domain}",

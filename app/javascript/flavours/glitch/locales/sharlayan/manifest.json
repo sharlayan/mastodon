@@ -1,6 +1,6 @@
 [
   "account.clips",
-  "account.follow_message",
+  "account.follow_message.short",
   "account.hidden_from_home",
   "account.menu.admin_block_decorations",
   "account.menu.admin_block_domain_decorations",

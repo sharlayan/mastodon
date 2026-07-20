@@ -19,7 +19,7 @@ export function useSharlayanFollowListBio(): boolean {
 
 const messages = defineMessages({
   followMessage: {
-    id: 'account.follow_message',
+    id: 'account.follow_message.short',
     defaultMessage: 'Follow message',
   },
 });

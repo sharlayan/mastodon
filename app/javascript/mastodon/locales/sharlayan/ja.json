@@ -1,4 +1,10 @@
 {
+  "account.follow_message": "フォローされた時のメッセージ",
+  "account_edit.follow_message.edit_label": "フォローされた時のメッセージを編集",
+  "account_edit.follow_message.placeholder": "フォローされた時に相手に表示する短いメッセージを設定できます。フォローを承認制にしている場合、フォローリクエストを許可した時に表示されます。",
+  "account_edit.follow_message.title": "フォローされた時のメッセージ",
+  "account_edit.follow_message_modal.placeholder": "フォローリクエストを許可した時に相手に表示されます",
+  "account_edit.follow_message_modal.title": "フォローされた時のメッセージを編集",
   "account_switcher.add_account": "アカウントを追加",
   "account_switcher.back_to": "{name}に戻る",
   "account_switcher.close": "閉じる",
@@ -14,5 +20,7 @@
   "account_switcher.switch_account_confirm": "{name}に切り替えますか？",
   "account_switcher.switch_to": "{name}に切り替え",
   "account_switcher.title": "アカウント切り替え",
-  "navigation_bar.switch_account": "アカウントを切り替え"
+  "navigation_bar.switch_account": "アカウントを切り替え",
+  "notification.follow_accepted": "{name}さんがフォローを承認しました",
+  "notification.follow_accepted.name_and_others": "{name}さんと<a>ほか{count, plural, other {#人}}</a>がフォローを承認しました"
 }

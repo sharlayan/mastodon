@@ -1,4 +1,10 @@
 {
+  "account.follow_message": "Message to followers",
+  "account_edit.follow_message.edit_label": "Edit follow message",
+  "account_edit.follow_message.placeholder": "Add a message shown to users when you accept their follow request.",
+  "account_edit.follow_message.title": "Follow message",
+  "account_edit.follow_message_modal.placeholder": "Shown to users when you accept their follow request",
+  "account_edit.follow_message_modal.title": "Edit follow message",
   "account_switcher.add_account": "Add account",
   "account_switcher.back_to": "Back to {name}",
   "account_switcher.close": "Close",
@@ -14,5 +20,7 @@
   "account_switcher.switch_account_confirm": "Switch to {name}?",
   "account_switcher.switch_to": "Switch to {name}",
   "account_switcher.title": "Switch account",
-  "navigation_bar.switch_account": "Switch account"
+  "navigation_bar.switch_account": "Switch account",
+  "notification.follow_accepted": "{name} accepted your follow",
+  "notification.follow_accepted.name_and_others": "{name} and <a>{count, plural, one {# other} other {# others}}</a> accepted your follow"
 }

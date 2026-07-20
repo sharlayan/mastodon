@@ -1,4 +1,10 @@
 [
+  "account.follow_message",
+  "account_edit.follow_message.edit_label",
+  "account_edit.follow_message.placeholder",
+  "account_edit.follow_message.title",
+  "account_edit.follow_message_modal.placeholder",
+  "account_edit.follow_message_modal.title",
   "account_switcher.add_account",
   "account_switcher.back_to",
   "account_switcher.close",
@@ -14,5 +20,7 @@
   "account_switcher.switch_account_confirm",
   "account_switcher.switch_to",
   "account_switcher.title",
-  "navigation_bar.switch_account"
+  "navigation_bar.switch_account",
+  "notification.follow_accepted",
+  "notification.follow_accepted.name_and_others"
 ]

@@ -1,6 +1,6 @@
 {
   "account.clips": "クリップ",
-  "account.follow_message": "フォローメッセージ",
+  "account.follow_message.short": "フォローメッセージ",
   "account.hidden_from_home": "ホームタイムラインで非表示",
   "account.menu.admin_block_decorations": "{name}のデコレーションを全員に非表示",
   "account.menu.admin_block_domain_decorations": "{domain}からのデコレーションをブロック",

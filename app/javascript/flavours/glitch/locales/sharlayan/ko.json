@@ -1,6 +1,6 @@
 {
   "account.clips": "클립",
-  "account.follow_message": "팔로우 메시지",
+  "account.follow_message.short": "팔로우 메시지",
   "account.hidden_from_home": "홈 타임라인에서 숨김",
   "account.menu.admin_block_decorations": "모든 사람에게 {name}의 장식 숨기기",
   "account.menu.admin_block_domain_decorations": "{domain}의 장식 차단",
