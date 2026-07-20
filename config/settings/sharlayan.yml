@@ -1,6 +1,6 @@
 defaults:
-  site_title: 'Mastodon Macaron Edition'
-  theme_color: '#007046'
+  site_title: 'Mastodon Custard Edition'
+  theme_color: '#FFFD78'
   force_local_only: false
   local_account_statuses_access: 'public'
   local_status_page_access: 'public'
