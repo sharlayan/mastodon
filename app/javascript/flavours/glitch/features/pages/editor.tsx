@@ -106,6 +106,7 @@ const TOP_LEVEL_TYPES: ApiPageBlockType[] = [
   'section',
   'image',
   'note',
+  'youtube',
 ];
 
 const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {

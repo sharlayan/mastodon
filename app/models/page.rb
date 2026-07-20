@@ -37,12 +37,15 @@ class Page < ApplicationRecord
   NAME_RE = %r{\A[^\s:/?#\[\]@!$&'()*+,;=\\%\x00-\x20]{1,256}\z}
   FONTS = %w(sans-serif serif).freeze
   VISIBILITIES = %w(public password private).freeze
-  BLOCK_TYPES = %w(text section image note).freeze
+  BLOCK_TYPES = %w(text section image note youtube).freeze
   MAX_BLOCKS = 500
   MAX_BLOCK_DEPTH = 10
   MAX_CONTENT_BYTES = 512.kilobytes
   MAX_TEXT_LENGTH = 20_000
   MAX_SECTION_TITLE_LENGTH = 500
+  MAX_YOUTUBE_URL_LENGTH = 2_048
+  YOUTUBE_VIDEO_ID_RE = /\A[\w-]{11}\z/
+  YOUTUBE_SIZES = %w(small medium large).freeze
 
   belongs_to :account
   belongs_to :eye_catching_media_attachment, class_name: 'MediaAttachment', optional: true
@@ -201,7 +204,39 @@ class Page < ApplicationRecord
 
   def valid_block_strings?(block)
     (!block.key?('text') || (block['text'].is_a?(String) && block['text'].length <= MAX_TEXT_LENGTH)) &&
-      (!block.key?('title') || (block['title'].is_a?(String) && block['title'].length <= MAX_SECTION_TITLE_LENGTH))
+      (!block.key?('title') || (block['title'].is_a?(String) && block['title'].length <= MAX_SECTION_TITLE_LENGTH)) &&
+      (block['type'] != 'youtube' || (valid_youtube_url?(block['url']) && valid_youtube_size?(block['size'])))
+  end
+
+  def valid_youtube_url?(url)
+    youtube_video_id(url).present?
+  end
+
+  def valid_youtube_size?(size)
+    size.nil? || YOUTUBE_SIZES.include?(size)
+  end
+
+  def youtube_video_id(url)
+    return unless url.is_a?(String) && url.length <= MAX_YOUTUBE_URL_LENGTH
+
+    uri = URI.parse(url)
+    return unless uri.is_a?(URI::HTTPS)
+
+    host = uri.host&.downcase
+    video_id = case host
+               when 'youtu.be'
+                 uri.path.delete_prefix('/').split('/').first
+               when 'youtube.com', 'www.youtube.com', 'm.youtube.com'
+                 if uri.path == '/watch'
+                   URI.decode_www_form(uri.query.to_s).assoc('v')&.last
+                 elsif uri.path.match?(%r{\A/(?:embed|shorts)/})
+                   uri.path.split('/')[2]
+                 end
+               end
+
+    video_id if video_id&.match?(YOUTUBE_VIDEO_ID_RE)
+  rescue URI::InvalidURIError
+    nil
   end
 
   def validate_attached_media

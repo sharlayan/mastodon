@@ -37,7 +37,9 @@ class MisskeyCompat::PageSerializer
   private
 
   def serialize_blocks(blocks, media_by_id)
-    Array(blocks).map do |source|
+    Array(blocks).filter_map do |source|
+      next if source['type'] == 'youtube'
+
       block = source.deep_dup
       block['fileId'] = serialize_media_id(media_by_id[block['fileId'].to_s]) if block['type'] == 'image' && block['fileId'].present?
       block['note'] = MisskeyCompat::MiId.encode(block['note']) if block['type'] == 'note' && block['note'].present?

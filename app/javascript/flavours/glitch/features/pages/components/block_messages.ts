@@ -5,6 +5,7 @@ export const blockTypeMessages = defineMessages({
   section: { id: 'pages.block_type.section', defaultMessage: 'Section' },
   image: { id: 'pages.block_type.image', defaultMessage: 'Image' },
   note: { id: 'pages.block_type.note', defaultMessage: 'Post' },
+  youtube: { id: 'pages.block_type.youtube', defaultMessage: 'YouTube video' },
 });
 
 export const addBlockMessages = defineMessages({
@@ -12,4 +13,8 @@ export const addBlockMessages = defineMessages({
   section: { id: 'pages.add_block.section', defaultMessage: 'Add section' },
   image: { id: 'pages.add_block.image', defaultMessage: 'Add image' },
   note: { id: 'pages.add_block.note', defaultMessage: 'Add post' },
+  youtube: {
+    id: 'pages.add_block.youtube',
+    defaultMessage: 'Add YouTube video',
+  },
 });

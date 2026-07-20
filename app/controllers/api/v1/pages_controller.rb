@@ -3,7 +3,7 @@
 class Api::V1::PagesController < Api::BaseController
   include Api::PagesRoleplayAccessConcern
 
-  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed).freeze
+  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed url size).freeze
 
   before_action :require_feature_enabled!
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories]

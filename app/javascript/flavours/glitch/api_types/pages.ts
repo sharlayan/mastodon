@@ -30,13 +30,22 @@ export interface ApiPageNoteBlock {
   detailed: boolean;
 }
 
+export interface ApiPageYoutubeBlock {
+  id: string;
+  type: 'youtube';
+  url: string;
+  size?: ApiPageYoutubeSize;
+}
+
 export type ApiPageBlock =
   | ApiPageTextBlock
   | ApiPageSectionBlock
   | ApiPageImageBlock
-  | ApiPageNoteBlock;
+  | ApiPageNoteBlock
+  | ApiPageYoutubeBlock;
 
 export type ApiPageBlockType = ApiPageBlock['type'];
+export type ApiPageYoutubeSize = 'small' | 'medium' | 'large';
 
 export type ApiPageFont = 'sans-serif' | 'serif';
 export type ApiPageVisibility = 'public' | 'password' | 'private';

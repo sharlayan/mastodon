@@ -58,9 +58,22 @@ const messages = defineMessages({
     id: 'pages.block.no_upscale',
     defaultMessage: 'Do not enlarge beyond the original size',
   },
+  youtubePlaceholder: {
+    id: 'pages.block.youtube_placeholder',
+    defaultMessage: 'YouTube video URL',
+  },
+  youtubeSize: {
+    id: 'pages.block.youtube_size',
+    defaultMessage: 'Video size',
+  },
 });
 
-const SECTION_CHILD_TYPES: ApiPageBlockType[] = ['text', 'image', 'note'];
+const SECTION_CHILD_TYPES: ApiPageBlockType[] = [
+  'text',
+  'image',
+  'note',
+  'youtube',
+];
 
 interface EditorBlockProps {
   block: ApiPageBlock;
@@ -154,6 +167,20 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
     [onUpdate, blockId],
   );
 
+  const handleYoutubeUrlChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onUpdate(blockId, { url: event.target.value });
+    },
+    [onUpdate, blockId],
+  );
+
+  const handleYoutubeSizeChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onUpdate(blockId, { size: event.target.value });
+    },
+    [onUpdate, blockId],
+  );
+
   const handleAddChild = useCallback(
     (type: ApiPageBlockType) => {
       onAddChild(blockId, type);
@@ -239,6 +266,43 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
               onChange={handleImageNoUpscaleChange}
             />
             <span>{intl.formatMessage(messages.noUpscale)}</span>
+          </label>
+        </>
+      )}
+
+      {block.type === 'youtube' && (
+        <>
+          <input
+            type='url'
+            value={block.url}
+            placeholder={intl.formatMessage(messages.youtubePlaceholder)}
+            onChange={handleYoutubeUrlChange}
+          />
+          <label className='page-editor__video-option'>
+            <span>{intl.formatMessage(messages.youtubeSize)}</span>
+            <select
+              value={block.size ?? 'medium'}
+              onChange={handleYoutubeSizeChange}
+            >
+              <option value='small'>
+                {intl.formatMessage({
+                  id: 'pages.block.youtube_size.small',
+                  defaultMessage: 'Small',
+                })}
+              </option>
+              <option value='medium'>
+                {intl.formatMessage({
+                  id: 'pages.block.youtube_size.medium',
+                  defaultMessage: 'Medium',
+                })}
+              </option>
+              <option value='large'>
+                {intl.formatMessage({
+                  id: 'pages.block.youtube_size.large',
+                  defaultMessage: 'Large',
+                })}
+              </option>
+            </select>
           </label>
         </>
       )}

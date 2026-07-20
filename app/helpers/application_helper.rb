@@ -188,7 +188,7 @@ module ApplicationHelper
     output << content_for(:body_classes)
     if current_flavour == 'glitch'
       output << "flavour-#{current_flavour}"
-      output << "skin-#{current_skin}"
+      output << "skin-#{page_blog_view_skin || current_skin}"
     end
     output.compact_blank.join(' ')
   end
@@ -265,21 +265,44 @@ module ApplicationHelper
   end
 
   def page_blog_view_account(requested_account = nil)
-    return unless Setting.pages_enabled
-
-    target_account =
-      if request.path.match?(%r{\A/pages(?:/[0-9]+(?:/edit)?|/new)\z})
-        current_account
-      elsif request.path.match?(%r{\A/@[^/]+/pages/[^/]+\z}) ||
-            (request.path.match?(%r{\A/@[^/]+/pages\z}) && requested_account&.pages&.published&.exists?(is_main: true))
-        requested_account
-      end
-
-    return unless target_account&.local?
-    return unless target_account.user&.settings&.[]('web.pages_view') == 'blog'
-    return if target_account != current_account && current_user&.settings&.[]('web.ignore_others_pages_view')
+    target_account = page_blog_view_target_account(requested_account)
+    return unless page_blog_view?(target_account)
 
     target_account.acct
+  end
+
+  def page_blog_view_skin(requested_account = nil)
+    target_account = page_blog_view_target_account(requested_account)
+    return unless page_blog_view?(target_account)
+
+    skin = target_account.user.setting_skin
+    skin if Themes.instance.skins_for(current_flavour).include?(skin)
+  end
+
+  def page_blog_view_theme_style_tags(requested_account = nil)
+    skin = page_blog_view_skin(requested_account)
+    return if skin.blank? || skin == current_skin
+
+    theme_style_tags [current_flavour, skin], id: 'page-blog-theme'
+  end
+
+  def page_blog_view_target_account(requested_account = nil)
+    return unless Setting.pages_enabled
+
+    if request.path.match?(%r{\A/pages(?:/[0-9]+(?:/edit)?|/new)\z})
+      current_account
+    elsif request.path.match?(%r{\A/@[^/]+/pages/[^/]+\z}) ||
+          (request.path.match?(%r{\A/@[^/]+/pages\z}) && requested_account&.pages&.published&.exists?(is_main: true))
+      requested_account
+    end
+  end
+
+  def page_blog_view?(target_account)
+    return false unless target_account&.local?
+    return false unless target_account.user&.settings&.[]('web.pages_view') == 'blog'
+    return false if target_account != current_account && current_user&.settings&.[]('web.ignore_others_pages_view')
+
+    true
   end
 
   def grouped_scopes(scopes)
