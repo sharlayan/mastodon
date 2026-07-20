@@ -66,6 +66,7 @@ export const NotificationMention: React.FC<{
       statusId={notification.statusId}
       labelRenderer={labelRenderer}
       unread={unread}
+      openAsConversation={isDirect}
     />
   );
 };

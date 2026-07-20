@@ -133,6 +133,18 @@ RSpec.describe 'Pages' do
   end
 
   describe 'content limits' do
+    it 'preserves the image no-upscale option' do
+      post '/api/v1/pages', params: {
+        title: 'Original image size',
+        name: 'original-image-size',
+        content: [{ id: 'image', type: 'image', fileId: nil, noUpscale: true }],
+      }, headers: headers, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:content, 0, :noUpscale)).to be true
+      expect(Page.find_by!(name: 'original-image-size').content.dig(0, 'noUpscale')).to be true
+    end
+
     it 'rejects content deeper than the server traversal budget' do
       root = { type: 'section', children: [] }
       current = root
@@ -280,6 +292,28 @@ RSpec.describe 'Pages' do
         expect(response).to have_http_status(200)
         expect(response.parsed_body).to include('locked' => true, 'content' => [], 'attached_media' => [])
       end
+    end
+  end
+
+  describe 'main pages' do
+    let!(:public_page) { Fabricate(:page, account: user.account) }
+    let!(:password_page) do
+      Fabricate(:page, account: user.account, visibility: 'password', access_password: 'correct-password')
+    end
+    let!(:draft_page) { Fabricate(:page, account: user.account, draft: true) }
+
+    it 'only allows public, published pages to be made main pages' do
+      post "/api/v1/pages/#{public_page.id}/main", headers: headers
+      expect(response).to have_http_status(200)
+      expect(public_page.reload.is_main).to be true
+
+      post "/api/v1/pages/#{password_page.id}/main", headers: headers
+      expect(response).to have_http_status(404)
+      expect(password_page.reload.is_main).to be false
+
+      post "/api/v1/pages/#{draft_page.id}/main", headers: headers
+      expect(response).to have_http_status(404)
+      expect(draft_page.reload.is_main).to be false
     end
   end
 

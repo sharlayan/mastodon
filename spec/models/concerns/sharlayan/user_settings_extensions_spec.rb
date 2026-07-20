@@ -16,6 +16,9 @@ RSpec.describe UserSettings do
 
   it 'registers namespaced MFM, avatar decoration, and notification settings' do
     expect(settings[:'web.mfm_fold_mode']).to eq('sensitive')
+    expect(settings[:'web.pages_view']).to eq('list')
+    expect(settings[:'web.pages_blog_list_position']).to eq('left')
+    expect(settings[:'web.ignore_others_pages_view']).to be false
     expect(settings[:'avatar_decorations.shape']).to eq('none')
     expect(settings[:'notification_emails.reaction']).to be false
   end
@@ -23,6 +26,8 @@ RSpec.describe UserSettings do
   it 'rejects values outside Sharlayan setting allowlists' do
     expect { settings[:content_font_size] = 'giant' }.to raise_error(ArgumentError)
     expect { settings[:'web.mfm_fold_mode'] = 'unknown' }.to raise_error(ArgumentError)
+    expect { settings[:'web.pages_view'] = 'magazine' }.to raise_error(ArgumentError)
+    expect { settings[:'web.pages_blog_list_position'] = 'top' }.to raise_error(ArgumentError)
     expect { settings[:'avatar_decorations.shape'] = 'triangle' }.to raise_error(ArgumentError)
   end
 end

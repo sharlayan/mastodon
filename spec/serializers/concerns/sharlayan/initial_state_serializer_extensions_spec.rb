@@ -12,6 +12,7 @@ RSpec.describe InitialStateSerializer do
       visible_reactions: 6,
       reactions_enabled: Setting.reactions_enabled,
       mfm_fold_mode: 'sensitive',
+      ignore_others_pages_view: false,
       avatar_decoration_shape: 'none',
       custom_emoji_mutes: [],
       reaction_mutes: []

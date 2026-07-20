@@ -264,6 +264,24 @@ module ApplicationHelper
     # rubocop:enable Rails/OutputSafety
   end
 
+  def page_blog_view_account(requested_account = nil)
+    return unless Setting.pages_enabled
+
+    target_account =
+      if request.path.match?(%r{\A/pages(?:/[0-9]+(?:/edit)?|/new)\z})
+        current_account
+      elsif request.path.match?(%r{\A/@[^/]+/pages/[^/]+\z}) ||
+            (request.path.match?(%r{\A/@[^/]+/pages\z}) && requested_account&.pages&.published&.exists?(is_main: true))
+        requested_account
+      end
+
+    return unless target_account&.local?
+    return unless target_account.user&.settings&.[]('web.pages_view') == 'blog'
+    return if target_account != current_account && current_user&.settings&.[]('web.ignore_others_pages_view')
+
+    target_account.acct
+  end
+
   def grouped_scopes(scopes)
     scope_parser      = ScopeParser.new
     scope_transformer = ScopeTransformer.new

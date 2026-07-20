@@ -1,8 +1,9 @@
-import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
+import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 import { Link, useLocation } from 'react-router-dom';
 
+import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import LockIcon from '@/material-icons/400-24px/lock.svg?react';
 import PreviewOffIcon from '@/material-icons/400-24px/preview_off.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
@@ -18,6 +19,7 @@ const messages = defineMessages({
     id: 'pages.visibility.private',
     defaultMessage: 'Only me',
   },
+  main: { id: 'pages.main', defaultMessage: 'Main page' },
 });
 
 export const PageListItem: React.FC<{
@@ -58,6 +60,14 @@ export const PageListItem: React.FC<{
           <Avatar account={page.account} size={32} />
           <span className='page-list-item__text'>
             <span className='page-list-item__title'>
+              {page.is_main && (
+                <Icon
+                  id='home'
+                  icon={HomeIcon}
+                  className='page-list-item__main-icon'
+                  aria-label={intl.formatMessage(messages.main)}
+                />
+              )}
               {page.visibility !== 'public' && (
                 <Icon
                   id={page.visibility === 'password' ? 'lock' : 'preview-off'}
@@ -87,15 +97,6 @@ export const PageListItem: React.FC<{
             <span className='page-list-item__author'>
               {page.account.display_name || page.account.username} · @
               {page.account.acct}
-            </span>
-          </span>
-          <span className='page-list-item__aside'>
-            <span className='lists__item__count'>
-              <FormattedMessage
-                id='pages.likes_count'
-                defaultMessage='{count, plural, one {# like} other {# likes}}'
-                values={{ count: page.likes_count }}
-              />
             </span>
           </span>
         </span>

@@ -3,6 +3,9 @@
   - if user_signed_in?
     %meta{ name: 'initialPath', content: request.path }
 
+  - if (blog_view_account = page_blog_view_account(local_assigns[:page_blog_view_target_account]))
+    %meta{ name: 'pageBlogViewAccount', content: blog_view_account }
+
   %meta{ name: 'applicationServerKey', content: Rails.configuration.x.vapid.public_key }
 
   = render_initial_state

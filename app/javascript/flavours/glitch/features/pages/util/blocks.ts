@@ -12,7 +12,7 @@ export const createBlock = (type: PageBlockType): ApiPageBlock => {
     case 'section':
       return { id, type: 'section', title: '', children: [] };
     case 'image':
-      return { id, type: 'image', fileId: null };
+      return { id, type: 'image', fileId: null, noUpscale: false };
     case 'note':
       return { id, type: 'note', note: null, detailed: false };
   }

@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 
+import classNames from 'classnames';
+
 import type {
   ApiPageImageBlock,
   ApiPageJSON,
@@ -24,7 +26,11 @@ export const ImageBlock: React.FC<{
   const description = media.description ?? '';
 
   return (
-    <div className='page__block page__block--image'>
+    <div
+      className={classNames('page__block', 'page__block--image', {
+        'page__block--image-no-upscale': block.noUpscale,
+      })}
+    >
       <button
         type='button'
         className='page__media-button'

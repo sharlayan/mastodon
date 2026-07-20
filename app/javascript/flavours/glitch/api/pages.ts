@@ -89,6 +89,12 @@ export const apiUnlikePage = (pageId: string) =>
     access_token: getPageAccessToken(pageId),
   });
 
+export const apiSetMainPage = (pageId: string) =>
+  apiRequestPost<ApiPageJSON>(`v1/pages/${pageId}/main`);
+
+export const apiUnsetMainPage = (pageId: string) =>
+  apiRequestDelete<ApiPageJSON>(`v1/pages/${pageId}/main`);
+
 export const apiUploadPageMedia = (file: File) => {
   const data = new FormData();
   data.append('file', file);

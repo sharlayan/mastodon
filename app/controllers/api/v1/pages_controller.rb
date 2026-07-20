@@ -3,7 +3,7 @@
 class Api::V1::PagesController < Api::BaseController
   include Api::PagesRoleplayAccessConcern
 
-  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId note detailed).freeze
+  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed).freeze
 
   before_action :require_feature_enabled!
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories]
@@ -11,14 +11,14 @@ class Api::V1::PagesController < Api::BaseController
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock]
 
   before_action :require_user!, except: [:show, :featured, :unlock]
-  before_action :set_page, only: [:show, :update, :destroy, :like, :unlike]
+  before_action :set_page, only: [:show, :update, :destroy, :like, :unlike, :set_main, :unset_main]
 
   rescue_from Page::ContentLimitError do
     render json: { error: 'Page content exceeds the allowed limits' }, status: 422
   end
 
   def index
-    @pages = current_account.pages.order(id: :desc).to_a
+    @pages = current_account.pages.order(is_main: :desc, id: :desc).to_a
     render json: @pages, each_serializer: REST::PageSerializer
   end
 
@@ -82,6 +82,24 @@ class Api::V1::PagesController < Api::BaseController
     render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
+  def set_main
+    authorize_owner!
+    not_found unless @page.eligible_for_main?
+
+    Page.transaction do
+      current_account.pages.where(is_main: true).update_all(is_main: false)
+      @page.update!(is_main: true)
+    end
+
+    render json: @page, serializer: REST::PageSerializer, page_unlocked: true
+  end
+
+  def unset_main
+    authorize_owner!
+    @page.update!(is_main: false)
+    render json: @page, serializer: REST::PageSerializer, page_unlocked: true
+  end
+
   private
 
   def require_feature_enabled!
@@ -127,6 +145,7 @@ class Api::V1::PagesController < Api::BaseController
       next unless block.is_a?(Hash)
 
       block = block.stringify_keys.slice(*ALLOWED_BLOCK_KEYS)
+      block['noUpscale'] = ActiveModel::Type::Boolean.new.cast(block['noUpscale']) if block['type'] == 'image' && block.key?('noUpscale')
       block['children'] = sanitize_blocks(block['children'], depth + 1) if block.key?('children')
       block
     end

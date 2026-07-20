@@ -120,6 +120,24 @@ RSpec.describe REST::AccountSerializer do
     end
   end
 
+  describe '#pages_view' do
+    it 'serializes the local account owner preference' do
+      user.settings['web.pages_view'] = 'blog'
+      user.settings['web.pages_blog_list_position'] = 'right'
+
+      expect(subject['pages_view']).to eq('blog')
+      expect(subject['pages_blog_list_position']).to eq('right')
+    end
+
+    context 'when the account is remote' do
+      let(:account) { Fabricate(:account, domain: 'remote.example') }
+
+      it 'does not serialize a local-only Pages preference' do
+        expect(subject).to_not have_key('pages_view')
+      end
+    end
+  end
+
   describe 'Sharlayan profile extensions' do
     before do
       allow(Setting).to receive(:[]).and_call_original

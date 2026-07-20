@@ -90,11 +90,12 @@ type FetchedComponent = React.FC<{
 export const ColumnsArea = forwardRef<
   HTMLDivElement,
   {
+    pageBlogView?: boolean;
     singleColumn?: boolean;
     minimalShell?: boolean;
     children: React.ReactElement | React.ReactElement[];
   }
->(({ children, minimalShell, singleColumn }, ref) => {
+>(({ children, minimalShell, pageBlogView, singleColumn }, ref) => {
   const renderComposePanel = !useBreakpoint('full');
   const columns = useAppSelector((state) =>
     (state.settings as Record<{ columns: List<Record<Column>> }>).get(
@@ -104,6 +105,14 @@ export const ColumnsArea = forwardRef<
   const isModalOpen = useAppSelector(
     (state) => !state.modal.get('stack').isEmpty(),
   );
+
+  if (pageBlogView) {
+    return (
+      <main className='columns-area columns-area--mobile page-blog-shell'>
+        {children}
+      </main>
+    );
+  }
 
   if (minimalShell) {
     return (

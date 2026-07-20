@@ -54,6 +54,10 @@ const messages = defineMessages({
     id: 'pages.block.note_placeholder',
     defaultMessage: 'Post ID or URL',
   },
+  noUpscale: {
+    id: 'pages.block.no_upscale',
+    defaultMessage: 'Do not enlarge beyond the original size',
+  },
 });
 
 const SECTION_CHILD_TYPES: ApiPageBlockType[] = ['text', 'image', 'note'];
@@ -143,6 +147,13 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
     [onUpdate, onMediaUploaded, blockId],
   );
 
+  const handleImageNoUpscaleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onUpdate(blockId, { noUpscale: event.target.checked });
+    },
+    [onUpdate, blockId],
+  );
+
   const handleAddChild = useCallback(
     (type: ApiPageBlockType) => {
       onAddChild(blockId, type);
@@ -216,10 +227,20 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
       )}
 
       {block.type === 'image' && (
-        <ImageUploadField
-          value={getMedia(block.fileId)}
-          onChange={handleImageChange}
-        />
+        <>
+          <ImageUploadField
+            value={getMedia(block.fileId)}
+            onChange={handleImageChange}
+          />
+          <label className='page-editor__image-option'>
+            <input
+              type='checkbox'
+              checked={block.noUpscale ?? false}
+              onChange={handleImageNoUpscaleChange}
+            />
+            <span>{intl.formatMessage(messages.noUpscale)}</span>
+          </label>
+        </>
       )}
 
       {block.type === 'section' && (

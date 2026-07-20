@@ -8,6 +8,7 @@ import { AccountHeader } from '@/flavours/glitch/components/account_header';
 import { ColumnBackButton } from '@/flavours/glitch/components/column_back_button';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { RemoteHint } from '@/flavours/glitch/components/remote_hint';
+import { useAppHistory } from '@/flavours/glitch/components/router';
 import {
   ItemList,
   Scrollable,
@@ -21,6 +22,7 @@ import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibili
 
 const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   const accountId = useAccountId();
+  const history = useAppHistory();
   const { suspended, blockedBy, hidden } = useAccountVisibility(accountId);
   const forceEmptyState = suspended || blockedBy || hidden;
 
@@ -40,6 +42,16 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
         });
     }
   }, [accountId, forceEmptyState]);
+
+  useEffect(() => {
+    const mainPage = fetchedPages?.find((page) => page.is_main);
+
+    if (mainPage && mainPage.account_id === accountId) {
+      history.replace(
+        `/@${mainPage.account.acct}/pages/${encodeURIComponent(mainPage.name)}`,
+      );
+    }
+  }, [accountId, fetchedPages, history]);
 
   if (accountId === null) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;

@@ -430,6 +430,8 @@ ko:
         units:
           unit: ''
   pages:
+    settings:
+      heading: 페이지
     errors:
       invalid_password: 비밀번호가 올바르지 않습니다
       limit: 페이지 최대 개수를 초과합니다
@@ -462,6 +464,9 @@ ko:
         setting_mfm_enabled: Misskey 및 호환 서버의 MFM 형식 콘텐츠를 애니메이션과 스타일로 렌더링합니다
         setting_mfm_fold_mode: MFM 게시물을 접는 기준을 선택합니다. '민감한'은 애니메이션, 크기 조정, 테두리 효과가
           있는 게시물을 접습니다. '모두'는 모든 MFM 게시물을 접습니다.
+        setting_pages_view: 다른 사용자가 내 Pages를 열 때 볼 레이아웃을 선택합니다.
+        setting_pages_blog_list_position: 넓은 화면에서 Pages 목록을 표시할 위치를 선택합니다. 좁은 화면에서는 Page 아래에 표시됩니다.
+        setting_ignore_others_pages_view: 다른 사용자의 Pages를 열 때 항상 기본 레이아웃을 사용합니다.
         setting_prevent_ai_learning: 크롤러에게 내 게시물과 미디어를 AI 학습에 사용하지 말 것을 요청합니다. 요청일
           뿐이며 강제할 수는 없습니다.
         setting_reaction_custom_emoji_size: 리액션 버튼에서 가로로 긴 커스텀 에모지의 가로 길이를 늘려 서 표시합니다.
@@ -505,6 +510,13 @@ ko:
         setting_mfm_fold_mode_all: 모두 접기
         setting_mfm_fold_mode_sensitive: 민감한 MFM 접기 (권장)
         setting_mfm_fold_mode_show: 그대로 표시
+        setting_pages_view: 방문자용 Pages 레이아웃
+        setting_pages_view_blog: 블로그
+        setting_pages_view_list: 기본
+        setting_pages_blog_list_position: Pages 목록 위치
+        setting_pages_blog_list_position_left: 왼쪽
+        setting_pages_blog_list_position_right: 오른쪽
+        setting_ignore_others_pages_view: 다른 사용자의 Pages 레이아웃 설정을 따르지 않음
         setting_prevent_ai_learning: AI 학습에 사용 방지
         setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
         setting_show_avatar_decorations: 아바타 장식 표시

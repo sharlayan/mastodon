@@ -16,6 +16,7 @@ import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
+import { isServerPageBlogViewPath } from 'flavours/glitch/initial_state';
 
 import { CategoryFilter } from './components/category_filter';
 import { PageListItem } from './components/page_list_item';
@@ -31,6 +32,17 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [tab, setTab] = useState<'mine' | 'featured'>('mine');
   const [pages, setPages] = useState<ApiPageJSON[]>([]);
   const [category, setCategory] = useState('');
+  const useBlogView = isServerPageBlogViewPath(window.location.pathname);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('page-blog-view', useBlogView);
+    document.body.classList.toggle('page-blog-view', useBlogView);
+
+    return () => {
+      document.documentElement.classList.remove('page-blog-view');
+      document.body.classList.remove('page-blog-view');
+    };
+  }, [useBlogView]);
 
   useEffect(() => {
     if (!signedIn && tab === 'mine') {
@@ -65,6 +77,7 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   return (
     <Column
       bindToDocument={!multiColumn}
+      className='page-index-column'
       label={intl.formatMessage(messages.heading)}
     >
       <ColumnHeader

@@ -29,7 +29,11 @@ import {
   CheckboxField,
 } from 'flavours/glitch/components/form_fields';
 import { useAppHistory } from 'flavours/glitch/components/router';
-import { domain, me } from 'flavours/glitch/initial_state';
+import {
+  domain,
+  isServerPageBlogViewPath,
+  me,
+} from 'flavours/glitch/initial_state';
 import { useAppSelector } from 'flavours/glitch/store';
 
 import { BlockAddButtons } from './components/block_add_buttons';
@@ -132,6 +136,17 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   >({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  const useBlogView = isServerPageBlogViewPath(window.location.pathname);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('page-blog-view', useBlogView);
+    document.body.classList.toggle('page-blog-view', useBlogView);
+
+    return () => {
+      document.documentElement.classList.remove('page-blog-view');
+      document.body.classList.remove('page-blog-view');
+    };
+  }, [useBlogView]);
 
   useEffect(() => {
     apiGetPageCategories()
@@ -343,7 +358,11 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   return (
-    <Column bindToDocument={!multiColumn} label={heading}>
+    <Column
+      bindToDocument={!multiColumn}
+      className='page-editor-column'
+      label={heading}
+    >
       <ColumnHeader
         title={heading}
         icon='description'

@@ -12,6 +12,7 @@
 #  draft                            :boolean          default(FALSE), not null
 #  font                             :string           default("sans-serif"), not null
 #  hide_title_when_pinned           :boolean          default(FALSE), not null
+#  is_main                          :boolean          default(FALSE), not null
 #  likes_count                      :integer          default(0), not null
 #  name                             :string           not null
 #  summary                          :text
@@ -52,6 +53,7 @@ class Page < ApplicationRecord
   before_validation :normalize_category
   before_validation :synchronize_visibility
   before_validation :clear_unused_password
+  before_validation :clear_main_unless_public
 
   validates :title, length: { maximum: TITLE_LENGTH_LIMIT }
   validates :name, presence: true, length: { maximum: NAME_LENGTH_LIMIT }, format: { with: NAME_RE }, uniqueness: { scope: :account_id }
@@ -85,6 +87,10 @@ class Page < ApplicationRecord
 
   def public_visibility?
     visibility == 'public'
+  end
+
+  def eligible_for_main?
+    public_visibility? && !draft?
   end
 
   def password_visibility?
@@ -132,6 +138,10 @@ class Page < ApplicationRecord
 
   def clear_unused_password
     self.access_password_digest = nil unless password_visibility?
+  end
+
+  def clear_main_unless_public
+    self.is_main = false unless eligible_for_main?
   end
 
   def validate_access_password

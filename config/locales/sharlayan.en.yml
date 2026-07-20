@@ -475,6 +475,8 @@ en:
         units:
           unit: ''
   pages:
+    settings:
+      heading: Pages
     errors:
       invalid_password: The password is incorrect
       limit: You have reached the maximum number of pages
@@ -514,6 +516,9 @@ en:
         setting_mfm_fold_mode: Choose when to fold (collapse) MFM posts behind an
           expand toggle. 'Sensitive' folds posts with animation, scale, or border
           effects. 'All' folds every MFM post.
+        setting_pages_view: Choose the layout visitors see when opening your Pages.
+        setting_pages_blog_list_position: Choose where the Pages list appears on wide screens. On narrow screens it is shown below the Page.
+        setting_ignore_others_pages_view: Always use the standard layout when opening other users' Pages.
         setting_prevent_ai_learning: Ask crawlers not to use your posts and media
           for AI training. This is a request only and cannot be enforced.
         setting_reaction_custom_emoji_size: Display Original size of Long Horizontally
@@ -569,6 +574,13 @@ en:
         setting_mfm_fold_mode_all: Fold all MFM
         setting_mfm_fold_mode_sensitive: Fold sensitive MFM (recommended)
         setting_mfm_fold_mode_show: Show as-is
+        setting_pages_view: Pages layout for visitors
+        setting_pages_view_blog: Blog
+        setting_pages_view_list: Standard
+        setting_pages_blog_list_position: Pages list position
+        setting_pages_blog_list_position_left: Left
+        setting_pages_blog_list_position_right: Right
+        setting_ignore_others_pages_view: Do not follow other users' Pages layout settings
         setting_prevent_ai_learning: Prevent use in AI training
         setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction
           Button

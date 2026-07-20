@@ -20,6 +20,7 @@ export interface ApiPageImageBlock {
   id: string;
   type: 'image';
   fileId: string | null;
+  noUpscale?: boolean;
 }
 
 export interface ApiPageNoteBlock {
@@ -53,6 +54,7 @@ export interface ApiPageJSON {
   content: ApiPageBlock[];
   align_center: boolean;
   hide_title_when_pinned: boolean;
+  is_main: boolean;
   font: ApiPageFont;
   account_id: string;
   account: ApiAccountJSON;

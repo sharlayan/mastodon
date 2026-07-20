@@ -5,8 +5,8 @@ module Sharlayan::ConversationsControllerExtension
   STATUSES_DEFAULT_LIMIT = 50
 
   def self.prepended(base)
-    base.before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:statuses, :with_account]
-    base.skip_before_action :set_conversation, only: :with_account
+    base.before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:statuses, :with_account, :with_status]
+    base.skip_before_action :set_conversation, only: [:with_account, :with_status]
   end
 
   def index
@@ -31,6 +31,15 @@ module Sharlayan::ConversationsControllerExtension
 
   def with_account
     id = AccountConversation.where(account: current_account, participant_account_ids: [params[:account_id].to_i]).order(last_status_id: :desc).pick(:id)
+
+    render json: { id: id&.to_s }
+  end
+
+  def with_status
+    status = Status.find_by(id: params[:status_id])
+    id = nil
+
+    id = AccountConversation.where(account: current_account, conversation_id: status.conversation_id).order(last_status_id: :desc).pick(:id) if status&.conversation_id
 
     render json: { id: id&.to_s }
   end

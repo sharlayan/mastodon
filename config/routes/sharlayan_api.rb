@@ -45,6 +45,7 @@ namespace :api, format: false do
     resources :conversations, only: [] do
       collection do
         get 'with_account/:account_id', action: :with_account
+        get 'with_status/:status_id', action: :with_status
       end
 
       member do
@@ -129,6 +130,8 @@ namespace :api, format: false do
       member do
         post :like
         post :unlike
+        post :main, action: :set_main
+        delete :main, action: :unset_main
         post :unlock
       end
 

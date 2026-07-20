@@ -122,4 +122,37 @@ RSpec.describe 'API V1 Conversations' do
       expect(response.parsed_body[:id]).to be_nil
     end
   end
+
+  describe 'GET /api/v1/conversations/with_status/:status_id', :inline_jobs do
+    before do
+      user.account.follow!(other.account)
+      PostStatusService.new.call(other.account, text: 'Hey @alice', visibility: 'direct')
+    end
+
+    let(:conversation) { AccountConversation.where(account: user.account).first }
+    let(:direct_status) { conversation.last_status }
+
+    it 'returns the conversation id for the status conversation', :aggregate_failures do
+      get "/api/v1/conversations/with_status/#{direct_status.id}", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq conversation.id.to_s
+    end
+
+    it 'returns a null id when the status belongs to another conversation', :aggregate_failures do
+      stranger_status = Fabricate(:status, visibility: 'direct')
+
+      get "/api/v1/conversations/with_status/#{stranger_status.id}", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to be_nil
+    end
+
+    it 'returns a null id for an unknown status', :aggregate_failures do
+      get '/api/v1/conversations/with_status/0', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to be_nil
+    end
+  end
 end
