@@ -41,6 +41,10 @@ class InstanceMetadata < ApplicationRecord
     'hubzilla' => '#43488A',
   }.freeze
 
+  PINNED_THEME_COLORS = {
+    'bsky.brid.gy' => '#1185FE',
+  }.freeze
+
   REACTION_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick akkoma pleroma kmyblue).freeze
   QUOTE_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick kmyblue).freeze
 
@@ -123,6 +127,10 @@ class InstanceMetadata < ApplicationRecord
 
     where(domain: missing).find_each { |metadata| cache[metadata.domain] = metadata }
     missing.each { |domain| cache[domain] ||= nil }
+  end
+
+  def theme_color
+    PINNED_THEME_COLORS[domain] || super
   end
 
   def default_theme_color

@@ -692,6 +692,12 @@ class Status extends ImmutablePureComponent {
       'data-status-by': `@${status.getIn(['account', 'acct'])}`,
     };
 
+    const statusDomain = (instanceInfo && instanceInfo.get('domain')) || status.getIn(['account', 'acct']).split('@')[1];
+
+    if (statusDomain) {
+      selectorAttribs['data-domain'] = statusDomain;
+    }
+
     if (this.props.prepend && account) {
       const notifKind = {
         favourite: 'favourited',
