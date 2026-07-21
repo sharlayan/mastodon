@@ -21,6 +21,7 @@ RSpec.describe 'Admin Settings Other' do
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('input[name="form_admin_settings[misskey_compat_signin_flow_enabled]"]')).to be_present
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[misskey_compat_signin_flow_allowed_origins]"]')).to be_present
       expect(Setting.misskey_compat_signin_flow_enabled).to be false
     end
   end

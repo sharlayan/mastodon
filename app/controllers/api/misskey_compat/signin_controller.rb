@@ -9,7 +9,7 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
   PASSKEY_UNSUPPORTED_ID = 'a4f3d0e2-6c8b-4a7d-8f2a-9c1e5b3d7a10'
 
   before_action :require_signin_flow_enabled!
-  before_action :require_same_origin!
+  before_action :require_allowed_origin!
 
   def create
     return unless object_body!
@@ -42,11 +42,11 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
     render_error('This endpoint is not available', 'ENDPOINT_DISABLED', 404) unless Setting.misskey_compat_signin_flow_enabled
   end
 
-  def require_same_origin!
-    return if performed? || request.local?
-    return if request.origin.present? && request.origin == request.base_url
+  def require_allowed_origin!
+    return if performed?
+    return if MisskeyCompat::SigninOriginPolicy.allowed?(request.origin, request.base_url, Setting.misskey_compat_signin_flow_allowed_origins)
 
-    render_error('This endpoint is only available from the local origin', 'ORIGIN_NOT_ALLOWED', 403)
+    render_error('This endpoint is not available from this origin', 'ORIGIN_NOT_ALLOWED', 403)
   end
 
   def resolve_two_factor(user, correct_password)

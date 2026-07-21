@@ -57,6 +57,19 @@ RSpec.describe Form::AdminSettings do
       expect(settings.errors[:drive_allowed_extensions].join).to include('html', 'svg')
     end
 
+    it 'accepts exact HTTPS origins for Misskey web sign-in' do
+      settings = described_class.new(misskey_compat_signin_flow_allowed_origins: 'https://one.example, https://two.example:8443')
+
+      expect(settings).to be_valid
+    end
+
+    it 'rejects unsafe or non-origin values for Misskey web sign-in' do
+      settings = described_class.new(misskey_compat_signin_flow_allowed_origins: 'http://one.example https://two.example/path *.example')
+
+      expect(settings).to_not be_valid
+      expect(settings.errors[:misskey_compat_signin_flow_allowed_origins]).to be_present
+    end
+
     describe 'updating digest values' do
       context 'when updating custom css to real value' do
         subject { described_class.new(custom_css: css) }

@@ -108,3 +108,9 @@
             label: t('admin.settings.misskey_compat.signin_flow_enabled'),
             hint: t('admin.settings.misskey_compat.signin_flow_enabled_hint'),
             sharlayan_only: true
+  = f.input :misskey_compat_signin_flow_allowed_origins,
+            as: :string,
+            label: t('admin.settings.misskey_compat.signin_flow_allowed_origins'),
+            hint: t('admin.settings.misskey_compat.signin_flow_allowed_origins_hint'),
+            input_html: { autocomplete: 'off', placeholder: 'https://misskey.example' },
+            sharlayan_only: true

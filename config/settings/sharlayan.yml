@@ -13,6 +13,7 @@ defaults:
   reactions_enabled: true
   misskey_compat_enabled: false
   misskey_compat_signin_flow_enabled: false
+  misskey_compat_signin_flow_allowed_origins: ''
   mfm_enabled: false
   mfm_allow_composition: false
   circles_enabled: false

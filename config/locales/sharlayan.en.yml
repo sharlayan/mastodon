@@ -301,7 +301,10 @@ en:
           host as Misskey. Leave disabled to keep standard Mastodon behavior.
         title: Misskey-compatible API
         signin_flow_enabled: Enable same-origin Misskey web sign-in
-        signin_flow_enabled_hint: Allow the rarely used signin-flow endpoint for a Misskey web frontend served from this origin. It remains unavailable to cross-origin clients.
+        signin_flow_enabled_hint: Allow signin-flow for a Misskey web frontend served from this server or an explicitly allowed origin.
+        signin_flow_allowed_origins: Additional allowed sign-in origins
+        signin_flow_allowed_origins_hint: Exact HTTPS origins, separated by spaces or commas. Paths, wildcards, and implicit subdomains are not allowed.
+        signin_flow_allowed_origins_invalid: "Invalid HTTPS origins: %{origins}"
       online_status:
         enabled: Enable online status indicators
         enabled_hint: When enabled, users who opt in can share whether they are online,

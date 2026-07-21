@@ -34,12 +34,13 @@ RSpec.describe 'MiAuth web flow' do
     end
 
     it 'allows the issued token to be claimed only once' do
-      token = MisskeyCompat::MiAuth.issue_token(user, permission: 'read:account,write:notes', name: 'Flare', callback: callback)
-      RedisConnection.with { |redis| redis.set(MisskeyCompat::MiAuth.redis_key(session_id), token.token, ex: MisskeyCompat::MiAuth::SESSION_TTL.to_i) }
+      post "/miauth/#{session_id}", params: { name: 'Flare', callback: callback, permission: 'read:account,write:notes' }
+      expect(response).to have_http_status(200)
 
       post "/api/miauth/#{session_id}/check", as: :json
       expect(response).to have_http_status(200)
       expect(response.parsed_body['ok']).to be true
+      expect(response.parsed_body['token']).to be_present
 
       post "/api/miauth/#{session_id}/check", as: :json
       expect(response).to have_http_status(200)

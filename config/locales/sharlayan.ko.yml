@@ -274,7 +274,10 @@ ko:
           인식합니다. 비활성화하면 기본 Mastodon 동작을 유지합니다.
         title: Misskey 호환 API
         signin_flow_enabled: 동일 출처 Misskey 웹 로그인 활성화
-        signin_flow_enabled_hint: 이 출처에서 제공하는 Misskey 웹 프론트엔드를 위해 일반적으로 사용하지 않는 signin-flow API를 허용합니다. 다른 출처의 클라이언트에서는 계속 사용할 수 없습니다.
+        signin_flow_enabled_hint: 이 서버 또는 명시적으로 허용한 출처에서 제공하는 Misskey 웹 프론트엔드에 signin-flow API를 허용합니다.
+        signin_flow_allowed_origins: 추가 로그인 허용 출처
+        signin_flow_allowed_origins_hint: 정확한 HTTPS 출처를 공백 또는 쉼표로 구분해 입력합니다. 경로, 와일드카드, 하위 도메인 자동 허용은 지원하지 않습니다.
+        signin_flow_allowed_origins_invalid: "올바르지 않은 HTTPS 출처: %{origins}"
       online_status:
         enabled: 온라인 상태 표시 활성화
         enabled_hint: 활성화하면, 사용하기로 선택한 사용자가 온라인·최근 활동·오프라인 상태를 아바타의 점으로 공유할 수 있습니다.

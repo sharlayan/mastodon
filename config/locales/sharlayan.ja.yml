@@ -264,7 +264,10 @@ ja:
         enabled_hint: 有効にすると、このサーバーはMisskey APIの一部にも応答し、Aria for misskeyやFlareなどのMiAuthログイン対応アプリがログイン・リアクション・MFM表示を行えるようになります。有効にするとこれらのアプリはこのホストをMisskeyとして認識します。無効の場合は標準のMastodonの動作を維持します。
         title: Misskey互換API
         signin_flow_enabled: 同一オリジンのMisskeyウェブログインを有効化
-        signin_flow_enabled_hint: このオリジンで配信するMisskeyウェブフロントエンド向けに、通常は使用しないsignin-flow APIを許可します。他オリジンのクライアントからは引き続き利用できません。
+        signin_flow_enabled_hint: このサーバー、または明示的に許可したオリジンで配信するMisskeyウェブフロントエンドにsignin-flow APIを許可します。
+        signin_flow_allowed_origins: 追加でログインを許可するオリジン
+        signin_flow_allowed_origins_hint: 正確なHTTPSオリジンを空白またはカンマで区切って入力します。パス、ワイルドカード、サブドメインの自動許可は使用できません。
+        signin_flow_allowed_origins_invalid: "無効なHTTPSオリジン: %{origins}"
       online_status:
         enabled: オンライン状態表示を有効にする
         enabled_hint: 有効にすると、利用を選んだユーザーがオンライン・最近アクティブ・オフラインの状態をアバターのドットで共有できます。無効にすると、ユーザー設定に関わらずオンライン状態を収集も表示もしません。

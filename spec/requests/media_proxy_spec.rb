@@ -23,6 +23,29 @@ RSpec.describe 'Media Proxy' do
       expect(response).to redirect_to(attachment.remote_url)
     end
 
+    it 'redirects to a custom favicon advertised for an instance' do
+      metadata = InstanceMetadata.create!(domain: 'remote.example', favicon_url: 'https://cdn.example/remote.ico')
+
+      get '/proxy/image.webp', params: { url: metadata.favicon_url, preview: 1 }
+
+      expect(response).to redirect_to(metadata.favicon_url)
+    end
+
+    it 'redirects to the fallback favicon emitted for a known remote account' do
+      account = Fabricate(:account, domain: 'remote.example')
+      favicon_url = "https://#{account.domain}/favicon.ico"
+
+      get '/proxy/image.webp', params: { url: favicon_url, preview: 1 }
+
+      expect(response).to redirect_to(favicon_url)
+    end
+
+    it 'does not treat a favicon-shaped URL for an unknown domain as known' do
+      get '/proxy/image.webp', params: { url: 'https://unknown.example/favicon.ico', preview: 1 }
+
+      expect(response).to have_http_status(404)
+    end
+
     it 'does not redirect to an arbitrary external URL' do
       get '/proxy', params: { url: 'https://attacker.example/phishing' }
 
