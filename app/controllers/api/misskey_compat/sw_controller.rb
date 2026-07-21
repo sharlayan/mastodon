@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
   requires_write_scope :register, :unregister
+  requires_misskey_permission 'read:notifications', :show_registration
+  requires_misskey_permission 'write:notifications', :register, :unregister
 
   before_action :require_user!
 

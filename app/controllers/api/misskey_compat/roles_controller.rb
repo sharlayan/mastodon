@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
+  requires_misskey_permission 'read:account', :index, :show, :users, :notes
+
   before_action :require_user!
 
   def index

@@ -6,6 +6,16 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
                        :scheduled_cancel, :destroy, :favorites_create,
                        :favorites_delete, :polls_vote
 
+  requires_misskey_permission 'read:account', :timeline, :local_timeline, :hybrid_timeline, :global_timeline,
+                              :mentions, :state, :search, :search_by_tag, :translate, :scheduled_list,
+                              :polls_recommendation
+  requires_misskey_permission 'read:favorites', :my_favorites
+  requires_misskey_permission 'write:notes', :unrenote, :create, :update, :scheduled_cancel, :destroy
+  requires_misskey_permission 'write:account', :thread_muting_create, :thread_muting_delete
+  requires_misskey_permission 'write:reactions', :reactions_create, :reactions_delete
+  requires_misskey_permission 'write:favorites', :favorites_create, :favorites_delete
+  requires_misskey_permission 'write:votes', :polls_vote
+
   USER_ACTIONS = %i(
     timeline hybrid_timeline mentions my_favorites
     create update destroy state search search_by_tag translate unrenote

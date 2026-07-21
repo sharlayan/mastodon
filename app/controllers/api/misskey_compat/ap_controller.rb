@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::ApController < Api::MisskeyCompat::BaseController
+  requires_misskey_permission 'read:account', :show, :get
+
   before_action :require_user!
   before_action :require_administrator!, only: :get
 

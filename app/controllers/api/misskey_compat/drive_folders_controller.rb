@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseController
   requires_write_scope :create, :update, :destroy
+  requires_misskey_permission 'read:drive', :index, :show, :find
+  requires_misskey_permission 'write:drive', :create, :update, :destroy
 
   before_action :require_user!
   before_action :require_drive_enabled!

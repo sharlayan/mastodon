@@ -47,18 +47,20 @@ RSpec.describe 'MiAuth web flow' do
       expect(response.parsed_body).to eq('ok' => false)
     end
 
-    it 'limits the token to requested permissions and gives it a finite lifetime' do
+    it 'stores exact requested permissions behind a dedicated finite-lifetime token' do
       post "/miauth/#{session_id}", params: { name: 'Reader', callback: callback, permission: 'read:account' }
 
       token = Doorkeeper::AccessToken.where(resource_owner_id: user.id).order(id: :desc).first
-      expect(token.scopes.to_s).to eq('read')
+      expect(token.scopes.to_s).to eq(MisskeyCompat::MiAuth::TOKEN_SCOPE)
       expect(token.expires_in).to eq(MisskeyCompat::MiAuth::TOKEN_TTL.to_i)
+      expect(token.misskey_access_grant.permissions).to eq(['read:account'])
     end
 
-    it 'does not promote an unknown permission to the coarse write scope' do
+    it 'drops unknown permissions instead of promoting them' do
       token = MisskeyCompat::MiAuth.issue_token(user, permission: 'write:unknown')
 
-      expect(token.scopes.to_s).to eq('read')
+      expect(token.scopes.to_s).to eq(MisskeyCompat::MiAuth::TOKEN_SCOPE)
+      expect(token.misskey_access_grant.permissions).to be_empty
     end
 
     it 'keeps different clients in individually revocable applications' do
@@ -68,14 +70,55 @@ RSpec.describe 'MiAuth web flow' do
       expect(first.application_id).to_not eq(second.application_id)
     end
 
+    it 'converts an existing coarse-scope client application to the isolated scope' do
+      existing = MisskeyCompat::MiAuth.application(name: 'Existing', callback: callback)
+      existing.update!(scopes: 'read write follow push')
+
+      token = MisskeyCompat::MiAuth.issue_token(user, name: 'Existing', callback: callback, permission: 'read:account')
+
+      expect(token.application_id).to eq(existing.id)
+      expect(existing.reload.scopes.to_s).to eq(MisskeyCompat::MiAuth::TOKEN_SCOPE)
+    end
+
     it 'recognizes legacy non-expiring full-scope tokens for rejection' do
-      application = Fabricate(:application, name: MisskeyCompat::MiAuth::APP_NAME, scopes: MisskeyCompat::MiAuth::SCOPES)
-      token = Fabricate(:accessible_access_token, application: application, resource_owner_id: user.id, scopes: MisskeyCompat::MiAuth::SCOPES, expires_in: nil)
+      application = Fabricate(:application, name: MisskeyCompat::MiAuth::APP_NAME, scopes: 'read write follow push')
+      token = Fabricate(:accessible_access_token, application: application, resource_owner_id: user.id, scopes: 'read write follow push', expires_in: nil)
 
       expect(MisskeyCompat::MiAuth.legacy_token?(token)).to be true
 
       post '/api/i', params: { i: token.token }, as: :json
       expect(response).to have_http_status(401)
+    end
+
+    it 'enforces the exact permission on Misskey-compatible endpoints' do
+      token = MisskeyCompat::MiAuth.issue_token(user, permission: 'read:account,write:notes')
+      blocked = Fabricate(:account)
+
+      post '/api/notes/create', params: { i: token.token, text: 'allowed note' }, as: :json
+      expect(response).to have_http_status(200)
+
+      post '/api/blocking/create', params: { i: token.token, userId: blocked.id.to_s }, as: :json
+      expect(response).to have_http_status(403)
+      expect(user.account.blocking?(blocked)).to be false
+    end
+
+    it 'does not let a general account-read permission expose specialized collections' do
+      token = MisskeyCompat::MiAuth.issue_token(user, permission: 'read:account')
+
+      post '/api/i', params: { i: token.token }, as: :json
+      expect(response).to have_http_status(200)
+
+      post '/api/blocking/list', params: { i: token.token }, as: :json
+      expect(response).to have_http_status(403)
+    end
+
+    it 'cannot use a MiAuth token as a general Mastodon write token' do
+      token = MisskeyCompat::MiAuth.issue_token(user, permission: 'write:notes')
+
+      post '/api/v1/statuses', params: { status: 'scope isolation' }, headers: { 'Authorization' => "Bearer #{token.token}" }
+
+      expect(response).to have_http_status(403)
+      expect(user.account.statuses.where(text: 'scope isolation')).to_not exist
     end
 
     it 'ignores unsafe callback schemes on approve' do

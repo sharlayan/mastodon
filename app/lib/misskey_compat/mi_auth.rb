@@ -3,12 +3,23 @@
 module MisskeyCompat::MiAuth
   SESSION_TTL = 5.minutes
   APP_NAME = 'Misskey (MiAuth)'
-  SCOPES = 'read write follow push'
+  TOKEN_SCOPE = 'misskey'
   TOKEN_TTL = 30.days
-  WRITE_PERMISSIONS = %w(
-    write:account write:blocks write:drive write:favorites write:following
-    write:mutes write:notes write:notifications write:pages write:reactions
+  SUPPORTED_PERMISSIONS = %w(
+    read:account write:account
+    read:blocks write:blocks
+    read:drive write:drive
+    read:favorites write:favorites
+    read:following write:following
+    read:mutes write:mutes
+    write:notes
+    read:notifications write:notifications
+    read:reactions write:reactions
     write:votes
+    read:pages write:pages
+    read:page-likes write:page-likes
+    read:clip-favorite write:clip-favorite
+    write:report-abuse
   ).freeze
   UNSAFE_CALLBACK_SCHEMES = %w(javascript file data mailto tel vbscript).freeze
 
@@ -24,7 +35,12 @@ module MisskeyCompat::MiAuth
   end
 
   def legacy_token?(token)
-    token.application&.name == APP_NAME && token.expires_in.nil?
+    miauth_token?(token) && token.misskey_access_grant.nil?
+  end
+
+  def miauth_token?(token)
+    name = token.application&.name.to_s
+    name == APP_NAME || name.start_with?("#{APP_NAME}:")
   end
 
   def safe_callback?(callback)
@@ -41,27 +57,31 @@ module MisskeyCompat::MiAuth
     display_name = name.to_s.strip.presence || 'Unnamed client'
     application_name = "#{APP_NAME}: #{display_name.truncate(80)} [#{identity}]"
 
-    Doorkeeper::Application.find_or_create_by!(name: application_name) do |app|
-      app.redirect_uri = Doorkeeper.config.native_redirect_uri
-      app.scopes = SCOPES
+    Doorkeeper::Application.find_or_initialize_by(name: application_name).tap do |app|
+      app.redirect_uri ||= Doorkeeper.config.native_redirect_uri
+      app.scopes = TOKEN_SCOPE
+      app.save! if app.changed?
     end
   end
 
-  def scopes_for(permission)
-    permissions = permission.to_s.split(',').map(&:strip).compact_blank
-    scopes = ['read']
-    scopes << 'write' if (permissions & WRITE_PERMISSIONS).any?
-    scopes << 'follow' if permissions.any? { |value| value.end_with?(':following') }
-    scopes.join(' ')
+  def normalize_permissions(permission)
+    values = permission.is_a?(Array) ? permission : permission.to_s.split(',')
+    values.map { |value| value.to_s.strip }.compact_blank.uniq & SUPPORTED_PERMISSIONS
   end
 
-  def issue_token(user, permission: nil, name: nil, callback: nil, scopes: nil)
-    Doorkeeper::AccessToken.create!(
-      application: application(name: name, callback: callback),
-      resource_owner_id: user.id,
-      scopes: scopes || scopes_for(permission),
-      expires_in: TOKEN_TTL.to_i,
-      use_refresh_token: false
-    )
+  def issue_token(user, permission: nil, name: nil, callback: nil, permissions: nil)
+    normalized_permissions = normalize_permissions(permissions || permission)
+
+    Doorkeeper::AccessToken.transaction do
+      token = Doorkeeper::AccessToken.create!(
+        application: application(name: name, callback: callback),
+        resource_owner_id: user.id,
+        scopes: TOKEN_SCOPE,
+        expires_in: TOKEN_TTL.to_i,
+        use_refresh_token: false
+      )
+      token.create_misskey_access_grant!(permissions: normalized_permissions)
+      token
+    end
   end
 end

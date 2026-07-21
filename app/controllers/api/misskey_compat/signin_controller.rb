@@ -74,7 +74,7 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
   end
 
   def render_finished(user)
-    token = MisskeyCompat::MiAuth.issue_token(user, name: 'Misskey web sign-in', scopes: MisskeyCompat::MiAuth::SCOPES)
+    token = MisskeyCompat::MiAuth.issue_token(user, name: 'Misskey web sign-in', permissions: MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
     user.update_sign_in!(new_sign_in: true)
     render json: { finished: true, id: MisskeyCompat::MiId.encode(user.account_id), i: token.token }
   end

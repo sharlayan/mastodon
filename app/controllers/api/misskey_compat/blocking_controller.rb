@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::BlockingController < Api::MisskeyCompat::BaseController
   requires_write_scope :create, :destroy
+  requires_misskey_permission 'read:blocks', :index
+  requires_misskey_permission 'write:blocks', :create, :destroy
 
   before_action :require_user!
   before_action :set_target!, only: [:create, :destroy]

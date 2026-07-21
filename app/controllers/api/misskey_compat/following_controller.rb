@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::FollowingController < Api::MisskeyCompat::BaseController
   requires_write_scope :create, :update, :destroy, :accept_request, :reject_request, :cancel_request, :invalidate
+  requires_misskey_permission 'read:following', :requests
+  requires_misskey_permission 'write:following', :create, :update, :destroy, :accept_request, :reject_request, :cancel_request, :invalidate
 
   before_action :require_user!
   before_action :set_target!, except: [:requests]

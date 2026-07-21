@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
   requires_write_scope :create, :update, :destroy, :push, :pull, :update_membership
+  requires_misskey_permission 'read:account', :index, :show, :timeline, :memberships, :create_from_public
+  requires_misskey_permission 'write:account', :create, :update, :destroy, :push, :pull, :update_membership
 
   before_action :require_user!
   before_action :set_list!, only: [:show, :update, :destroy, :push, :pull, :timeline, :memberships, :update_membership]

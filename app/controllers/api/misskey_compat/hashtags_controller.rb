@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseController
+  requires_misskey_permission 'read:account', :index, :trend, :search, :show, :users
+
   SORT_ORDERS = {
     '+attachedUsers' => Arel.sql('attached_users_count DESC, tags.name ASC'),
     '-attachedUsers' => Arel.sql('attached_users_count ASC, tags.name ASC'),
