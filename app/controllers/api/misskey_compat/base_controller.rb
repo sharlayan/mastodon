@@ -64,6 +64,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     token = params[:i].presence
     @current_token = token ? Doorkeeper::AccessToken.by_token(token.to_s) : nil
     @current_token = nil unless @current_token&.accessible?
+    @current_token = nil if @current_token && MisskeyCompat::MiAuth.legacy_token?(@current_token)
     @current_token
   end
 

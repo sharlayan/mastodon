@@ -282,4 +282,54 @@ RSpec.describe ApplicationHelper do
       end
     end
   end
+
+  describe 'page_blog_view_skin' do
+    let(:account) { Fabricate(:account) }
+
+    around do |example|
+      previous_pages_enabled = Setting.pages_enabled
+      Setting.pages_enabled = true
+      example.run
+      Setting.pages_enabled = previous_pages_enabled
+    end
+
+    before do
+      account.user.settings['web.pages_view'] = 'blog'
+      account.user.settings['skin'] = 'mastodon-light'
+      account.user.save!
+
+      helper.request.path_info = "/@#{account.username}/pages/example"
+
+      allow(Themes.instance).to receive(:skins_for).and_return(%w(default mastodon-light))
+      helper.extend anonymous_visitor_helpers
+    end
+
+    # Stands in for the Devise/controller helpers a logged-out visitor would get
+    def anonymous_visitor_helpers
+      Module.new do
+        def current_user; end
+
+        def current_account; end
+      end
+    end
+
+    it 'returns the skin of the target account' do
+      expect(helper.page_blog_view_skin(account)).to eq 'mastodon-light'
+    end
+
+    it 'renders theme tags for the target account skin when it differs from the visitor skin' do
+      allow(helper).to receive(:theme_style_tags).and_return('')
+
+      helper.page_blog_view_theme_style_tags(account)
+
+      expect(helper).to have_received(:theme_style_tags).with(%w(glitch mastodon-light), id: 'page-blog-theme')
+    end
+
+    it 'does not render theme tags when the target account uses the visitor skin' do
+      account.user.settings['skin'] = 'default'
+      account.user.save!
+
+      expect(helper.page_blog_view_theme_style_tags(account)).to be_nil
+    end
+  end
 end

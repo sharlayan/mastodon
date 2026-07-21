@@ -6,6 +6,7 @@ import { createDataLoadingThunk } from 'flavours/glitch/store/typed_functions';
 import {
   apiGetAccountSwitches,
   apiDeleteAccountSwitch,
+  apiDeleteInboundAccountSwitch,
   apiCreatePushForward,
   apiDeletePushForward,
 } from './api';
@@ -19,6 +20,7 @@ export const fetchAccountSwitches = createDataLoadingThunk(
   () => apiGetAccountSwitches(),
   (data, { dispatch }) => {
     const accounts = data.children.map((auth) => auth.target_account);
+    accounts.push(...data.inbound.map((auth) => auth.account));
     if (data.parent) accounts.push(data.parent);
     dispatch(importFetchedAccounts(accounts));
 
@@ -51,6 +53,11 @@ export const fetchAccountSwitches = createDataLoadingThunk(
 export const deleteAccountSwitch = createDataLoadingThunk(
   'accountSwitches/delete',
   ({ id }: { id: string }) => apiDeleteAccountSwitch(id).then(() => id),
+);
+
+export const deleteInboundAccountSwitch = createDataLoadingThunk(
+  'accountSwitches/deleteInbound',
+  ({ id }: { id: string }) => apiDeleteInboundAccountSwitch(id).then(() => id),
 );
 
 export const enableLinkedPushForward = createDataLoadingThunk(

@@ -8,9 +8,9 @@ RSpec.describe Sharlayan::SettingExtensions do
       defaults = described_class.merge_defaults('site_title' => 'Upstream', 'profile_directory' => true)
 
       expect(defaults).to include(
-        'site_title' => 'Mastodon Macaron Edition',
+        'site_title' => 'Mastodon Custard Edition',
         'profile_directory' => true,
-        'theme_color' => '#007046'
+        'theme_color' => '#FFFD78'
       )
     end
 

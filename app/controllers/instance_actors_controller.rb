@@ -10,6 +10,7 @@ class InstanceActorsController < ActivityPub::BaseController
   skip_before_action :authenticate_user! # From `AccountOwnedConcern`
   skip_before_action :require_functional!
   skip_before_action :update_user_sign_in
+  skip_after_action :update_user_activity
 
   def show
     expires_in 10.minutes, public: true

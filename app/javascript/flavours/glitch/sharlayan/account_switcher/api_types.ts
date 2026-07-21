@@ -11,4 +11,9 @@ export interface ApiAccountSwitchesResponseJSON {
   root_account_id: string;
   parent: ApiAccountJSON | null;
   children: ApiAccountSwitchAuthorizationJSON[];
+  inbound: {
+    id: string;
+    created_at: string;
+    account: ApiAccountJSON;
+  }[];
 }

@@ -17,7 +17,7 @@ RSpec.describe 'Instances' do
 
         expect(response.parsed_body)
           .to be_present
-          .and include(title: 'Mastodon Macaron Edition')
+          .and include(title: 'Mastodon Custard Edition')
       end
     end
 
@@ -32,7 +32,7 @@ RSpec.describe 'Instances' do
 
         expect(response.parsed_body)
           .to be_present
-          .and include(title: 'Mastodon Macaron Edition')
+          .and include(title: 'Mastodon Custard Edition')
       end
     end
   end

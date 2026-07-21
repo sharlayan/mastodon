@@ -44,7 +44,16 @@ RSpec.describe 'Avatar Decorations' do
   end
 
   describe 'POST /api/v1/avatar_decoration_mutes' do
+    let(:scopes) { 'write:mutes' }
     let(:target_account) { Fabricate(:account) }
+
+    it 'returns http forbidden without the write:mutes scope' do
+      post api_v1_avatar_decoration_mutes_path,
+           params: { account_id: target_account.id },
+           headers: { 'Authorization' => "Bearer #{Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token}" }
+
+      expect(response).to have_http_status(403)
+    end
 
     context 'with account_id' do
       it 'creates a mute' do
@@ -92,6 +101,7 @@ RSpec.describe 'Avatar Decorations' do
   end
 
   describe 'DELETE /api/v1/avatar_decoration_mutes/:id' do
+    let(:scopes) { 'write:mutes' }
     let(:target_account) { Fabricate(:account) }
 
     it 'destroys the mute' do

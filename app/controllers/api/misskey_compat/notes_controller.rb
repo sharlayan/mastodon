@@ -308,7 +308,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def reaction_type_name(type)
-    type.to_s.delete_prefix(':').sub(/@[^:]*:?\z/, '').delete_suffix(':')
+    name = type.to_s.delete_prefix(':').delete_suffix(':')
+    host_separator = name.rindex('@')
+    host_separator.nil? ? name : name[0...host_separator]
   end
 
   def target_language

@@ -8,6 +8,7 @@ import {
 import {
   fetchAccountSwitches,
   deleteAccountSwitch,
+  deleteInboundAccountSwitch,
   setLinkedUnreadCounts,
 } from './actions';
 
@@ -21,6 +22,7 @@ type Authorization = ReturnType<typeof AuthorizationRecord>;
 
 const initialState = ImmutableMap({
   items: ImmutableList<Authorization>(),
+  inboundItems: ImmutableList<Authorization>(),
   parentAccountId: null as string | null,
   rootAccountId: null as string | null,
   isLoading: false,
@@ -47,8 +49,18 @@ export const accountSwitchesReducer: Reducer<State> = (
         }),
       ),
     );
+    const inboundItems = ImmutableList(
+      data.inbound.map((auth) =>
+        AuthorizationRecord({
+          id: auth.id,
+          target_account_id: auth.account.id,
+          created_at: auth.created_at,
+        }),
+      ),
+    );
     return state
       .set('items', items)
+      .set('inboundItems', inboundItems)
       .set('parentAccountId', data.parent?.id ?? null)
       .set('rootAccountId', data.root_account_id)
       .set('isLoading', false)
@@ -58,6 +70,13 @@ export const accountSwitchesReducer: Reducer<State> = (
   } else if (deleteAccountSwitch.fulfilled.match(action)) {
     const deletedId = action.payload;
     return state.update('items', (items) =>
+      (items as ImmutableList<Authorization>).filter(
+        (item) => item.get('id') !== deletedId,
+      ),
+    );
+  } else if (deleteInboundAccountSwitch.fulfilled.match(action)) {
+    const deletedId = action.payload;
+    return state.update('inboundItems', (items) =>
       (items as ImmutableList<Authorization>).filter(
         (item) => item.get('id') !== deletedId,
       ),

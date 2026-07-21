@@ -27,7 +27,7 @@ RSpec.describe Form::AdminSettings do
     it 'saves drive settings with their declared types' do
       expect { described_class.new(drive_enabled: '1', drive_quota: '2048').save }
         .to change(Setting, :drive_enabled).from(false).to(true)
-        .and change(Setting, :drive_quota).from(1024).to(2048)
+        .and change(Setting, :drive_quota).from(500).to(2048)
     end
 
     it 'rejects a negative drive quota' do

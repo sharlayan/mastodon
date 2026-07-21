@@ -4,19 +4,21 @@ module Sharlayan::SessionsControllerExtensions
   extend ActiveSupport::Concern
 
   prepended do
-    before_action :handle_account_switch, only: [:new], if: -> { params[:switch_to].present? }
+    before_action :authenticate_user!, only: :switch_account
+  end
+
+  def switch_account
+    handle_account_switch
   end
 
   def destroy
-    cookies.delete(:switch_parent_stack)
+    clear_switch_parent_stack
     super
   end
 
   protected
 
   def require_no_authentication
-    return if params[:switch_to].present? && user_signed_in?
-
     super
   end
 
@@ -37,34 +39,34 @@ module Sharlayan::SessionsControllerExtensions
     end
 
     new_stack = compute_switch_stack(switch_parent_stack, target_account)
-    if new_stack.nil? || new_stack.length > 5
+    if new_stack.nil? || new_stack.length > 1
       redirect_to root_path, alert: I18n.t('account_switcher.switch_unauthorized')
       return
     end
 
     sign_out(current_user)
     sign_in(target_user)
-    persist_switch_parent_stack(new_stack)
+    persist_switch_parent_stack(new_stack, target_account.id)
     target_user.update_sign_in!(new_sign_in: true)
     redirect_to root_path
   end
 
   def compute_switch_stack(parent_stack, target_account)
-    if parent_stack.last == target_account.id
-      return unless AccountSwitchAuthorization.exists?(account_id: target_account.id, target_account_id: current_account.id)
+    if parent_stack.present?
+      root_account_id = parent_stack.first
 
-      return parent_stack[0..-2]
+      if root_account_id == target_account.id
+        return unless AccountSwitchAuthorization.exists?(account_id: root_account_id, target_account_id: current_account.id)
+
+        return []
+      end
+
+      return [root_account_id] if AccountSwitchAuthorization.exists?(account_id: root_account_id, target_account_id: target_account.id)
+
+      return
     end
 
-    return parent_stack + [current_account.id] if current_account.account_switch_authorizations.exists?(target_account:)
-
-    parent_stack.reverse_each do |ancestor_id|
-      next unless AccountSwitchAuthorization.exists?(account_id: ancestor_id, target_account_id: target_account.id)
-
-      return parent_stack[0..parent_stack.index(ancestor_id)]
-    end
-
-    nil
+    [current_account.id] if current_account.account_switch_authorizations.exists?(target_account:)
   end
 
   def on_authentication_success(user, security_measure)

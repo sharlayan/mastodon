@@ -15,7 +15,6 @@ class ApplicationController < ActionController::Base
   include DatabaseHelper
   include AuthorizedFetchHelper
   include SelfDestructHelper
-  include MisskeyCompat::PskeyCspConcern
 
   helper_method :current_account
   helper_method :current_session
@@ -118,35 +117,77 @@ class ApplicationController < ActionController::Base
   protected
 
   def switch_parent_stack
-    stack = session[:switch_parent_stack]
+    return @switch_parent_stack if defined?(@switch_parent_stack)
 
-    if stack.nil? && cookies.signed[:switch_parent_stack].present?
-      begin
-        stack = JSON.parse(cookies.signed[:switch_parent_stack])
-        session[:switch_parent_stack] = stack
-      rescue JSON::ParserError
-        cookies.delete(:switch_parent_stack)
-        stack = nil
-      end
-    end
-
-    (stack || []).map(&:to_i)
+    @switch_parent_stack = resolve_switch_parent_stack
   end
 
-  def persist_switch_parent_stack(new_stack)
+  # owner_id is passed explicitly right after a switch, when current_account still memoizes the previous account
+  def persist_switch_parent_stack(new_stack, owner_id)
+    @switch_parent_stack = Array(new_stack).map(&:to_i)
+
+    session[:switch_parent_owner] = owner_id
     session[:switch_parent_stack] = new_stack
 
-    if new_stack.blank?
+    if new_stack.blank? || owner_id.nil?
       cookies.delete(:switch_parent_stack)
     else
       cookies.signed[:switch_parent_stack] = {
-        value: new_stack.to_json,
+        value: { owner: owner_id, stack: new_stack }.to_json,
         expires: 30.days.from_now,
         httponly: true,
         secure: Rails.configuration.x.use_https,
         same_site: :lax,
       }
     end
+  end
+
+  def resolve_switch_parent_stack
+    owner_id = current_account&.id
+    return [] if owner_id.nil?
+
+    stack = session[:switch_parent_stack] if session[:switch_parent_owner].to_i == owner_id
+    stack = switch_parent_stack_from_cookie(owner_id) if stack.nil?
+    stack = Array(stack).map(&:to_i)
+
+    return [] if stack.empty?
+
+    unless stack.one? && switch_parent_authorized?(stack.first, owner_id)
+      clear_switch_parent_stack
+      return []
+    end
+
+    session[:switch_parent_owner] = owner_id
+    session[:switch_parent_stack] = stack
+    stack
+  end
+
+  def switch_parent_stack_from_cookie(owner_id)
+    raw = cookies.signed[:switch_parent_stack]
+    return if raw.blank?
+
+    payload = begin
+      JSON.parse(raw)
+    rescue JSON::ParserError
+      nil
+    end
+
+    return payload['stack'] if payload.is_a?(Hash) && payload['owner'].to_i == owner_id
+
+    clear_switch_parent_stack
+    nil
+  end
+
+  def switch_parent_authorized?(parent_id, owner_id)
+    AccountSwitchAuthorization.exists?(account_id: parent_id, target_account_id: owner_id)
+  end
+
+  def clear_switch_parent_stack
+    @switch_parent_stack = []
+    cookies.delete(:switch_parent_stack)
+    session.delete(:switch_parent_stack)
+    session.delete(:switch_parent_owner)
+    nil
   end
 
   def truthy_param?(key)

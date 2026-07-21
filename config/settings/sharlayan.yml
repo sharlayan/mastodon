@@ -12,6 +12,7 @@ defaults:
   reaction_local_emoji_only: true
   reactions_enabled: true
   misskey_compat_enabled: false
+  misskey_compat_signin_flow_enabled: false
   mfm_enabled: false
   mfm_allow_composition: false
   circles_enabled: false

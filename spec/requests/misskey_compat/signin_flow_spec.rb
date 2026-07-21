@@ -3,8 +3,15 @@
 require 'rails_helper'
 
 RSpec.describe 'Misskey-compat signin-flow endpoint' do
-  before { Setting.misskey_compat_enabled = true }
-  after  { Setting.misskey_compat_enabled = false }
+  before do
+    Setting.misskey_compat_enabled = true
+    Setting.misskey_compat_signin_flow_enabled = true
+  end
+
+  after do
+    Setting.misskey_compat_enabled = false
+    Setting.misskey_compat_signin_flow_enabled = false
+  end
 
   let(:username) { 'alice' }
   let(:password) { 'wonderland-123' }
@@ -19,6 +26,43 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
 
         expect(response).to have_http_status(404)
         expect(response.parsed_body.dig('error', 'code')).to eq('ENDPOINT_DISABLED')
+      end
+    end
+
+    context 'when the dedicated signin-flow gate is off' do
+      before { Setting.misskey_compat_signin_flow_enabled = false }
+
+      it 'remains disabled even when Misskey compatibility is enabled' do
+        post '/api/signin-flow', params: { username: username, password: password }, as: :json
+
+        expect(response).to have_http_status(404)
+        expect(response.parsed_body.dig('error', 'code')).to eq('ENDPOINT_DISABLED')
+      end
+    end
+
+    context 'with a non-local request' do
+      before do
+        host! 'local.test'
+        https!
+      end
+
+      it 'rejects a cross-origin request' do
+        post '/api/signin-flow',
+             params: { username: username, password: password },
+             headers: { 'HTTP_ORIGIN' => 'https://attacker.example', 'REMOTE_ADDR' => '203.0.113.10' },
+             as: :json
+
+        expect(response).to have_http_status(403)
+        expect(response.parsed_body.dig('error', 'code')).to eq('ORIGIN_NOT_ALLOWED')
+      end
+
+      it 'allows a same-origin request' do
+        post '/api/signin-flow',
+             params: { username: username, password: password },
+             headers: { 'HTTP_ORIGIN' => 'https://local.test', 'REMOTE_ADDR' => '203.0.113.10' },
+             as: :json
+
+        expect(response).to have_http_status(200)
       end
     end
 

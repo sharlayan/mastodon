@@ -300,6 +300,8 @@ en:
           reactions, and render MFM. Turning this on makes those apps detect this
           host as Misskey. Leave disabled to keep standard Mastodon behavior.
         title: Misskey-compatible API
+        signin_flow_enabled: Enable same-origin Misskey web sign-in
+        signin_flow_enabled_hint: Allow the rarely used signin-flow endpoint for a Misskey web frontend served from this origin. It remains unavailable to cross-origin clients.
       online_status:
         enabled: Enable online status indicators
         enabled_hint: When enabled, users who opt in can share whether they are online,
@@ -452,6 +454,8 @@ en:
       invalid_password: The password is incorrect
       limit: You have reached the maximum number of pages
       own_page: You cannot like your own page
+  pagination:
+    truncate_html: "&hellip;"
   settings:
     avatar_decorations: Avatar Decorations
     custom_css: Custom CSS

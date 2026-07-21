@@ -20,6 +20,7 @@ class FetchRemoteAvatarDecorationsWorker
     return if user_data.nil?
 
     user_decorations = user_data['avatarDecorations']
+    user_decorations = nil unless user_decorations.is_a?(Array) && user_decorations.all?(Hash)
     if user_decorations.blank?
       account.update_columns(avatar_decorations: []) if account.avatar_decorations.any?
       return

@@ -3,6 +3,33 @@
 require 'rails_helper'
 
 RSpec.describe 'Media Proxy' do
+  describe 'GET /proxy' do
+    before { Setting.misskey_compat_enabled = true }
+    after { Setting.misskey_compat_enabled = false }
+
+    it 'redirects to a URL already known through a preview card' do
+      card = Fabricate(:preview_card, url: 'https://known.example/article')
+
+      get '/proxy', params: { url: card.url }
+
+      expect(response).to redirect_to(card.url)
+    end
+
+    it 'redirects to a URL already known through a remote media attachment' do
+      attachment = Fabricate(:media_attachment, remote_url: 'https://known.example/image.png')
+
+      get '/proxy', params: { url: attachment.remote_url }
+
+      expect(response).to redirect_to(attachment.remote_url)
+    end
+
+    it 'does not redirect to an arbitrary external URL' do
+      get '/proxy', params: { url: 'https://attacker.example/phishing' }
+
+      expect(response).to have_http_status(404)
+    end
+  end
+
   describe 'GET /media_proxy/:id' do
     before { stub_attachment_request }
 

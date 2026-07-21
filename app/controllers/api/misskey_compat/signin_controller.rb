@@ -8,6 +8,9 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
   INCORRECT_TOKEN_ID = 'cdf1235b-ac71-46d4-a3a6-84ccce48df6f'
   PASSKEY_UNSUPPORTED_ID = 'a4f3d0e2-6c8b-4a7d-8f2a-9c1e5b3d7a10'
 
+  before_action :require_signin_flow_enabled!
+  before_action :require_same_origin!
+
   def create
     return unless object_body!
     return if rate_limited?(:misskey_compat_signin)
@@ -35,6 +38,17 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
 
   private
 
+  def require_signin_flow_enabled!
+    render_error('This endpoint is not available', 'ENDPOINT_DISABLED', 404) unless Setting.misskey_compat_signin_flow_enabled
+  end
+
+  def require_same_origin!
+    return if performed? || request.local?
+    return if request.origin.present? && request.origin == request.base_url
+
+    render_error('This endpoint is only available from the local origin', 'ORIGIN_NOT_ALLOWED', 403)
+  end
+
   def resolve_two_factor(user, correct_password)
     token = params[:token]
 
@@ -60,7 +74,8 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
   end
 
   def render_finished(user)
-    token = MisskeyCompat::MiAuth.issue_token(user)
+    token = MisskeyCompat::MiAuth.issue_token(user, name: 'Misskey web sign-in', scopes: MisskeyCompat::MiAuth::SCOPES)
+    user.update_sign_in!(new_sign_in: true)
     render json: { finished: true, id: MisskeyCompat::MiId.encode(user.account_id), i: token.token }
   end
 

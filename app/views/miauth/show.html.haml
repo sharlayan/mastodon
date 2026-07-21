@@ -18,4 +18,5 @@
       = form_with url: miauth_path(session: @session), method: :post do |form|
         = form.hidden_field :name, value: @app_name
         = form.hidden_field :callback, value: @callback
+        = form.hidden_field :permission, value: @permission
         = form.button '승인', type: :submit, class: 'btn button'

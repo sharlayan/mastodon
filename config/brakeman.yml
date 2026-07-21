@@ -3,3 +3,4 @@
   - CheckPermitAttributes
 :url_safe_methods:
   - url_for_preview_card
+  - full_media_attachment_url

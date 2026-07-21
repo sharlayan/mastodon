@@ -3,7 +3,7 @@
 class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseController
   requires_write_scope :update_memo, :report_abuse
 
-  before_action :require_user!, only: [:followers, :following, :search, :search_by_username_and_host, :update_memo]
+  before_action :require_user!, only: [:followers, :following, :search, :search_by_username_and_host, :update_memo, :report_abuse]
 
   def index
     scope = apply_user_origin(Account.discoverable.without_suspended)
@@ -137,8 +137,6 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def report_abuse
-    require_user! and return if current_account.nil?
-
     target = Account.find(params[:userId])
     ReportService.new.call(current_account, target, comment: params[:comment].to_s)
     head 204

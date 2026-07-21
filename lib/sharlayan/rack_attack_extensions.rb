@@ -3,6 +3,7 @@
 module Sharlayan
   module RackAttackExtensions
     MULTI_ACCOUNT_AUTH_PATHS = ['/multi_accounts/auth/sign_in', '/multi_accounts/auth/verify_otp'].freeze
+    MISSKEY_SIGNIN_PATH = '/api/signin-flow'
 
     module RequestMethods
       def bypasses_rate_limit?
@@ -65,6 +66,14 @@ module Sharlayan
 
       attack.throttle('throttle_page_password_attempts', limit: 10, period: 5.minutes) do |req|
         "#{req.authenticated_user_id || req.throttleable_remote_ip}:#{req.path}" if req.post? && req.path.match?(%r{\A/api/v1/pages/\d+/unlock\z})
+      end
+
+      attack.throttle('throttle_misskey_signin_attempts/ip', limit: 25, period: 5.minutes) do |req|
+        req.throttleable_remote_ip if req.post? && req.path == MISSKEY_SIGNIN_PATH
+      end
+
+      attack.throttle('throttle_misskey_signin_attempts/username', limit: 25, period: 1.hour) do |req|
+        req.params['username'].to_s.strip.delete_prefix('@').downcase.presence if req.post? && req.path == MISSKEY_SIGNIN_PATH
       end
     end
 

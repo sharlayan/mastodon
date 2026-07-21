@@ -69,6 +69,7 @@ Rails.application.routes.draw do
   get '/invite/:invite_code', constraints: ->(req) { req.format == :json }, to: 'api/v1/invites#show'
 
   devise_scope :user do
+    post '/auth/switch_account', to: 'auth/sessions#switch_account', as: :switch_account
     get '/invite/:invite_code', to: 'auth/registrations#new', as: :public_invite
 
     resource :unsubscribe, only: [:show, :create], controller: :unsubscriptions

@@ -1,26 +1,26 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseController
-  SORT_COLUMNS = {
-    '+attachedUsers' => ['attached_users_count', 'DESC'],
-    '-attachedUsers' => ['attached_users_count', 'ASC'],
-    '+attachedLocalUsers' => ['attached_local_users_count', 'DESC'],
-    '-attachedLocalUsers' => ['attached_local_users_count', 'ASC'],
-    '+attachedRemoteUsers' => ['attached_remote_users_count', 'DESC'],
-    '-attachedRemoteUsers' => ['attached_remote_users_count', 'ASC'],
-    '+mentionedUsers' => [nil, nil],
-    '-mentionedUsers' => [nil, nil],
-    '+mentionedLocalUsers' => [nil, nil],
-    '-mentionedLocalUsers' => [nil, nil],
-    '+mentionedRemoteUsers' => [nil, nil],
-    '-mentionedRemoteUsers' => [nil, nil],
+  SORT_ORDERS = {
+    '+attachedUsers' => Arel.sql('attached_users_count DESC, tags.name ASC'),
+    '-attachedUsers' => Arel.sql('attached_users_count ASC, tags.name ASC'),
+    '+attachedLocalUsers' => Arel.sql('attached_local_users_count DESC, tags.name ASC'),
+    '-attachedLocalUsers' => Arel.sql('attached_local_users_count ASC, tags.name ASC'),
+    '+attachedRemoteUsers' => Arel.sql('attached_remote_users_count DESC, tags.name ASC'),
+    '-attachedRemoteUsers' => Arel.sql('attached_remote_users_count ASC, tags.name ASC'),
+    '+mentionedUsers' => nil,
+    '-mentionedUsers' => nil,
+    '+mentionedLocalUsers' => nil,
+    '-mentionedLocalUsers' => nil,
+    '+mentionedRemoteUsers' => nil,
+    '-mentionedRemoteUsers' => nil,
   }.freeze
 
   before_action :require_user!
 
   def index
     sort = params[:sort].to_s
-    return render_invalid_param('#/properties/sort', 'unsupported sort') unless SORT_COLUMNS.key?(sort)
+    return render_invalid_param('#/properties/sort', 'unsupported sort') unless SORT_ORDERS.key?(sort)
 
     tags = Tag.listable
       .left_joins(:accounts)
@@ -35,8 +35,8 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
     tags = tags.having('COUNT(CASE WHEN accounts.domain IS NULL THEN 1 END) > 0') if boolean_param?(:attachedToLocalUserOnly)
     tags = tags.having('COUNT(CASE WHEN accounts.domain IS NOT NULL THEN 1 END) > 0') if boolean_param?(:attachedToRemoteUserOnly)
 
-    column, direction = SORT_COLUMNS.fetch(sort)
-    tags = column ? tags.order(Arel.sql("#{column} #{direction}, tags.name ASC")) : tags.order(name: :asc)
+    order = SORT_ORDERS.fetch(sort)
+    tags = tags.order(order || { name: :asc })
     tags = tags.limit(pagination_limit(default: 10, max: 100)).to_a
 
     render json: tags.map { |tag| serialize_tag(tag) }

@@ -4,9 +4,10 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   include RoutingHelper
 
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :linked_unread_counts]
-  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:destroy, :create_push_forward, :destroy_push_forward]
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:destroy, :destroy_inbound, :create_push_forward, :destroy_push_forward]
   before_action :require_user!
   before_action :set_authorization, only: [:destroy]
+  before_action :set_inbound_authorization, only: [:destroy_inbound]
   before_action :set_push_forward_auth, only: [:destroy_push_forward]
 
   def index
@@ -44,6 +45,7 @@ class Api::V1::AccountSwitchesController < Api::BaseController
         scope: current_user,
         scope_name: :current_user
       ).as_json,
+      inbound: inbound_authorizations,
     }
   end
 
@@ -98,6 +100,12 @@ class Api::V1::AccountSwitchesController < Api::BaseController
     render_empty
   end
 
+  def destroy_inbound
+    @inbound_authorization.destroy!
+    clear_switch_parent_stack
+    render_empty
+  end
+
   private
 
   def resolve_children_owner
@@ -108,6 +116,29 @@ class Api::V1::AccountSwitchesController < Api::BaseController
 
   def set_authorization
     @authorization = current_account.account_switch_authorizations.find(params[:id])
+  end
+
+  def set_inbound_authorization
+    @inbound_authorization = AccountSwitchAuthorization.find_by!(id: params[:id], target_account: current_account)
+  end
+
+  def inbound_authorizations
+    AccountSwitchAuthorization.where(target_account: current_account)
+      .where.not(account: current_account)
+      .includes(account: [:account_stat])
+      .order(created_at: :desc)
+      .map do |authorization|
+        {
+          id: authorization.id.to_s,
+          created_at: authorization.created_at,
+          account: ActiveModelSerializers::SerializableResource.new(
+            authorization.account,
+            serializer: REST::AccountSerializer,
+            scope: current_user,
+            scope_name: :current_user
+          ).as_json,
+        }
+      end
   end
 
   def find_linked_authorization

@@ -26,6 +26,7 @@ module Sharlayan::AdminSettingsExtensions
     instance_metadata_enabled
     antenna_enabled
     misskey_compat_enabled
+    misskey_compat_signin_flow_enabled
     online_status_enabled
     drive_enabled
     drive_quota
@@ -58,6 +59,7 @@ module Sharlayan::AdminSettingsExtensions
     instance_metadata_enabled
     antenna_enabled
     misskey_compat_enabled
+    misskey_compat_signin_flow_enabled
     online_status_enabled
     drive_enabled
   ).freeze

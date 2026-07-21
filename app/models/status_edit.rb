@@ -29,7 +29,8 @@ class StatusEdit < ApplicationRecord
              :preview_remote_url, :text_url, :meta, :blurhash,
              :not_processed?, :needs_redownload?, :local?,
              :file, :thumbnail, :thumbnail_remote_url,
-             :shortcode, :video?, :audio?, :discarded?, to: :media_attachment
+             :shortcode, :video?, :audio?, :discarded?,
+             :drive_pointer?, :drive_access_key, :file_file_name, to: :media_attachment
   end
 
   rate_limit by: :account, family: :statuses

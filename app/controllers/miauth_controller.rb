@@ -10,10 +10,11 @@ class MiauthController < ApplicationController
   def show
     @app_name = params[:name]
     @callback = params[:callback]
+    @permission = params[:permission]
   end
 
   def create
-    token = MisskeyCompat::MiAuth.issue_token(current_user)
+    token = MisskeyCompat::MiAuth.issue_token(current_user, permission: params[:permission], name: params[:name], callback: params[:callback])
     with_redis { |r| r.set(MisskeyCompat::MiAuth.redis_key(@session), token.token, ex: MisskeyCompat::MiAuth::SESSION_TTL.to_i) }
 
     @callback = build_callback
