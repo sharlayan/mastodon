@@ -8,6 +8,7 @@ import {
 import { createLimitedCache } from '@/flavours/glitch/utils/cache';
 import { isCustomEmojiMuted } from '@/flavours/glitch/utils/custom_emoji_mutes';
 
+import { search } from './search';
 import { emojiLogger } from './utils';
 
 const log = emojiLogger('picker');
@@ -38,7 +39,6 @@ export async function emojiMartSearch(
     return cachedResult;
   }
 
-  const { search } = await import('./database');
   const results = await search({ query, locale, limit });
   const legacyResults = results.map((emoji) =>
     'shortcode' in emoji

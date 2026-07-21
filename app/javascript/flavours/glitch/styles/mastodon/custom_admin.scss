@@ -42,7 +42,7 @@ html {
         margin: 4px 0 0;
         color: var(--color-text-secondary);
         font-size: 13px;
-        font-family: $font-monospace;
+        font-family: var(--font-monospace);
         display: flex;
         align-items: center;
         gap: 12px;
@@ -109,7 +109,7 @@ html {
         padding: 3px 6px;
         border-radius: 3px;
         font-size: 11px;
-        font-family: $font-monospace;
+        font-family: var(--font-monospace);
         display: inline-block;
       }
 
@@ -117,7 +117,7 @@ html {
         padding: 3px 6px;
         border-radius: 3px;
         font-size: 11px;
-        font-family: $font-monospace;
+        font-family: var(--font-monospace);
       }
 
       .color-preview {
