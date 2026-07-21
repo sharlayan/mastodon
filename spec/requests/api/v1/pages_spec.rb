@@ -29,7 +29,8 @@ RSpec.describe 'Pages' do
         expect(response.parsed_body[:category]).to eq('Guides')
         expect(response.parsed_body[:draft]).to be true
         page = Page.last
-        expect(Mastodon::Snowflake.to_time(page.id)).to be_within(1.second).of(page.created_at)
+        transaction_timestamp = Page.connection.select_value('SELECT transaction_timestamp()')
+        expect(Mastodon::Snowflake.to_time(page.id)).to be_within(1.second).of(transaction_timestamp)
       end
     end
 
