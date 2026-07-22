@@ -141,6 +141,7 @@ module Admin
     def refresh_avatar_decorations
       authorize @account, :redownload?
 
+      CheckAvatarDecorationImagesWorker.perform_async(@account.id)
       FetchRemoteAvatarDecorationsWorker.perform_async(@account.id)
 
       redirect_to admin_account_path(@account.id), notice: I18n.t('admin.accounts.refreshed_avatar_decorations_msg', username: @account.acct)

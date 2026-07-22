@@ -47,6 +47,8 @@ ja:
       approved_msg: デコレーションが承認されました
       assign_category: カテゴリを割り当て
       category: カテゴリ
+      check_images: デコレーション画像を点検
+      check_images_msg: デコレーション画像の点検を開始しました。欠落している画像は再ダウンロードされます
       create_new_category: 新しいカテゴリを作成
       created_msg: デコレーションが作成されました
       current_image: 現在の画像

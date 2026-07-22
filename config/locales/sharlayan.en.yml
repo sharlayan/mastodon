@@ -48,6 +48,9 @@ en:
       approved_msg: Decoration approved successfully
       assign_category: Assign category
       category: Category
+      check_images: Check decoration images
+      check_images_msg: Started checking decoration images; missing ones will be downloaded
+        again
       create_new_category: Create new category
       created_msg: Decoration created successfully
       current_image: Current image

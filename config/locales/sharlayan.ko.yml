@@ -47,6 +47,8 @@ ko:
       approved_msg: 아바타 장식이 성공적으로 승인되었습니다
       assign_category: 카테고리 지정
       category: 카테고리
+      check_images: 장식 이미지 점검
+      check_images_msg: 장식 이미지 점검을 시작했습니다. 누락된 이미지는 다시 다운로드됩니다
       create_new_category: 새 카테고리 만들기
       created_msg: 아바타 장식이 성공적으로 생성되었습니다
       current_image: 현재 이미지

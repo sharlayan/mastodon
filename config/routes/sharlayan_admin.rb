@@ -26,6 +26,7 @@ resources :avatar_decorations, only: [:index, :new, :create, :edit, :update, :de
 
   collection do
     post :batch
+    post :check_images
   end
 end
 

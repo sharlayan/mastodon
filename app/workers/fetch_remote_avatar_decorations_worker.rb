@@ -56,6 +56,7 @@ class FetchRemoteAvatarDecorationsWorker
         local_dec.name             = (full&.dig('name') || remote_id).slice(0, 256) if local_dec.name.blank?
         local_dec.approved         = true if local_dec.new_record?
         local_dec.save if local_dec.changed?
+        RedownloadAvatarDecorationWorker.perform_async(local_dec.id) if local_dec.persisted? && local_dec.image_file_name.blank?
       rescue ActiveRecord::RecordNotUnique
         local_dec = AvatarDecoration.find_by(host: account.domain, remote_id: remote_id)
         next if local_dec.nil?
