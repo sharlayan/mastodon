@@ -434,6 +434,8 @@
   "settings.navigation_panel.hint": "Reorder or hide the links in the navigation sidebar. Hidden links still appear on mobile layouts.",
   "settings.navigation_panel.move_down": "Move down",
   "settings.navigation_panel.move_up": "Move up",
+  "settings.navigation_panel.reset": "Use defaults",
+  "settings.navigation_panel.reset_confirm": "Reset navigation panel settings to their defaults?",
   "settings.quick_preferences": "Quick preferences",
   "settings.quick_preferences.hint": "These settings are saved to your account and apply on all your devices.",
   "settings.show_clip_choice": "Show clip selection in the compose box",

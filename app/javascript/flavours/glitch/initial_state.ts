@@ -172,7 +172,10 @@ export const disabledAccountId = getMeta('disabled_account_id');
 export const displayMedia = getMeta('display_media');
 export const domain = getMeta('domain');
 export const emojiStyle = getMeta('emoji_style') ?? 'auto';
-export const expandSpoilers = getMeta('expand_spoilers');
+export let expandSpoilers = getMeta('expand_spoilers') ?? false;
+export const setExpandSpoilers = (value: boolean) => {
+  expandSpoilers = value;
+};
 export const forceSingleColumn = !getMeta('advanced_layout');
 export const limitedFederationMode = getMeta('limited_federation_mode');
 export const mascot = getMeta('mascot');

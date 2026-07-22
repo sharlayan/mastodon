@@ -30,9 +30,12 @@ import { CSS } from '@dnd-kit/utilities';
 import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
 import DragIndicatorIcon from '@/material-icons/400-24px/drag_indicator.svg?react';
+import { openModal } from '@/flavours/glitch/actions/modal';
+import { Button } from '@/flavours/glitch/components/button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
-import { computeNavigationOrder, isNavigationItemAlwaysVisible, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
+import { computeNavigationOrder, isNavigationItemAlwaysVisible, NAVIGATION_PANEL_ITEMS, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
+import { useAppDispatch } from '@/flavours/glitch/store';
 
 const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, locked, intl, onToggle, onMove }) => {
   const {
@@ -105,8 +108,10 @@ NavigationPanelSettingsItem.propTypes = {
 };
 
 const NavigationPanelSettings = ({ settings, onChange, intl }) => {
+  const dispatch = useAppDispatch();
   const order = computeNavigationOrder(settings.getIn(['navigation_panel', 'order'])?.toJS());
   const hidden = settings.getIn(['navigation_panel', 'hidden']) ?? ImmutableMap();
+  const usingDefaults = fromJS(order).equals(fromJS(NAVIGATION_PANEL_ITEMS)) && hidden.isEmpty();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -155,6 +160,19 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
     onChange(['navigation_panel', 'order'], fromJS(arrayMove(order, oldIndex, newIndex)));
   };
 
+  const handleReset = () => {
+    dispatch(openModal({
+      modalType: 'CONFIRM',
+      modalProps: {
+        title: intl.formatMessage({ id: 'settings.navigation_panel.reset_confirm', defaultMessage: 'Reset navigation panel settings to their defaults?' }),
+        confirm: intl.formatMessage({ id: 'settings.navigation_panel.reset', defaultMessage: 'Use defaults' }),
+        onConfirm: () => {
+          onChange(['navigation_panel'], fromJS({ order: [], hidden: {} }));
+        },
+      },
+    }));
+  };
+
   return (
     <div className='glitch local-settings__page navigation_panel'>
       <h1><FormattedMessage id='settings.navigation_panel' defaultMessage='Navigation panel' /></h1>
@@ -185,6 +203,11 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
           </ul>
         </SortableContext>
       </DndContext>
+      <div className='local-settings__page__sync-actions'>
+        <Button secondary onClick={handleReset} disabled={usingDefaults}>
+          <FormattedMessage id='settings.navigation_panel.reset' defaultMessage='Use defaults' />
+        </Button>
+      </div>
     </div>
   );
 };

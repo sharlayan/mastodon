@@ -434,6 +434,8 @@
   "settings.navigation_panel.hint",
   "settings.navigation_panel.move_down",
   "settings.navigation_panel.move_up",
+  "settings.navigation_panel.reset",
+  "settings.navigation_panel.reset_confirm",
   "settings.quick_preferences",
   "settings.quick_preferences.hint",
   "settings.show_clip_choice",
