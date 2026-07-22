@@ -124,6 +124,8 @@ class StatusActionBar extends ImmutablePureComponent {
     'status',
     'quotedAccountId',
     'showReplyCount',
+    'statusActionBarHidden',
+    'statusActionBarOrder',
     'withCounters',
     'withDismiss',
   ];
