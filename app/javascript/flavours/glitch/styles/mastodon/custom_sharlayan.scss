@@ -374,16 +374,31 @@ html {
   }
 }
 
+@mixin content-font-size-display-name($size, $line, $emoji) {
+  .status__info .status__display-name,
+  .detailed-status .detailed-status__display-name {
+    font-size: $size;
+    line-height: $line;
+
+    .emojione {
+      width: $emoji;
+      height: $emoji;
+    }
+  }
+}
+
 html.content-font-size__large {
   @include content-font-size(18px, 27px, 24px, 25px, 32px, 32px);
 }
 
 html.content-font-size__x_large {
   @include content-font-size(22px, 30px, 32px, 30px, 39px, 42px);
+  @include content-font-size-display-name(18px, 26px, 20px);
 }
 
 html.content-font-size__xx_large {
   @include content-font-size(30px, 44px, 42px, 40px, 52px, 56px);
+  @include content-font-size-display-name(22px, 30px, 24px);
 }
 
 @mixin antenna-input {
