@@ -8,6 +8,7 @@ import { connect } from 'react-redux';
 
 import BookmarkIcon from '@/material-icons/400-24px/bookmark-fill.svg?react';
 import BookmarkBorderIcon from '@/material-icons/400-24px/bookmark.svg?react';
+import AttachFileIcon from '@/material-icons/400-24px/attach_file.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import ReplyIcon from '@/material-icons/400-24px/reply.svg?react';
 import ReplyAllIcon from '@/material-icons/400-24px/reply_all.svg?react';
@@ -20,11 +21,13 @@ import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend
 
 import { IconButton } from '../../../components/icon_button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
-import { SharlayanStatusReactionButton } from 'flavours/glitch/sharlayan/status_action_bar';
-import { me, quickBoosting, reactionsEnabled } from '../../../initial_state';
+import { SharlayanStatusReactionButton, sharlayanAddToClipMenuItem } from 'flavours/glitch/sharlayan/status_action_bar';
+import { me, quickBoosting, reactionsEnabled, clipsEnabled } from '../../../initial_state';
 import { BoostButton } from '@/flavours/glitch/components/status/boost_button';
 import { quoteItemState } from '@/flavours/glitch/components/status/boost_button_utils';
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
+import { computeStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
+import { openModal } from '@/flavours/glitch/actions/modal';
 
 const messages = defineMessages({
   delete: { id: 'status.delete', defaultMessage: 'Delete' },
@@ -61,6 +64,8 @@ const mapStateToProps = (state, { status }) => {
   return ({
     quotedAccountId: quotedStatusId ? state.getIn(['statuses', quotedStatusId, 'account']) : null,
     statusQuoteState: selectStatusConditions(state, status.get('id')),
+    statusActionBarOrder: computeStatusActionBarOrder(state.getIn(['local_settings', 'status_action_bar', 'order'])?.toJS()),
+    statusActionBarHidden: state.getIn(['local_settings', 'status_action_bar', 'hidden']),
   });
 };
 
@@ -70,6 +75,8 @@ class ActionBar extends PureComponent {
     status: ImmutablePropTypes.map.isRequired,
     statusQuoteState: PropTypes.object,
     quotedAccountId: ImmutablePropTypes.string,
+    statusActionBarOrder: PropTypes.arrayOf(PropTypes.string).isRequired,
+    statusActionBarHidden: ImmutablePropTypes.map.isRequired,
     onReply: PropTypes.func.isRequired,
     onReblog: PropTypes.func.isRequired,
     onFavourite: PropTypes.func.isRequired,
@@ -195,11 +202,14 @@ class ActionBar extends PureComponent {
       menu.push({ text: intl.formatMessage(messages.share), action: this.handleShare });
     }
 
+    const clipMenuItem = sharlayanAddToClipMenuItem(intl, { enabled: signedIn && clipsEnabled, statusId: status.get('id'), dispatch: this.props.dispatch });
+    if (clipMenuItem) menu.push(clipMenuItem);
+
     if (publicStatus && (signedIn || !isRemote)) {
       menu.push({ text: intl.formatMessage(messages.embed), action: this.handleEmbed });
     }
 
-    if (quickBoosting && signedIn) {
+    if (quickBoosting && signedIn && this.props.statusActionBarHidden.get('quote') === true) {
       const quoteItem = quoteItemState(statusQuoteState);
       menu.push(null);
       menu.push({
@@ -272,16 +282,23 @@ class ActionBar extends PureComponent {
 
     const bookmarkTitle = intl.formatMessage(status.get('bookmarked') ? messages.removeBookmark : messages.bookmark);
     const favouriteTitle = intl.formatMessage(status.get('favourited') ? messages.removeFavourite : messages.favourite);
+    const quoteExposed = this.props.statusActionBarHidden.get('quote') !== true;
+    const quoteItem = quoteItemState(statusQuoteState);
+    const configurableActions = {
+      favourite: <div className='detailed-status__button' key='favourite'><IconButton className='star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StarIcon : StarBorderIcon} onClick={this.handleFavouriteClick} /></div>,
+      reaction: reactionsEnabled ? <SharlayanStatusReactionButton key='reaction' enabled status={status} canReact={signedIn} onReactionAdd={this.props.onReactionAdd} wrapperClassName='detailed-status__button' buttonClassName='add-reaction-icon' /> : null,
+      bookmark: <div className='detailed-status__button' key='bookmark'><IconButton className='bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? BookmarkIcon : BookmarkBorderIcon} onClick={this.handleBookmarkClick} /></div>,
+      clip: signedIn && clipsEnabled ? <div className='detailed-status__button' key='clip'><IconButton title={intl.formatMessage({ id: 'status.add_to_clip', defaultMessage: 'Add to clip' })} icon='paperclip' iconComponent={AttachFileIcon} onClick={() => this.props.dispatch(openModal({ modalType: 'CLIP_ADD', modalProps: { statusId: status.get('id') } }))} /></div> : null,
+      quote: signedIn ? <div className='detailed-status__button' key='quote'><IconButton disabled={quoteItem.disabled} title={intl.formatMessage(quoteItem.meta ?? quoteItem.title)} icon='quote-right' iconComponent={quoteItem.iconComponent} onClick={quoteItem.disabled ? undefined : this.handleQuoteClick} /></div> : null,
+    };
 
     return (
       <div className='detailed-status__action-bar'>
         <div className='detailed-status__button'><IconButton title={intl.formatMessage(messages.reply)} icon={replyIcon} iconComponent={replyIconComponent} onClick={this.handleReplyClick} /></div>
         <div className='detailed-status__button'>
-          <BoostButton statusId={status.get('id')} />
+          <BoostButton statusId={status.get('id')} forceStandalone={quoteExposed} />
         </div>
-        <div className='detailed-status__button'><IconButton className='star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StarIcon : StarBorderIcon} onClick={this.handleFavouriteClick} /></div>
-        <SharlayanStatusReactionButton enabled={reactionsEnabled} status={status} canReact={signedIn} onReactionAdd={this.props.onReactionAdd} wrapperClassName='detailed-status__button' buttonClassName='add-reaction-icon' />
-        <div className='detailed-status__button'><IconButton className='bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? BookmarkIcon : BookmarkBorderIcon} onClick={this.handleBookmarkClick} /></div>
+        {this.props.statusActionBarOrder.map(key => this.props.statusActionBarHidden.get(key) === true ? null : configurableActions[key])}
 
         <div className='detailed-status__action-bar-dropdown'>
           <Dropdown icon='ellipsis-h' iconComponent={MoreHorizIcon} items={menu} direction='left' title={intl.formatMessage(messages.more)} />

@@ -17,6 +17,7 @@ import { me } from 'flavours/glitch/initial_state';
 import { preferencesLink } from 'flavours/glitch/utils/backend_links';
 
 import NavigationPanelSettings from '../../features/local_settings/page/navigation_panel';
+import StatusActionBarSettings from '../../features/local_settings/page/status_action_bar';
 import LocalSettingsPageItem from '../../features/local_settings/page/item';
 import QuickPreferences from '../../features/local_settings/page/quick_preferences';
 
@@ -24,6 +25,7 @@ const messages = defineMessages({
   title: { id: 'navigation_bar.app_settings', defaultMessage: 'App settings' },
   quick_preferences: { id: 'settings.quick_preferences', defaultMessage: 'Quick preferences' },
   navigation_panel: { id: 'settings.navigation_panel', defaultMessage: 'Navigation panel' },
+  status_action_bar: { id: 'settings.status_action_bar', defaultMessage: 'Post action bar' },
   sync: { id: 'settings.sync', defaultMessage: 'Server sync' },
   preferences: { id: 'settings.preferences', defaultMessage: 'Preferences' },
   close: { id: 'settings.close', defaultMessage: 'Close' },
@@ -66,6 +68,7 @@ export const getSharlayanLocalSettingsPage = (index, pages) => {
   if (index === 1) return QuickPreferences;
   if (index === 5) return ConnectedSyncSettingsPage;
   if (index === 6) return NavigationPanelSettings;
+  if (index === 7) return StatusActionBarSettings;
 
   return pages[[0, null, 1, 2, 3][index]];
 };
@@ -138,6 +141,7 @@ export const renderSharlayanLocalSettingsNavigationItems = (slot, { NavigationIt
     : [
       { index: 5, icon: 'cloud', iconComponent: CloudSyncIcon, title: intl.formatMessage(messages.sync) },
       { index: 6, icon: 'list', iconComponent: ListIcon, title: intl.formatMessage(messages.navigation_panel) },
+      { index: 7, icon: 'drag', iconComponent: TuneIcon, title: intl.formatMessage(messages.status_action_bar) },
     ];
 
   return items.map(item => <NavigationItem key={item.index} active={index === item.index} onNavigate={onNavigate} {...item} />);

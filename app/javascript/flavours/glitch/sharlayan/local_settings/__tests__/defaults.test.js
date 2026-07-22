@@ -36,6 +36,12 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('navigation_panel')).toEqual(
       ImmutableMap({ order: ImmutableList(), hidden: ImmutableMap() }),
     );
+    expect(state.get('status_action_bar')).toEqual(
+      ImmutableMap({
+        order: ImmutableList(),
+        hidden: ImmutableMap({ clip: true, quote: true }),
+      }),
+    );
   });
 
   it('preserves upstream defaults untouched', () => {

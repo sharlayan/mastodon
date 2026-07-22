@@ -89,6 +89,7 @@ const renderMenuItem: RenderItemFn<ActionMenuItem> = (item, index, onClick) => (
 interface ReblogButtonProps {
   statusId: string;
   counters?: boolean;
+  forceStandalone?: boolean;
 }
 
 type ActionMenuItemWithIcon = SetRequired<ActionMenuItem, 'icon'>;
@@ -241,6 +242,12 @@ const ReblogMenuItem: FC<ReblogMenuItemProps> = ({ index, item, onClick }) => {
 
 // Switch between the standalone boost button or the
 // "Boost or quote" menu based on the quickBoosting preference
-export const BoostButton = quickBoosting
-  ? StandaloneBoostButton
-  : BoostOrQuoteMenu;
+export const BoostButton: FC<ReblogButtonProps> = ({
+  forceStandalone,
+  ...props
+}) =>
+  quickBoosting || forceStandalone ? (
+    <StandaloneBoostButton {...props} />
+  ) : (
+    <BoostOrQuoteMenu {...props} />
+  );
