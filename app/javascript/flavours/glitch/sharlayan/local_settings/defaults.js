@@ -1,6 +1,7 @@
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import { LOCAL_SETTING_IMPORT } from 'flavours/glitch/actions/local_settings';
+import { STATUS_ACTION_BAR_DEFAULT_HIDDEN } from 'flavours/glitch/features/status_action_bar/items';
 import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 
 export const sharlayanLocalSettingsDefaults = ImmutableMap({
@@ -16,6 +17,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   disable_inline_compose_reply_modal: false,
   inline_compose_tabs: ImmutableList(),
   use_publish_toot: false,
+  content_font_size: 'medium',
   sync_to_server: false,
   synced_at: null,
   media: ImmutableMap({
@@ -24,6 +26,10 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   navigation_panel: ImmutableMap({
     order: ImmutableList(),
     hidden: ImmutableMap(),
+  }),
+  status_action_bar: ImmutableMap({
+    order: ImmutableList(),
+    hidden: ImmutableMap(STATUS_ACTION_BAR_DEFAULT_HIDDEN.map(key => [key, true])),
   }),
 });
 

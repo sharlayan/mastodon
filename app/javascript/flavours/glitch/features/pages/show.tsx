@@ -108,7 +108,9 @@ const PageShow: React.FC<{
   } | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
   const [wideView, setWideView] = useState(false);
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(
+    history.location.state?.pageCategory ?? '',
+  );
   const [password, setPassword] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
@@ -183,6 +185,7 @@ const PageShow: React.FC<{
   const isOwner = !!currentPage && currentPage.account_id === accountId;
   const useBlogView =
     !!currentPage &&
+    !multiColumn &&
     (isOwner || !ignoreOthersPagesView) &&
     currentPage.account.pages_view === 'blog';
   const blogListPosition =
@@ -272,6 +275,20 @@ const PageShow: React.FC<{
   const handleWideViewToggle = useCallback(() => {
     setWideView((value) => !value);
   }, []);
+
+  const handleCategoryChange = useCallback(
+    (nextCategory: string) => {
+      setCategory(nextCategory);
+      history.replace({
+        ...history.location,
+        state: {
+          ...(history.location.state ?? {}),
+          pageCategory: nextCategory || undefined,
+        },
+      });
+    },
+    [history],
+  );
 
   const handleUnlock = useCallback(
     (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -408,16 +425,16 @@ const PageShow: React.FC<{
         (accountPage) => accountPage.category === category,
       )
     : visibleAccountPages;
-  const currentPageIndex = visibleAccountPages.findIndex(
+  const currentPageIndex = filteredAccountPages.findIndex(
     (accountPage) => accountPage.id === id,
   );
   const previousPage =
     currentPageIndex > 0
-      ? (visibleAccountPages[currentPageIndex - 1] ?? null)
+      ? (filteredAccountPages[currentPageIndex - 1] ?? null)
       : null;
   const nextPage =
-    currentPageIndex >= 0 && currentPageIndex < visibleAccountPages.length - 1
-      ? (visibleAccountPages[currentPageIndex + 1] ?? null)
+    currentPageIndex >= 0 && currentPageIndex < filteredAccountPages.length - 1
+      ? (filteredAccountPages[currentPageIndex + 1] ?? null)
       : null;
 
   return (
@@ -445,7 +462,7 @@ const PageShow: React.FC<{
             <PageShowCategoryMenu
               pages={visibleAccountPages}
               value={category}
-              onChange={setCategory}
+              onChange={handleCategoryChange}
             />
             <div
               className={classNames('page-show__content', {
@@ -488,7 +505,7 @@ const PageShow: React.FC<{
               <PageShowCategoryMenu
                 pages={visibleAccountPages}
                 value={category}
-                onChange={setCategory}
+                onChange={handleCategoryChange}
                 position='bottom'
               />
             )}

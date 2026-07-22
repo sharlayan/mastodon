@@ -38,7 +38,7 @@ export const sharlayanModalComponents = {
   CONVERSATION_PARTICIPANTS: () =>
     Promise.resolve({ default: ConversationParticipantsModal }),
   ACCOUNT_SWITCHER: () =>
-    import('@/flavours/glitch/features/account_switcher').then((module) => ({
+    import('@/flavours/glitch/sharlayan/account_switcher/modal').then((module) => ({
       default: module.AccountSwitcherModal,
     })),
   ACCOUNT_EDIT_DECORATION: accountEditModal('DecorationModal'),

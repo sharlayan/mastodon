@@ -332,14 +332,11 @@ RSpec.describe 'Accounts show response' do
       expect(response.parsed_body.at('meta[name="pageBlogViewAccount"]')&.[]('content')).to eq(account.acct)
     end
 
-    it 'adds the target account skin without changing the visitor color scheme' do
-      account.user.settings['skin'] = 'sharlayan'
-      account.user.save!
-
+    it 'exposes the target account skin without changing the visitor color scheme' do
       get "/@#{account.username}/pages/example"
 
-      expect(response.parsed_body.at('meta[name="pageBlogViewSkin"]')&.[]('content')).to eq('sharlayan')
-      expect(response.parsed_body.at('link#page-blog-theme')&.[]('href')).to include('sharlayan')
+      expect(response.parsed_body.at('meta[name="pageBlogViewSkin"]')&.[]('content')).to eq('default')
+      expect(response.parsed_body.at('link#page-blog-theme')).to be_nil
       expect(response.parsed_body.at('html')&.[]('data-color-scheme')).to eq('auto')
     end
 

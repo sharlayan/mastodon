@@ -84,7 +84,7 @@ class Api::V1::PagesController < Api::BaseController
 
   def set_main
     authorize_owner!
-    not_found unless @page.eligible_for_main?
+    return not_found unless @page.eligible_for_main?
 
     Page.transaction do
       current_account.pages.where(is_main: true).update_all(is_main: false)

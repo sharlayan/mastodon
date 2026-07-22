@@ -8,6 +8,9 @@ const localeLoadingSemaphore = new Semaphore(1);
 const upstreamLocaleFiles = import.meta.glob<{
   default: LocaleData['messages'];
 }>(['@/mastodon/locales/*.json']);
+const commonSharlayanLocaleFiles = import.meta.glob<{
+  default: LocaleData['messages'];
+}>(['@/mastodon/locales/sharlayan/*.json']);
 const localeFiles = import.meta.glob<{ default: LocaleData['messages'] }>([
   './*.json',
 ]);
@@ -40,6 +43,19 @@ export async function loadLocale() {
 
     const { default: upstreamLocaleData } = await upstreamLocaleFile();
 
+    const commonSharlayanLocaleFile = Object.hasOwn(
+      commonSharlayanLocaleFiles,
+      `/mastodon/locales/sharlayan/${locale}.json`,
+    )
+      ? commonSharlayanLocaleFiles[`/mastodon/locales/sharlayan/${locale}.json`]
+      : commonSharlayanLocaleFiles['/mastodon/locales/sharlayan/en.json'];
+
+    if (!commonSharlayanLocaleFile)
+      throw new Error('Could not load the common Sharlayan locale JSON file');
+
+    const { default: commonSharlayanLocaleData } =
+      await commonSharlayanLocaleFile();
+
     // If there is no locale file, then fallback to english
     const localeFile = Object.hasOwn(localeFiles, `./${locale}.json`)
       ? localeFiles[`./${locale}.json`]
@@ -64,6 +80,7 @@ export async function loadLocale() {
     setLocale({
       messages: {
         ...upstreamLocaleData,
+        ...commonSharlayanLocaleData,
         ...localeData,
         ...sharlayanLocaleData,
       },

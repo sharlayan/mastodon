@@ -19,7 +19,6 @@ module Sharlayan::UserSettingsExtensions
       settings.setting :visible_reactions, default: 6
       settings.setting :bridge_unlisted_to_bsky, default: false
       settings.setting :auto_quote_from_url, default: false
-      settings.setting :content_font_size, default: 'medium', in: %w(medium large x_large xx_large)
       settings.setting :misskey_muted_words, default: '[]'
       settings.setting :misskey_hard_muted_words, default: '[]'
       settings.setting :drive_keep_original_filename, default: true

@@ -19,9 +19,15 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   RequesterIdentity = Struct.new(:id)
 
   class_attribute :misskey_write_actions, instance_writer: false, default: []
+  class_attribute :misskey_action_permissions, instance_writer: false, default: {}
 
   def self.requires_write_scope(*actions)
     self.misskey_write_actions = (misskey_write_actions + actions.map(&:to_s)).uniq.freeze
+  end
+
+  def self.requires_misskey_permission(permission, *actions)
+    additions = actions.index_with { permission.to_s }.transform_keys(&:to_s)
+    self.misskey_action_permissions = misskey_action_permissions.merge(additions).freeze
   end
 
   rescue_from ArgumentError do |e|
@@ -64,6 +70,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     token = params[:i].presence
     @current_token = token ? Doorkeeper::AccessToken.by_token(token.to_s) : nil
     @current_token = nil unless @current_token&.accessible?
+    @current_token = nil if @current_token && MisskeyCompat::MiAuth.legacy_token?(@current_token)
     @current_token
   end
 
@@ -83,9 +90,19 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     if current_user.nil?
       code = params[:i].present? ? 'AUTHENTICATION_FAILED' : 'CREDENTIAL_REQUIRED'
       render_error('Authentication required', code, 401)
-    elsif !current_token.scopes.exists?(required_token_scope)
+    elsif current_misskey_grant ? !current_misskey_grant.allows?(required_misskey_permission) : !current_token.scopes.exists?(required_token_scope)
       render_error('Insufficient token scope', 'PERMISSION_DENIED', 403)
     end
+  end
+
+  def current_misskey_grant
+    return @current_misskey_grant if defined?(@current_misskey_grant)
+
+    @current_misskey_grant = current_token&.misskey_access_grant
+  end
+
+  def required_misskey_permission
+    misskey_action_permissions[action_name]
   end
 
   def required_token_scope

@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   requires_write_scope :create, :update, :destroy, :move_bulk, :upload_from_url
+  requires_misskey_permission 'read:drive', :attached_notes, :index, :show, :find, :find_by_hash, :check_existence
+  requires_misskey_permission 'write:drive', :create, :update, :destroy, :move_bulk, :upload_from_url
 
   before_action :require_user!, except: :unavailable
   before_action :require_drive_enabled!, only: [:index, :show, :update, :destroy, :find, :find_by_hash, :check_existence, :move_bulk, :upload_from_url]

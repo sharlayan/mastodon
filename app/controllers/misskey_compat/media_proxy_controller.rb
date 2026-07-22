@@ -11,6 +11,7 @@ module MisskeyCompat
       parsed = Addressable::URI.parse(url) if url.present?
 
       return not_found if parsed.nil? || !%w(http https).include?(parsed.scheme) || parsed.host.blank?
+      return not_found unless known_url?(parsed)
 
       expires_in 1.day, public: true
       redirect_to parsed.to_s, allow_other_host: true, status: 302
@@ -19,6 +20,21 @@ module MisskeyCompat
     end
 
     private
+
+    def known_url?(uri)
+      url = uri.to_s
+
+      PreviewCard.exists?(url: url) ||
+        MediaAttachment.where(remote_url: url).or(MediaAttachment.where(thumbnail_remote_url: url)).exists? ||
+        known_instance_favicon?(uri)
+    end
+
+    def known_instance_favicon?(uri)
+      return true if InstanceMetadata.exists?(favicon_url: uri.to_s)
+      return false unless uri.scheme == 'https' && uri.path == '/favicon.ico' && uri.query.blank? && uri.fragment.blank?
+
+      Account.remote.exists?(domain: uri.host)
+    end
 
     def require_misskey_compat_enabled!
       not_found unless Setting.misskey_compat_enabled

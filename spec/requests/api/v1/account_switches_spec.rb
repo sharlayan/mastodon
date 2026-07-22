@@ -22,6 +22,7 @@ RSpec.describe 'AccountSwitches' do
         expect(response).to have_http_status(200)
         expect(response.parsed_body[:children]).to be_empty
         expect(response.parsed_body[:parent]).to be_nil
+        expect(response.parsed_body[:inbound]).to be_empty
       end
     end
 
@@ -51,6 +52,34 @@ RSpec.describe 'AccountSwitches' do
         get '/api/v1/account_switches', headers: write_headers
         expect(response).to have_http_status(403)
       end
+    end
+  end
+
+  describe 'inbound authorizations' do
+    let(:linking_user) { Fabricate(:user) }
+    let!(:auth) { Fabricate(:account_switch_authorization, account: linking_user.account, target_account: user.account) }
+
+    it 'lists accounts that can switch into the current account' do
+      get '/api/v1/account_switches', headers: read_headers
+
+      expect(response.parsed_body[:inbound].map { |item| item.dig(:account, :id) })
+        .to contain_exactly(linking_user.account.id.to_s)
+    end
+
+    it 'allows the target account to revoke access' do
+      delete "/api/v1/account_switches/#{auth.id}/inbound", headers: write_headers
+
+      expect(response).to have_http_status(200)
+      expect(AccountSwitchAuthorization.exists?(auth.id)).to be false
+    end
+
+    it 'does not allow a different target to revoke access' do
+      other_token = Fabricate(:accessible_access_token, resource_owner_id: child_user.id, scopes: 'write:accounts')
+
+      delete "/api/v1/account_switches/#{auth.id}/inbound", headers: { 'Authorization' => "Bearer #{other_token.token}" }
+
+      expect(response).to have_http_status(404)
+      expect(AccountSwitchAuthorization.exists?(auth.id)).to be true
     end
   end
 

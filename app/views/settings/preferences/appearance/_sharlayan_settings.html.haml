@@ -20,16 +20,6 @@
              hint: false,
              sharlayan_only: true
 
-.fields-group
-  = ff.input :content_font_size,
-             collection: %w(medium large x_large xx_large),
-             include_blank: false,
-             label_method: ->(size) { t("content_font_sizes.#{size}") },
-             wrapper: :with_label,
-             hint: t('simple_form.hints.defaults.setting_content_font_size'),
-             label: t('simple_form.labels.defaults.setting_content_font_size'),
-             sharlayan_only: true
-
 %h2= t 'pages.settings.heading'
 
 .fields-group

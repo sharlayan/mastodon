@@ -2,6 +2,7 @@
 
 get '/nodeinfo/2.1', to: 'well_known/node_info#show_two_one', as: :nodeinfo_2_1_schema
 get '/proxy/*any', to: 'misskey_compat/media_proxy#show', format: false
+get '/proxy', to: 'misskey_compat/media_proxy#show', format: false
 get 'user_custom.css', to: 'user_custom_css#show', as: :user_custom_css
 
 get 'miauth/:session', to: 'miauth#show', as: :miauth

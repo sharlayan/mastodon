@@ -1,6 +1,6 @@
 //  Package imports
 import PropTypes from 'prop-types';
-import { PureComponent } from 'react';
+import { PureComponent, useCallback, useState } from 'react';
 
 import { defineMessages, FormattedMessage } from 'react-intl';
 
@@ -9,11 +9,10 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 
 //  Our imports
 import { injectIntl } from '@/flavours/glitch/components/intl';
-import { expandSpoilers } from 'flavours/glitch/initial_state';
+import { apiRequestPut } from 'flavours/glitch/api';
+import { expandSpoilers, setExpandSpoilers } from 'flavours/glitch/initial_state';
 import { getSharlayanLocalSettingsPage, SharlayanLocalSettingsSlot } from 'flavours/glitch/sharlayan/local_settings/registry';
-import { preferenceLink } from 'flavours/glitch/utils/backend_links';
 
-import DeprecatedLocalSettingsPageItem from './deprecated_item';
 import LocalSettingsPageItem from './item';
 
 //  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -34,6 +33,62 @@ const messages = defineMessages({
   private: { id: 'privacy.private.short', defaultMessage: 'Followers' },
   direct: { id: 'privacy.direct.short', defaultMessage: 'Specific people' },
 });
+
+const ContentWarningSettings = ({ intl, onChange, settings }) => {
+  const [autoUnfold, setAutoUnfold] = useState(expandSpoilers);
+
+  const handleAutoUnfoldChange = useCallback((event) => {
+    const value = event.target.checked;
+    setAutoUnfold(value);
+    setExpandSpoilers(value);
+    apiRequestPut('v1/appearance', { expand_content_warnings: value }).catch(() => undefined);
+  }, []);
+
+  return (
+    <div className='glitch local-settings__page content_warnings'>
+      <h1><FormattedMessage id='settings.content_warnings' defaultMessage='Content Warnings' /></h1>
+      <LocalSettingsPageItem
+        settings={settings}
+        item={['content_warnings', 'shared_state']}
+        id='mastodon-settings--content_warnings-shared_state'
+        onChange={onChange}
+      >
+        <FormattedMessage id='settings.content_warnings_shared_state' defaultMessage='Show/hide content of all copies at once' />
+        <span className='hint'><FormattedMessage id='settings.content_warnings_shared_state_hint' defaultMessage='Reproduce upstream Mastodon behavior by having the Content Warning button affect all copies of a post at once. This will prevent automatic collapsing of any copy of a toot with unfolded CW' /></span>
+      </LocalSettingsPageItem>
+      <section>
+        <h2><FormattedMessage id='settings.content_warnings_unfold_opts' defaultMessage='Auto-unfolding options' /></h2>
+        <div className='glitch local-settings__page__item boolean'>
+          <label htmlFor='mastodon-settings--content_warnings-auto_unfold'>
+            <input
+              id='mastodon-settings--content_warnings-auto_unfold'
+              type='checkbox'
+              checked={autoUnfold}
+              onChange={handleAutoUnfoldChange}
+            />
+            <FormattedMessage id='settings.enable_content_warnings_auto_unfold' defaultMessage='Automatically unfold content-warnings' />
+          </label>
+        </div>
+        <LocalSettingsPageItem
+          settings={settings}
+          item={['content_warnings', 'filter']}
+          id='mastodon-settings--content_warnings-auto_unfold-filter'
+          onChange={onChange}
+          placeholder={intl.formatMessage(messages.regexp)}
+          disabled={!autoUnfold}
+        >
+          <FormattedMessage id='settings.content_warnings_filter' defaultMessage='Content warnings to not automatically unfold:' />
+        </LocalSettingsPageItem>
+      </section>
+    </div>
+  );
+};
+
+ContentWarningSettings.propTypes = {
+  intl: PropTypes.object.isRequired,
+  onChange: PropTypes.func.isRequired,
+  settings: ImmutablePropTypes.map.isRequired,
+};
 
 class LocalSettingsPage extends PureComponent {
 
@@ -263,55 +318,7 @@ class LocalSettingsPage extends PureComponent {
         </LocalSettingsPageItem>
       </div>
     ),
-    ({ intl, onChange, settings }) => (
-      <div className='glitch local-settings__page content_warnings'>
-        <h1><FormattedMessage id='settings.content_warnings' defaultMessage='Content Warnings' /></h1>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['content_warnings', 'shared_state']}
-          id='mastodon-settings--content_warnings-shared_state'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.content_warnings_shared_state' defaultMessage='Show/hide content of all copies at once' />
-          <span className='hint'><FormattedMessage id='settings.content_warnings_shared_state_hint' defaultMessage='Reproduce upstream Mastodon behavior by having the Content Warning button affect all copies of a post at once. This will prevent automatic collapsing of any copy of a toot with unfolded CW' /></span>
-        </LocalSettingsPageItem>
-        <section>
-          <h2><FormattedMessage id='settings.content_warnings_unfold_opts' defaultMessage='Auto-unfolding options' /></h2>
-          <DeprecatedLocalSettingsPageItem
-            id='mastodon-settings--content_warnings-auto_unfold'
-            value={expandSpoilers}
-          >
-            <FormattedMessage id='settings.enable_content_warnings_auto_unfold' defaultMessage='Automatically unfold content-warnings' />
-            <span className='hint'>
-              <FormattedMessage
-                id='settings.deprecated_setting'
-                defaultMessage="This setting is now controlled from Mastodon's {settings_page_link}"
-                values={{
-                  settings_page_link: (
-                    <a href={preferenceLink('user_setting_expand_spoilers')}>
-                      <FormattedMessage
-                        id='settings.shared_settings_link'
-                        defaultMessage='user preferences'
-                      />
-                    </a>
-                  ),
-                }}
-              />
-            </span>
-          </DeprecatedLocalSettingsPageItem>
-          <LocalSettingsPageItem
-            settings={settings}
-            item={['content_warnings', 'filter']}
-            id='mastodon-settings--content_warnings-auto_unfold'
-            onChange={onChange}
-            placeholder={intl.formatMessage(messages.regexp)}
-            disabled={!expandSpoilers}
-          >
-            <FormattedMessage id='settings.content_warnings_filter' defaultMessage='Content warnings to not automatically unfold:' />
-          </LocalSettingsPageItem>
-        </section>
-      </div>
-    ),
+    ContentWarningSettings,
     ({ intl, onChange, settings }) => (
       <div className='glitch local-settings__page media'>
         <h1><FormattedMessage id='settings.media' defaultMessage='Media' /></h1>

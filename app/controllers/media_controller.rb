@@ -19,8 +19,7 @@ class MediaController < ApplicationController
   end
 
   def show
-    target = @media_attachment.drive_pointer? ? full_media_attachment_url(@media_attachment) : @media_attachment.file.url(:original)
-    redirect_to target, allow_other_host: true
+    redirect_to full_media_attachment_url(@media_attachment, :original, include_filename: false), allow_other_host: true
   end
 
   def player; end

@@ -30,7 +30,7 @@ class BoardAnnouncement < ApplicationRecord
   scope :banner, -> { where(display: 'banner') }
   scope :for_account, lambda { |account|
     where(for_existing_users: false)
-      .or(where(for_existing_users: true).where("#{coalesced_timestamp} >= ?", account.created_at))
+      .or(where(for_existing_users: true).where(coalesced_timestamp.gteq(account.created_at)))
   }
 
   belongs_to :account, optional: true
@@ -134,7 +134,7 @@ class BoardAnnouncement < ApplicationRecord
         EXISTS(
           SELECT 1
           FROM board_announcement_reactions inner_reactions
-          WHERE inner_reactions.account_id = #{account.id}
+          WHERE inner_reactions.account_id = #{account.id.to_i}
             AND inner_reactions.board_announcement_id = board_announcement_reactions.board_announcement_id
             AND inner_reactions.name = board_announcement_reactions.name
         ) AS me

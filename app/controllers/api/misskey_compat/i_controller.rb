@@ -6,6 +6,8 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   MAX_MUTED_EMOJIS = 1_000
 
   requires_write_scope :update, :read_announcement, :pin, :unpin
+  requires_misskey_permission 'read:account', :show
+  requires_misskey_permission 'write:account', :update, :read_announcement, :pin, :unpin
 
   before_action :require_user!
 

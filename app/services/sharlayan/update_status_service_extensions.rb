@@ -20,7 +20,10 @@ module Sharlayan::UpdateStatusServiceExtensions
   end
 
   def sensitive_drive_media?
-    media_attachments = @next_media_attachments || @status.ordered_media_attachments.includes(:drive_file)
+    media_attachments = (@next_media_attachments || @status.ordered_media_attachments).to_a
+    return false if media_attachments.empty?
+
+    ActiveRecord::Associations::Preloader.new(records: media_attachments, associations: :drive_file).call
     media_attachments.any? { |media| media.drive_file&.sensitive? }
   end
 end

@@ -227,6 +227,9 @@ export const DetailedStatus: React.FC<{
     status.getIn(['translation', 'language']) || status.get('language');
 
   const instanceInfo = status.get('instance_metadata');
+  const statusDomain =
+    instanceInfo?.get('domain') ||
+    (status.getIn(['account', 'acct']) as string).split('@')[1];
 
   if (pictureInPicture.get('inUse')) {
     media = <PictureInPicturePlaceholder aspectRatio={attachmentAspectRatio} />;
@@ -489,6 +492,7 @@ export const DetailedStatus: React.FC<{
           },
         )}
         data-status-by={status.getIn(['account', 'acct'])}
+        data-domain={statusDomain || undefined}
       >
         <Permalink
           to={`/@${status.getIn(['account', 'acct'])}`}

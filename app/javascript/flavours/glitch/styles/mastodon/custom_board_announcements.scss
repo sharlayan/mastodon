@@ -167,7 +167,7 @@
 
     pre,
     code {
-      font-family: $font-monospace, monospace;
+      font-family: var(--font-monospace);
       background: var(--color-bg-secondary);
       border-radius: 4px;
     }

@@ -6,6 +6,9 @@ class Sharlayan::PageBackupService
   MANIFEST = 'pages.json'
   MAX_ARCHIVE_SIZE = 100.megabytes
   MAX_MEDIA_SIZE = 100.megabytes
+  MAX_MANIFEST_SIZE = 5.megabytes
+  MAX_ARCHIVE_ENTRIES = 10_000
+  MAX_UNCOMPRESSED_SIZE = MAX_MANIFEST_SIZE + MAX_MEDIA_SIZE
 
   class InvalidArchive < StandardError; end
 
@@ -36,7 +39,8 @@ class Sharlayan::PageBackupService
     raise InvalidArchive if upload.size > MAX_ARCHIVE_SIZE
 
     Zip::File.open(upload.path) do |zip|
-      data = JSON.parse(zip.read(MANIFEST))
+      manifest_entry = validate_archive!(zip)
+      data = JSON.parse(read_entry(manifest_entry, MAX_MANIFEST_SIZE))
       validate_manifest!(data)
 
       ApplicationRecord.transaction do
@@ -98,6 +102,29 @@ class Sharlayan::PageBackupService
     raise InvalidArchive unless data['format'] == FORMAT && data['version'] == VERSION
     raise InvalidArchive unless data['pages'].is_a?(Array) && data['media'].is_a?(Array)
     raise InvalidArchive if data['pages'].size > Page::PER_ACCOUNT_LIMIT
+    raise InvalidArchive if data['media'].size > MAX_ARCHIVE_ENTRIES - 1
+  end
+
+  def validate_archive!(zip)
+    entries = zip.entries
+    raise InvalidArchive if entries.size > MAX_ARCHIVE_ENTRIES
+    raise InvalidArchive if entries.sum(&:size) > MAX_UNCOMPRESSED_SIZE
+
+    manifest_entries = entries.select { |entry| entry.name == MANIFEST && !entry.directory? }
+    raise InvalidArchive unless manifest_entries.one?
+
+    manifest_entries.first
+  end
+
+  def read_entry(entry, limit)
+    raise InvalidArchive if entry.size > limit
+
+    entry.get_input_stream do |input|
+      data = input.read(limit + 1)
+      raise InvalidArchive if data.bytesize > limit || input.read(1).present?
+
+      data
+    end
   end
 
   def import_media!(zip, media)
@@ -107,18 +134,35 @@ class Sharlayan::PageBackupService
       path = attributes.fetch('path')
       entry = zip.find_entry(path)
       raise InvalidArchive if entry.nil? || !path.start_with?('page_media/') || entry.directory?
-
-      total_size += entry.size
-      raise InvalidArchive if total_size > MAX_MEDIA_SIZE
+      raise InvalidArchive if entry.size > MAX_MEDIA_SIZE - total_size
 
       Tempfile.create(['page-media', File.extname(path)]) do |file|
-        entry.get_input_stream { |input| IO.copy_stream(input, file) }
+        file.binmode
+        total_size += copy_entry(entry, file, MAX_MEDIA_SIZE - total_size)
         file.rewind
         upload = ActionDispatch::Http::UploadedFile.new(tempfile: file, filename: File.basename(path), type: attributes['content_type'])
         attachment = @account.media_attachments.create!(file: upload, description: attributes['description'])
         result[attributes.fetch('id').to_s] = attachment.id.to_s
       end
     end
+  end
+
+  def copy_entry(entry, output, limit)
+    copied = 0
+
+    entry.get_input_stream do |input|
+      loop do
+        chunk = input.read(64.kilobytes)
+        break if chunk.blank?
+
+        copied += chunk.bytesize
+        raise InvalidArchive if copied > limit
+
+        output.write(chunk)
+      end
+    end
+
+    copied
   end
 
   def import_page!(attributes, media_ids)

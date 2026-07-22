@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
   requires_write_scope :create, :destroy, :renote_create, :renote_destroy
+  requires_misskey_permission 'read:mutes', :index, :renote_list
+  requires_misskey_permission 'write:mutes', :create, :destroy, :renote_create, :renote_destroy
 
   before_action :require_user!
   before_action :set_target!, except: [:index, :renote_list]

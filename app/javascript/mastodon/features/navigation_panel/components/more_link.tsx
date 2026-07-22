@@ -9,6 +9,7 @@ import { Icon } from 'mastodon/components/icon';
 import { useIdentity } from 'mastodon/identity_context';
 import type { MenuItem } from 'mastodon/models/dropdown_menu';
 import { canManageReports, canViewAdminDashboard } from 'mastodon/permissions';
+import { accountSwitcherMenuItem } from 'mastodon/sharlayan/account_switcher/more_menu';
 import { useAppDispatch } from 'mastodon/store';
 
 const messages = defineMessages({
@@ -25,10 +26,6 @@ const messages = defineMessages({
   },
   moderation: { id: 'navigation_bar.moderation', defaultMessage: 'Moderation' },
   logout: { id: 'navigation_bar.logout', defaultMessage: 'Logout' },
-  switchAccount: {
-    id: 'navigation_bar.switch_account',
-    defaultMessage: 'Switch account',
-  },
   automatedDeletion: {
     id: 'navigation_bar.automated_deletion',
     defaultMessage: 'Automated post deletion',
@@ -103,20 +100,15 @@ export const MoreLink: React.FC = () => {
       });
     }
 
-    const handleSwitchAccountClick = () => {
-      dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} }));
-    };
-
     const handleLogoutClick = () => {
       dispatch(openModal({ modalType: 'CONFIRM_LOG_OUT', modalProps: {} }));
     };
 
     arr.push(
       null,
-      {
-        text: intl.formatMessage(messages.switchAccount),
-        action: handleSwitchAccountClick,
-      },
+      accountSwitcherMenuItem(intl.formatMessage, () =>
+        dispatch(openModal({ modalType: 'ACCOUNT_SWITCHER', modalProps: {} })),
+      ),
       {
         text: intl.formatMessage(messages.logout),
         action: handleLogoutClick,

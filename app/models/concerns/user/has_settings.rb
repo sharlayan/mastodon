@@ -71,10 +71,6 @@ module User::HasSettings
     settings['web.use_system_font']
   end
 
-  def setting_content_font_size
-    settings['content_font_size']
-  end
-
   def setting_use_server_css
     settings['web.use_server_css']
   end

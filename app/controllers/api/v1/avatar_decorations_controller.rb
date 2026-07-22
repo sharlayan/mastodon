@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::AvatarDecorationsController < Api::BaseController
+  before_action -> { doorkeeper_authorize! :write, :'write:mutes' }, only: [:create_mute, :destroy_mute]
   before_action :require_user!, only: [:create_mute, :destroy_mute]
   before_action :require_feature_enabled!
 

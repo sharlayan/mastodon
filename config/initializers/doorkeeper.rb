@@ -71,6 +71,7 @@ Doorkeeper.configure do
   # https://github.com/doorkeeper-gem/doorkeeper/wiki/Using-Scopes
   default_scopes  :read
   optional_scopes :profile,
+                  :misskey,
                   :write,
                   :'write:accounts',
                   :'write:blocks',

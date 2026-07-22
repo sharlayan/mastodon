@@ -2,6 +2,10 @@
 
 class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
   requires_write_scope :create, :update, :destroy, :add_note, :remove_note, :favorite, :unfavorite
+  requires_misskey_permission 'read:account', :index
+  requires_misskey_permission 'write:account', :create, :update, :destroy, :add_note, :remove_note
+  requires_misskey_permission 'read:clip-favorite', :my_favorites
+  requires_misskey_permission 'write:clip-favorite', :favorite, :unfavorite
 
   OWNER_ACTIONS = %i(index create update destroy add_note remove_note my_favorites favorite unfavorite).freeze
 

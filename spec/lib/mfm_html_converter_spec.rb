@@ -121,6 +121,18 @@ RSpec.describe MfmHtmlConverter do
       expect(result).to include('<a href="https://example.com">link</a>')
     end
 
+    it 'does not rewrite MFM syntax carried inside an attribute value' do
+      html = '<p><a href="https://example.com/$[center.x autofocus onfocus=alert(1) z]" rel="nofollow noopener" target="_blank">link</a></p>'
+
+      expect(described_class.convert_in_html(html)).to eq(html)
+    end
+
+    it 'does not rewrite emphasis syntax carried inside an attribute value' do
+      html = '<p><a href="https://example.com/**a**" rel="nofollow noopener">link</a></p>'
+
+      expect(described_class.convert_in_html(html)).to eq(html)
+    end
+
     it 'returns blank input as-is' do
       expect(described_class.convert_in_html('')).to be_blank
       expect(described_class.convert_in_html(nil)).to be_blank

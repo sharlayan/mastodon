@@ -18,6 +18,8 @@ module MfmHtmlConverter
   # Matches custom emoji shortcodes like :emoji_name: (alphanumeric and underscores only)
   EMOJI_SHORTCODE_PATTERN = /:([a-zA-Z0-9_]+):/
 
+  HTML_TAG_PATTERN = /<[^>]*>/
+
   def self.convert(text)
     return '' if text.blank?
 
@@ -55,7 +57,7 @@ module MfmHtmlConverter
   def self.convert_in_html(html)
     return html if html.blank?
 
-    result = html.dup
+    tag_map, result = extract_tags(html)
 
     emoji_map, result = extract_emojis(result)
 
@@ -72,7 +74,25 @@ module MfmHtmlConverter
       break if result == prev
     end
 
-    restore_emojis(result, emoji_map)
+    restore_tags(restore_emojis(result, emoji_map), tag_map)
+  end
+
+  # Masks HTML tags so MFM patterns can only match inside text nodes
+  def self.extract_tags(html)
+    tag_map = {}
+    result = html.gsub(HTML_TAG_PATTERN) do |match|
+      placeholder = "\x00t#{tag_map.size}\x00"
+      tag_map[placeholder] = match
+      placeholder
+    end
+    [tag_map, result]
+  end
+
+  def self.restore_tags(text, tag_map)
+    return text if tag_map.empty?
+
+    tag_map.each { |placeholder, original| text = text.gsub(placeholder, original) }
+    text
   end
 
   def self.extract_emojis(text)

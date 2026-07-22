@@ -29,6 +29,8 @@ module Sharlayan::AdminSettingsExtensions
     instance_metadata_enabled
     antenna_enabled
     misskey_compat_enabled
+    misskey_compat_signin_flow_enabled
+    misskey_compat_signin_flow_allowed_origins
     online_status_enabled
     soft_hide_deletion
     drive_enabled
@@ -65,6 +67,7 @@ module Sharlayan::AdminSettingsExtensions
     instance_metadata_enabled
     antenna_enabled
     misskey_compat_enabled
+    misskey_compat_signin_flow_enabled
     online_status_enabled
     soft_hide_deletion
     drive_enabled
@@ -77,6 +80,7 @@ module Sharlayan::AdminSettingsExtensions
     validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
     validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }
     validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }
+    validate :validate_misskey_signin_origins, if: -> { defined?(@misskey_compat_signin_flow_allowed_origins) }
   end
 
   private
@@ -86,5 +90,12 @@ module Sharlayan::AdminSettingsExtensions
     rejected = extensions.grep_v(DriveFile::EXTENSION_PATTERN) + (extensions & DriveFile::FORBIDDEN_EXTENSIONS)
 
     errors.add(:drive_allowed_extensions, I18n.t('admin.settings.drive.allowed_extensions_invalid', extensions: rejected.uniq.join(', '))) if rejected.any?
+  end
+
+  def validate_misskey_signin_origins
+    rejected = MisskeyCompat::SigninOriginPolicy.invalid_entries(@misskey_compat_signin_flow_allowed_origins)
+    return if rejected.empty?
+
+    errors.add(:misskey_compat_signin_flow_allowed_origins, I18n.t('admin.settings.misskey_compat.signin_flow_allowed_origins_invalid', origins: rejected.join(', ')))
   end
 end

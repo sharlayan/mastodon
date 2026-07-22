@@ -1,4 +1,3 @@
-import { accountSwitchesReducer } from '../../reducers/account_switches';
 import antennas from '../../reducers/antennas';
 import { boardAnnouncementsReducer } from '../../reducers/board_announcements';
 import { circlesReducer } from '../../reducers/circles';
@@ -8,6 +7,7 @@ import directCompose from '../../reducers/direct_compose';
 import favoriteEmojis from '../../reducers/favorite_emojis';
 import { reactionMutesReducer } from '../../reducers/reaction_mutes';
 import scheduledStatuses from '../../reducers/scheduled_statuses';
+import { accountSwitchesReducer } from '../account_switcher/reducer';
 
 export const sharlayanReducers = {
   accountSwitches: accountSwitchesReducer,

@@ -15,6 +15,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('inline_compose_timelines')).toBe(false);
     expect(state.get('disable_inline_compose_reply_modal')).toBe(false);
     expect(state.get('use_publish_toot')).toBe(false);
+    expect(state.get('content_font_size')).toBe('medium');
     expect(state.get('hide_compose_language')).toBe(false);
     expect(state.get('hide_mfm_compose_hint')).toBe(false);
     expect(state.get('show_clip_choice')).toBe(true);
@@ -34,6 +35,12 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.getIn(['media', 'pop_in_position'])).toBe('right');
     expect(state.get('navigation_panel')).toEqual(
       ImmutableMap({ order: ImmutableList(), hidden: ImmutableMap() }),
+    );
+    expect(state.get('status_action_bar')).toEqual(
+      ImmutableMap({
+        order: ImmutableList(),
+        hidden: ImmutableMap({ clip: true, quote: true }),
+      }),
     );
   });
 

@@ -13,7 +13,7 @@ import ErrorBoundary from 'flavours/glitch/components/error_boundary';
 import { FocusTargetProvider } from '@/flavours/glitch/components/navigation_focus_target';
 import { Router } from 'flavours/glitch/components/router';
 import UI from 'flavours/glitch/features/ui';
-import { LinkedNotificationsPoller } from 'flavours/glitch/features/ui/components/linked_notifications_poller';
+import { LinkedNotificationsPoller } from 'flavours/glitch/sharlayan/account_switcher/linked_notifications_poller';
 import { IdentityContext, createIdentityContext } from 'flavours/glitch/identity_context';
 import { initialState, title as siteTitle } from 'flavours/glitch/initial_state';
 import { IntlProvider } from 'flavours/glitch/locales';

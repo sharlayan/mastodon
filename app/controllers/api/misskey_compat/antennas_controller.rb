@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseController
   requires_write_scope :create, :update, :destroy
+  requires_misskey_permission 'read:account', :index, :show, :notes
+  requires_misskey_permission 'write:account', :create, :update, :destroy
 
   include Redisable
 

@@ -18,7 +18,7 @@ module Sharlayan::REST::Status::InstanceMetadata
         return default_metadata(object.account.domain)
       end
 
-      InstanceMetadataUpdateWorker.perform_async(object.account.domain) if (metadata.software.blank? && metadata.metadata_updated_at.nil?) || metadata.metadata_updated_at < 1.day.ago
+      InstanceMetadataUpdateWorker.perform_async(object.account.domain) if metadata.metadata_needs_update?
 
       {
         domain: metadata.domain,

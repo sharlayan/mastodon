@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::FavoriteEmojisController < Api::BaseController
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: :index
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: :index
   before_action :require_user!
   before_action :set_favorite_emoji, only: :destroy
 

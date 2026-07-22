@@ -8,10 +8,8 @@
   background: var(--color-bg-primary);
   backdrop-filter: $backdrop-blur-filter;
   border: 1px solid var(--color-border-primary);
-  height: 80vh;
-  width: 80vw;
-  max-width: 740px;
-  max-height: 450px;
+  width: min(92vw, 800px);
+  height: min(85vh, 600px);
   overflow: hidden;
 
   label,
@@ -23,30 +21,33 @@
   .boolean label,
   .radio_buttons label {
     position: relative;
-    padding-inline-start: 28px;
-    padding-top: 3px;
+    min-height: 22px;
+    padding-inline-start: 30px;
+    line-height: 1.5;
 
     input {
       position: absolute;
       inset-inline-start: 0;
-      top: 0;
+      top: 3px;
     }
   }
 
   span.hint {
     display: block;
+    margin-top: 2px;
     color: var(--color-text-secondary);
+    line-height: 1.45;
   }
 
   h1 {
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 500;
     line-height: 24px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   h2 {
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 500;
     line-height: 20px;
     margin-top: 20px;
@@ -152,7 +153,8 @@
 
 .glitch.local-settings__navigation {
   background: var(--color-bg-secondary);
-  width: 212px;
+  width: 196px;
+  flex: 0 0 196px;
   font-size: 15px;
   line-height: 20px;
   overflow-y: auto;
@@ -160,14 +162,20 @@
 
 .glitch.local-settings__page {
   display: block;
-  flex: auto;
-  padding: 15px 20px;
-  width: 360px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 20px 28px 28px;
   overflow-y: auto;
 }
 
 .glitch.local-settings__page__item {
-  margin-bottom: 2px;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border-primary);
+
+  &:last-child {
+    border: unset;
+  }
 
   .hint a {
     color: var(--color-text-secondary);
@@ -184,8 +192,48 @@
 
 .glitch.local-settings__page__item.string,
 .glitch.local-settings__page__item.radio_buttons {
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin: 8px 0;
+  padding: 10px 0 14px;
+
+  label + label {
+    margin-top: 6px;
+  }
+}
+
+.glitch.local-settings__page__item.string {
+  label > p + p {
+    margin-top: 8px;
+  }
+
+  input[type='text'] {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 16px;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 4px;
+    outline: var(--outline-focus-default);
+    outline-color: transparent;
+    outline-offset: -2px;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+    transition: outline-color 0.15s ease-out;
+
+    &:focus {
+      outline: var(--outline-focus-default);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+
+    @media screen and (width <= 600px) {
+      font-size: 16px;
+    }
+  }
 }
 
 .local-settings__navigation-panel {
@@ -249,8 +297,14 @@
 }
 
 @media screen and (width <= 630px) {
+  .glitch.local-settings {
+    width: min(96vw, 880px);
+    height: min(90vh, 680px);
+  }
+
   .glitch.local-settings__navigation {
     width: 40px;
+    flex-basis: 40px;
     flex-shrink: 0;
   }
 
@@ -260,6 +314,10 @@
     span:last-of-type {
       display: none;
     }
+  }
+
+  .glitch.local-settings__page {
+    padding: 16px 18px 24px;
   }
 }
 

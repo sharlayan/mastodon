@@ -305,6 +305,11 @@ en:
           reactions, and render MFM. Turning this on makes those apps detect this
           host as Misskey. Leave disabled to keep standard Mastodon behavior.
         title: Misskey-compatible API
+        signin_flow_enabled: Enable same-origin Misskey web sign-in
+        signin_flow_enabled_hint: Allow signin-flow for a Misskey web frontend served from this server or an explicitly allowed origin.
+        signin_flow_allowed_origins: Additional allowed sign-in origins
+        signin_flow_allowed_origins_hint: Exact HTTPS origins, separated by spaces or commas. Paths, wildcards, and implicit subdomains are not allowed.
+        signin_flow_allowed_origins_invalid: "Invalid HTTPS origins: %{origins}"
       online_status:
         enabled: Enable online status indicators
         enabled_hint: When enabled, users who opt in can share whether they are online,
@@ -390,11 +395,6 @@ en:
   clips:
     errors:
       limit: You have reached the maximum number of clips
-  content_font_sizes:
-    large: Large
-    medium: Medium
-    x_large: Extra large
-    xx_large: Huge
   custom_css:
     disabled_by_admin: The server administrator has disabled user custom CSS. You
       can still choose whether to apply the server-wide styles above.
@@ -481,6 +481,8 @@ en:
       invalid_password: The password is incorrect
       limit: You have reached the maximum number of pages
       own_page: You cannot like your own page
+  pagination:
+    truncate_html: "&hellip;"
   settings:
     avatar_decorations: Avatar Decorations
     custom_css: Custom CSS
@@ -501,8 +503,6 @@ en:
         setting_bridge_unlisted_to_bsky: Your unlisted posts stay quiet on the fediverse,
           but are delivered to the Bluesky bridge (bsky.brid.gy) as public so they
           get bridged to Bluesky. Requires following the bridge account.
-        setting_content_font_size: Adjust the font size of post bodies only. Other
-          interface text is unaffected.
         setting_custom_emoji_size: Display Original size of Long Horizontally Custom
           Emoji
         setting_avatar_decoration_shape: Force the profile image shape while an avatar
@@ -557,7 +557,6 @@ en:
         setting_auto_quote_from_url: Automatically quote fediverse post links in your
           posts
         setting_bridge_unlisted_to_bsky: Bridge unlisted posts to Bluesky as public
-        setting_content_font_size: Post text size
         setting_custom_emoji_size: Show Origin Size Custom Emoji
         setting_default_quote_policy_private: When set to followers only, other people
           cannot quote your post.

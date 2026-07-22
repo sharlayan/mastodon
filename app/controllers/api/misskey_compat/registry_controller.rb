@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseController
   requires_write_scope :set, :remove
+  requires_misskey_permission 'read:account', :get_all, :get, :get_detail, :keys, :keys_with_type, :scopes_with_domain
+  requires_misskey_permission 'write:account', :set, :remove
 
   before_action :require_user!
 

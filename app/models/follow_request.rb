@@ -34,7 +34,8 @@ class FollowRequest < ApplicationRecord
   def authorize!
     follow = account.follow!(target_account, reblogs: show_reblogs, notify: notify, languages: languages, uri: uri, bypass_limit: true)
 
-    follow.update_column(:follow_message, target_account.followed_message) if target_account.followed_message.present?
+    follow_message_service = Sharlayan::FollowMessageService.new
+    follow_message_service.store(follow, target_account.followed_message)
 
     if account.local?
       ListAccount.where(follow_request: self).update_all(follow_request_id: nil, follow_id: follow.id)
@@ -43,7 +44,7 @@ class FollowRequest < ApplicationRecord
         [target_account.id, list_id, 'list']
       end
 
-      LocalNotificationWorker.perform_async(account.id, follow.id, 'Follow', 'follow_accepted') if follow.follow_message.present?
+      follow_message_service.notify(follow, recipient: account)
     end
 
     destroy!

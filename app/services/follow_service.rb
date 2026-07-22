@@ -85,10 +85,11 @@ class FollowService < BaseService
   def direct_follow!
     follow = @source_account.follow!(@target_account, **follow_options.merge(rate_limit: @options[:with_rate_limit], bypass_limit: @options[:bypass_limit]))
 
-    follow.update_column(:follow_message, @target_account.followed_message) if @target_account.followed_message.present?
+    follow_message_service = Sharlayan::FollowMessageService.new
+    follow_message_service.store(follow, @target_account.followed_message)
 
     LocalNotificationWorker.perform_async(@target_account.id, follow.id, follow.class.name, 'follow')
-    LocalNotificationWorker.perform_async(@source_account.id, follow.id, follow.class.name, 'follow_accepted') if follow.follow_message.present?
+    follow_message_service.notify(follow, recipient: @source_account)
     MergeWorker.perform_async(@target_account.id, @source_account.id, 'home')
     MergeWorker.push_bulk(@source_account.owned_lists.with_list_account(@target_account).pluck(:id)) do |list_id|
       [@target_account.id, list_id, 'list']

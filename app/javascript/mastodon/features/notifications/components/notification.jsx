@@ -24,6 +24,7 @@ import { injectIntl } from '@/mastodon/components/intl';
 import { Hotkeys } from 'mastodon/components/hotkeys';
 import { StatusQuoteManager } from 'mastodon/components/status_quoted';
 import { me } from 'mastodon/initial_state';
+import { SharlayanFollowAcceptedNotification } from 'mastodon/sharlayan/notifications/follow_accepted';
 import { WithRouterPropTypes } from 'mastodon/utils/react_router';
 
 import FollowRequestContainer from '../containers/follow_request_container';
@@ -35,7 +36,6 @@ import Report from './report';
 const messages = defineMessages({
   favourite: { id: 'notification.favourite', defaultMessage: '{name} favorited your post' },
   follow: { id: 'notification.follow', defaultMessage: '{name} followed you' },
-  followAccepted: { id: 'notification.follow_accepted', defaultMessage: '{name} accepted your follow' },
   ownPoll: { id: 'notification.own_poll', defaultMessage: 'Your poll has ended' },
   poll: { id: 'notification.poll', defaultMessage: 'A poll you voted in has ended' },
   reblog: { id: 'notification.reblog', defaultMessage: '{name} boosted your post' },
@@ -145,29 +145,8 @@ class Notification extends ImmutablePureComponent {
   }
 
   renderFollowAccepted (notification, account, link) {
-    const { intl, unread } = this.props;
-    const followMessage = notification.get('follow_message');
-
     return (
-      <Hotkeys handlers={this.getHandlers()}>
-        <div className={classNames('notification notification-follow-accepted focusable', { unread })} tabIndex={0} aria-label={notificationForScreenReader(intl, intl.formatMessage(messages.followAccepted, { name: account.get('acct') }), notification.get('created_at'))}>
-          <div className='notification__message'>
-            <Icon id='user-plus' icon={PersonAddIcon} />
-
-            <span title={notification.get('created_at')}>
-              <FormattedMessage id='notification.follow_accepted' defaultMessage='{name} accepted your follow' values={{ name: link }} />
-            </span>
-          </div>
-
-          <Account id={account.get('id')} hidden={this.props.hidden} />
-
-          {followMessage && (
-            <div className='notification__follow-message'>
-              {followMessage}
-            </div>
-          )}
-        </div>
-      </Hotkeys>
+      <SharlayanFollowAcceptedNotification account={account} handlers={this.getHandlers()} hidden={this.props.hidden} link={link} notification={notification} unread={this.props.unread} />
     );
   }
 

@@ -7,6 +7,10 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   OWNER_ACTIONS = %i(index likes create update destroy like unlike).freeze
 
   requires_write_scope :create, :update, :destroy, :like, :unlike
+  requires_misskey_permission 'read:pages', :index
+  requires_misskey_permission 'read:page-likes', :likes
+  requires_misskey_permission 'write:pages', :create, :update, :destroy
+  requires_misskey_permission 'write:page-likes', :like, :unlike
 
   before_action :require_pages_enabled!
   before_action :require_user!, only: OWNER_ACTIONS

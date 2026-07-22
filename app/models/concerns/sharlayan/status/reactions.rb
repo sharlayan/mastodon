@@ -75,50 +75,10 @@ module Sharlayan::Status::Reactions
   end
 
   def reactions(account_id = nil)
-    grouped_ordered_status_reactions(account_id).select(
-      [:status_id, :name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
-        values << value_for_reaction_me_column(account_id)
-      end
-    ).to_a.tap do |records|
-      ActiveRecord::Associations::Preloader.new(records: records, associations: { custom_emoji: :local_counterpart }).call
-    end
+    self.class.reaction_groups_map([id], account_id)[id] || []
   end
 
   def reactions_count
     status_stat&.reactions_count || 0
-  end
-
-  private
-
-  def grouped_ordered_status_reactions(account_id = nil)
-    scope = status_reactions
-
-    if account_id.present?
-      excluded_account_ids = Account.find_by(id: account_id)&.excluded_from_timeline_account_ids
-      scope = scope.where.not(account_id: excluded_account_ids) if excluded_account_ids.present?
-    end
-
-    scope
-      .group(:status_id, :name, :custom_emoji_id)
-      .order(Arel.sql('MIN(created_at)').asc)
-  end
-
-  def value_for_reaction_me_column(account_id)
-    return 'FALSE AS me' if account_id.nil?
-
-    <<~SQL.squish
-      EXISTS(
-        SELECT 1
-        FROM status_reactions inner_reactions
-        WHERE inner_reactions.account_id = #{account_id.to_i}
-          AND inner_reactions.status_id = status_reactions.status_id
-          AND inner_reactions.name = status_reactions.name
-          AND (
-            inner_reactions.custom_emoji_id = status_reactions.custom_emoji_id
-            OR inner_reactions.custom_emoji_id IS NULL
-              AND status_reactions.custom_emoji_id IS NULL
-          )
-      ) AS me
-    SQL
   end
 end

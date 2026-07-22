@@ -10,6 +10,7 @@ import { connect } from 'react-redux';
 
 import BookmarkIcon from '@/material-icons/400-24px/bookmark-fill.svg?react';
 import BookmarkBorderIcon from '@/material-icons/400-24px/bookmark.svg?react';
+import AttachFileIcon from '@/material-icons/400-24px/attach_file.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import ReplyIcon from '@/material-icons/400-24px/reply.svg?react';
 import ReplyAllIcon from '@/material-icons/400-24px/reply_all.svg?react';
@@ -32,6 +33,8 @@ import { BoostButton } from '../status/boost_button';
 import { RemoveQuoteHint } from './remove_quote_hint';
 import { quoteItemState } from '../status/boost_button_utils';
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
+import { computeStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
+import { openModal } from '@/flavours/glitch/actions/modal';
 
 
 const messages = defineMessages({
@@ -74,6 +77,8 @@ const mapStateToProps = (state, { status }) => {
   return ({
     quotedAccountId: quotedStatusId ? state.getIn(['statuses', quotedStatusId, 'account']) : null,
     statusQuoteState: selectStatusConditions(state, status.get('id')),
+    statusActionBarOrder: computeStatusActionBarOrder(state.getIn(['local_settings', 'status_action_bar', 'order'])?.toJS()),
+    statusActionBarHidden: state.getIn(['local_settings', 'status_action_bar', 'hidden']),
   });
 };
 
@@ -83,6 +88,8 @@ class StatusActionBar extends ImmutablePureComponent {
     status: ImmutablePropTypes.map.isRequired,
     statusQuoteState: PropTypes.object,
     quotedAccountId: PropTypes.string,
+    statusActionBarOrder: PropTypes.arrayOf(PropTypes.string).isRequired,
+    statusActionBarHidden: ImmutablePropTypes.map.isRequired,
     contextType: PropTypes.string,
     onReply: PropTypes.func,
     onFavourite: PropTypes.func,
@@ -116,6 +123,8 @@ class StatusActionBar extends ImmutablePureComponent {
     'status',
     'quotedAccountId',
     'showReplyCount',
+    'statusActionBarHidden',
+    'statusActionBarOrder',
     'withCounters',
     'withDismiss',
   ];
@@ -262,7 +271,7 @@ class StatusActionBar extends ImmutablePureComponent {
       menu.push({ text: intl.formatMessage(messages.embed), action: this.handleEmbed });
     }
 
-    if (quickBoosting && signedIn) {
+    if (quickBoosting && signedIn && this.props.statusActionBarHidden.get('quote') === true) {
       const quoteItem = quoteItemState(statusQuoteState);
       menu.push(null);
       menu.push({
@@ -363,6 +372,32 @@ class StatusActionBar extends ImmutablePureComponent {
     const bookmarkTitle = intl.formatMessage(status.get('bookmarked') ? messages.removeBookmark : messages.bookmark);
     const favouriteTitle = intl.formatMessage(status.get('favourited') ? messages.removeFavourite : messages.favourite);
 
+    const quoteExposed = this.props.statusActionBarHidden.get('quote') !== true;
+    const quoteItem = quoteItemState(statusQuoteState);
+    const configurableActions = {
+      favourite: (
+        <div className='status__action-bar__button-wrapper' key='favourite'>
+          <IconButton className='status__action-bar-button star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StarIcon : StarBorderIcon} onClick={this.handleFavouriteClick} counter={withCounters ? status.get('favourites_count') : undefined} />
+        </div>
+      ),
+      reaction: reactionsEnabled ? <SharlayanStatusReactionButton key='reaction' enabled status={status} canReact={permissions} onReactionAdd={this.props.onReactionAdd} wrapperClassName='status__action-bar__button-wrapper' buttonClassName='status__action-bar-button' dropdownClassName='status__action-bar-button' inverted={false} /> : null,
+      bookmark: (
+        <div className='status__action-bar__button-wrapper' key='bookmark'>
+          <IconButton className='status__action-bar-button bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? BookmarkIcon : BookmarkBorderIcon} onClick={this.handleBookmarkClick} />
+        </div>
+      ),
+      clip: signedIn && clipsEnabled ? (
+        <div className='status__action-bar__button-wrapper' key='clip'>
+          <IconButton className='status__action-bar-button' title={intl.formatMessage({ id: 'status.add_to_clip', defaultMessage: 'Add to clip' })} icon='paperclip' iconComponent={AttachFileIcon} onClick={() => this.props.dispatch(openModal({ modalType: 'CLIP_ADD', modalProps: { statusId: status.get('id') } }))} />
+        </div>
+      ) : null,
+      quote: signedIn ? (
+        <div className='status__action-bar__button-wrapper' key='quote'>
+          <IconButton className='status__action-bar-button' disabled={quoteItem.disabled} title={intl.formatMessage(quoteItem.meta ?? quoteItem.title)} icon='quote-right' iconComponent={quoteItem.iconComponent} onClick={quoteItem.disabled ? undefined : this.handleQuoteClick} />
+        </div>
+      ) : null,
+    };
+
     const shouldShowQuoteRemovalHint = isQuotingMe && contextType === 'notifications';
 
     return (
@@ -379,15 +414,9 @@ class StatusActionBar extends ImmutablePureComponent {
           />
         </div>
         <div className='status__action-bar__button-wrapper'>
-          <BoostButton statusId={status.get('id')} counters={withCounters} />
+          <BoostButton statusId={status.get('id')} counters={withCounters} forceStandalone={quoteExposed} />
         </div>
-        <div className='status__action-bar__button-wrapper'>
-          <IconButton className='status__action-bar-button star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StarIcon : StarBorderIcon} onClick={this.handleFavouriteClick} counter={withCounters ? status.get('favourites_count') : undefined} />
-        </div>
-        <SharlayanStatusReactionButton enabled={reactionsEnabled} status={status} canReact={permissions} onReactionAdd={this.props.onReactionAdd} wrapperClassName='status__action-bar__button-wrapper' buttonClassName='status__action-bar-button' dropdownClassName='status__action-bar-button' inverted={false} />
-        <div className='status__action-bar__button-wrapper'>
-          <IconButton className='status__action-bar-button bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? BookmarkIcon : BookmarkBorderIcon} onClick={this.handleBookmarkClick} />
-        </div>
+        {this.props.statusActionBarOrder.map(key => this.props.statusActionBarHidden.get(key) === true ? null : configurableActions[key])}
 
         {filterButton}
 

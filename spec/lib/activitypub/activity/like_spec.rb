@@ -28,4 +28,25 @@ RSpec.describe ActivityPub::Activity::Like do
       expect(sender.favourited?(status)).to be true
     end
   end
+
+  describe '#perform with a non-string reaction content' do
+    subject { described_class.new(json.merge(content: { evil: true }), sender) }
+
+    it 'ignores the content and falls back to a favourite' do
+      expect { subject.perform }.to_not raise_error
+      expect(sender.favourited?(status)).to be true
+      expect(StatusReaction.where(account: sender, status: status)).to_not exist
+    end
+  end
+
+  describe '#perform with a unicode emoji reaction' do
+    subject { described_class.new(json.merge(content: '😀'), sender) }
+
+    it 'creates a reaction instead of a favourite' do
+      subject.perform
+
+      expect(StatusReaction.where(account: sender, status: status).pluck(:name)).to eq(['😀'])
+      expect(sender.favourited?(status)).to be false
+    end
+  end
 end

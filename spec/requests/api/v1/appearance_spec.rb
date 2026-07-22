@@ -23,6 +23,7 @@ RSpec.describe 'Appearance API' do
       expect(response.parsed_body).to eq({
         'color_scheme' => 'dark',
         'contrast' => 'high',
+        'expand_content_warnings' => false,
       })
       settings = user.reload.settings
       expect(settings['web.color_scheme']).to eq('dark')
@@ -44,7 +45,31 @@ RSpec.describe 'Appearance API' do
         expect(response.parsed_body).to eq({
           'color_scheme' => 'light',
           'contrast' => 'high',
+          'expand_content_warnings' => false,
         })
+      end
+    end
+
+    context 'when expand_content_warnings is supplied' do
+      let(:params) { { expand_content_warnings: true } }
+
+      it 'updates the auto-unfold preference' do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body['expand_content_warnings']).to be true
+        expect(user.reload.settings['web.expand_content_warnings']).to be true
+      end
+    end
+
+    context 'with an invalid expand_content_warnings value' do
+      let(:params) { { expand_content_warnings: 'invalid' } }
+
+      it 'returns a bad request without changing settings' do
+        expect { subject }.to_not(change { user.reload.settings.as_json })
+
+        expect(response).to have_http_status(400)
+        expect(response.parsed_body).to include('error' => "Invalid value for 'web.expand_content_warnings'")
       end
     end
 

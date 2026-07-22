@@ -92,6 +92,9 @@ namespace :api, format: false do
         post :push_forward, action: :create_push_forward
         delete :push_forward, action: :destroy_push_forward
       end
+      member do
+        delete :inbound, action: :destroy_inbound
+      end
     end
 
     resources :accounts, only: [] do
