@@ -34,7 +34,7 @@ RSpec.describe InstanceMetadata do
   describe '#default_theme_color' do
     it 'returns the correct color for known software' do
       record = Fabricate(:instance_metadata, software: 'misskey')
-      expect(record.default_theme_color).to eq('#86B300')
+      expect(record.default_theme_color).to eq('#A1CA03')
     end
 
     it 'returns mastodon color for unknown software' do
@@ -49,7 +49,7 @@ RSpec.describe InstanceMetadata do
 
     it 'is case-insensitive for software matching' do
       record = Fabricate(:instance_metadata, software: 'Misskey')
-      expect(record.default_theme_color).to eq('#86B300')
+      expect(record.default_theme_color).to eq('#A1CA03')
     end
   end
 
@@ -61,7 +61,16 @@ RSpec.describe InstanceMetadata do
 
     it 'returns default theme color when theme_color is blank' do
       record = Fabricate(:instance_metadata, theme_color: nil, software: 'misskey')
-      expect(record.theme_color_with_fallback).to eq('#86B300')
+      expect(record.theme_color_with_fallback).to eq('#A1CA03')
+    end
+
+    it 'uses built-in colors for additional Fediverse software families' do
+      expect(described_class.new(domain: 'misskey.example', software: 'iceshrimp').theme_color_with_fallback).to eq('#A1CA03')
+      expect(described_class.new(domain: 'mastodon.example', software: 'kmyblue').theme_color_with_fallback).to eq('#6364FF')
+      expect(described_class.new(domain: 'video.example', software: 'owncast').theme_color_with_fallback).to eq('#7871FF')
+      expect(described_class.new(domain: 'blog.example', software: 'hollo').theme_color_with_fallback).to eq('#000000')
+      expect(described_class.new(domain: 'framework.example', software: 'fedify').theme_color_with_fallback).to eq('#0284C7')
+      expect(described_class.new(domain: 'hackers.example', software: 'hackerspub').theme_color_with_fallback).to eq('#000000')
     end
   end
 
@@ -203,6 +212,13 @@ RSpec.describe InstanceMetadata do
     it 'enables emoji reactions and quotes for misskey variants by software name alone' do
       record = Fabricate(:instance_metadata, software: 'sharkey', features: [])
       expect(record.server_features).to include(emoji_reaction: true, quote: true)
+    end
+
+    it 'enables emoji reactions and quotes for Hollo and Hackers Pub by software name alone' do
+      %w(hollo hackerspub).each do |software|
+        record = Fabricate(:instance_metadata, software:, features: [])
+        expect(record.server_features).to include(emoji_reaction: true, quote: true)
+      end
     end
 
     it 'enables capabilities advertised via nodeinfo features for mastodon-family servers' do

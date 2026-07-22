@@ -25,28 +25,62 @@ class InstanceMetadata < ApplicationRecord
   validates :domain, presence: true, uniqueness: true
 
   DEFAULT_THEME_COLORS = {
+    # Mastodon family
+    # Icon source: https://github.com/mastodon/mastodon/blob/main/app/javascript/images/logo-symbol-icon.svg
     'mastodon' => '#6364FF',
-    'misskey' => '#86B300',
+    'kmyblue' => '#6364FF',
+
+    # Misskey family
+    # Icon source: https://github.com/misskey-dev/misskey/blob/159b1a44/packages/backend/assets/favicon.png
+    'misskey' => '#A1CA03',
+    'calckey' => '#31748F',
+    'firefish' => '#F07A5B',
+    'sharkey' => '#E85D75',
+    'foundkey' => '#A1CA03',
+    'magnetar' => '#A1CA03',
+    'iceshrimp' => '#A1CA03',
+    'catodon' => '#A1CA03',
+    'cherrypick' => '#A1CA03',
+
+    # Pleroma family
+    # Icon source: https://git.pleroma.social/pleroma/pleroma/-/blob/0a076443/priv/static/static/logo.svg
     'pleroma' => '#FBA457',
     'akkoma' => '#593196',
-    'calckey' => '#31748F',
-    'firefish' => '#F07178',
-    'sharkey' => '#E85D75',
-    'lemmy' => '#00BC8C',
+
+    # Kbin family
     'kbin' => '#000000',
+    'mbin' => '#00BC8C',
+
+    # Fedify framework and implementations
+    # Icon source: https://github.com/fedify-dev/fedify/blob/c2352c0e/logo.svg
+    'fedify' => '#0284C7',
+    # Icon source: https://github.com/fedify-dev/hollo/blob/56f37f74/docs/public/favicon.svg
+    'hollo' => '#000000',
+    # Icon source: https://github.com/hackers-pub/hackerspub/blob/346a7aa4/web/static/favicon.svg
+    'hackerspub' => '#000000',
+
+    # Independent software
+    'lemmy' => '#00BC8C',
+    # Icon source: https://github.com/Chocobozzz/PeerTube/blob/fe0da961/client/src/assets/images/logo.svg
     'peertube' => '#F1680D',
+    # Icon source: https://github.com/pixelfed/pixelfed/blob/c8bed78b/public/img/pixelfed-icon-color.svg
     'pixelfed' => '#6366F1',
     'gotosocial' => '#DF8958',
     'friendica' => '#3478C8',
     'hubzilla' => '#43488A',
+    'bookwyrm' => '#00D1B2',
+    'writefreely' => '#292929',
+    'funkwhale' => '#009FE3',
+    'owncast' => '#7871FF',
+    'mobilizon' => '#FFD599',
   }.freeze
 
   PINNED_THEME_COLORS = {
     'bsky.brid.gy' => '#1185FE',
   }.freeze
 
-  REACTION_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick akkoma pleroma kmyblue).freeze
-  QUOTE_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick kmyblue).freeze
+  REACTION_SOFTWARE = %w(kmyblue misskey calckey firefish sharkey foundkey magnetar iceshrimp catodon cherrypick pleroma akkoma hollo hackerspub).freeze
+  QUOTE_SOFTWARE = %w(kmyblue misskey calckey firefish sharkey foundkey magnetar iceshrimp catodon cherrypick hollo hackerspub).freeze
 
   FEATURE_WIRE_MAP = {
     emoji_reaction: 'emoji_reaction',
