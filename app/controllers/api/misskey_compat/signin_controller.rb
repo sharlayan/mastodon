@@ -2,7 +2,6 @@
 
 class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
   NO_SUCH_USER_ID = '6cc579cc-885d-43d8-95c2-b8c7fc963280'
-  SUSPENDED_ID = 'e03a5f46-d309-4865-9b69-56282d94e1eb'
   UNAVAILABLE_ID = 'b2c5a2f0-1d2f-4b0d-9d0a-1b8a6d7f0c11'
   INCORRECT_PASSWORD_ID = '932c904e-9460-45b7-9ce6-7ed33be7eb2c'
   INCORRECT_TOKEN_ID = 'cdf1235b-ac71-46d4-a3a6-84ccce48df6f'
@@ -19,8 +18,7 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
     return render_invalid_param('#/properties/username/type', 'must be string') unless username.is_a?(String)
 
     user = Account.find_local(username.strip.delete_prefix('@'))&.user
-    return signin_error(404, NO_SUCH_USER_ID) if user.nil?
-    return signin_error(403, SUSPENDED_ID) if user.account.suspended?
+    return signin_error(404, NO_SUCH_USER_ID) if user.nil? || user.account.suspended?
     return signin_error(403, UNAVAILABLE_ID) unless user.functional?
 
     password = params[:password]

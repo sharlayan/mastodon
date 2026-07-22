@@ -156,13 +156,13 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
       expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
     end
 
-    it 'rejects a suspended account' do
+    it 'treats a suspended account as an unknown user' do
       user.account.suspend!
 
       post '/api/signin-flow', params: { username: username, password: password }, headers: origin_headers, as: :json
 
-      expect(response).to have_http_status(403)
-      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::SUSPENDED_ID)
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::NO_SUCH_USER_ID)
     end
 
     context 'with TOTP two-factor enabled' do
