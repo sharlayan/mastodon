@@ -81,6 +81,16 @@ RSpec.describe 'AccountSwitches' do
       expect(response).to have_http_status(404)
       expect(AccountSwitchAuthorization.exists?(auth.id)).to be true
     end
+
+    it 'refuses to revoke the active parent while switched into the target account' do
+      sign_in linking_user
+      post switch_account_path, params: { switch_to: user.account.id }
+
+      delete "/api/v1/account_switches/#{auth.id}/inbound", headers: write_headers
+
+      expect(response).to have_http_status(403)
+      expect(AccountSwitchAuthorization.exists?(auth.id)).to be true
+    end
   end
 
   describe 'DELETE /api/v1/account_switches/:id' do
@@ -91,6 +101,17 @@ RSpec.describe 'AccountSwitches' do
 
       expect(response).to have_http_status(200)
       expect { auth.reload }.to raise_error(ActiveRecord::RecordNotFound)
+    end
+
+    it 'refuses to unlink while switched into a linked account' do
+      sign_in user
+      post switch_account_path, params: { switch_to: child.id }
+      child_token = Fabricate(:accessible_access_token, resource_owner_id: child_user.id, scopes: 'write:accounts')
+
+      delete "/api/v1/account_switches/#{auth.id}", headers: { 'Authorization' => "Bearer #{child_token.token}" }
+
+      expect(response).to have_http_status(403)
+      expect(AccountSwitchAuthorization.exists?(auth.id)).to be true
     end
 
     context 'with wrong scope' do

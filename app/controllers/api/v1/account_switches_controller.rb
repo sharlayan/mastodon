@@ -6,8 +6,10 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :linked_unread_counts]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:destroy, :destroy_inbound, :create_push_forward, :destroy_push_forward]
   before_action :require_user!
+  before_action :require_root_account, only: [:destroy]
   before_action :set_authorization, only: [:destroy]
   before_action :set_inbound_authorization, only: [:destroy_inbound]
+  before_action :require_inactive_inbound_authorization, only: [:destroy_inbound]
   before_action :set_push_forward_auth, only: [:destroy_push_forward]
 
   def index
@@ -107,6 +109,15 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   end
 
   private
+
+  def require_root_account
+    render json: { error: 'Cannot unlink accounts while switched into a linked account' }, status: 403 if switch_parent_stack.present?
+  end
+
+  def require_inactive_inbound_authorization
+    active_parent_id = switch_parent_stack.first
+    render json: { error: 'Cannot unlink the active parent while switched into a linked account' }, status: 403 if active_parent_id == @inbound_authorization.account_id
+  end
 
   def resolve_children_owner
     parent_stack   = switch_parent_stack

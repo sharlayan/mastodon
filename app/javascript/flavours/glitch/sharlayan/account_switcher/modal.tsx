@@ -410,6 +410,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
                     key={auth.id}
                     authId={auth.id}
                     accountId={auth.target_account_id}
+                    canRevoke={auth.target_account_id !== parentAccountId}
                   />
                 ))
             )}
@@ -450,6 +451,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
                 rootAccountId={rootAccountId ?? ''}
                 onSwitch={handleSwitchAccount}
                 onRemove={handleRemoveAccount}
+                canRemove={parentAccountId === null}
               />
             ))}
           </>
@@ -478,7 +480,8 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
 const InboundAccountItem: React.FC<{
   authId: string;
   accountId: string;
-}> = ({ authId, accountId }) => {
+  canRevoke: boolean;
+}> = ({ authId, accountId, canRevoke }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
@@ -511,14 +514,16 @@ const InboundAccountItem: React.FC<{
       <div className='account-switcher-modal__item__info'>
         <DisplayName account={account as never} />
       </div>
-      <button
-        className='account-switcher-modal__remove-button'
-        onClick={handleRevoke}
-        type='button'
-        title={intl.formatMessage(messages.removeAccount)}
-      >
-        <Icon id='person-remove' icon={PersonRemoveIcon} />
-      </button>
+      {canRevoke && (
+        <button
+          className='account-switcher-modal__remove-button'
+          onClick={handleRevoke}
+          type='button'
+          title={intl.formatMessage(messages.removeAccount)}
+        >
+          <Icon id='person-remove' icon={PersonRemoveIcon} />
+        </button>
+      )}
     </div>
   );
 };
@@ -854,7 +859,8 @@ const SwitchableAccountItem: React.FC<{
   rootAccountId: string;
   onSwitch: (accountId: string, name: string) => void;
   onRemove: (authId: string, name: string, acct: string) => void;
-}> = ({ authId, accountId, rootAccountId, onSwitch, onRemove }) => {
+  canRemove: boolean;
+}> = ({ authId, accountId, rootAccountId, onSwitch, onRemove, canRemove }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
@@ -997,14 +1003,16 @@ const SwitchableAccountItem: React.FC<{
             <Icon id='notifications' icon={NotificationsIcon} />
           </button>
 
-          <button
-            className='account-switcher-modal__remove-button'
-            onClick={handleRemove}
-            type='button'
-            title={intl.formatMessage(messages.removeAccount)}
-          >
-            <Icon id='person-remove' icon={PersonRemoveIcon} />
-          </button>
+          {canRemove && (
+            <button
+              className='account-switcher-modal__remove-button'
+              onClick={handleRemove}
+              type='button'
+              title={intl.formatMessage(messages.removeAccount)}
+            >
+              <Icon id='person-remove' icon={PersonRemoveIcon} />
+            </button>
+          )}
         </div>
       </div>
 
