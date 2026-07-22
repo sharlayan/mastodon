@@ -431,6 +431,10 @@
     border-top: 1px solid var(--color-border-primary);
 
     a {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 4px;
       color: var(--color-text-brand);
       font-weight: 600;
       text-decoration: none;
@@ -438,6 +442,14 @@
       &:hover {
         text-decoration: underline;
       }
+    }
+
+    &-title {
+      overflow: hidden;
+      color: var(--color-text-primary);
+      font-weight: 400;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     a.page__link-prev {

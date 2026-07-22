@@ -1,7 +1,7 @@
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import FavoriteIcon from '@/material-icons/400-24px/favorite-fill.svg?react';
@@ -38,6 +38,7 @@ export const PageShowFooter: React.FC<{
   onMainToggle,
 }) => {
   const intl = useIntl();
+  const location = useLocation();
 
   return (
     <>
@@ -136,12 +137,20 @@ export const PageShowFooter: React.FC<{
           {previousPage ? (
             <Link
               className='page__link-prev'
-              to={`/@${previousPage.account.acct}/pages/${encodeURIComponent(previousPage.name)}`}
+              to={{
+                pathname: `/@${previousPage.account.acct}/pages/${encodeURIComponent(previousPage.name)}`,
+                state: location.state,
+              }}
             >
-              <FormattedMessage
-                id='pages.previous'
-                defaultMessage='Previous page'
-              />
+              <span className='page__pagination-label'>
+                <FormattedMessage
+                  id='pages.previous'
+                  defaultMessage='Previous page'
+                />
+              </span>
+              <span className='page__pagination-title'>
+                {previousPage.title || previousPage.name}
+              </span>
             </Link>
           ) : (
             <span />
@@ -149,9 +158,17 @@ export const PageShowFooter: React.FC<{
           {nextPage && (
             <Link
               className='page__link-next'
-              to={`/@${nextPage.account.acct}/pages/${encodeURIComponent(nextPage.name)}`}
+              to={{
+                pathname: `/@${nextPage.account.acct}/pages/${encodeURIComponent(nextPage.name)}`,
+                state: location.state,
+              }}
             >
-              <FormattedMessage id='pages.next' defaultMessage='Next page' />
+              <span className='page__pagination-label'>
+                <FormattedMessage id='pages.next' defaultMessage='Next page' />
+              </span>
+              <span className='page__pagination-title'>
+                {nextPage.title || nextPage.name}
+              </span>
             </Link>
           )}
         </nav>
