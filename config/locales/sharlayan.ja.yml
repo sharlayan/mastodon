@@ -316,11 +316,6 @@ ja:
   clips:
     errors:
       limit: クリップの上限数に達しています
-  content_font_sizes:
-    large: 大きい
-    medium: 標準
-    x_large: とても大きい
-    xx_large: 極大
   custom_css:
     disabled_by_admin: サーバー管理者がユーザーのカスタムCSSを無効にしています。上のサーバー全体のスタイルを適用するかどうかは引き続き選択できます。
     preamble_html: ウェブインターフェースで、自分のセッションにのみ適用されるCSSを設定できます。不正または悪意のあるCSSはレイアウトを壊す可能性があります。その場合はログインフォームで<strong>カスタムCSSを無効にする</strong>にチェックを入れて復旧できます。
@@ -410,7 +405,6 @@ ja:
         setting_auto_accept_followed: アカウントが承認制でも、すでにフォローしているアカウントからのフォローリクエストは自動的に承認します。
         setting_auto_quote_from_url: 投稿本文に取得可能な他の連合投稿へのリンクが含まれている場合、作成者に許可を求めずに自動的に引用へ変換します。引用される元の投稿者に承認を求めることはありません。
         setting_bridge_unlisted_to_bsky: 未収載（ホーム）の投稿は連合上では静かなままにしつつ、Blueskyブリッジ（bsky.brid.gy）には公開として配送し、Blueskyへ転送されるようにします。ブリッジアカウントのフォローが必要です。
-        setting_content_font_size: 投稿本文の文字サイズのみを調整します。その他のUIテキストには影響しません。
         setting_custom_emoji_size: Display Original size of Long Horizontally Custom
           Emoji
         setting_avatar_decoration_shape: デコレーション表示時にプロフィール画像の形を強制します。
@@ -451,7 +445,6 @@ ja:
         setting_auto_accept_followed: フォロー中のアカウントからのフォローリクエストを自動承認する
         setting_auto_quote_from_url: 投稿内の連合投稿リンクを自動的に引用する
         setting_bridge_unlisted_to_bsky: 未収載の投稿を公開としてBlueskyに転送する
-        setting_content_font_size: 投稿の文字サイズ
         setting_custom_emoji_size: Show Origin Size Custom Emoji
         setting_default_quote_policy_private: When set to followers only, other people
           cannot quote your post.

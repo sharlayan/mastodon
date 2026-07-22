@@ -24,7 +24,6 @@ RSpec.describe UserSettings do
   end
 
   it 'rejects values outside Sharlayan setting allowlists' do
-    expect { settings[:content_font_size] = 'giant' }.to raise_error(ArgumentError)
     expect { settings[:'web.mfm_fold_mode'] = 'unknown' }.to raise_error(ArgumentError)
     expect { settings[:'web.pages_view'] = 'magazine' }.to raise_error(ArgumentError)
     expect { settings[:'web.pages_blog_list_position'] = 'top' }.to raise_error(ArgumentError)

@@ -72,6 +72,18 @@ export const getSharlayanLocalSettingsPage = (index, pages) => {
 
 const localSettingsSlots = {
   'general-after-rewrite': [
+    {
+      setting: ['content_font_size'],
+      id: 'mastodon-settings--content_font_size',
+      message: { id: 'settings.content_font_size', defaultMessage: 'Post text size' },
+      hint: { id: 'settings.content_font_size.hint', defaultMessage: 'Adjust the font size of post bodies only. Other interface text is not affected' },
+      options: [
+        { value: 'medium', message: { id: 'settings.content_font_size.medium', defaultMessage: 'Medium' } },
+        { value: 'large', message: { id: 'settings.content_font_size.large', defaultMessage: 'Large' } },
+        { value: 'x_large', message: { id: 'settings.content_font_size.x_large', defaultMessage: 'Extra large' } },
+        { value: 'xx_large', message: { id: 'settings.content_font_size.xx_large', defaultMessage: 'Huge' } },
+      ],
+    },
     { setting: ['show_follow_list_bio'], id: 'mastodon-settings--show_follow_list_bio', message: { id: 'settings.show_follow_list_bio', defaultMessage: 'Show bio and follow message in follow lists' }, hint: { id: 'settings.show_follow_list_bio.hint', defaultMessage: 'Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists' } },
     { setting: ['show_others_online_status'], id: 'mastodon-settings--show_others_online_status', message: { id: 'settings.show_others_online_status', defaultMessage: "Show other people's online status" }, hint: { id: 'settings.show_others_online_status.hint', defaultMessage: 'Display an online, recently active, or offline indicator on the avatars of users who share their status' } },
   ],
@@ -97,18 +109,28 @@ const localSettingsSlots = {
   ],
 };
 
-export const SharlayanLocalSettingsSlot = ({ onChange, settings, slot }) => localSettingsSlots[slot]?.map(item => (
-  <LocalSettingsPageItem key={item.id} settings={settings} item={item.setting} id={item.id} onChange={onChange}>
+const LocalSettingsSlot = ({ intl, onChange, settings, slot }) => localSettingsSlots[slot]?.map(item => (
+  <LocalSettingsPageItem
+    key={item.id}
+    settings={settings}
+    item={item.setting}
+    id={item.id}
+    onChange={onChange}
+    options={item.options?.map(option => ({ value: option.value, message: intl.formatMessage(option.message) }))}
+  >
     <FormattedMessage {...item.message} />
     {item.hint && <span className='hint'><FormattedMessage {...item.hint} /></span>}
   </LocalSettingsPageItem>
 ));
 
-SharlayanLocalSettingsSlot.propTypes = {
+LocalSettingsSlot.propTypes = {
+  intl: PropTypes.object.isRequired,
   onChange: PropTypes.func.isRequired,
   settings: PropTypes.object.isRequired,
   slot: PropTypes.string.isRequired,
 };
+
+export const SharlayanLocalSettingsSlot = injectIntl(LocalSettingsSlot);
 
 export const renderSharlayanLocalSettingsNavigationItems = (slot, { NavigationItem, index, intl, onNavigate }) => {
   const items = slot === 'after-general'

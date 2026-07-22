@@ -8,12 +8,15 @@ import { setupBrowserNotifications } from 'flavours/glitch/actions/notifications
 import Mastodon from 'flavours/glitch/containers/mastodon';
 import { me, reduceMotion } from 'flavours/glitch/initial_state';
 import ready from 'flavours/glitch/ready';
+import { applyStoredContentFontSize } from 'flavours/glitch/sharlayan/local_settings/content_font_size';
 import { store } from 'flavours/glitch/store';
 
 import { isDevelopment, isProduction } from './utils/environment';
 
 function main() {
   perf.start('main()');
+
+  applyStoredContentFontSize();
 
   return ready(async () => {
     const mountNode = document.getElementById('mastodon');
