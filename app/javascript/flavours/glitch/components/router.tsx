@@ -20,6 +20,7 @@ interface MastodonLocationState {
   fromMastodon?: boolean;
   fromPageShow?: boolean;
   pageName?: string;
+  pageCategory?: string;
   mastodonModalKey?: string;
   // Controls which element is focused after a navigation.
   // Set to `false` to prevent navigation focus.
