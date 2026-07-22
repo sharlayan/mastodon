@@ -442,6 +442,8 @@
   "settings.show_clip_choice",
   "settings.show_follow_list_bio",
   "settings.show_follow_list_bio.hint",
+  "settings.show_instance_info",
+  "settings.show_instance_info.hint",
   "settings.show_others_online_status",
   "settings.show_others_online_status.hint",
   "settings.show_schedule_button",

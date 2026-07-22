@@ -19,6 +19,21 @@ RSpec.describe InitialStateSerializer do
     )
   end
 
+  it 'uses the legacy server instance badge preference as the local default seed' do
+    user = Fabricate(:user)
+    user.settings.as_json[:'web.show_instance_info'] = true
+    presenter = InitialStatePresenter.new(current_account: user.account, settings: {})
+
+    expect(described_class.new(presenter).meta[:show_instance_info]).to be true
+  end
+
+  it 'defaults the local instance badge seed to disabled without a legacy preference' do
+    user = Fabricate(:user)
+    presenter = InitialStatePresenter.new(current_account: user.account, settings: {})
+
+    expect(described_class.new(presenter).meta[:show_instance_info]).to be false
+  end
+
   it 'adds server feature gates for guests without signed-in snapshots' do
     meta = described_class.new(InitialStatePresenter.new(settings: {})).meta
 

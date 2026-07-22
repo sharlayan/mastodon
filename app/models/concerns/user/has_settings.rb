@@ -171,10 +171,6 @@ module User::HasSettings
     integer_cast_setting('visible_reactions', 0)
   end
 
-  def settings_show_instance_info
-    settings['web.show_instance_info']
-  end
-
   def settings_custom_emoji_size
     settings['web.custom_emoji_size']
   end

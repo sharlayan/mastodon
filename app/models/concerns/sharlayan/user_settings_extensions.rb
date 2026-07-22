@@ -29,7 +29,6 @@ module Sharlayan::UserSettingsExtensions
 
     def apply_web_settings(settings)
       settings.namespace :web do
-        setting :show_instance_info, default: false
         setting :custom_emoji_size, default: false
         setting :reaction_custom_emoji_size, default: false
         setting :mfm_force_sensitive, default: false

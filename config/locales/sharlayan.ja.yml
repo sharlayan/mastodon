@@ -424,8 +424,6 @@ ja:
           Custom Emoji on Reaction Button
         setting_show_avatar_decorations: アバターデコレーションを表示します。デフォルトではオフです。
         setting_show_federated_avatar_decorations: Misskey互換サーバーから受信したアバターデコレーションも表示します
-        setting_show_instance_info: Display instance name, theme color, and favicon
-          for posts from other servers
         setting_show_online_status: あなたがオンラインか、最近アクティブか、オフラインかを他の人が確認できます。無効にすると、状態はすべての人に不明として表示されます。
         setting_show_reactions: プロフィールで自分がリアクションした投稿を他の人に表示できるようにします。
         setting_use_custom_css: 有効にすると、下に記入したカスタムCSSがウェブインターフェースに適用されます。
@@ -473,7 +471,6 @@ ja:
           Button
         setting_show_avatar_decorations: アバターデコレーションを表示
         setting_show_federated_avatar_decorations: 連合サーバーからのアバターデコレーションを表示
-        setting_show_instance_info: Show instance information on posts
         setting_show_online_status: 自分のオンライン状態を共有する
         setting_show_reactions: プロフィールに自分のリアクションを表示する
         setting_use_custom_css: 自分のカスタムCSSを適用

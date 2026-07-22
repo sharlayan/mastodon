@@ -39,7 +39,7 @@ module Sharlayan::InitialStateSerializerExtensions
   def signed_in_meta
     {
       visible_reactions: object_account_user.setting_visible_reactions,
-      show_instance_info: object_account_user.settings_show_instance_info,
+      show_instance_info: object_account_user.settings.as_json.fetch(:'web.show_instance_info', false),
       custom_emoji_size: object_account_user.settings_custom_emoji_size,
       reaction_custom_emoji_size: object_account_user.settings_reaction_custom_emoji_size,
       reaction_local_emoji_only: Setting.reaction_local_emoji_only,

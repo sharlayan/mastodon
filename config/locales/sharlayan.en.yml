@@ -498,8 +498,6 @@ en:
           Off by default.
         setting_show_federated_avatar_decorations: Also show decorations received
           from Misskey-compatible servers
-        setting_show_instance_info: Display instance name, theme color, and favicon
-          for posts from other servers
         setting_show_online_status: Others can see whether you are online, recently
           active, or offline. When disabled, your status appears as unknown to everyone.
         setting_show_reactions: Allow others to see which posts you have reacted to
@@ -557,7 +555,6 @@ en:
         setting_show_avatar_decorations: Show avatar decorations
         setting_show_federated_avatar_decorations: Show avatar decorations from federated
           servers
-        setting_show_instance_info: Show instance information on posts
         setting_show_online_status: Share my online status
         setting_show_reactions: Show my reactions on my profile
         setting_use_custom_css: Apply my custom CSS

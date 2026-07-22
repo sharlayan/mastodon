@@ -49,13 +49,8 @@
 
 %h2= t 'appearance.misskey_flavour'
 
-.fields-group
-  = ff.input :'web.show_instance_info',
-             wrapper: :with_label,
-             hint: t('simple_form.hints.defaults.setting_show_instance_info'),
-             label: t('simple_form.labels.defaults.setting_show_instance_info'),
-             sharlayan_only: true
-  - if Setting.mfm_enabled
+- if Setting.mfm_enabled
+  .fields-group
     = ff.input :'web.mfm_enabled',
                wrapper: :with_label,
                hint: t('simple_form.hints.defaults.setting_mfm_enabled'),

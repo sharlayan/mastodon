@@ -448,7 +448,6 @@ ko:
         setting_reaction_custom_emoji_size: 리액션 버튼에서 가로로 긴 커스텀 에모지의 가로 길이를 늘려 서 표시합니다.
         setting_show_avatar_decorations: 아바타 장식을 표시합니다.
         setting_show_federated_avatar_decorations: Misskey 호환 서버에서 받은 장식을 표시합니다.
-        setting_show_instance_info: 다른 서버의 게시물에 인스턴스 이름, 테마 색상 및 파비콘 표시
         setting_show_online_status: 다른 사람이 당신이 온라인인지, 최근 활동했는지, 오프라인인지 볼 수 있습니다. 끄면
           모두에게 상태가 알 수 없음으로 표시됩니다.
         setting_show_reactions: 다른 사람이 내 프로필에서 내가 리액션한 게시물을 볼 수 있도록 허용합니다.
@@ -496,7 +495,6 @@ ko:
         setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
         setting_show_avatar_decorations: 아바타 장식 표시
         setting_show_federated_avatar_decorations: 연합 서버의 아바타 장식 표시
-        setting_show_instance_info: 게시물에 인스턴스 정보 표시 (글리치 풍미에만 적용됨)
         setting_show_online_status: 내 온라인 상태 공유
         setting_show_reactions: 프로필에 내 리액션 표시
         setting_use_custom_css: 내 커스텀 CSS 적용

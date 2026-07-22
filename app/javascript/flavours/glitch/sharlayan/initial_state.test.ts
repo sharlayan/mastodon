@@ -39,6 +39,7 @@ describe('Sharlayan initial state', () => {
         maxReactions: 5,
         driveEnabled: true,
         antennaEnabled: true,
+        showInstanceInfo: true,
         mfmFoldMode: 'all',
         avatarDecorationShape: 'square',
         customEmojiMutes: [],
