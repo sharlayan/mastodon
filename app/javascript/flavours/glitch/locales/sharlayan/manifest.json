@@ -344,6 +344,7 @@
   "pages.draft",
   "pages.edit",
   "pages.exit_wide_view",
+  "pages.open_in_new_window",
   "pages.field.address_hint",
   "pages.field.align_center",
   "pages.field.category",

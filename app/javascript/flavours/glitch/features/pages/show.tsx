@@ -185,6 +185,7 @@ const PageShow: React.FC<{
   const isOwner = !!currentPage && currentPage.account_id === accountId;
   const useBlogView =
     !!currentPage &&
+    !multiColumn &&
     (isOwner || !ignoreOthersPagesView) &&
     currentPage.account.pages_view === 'blog';
   const blogListPosition =

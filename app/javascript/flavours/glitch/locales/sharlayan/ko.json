@@ -344,6 +344,7 @@
   "pages.draft": "초안",
   "pages.edit": "페이지 편집",
   "pages.exit_wide_view": "넓게 보기 종료",
+  "pages.open_in_new_window": "새 창에서 열기",
   "pages.field.address_hint": "다음으로 접속할 수 있게 됩니다: {url}",
   "pages.field.align_center": "가운데 정렬",
   "pages.field.category": "카테고리",

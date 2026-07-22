@@ -344,6 +344,7 @@
   "pages.draft": "下書き",
   "pages.edit": "ページを編集",
   "pages.exit_wide_view": "ワイド表示を終了",
+  "pages.open_in_new_window": "新しいウィンドウで開く",
   "pages.field.address_hint": "次のアドレスでアクセスできるようになります: {url}",
   "pages.field.align_center": "中央揃え",
   "pages.field.category": "カテゴリー",

@@ -344,6 +344,7 @@
   "pages.draft": "Draft",
   "pages.edit": "Edit page",
   "pages.exit_wide_view": "Exit wide view",
+  "pages.open_in_new_window": "Open in new window",
   "pages.field.address_hint": "You will be able to access it at: {url}",
   "pages.field.align_center": "Center align",
   "pages.field.category": "Category",

@@ -9,6 +9,7 @@ import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import FlagIcon from '@/material-icons/400-24px/flag.svg?react';
 import FullscreenIcon from '@/material-icons/400-24px/fullscreen.svg?react';
 import FullscreenExitIcon from '@/material-icons/400-24px/fullscreen_exit.svg?react';
+import OpenInNewIcon from '@/material-icons/400-24px/open_in_new.svg?react';
 import PushPinFillIcon from '@/material-icons/400-24px/push_pin-fill.svg?react';
 import PushPinIcon from '@/material-icons/400-24px/push_pin.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
@@ -21,6 +22,10 @@ const messages = defineMessages({
   edit: { id: 'pages.edit', defaultMessage: 'Edit page' },
   delete: { id: 'pages.delete', defaultMessage: 'Delete page' },
   report: { id: 'pages.report', defaultMessage: 'Report page' },
+  openInNewWindow: {
+    id: 'pages.open_in_new_window',
+    defaultMessage: 'Open in new window',
+  },
   setMain: { id: 'pages.set_main', defaultMessage: 'Set as main page' },
   unsetMain: { id: 'pages.unset_main', defaultMessage: 'Remove main page' },
   wideView: { id: 'pages.wide_view', defaultMessage: 'Wide view' },
@@ -196,23 +201,36 @@ export const PageShowHeader: React.FC<{
               <Icon id='flag' icon={FlagIcon} />
             </button>
           )}
-          <button
-            type='button'
-            className='column-header__button'
-            title={intl.formatMessage(
-              isWideView ? messages.exitWideView : messages.wideView,
-            )}
-            aria-label={intl.formatMessage(
-              isWideView ? messages.exitWideView : messages.wideView,
-            )}
-            aria-pressed={isWideView}
-            onClick={onWideViewToggle}
-          >
-            <Icon
-              id={isWideView ? 'compress' : 'expand'}
-              icon={isWideView ? FullscreenExitIcon : FullscreenIcon}
-            />
-          </button>
+          {multiColumn ? (
+            <a
+              href={`/@${page.account.acct}/pages/${page.name}`}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='column-header__button'
+              title={intl.formatMessage(messages.openInNewWindow)}
+              aria-label={intl.formatMessage(messages.openInNewWindow)}
+            >
+              <Icon id='external-link' icon={OpenInNewIcon} />
+            </a>
+          ) : (
+            <button
+              type='button'
+              className='column-header__button'
+              title={intl.formatMessage(
+                isWideView ? messages.exitWideView : messages.wideView,
+              )}
+              aria-label={intl.formatMessage(
+                isWideView ? messages.exitWideView : messages.wideView,
+              )}
+              aria-pressed={isWideView}
+              onClick={onWideViewToggle}
+            >
+              <Icon
+                id={isWideView ? 'compress' : 'expand'}
+                icon={isWideView ? FullscreenExitIcon : FullscreenIcon}
+              />
+            </button>
+          )}
         </>
       }
     />
