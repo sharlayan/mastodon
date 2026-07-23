@@ -17,14 +17,12 @@ class Api::V1::Clips::FavouritesController < Api::BaseController
   end
 
   def create
-    current_account.clip_favourites.find_or_create_by!(clip: @clip)
-    render json: @clip, serializer: REST::ClipSerializer
-  rescue ActiveRecord::RecordNotUnique
+    FavouriteClipService.new.call(current_account, @clip)
     render json: @clip, serializer: REST::ClipSerializer
   end
 
   def destroy
-    current_account.clip_favourites.where(clip_id: @clip.id).destroy_all
+    UnfavouriteClipService.new.call(current_account, @clip)
     render json: @clip, serializer: REST::ClipSerializer
   end
 
@@ -47,11 +45,11 @@ class Api::V1::Clips::FavouritesController < Api::BaseController
   end
 
   def load_clips
-    preload_collection(results.map(&:clip), Clip).select { |clip| clip.visible_to?(current_account) }
+    preload_collection(results.map(&:clip), Clip)
   end
 
   def results
-    @results ||= current_account.clip_favourites.joins(:clip).eager_load(:clip).to_a_paginated_by_id(
+    @results ||= current_account.clip_favourites.visible_to(current_account).eager_load(:clip).to_a_paginated_by_id(
       limit_param(DEFAULT_ACCOUNTS_LIMIT),
       params_slice(:max_id, :since_id, :min_id)
     )

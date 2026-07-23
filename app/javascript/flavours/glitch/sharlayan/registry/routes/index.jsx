@@ -27,6 +27,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: alwaysEnabled, lazyComponent: CommunityTimeline },
   { key: 'conversation', path: '/conversations/:conversationId', featureGate: alwaysEnabled, lazyComponent: ConversationThread },
   { key: 'clip-new', path: '/clips/new', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
+  { key: 'clip-favourites', path: '/clips/favourites', exact: true, featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/favourites') },
   { key: 'clip-edit', path: '/clips/:id/edit', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-show', path: '/clips/:id', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/timeline') },
   { key: 'page-new', path: '/pages/new', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/editor') },

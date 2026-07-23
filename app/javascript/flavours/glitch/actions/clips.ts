@@ -4,6 +4,9 @@ import {
   apiGetClips,
   apiGetAccountClips,
   apiGetClip,
+  apiGetFavouriteClips,
+  apiFavouriteClip,
+  apiUnfavouriteClip,
   apiDeleteClip,
   apiAddStatusToClip,
   apiRemoveStatusFromClip,
@@ -23,6 +26,21 @@ export const fetchAccountClips = createDataLoadingThunk(
 export const fetchClip = createDataLoadingThunk(
   'clip/fetch',
   ({ id }: { id: string }) => apiGetClip(id),
+);
+
+export const fetchFavouriteClips = createDataLoadingThunk(
+  'clips/fetch_favourites',
+  () => apiGetFavouriteClips(),
+);
+
+export const favouriteClip = createDataLoadingThunk(
+  'clip/favourite',
+  ({ id }: { id: string }) => apiFavouriteClip(id),
+);
+
+export const unfavouriteClip = createDataLoadingThunk(
+  'clip/unfavourite',
+  ({ id }: { id: string }) => apiUnfavouriteClip(id),
 );
 
 export const createClip = createDataLoadingThunk(

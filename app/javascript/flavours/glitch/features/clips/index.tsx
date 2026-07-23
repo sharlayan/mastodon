@@ -13,6 +13,7 @@ import LockIcon from '@/material-icons/400-24px/lock.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
 import PublicIcon from '@/material-icons/400-24px/public.svg?react';
+import StarIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import SquigglyArrow from '@/svg-icons/squiggly_arrow.svg?react';
 import { fetchClips, deleteClip } from 'flavours/glitch/actions/clips';
 import { Column } from 'flavours/glitch/components/column';
@@ -21,8 +22,11 @@ import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import { me } from 'flavours/glitch/initial_state';
+import type { Clip } from 'flavours/glitch/models/clip';
 import { getOrderedClips } from 'flavours/glitch/selectors/clips';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
+
+import { ClipFavouriteButton } from './components/favourite_button';
 
 const messages = defineMessages({
   heading: { id: 'column.clips', defaultMessage: 'Clips' },
@@ -33,13 +37,11 @@ const messages = defineMessages({
 });
 
 const ClipItem: React.FC<{
-  id: string;
-  title: string;
-  isPublic: boolean;
-  statusesCount: number;
-}> = ({ id, title, isPublic, statusesCount }) => {
+  clip: Clip;
+}> = ({ clip }) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
+  const { id, title, public: isPublic, statuses_count: statusesCount } = clip;
 
   const handleDeleteClick = useCallback(() => {
     void dispatch(deleteClip({ id }));
@@ -73,6 +75,11 @@ const ClipItem: React.FC<{
           />
         </span>
       </Link>
+
+      <ClipFavouriteButton
+        clip={clip}
+        className='clip-favourite-button star-icon'
+      />
 
       <Dropdown
         scrollKey='clips'
@@ -131,14 +138,30 @@ const Clips: React.FC<{
         multiColumn={multiColumn}
         extraButton={
           signedIn && (
-            <Link
-              to='/clips/new'
-              className='column-header__button'
-              title={intl.formatMessage(messages.create)}
-              aria-label={intl.formatMessage(messages.create)}
-            >
-              <Icon id='plus' icon={AddIcon} />
-            </Link>
+            <>
+              <Link
+                to='/clips/favourites'
+                className='column-header__button'
+                title={intl.formatMessage({
+                  id: 'clips.favourites',
+                  defaultMessage: 'Favorite clips',
+                })}
+                aria-label={intl.formatMessage({
+                  id: 'clips.favourites',
+                  defaultMessage: 'Favorite clips',
+                })}
+              >
+                <Icon id='star' icon={StarIcon} />
+              </Link>
+              <Link
+                to='/clips/new'
+                className='column-header__button'
+                title={intl.formatMessage(messages.create)}
+                aria-label={intl.formatMessage(messages.create)}
+              >
+                <Icon id='plus' icon={AddIcon} />
+              </Link>
+            </>
           )
         }
       />
@@ -149,15 +172,7 @@ const Clips: React.FC<{
         bindToDocument={!multiColumn}
       >
         {signedIn ? (
-          clips.map((clip) => (
-            <ClipItem
-              key={clip.id}
-              id={clip.id}
-              title={clip.title}
-              isPublic={clip.public}
-              statusesCount={clip.statuses_count}
-            />
-          ))
+          clips.map((clip) => <ClipItem key={clip.id} clip={clip} />)
         ) : (
           <NotSignedInIndicator />
         )}

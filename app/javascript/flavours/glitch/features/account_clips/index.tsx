@@ -23,6 +23,8 @@ import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import LockIcon from '@/material-icons/400-24px/lock.svg?react';
 import PublicIcon from '@/material-icons/400-24px/public.svg?react';
 
+import { ClipFavouriteButton } from '../clips/components/favourite_button';
+
 const AccountClips: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   const accountId = useAccountId();
   const { suspended, blockedBy, hidden } = useAccountVisibility(accountId);
@@ -82,6 +84,10 @@ const AccountClips: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
                     />
                   </span>
                 </Link>
+                <ClipFavouriteButton
+                  clip={clip}
+                  className='clip-favourite-button star-icon'
+                />
               </div>
             ))}
           </ItemList>
