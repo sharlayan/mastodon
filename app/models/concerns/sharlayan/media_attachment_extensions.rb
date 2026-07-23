@@ -24,7 +24,7 @@ module Sharlayan::MediaAttachmentExtensions
 
     scope :referenced_by_page, -> { where(PAGE_REFERENCE_SQL) }
     scope :in_use, -> { attached.or(referenced_by_page) }
-    scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil).where.not(PAGE_REFERENCE_SQL) }
+    scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil, status_draft_id: nil).where.not(PAGE_REFERENCE_SQL) }
 
     before_validation :generate_drive_access_key, if: :drive_pointer?
     before_save :lock_drive_file

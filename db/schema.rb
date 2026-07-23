@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_153800) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_23_120100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1128,6 +1128,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_153800) do
     t.string "remote_url", default: "", null: false
     t.bigint "scheduled_status_id"
     t.string "shortcode"
+    t.bigint "status_draft_id"
     t.bigint "status_id"
     t.string "thumbnail_content_type"
     t.string "thumbnail_file_name"
@@ -1142,6 +1143,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_153800) do
     t.index ["drive_file_id"], name: "index_media_attachments_on_drive_file_id", where: "(drive_file_id IS NOT NULL)"
     t.index ["scheduled_status_id"], name: "index_media_attachments_on_scheduled_status_id", where: "(scheduled_status_id IS NOT NULL)"
     t.index ["shortcode"], name: "index_media_attachments_on_shortcode", unique: true, opclass: :text_pattern_ops, where: "(shortcode IS NOT NULL)"
+    t.index ["status_draft_id"], name: "index_media_attachments_on_status_draft_id"
     t.index ["status_id"], name: "index_media_attachments_on_status_id"
   end
 
@@ -1610,6 +1612,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_153800) do
     t.index ["version"], name: "index_software_updates_on_version", unique: true
   end
 
+  create_table "status_drafts", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_status_drafts_on_account_id"
+  end
+
   create_table "status_edits", force: :cascade do |t|
     t.bigint "account_id"
     t.string "content_type"
@@ -2044,6 +2054,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_153800) do
   add_foreign_key "media_attachments", "accounts", name: "fk_96dd81e81b", on_delete: :nullify
   add_foreign_key "media_attachments", "drive_files", validate: false
   add_foreign_key "media_attachments", "scheduled_statuses", on_delete: :nullify
+  add_foreign_key "media_attachments", "status_drafts", on_delete: :nullify
   add_foreign_key "media_attachments", "statuses", on_delete: :nullify
   add_foreign_key "mentions", "accounts", name: "fk_970d43f9d1", on_delete: :cascade
   add_foreign_key "mentions", "statuses", on_delete: :cascade
@@ -2097,6 +2108,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_153800) do
   add_foreign_key "severed_relationships", "accounts", column: "local_account_id", on_delete: :cascade
   add_foreign_key "severed_relationships", "accounts", column: "remote_account_id", on_delete: :cascade
   add_foreign_key "severed_relationships", "relationship_severance_events", on_delete: :cascade
+  add_foreign_key "status_drafts", "accounts", on_delete: :cascade
   add_foreign_key "status_edits", "accounts", on_delete: :nullify
   add_foreign_key "status_edits", "statuses", on_delete: :cascade
   add_foreign_key "status_pins", "accounts", name: "fk_d4cb435b62", on_delete: :cascade

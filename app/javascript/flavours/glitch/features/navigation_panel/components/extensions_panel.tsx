@@ -6,6 +6,7 @@ import ExtensionIcon from '@/material-icons/400-24px/extension.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
 import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
+import DraftIcon from '@/material-icons/400-24px/save.svg?react';
 import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 import {
   circlesEnabled,
@@ -32,6 +33,7 @@ const messages = defineMessages({
     id: 'navigation_bar.scheduled',
     defaultMessage: 'Scheduled posts',
   },
+  drafts: { id: 'navigation_bar.drafts', defaultMessage: 'Drafts' },
   circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   pages: { id: 'navigation_bar.pages', defaultMessage: 'Pages' },
@@ -41,6 +43,17 @@ export const ExtensionsPanel: React.FC = () => {
   const intl = useIntl();
 
   const children = [];
+
+  children.push(
+    <ColumnLink
+      key='drafts'
+      transparent
+      to='/drafts'
+      icon='drafts'
+      iconComponent={DraftIcon}
+      text={intl.formatMessage(messages.drafts)}
+    />,
+  );
 
   children.push(
     <ColumnLink

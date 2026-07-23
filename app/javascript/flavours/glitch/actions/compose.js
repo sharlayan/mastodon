@@ -24,6 +24,7 @@ import { showAlert, showAlertForError } from './alerts';
 import { useEmoji } from './emojis';
 import { importFetchedAccounts, importFetchedStatus } from './importer';
 import { openModal } from './modal';
+import { deleteStatusDraft } from './status_drafts';
 import { updateTimeline } from './timelines';
 import { insertStatusIntoAccountTimelines } from './timelines_typed';
 
@@ -224,6 +225,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
     const statusText   = getState().getIn(['compose', 'text'], '');
     const media        = getState().getIn(['compose', 'media_attachments']);
     const statusId     = getState().getIn(['compose', 'id'], null);
+    const draftId      = getState().getIn(['compose', 'draft_id'], null);
     const hasQuote     = !!getState().getIn(['compose', 'quoted_status_id']);
     const spoilers     = getState().getIn(['compose', 'spoiler']) || getState().getIn(['local_settings', 'always_show_spoilers_field']);
     const spoiler_text = spoilers ? getState().getIn(['compose', 'spoiler_text'], '') : '';
@@ -306,6 +308,9 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         dispatch(insertIntoTagHistory(response.data.tags, statusText));
       }
       dispatch(submitComposeSuccess({ ...response.data }));
+      if (draftId) {
+        dispatch(deleteStatusDraft(draftId));
+      }
       if (typeof successCallback === 'function') {
         successCallback(response.data);
       }

@@ -13,6 +13,7 @@ import {
 } from 'flavours/glitch/actions/compose';
 import { pasteLinkCompose } from 'flavours/glitch/actions/compose_typed';
 import { openModal } from 'flavours/glitch/actions/modal';
+import { saveStatusDraft } from 'flavours/glitch/actions/status_drafts';
 import { PRIVATE_QUOTE_MODAL_ID } from 'flavours/glitch/features/ui/components/confirmation_modals/private_quote_notify';
 import { me } from 'flavours/glitch/initial_state';
 import { privacyPreference } from 'flavours/glitch/utils/privacy_preference';
@@ -145,6 +146,10 @@ const mapDispatchToProps = (dispatch, props) => ({
 
   onScheduleChange (scheduledAt) {
     dispatch(changeScheduledAt(scheduledAt));
+  },
+
+  onSaveDraft () {
+    dispatch(saveStatusDraft());
   },
 
 });

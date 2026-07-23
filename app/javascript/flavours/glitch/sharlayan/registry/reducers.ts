@@ -7,6 +7,7 @@ import directCompose from '../../reducers/direct_compose';
 import favoriteEmojis from '../../reducers/favorite_emojis';
 import { reactionMutesReducer } from '../../reducers/reaction_mutes';
 import scheduledStatuses from '../../reducers/scheduled_statuses';
+import statusDrafts from '../../reducers/status_drafts';
 import { accountSwitchesReducer } from '../account_switcher/reducer';
 
 export const sharlayanReducers = {
@@ -20,4 +21,5 @@ export const sharlayanReducers = {
   reaction_mutes: reactionMutesReducer,
   direct_compose: directCompose,
   scheduled_statuses: scheduledStatuses,
+  status_drafts: statusDrafts,
 };

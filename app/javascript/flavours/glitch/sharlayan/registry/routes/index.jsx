@@ -43,6 +43,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'antennas', path: '/antennas', featureGate: () => antennaEnabled, lazyComponent: () => import('../../../features/antennas') },
   { key: 'reactions', path: '/reactions', featureGate: alwaysEnabled, lazyComponent: ReactedStatuses },
   { key: 'scheduled', path: ['/scheduled', '/timelines/scheduled'], featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/scheduled_timeline') },
+  { key: 'drafts', path: '/drafts', exact: true, featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/status_drafts') },
   { key: 'board-announcements', path: '/board_announcements', featureGate: alwaysEnabled, lazyComponent: BoardAnnouncements },
   { key: 'account-clips', path: ['/@:acct/clips', '/accounts/:id/clips'], featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/account_clips') },
   { key: 'account-page', path: ['/@:acct/pages/:name', '/accounts/:id/pages/:name'], featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/account_pages/show') },

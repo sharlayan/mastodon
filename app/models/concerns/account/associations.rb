@@ -36,6 +36,7 @@ module Account::Associations
         has_many :report_notes
         has_many :reports
         has_many :scheduled_statuses
+        has_many :status_drafts
         has_many :status_pins
         has_many :statuses
         has_many :keypairs

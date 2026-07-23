@@ -1,5 +1,7 @@
 ---
 ja:
+  status_drafts:
+    over_limit: 下書きは最大%{limit}件まで保存できます
   about:
     about_mastodon_html: Mastodonは、オープンなウェブプロトコルを採用した、自由でオープンソースなソーシャルネットワークです。電子メールのような分散型の仕組みを採っています。
     contact_missing: 未設定

@@ -1,11 +1,13 @@
 import { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
 import { reduceScheduledCompose } from './scheduled_state';
+import { reduceStatusDraftCompose } from './draft_state';
 
 export const sharlayanComposeInitialState = ImmutableMap({
   circle_id: null,
   clip_ids: ImmutableList(),
   scheduled_at: null,
+  draft_id: null,
 });
 
 export const resetSharlayanComposeState = (state) =>
@@ -30,6 +32,8 @@ export const reduceSharlayanCompose = (
 ) => {
   const scheduledState = reduceScheduledCompose(state, action);
   if (scheduledState) return scheduledState;
+  const draftState = reduceStatusDraftCompose(state, action);
+  if (draftState) return draftState;
 
   if (action.type === 'compose/circle_change') {
     return state

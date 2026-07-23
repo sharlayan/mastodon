@@ -296,6 +296,7 @@ class ComposeForm extends ImmutablePureComponent {
               isEditingScheduled={this.props.isEditingScheduled}
               isInline={this.props.isInline}
               onScheduleChange={this.props.onScheduleChange}
+              onSaveDraft={this.props.onSaveDraft}
               scheduledAt={this.props.scheduledAt}
               showScheduleButton={this.props.showScheduleButton}
               languageDropdown={<LanguageDropdown />}

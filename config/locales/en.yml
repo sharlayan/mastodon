@@ -1,5 +1,7 @@
 ---
 en:
+  status_drafts:
+    over_limit: You cannot save more than %{limit} drafts
   about:
     about_mastodon_html: 'The social network of the future: No ads, no corporate surveillance, ethical design, and decentralization! Own your data with Mastodon!'
     contact_missing: Not set
