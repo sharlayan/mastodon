@@ -272,6 +272,7 @@ class ComposeForm extends ImmutablePureComponent {
 
   render () {
     const { intl, onPaste, onDrop, autoFocus, withoutNavigation, maxChars, isSubmitting } = this.props;
+    const countedText = this.getFulltextForCharacterCounting();
 
     return (
       <form
@@ -362,7 +363,7 @@ class ComposeForm extends ImmutablePureComponent {
             autoFocus={autoFocus}
             lang={this.props.lang}
             className='compose-form__input'
-            overflowStart={getComposeOverflowStart({ text: this.props.text, maxChars, spoiler: this.props.spoiler, spoilerText: this.props.spoilerText })}
+            overflowStart={getComposeOverflowStart({ text: this.props.text, countedText, maxChars, spoiler: this.props.spoiler, spoilerText: this.props.spoilerText })}
           />
 
           <PollForm />
@@ -379,7 +380,7 @@ class ComposeForm extends ImmutablePureComponent {
                 <EmojiPickerDropdown onPickEmoji={this.handleEmojiPick} />
                 <FederationButton />
                 <ThreadModeButton />
-                <CharacterCounter max={maxChars} text={this.getFulltextForCharacterCounting()} />
+                <CharacterCounter max={maxChars} text={countedText} />
               </div>
 
               {!this.props.isInline && (

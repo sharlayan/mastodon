@@ -25,6 +25,7 @@ interface CanSubmitOptions {
 }
 
 interface OverflowOptions {
+  countedText: string;
   maxChars: number;
   spoiler?: boolean;
   spoilerText?: string;
@@ -74,11 +75,16 @@ export function canSubmitCompose({
 }
 
 export function getComposeOverflowStart({
+  countedText,
   maxChars,
   spoiler,
   spoilerText = '',
   text,
 }: OverflowOptions) {
+  if (length(countedText) <= maxChars) {
+    return -1;
+  }
+
   return overflowStart(
     text,
     maxChars - (spoiler ? length(spoilerText) : 0),

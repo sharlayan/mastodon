@@ -18,6 +18,14 @@ export const SharlayanOverflowHighlight = ({ overflowStart, textareaElement, val
   const highlightsContentRef = useRef(null);
 
   useLayoutEffect(() => {
+    const content = highlightsContentRef.current;
+
+    if (content && textareaElement) {
+      content.style.transform = `translateY(${-textareaElement.scrollTop}px)`;
+    }
+  }, [textareaElement, value, overflowStart]);
+
+  useLayoutEffect(() => {
     if (!textareaElement) {
       return undefined;
     }
@@ -52,7 +60,7 @@ export const SharlayanOverflowHighlight = ({ overflowStart, textareaElement, val
       observer.disconnect();
       textareaElement.removeEventListener('scroll', syncScroll);
     };
-  }, [textareaElement, value, overflowStart]);
+  }, [textareaElement]);
 
   const text = getOverflowHighlightText(value, overflowStart);
 

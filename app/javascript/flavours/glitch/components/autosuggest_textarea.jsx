@@ -182,9 +182,11 @@ const AutosuggestTextarea = forwardRef(({
     setTextareaElement(element);
   }, []);
 
+  const hasOverflow = overflowStart >= 0 && overflowStart < value.length;
+
   return (
     <div className={classNames('autosuggest-textarea', className)}>
-      <SharlayanOverflowHighlight overflowStart={overflowStart} textareaElement={textareaElement} value={value} />
+      {hasOverflow && <SharlayanOverflowHighlight overflowStart={overflowStart} textareaElement={textareaElement} value={value} />}
       <Textarea
         ref={handleRef}
         className='autosuggest-textarea__textarea'
