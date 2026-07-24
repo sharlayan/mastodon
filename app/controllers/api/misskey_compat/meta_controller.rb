@@ -2,6 +2,7 @@
 
 class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
   PAGE_ENDPOINT_NAMES = %w(i/pages i/page-likes users/pages).freeze
+  DRIVE_ENDPOINT_NAMES = %w(charts/drive charts/user/drive).freeze
 
   def show
     return unless object_body!
@@ -80,6 +81,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     self.class.compat_endpoint_names.reject do |name|
       name == 'signin-flow' ||
         name == 'drive' ||
+        (DRIVE_ENDPOINT_NAMES.include?(name) && !Setting.drive_enabled) ||
         (name.start_with?('drive/') && !Setting.drive_enabled && name != 'drive/files/create') ||
         ((name.start_with?('pages/') || PAGE_ENDPOINT_NAMES.include?(name)) && !Setting.pages_enabled)
     end

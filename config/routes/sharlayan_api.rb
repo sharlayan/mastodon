@@ -172,6 +172,18 @@ namespace :api, format: false do
     match 'get-online-users-count', to: 'meta#online_users_count', via: [:get, :post]
     match 'server-info', to: 'meta#server_info', via: [:get, :post]
     post 'stats', to: 'meta#stats'
+    match 'charts/active-users', to: 'charts#active_users', via: [:get, :post]
+    match 'charts/ap-request', to: 'charts#ap_request', via: [:get, :post]
+    match 'charts/drive', to: 'charts#drive', via: [:get, :post]
+    match 'charts/federation', to: 'charts#federation', via: [:get, :post]
+    match 'charts/instance', to: 'charts#instance', via: [:get, :post]
+    match 'charts/notes', to: 'charts#notes', via: [:get, :post]
+    match 'charts/user/drive', to: 'charts#user_drive', via: [:get, :post]
+    match 'charts/user/following', to: 'charts#user_following', via: [:get, :post]
+    match 'charts/user/notes', to: 'charts#user_notes', via: [:get, :post]
+    match 'charts/user/pv', to: 'charts#user_pv', via: [:get, :post]
+    match 'charts/user/reactions', to: 'charts#user_reactions', via: [:get, :post]
+    match 'charts/users', to: 'charts#users', via: [:get, :post]
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
     post 'i/pin', to: 'i#pin'
