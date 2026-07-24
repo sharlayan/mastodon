@@ -399,22 +399,22 @@ namespace :api, format: false do
     post 'gallery/posts/unlike', to: 'gallery#noop'
     post 'gallery/posts/delete', to: 'stub#no_content'
 
-    post 'channels/followed', to: 'channels#empty'
-    post 'channels/my-favorites', to: 'channels#empty'
-    post 'channels/owned', to: 'channels#empty'
-    post 'channels/featured', to: 'channels#empty'
-    post 'channels/timeline', to: 'channels#empty'
-    post 'channels/search', to: 'channels#empty'
-    post 'channels/show', to: 'channels#noop'
-    post 'channels/create', to: 'channels#noop'
-    post 'channels/update', to: 'channels#noop'
-    match 'channels/follow', to: 'channels#noop', via: [:post]
-    match 'channels/unfollow', to: 'channels#noop', via: [:post]
-    match 'channels/favorite', to: 'channels#noop', via: [:post]
-    match 'channels/unfavorite', to: 'channels#noop', via: [:post]
-    post 'channels/mute/create', to: 'channels#noop'
-    post 'channels/mute/delete', to: 'channels#noop'
-    post 'channels/mute/list', to: 'channels#empty'
+    post 'channels/followed', to: 'stub#unsupported'
+    post 'channels/my-favorites', to: 'stub#unsupported'
+    post 'channels/owned', to: 'stub#unsupported'
+    post 'channels/featured', to: 'stub#unsupported'
+    post 'channels/timeline', to: 'stub#unsupported'
+    post 'channels/search', to: 'stub#unsupported'
+    post 'channels/show', to: 'stub#unsupported'
+    post 'channels/create', to: 'stub#unsupported'
+    post 'channels/update', to: 'stub#unsupported'
+    post 'channels/follow', to: 'stub#unsupported'
+    post 'channels/unfollow', to: 'stub#unsupported'
+    post 'channels/favorite', to: 'stub#unsupported'
+    post 'channels/unfavorite', to: 'stub#unsupported'
+    post 'channels/mute/create', to: 'stub#unsupported'
+    post 'channels/mute/delete', to: 'stub#unsupported'
+    post 'channels/mute/list', to: 'stub#unsupported'
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
     post 'v2/admin/emoji/list', to: 'stub#noop'

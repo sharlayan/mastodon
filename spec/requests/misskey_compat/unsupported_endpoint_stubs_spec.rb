@@ -23,7 +23,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
   let(:array_endpoints) do
     %w(
       bubble-game/ranking
-      channels/mute/list
       chat/messages/search
       retention
       reversi/games
@@ -50,6 +49,22 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
 
   let(:explicitly_unsupported_endpoints) do
     %w(
+      channels/create
+      channels/favorite
+      channels/featured
+      channels/follow
+      channels/followed
+      channels/mute/create
+      channels/mute/delete
+      channels/mute/list
+      channels/my-favorites
+      channels/owned
+      channels/search
+      channels/show
+      channels/timeline
+      channels/unfavorite
+      channels/unfollow
+      channels/update
       sw/update-registration
       username/available
       verify-email
