@@ -19,6 +19,7 @@ RSpec.describe 'Misskey-compat meta endpoint' do
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to include(:name, :uri, :maxNoteTextLength, :policies, :features, :requireSetup)
+      expect(response.parsed_body[:version]).to eq('2026.6.0-compat')
       expect(response.parsed_body[:iconUrl]).to end_with('/packs/default-server-icon.png')
       expect(response.parsed_body[:features]).to include(miauth: true)
       expect(response.parsed_body[:clientOptions]).to include(

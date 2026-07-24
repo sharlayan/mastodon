@@ -98,7 +98,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     {
       maintainerName: Setting.site_contact_username.presence,
       maintainerEmail: Setting.site_contact_email.presence,
-      version: '13.0.0-compat',
+      version: '2026.6.0-compat',
       providesTarball: false,
       name: Setting.site_title,
       shortName: nil,
