@@ -37,7 +37,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       chat/messages/react
       chat/messages/unreact
       flash/delete
-      gallery/posts/delete
       promo/read
       request-reset-password
       reset-db
@@ -65,8 +64,20 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       channels/unfavorite
       channels/unfollow
       channels/update
+      gallery/featured
+      gallery/popular
+      gallery/posts
+      gallery/posts/create
+      gallery/posts/delete
+      gallery/posts/like
+      gallery/posts/show
+      gallery/posts/unlike
+      gallery/posts/update
+      i/gallery/likes
+      i/gallery/posts
       sw/update-registration
       username/available
+      users/gallery/posts
       verify-email
     )
   end
