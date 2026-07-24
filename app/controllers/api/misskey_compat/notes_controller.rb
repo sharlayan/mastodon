@@ -3,15 +3,17 @@
 class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
-                       :scheduled_cancel, :destroy, :favorites_create,
+                       :scheduled_cancel, :drafts_create, :drafts_update, :drafts_delete,
+                       :destroy, :favorites_create,
                        :favorites_delete, :polls_vote
 
   requires_misskey_permission 'read:account', :timeline, :local_timeline, :hybrid_timeline, :global_timeline,
                               :mentions, :state, :search, :search_by_tag, :translate, :scheduled_list,
-                              :polls_recommendation
+                              :drafts_list, :drafts_count, :polls_recommendation
   requires_misskey_permission 'read:favorites', :my_favorites
   requires_misskey_permission 'write:notes', :unrenote, :create, :update, :scheduled_cancel, :destroy
   requires_misskey_permission 'write:account', :thread_muting_create, :thread_muting_delete
+  requires_misskey_permission 'write:account', :drafts_create, :drafts_update, :drafts_delete
   requires_misskey_permission 'write:reactions', :reactions_create, :reactions_delete
   requires_misskey_permission 'write:favorites', :favorites_create, :favorites_delete
   requires_misskey_permission 'write:votes', :polls_vote
@@ -19,7 +21,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   USER_ACTIONS = %i(
     timeline hybrid_timeline mentions my_favorites
     create update destroy state search search_by_tag translate unrenote
-    scheduled_list scheduled_cancel
+    scheduled_list scheduled_cancel drafts_list drafts_count drafts_create drafts_update drafts_delete
     reactions_create reactions_delete
     thread_muting_create thread_muting_delete
     favorites_create favorites_delete polls_vote polls_recommendation
@@ -192,6 +194,73 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     render_error('No such note', 'NO_SUCH_NOTE', 404) and return if scheduled.nil?
 
     scheduled.destroy!
+    head 204
+  end
+
+  def drafts_list
+    scope = current_account.status_drafts.includes(:media_attachments).order(id: :desc)
+    scope = scope.where(id: ...(until_id.to_i)) if until_id.present?
+    scope = scope.where('status_drafts.id > ?', since_id.to_i) if since_id.present?
+    scope = scope.where(created_at: ...(Time.zone.at(params[:untilDate].to_i / 1000.0))) if params[:untilDate].present?
+    scope = scope.where(created_at: (Time.zone.at(params[:sinceDate].to_i / 1000.0))..) if params[:sinceDate].present?
+    scope = scope.none if ActiveModel::Type::Boolean.new.cast(params[:scheduled])
+    drafts = scope.limit(pagination_limit(default: 30, max: 100)).to_a
+    statuses_by_id = draft_reference_statuses(drafts)
+
+    render json: drafts.map { |draft| serialize_draft(draft, statuses_by_id: statuses_by_id) }
+  end
+
+  def drafts_count
+    render json: current_account.status_drafts.count
+  end
+
+  def drafts_create
+    return unless draft_references_valid?
+
+    validate_draft_params!
+
+    with_resolved_media_ids do |media_ids|
+      draft = current_account.status_drafts.build(data: misskey_draft_data)
+      save_draft_with_media!(draft, media_ids)
+      render json: { createdDraft: serialize_draft(draft) }
+    end
+  rescue ActiveRecord::RecordInvalid => e
+    render_draft_validation_error(e)
+  rescue MisskeyCompat::DriveFileResolver::NoSuchFileError
+    render_error('No such file', 'NO_SUCH_FILE', 404)
+  rescue MisskeyCompat::DriveFileResolver::AmbiguousFileError
+    render_invalid_param('#/properties/fileIds', 'ambiguous file id')
+  end
+
+  def drafts_update
+    draft = current_account.status_drafts.find_by(id: params[:draftId])
+    return render_error('No such draft', 'NO_SUCH_NOTE_DRAFT', 404) if draft.nil?
+    return unless draft_references_valid?
+
+    validate_draft_params!
+
+    draft.data = misskey_draft_data(existing: draft.data)
+
+    unless params.key?(:fileIds)
+      draft.save!
+      return render json: { updatedDraft: serialize_draft(draft) }
+    end
+
+    with_resolved_media_ids do |media_ids|
+      save_draft_with_media!(draft, media_ids)
+      render json: { updatedDraft: serialize_draft(draft) }
+    end
+  rescue MisskeyCompat::DriveFileResolver::NoSuchFileError
+    render_error('No such file', 'NO_SUCH_FILE', 404)
+  rescue MisskeyCompat::DriveFileResolver::AmbiguousFileError
+    render_invalid_param('#/properties/fileIds', 'ambiguous file id')
+  end
+
+  def drafts_delete
+    draft = current_account.status_drafts.find_by(id: params[:draftId])
+    return render_error('No such draft', 'NO_SUCH_NOTE_DRAFT', 404) if draft.nil?
+
+    draft.destroy!
     head 204
   end
 
@@ -473,6 +542,91 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
         visibleUserIds: [],
       },
     }
+  end
+
+  def serialize_draft(draft, statuses_by_id: nil)
+    MisskeyCompat::StatusDraftSerializer.serialize(draft, current_account: current_account, statuses_by_id: statuses_by_id)
+  end
+
+  def draft_reference_statuses(drafts)
+    ids = drafts.flat_map { |draft| [draft.data['in_reply_to_id'], draft.data['quoted_status_id']] }.compact.uniq
+    statuses = Status.where(id: ids).to_a
+    Status.preload_cacheable_associations(statuses)
+    ActiveRecord::Associations::Preloader.new(records: statuses, associations: :mentions).call
+    statuses.index_by(&:id)
+  end
+
+  def validate_draft_params!
+    raise ArgumentError, 'scheduled drafts are not supported' if ActiveModel::Type::Boolean.new.cast(params[:isActuallyScheduled])
+    raise ArgumentError, 'text is too long' if params[:text].to_s.length > StatusLengthValidator::MAX_CHARS
+    raise ArgumentError, 'cw is too long' if params[:cw].to_s.length > 100
+    raise ArgumentError, 'too many files' if Array(params[:fileIds]).length > Status::MEDIA_ATTACHMENTS_LIMIT
+
+    poll = params[:poll]
+    return if poll.blank?
+
+    choices = Array(poll[:choices])
+    raise ArgumentError, 'invalid poll choices' if choices.length > PollOptionsValidator::MAX_OPTIONS || choices.any? { |choice| choice.blank? || choice.to_s.each_grapheme_cluster.count > PollOptionsValidator::MAX_OPTION_CHARS }
+  end
+
+  def draft_references_valid?
+    {
+      replyId: ['No such reply target', 'NO_SUCH_REPLY_TARGET'],
+      renoteId: ['No such renote target', 'NO_SUCH_RENOTE_TARGET'],
+    }.each do |key, (message, code)|
+      next if params[key].blank?
+
+      status = Status.find_by(id: params[key])
+      next if status && StatusPolicy.new(current_account, status).show?
+
+      render_error(message, code, 404)
+      return false
+    end
+
+    true
+  end
+
+  def misskey_draft_data(existing: nil)
+    data = existing&.deep_dup || {
+      'status' => nil,
+      'spoiler_text' => nil,
+      'content_type' => composed_content_type,
+      'local_only' => false,
+      'sensitive' => false,
+      'visibility' => 'public',
+      'visible_user_ids' => [],
+    }
+
+    data['status'] = params[:text] if params.key?(:text)
+    data['spoiler_text'] = params[:cw] if params.key?(:cw)
+    data['content_type'] = composed_content_type if params.key?(:text)
+    data['local_only'] = ActiveModel::Type::Boolean.new.cast(params[:localOnly]) if params.key?(:localOnly)
+    data['in_reply_to_id'] = params[:replyId].presence if params.key?(:replyId)
+    data['visibility'] = mastodon_visibility(params[:visibility]) if params.key?(:visibility)
+    data['visible_user_ids'] = Array(params[:visibleUserIds]).first(100) if params.key?(:visibleUserIds)
+    data['poll'] = poll_options if params.key?(:poll)
+    data['quoted_status_id'] = params[:renoteId].presence if params.key?(:renoteId)
+    data['reaction_acceptance'] = params[:reactionAcceptance] if params.key?(:reactionAcceptance)
+    data['scheduled_at'] = params[:scheduledAt].present? ? scheduled_at_option.iso8601 : nil if params.key?(:scheduledAt)
+    data.compact
+  end
+
+  def save_draft_with_media!(draft, media_ids)
+    ids = Array(media_ids).map(&:to_i)
+
+    draft.transaction do
+      draft.save!
+      media = current_account.media_attachments.where(status_id: nil, scheduled_status_id: nil)
+        .where(status_draft_id: [nil, draft.id]).where(id: ids).index_by(&:id)
+      raise MisskeyCompat::DriveFileResolver::NoSuchFileError unless ids.all? { |id| media.key?(id) }
+
+      draft.media_attachments.where.not(id: ids).update_all(status_draft_id: nil)
+      ids.each { |id| media.fetch(id).update!(status_draft: draft) }
+    end
+  end
+
+  def render_draft_validation_error(error)
+    render_error(error.record.errors.full_messages.first, 'TOO_MANY_DRAFTS', 400)
   end
 
   def serialize_collection(statuses)
