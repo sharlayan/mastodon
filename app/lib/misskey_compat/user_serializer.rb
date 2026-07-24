@@ -27,7 +27,7 @@ class MisskeyCompat::UserSerializer
     }
 
     if detailed
-      data.merge!(detailed_fields(account))
+      data.merge!(detailed_fields(account, viewer))
       data.merge!(viewer_fields(account, viewer, relationships)) if viewer && viewer.id != account.id
       data.merge!(me_fields(me_user)) if me_user && me_user.account_id == account.id
     end
@@ -49,6 +49,7 @@ class MisskeyCompat::UserSerializer
       isBlocked: account.blocking?(viewer),
       isMuted: viewer.muting?(account),
       isRenoteMuted: viewer.muting_reblogs?(account),
+      memo: viewer.account_notes.find_by(target_account_id: account.id)&.comment,
     }
   end
 
@@ -100,7 +101,11 @@ class MisskeyCompat::UserSerializer
     []
   end
 
-  def detailed_fields(account)
+  def detailed_fields(account, viewer)
+    ff_visibility = account.hide_collections? ? 'followers' : 'public'
+    pinned_note_ids, pinned_notes = pinned_notes_for(account, viewer)
+    pinned_page_id, pinned_page = pinned_page_for(account, viewer)
+
     {
       description: PlainTextFormatter.new(account.note, account.local?).to_s.presence,
       followersCount: account.followers_count,
@@ -108,8 +113,11 @@ class MisskeyCompat::UserSerializer
       notesCount: account.statuses_count,
       url: account.local? ? nil : account.url,
       uri: account.local? ? nil : account.uri,
+      movedTo: account.moved_to_account&.uri,
+      alsoKnownAs: nil,
       createdAt: account.created_at&.iso8601,
       updatedAt: account.updated_at&.iso8601,
+      lastFetchedAt: nil,
       bannerUrl: header_url(account),
       bannerBlurhash: nil,
       isLocked: account.locked?,
@@ -119,9 +127,66 @@ class MisskeyCompat::UserSerializer
       isCat: false,
       publicReactions: public_reactions?(account),
       fields: fields_for(account),
-      pinnedNoteIds: [],
-      pinnedNotes: [],
+      verifiedLinks: verified_links_for(account),
+      followingVisibility: ff_visibility,
+      followersVisibility: ff_visibility,
+      roles: roles_for(account),
+      memo: nil,
+      chatScope: 'none',
+      canChat: false,
+      pinnedNoteIds: pinned_note_ids,
+      pinnedNotes: pinned_notes,
+      pinnedPageId: pinned_page_id,
+      pinnedPage: pinned_page,
     }
+  end
+
+  def pinned_notes_for(account, viewer)
+    statuses = account.pinned_statuses.where(visibility: [:public, :unlisted]).to_a
+    return [[], []] if statuses.empty?
+
+    Status.preload_cacheable_associations(statuses)
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: viewer)
+
+    [
+      statuses.map { |status| MisskeyCompat::MiId.encode(status.id) },
+      statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) },
+    ]
+  end
+
+  def pinned_page_for(account, viewer)
+    return [nil, nil] unless Setting.pages_enabled
+
+    page = account.pages.find_by(is_main: true)
+    return [nil, nil] if page.nil? || !page.public_visibility?
+
+    [MisskeyCompat::MiId.encode(page.id), MisskeyCompat::PageSerializer.serialize(page, current_account: viewer)]
+  end
+
+  def verified_links_for(account)
+    account.fields.filter_map do |field|
+      next unless field.verified?
+
+      PlainTextFormatter.new(field.value.to_s, account.local?).to_s
+    end
+  end
+
+  def roles_for(account)
+    role = account.local? ? account.user&.role : nil
+    return [] if role.nil? || role.everyone? || !role.highlighted?
+
+    [
+      {
+        id: MisskeyCompat::MiId.encode(role.id),
+        name: role.name,
+        color: role.color.presence,
+        iconUrl: nil,
+        description: '',
+        isModerator: role.can?(*UserRole::Flags::CATEGORIES[:moderation]),
+        isAdministrator: role.can?(:administrator),
+        displayOrder: role.position,
+      },
+    ]
   end
 
   def header_url(account)
