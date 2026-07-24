@@ -10,11 +10,7 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       chat/messages/create-to-room
       chat/messages/create-to-user
       chat/rooms/create
-      flash/create
       ping
-      reversi/match
-      reversi/show-game
-      reversi/verify
       test
       v2/admin/emoji/list
     )
@@ -24,9 +20,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
     %w(
       bubble-game/ranking
       chat/messages/search
-      retention
-      reversi/games
-      reversi/invitations
     )
   end
 
@@ -36,13 +29,20 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       chat/messages/delete
       chat/messages/react
       chat/messages/unreact
-      flash/delete
+      i/export-antennas
+      i/export-blocking
+      i/export-clips
+      i/export-favorites
+      i/export-following
+      i/export-mute
+      i/export-notes
+      i/export-user-lists
+      i/import-antennas
+      i/import-blocking
+      i/import-following
+      i/import-muting
+      i/import-user-lists
       promo/read
-      request-reset-password
-      reset-db
-      reset-password
-      reversi/cancel-match
-      reversi/surrender
     )
   end
 
@@ -64,6 +64,16 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       channels/unfavorite
       channels/unfollow
       channels/update
+      flash/create
+      flash/delete
+      flash/featured
+      flash/like
+      flash/my
+      flash/my-likes
+      flash/search
+      flash/show
+      flash/unlike
+      flash/update
       gallery/featured
       gallery/popular
       gallery/posts
@@ -73,10 +83,24 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       gallery/posts/show
       gallery/posts/unlike
       gallery/posts/update
+      i/change-password
       i/gallery/likes
       i/gallery/posts
+      i/update-email
+      request-reset-password
+      reset-db
+      reset-password
+      retention
+      reversi/cancel-match
+      reversi/games
+      reversi/invitations
+      reversi/match
+      reversi/show-game
+      reversi/surrender
+      reversi/verify
       sw/update-registration
       username/available
+      users/flashs
       users/gallery/posts
       verify-email
     )
