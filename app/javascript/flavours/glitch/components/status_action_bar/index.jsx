@@ -36,6 +36,7 @@ import { quoteItemState } from '../status/boost_button_utils';
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
 import { computeStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
 import { openModal } from '@/flavours/glitch/actions/modal';
+import { removeStatusFromAntenna } from '@/flavours/glitch/actions/antennas';
 
 
 const messages = defineMessages({
@@ -71,11 +72,16 @@ const messages = defineMessages({
   openOriginalPage: { id: 'account.open_original_page', defaultMessage: 'Open original page' },
   revokeQuote: { id: 'status.revoke_quote', defaultMessage: 'Remove my post from @{name}’s post' },
   quotePolicyChange: { id: 'status.quote_policy_change', defaultMessage: 'Change who can quote' },
+  removeFromAntenna: { id: 'status.remove_from_antenna', defaultMessage: 'Remove from this antenna' },
+  removeFromAntennaConfirm: { id: 'status.remove_from_antenna_confirm', defaultMessage: 'Remove this post from {name}?' },
+  removeFromAntennaConfirmFallback: { id: 'status.remove_from_antenna_confirm_fallback', defaultMessage: 'Remove this post from this antenna?' },
 });
 
-const mapStateToProps = (state, { status }) => {
+const mapStateToProps = (state, { status, contextType }) => {
   const quotedStatusId = status.getIn(['quote', 'quoted_status']);
+  const antennaId = contextType?.startsWith('antenna:') ? contextType.split(':')[1] : null;
   return ({
+    antennaTitle: antennaId ? state.getIn(['antennas', antennaId, 'title']) : null,
     quotedAccountId: quotedStatusId ? state.getIn(['statuses', quotedStatusId, 'account']) : null,
     statusQuoteState: selectStatusConditions(state, status.get('id')),
     statusActionBarOrder: computeStatusActionBarOrder(state.getIn(['local_settings', 'status_action_bar', 'order'])?.toJS()),
@@ -86,12 +92,14 @@ const mapStateToProps = (state, { status }) => {
 class StatusActionBar extends ImmutablePureComponent {
   static propTypes = {
     identity: identityContextPropShape,
+    antennaTitle: PropTypes.string,
     status: ImmutablePropTypes.map.isRequired,
     statusQuoteState: PropTypes.object,
     quotedAccountId: PropTypes.string,
     statusActionBarOrder: PropTypes.arrayOf(PropTypes.string).isRequired,
     statusActionBarHidden: ImmutablePropTypes.map.isRequired,
     contextType: PropTypes.string,
+    containerId: PropTypes.string,
     onReply: PropTypes.func,
     onFavourite: PropTypes.func,
     onReactionAdd: PropTypes.func,
@@ -122,6 +130,7 @@ class StatusActionBar extends ImmutablePureComponent {
   // evaluate to false. See react-immutable-pure-component for usage.
   updateOnProps = [
     'status',
+    'antennaTitle',
     'quotedAccountId',
     'showReplyCount',
     'statusActionBarHidden',
@@ -235,6 +244,22 @@ class StatusActionBar extends ImmutablePureComponent {
     this.props.onFilter();
   };
 
+  handleRemoveFromAntenna = () => {
+    const antennaId = this.props.contextType.split(':')[1];
+    const title = this.props.antennaTitle
+      ? this.props.intl.formatMessage(messages.removeFromAntennaConfirm, { name: this.props.antennaTitle })
+      : this.props.intl.formatMessage(messages.removeFromAntennaConfirmFallback);
+
+    this.props.dispatch(openModal({
+      modalType: 'CONFIRM',
+      modalProps: {
+        title,
+        confirm: this.props.intl.formatMessage(messages.removeFromAntenna),
+        onConfirm: () => this.props.dispatch(removeStatusFromAntenna(antennaId, this.props.containerId)),
+      },
+    }));
+  };
+
   render () {
     const { status, statusQuoteState, quotedAccountId, contextType, intl, withDismiss, withCounters, showReplyCount, scrollKey } = this.props;
     const { signedIn, permissions } = this.props.identity;
@@ -245,6 +270,7 @@ class StatusActionBar extends ImmutablePureComponent {
     const writtenByMe        = status.getIn(['account', 'id']) === me;
     const isRemote           = status.getIn(['account', 'username']) !== status.getIn(['account', 'acct']);
     const isQuotingMe        = quotedAccountId === me;
+    const isAntennaStatus    = contextType?.startsWith('antenna:');
 
     let menu = [];
     let reblogIcon = 'retweet';
@@ -285,6 +311,11 @@ class StatusActionBar extends ImmutablePureComponent {
 
     if (signedIn) {
       menu.push(null);
+
+      if (isAntennaStatus) {
+        menu.push({ text: intl.formatMessage(messages.removeFromAntenna), action: this.handleRemoveFromAntenna });
+        menu.push(null);
+      }
 
       if (writtenByMe && pinnableStatus) {
         menu.push({ text: intl.formatMessage(status.get('pinned') ? messages.unpin : messages.pin), action: this.handlePinClick });

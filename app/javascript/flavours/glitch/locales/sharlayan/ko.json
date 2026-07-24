@@ -472,5 +472,8 @@
   "settings.use_publish_toot": "작성 버튼 텍스트로 \"뿌우\" 사용",
   "status.add_to_clip": "클립에 추가",
   "status.mfm_fold_expand": "MFM 게시물 펼쳐서 보기",
-  "status.react": "리액션"
+  "status.react": "리액션",
+  "status.remove_from_antenna": "이 안테나에서 삭제",
+  "status.remove_from_antenna_confirm": "'{name}'에서 이 게시물을 삭제할까요?",
+  "status.remove_from_antenna_confirm_fallback": "이 안테나에서 이 게시물을 삭제할까요?"
 }

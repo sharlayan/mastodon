@@ -55,6 +55,42 @@ RSpec.describe 'Antennas' do
     end
   end
 
+  describe 'DELETE /api/v1/antennas/:antenna_id/statuses/:id' do
+    subject { delete "/api/v1/antennas/#{antenna.id}/statuses/#{status.id}", headers: headers }
+
+    let(:antenna) { Fabricate(:antenna, account: user.account) }
+    let(:status) { Fabricate(:status) }
+
+    before do
+      FeedManager.instance.push_to_antenna(antenna, status)
+    end
+
+    it 'excludes the status and removes it from the antenna feed' do
+      subject
+      expect(response).to have_http_status(200)
+      expect(AntennaFeed.new(antenna).get(10)).to_not include(status)
+    end
+
+    it 'does not allow excluding a status that is not in the antenna feed' do
+      FeedManager.instance.unpush_from_antenna(antenna, status)
+
+      subject
+      expect(response).to have_http_status(404)
+    end
+
+    context 'when the feed item is a boost' do
+      let(:original_status) { Fabricate(:status) }
+      let(:status) { Fabricate(:status, reblog: original_status) }
+
+      it 'removes current representations of the original without permanently blocking it' do
+        subject
+
+        expect(AntennaFeed.new(antenna).get(10)).to be_empty
+        expect(FeedManager.instance.filter(:antenna, status, antenna)).to be_nil
+      end
+    end
+  end
+
   describe 'POST /api/v1/antennas/:id/domains' do
     subject { post "/api/v1/antennas/#{antenna.id}/domains", headers: headers, params: { domains: ['example.com'] } }
 

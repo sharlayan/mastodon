@@ -151,6 +151,7 @@ namespace :api, format: false do
         resource :exclude_domains, only: [:show, :create, :destroy]
         resource :tags, only: [:show, :create, :destroy]
         resource :exclude_tags, only: [:show, :create, :destroy]
+        resources :statuses, only: :destroy
       end
     end
   end
@@ -316,6 +317,7 @@ namespace :api, format: false do
     post 'antennas/update', to: 'antennas#update'
     post 'antennas/delete', to: 'antennas#destroy'
     post 'antennas/notes', to: 'antennas#notes'
+    post 'antennas/remove-note', to: 'antennas#remove_note'
 
     post 'announcements', to: 'announcements#index'
     post 'announcements/show', to: 'announcements#show'

@@ -472,5 +472,8 @@
   "settings.use_publish_toot": "Use \"Toot\" as the publish button label",
   "status.add_to_clip": "Add to clip",
   "status.mfm_fold_expand": "Expand MFM post",
-  "status.react": "React"
+  "status.react": "React",
+  "status.remove_from_antenna": "Remove from this antenna",
+  "status.remove_from_antenna_confirm": "Remove this post from {name}?",
+  "status.remove_from_antenna_confirm_fallback": "Remove this post from this antenna?"
 }

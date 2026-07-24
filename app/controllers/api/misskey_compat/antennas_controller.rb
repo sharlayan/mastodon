@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseController
-  requires_write_scope :create, :update, :destroy
+  requires_write_scope :create, :update, :destroy, :remove_note
   requires_misskey_permission 'read:account', :index, :show, :notes
-  requires_misskey_permission 'write:account', :create, :update, :destroy
+  requires_misskey_permission 'write:account', :create, :update, :destroy, :remove_note
 
   include Redisable
 
   before_action :require_user!
-  before_action :set_antenna!, only: [:show, :update, :destroy, :notes]
+  before_action :set_antenna!, only: [:show, :update, :destroy, :notes, :remove_note]
 
   def index
     render json: current_account.antennas.order(id: :desc).map { |antenna| serialize(antenna) }
@@ -45,6 +45,12 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
     mark_read!(@antenna, statuses.first&.id) if params[:untilId].blank?
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
+  end
+
+  def remove_note
+    status = Status.find_by(id: params[:noteId])
+    FeedManager.instance.remove_status_from_antenna(@antenna, status.reblog || status) if status
+    head 204
   end
 
   private

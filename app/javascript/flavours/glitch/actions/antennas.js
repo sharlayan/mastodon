@@ -1,4 +1,6 @@
 import api from '../api';
+import { showAlertForError } from './alerts';
+import { timelineDeleteStatus } from './timelines_typed';
 
 export const ANTENNAS_FETCH_REQUEST = 'ANTENNAS_FETCH_REQUEST';
 export const ANTENNAS_FETCH_SUCCESS = 'ANTENNAS_FETCH_SUCCESS';
@@ -56,6 +58,11 @@ export const deleteAntenna = id => (dispatch) => {
     .then(() => dispatch({ type: ANTENNA_DELETE_SUCCESS, id }))
     .catch(err => dispatch({ type: ANTENNA_DELETE_FAIL, id, error: err }));
 };
+
+export const removeStatusFromAntenna = (antennaId, statusId) => (dispatch) =>
+  api().delete(`/api/v1/antennas/${antennaId}/statuses/${statusId}`)
+    .then(() => dispatch(timelineDeleteStatus({ statusId, timelineKey: `antenna:${antennaId}` })))
+    .catch(error => dispatch(showAlertForError(error)));
 
 const refreshAfter = (id, request) => (dispatch) =>
   request.then(() => api().get(`/api/v1/antennas/${id}`))

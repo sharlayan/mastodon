@@ -37,6 +37,25 @@ module Sharlayan::FeedManagerExtensions
     true
   end
 
+  def remove_status_from_antenna(antenna, target_status)
+    timeline_key = key(:antenna, antenna.id)
+    feed_status_ids = redis.zrange(timeline_key, 0, -1)
+    status_ids = Status.where(id: feed_status_ids)
+      .where(id: target_status.id)
+      .or(Status.where(id: feed_status_ids, reblog_of_id: target_status.id))
+      .pluck(:id)
+
+    return if status_ids.empty?
+
+    redis.zrem(timeline_key, status_ids)
+    redis.zrem(key(:antenna, antenna.id, 'reblogs'), target_status.id)
+    redis.del(key(:antenna, antenna.id, "reblogs:#{target_status.id}"))
+
+    status_ids.each do |status_id|
+      redis.publish("timeline:antenna:#{antenna.id}", { event: :delete, payload: status_id.to_s }.to_json)
+    end
+  end
+
   def push_update_required?(timeline_key)
     super || (Setting.misskey_compat_enabled && redis.exists?("subscribed:misskey:#{timeline_key}"))
   end
