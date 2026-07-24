@@ -128,7 +128,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
       infoImageUrl: nil,
       serverErrorImageUrl: nil,
       notFoundImageUrl: nil,
-      iconUrl: upload_url(instance_presenter.app_icon) || upload_url(instance_presenter.favicon),
+      iconUrl: upload_url(instance_presenter.app_icon) || upload_url(instance_presenter.favicon) || frontend_asset_url('icons/android-chrome-512x512.png'),
       backgroundImageUrl: nil,
       logoImageUrl: nil,
       maxNoteTextLength: StatusLengthValidator::MAX_CHARS,

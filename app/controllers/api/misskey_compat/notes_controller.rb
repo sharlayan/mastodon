@@ -277,7 +277,14 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def featured
-    render_notes public_feed(local: true).get(pagination_limit, until_id, since_id)
+    return render json: [] unless Setting.trends
+
+    scope = Trends.statuses.query.allowed
+    scope = scope.filtered_for(current_account) if current_account
+    statuses = scope.limit(100).to_a
+    statuses.select! { |status| status.id < until_id.to_i } if until_id.present?
+
+    render_notes statuses.first(pagination_limit(default: 10, max: 100))
   end
 
   def search
