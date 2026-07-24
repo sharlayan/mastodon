@@ -13,6 +13,11 @@ RSpec.describe 'Misskey-compat meta endpoint' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to include(:name, :uri, :maxNoteTextLength, :policies, :features, :requireSetup)
       expect(response.parsed_body[:features]).to include(miauth: true)
+      expect(response.parsed_body[:clientOptions]).to include(
+        entrancePageStyle: 'classic',
+        showTimelineForVisitor: true,
+        showActivitiesForVisitor: true
+      )
     end
 
     it 'returns lite meta without detailed keys when detail is false' do

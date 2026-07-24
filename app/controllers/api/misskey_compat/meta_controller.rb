@@ -134,6 +134,11 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
       maxNoteTextLength: StatusLengthValidator::MAX_CHARS,
       defaultLightTheme: nil,
       defaultDarkTheme: nil,
+      clientOptions: {
+        entrancePageStyle: 'classic',
+        showTimelineForVisitor: true,
+        showActivitiesForVisitor: true,
+      },
       ads: [],
       notesPerOneAd: 0,
       enableEmail: true,
