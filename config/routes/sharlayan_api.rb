@@ -169,6 +169,7 @@ namespace :api, format: false do
     match 'emoji', to: 'emojis#show', via: [:get, :post]
     match 'endpoint', to: 'meta#endpoint', via: [:get, :post]
     match 'get-online-users-count', to: 'meta#online_users_count', via: [:get, :post]
+    match 'server-info', to: 'meta#server_info', via: [:get, :post]
     post 'stats', to: 'meta#stats'
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
@@ -194,6 +195,7 @@ namespace :api, format: false do
     post 'sw/register', to: 'sw#register'
     post 'sw/unregister', to: 'sw#unregister'
     post 'sw/show-registration', to: 'sw#show_registration'
+    post 'sw/update-registration', to: 'stub#unsupported'
 
     post 'notes/timeline', to: 'notes#timeline'
     post 'notes/local-timeline', to: 'notes#local_timeline'
@@ -393,6 +395,7 @@ namespace :api, format: false do
     post 'gallery/posts/update', to: 'gallery#noop'
     post 'gallery/posts/like', to: 'gallery#noop'
     post 'gallery/posts/unlike', to: 'gallery#noop'
+    post 'gallery/posts/delete', to: 'stub#no_content'
 
     post 'channels/followed', to: 'channels#empty'
     post 'channels/my-favorites', to: 'channels#empty'
@@ -412,6 +415,7 @@ namespace :api, format: false do
     post 'channels/mute/list', to: 'channels#empty'
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
+    post 'v2/admin/emoji/list', to: 'stub#noop'
     post 'app/create', to: 'stub#noop'
     post 'app/show', to: 'stub#noop'
     post 'bubble-game/ranking', to: 'stub#empty'
@@ -437,5 +441,8 @@ namespace :api, format: false do
     match 'invite/limit', to: 'stub#invite_limit', via: [:get, :post]
     match 'fetch-rss', to: 'stub#noop', via: [:get, :post]
     post 'fetch-external-resources', to: 'stub#noop'
+    post 'test', to: 'stub#noop'
+    post 'username/available', to: 'stub#unsupported'
+    post 'verify-email', to: 'stub#unsupported'
   end
 end

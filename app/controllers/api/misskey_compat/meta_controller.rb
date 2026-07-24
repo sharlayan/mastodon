@@ -45,6 +45,23 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     }
   end
 
+  def server_info
+    render json: {
+      machine: '?',
+      cpu: {
+        model: '?',
+        cores: 0,
+      },
+      mem: {
+        total: 0,
+      },
+      fs: {
+        total: 0,
+        used: 0,
+      },
+    }
+  end
+
   def self.compat_endpoint_names
     @compat_endpoint_names ||= Rails.application.routes.routes.filter_map do |route|
       controller = route.defaults[:controller]

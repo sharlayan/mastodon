@@ -15,6 +15,8 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       reversi/match
       reversi/show-game
       reversi/verify
+      test
+      v2/admin/emoji/list
     )
   end
 
@@ -36,12 +38,21 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       chat/messages/react
       chat/messages/unreact
       flash/delete
+      gallery/posts/delete
       promo/read
       request-reset-password
       reset-db
       reset-password
       reversi/cancel-match
       reversi/surrender
+    )
+  end
+
+  let(:explicitly_unsupported_endpoints) do
+    %w(
+      sw/update-registration
+      username/available
+      verify-email
     )
   end
 
@@ -75,10 +86,19 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
     end
   end
 
+  it 'returns a Misskey error envelope from explicitly unsupported endpoints' do
+    explicitly_unsupported_endpoints.each do |endpoint|
+      post "/api/#{endpoint}", as: :json
+
+      expect(response).to have_http_status(501)
+      expect(response.parsed_body[:error]).to include(code: 'UNSUPPORTED_ENDPOINT', kind: 'server')
+    end
+  end
+
   it 'advertises every named unsupported endpoint stub' do
     post '/api/endpoints', as: :json
 
     expect(response).to have_http_status(200)
-    expect(response.parsed_body).to include(*(object_endpoints + array_endpoints + void_endpoints))
+    expect(response.parsed_body).to include(*(object_endpoints + array_endpoints + void_endpoints + explicitly_unsupported_endpoints))
   end
 end
