@@ -28,6 +28,7 @@ module Sharlayan::AdminSettingsExtensions
     misskey_compat_enabled
     misskey_compat_signin_flow_enabled
     misskey_compat_signin_flow_allowed_origins
+    misskey_compat_expose_follow_graph
     online_status_enabled
     drive_enabled
     drive_quota
@@ -61,6 +62,7 @@ module Sharlayan::AdminSettingsExtensions
     antenna_enabled
     misskey_compat_enabled
     misskey_compat_signin_flow_enabled
+    misskey_compat_expose_follow_graph
     online_status_enabled
     drive_enabled
   ).freeze

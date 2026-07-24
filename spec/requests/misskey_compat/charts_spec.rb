@@ -3,6 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe 'Misskey-compat charts' do
+  let(:user)  { Fabricate(:user) }
+  let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token }
+
   before do
     travel_to(Time.utc(2026, 7, 24, 12, 30))
     allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
@@ -93,10 +96,43 @@ RSpec.describe 'Misskey-compat charts' do
     %w(drive following notes pv reactions).each { |name| requests["user/#{name}"] = { userId: user_id } }
 
     requests.each do |path, params|
-      post "/api/charts/#{path}", params: params.merge(span: 'day', limit: 1), as: :json
+      post "/api/charts/#{path}", params: params.merge(span: 'day', limit: 1, i: token), as: :json
       expect(response).to have_http_status(200), "#{path}: #{response.body}"
     end
   ensure
     Setting.drive_enabled = false
+  end
+
+  it 'requires an authenticated user for per-user charts' do
+    account = Fabricate(:account)
+
+    post '/api/charts/user/notes', params: { userId: MisskeyCompat::MiId.encode(account.id), span: 'day', limit: 1 }, as: :json
+
+    expect(response).to have_http_status(401)
+  end
+
+  describe 'charts/user/following' do
+    let(:account) { Fabricate(:account) }
+    let(:target)  { Fabricate(:account) }
+
+    before { Fabricate(:follow, account: account, target_account: target) }
+
+    it 'suppresses the following counts when the follow graph is not exposed' do
+      post '/api/charts/user/following', params: { i: token, userId: MisskeyCompat::MiId.encode(account.id), span: 'day', limit: 1 }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:local, :followings, :total)).to eq([0])
+    end
+
+    it 'returns the following counts when the follow graph is exposed' do
+      Setting.misskey_compat_expose_follow_graph = true
+
+      post '/api/charts/user/following', params: { i: token, userId: MisskeyCompat::MiId.encode(account.id), span: 'day', limit: 1 }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:local, :followings, :total)).to eq([1])
+    ensure
+      Setting.misskey_compat_expose_follow_graph = false
+    end
   end
 end

@@ -308,6 +308,8 @@ en:
         signin_flow_allowed_origins: Additional allowed sign-in origins
         signin_flow_allowed_origins_hint: Exact HTTPS origins, separated by spaces or commas. Paths, wildcards, and implicit subdomains are not allowed.
         signin_flow_allowed_origins_invalid: "Invalid HTTPS origins: %{origins}"
+        expose_follow_graph: Expose per-instance follow graph
+        expose_follow_graph_hint: When enabled, signed-in Misskey-compatible clients can read the federation follower/following lists and per-user following charts. This reveals follow relationships even for accounts that hide their follows and followers, so leave it disabled unless you accept that trade-off. Endpoints always require a signed-in user.
       online_status:
         enabled: Enable online status indicators
         enabled_hint: When enabled, users who opt in can share whether they are online,

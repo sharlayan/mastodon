@@ -114,3 +114,9 @@
             hint: t('admin.settings.misskey_compat.signin_flow_allowed_origins_hint'),
             input_html: { autocomplete: 'off', placeholder: 'https://misskey.example' },
             sharlayan_only: true
+  = f.input :misskey_compat_expose_follow_graph,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.misskey_compat.expose_follow_graph'),
+            hint: t('admin.settings.misskey_compat.expose_follow_graph_hint'),
+            sharlayan_only: true

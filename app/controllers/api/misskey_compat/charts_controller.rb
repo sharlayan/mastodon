@@ -2,6 +2,8 @@
 
 class Api::MisskeyCompat::ChartsController < Api::MisskeyCompat::BaseController
   before_action :require_drive_enabled!, only: [:drive, :user_drive]
+  before_action :require_user!, only: %i(user_drive user_following user_notes user_pv user_reactions)
+  requires_misskey_permission 'read:account', :user_drive, :user_following, :user_notes, :user_pv, :user_reactions
 
   def active_users
     render_chart(:active_users)
@@ -35,7 +37,7 @@ class Api::MisskeyCompat::ChartsController < Api::MisskeyCompat::BaseController
   end
 
   def user_following
-    render_user_chart(:user_following)
+    render_user_chart(:user_following, suppressed: !follow_graph_exposed?)
   end
 
   def user_notes
@@ -56,14 +58,14 @@ class Api::MisskeyCompat::ChartsController < Api::MisskeyCompat::BaseController
 
   private
 
-  def render_user_chart(name)
+  def render_user_chart(name, suppressed: false)
     account_id = params[:userId].to_s
     return render_invalid_param('#/properties/userId', 'must be a valid user id') unless account_id.match?(/\A[1-9]\d*\z/)
 
-    render_chart(name, group: account_id.to_i)
+    render_chart(name, group: account_id.to_i, suppressed: suppressed)
   end
 
-  def render_chart(name, group: nil)
+  def render_chart(name, group: nil, suppressed: false)
     return unless object_body!
     return if rate_limited?(:misskey_compat_api)
 
@@ -72,7 +74,8 @@ class Api::MisskeyCompat::ChartsController < Api::MisskeyCompat::BaseController
       span: params[:span],
       limit: params[:limit],
       offset: params[:offset],
-      group: group
+      group: group,
+      suppressed: suppressed
     )
     render json: chart.call
   rescue MisskeyCompat::ChartService::InvalidParameter => e

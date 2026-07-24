@@ -52,6 +52,10 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     render_error('This endpoint is not available', 'ENDPOINT_DISABLED', 404) unless Setting.misskey_compat_enabled
   end
 
+  def follow_graph_exposed?
+    Setting.misskey_compat_expose_follow_graph
+  end
+
   def decode_mi_ids!
     MI_ID_SCALAR_PARAMS.each do |key|
       value = params[key]

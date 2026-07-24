@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseController
+  before_action :require_user!, only: %i(instances show_instance stats users followers following)
+  requires_misskey_permission 'read:account', :instances, :show_instance, :stats, :users, :followers, :following
+
   SORT_COLUMNS = {
     '+notes' => { notes_count: :desc },
     '-notes' => { notes_count: :asc },
@@ -101,6 +104,7 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
   def render_followings(direction)
     return unless object_body!
     return if rate_limited?(:misskey_compat_api)
+    return render json: [] unless follow_graph_exposed?
 
     host = host_param
     return render_invalid_param('#/properties/host', 'must be a non-empty string') if host.blank?

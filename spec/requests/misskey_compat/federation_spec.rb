@@ -6,12 +6,23 @@ RSpec.describe 'Misskey-compat federation' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
+  let(:user)  { Fabricate(:user) }
+  let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token }
+
+  describe 'authentication' do
+    it 'rejects unauthenticated read requests' do
+      post '/api/federation/instances', params: {}, as: :json
+
+      expect(response).to have_http_status(401)
+    end
+  end
+
   describe 'federation/instances' do
     it 'lists instance snapshots and honours filters and sort' do
       Fabricate(:misskey_federation_instance_stat, domain: 'small.example', users_count: 1, following_count: 0, followers_count: 0)
       Fabricate(:misskey_federation_instance_stat, domain: 'big.example', users_count: 10, following_count: 5, followers_count: 5)
 
-      post '/api/federation/instances', params: { sort: '+users', federating: true }, as: :json
+      post '/api/federation/instances', params: { i: token, sort: '+users', federating: true }, as: :json
 
       expect(response).to have_http_status(200)
       body = response.parsed_body
@@ -24,10 +35,10 @@ RSpec.describe 'Misskey-compat federation' do
     it 'returns a single instance or null' do
       Fabricate(:misskey_federation_instance_stat, domain: 'known.example', users_count: 3)
 
-      post '/api/federation/show-instance', params: { host: 'known.example' }, as: :json
+      post '/api/federation/show-instance', params: { i: token, host: 'known.example' }, as: :json
       expect(response.parsed_body).to include(host: 'known.example', usersCount: 3)
 
-      post '/api/federation/show-instance', params: { host: 'unknown.example' }, as: :json
+      post '/api/federation/show-instance', params: { i: token, host: 'unknown.example' }, as: :json
       expect(response.parsed_body).to be_nil
     end
   end
@@ -37,7 +48,7 @@ RSpec.describe 'Misskey-compat federation' do
       Fabricate(:misskey_federation_instance_stat, domain: 'a.example', followers_count: 4, following_count: 0)
       Fabricate(:misskey_federation_instance_stat, domain: 'b.example', followers_count: 1, following_count: 7)
 
-      post '/api/federation/stats', params: { limit: 1 }, as: :json
+      post '/api/federation/stats', params: { i: token, limit: 1 }, as: :json
 
       expect(response).to have_http_status(200)
       body = response.parsed_body
@@ -52,7 +63,7 @@ RSpec.describe 'Misskey-compat federation' do
     it 'returns remote users for the host' do
       Fabricate(:account, domain: 'remote.example', username: 'alice')
 
-      post '/api/federation/users', params: { host: 'remote.example' }, as: :json
+      post '/api/federation/users', params: { i: token, host: 'remote.example' }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.first).to include(username: 'alice', host: 'remote.example')
@@ -60,17 +71,34 @@ RSpec.describe 'Misskey-compat federation' do
   end
 
   describe 'federation/following and followers' do
-    it 'returns follow relationships for the host' do
-      local = Fabricate(:account)
-      remote = Fabricate(:account, domain: 'remote.example', username: 'bob')
-      Fabricate(:follow, account: remote, target_account: local)
+    let!(:local)  { Fabricate(:account) }
+    let!(:remote) { Fabricate(:account, domain: 'remote.example', username: 'bob') }
 
-      post '/api/federation/following', params: { host: 'remote.example' }, as: :json
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body.first).to include(followerId: MisskeyCompat::MiId.encode(remote.id))
+    before { Fabricate(:follow, account: remote, target_account: local) }
 
-      post '/api/federation/followers', params: { host: 'remote.example' }, as: :json
-      expect(response.parsed_body).to be_empty
+    context 'when the follow graph is exposed' do
+      before  { Setting.misskey_compat_expose_follow_graph = true }
+      after   { Setting.misskey_compat_expose_follow_graph = false }
+
+      it 'returns follow relationships for the host' do
+        post '/api/federation/following', params: { i: token, host: 'remote.example' }, as: :json
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body.first).to include(followerId: MisskeyCompat::MiId.encode(remote.id))
+
+        post '/api/federation/followers', params: { i: token, host: 'remote.example' }, as: :json
+        expect(response.parsed_body).to be_empty
+      end
+    end
+
+    context 'when the follow graph is not exposed (default)' do
+      it 'returns an empty list even for authenticated users' do
+        post '/api/federation/following', params: { i: token, host: 'remote.example' }, as: :json
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to be_empty
+
+        post '/api/federation/followers', params: { i: token, host: 'remote.example' }, as: :json
+        expect(response.parsed_body).to be_empty
+      end
     end
   end
 

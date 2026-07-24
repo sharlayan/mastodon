@@ -49,11 +49,12 @@ class MisskeyCompat::ChartService
     end
   end
 
-  def initialize(name:, span:, limit: nil, offset: nil, group: nil)
+  def initialize(name:, span:, limit: nil, offset: nil, group: nil, suppressed: false)
     @name = name.to_sym
     @span = span.to_s
     @limit = parse_limit(limit)
     @group = group
+    @suppressed = suppressed
     @latest = parse_latest(offset)
 
     raise InvalidParameter.new('#/properties/span', 'must be one of hour, day') unless %w(hour day).include?(@span)
@@ -61,6 +62,8 @@ class MisskeyCompat::ChartService
   end
 
   def call
+    return transpose(buckets.map { zero_record }) if @suppressed
+
     keys = buckets.index_with { |bucket| cache_key(bucket) }
     cached = Rails.cache.read_multi(*keys.values)
     records = keys.transform_values { |key| cached[key] }
