@@ -184,6 +184,13 @@ namespace :api, format: false do
     match 'charts/user/pv', to: 'charts#user_pv', via: [:get, :post]
     match 'charts/user/reactions', to: 'charts#user_reactions', via: [:get, :post]
     match 'charts/users', to: 'charts#users', via: [:get, :post]
+    match 'federation/instances', to: 'federation#instances', via: [:get, :post]
+    match 'federation/show-instance', to: 'federation#show_instance', via: [:get, :post]
+    match 'federation/stats', to: 'federation#stats', via: [:get, :post]
+    match 'federation/users', to: 'federation#users', via: [:get, :post]
+    match 'federation/followers', to: 'federation#followers', via: [:get, :post]
+    match 'federation/following', to: 'federation#following', via: [:get, :post]
+    post 'federation/update-remote-user', to: 'federation#update_remote_user'
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
     post 'i/pin', to: 'i#pin'
@@ -439,7 +446,7 @@ namespace :api, format: false do
     post 'request-reset-password', to: 'stub#unsupported'
     post 'reset-db', to: 'stub#unsupported'
     post 'reset-password', to: 'stub#unsupported'
-    post 'retention', to: 'stub#unsupported'
+    match 'retention', to: 'retention#index', via: [:get, :post]
     post 'reversi/cancel-match', to: 'stub#unsupported'
     post 'reversi/games', to: 'stub#unsupported'
     post 'reversi/invitations', to: 'stub#unsupported'

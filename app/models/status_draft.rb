@@ -1,5 +1,15 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: status_drafts
+#
+#  id         :bigint(8)        not null, primary key
+#  data       :jsonb            not null
+#  created_at :datetime         not null
+#  updated_at :datetime         not null
+#  account_id :bigint(8)        not null
+#
 class StatusDraft < ApplicationRecord
   include Paginable
 

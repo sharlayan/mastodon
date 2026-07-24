@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_23_120100) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_143100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1165,6 +1165,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_120100) do
     t.index ["access_token_id"], name: "index_misskey_access_grants_on_access_token_id", unique: true
   end
 
+  create_table "misskey_federation_instance_stats", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "domain", null: false
+    t.datetime "first_retrieved_at"
+    t.integer "followers_count", default: 0, null: false
+    t.integer "following_count", default: 0, null: false
+    t.integer "notes_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.integer "users_count", default: 0, null: false
+    t.index ["domain"], name: "index_misskey_federation_instance_stats_on_domain", unique: true
+  end
+
   create_table "misskey_registry_items", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
@@ -1174,6 +1186,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_120100) do
     t.datetime "updated_at", null: false
     t.jsonb "value"
     t.index ["account_id", "domain", "scope"], name: "idx_on_account_id_domain_scope_aaf77e84e7"
+  end
+
+  create_table "misskey_retention_aggregations", force: :cascade do |t|
+    t.bigint "cohort_account_ids", default: [], null: false, array: true
+    t.datetime "created_at", null: false
+    t.jsonb "data", default: {}, null: false
+    t.string "date_key", null: false
+    t.datetime "updated_at", null: false
+    t.integer "users_count", default: 0, null: false
+    t.index ["date_key"], name: "index_misskey_retention_aggregations_on_date_key", unique: true
   end
 
   create_table "mutes", force: :cascade do |t|

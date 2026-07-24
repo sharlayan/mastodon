@@ -29,6 +29,7 @@
 #  account_id                       :bigint(8)
 #  drive_file_id                    :bigint(8)
 #  scheduled_status_id              :bigint(8)
+#  status_draft_id                  :bigint(8)
 #  status_id                        :bigint(8)
 #
 
