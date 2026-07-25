@@ -15,7 +15,7 @@ class REST::ReactionSerializer < ActiveModel::Serializer
   has_many :users, serializer: REST::AccountSerializer
 
   def count
-    object.respond_to?(:count) ? object.count : 0
+    object.has_attribute?(:count) ? object[:count] : 0
   end
 
   def current_user?
