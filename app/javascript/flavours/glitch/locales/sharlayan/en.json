@@ -457,6 +457,8 @@
   "settings.quick_preferences": "Quick preferences",
   "settings.quick_preferences.hint": "These settings are saved to your account and apply on all your devices.",
   "settings.show_clip_choice": "Show clip selection in the compose box",
+  "settings.show_draft_button": "Show draft button in the compose box",
+  "settings.show_draft_button.hint": "Save drafts to the server and load them again from the compose box. Drafts stay available at the drafts column even when this is off",
   "settings.show_follow_list_bio": "Show bio and follow message in follow lists",
   "settings.show_follow_list_bio.hint": "Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists",
   "settings.show_instance_info": "Show instance information on posts",

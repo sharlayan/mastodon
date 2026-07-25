@@ -457,6 +457,8 @@
   "settings.quick_preferences": "クイック設定",
   "settings.quick_preferences.hint": "この設定はアカウントに保存され、すべての端末に適用されます。",
   "settings.show_clip_choice": "投稿ボックスにクリップ選択を表示",
+  "settings.show_draft_button": "投稿フォームに下書きボタンを表示",
+  "settings.show_draft_button.hint": "投稿フォームから下書きをサーバーに保存し、読み込みます。オフでも下書き一覧のカラムからは利用できます",
   "settings.show_follow_list_bio": "フォローリストにプロフィールとフォローメッセージを表示",
   "settings.show_follow_list_bio.hint": "フォロワーおよびフォロー中のリストのアカウントの下に、短いプロフィール（最大100文字）とフォローメッセージを表示します",
   "settings.show_instance_info": "投稿にインスタンス情報を表示",

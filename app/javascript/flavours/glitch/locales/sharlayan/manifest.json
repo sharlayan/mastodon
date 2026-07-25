@@ -457,6 +457,8 @@
   "settings.quick_preferences",
   "settings.quick_preferences.hint",
   "settings.show_clip_choice",
+  "settings.show_draft_button",
+  "settings.show_draft_button.hint",
   "settings.show_follow_list_bio",
   "settings.show_follow_list_bio.hint",
   "settings.show_instance_info",

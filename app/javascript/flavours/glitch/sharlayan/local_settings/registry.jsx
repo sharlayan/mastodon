@@ -108,6 +108,7 @@ const localSettingsSlots = {
     { setting: ['hide_mfm_compose_hint'], id: 'mastodon-settings--hide_mfm_compose_hint', message: { id: 'settings.hide_mfm_compose_hint', defaultMessage: 'Hide MFM preview and syntax link in the compose box' } },
     { setting: ['show_clip_choice'], id: 'mastodon-settings--show_clip_choice', message: { id: 'settings.show_clip_choice', defaultMessage: 'Show clip selection in the compose box' } },
     { setting: ['show_schedule_button'], id: 'mastodon-settings--show_schedule_button', message: { id: 'settings.show_schedule_button', defaultMessage: 'Show schedule button in the compose box' } },
+    { setting: ['show_draft_button'], id: 'mastodon-settings--show_draft_button', message: { id: 'settings.show_draft_button', defaultMessage: 'Show draft button in the compose box' }, hint: { id: 'settings.show_draft_button.hint', defaultMessage: 'Save drafts to the server and load them again from the compose box. Drafts stay available at the drafts column even when this is off' } },
   ],
   'media-after-fullwidth': [
     { setting: ['media', 'no_autoplay_gifv'], id: 'mastodon-settings--media-no_autoplay_gifv', message: { id: 'settings.media_no_autoplay_gifv', defaultMessage: 'Do not autoplay attached GIFs' }, hint: { id: 'settings.media_no_autoplay_gifv_hint', defaultMessage: 'Attached GIF media will play on hover or click instead of automatically, even when GIF autoplay is enabled' } },

@@ -11,6 +11,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   hide_compose_language: roleplayMode,
   show_clip_choice: !roleplayMode,
   show_schedule_button: !roleplayMode,
+  show_draft_button: false,
   show_follow_list_bio: true,
   show_others_online_status: false,
   show_instance_info: showInstanceInfo === true,

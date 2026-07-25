@@ -65,6 +65,13 @@ export const DraftButton: FC<DraftButtonProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [showList, setShowList] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const visible = useAppSelector(
+    (state) =>
+      (state.local_settings as ImmutableMap<string, unknown>).get(
+        'show_draft_button',
+        false,
+      ) as boolean,
+  );
   const drafts = useAppSelector(
     (state) =>
       (state.status_drafts as ImmutableMap<string, unknown>).get(
@@ -134,6 +141,10 @@ export const DraftButton: FC<DraftButtonProps> = ({
         handleClose();
       });
   }, [dispatch, loadDraft, handleClose]);
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <div ref={setPopoverTarget}>
