@@ -8,6 +8,7 @@ import { unicodeHexToUrl } from 'flavours/glitch/features/emoji/normalize';
 import { emojiToUnicodeHex } from 'flavours/glitch/features/emoji/utils';
 import { autoPlayGif } from 'flavours/glitch/initial_state';
 import type { NotificationGroupReaction } from 'flavours/glitch/models/notification_group';
+import { useAppSelector } from 'flavours/glitch/store';
 import { assetHost } from 'flavours/glitch/utils/config';
 
 import type { LabelRenderer } from './notification_group_with_status';
@@ -51,6 +52,11 @@ export const NotificationReaction: React.FC<{
 }> = ({ notification, unread }) => {
   const { reaction } = notification;
 
+  const isDirect = useAppSelector(
+    (state) =>
+      state.statuses.getIn([notification.statusId, 'visibility']) === 'direct',
+  );
+
   const labelRenderer: LabelRenderer = useCallback(
     (displayedName) =>
       reaction ? (
@@ -89,6 +95,7 @@ export const NotificationReaction: React.FC<{
       labelRenderer={labelRenderer}
       unread={unread}
       collapsed
+      openAsConversation={isDirect}
     />
   );
 };
