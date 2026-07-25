@@ -250,6 +250,8 @@ class MisskeyCompat::UserSerializer
         flipH: config['flip_h'] || false,
         offsetX: config['offset_x'] || 0.0,
         offsetY: config['offset_y'] || 0.0,
+        scale: config['scale'] || 1.0,
+        opacity: config['opacity'] || 1.0,
       }
     end
   end
