@@ -12,7 +12,7 @@ services:
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'postgres']
     volumes:
-      - ./postgres18:/var/lib/postgresql/data
+      - ./postgres18:/var/lib/postgresql
     environment:
       - 'POSTGRES_HOST_AUTH_METHOD=trust'
 
@@ -49,7 +49,7 @@ services:
   #   healthcheck:
   #      test: ["CMD-SHELL", "curl --silent --fail localhost:9200/_cluster/health || exit 1"]
   #   volumes:
-  #      - ./elasticsearch:/usr/share/elasticsearch/data
+  #      - elasticsearch:/usr/share/elasticsearch/data
   #   ulimits:
   #     memlock:
   #       soft: -1
@@ -142,3 +142,5 @@ networks:
   external_network:
   internal_network:
     internal: true
+# volumes:
+#   elasticsearch:
