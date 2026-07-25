@@ -39,7 +39,6 @@ interface Options {
   forceShowDecorations?: boolean;
   animate?: boolean;
   hovering: boolean;
-  src?: string;
 }
 
 export function sharlayanHasAvatarDecorations(
@@ -68,7 +67,6 @@ export function useSharlayanAvatarExtras({
   forceShowDecorations = false,
   animate,
   hovering,
-  src,
 }: Options) {
   const intl = useIntl();
 
@@ -98,23 +96,17 @@ export function useSharlayanAvatarExtras({
     'account__avatar--decorated': hasDecorations,
     'account__avatar--cat': showCatEars,
     'account__avatar--force-round':
-      hasDecorations && avatarDecorationShape === 'round',
+      showCatEars || (hasDecorations && avatarDecorationShape === 'round'),
     'account__avatar--force-square':
-      hasDecorations && avatarDecorationShape === 'square',
+      !showCatEars && hasDecorations && avatarDecorationShape === 'square',
   };
 
   const avatarExtras = (
     <>
       {showCatEars && (
         <span className='account__avatar__cat-ears' aria-hidden='true'>
-          <span
-            className='account__avatar__cat-ears__ear account__avatar__cat-ears__ear--left'
-            style={src ? { backgroundImage: `url(${src})` } : undefined}
-          />
-          <span
-            className='account__avatar__cat-ears__ear account__avatar__cat-ears__ear--right'
-            style={src ? { backgroundImage: `url(${src})` } : undefined}
-          />
+          <span className='account__avatar__cat-ears__ear account__avatar__cat-ears__ear--left' />
+          <span className='account__avatar__cat-ears__ear account__avatar__cat-ears__ear--right' />
         </span>
       )}
 

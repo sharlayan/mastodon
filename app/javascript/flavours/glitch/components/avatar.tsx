@@ -67,7 +67,6 @@ export const Avatar: React.FC<Props> = ({
     forceShowDecorations,
     animate,
     hovering,
-    src,
   });
 
   const avatar = (
