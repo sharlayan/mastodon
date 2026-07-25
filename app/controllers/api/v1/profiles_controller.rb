@@ -30,6 +30,7 @@ class Api::V1::ProfilesController < Api::BaseController
       :header_description,
       :locked,
       :bot,
+      :is_cat,
       :discoverable,
       :hide_collections,
       :indexable,
