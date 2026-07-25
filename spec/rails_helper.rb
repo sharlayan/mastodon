@@ -146,6 +146,7 @@ RSpec.configure do |config|
   config.after do
     Rails.cache.clear
     redis.del(redis.keys)
+    RequestStore.clear!
   end
 
   # Assign types based on dir name for non-inferred types

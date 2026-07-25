@@ -21,7 +21,9 @@ import { FilterWarning } from 'flavours/glitch/components/filter_warning';
 import { FormattedDateWrapper } from 'flavours/glitch/components/formatted_date';
 import type { StatusLike } from 'flavours/glitch/components/hashtag_bar';
 import { getHashtagBarForStatus } from 'flavours/glitch/components/hashtag_bar';
-import InstanceBadge from 'flavours/glitch/components/instance_badge';
+import InstanceBadge, {
+  isLocalInstanceDomain,
+} from 'flavours/glitch/components/instance_badge';
 import { IconLogo } from 'flavours/glitch/components/logo';
 import MediaGallery from 'flavours/glitch/components/media_gallery';
 import { MentionsPlaceholder } from 'flavours/glitch/components/mentions_placeholder';
@@ -115,6 +117,10 @@ export const DetailedStatus: React.FC<{
   );
   const showInstanceInfo = useAppSelector(
     (state) => state.local_settings.get('show_instance_info', false) as boolean,
+  );
+  const showInstanceInfoLocal = useAppSelector(
+    (state) =>
+      state.local_settings.get('show_instance_info_local', false) as boolean,
   );
 
   const { signedIn } = useIdentity();
@@ -518,9 +524,12 @@ export const DetailedStatus: React.FC<{
           )}
         </Permalink>
 
-        {showInstanceInfo && instanceInfo && (
-          <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
-        )}
+        {showInstanceInfo &&
+          instanceInfo &&
+          (showInstanceInfoLocal ||
+            !isLocalInstanceDomain(instanceInfo.get('domain'))) && (
+            <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
+          )}
 
         {matchedFilters && (
           <FilterWarning

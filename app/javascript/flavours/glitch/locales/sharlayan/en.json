@@ -457,6 +457,8 @@
   "settings.show_follow_list_bio.hint": "Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists",
   "settings.show_instance_info": "Show instance information on posts",
   "settings.show_instance_info.hint": "Display the instance name, theme color, and favicon on posts",
+  "settings.show_instance_info_local": "Also show instance information on posts from this server",
+  "settings.show_instance_info_local.hint": "Posts from your own server hide the badge unless this is enabled",
   "settings.show_others_online_status": "Show other people's online status",
   "settings.show_others_online_status.hint": "Display an online, recently active, or offline indicator on the avatars of users who share their status",
   "settings.show_schedule_button": "Show schedule button in the compose box",

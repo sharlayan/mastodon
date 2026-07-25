@@ -36,7 +36,7 @@ import { CollectionPreviewCard } from '../features/collections/components/collec
 import { compareUrls } from '../utils/compare_urls';
 import { FOCUS_TARGET } from './navigation_focus_target';
 
-import InstanceBadge from './instance_badge';
+import InstanceBadge, { isLocalInstanceDomain } from './instance_badge';
 
 const domParser = new DOMParser();
 
@@ -774,7 +774,7 @@ class Status extends ImmutablePureComponent {
 
             {(!muted) && header}
 
-            {settings.get('show_instance_info') && instanceInfo && (
+            {settings.get('show_instance_info') && instanceInfo && (settings.get('show_instance_info_local') || !isLocalInstanceDomain(instanceInfo.get('domain'))) && (
               <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
             )}
 

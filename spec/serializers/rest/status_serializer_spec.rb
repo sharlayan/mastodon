@@ -26,12 +26,18 @@ RSpec.describe REST::StatusSerializer do
         allow(Setting).to receive(:[]).with('instance_metadata_enabled').and_return(true)
       end
 
-      it 'serializes local metadata even when no custom favicon is configured' do
+      it 'serializes the metadata this server advertises to other servers' do
         expect(subject['instance_metadata']).to include(
           'domain' => Rails.configuration.x.local_domain,
+          'instance_name' => Setting.site_title,
           'software' => 'mastodon',
-          'favicon_url' => nil
+          'version' => Mastodon::Version.to_s,
+          'theme_color' => ManifestSerializer::THEME_COLOR
         )
+      end
+
+      it 'falls back to the app icon asset when no custom icon is configured' do
+        expect(subject['instance_metadata']['favicon_url']).to include('android-chrome-512x512')
       end
     end
 

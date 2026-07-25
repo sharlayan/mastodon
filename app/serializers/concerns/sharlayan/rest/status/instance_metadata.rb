@@ -41,16 +41,7 @@ module Sharlayan::REST::Status::InstanceMetadata
   private
 
   def local_instance_metadata
-    presenter = InstancePresenter.new
-
-    {
-      domain: presenter.domain,
-      instance_name: presenter.title,
-      software: 'mastodon',
-      version: presenter.version,
-      theme_color: InstanceMetadata::DEFAULT_THEME_COLORS['mastodon'],
-      favicon_url: presenter.favicon&.file&.url('48'),
-    }
+    Sharlayan::LocalInstanceMetadata.to_h
   end
 
   def default_metadata(domain)

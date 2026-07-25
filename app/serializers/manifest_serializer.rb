@@ -5,6 +5,9 @@ class ManifestSerializer < ActiveModel::Serializer
   include RoutingHelper
   include ActionView::Helpers::TextHelper
 
+  THEME_COLOR = '#191b22'
+  BACKGROUND_COLOR = '#191b22'
+
   attributes :id, :name, :short_name,
              :icons, :theme_color, :background_color,
              :display, :start_url, :scope,
@@ -41,11 +44,11 @@ class ManifestSerializer < ActiveModel::Serializer
   end
 
   def theme_color
-    '#191b22'
+    THEME_COLOR
   end
 
   def background_color
-    '#191b22'
+    BACKGROUND_COLOR
   end
 
   def display

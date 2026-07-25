@@ -457,6 +457,8 @@
   "settings.show_follow_list_bio.hint": "フォロワーおよびフォロー中のリストのアカウントの下に、短いプロフィール（最大100文字）とフォローメッセージを表示します",
   "settings.show_instance_info": "投稿にインスタンス情報を表示",
   "settings.show_instance_info.hint": "投稿にインスタンス名、テーマカラー、ファビコンを表示します",
+  "settings.show_instance_info_local": "このサーバーの投稿にもインスタンス情報を表示",
+  "settings.show_instance_info_local.hint": "オフの場合、自分のサーバーの投稿にはインスタンス情報を表示しません",
   "settings.show_others_online_status": "他の人のオンライン状態を表示",
   "settings.show_others_online_status.hint": "オンライン状態を共有しているユーザーのアバターに、オンライン・最近アクティブ・オフラインのインジケーターを表示します",
   "settings.show_schedule_button": "投稿ボックスに予約投稿ボタンを表示",

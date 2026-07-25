@@ -457,6 +457,8 @@
   "settings.show_follow_list_bio.hint": "팔로워 및 팔로잉 목록의 계정 아래에 짧은 자기소개(최대 100자)와 팔로우 메시지를 표시합니다",
   "settings.show_instance_info": "게시물에 인스턴스 정보 표시",
   "settings.show_instance_info.hint": "게시물에 인스턴스 이름, 테마 색상 및 파비콘을 표시합니다",
+  "settings.show_instance_info_local": "이 서버의 게시물에도 인스턴스 정보 표시",
+  "settings.show_instance_info_local.hint": "이 옵션을 켜지 않으면 내 서버의 게시물에는 인스턴스 정보를 표시하지 않습니다",
   "settings.show_others_online_status": "다른 사람의 온라인 상태 표시",
   "settings.show_others_online_status.hint": "온라인 상태를 공유하는 사용자의 아바타에 온라인·최근 활동·오프라인 표시를 나타냅니다",
   "settings.show_schedule_button": "작성창에 예약 개시 버튼을 표시",

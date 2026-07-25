@@ -2,7 +2,13 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 
+import { domain as localDomain } from 'flavours/glitch/initial_state';
+
 import { softwareIconFor } from './software_icon';
+
+export const isLocalInstanceDomain = (statusDomain) => (
+  !!localDomain && statusDomain === localDomain
+);
 
 export default class InstanceBadge extends React.PureComponent {
 

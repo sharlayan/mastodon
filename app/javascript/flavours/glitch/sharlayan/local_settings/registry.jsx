@@ -90,6 +90,7 @@ const localSettingsSlots = {
     { setting: ['show_follow_list_bio'], id: 'mastodon-settings--show_follow_list_bio', message: { id: 'settings.show_follow_list_bio', defaultMessage: 'Show bio and follow message in follow lists' }, hint: { id: 'settings.show_follow_list_bio.hint', defaultMessage: 'Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists' } },
     { setting: ['show_others_online_status'], id: 'mastodon-settings--show_others_online_status', message: { id: 'settings.show_others_online_status', defaultMessage: "Show other people's online status" }, hint: { id: 'settings.show_others_online_status.hint', defaultMessage: 'Display an online, recently active, or offline indicator on the avatars of users who share their status' } },
     { setting: ['show_instance_info'], id: 'mastodon-settings--show_instance_info', message: { id: 'settings.show_instance_info', defaultMessage: 'Show instance information on posts' }, hint: { id: 'settings.show_instance_info.hint', defaultMessage: 'Display the instance name, theme color, and favicon on posts' } },
+    { setting: ['show_instance_info_local'], id: 'mastodon-settings--show_instance_info_local', message: { id: 'settings.show_instance_info_local', defaultMessage: 'Also show instance information on posts from this server' }, hint: { id: 'settings.show_instance_info_local.hint', defaultMessage: 'Posts from your own server hide the badge unless this is enabled' }, dependsOn: ['show_instance_info'] },
   ],
   'general-status-icons': [
     { setting: ['hicolor_privacy_icons'], id: 'mastodon-settings--hicolor_privacy_icons', message: { id: 'settings.hicolor_privacy_icons', defaultMessage: 'High color privacy icons' }, hint: { id: 'settings.hicolor_privacy_icons.hint', defaultMessage: 'Display privacy icons in bright and easily distinguishable colors' } },
@@ -120,6 +121,7 @@ const LocalSettingsSlot = ({ intl, onChange, settings, slot }) => localSettingsS
     item={item.setting}
     id={item.id}
     onChange={onChange}
+    disabled={item.dependsOn ? !settings.getIn(item.dependsOn) : undefined}
     options={item.options?.map(option => ({ value: option.value, message: intl.formatMessage(option.message) }))}
   >
     <FormattedMessage {...item.message} />

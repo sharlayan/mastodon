@@ -14,6 +14,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   show_follow_list_bio: true,
   show_others_online_status: false,
   show_instance_info: showInstanceInfo === true,
+  show_instance_info_local: false,
   inline_compose_timelines: false,
   disable_inline_compose_reply_modal: false,
   inline_compose_tabs: ImmutableList(),
