@@ -47,6 +47,8 @@ ja:
       approved_msg: デコレーションが承認されました
       assign_category: カテゴリを割り当て
       category: カテゴリ
+      check_images: デコレーション画像を点検
+      check_images_msg: デコレーション画像の点検を開始しました。欠落している画像は再ダウンロードされます
       create_new_category: 新しいカテゴリを作成
       created_msg: デコレーションが作成されました
       current_image: 現在の画像
@@ -232,6 +234,12 @@ ja:
         enabled: 掲示板型お知らせを有効にする
         enabled_hint: ユーザーがサイト内の掲示板型お知らせページを閲覧できるようにします。無効にするとページとナビゲーションリンクが非表示になります。
         title: 掲示板型お知らせ
+      cat:
+        enabled: 猫アカウントを有効にする
+        enabled_hint: ローカルユーザーが自分を猫として設定し、アバターに猫耳を、投稿に猫語（nyaify）を追加できるようにします。閲覧者は各自の設定でこの効果をオフにできます。
+        federation_enabled: 猫の連合を有効にする
+        federation_enabled_hint: このサーバーの猫フラグをリモートサーバーへ送信し、連合サーバーから受信したアカウントにも猫の効果を適用します。
+        title: 猫アカウント
       circles:
         enabled: サークル機能を有効にする
         enabled_hint: ユーザーがサークルを作成し、選択したフォロワーだけに表示される投稿を作成できるようにします。
@@ -271,6 +279,8 @@ ja:
         signin_flow_allowed_origins: 追加でログインを許可するオリジン
         signin_flow_allowed_origins_hint: 正確なHTTPSオリジンを空白またはカンマで区切って入力します。パス、ワイルドカード、サブドメインの自動許可は使用できません。
         signin_flow_allowed_origins_invalid: "無効なHTTPSオリジン: %{origins}"
+        expose_follow_graph: インスタンス別フォローグラフを公開
+        expose_follow_graph_hint: 有効にすると、ログイン済みのMisskey互換クライアントが連合のフォロワー/フォロー一覧とユーザー別フォロー数チャートを取得できます。フォロー・フォロワーを非公開にしているアカウントのフォロー関係も明らかになるため、そのトレードオフを許容する場合以外は無効のままにしてください。これらのエンドポイントは常にログインが必要です。
       online_status:
         enabled: オンライン状態表示を有効にする
         enabled_hint: 有効にすると、利用を選んだユーザーがオンライン・最近アクティブ・オフラインの状態をアバターのドットで共有できます。無効にすると、ユーザー設定に関わらずオンライン状態を収集も表示もしません。
@@ -413,6 +423,7 @@ ja:
     truncate_html: "&hellip;"
   settings:
     avatar_decorations: アバターデコレーション
+    cat: 猫アカウント
     custom_css: カスタムCSS
   simple_form:
     hints:
@@ -420,6 +431,7 @@ ja:
         followed_message: フォローされた時に相手に表示する短いメッセージを設定できます。フォローを承認制にしている場合、フォローリクエストを許可した時に表示されます。
       defaults:
         custom_css_text: 自分のセッションにのみ適用されるプレーンなCSSです。最大100 KB。
+        is_cat: アカウントを猫として設定します。対応アプリではアバターに猫耳が表示されます。
         setting_auto_accept_followed: アカウントが承認制でも、すでにフォローしているアカウントからのフォローリクエストは自動的に承認します。
         setting_auto_quote_from_url: 投稿本文に取得可能な他の連合投稿へのリンクが含まれている場合、作成者に許可を求めずに自動的に引用へ変換します。引用される元の投稿者に承認を求めることはありません。
         setting_bridge_unlisted_to_bsky: 未収載（ホーム）の投稿は連合上では静かなままにしつつ、Blueskyブリッジ（bsky.brid.gy）には公開として配送し、Blueskyへ転送されるようにします。ブリッジアカウントのフォローが必要です。
@@ -441,9 +453,9 @@ ja:
         setting_reaction_custom_emoji_size: Display Original size of Long Horizontally
           Custom Emoji on Reaction Button
         setting_show_avatar_decorations: アバターデコレーションを表示します。デフォルトではオフです。
+        setting_show_cat: 猫アカウントのアバターに猫耳を、投稿に猫語（nyaify）を表示します。デフォルトではオンです。
         setting_show_federated_avatar_decorations: Misskey互換サーバーから受信したアバターデコレーションも表示します
-        setting_show_instance_info: Display instance name, theme color, and favicon
-          for posts from other servers
+        setting_show_federated_cat: 連合サーバーから受信した猫アカウントにも猫の効果を適用します
         setting_show_online_status: あなたがオンラインか、最近アクティブか、オフラインかを他の人が確認できます。無効にすると、状態はすべての人に不明として表示されます。
         setting_show_reactions: プロフィールで自分がリアクションした投稿を他の人に表示できるようにします。
         setting_use_custom_css: 有効にすると、下に記入したカスタムCSSがウェブインターフェースに適用されます。
@@ -460,6 +472,7 @@ ja:
       defaults:
         custom_css_text: カスタムCSS
         followed_message: フォローされた時のメッセージ
+        is_cat: このアカウントは猫です
         setting_auto_accept_followed: フォロー中のアカウントからのフォローリクエストを自動承認する
         setting_auto_quote_from_url: 投稿内の連合投稿リンクを自動的に引用する
         setting_bridge_unlisted_to_bsky: 未収載の投稿を公開としてBlueskyに転送する
@@ -490,8 +503,9 @@ ja:
         setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction
           Button
         setting_show_avatar_decorations: アバターデコレーションを表示
+        setting_show_cat: 猫耳と猫語を表示
         setting_show_federated_avatar_decorations: 連合サーバーからのアバターデコレーションを表示
-        setting_show_instance_info: Show instance information on posts
+        setting_show_federated_cat: 連合サーバーの猫の効果を表示
         setting_show_online_status: 自分のオンライン状態を共有する
         setting_show_reactions: プロフィールに自分のリアクションを表示する
         setting_use_custom_css: 自分のカスタムCSSを適用

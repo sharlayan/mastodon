@@ -37,6 +37,7 @@ module ContextHelper
     followed_message: { 'toot' => 'http://joinmastodon.org/ns#', 'followedMessage' => 'toot:followedMessage' },
     misskey_followed_message: { 'misskey' => 'https://misskey-hub.net/ns#', '_misskey_followedMessage' => 'misskey:_misskey_followedMessage' },
     avatar_decorations: { 'misskey' => 'https://misskey-hub.net/ns#', '_misskey_avatarDecorations' => 'misskey:_misskey_avatarDecorations' },
+    is_cat: { 'misskey' => 'https://misskey-hub.net/ns#', 'isCat' => 'misskey:isCat' },
     limited_scope: { 'kmyblue' => 'http://kmy.blue/ns#', 'limitedScope' => 'kmyblue:limitedScope' },
     quote_requests: { 'QuoteRequest' => 'https://w3id.org/fep/044f#QuoteRequest' },
     quotes: {

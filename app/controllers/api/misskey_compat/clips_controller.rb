@@ -11,11 +11,12 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
 
   before_action :require_clips_enabled!
   before_action :require_user!, only: OWNER_ACTIONS
-  before_action :set_clip, only: [:show, :update, :destroy, :add_note, :remove_note]
+  before_action :set_clip, only: [:show, :update, :destroy, :add_note, :remove_note, :favorite]
   before_action :authorize_owner!, only: [:update, :destroy, :add_note, :remove_note]
 
   def index
-    render json: Clip.where(account: current_account).map { |clip| serialize(clip) }
+    clips = Clip.where(account: current_account).includes(:account).to_a
+    render json: serialize_many(clips)
   end
 
   def show
@@ -69,21 +70,32 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
 
   def by_user
     account = Account.find(params[:userId])
-    render json: account.clips.public_clips.map { |clip| serialize(clip) }
+    clips = account.clips.public_clips.includes(:account).to_a
+    render json: serialize_many(clips)
   rescue ActiveRecord::RecordNotFound
     render_error('No such user', 'NO_SUCH_USER', 404)
   end
 
   def favorite
+    return render_error('The clip has already been favorited', 'ALREADY_FAVORITED', 400) if current_account.clip_favourites.exists?(clip_id: @clip.id)
+
+    FavouriteClipService.new.call(current_account, @clip)
     head 204
   end
 
   def unfavorite
+    clip = Clip.find(params[:clipId])
+    return render_error('You have not favorited the clip', 'NOT_FAVORITED', 400) unless current_account.clip_favourites.exists?(clip_id: clip.id)
+
+    UnfavouriteClipService.new.call(current_account, clip)
     head 204
+  rescue ActiveRecord::RecordNotFound
+    render_error('No such clip', 'NO_SUCH_CLIP', 404)
   end
 
   def my_favorites
-    render json: []
+    clips = current_account.clip_favourites.visible_to(current_account).includes(clip: :account).map(&:clip)
+    render json: serialize_many(clips)
   end
 
   private
@@ -120,5 +132,10 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
 
   def serialize(clip)
     MisskeyCompat::ClipSerializer.serialize(clip, current_account: current_account)
+  end
+
+  def serialize_many(clips)
+    relationships = ClipRelationshipsPresenter.new(clips, current_account&.id)
+    clips.map { |clip| MisskeyCompat::ClipSerializer.serialize(clip, current_account: current_account, relationships: relationships) }
   end
 end

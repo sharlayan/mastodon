@@ -14,6 +14,7 @@ defaults:
   misskey_compat_enabled: false
   misskey_compat_signin_flow_enabled: false
   misskey_compat_signin_flow_allowed_origins: ''
+  misskey_compat_expose_follow_graph: false
   mfm_enabled: false
   mfm_allow_composition: false
   force_mfm_enabled: false
@@ -27,6 +28,8 @@ defaults:
   avatar_decorations_federation_enabled: false
   avatar_decorations_local_only_view: false
   avatar_decorations_max_count: 5
+  cat_enabled: false
+  cat_federation_enabled: false
   allow_user_custom_css: false
   rate_limit_bypass_enabled: false
   board_announcements_enabled: true

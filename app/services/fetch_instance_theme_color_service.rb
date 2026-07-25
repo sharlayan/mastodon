@@ -55,13 +55,13 @@ class FetchInstanceThemeColorService < BaseService
     return skip_remote_fetch! if skip_remote_fetch?
     return throttle_only! if domain_unavailable?
 
-    misskey_meta = fetch_misskey_meta
-    misskey_name = fetch_instance_name_from_misskey
+    nodeinfo = fetch_nodeinfo
+    misskey_meta = fetch_misskey_meta(nodeinfo)
 
-    theme_color = extract_theme_color
+    theme_color = extract_theme_color(nodeinfo)
     favicon_url = extract_favicon_url
-    software_info = determine_software_info(misskey_meta)
-    instance_name = determine_instance_name(misskey_name)
+    software_info = determine_software_info(nodeinfo)
+    instance_name = determine_instance_name(nodeinfo, misskey_meta)
 
     local_favicon_path = download_and_save_favicon(favicon_url) if favicon_url.present?
 
@@ -96,7 +96,7 @@ class FetchInstanceThemeColorService < BaseService
     attributes[:instance_name] = instance_name if instance_name.present? && instance_name != @domain
 
     # nodeinfo가 도달 가능했을 때만 갱신, 아니면 일시적 실패가 known-true 플래그를 초기화함.
-    if fetch_nodeinfo.present?
+    if nodeinfo.present?
       wire_features = extract_nodeinfo_features
       attributes[:supports_avatar_decorations] = wire_features.include?('avatarDecorations')
       attributes[:features] = InstanceMetadata.features_from_wire(wire_features)
@@ -207,16 +207,23 @@ class FetchInstanceThemeColorService < BaseService
     @nodeinfo = fetch_nodeinfo_uncached
   end
 
-  def extract_theme_color
-    return nil unless parsed_homepage
+  def extract_theme_color(nodeinfo)
+    nodeinfo_color = nodeinfo_metadata(nodeinfo)['themeColor']
+    color = normalize_color(nodeinfo_color)
+    return color if color.present?
 
-    theme_color_meta = parsed_homepage.at_css('meta[name="theme-color"]')
-    return normalize_color(theme_color_meta['content']) if theme_color_meta&.[]('content')
+    if parsed_homepage
+      theme_color_meta = parsed_homepage.at_css('meta[name="theme-color"]')
+      color = normalize_color(theme_color_meta['content']) if theme_color_meta&.[]('content')
+      return color if color.present?
 
-    tile_color_meta = parsed_homepage.at_css('meta[name="msapplication-TileColor"]')
-    return normalize_color(tile_color_meta['content']) if tile_color_meta&.[]('content')
+      tile_color_meta = parsed_homepage.at_css('meta[name="msapplication-TileColor"]')
+      color = normalize_color(tile_color_meta['content']) if tile_color_meta&.[]('content')
+      return color if color.present?
+    end
 
-    nil
+    manifest = fetch_manifest
+    normalize_color(manifest['theme_color']) if manifest.is_a?(Hash)
   end
 
   def extract_favicon_url
@@ -255,7 +262,7 @@ class FetchInstanceThemeColorService < BaseService
     icons = manifest['icons']
     return nil unless icons.is_a?(Array)
 
-    candidates = icons.select { |icon| icon.is_a?(Hash) && icon['src'].present? }
+    candidates = icons.select { |icon| icon.is_a?(Hash) && icon['src'].is_a?(String) && icon['src'].present? }
     return nil if candidates.empty?
 
     best = candidates.max_by { |icon| manifest_icon_area(icon['sizes']) }
@@ -286,19 +293,28 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def fetch_manifest_uncached
-    url = "https://#{@domain}/manifest.json"
+    manifest_urls.each do |url|
+      request = Request.new(:get, url)
+      request.add_headers('User-Agent' => Mastodon::Version.user_agent)
 
-    request = Request.new(:get, url)
-    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
+      manifest = nil
+      request.perform do |response|
+        manifest = JSON.parse(response.body_with_limit) if response.code == 200
+      end
 
-    manifest = nil
-    request.perform do |response|
-      manifest = JSON.parse(response.body_with_limit) if response.code == 200
+      return manifest if manifest.is_a?(Hash)
+    rescue *NETWORK_ERRORS, JSON::ParserError
+      next
     end
 
-    manifest
-  rescue *NETWORK_ERRORS, JSON::ParserError
     nil
+  end
+
+  def manifest_urls
+    manifest_link = parsed_homepage&.css('link[rel~="manifest"]')&.to_a&.reverse&.find { |node| node['href'].present? }
+    resolved = resolve_url(manifest_link['href']) if manifest_link
+
+    [resolved, "https://#{@domain}/manifest.json"].compact.uniq
   end
 
   def extract_nodeinfo_features
@@ -314,34 +330,38 @@ class FetchInstanceThemeColorService < BaseService
     []
   end
 
-  def determine_software_info(misskey_meta)
-    return misskey_meta if misskey_meta[:software].present?
+  def determine_software_info(nodeinfo)
+    software_info = nodeinfo_software(nodeinfo)
+    software = software_info['name']
+    version = software_info['version']
 
-    nodeinfo = fetch_nodeinfo
-    if nodeinfo
-      return {
-        software: nodeinfo.dig('software', 'name'),
-        version: nodeinfo.dig('software', 'version'),
-      }
-    end
-
-    { software: nil, version: nil }
-  rescue *NETWORK_ERRORS, JSON::ParserError
-    { software: nil, version: nil }
+    {
+      software: software.is_a?(String) ? software.downcase : nil,
+      version: version.is_a?(String) ? version : nil,
+    }
   end
 
-  def determine_instance_name(misskey_name)
-    name = normalize_instance_name(misskey_name)
+  def determine_instance_name(nodeinfo, misskey_meta)
+    metadata = nodeinfo_metadata(nodeinfo)
+    name = normalize_instance_name(metadata['nodeName'])
     return name if usable_instance_name?(name)
 
-    nodeinfo = fetch_nodeinfo
-    name = normalize_instance_name(nodeinfo&.dig('metadata', 'nodeName'))
+    name = normalize_instance_name(metadata['name'])
     return name if usable_instance_name?(name)
 
-    name = normalize_instance_name(extract_instance_name_from_html)
+    name = normalize_instance_name(extract_open_graph_title)
+    return name if usable_instance_name?(name)
+
+    name = normalize_instance_name(manifest_instance_name)
+    return name if usable_instance_name?(name)
+
+    name = normalize_instance_name(misskey_meta&.[]('name') || misskey_meta&.[]('nodeName'))
     return name if usable_instance_name?(name)
 
     name = normalize_instance_name(fetch_instance_name_from_api)
+    return name if usable_instance_name?(name)
+
+    name = normalize_instance_name(extract_instance_name_from_html)
     return name if usable_instance_name?(name)
 
     @domain
@@ -350,7 +370,7 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def normalize_instance_name(name)
-    return nil if name.nil?
+    return nil unless name.is_a?(String)
 
     text = name.to_s
     text = text.encode('UTF-8', invalid: :replace, undef: :replace, replace: '') unless text.encoding == Encoding::UTF_8
@@ -369,34 +389,10 @@ class FetchInstanceThemeColorService < BaseService
     GENERIC_INSTANCE_NAME_PATTERNS.any? { |pattern| name.match?(pattern) }
   end
 
-  def fetch_misskey_meta
-    api_url = "https://#{@domain}/nodeinfo/2.1"
+  def fetch_misskey_meta(nodeinfo)
+    software = nodeinfo_software(nodeinfo)['name']
+    return nil unless software.is_a?(String) && %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick).include?(software.downcase)
 
-    request = Request.new(:get, api_url)
-    request.add_headers('User-Agent' => Mastodon::Version.user_agent)
-
-    request.perform do |response|
-      if response.code == 200
-        response_body = response.body_with_limit
-        meta_data = JSON.parse(response_body)
-        software = detect_misskey_software(meta_data)
-        version = meta_data['version']
-
-        if software.present?
-          return {
-            software: software,
-            version: version,
-          }
-        end
-      end
-    end
-
-    { software: nil, version: nil }
-  rescue *NETWORK_ERRORS, JSON::ParserError
-    { software: nil, version: nil }
-  end
-
-  def fetch_instance_name_from_misskey
     api_url = "https://#{@domain}/api/meta"
 
     request = Request.new(:post, api_url)
@@ -408,12 +404,10 @@ class FetchInstanceThemeColorService < BaseService
         response_body = response.body_with_limit
 
         meta_data = JSON.parse(response_body)
+        return nil unless meta_data.is_a?(Hash)
 
-        @favicon_from_api = resolve_url(meta_data['iconUrl']) if meta_data['iconUrl'].present?
-
-        return meta_data['name'] if meta_data['name'].present?
-
-        return meta_data['nodeName'] if meta_data['nodeName'].present?
+        @favicon_from_api = resolve_url(meta_data['iconUrl']) if meta_data['iconUrl'].is_a?(String) && meta_data['iconUrl'].present?
+        return meta_data
       end
     end
 
@@ -422,26 +416,21 @@ class FetchInstanceThemeColorService < BaseService
     nil
   end
 
-  def detect_misskey_software(meta_data)
-    repo_url = meta_data['repositoryUrl']&.downcase || ''
+  def extract_open_graph_title
+    return nil unless parsed_homepage
 
-    return 'sharkey' if repo_url.include?('sharkey')
-    return 'firefish' if repo_url.include?('firefish')
-    return 'calckey' if repo_url.include?('calckey')
-    return 'foundkey' if repo_url.include?('foundkey')
-    return 'magnetar' if repo_url.include?('magnetar')
-    return 'iceshrimp' if repo_url.include?('iceshrimp')
-    return 'catodon' if repo_url.include?('catodon')
-    return 'cherrypick' if repo_url.include?('cherrypick')
+    parsed_homepage.at_css('meta[property="og:title"]')&.[]('content')
+  end
 
-    version = meta_data['version']&.downcase || ''
+  def manifest_instance_name
+    manifest = fetch_manifest
+    return nil unless manifest.is_a?(Hash)
 
-    return 'sharkey' if version.include?('sharkey')
-    return 'firefish' if version.include?('firefish')
-    return 'calckey' if version.include?('calckey')
-    return 'cherrypick' if version.include?('cherrypick')
+    name = manifest['name']
+    return name if name.is_a?(String)
 
-    'misskey'
+    short_name = manifest['short_name']
+    short_name if short_name.is_a?(String)
   end
 
   def extract_instance_name_from_html
@@ -471,7 +460,7 @@ class FetchInstanceThemeColorService < BaseService
         response_body = response.body_with_limit
         instance_data = JSON.parse(response_body)
 
-        return instance_data['title'] if instance_data['title'].present?
+        return instance_data['title'] if instance_data.is_a?(Hash) && instance_data['title'].is_a?(String) && instance_data['title'].present?
       end
     end
 
@@ -486,7 +475,7 @@ class FetchInstanceThemeColorService < BaseService
         response_body = response.body_with_limit
         instance_data = JSON.parse(response_body)
 
-        return instance_data['title'] if instance_data['title'].present?
+        return instance_data['title'] if instance_data.is_a?(Hash) && instance_data['title'].is_a?(String) && instance_data['title'].present?
       end
     end
     nil
@@ -505,9 +494,8 @@ class FetchInstanceThemeColorService < BaseService
       if response.code == 200
         response_body = response.body_with_limit
         nodeinfo_data = JSON.parse(response_body)
-        links = nodeinfo_data['links'] || []
-        latest_link = links.max_by { |link| link['rel']&.scan(/\d+\.\d+/)&.first.to_f }
-        nodeinfo_url = latest_link&.[]('href')
+        links = nodeinfo_data['links'] if nodeinfo_data.is_a?(Hash)
+        nodeinfo_url = preferred_nodeinfo_url(links)
       end
     end
 
@@ -520,7 +508,8 @@ class FetchInstanceThemeColorService < BaseService
     nodeinfo_request.perform do |response|
       if response.code == 200
         response_body = response.body_with_limit
-        nodeinfo = JSON.parse(response_body)
+        parsed = JSON.parse(response_body)
+        nodeinfo = parsed if parsed.is_a?(Hash)
       end
     end
 
@@ -529,8 +518,35 @@ class FetchInstanceThemeColorService < BaseService
     nil
   end
 
+  def preferred_nodeinfo_url(links)
+    return nil unless links.is_a?(Array)
+
+    supported_relations = %w(
+      http://nodeinfo.diaspora.software/ns/schema/2.1
+      http://nodeinfo.diaspora.software/ns/schema/2.0
+      http://nodeinfo.diaspora.software/ns/schema/1.0
+    )
+
+    supported_relations.each do |relation|
+      link = links.find { |candidate| candidate.is_a?(Hash) && candidate['rel'] == relation && candidate['href'].is_a?(String) }
+      return link['href'] if link
+    end
+
+    nil
+  end
+
+  def nodeinfo_metadata(nodeinfo)
+    metadata = nodeinfo['metadata'] if nodeinfo.is_a?(Hash)
+    metadata.is_a?(Hash) ? metadata : {}
+  end
+
+  def nodeinfo_software(nodeinfo)
+    software = nodeinfo['software'] if nodeinfo.is_a?(Hash)
+    software.is_a?(Hash) ? software : {}
+  end
+
   def normalize_color(color)
-    return nil if color.blank?
+    return nil unless color.is_a?(String) && color.present?
 
     color = color.strip
 
@@ -544,6 +560,8 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def resolve_url(href)
+    return nil unless href.is_a?(String)
+
     return href if href.start_with?('http://', 'https://')
     return "https:#{href}" if href.start_with?('//')
 

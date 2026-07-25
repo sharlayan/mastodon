@@ -79,6 +79,14 @@ module Admin
       end
     end
 
+    def check_images
+      authorize :avatar_decoration, :update?
+
+      CheckAvatarDecorationImagesWorker.perform_async
+
+      redirect_to admin_avatar_decorations_path(filter_params), notice: I18n.t('admin.avatar_decorations.check_images_msg')
+    end
+
     def batch
       authorize :avatar_decoration, :index?
 

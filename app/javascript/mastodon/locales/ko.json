@@ -156,6 +156,8 @@
   "account.unmute_short": "뮤트 해제",
   "account_edit.advanced_settings.bot_hint": "이 계정이 대부분 자동으로 작업을 수행하고 잘 확인하지 않는다는 것을 알립니다",
   "account_edit.advanced_settings.bot_label": "자동화된 계정",
+  "account_edit.advanced_settings.cat_hint": "계정을 고양이로 표시하여, 호환되는 앱에서 아바타에 고양이 귀를 추가합니다",
+  "account_edit.advanced_settings.cat_label": "고양이입니다",
   "account_edit.advanced_settings.title": "고급 설정",
   "account_edit.bio.add_label": "자기소개 추가",
   "account_edit.bio.edit_label": "자기소개 편집",

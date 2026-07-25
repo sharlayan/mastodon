@@ -86,6 +86,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     attrs[:followed_message] = params[:followedMessage].to_s.presence if params.key?(:followedMessage)
     attrs[:location] = params[:location].to_s.presence if params.key?(:location)
     attrs[:birthday] = params[:birthday].to_s.presence if params.key?(:birthday)
+    attrs[:is_cat] = boolean_param(params[:isCat]) if params.key?(:isCat)
     attrs[:locked] = boolean_param(params[:isLocked]) if params.key?(:isLocked)
     attrs[:discoverable] = boolean_param(params[:isExplorable]) if params.key?(:isExplorable)
     attrs[:actor_type] = boolean_param(params[:isBot]) ? 'Service' : 'Person' if params.key?(:isBot)

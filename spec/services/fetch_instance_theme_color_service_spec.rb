@@ -51,6 +51,15 @@ RSpec.describe FetchInstanceThemeColorService do
     HTML
   end
 
+  def stub_nodeinfo(software: 'mastodon', version: '4.0.0', metadata: {}, relation: 'http://nodeinfo.diaspora.software/ns/schema/2.1')
+    nodeinfo_url = "https://#{domain}/nodeinfo/2.1"
+    well_known = { links: [{ rel: relation, href: nodeinfo_url }] }.to_json
+    nodeinfo = { software: { name: software, version: version }, metadata: metadata }.to_json
+
+    stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 200, body: well_known, headers: { 'Content-Type' => 'application/json' })
+    stub_request(:get, nodeinfo_url).to_return(status: 200, body: nodeinfo, headers: { 'Content-Type' => 'application/json' })
+  end
+
   describe '#call' do
     it 'creates and returns instance metadata' do
       result = subject.call(domain)
@@ -94,6 +103,15 @@ RSpec.describe FetchInstanceThemeColorService do
   end
 
   describe 'theme color extraction' do
+    it 'prefers the NodeInfo theme color over HTML and manifest values' do
+      stub_nodeinfo(metadata: { themeColor: '#112233' })
+      stub_request(:get, "https://#{domain}/manifest.json").to_return(status: 200, body: { theme_color: '#445566' }.to_json)
+
+      result = subject.call(domain)
+
+      expect(result.theme_color).to eq('#112233')
+    end
+
     it 'extracts theme-color meta tag' do
       result = subject.call(domain)
       expect(result.theme_color).to eq('#FF5500')
@@ -133,6 +151,16 @@ RSpec.describe FetchInstanceThemeColorService do
 
       result = subject.call(domain)
       expect(result.theme_color).to eq(result.default_theme_color)
+    end
+
+    it 'uses the manifest theme color when NodeInfo and HTML omit it' do
+      html = '<html><head></head><body></body></html>'
+      stub_request(:get, "https://#{domain}").to_return(status: 200, body: html)
+      stub_request(:get, "https://#{domain}/manifest.json").to_return(status: 200, body: { theme_color: '#123abc' }.to_json)
+
+      result = subject.call(domain)
+
+      expect(result.theme_color).to eq('#123ABC')
     end
   end
 
@@ -179,15 +207,18 @@ RSpec.describe FetchInstanceThemeColorService do
     end
 
     it 'uses favicon_from_api when set by Misskey API' do
+      stub_nodeinfo(software: 'misskey')
       misskey_meta_response = { name: 'Misskey Instance', iconUrl: 'https://cdn.misskey.example/icon.png' }.to_json
       stub_request(:post, "https://#{domain}/api/meta").to_return(status: 200, body: misskey_meta_response, headers: { 'Content-Type' => 'application/json' })
       stub_request(:get, 'https://cdn.misskey.example/icon.png').to_return(status: 200, body: 'misskey-icon', headers: { 'Content-Type' => 'image/png' })
 
       result = subject.call(domain)
       expect(result.favicon_url).to eq("#{favicon_dir}/#{domain_digest}.png")
+      expect(WebMock).to have_requested(:get, 'https://cdn.misskey.example/icon.png')
     end
 
     it 'captures the Misskey API iconUrl even when the instance name is present' do
+      stub_nodeinfo(software: 'misskey')
       misskey_meta_response = { name: 'Misskey Instance', iconUrl: 'https://cdn.misskey.example/icon.png' }.to_json
       stub_request(:post, "https://#{domain}/api/meta").to_return(status: 200, body: misskey_meta_response, headers: { 'Content-Type' => 'application/json' })
       stub_request(:get, 'https://cdn.misskey.example/icon.png').to_return(status: 200, body: 'misskey-icon', headers: { 'Content-Type' => 'image/png' })
@@ -206,6 +237,25 @@ RSpec.describe FetchInstanceThemeColorService do
 
       expect(WebMock).to have_requested(:get, "https://#{domain}/manifest-icon.png")
       expect(WebMock).to_not have_requested(:get, "https://#{domain}/custom-favicon.png")
+    end
+
+    it 'discovers a non-default manifest URL from the homepage' do
+      html = <<~HTML
+        <html><head>
+          <link rel="manifest" href="/assets/site.webmanifest">
+          <link rel="icon" href="/custom-favicon.png">
+        </head></html>
+      HTML
+      manifest = { icons: [{ src: '/linked-manifest-icon.png', sizes: '512x512' }] }.to_json
+      stub_request(:get, "https://#{domain}").to_return(status: 200, body: html)
+      stub_request(:get, "https://#{domain}/assets/site.webmanifest").to_return(status: 200, body: manifest)
+      stub_request(:get, "https://#{domain}/linked-manifest-icon.png").to_return(status: 200, body: 'manifest-png', headers: { 'Content-Type' => 'image/png' })
+
+      subject.call(domain)
+
+      expect(WebMock).to have_requested(:get, "https://#{domain}/assets/site.webmanifest")
+      expect(WebMock).to have_requested(:get, "https://#{domain}/linked-manifest-icon.png")
+      expect(WebMock).to_not have_requested(:get, "https://#{domain}/manifest.json")
     end
 
     it 'selects the largest icon from the manifest' do
@@ -234,28 +284,63 @@ RSpec.describe FetchInstanceThemeColorService do
   end
 
   describe 'software detection' do
-    it 'identifies Misskey from nodeinfo/2.1 POST response' do
-      misskey_response = { repositoryUrl: 'https://github.com/misskey-dev/misskey', version: '2024.0.0' }.to_json
-      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: misskey_response, headers: { 'Content-Type' => 'application/json' })
+    it 'identifies Misskey from the NodeInfo software name' do
+      stub_nodeinfo(software: 'Misskey', version: '2024.0.0')
 
       result = subject.call(domain)
       expect(result.software).to eq('misskey')
     end
 
-    it 'identifies Sharkey from repository URL' do
-      sharkey_response = { repositoryUrl: 'https://activitypub.software/TransFem-org/Sharkey', version: '2024.0.0' }.to_json
-      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: sharkey_response, headers: { 'Content-Type' => 'application/json' })
+    it 'identifies Sharkey from the NodeInfo software name' do
+      stub_nodeinfo(software: 'Sharkey', version: '2024.0.0')
 
       result = subject.call(domain)
       expect(result.software).to eq('sharkey')
     end
 
-    it 'identifies Firefish from version string' do
-      firefish_response = { repositoryUrl: 'https://example.com/repo', version: '1.0.0-firefish' }.to_json
-      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: firefish_response, headers: { 'Content-Type' => 'application/json' })
+    it 'identifies Firefish from the NodeInfo software name' do
+      stub_nodeinfo(software: 'Firefish', version: '1.0.0')
 
       result = subject.call(domain)
       expect(result.software).to eq('firefish')
+    end
+
+    it 'does not infer Misskey from an unrelated direct /nodeinfo/2.1 response' do
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: { version: '1.0.0' }.to_json)
+
+      result = subject.call(domain)
+
+      expect(result.software).to be_nil
+      expect(WebMock).to_not have_requested(:get, "https://#{domain}/nodeinfo/2.1")
+    end
+
+    it 'ignores unrelated higher-version links in the NodeInfo discovery document' do
+      well_known = {
+        links: [
+          { rel: 'https://unrelated.example/schema/99.0', href: 'https://unrelated.example/metadata' },
+          { rel: 'http://nodeinfo.diaspora.software/ns/schema/2.0', href: "https://#{domain}/nodeinfo/2.0" },
+        ],
+      }.to_json
+      nodeinfo = { software: { name: 'mastodon', version: '4.0.0' }, metadata: {} }.to_json
+      stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 200, body: well_known)
+      stub_request(:get, "https://#{domain}/nodeinfo/2.0").to_return(status: 200, body: nodeinfo)
+
+      result = subject.call(domain)
+
+      expect(result.software).to eq('mastodon')
+      expect(WebMock).to_not have_requested(:get, 'https://unrelated.example/metadata')
+    end
+
+    it 'ignores malformed NodeInfo software and metadata values' do
+      well_known = { links: [{ rel: 'http://nodeinfo.diaspora.software/ns/schema/2.1', href: "https://#{domain}/nodeinfo/2.1" }] }.to_json
+      nodeinfo = { software: 'mastodon', metadata: 'not-an-object' }.to_json
+      stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 200, body: well_known)
+      stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 200, body: nodeinfo)
+
+      result = subject.call(domain)
+
+      expect(result.software).to be_nil
+      expect(result.instance_name).to eq('Remote Instance')
     end
 
     it 'falls back to nodeinfo for non-Misskey software' do
@@ -279,11 +364,23 @@ RSpec.describe FetchInstanceThemeColorService do
   end
 
   describe 'instance name resolution' do
-    it 'prefers Misskey API name' do
+    it 'prefers the NodeInfo name over the Misskey API name' do
+      stub_nodeinfo(software: 'misskey', metadata: { nodeName: 'NodeInfo Hub' })
       misskey_meta_response = { name: 'Misskey Hub' }.to_json
       stub_request(:post, "https://#{domain}/api/meta").to_return(status: 200, body: misskey_meta_response, headers: { 'Content-Type' => 'application/json' })
 
       result = subject.call(domain)
+      expect(result.instance_name).to eq('NodeInfo Hub')
+    end
+
+    it 'uses the Misskey API name when NodeInfo has no name' do
+      stub_nodeinfo(software: 'misskey')
+      html = '<html><head></head><body></body></html>'
+      stub_request(:get, "https://#{domain}").to_return(status: 200, body: html)
+      stub_request(:post, "https://#{domain}/api/meta").to_return(status: 200, body: { name: 'Misskey Hub' }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+      result = subject.call(domain)
+
       expect(result.instance_name).to eq('Misskey Hub')
     end
 
@@ -298,6 +395,39 @@ RSpec.describe FetchInstanceThemeColorService do
 
       result = subject.call(domain)
       expect(result.instance_name).to eq('Node Instance')
+    end
+
+    it 'uses NodeInfo metadata.name when nodeName is absent' do
+      stub_nodeinfo(metadata: { name: 'NodeInfo Name' })
+
+      result = subject.call(domain)
+
+      expect(result.instance_name).to eq('NodeInfo Name')
+    end
+
+    it 'prefers the homepage Open Graph title over generic HTML names' do
+      html = <<~HTML
+        <html><head>
+          <meta property="og:title" content="Open Graph Instance">
+          <meta property="og:site_name" content="Generic Site Name">
+          <title>Generic Title</title>
+        </head></html>
+      HTML
+      stub_request(:get, "https://#{domain}").to_return(status: 200, body: html)
+
+      result = subject.call(domain)
+
+      expect(result.instance_name).to eq('Open Graph Instance')
+    end
+
+    it 'uses the manifest name before generic HTML and API fallbacks' do
+      html = '<html><head><title>Generic Title</title></head><body></body></html>'
+      stub_request(:get, "https://#{domain}").to_return(status: 200, body: html)
+      stub_request(:get, "https://#{domain}/manifest.json").to_return(status: 200, body: { name: 'Manifest Instance' }.to_json)
+
+      result = subject.call(domain)
+
+      expect(result.instance_name).to eq('Manifest Instance')
     end
 
     it 'falls back to HTML og:site_name' do

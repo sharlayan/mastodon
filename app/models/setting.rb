@@ -40,6 +40,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+require 'request_store'
+
 class Setting < ApplicationRecord
   after_commit :rewrite_cache, on: %i(create update)
   after_commit :expire_cache, on: %i(destroy)
@@ -74,10 +76,12 @@ class Setting < ApplicationRecord
     end
 
     def [](key)
-      Rails.cache.fetch(cache_key(key)) do
-        db_val = find_by(var: key)
-        db_val ? db_val.value : default_settings[key]
-      end
+      return read_cached(key) unless RequestStore.active?
+
+      request_cache = RequestStore.store[:settings] ||= {}
+      return request_cache[key] if request_cache.key?(key)
+
+      request_cache[key] = read_cached(key)
     end
 
     # set a setting value by [] notation
@@ -85,6 +89,14 @@ class Setting < ApplicationRecord
       record = find_or_initialize_by(var: var_name.to_s)
       record.value = value
       record.save!
+      RequestStore.store[:settings]&.delete(var_name.to_s) if RequestStore.active?
+    end
+
+    def read_cached(key)
+      Rails.cache.fetch(cache_key(key)) do
+        db_val = find_by(var: key)
+        db_val ? db_val.value : default_settings[key]
+      end
     end
 
     def default_settings
@@ -108,10 +120,16 @@ class Setting < ApplicationRecord
 
   def rewrite_cache
     Rails.cache.write(cache_key, value)
+    expire_request_cache
   end
 
   def expire_cache
     Rails.cache.delete(cache_key)
+    expire_request_cache
+  end
+
+  def expire_request_cache
+    RequestStore.store[:settings]&.delete(var) if RequestStore.active?
   end
 
   def cache_key

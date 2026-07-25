@@ -47,6 +47,7 @@ describe('Sharlayan compose calculations', () => {
     expect(
       getComposeOverflowStart({
         text: 'abcdef',
+        countedText: '123abcdef',
         maxChars: 8,
         spoiler: true,
         spoilerText: '123',
@@ -55,6 +56,7 @@ describe('Sharlayan compose calculations', () => {
     expect(
       getComposeOverflowStart({
         text: 'abcdef',
+        countedText: 'abcdef',
         maxChars: 8,
         spoiler: false,
         spoilerText: '123',
@@ -65,9 +67,23 @@ describe('Sharlayan compose calculations', () => {
   it('uses the same shortened URL boundary as the character counter', () => {
     const text = `1234567 https://example.com/a-very-long-path tail`;
 
-    expect(getComposeOverflowStart({ text, maxChars: 30 })).toBe(
-      text.indexOf('https://'),
-    );
+    expect(
+      getComposeOverflowStart({
+        text,
+        countedText: `1234567 ${'x'.repeat(23)} tail`,
+        maxChars: 30,
+      }),
+    ).toBe(text.indexOf('https://'));
+  });
+
+  it('keeps overflow boundary mapping disabled until the counted text exceeds the limit', () => {
+    expect(
+      getComposeOverflowStart({
+        text: 'raw text that would otherwise exceed the limit',
+        countedText: '12345',
+        maxChars: 5,
+      }),
+    ).toBe(-1);
   });
 
   it('keeps the schedule control visible while editing a scheduled post', () => {

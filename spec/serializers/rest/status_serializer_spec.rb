@@ -20,6 +20,21 @@ RSpec.describe REST::StatusSerializer do
   let(:status) { Fabricate(:status, account: alice) }
 
   context 'with a local status' do
+    context 'with instance metadata enabled' do
+      before do
+        allow(Setting).to receive(:[]).and_call_original
+        allow(Setting).to receive(:[]).with('instance_metadata_enabled').and_return(true)
+      end
+
+      it 'serializes local metadata even when no custom favicon is configured' do
+        expect(subject['instance_metadata']).to include(
+          'domain' => Rails.configuration.x.local_domain,
+          'software' => 'mastodon',
+          'favicon_url' => nil
+        )
+      end
+    end
+
     context 'with a quote and a CW but no contents' do
       let(:quoted_status) { Fabricate(:status, account: alice) }
       let(:status) { Fabricate.build(:status, account: alice, text: '', spoiler_text: 'this is a CW') }

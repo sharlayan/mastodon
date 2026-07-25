@@ -30,6 +30,8 @@ module Sharlayan::InitialStateSerializerExtensions
       board_announcements_enabled: Setting.board_announcements_enabled,
       avatar_decorations_enabled: Setting.avatar_decorations_enabled,
       avatar_decorations_federation_enabled: Setting.avatar_decorations_federation_enabled,
+      cat_enabled: Setting.cat_enabled,
+      cat_federation_enabled: Setting.cat_federation_enabled,
       local_account_statuses_access: Setting.local_account_statuses_access,
       local_status_page_access: Setting.local_status_page_access,
       roleplay_mode: RoleplayModeHelper.roleplay_mode?
@@ -39,7 +41,7 @@ module Sharlayan::InitialStateSerializerExtensions
   def signed_in_meta
     {
       visible_reactions: object_account_user.setting_visible_reactions,
-      show_instance_info: object_account_user.settings_show_instance_info,
+      show_instance_info: object_account_user.settings.as_json.fetch(:'web.show_instance_info', false),
       custom_emoji_size: object_account_user.settings_custom_emoji_size,
       reaction_custom_emoji_size: object_account_user.settings_reaction_custom_emoji_size,
       reaction_local_emoji_only: Setting.reaction_local_emoji_only,
@@ -50,6 +52,8 @@ module Sharlayan::InitialStateSerializerExtensions
       mfm_allow_composition: Setting.mfm_allow_composition,
       show_avatar_decorations: object_account_user.settings['avatar_decorations.show'],
       show_federated_avatar_decorations: object_account_user.settings['avatar_decorations.show_federated'],
+      show_cat: object_account_user.settings['cat.show'],
+      show_federated_cat: object_account_user.settings['cat.show_federated'],
       avatar_decoration_shape: object_account_user.settings['avatar_decorations.shape'],
       color_scheme: object_account_user.settings['web.color_scheme'],
       contrast: object_account_user.settings['web.contrast'],

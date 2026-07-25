@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'request_store'
+
 module FormattingHelper
   SYNDICATED_EMOJI_STYLES = <<~CSS.squish
     height: 1.1em;
@@ -41,7 +43,12 @@ module FormattingHelper
   end
 
   def account_bio_format(account)
-    html_aware_format(account.note, account.local?)
+    return html_aware_format(account.note, account.local?) if account.id.nil? || !RequestStore.active?
+
+    cache = RequestStore.store[:account_bio_format] ||= {}
+    return cache[account.id] if cache.key?(account.id)
+
+    cache[account.id] = html_aware_format(account.note, account.local?)
   end
 
   def account_field_value_format(field, with_rel_me: true)

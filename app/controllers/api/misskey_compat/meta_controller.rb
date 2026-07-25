@@ -2,6 +2,7 @@
 
 class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
   PAGE_ENDPOINT_NAMES = %w(i/pages i/page-likes users/pages).freeze
+  DRIVE_ENDPOINT_NAMES = %w(charts/drive charts/user/drive).freeze
 
   def show
     return unless object_body!
@@ -45,6 +46,23 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     }
   end
 
+  def server_info
+    render json: {
+      machine: '?',
+      cpu: {
+        model: '?',
+        cores: 0,
+      },
+      mem: {
+        total: 0,
+      },
+      fs: {
+        total: 0,
+        used: 0,
+      },
+    }
+  end
+
   def self.compat_endpoint_names
     @compat_endpoint_names ||= Rails.application.routes.routes.filter_map do |route|
       controller = route.defaults[:controller]
@@ -63,6 +81,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     self.class.compat_endpoint_names.reject do |name|
       name == 'signin-flow' ||
         name == 'drive' ||
+        (DRIVE_ENDPOINT_NAMES.include?(name) && !Setting.drive_enabled) ||
         (name.start_with?('drive/') && !Setting.drive_enabled && name != 'drive/files/create') ||
         ((name.start_with?('pages/') || PAGE_ENDPOINT_NAMES.include?(name)) && !Setting.pages_enabled)
     end
@@ -81,7 +100,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
     {
       maintainerName: Setting.site_contact_username.presence,
       maintainerEmail: Setting.site_contact_email.presence,
-      version: '13.0.0-compat',
+      version: '2026.6.0-compat',
       providesTarball: false,
       name: Setting.site_title,
       shortName: nil,
@@ -111,12 +130,17 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
       infoImageUrl: nil,
       serverErrorImageUrl: nil,
       notFoundImageUrl: nil,
-      iconUrl: upload_url(instance_presenter.app_icon) || upload_url(instance_presenter.favicon),
+      iconUrl: upload_url(instance_presenter.app_icon) || upload_url(instance_presenter.favicon) || frontend_asset_url('icons/android-chrome-512x512.png'),
       backgroundImageUrl: nil,
       logoImageUrl: nil,
       maxNoteTextLength: StatusLengthValidator::MAX_CHARS,
       defaultLightTheme: nil,
       defaultDarkTheme: nil,
+      clientOptions: {
+        entrancePageStyle: 'classic',
+        showTimelineForVisitor: true,
+        showActivitiesForVisitor: true,
+      },
       ads: [],
       notesPerOneAd: 0,
       enableEmail: true,

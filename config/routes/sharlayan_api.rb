@@ -152,6 +152,7 @@ namespace :api, format: false do
         resource :exclude_domains, only: [:show, :create, :destroy]
         resource :tags, only: [:show, :create, :destroy]
         resource :exclude_tags, only: [:show, :create, :destroy]
+        resources :statuses, only: :destroy
       end
     end
   end
@@ -170,7 +171,27 @@ namespace :api, format: false do
     match 'emoji', to: 'emojis#show', via: [:get, :post]
     match 'endpoint', to: 'meta#endpoint', via: [:get, :post]
     match 'get-online-users-count', to: 'meta#online_users_count', via: [:get, :post]
+    match 'server-info', to: 'meta#server_info', via: [:get, :post]
     post 'stats', to: 'meta#stats'
+    match 'charts/active-users', to: 'charts#active_users', via: [:get, :post]
+    match 'charts/ap-request', to: 'charts#ap_request', via: [:get, :post]
+    match 'charts/drive', to: 'charts#drive', via: [:get, :post]
+    match 'charts/federation', to: 'charts#federation', via: [:get, :post]
+    match 'charts/instance', to: 'charts#instance', via: [:get, :post]
+    match 'charts/notes', to: 'charts#notes', via: [:get, :post]
+    match 'charts/user/drive', to: 'charts#user_drive', via: [:get, :post]
+    match 'charts/user/following', to: 'charts#user_following', via: [:get, :post]
+    match 'charts/user/notes', to: 'charts#user_notes', via: [:get, :post]
+    match 'charts/user/pv', to: 'charts#user_pv', via: [:get, :post]
+    match 'charts/user/reactions', to: 'charts#user_reactions', via: [:get, :post]
+    match 'charts/users', to: 'charts#users', via: [:get, :post]
+    match 'federation/instances', to: 'federation#instances', via: [:get, :post]
+    match 'federation/show-instance', to: 'federation#show_instance', via: [:get, :post]
+    match 'federation/stats', to: 'federation#stats', via: [:get, :post]
+    match 'federation/users', to: 'federation#users', via: [:get, :post]
+    match 'federation/followers', to: 'federation#followers', via: [:get, :post]
+    match 'federation/following', to: 'federation#following', via: [:get, :post]
+    post 'federation/update-remote-user', to: 'federation#update_remote_user'
     post 'i', to: 'i#show'
     post 'i/update', to: 'i#update'
     post 'i/pin', to: 'i#pin'
@@ -195,6 +216,7 @@ namespace :api, format: false do
     post 'sw/register', to: 'sw#register'
     post 'sw/unregister', to: 'sw#unregister'
     post 'sw/show-registration', to: 'sw#show_registration'
+    post 'sw/update-registration', to: 'stub#unsupported'
 
     post 'notes/timeline', to: 'notes#timeline'
     post 'notes/local-timeline', to: 'notes#local_timeline'
@@ -204,6 +226,11 @@ namespace :api, format: false do
     post 'notes/update', to: 'notes#update'
     post 'notes/scheduled/list', to: 'notes#scheduled_list'
     post 'notes/scheduled/cancel', to: 'notes#scheduled_cancel'
+    post 'notes/drafts/list', to: 'notes#drafts_list'
+    post 'notes/drafts/count', to: 'notes#drafts_count'
+    post 'notes/drafts/create', to: 'notes#drafts_create'
+    post 'notes/drafts/update', to: 'notes#drafts_update'
+    post 'notes/drafts/delete', to: 'notes#drafts_delete'
     post 'notes/children', to: 'notes#children'
     post 'notes/replies', to: 'notes#replies'
     post 'notes/conversation', to: 'notes#conversation'
@@ -310,6 +337,7 @@ namespace :api, format: false do
     post 'antennas/update', to: 'antennas#update'
     post 'antennas/delete', to: 'antennas#destroy'
     post 'antennas/notes', to: 'antennas#notes'
+    post 'antennas/remove-note', to: 'antennas#remove_note'
 
     post 'announcements', to: 'announcements#index'
     post 'announcements/show', to: 'announcements#show'
@@ -345,6 +373,13 @@ namespace :api, format: false do
     post 'chat/messages/user-timeline', to: 'chat#empty'
     post 'chat/messages/room-timeline', to: 'chat#empty'
     post 'chat/messages/show', to: 'chat#noop'
+    post 'chat/messages/create-to-room', to: 'chat#noop'
+    post 'chat/messages/create-to-user', to: 'chat#noop'
+    post 'chat/messages/delete', to: 'stub#no_content'
+    post 'chat/messages/react', to: 'stub#no_content'
+    post 'chat/messages/search', to: 'chat#empty'
+    post 'chat/messages/unreact', to: 'stub#no_content'
+    post 'chat/rooms/create', to: 'chat#noop'
     post 'chat/rooms/owned', to: 'chat#empty'
     post 'chat/rooms/joining', to: 'chat#empty'
     post 'chat/rooms/members', to: 'chat#empty'
@@ -359,45 +394,82 @@ namespace :api, format: false do
     post 'chat/rooms/invitations/create', to: 'chat#noop'
     post 'chat/rooms/invitations/ignore', to: 'chat#noop'
 
-    post 'flash/my', to: 'flash#empty'
-    post 'flash/featured', to: 'flash#empty'
-    post 'flash/search', to: 'flash#empty'
-    post 'flash/my-likes', to: 'flash#empty'
-    post 'flash/show', to: 'flash#noop'
-    post 'flash/update', to: 'flash#noop'
-    post 'flash/like', to: 'flash#noop'
-    post 'flash/unlike', to: 'flash#noop'
-    post 'users/flashs', to: 'flash#empty'
+    post 'flash/my', to: 'stub#unsupported'
+    post 'flash/featured', to: 'stub#unsupported'
+    post 'flash/search', to: 'stub#unsupported'
+    post 'flash/my-likes', to: 'stub#unsupported'
+    post 'flash/show', to: 'stub#unsupported'
+    post 'flash/create', to: 'stub#unsupported'
+    post 'flash/delete', to: 'stub#unsupported'
+    post 'flash/update', to: 'stub#unsupported'
+    post 'flash/like', to: 'stub#unsupported'
+    post 'flash/unlike', to: 'stub#unsupported'
+    post 'users/flashs', to: 'stub#unsupported'
 
-    post 'gallery/posts', to: 'gallery#empty'
-    post 'gallery/featured', to: 'gallery#empty'
-    post 'gallery/popular', to: 'gallery#empty'
-    post 'i/gallery/posts', to: 'gallery#empty'
-    post 'i/gallery/likes', to: 'gallery#empty'
-    post 'users/gallery/posts', to: 'gallery#empty'
-    post 'gallery/posts/show', to: 'gallery#noop'
-    post 'gallery/posts/create', to: 'gallery#noop'
-    post 'gallery/posts/update', to: 'gallery#noop'
-    post 'gallery/posts/like', to: 'gallery#noop'
-    post 'gallery/posts/unlike', to: 'gallery#noop'
+    post 'gallery/posts', to: 'stub#unsupported'
+    post 'gallery/featured', to: 'stub#unsupported'
+    post 'gallery/popular', to: 'stub#unsupported'
+    post 'i/gallery/posts', to: 'stub#unsupported'
+    post 'i/gallery/likes', to: 'stub#unsupported'
+    post 'users/gallery/posts', to: 'stub#unsupported'
+    post 'gallery/posts/show', to: 'stub#unsupported'
+    post 'gallery/posts/create', to: 'stub#unsupported'
+    post 'gallery/posts/update', to: 'stub#unsupported'
+    post 'gallery/posts/like', to: 'stub#unsupported'
+    post 'gallery/posts/unlike', to: 'stub#unsupported'
+    post 'gallery/posts/delete', to: 'stub#unsupported'
 
-    post 'channels/followed', to: 'channels#empty'
-    post 'channels/my-favorites', to: 'channels#empty'
-    post 'channels/owned', to: 'channels#empty'
-    post 'channels/featured', to: 'channels#empty'
-    post 'channels/timeline', to: 'channels#empty'
-    post 'channels/search', to: 'channels#empty'
-    post 'channels/show', to: 'channels#noop'
-    post 'channels/create', to: 'channels#noop'
-    post 'channels/update', to: 'channels#noop'
-    match 'channels/follow', to: 'channels#noop', via: [:post]
-    match 'channels/unfollow', to: 'channels#noop', via: [:post]
-    match 'channels/favorite', to: 'channels#noop', via: [:post]
-    match 'channels/unfavorite', to: 'channels#noop', via: [:post]
-    post 'channels/mute/create', to: 'channels#noop'
-    post 'channels/mute/delete', to: 'channels#noop'
+    post 'channels/followed', to: 'stub#unsupported'
+    post 'channels/my-favorites', to: 'stub#unsupported'
+    post 'channels/owned', to: 'stub#unsupported'
+    post 'channels/featured', to: 'stub#unsupported'
+    post 'channels/timeline', to: 'stub#unsupported'
+    post 'channels/search', to: 'stub#unsupported'
+    post 'channels/show', to: 'stub#unsupported'
+    post 'channels/create', to: 'stub#unsupported'
+    post 'channels/update', to: 'stub#unsupported'
+    post 'channels/follow', to: 'stub#unsupported'
+    post 'channels/unfollow', to: 'stub#unsupported'
+    post 'channels/favorite', to: 'stub#unsupported'
+    post 'channels/unfavorite', to: 'stub#unsupported'
+    post 'channels/mute/create', to: 'stub#unsupported'
+    post 'channels/mute/delete', to: 'stub#unsupported'
+    post 'channels/mute/list', to: 'stub#unsupported'
 
     match 'admin/*any', to: 'stub#noop', via: [:get, :post], format: false
+    post 'v2/admin/emoji/list', to: 'stub#noop'
+    post 'app/create', to: 'stub#noop'
+    post 'app/show', to: 'stub#noop'
+    post 'bubble-game/ranking', to: 'stub#empty'
+    post 'bubble-game/register', to: 'stub#no_content'
+    post 'ping', to: 'stub#noop'
+    post 'promo/read', to: 'stub#no_content'
+    post 'request-reset-password', to: 'stub#unsupported'
+    post 'reset-db', to: 'stub#unsupported'
+    post 'reset-password', to: 'stub#unsupported'
+    match 'retention', to: 'retention#index', via: [:get, :post]
+    post 'reversi/cancel-match', to: 'stub#unsupported'
+    post 'reversi/games', to: 'stub#unsupported'
+    post 'reversi/invitations', to: 'stub#unsupported'
+    post 'reversi/match', to: 'stub#unsupported'
+    post 'reversi/show-game', to: 'stub#unsupported'
+    post 'reversi/surrender', to: 'stub#unsupported'
+    post 'reversi/verify', to: 'stub#unsupported'
+    post 'i/change-password', to: 'stub#unsupported'
+    post 'i/update-email', to: 'stub#unsupported'
+    post 'i/export-antennas', to: 'stub#no_content'
+    post 'i/export-blocking', to: 'stub#no_content'
+    post 'i/export-clips', to: 'stub#no_content'
+    post 'i/export-favorites', to: 'stub#no_content'
+    post 'i/export-following', to: 'stub#no_content'
+    post 'i/export-mute', to: 'stub#no_content'
+    post 'i/export-notes', to: 'stub#no_content'
+    post 'i/export-user-lists', to: 'stub#no_content'
+    post 'i/import-antennas', to: 'stub#no_content'
+    post 'i/import-blocking', to: 'stub#no_content'
+    post 'i/import-following', to: 'stub#no_content'
+    post 'i/import-muting', to: 'stub#no_content'
+    post 'i/import-user-lists', to: 'stub#no_content'
     post 'i/claim-achievement', to: 'stub#no_content'
     match 'users/achievements', to: 'stub#empty', via: [:get, :post]
     post 'invite/create', to: 'stub#noop'
@@ -406,5 +478,8 @@ namespace :api, format: false do
     match 'invite/limit', to: 'stub#invite_limit', via: [:get, :post]
     match 'fetch-rss', to: 'stub#noop', via: [:get, :post]
     post 'fetch-external-resources', to: 'stub#noop'
+    post 'test', to: 'stub#noop'
+    post 'username/available', to: 'stub#unsupported'
+    post 'verify-email', to: 'stub#unsupported'
   end
 end

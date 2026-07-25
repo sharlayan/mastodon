@@ -20,6 +20,8 @@ import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle
 import StatusListContainer from 'flavours/glitch/features/ui/containers/status_list_container';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
+import { ClipFavouriteButton } from './components/favourite_button';
+
 const ClipTimeline: React.FC<{
   multiColumn?: boolean;
 }> = ({ multiColumn }) => {
@@ -63,6 +65,14 @@ const ClipTimeline: React.FC<{
         title={title}
         multiColumn={multiColumn}
         showBackButton
+        extraButton={
+          clip && (
+            <ClipFavouriteButton
+              clip={clip}
+              className='column-header__button clip-favourite-button star-icon'
+            />
+          )
+        }
       >
         {isOwner && (
           <div className='column-settings'>

@@ -38,7 +38,6 @@ import { Video } from 'flavours/glitch/features/video';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import {
   visibleReactions,
-  showInstanceInfo,
   reactionsEnabled,
 } from 'flavours/glitch/initial_state';
 import type { CollectionAttachment } from 'flavours/glitch/models/status';
@@ -113,6 +112,9 @@ export const DetailedStatus: React.FC<{
         ['media', 'no_autoplay_gifv'],
         false,
       ) as boolean,
+  );
+  const showInstanceInfo = useAppSelector(
+    (state) => state.local_settings.get('show_instance_info', false) as boolean,
   );
 
   const { signedIn } = useIdentity();

@@ -1,6 +1,7 @@
-import { Map as ImmutableMap, List as ImmutableList } from 'immutable';
+import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import localSettings from 'flavours/glitch/reducers/local_settings';
+import { showInstanceInfo } from 'flavours/glitch/initial_state';
 
 import { sharlayanLocalSettingsDefaults } from '../defaults';
 
@@ -12,6 +13,7 @@ describe('sharlayan local_settings defaults', () => {
 
     expect(state.get('show_follow_list_bio')).toBe(true);
     expect(state.get('show_others_online_status')).toBe(false);
+    expect(state.get('show_instance_info')).toBe(showInstanceInfo === true);
     expect(state.get('inline_compose_timelines')).toBe(false);
     expect(state.get('disable_inline_compose_reply_modal')).toBe(false);
     expect(state.get('use_publish_toot')).toBe(false);
@@ -61,6 +63,16 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('use_publish_toot')).toBe(true);
     expect(state.getIn(['media', 'no_autoplay_gifv'])).toBe(true);
     expect(state.getIn(['media', 'letterbox'])).toBe(true);
+  });
+
+  it('prefers a stored local instance badge setting over the server seed', () => {
+    const storedValue = showInstanceInfo !== true;
+    const state = localSettings(initial(), {
+      type: 'STORE_HYDRATE',
+      state: fromJS({ local_settings: { show_instance_info: storedValue } }),
+    });
+
+    expect(state.get('show_instance_info')).toBe(storedValue);
   });
 
   it('exposes the defaults map for registry consumers', () => {

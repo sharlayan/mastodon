@@ -36,6 +36,7 @@ class Api::V1::Accounts::CredentialsController < Api::BaseController
       :hide_collections,
       :indexable,
       :followed_message,
+      :is_cat,
       attribution_domains: [],
       fields_attributes: [:name, :value],
       avatar_decorations: [:id, :angle, :flip_h, :offset_x, :offset_y, :scale, :opacity]

@@ -9,7 +9,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   context_extensions :manually_approves_followers, :featured, :also_known_as,
                      :moved_to, :property_value, :discoverable, :suspended,
                      :memorial, :indexable, :attribution_domains, :profile_settings,
-                     :misskey_followed_message, :avatar_decorations
+                     :misskey_followed_message, :avatar_decorations, :is_cat
 
   context_extensions :interaction_policies
 
@@ -36,6 +36,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   attribute :attribution_domains, if: -> { object.attribution_domains.any? }
   attribute :misskey_followed_message, key: :_misskey_followedMessage, if: :followed_message?
   attribute :misskey_avatar_decorations, key: :_misskey_avatarDecorations, if: :avatar_decorations_enabled?
+  attribute :is_cat, key: :isCat, if: :cat?
 
   class EndpointsSerializer < ActivityPub::Serializer
     include RoutingHelper
@@ -151,6 +152,13 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   def misskey_followed_message
     object.followed_message
+  end
+
+  def cat?
+    Setting.cat_enabled &&
+      Setting.cat_federation_enabled &&
+      !object.unavailable? &&
+      object.is_cat?
   end
 
   def followed_message?

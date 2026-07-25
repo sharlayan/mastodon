@@ -24,6 +24,8 @@ module Sharlayan::AdminSettingsExtensions
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view
     avatar_decorations_max_count
+    cat_enabled
+    cat_federation_enabled
     allow_user_custom_css
     board_announcements_enabled
     instance_metadata_enabled
@@ -31,6 +33,7 @@ module Sharlayan::AdminSettingsExtensions
     misskey_compat_enabled
     misskey_compat_signin_flow_enabled
     misskey_compat_signin_flow_allowed_origins
+    misskey_compat_expose_follow_graph
     online_status_enabled
     soft_hide_deletion
     drive_enabled
@@ -61,6 +64,8 @@ module Sharlayan::AdminSettingsExtensions
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view
+    cat_enabled
+    cat_federation_enabled
     rate_limit_bypass_enabled
     allow_user_custom_css
     board_announcements_enabled
@@ -68,6 +73,7 @@ module Sharlayan::AdminSettingsExtensions
     antenna_enabled
     misskey_compat_enabled
     misskey_compat_signin_flow_enabled
+    misskey_compat_expose_follow_graph
     online_status_enabled
     soft_hide_deletion
     drive_enabled

@@ -29,4 +29,8 @@ RSpec.describe UserSettings do
     expect { settings[:'web.pages_blog_list_position'] = 'top' }.to raise_error(ArgumentError)
     expect { settings[:'avatar_decorations.shape'] = 'triangle' }.to raise_error(ArgumentError)
   end
+
+  it 'does not register the migrated instance badge preference as a server setting' do
+    expect { settings[:'web.show_instance_info'] }.to raise_error(UserSettings::KeyError)
+  end
 end

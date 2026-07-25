@@ -1,5 +1,7 @@
 ---
 ko:
+  status_drafts:
+    over_limit: 초안은 최대 %{limit}개까지 저장할 수 있습니다
   about:
     about_mastodon_html: '미래의 소셜 네트워크: 광고 없음, 기업 감시 없음, 윤리적 설계, 탈중앙화! 여러분만의 데이터를 Mastodon으로 보호하고 누리세요!'
     contact_missing: 미설정

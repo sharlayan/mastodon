@@ -243,6 +243,10 @@ export const {
   showAvatarDecorations,
   showFederatedAvatarDecorations,
   avatarDecorationShape,
+  catEnabled,
+  catFederationEnabled,
+  showCat,
+  showFederatedCat,
 } = sharlayanInitialState;
 
 const displayNames =

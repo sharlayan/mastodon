@@ -18,7 +18,7 @@ import { useElementHandledLink } from '@/mastodon/components/status/handled_link
 import { useAccount } from '@/mastodon/hooks/useAccount';
 import { useCurrentAccountId } from '@/mastodon/hooks/useAccountId';
 import { useCustomEmojis } from '@/mastodon/hooks/useCustomEmojis';
-import { autoPlayGif } from '@/mastodon/initial_state';
+import { autoPlayGif, catEnabled } from '@/mastodon/initial_state';
 import {
   fetchProfile,
   patchProfile,
@@ -197,6 +197,10 @@ export const AccountEdit: FC = () => {
   const handleBotToggle = useCallback(() => {
     void dispatch(patchProfile({ bot: !profile?.bot }));
   }, [dispatch, profile?.bot]);
+
+  const handleCatToggle = useCallback(() => {
+    void dispatch(patchProfile({ is_cat: !profile?.isCat }));
+  }, [dispatch, profile?.isCat]);
 
   // Normally we would use the account emoji, but we want all custom emojis to be available to render after editing.
   const emojis = useCustomEmojis();
@@ -398,6 +402,25 @@ export const AccountEdit: FC = () => {
               />
             }
           />
+          {catEnabled && (
+            <ToggleField
+              checked={profile.isCat}
+              onChange={handleCatToggle}
+              disabled={isPending}
+              label={
+                <FormattedMessage
+                  id='account_edit.advanced_settings.cat_label'
+                  defaultMessage='This is a cat'
+                />
+              }
+              hint={
+                <FormattedMessage
+                  id='account_edit.advanced_settings.cat_hint'
+                  defaultMessage='Mark your account as a cat, adding cat ears to your avatar on compatible apps'
+                />
+              }
+            />
+          )}
         </AccountEditSection>
       </CustomEmojiProvider>
     </AccountEditColumn>

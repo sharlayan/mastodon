@@ -4,10 +4,12 @@ import type { MouseEvent, ReactNode } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 import type { MessageDescriptor } from 'react-intl';
 
+import SaveIcon from '@/material-icons/400-24px/save.svg?react';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import type { Button } from 'flavours/glitch/components/button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
+import { IconButton } from 'flavours/glitch/components/icon_button';
 import { CircleButton } from 'flavours/glitch/features/compose/components/circle_button';
 import { ClipButton } from 'flavours/glitch/features/compose/components/clip_button';
 import { MfmComposeHint } from 'flavours/glitch/features/compose/components/mfm_compose_hint';
@@ -38,6 +40,8 @@ const messages = defineMessages({
     id: 'navigation_bar.scheduled',
     defaultMessage: 'Scheduled posts',
   },
+  drafts: { id: 'navigation_bar.drafts', defaultMessage: 'Drafts' },
+  saveDraft: { id: 'compose_form.save_draft', defaultMessage: 'Save draft' },
 });
 
 const ComposeFormAvatar = () => {
@@ -58,6 +62,7 @@ const ComposeFormAvatar = () => {
       },
       null,
       { text: intl.formatMessage(messages.scheduled), to: '/scheduled' },
+      { text: intl.formatMessage(messages.drafts), to: '/drafts' },
     ],
     [intl, dispatch, acct],
   );
@@ -140,6 +145,7 @@ export const SharlayanComposeControls = ({
   isInline,
   languageDropdown,
   onScheduleChange,
+  onSaveDraft,
   scheduledAt,
   showScheduleButton,
   submit,
@@ -150,11 +156,13 @@ export const SharlayanComposeControls = ({
   isInline?: boolean;
   languageDropdown: ReactNode;
   onScheduleChange: (scheduledAt: string | null) => void;
+  onSaveDraft: () => void;
   scheduledAt?: string;
   showScheduleButton?: boolean;
   submit: ReactNode;
   visibilityButton: ReactNode;
 }) => {
+  const intl = useIntl();
   const controlState = getComposeControlState({
     isEditing,
     isEditingScheduled,
@@ -176,6 +184,14 @@ export const SharlayanComposeControls = ({
             disabled={controlState.scheduleDisabled}
             isEditing={controlState.scheduleEditing}
             iconOnly={false}
+          />
+        )}
+        {!isEditing && (
+          <IconButton
+            icon='save'
+            iconComponent={SaveIcon}
+            title={intl.formatMessage(messages.saveDraft)}
+            onClick={onSaveDraft}
           />
         )}
       </div>

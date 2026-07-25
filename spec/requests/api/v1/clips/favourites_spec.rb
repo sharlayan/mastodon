@@ -38,6 +38,16 @@ RSpec.describe 'Clip Favourites' do
       end
     end
 
+    context 'with a private clip owned by the current account' do
+      let(:clip) { Fabricate(:clip, account: user.account, public: false, title: 'mine') }
+
+      it 'allows favoriting the clip' do
+        expect { subject }.to change(ClipFavourite, :count).by(1)
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to include(favourited: true, favourites_count: 1)
+      end
+    end
+
     context 'with the feature disabled' do
       let(:clip) { Fabricate(:clip, account: other, public: true) }
 

@@ -15,7 +15,7 @@ RSpec.describe 'Misskey-compat endpoint endpoint' do
     end
 
     it 'returns an error envelope for an unadvertised endpoint' do
-      post '/api/endpoint', params: { endpoint: 'notes/drafts/create' }, as: :json
+      post '/api/endpoint', params: { endpoint: 'notes/drafts/show' }, as: :json
 
       expect(response).to have_http_status(404)
       expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_ENDPOINT')

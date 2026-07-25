@@ -9,4 +9,5 @@ module Sharlayan::RESTAccountSerialization
   include Sharlayan::REST::Account::OnlineStatus
   include Sharlayan::REST::Account::Pages
   include Sharlayan::REST::Account::Profile
+  include Sharlayan::REST::Account::RequestScopedCache
 end

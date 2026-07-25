@@ -8,7 +8,7 @@ module Sharlayan::REST::Status::InstanceMetadata
   end
 
   def instance_metadata
-    return nil if object.account.domain.blank?
+    return local_instance_metadata if object.account.local?
 
     begin
       metadata = ::InstanceMetadata.cached_by_domain(object.account.domain)
@@ -35,10 +35,34 @@ module Sharlayan::REST::Status::InstanceMetadata
   end
 
   def show_instance_info?
-    Setting.instance_metadata_enabled && object.account.domain.present?
+    Setting.instance_metadata_enabled
   end
 
   private
+
+  def local_instance_metadata
+    presenter = InstancePresenter.new
+
+    {
+      domain: presenter.domain,
+      instance_name: presenter.title,
+      software: 'mastodon',
+      version: presenter.version,
+      theme_color: InstanceMetadata::DEFAULT_THEME_COLORS['mastodon'],
+      favicon_url: presenter.favicon&.file&.url('48'),
+    }
+  end
+
+  def default_metadata(domain)
+    {
+      domain: domain,
+      instance_name: domain,
+      software: nil,
+      version: nil,
+      theme_color: InstanceMetadata::DEFAULT_THEME_COLORS['mastodon'],
+      favicon_url: nil,
+    }
+  end
 
   def metadata_domain
     object.account.domain

@@ -1,8 +1,10 @@
 - content_for :page_title do
   = t('admin.avatar_decorations.title')
 
-- if can?(:create, :avatar_decoration)
-  - content_for :heading_actions do
+- content_for :heading_actions do
+  - if can?(:update, :avatar_decoration)
+    = link_to t('admin.avatar_decorations.check_images'), check_images_admin_avatar_decorations_path, method: :post, class: 'button button-secondary'
+  - if can?(:create, :avatar_decoration)
     = link_to t('admin.avatar_decorations.add_new'), new_admin_avatar_decoration_path, class: 'button'
 
 .filters

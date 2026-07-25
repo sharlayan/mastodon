@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'request_store'
+
 module RoutingHelper
   extend ActiveSupport::Concern
 
@@ -17,7 +19,7 @@ module RoutingHelper
   def full_asset_url(source, **)
     source = ActionController::Base.helpers.asset_url(source, **) unless use_storage?
 
-    URI.join(asset_host, source).to_s
+    URI.join(asset_host_uri, source).to_s
   end
 
   def full_media_attachment_url(attachment, style = :original, include_filename: true)
@@ -56,7 +58,15 @@ module RoutingHelper
   end
 
   def asset_host
-    Rails.configuration.action_controller.asset_host || root_url
+    return Rails.configuration.action_controller.asset_host || root_url unless RequestStore.active?
+
+    RequestStore.store[:routing_helper_asset_host] ||= Rails.configuration.action_controller.asset_host || root_url
+  end
+
+  def asset_host_uri
+    return URI.parse(asset_host) unless RequestStore.active?
+
+    RequestStore.store[:routing_helper_asset_host_uri] ||= URI.parse(asset_host)
   end
 
   def frontend_asset_path(source, **)

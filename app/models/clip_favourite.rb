@@ -18,4 +18,6 @@ class ClipFavourite < ApplicationRecord
   belongs_to :clip, inverse_of: :clip_favourites
 
   validates :clip_id, uniqueness: { scope: :account_id }
+
+  scope :visible_to, ->(account) { joins(:clip).where('clips.public = ? OR clips.account_id = ?', true, account.id) }
 end

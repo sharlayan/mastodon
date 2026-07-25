@@ -81,6 +81,32 @@ class AvatarDecoration < ApplicationRecord
     end
   end
 
+  def image_stored?
+    return false if image_file_name.blank?
+
+    image.exists?(:original)
+  rescue => e
+    Rails.logger.warn "AvatarDecoration##{id}: storage check failed: #{e.message}"
+    true
+  end
+
+  def image_missing?
+    !image_stored?
+  end
+
+  def image_repairable?
+    image_remote_url.present? && image_missing?
+  end
+
+  def repair_image!
+    return false unless image_repairable?
+
+    download_image!
+    return false if image_file_name.blank?
+
+    save
+  end
+
   def image_static_url
     if image_file_name.present? && image_content_type == 'image/gif'
       image.url(:static)

@@ -13,6 +13,10 @@ class Api::MisskeyCompat::StubController < Api::MisskeyCompat::BaseController
     head 204
   end
 
+  def unsupported
+    render_error('This endpoint is not supported on this server', 'UNSUPPORTED_ENDPOINT', 501, kind: 'server')
+  end
+
   def invite_limit
     render json: { remaining: nil }
   end

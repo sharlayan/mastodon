@@ -119,10 +119,20 @@ class MisskeyCompat::NoteSerializer
       host = account.local? ? Rails.configuration.x.local_domain : account.domain
       next if host.blank?
 
+      text = qualify_local_mention_port(text, account.username, host) if account.local?
       text = text.gsub(/@#{Regexp.escape(account.username)}(?![A-Za-z0-9_@])/i) { |m| "#{m}@#{host}" }
     end
 
     text
+  end
+
+  def qualify_local_mention_port(text, username, host)
+    host_without_port = host.sub(/:\d+\z/, '')
+    return text if host_without_port == host
+
+    text.gsub(/(@#{Regexp.escape(username)})@#{Regexp.escape(host_without_port)}(?![A-Za-z0-9_@.:-])/i) do
+      "#{Regexp.last_match(1)}@#{host}"
+    end
   end
 
   def quoted_id(status)

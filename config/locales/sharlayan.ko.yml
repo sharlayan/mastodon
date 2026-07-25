@@ -47,6 +47,8 @@ ko:
       approved_msg: 아바타 장식이 성공적으로 승인되었습니다
       assign_category: 카테고리 지정
       category: 카테고리
+      check_images: 장식 이미지 점검
+      check_images_msg: 장식 이미지 점검을 시작했습니다. 누락된 이미지는 다시 다운로드됩니다
       create_new_category: 새 카테고리 만들기
       created_msg: 아바타 장식이 성공적으로 생성되었습니다
       current_image: 현재 이미지
@@ -236,6 +238,13 @@ ko:
         enabled_hint: 사용자가 사이트 내 게시판형 공지사항 페이지를 볼 수 있도록 합니다. 비활성화하면 페이지와 네비게이션 링크가
           숨겨집니다.
         title: 게시판형 공지사항
+      cat:
+        enabled: 고양이 계정 활성화
+        enabled_hint: 로컬 사용자가 자신을 고양이로 설정하여 아바타에 고양이 귀를, 게시물에 냥체(nyaify)를 추가할 수 있도록
+          합니다. 보는 사람은 개인 환경설정에서 이 효과를 끌 수 있습니다.
+        federation_enabled: 고양이 연합 활성화
+        federation_enabled_hint: 이 서버의 고양이 표시를 원격 서버로 전송하고, 연합 서버에서 받은 계정에도 고양이 효과를 적용합니다.
+        title: 고양이 계정
       circles:
         enabled: 서클 기능 활성화
         enabled_hint: 사용자가 서클을 만들고 선택한 팔로워에게만 보이는 게시물을 작성할 수 있도록 합니다.
@@ -282,6 +291,8 @@ ko:
         signin_flow_allowed_origins: 추가 로그인 허용 출처
         signin_flow_allowed_origins_hint: 정확한 HTTPS 출처를 공백 또는 쉼표로 구분해 입력합니다. 경로, 와일드카드, 하위 도메인 자동 허용은 지원하지 않습니다.
         signin_flow_allowed_origins_invalid: "올바르지 않은 HTTPS 출처: %{origins}"
+        expose_follow_graph: 인스턴스별 팔로우 그래프 공개
+        expose_follow_graph_hint: 활성화하면 로그인한 Misskey 호환 클라이언트가 연합 팔로워/팔로잉 목록과 사용자별 팔로잉 차트를 조회할 수 있습니다. 팔로우·팔로워를 숨긴 계정의 팔로우 관계까지 드러나므로, 이 트레이드오프를 감수하는 경우가 아니면 비활성화된 상태로 두세요. 이 엔드포인트들은 항상 로그인이 필요합니다.
       online_status:
         enabled: 온라인 상태 표시 활성화
         enabled_hint: 활성화하면, 사용하기로 선택한 사용자가 온라인·최근 활동·오프라인 상태를 아바타의 점으로 공유할 수 있습니다.
@@ -440,6 +451,7 @@ ko:
     truncate_html: "&hellip;"
   settings:
     avatar_decorations: 아바타 장식
+    cat: 고양이 계정
     custom_css: 커스텀 CSS
   simple_form:
     hints:
@@ -448,6 +460,7 @@ ko:
           팔로우 요청을 수락했을 때 보여줍니다.
       defaults:
         custom_css_text: 본인 세션에만 적용되는 일반 CSS입니다. 최대 100 KB.
+        is_cat: 계정을 고양이로 표시합니다. 호환되는 앱에서 아바타에 고양이 귀가 표시됩니다.
         setting_auto_accept_followed: 계정이 잠겨 있어도, 내가 이미 팔로우하고 있는 계정의 팔로우 요청은 자동으로
           수락합니다.
         setting_auto_quote_from_url: 게시물 본문에 가져올 수 있는 다른 연합우주 게시물 링크가 있으면, 작성자에게 허용을
@@ -470,8 +483,9 @@ ko:
           뿐이며 강제할 수는 없습니다.
         setting_reaction_custom_emoji_size: 리액션 버튼에서 가로로 긴 커스텀 에모지의 가로 길이를 늘려 서 표시합니다.
         setting_show_avatar_decorations: 아바타 장식을 표시합니다.
+        setting_show_cat: 고양이 계정의 아바타에 고양이 귀를, 게시물에 냥체(nyaify)를 표시합니다. 기본값은 켜짐입니다.
         setting_show_federated_avatar_decorations: Misskey 호환 서버에서 받은 장식을 표시합니다.
-        setting_show_instance_info: 다른 서버의 게시물에 인스턴스 이름, 테마 색상 및 파비콘 표시
+        setting_show_federated_cat: 연합 서버에서 받은 고양이 계정에도 고양이 효과를 적용합니다.
         setting_show_online_status: 다른 사람이 당신이 온라인인지, 최근 활동했는지, 오프라인인지 볼 수 있습니다. 끄면
           모두에게 상태가 알 수 없음으로 표시됩니다.
         setting_show_reactions: 다른 사람이 내 프로필에서 내가 리액션한 게시물을 볼 수 있도록 허용합니다.
@@ -490,6 +504,7 @@ ko:
       defaults:
         custom_css_text: 커스텀 CSS
         followed_message: 팔로우 받았을 때 메시지
+        is_cat: 이 계정은 고양이입니다
         setting_auto_accept_followed: 팔로우 중인 계정의 팔로우 요청 자동 수락
         setting_auto_quote_from_url: 게시물의 연합우주 게시물 링크를 자동으로 인용
         setting_bridge_unlisted_to_bsky: 제한된 공개 게시물을 블루스카이에 전체 공개로 전달
@@ -518,8 +533,9 @@ ko:
         setting_prevent_ai_learning: AI 학습에 사용 방지
         setting_reaction_custom_emoji_size: 리액션 버튼의 커스텀 에모지 원본 비율 표시
         setting_show_avatar_decorations: 아바타 장식 표시
+        setting_show_cat: 고양이 귀와 냥체 표시
         setting_show_federated_avatar_decorations: 연합 서버의 아바타 장식 표시
-        setting_show_instance_info: 게시물에 인스턴스 정보 표시 (글리치 풍미에만 적용됨)
+        setting_show_federated_cat: 연합 서버의 고양이 효과 표시
         setting_show_online_status: 내 온라인 상태 공유
         setting_show_reactions: 프로필에 내 리액션 표시
         setting_use_custom_css: 내 커스텀 CSS 적용

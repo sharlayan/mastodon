@@ -21,6 +21,7 @@ import Bundle from '../features/ui/components/bundle';
 import { MediaGallery, Video, Audio } from '../features/ui/util/async-components';
 import { SensitiveMediaContext } from '../features/ui/util/sensitive_media_context';
 import { displayMedia, visibleReactions, disableHoverCards, showInstanceInfo, reactionsEnabled } from '../initial_state';
+import { roleplayMode } from '../sharlayan/roleplay';
 
 import { injectIntl } from './intl';
 import AttachmentList from './attachment_list';
@@ -780,7 +781,7 @@ class Status extends ImmutablePureComponent {
               </div>
             )}
 
-            {showInstanceInfo && instanceInfo && (
+            {(roleplayMode ? showInstanceInfo : settings.get('show_instance_info')) && instanceInfo && (
               <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
             )}
 

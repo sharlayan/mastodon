@@ -37,6 +37,38 @@ RSpec.describe ActivityPub::ActorSerializer do
     end
   end
 
+  describe '#isCat' do
+    context 'when cat federation is enabled' do
+      before do
+        Setting.cat_enabled = true
+        Setting.cat_federation_enabled = true
+      end
+
+      context 'when the account is a cat' do
+        let(:record) { Fabricate(:account, is_cat: true) }
+
+        it { is_expected.to include('isCat' => true) }
+      end
+
+      context 'when the account is not a cat' do
+        let(:record) { Fabricate(:account, is_cat: false) }
+
+        it { is_expected.to_not include('isCat') }
+      end
+    end
+
+    context 'when cat federation is disabled' do
+      before do
+        Setting.cat_enabled = true
+        Setting.cat_federation_enabled = false
+      end
+
+      let(:record) { Fabricate(:account, is_cat: true) }
+
+      it { is_expected.to_not include('isCat') }
+    end
+  end
+
   describe '#interactionPolicy' do
     let(:record) { Fabricate(:account) }
 

@@ -5,6 +5,9 @@ import {
   fetchClips,
   fetchAccountClips,
   fetchClip,
+  fetchFavouriteClips,
+  favouriteClip,
+  unfavouriteClip,
   createClip,
   updateClip,
   deleteClip,
@@ -31,13 +34,18 @@ export const clipsReducer: Reducer<State> = (state = initialState, action) => {
   if (
     createClip.fulfilled.match(action) ||
     updateClip.fulfilled.match(action) ||
-    fetchClip.fulfilled.match(action)
+    fetchClip.fulfilled.match(action) ||
+    favouriteClip.fulfilled.match(action) ||
+    unfavouriteClip.fulfilled.match(action)
   ) {
     return normalizeClip(state, action.payload);
   } else if (
     fetchClips.fulfilled.match(action) ||
     fetchAccountClips.fulfilled.match(action)
   ) {
+    return normalizeClips(state, action.payload);
+  } else if (fetchFavouriteClips.fulfilled.match(action)) {
+    state = state.map((clip) => clip?.set('favourited', false) ?? null);
     return normalizeClips(state, action.payload);
   } else if (deleteClip.fulfilled.match(action)) {
     return state.set(action.meta.arg.id, null);
