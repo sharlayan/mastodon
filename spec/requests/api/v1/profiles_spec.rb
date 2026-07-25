@@ -40,6 +40,7 @@ RSpec.describe 'Profile API' do
           'hide_collections' => anything,
           'avatar_decorations' => [],
           'followed_message' => anything,
+          'is_cat' => anything,
           'bot' => account.bot,
           'locked' => account.locked,
           'discoverable' => account.discoverable,
