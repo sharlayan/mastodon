@@ -4,14 +4,13 @@ import type { MouseEvent, ReactNode } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 import type { MessageDescriptor } from 'react-intl';
 
-import SaveIcon from '@/material-icons/400-24px/save.svg?react';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import type { Button } from 'flavours/glitch/components/button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
-import { IconButton } from 'flavours/glitch/components/icon_button';
 import { CircleButton } from 'flavours/glitch/features/compose/components/circle_button';
 import { ClipButton } from 'flavours/glitch/features/compose/components/clip_button';
+import { DraftButton } from 'flavours/glitch/features/compose/components/draft_button';
 import { MfmComposeHint } from 'flavours/glitch/features/compose/components/mfm_compose_hint';
 import { ScheduleButton } from 'flavours/glitch/features/compose/components/schedule_button';
 import type { SecondaryPrivacyButton } from 'flavours/glitch/features/compose/components/secondary_privacy_button';
@@ -41,7 +40,6 @@ const messages = defineMessages({
     defaultMessage: 'Scheduled posts',
   },
   drafts: { id: 'navigation_bar.drafts', defaultMessage: 'Drafts' },
-  saveDraft: { id: 'compose_form.save_draft', defaultMessage: 'Save draft' },
 });
 
 const ComposeFormAvatar = () => {
@@ -162,7 +160,6 @@ export const SharlayanComposeControls = ({
   submit: ReactNode;
   visibilityButton: ReactNode;
 }) => {
-  const intl = useIntl();
   const controlState = getComposeControlState({
     isEditing,
     isEditingScheduled,
@@ -186,14 +183,7 @@ export const SharlayanComposeControls = ({
             iconOnly={false}
           />
         )}
-        {!isEditing && (
-          <IconButton
-            icon='save'
-            iconComponent={SaveIcon}
-            title={intl.formatMessage(messages.saveDraft)}
-            onClick={onSaveDraft}
-          />
-        )}
+        {!isEditing && <DraftButton onSaveDraft={onSaveDraft} />}
       </div>
 
       <div className='compose-form__dropdowns__submit'>{submit}</div>

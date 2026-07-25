@@ -59,6 +59,31 @@
   min-height: 25px;
 }
 
+.draft-dropdown__dropdown {
+  min-width: 160px;
+  max-width: 280px;
+
+  .dropdown-menu__container__list--scrollable {
+    max-height: 240px;
+  }
+
+  .dropdown-menu__item button {
+    text-align: start;
+  }
+
+  .draft-dropdown__item__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .draft-dropdown__empty {
+    padding: 6px 14px;
+    color: var(--color-text-secondary);
+    font-weight: 400;
+  }
+}
+
 .schedule-button__dropdown {
   box-shadow: var(--dropdown-shadow);
   background: var(--color-bg-primary);

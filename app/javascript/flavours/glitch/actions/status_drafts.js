@@ -1,4 +1,4 @@
-import { fromJS } from 'immutable';
+import { fromJS, List as ImmutableList } from 'immutable';
 import { defineMessages } from 'react-intl';
 
 import api from 'flavours/glitch/api';
@@ -46,11 +46,14 @@ const composePayload = (state) => {
 
 export const fetchStatusDrafts = () => (dispatch) => {
   dispatch({ type: STATUS_DRAFTS_FETCH_REQUEST });
-  api().get('/api/v1/status_drafts').then(({ data }) => {
-    dispatch({ type: STATUS_DRAFTS_FETCH_SUCCESS, drafts: data.map(draft => fromJS(draft)) });
+  return api().get('/api/v1/status_drafts').then(({ data }) => {
+    const drafts = ImmutableList(data.map(draft => fromJS(draft)));
+    dispatch({ type: STATUS_DRAFTS_FETCH_SUCCESS, drafts });
+    return drafts;
   }).catch(error => {
     dispatch({ type: STATUS_DRAFTS_FETCH_FAIL });
     dispatch(showAlertForError(error));
+    return null;
   });
 };
 

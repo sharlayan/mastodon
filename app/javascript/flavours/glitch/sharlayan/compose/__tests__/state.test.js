@@ -27,11 +27,13 @@ describe('Sharlayan compose state', () => {
       circle_id: null,
       clip_ids: [],
       scheduled_at: null,
+      draft_id: null,
     });
     expect(resetSharlayanComposeState(state).toJS()).toEqual({
       circle_id: null,
       clip_ids: [],
       scheduled_at: null,
+      draft_id: null,
       text: 'keep me',
     });
     expect(resetScheduledComposeState(state).get('circle_id')).toBe('circle-id');
