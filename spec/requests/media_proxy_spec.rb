@@ -57,6 +57,39 @@ RSpec.describe 'Media Proxy' do
       expect(response).to have_http_status(404)
     end
 
+    it 'redirects to a locally stored custom emoji image' do
+      emoji = Fabricate(:custom_emoji, shortcode: 'coolcat')
+      emoji_url = Class.new { include RoutingHelper }.new.full_asset_url(emoji.image.url)
+
+      get '/proxy/image.webp', params: { url: emoji_url, emoji: 1, origin: 1 }
+
+      expect(response).to redirect_to(emoji_url)
+    end
+
+    it 'redirects to the static style of a custom emoji image' do
+      emoji = Fabricate(:custom_emoji, shortcode: 'coolcat')
+      emoji_url = Class.new { include RoutingHelper }.new.full_asset_url(emoji.image.url(:static))
+
+      get '/proxy/static.webp', params: { url: emoji_url, static: 1 }
+
+      expect(response).to redirect_to(emoji_url)
+    end
+
+    it 'redirects to the original URL recorded for a remote custom emoji' do
+      emoji = Fabricate(:custom_emoji, shortcode: 'coolcat', domain: 'remote.example', uri: 'https://remote.example/emoji/coolcat')
+      emoji.update_column(:image_remote_url, 'https://remote.example/emoji/coolcat.png')
+
+      get '/proxy/image.webp', params: { url: emoji.image_remote_url, emoji: 1 }
+
+      expect(response).to redirect_to(emoji.image_remote_url)
+    end
+
+    it 'does not treat an emoji-shaped asset path for an unknown id as known' do
+      get '/proxy/image.webp', params: { url: Class.new { include RoutingHelper }.new.full_asset_url('/system/custom_emojis/images/000/999/999/original/nope.png'), emoji: 1 }
+
+      expect(response).to have_http_status(404)
+    end
+
     it 'does not redirect to an arbitrary external URL' do
       get '/proxy', params: { url: 'https://attacker.example/phishing' }
 

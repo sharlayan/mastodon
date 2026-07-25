@@ -2,7 +2,7 @@
 
 class Api::MisskeyCompat::EmojisController < Api::MisskeyCompat::BaseController
   def index
-    render json: { emojis: CustomEmoji.listed.includes(:category).map { |emoji| serialize(emoji) } }
+    render json: { emojis: CustomEmoji.local.enabled.includes(:category).map { |emoji| serialize(emoji) } }
   end
 
   def show

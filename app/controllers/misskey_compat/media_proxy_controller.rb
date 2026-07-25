@@ -26,7 +26,24 @@ module MisskeyCompat
 
       PreviewCard.exists?(url: url) ||
         MediaAttachment.where(remote_url: url).or(MediaAttachment.where(thumbnail_remote_url: url)).exists? ||
+        known_custom_emoji?(uri) ||
         known_instance_favicon?(uri)
+    end
+
+    def known_custom_emoji?(uri)
+      url = uri.to_s
+
+      return true if CustomEmoji.exists?(image_remote_url: url)
+
+      emoji = custom_emoji_from_asset_path(uri.path)
+      emoji.present? && [emoji.image.url, emoji.image.url(:static)].any? { |candidate| helpers.full_asset_url(candidate) == url }
+    end
+
+    def custom_emoji_from_asset_path(path)
+      id_partition = path[%r{/custom_emojis/images/((?:\d{3}/)+)}, 1]
+      return nil if id_partition.blank?
+
+      CustomEmoji.find_by(id: id_partition.delete('/').to_i)
     end
 
     def known_instance_favicon?(uri)

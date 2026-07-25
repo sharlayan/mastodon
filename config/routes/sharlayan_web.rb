@@ -17,6 +17,7 @@ constraints(username: %r{[^@/.]+}) do
 end
 
 get '/avatar/:acct', to: 'misskey_compat/avatars#show', constraints: { acct: %r{[^/]+} }, format: false, as: :misskey_compat_avatar
+get '/emoji/:name', to: 'misskey_compat/emojis#show', constraints: { name: %r{[^/]+} }, format: false, as: :misskey_compat_emoji
 get '/url', to: 'misskey_compat/url_preview#show', as: :misskey_compat_url_preview
 get '/scratchpad', to: 'misskey_compat/scratchpad#show', as: :scratchpad
 post '/scratchpad', to: 'misskey_compat/scratchpad#run'
