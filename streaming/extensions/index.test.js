@@ -25,11 +25,15 @@ test('Misskey fallback is fail-closed when the setting lookup fails', async () =
   );
 });
 
-test('OAuth token query preserves expiry and account security conditions', () => {
+test('OAuth token query loads community permissions only in roleplay mode', () => {
   assert.match(ACCESS_TOKEN_QUERY, /expires_in IS NULL/);
   assert.match(ACCESS_TOKEN_QUERY, /users\.disabled IS FALSE/);
   assert.match(ACCESS_TOKEN_QUERY, /accounts\.suspended_at IS NULL/);
-  assert.match(ACCESS_TOKEN_QUERY, /extra_permissions/);
+  if (process.env.OC_ROLEPLAY_OPTION === 'true') {
+    assert.match(ACCESS_TOKEN_QUERY, /extra_permissions/);
+  } else {
+    assert.doesNotMatch(ACCESS_TOKEN_QUERY, /extra_permissions/);
+  }
 });
 
 test('Management timeline authorization requires roleplay mode and permission', () => {

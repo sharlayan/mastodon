@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative '../config/boot'
+require_relative '../config/environment'
+
+apply = ARGV.delete('--apply')
+abort 'Unknown arguments. Usage: bin/reset-roleplay-mode [--apply]' if ARGV.any?
+abort I18n.t('roleplay_reset.disable_first') if RoleplayModeHelper.roleplay_mode?
+
+summary = RoleplayResetService.new.call(apply: apply)
+mode = apply ? 'Applied' : 'Dry run'
+
+puts "#{mode}:"
+puts "  setting overrides: #{summary[:settings]}"
+puts "  roles with management timeline permission: #{summary[:roles]}"
+puts "  Everyone role: #{summary[:everyone_role]}"
+puts "  notification policies: #{summary[:notification_policies]}"
+puts I18n.t(apply ? 'roleplay_reset.restart' : 'roleplay_reset.apply_hint')

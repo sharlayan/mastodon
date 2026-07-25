@@ -109,6 +109,18 @@ RSpec.describe 'API routes' do
       expect(get('/api/v1/timelines/antenna/123'))
         .to route_to('api/v1/timelines/antenna#show', id: '123')
     end
+
+    it 'loads the management timeline only in roleplay mode' do
+      if ENV['OC_ROLEPLAY_OPTION'] == 'true'
+        expect(get('/api/v1/timelines/admin')).to route_to('api/v1/timelines/admin#show')
+      else
+        expect(get('/api/v1/timelines/admin')).to route_to(
+          controller: 'application',
+          action: 'raise_not_found',
+          unmatched_route: 'api/v1/timelines/admin'
+        )
+      end
+    end
   end
 
   describe 'Sharlayan collection routes' do

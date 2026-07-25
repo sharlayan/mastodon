@@ -4,7 +4,6 @@ class RemoveStatusService < BaseService
   include Redisable
   include Payloadable
   include Lockable
-  include Sharlayan::AdminTimelineFanOut
 
   # Delete a status
   # @param   [Status] status
@@ -29,7 +28,6 @@ class RemoveStatusService < BaseService
       remove_from_followers
       remove_from_lists
       remove_from_antennas
-      remove_from_admin
 
       # There is no reason to send out Undo activities when the
       # cause is that the original object has been removed, since

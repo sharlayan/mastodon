@@ -1,24 +1,19 @@
 # frozen_string_literal: true
 
 module Sharlayan::AdminTimelineFanOut
-  extend ActiveSupport::Concern
-
-  included do
-    include RoleplayModeHelper
+  module FanOut
+    def call(status, options = {})
+      super.tap do
+        redis.publish('timeline:admin', anonymous_payload) if status.account.local? && !status.proper.account.suspended?
+      end
+    end
   end
 
-  private
-
-  def broadcast_to_admin_stream!
-    return unless roleplay_mode? && @status.account.local?
-
-    redis.publish('timeline:admin', anonymous_payload)
-  end
-
-  def remove_from_admin
-    return unless roleplay_mode? && @account.local?
-    return if skip_streaming?
-
-    redis.publish('timeline:admin', @payload)
+  module Remove
+    def call(status, **options)
+      super.tap do
+        redis.publish('timeline:admin', @payload) if status.account.local? && !options[:skip_streaming]
+      end
+    end
   end
 end

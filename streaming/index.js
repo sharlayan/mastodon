@@ -396,7 +396,7 @@ const startServer = async () => {
     req.accountId = result.rows[0].account_id;
     req.chosenLanguages = result.rows[0].chosen_languages;
     req.permissions = result.rows[0].permissions;
-    req.extraPermissions = result.rows[0].extra_permissions;
+    req.extraPermissions = result.rows[0].extra_permissions ?? 0;
 
     return {
       accessTokenId: result.rows[0].id,
@@ -404,7 +404,7 @@ const startServer = async () => {
       accountId: result.rows[0].account_id,
       chosenLanguages: result.rows[0].chosen_languages,
       permissions: result.rows[0].permissions,
-      extraPermissions: result.rows[0].extra_permissions,
+      extraPermissions: result.rows[0].extra_permissions ?? 0,
     };
   };
 

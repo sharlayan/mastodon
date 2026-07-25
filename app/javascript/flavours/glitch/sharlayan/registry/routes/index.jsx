@@ -5,6 +5,7 @@ import {
   driveEnabled,
   pagesEnabled,
 } from 'flavours/glitch/initial_state';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 
 const alwaysEnabled = () => true;
 
@@ -19,7 +20,7 @@ export const BoardAnnouncements = () => import('../../../features/board_announce
 export const sharlayanColumnComponents = {
   CONVERSATION: ConversationThread,
   ANTENNA: AntennaTimeline,
-  ADMIN_TIMELINE: AdminTimeline,
+  ...(roleplayMode ? { ADMIN_TIMELINE: AdminTimeline } : {}),
   REACTIONS: ReactedStatuses,
   BOARD_ANNOUNCEMENTS: BoardAnnouncements,
 };
@@ -28,7 +29,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: alwaysEnabled, lazyComponent: PublicTimeline },
   { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: alwaysEnabled, lazyComponent: CommunityTimeline },
   { key: 'conversation', path: '/conversations/:conversationId', featureGate: alwaysEnabled, lazyComponent: ConversationThread },
-  { key: 'admin-timeline', path: '/timelines/admin', featureGate: alwaysEnabled, lazyComponent: AdminTimeline },
+  { key: 'admin-timeline', path: '/timelines/admin', featureGate: () => roleplayMode, lazyComponent: AdminTimeline },
   { key: 'clip-new', path: '/clips/new', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-favourites', path: '/clips/favourites', exact: true, featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/favourites') },
   { key: 'clip-edit', path: '/clips/:id/edit', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },

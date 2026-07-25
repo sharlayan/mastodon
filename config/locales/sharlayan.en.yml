@@ -1,5 +1,9 @@
 ---
 en:
+  roleplay_reset:
+    apply_hint: Run again with --apply to update the database.
+    disable_first: Disable OC_ROLEPLAY_OPTION and restart before running this command.
+    restart: Restart all web, Sidekiq, and streaming processes.
   account_switcher:
     switch_failed: Account not found.
     switch_unauthorized: You are not authorized to switch to this account.

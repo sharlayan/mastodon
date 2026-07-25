@@ -11,7 +11,7 @@ import ManufacturingIcon from '@/material-icons/400-24px/manufacturing.svg?react
 import { injectIntl } from '@/mastodon/components/intl';
 
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
-import { adminTimelineId, expandAdminTimeline } from '../../actions/timelines';
+import { adminTimelineId, expandAdminTimeline } from './actions';
 import Column from '../../components/column';
 import ColumnHeader from '../../components/column_header';
 import StatusListContainer from '../ui/containers/status_list_container';

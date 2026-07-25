@@ -24,6 +24,18 @@ RSpec.describe 'Sharlayan routes' do
     expect(get: '/pages/featured').to route_to(controller: 'home', action: 'index', any: 'featured')
   end
 
+  it 'loads the management timeline web route only in roleplay mode' do
+    if ENV['OC_ROLEPLAY_OPTION'] == 'true'
+      expect(get: '/timelines/admin').to route_to('home#index')
+    else
+      expect(get: '/timelines/admin').to route_to(
+        controller: 'application',
+        action: 'raise_not_found',
+        unmatched_route: 'timelines/admin'
+      )
+    end
+  end
+
   it 'routes custom administration resources' do
     expect(get: '/admin/drive/files').to route_to('admin/drive_files#index')
     expect(post: '/admin/board_announcements/1/publish').to route_to(

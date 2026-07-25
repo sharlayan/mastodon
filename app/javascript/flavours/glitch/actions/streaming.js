@@ -1,7 +1,7 @@
 // @ts-check
 
 import { getLocale } from '../locales';
-import { createAdminStreamConnector, createAntennaStreamConnector, handleSharlayanStreamingEvent } from '../sharlayan/compose/streaming';
+import { createAntennaStreamConnector, handleSharlayanStreamingEvent } from '../sharlayan/compose/streaming';
 import { connectStream } from '../stream';
 
 import {
@@ -24,8 +24,6 @@ import {
   fillPublicTimelineGaps,
   fillCommunityTimelineGaps,
   fillListTimelineGaps,
-  fillAdminTimelineGaps,
-  adminTimelineId,
 } from './timelines';
 
 /**
@@ -228,9 +226,3 @@ export const connectListStream = listId =>
   });
 
 export const connectAntennaStream = createAntennaStreamConnector({ connectTimeline: connectTimelineStream });
-
-export const connectAdminStream = createAdminStreamConnector({
-  adminTimelineId,
-  connectTimeline: connectTimelineStream,
-  fillGaps: fillAdminTimelineGaps,
-});

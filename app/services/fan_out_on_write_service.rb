@@ -2,7 +2,6 @@
 
 class FanOutOnWriteService < BaseService
   include Redisable
-  include Sharlayan::AdminTimelineFanOut
 
   # Push a status into home and mentions feeds
   # @param [Status] status
@@ -22,7 +21,6 @@ class FanOutOnWriteService < BaseService
     fan_out_to_local_recipients!
     fan_out_to_public_recipients! if broadcastable?
     fan_out_to_public_streams! if broadcastable?
-    broadcast_to_admin_stream!
   end
 
   private

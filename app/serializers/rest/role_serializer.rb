@@ -4,7 +4,7 @@ class REST::RoleSerializer < ActiveModel::Serializer
   attributes :id, :name, :permissions, :color, :highlighted
 
   attribute :collection_limit
-  attribute :extra_permissions
+  attribute :extra_permissions, if: :roleplay_mode_enabled?
 
   def id
     object.id.to_s
@@ -12,6 +12,10 @@ class REST::RoleSerializer < ActiveModel::Serializer
 
   def permissions
     object.computed_permissions.to_s
+  end
+
+  def roleplay_mode_enabled?
+    RoleplayModeHelper.roleplay_mode?
   end
 
   def extra_permissions

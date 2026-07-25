@@ -13,7 +13,7 @@ namespace :api, format: false do
 
     namespace :timelines do
       resources :antenna, only: :show
-      resource :admin, only: :show, controller: :admin
+      resource :admin, only: :show, controller: :admin if ENV['OC_ROLEPLAY_OPTION'] == 'true'
     end
 
     resources :favorite_emojis, only: [:index, :create, :destroy], param: :name

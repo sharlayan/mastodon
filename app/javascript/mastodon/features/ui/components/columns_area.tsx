@@ -16,6 +16,7 @@ import { useAppSelector } from '@/mastodon/store';
 import { Footer } from 'mastodon/features/custom_homepage/components/footer';
 import { Header } from 'mastodon/features/custom_homepage/components/header';
 import { CollapsibleNavigationPanel } from 'mastodon/features/navigation_panel';
+import { roleplayMode } from 'mastodon/initial_state';
 
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import {
@@ -49,7 +50,7 @@ const componentMap = {
   COMMUNITY: CommunityTimeline,
   HASHTAG: HashtagTimeline,
   DIRECT: DirectTimeline,
-  ADMIN_TIMELINE: AdminTimeline,
+  ...(roleplayMode ? { ADMIN_TIMELINE: AdminTimeline } : {}),
   FAVOURITES: FavouritedStatuses,
   BOOKMARKS: BookmarkedStatuses,
   LIST: ListTimeline,

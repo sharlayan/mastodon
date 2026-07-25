@@ -1,5 +1,9 @@
 ---
 ja:
+  roleplay_reset:
+    apply_hint: データベースを更新するには --apply を付けてもう一度実行してください。
+    disable_first: このコマンドを実行する前に OC_ROLEPLAY_OPTION を無効にして再起動してください。
+    restart: Web、Sidekiq、ストリーミングの全プロセスを再起動してください。
   account_switcher:
     switch_failed: アカウントが見つかりません。
     switch_unauthorized: このアカウントに切り替える権限がありません。

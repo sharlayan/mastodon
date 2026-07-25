@@ -168,8 +168,6 @@ export const expandHomeTimeline            = ({ maxId } = {}) => expandTimeline(
 export const expandPublicTimeline          = ({ maxId, onlyMedia, onlyRemote, allowLocalOnly } = {}) => expandTimeline(`public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { remote: !!onlyRemote, allow_local_only: !!allowLocalOnly, max_id: maxId, only_media: !!onlyMedia });
 export const expandCommunityTimeline       = ({ maxId, onlyMedia } = {}) => expandTimeline(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, max_id: maxId, only_media: !!onlyMedia });
 export const expandDirectTimeline          = ({ maxId } = {}) => expandTimeline('direct', '/api/v1/timelines/direct', { max_id: maxId });
-export const adminTimelineId = ({ hidePublic, hideUnlisted, hidePrivate, groupDirect } = {}) => `admin${hidePublic ? ':np' : ''}${hideUnlisted ? ':nu' : ''}${hidePrivate ? ':npv' : ''}${groupDirect ? ':gd' : ''}`;
-export const expandAdminTimeline           = ({ maxId, hidePublic, hideUnlisted, hidePrivate, groupDirect } = {}) => expandTimeline(adminTimelineId({ hidePublic, hideUnlisted, hidePrivate, groupDirect }), '/api/v1/timelines/admin', { max_id: maxId, hide_public: !!hidePublic, hide_unlisted: !!hideUnlisted, hide_private: !!hidePrivate, group_direct: !!groupDirect });
 export const expandAccountTimeline         = (accountId, { maxId, withReplies, tagged } = {}) => expandTimeline(`account:${accountId}${withReplies ? ':with_replies' : ''}${tagged ? `:${tagged}` : ''}`, `/api/v1/accounts/${accountId}/statuses`, { exclude_replies: !withReplies, exclude_reblogs: withReplies, tagged, max_id: maxId });
 export const expandAccountFeaturedTimeline = (accountId, { tagged } = {}) => expandTimeline(`account:${accountId}:pinned`, `/api/v1/accounts/${accountId}/statuses`, { pinned: true, tagged });
 export const expandAccountMediaTimeline    = (accountId, { maxId, withReplies } = {}) => expandTimeline(`account:${accountId}:media${withReplies ? ':with_replies' : ''}`, `/api/v1/accounts/${accountId}/statuses`, { max_id: maxId, only_media: true, limit: 40, exclude_replies: !withReplies });
@@ -192,7 +190,6 @@ export const fillPublicTimelineGaps    = ({ onlyMedia, onlyRemote, allowLocalOnl
 export const fillCommunityTimelineGaps = ({ onlyMedia } = {}) => fillTimelineGaps(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, only_media: !!onlyMedia });
 export const fillListTimelineGaps      = (id) => fillTimelineGaps(`list:${id}`, `/api/v1/timelines/list/${id}`, {});
 export const fillAntennaTimelineGaps   = (id) => fillTimelineGaps(`antenna:${id}`, `/api/v1/timelines/antenna/${id}`, {});
-export const fillAdminTimelineGaps      = ({ hidePublic, hideUnlisted, hidePrivate, groupDirect } = {}) => fillTimelineGaps(adminTimelineId({ hidePublic, hideUnlisted, hidePrivate, groupDirect }), '/api/v1/timelines/admin', { hide_public: !!hidePublic, hide_unlisted: !!hideUnlisted, hide_private: !!hidePrivate, group_direct: !!groupDirect });
 
 export function expandTimelineRequest(timeline, isLoadingMore) {
   return {

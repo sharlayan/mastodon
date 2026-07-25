@@ -76,12 +76,14 @@ RSpec.describe FanOutOnWriteService do
       end
     end
 
-    it 'publishes to the admin timeline only in roleplay mode' do
-      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') { subject.call(status) }
-      expect(redis).to_not have_received(:publish).with('timeline:admin', anything)
+    it 'loads admin timeline fan-out only when roleplay mode was enabled at boot' do
+      subject.call(status)
 
-      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { subject.call(status) }
-      expect(redis).to have_received(:publish).with('timeline:admin', anything).once
+      if ENV['OC_ROLEPLAY_OPTION'] == 'true'
+        expect(redis).to have_received(:publish).with('timeline:admin', anything).once
+      else
+        expect(redis).to_not have_received(:publish).with('timeline:admin', anything)
+      end
     end
   end
 

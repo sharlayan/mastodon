@@ -1,5 +1,9 @@
 ---
 ko:
+  roleplay_reset:
+    apply_hint: 데이터베이스를 변경하려면 --apply 옵션을 붙여 다시 실행하세요.
+    disable_first: 이 명령을 실행하기 전에 OC_ROLEPLAY_OPTION을 끄고 재시작하세요.
+    restart: Web, Sidekiq, 스트리밍 프로세스를 모두 재시작하세요.
   account_switcher:
     switch_failed: 계정을 찾을 수 없습니다.
     switch_unauthorized: 이 계정으로 전환할 권한이 없습니다.

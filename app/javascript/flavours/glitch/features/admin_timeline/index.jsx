@@ -14,8 +14,7 @@ import { identityContextPropShape, withIdentity } from '@/flavours/glitch/identi
 import { canViewAdminTimeline } from '@/flavours/glitch/permissions';
 
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
-import { connectAdminStream } from '../../actions/streaming';
-import { adminTimelineId, expandAdminTimeline } from '../../actions/timelines';
+import { adminTimelineId, connectAdminStream, expandAdminTimeline } from './actions';
 import Column from '../../components/column';
 import ColumnHeader from '../../components/column_header';
 import StatusListContainer from '../ui/containers/status_list_container';
