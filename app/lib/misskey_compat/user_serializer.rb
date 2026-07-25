@@ -218,6 +218,7 @@ class MisskeyCompat::UserSerializer
   def build_instance_info(domain)
     metadata = InstanceMetadata.cached_by_domain(domain)
     favicon = metadata&.favicon_url_with_fallback || "https://#{domain}/favicon.ico"
+    favicon = full_asset_url(favicon) unless favicon.start_with?('http://', 'https://')
 
     {
       name: metadata&.instance_name_with_fallback || domain,

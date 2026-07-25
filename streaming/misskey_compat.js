@@ -45,9 +45,15 @@ const extractTag = (params) => {
   return undefined;
 };
 
-const canReadStatuses = (request) => Array.isArray(request.scopes) && (request.scopes.includes('read') || request.scopes.includes('read:statuses'));
+const hasScope = (request, ...scopes) => Array.isArray(request.scopes) && scopes.some((scope) => request.scopes.includes(scope));
 
-const canReadDrive = (request) => Array.isArray(request.scopes) && (request.scopes.includes('read') || request.scopes.includes('read:drive'));
+// MiAuth tokens only carry the `misskey` OAuth scope, so their read access is
+// decided by the granted Misskey permissions instead, mirroring
+// Api::MisskeyCompat::BaseController#require_user!. Timelines and notes need no
+// specific permission in Misskey, the drive channel needs `read:drive`.
+const canReadStatuses = (request, grantPermissions) => Array.isArray(grantPermissions) || hasScope(request, 'read', 'read:statuses');
+
+const canReadDrive = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:drive') : hasScope(request, 'read', 'read:drive'));
 
 const isSelfChannel = (channel) => channel === 'drive';
 
@@ -89,10 +95,11 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
  * @param {function(string[]): function(): void} deps.subscriptionHeartbeat
  * @param {Function} deps.channelNameToIds
  * @param {Function} deps.authorizeStatusAccess
+ * @param {Function} deps.loadGrantPermissions
  * @param {function(): Promise.<boolean>} deps.isEnabled
  * @param {import('pino').Logger} deps.logger
  */
-const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, isEnabled, logger }) => {
+const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadGrantPermissions, isEnabled, logger }) => {
   const send = (ws, type, body) => {
     if (ws.readyState !== ws.OPEN) return;
     ws.send(JSON.stringify({ type, body }));
@@ -108,9 +115,23 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     return session.misskeyNotes;
   };
 
+  const grantPermissions = (session) => {
+    if (!session.misskeyGrant) session.misskeyGrant = loadGrantPermissions(session.request);
+    return session.misskeyGrant;
+  };
+
+  const authorize = (session, channel) => grantPermissions(session).then((permissions) => {
+    const authorized = channel === 'drive' ? canReadDrive(session.request, permissions) : canReadStatuses(session.request, permissions);
+
+    if (!authorized) {
+      logger.warn({ accountId: session.request.accountId, channel }, 'misskey compat subscription rejected: insufficient token permissions');
+    }
+
+    return authorized;
+  });
+
   const subNote = (session, body) => {
     if (!body || (typeof body.id !== 'string' && typeof body.id !== 'number')) return;
-    if (!canReadStatuses(session.request)) return;
 
     const noteId = String(body.id);
     const notes = noteStore(session);
@@ -119,6 +140,10 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
     isEnabled().then((enabled) => {
       if (!enabled || notes.has(noteId)) return false;
+
+      return authorize(session, 'note');
+    }).then((permitted) => {
+      if (!permitted || notes.has(noteId)) return false;
 
       return authorizeStatusAccess(decodeMiId(noteId), session.request);
     }).then((authorized) => {
@@ -156,16 +181,17 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     if (!body || typeof body.id !== 'string' || typeof body.channel !== 'string') return;
 
     const { channel, id } = body;
-    const authorized = channel === 'drive' ? canReadDrive(session.request) : canReadStatuses(session.request);
-    if (!authorized) return;
-
     const params = body.params || {};
     const channels = store(session).channels;
 
     if (channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
 
     isEnabled().then((enabled) => {
-      if (!enabled || channels.has(id)) return undefined;
+      if (!enabled || channels.has(id)) return false;
+
+      return authorize(session, channel);
+    }).then((authorized) => {
+      if (!authorized || channels.has(id)) return undefined;
 
       return resolveChannel(channel, params, session.request, channelNameToIds);
     }).then((channelIds) => {

@@ -31,9 +31,17 @@ module MisskeyCompat
 
     def known_instance_favicon?(uri)
       return true if InstanceMetadata.exists?(favicon_url: uri.to_s)
+      return true if known_local_instance_favicon?(uri)
       return false unless uri.scheme == 'https' && uri.path == '/favicon.ico' && uri.query.blank? && uri.fragment.blank?
 
       Account.remote.exists?(domain: uri.host)
+    end
+
+    def known_local_instance_favicon?(uri)
+      return false if uri.query.present? || uri.fragment.present?
+
+      metadata = InstanceMetadata.find_by(favicon_url: uri.path)
+      metadata.present? && helpers.full_asset_url(metadata.favicon_url) == uri.to_s
     end
 
     def require_misskey_compat_enabled!

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class MisskeyCompat::FederationInstanceSerializer
+  include RoutingHelper
+
   Context = Struct.new(:suspended, :silenced, :media_silenced, :unavailable, keyword_init: true)
 
   def self.build_context(domains)
@@ -49,12 +51,22 @@ class MisskeyCompat::FederationInstanceSerializer
       maintainerEmail: nil,
       isSilenced: @context.silenced.include?(domain),
       isMediaSilenced: @context.media_silenced.include?(domain),
-      iconUrl: metadata&.favicon_url_with_fallback,
-      faviconUrl: metadata&.favicon_url_with_fallback,
+      iconUrl: favicon_url(metadata),
+      faviconUrl: favicon_url(metadata),
       themeColor: metadata&.theme_color_with_fallback,
       infoUpdatedAt: metadata&.metadata_updated_at&.iso8601,
       latestRequestReceivedAt: nil,
       moderationNote: nil,
     }
+  end
+
+  private
+
+  def favicon_url(metadata)
+    url = metadata&.favicon_url_with_fallback
+    return if url.blank?
+    return url if url.start_with?('http://', 'https://')
+
+    full_asset_url(url)
   end
 end

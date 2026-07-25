@@ -31,6 +31,17 @@ RSpec.describe 'Media Proxy' do
       expect(response).to redirect_to(metadata.favicon_url)
     end
 
+    it 'redirects to a locally cached instance favicon exposed as an absolute asset URL' do
+      metadata = InstanceMetadata.create!(domain: 'remote.example', favicon_url: '/system/instance_favicons/remote.png')
+      favicon_url = Class.new do
+        include RoutingHelper
+      end.new.full_asset_url(metadata.favicon_url)
+
+      get '/proxy/image.webp', params: { url: favicon_url, fallback: 1 }
+
+      expect(response).to redirect_to(favicon_url)
+    end
+
     it 'redirects to the fallback favicon emitted for a known remote account' do
       account = Fabricate(:account, domain: 'remote.example')
       favicon_url = "https://#{account.domain}/favicon.ico"

@@ -47,15 +47,32 @@ const authorizeStatusAccess = async (pgPool, statusId, req) => {
   return result.rows.length > 0;
 };
 
+// MiAuth grants hold the Misskey permissions of a `misskey`-scoped token. A
+// missing grant (or an unavailable table) yields undefined, which leaves the
+// OAuth scopes as the only authority.
+const loadGrantPermissions = async (pgPool, logger, req) => {
+  if (!req.accessTokenId) return undefined;
+
+  try {
+    const result = await pgPool.query('SELECT permissions FROM misskey_access_grants WHERE access_token_id = $1 LIMIT 1', [req.accessTokenId]);
+
+    return result.rows.length > 0 ? result.rows[0].permissions : undefined;
+  } catch (err) {
+    logger.error({ err }, 'Failed to read misskey access grant permissions');
+    return undefined;
+  }
+};
+
 const createMisskeyExtension = (deps) => {
   const isEnabled = createEnabledCheck(deps.pgPool, deps.logger);
   const compat = createMisskeyCompat({
     ...deps,
     authorizeStatusAccess: (statusId, req) => authorizeStatusAccess(deps.pgPool, statusId, req),
+    loadGrantPermissions: (req) => loadGrantPermissions(deps.pgPool, deps.logger, req),
     isEnabled,
   });
 
   return { ...compat, isEnabled };
 };
 
-export { authorizeStatusAccess, createEnabledCheck, createMisskeyExtension };
+export { authorizeStatusAccess, createEnabledCheck, createMisskeyExtension, loadGrantPermissions };

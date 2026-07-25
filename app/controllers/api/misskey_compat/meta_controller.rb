@@ -148,7 +148,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
       translatorAvailable: false,
       serverRules: Rule.ordered.pluck(:text),
       policies: compat_policies,
-      mediaProxy: nil,
+      mediaProxy: "#{root_url.chomp('/')}/proxy",
       enableUrlPreview: true,
     }
   end

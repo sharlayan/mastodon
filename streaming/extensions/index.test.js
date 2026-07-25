@@ -8,7 +8,7 @@ import { ACCESS_TOKEN_QUERY, authenticateFallback } from './auth.js';
 import { createDomainFilter } from './domain_filter.js';
 import { dispatchCallbacks } from './index.js';
 import { acceptsLanguage } from './language.js';
-import { createEnabledCheck } from './misskey.js';
+import { createEnabledCheck, loadGrantPermissions } from './misskey.js';
 
 test('Misskey fallback is fail-closed when compatibility is disabled', async () => {
   await assert.rejects(
@@ -113,8 +113,9 @@ test('Misskey cleanup removes channel and note subscriptions', () => {
     subscriptionHeartbeat: () => () => {},
     channelNameToIds: async () => ({ channelIds: [] }),
     authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => undefined,
     isEnabled: async () => true,
-    logger: { error: () => {} },
+    logger: { error: () => {}, warn: () => {} },
   });
   const listener = () => {};
   const session = {
@@ -140,8 +141,9 @@ test('Misskey drive channel subscribes to the account stream and forwards typed 
     subscriptionHeartbeat: () => () => {},
     channelNameToIds: async () => assert.fail('drive channel must not hit channelNameToIds'),
     authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => undefined,
     isEnabled: async () => true,
-    logger: { error: () => {} },
+    logger: { error: () => {}, warn: () => {} },
   });
   const session = {
     request: { accountId: '7', scopes: ['read:drive'] },
@@ -167,8 +169,9 @@ test('Misskey drive channel rejects tokens without a drive-capable scope', async
     subscriptionHeartbeat: () => () => {},
     channelNameToIds: async () => ({ channelIds: [] }),
     authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => undefined,
     isEnabled: async () => true,
-    logger: { error: () => {} },
+    logger: { error: () => {}, warn: () => {} },
   });
   const session = {
     request: { accountId: '7', scopes: ['read:statuses'] },
@@ -179,6 +182,117 @@ test('Misskey drive channel rejects tokens without a drive-capable scope', async
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.equal(subscribedCount, 0);
+});
+
+test('MiAuth grant lookup keys on the access token and stays undefined when unavailable', async () => {
+  const calls = [];
+  const errors = [];
+  const pgPool = {
+    query: async (sql, params) => {
+      calls.push({ sql, params });
+      return { rows: [{ permissions: ['read:drive'] }] };
+    },
+  };
+
+  assert.deepEqual(await loadGrantPermissions(pgPool, { error: () => {} }, { accessTokenId: '5' }), ['read:drive']);
+  assert.deepEqual(calls[0].params, ['5']);
+  assert.match(calls[0].sql, /FROM misskey_access_grants WHERE access_token_id = \$1/);
+
+  assert.equal(await loadGrantPermissions({ query: async () => ({ rows: [] }) }, { error: () => {} }, { accessTokenId: '5' }), undefined);
+  assert.equal(await loadGrantPermissions({ query: async () => { throw new Error('relation does not exist'); } }, { error: (...args) => errors.push(args) }, { accessTokenId: '5' }), undefined);
+  assert.equal(errors.length, 1);
+});
+
+const createCompatFixture = (grantPermissions) => {
+  const subscribed = [];
+  const compat = createMisskeyCompat({
+    subscribe: (channel) => subscribed.push(channel),
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: ['timeline:public:local'] }),
+    authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => grantPermissions,
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['misskey'], accessTokenId: '5' },
+    websocket: { readyState: 1, OPEN: 1, send: () => {} },
+  };
+
+  return { compat, session, subscribed };
+};
+
+test('MiAuth tokens can stream timelines and notes without a Mastodon read scope', async () => {
+  const { compat, session, subscribed } = createCompatFixture(['read:account']);
+
+  compat.handleMessage(session, { type: 'connect', body: { id: 'ch1', channel: 'homeTimeline' } });
+  compat.handleMessage(session, { type: 'connect', body: { id: 'ch2', channel: 'localTimeline' } });
+  compat.handleMessage(session, { type: 'subNote', body: { id: '9abcdefghijklmno' } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(subscribed, ['misskey:timeline:7', 'misskey:timeline:public:local', 'misskey:note:9abcdefghijklmno']);
+});
+
+test('MiAuth tokens need the read:drive permission for the drive channel', async () => {
+  const withoutDrive = createCompatFixture([]);
+  const withDrive = createCompatFixture(['read:drive']);
+
+  withoutDrive.compat.handleMessage(withoutDrive.session, { type: 'connect', body: { id: 'ch1', channel: 'drive' } });
+  withDrive.compat.handleMessage(withDrive.session, { type: 'connect', body: { id: 'ch1', channel: 'drive' } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(withoutDrive.subscribed, []);
+  assert.deepEqual(withDrive.subscribed, ['misskey:drive:7']);
+});
+
+test('The MiAuth grant is looked up once per session', async () => {
+  let lookups = 0;
+  const compat = createMisskeyCompat({
+    subscribe: () => {},
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: ['timeline:public:local'] }),
+    authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => { lookups += 1; return []; },
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['misskey'], accessTokenId: '5' },
+    websocket: { readyState: 1, OPEN: 1, send: () => {} },
+  };
+
+  compat.handleMessage(session, { type: 'connect', body: { id: 'ch1', channel: 'homeTimeline' } });
+  compat.handleMessage(session, { type: 'connect', body: { id: 'ch2', channel: 'localTimeline' } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(lookups, 1);
+});
+
+test('Tokens with neither a read scope nor a MiAuth grant are rejected', async () => {
+  const warnings = [];
+  const session = {
+    request: { accountId: '7', scopes: ['misskey'] },
+    websocket: { readyState: 1, OPEN: 1, send: () => {} },
+  };
+
+  const compat = createMisskeyCompat({
+    subscribe: () => assert.fail('must not subscribe'),
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: [] }),
+    authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => undefined,
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: (...args) => warnings.push(args) },
+  });
+
+  compat.handleMessage(session, { type: 'connect', body: { id: 'ch1', channel: 'homeTimeline' } });
+  compat.handleMessage(session, { type: 'subNote', body: { id: '9abcdefghijklmno' } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(warnings.length, 2);
 });
 
 test('Misskey enabled lookup failures remain disabled', async () => {
