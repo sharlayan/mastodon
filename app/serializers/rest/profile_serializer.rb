@@ -11,7 +11,7 @@ class REST::ProfileSerializer < ActiveModel::Serializer
              :locked, :bot,
              :hide_collections, :discoverable, :indexable,
              :show_media, :show_media_replies, :show_featured,
-             :attribution_domains, :followed_message, :avatar_decorations
+             :attribution_domains, :followed_message, :is_cat, :avatar_decorations
 
   has_many :featured_tags, serializer: REST::FeaturedTagSerializer
 

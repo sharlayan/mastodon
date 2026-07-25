@@ -23,6 +23,7 @@ export interface ApiProfileJSON {
   attribution_domains: string[];
   featured_tags: ApiFeaturedTagJSON[];
   followed_message: string | null;
+  is_cat: boolean;
 }
 
 export type ApiProfileUpdateParams = Partial<
@@ -41,6 +42,7 @@ export type ApiProfileUpdateParams = Partial<
     | 'show_media_replies'
     | 'show_featured'
     | 'followed_message'
+    | 'is_cat'
   >
 > & {
   attribution_domains?: string[];

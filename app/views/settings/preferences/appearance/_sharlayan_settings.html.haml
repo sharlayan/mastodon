@@ -95,3 +95,18 @@
                label: t('simple_form.labels.defaults.setting_avatar_decoration_shape'),
                hint: t('simple_form.hints.defaults.setting_avatar_decoration_shape'),
                sharlayan_only: true
+
+- if Setting.cat_enabled
+  %h2= t 'settings.cat'
+  .fields-group
+    = ff.input :'cat.show',
+               wrapper: :with_label,
+               label: t('simple_form.labels.defaults.setting_show_cat'),
+               hint: t('simple_form.hints.defaults.setting_show_cat'),
+               sharlayan_only: true
+    - if Setting.cat_federation_enabled
+      = ff.input :'cat.show_federated',
+                 wrapper: :with_label,
+                 label: t('simple_form.labels.defaults.setting_show_federated_cat'),
+                 hint: t('simple_form.hints.defaults.setting_show_federated_cat'),
+                 sharlayan_only: true

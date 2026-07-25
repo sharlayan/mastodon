@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_24_143100) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_24_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -211,6 +211,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_24_143100) do
     t.integer "id_scheme", default: 1
     t.string "inbox_url", default: "", null: false
     t.boolean "indexable", default: false, null: false
+    t.boolean "is_cat", default: false, null: false
     t.datetime "last_webfingered_at", precision: nil
     t.string "location", limit: 256
     t.boolean "locked", default: false, null: false

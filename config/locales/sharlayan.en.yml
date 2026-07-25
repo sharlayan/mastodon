@@ -253,6 +253,15 @@ en:
         enabled_hint: Allow users to view the site-internal bulletin board announcements
           page. When disabled, the page and navigation link are hidden.
         title: Board Announcements
+      cat:
+        enabled: Enable cat accounts
+        enabled_hint: Let local users mark themselves as a cat, adding cat ears to
+          their avatar and cat speak (nyaify) to their posts. Viewers can turn the
+          effects off in their own preferences.
+        federation_enabled: Enable cat federation
+        federation_enabled_hint: Send this server's cat flag to remote servers, and
+          apply the cat effects to accounts received from federated servers.
+        title: Cat accounts
       circles:
         enabled: Enable circles
         enabled_hint: Allow users to create circles and publish posts visible only
@@ -461,6 +470,7 @@ en:
     truncate_html: "&hellip;"
   settings:
     avatar_decorations: Avatar Decorations
+    cat: Cat accounts
     custom_css: Custom CSS
   simple_form:
     hints:
@@ -470,6 +480,8 @@ en:
       defaults:
         custom_css_text: Plain CSS, applied only to your own session. Maximum 100
           KB.
+        is_cat: Mark your account as a cat. Compatible apps will show cat ears on
+          your avatar.
         setting_auto_accept_followed: Automatically approve follow requests from accounts
           you already follow, even while your account is locked.
         setting_auto_quote_from_url: When your post contains a link to another fediverse
@@ -501,8 +513,12 @@ en:
           Custom Emoji on Reaction Button
         setting_show_avatar_decorations: Display avatar decoration frames on profiles.
           Off by default.
+        setting_show_cat: Show cat ears on cat accounts' avatars and cat speak (nyaify)
+          on their posts. On by default.
         setting_show_federated_avatar_decorations: Also show decorations received
           from Misskey-compatible servers
+        setting_show_federated_cat: Also apply cat effects to cat accounts received
+          from federated servers
         setting_show_online_status: Others can see whether you are online, recently
           active, or offline. When disabled, your status appears as unknown to everyone.
         setting_show_reactions: Allow others to see which posts you have reacted to
@@ -526,6 +542,7 @@ en:
       defaults:
         custom_css_text: Custom CSS
         followed_message: Follow message
+        is_cat: This account is a cat
         setting_auto_accept_followed: Auto-accept follow requests from accounts you
           follow
         setting_auto_quote_from_url: Automatically quote fediverse post links in your
@@ -558,8 +575,10 @@ en:
         setting_reaction_custom_emoji_size: Show Origin Size Custom Emoji on Reaction
           Button
         setting_show_avatar_decorations: Show avatar decorations
+        setting_show_cat: Show cat ears and cat speak
         setting_show_federated_avatar_decorations: Show avatar decorations from federated
           servers
+        setting_show_federated_cat: Show cat effects from federated servers
         setting_show_online_status: Share my online status
         setting_show_reactions: Show my reactions on my profile
         setting_use_custom_css: Apply my custom CSS

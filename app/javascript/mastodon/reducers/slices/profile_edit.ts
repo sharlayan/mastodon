@@ -178,6 +178,7 @@ const transformProfile = (result: ApiProfileJSON): ProfileData => ({
   showFeatured: result.show_featured,
   attributionDomains: result.attribution_domains,
   followedMessage: result.followed_message,
+  isCat: result.is_cat,
   featuredTags: result.featured_tags.map(transformTag),
 });
 

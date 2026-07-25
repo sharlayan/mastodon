@@ -5,5 +5,6 @@ module Sharlayan::REST::Account::Profile
 
   included do
     attribute :followed_message
+    attribute :is_cat
   end
 end

@@ -14,6 +14,7 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { Poll } from 'flavours/glitch/components/poll';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
 import { languages as preloadedLanguages } from 'flavours/glitch/initial_state';
+import { catEffectsVisibleFor, nyaifyHtml } from 'flavours/glitch/sharlayan/nyaify';
 import { SharlayanStatusContentTooltip, renderSharlayanMfmContent, sharlayanStatusContentState } from 'flavours/glitch/sharlayan/status_content';
 
 import { EmojiHTML } from './emoji/html';
@@ -199,7 +200,11 @@ class StatusContent extends PureComponent {
     const targetLanguages = this.props.languages?.[status.get('language') || 'und'];
     const renderTranslate = this.props.onTranslate && this.props.identity.signedIn && ['public', 'unlisted'].includes(status.get('visibility')) && status.get('search_index').trim().length > 0 && targetLanguages?.includes(contentLocale);
 
-    const content = (statusContent ?? getStatusContent(status)).replace(/(<br\s*\/?>)+[\s\n]*$/, '');
+    let content = (statusContent ?? getStatusContent(status)).replace(/(<br\s*\/?>)+[\s\n]*$/, '');
+    const account = status.get('account');
+    if (account && catEffectsVisibleFor(account.get('acct'), account.get('is_cat'))) {
+      content = nyaifyHtml(content);
+    }
     const language = status.getIn(['translation', 'language']) || status.get('language');
     const classNames = classnames('status__content', {
       'status__content--with-action': this.props.onClick && this.props.history,

@@ -79,6 +79,46 @@ RSpec.describe ActivityPub::ProcessAccountService do
     end
   end
 
+  context 'with a Misskey isCat flag' do
+    let(:payload) do
+      {
+        'id' => 'https://foo.test',
+        'type' => 'Person',
+        'preferredUsername' => 'alice',
+        'inbox' => 'https://foo.test/inbox',
+        'isCat' => true,
+      }
+    end
+
+    before { stub_webfinger! }
+
+    context 'when cat federation is enabled' do
+      before do
+        Setting.cat_enabled = true
+        Setting.cat_federation_enabled = true
+      end
+
+      it 'marks the account as a cat' do
+        account = subject.call(payload)
+
+        expect(account.is_cat).to be true
+      end
+    end
+
+    context 'when cat federation is disabled' do
+      before do
+        Setting.cat_enabled = true
+        Setting.cat_federation_enabled = false
+      end
+
+      it 'does not mark the account as a cat' do
+        account = subject.call(payload)
+
+        expect(account.is_cat).to be false
+      end
+    end
+  end
+
   context 'with collection URIs' do
     let(:payload) do
       {

@@ -238,6 +238,10 @@ export const {
   showAvatarDecorations,
   showFederatedAvatarDecorations,
   avatarDecorationShape,
+  catEnabled,
+  catFederationEnabled,
+  showCat,
+  showFederatedCat,
 } = readSharlayanInitialState(initialState, Boolean(me));
 
 const displayNames =

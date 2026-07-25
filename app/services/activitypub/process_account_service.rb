@@ -251,6 +251,7 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.show_media_replies      = @json['showRepliesInMedia'] if @json.key?('showRepliesInMedia')
     @account.attribution_domains     = as_array(@json['attributionDomains'] || []).take(Account::ATTRIBUTION_DOMAINS_HARD_LIMIT).grep(String)
     @account.followed_message        = (@json['_misskey_followedMessage'] || @json['followedMessage'] || '')[0...256].presence
+    @account.is_cat                  = Setting.cat_enabled && Setting.cat_federation_enabled && (@json['isCat'] || false)
     process_avatar_decorations! if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
   end
 

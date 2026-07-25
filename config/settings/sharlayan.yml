@@ -25,6 +25,8 @@ defaults:
   avatar_decorations_federation_enabled: false
   avatar_decorations_local_only_view: false
   avatar_decorations_max_count: 5
+  cat_enabled: false
+  cat_federation_enabled: false
   allow_user_custom_css: false
   rate_limit_bypass_enabled: false
   board_announcements_enabled: true

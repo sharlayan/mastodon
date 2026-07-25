@@ -24,10 +24,14 @@ export interface SharlayanInitialStateMeta {
   board_announcements_enabled: boolean;
   avatar_decorations_enabled: boolean;
   avatar_decorations_federation_enabled: boolean;
+  cat_enabled: boolean;
+  cat_federation_enabled: boolean;
   color_scheme?: 'auto' | 'light' | 'dark';
   contrast?: 'auto' | 'high';
   show_avatar_decorations?: boolean;
   show_federated_avatar_decorations?: boolean;
+  show_cat?: boolean;
+  show_federated_cat?: boolean;
   avatar_decoration_shape?: 'none' | 'round' | 'square';
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
@@ -96,6 +100,10 @@ export const readSharlayanInitialState = (
     showAvatarDecorations: getMeta('show_avatar_decorations') ?? false,
     showFederatedAvatarDecorations:
       getMeta('show_federated_avatar_decorations') ?? false,
+    catEnabled: getMeta('cat_enabled') === true,
+    catFederationEnabled: getMeta('cat_federation_enabled') === true,
+    showCat: getMeta('show_cat') ?? true,
+    showFederatedCat: getMeta('show_federated_cat') ?? true,
     avatarDecorationShape:
       getMeta('avatar_decoration_shape') ?? (isSignedIn ? 'none' : 'round'),
   };

@@ -7,6 +7,7 @@ module Sharlayan::UserSettingsExtensions
       apply_web_settings(settings)
       apply_notification_settings(settings)
       apply_avatar_decoration_settings(settings)
+      apply_cat_settings(settings)
     end
 
     private
@@ -55,6 +56,13 @@ module Sharlayan::UserSettingsExtensions
         setting :show, default: false
         setting :show_federated, default: false
         setting :shape, default: 'none', in: %w(none round square)
+      end
+    end
+
+    def apply_cat_settings(settings)
+      settings.namespace :cat do
+        setting :show, default: true
+        setting :show_federated, default: true
       end
     end
   end
