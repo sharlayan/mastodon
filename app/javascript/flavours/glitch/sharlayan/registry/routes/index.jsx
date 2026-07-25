@@ -14,12 +14,14 @@ export const ConversationThread = () => import('../../../features/direct_timelin
 export const AntennaTimeline = () => import('../../../features/antenna_timeline');
 export const ReactedStatuses = () => import('../../../features/reacted_statuses');
 export const BoardAnnouncements = () => import('../../../features/board_announcements');
+export const ClipTimeline = () => import('../../../features/clips/timeline');
 
 export const sharlayanColumnComponents = {
   CONVERSATION: ConversationThread,
   ANTENNA: AntennaTimeline,
   REACTIONS: ReactedStatuses,
   BOARD_ANNOUNCEMENTS: BoardAnnouncements,
+  CLIP: ClipTimeline,
 };
 
 export const sharlayanRouteDescriptors = [
@@ -29,7 +31,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'clip-new', path: '/clips/new', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-favourites', path: '/clips/favourites', exact: true, featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/favourites') },
   { key: 'clip-edit', path: '/clips/:id/edit', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
-  { key: 'clip-show', path: '/clips/:id', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/timeline') },
+  { key: 'clip-show', path: '/clips/:id', featureGate: () => clipsEnabled, lazyComponent: ClipTimeline },
   { key: 'page-new', path: '/pages/new', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/editor') },
   { key: 'page-edit', path: '/pages/:id/edit', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/editor') },
   { key: 'page-show', path: '/pages/:id', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/show') },

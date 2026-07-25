@@ -27,6 +27,7 @@ describe('Sharlayan route registry', () => {
       'ANTENNA',
       'REACTIONS',
       'BOARD_ANNOUNCEMENTS',
+      'CLIP',
     ]);
   });
 
