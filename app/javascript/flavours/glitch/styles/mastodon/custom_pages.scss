@@ -1048,7 +1048,8 @@ html.page-blog-view {
   font-size: 13px;
   text-align: end;
 
-  a {
+  a,
+  button {
     color: var(--color-text-secondary);
     text-decoration: none;
 
@@ -1057,6 +1058,14 @@ html.page-blog-view {
       color: var(--color-text-primary);
       text-decoration: underline;
     }
+  }
+
+  button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
   }
 }
 

@@ -123,6 +123,17 @@ export const PageShowHeader: React.FC<{
                 values={{ user: ownerName }}
               />
             </Link>
+            {!isOwner && (
+              <>
+                <span aria-hidden='true'>|</span>
+                <button type='button' onClick={onReport}>
+                  <FormattedMessage
+                    id='pages.report'
+                    defaultMessage='Report page'
+                  />
+                </button>
+              </>
+            )}
           </nav>
         )}
       </header>
@@ -190,7 +201,7 @@ export const PageShowHeader: React.FC<{
               )}
             </>
           )}
-          {accountId && !isOwner && !page.locked && (
+          {accountId && !isOwner && (
             <button
               type='button'
               className='column-header__button'
