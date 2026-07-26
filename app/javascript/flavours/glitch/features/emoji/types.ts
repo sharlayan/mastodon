@@ -50,7 +50,8 @@ export type AnyEmojiData = CustomEmojiData | UnicodeEmojiData;
 type CustomEmojiRenderFields = Pick<
   CustomEmojiData,
   'shortcode' | 'static_url' | 'url' | 'domain'
->;
+> &
+  Partial<Pick<CustomEmojiData, 'is_sensitive'>>;
 
 export interface EmojiStateUnicode {
   type: typeof EMOJI_TYPE_UNICODE;
@@ -73,11 +74,13 @@ export type CustomEmojiMapArg =
   | ExtraCustomEmojiMap
   | ImmutableList<CustomEmoji>
   | CustomEmoji[]
-  | Pick<ApiCustomEmojiJSON, 'shortcode' | 'static_url' | 'url'>[];
+  | (Pick<ApiCustomEmojiJSON, 'shortcode' | 'static_url' | 'url'> &
+      Partial<Pick<ApiCustomEmojiJSON, 'is_sensitive'>>)[];
 
 export type ExtraCustomEmojiMap = Record<
   string,
-  Pick<CustomEmojiData, 'shortcode' | 'static_url' | 'url' | 'domain'>
+  Pick<CustomEmojiData, 'shortcode' | 'static_url' | 'url' | 'domain'> &
+    Partial<Pick<CustomEmojiData, 'is_sensitive'>>
 >;
 
 export type EmojiWorkerMessage =

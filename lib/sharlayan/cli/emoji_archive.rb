@@ -68,6 +68,8 @@ module Sharlayan
           'license' => emoji.license,
           'aliases' => emoji.aliases,
           'visible_in_picker' => emoji.visible_in_picker,
+          'is_sensitive' => emoji.is_sensitive,
+          'local_only' => emoji.local_only,
           'updated_at' => emoji.updated_at&.iso8601,
           'image_updated_at' => emoji.image_updated_at&.iso8601,
         }
@@ -211,6 +213,8 @@ module Sharlayan
           'category' => info['category'],
           'license' => info['license'],
           'aliases' => info['aliases'],
+          'is_sensitive' => info['isSensitive'],
+          'local_only' => info['localOnly'],
         }
       end
 
@@ -229,6 +233,8 @@ module Sharlayan
 
         emoji.license = meta['license'] if meta.key?('license')
         emoji.aliases = meta['aliases'] if meta['aliases'].is_a?(Array)
+        emoji.is_sensitive = meta['is_sensitive'] if meta.key?('is_sensitive')
+        emoji.local_only = meta['local_only'] if meta.key?('local_only')
 
         if options[:unlisted]
           emoji.visible_in_picker = false

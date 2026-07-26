@@ -18,6 +18,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('disable_inline_compose_reply_modal')).toBe(false);
     expect(state.get('use_publish_toot')).toBe(false);
     expect(state.get('content_font_size')).toBe('medium');
+    expect(state.get('sensitive_emoji_display')).toBe('show');
     expect(state.get('hide_compose_language')).toBe(false);
     expect(state.get('hide_mfm_compose_hint')).toBe(false);
     expect(state.get('show_clip_choice')).toBe(true);

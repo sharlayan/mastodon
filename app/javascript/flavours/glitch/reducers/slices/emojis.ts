@@ -8,7 +8,10 @@ import { toSupportedLocale } from '@/flavours/glitch/features/emoji/locale';
 import { createAsyncThunk } from '@/flavours/glitch/store/typed_functions';
 
 interface EmojisState {
-  custom: Record<string, Pick<ApiCustomEmojiJSON, 'url' | 'static_url'>>;
+  custom: Record<
+    string,
+    Pick<ApiCustomEmojiJSON, 'url' | 'static_url' | 'is_sensitive'>
+  >;
   customCategories: Record<string, string[]>; // { name: shortcodes[] }
   customLoaded: boolean;
   localesLoaded: Locale[];
@@ -38,10 +41,11 @@ const emojisSlice = createSlice({
         }
 
         for (const emoji of action.payload) {
-          const { shortcode, category, url, static_url } = emoji;
+          const { shortcode, category, url, static_url, is_sensitive } = emoji;
           state.custom[shortcode] = {
             url,
             static_url,
+            is_sensitive,
           };
 
           if (category) {

@@ -65,7 +65,7 @@ export interface StatusShape {
   card?: CardShape;
   emojis: Pick<
     ApiCustomEmojiJSON,
-    'shortcode' | 'static_url' | 'url' | 'domain'
+    'shortcode' | 'static_url' | 'url' | 'domain' | 'is_sensitive'
   >[];
   media_attachments: MediaAttachmentShape[];
   mentions: ApiMentionJSON[];

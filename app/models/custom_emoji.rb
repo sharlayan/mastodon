@@ -14,7 +14,9 @@
 #  image_remote_url             :string
 #  image_storage_schema_version :integer
 #  image_updated_at             :datetime
+#  is_sensitive                 :boolean          default(FALSE), not null
 #  license                      :text
+#  local_only                   :boolean          default(FALSE), not null
 #  shortcode                    :string           default(""), not null
 #  uri                          :string
 #  visible_in_picker            :boolean          default(TRUE), not null

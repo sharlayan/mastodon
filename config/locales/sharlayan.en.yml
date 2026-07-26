@@ -149,6 +149,10 @@ en:
         title: Edit custom emoji
       license: License / Attribution
       license_hint: Author, license, or source information for this emoji
+      is_sensitive: Sensitive
+      is_sensitive_hint: Mark this emoji as sensitive so compatible clients can obscure it according to each user's preference.
+      local_only: Local only
+      local_only_hint: Mark this emoji as available only on this server in compatible clients.
       reset_cache: Reset cache
       reset_cache_done_msg: Custom emoji cache has been reset
       shortcode_readonly_hint: The shortcode cannot be changed after creation.

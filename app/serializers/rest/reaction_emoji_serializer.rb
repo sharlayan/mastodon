@@ -8,6 +8,7 @@ class REST::ReactionEmojiSerializer < ActiveModel::Serializer
   attribute :url, if: :custom_emoji?
   attribute :static_url, if: :custom_emoji?
   attribute :domain, if: :custom_emoji?
+  attribute(:is_sensitive, if: :custom_emoji?) { object.custom_emoji.is_sensitive }
 
   def custom_emoji?
     object.custom_emoji.present?

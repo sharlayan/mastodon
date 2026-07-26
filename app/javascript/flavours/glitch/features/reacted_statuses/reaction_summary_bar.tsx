@@ -20,6 +20,7 @@ interface ReactionSummaryEntry {
   url?: string;
   static_url?: string;
   domain?: string;
+  is_sensitive?: boolean;
   unknown?: boolean;
 }
 
@@ -123,7 +124,7 @@ const ReactionSummaryItem: React.FC<{
     return (
       <img
         draggable={false}
-        className='emojione custom-emoji'
+        className={`emojione custom-emoji${entry.is_sensitive ? ' sensitive-custom-emoji' : ''}`}
         alt={`:${entry.name}:`}
         title={`:${entry.name}:`}
         src={src}

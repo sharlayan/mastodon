@@ -9,6 +9,7 @@ class REST::EmojiReactAccountSerializer < ActiveModel::Serializer
   attribute :url, if: :custom_emoji?
   attribute :static_url, if: :custom_emoji?
   attribute :domain, if: :custom_emoji?
+  attribute(:is_sensitive, if: :custom_emoji?) { object.custom_emoji.is_sensitive }
 
   belongs_to :account, serializer: REST::AccountSerializer
 

@@ -109,7 +109,7 @@ export const Emoji: FC<EmojiProps> = ({
       );
     }
 
-    const classes = `emojione custom-emoji${customEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`;
+    const classes = `emojione custom-emoji${state.data.is_sensitive ? ' sensitive-custom-emoji' : ''}${customEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`;
     return (
       <img
         src={animate ? state.data.url : state.data.static_url}

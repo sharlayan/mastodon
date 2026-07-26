@@ -9,6 +9,14 @@ img.emojione.custom-emoji.horizontal-origin-custom-emoji {
   font-size: inherit;
 }
 
+html.sensitive-emoji-display--grayscale img.sensitive-custom-emoji {
+  filter: grayscale(1);
+}
+
+html.sensitive-emoji-display--hide img.sensitive-custom-emoji {
+  visibility: hidden;
+}
+
 .muted-custom-emoji {
   opacity: 0.45;
   font-size: 0.9em;

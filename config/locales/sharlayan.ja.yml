@@ -141,6 +141,10 @@ ja:
         title: Edit custom emoji
       license: License / Attribution
       license_hint: Author, license, or source information for this emoji
+      is_sensitive: センシティブ
+      is_sensitive_hint: 対応クライアントでユーザー設定に応じて隠せるよう、この絵文字をセンシティブとして設定します。
+      local_only: ローカルのみ
+      local_only_hint: 対応クライアントでこの絵文字をこのサーバー専用として設定します。
       reset_cache: Reset cache
       reset_cache_done_msg: Custom emoji cache has been reset
       shortcode_readonly_hint: The shortcode cannot be changed after creation.

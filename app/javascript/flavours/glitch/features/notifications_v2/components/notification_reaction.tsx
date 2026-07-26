@@ -18,7 +18,8 @@ const ReactionEmoji: React.FC<{
   name: string;
   url?: string;
   staticUrl?: string;
-}> = ({ name, url, staticUrl }) => {
+  isSensitive?: boolean;
+}> = ({ name, url, staticUrl, isSensitive }) => {
   const containerRef = useRef<HTMLSpanElement>(null);
 
   return (
@@ -26,7 +27,7 @@ const ReactionEmoji: React.FC<{
       {url ? (
         <img
           draggable='false'
-          className='emojione custom-emoji'
+          className={`emojione custom-emoji${isSensitive ? ' sensitive-custom-emoji' : ''}`}
           alt={`:${name}:`}
           src={autoPlayGif ? url : (staticUrl ?? url)}
         />
@@ -70,6 +71,7 @@ export const NotificationReaction: React.FC<{
                 name={reaction.name}
                 url={reaction.url}
                 staticUrl={reaction.static_url}
+                isSensitive={reaction.is_sensitive}
               />
             ),
           }}

@@ -140,6 +140,10 @@ ko:
         title: 커스텀 에모지 편집
       license: 라이선스/출처
       license_hint: 에모지의 저작자, 라이선스, 출처 등을 입력하세요
+      is_sensitive: 민감한 에모지
+      is_sensitive_hint: 호환 클라이언트가 각 사용자의 설정에 따라 가릴 수 있도록 이 에모지를 민감한 것으로 표시합니다.
+      local_only: 로컬 전용
+      local_only_hint: 호환 클라이언트에서 이 에모지를 이 서버 전용으로 표시합니다.
       reset_cache: 캐시 초기화
       reset_cache_done_msg: 커스텀 에모지 캐시가 초기화되었습니다
       shortcode_readonly_hint: 짧은 코드는 생성 후 변경할 수 없습니다.

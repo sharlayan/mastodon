@@ -13,6 +13,8 @@ export const CustomEmojiFactory = ImmutableRecord<CustomEmojiShape>({
   category: '',
   featured: false,
   visible_in_picker: false,
+  is_sensitive: false,
+  local_only: false,
   aliases: [],
   license: '',
   domain: '',

@@ -21,6 +21,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   inline_compose_tabs: ImmutableList(),
   use_publish_toot: false,
   content_font_size: 'medium',
+  sensitive_emoji_display: 'show',
   sync_to_server: false,
   synced_at: null,
   media: ImmutableMap({

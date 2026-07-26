@@ -7,7 +7,7 @@ RSpec.describe 'Misskey-compat emoji endpoint' do
   after  { Setting.misskey_compat_enabled = false }
 
   describe 'POST /api/emoji' do
-    before { Fabricate(:custom_emoji, shortcode: 'coolcat') }
+    before { Fabricate(:custom_emoji, shortcode: 'coolcat', is_sensitive: true, local_only: true, license: 'CC BY 4.0') }
 
     it 'returns the single emoji detail with an id' do
       post '/api/emoji', params: { name: 'coolcat' }, as: :json
@@ -16,6 +16,9 @@ RSpec.describe 'Misskey-compat emoji endpoint' do
       expect(response.parsed_body).to include(name: 'coolcat', host: nil)
       expect(response.parsed_body[:id]).to be_present
       expect(response.parsed_body[:url]).to be_present
+      expect(response.parsed_body[:isSensitive]).to be(true)
+      expect(response.parsed_body[:license]).to eq('CC BY 4.0')
+      expect(response.parsed_body[:localOnly]).to be(true)
     end
 
     it 'tolerates surrounding colons' do

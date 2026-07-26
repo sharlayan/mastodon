@@ -20,6 +20,7 @@ export interface ApiBoardAnnouncementReactionJSON {
   me: boolean;
   url?: string;
   static_url?: string;
+  is_sensitive?: boolean;
 }
 
 export type ApiBoardAnnouncementIcon = 'info' | 'warning' | 'error' | 'success';

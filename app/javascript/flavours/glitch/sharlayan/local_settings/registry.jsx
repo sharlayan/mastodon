@@ -87,6 +87,17 @@ const localSettingsSlots = {
         { value: 'xx_large', message: { id: 'settings.content_font_size.xx_large', defaultMessage: 'Huge' } },
       ],
     },
+    {
+      setting: ['sensitive_emoji_display'],
+      id: 'mastodon-settings--sensitive_emoji_display',
+      message: { id: 'settings.sensitive_emoji_display', defaultMessage: 'Sensitive custom emojis' },
+      hint: { id: 'settings.sensitive_emoji_display.hint', defaultMessage: 'Choose how custom emojis marked as sensitive by server moderators are displayed' },
+      options: [
+        { value: 'show', message: { id: 'settings.sensitive_emoji_display.show', defaultMessage: 'Show normally' } },
+        { value: 'grayscale', message: { id: 'settings.sensitive_emoji_display.grayscale', defaultMessage: 'Show in grayscale' } },
+        { value: 'hide', message: { id: 'settings.sensitive_emoji_display.hide', defaultMessage: 'Hide' } },
+      ],
+    },
     { setting: ['show_follow_list_bio'], id: 'mastodon-settings--show_follow_list_bio', message: { id: 'settings.show_follow_list_bio', defaultMessage: 'Show bio and follow message in follow lists' }, hint: { id: 'settings.show_follow_list_bio.hint', defaultMessage: 'Display a short bio (up to 100 characters) and follow message under accounts in followers and following lists' } },
     { setting: ['show_others_online_status'], id: 'mastodon-settings--show_others_online_status', message: { id: 'settings.show_others_online_status', defaultMessage: "Show other people's online status" }, hint: { id: 'settings.show_others_online_status.hint', defaultMessage: 'Display an online, recently active, or offline indicator on the avatars of users who share their status' } },
     { setting: ['show_instance_info'], id: 'mastodon-settings--show_instance_info', message: { id: 'settings.show_instance_info', defaultMessage: 'Show instance information on posts' }, hint: { id: 'settings.show_instance_info.hint', defaultMessage: 'Display the instance name, theme color, and favicon on posts' } },

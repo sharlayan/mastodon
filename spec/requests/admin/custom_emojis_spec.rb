@@ -51,6 +51,22 @@ RSpec.describe 'Admin Custom Emojis' do
         expect(custom_emoji.license).to eq('CC0')
       end
 
+      it 'updates the sensitive flag' do
+        patch admin_custom_emoji_path(custom_emoji), params: {
+          custom_emoji: { is_sensitive: '1' },
+        }
+
+        expect(custom_emoji.reload).to be_is_sensitive
+      end
+
+      it 'updates the local-only flag' do
+        patch admin_custom_emoji_path(custom_emoji), params: {
+          custom_emoji: { local_only: '1' },
+        }
+
+        expect(custom_emoji.reload).to be_local_only
+      end
+
       it 'strips whitespace from aliases' do
         patch admin_custom_emoji_path(custom_emoji), params: {
           custom_emoji: { aliases_raw: '  blob ,  cat  , ' },

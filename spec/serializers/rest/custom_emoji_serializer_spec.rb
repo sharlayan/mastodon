@@ -5,13 +5,15 @@ require 'rails_helper'
 RSpec.describe REST::CustomEmojiSerializer do
   subject { serialized_record_json(record, described_class) }
 
-  let(:record) { Fabricate.build :custom_emoji, id: 123, category: Fabricate(:custom_emoji_category, name: 'Category Name') }
+  let(:record) { Fabricate.build :custom_emoji, id: 123, category: Fabricate(:custom_emoji_category, name: 'Category Name'), is_sensitive: true, local_only: true }
 
   describe 'serialization' do
     it 'returns expected values' do
       expect(subject)
         .to include(
-          'category' => be_a(String).and(eq('Category Name'))
+          'category' => be_a(String).and(eq('Category Name')),
+          'is_sensitive' => true,
+          'local_only' => true
         )
     end
   end

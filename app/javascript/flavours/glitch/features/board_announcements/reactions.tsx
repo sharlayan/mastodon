@@ -140,7 +140,7 @@ const Reaction: FC<{
           {isCustom ? (
             <img
               draggable='false'
-              className='emojione custom-emoji'
+              className={`emojione custom-emoji${reaction.is_sensitive ? ' sensitive-custom-emoji' : ''}`}
               alt={shortCode}
               src={customSrc}
             />

@@ -8,6 +8,7 @@ class REST::AnnouncementReactionSerializer < ActiveModel::Serializer
   attribute :me, if: :current_user?
   attribute :url, if: :custom_emoji?
   attribute :static_url, if: :custom_emoji?
+  attribute(:is_sensitive, if: :custom_emoji?) { object.custom_emoji.is_sensitive }
 
   def count
     object.respond_to?(:count) ? object.count : 0

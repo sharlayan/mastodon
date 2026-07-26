@@ -46,7 +46,8 @@ const Emoji: FC<{
   hovered: boolean;
   url?: string;
   staticUrl?: string;
-}> = ({ emoji, hovered, url, staticUrl }) => {
+  isSensitive?: boolean;
+}> = ({ emoji, hovered, url, staticUrl, isSensitive }) => {
   if (!url) {
     return (
       <img
@@ -59,7 +60,7 @@ const Emoji: FC<{
   } else {
     const src = autoPlayGif || hovered ? url : staticUrl;
     const shortCode = `:${emoji}:`;
-    const classes = `emojione custom-emoji${reactionCustomEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`;
+    const classes = `emojione custom-emoji${isSensitive ? ' sensitive-custom-emoji' : ''}${reactionCustomEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`;
 
     return (
       <img draggable='false' className={classes} alt={shortCode} src={src} />
@@ -105,6 +106,7 @@ const Reaction: FC<{
   const staticUrl = reaction.get('static_url') as string | undefined;
   const me = reaction.get('me') as boolean | undefined;
   const domain = reaction.get('domain') as string | undefined;
+  const isSensitive = reaction.get('is_sensitive') as boolean | undefined;
 
   const unreactable =
     signedIn && reactionLocalEmojiOnly && !!url && !!domain && !me;
@@ -142,6 +144,7 @@ const Reaction: FC<{
               emoji={name}
               url={url}
               staticUrl={staticUrl}
+              isSensitive={isSensitive}
             />
           </span>
           <span className='reactions-bar__item__count'>

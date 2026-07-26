@@ -59,6 +59,7 @@ class Api::V1::ReactionsController < Api::BaseController
         entry[:url] = full_asset_url(custom_emoji.image.url)
         entry[:static_url] = full_asset_url(custom_emoji.image.url(:static))
         entry[:domain] = custom_emoji.domain || ''
+        entry[:is_sensitive] = custom_emoji.is_sensitive
       end
 
       entry

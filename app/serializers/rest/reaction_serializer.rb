@@ -10,6 +10,7 @@ class REST::ReactionSerializer < ActiveModel::Serializer
   attribute :static_url, if: :custom_emoji?
   attribute :domain, if: :custom_emoji?
   attribute :local_counterpart, if: :custom_emoji?
+  attribute(:is_sensitive, if: :custom_emoji?) { object.custom_emoji.is_sensitive }
   attribute :account_ids, if: :account_ids?
 
   has_many :users, serializer: REST::AccountSerializer

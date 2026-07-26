@@ -154,7 +154,7 @@ module Admin
 
     def resource_params
       permitted = params
-        .expect(custom_emoji: [:shortcode, :image, :visible_in_picker, :license, :aliases_raw])
+        .expect(custom_emoji: [:shortcode, :image, :visible_in_picker, :is_sensitive, :local_only, :license, :aliases_raw])
 
       if permitted[:aliases_raw]
         permitted[:aliases] = permitted.delete(:aliases_raw)

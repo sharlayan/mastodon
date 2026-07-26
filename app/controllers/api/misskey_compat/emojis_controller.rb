@@ -27,9 +27,9 @@ class Api::MisskeyCompat::EmojisController < Api::MisskeyCompat::BaseController
       category: emoji.category&.name,
       host: emoji.domain,
       url: full_asset_url(emoji.image.url),
-      license: nil,
-      isSensitive: false,
-      localOnly: false,
+      license: emoji.license,
+      isSensitive: emoji.is_sensitive,
+      localOnly: emoji.local_only,
       roleIdsThatCanBeUsedThisEmojiAsReaction: [],
     }
   end

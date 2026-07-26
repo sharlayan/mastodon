@@ -25,4 +25,5 @@ export interface ApiAnnouncementReactionJSON {
   me: boolean;
   url?: string;
   static_url?: string;
+  is_sensitive?: boolean;
 }

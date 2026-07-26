@@ -25,6 +25,18 @@
               wrapper: :with_label,
               label: t('admin.custom_emojis.license'),
               hint: t('admin.custom_emojis.license_hint')
+  .fields-group
+    = f.input :is_sensitive,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.custom_emojis.is_sensitive'),
+              hint: t('admin.custom_emojis.is_sensitive_hint')
+  .fields-group
+    = f.input :local_only,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.custom_emojis.local_only'),
+              hint: t('admin.custom_emojis.local_only_hint')
 
   .actions
     = f.button :button,

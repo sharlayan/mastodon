@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_24_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_26_183000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -714,7 +714,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_24_150000) do
     t.string "image_remote_url"
     t.integer "image_storage_schema_version"
     t.datetime "image_updated_at", precision: nil
+    t.boolean "is_sensitive", default: false, null: false
     t.text "license"
+    t.boolean "local_only", default: false, null: false
     t.string "shortcode", default: "", null: false
     t.datetime "updated_at", precision: nil, null: false
     t.string "uri"

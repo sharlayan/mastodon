@@ -76,6 +76,7 @@ export interface ApiReactionEmojiJSON {
   name: string;
   url?: string;
   static_url?: string;
+  is_sensitive?: boolean;
   domain?: string;
 }
 
