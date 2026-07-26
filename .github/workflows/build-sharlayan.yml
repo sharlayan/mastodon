@@ -20,6 +20,7 @@ jobs:
     uses: ./.github/workflows/build-container-image.yml
     with:
       file_to_build: Dockerfile
+      upload_assets: true
       push_to_images: |
         ghcr.io/${{ github.repository_owner }}/mastodon
       version_metadata: ${{ inputs.release_tag || github.sha }}

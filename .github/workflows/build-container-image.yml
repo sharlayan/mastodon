@@ -20,6 +20,10 @@ on:
         type: string
       ref:
         type: string
+      upload_assets:
+        description: Upload precompiled public assets from the final image
+        type: boolean
+        default: false
 
 # This builds multiple images with one runner each, allowing us to build for multiple architectures
 # using Github's runners.
@@ -51,6 +55,7 @@ jobs:
           image_names=${PUSH_TO_IMAGES//$'\n'/,}
           image_names_split=${image_names%,}
           echo "IMAGE_NAMES=${image_names_split,,}" >> $GITHUB_ENV
+          echo "SOURCE_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
 
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
         id: buildx
@@ -88,7 +93,7 @@ jobs:
           build-args: |
             MASTODON_VERSION_PRERELEASE=${{ inputs.version_prerelease }}
             MASTODON_VERSION_METADATA=${{ inputs.version_metadata }}
-            SOURCE_COMMIT=${{ github.sha }}
+            SOURCE_COMMIT=${{ env.SOURCE_COMMIT }}
           platforms: ${{ matrix.platform }}
           provenance: false
           push: ${{ inputs.push_to_images != '' }}
@@ -175,3 +180,45 @@ jobs:
         run: |
           echo "${PUSH_TO_IMAGES,,}" | xargs -i{} \
             docker buildx imagetools inspect {}:${{ steps.meta.outputs.version }}
+
+      - name: Export precompiled assets
+        if: ${{ inputs.upload_assets && inputs.file_to_build == 'Dockerfile' }}
+        env:
+          ASSET_ROOT: ${{ runner.temp }}/mastodon-assets
+        run: |
+          image_ref=$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          source_commit=$(git rev-parse HEAD)
+          archive="mastodon-assets-${source_commit}.tar.gz"
+
+          docker pull --platform linux/amd64 "$image_ref"
+          container=$(docker create "$image_ref")
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+
+          mkdir -p "$ASSET_ROOT/public"
+          docker cp "$container:/opt/mastodon/public/packs" "$ASSET_ROOT/public/packs"
+          docker cp "$container:/opt/mastodon/public/assets" "$ASSET_ROOT/public/assets"
+
+          {
+            echo "source_commit=$source_commit"
+            echo "image=$image_ref"
+            echo "platform=linux/amd64"
+          } > "$ASSET_ROOT/BUILD_INFO"
+
+          tar -C "$ASSET_ROOT" -czf "${{ runner.temp }}/$archive" \
+            BUILD_INFO public
+          (
+            cd "${{ runner.temp }}"
+            sha256sum "$archive" > "$archive.sha256"
+          )
+
+      - name: Upload precompiled assets
+        if: ${{ inputs.upload_assets && inputs.file_to_build == 'Dockerfile' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: mastodon-assets-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/mastodon-assets-*.tar.gz
+            ${{ runner.temp }}/mastodon-assets-*.tar.gz.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

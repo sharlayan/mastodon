@@ -27,6 +27,7 @@ jobs:
     with:
       file_to_build: Dockerfile
       ref: develop
+      upload_assets: true
       cache: false
       push_to_images: |
         ghcr.io/${{ github.repository_owner }}/mastodon
