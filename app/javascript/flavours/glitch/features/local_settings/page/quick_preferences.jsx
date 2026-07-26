@@ -20,22 +20,24 @@ const RadioGroup = ({ id, legend, options, value, onChange }) => (
   <div className='glitch local-settings__page__item radio_buttons'>
     <fieldset>
       <legend>{legend}</legend>
-      {options.map((opt) => {
-        const optionId = `${id}--${opt.value}`;
-        return (
-          <label key={optionId} htmlFor={optionId}>
-            <input
-              type='radio'
-              name={id}
-              id={optionId}
-              value={opt.value}
-              onChange={onChange}
-              checked={value === opt.value}
-            />
-            {opt.message}
-          </label>
-        );
-      })}
+      <div className='radio_buttons__options'>
+        {options.map((opt) => {
+          const optionId = `${id}--${opt.value}`;
+          return (
+            <label key={optionId} htmlFor={optionId}>
+              <input
+                type='radio'
+                name={id}
+                id={optionId}
+                value={opt.value}
+                onChange={onChange}
+                checked={value === opt.value}
+              />
+              {opt.message}
+            </label>
+          );
+        })}
+      </div>
     </fieldset>
   </div>
 );

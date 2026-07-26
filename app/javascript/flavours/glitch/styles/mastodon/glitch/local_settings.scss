@@ -161,8 +161,8 @@
 
 .glitch.local-settings__navigation {
   background: var(--color-bg-secondary);
-  width: 196px;
-  flex: 0 0 196px;
+  width: 240px;
+  flex: 0 0 240px;
   font-size: 15px;
   line-height: 20px;
   overflow-y: auto;
@@ -202,9 +202,20 @@
 .glitch.local-settings__page__item.radio_buttons {
   margin: 8px 0;
   padding: 10px 0 14px;
+}
 
-  label + label {
+.glitch.local-settings__page__item.radio_buttons {
+  .radio_buttons__options {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 20px;
     margin-top: 6px;
+  }
+
+  label {
+    flex: 0 1 auto;
   }
 }
 

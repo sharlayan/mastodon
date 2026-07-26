@@ -44,7 +44,9 @@ export default class LocalSettingsPageItem extends PureComponent {
         <div className='glitch local-settings__page__item radio_buttons'>
           <fieldset>
             <legend>{children}</legend>
-            {optionElems}
+            <div className='radio_buttons__options'>
+              {optionElems}
+            </div>
           </fieldset>
         </div>
       );
