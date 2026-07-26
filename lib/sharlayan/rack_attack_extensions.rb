@@ -4,6 +4,7 @@ module Sharlayan
   module RackAttackExtensions
     MULTI_ACCOUNT_AUTH_PATHS = ['/multi_accounts/auth/sign_in', '/multi_accounts/auth/verify_otp'].freeze
     MISSKEY_SIGNIN_PATH = '/api/signin-flow'
+    MEDIA_PROXY_PATH_REGEX = %r{\A/(?:media_proxy|proxy)(?:/|\z)}
 
     module RequestMethods
       def bypasses_rate_limit?
@@ -41,7 +42,7 @@ module Sharlayan
       end
 
       attack.throttle('throttle_media_proxy', limit: 100, period: 10.minutes) do |req|
-        req.throttleable_remote_ip if req.path.start_with?('/media_proxy')
+        req.throttleable_remote_ip if req.path.match?(MEDIA_PROXY_PATH_REGEX)
       end
 
       attack.throttle('throttle_authenticated_paging', limit: 1_000, period: 15.minutes) do |req|

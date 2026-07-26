@@ -206,4 +206,35 @@ RSpec.describe Rack::Attack, type: :request do
       expect(response).to have_http_status(429)
     end
   end
+
+  describe 'throttle media proxy routes by IP address' do
+    let(:throttle) { 'throttle_media_proxy' }
+    let(:limit) { 100 }
+    let(:period) { 10.minutes }
+    let(:request) { -> { get path, headers: { 'REMOTE_ADDR' => remote_ip } } }
+
+    context 'with the Mastodon media proxy path' do
+      let(:path) { '/media_proxy/123/original' }
+
+      it_behaves_like 'throttled endpoint'
+    end
+
+    context 'with the Misskey-compatible proxy path' do
+      let(:path) { '/proxy/image.webp?url=https%3A%2F%2Fremote.example%2Fimage.webp' }
+
+      it_behaves_like 'throttled endpoint'
+    end
+
+    context 'with a similar non-proxy path' do
+      let(:path) { '/proxying' }
+      let(:remote_ip) { '1.2.3.99' }
+
+      it 'does not increment the proxy throttle' do
+        counter_prefix = (Time.now.to_i / period.seconds).to_i
+        counter_key = "#{counter_prefix}:#{throttle}:#{remote_ip}"
+
+        expect { request.call }.to_not(change { described_class.cache.read(counter_key) })
+      end
+    end
+  end
 end
