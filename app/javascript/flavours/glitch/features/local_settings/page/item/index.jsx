@@ -23,19 +23,20 @@ export default class LocalSettingsPageItem extends PureComponent {
     settings: ImmutablePropTypes.map.isRequired,
     placeholder: PropTypes.string,
     disabled: PropTypes.bool,
+    inverted: PropTypes.bool,
   };
 
   handleChange = e => {
     const { target } = e;
-    const { item, onChange, options, placeholder } = this.props;
+    const { item, onChange, options, placeholder, inverted } = this.props;
     if (options && options.length > 0) onChange(item, target.value);
     else if (placeholder) onChange(item, target.value);
-    else onChange(item, target.checked);
+    else onChange(item, inverted ? !target.checked : target.checked);
   };
 
   render () {
     const { handleChange } = this;
-    const { settings, item, id, inputProps, options, children, dependsOn, dependsOnNot, placeholder, disabled } = this.props;
+    const { settings, item, id, inputProps, options, children, dependsOn, dependsOnNot, placeholder, disabled, inverted } = this.props;
     let enabled = !disabled;
 
     if (dependsOn) {
@@ -104,7 +105,7 @@ export default class LocalSettingsPageItem extends PureComponent {
           <input
             id={id}
             type='checkbox'
-            checked={settings.getIn(item)}
+            checked={inverted ? !settings.getIn(item) : settings.getIn(item)}
             onChange={handleChange}
             disabled={!enabled}
             {...inputProps}

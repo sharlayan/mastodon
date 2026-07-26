@@ -236,86 +236,92 @@ class LocalSettingsPage extends PureComponent {
     ({ intl, onChange, settings }) => (
       <div className='glitch local-settings__page compose_box_opts'>
         <h1><FormattedMessage id='settings.compose_box_opts' defaultMessage='Compose box' /></h1>
-        <SharlayanLocalSettingsSlot slot='compose-before-spoilers' settings={settings} onChange={onChange} />
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['always_show_spoilers_field']}
-          id='mastodon-settings--always_show_spoilers_field'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.always_show_spoilers_field' defaultMessage='Always enable the Content Warning field' />
-        </LocalSettingsPageItem>
-        <SharlayanLocalSettingsSlot slot='compose-after-spoilers' settings={settings} onChange={onChange} />
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['prepend_cw_re']}
-          id='mastodon-settings--prepend_cw_re'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.prepend_cw_re' defaultMessage='Prepend “re: ” to content warnings when replying' />
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['preselect_on_reply']}
-          id='mastodon-settings--preselect_on_reply'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.preselect_on_reply' defaultMessage='Pre-select usernames on reply' />
-          <span className='hint'><FormattedMessage id='settings.preselect_on_reply_hint' defaultMessage='When replying to a conversation with multiple participants, pre-select usernames past the first' /></span>
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['confirm_before_clearing_draft']}
-          id='mastodon-settings--confirm_before_clearing_draft'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.confirm_before_clearing_draft' defaultMessage='Show confirmation dialog before overwriting the message being composed' />
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['show_content_type_choice']}
-          id='mastodon-settings--show_content_type_choice'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.show_content_type_choice' defaultMessage='Show content-type choice when authoring toots' />
-        </LocalSettingsPageItem>
-        <SharlayanLocalSettingsSlot slot='compose-before-published-toast' settings={settings} onChange={onChange} />
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['show_published_toast']}
-          id='mastodon-settings--show_published_toast'
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.show_published_toast' defaultMessage='Display toast when publishing/saving a post' />
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['side_arm']}
-          id='mastodon-settings--side_arm'
-          options={[
-            { value: 'none', message: intl.formatMessage(messages.side_arm_none) },
-            { value: 'direct', message: intl.formatMessage(messages.direct) },
-            { value: 'private', message: intl.formatMessage(messages.private) },
-            { value: 'unlisted', message: intl.formatMessage(messages.unlisted) },
-            { value: 'public', message: intl.formatMessage(messages.public) },
-          ]}
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.side_arm' defaultMessage='Secondary toot button:' />
-        </LocalSettingsPageItem>
-        <LocalSettingsPageItem
-          settings={settings}
-          item={['side_arm_reply_mode']}
-          id='mastodon-settings--side_arm_reply_mode'
-          options={[
-            { value: 'keep', message: intl.formatMessage(messages.side_arm_keep) },
-            { value: 'copy', message: intl.formatMessage(messages.side_arm_copy) },
-            { value: 'restrict', message: intl.formatMessage(messages.side_arm_restrict) },
-          ]}
-          onChange={onChange}
-        >
-          <FormattedMessage id='settings.side_arm_reply_mode' defaultMessage='When replying to a toot, the secondary toot button should:' />
-        </LocalSettingsPageItem>
+        <section>
+          <h2><FormattedMessage id='settings.compose_quick_buttons' defaultMessage='Quick setting buttons' /></h2>
+          <SharlayanLocalSettingsSlot slot='compose-quick-buttons' settings={settings} onChange={onChange} />
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['side_arm']}
+            id='mastodon-settings--side_arm'
+            options={[
+              { value: 'none', message: intl.formatMessage(messages.side_arm_none) },
+              { value: 'direct', message: intl.formatMessage(messages.direct) },
+              { value: 'private', message: intl.formatMessage(messages.private) },
+              { value: 'unlisted', message: intl.formatMessage(messages.unlisted) },
+              { value: 'public', message: intl.formatMessage(messages.public) },
+            ]}
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.side_arm' defaultMessage='Secondary toot button:' />
+          </LocalSettingsPageItem>
+        </section>
+
+        <section>
+          <h2><FormattedMessage id='settings.compose_form' defaultMessage='Compose box layout' /></h2>
+          <SharlayanLocalSettingsSlot slot='compose-form' settings={settings} onChange={onChange} />
+        </section>
+
+        <section>
+          <h2><FormattedMessage id='settings.compose_behavior' defaultMessage='Compose box behavior' /></h2>
+          <h3><FormattedMessage id='settings.compose_reply_behavior' defaultMessage='When composing a reply:' /></h3>
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['prepend_cw_re']}
+            id='mastodon-settings--prepend_cw_re'
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.prepend_cw_re' defaultMessage='Prepend “re: ” to content warnings when replying' />
+          </LocalSettingsPageItem>
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['preselect_on_reply']}
+            id='mastodon-settings--preselect_on_reply'
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.preselect_on_reply' defaultMessage='Pre-select usernames on reply' />
+            <span className='hint'><FormattedMessage id='settings.preselect_on_reply_hint' defaultMessage='When replying to a conversation with multiple participants, pre-select usernames past the first' /></span>
+          </LocalSettingsPageItem>
+          <SharlayanLocalSettingsSlot slot='compose-reply-behavior' settings={settings} onChange={onChange} />
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['side_arm_reply_mode']}
+            id='mastodon-settings--side_arm_reply_mode'
+            options={[
+              { value: 'keep', message: intl.formatMessage(messages.side_arm_keep) },
+              { value: 'copy', message: intl.formatMessage(messages.side_arm_copy) },
+              { value: 'restrict', message: intl.formatMessage(messages.side_arm_restrict) },
+            ]}
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.side_arm_reply_mode' defaultMessage='When replying to a toot, the secondary toot button should:' />
+          </LocalSettingsPageItem>
+
+          <h3><FormattedMessage id='settings.compose_other_behavior' defaultMessage='Other settings' /></h3>
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['always_show_spoilers_field']}
+            id='mastodon-settings--always_show_spoilers_field'
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.always_show_spoilers_field' defaultMessage='Always enable the Content Warning field' />
+          </LocalSettingsPageItem>
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['confirm_before_clearing_draft']}
+            id='mastodon-settings--confirm_before_clearing_draft'
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.confirm_before_clearing_draft' defaultMessage='Show confirmation dialog before overwriting the message being composed' />
+          </LocalSettingsPageItem>
+          <LocalSettingsPageItem
+            settings={settings}
+            item={['show_published_toast']}
+            id='mastodon-settings--show_published_toast'
+            onChange={onChange}
+          >
+            <FormattedMessage id='settings.show_published_toast' defaultMessage='Display toast when publishing/saving a post' />
+          </LocalSettingsPageItem>
+        </section>
       </div>
     ),
     ContentWarningSettings,

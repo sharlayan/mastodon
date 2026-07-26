@@ -95,20 +95,21 @@ const localSettingsSlots = {
   'general-status-icons': [
     { setting: ['hicolor_privacy_icons'], id: 'mastodon-settings--hicolor_privacy_icons', message: { id: 'settings.hicolor_privacy_icons', defaultMessage: 'High color privacy icons' }, hint: { id: 'settings.hicolor_privacy_icons.hint', defaultMessage: 'Display privacy icons in bright and easily distinguishable colors' } },
   ],
-  'compose-before-spoilers': [
-    { setting: ['inline_compose_timelines'], id: 'mastodon-settings--inline_compose_timelines', message: { id: 'settings.inline_compose_timelines', defaultMessage: 'Show the compose box at the top of timelines' }, hint: { id: 'settings.inline_compose_timelines.hint', defaultMessage: 'Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)' } },
-    { setting: ['disable_inline_compose_reply_modal'], id: 'mastodon-settings--disable_inline_compose_reply_modal', message: { id: 'settings.disable_inline_compose_reply_modal', defaultMessage: 'Do not use a popup for replies' }, hint: { id: 'settings.disable_inline_compose_reply_modal.hint', defaultMessage: 'When inline compose is enabled, use the compose box at the top of the timeline for replies; detailed posts will return to the timeline' } },
-    { setting: ['use_publish_toot'], id: 'mastodon-settings--use_publish_toot', message: { id: 'settings.use_publish_toot', defaultMessage: 'Use "뿌우" as the publish button label' } },
-  ],
-  'compose-after-spoilers': [
-    { setting: ['hide_compose_language'], id: 'mastodon-settings--hide_compose_language', message: { id: 'settings.hide_compose_language', defaultMessage: 'Hide the language selector in the compose box' } },
-    { setting: ['mention_reblogger'], id: 'mastodon-settings--mention_reblogger', message: { id: 'settings.mention_reblogger', defaultMessage: 'Mention booster when replying to a boosted post' } },
-  ],
-  'compose-before-published-toast': [
-    { setting: ['hide_mfm_compose_hint'], id: 'mastodon-settings--hide_mfm_compose_hint', message: { id: 'settings.hide_mfm_compose_hint', defaultMessage: 'Hide MFM preview and syntax link in the compose box' } },
+  'compose-quick-buttons': [
+    { setting: ['hide_compose_language'], id: 'mastodon-settings--show_compose_language', message: { id: 'settings.show_compose_language', defaultMessage: 'Show language selection in the compose box' }, inverted: true },
     { setting: ['show_clip_choice'], id: 'mastodon-settings--show_clip_choice', message: { id: 'settings.show_clip_choice', defaultMessage: 'Show clip selection in the compose box' } },
     { setting: ['show_schedule_button'], id: 'mastodon-settings--show_schedule_button', message: { id: 'settings.show_schedule_button', defaultMessage: 'Show schedule button in the compose box' } },
     { setting: ['show_draft_button'], id: 'mastodon-settings--show_draft_button', message: { id: 'settings.show_draft_button', defaultMessage: 'Show draft button in the compose box' }, hint: { id: 'settings.show_draft_button.hint', defaultMessage: 'Save drafts to the server and load them again from the compose box. Drafts stay available at the drafts column even when this is off' } },
+  ],
+  'compose-form': [
+    { setting: ['inline_compose_timelines'], id: 'mastodon-settings--inline_compose_timelines', message: { id: 'settings.inline_compose_timelines', defaultMessage: 'Show the compose box at the top of timelines' }, hint: { id: 'settings.inline_compose_timelines.hint', defaultMessage: 'Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)' } },
+    { setting: ['disable_inline_compose_reply_modal'], id: 'mastodon-settings--disable_inline_compose_reply_modal', message: { id: 'settings.disable_inline_compose_reply_modal', defaultMessage: 'Do not use a popup for replies' }, hint: { id: 'settings.disable_inline_compose_reply_modal.hint', defaultMessage: 'When inline compose is enabled, use the compose box at the top of the timeline for replies; detailed posts will return to the timeline' } },
+    { setting: ['use_publish_toot'], id: 'mastodon-settings--use_publish_toot', message: { id: 'settings.use_publish_toot', defaultMessage: 'Use "뿌우" as the publish button label' } },
+    { setting: ['show_content_type_choice'], id: 'mastodon-settings--show_content_type_choice', message: { id: 'settings.show_content_type_choice', defaultMessage: 'Show content-type choice when authoring toots' } },
+    { setting: ['hide_mfm_compose_hint'], id: 'mastodon-settings--hide_mfm_compose_hint', message: { id: 'settings.hide_mfm_compose_hint', defaultMessage: 'Hide MFM preview and syntax link in the compose box' } },
+  ],
+  'compose-reply-behavior': [
+    { setting: ['mention_reblogger'], id: 'mastodon-settings--mention_reblogger', message: { id: 'settings.mention_reblogger', defaultMessage: 'Mention booster when replying to a boosted post' } },
   ],
   'media-after-fullwidth': [
     { setting: ['media', 'no_autoplay_gifv'], id: 'mastodon-settings--media-no_autoplay_gifv', message: { id: 'settings.media_no_autoplay_gifv', defaultMessage: 'Do not autoplay attached GIFs' }, hint: { id: 'settings.media_no_autoplay_gifv_hint', defaultMessage: 'Attached GIF media will play on hover or click instead of automatically, even when GIF autoplay is enabled' } },
@@ -123,6 +124,7 @@ const LocalSettingsSlot = ({ intl, onChange, settings, slot }) => localSettingsS
     id={item.id}
     onChange={onChange}
     disabled={item.dependsOn ? !settings.getIn(item.dependsOn) : undefined}
+    inverted={item.inverted}
     options={item.options?.map(option => ({ value: option.value, message: intl.formatMessage(option.message) }))}
   >
     <FormattedMessage {...item.message} />
