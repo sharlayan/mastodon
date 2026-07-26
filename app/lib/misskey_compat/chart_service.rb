@@ -317,12 +317,12 @@ class MisskeyCompat::ChartService
     rows = scope.reorder(nil).group(Arel.sql(bucket_sql('users.last_active_at')))
       .pluck(
         Arel.sql(bucket_sql('users.last_active_at')),
-        *[7, 30, 365].flat_map do |days|
-          [
-            Arel.sql("COUNT(DISTINCT users.account_id) FILTER (WHERE accounts.created_at >= users.last_active_at - INTERVAL '#{days} days')"),
-            Arel.sql("COUNT(DISTINCT users.account_id) FILTER (WHERE accounts.created_at < users.last_active_at - INTERVAL '#{days} days')"),
-          ]
-        end
+        Arel.sql("COUNT(DISTINCT users.account_id) FILTER (WHERE accounts.created_at >= users.last_active_at - INTERVAL '7 days')"),
+        Arel.sql("COUNT(DISTINCT users.account_id) FILTER (WHERE accounts.created_at < users.last_active_at - INTERVAL '7 days')"),
+        Arel.sql("COUNT(DISTINCT users.account_id) FILTER (WHERE accounts.created_at >= users.last_active_at - INTERVAL '30 days')"),
+        Arel.sql("COUNT(DISTINCT users.account_id) FILTER (WHERE accounts.created_at < users.last_active_at - INTERVAL '30 days')"),
+        Arel.sql("COUNT(DISTINCT users.account_id) FILTER (WHERE accounts.created_at >= users.last_active_at - INTERVAL '365 days')"),
+        Arel.sql("COUNT(DISTINCT users.account_id) FILTER (WHERE accounts.created_at < users.last_active_at - INTERVAL '365 days')")
       )
     rows.each do |bucket, within_week, outside_week, within_month, outside_month, within_year, outside_year|
       record = records[bucket_by_timestamp.fetch(bucket.to_time.to_i)]

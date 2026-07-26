@@ -163,7 +163,7 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
   end
 
   def apply_count_filter(scope, column, flag)
-    truthy?(flag) ? scope.where("#{column} > 0") : scope.where(column => 0)
+    truthy?(flag) ? scope.where(column => 1..) : scope.where(column => 0)
   end
 
   def sort_order

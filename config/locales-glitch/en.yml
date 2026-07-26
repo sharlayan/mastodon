@@ -49,9 +49,6 @@ en:
     captcha_confirmation:
       hint_html: Just one more step! To confirm your account, this server requires you to solve a CAPTCHA. You can <a href="/about/more">contact the server administrator</a> if you have questions or need assistance with confirming your account.
       title: User verification
-  edit_profile:
-    basic_information: Basic information
-    hint_html: "<strong>Customize what people see on your public profile and next to your posts.</strong> Other people are more likely to follow you back and interact with you when you have a filled out profile and a profile picture."
   generic:
     edit: Edit
     use_this: Use this
