@@ -15,6 +15,7 @@ class FetchRemoteAvatarDecorationsWorker
     return if instance_meta&.software.present? && !instance_meta.avatar_decorations_compatible?
 
     host_url = "https://#{account.domain}"
+    previous_ids = account.avatar_decorations.filter_map { |config| config['id'] }
 
     user_data = fetch_json("#{host_url}/api/users/show", { username: account.username })
     return if user_data.nil?
@@ -23,6 +24,7 @@ class FetchRemoteAvatarDecorationsWorker
     user_decorations = nil unless user_decorations.is_a?(Array) && user_decorations.all?(Hash)
     if user_decorations.blank?
       account.update_columns(avatar_decorations: []) if account.avatar_decorations.any?
+      CleanupRemoteAvatarDecorationsWorker.enqueue(previous_ids)
       return
     end
 
@@ -56,7 +58,7 @@ class FetchRemoteAvatarDecorationsWorker
         local_dec.name             = (full&.dig('name') || remote_id).slice(0, 256) if local_dec.name.blank?
         local_dec.approved         = true if local_dec.new_record?
         local_dec.save if local_dec.changed?
-        RedownloadAvatarDecorationWorker.perform_async(local_dec.id) if local_dec.persisted? && local_dec.image_file_name.blank?
+        RedownloadAvatarDecorationWorker.enqueue(local_dec.id, account_id: account.id) if local_dec.persisted? && local_dec.image_file_name.blank?
       rescue ActiveRecord::RecordNotUnique
         local_dec = AvatarDecoration.find_by(host: account.domain, remote_id: remote_id)
         next if local_dec.nil?
@@ -77,6 +79,7 @@ class FetchRemoteAvatarDecorationsWorker
     end
 
     account.update_columns(avatar_decorations: decoration_configs)
+    CleanupRemoteAvatarDecorationsWorker.enqueue(previous_ids - decoration_configs.pluck('id'))
   end
 
   private

@@ -52,7 +52,7 @@ class AvatarDecoration < ApplicationRecord
 
   validates_attachment_content_type :image, content_type: IMAGE_MIME_TYPES
   validates_attachment_size :image, less_than: IMAGE_LIMIT
-  remotable_attachment :image, IMAGE_LIMIT
+  remotable_attachment :image, IMAGE_LIMIT, download_on_assign: false
 
   validates :name, presence: true, length: { maximum: 256 }
   validates :description, length: { maximum: 2048 }

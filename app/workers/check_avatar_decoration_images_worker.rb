@@ -12,7 +12,7 @@ class CheckAvatarDecorationImagesWorker
     return if scope.nil?
 
     scope.in_batches(of: BATCH_SIZE) do |batch|
-      RedownloadAvatarDecorationWorker.perform_bulk(batch.pluck(:id).zip)
+      batch.pluck(:id).each { |id| RedownloadAvatarDecorationWorker.enqueue(id, account_id: account_id) }
     end
   end
 

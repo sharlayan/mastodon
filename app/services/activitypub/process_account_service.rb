@@ -467,6 +467,7 @@ class ActivityPub::ProcessAccountService < BaseService
   end
 
   def process_avatar_decorations_from_ap!(raw)
+    previous_ids = @account.avatar_decorations.filter_map { |config| config['id'] }
     decoration_configs = []
 
     raw.first(AvatarDecoration::MAX_REMOTE_DECORATIONS).each do |d|
@@ -501,6 +502,8 @@ class ActivityPub::ProcessAccountService < BaseService
 
       next if decoration.nil? || !decoration.persisted?
 
+      RedownloadAvatarDecorationWorker.enqueue(decoration.id, account_id: @account.id) if decoration.image_file_name.blank?
+
       decoration_configs << {
         'id' => decoration.id,
         'angle' => d['angle'].to_f.clamp(-0.5, 0.5),
@@ -513,6 +516,7 @@ class ActivityPub::ProcessAccountService < BaseService
     end
 
     @account.avatar_decorations = decoration_configs
+    CleanupRemoteAvatarDecorationsWorker.enqueue(previous_ids - decoration_configs.pluck('id'))
   end
 
   def property_values
