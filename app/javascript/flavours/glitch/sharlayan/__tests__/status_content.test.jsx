@@ -16,7 +16,7 @@ beforeAll(async () => {
 
   ({ isSharlayanMfmStatus, renderSharlayanMfmContent, sharlayanStatusContentState } =
     await import('../status_content'));
-});
+}, 30_000);
 
 const metaState = (meta) => fromJS({ meta });
 

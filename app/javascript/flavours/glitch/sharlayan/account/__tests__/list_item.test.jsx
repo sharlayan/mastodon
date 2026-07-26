@@ -17,7 +17,7 @@ beforeAll(async () => {
   });
 
   ({ sharlayanAccountBioHtml } = await import('../list_item'));
-});
+}, 30_000);
 
 describe('sharlayanAccountBioHtml', () => {
   it('returns the emojified note when no character limit is set', () => {

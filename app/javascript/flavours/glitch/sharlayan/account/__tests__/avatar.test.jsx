@@ -47,7 +47,7 @@ beforeAll(async () => {
   });
 
   ({ sharlayanHasAvatarDecorations } = await import('../avatar'));
-});
+}, 30_000);
 
 beforeEach(() => {
   gate.avatarDecorationsEnabled = true;

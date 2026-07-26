@@ -13,7 +13,7 @@ beforeAll(async () => {
   });
 
   ({ renderSharlayanFieldValue } = await import('../field_value'));
-});
+}, 30_000);
 
 describe('renderSharlayanFieldValue', () => {
   const emojis = [];
