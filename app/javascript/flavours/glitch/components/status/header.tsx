@@ -10,7 +10,7 @@ import type {
   Account,
   AccountShapeFull,
 } from '@/flavours/glitch/models/account';
-import type { Status } from '@/flavours/glitch/models/status';
+import type { Status, StatusShape } from '@/flavours/glitch/models/status';
 import { selectAccountStatus } from '@/flavours/glitch/selectors/statuses';
 import { useAppSelector } from '@/flavours/glitch/store';
 
@@ -18,6 +18,7 @@ import { Avatar } from '../avatar';
 import { AvatarOverlay } from '../avatar_overlay';
 import type { DisplayNameProps } from '../display_name';
 import { LinkedDisplayName } from '../display_name';
+import { RelativeTimestamp } from '../relative_timestamp';
 
 export interface StatusHeaderProps {
   statusId: string;
@@ -68,6 +69,7 @@ export const StatusHeader: FC<StatusHeaderProps> = ({
         statusAccount={statusAccount}
         friendAccount={account}
         avatarSize={avatarSize}
+        status={status}
       />
 
       {contentBeforeDate}
@@ -81,7 +83,6 @@ const editMessage = defineMessage({
   defaultMessage: 'Edited {date}',
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- unused in glitch-soc but that might change
 const StatusEditedAt: FC<{ editedAt: string }> = ({ editedAt }) => {
   const intl = useIntl();
   return (
@@ -106,11 +107,20 @@ const StatusDisplayName: FC<{
   statusAccount?: AccountShapeFull;
   friendAccount?: Account | AccountShapeFull;
   avatarSize: number;
-}> = ({ statusAccount, friendAccount, avatarSize }) => {
+  status: Pick<StatusShape, 'created_at' | 'edited_at'>;
+}> = ({ statusAccount, friendAccount, avatarSize, status }) => {
   const AccountComponent = friendAccount ? AvatarOverlay : Avatar;
   return (
     <LinkedDisplayName
-      displayProps={{ account: statusAccount }}
+      displayProps={{
+        account: statusAccount,
+        children: (
+          <span className='status__display-name__created-time'>
+            <RelativeTimestamp timestamp={status.created_at} />
+            {status.edited_at && <StatusEditedAt editedAt={status.edited_at} />}
+          </span>
+        ),
+      }}
       className='status__display-name'
     >
       <div className='status__avatar'>
