@@ -3,6 +3,7 @@
 class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   include Api::AnonymousPageViewLimit
   include Api::PageSearchEngineAccess
+  include Api::PagesRoleplayAccessConcern
 
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed url size).freeze
   AUTHENTICATED_ACTIONS = %i(featured index likes create update destroy like unlike).freeze

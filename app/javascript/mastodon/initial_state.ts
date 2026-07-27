@@ -54,6 +54,7 @@ interface InitialStateMeta {
   emoji_style?: string;
   custom_emoji_size: boolean;
   wrapstodon?: InitialStateWrapstodon | null;
+  roleplay_mode?: boolean;
 }
 
 interface IntialStateRole {
@@ -160,6 +161,7 @@ export const sso_redirect = getMeta('sso_redirect');
 export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const customEmojiSize = getMeta('custom_emoji_size');
 export const wrapstodon = getMeta('wrapstodon');
+export const roleplayMode = getMeta('roleplay_mode');
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

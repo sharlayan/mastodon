@@ -316,6 +316,7 @@
   "compose_form.poll.type": "スタイル",
   "compose_form.publish": "投稿",
   "compose_form.reply": "返信",
+  "compose_form.rp_server_dm_warning": "現在このサーバーはロールプレイ向けオプションが有効なため、管理者がダイレクトメッセージを閲覧できます。",
   "compose_form.save_changes": "更新",
   "compose_form.spoiler.marked": "本文は警告の後ろに隠されます",
   "compose_form.spoiler.unmarked": "本文は隠されていません",

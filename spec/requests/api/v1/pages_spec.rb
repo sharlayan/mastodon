@@ -536,6 +536,49 @@ RSpec.describe 'Pages' do
 
       expect(response.parsed_body.pluck(:id)).to_not include(password_page.id.to_s)
     end
+
+    context 'when community mode is enabled' do
+      let!(:other_password_page) do
+        Fabricate(:page, visibility: 'password', access_password: 'correct-password', content: [{ 'id' => 'secret', 'type' => 'text', 'text' => 'Moderated body' }])
+      end
+      let(:top_position) { (UserRole.assignable.maximum(:position) || 0) + 1 }
+
+      it 'allows the owner role to read protected content without a password' do
+        user.update!(role: Fabricate(:user_role, position: top_position, permissions: UserRole::FLAGS[:administrator]))
+
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+          get "/api/v1/pages/#{other_password_page.id}", headers: headers
+        end
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body[:locked]).to be false
+        expect(response.parsed_body.dig(:content, 0, :text)).to eq('Moderated body')
+      end
+
+      it 'keeps protected content locked for the owner role outside community mode' do
+        user.update!(role: Fabricate(:user_role, position: top_position, permissions: UserRole::FLAGS[:administrator]))
+
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+          get "/api/v1/pages/#{other_password_page.id}", headers: headers
+        end
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to include('locked' => true, 'content' => [], 'attached_media' => [])
+      end
+
+      it 'keeps protected content locked for an administrator below the owner role' do
+        administrator_role = Fabricate(:user_role, position: top_position, permissions: UserRole::FLAGS[:administrator])
+        Fabricate(:user_role, position: top_position + 1, permissions: UserRole::FLAGS[:administrator])
+        user.update!(role: administrator_role)
+
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+          get "/api/v1/pages/#{other_password_page.id}", headers: headers
+        end
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to include('locked' => true, 'content' => [], 'attached_media' => [])
+      end
+    end
   end
 
   describe 'authenticated visibility' do

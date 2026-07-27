@@ -30,6 +30,9 @@ en:
       outgoing_spoilers:
         desc_html: When federating toots, add this content warning to toots that do not have one. It is useful if your server is specialized in content other servers might want to have under a Content Warning. Media will also be marked as sensitive.
         title: Content warning for outgoing toots
+      roleplay:
+        notice_html: This option can only be turned on through an environment variable (<code>OC_ROLEPLAY_OPTION</code>) and cannot be disabled here. The settings below are forced and locked — force local-only, all public timeline access set to "authenticated", search engine indexing disabled, referrer origin disclosure disabled, server activity/peers API disabled, and authorized fetch enabled.
+        title: The roleplay-only server option is enabled
       show_reblogs_in_public_timelines:
         desc_html: Show public boosts of public toots in local and public timelines.
         title: Show boosts in public timelines

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module ThemeHelper
+  include RoleplayModeHelper
+
   def javascript_inline_tag(path)
     entry = InlineScriptManager.instance.file(path)
 
@@ -68,6 +70,8 @@ module ThemeHelper
   end
 
   def current_flavour
+    return 'glitch' if roleplay_mode? && Themes.instance.flavours.include?('glitch')
+
     [current_user&.setting_flavour, Setting.flavour, 'glitch', 'vanilla'].find { |flavour| Themes.instance.flavours.include?(flavour) }
   end
 

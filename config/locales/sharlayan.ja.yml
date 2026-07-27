@@ -1,5 +1,9 @@
 ---
 ja:
+  roleplay_reset:
+    apply_hint: データベースを更新するには --apply を付けてもう一度実行してください。
+    disable_first: このコマンドを実行する前に OC_ROLEPLAY_OPTION を無効にして再起動してください。
+    restart: Web、Sidekiq、ストリーミングの全プロセスを再起動してください。
   account_switcher:
     switch_failed: アカウントが見つかりません。
     switch_unauthorized: このアカウントに切り替える権限がありません。
@@ -305,6 +309,15 @@ ja:
         title: 絵文字リアクション
       special_features:
         title: 特殊機能
+      community_mode_override:
+        title: コミュニティモード強制設定
+        preamble: コミュニティモードが有効な間、これらのオプションは各ユーザーの個人設定を上書きし、全ユーザーに対して機能を強制的に適用します。
+        force_avatar_decorations: アバターデコレーション表示の強制
+        force_avatar_decorations_hint: 各ユーザーの「アバターデコレーションを表示」設定を無視し、全ユーザーにアバターデコレーションを表示します。上記でアバターデコレーションが有効になっている必要があります。
+        force_round_avatar: アバター画像を円形に強制
+        force_round_avatar_hint: テーマに関係なく、全ユーザーのアバター画像を円形で表示します。
+        force_mfm_enabled: MFMレンダリングの強制
+        force_mfm_enabled_hint: 各ユーザーのMFM設定を無視し、全ユーザーにMFM書式をレンダリングします。
     username_blocks:
       created_msg: ユーザー名ルールを作成しました
       no_username_block_selected: 何も選択されていなかったため、ユーザー名ルールは変更されませんでした
@@ -322,6 +335,7 @@ ja:
   appearance:
     customized: カスタマイズ - 絵文字
     misskey_flavour: カスタマイズ - Misskeyフレーバー
+    community_mode_forced_hint: このオプションは現在サーバーによって強制的に有効化されています。設定を変更しても反映されません。
   auth:
     disable_custom_css: カスタムCSSを無効にする
     progress:

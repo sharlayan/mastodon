@@ -6,9 +6,12 @@
   = render partial: 'admin/settings/shared/links'
 
 = simple_form_for @admin_settings, url: admin_settings_discovery_path do |f|
+  - roleplay_locked = roleplay_mode?
   = render 'shared/error_messages', object: @admin_settings
 
   %p.lead= t('admin.settings.discovery.preamble')
+
+  = render 'admin/settings/discovery/roleplay_notice' if roleplay_locked
 
   %h2= t('admin.settings.discovery.trends')
 
@@ -34,6 +37,7 @@
   .fields-group
     = f.input :force_local_only,
               as: :boolean,
+              disabled: roleplay_locked,
               wrapper: :with_label,
               label: t('admin.settings.force_local_only.title'),
               hint: t('admin.settings.force_local_only.desc_html'),
@@ -46,6 +50,7 @@
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :local_live_feed_access,
                 collection: f.object.class::FEED_ACCESS_MODES,
+                disabled: roleplay_locked,
                 include_blank: false,
                 label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
                 wrapper: :with_label
@@ -53,6 +58,7 @@
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :remote_live_feed_access,
                 collection: f.object.class::FEED_ACCESS_MODES,
+                disabled: roleplay_locked,
                 include_blank: false,
                 label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
                 wrapper: :with_label
@@ -61,6 +67,7 @@
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :local_topic_feed_access,
                 collection: f.object.class::ALTERNATE_FEED_ACCESS_MODES,
+                disabled: roleplay_locked,
                 include_blank: false,
                 label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
                 wrapper: :with_label
@@ -68,6 +75,7 @@
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :remote_topic_feed_access,
                 collection: f.object.class::FEED_ACCESS_MODES,
+                disabled: roleplay_locked,
                 include_blank: false,
                 label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
                 wrapper: :with_label
@@ -76,6 +84,7 @@
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :local_account_statuses_access,
                 collection: f.object.class::FEED_ACCESS_MODES,
+                disabled: roleplay_locked,
                 include_blank: false,
                 label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
                 wrapper: :with_label,
@@ -84,6 +93,7 @@
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :local_status_page_access,
                 collection: f.object.class::FEED_ACCESS_MODES,
+                disabled: roleplay_locked,
                 include_blank: false,
                 label_method: ->(mode) { I18n.t("admin.settings.feed_access.modes.#{mode}") },
                 wrapper: :with_label,
@@ -94,6 +104,7 @@
   .fields-group
     = f.input :noindex,
               as: :boolean,
+              disabled: roleplay_locked,
               hint: t('admin.settings.default_noindex.desc_html'),
               label: t('admin.settings.default_noindex.title'),
               wrapper: :with_label
@@ -101,6 +112,7 @@
   .fields-group
     = f.input :allow_referrer_origin,
               as: :boolean,
+              disabled: roleplay_locked,
               hint: t('admin.settings.allow_referrer_origin.desc'),
               label: t('admin.settings.allow_referrer_origin.title'),
               wrapper: :with_label
@@ -110,12 +122,14 @@
   .fields-group
     = f.input :activity_api_enabled,
               as: :boolean,
+              disabled: roleplay_locked,
               wrapper: :with_label,
               recommended: :recommended
 
   .fields-group
     = f.input :peers_api_enabled,
               as: :boolean,
+              disabled: roleplay_locked,
               wrapper: :with_label,
               recommended: :recommended
 
@@ -124,7 +138,7 @@
   .fields-group
     = f.input :authorized_fetch,
               as: :boolean,
-              disabled: authorized_fetch_overridden?,
+              disabled: authorized_fetch_overridden? || roleplay_locked,
               hint: discovery_hint_text,
               label: t('admin.settings.security.authorized_fetch'),
               recommended: discovery_recommended_value,

@@ -33,6 +33,7 @@ import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
 import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, isServerPageBlogViewPath } from '../../initial_state';
+import { collectionsEnabled } from 'flavours/glitch/sharlayan/roleplay';
 import { renderSharlayanRoutes } from 'flavours/glitch/sharlayan/registry/routes/render';
 import { SharlayanUiExtensions, shouldIgnoreSharlayanDropTarget } from 'flavours/glitch/sharlayan/registry/ui';
 
@@ -240,9 +241,9 @@ class SwitchingColumnsArea extends PureComponent {
 
             <WrappedRoute path={['/@:acct', '/accounts/:id']} exact component={AccountTimeline} content={children} />
             <WrappedRoute path={['/@:acct/featured', '/accounts/:id/featured']} component={AccountFeatured} content={children} />
-            <WrappedRoute path={['/@:acct/collections']} component={Collections} content={children} key='collections-list' />
-            <WrappedRoute path={['/collections/new', '/collections/:id/edit']} component={CollectionsEditor} content={children} key='collections-editor' />
-            <WrappedRoute path='/collections/:id' component={CollectionDetail} content={children} key='collections-detail' />
+            {collectionsEnabled && <WrappedRoute path={['/@:acct/collections']} component={Collections} content={children} key='collections-list' />}
+            {collectionsEnabled && <WrappedRoute path={['/collections/new', '/collections/:id/edit']} component={CollectionsEditor} content={children} key='collections-editor' />}
+            {collectionsEnabled && <WrappedRoute path='/collections/:id' component={CollectionDetail} content={children} key='collections-detail' />}
             <WrappedRoute path='/@:acct/tagged/:tagged?' exact component={AccountTimeline} content={children} />
             <WrappedRoute path={['/@:acct/with_replies', '/accounts/:id/with_replies']} component={AccountTimeline} content={children} componentParams={{ withReplies: true }} />
             <WrappedRoute path={['/accounts/:id/followers', '/users/:acct/followers', '/@:acct/followers']} component={Followers} content={children} />

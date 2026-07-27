@@ -44,6 +44,10 @@ import {
   sharlayanReactionMuteItems,
   sharlayanRefetchProfileItems,
 } from '@/flavours/glitch/sharlayan/account/header_menu';
+import {
+  collectionsEnabled,
+  roleplayMode,
+} from '@/flavours/glitch/sharlayan/roleplay';
 import type { AppDispatch } from '@/flavours/glitch/store';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import BlockIcon from '@/material-icons/400-24px/block.svg?react';
@@ -197,6 +201,10 @@ const redesignMessages = defineMessages({
     id: 'account.menu.direct',
     defaultMessage: 'Privately mention',
   },
+  directDm: {
+    id: 'account.menu.direct_dm',
+    defaultMessage: 'Send DM',
+  },
   mute: { id: 'account.menu.mute', defaultMessage: 'Mute account' },
   unmute: {
     id: 'account.menu.unmute',
@@ -310,7 +318,9 @@ function getMenuItems({
       },
 
       {
-        text: intl.formatMessage(redesignMessages.direct),
+        text: intl.formatMessage(
+          roleplayMode ? redesignMessages.directDm : redesignMessages.direct,
+        ),
         action: () => {
           dispatch(directCompose(account));
         },
@@ -342,8 +352,9 @@ function getMenuItems({
 
   // Add to collection
   if (
-    canAccountBeAdded(account) ||
-    (canAccountBeAddedByFollowers(account) && relationship?.following)
+    collectionsEnabled &&
+    (canAccountBeAdded(account) ||
+      (canAccountBeAddedByFollowers(account) && relationship?.following))
   ) {
     items.push({
       text: intl.formatMessage(redesignMessages.addToCollection),

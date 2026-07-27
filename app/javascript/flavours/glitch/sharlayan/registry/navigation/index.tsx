@@ -42,6 +42,10 @@ import {
 } from 'flavours/glitch/initial_state';
 import { canViewFeed } from 'flavours/glitch/permissions';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
+import {
+  collectionsEnabled,
+  roleplayMode,
+} from 'flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { computeNavigationOrder, isNavigationItemAlwaysVisible } from './items';
@@ -54,6 +58,10 @@ const messages = defineMessages({
   },
   explore: { id: 'explore.title', defaultMessage: 'Trending' },
   local: { id: 'navigation_bar.community_timeline', defaultMessage: 'Local' },
+  localRoleplay: {
+    id: 'navigation_bar.roleplay_public_timeline',
+    defaultMessage: 'Public timeline',
+  },
   federated: {
     id: 'navigation_bar.public_timeline',
     defaultMessage: 'Federated',
@@ -200,23 +208,27 @@ export const useSharlayanPrimaryNavigation = (
     );
   }
   if (feedsAllowed) {
-    renderers.federated = (id) => (
-      <ColumnLink
-        transparent
-        to='/public'
-        icon='globe'
-        iconComponent={PublicIcon}
-        text={intl.formatMessage(messages.federated)}
-        id={id}
-      />
-    );
+    if (!roleplayMode) {
+      renderers.federated = (id) => (
+        <ColumnLink
+          transparent
+          to='/public'
+          icon='globe'
+          iconComponent={PublicIcon}
+          text={intl.formatMessage(messages.federated)}
+          id={id}
+        />
+      );
+    }
     renderers.local = (id) => (
       <ColumnLink
         transparent
         to='/public/local'
         icon='users'
         iconComponent={PeopleIcon}
-        text={intl.formatMessage(messages.local)}
+        text={intl.formatMessage(
+          roleplayMode ? messages.localRoleplay : messages.local,
+        )}
         id={id}
       />
     );
@@ -245,17 +257,19 @@ export const useSharlayanPrimaryNavigation = (
         id={id}
       />
     );
-    renderers.collections = (id) => (
-      <ColumnLink
-        transparent
-        to={`/@${account?.acct}/collections`}
-        icon='collections'
-        iconComponent={CollectionsIcon}
-        activeIconComponent={CollectionsActiveIcon}
-        text={intl.formatMessage(messages.collections)}
-        id={id}
-      />
-    );
+    if (collectionsEnabled) {
+      renderers.collections = (id) => (
+        <ColumnLink
+          transparent
+          to={`/@${account?.acct}/collections`}
+          icon='collections'
+          iconComponent={CollectionsIcon}
+          activeIconComponent={CollectionsActiveIcon}
+          text={intl.formatMessage(messages.collections)}
+          id={id}
+        />
+      );
+    }
     renderers.direct = (id) => (
       <ColumnLink
         transparent

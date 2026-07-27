@@ -7,6 +7,7 @@ import { LIST_DELETE_SUCCESS, LIST_FETCH_FAIL } from '../actions/lists';
 import { NOTIFICATIONS_FILTER_SET } from '../actions/notifications';
 import { SETTING_CHANGE, SETTING_SAVE } from '../actions/settings';
 import { STORE_HYDRATE } from '../actions/store';
+import { roleplayMode } from '../sharlayan/roleplay';
 import { uuid } from '../uuid';
 
 const initialState = ImmutableMap({
@@ -23,7 +24,7 @@ const initialState = ImmutableMap({
       quote: true,
       reblog: true,
       reply: true,
-      direct: true,
+      direct: !roleplayMode,
     }),
 
     regex: ImmutableMap({

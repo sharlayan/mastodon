@@ -5,6 +5,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { animated, useSpring } from '@react-spring/web';
 
 import { me } from 'flavours/glitch/initial_state';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppSelector } from 'flavours/glitch/store';
 import type { RootState } from 'flavours/glitch/store';
 import { HASHTAG_PATTERN_REGEX } from 'flavours/glitch/utils/hashtags';
@@ -58,6 +59,15 @@ export const Warning = () => {
   if (directMessageWarning) {
     return (
       <WarningMessage>
+        {roleplayMode && (
+          <>
+            <FormattedMessage
+              id='compose_form.rp_server_dm_warning'
+              defaultMessage='Server administrators can read direct messages for moderation.'
+            />
+            <br />
+          </>
+        )}
         <FormattedMessage
           id='compose_form.encryption_warning'
           defaultMessage='Posts on Mastodon are not end-to-end encrypted. Do not share any dangerous information over Mastodon.'

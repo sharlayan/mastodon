@@ -211,6 +211,11 @@ export const statusPageUrl = getMeta('status_page_url');
 export const sso_redirect = getMeta('sso_redirect');
 export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const wrapstodon = getMeta('wrapstodon');
+export const sharlayanInitialState = readSharlayanInitialState(
+  initialState,
+  Boolean(me),
+);
+
 export const {
   colorScheme,
   contrast,
@@ -218,7 +223,6 @@ export const {
   localAccountStatusesAccess,
   localStatusPageAccess,
   forceLocalOnly,
-  roleplayMode,
   circlesEnabled,
   clipsEnabled,
   pagesEnabled,
@@ -248,7 +252,7 @@ export const {
   catFederationEnabled,
   showCat,
   showFederatedCat,
-} = readSharlayanInitialState(initialState, Boolean(me));
+} = sharlayanInitialState;
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

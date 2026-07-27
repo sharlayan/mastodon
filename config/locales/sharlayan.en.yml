@@ -1,5 +1,9 @@
 ---
 en:
+  roleplay_reset:
+    apply_hint: Run again with --apply to update the database.
+    disable_first: Disable OC_ROLEPLAY_OPTION and restart before running this command.
+    restart: Restart all web, Sidekiq, and streaming processes.
   account_switcher:
     switch_failed: Account not found.
     switch_unauthorized: You are not authorized to switch to this account.
@@ -354,6 +358,20 @@ en:
         title: Reactions
       special_features:
         title: Special features
+      community_mode_override:
+        title: Community Mode Overrides
+        preamble: While Community Mode is active, these options override each user's
+          personal preference and force the feature on for everyone.
+        force_avatar_decorations: Force avatar decoration display
+        force_avatar_decorations_hint: Ignore each user's "show avatar decorations"
+          preference and display avatar decorations for everyone. Requires avatar
+          decorations to be enabled above.
+        force_round_avatar: Force round avatar images
+        force_round_avatar_hint: Display every avatar image as a circle for all users,
+          regardless of theme.
+        force_mfm_enabled: Force MFM rendering
+        force_mfm_enabled_hint: Ignore each user's MFM preference and render MFM formatting
+          for everyone.
     username_blocks:
       created_msg: Successfully created username rule
       no_username_block_selected: No username rules were changed as none were selected
@@ -373,6 +391,8 @@ en:
   appearance:
     customized: Customized - Emojis
     misskey_flavour: Customized - Misskey Flavour
+    community_mode_forced_hint: This option is currently enabled and enforced by the
+      server. Changing it will have no effect.
   auth:
     disable_custom_css: Disable custom CSS
     progress:

@@ -12,6 +12,9 @@ module Sharlayan::AdminSettingsExtensions
     reactions_enabled
     mfm_enabled
     mfm_allow_composition
+    force_mfm_enabled
+    force_avatar_decorations
+    force_round_avatar
     circles_enabled
     clips_enabled
     auto_quote_from_url
@@ -50,6 +53,9 @@ module Sharlayan::AdminSettingsExtensions
     reactions_enabled
     mfm_enabled
     mfm_allow_composition
+    force_mfm_enabled
+    force_avatar_decorations
+    force_round_avatar
     circles_enabled
     clips_enabled
     auto_quote_from_url

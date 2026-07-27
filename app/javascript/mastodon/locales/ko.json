@@ -533,6 +533,7 @@
   "compose_form.poll.type": "형식",
   "compose_form.publish": "게시",
   "compose_form.reply": "답장",
+  "compose_form.rp_server_dm_warning": "현재 서버는 자캐 커뮤니티 옵션을 활성화 중이므로 관리자가 개인간 메시지를 열람할 수 있습니다.",
   "compose_form.save_changes": "수정",
   "compose_form.spoiler.marked": "열람주의 제거",
   "compose_form.spoiler.unmarked": "열람 주의 문구 추가",

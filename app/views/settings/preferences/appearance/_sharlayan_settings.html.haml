@@ -51,9 +51,10 @@
 
 - if Setting.mfm_enabled
   .fields-group
+    - mfm_forced = roleplay_mode? && Setting.force_mfm_enabled
     = ff.input :'web.mfm_enabled',
                wrapper: :with_label,
-               hint: t('simple_form.hints.defaults.setting_mfm_enabled'),
+               hint: mfm_forced ? t('appearance.community_mode_forced_hint') : t('simple_form.hints.defaults.setting_mfm_enabled'),
                label: t('simple_form.labels.defaults.setting_mfm_enabled'),
                sharlayan_only: true
     = ff.input :'web.mfm_animations',
@@ -73,19 +74,21 @@
              sharlayan_only: true
 
 - if Setting.avatar_decorations_enabled
+  - avatar_decorations_forced = roleplay_mode? && Setting.force_avatar_decorations
   %h2= t 'settings.avatar_decorations'
   .fields-group
     = ff.input :'avatar_decorations.show',
                wrapper: :with_label,
                label: t('simple_form.labels.defaults.setting_show_avatar_decorations'),
-               hint: t('simple_form.hints.defaults.setting_show_avatar_decorations'),
+               hint: avatar_decorations_forced ? t('appearance.community_mode_forced_hint') : t('simple_form.hints.defaults.setting_show_avatar_decorations'),
                sharlayan_only: true
-    - if Setting.avatar_decorations_federation_enabled
+    - if Setting.avatar_decorations_federation_enabled && !roleplay_mode?
       = ff.input :'avatar_decorations.show_federated',
                  wrapper: :with_label,
                  label: t('simple_form.labels.defaults.setting_show_federated_avatar_decorations'),
                  hint: t('simple_form.hints.defaults.setting_show_federated_avatar_decorations'),
                  sharlayan_only: true
+    - round_avatar_forced = roleplay_mode? && Setting.force_round_avatar
     = ff.input :'avatar_decorations.shape',
                as: :radio_buttons,
                collection: %w(none round square),
@@ -93,7 +96,7 @@
                label_method: ->(shape) { t("simple_form.labels.defaults.setting_avatar_decoration_shape_#{shape}") },
                wrapper: :with_label,
                label: t('simple_form.labels.defaults.setting_avatar_decoration_shape'),
-               hint: t('simple_form.hints.defaults.setting_avatar_decoration_shape'),
+               hint: round_avatar_forced ? t('appearance.community_mode_forced_hint') : t('simple_form.hints.defaults.setting_avatar_decoration_shape'),
                sharlayan_only: true
 
 - if Setting.cat_enabled

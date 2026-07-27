@@ -11,6 +11,7 @@ import {
   showFederatedAvatarDecorations,
 } from 'flavours/glitch/initial_state';
 import type { Account, AccountShapeFull } from 'flavours/glitch/models/account';
+import { forceRoundAvatar } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppSelector } from 'flavours/glitch/store';
 
 import { AvatarDecoration } from '../../components/avatar_decoration';
@@ -100,9 +101,14 @@ export function useSharlayanAvatarExtras({
     'account__avatar--online-status': displayOnlineStatus,
     'account__avatar--cat': showCatEars,
     'account__avatar--force-round':
-      showCatEars || (hasDecorations && avatarDecorationShape === 'round'),
+      forceRoundAvatar ||
+      showCatEars ||
+      (hasDecorations && avatarDecorationShape === 'round'),
     'account__avatar--force-square':
-      !showCatEars && hasDecorations && avatarDecorationShape === 'square',
+      !forceRoundAvatar &&
+      !showCatEars &&
+      hasDecorations &&
+      avatarDecorationShape === 'square',
   };
 
   const avatarExtras = (

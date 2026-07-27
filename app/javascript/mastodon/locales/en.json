@@ -512,6 +512,7 @@
   "compose_form.poll.type": "Style",
   "compose_form.publish": "Post",
   "compose_form.reply": "Reply",
+  "compose_form.rp_server_dm_warning": "Server administrators can read direct messages for moderation.",
   "compose_form.save_changes": "Update",
   "compose_form.spoiler.marked": "Remove content warning",
   "compose_form.spoiler.unmarked": "Add content warning",

@@ -11,6 +11,7 @@ import { EmptyState } from '@/flavours/glitch/components/empty_state';
 import { LimitedAccountHint } from '@/flavours/glitch/components/limited_account_hint';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useCurrentAccountId } from '@/flavours/glitch/hooks/useAccountId';
+import { collectionsEnabled } from '@/flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
 interface EmptyMessageProps {
@@ -66,7 +67,7 @@ export const EmptyMessage: React.FC<EmptyMessageProps> = ({
           />
         }
       >
-        {!withoutAddCollectionButton && (
+        {collectionsEnabled && !withoutAddCollectionButton && (
           <Link to='/collections/new' className='button'>
             <FormattedMessage
               id='empty_column.account_featured_self.no_collections_button'

@@ -3,6 +3,7 @@
 class Api::V1::Accounts::PagesController < Api::BaseController
   include Api::AnonymousPageViewLimit
   include Api::PageSearchEngineAccess
+  include Api::PagesRoleplayAccessConcern
 
   vary_by 'Authorization, User-Agent'
 
