@@ -2,6 +2,7 @@ import { fromJS, List as ImmutableList } from 'immutable';
 import { defineMessages } from 'react-intl';
 
 import api from 'flavours/glitch/api';
+import { forceLocalOnly } from 'flavours/glitch/initial_state';
 
 import { showAlert, showAlertForError } from './alerts';
 import { ensureComposeIsVisible } from './compose';
@@ -24,7 +25,7 @@ const composePayload = (state) => {
     status: compose.get('text'),
     spoiler_text: compose.get('spoiler') ? compose.get('spoiler_text') : '',
     content_type: compose.get('content_type'),
-    local_only: compose.getIn(['advanced_options', 'do_not_federate']),
+    local_only: forceLocalOnly || compose.getIn(['advanced_options', 'do_not_federate']),
     in_reply_to_id: compose.get('in_reply_to'),
     media_ids: compose.get('media_attachments').map(media => media.get('id')).toArray(),
     sensitive: compose.get('sensitive'),

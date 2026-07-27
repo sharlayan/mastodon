@@ -13,6 +13,9 @@ ja:
         title: 新規ユーザーのアカウント承認にCHAPCHAを要求する
       flavour_and_skin:
         title: フレーバーとスキン
+      force_local_only:
+        desc_html: この設定を有効にすると、このサーバーの利用者が作成するすべての投稿がローカル限定として強制的に公開されます。(閉鎖型のオリジナルキャラクターコミュニティ向け)
+        title: ローカル限定を強制
       hide_followers_count:
         desc_html: プロフィールページのフォロワー数を見られないようにします
         title: フォロワー数を隠す

@@ -71,7 +71,7 @@ export const readSharlayanInitialState = (
     maxReactions: initialState?.max_reactions ?? 1,
     localAccountStatusesAccess: getMeta('local_account_statuses_access'),
     localStatusPageAccess: getMeta('local_status_page_access'),
-    forceLocalOnly: getMeta('force_local_only'),
+    forceLocalOnly: getMeta('force_local_only') === true,
     roleplayMode: getMeta('roleplay_mode') === true,
     circlesEnabled: getMeta('circles_enabled') === true,
     clipsEnabled: getMeta('clips_enabled') === true,

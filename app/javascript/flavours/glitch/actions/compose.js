@@ -6,6 +6,7 @@ import { throttle } from 'lodash';
 import api from 'flavours/glitch/api';
 import { browserHistory } from 'flavours/glitch/components/router';
 import { countableText } from 'flavours/glitch/features/compose/util/counter';
+import { forceLocalOnly } from 'flavours/glitch/initial_state';
 import { tagHistory } from 'flavours/glitch/settings';
 import { emojiMartSearch } from '@/flavours/glitch/features/emoji/picker';
 import { createDriveFileAttachment } from '@/flavours/glitch/sharlayan/compose/drive_attachment';
@@ -278,7 +279,7 @@ export function submitCompose(overridePrivacy = null, successCallback = undefine
         status: statusText,
         spoiler_text,
         content_type: getState().getIn(['compose', 'content_type']),
-        local_only: getState().getIn(['compose', 'advanced_options', 'do_not_federate']),
+        local_only: forceLocalOnly || getState().getIn(['compose', 'advanced_options', 'do_not_federate']),
         in_reply_to_id: getState().getIn(['compose', 'in_reply_to'], null),
         media_ids: media.map(item => item.get('id')),
         media_attributes,

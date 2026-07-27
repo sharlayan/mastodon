@@ -273,6 +273,34 @@ RSpec.describe Status do
         end
       end
     end
+
+    describe 'when force_local_only is enabled' do
+      before do
+        Setting.force_local_only = true
+      end
+
+      after do
+        Setting.force_local_only = false
+      end
+
+      it 'marks a local status local-only even when the client asked to federate' do
+        subject.account = local_account
+        subject.text = 'A toot'
+        subject.local_only = false
+        subject.save!
+
+        expect(subject).to be_local_only
+      end
+
+      it 'leaves remote statuses untouched' do
+        subject.account = remote_account
+        subject.text = 'A toot'
+        subject.uri = 'https://example.com/statuses/1'
+        subject.save!
+
+        expect(subject.local_only).to be_nil
+      end
+    end
   end
 
   describe '#reported?' do

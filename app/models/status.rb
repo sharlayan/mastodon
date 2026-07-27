@@ -487,7 +487,16 @@ class Status < ApplicationRecord
   end
 
   def set_local_only
-    return unless account.domain.nil? && !attribute_changed?(:local_only)
+    return unless account.domain.nil?
+
+    # FORCED: discards any client-supplied local_only value while the setting is on.
+    # 강제: 설정이 켜져 있으면 클라이언트가 보낸 local_only 값을 버립니다.
+    if Setting.force_local_only == true
+      self.local_only = true
+      return
+    end
+
+    return if attribute_changed?(:local_only)
 
     self.local_only = true if thread&.local_only? && local_only.nil?
 

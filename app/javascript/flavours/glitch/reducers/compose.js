@@ -59,7 +59,7 @@ import {
 } from '../actions/compose';
 import { REDRAFT } from '../actions/statuses';
 import { STORE_HYDRATE } from '../actions/store';
-import { me, defaultContentType } from '../initial_state';
+import { me, defaultContentType, forceLocalOnly } from '../initial_state';
 import { recoverHashtags } from '../utils/hashtag';
 import { unescapeHTML } from '../utils/html';
 import { overwrite } from '../utils/js_helpers';
@@ -75,7 +75,7 @@ import {
 const initialState = ImmutableMap({
   mounted: 0,
   advanced_options: ImmutableMap({
-    do_not_federate: false,
+    do_not_federate: forceLocalOnly,
     threaded_mode: false,
   }),
   sensitive: false,
@@ -104,7 +104,7 @@ const initialState = ImmutableMap({
   suggestion_token: null,
   suggestions: ImmutableList(),
   default_advanced_options: ImmutableMap({
-    do_not_federate: false,
+    do_not_federate: forceLocalOnly,
     threaded_mode: null,  //  Do not reset
   }),
   default_privacy: 'public',
