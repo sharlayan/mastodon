@@ -3,6 +3,9 @@
 class AddDriveAccessKeyToMediaAttachments < ActiveRecord::Migration[8.1]
   disable_ddl_transaction!
 
+  # Dummy class, to make migration possible across version changes
+  class MediaAttachment < ApplicationRecord; end
+
   def up
     add_column :media_attachments, :drive_access_key, :string unless column_exists?(:media_attachments, :drive_access_key)
 
@@ -19,6 +22,8 @@ class AddDriveAccessKeyToMediaAttachments < ActiveRecord::Migration[8.1]
   private
 
   def backfill_drive_access_keys
+    MediaAttachment.reset_column_information
+
     MediaAttachment.where.not(drive_file_id: nil).where(drive_access_key: nil).find_each do |attachment|
       attachment.update_column(:drive_access_key, SecureRandom.urlsafe_base64(32))
     end
