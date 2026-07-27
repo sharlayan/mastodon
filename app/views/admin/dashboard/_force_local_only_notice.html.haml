@@ -1,0 +1,5 @@
+.flash-message.info
+  %strong= t('admin.dashboard.force_local_only_notice.title')
+  %p= t('admin.dashboard.force_local_only_notice.message')
+  %p= t('admin.dashboard.force_local_only_notice.access_hint')
+  %p= link_to t('admin.dashboard.force_local_only_notice.action'), admin_settings_discovery_path

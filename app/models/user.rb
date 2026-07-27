@@ -506,7 +506,7 @@ class User < ApplicationRecord
   end
 
   def setup_roleplay_notification_policy!
-    return unless ENV['OC_ROLEPLAY_OPTION'] == 'true'
+    return unless RoleplayModeHelper.roleplay_mode?
 
     NotificationPolicy.find_or_initialize_by(account_id: account_id).update(
       for_not_following: :accept,

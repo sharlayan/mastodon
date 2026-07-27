@@ -4,8 +4,13 @@
 - content_for :heading_actions do
   = date_range(@time_period)
 
-- unless @system_checks.empty?
+- roleplay_warning = roleplay_non_local_only_statuses?
+- force_local_only_notice = force_local_only_leftover?
+
+- if roleplay_warning || force_local_only_notice || !@system_checks.empty?
   .flash-message-stack
+    = render 'admin/dashboard/roleplay_non_local_only_warning' if roleplay_warning
+    = render 'admin/dashboard/force_local_only_notice' if force_local_only_notice
     = render collection: @system_checks, partial: 'admin/system_check/messages/message'
 
 .dashboard
