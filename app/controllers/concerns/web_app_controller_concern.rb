@@ -13,10 +13,12 @@ module WebAppControllerConcern
     content_security_policy do |p|
       policy = ContentSecurityPolicy.new
 
+      switch_account_action = -> { "#{request.base_url}/auth/switch_account" }
+
       if policy.sso_host.present?
-        p.form_action policy.sso_host, -> { "https://#{request.host}/auth/auth/" }
+        p.form_action policy.sso_host, -> { "https://#{request.host}/auth/auth/" }, switch_account_action
       else
-        p.form_action :none
+        p.form_action switch_account_action
       end
     end
   end
