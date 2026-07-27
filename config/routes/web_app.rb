@@ -38,4 +38,6 @@
   /overview/about
 ).each { |path| get path, to: 'home#index' }
 
+get '/timelines/admin', to: 'home#index' if ENV['OC_ROLEPLAY_OPTION'] == 'true'
+
 draw(:sharlayan_web_app)

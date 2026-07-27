@@ -9,13 +9,20 @@ RSpec.describe Sharlayan::InitialStateRoleplay do
 
       attr_reader :object
 
-      def initialize(current_account:)
+      def initialize(current_account:, owner_viewer:)
         @object = Struct.new(:current_account).new(current_account)
+        @owner_viewer = owner_viewer
+      end
+
+      private
+
+      def admin_timeline_owner_viewer?
+        @owner_viewer
       end
     end
   end
 
-  let(:serializer) { serializer_class.new(current_account: :account) }
+  let(:serializer) { serializer_class.new(current_account: :account, owner_viewer: true) }
 
   it 'preserves develop defaults when roleplay mode is disabled' do
     allow(RoleplayModeHelper).to receive(:roleplay_mode?).and_return(false)
@@ -41,7 +48,8 @@ RSpec.describe Sharlayan::InitialStateRoleplay do
       mfm_enabled: true,
       show_avatar_decorations: true,
       roleplay_mode: true,
-      force_round_avatar: true
+      force_round_avatar: true,
+      admin_timeline_owner_viewer: true
     )
   end
 end

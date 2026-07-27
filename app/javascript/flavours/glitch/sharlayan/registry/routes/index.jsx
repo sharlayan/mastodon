@@ -5,12 +5,14 @@ import {
   driveEnabled,
   pagesEnabled,
 } from 'flavours/glitch/initial_state';
+import { adminTimelineEnabled } from 'flavours/glitch/sharlayan/roleplay';
 
 const alwaysEnabled = () => true;
 
 export const PublicTimeline = () => import('../../../features/public_timeline');
 export const CommunityTimeline = () => import('../../../features/community_timeline');
 export const ConversationThread = () => import('../../../features/direct_timeline/conversation');
+export const AdminTimeline = () => import('../../../features/admin_timeline');
 export const AntennaTimeline = () => import('../../../features/antenna_timeline');
 export const ReactedStatuses = () => import('../../../features/reacted_statuses');
 export const BoardAnnouncements = () => import('../../../features/board_announcements');
@@ -19,6 +21,7 @@ export const ClipTimeline = () => import('../../../features/clips/timeline');
 export const sharlayanColumnComponents = {
   CONVERSATION: ConversationThread,
   ANTENNA: AntennaTimeline,
+  ...(adminTimelineEnabled ? { ADMIN_TIMELINE: AdminTimeline } : {}),
   REACTIONS: ReactedStatuses,
   BOARD_ANNOUNCEMENTS: BoardAnnouncements,
   CLIP: ClipTimeline,
@@ -28,6 +31,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: alwaysEnabled, lazyComponent: PublicTimeline },
   { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: alwaysEnabled, lazyComponent: CommunityTimeline },
   { key: 'conversation', path: '/conversations/:conversationId', featureGate: alwaysEnabled, lazyComponent: ConversationThread },
+  { key: 'admin-timeline', path: '/timelines/admin', featureGate: () => adminTimelineEnabled, lazyComponent: AdminTimeline },
   { key: 'clip-new', path: '/clips/new', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-favourites', path: '/clips/favourites', exact: true, featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/favourites') },
   { key: 'clip-edit', path: '/clips/:id/edit', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },

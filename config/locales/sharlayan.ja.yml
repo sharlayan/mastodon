@@ -204,9 +204,13 @@ ja:
     roles:
       extra_categories:
         api: API
+        moderation: モデレーション
       extra_privileges:
         bypass_rate_limit: APIレート制限のバイパス
         bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
+        view_admin_timeline: 管理タイムラインの閲覧
+        view_admin_timeline_description: >-
+          コミュニティ（ロールプレイ）モードで、この権限を持つユーザーは管理タイムラインを閲覧できます。ただしオーナー（最高管理者）アカウントが参加しているダイレクトの会話は、閲覧者がオーナーでない限り非表示になります。公開範囲が限定された投稿は、連合していない(ローカル限定)場合のみ一覧に表示されます。
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
     settings:

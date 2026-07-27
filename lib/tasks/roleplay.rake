@@ -2,6 +2,8 @@
 
 namespace :roleplay do
   desc 'Set every local user\'s notification filters to "accept" (roleplay mode default)'
+  # DESTRUCTIVE: overwrites the notification policy of every local account.
+  # 파괴적: 모든 로컬 계정의 알림 정책을 덮어씁니다.
   task accept_all_notifications: :environment do
     abort 'OC_ROLEPLAY_OPTION=true is required' unless RoleplayModeHelper.roleplay_mode?
 

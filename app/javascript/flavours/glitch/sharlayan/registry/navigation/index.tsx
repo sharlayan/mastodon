@@ -16,6 +16,7 @@ import CollectionsIcon from '@/material-icons/400-24px/category.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import HomeActiveIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
+import AdministrationIcon from '@/material-icons/400-24px/manufacturing.svg?react';
 import NotificationsActiveIcon from '@/material-icons/400-24px/notifications-fill.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PublicIcon from '@/material-icons/400-24px/public.svg?react';
@@ -43,6 +44,7 @@ import {
 import { canViewFeed } from 'flavours/glitch/permissions';
 import { selectUnreadNotificationGroupsCount } from 'flavours/glitch/selectors/notifications';
 import {
+  canUseAdminTimeline,
   collectionsEnabled,
   roleplayMode,
 } from 'flavours/glitch/sharlayan/roleplay';
@@ -76,6 +78,10 @@ const messages = defineMessages({
   boardAnnouncements: {
     id: 'navigation_bar.board_announcements',
     defaultMessage: 'Announcements',
+  },
+  adminTimeline: {
+    id: 'navigation_bar.admin_timeline',
+    defaultMessage: 'Management timeline',
   },
   compose: { id: 'tabs_bar.publish', defaultMessage: 'New Post' },
 });
@@ -155,7 +161,7 @@ export const useSharlayanPrimaryNavigation = (
   aboutGetsSkipLink: boolean;
 } => {
   const intl = useIntl();
-  const { signedIn, permissions } = useIdentity();
+  const { signedIn, permissions, extraPermissions } = useIdentity();
   const account = useAccount(me);
   const navOrder = useAppSelector(
     (state) =>
@@ -282,6 +288,18 @@ export const useSharlayanPrimaryNavigation = (
     );
     if (boardAnnouncementsEnabled) {
       renderers.board_announcements = () => <BoardAnnouncementsLink />;
+    }
+    if (canUseAdminTimeline(permissions, extraPermissions)) {
+      renderers.admin_timeline = (id) => (
+        <ColumnLink
+          transparent
+          to='/timelines/admin'
+          icon='manufacturing'
+          iconComponent={AdministrationIcon}
+          text={intl.formatMessage(messages.adminTimeline)}
+          id={id}
+        />
+      );
     }
   }
 

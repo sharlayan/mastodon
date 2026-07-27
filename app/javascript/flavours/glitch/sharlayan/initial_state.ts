@@ -37,6 +37,7 @@ export interface SharlayanInitialStateMeta {
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
   roleplay_mode: boolean;
+  admin_timeline_owner_viewer?: boolean;
   visible_reactions: number;
   show_instance_info: boolean;
   custom_emoji_size: boolean;
@@ -109,5 +110,6 @@ export const readSharlayanInitialState = (
     avatarDecorationShape:
       getMeta('avatar_decoration_shape') ?? (isSignedIn ? 'none' : 'round'),
     forceRoundAvatar: getMeta('force_round_avatar') ?? false,
+    adminTimelineOwnerViewer: getMeta('admin_timeline_owner_viewer'),
   };
 };

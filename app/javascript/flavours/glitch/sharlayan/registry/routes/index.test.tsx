@@ -31,6 +31,15 @@ describe('Sharlayan route registry', () => {
     ]);
   });
 
+  it('does not register the management timeline while roleplay mode is disabled', () => {
+    const descriptor = sharlayanRouteDescriptors.find(
+      ({ key }) => key === 'admin-timeline',
+    );
+
+    expect(descriptor?.featureGate()).toBe(false);
+    expect(sharlayanColumnComponents).not.toHaveProperty('ADMIN_TIMELINE');
+  });
+
   it('uses unique keys', () => {
     const keys = sharlayanRouteDescriptors.map(({ key }) => key);
 

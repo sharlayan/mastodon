@@ -11,7 +11,23 @@ RSpec.describe UserRole do
       administrator = Fabricate(:user_role, permissions: described_class::FLAGS[:administrator])
 
       expect(role.can_extra?(:bypass_rate_limit)).to be true
-      expect(administrator.computed_extra_permissions).to eq(described_class::ExtraFlags::ALL)
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        expect(administrator.computed_extra_permissions).to eq(described_class::ExtraFlags::ALL)
+      end
+    end
+
+    it 'masks roleplay-only permissions outside roleplay mode' do
+      administrator = Fabricate(:user_role, permissions: described_class::FLAGS[:administrator])
+      stale = Fabricate(:user_role, extra_permissions: described_class::EXTRA_FLAGS[:view_admin_timeline])
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+        expect(administrator.computed_extra_permissions)
+          .to eq(described_class::ExtraFlags::ALL & ~described_class::ExtraFlags::ROLEPLAY_ONLY)
+        expect(administrator.can_extra?(:view_admin_timeline)).to be false
+        expect(administrator.can_extra?(:bypass_rate_limit)).to be true
+        expect(stale.can_extra?(:view_admin_timeline)).to be false
+      end
     end
 
     it 'round-trips known keys and ignores unknown keys' do

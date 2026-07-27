@@ -61,6 +61,7 @@ interface IntialStateRole {
   id: string;
   name: string;
   permissions: string;
+  extra_permissions?: string;
   color: string;
   highlighted: boolean;
   collection_limit: number;

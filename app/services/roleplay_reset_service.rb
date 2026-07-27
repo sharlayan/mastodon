@@ -21,6 +21,8 @@ class RoleplayResetService < BaseService
 
   private
 
+  # DESTRUCTIVE: deletes the setting rows and rewrites every role and notification policy. Not reversible.
+  # 파괴적: 설정 행을 삭제하고 모든 역할과 알림 정책을 덮어씁니다. 되돌릴 수 없습니다.
   def reset!
     ApplicationRecord.transaction do
       Setting.where(var: RESET_SETTING_KEYS.map(&:to_s)).find_each(&:destroy!)

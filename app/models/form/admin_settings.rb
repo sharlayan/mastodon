@@ -171,6 +171,8 @@ class Form::AdminSettings
     KEYS.each do |key|
       next if PSEUDO_KEYS.include?(key) || !instance_variable_defined?(:"@#{key}")
 
+      # Submitted values for these keys are discarded and replaced by the forced ones.
+      # 이 키들에 제출된 값은 버려지고 강제값으로 대체됩니다.
       if roleplay_mode? && Sharlayan::RoleplayForcedSettings::SETTINGS.key?(key)
         setting = Setting.where(var: key).first_or_initialize(var: key)
         setting.update(value: Sharlayan::RoleplayForcedSettings::SETTINGS[key])

@@ -104,6 +104,15 @@ const initialState = ImmutableMap({
     }),
   }),
 
+  admin: ImmutableMap({
+    other: ImmutableMap({
+      hidePublic: false,
+      hideUnlisted: false,
+      hidePrivate: false,
+      groupDirect: false,
+    }),
+  }),
+
   public: ImmutableMap({
     regex: ImmutableMap({
       body: '',

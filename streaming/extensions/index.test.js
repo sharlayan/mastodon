@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { AuthenticationError } from '../errors.js';
 import { createMisskeyCompat } from '../misskey_compat.js';
+import { authorizeChannel as authorizeAdminChannel } from './admin.js';
 import { authorizeChannel } from './antenna.js';
 import { ACCESS_TOKEN_QUERY, authenticateFallback } from './auth.js';
 import { createDomainFilter } from './domain_filter.js';
@@ -24,10 +25,43 @@ test('Misskey fallback is fail-closed when the setting lookup fails', async () =
   );
 });
 
-test('OAuth token query preserves expiry and account security conditions', () => {
+test('OAuth token query loads community permissions only in roleplay mode', () => {
   assert.match(ACCESS_TOKEN_QUERY, /expires_in IS NULL/);
   assert.match(ACCESS_TOKEN_QUERY, /users\.disabled IS FALSE/);
   assert.match(ACCESS_TOKEN_QUERY, /accounts\.suspended_at IS NULL/);
+  if (process.env.OC_ROLEPLAY_OPTION === 'true') {
+    assert.match(ACCESS_TOKEN_QUERY, /extra_permissions/);
+  } else {
+    assert.doesNotMatch(ACCESS_TOKEN_QUERY, /extra_permissions/);
+  }
+});
+
+test('Management timeline authorization requires roleplay mode and permission', () => {
+  const previous = process.env.OC_ROLEPLAY_OPTION;
+
+  try {
+    delete process.env.OC_ROLEPLAY_OPTION;
+    assert.throws(
+      () => authorizeAdminChannel({ extraPermissions: 2 }, 'admin'),
+      AuthenticationError
+    );
+
+    process.env.OC_ROLEPLAY_OPTION = 'true';
+    assert.throws(
+      () => authorizeAdminChannel({ extraPermissions: 0 }, 'admin'),
+      AuthenticationError
+    );
+    assert.deepEqual(
+      authorizeAdminChannel({ extraPermissions: 2 }, 'admin'),
+      {
+        channelIds: ['timeline:admin'],
+        options: { needsFiltering: false, allowLocalOnly: true },
+      }
+    );
+  } finally {
+    if (previous === undefined) delete process.env.OC_ROLEPLAY_OPTION;
+    else process.env.OC_ROLEPLAY_OPTION = previous;
+  }
 });
 
 test('Antenna authorization rejects an antenna owned by another account', async () => {

@@ -35,7 +35,8 @@ import { Button } from '@/flavours/glitch/components/button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { computeNavigationOrder, isNavigationItemAlwaysVisible, NAVIGATION_PANEL_ITEMS, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
-import { collectionsEnabled } from '@/flavours/glitch/sharlayan/roleplay';
+import { useIdentity } from '@/flavours/glitch/identity_context';
+import { canUseAdminTimeline, collectionsEnabled } from '@/flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
 const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, locked, intl, onToggle, onMove }) => {
@@ -110,8 +111,12 @@ NavigationPanelSettingsItem.propTypes = {
 
 const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   const dispatch = useAppDispatch();
+  const { permissions, extraPermissions } = useIdentity();
+  const adminTimelineAvailable = canUseAdminTimeline(permissions, extraPermissions);
   const configuredOrder = computeNavigationOrder(settings.getIn(['navigation_panel', 'order'])?.toJS());
-  const order = configuredOrder.filter((key) => key !== 'collections' || collectionsEnabled);
+  const order = configuredOrder
+    .filter((key) => key !== 'admin_timeline' || adminTimelineAvailable)
+    .filter((key) => key !== 'collections' || collectionsEnabled);
   const hidden = settings.getIn(['navigation_panel', 'hidden']) ?? ImmutableMap();
   const usingDefaults = fromJS(configuredOrder).equals(fromJS(NAVIGATION_PANEL_ITEMS)) && hidden.isEmpty();
 

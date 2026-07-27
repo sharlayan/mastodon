@@ -8,6 +8,8 @@ apply = ARGV.delete('--apply')
 abort 'Unknown arguments. Usage: bin/reset-roleplay-mode [--apply]' if ARGV.any?
 abort I18n.t('roleplay_reset.disable_first') if RoleplayModeHelper.roleplay_mode?
 
+# --apply writes to the database and cannot be undone; without it this only reports.
+# --apply는 DB에 기록하며 되돌릴 수 없습니다. 없으면 조회만 합니다.
 summary = RoleplayResetService.new.call(apply: apply)
 mode = apply ? 'Applied' : 'Dry run'
 

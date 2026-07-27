@@ -14,6 +14,17 @@ module Sharlayan::InitialStateRoleplay
     store[:mfm_enabled] = true if Setting['force_mfm_enabled']
     store[:show_avatar_decorations] = true if Setting['force_avatar_decorations']
     store[:force_round_avatar] = Setting['force_round_avatar']
+    store[:admin_timeline_owner_viewer] = admin_timeline_owner_viewer?
     store
+  end
+
+  private
+
+  def admin_timeline_owner_viewer?
+    role = object_account_user&.role
+    return false if role.nil? || role.everyone?
+
+    top_position = UserRole.assignable.maximum(:position)
+    role.position == top_position
   end
 end
