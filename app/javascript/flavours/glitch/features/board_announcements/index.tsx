@@ -37,71 +37,9 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useLayout } from 'flavours/glitch/hooks/useLayout';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
-import type {
-  AllowedTagsType,
-  OnAttributeHandler,
-} from 'flavours/glitch/utils/html';
-import { defaultAllowedTags } from 'flavours/glitch/utils/html';
 
+import { useBoardAnnouncementHtml } from './html';
 import { ReactionsBar } from './reactions';
-
-const BOARD_ALLOWED_TAGS: AllowedTagsType = {
-  ...defaultAllowedTags,
-  hr: { children: false },
-  table: {},
-  thead: {},
-  tbody: {},
-  tr: {},
-  th: {
-    attributes: {
-      colspan: 'colSpan',
-      rowspan: 'rowSpan',
-      scope: true,
-      align: true,
-    },
-  },
-  td: {
-    attributes: { colspan: 'colSpan', rowspan: 'rowSpan', align: true },
-  },
-  div: { attributes: { align: true } },
-  p: { attributes: { align: true } },
-  mark: {},
-  kbd: {},
-  ins: {},
-  small: {},
-};
-
-const styleStringToObject = (style: string): React.CSSProperties => {
-  const result: Record<string, string> = {};
-
-  for (const declaration of style.split(';')) {
-    const separator = declaration.indexOf(':');
-    if (separator === -1) {
-      continue;
-    }
-
-    const property = declaration.slice(0, separator).trim();
-    const value = declaration.slice(separator + 1).trim();
-    if (!property || !value) {
-      continue;
-    }
-
-    const camelCased = property
-      .toLowerCase()
-      .replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
-    result[camelCased] = value;
-  }
-
-  return result as React.CSSProperties;
-};
-
-const handleBoardAttribute: OnAttributeHandler = (name, value) => {
-  if (name === 'style') {
-    return ['style', styleStringToObject(value)];
-  }
-
-  return undefined;
-};
 
 const ICON_COMPONENTS: Record<
   ApiBoardAnnouncementIcon,
@@ -160,6 +98,7 @@ const Announcement: React.FC<{
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const htmlProps = useBoardAnnouncementHtml();
 
   const showBody = expanded;
 
@@ -270,8 +209,7 @@ const Announcement: React.FC<{
             className='board-announcement__content translate'
             htmlString={announcement.content}
             extraEmojis={announcement.emojis}
-            allowedTags={BOARD_ALLOWED_TAGS}
-            onAttribute={handleBoardAttribute}
+            {...htmlProps}
             onClick={handleContentClick}
           />
           <ReactionsBar

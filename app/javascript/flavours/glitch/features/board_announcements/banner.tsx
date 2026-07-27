@@ -22,6 +22,8 @@ import { useIdentity } from 'flavours/glitch/identity_context';
 import { boardAnnouncementsEnabled } from 'flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
+import { useBoardAnnouncementHtml } from './html';
+
 const ICON_COMPONENTS: Record<
   ApiBoardAnnouncementIcon,
   React.FC<React.SVGProps<SVGSVGElement>>
@@ -42,6 +44,7 @@ const messages = defineMessages({
 const Banner: React.FC<{ banner: ApiBoardAnnouncementJSON }> = ({ banner }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
+  const htmlProps = useBoardAnnouncementHtml();
 
   const handleDismiss = useCallback(() => {
     void dispatch(readBoardAnnouncement({ id: banner.id }));
@@ -64,6 +67,7 @@ const Banner: React.FC<{ banner: ApiBoardAnnouncementJSON }> = ({ banner }) => {
           className='board-announcement-banner__content translate'
           htmlString={banner.content}
           extraEmojis={banner.emojis}
+          {...htmlProps}
         />
       </div>
       <IconButton

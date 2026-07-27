@@ -197,6 +197,44 @@ class Sanitize
       end
     end
 
+    BOARD_ANNOUNCEMENT_CLASSES = /\A(
+      language-[\w+\#-]+ |
+      markdown-alert(-(note|tip|important|warning|caution|title))? |
+      contains-task-list |
+      task-list-item
+    )\z/x
+
+    BOARD_ANNOUNCEMENT_CLASS_TRANSFORMER = lambda do |env|
+      node = env[:node]
+      class_list = node['class']&.split(/[\t\n\f\r ]/)
+
+      return unless class_list
+
+      class_list.keep_if do |e|
+        next true if /^(h|p|u|dt|e)-/.match?(e) # microformats classes
+        next true if /^(mention|hashtag)$/.match?(e) # semantic classes
+        next true if /^(ellipsis|invisible)$/.match?(e) # link formatting classes
+        next true if e == 'quote-inline'
+        next true if BOARD_ANNOUNCEMENT_CLASSES.match?(e)
+      end
+
+      node['class'] = class_list.join(' ')
+    end
+
+    BOARD_ANNOUNCEMENT_INPUT_TRANSFORMER = lambda do |env|
+      return unless env[:node_name] == 'input'
+
+      node = env[:node]
+
+      if node['type']&.downcase == 'checkbox'
+        node['disabled'] = 'disabled'
+        node.remove_attribute('name')
+        node.remove_attribute('value')
+      else
+        node.unlink
+      end
+    end
+
     BOARD_ANNOUNCEMENT_CSS_PROPERTIES = %w(
       color
       background-color
@@ -230,7 +268,7 @@ class Sanitize
     ).freeze
 
     BOARD_ANNOUNCEMENT = freeze_config MASTODON_STRICT.merge(
-      elements: MASTODON_STRICT[:elements] + %w(img hr table thead tbody tr th td p div mark kbd ins small),
+      elements: MASTODON_STRICT[:elements] + %w(img hr table thead tbody tfoot tr th td caption p div h6 mark kbd ins small input details summary dl dt dd),
 
       attributes: merge(
         MASTODON_STRICT[:attributes],
@@ -239,7 +277,14 @@ class Sanitize
         'td' => %w(colspan rowspan align style),
         'th' => %w(colspan rowspan scope align style),
         'p' => %w(class align style),
-        'div' => %w(align style),
+        'div' => %w(class align style),
+        'ul' => %w(class),
+        'ol' => %w(start reversed class),
+        'li' => %w(value class),
+        'code' => %w(class),
+        'pre' => %w(class),
+        'input' => %w(type checked disabled),
+        'details' => %w(open),
         'span' => %w(class translate style)
       ),
 
@@ -255,7 +300,8 @@ class Sanitize
       },
 
       transformers: [
-        ALLOWED_CLASS_TRANSFORMER,
+        BOARD_ANNOUNCEMENT_CLASS_TRANSFORMER,
+        BOARD_ANNOUNCEMENT_INPUT_TRANSFORMER,
         TRANSLATE_TRANSFORMER,
         UNSUPPORTED_HREF_TRANSFORMER,
         LINK_REL_TRANSFORMER,
