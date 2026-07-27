@@ -233,8 +233,8 @@ module Sharlayan
 
         emoji.license = meta['license'] if meta.key?('license')
         emoji.aliases = meta['aliases'] if meta['aliases'].is_a?(Array)
-        emoji.is_sensitive = meta['is_sensitive'] if meta.key?('is_sensitive')
-        emoji.local_only = meta['local_only'] if meta.key?('local_only')
+        emoji.is_sensitive = ActiveModel::Type::Boolean.new.cast(meta['is_sensitive']) || false unless meta['is_sensitive'].nil?
+        emoji.local_only = ActiveModel::Type::Boolean.new.cast(meta['local_only']) || false unless meta['local_only'].nil?
 
         if options[:unlisted]
           emoji.visible_in_picker = false
