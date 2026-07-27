@@ -23,7 +23,7 @@ class MisskeyCompat::NoteSerializer
 
     emojis = {}
     reaction_emojis = {}
-    reactions, my_reaction = reactions_for(status, reaction_emojis)
+    reactions, my_reaction = reactions_for(status, reaction_emojis, emojis)
     merge_text_emojis(status, emojis)
     mentions = load_mentions(status)
     media = status.ordered_media_attachments
@@ -141,7 +141,7 @@ class MisskeyCompat::NoteSerializer
     MisskeyCompat::MiId.encode(status.quote&.quoted_status_id)
   end
 
-  def reactions_for(status, reaction_emojis)
+  def reactions_for(status, reaction_emojis, emojis)
     reactions = {}
     my_reaction = nil
 
@@ -152,7 +152,10 @@ class MisskeyCompat::NoteSerializer
         host = custom.domain.presence
         suffix = host ? "#{reaction.name}@#{host}" : "#{reaction.name}@."
         key = ":#{suffix}:"
-        reaction_emojis["#{reaction.name}@#{host}"] = full_asset_url(custom.image.url) if host
+        url = full_asset_url(custom.image.url)
+        reaction_emojis["#{reaction.name}@#{host}"] = url if host
+        emojis[suffix] ||= url
+        emojis[reaction.name] ||= url if host.nil?
       else
         key = reaction.name
       end
