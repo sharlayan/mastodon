@@ -2,16 +2,16 @@
 
 class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed).freeze
-  OWNER_ACTIONS = %i(index likes create update destroy like unlike).freeze
+  AUTHENTICATED_ACTIONS = %i(featured index likes create update destroy like unlike).freeze
 
   requires_write_scope :create, :update, :destroy, :like, :unlike
-  requires_misskey_permission 'read:pages', :index
+  requires_misskey_permission 'read:pages', :featured, :index
   requires_misskey_permission 'read:page-likes', :likes
   requires_misskey_permission 'write:pages', :create, :update, :destroy
   requires_misskey_permission 'write:page-likes', :like, :unlike
 
   before_action :require_pages_enabled!
-  before_action :require_user!, only: OWNER_ACTIONS
+  before_action :require_user!, only: AUTHENTICATED_ACTIONS
   before_action :set_page, only: [:update, :destroy, :like, :unlike]
   before_action :authorize_owner!, only: [:update, :destroy]
 

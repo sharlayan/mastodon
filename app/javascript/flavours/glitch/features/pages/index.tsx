@@ -45,7 +45,7 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [useBlogView]);
 
   useEffect(() => {
-    if (!signedIn && tab === 'mine') {
+    if (!signedIn) {
       return;
     }
 
@@ -127,7 +127,7 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         emptyMessage={emptyMessage}
         bindToDocument={!multiColumn}
       >
-        {tab === 'mine' && !signedIn ? (
+        {!signedIn ? (
           <NotSignedInIndicator />
         ) : (
           visiblePages.map((page) => (

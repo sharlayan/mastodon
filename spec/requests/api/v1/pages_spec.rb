@@ -133,6 +133,67 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'public response caching' do
+    let!(:page) { Fabricate(:page, account: user.account, likes_count: 1) }
+
+    it 'caches anonymous public page reads', :aggregate_failures do
+      [
+        "/api/v1/pages/#{page.id}",
+        "/api/v1/accounts/#{page.account_id}/pages",
+        "/api/v1/accounts/#{page.account_id}/pages/#{page.name}",
+      ].each do |path|
+        get path
+
+        expect(response).to have_http_status(200)
+        expect(response.headers['Cache-Control']).to include(
+          'public',
+          'max-age=15',
+          'stale-while-revalidate=30',
+          'stale-if-error=86400'
+        )
+        expect(response.headers['Vary']).to include('Authorization')
+        expect(response.cache_control).to_not include(:private, :no_store)
+      end
+    end
+
+    it 'keeps authenticated page reads private', :aggregate_failures do
+      get "/api/v1/pages/#{page.id}", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.cache_control).to include(private: true, no_store: true)
+      expect(response.cache_control).to_not include(:public)
+    end
+
+    it 'requires authentication for featured pages', :aggregate_failures do
+      get '/api/v1/pages/featured'
+
+      expect(response).to have_http_status(401)
+      expect(response.cache_control).to include(private: true, no_store: true)
+      expect(response.cache_control).to_not include(:public)
+    end
+
+    it 'returns featured pages to authenticated users without public caching', :aggregate_failures do
+      get '/api/v1/pages/featured', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to include(page.id.to_s)
+      expect(response.cache_control).to include(private: true, no_store: true)
+      expect(response.cache_control).to_not include(:public)
+    end
+
+    it 'keeps page creation responses private', :aggregate_failures do
+      post '/api/v1/pages', params: {
+        title: 'New public page',
+        name: 'new-public-page',
+        content: [],
+      }, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.cache_control).to include(private: true, no_store: true)
+      expect(response.cache_control).to_not include(:public)
+    end
+  end
+
   describe 'content limits' do
     it 'preserves the image no-upscale option' do
       post '/api/v1/pages', params: {
@@ -247,7 +308,7 @@ RSpec.describe 'Pages' do
 
     it 'excludes password pages from featured pages' do
       password_page.update_column(:likes_count, 10)
-      get '/api/v1/pages/featured'
+      get '/api/v1/pages/featured', headers: headers
 
       expect(response.parsed_body.pluck(:id)).to_not include(password_page.id.to_s)
     end
@@ -295,7 +356,7 @@ RSpec.describe 'Pages' do
       get "/api/v1/pages/#{page.id}"
       expect(response).to have_http_status(404)
 
-      get '/api/v1/pages/featured'
+      get '/api/v1/pages/featured', headers: headers
       expect(response.parsed_body.pluck(:id)).to_not include(page.id.to_s)
 
       post "/api/v1/pages/#{page.id}/unlock", params: { password: 'irrelevant' }

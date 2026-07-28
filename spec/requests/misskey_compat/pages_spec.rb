@@ -24,7 +24,7 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
     let!(:password_page) { Fabricate(:page, account: account, visibility: 'password', access_password: 'correct-password', likes_count: 20) }
 
     it 'returns featured published pages in Misskey format' do
-      post '/api/pages/featured', params: {}, as: :json
+      post '/api/pages/featured', params: { i: read_token }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to contain_exactly(MisskeyCompat::MiId.encode(published_page.id))
@@ -34,6 +34,13 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
         script: '',
         likedCount: 2
       )
+    end
+
+    it 'requires authentication for featured pages' do
+      post '/api/pages/featured', params: {}, as: :json
+
+      expect(response).to have_http_status(401)
+      expect(response.parsed_body.dig(:error, :code)).to eq('CREDENTIAL_REQUIRED')
     end
 
     it 'includes drafts only in their owner i/pages list' do
@@ -85,9 +92,11 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
     end
 
     it 'hides pages owned by a suspended account' do
+      viewer = Fabricate(:user)
+      viewer_token = Fabricate(:accessible_access_token, resource_owner_id: viewer.id, scopes: 'read').token
       account.suspend!
 
-      post '/api/pages/featured', params: {}, as: :json
+      post '/api/pages/featured', params: { i: viewer_token }, as: :json
       expect(response.parsed_body).to be_empty
 
       post '/api/users/pages', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json

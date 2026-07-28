@@ -4,11 +4,11 @@ class Api::V1::PagesController < Api::BaseController
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed url size).freeze
 
   before_action :require_feature_enabled!
-  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories]
-  before_action -> { authorize_if_got_token! :read, :'read:accounts' }, only: [:show, :featured, :unlock]
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories, :featured]
+  before_action -> { authorize_if_got_token! :read, :'read:accounts' }, only: [:show, :unlock]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock]
 
-  before_action :require_user!, except: [:show, :featured, :unlock]
+  before_action :require_user!, except: [:show, :unlock]
   before_action :set_page, only: [:show, :update, :destroy, :like, :unlike, :set_main, :unset_main]
 
   rescue_from Page::ContentLimitError do
@@ -25,6 +25,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def show
+    cache_if_unauthenticated!
     not_found if @page.private_visibility? && @page.account_id != current_account&.id
     render json: @page, serializer: REST::PageSerializer
   end
