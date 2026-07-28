@@ -1,7 +1,11 @@
 ---
 ko:
+  misskey_registry:
+    scope_too_large: 레지스트리 범위가 너무 커서 반환할 수 없습니다.
   status_drafts:
+    data_too_large: 초안 데이터는 %{limit} KiB를 초과할 수 없습니다
     over_limit: 초안은 최대 %{limit}개까지 저장할 수 있습니다
+    storage_too_large: 계정당 초안 데이터는 %{limit} MiB를 초과할 수 없습니다
   about:
     about_mastodon_html: '미래의 소셜 네트워크: 광고 없음, 기업 감시 없음, 윤리적 설계, 탈중앙화! 여러분만의 데이터를 Mastodon으로 보호하고 누리세요!'
     contact_missing: 미설정

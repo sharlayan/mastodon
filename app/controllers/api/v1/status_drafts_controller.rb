@@ -4,15 +4,18 @@ class Api::V1::StatusDraftsController < Api::BaseController
   before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:index, :show]
   before_action -> { doorkeeper_authorize! :write, :'write:statuses' }, only: [:create, :update, :destroy]
   before_action :require_user!
+  before_action :enforce_status_draft_rate_limit!
   before_action :set_draft, only: [:show, :update, :destroy]
 
   def index
-    drafts = current_account.status_drafts.includes(:media_attachments)
-      .to_a_paginated_by_id(limit_param(DEFAULT_STATUSES_LIMIT), params_slice(:max_id, :since_id, :min_id))
+    drafts = current_account.status_drafts.within_data_limit.includes(:media_attachments)
+      .to_a_paginated_by_id(limit_param(StatusDraft::LIST_LIMIT, StatusDraft::LIST_LIMIT), params_slice(:max_id, :since_id, :min_id))
     render json: drafts, each_serializer: REST::StatusDraftSerializer
   end
 
   def show
+    return render_oversized_draft if @draft.data_bytes > StatusDraft::MAX_DATA_BYTES
+
     render json: @draft, serializer: REST::StatusDraftSerializer
   end
 
@@ -39,6 +42,14 @@ class Api::V1::StatusDraftsController < Api::BaseController
     @draft = current_account.status_drafts.find(params[:id])
   end
 
+  def enforce_status_draft_rate_limit!
+    RateLimiter.new(current_account, family: :status_drafts).record!
+  end
+
+  def render_oversized_draft
+    render json: { error: I18n.t('status_drafts.data_too_large', limit: StatusDraft::MAX_DATA_BYTES / 1.kilobyte) }, status: 422
+  end
+
   def draft_data
     params.permit(
       :status, :spoiler_text, :content_type, :local_only, :in_reply_to_id,
@@ -52,7 +63,7 @@ class Api::V1::StatusDraftsController < Api::BaseController
   def save_with_media!(draft)
     media_ids = Array(params[:media_ids]).first(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i)
 
-    draft.transaction do
+    current_account.with_lock do
       draft.save!
       media = current_account.media_attachments.where(status_id: nil, scheduled_status_id: nil)
         .where(status_draft_id: [nil, draft.id]).where(id: media_ids).index_by(&:id)

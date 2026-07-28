@@ -74,12 +74,12 @@ class Export
 
   def to_clips_json
     data_collection = { clips: [] }
-    account.clips.includes(:statuses).reorder(id: :desc).each do |clip|
+    account.clips.reorder(id: :desc).each do |clip|
       data_collection[:clips] << {
         title: clip.title,
         description: clip.description,
         public: clip.public,
-        statuses: clip.statuses.map { |status| ActivityPub::TagManager.instance.uri_for(status) },
+        statuses: clip.statuses.reorder('clip_statuses.id DESC').limit(Clip::STATUSES_LIMIT).map { |status| ActivityPub::TagManager.instance.uri_for(status) },
       }
     end
     JSON.generate(data_collection)

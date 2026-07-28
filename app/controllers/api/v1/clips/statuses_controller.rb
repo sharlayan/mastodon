@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Clips::StatusesController < Api::BaseController
+  include Api::ClipNotesRateLimit
+
   before_action :require_feature_enabled!
   before_action -> { doorkeeper_authorize! :read, :'read:lists' }, only: [:index]
   before_action -> { doorkeeper_authorize! :write, :'write:lists' }, except: [:index]
@@ -8,6 +10,7 @@ class Api::V1::Clips::StatusesController < Api::BaseController
   before_action :require_user!, except: [:index]
   before_action :set_clip
   before_action :require_ownership!, except: [:index]
+  before_action :record_clip_notes_request!, only: [:index]
 
   after_action :insert_pagination_headers, only: [:index]
 
@@ -20,7 +23,9 @@ class Api::V1::Clips::StatusesController < Api::BaseController
     status = Status.find(status_params[:status_id])
     not_found unless StatusPolicy.new(current_account, status).show?
 
-    @clip.clip_statuses.find_or_create_by!(status_id: status.id)
+    @clip.with_lock do
+      @clip.clip_statuses.find_or_create_by!(status_id: status.id)
+    end
     render_empty
   end
 

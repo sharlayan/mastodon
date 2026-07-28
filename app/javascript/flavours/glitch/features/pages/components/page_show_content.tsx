@@ -13,6 +13,7 @@ import { Icon } from 'flavours/glitch/components/icon';
 
 import type { PageMediaOpenHandler } from './blocks';
 import { PageBlockList } from './blocks';
+import { PageNoteFetchProvider } from './blocks/note_fetch_context';
 import { PageShowFooter } from './page_show_footer';
 
 const messages = defineMessages({
@@ -94,12 +95,14 @@ export const PageShowContent: React.FC<{
                 loop
                 muted
                 playsInline
+                preload='metadata'
               />
             ) : (
               <img
                 className='page__eye-catching'
                 src={eyeCatchingMedia.url}
                 alt={eyeCatchingMedia.description ?? ''}
+                decoding='async'
               />
             )}
           </button>
@@ -173,12 +176,14 @@ export const PageShowContent: React.FC<{
       ) : (
         <>
           <div className='page__content'>
-            <PageBlockList
-              blocks={page.content}
-              page={page}
-              depth={0}
-              onOpenMedia={onOpenMedia}
-            />
+            <PageNoteFetchProvider key={page.id}>
+              <PageBlockList
+                blocks={page.content}
+                page={page}
+                depth={0}
+                onOpenMedia={onOpenMedia}
+              />
+            </PageNoteFetchProvider>
           </div>
           <PageShowFooter
             page={page}

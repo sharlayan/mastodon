@@ -131,6 +131,101 @@ test('Misskey cleanup removes channel and note subscriptions', () => {
   assert.equal(session.misskeyNotes.size, 0);
 });
 
+test('Misskey note subscription limit reserves slots before asynchronous authorization', async () => {
+  let authorizationCalls = 0;
+  let releaseAuthorization;
+  const pendingAuthorization = new Promise((resolve) => { releaseAuthorization = resolve; });
+  const compat = createMisskeyCompat({
+    subscribe: () => assert.fail('pending subscriptions must not reach Redis'),
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: [] }),
+    authorizeStatusAccess: async () => {
+      authorizationCalls += 1;
+      return pendingAuthorization;
+    },
+    loadGrantPermissions: async () => undefined,
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['read:statuses'] },
+    websocket: { readyState: 1, OPEN: 1, send: () => {} },
+  };
+
+  for (let id = 1; id <= 101; id += 1) {
+    compat.handleMessage(session, { type: 'subNote', body: { id: String(id) } });
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(authorizationCalls, 100);
+  assert.equal(session.misskeyNotes.size, 100);
+
+  releaseAuthorization(false);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.misskeyNotes.size, 0);
+});
+
+test('Misskey channel subscription limit reserves slots before asynchronous resolution', async () => {
+  let resolutionCalls = 0;
+  let releaseResolution;
+  const pendingResolution = new Promise((resolve) => { releaseResolution = resolve; });
+  const compat = createMisskeyCompat({
+    subscribe: () => assert.fail('pending subscriptions must not reach Redis'),
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => {
+      resolutionCalls += 1;
+      return pendingResolution;
+    },
+    authorizeStatusAccess: async () => true,
+    loadGrantPermissions: async () => undefined,
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['read:statuses'] },
+    websocket: { readyState: 1, OPEN: 1, send: () => {} },
+  };
+
+  for (let id = 1; id <= 51; id += 1) {
+    compat.handleMessage(session, { type: 'connect', body: { id: `channel-${id}`, channel: 'localTimeline' } });
+  }
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(resolutionCalls, 50);
+  assert.equal(session.misskey.channels.size, 50);
+
+  releaseResolution(undefined);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.misskey.channels.size, 0);
+});
+
+test('Misskey note subscriptions reject values outside the database ID range', async () => {
+  let authorizationCalls = 0;
+  const compat = createMisskeyCompat({
+    subscribe: () => assert.fail('invalid IDs must not reach Redis'),
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: [] }),
+    authorizeStatusAccess: async () => { authorizationCalls += 1; return true; },
+    loadGrantPermissions: async () => undefined,
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['read:statuses'] },
+    websocket: { readyState: 1, OPEN: 1, send: () => {} },
+  };
+
+  compat.handleMessage(session, { type: 'subNote', body: { id: '9223372036854775808' } });
+  compat.handleMessage(session, { type: 'subNote', body: { id: '1'.repeat(1_000) } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(authorizationCalls, 0);
+  assert.equal(session.misskeyNotes.size, 0);
+});
+
 test('Misskey drive channel subscribes to the account stream and forwards typed events', async () => {
   const subscribed = [];
   let captured;

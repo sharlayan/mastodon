@@ -94,6 +94,39 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       expect(response).to have_http_status(400)
       expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
     end
+
+    it 'rate limits repeated authenticated aggregation requests' do
+      limiter = RateLimiter.new(user.account, family: :misskey_hashtags)
+      RateLimiter::FAMILIES[:misskey_hashtags][:limit].times { limiter.record! }
+
+      post '/api/hashtags/list', params: { i: read_token, sort: '+attachedUsers' }, as: :json
+
+      expect(response).to have_http_status(429)
+      expect(response.parsed_body.dig('error', 'code')).to eq('RATE_LIMIT_EXCEEDED')
+      expect(response.headers['Cache-Control']).to eq('private, no-store')
+      expect(response.headers['Retry-After'].to_i).to be_positive
+    end
+  end
+
+  describe 'POST /api/hashtags/search' do
+    it 'clamps deep offsets before searching' do
+      allow(Tag).to receive(:search_for).and_call_original
+
+      post '/api/hashtags/search', params: { i: read_token, query: 'tag', offset: 1_000_000 }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(Tag).to have_received(:search_for).with('tag', 20, 1_000, exclude_unreviewed: false)
+    end
+
+    it 'rejects oversized search terms before querying tags' do
+      allow(Tag).to receive(:search_for).and_call_original
+
+      post '/api/hashtags/search', params: { i: read_token, query: 'a' * (Api::MisskeyCompat::HashtagsController::SEARCH_QUERY_LENGTH_LIMIT + 1) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq([])
+      expect(Tag).to_not have_received(:search_for)
+    end
   end
 
   describe 'POST /api/users/lists/update-membership' do

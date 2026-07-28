@@ -3,6 +3,22 @@
 class RateLimiter
   include Redisable
 
+  INCREMENT_SCRIPT = <<~LUA
+    local count = redis.call('INCR', KEYS[1])
+    if count == 1 then
+      redis.call('EXPIRE', KEYS[1], ARGV[1])
+    end
+    return count
+  LUA
+
+  ROLLBACK_SCRIPT = <<~LUA
+    local count = redis.call('GET', KEYS[1])
+    if count and tonumber(count) > 0 then
+      return redis.call('DECR', KEYS[1])
+    end
+    return 0
+  LUA
+
   FAMILIES = {
     follows: {
       limit: 1000,
@@ -53,6 +69,41 @@ class RateLimiter
       limit: 30,
       period: 5.minutes.freeze,
     }.freeze,
+
+    anonymous_page_views: {
+      limit: 60,
+      period: 10.minutes.freeze,
+    }.freeze,
+
+    anonymous_pages: {
+      limit: 600,
+      period: 10.minutes.freeze,
+    }.freeze,
+
+    status_drafts: {
+      limit: 120,
+      period: 5.minutes.freeze,
+    }.freeze,
+
+    misskey_registry: {
+      limit: 120,
+      period: 5.minutes.freeze,
+    }.freeze,
+
+    clip_notes: {
+      limit: 120,
+      period: 5.minutes.freeze,
+    }.freeze,
+
+    status_reactions: {
+      limit: 120,
+      period: 5.minutes.freeze,
+    }.freeze,
+
+    misskey_hashtags: {
+      limit: 120,
+      period: 5.minutes.freeze,
+    }.freeze,
   }.freeze
 
   def initialize(by, options = {})
@@ -63,20 +114,16 @@ class RateLimiter
   end
 
   def record!
-    count = redis.get(key)
+    ttl = (@period - (last_epoch_time % @period) + 1).to_i
+    count = redis.eval(INCREMENT_SCRIPT, keys: [key], argv: [ttl]).to_i
+    return if count <= @limit
 
-    if count.nil?
-      redis.set(key, 0)
-      redis.expire(key, (@period - (last_epoch_time % @period) + 1).to_i)
-    end
-
-    raise Mastodon::RateLimitExceededError if count.present? && count.to_i >= @limit
-
-    redis.incr(key)
+    rollback!
+    raise Mastodon::RateLimitExceededError
   end
 
   def rollback!
-    redis.decr(key)
+    redis.eval(ROLLBACK_SCRIPT, keys: [key])
   end
 
   def to_headers(now = Time.now.utc)

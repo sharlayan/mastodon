@@ -1,7 +1,11 @@
 ---
 en:
+  misskey_registry:
+    scope_too_large: Registry scope is too large to return.
   status_drafts:
+    data_too_large: Draft data cannot exceed %{limit} KiB
     over_limit: You cannot save more than %{limit} drafts
+    storage_too_large: Drafts cannot use more than %{limit} MiB per account
   about:
     about_mastodon_html: 'The social network of the future: No ads, no corporate surveillance, ethical design, and decentralization! Own your data with Mastodon!'
     contact_missing: Not set

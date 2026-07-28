@@ -92,6 +92,15 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
     expect(account.status_drafts).to be_empty
   end
 
+  it 'caps draft list responses at the server limit' do
+    (StatusDraft::LIST_LIMIT + 1).times { Fabricate(:status_draft, account: account) }
+
+    rpc_post 'notes/drafts/list', limit: 100
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.size).to eq(StatusDraft::LIST_LIMIT)
+  end
+
   it 'isolates drafts and attached media by account', :aggregate_failures do
     foreign_draft = Fabricate(:status_draft)
     foreign_media = Fabricate(:media_attachment)

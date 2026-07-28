@@ -4,11 +4,23 @@ require 'rails_helper'
 
 RSpec.describe 'Media Proxy' do
   describe 'GET /proxy' do
-    before { Setting.misskey_compat_enabled = true }
+    before do
+      Setting.misskey_compat_enabled = true
+      Rails.cache.clear
+    end
+
     after { Setting.misskey_compat_enabled = false }
 
     it 'redirects to a URL already known through a preview card' do
       card = Fabricate(:preview_card, url: 'https://known.example/article')
+
+      get '/proxy', params: { url: card.url }
+
+      expect(response).to redirect_to(card.url)
+    end
+
+    it 'keeps redirecting known URLs that exceed the common 2 KiB boundary' do
+      card = Fabricate(:preview_card, url: "https://known.example/#{'a' * 2_100}")
 
       get '/proxy', params: { url: card.url }
 
@@ -94,6 +106,25 @@ RSpec.describe 'Media Proxy' do
       get '/proxy', params: { url: 'https://attacker.example/phishing' }
 
       expect(response).to have_http_status(404)
+    end
+
+    it 'rejects oversized URLs before querying known resources' do
+      allow(PreviewCard).to receive(:exists?).and_call_original
+
+      get '/proxy', params: { url: "https://unknown.example/#{'a' * MisskeyCompat::MediaProxyController::MAX_URL_BYTES}" }
+
+      expect(response).to have_http_status(404)
+      expect(PreviewCard).to_not have_received(:exists?)
+    end
+
+    it 'negative-caches an unknown URL' do
+      allow(PreviewCard).to receive(:exists?).and_call_original
+      url = 'https://unknown.example/repeated-miss.png'
+
+      2.times { get '/proxy', params: { url: url } }
+
+      expect(response).to have_http_status(404)
+      expect(PreviewCard).to have_received(:exists?).once
     end
   end
 

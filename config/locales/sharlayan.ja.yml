@@ -332,6 +332,7 @@ ja:
   clips:
     errors:
       limit: クリップの上限数に達しています
+      statuses_limit: クリップに追加できる投稿は%{limit}件までです
   custom_css:
     disabled_by_admin: サーバー管理者がユーザーのカスタムCSSを無効にしています。上のサーバー全体のスタイルを適用するかどうかは引き続き選択できます。
     preamble_html: >-
@@ -405,8 +406,9 @@ ja:
     settings:
       heading: ページ
     errors:
+      daily_limit: ページは1日あたり%{limit}件まで作成できます
       invalid_password: パスワードが正しくありません
-      limit: ページの上限数に達しています
+      limit: ページは最大%{limit}件まで所有できます
       own_page: 自分のページにはいいねできません
   pagination:
     truncate_html: "&hellip;"

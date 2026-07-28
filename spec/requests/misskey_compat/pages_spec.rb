@@ -54,18 +54,59 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       )
     end
 
+    it 'uses 20 items as the default list size' do
+      21.times { Fabricate(:page, account: account) }
+
+      post '/api/i/pages', params: { i: read_token }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq(20)
+    end
+
     it 'returns only published pages from users/pages' do
       post '/api/users/pages', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to contain_exactly(MisskeyCompat::MiId.encode(published_page.id))
+      expect(response.parsed_body.first).to include(content: [], attachedFiles: [])
     end
 
     it 'shows a public page by username and name' do
+      published_page.update!(content: [{ 'id' => 'body', 'type' => 'text', 'text' => 'Full body' }])
       post '/api/pages/show', params: { username: account.username, name: published_page.name }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(published_page.id))
+      expect(response.parsed_body.dig(:content, 0, :text)).to eq('Full body')
+    end
+
+    it 'hides pages from anonymous crawlers according to the owner setting' do
+      user.settings['noindex'] = true
+      user.save!
+
+      post '/api/pages/show',
+           params: { pageId: MisskeyCompat::MiId.encode(published_page.id) },
+           headers: { 'User-Agent' => 'Googlebot/2.1' },
+           as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_PAGE')
+    end
+
+    it 'shares the anonymous page budget with the REST page routes' do
+      identity = Api::AnonymousPageViewLimit::RateLimitIdentity.new("192.0.2.20:#{published_page.id}")
+      59.times { RateLimiter.new(identity, family: :anonymous_page_views).record! }
+
+      post '/api/pages/show',
+           params: { pageId: MisskeyCompat::MiId.encode(published_page.id) },
+           headers: { 'REMOTE_ADDR' => '192.0.2.20' },
+           as: :json
+      expect(response).to have_http_status(200)
+
+      get "/api/v1/pages/#{published_page.id}", headers: { 'REMOTE_ADDR' => '192.0.2.20' }
+      expect(response).to have_http_status(429)
+      expect(response.headers['Retry-After'].to_i).to be_positive
+      expect(response.parsed_body[:error]).to be_present
     end
 
     it 'hides a draft from anonymous pages/show' do
@@ -143,6 +184,19 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
         include(note: MisskeyCompat::MiId.encode(status.id))
       )
       expect(response.parsed_body[:eyeCatchingImageId]).to eq(MisskeyCompat::MiId.encode(media.id))
+    end
+
+    it 'preserves supported YouTube block attributes' do
+      post '/api/pages/create', params: {
+        i: write_token,
+        title: 'Video page',
+        name: 'video-page',
+        content: [{ id: 'video', type: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', size: 'small' }],
+      }, as: :json
+
+      expect(response).to have_http_status(200)
+      page = Page.find(MisskeyCompat::MiId.decode(response.parsed_body[:id]))
+      expect(page.content.first).to include('url' => 'https://youtu.be/dQw4w9WgXcQ', 'size' => 'small')
     end
 
     it 'updates and deletes an owned page with void responses' do

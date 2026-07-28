@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { FormattedMessage } from 'react-intl';
 
-import { apiGetAccountPages } from '@/flavours/glitch/api/pages';
+import {
+  apiGetAccountPages,
+  PAGE_LIST_LIMIT,
+} from '@/flavours/glitch/api/pages';
 import type { ApiPageJSON } from '@/flavours/glitch/api_types/pages';
 import { AccountHeader } from '@/flavours/glitch/components/account_header';
 import { ColumnBackButton } from '@/flavours/glitch/components/column_back_button';
+import { LoadMore } from '@/flavours/glitch/components/load_more';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { RemoteHint } from '@/flavours/glitch/components/remote_hint';
 import { useAppHistory } from '@/flavours/glitch/components/router';
@@ -27,21 +31,70 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   const forceEmptyState = suspended || blockedBy || hidden;
 
   const [fetchedPages, setFetchedPages] = useState<ApiPageJSON[] | null>(null);
+  const [fetchedAccountId, setFetchedAccountId] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [category, setCategory] = useState('');
+  const requestGeneration = useRef(0);
 
   useEffect(() => {
+    const generation = ++requestGeneration.current;
+
     if (accountId && !forceEmptyState) {
       apiGetAccountPages(accountId)
         .then((data) => {
-          setCategory('');
-          setFetchedPages(data);
+          if (requestGeneration.current === generation) {
+            setCategory('');
+            setFetchedPages(data);
+            setFetchedAccountId(accountId);
+            setHasMore(data.length === PAGE_LIST_LIMIT);
+            setLoadingMore(false);
+          }
           return data;
         })
         .catch(() => {
-          setFetchedPages([]);
+          if (requestGeneration.current === generation) {
+            setFetchedPages([]);
+            setFetchedAccountId(accountId);
+            setHasMore(false);
+            setLoadingMore(false);
+          }
         });
     }
+
+    return () => {
+      requestGeneration.current += 1;
+    };
   }, [accountId, forceEmptyState]);
+
+  const handleLoadMore = useCallback(() => {
+    if (
+      !accountId ||
+      fetchedAccountId !== accountId ||
+      !fetchedPages ||
+      loadingMore ||
+      !hasMore
+    ) {
+      return;
+    }
+
+    const generation = requestGeneration.current;
+    setLoadingMore(true);
+    void apiGetAccountPages(accountId, fetchedPages.length)
+      .then((data) => {
+        if (requestGeneration.current === generation) {
+          setFetchedPages((pages) => [...(pages ?? []), ...data]);
+          setHasMore(data.length === PAGE_LIST_LIMIT);
+          setLoadingMore(false);
+        }
+        return data;
+      })
+      .catch(() => {
+        if (requestGeneration.current === generation) {
+          setLoadingMore(false);
+        }
+      });
+  }, [accountId, fetchedAccountId, fetchedPages, hasMore, loadingMore]);
 
   useEffect(() => {
     const mainPage = fetchedPages?.find((page) => page.is_main);
@@ -57,7 +110,12 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
   }
 
-  const pages = forceEmptyState ? [] : fetchedPages;
+  const pages =
+    forceEmptyState || fetchedAccountId === accountId
+      ? forceEmptyState
+        ? []
+        : fetchedPages
+      : null;
   const visiblePages =
     pages && category
       ? pages.filter((page) => page.category === category)
@@ -97,6 +155,10 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
               <PageListItem key={page.id} page={page} />
             ))}
           </ItemList>
+        )}
+
+        {pages && hasMore && (
+          <LoadMore onClick={handleLoadMore} loading={loadingMore} />
         )}
 
         {accountId && <RemoteHint accountId={accountId} />}

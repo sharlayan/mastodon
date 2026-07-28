@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseController
+  include Api::AccountRateLimit
+
+  SEARCH_QUERY_LENGTH_LIMIT = StatusLengthValidator::MAX_CHARS
+  SEARCH_OFFSET_LIMIT = 1_000
+
   requires_misskey_permission 'read:account', :index, :trend, :search, :show, :users
 
   SORT_ORDERS = {
@@ -19,6 +24,7 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
   }.freeze
 
   before_action :require_user!
+  before_action :enforce_hashtag_rate_limit!
 
   def index
     sort = params[:sort].to_s
@@ -60,9 +66,9 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
 
   def search
     query = params[:query].to_s.strip.delete_prefix('#')
-    return render json: [] if query.blank?
+    return render json: [] if query.blank? || query.length > SEARCH_QUERY_LENGTH_LIMIT
 
-    tags = Tag.search_for(query, pagination_limit, params[:offset].to_i, exclude_unreviewed: false)
+    tags = Tag.search_for(query, pagination_limit, params[:offset].to_i.clamp(0, SEARCH_OFFSET_LIMIT), exclude_unreviewed: false)
 
     render json: tags.pluck(:name)
   end
@@ -86,6 +92,12 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
   end
 
   private
+
+  def enforce_hashtag_rate_limit!
+    enforce_account_rate_limit!(:misskey_hashtags)
+  rescue Mastodon::RateLimitExceededError
+    render_error(I18n.t('errors.429'), 'RATE_LIMIT_EXCEEDED', 429)
+  end
 
   def serialize_tag(tag)
     attached_users_count, attached_local_users_count, attached_remote_users_count = attached_counts(tag)

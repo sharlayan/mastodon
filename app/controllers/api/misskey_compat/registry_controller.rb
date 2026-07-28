@@ -6,16 +6,21 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
   requires_misskey_permission 'write:account', :set, :remove
 
   before_action :require_user!
+  before_action :enforce_registry_rate_limit!
 
   SCOPE_PATTERN = /\A[a-zA-Z0-9_]+\z/
-  MAX_ITEMS = 1_000
   MAX_SCOPE_ITEMS = 32
   MAX_SCOPE_ITEM_LENGTH = 128
   MAX_DOMAIN_LENGTH = 256
-  MAX_VALUE_BYTES = 256.kilobytes
+  MAX_ITEMS = MisskeyRegistryItem::MAX_ITEMS
+  MAX_VALUE_BYTES = MisskeyRegistryItem::MAX_VALUE_BYTES
+  MAX_STORED_SCOPE_ITEMS = MisskeyRegistryItem::MAX_SCOPE_ITEMS
+  MAX_SCOPE_BYTES = MisskeyRegistryItem::MAX_SCOPE_BYTES
 
   def get_all # rubocop:disable Naming/AccessorMethodName
-    render json: scoped_items.to_h { |item| [item.key, item.value] }
+    return unless registry_scope_readable?
+
+    render json: scoped_items.pluck(:key, :value).to_h
   end
 
   def get
@@ -39,7 +44,6 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
 
     current_account.with_lock do
       item = find_item
-      raise ArgumentError, 'registry item limit exceeded' if item.nil? && current_account.misskey_registry_items.count >= MAX_ITEMS
 
       item ||= current_account.misskey_registry_items.new(domain: effective_domain, scope: registry_scope, key: key)
       item.update!(value: registry_body['value'])
@@ -57,27 +61,21 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
   end
 
   def keys
-    render json: scoped_items.map(&:key)
+    render json: scoped_items.pluck(:key)
   end
 
   def keys_with_type
-    render json: scoped_items.to_h { |item| [item.key, value_type(item.value)] }
+    types = scoped_items.pluck(:key, Arel.sql("COALESCE(jsonb_typeof(misskey_registry_items.value), 'null')"))
+    render json: types.to_h
   end
 
   def scopes_with_domain
-    res = []
-
-    current_account.misskey_registry_items.pluck(:domain, :scope).each do |domain, scope|
-      target = res.find { |entry| entry[:domain] == domain }
-
-      if target
-        target[:scopes] << scope unless target[:scopes].include?(scope)
-      else
-        res << { domain: domain, scopes: [scope] }
-      end
+    grouped_scopes = current_account.misskey_registry_items.pluck(:domain, :scope).group_by(&:first)
+    result = grouped_scopes.map do |domain, entries|
+      { domain: domain, scopes: entries.map(&:second).uniq }
     end
 
-    render json: res
+    render json: result
   end
 
   private
@@ -127,15 +125,19 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
     key
   end
 
-  def value_type(value)
-    case value
-    when nil then 'null'
-    when Array then 'array'
-    when Numeric then 'number'
-    when String then 'string'
-    when true, false then 'boolean'
-    else 'object'
-    end
+  def registry_scope_readable?
+    count, bytes = scoped_items.pick(
+      Arel.sql('COUNT(*)'),
+      Arel.sql('COALESCE(SUM(octet_length(misskey_registry_items.value::text)), 0)')
+    )
+    return true if count.to_i <= MAX_STORED_SCOPE_ITEMS && bytes.to_i <= MAX_SCOPE_BYTES
+
+    render_error(I18n.t('misskey_registry.scope_too_large'), 'REGISTRY_SCOPE_TOO_LARGE', 400)
+    false
+  end
+
+  def enforce_registry_rate_limit!
+    rate_limited?(:misskey_registry)
   end
 
   def render_no_such_key

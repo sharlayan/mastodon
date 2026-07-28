@@ -92,6 +92,25 @@ RSpec.describe BulkImportRowService do
       end
     end
 
+    context 'when importing a clip' do
+      let(:import_type) { 'clips' }
+      let(:data) do
+        {
+          'title' => 'Imported clip',
+          'statuses' => Array.new(Clip::STATUSES_LIMIT + 1) { |index| "https://remote.example/statuses/#{index}" },
+        }
+      end
+
+      it 'rejects oversized input before resolving any remote status' do
+        tag_manager = ActivityPub::TagManager.instance
+        allow(tag_manager).to receive(:uri_to_resource).and_call_original
+
+        expect(subject.call(import_row)).to be false
+        expect(account.clips).to be_empty
+        expect(tag_manager).to_not have_received(:uri_to_resource)
+      end
+    end
+
     context 'when importing a list row' do
       let(:import_type) { 'lists' }
       let(:target_account) { Fabricate(:account) }

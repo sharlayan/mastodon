@@ -133,6 +133,69 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'page list pagination' do
+    before do
+      21.times { Fabricate(:page, account: user.account) }
+    end
+
+    it 'returns owner pages in batches of 20' do
+      get '/api/v1/pages', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq(20)
+
+      get '/api/v1/pages', params: { offset: 20 }, headers: headers
+
+      expect(response.parsed_body.size).to eq(1)
+    end
+
+    it 'returns public account pages in batches of 20' do
+      get "/api/v1/accounts/#{user.account_id}/pages"
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq(20)
+
+      get "/api/v1/accounts/#{user.account_id}/pages", params: { offset: 20 }
+
+      expect(response.parsed_body.size).to eq(1)
+    end
+  end
+
+  describe 'search-engine access' do
+    let!(:page) { Fabricate(:page, account: user.account) }
+    let(:crawler_headers) { { 'User-Agent' => 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' } }
+
+    it 'hides page details and lists from crawlers when the owner disables indexing' do
+      user.settings['noindex'] = true
+      user.save!
+
+      get "/api/v1/pages/#{page.id}", headers: crawler_headers
+      expect(response).to have_http_status(404)
+
+      get "/api/v1/accounts/#{user.account_id}/pages", headers: crawler_headers
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to be_empty
+    end
+
+    it 'allows crawlers when the owner explicitly enables indexing' do
+      user.settings['noindex'] = false
+      user.save!
+
+      get "/api/v1/pages/#{page.id}", headers: crawler_headers
+
+      expect(response).to have_http_status(200)
+    end
+
+    it 'does not restrict an authenticated reader based on User-Agent' do
+      user.settings['noindex'] = true
+      user.save!
+
+      get "/api/v1/pages/#{page.id}", headers: headers.merge(crawler_headers)
+
+      expect(response).to have_http_status(200)
+    end
+  end
+
   describe 'public response caching' do
     let!(:page) { Fabricate(:page, account: user.account, likes_count: 1) }
 
@@ -152,6 +215,7 @@ RSpec.describe 'Pages' do
           'stale-if-error=86400'
         )
         expect(response.headers['Vary']).to include('Authorization')
+        expect(response.headers['X-RateLimit-Limit']).to_not eq('60')
         expect(response.cache_control).to_not include(:private, :no_store)
       end
     end
@@ -194,6 +258,99 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'anonymous page view limits' do
+    let!(:page) { Fabricate(:page, account: user.account) }
+    let(:remote_ip) { '192.0.2.10' }
+    let(:request_headers) { { 'REMOTE_ADDR' => remote_ip } }
+
+    def page_view_limiter(page, remote_ip)
+      identity = Api::AnonymousPageViewLimit::RateLimitIdentity.new("#{remote_ip}:#{page.id}")
+      RateLimiter.new(identity, family: :anonymous_page_views)
+    end
+
+    it 'shares the per-page budget between ID and account slug routes', :aggregate_failures do
+      59.times { page_view_limiter(page, remote_ip).record! }
+
+      get "/api/v1/pages/#{page.id}", headers: request_headers
+      expect(response).to have_http_status(200)
+
+      get "/api/v1/accounts/#{page.account_id}/pages/#{page.name}", headers: request_headers
+      expect(response).to have_http_status(429)
+      expect(response.headers['Retry-After'].to_i).to be_positive
+      expect(response.cache_control).to include(private: true, no_store: true)
+    end
+
+    it 'keeps budgets separate for different pages' do
+      other_page = Fabricate(:page, account: user.account)
+      60.times { page_view_limiter(page, remote_ip).record! }
+
+      get "/api/v1/pages/#{other_page.id}", headers: request_headers
+
+      expect(response).to have_http_status(200)
+    end
+
+    it 'does not apply the anonymous budget to authenticated readers' do
+      60.times { page_view_limiter(page, remote_ip).record! }
+
+      get "/api/v1/pages/#{page.id}", headers: headers.merge(request_headers)
+
+      expect(response).to have_http_status(200)
+    end
+
+    it 'does not expose or rate limit private pages for anonymous readers' do
+      private_page = Fabricate(:page, account: user.account, draft: true)
+
+      get "/api/v1/pages/#{private_page.id}", headers: request_headers
+
+      expect(response).to have_http_status(404)
+      expect(page_view_limiter(private_page, remote_ip).to_headers['X-RateLimit-Remaining']).to eq('60')
+    end
+
+    it 'normalizes IPv6 clients to a /64 prefix' do
+      normalized_ip = '2001:db8::'
+      60.times { page_view_limiter(page, normalized_ip).record! }
+
+      get "/api/v1/pages/#{page.id}", headers: { 'REMOTE_ADDR' => '2001:db8::1234' }
+
+      expect(response).to have_http_status(429)
+    end
+
+    it 'enforces a global anonymous Pages budget without consuming the page budget on rejection' do
+      global_identity = Api::AnonymousPageViewLimit::RateLimitIdentity.new(remote_ip)
+      global_limiter = RateLimiter.new(global_identity, family: :anonymous_pages)
+      RateLimiter::FAMILIES[:anonymous_pages][:limit].times { global_limiter.record! }
+
+      get "/api/v1/pages/#{page.id}", headers: request_headers
+
+      expect(response).to have_http_status(429)
+      expect(page_view_limiter(page, remote_ip).to_headers['X-RateLimit-Remaining']).to eq('60')
+    end
+  end
+
+  describe 'page list summaries' do
+    let!(:page) do
+      Fabricate(
+        :page,
+        account: user.account,
+        content: [{ 'id' => 'body', 'type' => 'text', 'text' => 'Large body' }]
+      )
+    end
+
+    it 'omits page bodies from public account lists but keeps them in detail responses', :aggregate_failures do
+      get "/api/v1/accounts/#{user.account_id}/pages"
+      expect(response.parsed_body.first).to include(content: [], attached_media: [])
+
+      get "/api/v1/pages/#{page.id}"
+      expect(response.parsed_body.dig(:content, 0, :text)).to eq('Large body')
+    end
+
+    it 'omits page bodies from owner lists' do
+      get '/api/v1/pages', headers: headers
+
+      expect(response.parsed_body.first).to include(content: [], attached_media: [])
+    end
+  end
+
   describe 'content limits' do
     it 'preserves the image no-upscale option' do
       post '/api/v1/pages', params: {
@@ -220,6 +377,19 @@ RSpec.describe 'Pages' do
 
       expect(response).to have_http_status(422)
       expect(Page).to_not exist(name: 'deep')
+    end
+
+    it 'limits external-resource blocks when rendering legacy content' do
+      page = Fabricate(:page, account: user.account)
+      page.update_column(
+        :content,
+        Array.new(Page::BLOCK_TYPE_LIMITS['note'] + 2) { |index| { type: 'note', note: index.to_s } }
+      )
+
+      get "/api/v1/pages/#{page.id}"
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:content].size).to eq(Page::BLOCK_TYPE_LIMITS['note'])
     end
   end
 

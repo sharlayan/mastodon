@@ -29,7 +29,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def content
-    locked ? [] : object.content
+    locked ? [] : object.renderable_content
   end
 
   def eye_catching_media_attachment
@@ -37,7 +37,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def attached_media
-    locked ? [] : object.attached_media
+    locked ? [] : object.renderable_attached_media
   end
 
   def liked

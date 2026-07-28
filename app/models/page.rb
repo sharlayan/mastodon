@@ -29,7 +29,10 @@ class Page < ApplicationRecord
 
   class ContentLimitError < StandardError; end
 
-  PER_ACCOUNT_LIMIT = 100
+  DEFAULT_PER_ACCOUNT_LIMIT = 500
+  DAILY_CREATE_LIMIT = 100
+  LIST_LIMIT = 20
+  MAX_LIST_LIMIT = 100
   TITLE_LENGTH_LIMIT = 256
   NAME_LENGTH_LIMIT = 256
   SUMMARY_LENGTH_LIMIT = 256
@@ -42,10 +45,15 @@ class Page < ApplicationRecord
   MAX_BLOCK_DEPTH = 10
   MAX_CONTENT_BYTES = 512.kilobytes
   MAX_TEXT_LENGTH = 20_000
-  MAX_SECTION_TITLE_LENGTH = 500
-  MAX_YOUTUBE_URL_LENGTH = 2_048
+  MAX_SECTION_TITLE_LENGTH = 100
+  MAX_YOUTUBE_URL_LENGTH = 512
   YOUTUBE_VIDEO_ID_RE = /\A[\w-]{11}\z/
   YOUTUBE_SIZES = %w(small medium large).freeze
+  BLOCK_TYPE_LIMITS = {
+    'image' => 32,
+    'note' => 20,
+    'youtube' => 16,
+  }.freeze
 
   belongs_to :account
   belongs_to :eye_catching_media_attachment, class_name: 'MediaAttachment', optional: true
@@ -70,6 +78,7 @@ class Page < ApplicationRecord
   validate :validate_access_password
   validate :validate_eye_catching_media_attachment
   validate :validate_account_pages_limit, on: :create
+  validate :validate_daily_create_limit, on: :create
 
   scope :available_accounts, -> { joins(:account).merge(Account.without_suspended) }
   scope :publicly_accessible, -> { available_accounts.where(visibility: 'public') }
@@ -129,6 +138,21 @@ class Page < ApplicationRecord
     collect_blocks(content).filter_map { |block| block['note'] if block['type'] == 'note' }.uniq
   end
 
+  def renderable_content
+    filter_renderable_blocks(content)
+  end
+
+  def renderable_attached_media
+    ids = attached_media_ids(renderable_content)
+    return MediaAttachment.none if ids.empty?
+
+    account.media_attachments.where(id: ids)
+  end
+
+  def self.limit_for(account)
+    account.user&.role&.page_limit || DEFAULT_PER_ACCOUNT_LIMIT
+  end
+
   private
 
   def synchronize_visibility
@@ -155,8 +179,8 @@ class Page < ApplicationRecord
     self.category = category&.strip.presence
   end
 
-  def attached_media_ids
-    collect_blocks(content).filter_map { |block| block['fileId'] if block['type'] == 'image' }.uniq
+  def attached_media_ids(blocks = content)
+    collect_blocks(blocks).filter_map { |block| block['fileId'] if block['type'] == 'image' }.uniq
   end
 
   def collect_blocks(blocks)
@@ -181,13 +205,17 @@ class Page < ApplicationRecord
     end
 
     count = 0
+    type_counts = Hash.new(0)
     pending = content.reverse.map { |block| [block, 1] }
 
     until pending.empty?
       block, depth = pending.pop
       count += 1
+      type = block['type'] if block.is_a?(Hash)
+      type_counts[type] += 1 if type
+      type_limit = BLOCK_TYPE_LIMITS[type]
 
-      unless block.is_a?(Hash) && BLOCK_TYPES.include?(block['type']) && count <= MAX_BLOCKS && depth <= MAX_BLOCK_DEPTH && valid_block_strings?(block)
+      unless block.is_a?(Hash) && BLOCK_TYPES.include?(type) && count <= MAX_BLOCKS && depth <= MAX_BLOCK_DEPTH && (type_limit.nil? || type_counts[type] <= type_limit) && valid_block_strings?(block)
         errors.add(:content, :invalid)
         return
       end
@@ -199,6 +227,21 @@ class Page < ApplicationRecord
       end
 
       pending.concat(children.reverse.map { |child| [child, depth + 1] }) if children
+    end
+  end
+
+  def filter_renderable_blocks(blocks, type_counts = Hash.new(0))
+    Array(blocks).filter_map do |block|
+      next unless block.is_a?(Hash)
+
+      type = block['type']
+      type_limit = BLOCK_TYPE_LIMITS[type]
+      next if type_limit && type_counts[type] >= type_limit
+
+      type_counts[type] += 1 if type_limit
+      result = block.deep_dup
+      result['children'] = filter_renderable_blocks(result['children'], type_counts) if result['children'].is_a?(Array)
+      result
     end
   end
 
@@ -248,7 +291,16 @@ class Page < ApplicationRecord
   end
 
   def validate_account_pages_limit
-    errors.add(:base, I18n.t('pages.errors.limit')) if account.pages.count >= PER_ACCOUNT_LIMIT
+    return if account.nil?
+
+    limit = self.class.limit_for(account)
+    errors.add(:base, I18n.t('pages.errors.limit', limit: limit)) if account.pages.count >= limit
+  end
+
+  def validate_daily_create_limit
+    return if account.nil?
+
+    errors.add(:base, I18n.t('pages.errors.daily_limit', limit: DAILY_CREATE_LIMIT)) if account.pages.where(created_at: Time.current.all_day).count >= DAILY_CREATE_LIMIT
   end
 
   def validate_eye_catching_media_attachment

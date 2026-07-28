@@ -32,6 +32,22 @@ RSpec.describe Export do
     end
   end
 
+  describe '#to_clips_json' do
+    before { stub_const('Clip::STATUSES_LIMIT', 1) }
+
+    it 'bounds statuses from legacy clips that exceed the current limit' do
+      clip = Fabricate(:clip, account: account)
+      older_status = Fabricate(:status)
+      newer_status = Fabricate(:status)
+      clip.clip_statuses.create!(status: older_status)
+      ClipStatus.insert_all!([{ clip_id: clip.id, status_id: newer_status.id, created_at: Time.current, updated_at: Time.current }])
+
+      exported = JSON.parse(subject.to_clips_json)
+
+      expect(exported.dig('clips', 0, 'statuses')).to contain_exactly(ActivityPub::TagManager.instance.uri_for(newer_status))
+    end
+  end
+
   describe '#to_blocked_accounts_csv' do
     before { target_accounts.each { |target_account| account.block!(target_account) } }
 

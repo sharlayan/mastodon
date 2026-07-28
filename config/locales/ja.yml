@@ -1,7 +1,11 @@
 ---
 ja:
+  misskey_registry:
+    scope_too_large: レジストリスコープが大きすぎるため返せません。
   status_drafts:
+    data_too_large: 下書きデータは%{limit} KiBを超えることはできません
     over_limit: 下書きは最大%{limit}件まで保存できます
+    storage_too_large: アカウントごとの下書きデータは%{limit} MiBを超えることはできません
   about:
     about_mastodon_html: Mastodonは、オープンなウェブプロトコルを採用した、自由でオープンソースなソーシャルネットワークです。電子メールのような分散型の仕組みを採っています。
     contact_missing: 未設定

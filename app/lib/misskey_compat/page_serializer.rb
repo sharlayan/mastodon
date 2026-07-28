@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 class MisskeyCompat::PageSerializer
-  def self.serialize(page, current_account: nil)
-    new.serialize(page, current_account: current_account)
+  def self.serialize(page, current_account: nil, include_content: true)
+    new.serialize(page, current_account: current_account, include_content: include_content)
   end
 
-  def serialize(page, current_account: nil)
-    attached_media = page.attached_media.includes(:drive_file).to_a
+  def serialize(page, current_account: nil, include_content: true)
+    attached_media = include_content ? page.renderable_attached_media.includes(:drive_file).to_a : []
     media_by_id = attached_media.index_by { |media| media.id.to_s }
     eye_catching_media = page.eye_catching_media_attachment
 
@@ -16,7 +16,7 @@ class MisskeyCompat::PageSerializer
       updatedAt: page.updated_at.iso8601,
       userId: MisskeyCompat::MiId.encode(page.account_id),
       user: MisskeyCompat::UserSerializer.serialize(page.account, viewer: current_account),
-      content: serialize_blocks(page.content, media_by_id),
+      content: include_content ? serialize_blocks(page.renderable_content, media_by_id) : [],
       variables: [],
       title: page.title,
       name: page.name,
@@ -30,7 +30,7 @@ class MisskeyCompat::PageSerializer
       attachedFiles: attached_media.map { |media| MisskeyCompat::DriveFileSerializer.serialize(media) },
       likedCount: page.likes_count,
     }
-    result[:isLiked] = page.liked_by?(current_account) if current_account
+    result[:isLiked] = page.liked_by?(current_account) if current_account && include_content
     result
   end
 

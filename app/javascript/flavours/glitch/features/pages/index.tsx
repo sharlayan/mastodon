@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -10,7 +10,11 @@ import { NotSignedInIndicator } from '@/flavours/glitch/components/not_signed_in
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
-import { apiGetPages, apiGetFeaturedPages } from 'flavours/glitch/api/pages';
+import {
+  apiGetPages,
+  apiGetFeaturedPages,
+  PAGE_LIST_LIMIT,
+} from 'flavours/glitch/api/pages';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
@@ -31,7 +35,11 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { signedIn } = useIdentity();
   const [tab, setTab] = useState<'mine' | 'featured'>('mine');
   const [pages, setPages] = useState<ApiPageJSON[]>([]);
+  const [loadedTab, setLoadedTab] = useState<'mine' | 'featured' | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [category, setCategory] = useState('');
+  const requestGeneration = useRef(0);
   const useBlogView = isServerPageBlogViewPath(window.location.pathname);
 
   useEffect(() => {
@@ -45,19 +53,66 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [useBlogView]);
 
   useEffect(() => {
+    const generation = ++requestGeneration.current;
+
     if (!signedIn) {
-      return;
+      return undefined;
     }
 
     const request = tab === 'featured' ? apiGetFeaturedPages() : apiGetPages();
 
     request
       .then((data) => {
-        setPages(data);
+        if (requestGeneration.current === generation) {
+          setPages(data);
+          setLoadedTab(tab);
+          setHasMore(tab === 'mine' && data.length === PAGE_LIST_LIMIT);
+          setLoading(false);
+        }
         return data;
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (requestGeneration.current === generation) {
+          setPages([]);
+          setLoadedTab(tab);
+          setHasMore(false);
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      requestGeneration.current += 1;
+    };
   }, [signedIn, tab]);
+
+  const handleLoadMore = useCallback(() => {
+    if (
+      !signedIn ||
+      loading ||
+      !hasMore ||
+      tab !== 'mine' ||
+      loadedTab !== tab
+    ) {
+      return;
+    }
+
+    const generation = requestGeneration.current;
+    setLoading(true);
+    void apiGetPages(pages.length)
+      .then((data) => {
+        if (requestGeneration.current === generation) {
+          setPages((currentPages) => [...currentPages, ...data]);
+          setHasMore(data.length === PAGE_LIST_LIMIT);
+          setLoading(false);
+        }
+        return data;
+      })
+      .catch(() => {
+        if (requestGeneration.current === generation) {
+          setLoading(false);
+        }
+      });
+  }, [hasMore, loadedTab, loading, pages.length, signedIn, tab]);
 
   const handleTabClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -70,9 +125,11 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const emptyMessage = (
     <FormattedMessage id='pages.no_pages_yet' defaultMessage='No pages yet.' />
   );
+  const currentPages = loadedTab === tab ? pages : [];
+  const initialLoading = signedIn && loadedTab !== tab;
   const visiblePages = category
-    ? pages.filter((page) => page.category === category)
-    : pages;
+    ? currentPages.filter((page) => page.category === category)
+    : currentPages;
 
   return (
     <Column
@@ -119,11 +176,19 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       </div>
 
       {tab === 'mine' && (
-        <CategoryFilter pages={pages} value={category} onChange={setCategory} />
+        <CategoryFilter
+          pages={currentPages}
+          value={category}
+          onChange={setCategory}
+        />
       )}
 
       <ScrollableList
         scrollKey='pages'
+        onLoadMore={handleLoadMore}
+        hasMore={loadedTab === tab && hasMore}
+        isLoading={loading || initialLoading}
+        showLoading={initialLoading || (loading && pages.length === 0)}
         emptyMessage={emptyMessage}
         bindToDocument={!multiColumn}
       >

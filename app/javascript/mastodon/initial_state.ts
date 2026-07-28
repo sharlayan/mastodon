@@ -63,6 +63,7 @@ interface IntialStateRole {
   color: string;
   highlighted: boolean;
   collection_limit: number;
+  page_limit: number;
 }
 
 interface InitialStateWrapstodon {

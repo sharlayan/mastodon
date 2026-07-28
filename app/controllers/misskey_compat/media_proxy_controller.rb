@@ -2,12 +2,17 @@
 
 module MisskeyCompat
   class MediaProxyController < ApplicationController
+    MAX_URL_BYTES = 8.kilobytes
+    NEGATIVE_CACHE_TTL = 30.seconds
+
     skip_before_action :require_functional!
 
     before_action :require_misskey_compat_enabled!
 
     def show
       url = params[:url].to_s
+      return not_found if url.bytesize > MAX_URL_BYTES
+
       parsed = Addressable::URI.parse(url) if url.present?
 
       return not_found if parsed.nil? || !%w(http https).include?(parsed.scheme) || parsed.host.blank?
@@ -23,11 +28,16 @@ module MisskeyCompat
 
     def known_url?(uri)
       url = uri.to_s
+      cache_key = "misskey_media_proxy:missing:#{Digest::SHA256.hexdigest(url)}"
+      return false if Rails.cache.read(cache_key)
 
-      PreviewCard.exists?(url: url) ||
-        MediaAttachment.where(remote_url: url).or(MediaAttachment.where(thumbnail_remote_url: url)).exists? ||
-        known_custom_emoji?(uri) ||
-        known_instance_favicon?(uri)
+      known = PreviewCard.exists?(url: url) ||
+              MediaAttachment.exists?(["(remote_url <> '' AND remote_url = :url) OR thumbnail_remote_url = :url", { url: url }]) ||
+              known_custom_emoji?(uri) ||
+              known_instance_favicon?(uri)
+
+      Rails.cache.write(cache_key, true, expires_in: NEGATIVE_CACHE_TTL) unless known
+      known
     end
 
     def known_custom_emoji?(uri)

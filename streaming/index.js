@@ -136,7 +136,7 @@ const startServer = async () => {
   const redisConfig = Redis.configFromEnv(process.env);
   const redisClient = Redis.createClient(redisConfig, logger);
   const server = http.createServer();
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
 
   /**
    * Adds a namespace to Redis keys or channel names

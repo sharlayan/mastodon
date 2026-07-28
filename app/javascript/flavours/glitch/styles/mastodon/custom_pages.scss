@@ -360,6 +360,10 @@
       overflow: hidden;
     }
 
+    &--note {
+      min-height: 80px;
+    }
+
     &--image-no-upscale {
       width: fit-content;
       max-width: 100%;

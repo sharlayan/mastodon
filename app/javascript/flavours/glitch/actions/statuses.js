@@ -75,18 +75,20 @@ export function fetchStatus(id, {
     }
 
     if (skipLoading) {
-      return;
+      return Promise.resolve(true);
     }
 
     dispatch(fetchStatusRequest(id, skipLoading));
 
-    api().get(`/api/v1/statuses/${id}`).then(response => {
+    return api().get(`/api/v1/statuses/${id}`).then(response => {
       dispatch(importFetchedStatus(response.data));
       dispatch(fetchStatusSuccess(skipLoading));
+      return true;
     }).catch(error => {
       dispatch(fetchStatusFail(id, error, skipLoading, parentQuotePostId));
       if (error.status === 404)
         dispatch(deleteFromTimelines(id));
+      return false;
     });
   };
 }

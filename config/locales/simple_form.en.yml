@@ -162,6 +162,7 @@ en:
         role: The role controls which permissions the user has.
       user_role:
         collection_limit: Limits the number of Collections that a single user with this role can create. Please note that when you decrease this number, users who are already at this limit will not lose any Collections. But they will not be able to create additional ones.
+        page_limit: Limits the number of Pages that a single user with this role can own. Lowering this value does not delete existing Pages, but prevents creating more until the account is below the limit.
         color: Color to be used for the role throughout the UI, as RGB in hex format
         highlighted: This makes the role publicly visible
         name: Public name of the role, if role is set to be displayed as a badge
@@ -395,6 +396,7 @@ en:
         time_zone: Time zone
       user_role:
         collection_limit: Maximum number of Collections per user
+        page_limit: Maximum number of Pages per user
         color: Badge color
         highlighted: Display role as badge on user profiles
         name: Name

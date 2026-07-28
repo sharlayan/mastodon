@@ -384,6 +384,7 @@ en:
   clips:
     errors:
       limit: You have reached the maximum number of clips
+      statuses_limit: A clip cannot contain more than %{limit} posts
   custom_css:
     disabled_by_admin: The server administrator has disabled user custom CSS. You
       can still choose whether to apply the server-wide styles above.
@@ -467,8 +468,9 @@ en:
     settings:
       heading: Pages
     errors:
+      daily_limit: You cannot create more than %{limit} pages per day
       invalid_password: The password is incorrect
-      limit: You have reached the maximum number of pages
+      limit: You cannot own more than %{limit} pages
       own_page: You cannot like your own page
   pagination:
     truncate_html: "&hellip;"

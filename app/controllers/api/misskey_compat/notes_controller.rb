@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
+  include Api::AccountRateLimit
+
   class NoSuchReplyTargetError < StandardError; end
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
@@ -30,6 +32,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   ).freeze
 
   before_action :require_user!, only: USER_ACTIONS + %i(local_timeline global_timeline)
+  before_action :enforce_reaction_rate_limit!, only: %i(reactions_create reactions_delete)
+  before_action :enforce_status_draft_rate_limit!, only: %i(drafts_list drafts_count drafts_create drafts_update drafts_delete)
   before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
 
   def timeline
@@ -202,20 +206,20 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def drafts_list
-    scope = current_account.status_drafts.includes(:media_attachments).order(id: :desc)
+    scope = current_account.status_drafts.within_data_limit.includes(:media_attachments).order(id: :desc)
     scope = scope.where(id: ...(until_id.to_i)) if until_id.present?
     scope = scope.where('status_drafts.id > ?', since_id.to_i) if since_id.present?
     scope = scope.where(created_at: ...(Time.zone.at(params[:untilDate].to_i / 1000.0))) if params[:untilDate].present?
     scope = scope.where(created_at: (Time.zone.at(params[:sinceDate].to_i / 1000.0))..) if params[:sinceDate].present?
     scope = scope.none if ActiveModel::Type::Boolean.new.cast(params[:scheduled])
-    drafts = scope.limit(pagination_limit(default: 30, max: 100)).to_a
+    drafts = scope.limit(pagination_limit(default: StatusDraft::LIST_LIMIT, max: StatusDraft::LIST_LIMIT)).to_a
     statuses_by_id = draft_reference_statuses(drafts)
 
     render json: drafts.map { |draft| serialize_draft(draft, statuses_by_id: statuses_by_id) }
   end
 
   def drafts_count
-    render json: current_account.status_drafts.count
+    render json: current_account.status_drafts.within_data_limit.count
   end
 
   def drafts_create
@@ -246,7 +250,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     draft.data = misskey_draft_data(existing: draft.data)
 
     unless params.key?(:fileIds)
-      draft.save!
+      current_account.with_lock { draft.save! }
       return render json: { updatedDraft: serialize_draft(draft) }
     end
 
@@ -637,7 +641,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   def save_draft_with_media!(draft, media_ids)
     ids = Array(media_ids).map(&:to_i)
 
-    draft.transaction do
+    current_account.with_lock do
       draft.save!
       media = current_account.media_attachments.where(status_id: nil, scheduled_status_id: nil)
         .where(status_draft_id: [nil, draft.id]).where(id: ids).index_by(&:id)
@@ -649,7 +653,18 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def render_draft_validation_error(error)
-    render_error(error.record.errors.full_messages.first, 'TOO_MANY_DRAFTS', 400)
+    code = error.record.errors.include?(:data) ? 'DRAFT_TOO_LARGE' : 'TOO_MANY_DRAFTS'
+    render_error(error.record.errors.full_messages.first, code, 400)
+  end
+
+  def enforce_status_draft_rate_limit!
+    rate_limited?(:status_drafts)
+  end
+
+  def enforce_reaction_rate_limit!
+    enforce_account_rate_limit!(:status_reactions)
+  rescue Mastodon::RateLimitExceededError
+    render_error(I18n.t('errors.429'), 'RATE_LIMIT_EXCEEDED', 429)
   end
 
   def serialize_collection(statuses)

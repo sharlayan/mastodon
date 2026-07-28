@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 class Api::V1::Statuses::ReactionsController < Api::V1::Statuses::BaseController
+  include Api::AccountRateLimit
+
   before_action -> { doorkeeper_authorize! :write, :'write:favourites' }
   before_action :require_user!
+  before_action :enforce_reaction_rate_limit!
   skip_before_action :set_status, only: [:destroy]
 
   def create
@@ -34,6 +37,10 @@ class Api::V1::Statuses::ReactionsController < Api::V1::Statuses::BaseController
   end
 
   private
+
+  def enforce_reaction_rate_limit!
+    enforce_account_rate_limit!(:status_reactions)
+  end
 
   def find_reaction
     name, domain = params[:id].to_s.split('@')

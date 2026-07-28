@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
+  include Api::ClipNotesRateLimit
+
   requires_write_scope :create, :update, :destroy, :add_note, :remove_note, :favorite, :unfavorite
   requires_misskey_permission 'read:account', :index
   requires_misskey_permission 'write:account', :create, :update, :destroy, :add_note, :remove_note
@@ -13,6 +15,7 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
   before_action :require_user!, only: OWNER_ACTIONS
   before_action :set_clip, only: [:show, :update, :destroy, :add_note, :remove_note, :favorite]
   before_action :authorize_owner!, only: [:update, :destroy, :add_note, :remove_note]
+  before_action :enforce_clip_notes_rate_limit!, only: [:notes]
 
   def index
     clips = Clip.where(account: current_account).includes(:account).to_a
@@ -45,7 +48,9 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
   def add_note
     status = Status.find(params[:noteId])
     authorize status, :show?
-    @clip.clip_statuses.find_or_create_by!(status: status)
+    @clip.with_lock do
+      @clip.clip_statuses.find_or_create_by!(status: status)
+    end
     head 204
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     render_error('No such note', 'NO_SUCH_NOTE', 404)
@@ -116,10 +121,19 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
   end
 
   def visible_statuses(clip)
-    statuses = clip.statuses.includes(:account).to_a
-    return statuses if clip.account_id == current_account&.id
+    statuses = clip.statuses.includes(:account).reorder(id: :desc)
+    statuses = statuses.where(id: ...params[:untilId]) if params[:untilId].present?
+    statuses = statuses.where('statuses.id > ?', params[:sinceId]) if params[:sinceId].present?
+    statuses = statuses.limit(Clip::STATUSES_LIMIT).to_a
+    statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? } unless clip.account_id == current_account&.id
 
-    statuses.select { |status| StatusPolicy.new(current_account, status).show? }
+    statuses.first(pagination_limit)
+  end
+
+  def enforce_clip_notes_rate_limit!
+    record_clip_notes_request!
+  rescue Mastodon::RateLimitExceededError
+    render_error(I18n.t('errors.429'), 'RATE_LIMIT_EXCEEDED', 429)
   end
 
   def clip_params

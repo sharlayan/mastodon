@@ -33,6 +33,13 @@ RSpec.describe 'Status drafts' do
 
       expect(response).to have_http_status(404)
     end
+
+    it 'rejects oversized draft data' do
+      post '/api/v1/status_drafts', headers: headers, params: { status: 'x' * StatusDraft::MAX_DATA_BYTES }
+
+      expect(response).to have_http_status(422)
+      expect(user.account.status_drafts).to_not exist
+    end
   end
 
   describe 'owner isolation and updates' do
@@ -68,6 +75,35 @@ RSpec.describe 'Status drafts' do
 
       expect(response).to have_http_status(200)
       expect(media.reload.status_draft_id).to be_nil
+    end
+
+    it 'caps lists and excludes oversized legacy drafts' do
+      draft.update_column(:data, { status: 'x' * StatusDraft::MAX_DATA_BYTES })
+      StatusDraft::LIST_LIMIT.times { Fabricate(:status_draft, account: user.account) }
+
+      get '/api/v1/status_drafts', headers: headers, params: { limit: 100 }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq(StatusDraft::LIST_LIMIT)
+      expect(response.parsed_body.pluck(:id)).to_not include(draft.id.to_s)
+    end
+
+    it 'refuses to serialize an oversized legacy draft' do
+      draft.update_column(:data, { status: 'x' * StatusDraft::MAX_DATA_BYTES })
+
+      get "/api/v1/status_drafts/#{draft.id}", headers: headers
+
+      expect(response).to have_http_status(422)
+    end
+
+    it 'enforces a dedicated per-account request limit' do
+      RateLimiter::FAMILIES[:status_drafts][:limit].times do
+        RateLimiter.new(user.account, family: :status_drafts).record!
+      end
+
+      get '/api/v1/status_drafts', headers: headers
+
+      expect(response).to have_http_status(429)
     end
   end
 end

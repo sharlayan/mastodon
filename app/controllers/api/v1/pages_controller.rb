@@ -1,7 +1,12 @@
 # frozen_string_literal: true
 
 class Api::V1::PagesController < Api::BaseController
+  include Api::AnonymousPageViewLimit
+  include Api::PageSearchEngineAccess
+
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed url size).freeze
+
+  vary_by 'Authorization, User-Agent'
 
   before_action :require_feature_enabled!
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories, :featured]
@@ -16,8 +21,10 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def index
-    @pages = current_account.pages.order(is_main: :desc, id: :desc).to_a
-    render json: @pages, each_serializer: REST::PageSerializer
+    @pages = current_account.pages.order(is_main: :desc, id: :desc)
+      .offset([params[:offset].to_i, 0].max)
+      .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
+    render json: @pages, each_serializer: REST::PageSummarySerializer
   end
 
   def categories
@@ -25,8 +32,11 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def show
+    return not_found if @page.private_visibility? && @page.account_id != current_account&.id
+    return not_found if page_hidden_from_search_engine?(@page.account)
+    return render_page_rate_limit_error if anonymous_page_view_limit_exceeded?(@page)
+
     cache_if_unauthenticated!
-    not_found if @page.private_visibility? && @page.account_id != current_account&.id
     render json: @page, serializer: REST::PageSerializer
   end
 
@@ -44,12 +54,14 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def featured
-    @pages = Page.featured.limit(10).to_a
-    render json: @pages, each_serializer: REST::PageSerializer
+    @pages = Page.featured.limit(Page::LIST_LIMIT).to_a
+    render json: @pages, each_serializer: REST::PageSummarySerializer
   end
 
   def create
-    @page = current_account.pages.create!(page_params)
+    current_account.with_lock do
+      @page = current_account.pages.create!(page_params)
+    end
     render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
@@ -114,6 +126,10 @@ class Api::V1::PagesController < Api::BaseController
 
   def authorize_owner!
     not_found unless @page.account_id == current_account.id
+  end
+
+  def render_page_rate_limit_error
+    render json: { error: I18n.t('errors.429') }, status: 429
   end
 
   def page_params

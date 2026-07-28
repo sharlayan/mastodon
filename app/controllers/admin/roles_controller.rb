@@ -62,7 +62,7 @@ module Admin
 
     def resource_params
       params
-        .expect(user_role: [:name, :color, :highlighted, :position, :require_2fa, :collection_limit, :drive_quota, permissions_as_keys: [], extra_permissions_as_keys: []])
+        .expect(user_role: [:name, :color, :highlighted, :position, :require_2fa, :collection_limit, :page_limit, :drive_quota, permissions_as_keys: [], extra_permissions_as_keys: []])
     end
   end
 end

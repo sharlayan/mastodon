@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
-  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed).freeze
+  include Api::AnonymousPageViewLimit
+  include Api::PageSearchEngineAccess
+
+  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed url size).freeze
   AUTHENTICATED_ACTIONS = %i(featured index likes create update destroy like unlike).freeze
 
   requires_write_scope :create, :update, :destroy, :like, :unlike
@@ -28,34 +31,39 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   end
 
   def featured
-    pages = Page.featured.includes(:account, :eye_catching_media_attachment).limit(10)
-    render json: serialize_many(pages)
+    pages = Page.featured.includes(:account, :eye_catching_media_attachment).limit(Page::LIST_LIMIT)
+    render json: serialize_many(pages, include_content: false)
   end
 
   def index
-    pages = apply_page_range(current_account.pages).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: 10, max: 100))
-    render json: serialize_many(pages)
+    pages = apply_page_range(current_account.pages).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    render json: serialize_many(pages, include_content: false)
   end
 
   def likes
-    likes = apply_like_range(current_account.page_likes.joins(:page).merge(Page.published)).includes(page: [:account, :eye_catching_media_attachment]).limit(pagination_limit(default: 10, max: 100))
-    render json: likes.map { |like| { id: MisskeyCompat::MiId.encode(like.id), page: serialize(like.page) } }
+    likes = apply_like_range(current_account.page_likes.joins(:page).merge(Page.published)).includes(page: [:account, :eye_catching_media_attachment]).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    render json: likes.map { |like| { id: MisskeyCompat::MiId.encode(like.id), page: serialize(like.page, include_content: false) } }
   end
 
   def by_user
-    pages = apply_page_range(Page.published.where(account_id: params[:userId])).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: 10, max: 100))
-    render json: serialize_many(pages)
+    account = Account.find_by(id: params[:userId])
+    return render json: [] if account.nil? || page_hidden_from_search_engine?(account)
+
+    pages = apply_page_range(Page.published.where(account: account)).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    render json: serialize_many(pages, include_content: false)
   end
 
   def show
     page = find_shown_page
     return render_no_such_page if page.nil? || (!page.public_visibility? && page.account_id != current_account&.id)
+    return render_no_such_page if page_hidden_from_search_engine?(page.account)
+    return render_page_rate_limit_error if anonymous_page_view_limit_exceeded?(page)
 
     render json: serialize(page)
   end
 
   def create
-    page = Page.transaction { current_account.pages.create!(page_attributes(create: true)) }
+    page = current_account.with_lock { current_account.pages.create!(page_attributes(create: true)) }
     render json: serialize(page)
   rescue ActiveRecord::RecordInvalid => e
     render_page_validation_error(e.record)
@@ -210,16 +218,20 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
     scope.order('page_likes.id DESC')
   end
 
-  def serialize(page)
-    MisskeyCompat::PageSerializer.serialize(page, current_account: current_account)
+  def serialize(page, include_content: true)
+    MisskeyCompat::PageSerializer.serialize(page, current_account: current_account, include_content: include_content)
   end
 
-  def serialize_many(pages)
-    pages.map { |page| serialize(page) }
+  def serialize_many(pages, include_content: true)
+    pages.map { |page| serialize(page, include_content: include_content) }
   end
 
   def render_no_such_page
     render_error('No such page', 'NO_SUCH_PAGE', 404)
+  end
+
+  def render_page_rate_limit_error
+    render_error(I18n.t('errors.429'), 'RATE_LIMIT_EXCEEDED', 429)
   end
 
   def render_page_validation_error(page)

@@ -30,6 +30,17 @@ RSpec.describe 'Reactions', :inline_jobs do
           a_hash_including(id: status.id.to_s, reactions: [a_hash_including(name: '👍', count: 1, me: true)])
         )
       end
+
+      it 'rate limits repeated authenticated reaction changes' do
+        limiter = RateLimiter.new(user.account, family: :status_reactions)
+        RateLimiter::FAMILIES[:status_reactions][:limit].times { limiter.record! }
+
+        expect { subject }.to_not change(StatusReaction, :count)
+
+        expect(response).to have_http_status(429)
+        expect(response.headers['Cache-Control']).to eq('private, no-store')
+        expect(response.headers['Retry-After'].to_i).to be_positive
+      end
     end
 
     context 'with private status of not-followed account' do

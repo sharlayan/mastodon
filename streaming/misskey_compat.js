@@ -5,6 +5,9 @@ import { filterPayload as filterCustomEmojiPayload, mutedNoteUpdate } from './cu
 const MISSKEY_PREFIX = 'misskey:';
 const MAX_CHANNEL_SUBSCRIPTIONS = 50;
 const MAX_NOTE_SUBSCRIPTIONS = 100;
+const MAX_CHANNEL_ID_LENGTH = 128;
+const MAX_CHANNEL_NAME_LENGTH = 64;
+const MAX_DATABASE_ID = 9223372036854775807n;
 
 const MI_ID_TIME2000 = 946684800000;
 
@@ -25,6 +28,14 @@ const decodeMiId = (mid) => {
   const ms = BigInt(parseInt(str.slice(0, 8), 36) + MI_ID_TIME2000);
   const seq = BigInt(parseInt(str.slice(8, 16), 36));
   return ((ms << 16n) | seq).toString();
+};
+
+const decodeDatabaseId = (value) => {
+  const decoded = decodeMiId(value);
+  if (!decoded || !/^\d{1,19}$/.test(decoded)) return undefined;
+
+  const id = BigInt(decoded);
+  return id <= MAX_DATABASE_ID ? decoded : undefined;
 };
 
 const MISSKEY_MESSAGE_TYPES = new Set([
@@ -140,20 +151,23 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     if (!body || (typeof body.id !== 'string' && typeof body.id !== 'number')) return;
 
     const noteId = String(body.id);
+    const statusId = decodeDatabaseId(noteId);
     const notes = noteStore(session);
 
-    if (notes.has(noteId) || notes.size >= MAX_NOTE_SUBSCRIPTIONS) return;
+    if (!statusId || notes.has(noteId) || notes.size >= MAX_NOTE_SUBSCRIPTIONS) return;
 
+    const reservation = {};
+    notes.set(noteId, reservation);
     isEnabled().then((enabled) => {
-      if (!enabled || notes.has(noteId)) return false;
+      if (!enabled || notes.get(noteId) !== reservation) return false;
 
       return authorize(session, 'note');
     }).then((permitted) => {
-      if (!permitted || notes.has(noteId)) return false;
+      if (!permitted || notes.get(noteId) !== reservation) return false;
 
-      return authorizeStatusAccess(decodeMiId(noteId), session.request);
+      return authorizeStatusAccess(statusId, session.request);
     }).then((authorized) => {
-      if (!authorized || notes.has(noteId) || notes.size >= MAX_NOTE_SUBSCRIPTIONS) return;
+      if (!authorized || notes.get(noteId) !== reservation) return;
 
       const channel = `${MISSKEY_PREFIX}note:${noteId}`;
 
@@ -168,6 +182,8 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       notes.set(noteId, { channel, listener, stopHeartbeat });
     }).catch((err) => {
       logger.error({ err }, 'misskey compat note subscribe failed');
+    }).finally(() => {
+      if (notes.get(noteId) === reservation) notes.delete(noteId);
     });
   };
 
@@ -178,6 +194,11 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     const sub = session.misskeyNotes.get(noteId);
     if (!sub) return;
 
+    if (!sub.channel) {
+      session.misskeyNotes.delete(noteId);
+      return;
+    }
+
     unsubscribe(sub.channel, sub.listener);
     sub.stopHeartbeat();
     session.misskeyNotes.delete(noteId);
@@ -187,21 +208,25 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     if (!body || typeof body.id !== 'string' || typeof body.channel !== 'string') return;
 
     const { channel, id } = body;
+    if (id.length > MAX_CHANNEL_ID_LENGTH || channel.length > MAX_CHANNEL_NAME_LENGTH) return;
+
     const params = body.params || {};
     const channels = store(session).channels;
 
     if (channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
 
+    const reservation = {};
+    channels.set(id, reservation);
     isEnabled().then((enabled) => {
-      if (!enabled || channels.has(id)) return false;
+      if (!enabled || channels.get(id) !== reservation) return false;
 
       return authorize(session, channel);
     }).then((authorized) => {
-      if (!authorized || channels.has(id)) return undefined;
+      if (!authorized || channels.get(id) !== reservation) return undefined;
 
       return resolveChannel(channel, params, session.request, channelNameToIds);
     }).then((channelIds) => {
-      if (!channelIds || channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
+      if (!channelIds || channels.get(id) !== reservation) return;
 
       const misskeyChannelIds = channelIds.map((c) => MISSKEY_PREFIX + c);
 
@@ -221,12 +246,19 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       channels.set(id, { channelIds: misskeyChannelIds, listener, stopHeartbeat });
     }).catch((err) => {
       logger.error({ err }, 'misskey compat channel connect failed');
+    }).finally(() => {
+      if (channels.get(id) === reservation) channels.delete(id);
     });
   };
 
   const teardown = (channels, id) => {
     const sub = channels.get(id);
     if (!sub) return;
+    if (!sub.channelIds) {
+      channels.delete(id);
+      return;
+    }
+
     sub.channelIds.forEach((c) => unsubscribe(c, sub.listener));
     sub.stopHeartbeat();
     channels.delete(id);

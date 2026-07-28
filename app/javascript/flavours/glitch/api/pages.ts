@@ -26,7 +26,13 @@ const storePageAccessToken = (pageId: string, token: string) => {
   } catch {}
 };
 
-export const apiGetPages = () => apiRequestGet<ApiPageJSON[]>('v1/pages');
+export const PAGE_LIST_LIMIT = 20;
+
+export const apiGetPages = (offset = 0) =>
+  apiRequestGet<ApiPageJSON[]>('v1/pages', {
+    limit: PAGE_LIST_LIMIT,
+    offset,
+  });
 
 export const apiGetPageCategories = () =>
   apiRequestGet<string[]>('v1/pages/categories');
@@ -34,8 +40,11 @@ export const apiGetPageCategories = () =>
 export const apiGetFeaturedPages = () =>
   apiRequestGet<ApiPageJSON[]>('v1/pages/featured');
 
-export const apiGetAccountPages = (accountId: string) =>
-  apiRequestGet<ApiPageJSON[]>(`v1/accounts/${accountId}/pages`);
+export const apiGetAccountPages = (accountId: string, offset = 0) =>
+  apiRequestGet<ApiPageJSON[]>(`v1/accounts/${accountId}/pages`, {
+    limit: PAGE_LIST_LIMIT,
+    offset,
+  });
 
 export const apiGetAccountPage = (accountId: string, name: string) =>
   apiRequestGet<ApiPageJSON>(

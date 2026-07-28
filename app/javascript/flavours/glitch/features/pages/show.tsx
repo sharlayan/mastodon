@@ -533,7 +533,14 @@ const PageShow: React.FC<{
 
       <Helmet>
         <title>{title}</title>
-        <meta name='robots' content='noindex' />
+        <meta
+          name='robots'
+          content={
+            currentPage?.account.noindex === false
+              ? 'index, follow'
+              : 'noindex, noarchive'
+          }
+        />
       </Helmet>
     </Column>
   );

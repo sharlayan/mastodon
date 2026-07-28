@@ -18,7 +18,7 @@ defaults: &defaults
   remote_topic_feed_access: 'authenticated'
   show_staff_badge: true
   preview_sensitive_media: false
-  noindex: false
+  noindex: true
   flavour: 'glitch'
   skin: 'default'
   thumbnail_description: ''

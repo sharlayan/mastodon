@@ -18,10 +18,17 @@ class ClipStatus < ApplicationRecord
   belongs_to :status
 
   validates :status_id, uniqueness: { scope: :clip_id }
+  validate :validate_clip_statuses_limit, on: :create
 
   after_destroy :invalidate_cleanup_info
 
   private
+
+  def validate_clip_statuses_limit
+    return if clip.nil?
+
+    errors.add(:base, I18n.t('clips.errors.statuses_limit', limit: Clip::STATUSES_LIMIT)) if clip.clip_statuses.count >= Clip::STATUSES_LIMIT
+  end
 
   def invalidate_cleanup_info
     return unless status&.account_id == clip&.account_id && status&.account&.local?

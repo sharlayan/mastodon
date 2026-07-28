@@ -17,6 +17,7 @@ class Clip < ApplicationRecord
   include Paginable
 
   PER_ACCOUNT_LIMIT = 100
+  STATUSES_LIMIT = 200
   TITLE_LENGTH_LIMIT = 128
   DESCRIPTION_LENGTH_LIMIT = 2048
 

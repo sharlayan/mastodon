@@ -44,7 +44,9 @@ class Sharlayan::PageBackupService
       validate_manifest!(data)
 
       ApplicationRecord.transaction do
+        @account.lock!
         @account.pages.destroy_all if overwrite
+        validate_import_capacity!(data.fetch('pages').size)
         media_ids = import_media!(zip, data.fetch('media'))
         data.fetch('pages').each { |attributes| import_page!(attributes, media_ids) }
       end
@@ -101,7 +103,7 @@ class Sharlayan::PageBackupService
   def validate_manifest!(data)
     raise InvalidArchive unless data['format'] == FORMAT && data['version'] == VERSION
     raise InvalidArchive unless data['pages'].is_a?(Array) && data['media'].is_a?(Array)
-    raise InvalidArchive if data['pages'].size > Page::PER_ACCOUNT_LIMIT
+    raise InvalidArchive if data['pages'].size > Page.limit_for(@account)
     raise InvalidArchive if data['media'].size > MAX_ARCHIVE_ENTRIES - 1
   end
 
@@ -114,6 +116,13 @@ class Sharlayan::PageBackupService
     raise InvalidArchive unless manifest_entries.one?
 
     manifest_entries.first
+  end
+
+  def validate_import_capacity!(page_count)
+    ownership_remaining = [Page.limit_for(@account) - @account.pages.count, 0].max
+    created_today = @account.pages.where(created_at: Time.current.all_day).count
+    daily_remaining = [Page::DAILY_CREATE_LIMIT - created_today, 0].max
+    raise InvalidArchive if page_count > [ownership_remaining, daily_remaining].min
   end
 
   def read_entry(entry, limit)

@@ -37,7 +37,11 @@ module Sharlayan::PostStatus
       return if @options[:clip_ids].blank?
 
       @account.clips.where(id: @options[:clip_ids]).find_each do |clip|
-        clip.statuses << status
+        clip.with_lock do
+          next if clip.clip_statuses.count >= Clip::STATUSES_LIMIT
+
+          clip.statuses << status
+        end
       end
     end
   end

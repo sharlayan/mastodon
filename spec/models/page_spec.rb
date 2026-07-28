@@ -19,6 +19,35 @@ RSpec.describe Page do
       expect(page.errors.of_kind?(:content, :invalid)).to be true
     end
 
+    described_class::BLOCK_TYPE_LIMITS.each do |block_type, limit|
+      it "rejects more than #{limit} #{block_type} blocks" do
+        attributes = case block_type
+                     when 'image'
+                       { type: block_type, fileId: nil }
+                     when 'note'
+                       { type: block_type, note: nil }
+                     when 'youtube'
+                       { type: block_type, url: 'https://youtu.be/dQw4w9WgXcQ' }
+                     end
+        boundary_page = Fabricate.build(:page, account: account, content: Array.new(limit) { attributes })
+        page = Fabricate.build(:page, account: account, content: Array.new(limit + 1) { attributes })
+
+        expect(boundary_page).to be_valid
+        expect(page).to_not be_valid
+        expect(page.errors.of_kind?(:content, :invalid)).to be true
+      end
+    end
+
+    it 'filters excessive external-resource blocks from legacy content when rendering' do
+      page = Fabricate.build(
+        :page,
+        account: account,
+        content: Array.new(described_class::BLOCK_TYPE_LIMITS['note'] + 2) { |index| { type: 'note', note: index.to_s } }
+      )
+
+      expect(page.renderable_content.size).to eq(described_class::BLOCK_TYPE_LIMITS['note'])
+    end
+
     it 'rejects content nested beyond the depth limit' do
       content = { type: 'section', title: 'x', children: [] }
       root = content
@@ -50,12 +79,58 @@ RSpec.describe Page do
       expect(page.errors.of_kind?(:content, :invalid)).to be true
     end
 
+    it 'enforces section title and YouTube URL length boundaries' do
+      section = Fabricate.build(:page, account: account, content: [{ type: 'section', title: 'x' * described_class::MAX_SECTION_TITLE_LENGTH, children: [] }])
+      youtube_url = 'https://youtu.be/dQw4w9WgXcQ?'.ljust(described_class::MAX_YOUTUBE_URL_LENGTH, 'x')
+      youtube = Fabricate.build(:page, account: account, content: [{ type: 'youtube', url: youtube_url }])
+
+      expect(section).to be_valid
+      expect(youtube).to be_valid
+
+      section.content.first['title'] << 'x'
+      youtube.content.first['url'] << 'x'
+
+      expect(section).to_not be_valid
+      expect(youtube).to_not be_valid
+    end
+
     it 'rejects image blocks referencing another account media' do
       media = Fabricate(:media_attachment)
       page = Fabricate.build(:page, account: account, content: [{ type: 'image', fileId: media.id.to_s }])
 
       expect(page).to_not be_valid
       expect(page.errors.of_kind?(:content, :invalid)).to be true
+    end
+  end
+
+  describe 'creation limits' do
+    it 'uses the page limit assigned to the account role' do
+      role = Fabricate(:user_role, page_limit: 1)
+      role_account = Fabricate(:user, role: role).account
+      Fabricate(:page, account: role_account)
+
+      page = Fabricate.build(:page, account: role_account)
+
+      expect(page).to_not be_valid
+      expect(page.errors[:base]).to include(I18n.t('pages.errors.limit', limit: 1))
+    end
+
+    it 'limits the number of pages created in one day' do
+      stub_const('Page::DAILY_CREATE_LIMIT', 1)
+      Fabricate(:page, account: account)
+
+      page = Fabricate.build(:page, account: account)
+
+      expect(page).to_not be_valid
+      expect(page.errors[:base]).to include(I18n.t('pages.errors.daily_limit', limit: 1))
+    end
+
+    it 'does not count pages created before the current day' do
+      stub_const('Page::DAILY_CREATE_LIMIT', 1)
+      old_page = Fabricate(:page, account: account)
+      old_page.update_column(:created_at, 1.day.ago)
+
+      expect(Fabricate.build(:page, account: account)).to be_valid
     end
   end
 

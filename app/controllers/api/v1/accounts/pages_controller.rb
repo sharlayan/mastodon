@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class Api::V1::Accounts::PagesController < Api::BaseController
+  include Api::AnonymousPageViewLimit
+  include Api::PageSearchEngineAccess
+
+  vary_by 'Authorization, User-Agent'
+
   before_action :require_feature_enabled!
   before_action -> { authorize_if_got_token! :read, :'read:accounts' }
   before_action :set_account
@@ -9,10 +14,13 @@ class Api::V1::Accounts::PagesController < Api::BaseController
   def index
     cache_if_unauthenticated!
     @pages = load_pages
-    render json: @pages, each_serializer: REST::PageSerializer, include_locked_header: true
+    render json: @pages, each_serializer: REST::PageSummarySerializer, include_locked_header: true
   end
 
   def show
+    return not_found if page_hidden_from_search_engine?(@page.account)
+    return render_page_rate_limit_error if anonymous_page_view_limit_exceeded?(@page)
+
     cache_if_unauthenticated!
     render json: @page, serializer: REST::PageSerializer
   end
@@ -35,7 +43,14 @@ class Api::V1::Accounts::PagesController < Api::BaseController
 
   def load_pages
     return [] if @account.unavailable?
+    return [] if page_hidden_from_search_engine?(@account)
 
-    @account.pages.listed.order(is_main: :desc, id: :desc).to_a
+    @account.pages.listed.order(is_main: :desc, id: :desc)
+      .offset([params[:offset].to_i, 0].max)
+      .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
+  end
+
+  def render_page_rate_limit_error
+    render json: { error: I18n.t('errors.429') }, status: 429
   end
 end

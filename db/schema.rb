@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_26_183000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_28_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -722,6 +722,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_183000) do
     t.string "uri"
     t.boolean "visible_in_picker", default: true, null: false
     t.index ["aliases"], name: "index_custom_emojis_on_aliases", using: :gin
+    t.index ["image_remote_url"], name: "index_custom_emojis_on_image_remote_url_hash", where: "(image_remote_url IS NOT NULL)", using: :hash
     t.index ["shortcode", "domain"], name: "index_custom_emojis_on_shortcode_and_domain", unique: true
   end
 
@@ -1018,6 +1019,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_183000) do
     t.datetime "updated_at", null: false
     t.string "version"
     t.index ["domain"], name: "index_instance_metadata_on_domain", unique: true
+    t.index ["favicon_url"], name: "index_instance_metadata_on_favicon_url_hash", where: "(favicon_url IS NOT NULL)", using: :hash
     t.index ["theme_color_updated_at"], name: "index_instance_metadata_on_theme_color_updated_at"
   end
 
@@ -1144,10 +1146,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_183000) do
     t.index ["account_id", "status_id"], name: "index_media_attachments_on_account_id_and_status_id", order: { status_id: :desc }
     t.index ["drive_access_key"], name: "index_media_attachments_on_drive_access_key", unique: true, where: "(drive_access_key IS NOT NULL)"
     t.index ["drive_file_id"], name: "index_media_attachments_on_drive_file_id", where: "(drive_file_id IS NOT NULL)"
+    t.index ["remote_url"], name: "index_media_attachments_on_remote_url_hash", where: "((remote_url)::text <> ''::text)", using: :hash
     t.index ["scheduled_status_id"], name: "index_media_attachments_on_scheduled_status_id", where: "(scheduled_status_id IS NOT NULL)"
     t.index ["shortcode"], name: "index_media_attachments_on_shortcode", unique: true, opclass: :text_pattern_ops, where: "(shortcode IS NOT NULL)"
     t.index ["status_draft_id"], name: "index_media_attachments_on_status_draft_id"
     t.index ["status_id"], name: "index_media_attachments_on_status_id"
+    t.index ["thumbnail_remote_url"], name: "index_media_attachments_on_thumbnail_remote_url_hash", where: "(thumbnail_remote_url IS NOT NULL)", using: :hash
   end
 
   create_table "mentions", force: :cascade do |t|
@@ -1849,6 +1853,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_26_183000) do
     t.bigint "extra_permissions", default: 0, null: false
     t.boolean "highlighted", default: false, null: false
     t.string "name", default: "", null: false
+    t.integer "page_limit", default: 500, null: false
     t.bigint "permissions", default: 0, null: false
     t.integer "position", default: 0, null: false
     t.boolean "require_2fa", default: false, null: false

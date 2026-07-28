@@ -52,6 +52,8 @@ class BulkImportRowService
       filter.save!
     when :clips
       uris = Array(@data['statuses'])
+      return false if uris.size > Clip::STATUSES_LIMIT
+
       resolved = []
       missing = false
       uris.each do |uri|
@@ -61,7 +63,9 @@ class BulkImportRowService
 
       clip = @account.clips.create!(title: @data['title'], description: @data['description'], public: @data['public'] || false)
       status_ids = resolved.map(&:id).uniq
-      clip.clip_statuses = status_ids.map { |status_id| ClipStatus.new(status_id: status_id) } if status_ids.any?
+      clip.with_lock do
+        clip.clip_statuses = status_ids.map { |status_id| ClipStatus.new(status_id: status_id) } if status_ids.any?
+      end
 
       return false if missing
     end

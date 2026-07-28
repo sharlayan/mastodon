@@ -125,6 +125,18 @@ RSpec.describe PostStatusService do
       expect(circle.statuses.where(text: 'rolled back')).to_not exist
     end
 
+    it 'creates the status but skips a selected clip that is already full' do
+      stub_const('Clip::STATUSES_LIMIT', 1)
+      clip = Clip.create!(account: account, title: 'Full')
+      clip.clip_statuses.create!(status: Fabricate(:status))
+      Setting.clips_enabled = true
+
+      status = subject.call(account, text: 'still posted', clip_ids: [clip.id])
+
+      expect(status).to be_persisted
+      expect(clip.statuses).to_not include(status)
+    end
+
     it 'does not federate a personal circle status' do
       Setting.circles_enabled = true
 

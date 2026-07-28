@@ -72,4 +72,27 @@ RSpec.describe Sharlayan::PageBackupService do
 
     expect(account.pages.find_by(name: 'existing')).to be_present
   end
+
+  it 'rejects an import that exceeds the remaining daily creation limit' do
+    stub_const('Page::DAILY_CREATE_LIMIT', 1)
+    pages = Array.new(2) do |index|
+      {
+        title: "Page #{index}",
+        name: "page-#{index}",
+        content: [],
+        visibility: 'public',
+      }
+    end
+    archive = zip_archive do |zip|
+      zip.get_output_stream(described_class::MANIFEST) do |io|
+        io.write({ format: described_class::FORMAT, version: described_class::VERSION, pages: pages, media: [] }.to_json)
+      end
+    end
+
+    archive_upload(archive) do |upload|
+      expect { service.import!(upload) }.to raise_error(described_class::InvalidArchive)
+    end
+
+    expect(account.pages).to be_empty
+  end
 end

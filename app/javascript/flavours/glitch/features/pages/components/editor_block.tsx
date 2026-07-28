@@ -275,6 +275,7 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
           <input
             type='url'
             value={block.url}
+            maxLength={512}
             placeholder={intl.formatMessage(messages.youtubePlaceholder)}
             onChange={handleYoutubeUrlChange}
           />
@@ -312,6 +313,7 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
           <input
             type='text'
             value={block.title}
+            maxLength={100}
             placeholder={intl.formatMessage(messages.sectionPlaceholder)}
             onChange={handleTitleChange}
           />

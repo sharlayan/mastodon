@@ -153,5 +153,41 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
       expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
       expect(account.misskey_registry_items).to_not exist
     end
+
+    it 'rejects a new write when legacy data already exceeds the account quota' do
+      item = account.misskey_registry_items.create!(domain: nil, scope: %w(other), key: 'legacy', value: 'small')
+      item.update_column(:value, 'x' * MisskeyRegistryItem::MAX_ACCOUNT_BYTES)
+
+      set_item('new', 'value')
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+      expect(account.misskey_registry_items).to_not exist(key: 'new')
+    end
+
+    it 'refuses to aggregate an oversized legacy scope' do
+      item = account.misskey_registry_items.create!(domain: nil, scope: %w(client base), key: 'legacy', value: 'small')
+      item.update_column(:value, 'x' * MisskeyRegistryItem::MAX_SCOPE_BYTES)
+
+      post '/api/i/registry/get-all', params: { i: token, scope: %w(client base) }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('REGISTRY_SCOPE_TOO_LARGE')
+
+      post '/api/i/registry/keys', params: { i: token, scope: %w(client base) }, as: :json
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq(['legacy'])
+    end
+
+    it 'enforces a dedicated per-account request limit' do
+      RateLimiter::FAMILIES[:misskey_registry][:limit].times do
+        RateLimiter.new(account, family: :misskey_registry).record!
+      end
+
+      post '/api/i/registry/get', params: { i: token, scope: %w(client base), key: 'lang' }, as: :json
+
+      expect(response).to have_http_status(429)
+      expect(response.parsed_body.dig(:error, :code)).to eq('RATE_LIMIT_EXCEEDED')
+    end
   end
 end

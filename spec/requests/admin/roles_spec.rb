@@ -141,6 +141,14 @@ RSpec.describe 'Admin Roles' do
         expect(UserRole.order(:id).last.drive_quota).to eq(2048)
       end
 
+      it 'creates a role with a page limit' do
+        expect do
+          post admin_roles_path, params: { user_role: { name: 'Page role', position: 0, page_limit: 250 } }
+        end.to change(UserRole, :count).by(1)
+
+        expect(UserRole.order(:id).last.page_limit).to eq(250)
+      end
+
       it 'gracefully handles invalid nested params' do
         post admin_roles_path(user_role: 'invalid')
 
