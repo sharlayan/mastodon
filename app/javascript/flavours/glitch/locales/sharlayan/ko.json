@@ -402,6 +402,7 @@
   "pages.use_drive_image": "드라이브에서 이미지 사용",
   "pages.visibility.password": "비밀번호로 접근 가능",
   "pages.visibility.private": "나만 접근 가능",
+  "pages.visibility.authenticated": "로그인한 사용자만",
   "pages.visibility.public": "공개",
   "pages.wide_view": "넓게 보기",
   "reaction_mutes.add": "추가",

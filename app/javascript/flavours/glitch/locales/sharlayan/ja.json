@@ -402,6 +402,7 @@
   "pages.use_drive_image": "ドライブの画像を使用",
   "pages.visibility.password": "パスワードでアクセス可能",
   "pages.visibility.private": "自分のみアクセス可能",
+  "pages.visibility.authenticated": "ログイン済みユーザーのみ",
   "pages.visibility.public": "公開",
   "pages.wide_view": "ワイド表示",
   "reaction_mutes.add": "追加",

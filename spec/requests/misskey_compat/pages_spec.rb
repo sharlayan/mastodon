@@ -22,6 +22,7 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
     let!(:published_page) { Fabricate(:page, account: account, likes_count: 2) }
     let!(:draft_page) { Fabricate(:page, account: account, draft: true, likes_count: 10) }
     let!(:password_page) { Fabricate(:page, account: account, visibility: 'password', access_password: 'correct-password', likes_count: 20) }
+    let!(:authenticated_page) { Fabricate(:page, account: account, visibility: 'authenticated') }
 
     it 'returns featured published pages in Misskey format' do
       post '/api/pages/featured', params: { i: read_token }, as: :json
@@ -50,11 +51,13 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response.parsed_body.pluck(:id)).to contain_exactly(
         MisskeyCompat::MiId.encode(published_page.id),
         MisskeyCompat::MiId.encode(draft_page.id),
-        MisskeyCompat::MiId.encode(password_page.id)
+        MisskeyCompat::MiId.encode(password_page.id),
+        MisskeyCompat::MiId.encode(authenticated_page.id)
       )
     end
 
     it 'uses 20 items as the default list size' do
+      user.update!(role: Fabricate(:user_role, daily_page_limit: 100))
       21.times { Fabricate(:page, account: account) }
 
       post '/api/i/pages', params: { i: read_token }, as: :json
@@ -69,6 +72,17 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to contain_exactly(MisskeyCompat::MiId.encode(published_page.id))
       expect(response.parsed_body.first).to include(content: [], attachedFiles: [])
+    end
+
+    it 'hides authenticated pages from anonymous users and shows them to signed-in users' do
+      post '/api/users/pages', params: { i: read_token, userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
+      expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(authenticated_page.id))
+
+      post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(authenticated_page.id) }, as: :json
+      expect(response).to have_http_status(404)
+
+      post '/api/pages/show', params: { i: read_token, pageId: MisskeyCompat::MiId.encode(authenticated_page.id) }, as: :json
+      expect(response).to have_http_status(200)
     end
 
     it 'shows a public page by username and name' do

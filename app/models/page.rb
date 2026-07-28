@@ -30,7 +30,7 @@ class Page < ApplicationRecord
   class ContentLimitError < StandardError; end
 
   DEFAULT_PER_ACCOUNT_LIMIT = 500
-  DAILY_CREATE_LIMIT = 100
+  DEFAULT_DAILY_CREATE_LIMIT = 20
   LIST_LIMIT = 20
   MAX_LIST_LIMIT = 100
   TITLE_LENGTH_LIMIT = 256
@@ -39,7 +39,7 @@ class Page < ApplicationRecord
   CATEGORY_LENGTH_LIMIT = 30
   NAME_RE = %r{\A[^\s:/?#\[\]@!$&'()*+,;=\\%\x00-\x20]{1,256}\z}
   FONTS = %w(sans-serif serif).freeze
-  VISIBILITIES = %w(public password private).freeze
+  VISIBILITIES = %w(public authenticated password private).freeze
   BLOCK_TYPES = %w(text section image note youtube).freeze
   MAX_BLOCKS = 500
   MAX_BLOCK_DEPTH = 10
@@ -82,7 +82,7 @@ class Page < ApplicationRecord
 
   scope :available_accounts, -> { joins(:account).merge(Account.without_suspended) }
   scope :publicly_accessible, -> { available_accounts.where(visibility: 'public') }
-  scope :listed, -> { available_accounts.where(visibility: %w(public password)) }
+  scope :listed, -> { available_accounts.where(visibility: %w(public authenticated password)) }
   scope :published, -> { publicly_accessible }
   scope :featured, -> { publicly_accessible.where('likes_count > 0').order(likes_count: :desc) }
 
@@ -99,6 +99,10 @@ class Page < ApplicationRecord
 
   def public_visibility?
     visibility == 'public'
+  end
+
+  def authenticated_visibility?
+    visibility == 'authenticated'
   end
 
   def eligible_for_main?
@@ -151,6 +155,10 @@ class Page < ApplicationRecord
 
   def self.limit_for(account)
     account.user&.role&.page_limit || DEFAULT_PER_ACCOUNT_LIMIT
+  end
+
+  def self.daily_limit_for(account)
+    account.user&.role&.daily_page_limit || DEFAULT_DAILY_CREATE_LIMIT
   end
 
   private
@@ -300,7 +308,8 @@ class Page < ApplicationRecord
   def validate_daily_create_limit
     return if account.nil?
 
-    errors.add(:base, I18n.t('pages.errors.daily_limit', limit: DAILY_CREATE_LIMIT)) if account.pages.where(created_at: Time.current.all_day).count >= DAILY_CREATE_LIMIT
+    limit = self.class.daily_limit_for(account)
+    errors.add(:base, I18n.t('pages.errors.daily_limit', limit: limit)) if account.pages.where(created_at: Time.current.all_day).count >= limit
   end
 
   def validate_eye_catching_media_attachment

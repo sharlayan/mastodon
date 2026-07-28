@@ -3,7 +3,7 @@
 class REST::RoleSerializer < ActiveModel::Serializer
   attributes :id, :name, :permissions, :color, :highlighted
 
-  attributes :collection_limit, :page_limit
+  attributes :collection_limit, :page_limit, :daily_page_limit
 
   def id
     object.id.to_s

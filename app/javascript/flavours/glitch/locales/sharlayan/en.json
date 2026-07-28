@@ -402,6 +402,7 @@
   "pages.use_drive_image": "Use image from Drive",
   "pages.visibility.password": "Password protected",
   "pages.visibility.private": "Only me",
+  "pages.visibility.authenticated": "Signed-in users only",
   "pages.visibility.public": "Public",
   "pages.wide_view": "Wide view",
   "reaction_mutes.add": "Add",

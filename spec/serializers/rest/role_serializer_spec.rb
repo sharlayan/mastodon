@@ -9,7 +9,7 @@ RSpec.describe REST::RoleSerializer do
     Fabricate.build(:user_role, permissions: 0)
   end
   let(:role) do
-    Fabricate.build(:user_role, id: 2342, name: 'test role', color: '#ABC', highlighted: true, permissions: 2300, collection_limit: 11, page_limit: 321)
+    Fabricate.build(:user_role, id: 2342, name: 'test role', color: '#ABC', highlighted: true, permissions: 2300, collection_limit: 11, page_limit: 321, daily_page_limit: 12)
   end
 
   before do
@@ -38,6 +38,7 @@ RSpec.describe REST::RoleSerializer do
           'permissions' => '2300',
           'collection_limit' => 11,
           'page_limit' => 321,
+          'daily_page_limit' => 12,
         })
     end
   end

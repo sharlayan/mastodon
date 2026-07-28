@@ -7,6 +7,7 @@
 #  id                :bigint(8)        not null, primary key
 #  collection_limit  :integer          default(10), not null
 #  color             :string           default(""), not null
+#  daily_page_limit  :integer          default(20), not null
 #  drive_quota       :integer
 #  extra_permissions :bigint(8)        default(0), not null
 #  highlighted       :boolean          default(FALSE), not null
@@ -115,6 +116,7 @@ class UserRole < ApplicationRecord
   validates :color, format: { with: CSS_COLORS }, if: :color?
   validates :position, numericality: { in: (-POSITION_LIMIT..POSITION_LIMIT) }
   validates :collection_limit, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :daily_page_limit, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :page_limit, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
   validate :validate_permissions_elevation

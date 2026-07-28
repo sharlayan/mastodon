@@ -116,21 +116,23 @@ RSpec.describe Page do
     end
 
     it 'limits the number of pages created in one day' do
-      stub_const('Page::DAILY_CREATE_LIMIT', 1)
-      Fabricate(:page, account: account)
+      role = Fabricate(:user_role, daily_page_limit: 1)
+      role_account = Fabricate(:user, role: role).account
+      Fabricate(:page, account: role_account)
 
-      page = Fabricate.build(:page, account: account)
+      page = Fabricate.build(:page, account: role_account)
 
       expect(page).to_not be_valid
       expect(page.errors[:base]).to include(I18n.t('pages.errors.daily_limit', limit: 1))
     end
 
     it 'does not count pages created before the current day' do
-      stub_const('Page::DAILY_CREATE_LIMIT', 1)
-      old_page = Fabricate(:page, account: account)
+      role = Fabricate(:user_role, daily_page_limit: 1)
+      role_account = Fabricate(:user, role: role).account
+      old_page = Fabricate(:page, account: role_account)
       old_page.update_column(:created_at, 1.day.ago)
 
-      expect(Fabricate.build(:page, account: account)).to be_valid
+      expect(Fabricate.build(:page, account: role_account)).to be_valid
     end
   end
 

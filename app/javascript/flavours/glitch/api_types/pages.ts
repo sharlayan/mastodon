@@ -48,7 +48,11 @@ export type ApiPageBlockType = ApiPageBlock['type'];
 export type ApiPageYoutubeSize = 'small' | 'medium' | 'large';
 
 export type ApiPageFont = 'sans-serif' | 'serif';
-export type ApiPageVisibility = 'public' | 'password' | 'private';
+export type ApiPageVisibility =
+  | 'public'
+  | 'authenticated'
+  | 'password'
+  | 'private';
 
 export interface ApiPageJSON {
   id: string;

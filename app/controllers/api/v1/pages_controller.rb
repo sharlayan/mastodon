@@ -33,6 +33,7 @@ class Api::V1::PagesController < Api::BaseController
 
   def show
     return not_found if @page.private_visibility? && @page.account_id != current_account&.id
+    return not_found if @page.authenticated_visibility? && current_account.nil?
     return not_found if page_hidden_from_search_engine?(@page.account)
     return render_page_rate_limit_error if anonymous_page_view_limit_exceeded?(@page)
 
@@ -122,6 +123,7 @@ class Api::V1::PagesController < Api::BaseController
     return not_found if @page.account.unavailable?
 
     not_found if @page.private_visibility? && @page.account_id != current_account&.id
+    not_found if @page.authenticated_visibility? && current_account.nil?
   end
 
   def authorize_owner!
@@ -142,7 +144,10 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def page_accessible?
-    @page.public_visibility? || @page.account_id == current_account&.id || (@page.password_visibility? && @page.valid_access_token?(params[:access_token]))
+    @page.public_visibility? ||
+      @page.authenticated_visibility? ||
+      @page.account_id == current_account&.id ||
+      (@page.password_visibility? && @page.valid_access_token?(params[:access_token]))
   end
 
   def content_params

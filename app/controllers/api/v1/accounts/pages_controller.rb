@@ -39,13 +39,17 @@ class Api::V1::Accounts::PagesController < Api::BaseController
     not_found if @account.unavailable?
     @page = @account.pages.find_by!(name: params[:name])
     not_found if @page.private_visibility? && @page.account_id != current_account&.id
+    not_found if @page.authenticated_visibility? && current_account.nil?
   end
 
   def load_pages
     return [] if @account.unavailable?
     return [] if page_hidden_from_search_engine?(@account)
 
-    @account.pages.listed.order(is_main: :desc, id: :desc)
+    pages = @account.pages.listed
+    pages = pages.where.not(visibility: 'authenticated') if current_account.nil?
+
+    pages.order(is_main: :desc, id: :desc)
       .offset([params[:offset].to_i, 0].max)
       .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
   end

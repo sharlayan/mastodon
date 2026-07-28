@@ -41,7 +41,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   end
 
   def likes
-    likes = apply_like_range(current_account.page_likes.joins(:page).merge(Page.published)).includes(page: [:account, :eye_catching_media_attachment]).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    likes = apply_like_range(current_account.page_likes.joins(:page).merge(Page.where(visibility: %w(public authenticated)))).includes(page: [:account, :eye_catching_media_attachment]).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
     render json: likes.map { |like| { id: MisskeyCompat::MiId.encode(like.id), page: serialize(like.page, include_content: false) } }
   end
 
@@ -49,13 +49,15 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
     account = Account.find_by(id: params[:userId])
     return render json: [] if account.nil? || page_hidden_from_search_engine?(account)
 
-    pages = apply_page_range(Page.published.where(account: account)).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    visibility = current_account ? %w(public authenticated) : %w(public)
+    pages = apply_page_range(Page.available_accounts.where(account: account, visibility: visibility)).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
     render json: serialize_many(pages, include_content: false)
   end
 
   def show
     page = find_shown_page
-    return render_no_such_page if page.nil? || (!page.public_visibility? && page.account_id != current_account&.id)
+    return render_no_such_page if page.nil? || (!page.public_visibility? && !page.authenticated_visibility? && page.account_id != current_account&.id)
+    return render_no_such_page if page.authenticated_visibility? && current_account.nil?
     return render_no_such_page if page_hidden_from_search_engine?(page.account)
     return render_page_rate_limit_error if anonymous_page_view_limit_exceeded?(page)
 
@@ -105,7 +107,8 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
 
   def set_page
     @page = Page.find_by(id: params[:pageId])
-    hidden_page = @page && (@page.account.unavailable? || (!@page.public_visibility? && (@page.account_id != current_account&.id || %w(like unlike).include?(action_name))))
+    accessible_visibility = @page&.public_visibility? || @page&.authenticated_visibility?
+    hidden_page = @page && (@page.account.unavailable? || (!accessible_visibility && (@page.account_id != current_account&.id || %w(like unlike).include?(action_name))))
     render_no_such_page if @page.nil? || hidden_page
   end
 
@@ -118,7 +121,8 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
       Page.available_accounts.includes(:account, :eye_catching_media_attachment).find_by(id: params[:pageId])
     elsif params[:name].present? && params[:username].present?
       account = Account.where(domain: nil).where('LOWER(username) = ?', params[:username].to_s.downcase).first
-      account&.pages&.published&.includes(:account, :eye_catching_media_attachment)&.find_by(name: params[:name]) unless account&.unavailable?
+      visibility = current_account ? %w(public authenticated) : %w(public)
+      account&.pages&.where(visibility: visibility)&.includes(:account, :eye_catching_media_attachment)&.find_by(name: params[:name]) unless account&.unavailable?
     end
   end
 

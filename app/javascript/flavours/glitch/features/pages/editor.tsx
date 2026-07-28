@@ -75,6 +75,10 @@ const messages = defineMessages({
     id: 'pages.visibility.public',
     defaultMessage: 'Public',
   },
+  visibilityAuthenticated: {
+    id: 'pages.visibility.authenticated',
+    defaultMessage: 'Signed-in users only',
+  },
   visibilityPassword: {
     id: 'pages.visibility.password',
     defaultMessage: 'Password protected',
@@ -447,6 +451,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             >
               <option value='public'>
                 {intl.formatMessage(messages.visibilityPublic)}
+              </option>
+              <option value='authenticated'>
+                {intl.formatMessage(messages.visibilityAuthenticated)}
               </option>
               <option value='password'>
                 {intl.formatMessage(messages.visibilityPassword)}

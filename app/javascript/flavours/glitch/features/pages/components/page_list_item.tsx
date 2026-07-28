@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router-dom';
 
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import LockIcon from '@/material-icons/400-24px/lock.svg?react';
+import PersonShieldIcon from '@/material-icons/400-24px/person_shield.svg?react';
 import PreviewOffIcon from '@/material-icons/400-24px/preview_off.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 import { Avatar } from 'flavours/glitch/components/avatar';
@@ -14,6 +15,10 @@ const messages = defineMessages({
   passwordVisibility: {
     id: 'pages.visibility.password',
     defaultMessage: 'Password protected',
+  },
+  authenticatedVisibility: {
+    id: 'pages.visibility.authenticated',
+    defaultMessage: 'Signed-in users only',
   },
   privateVisibility: {
     id: 'pages.visibility.private',
@@ -70,15 +75,27 @@ export const PageListItem: React.FC<{
               )}
               {page.visibility !== 'public' && (
                 <Icon
-                  id={page.visibility === 'password' ? 'lock' : 'preview-off'}
+                  id={
+                    page.visibility === 'password'
+                      ? 'lock'
+                      : page.visibility === 'authenticated'
+                        ? 'person-shield'
+                        : 'preview-off'
+                  }
                   icon={
-                    page.visibility === 'password' ? LockIcon : PreviewOffIcon
+                    page.visibility === 'password'
+                      ? LockIcon
+                      : page.visibility === 'authenticated'
+                        ? PersonShieldIcon
+                        : PreviewOffIcon
                   }
                   className='page-list-item__visibility-icon'
                   aria-label={intl.formatMessage(
                     page.visibility === 'password'
                       ? messages.passwordVisibility
-                      : messages.privateVisibility,
+                      : page.visibility === 'authenticated'
+                        ? messages.authenticatedVisibility
+                        : messages.privateVisibility,
                   )}
                 />
               )}

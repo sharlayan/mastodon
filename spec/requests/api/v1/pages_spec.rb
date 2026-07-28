@@ -135,6 +135,7 @@ RSpec.describe 'Pages' do
 
   describe 'page list pagination' do
     before do
+      user.update!(role: Fabricate(:user_role, daily_page_limit: 100))
       21.times { Fabricate(:page, account: user.account) }
     end
 
@@ -481,6 +482,39 @@ RSpec.describe 'Pages' do
       get '/api/v1/pages/featured', headers: headers
 
       expect(response.parsed_body.pluck(:id)).to_not include(password_page.id.to_s)
+    end
+  end
+
+  describe 'authenticated visibility' do
+    let!(:authenticated_page) { Fabricate(:page, account: user.account, visibility: 'authenticated', likes_count: 10) }
+    let(:other_user) { Fabricate(:user) }
+    let(:other_token) { Fabricate(:accessible_access_token, resource_owner_id: other_user.id, scopes: scopes) }
+    let(:other_headers) { { 'Authorization' => "Bearer #{other_token.token}" } }
+
+    it 'hides the page and account listing entry from anonymous users' do
+      get "/api/v1/pages/#{authenticated_page.id}"
+      expect(response).to have_http_status(404)
+
+      get "/api/v1/accounts/#{user.account_id}/pages"
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to_not include(authenticated_page.id.to_s)
+    end
+
+    it 'allows signed-in users to view the page and account listing entry' do
+      get "/api/v1/pages/#{authenticated_page.id}", headers: other_headers
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to include('visibility' => 'authenticated')
+
+      get "/api/v1/accounts/#{user.account_id}/pages", headers: other_headers
+      expect(response.parsed_body.pluck(:id)).to include(authenticated_page.id.to_s)
+    end
+
+    it 'allows a signed-in user to like the page but excludes it from featured pages' do
+      post "/api/v1/pages/#{authenticated_page.id}/like", headers: other_headers
+      expect(response).to have_http_status(200)
+
+      get '/api/v1/pages/featured', headers: other_headers
+      expect(response.parsed_body.pluck(:id)).to_not include(authenticated_page.id.to_s)
     end
   end
 

@@ -402,6 +402,7 @@
   "pages.use_drive_image",
   "pages.visibility.password",
   "pages.visibility.private",
+  "pages.visibility.authenticated",
   "pages.visibility.public",
   "pages.wide_view",
   "reaction_mutes.add",

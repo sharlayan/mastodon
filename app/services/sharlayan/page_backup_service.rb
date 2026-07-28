@@ -121,7 +121,7 @@ class Sharlayan::PageBackupService
   def validate_import_capacity!(page_count)
     ownership_remaining = [Page.limit_for(@account) - @account.pages.count, 0].max
     created_today = @account.pages.where(created_at: Time.current.all_day).count
-    daily_remaining = [Page::DAILY_CREATE_LIMIT - created_today, 0].max
+    daily_remaining = [Page.daily_limit_for(@account) - created_today, 0].max
     raise InvalidArchive if page_count > [ownership_remaining, daily_remaining].min
   end
 

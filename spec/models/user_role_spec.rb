@@ -43,6 +43,12 @@ RSpec.describe UserRole do
       it { is_expected.to validate_numericality_of(:page_limit).only_integer.is_greater_than_or_equal_to(0) }
     end
 
+    describe 'daily_page_limit' do
+      subject { Fabricate.build :user_role }
+
+      it { is_expected.to validate_numericality_of(:daily_page_limit).only_integer.is_greater_than_or_equal_to(0) }
+    end
+
     describe 'drive_quota' do
       subject { Fabricate.build :user_role }
 

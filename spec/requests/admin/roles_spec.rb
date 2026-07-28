@@ -143,10 +143,10 @@ RSpec.describe 'Admin Roles' do
 
       it 'creates a role with a page limit' do
         expect do
-          post admin_roles_path, params: { user_role: { name: 'Page role', position: 0, page_limit: 250 } }
+          post admin_roles_path, params: { user_role: { name: 'Page role', position: 0, page_limit: 250, daily_page_limit: 15 } }
         end.to change(UserRole, :count).by(1)
 
-        expect(UserRole.order(:id).last.page_limit).to eq(250)
+        expect(UserRole.order(:id).last).to have_attributes(page_limit: 250, daily_page_limit: 15)
       end
 
       it 'gracefully handles invalid nested params' do

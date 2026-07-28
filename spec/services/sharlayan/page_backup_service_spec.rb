@@ -74,7 +74,7 @@ RSpec.describe Sharlayan::PageBackupService do
   end
 
   it 'rejects an import that exceeds the remaining daily creation limit' do
-    stub_const('Page::DAILY_CREATE_LIMIT', 1)
+    account.user.update!(role: Fabricate(:user_role, daily_page_limit: 1))
     pages = Array.new(2) do |index|
       {
         title: "Page #{index}",
