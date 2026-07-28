@@ -117,27 +117,27 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
 
   const notificationGroups = useSelector(state => state.notificationGroups.groups);
 
-  const unreadMentionStatusIds = useMemo(() => {
+  const unreadNotificationStatusIds = useMemo(() => {
     const present = new Set(statusIds.toArray());
 
     return notificationGroups
       .filter(group =>
         group.type !== 'gap' &&
-        (group.type === 'mention' || group.type === 'quote') &&
+        (group.type === 'mention' || group.type === 'quote' || group.type === 'reaction') &&
         'statusId' in group &&
         group.statusId &&
         present.has(group.statusId))
       .map(group => group.statusId);
   }, [notificationGroups, statusIds]);
 
-  const unreadMentionKey = unreadMentionStatusIds.join(',');
+  const unreadNotificationKey = unreadNotificationStatusIds.join(',');
 
   useEffect(() => {
-    if (unreadMentionStatusIds.length > 0) {
-      dispatch(dismissNotificationsForStatuses(unreadMentionStatusIds));
+    if (unreadNotificationStatusIds.length > 0) {
+      dispatch(dismissNotificationsForStatuses(unreadNotificationStatusIds));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, unreadMentionKey]);
+  }, [dispatch, unreadNotificationKey]);
 
   const scrollToBottom = useCallback(() => {
     const node = messagesRef.current;

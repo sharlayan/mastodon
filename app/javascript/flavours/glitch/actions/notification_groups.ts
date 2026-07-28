@@ -268,7 +268,9 @@ export const dismissNotificationsForStatuses = createAppAsyncThunk(
       .notificationGroups.groups.filter(
         (group): group is NotificationGroup =>
           group.type !== 'gap' &&
-          (group.type === 'mention' || group.type === 'quote') &&
+          (group.type === 'mention' ||
+            group.type === 'quote' ||
+            group.type === 'reaction') &&
           'statusId' in group &&
           !!group.statusId &&
           wanted.has(group.statusId),
