@@ -37,6 +37,7 @@ type AvatarDecorationAccount = Pick<Account | AccountShapeFull, 'acct'> &
 interface Options {
   account?: AvatarDecorationAccount;
   forceShowDecorations?: boolean;
+  showOnlineStatus?: boolean;
   animate?: boolean;
   hovering: boolean;
 }
@@ -65,6 +66,7 @@ export function sharlayanShowsCatEars(
 export function useSharlayanAvatarExtras({
   account,
   forceShowDecorations = false,
+  showOnlineStatus = false,
   animate,
   hovering,
 }: Options) {
@@ -79,7 +81,8 @@ export function useSharlayanAvatarExtras({
       ) as boolean,
   );
   const onlineStatus = account?.online_status;
-  const showOnlineStatus =
+  const displayOnlineStatus =
+    showOnlineStatus &&
     showOthersOnlineStatus &&
     (onlineStatus === 'online' ||
       onlineStatus === 'active' ||
@@ -94,6 +97,7 @@ export function useSharlayanAvatarExtras({
 
   const decorationClassNames = {
     'account__avatar--decorated': hasDecorations,
+    'account__avatar--online-status': displayOnlineStatus,
     'account__avatar--cat': showCatEars,
     'account__avatar--force-round':
       showCatEars || (hasDecorations && avatarDecorationShape === 'round'),
@@ -117,7 +121,7 @@ export function useSharlayanAvatarExtras({
         forceShow={forceShowDecorations}
       />
 
-      {showOnlineStatus && (
+      {displayOnlineStatus && (
         <span
           className={classNames(
             'account__avatar__online',

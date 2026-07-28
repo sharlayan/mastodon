@@ -127,6 +127,7 @@ export const AccountHeader: React.FC<{
                 account={suspendedOrHidden ? undefined : account}
                 alt={account.avatar_description}
                 size={80}
+                showOnlineStatus
               />
             </a>
           </div>

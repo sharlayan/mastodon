@@ -27,6 +27,7 @@ interface Props {
   counterBorderColor?: string;
   className?: string;
   forceShowDecorations?: boolean;
+  showOnlineStatus?: boolean;
 }
 
 export const Avatar: React.FC<Props> = ({
@@ -41,6 +42,7 @@ export const Avatar: React.FC<Props> = ({
   counter,
   counterBorderColor,
   forceShowDecorations = false,
+  showOnlineStatus = false,
 }) => {
   const { hovering, handleMouseEnter, handleMouseLeave } = useHovering(animate);
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,7 @@ export const Avatar: React.FC<Props> = ({
   const { decorationClassNames, avatarExtras } = useSharlayanAvatarExtras({
     account,
     forceShowDecorations,
+    showOnlineStatus,
     animate,
     hovering,
   });

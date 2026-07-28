@@ -20,6 +20,10 @@
   background: transparent !important;
 }
 
+.account__avatar--online-status {
+  overflow: visible;
+}
+
 .account__avatar--force-round {
   border-radius: 50% !important;
 }
