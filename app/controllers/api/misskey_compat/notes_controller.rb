@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
+  class NoSuchReplyTargetError < StandardError; end
+
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
                        :scheduled_cancel, :drafts_create, :drafts_update, :drafts_delete,
@@ -156,6 +158,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     return render json: { scheduledNoteId: MisskeyCompat::MiId.encode(status.id) } if status.is_a?(ScheduledStatus)
 
     render json: { createdNote: serialize(status) }
+  rescue NoSuchReplyTargetError
+    render_error('No such reply target', 'NO_SUCH_REPLY_TARGET', 404)
   rescue ActiveRecord::RecordNotFound
     render_error('No such note', 'NO_SUCH_NOTE', 404)
   rescue Mastodon::NotPermittedError
@@ -412,6 +416,18 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     params[:renoteId].presence
   end
 
+  def reply_status
+    return @reply_status if defined?(@reply_status)
+
+    reply_id = params[:replyId].presence
+    return @reply_status = nil if reply_id.nil?
+
+    status = Status.find_by(id: reply_id)
+    raise NoSuchReplyTargetError if status.nil? || !StatusPolicy.new(current_account, status).show?
+
+    @reply_status = status
+  end
+
   def quoted_status
     return @quoted_status if defined?(@quoted_status)
 
@@ -428,7 +444,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       content_type: composed_content_type,
       spoiler_text: params[:cw].presence,
       visibility: mastodon_visibility(params[:visibility]),
-      in_reply_to_id: params[:replyId].presence,
+      thread: reply_status,
       local_only: ActiveModel::Type::Boolean.new.cast(params[:localOnly]),
       quoted_status: quoted,
       poll: poll_options,

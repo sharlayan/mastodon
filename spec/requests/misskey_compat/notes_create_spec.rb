@@ -48,6 +48,57 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
     end
   end
 
+  describe 'POST /api/notes/create with replyId' do
+    let(:parent) { Fabricate(:status, account: Fabricate(:account, username: 'bob')) }
+
+    it 'threads the new note under the reply target' do
+      post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(parent.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:createdNote, :replyId)).to eq(MisskeyCompat::MiId.encode(parent.id))
+
+      status = account.statuses.last
+      expect(status.in_reply_to_id).to eq(parent.id)
+      expect(status.in_reply_to_account_id).to eq(parent.account_id)
+    end
+
+    it 'keeps the note threaded when the client also prefixes a mention, as Flare does' do
+      post '/api/notes/create', params: { i: token, text: "@#{parent.account.acct} a reply", replyId: MisskeyCompat::MiId.encode(parent.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+
+      status = account.statuses.last
+      expect(status.in_reply_to_id).to eq(parent.id)
+      expect(status.mentions.where(account_id: parent.account_id).count).to eq(1)
+
+      post '/api/notes/children', params: { i: token, noteId: MisskeyCompat::MiId.encode(parent.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(status.id))
+
+      post '/api/notes/show', params: { i: token, noteId: MisskeyCompat::MiId.encode(status.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:reply, :id)).to eq(MisskeyCompat::MiId.encode(parent.id))
+    end
+
+    it 'returns NO_SUCH_REPLY_TARGET for an unknown target' do
+      post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(Status.last&.id.to_i + 1_000_000) }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_REPLY_TARGET')
+    end
+
+    it 'returns NO_SUCH_REPLY_TARGET for a target the user cannot see' do
+      hidden = Fabricate(:status, account: Fabricate(:account, username: 'carol'), visibility: :direct)
+
+      post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(hidden.id) }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_REPLY_TARGET')
+    end
+  end
+
   it 'queues timeline and federation distribution outside the controller transaction' do
     transaction_depth = ApplicationRecord.connection.open_transactions
     queued_at_depth = {}
