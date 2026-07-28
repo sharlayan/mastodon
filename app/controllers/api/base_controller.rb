@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::BaseController < ApplicationController
+  include CustomEmojiResponseFilteringConcern
+
   DEFAULT_STATUSES_LIMIT = 20
   DEFAULT_ACCOUNTS_LIMIT = 40
 

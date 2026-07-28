@@ -17,6 +17,8 @@
 class CustomEmojiMute < ApplicationRecord
   belongs_to :account
 
+  after_commit :rewrite_response_filter_cache
+
   PREFIX_LIMIT = 100
 
   normalizes :prefix, with: ->(prefix) { prefix.to_s.strip }
@@ -40,5 +42,11 @@ class CustomEmojiMute < ApplicationRecord
     for_account(recipient_account_id).where(reject_reactions: true).where.not(prefix: '').any? do |mute|
       (mute.domain.blank? || mute.domain == normalized_domain) && normalized_shortcode.start_with?(mute.prefix.downcase)
     end
+  end
+
+  private
+
+  def rewrite_response_filter_cache
+    CustomEmojiMuteCache.write(account_id)
   end
 end

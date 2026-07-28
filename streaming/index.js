@@ -18,6 +18,7 @@ import { logger, httpLogger, initializeLogLevel, attachWebsocketHttpLogger, crea
 import { setupMetrics } from './metrics.js';
 import * as Redis from './redis.js';
 import { ACCESS_TOKEN_QUERY } from './extensions/auth.js';
+import { filterPayload as filterCustomEmojiPayload, mutedReactionNotification } from './custom_emoji_filter.js';
 import { createStreamingExtensions } from './extensions/index.js';
 import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
@@ -395,6 +396,8 @@ const startServer = async () => {
     req.accountId = result.rows[0].account_id;
     req.chosenLanguages = result.rows[0].chosen_languages;
     req.permissions = result.rows[0].permissions;
+    req.externalClient = !result.rows[0].superapp;
+    req.customEmojiMutes = req.externalClient ? await loadCustomEmojiMutes(req.accountId) : [];
 
     return {
       accessTokenId: result.rows[0].id,
@@ -403,6 +406,19 @@ const startServer = async () => {
       chosenLanguages: result.rows[0].chosen_languages,
       permissions: result.rows[0].permissions,
     };
+  };
+
+  const loadCustomEmojiMutes = async (accountId) => {
+    if (!accountId) return [];
+
+    try {
+      const raw = await redisClient.get(redisNamespaced(`custom_emoji_mutes:v1:${accountId}`));
+      const rules = raw ? JSON.parse(raw) : [];
+      return Array.isArray(rules) ? rules : [];
+    } catch (err) {
+      logger.warn({ err, accountId }, 'Unable to load custom emoji mute cache');
+      return [];
+    }
   };
 
   /**
@@ -516,6 +532,12 @@ const startServer = async () => {
       } else if (event === 'filters_changed') {
         req.log.debug(`Invalidating filters cache for ${req.accountId}`);
         req.cachedFilters = null;
+      } else if (event === 'custom_emoji_mutes_changed') {
+        loadCustomEmojiMutes(req.accountId).then((rules) => {
+          req.customEmojiMutes = rules;
+        }).catch((err) => {
+          req.log.warn({ err }, `Unable to refresh custom emoji mute cache for ${req.accountId}`);
+        });
       }
     };
   };
@@ -675,6 +697,11 @@ const startServer = async () => {
      * @param {object|string} payload
      */
     const transmit = (event, payload) => {
+      if (req.externalClient && payload && typeof payload === 'object') {
+        if (mutedReactionNotification(payload, req.customEmojiMutes)) return;
+        payload = structuredClone(payload);
+        filterCustomEmojiPayload(payload, req.customEmojiMutes);
+      }
       // TODO: Replace "string"-based delete payloads with object payloads:
       const encodedPayload = typeof payload === 'object' ? JSON.stringify(payload) : payload;
 

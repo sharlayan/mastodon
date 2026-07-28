@@ -2,6 +2,7 @@
 
 class Api::MisskeyCompat::BaseController < ApplicationController
   include Authorization
+  include CustomEmojiResponseFilteringConcern
   include RoutingHelper
 
   wrap_parameters false

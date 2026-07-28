@@ -1,5 +1,7 @@
 'use strict';
 
+import { filterPayload as filterCustomEmojiPayload, mutedNoteUpdate } from './custom_emoji_filter.js';
+
 const MISSKEY_PREFIX = 'misskey:';
 const MAX_CHANNEL_SUBSCRIPTIONS = 50;
 const MAX_NOTE_SUBSCRIPTIONS = 100;
@@ -100,8 +102,12 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
  * @param {import('pino').Logger} deps.logger
  */
 const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadGrantPermissions, isEnabled, logger }) => {
-  const send = (ws, type, body) => {
+  const send = (session, type, body) => {
+    const ws = session.websocket;
     if (ws.readyState !== ws.OPEN) return;
+    if (mutedNoteUpdate(type, body, session.request.customEmojiMutes)) return;
+    body = structuredClone(body);
+    filterCustomEmojiPayload(body, session.request.customEmojiMutes);
     ws.send(JSON.stringify({ type, body }));
   };
 
@@ -153,7 +159,7 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
       const listener = (json) => {
         if (!json || json.event !== 'noteUpdated') return;
-        send(session.websocket, 'noteUpdated', json.payload);
+        send(session, 'noteUpdated', json.payload);
       };
 
       subscribe(channel, listener);
@@ -202,11 +208,11 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       const listener = isSelfChannel(channel)
         ? (json) => {
           if (!json || json.event !== 'drive') return;
-          send(session.websocket, 'channel', { id, type: json.payload.type, body: json.payload.body });
+          send(session, 'channel', { id, type: json.payload.type, body: json.payload.body });
         }
         : (json) => {
           if (!json || json.event !== 'note') return;
-          send(session.websocket, 'channel', { id, type: 'note', body: json.payload });
+          send(session, 'channel', { id, type: 'note', body: json.payload });
         };
 
       misskeyChannelIds.forEach((c) => subscribe(c, listener));
