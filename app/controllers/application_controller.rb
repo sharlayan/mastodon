@@ -126,9 +126,6 @@ class ApplicationController < ActionController::Base
   def persist_switch_parent_stack(new_stack, owner_id)
     @switch_parent_stack = Array(new_stack).map(&:to_i)
 
-    session[:switch_parent_owner] = owner_id
-    session[:switch_parent_stack] = new_stack
-
     if new_stack.blank? || owner_id.nil?
       cookies.delete(:switch_parent_stack)
     else
@@ -146,9 +143,7 @@ class ApplicationController < ActionController::Base
     owner_id = current_account&.id
     return [] if owner_id.nil?
 
-    stack = session[:switch_parent_stack] if session[:switch_parent_owner].to_i == owner_id
-    stack = switch_parent_stack_from_cookie(owner_id) if stack.nil?
-    stack = Array(stack).map(&:to_i)
+    stack = Array(switch_parent_stack_from_cookie(owner_id)).map(&:to_i)
 
     return [] if stack.empty?
 
@@ -157,8 +152,6 @@ class ApplicationController < ActionController::Base
       return []
     end
 
-    session[:switch_parent_owner] = owner_id
-    session[:switch_parent_stack] = stack
     stack
   end
 
@@ -185,8 +178,6 @@ class ApplicationController < ActionController::Base
   def clear_switch_parent_stack
     @switch_parent_stack = []
     cookies.delete(:switch_parent_stack)
-    session.delete(:switch_parent_stack)
-    session.delete(:switch_parent_owner)
     nil
   end
 

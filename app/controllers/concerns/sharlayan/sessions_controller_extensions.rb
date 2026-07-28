@@ -45,6 +45,7 @@ module Sharlayan::SessionsControllerExtensions
     end
 
     sign_out(current_user)
+    reset_session
     sign_in(target_user)
     persist_switch_parent_stack(new_stack, target_account.id)
     target_user.update_sign_in!(new_sign_in: true)

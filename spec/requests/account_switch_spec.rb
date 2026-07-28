@@ -118,6 +118,29 @@ RSpec.describe 'Account switching' do
     end
   end
 
+  describe 'background polling from the switcher' do
+    def poll_as(user, path)
+      token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:accounts')
+      get path, headers: { 'Authorization' => "Bearer #{token.token}" }
+      response.headers['Set-Cookie']
+    end
+
+    it 'does not rewrite the session cookie while switched into a child account' do
+      switch_to_child
+
+      expect(poll_as(child_user, '/api/v1/account_switches')).to be_blank
+      expect(poll_as(child_user, '/api/v1/account_switches/linked_unread_counts')).to be_blank
+    end
+
+    it 'does not rewrite the session cookie for a signed-in root account' do
+      sign_in parent_user
+      get root_path
+
+      expect(poll_as(parent_user, '/api/v1/account_switches')).to be_blank
+      expect(poll_as(parent_user, '/api/v1/account_switches/linked_unread_counts')).to be_blank
+    end
+  end
+
   describe 'when the parent authorization is revoked' do
     it 'releases the parent stack' do
       switch_to_child
