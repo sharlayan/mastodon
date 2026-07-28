@@ -116,7 +116,7 @@ ko:
       published: 게시됨
       published_msg: 공지사항이 성공적으로 게시되었습니다!
       read_count:
-        one: "%{count} read"
+        one: "%{count}명 읽음"
         other: "%{count}명 읽음"
       silence_hint: 미읽음 배지나 배너 없이 조용히 추가합니다.
       sort_priority: 정렬 우선도
@@ -134,7 +134,7 @@ ko:
       bulk_edit_link: 일괄 편집
       bulk_update_partial: "%{updated}개 업데이트됨, %{failed}개 실패"
       bulk_updated_msg:
-        one: "%{count} emoji successfully updated!"
+        one: "%{count}개의 에모지가 성공적으로 업데이트되었습니다!"
         other: "%{count}개의 에모지가 성공적으로 업데이트되었습니다!"
       edit:
         title: 커스텀 에모지 편집
@@ -369,15 +369,14 @@ ko:
   imports:
     overwrite_preambles:
       clips_html:
-        one: You are about to <strong>replace your clips</strong> with contents of
-          <strong>%{filename}</strong>. Up to <strong>%{count} clip</strong> will
-          be added to new clips.
+        one: 나의 <strong>클립</strong>을 <strong>%{filename}</strong>의 내용으로 덮어 씌우려고 합니다.
+          최대 <strong>%{count} 개의 클립</strong>이 새 클립으로 추가됩니다.
         other: 나의 <strong>클립</strong>을 <strong>%{filename}</strong>의 내용으로 덮어 씌우려고
           합니다. 최대 <strong>%{count} 개의 클립</strong>이 새 클립으로 추가됩니다.
     preambles:
       clips_html:
-        one: You are about to add up to <strong>%{count} clip</strong> from <strong>%{filename}</strong>
-          to your <strong>clips</strong>.
+        one: "<strong>%{filename}</strong>에서 가져온 <strong>%{count}개의 클립</strong>을 나의
+          <strong>클립</strong>에 추가하려고 합니다."
         other: "<strong>%{filename}</strong>에서 가져온 <strong>%{count}개의 클립</strong>을
           내 <strong>클립</strong>에 추가하려고 합니다."
     titles:
@@ -472,9 +471,9 @@ ko:
         setting_show_reactions: 다른 사람이 내 프로필에서 내가 리액션한 게시물을 볼 수 있도록 허용합니다.
         setting_use_custom_css: 활성화하면 아래에 작성한 커스텀 CSS가 웹 인터페이스에 적용됩니다.
         setting_use_server_css: 활성화하면 관리자가 설정한 서버 전체 커스텀 스타일이 적용됩니다.
-        warn_quote_policy_html: "<strong>Warning:</strong><br>If you limit who can
-          quote, software other than Mastodon, maybe quoted if they don't accept the
-          FEP-044f (Fediverse Enhancement Proposals)<br>%{instance} default is 'Nobody'"
+        warn_quote_policy_html: "<strong>주의:</strong><br>인용할 수 있는 사용자를 제한해도 FEP-044f
+          (Fediverse Enhancement Proposals)를 수용하지 않는 Mastodon 이외의 소프트웨어에서는 인용될 수
+          있습니다.<br>%{instance} 서버의 기본값은 '나만'입니다."
       form_admin_settings:
         theme_color: 브라우저의 주소 표시줄과 앱 UI에 사용되는 강조 색상.
       user_role:
@@ -547,6 +546,6 @@ ko:
     role_requirement: "%{domain}에서 Mastodon을 사용하려면 2단계 인증을 설정해야 합니다."
   unsubscriptions:
     notification_emails:
-      follow_accepted: follow accepted notification emails
+      follow_accepted: 팔로우 수락 알림 이메일
   wrapstodon:
     description: "%{name}님의 올해 Mastodon 활동을 확인해보세요!"

@@ -19,6 +19,14 @@ ja:
       hide_followers_count:
         desc_html: プロフィールページのフォロワー数を見られないようにします
         title: フォロワー数を隠す
+      mfm:
+        title: MFM (Markup language For Misskey)
+      mfm_allow_composition:
+        desc_html: このサーバーの利用者がMFM形式で投稿を作成できるようにします。無効にしてもリモートサーバーからのMFMは引き続き表示されます。
+        title: MFMでの投稿作成を許可
+      mfm_enabled:
+        desc_html: MisskeyおよびMisskey互換サーバーのMFM形式のコンテンツをアニメーションとスタイル付きで表示します
+        title: MFMレンダリングを有効にする
       other:
         preamble: 他のカテゴリに該当しない多様なglitch-socの設定。
         title: その他
@@ -38,11 +46,14 @@ ja:
     localization:
       glitch_guide_link: https://crowdin.com/project/glitch-soc
       glitch_guide_link_text: そしてglitch-socへも同様に！
+  applications:
+    invalid_regexp: '無効な正規表現: %{message}'
   auth:
     captcha_confirmation:
       hint_html: あと一歩です！アカウントを承認するには、このサーバーでCAPTCHAを解いていただく必要があります。アカウントの確定に関してご質問やサポートが必要な場合は、<a href="/about/more">サーバー管理者にご連絡ください</a>。
       title: ユーザー認証
   generic:
+    edit: 編集
     use_this: これを使う
   settings:
     flavours: フレーバー
