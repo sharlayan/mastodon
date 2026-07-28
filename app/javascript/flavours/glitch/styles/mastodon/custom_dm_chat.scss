@@ -362,6 +362,28 @@
     }
   }
 
+  &--sticker {
+    .chat-message__bubble,
+    &.chat-message--own .chat-message__bubble {
+      background: transparent;
+      padding: 0;
+      overflow: visible;
+    }
+
+    .chat-message__bubble .status__content__text {
+      line-height: 0;
+    }
+
+    .chat-message__bubble img.emojione.custom-emoji {
+      display: block;
+      width: 128px;
+      height: 128px;
+      max-width: 128px;
+      object-fit: contain;
+      margin: 0;
+    }
+  }
+
   &--group-end:not(.chat-message--own) .chat-message__bubble {
     border-bottom-left-radius: 4px;
   }

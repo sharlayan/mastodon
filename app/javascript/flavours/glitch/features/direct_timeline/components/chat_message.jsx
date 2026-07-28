@@ -124,6 +124,28 @@ const htmlIsEmpty = (html) => {
   return (doc.body.textContent || '').trim() === '';
 };
 
+const htmlIsSingleCustomEmoji = (html) => {
+  if (!html) {
+    return false;
+  }
+
+  const doc = mentionStripParser.parseFromString(html, 'text/html');
+  let container = doc.body;
+  const meaningfulNodes = (element) => Array.from(element.childNodes).filter(node =>
+    node.nodeType !== Node.TEXT_NODE || node.textContent.trim() !== '');
+
+  let nodes = meaningfulNodes(container);
+
+  if (nodes.length === 1 && nodes[0].nodeType === Node.ELEMENT_NODE && nodes[0].tagName === 'P') {
+    container = nodes[0];
+    nodes = meaningfulNodes(container);
+  }
+
+  return nodes.length === 1 &&
+    nodes[0].nodeType === Node.ELEMENT_NODE &&
+    nodes[0].matches('img.emojione.custom-emoji');
+};
+
 const stripLeadingHandlesFromText = (text) => {
   if (!text) {
     return text;
@@ -216,6 +238,11 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
 
   const hasSpoiler = !!status.get('spoiler_text');
   const showContent = !hasSpoiler || expanded;
+  const displayedHtml = displayStatus.getIn(['translation', 'contentHtml']) || displayStatus.get('contentHtml');
+  const isSticker = !hasSpoiler &&
+    status.get('media_attachments').isEmpty() &&
+    !status.get('poll') &&
+    htmlIsSingleCustomEmoji(displayedHtml);
 
   const signedIn = !!me;
   const reactions = status.get('reactions');
@@ -427,6 +454,7 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
         'chat-message--group-start': isGroupStart,
         'chat-message--group-end': isGroupEnd,
         'chat-message--has-media': showContent && status.get('media_attachments').size > 0,
+        'chat-message--sticker': isSticker,
       })}
       tabIndex={0}
     >
