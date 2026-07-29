@@ -18,15 +18,19 @@ module Trends
   end
 
   def self.register!(status)
+    return unless processing_enabled?
+
     [links, tags, statuses].each { |trend_type| trend_type.register(status) }
   end
 
   def self.refresh!
+    return unless processing_enabled?
+
     [links, tags, statuses].each(&:refresh)
   end
 
   def self.request_review!
-    return if skip_review? || !enabled?
+    return if skip_review? || !enabled? || !processing_enabled?
 
     links_requiring_review    = links.request_review
     tags_requiring_review     = tags.request_review
@@ -44,6 +48,10 @@ module Trends
 
   def self.enabled?
     Setting.trends
+  end
+
+  def self.processing_enabled?
+    LowResourceFeatures.trends_processing_enabled?
   end
 
   def self.skip_review?

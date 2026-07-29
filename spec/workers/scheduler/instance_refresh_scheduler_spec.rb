@@ -10,6 +10,17 @@ RSpec.describe Scheduler::InstanceRefreshScheduler do
       expect { worker.perform }
         .to_not raise_error
     end
+
+    it 'does not refresh instance data when disabled' do
+      allow(LowResourceFeatures).to receive(:instance_refresh_enabled?).and_return(false)
+      allow(Instance).to receive(:refresh)
+      allow(InstancesIndex).to receive(:sync)
+
+      worker.perform
+
+      expect(Instance).to_not have_received(:refresh)
+      expect(InstancesIndex).to_not have_received(:sync)
+    end
   end
 
   context 'with elasticsearch enabled', :search do

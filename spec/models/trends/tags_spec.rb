@@ -10,16 +10,25 @@ RSpec.describe Trends::Tags do
   describe '#add' do
     let(:tag) { Fabricate(:tag) }
 
-    before do
-      subject.add(tag, 1, at_time)
-    end
-
     it 'records history' do
+      subject.add(tag, 1, at_time)
+
       expect(tag.history.get(at_time).accounts).to eq 1
     end
 
     it 'records use' do
+      subject.add(tag, 1, at_time)
+
       expect(subject.send(:recently_used_ids, at_time)).to eq [tag.id]
+    end
+
+    it 'does not record candidates when processing is disabled' do
+      allow(Trends).to receive(:processing_enabled?).and_return(false)
+
+      subject.add(tag, 1, at_time)
+
+      expect(tag.history.get(at_time).accounts).to be_zero
+      expect(subject.send(:recently_used_ids, at_time)).to be_empty
     end
   end
 

@@ -37,5 +37,21 @@ RSpec.describe Scheduler::FollowRecommendationsScheduler do
         expect { scheduled_run }.to_not change(FollowRecommendation, :count)
       end
     end
+
+    context 'when refresh is disabled' do
+      before do
+        allow(LowResourceFeatures).to receive(:follow_recommendations_refresh_enabled?).and_return(false)
+      end
+
+      it 'does not refresh recommendation data' do
+        allow(AccountSummary).to receive(:refresh)
+        allow(FollowRecommendation).to receive(:refresh)
+
+        scheduled_run
+
+        expect(AccountSummary).to_not have_received(:refresh)
+        expect(FollowRecommendation).to_not have_received(:refresh)
+      end
+    end
   end
 end

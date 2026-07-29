@@ -31,6 +31,7 @@ class Trends::Tags < Trends::Base
   end
 
   def register(status, at_time = Time.now.utc)
+    return unless Trends.processing_enabled?
     return unless !status.reblog? && status.public_visibility? && !status.account.silenced?
     return if DomainBlock.block_trends?(status.account.domain)
 
@@ -40,6 +41,8 @@ class Trends::Tags < Trends::Base
   end
 
   def add(tag, account_id, at_time = Time.now.utc)
+    return unless Trends.processing_enabled?
+
     tag.history.add(account_id, at_time)
     record_used_id(tag.id, at_time)
   end
@@ -49,6 +52,8 @@ class Trends::Tags < Trends::Base
   end
 
   def refresh(at_time = Time.now.utc)
+    return unless Trends.processing_enabled?
+
     # First, recalculate scores for tags that were trending previously. We split the queries
     # to avoid having to load all of the IDs into Ruby just to send them back into Postgres
     Tag.where(id: TagTrend.select(:tag_id)).find_in_batches(batch_size: BATCH_SIZE) do |tags|

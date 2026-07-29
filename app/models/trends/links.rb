@@ -31,6 +31,8 @@ class Trends::Links < Trends::Base
   end
 
   def register(status, at_time = Time.now.utc)
+    return unless Trends.processing_enabled?
+
     original_status = status.proper
 
     return unless original_status.public_visibility? &&
@@ -42,6 +44,8 @@ class Trends::Links < Trends::Base
   end
 
   def add(preview_card, account_id, at_time = Time.now.utc)
+    return unless Trends.processing_enabled?
+
     preview_card.history.add(account_id, at_time)
     record_used_id(preview_card.id, at_time)
   end
@@ -51,6 +55,8 @@ class Trends::Links < Trends::Base
   end
 
   def refresh(at_time = Time.now.utc)
+    return unless Trends.processing_enabled?
+
     # First, recalculate scores for links that were trending previously. We split the queries
     # to avoid having to load all of the IDs into Ruby just to send them back into Postgres
     PreviewCard.where(id: PreviewCardTrend.select(:preview_card_id)).find_in_batches(batch_size: BATCH_SIZE) do |preview_cards|
