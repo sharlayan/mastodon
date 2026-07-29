@@ -61,6 +61,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
     return render_no_such_page if page_hidden_from_search_engine?(page.account)
     return render_page_rate_limit_error if anonymous_page_view_limit_exceeded?(page)
 
+    PageViewTracker.new(page, account: current_account, request: request).call
     render json: serialize(page)
   end
 

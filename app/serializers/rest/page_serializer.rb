@@ -3,7 +3,7 @@
 class REST::PageSerializer < ActiveModel::Serializer
   attributes :id, :title, :name, :summary, :category, :draft, :visibility, :locked, :content, :align_center, :is_main,
              :hide_title_when_pinned, :font, :account_id,
-             :eye_catching_media_attachment_id, :likes_count,
+             :eye_catching_media_attachment_id, :likes_count, :views_count,
              :created_at, :updated_at
 
   attribute :liked, if: :current_user?

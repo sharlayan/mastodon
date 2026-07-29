@@ -22,6 +22,7 @@ class Api::V1::Accounts::PagesController < Api::BaseController
     return render_page_rate_limit_error if anonymous_page_view_limit_exceeded?(@page)
 
     cache_if_unauthenticated!
+    PageViewTracker.new(@page, account: current_account, request: request).call unless @page.password_visibility? && @page.account_id != current_account&.id
     render json: @page, serializer: REST::PageSerializer
   end
 

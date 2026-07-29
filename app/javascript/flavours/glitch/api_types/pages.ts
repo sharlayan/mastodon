@@ -75,6 +75,7 @@ export interface ApiPageJSON {
   eye_catching_media_attachment: ApiMediaAttachmentJSON | null;
   attached_media: ApiMediaAttachmentJSON[];
   likes_count: number;
+  views_count: number;
   liked?: boolean;
   created_at: string;
   updated_at: string;

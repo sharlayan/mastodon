@@ -381,6 +381,7 @@
   "pages.invalid_password": "비밀번호가 올바르지 않습니다.",
   "pages.like": "좋아요",
   "pages.likes_count": "{count, plural, other {좋아요 #개}}",
+  "pages.views_count": "{count, plural, other {조회 #회}}",
   "pages.set_main": "메인 페이지로 설정",
   "pages.new": "새 페이지",
   "pages.next": "다음 페이지",

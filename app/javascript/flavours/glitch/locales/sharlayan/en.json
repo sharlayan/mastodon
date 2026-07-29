@@ -381,6 +381,7 @@
   "pages.invalid_password": "The password is incorrect.",
   "pages.like": "Like",
   "pages.likes_count": "{count, plural, one {# like} other {# likes}}",
+  "pages.views_count": "{count, plural, one {# view} other {# views}}",
   "pages.set_main": "Set as main page",
   "pages.new": "New page",
   "pages.next": "Next page",

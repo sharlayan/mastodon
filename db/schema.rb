@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_28_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_085200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1340,6 +1340,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_140000) do
     t.string "access_password_digest"
     t.bigint "account_id", null: false
     t.boolean "align_center", default: false, null: false
+    t.integer "anonymous_views_count", default: 0, null: false
+    t.integer "authenticated_views_count", default: 0, null: false
     t.string "category"
     t.jsonb "content", default: [], null: false
     t.datetime "created_at", null: false

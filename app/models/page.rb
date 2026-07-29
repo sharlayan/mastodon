@@ -7,6 +7,8 @@
 #  id                               :bigint(8)        not null, primary key
 #  access_password_digest           :string
 #  align_center                     :boolean          default(FALSE), not null
+#  anonymous_views_count            :integer          default(0), not null
+#  authenticated_views_count        :integer          default(0), not null
 #  category                         :string
 #  content                          :jsonb            not null
 #  draft                            :boolean          default(FALSE), not null
@@ -159,6 +161,10 @@ class Page < ApplicationRecord
 
   def self.daily_limit_for(account)
     account.user&.role&.daily_page_limit || DEFAULT_DAILY_CREATE_LIMIT
+  end
+
+  def views_count
+    authenticated_views_count + anonymous_views_count
   end
 
   private

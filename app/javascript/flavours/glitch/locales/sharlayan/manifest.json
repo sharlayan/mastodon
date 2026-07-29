@@ -381,6 +381,7 @@
   "pages.invalid_password",
   "pages.like",
   "pages.likes_count",
+  "pages.views_count",
   "pages.set_main",
   "pages.new",
   "pages.next",

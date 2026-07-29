@@ -38,6 +38,7 @@ class Api::V1::PagesController < Api::BaseController
     return render_page_rate_limit_error if anonymous_page_view_limit_exceeded?(@page)
 
     cache_if_unauthenticated!
+    track_page_view(@page) unless @page.password_visibility? && @page.account_id != current_account&.id
     render json: @page, serializer: REST::PageSerializer
   end
 
@@ -48,6 +49,7 @@ class Api::V1::PagesController < Api::BaseController
     unlocked = @page.account_id == current_account&.id || @page.valid_access_password?(params[:password]) || @page.valid_access_token?(params[:access_token])
     render json: { error: I18n.t('pages.errors.invalid_password') }, status: 403 and return unless unlocked
 
+    track_page_view(@page)
     render json: {
       page: ActiveModelSerializers::SerializableResource.new(@page, serializer: REST::PageSerializer, scope_name: :current_user, scope: current_user, page_unlocked: true),
       access_token: @page.access_token,
@@ -132,6 +134,10 @@ class Api::V1::PagesController < Api::BaseController
 
   def render_page_rate_limit_error
     render json: { error: I18n.t('errors.429') }, status: 429
+  end
+
+  def track_page_view(page)
+    PageViewTracker.new(page, account: current_account, request: request).call
   end
 
   def page_params
