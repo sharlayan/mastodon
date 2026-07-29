@@ -418,7 +418,7 @@ export const Dropdown = <Item extends object | null = MenuItem>({
         }
 
         if (needsStatusRefresh && statusId) {
-          dispatch(
+          void dispatch(
             fetchStatus(statusId, {
               forceFetch: true,
               alsoFetchContext: false,

@@ -212,7 +212,7 @@ export const QuotedStatus: React.FC<QuotedStatusProps> = ({
 
   useEffect(() => {
     if (shouldFetchQuote && quotedStatusId && !isFetchingQuoteRef.current) {
-      dispatch(
+      void dispatch(
         fetchStatus(quotedStatusId, {
           parentQuotePostId,
           alsoFetchContext: false,

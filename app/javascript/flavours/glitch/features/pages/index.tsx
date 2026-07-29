@@ -40,7 +40,7 @@ const messages = defineMessages({
   },
 });
 
-const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
+export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
   const { signedIn } = useIdentity();
   const [tab, setTab] = useState<PagesTab>('mine');
@@ -229,5 +229,3 @@ const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     </Column>
   );
 };
-
-export default Pages;

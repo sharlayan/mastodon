@@ -49,7 +49,7 @@ const messages = defineMessages({
   },
 });
 
-const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
+export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
   multiColumn,
 }) => {
   const intl = useIntl();
@@ -178,5 +178,3 @@ const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
     </Column>
   );
 };
-
-export default BookletEditor;

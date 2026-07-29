@@ -175,7 +175,7 @@ const BoostOrQuoteMenu: FC<ReblogButtonProps> = ({ statusId, counters }) => {
       }
 
       if (quoteApproval === null) {
-        dispatch(
+        void dispatch(
           fetchStatus(statusId, { forceFetch: true, alsoFetchContext: false }),
         );
       }

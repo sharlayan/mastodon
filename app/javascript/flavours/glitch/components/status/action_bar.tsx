@@ -306,7 +306,7 @@ const StatusActionMenu: React.FC<{
   const handleOpen = useCallback(() => {
     // Replicates needsStatusRefresh of the Dropdown component.
     if (quickBoosting && !status.quote_approval) {
-      dispatch(
+      void dispatch(
         fetchStatus(status.id, { forceFetch: true, alsoFetchContext: false }),
       );
     }
