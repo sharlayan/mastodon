@@ -1260,7 +1260,7 @@ html.page-blog-view .app-holder > div {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: $dark-text-color;
+  color: var(--secondary-text-color);
   font-size: 14px;
 
   .icon {

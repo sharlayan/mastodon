@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_153801) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_162300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1336,7 +1336,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_153801) do
     t.index ["report_id"], name: "index_page_reports_on_report_id"
   end
 
-  create_table "page_series", id: :bigint, default: -> { "timestamp_id('page_series'::text)" }, force: :cascade do |t|
+  create_table "page_series", id: :bigint, default: -> { "timestamp_id('pages'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.text "description"

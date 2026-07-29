@@ -75,20 +75,20 @@ const messages = defineMessages({
     id: 'pages.field.previous_category_placeholder',
     defaultMessage: 'Select a category',
   },
-  series: { id: 'pages.field.series', defaultMessage: 'Series' },
-  seriesNone: { id: 'pages.series.none', defaultMessage: 'No series' },
-  seriesNew: { id: 'pages.series.new', defaultMessage: 'Create a new series' },
+  series: { id: 'pages.field.series', defaultMessage: 'Booklet' },
+  seriesNone: { id: 'pages.series.none', defaultMessage: 'No Booklet' },
+  seriesNew: { id: 'pages.series.new', defaultMessage: 'Create a new Booklet' },
   seriesTitle: {
     id: 'pages.field.series_title',
-    defaultMessage: 'Series title',
+    defaultMessage: 'Booklet title',
   },
   seriesDescription: {
     id: 'pages.field.series_description',
-    defaultMessage: 'Series description',
+    defaultMessage: 'Booklet description',
   },
   seriesPosition: {
     id: 'pages.field.series_position',
-    defaultMessage: 'Order in series',
+    defaultMessage: 'Order in Booklet',
   },
   seriesPositionHint: {
     id: 'pages.field.series_position_hint',
@@ -96,7 +96,7 @@ const messages = defineMessages({
   },
   seriesMain: {
     id: 'pages.field.series_main',
-    defaultMessage: 'Use as the representative page for this series',
+    defaultMessage: 'Use as the representative page for this Booklet',
   },
   visibility: { id: 'pages.field.visibility', defaultMessage: 'Visibility' },
   visibilityPublic: {

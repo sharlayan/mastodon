@@ -6,6 +6,10 @@ RSpec.describe PageSeries do
   let(:account) { Fabricate(:account) }
   let(:series) { Fabricate(:page_series, account: account) }
 
+  it 'generates an ID when persisted without one' do
+    expect(described_class.create!(account: account, title: 'Generated ID')).to be_persisted
+  end
+
   it 'normalizes its title and description' do
     series = Fabricate.build(:page_series, account: account, title: '  Guides  ', description: '  A collection  ')
 
