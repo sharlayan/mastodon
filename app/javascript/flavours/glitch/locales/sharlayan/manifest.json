@@ -325,6 +325,8 @@
   "pages.add_block.text",
   "pages.add_block.youtube",
   "pages.back_to_top",
+  "pages.color_scheme",
+  "pages.color_scheme.dark_only",
   "pages.block.character_count_with_spaces",
   "pages.block.character_count_without_spaces",
   "pages.block.move_down",

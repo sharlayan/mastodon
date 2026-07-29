@@ -36,9 +36,13 @@ import {
   ignoreOthersPagesView,
   pageBlogViewSkin,
   pageBlogViewViewerSkin,
+  pageBlogViewColorSchemes,
+  colorScheme,
   title as siteTitle,
 } from 'flavours/glitch/initial_state';
 import { useAppDispatch } from 'flavours/glitch/store';
+import { applyPageColorScheme } from 'flavours/glitch/utils/theme';
+import type { ColorScheme } from 'flavours/glitch/utils/theme';
 
 import type { PageMediaOpenHandler } from './components/blocks';
 import { PageShowContent } from './components/page_show_content';
@@ -93,6 +97,26 @@ const messages = defineMessages({
     defaultMessage: 'Are you sure you want to delete this page?',
   },
   backToTop: { id: 'pages.back_to_top', defaultMessage: 'Back to top' },
+  colorScheme: {
+    id: 'pages.color_scheme',
+    defaultMessage: 'Color scheme',
+  },
+  colorSchemeAuto: {
+    id: 'settings.color_scheme.auto',
+    defaultMessage: 'Sync with system',
+  },
+  colorSchemeLight: {
+    id: 'settings.color_scheme.light',
+    defaultMessage: 'Light',
+  },
+  colorSchemeDark: {
+    id: 'settings.color_scheme.dark',
+    defaultMessage: 'Dark',
+  },
+  darkOnly: {
+    id: 'pages.color_scheme.dark_only',
+    defaultMessage: 'This theme only supports dark mode.',
+  },
 });
 
 const PageShow: React.FC<{
@@ -118,6 +142,13 @@ const PageShow: React.FC<{
   const [unlocking, setUnlocking] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const supportedColorSchemes = pageBlogViewColorSchemes as ColorScheme[];
+  const [visitorColorScheme, setVisitorColorScheme] = useState<ColorScheme>(
+    () =>
+      (localStorage.getItem(
+        'mastodon-page-color-scheme',
+      ) as ColorScheme | null) ?? 'auto',
+  );
   const scrollableRef = useRef<HTMLDivElement>(null);
 
   const updateBackToTopVisibility = useCallback(() => {
@@ -407,6 +438,30 @@ const PageShow: React.FC<{
     };
   }, [useBlogView]);
 
+  useEffect(() => {
+    if (!useBlogView) {
+      return;
+    }
+
+    applyPageColorScheme(
+      accountId ? colorScheme : visitorColorScheme,
+      supportedColorSchemes,
+    );
+
+    return () => {
+      applyPageColorScheme(null);
+    };
+  }, [accountId, supportedColorSchemes, useBlogView, visitorColorScheme]);
+
+  const handleVisitorColorSchemeChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const value = event.target.value as ColorScheme;
+      setVisitorColorScheme(value);
+      localStorage.setItem('mastodon-page-color-scheme', value);
+    },
+    [],
+  );
+
   if (error) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
   }
@@ -510,8 +565,35 @@ const PageShow: React.FC<{
             )}
             {useBlogView && (
               <footer className='page-show__blog-footer'>
-                <Link to='/about'>{siteTitle ?? domain}</Link>
-                {siteTitle && domain && <span>{domain}</span>}
+                <div>
+                  <Link to='/about'>{siteTitle ?? domain}</Link>
+                  {siteTitle && domain && <span>{domain}</span>}
+                </div>
+                {!accountId && (
+                  <label className='page-show__color-scheme'>
+                    <span>{intl.formatMessage(messages.colorScheme)}</span>
+                    <select
+                      value={visitorColorScheme}
+                      onChange={handleVisitorColorSchemeChange}
+                    >
+                      {supportedColorSchemes.map((scheme) => (
+                        <option key={scheme} value={scheme}>
+                          {intl.formatMessage(
+                            scheme === 'dark'
+                              ? messages.colorSchemeDark
+                              : scheme === 'light'
+                                ? messages.colorSchemeLight
+                                : messages.colorSchemeAuto,
+                          )}
+                        </option>
+                      ))}
+                    </select>
+                    {supportedColorSchemes.length === 1 &&
+                      supportedColorSchemes[0] === 'dark' && (
+                        <small>{intl.formatMessage(messages.darkOnly)}</small>
+                      )}
+                  </label>
+                )}
               </footer>
             )}
           </div>

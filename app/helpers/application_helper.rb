@@ -164,9 +164,11 @@ module ApplicationHelper
       'data-contrast': contrast.parameterize,
       'data-color-scheme': page_color_scheme.parameterize,
       'data-user-flavour': current_flavour.parameterize,
+      'data-supported-color-schemes': active_supported_color_schemes.join(' '),
     }
 
     base[:'data-system-theme'] = 'true' if page_color_scheme == 'auto'
+    base[:'data-page-blog-view'] = 'true' if page_blog_view_account
 
     base
   end
@@ -286,6 +288,8 @@ module ApplicationHelper
 
   def page_blog_view_target_account(requested_account = nil)
     return unless Setting.pages_enabled
+
+    requested_account ||= instance_variable_get(:@account)
 
     if request.path.match?(%r{\A/pages(?:/[0-9]+(?:/edit)?|/new)\z})
       current_account

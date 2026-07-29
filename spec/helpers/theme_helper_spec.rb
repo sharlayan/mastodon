@@ -147,13 +147,32 @@ RSpec.describe ThemeHelper do
     subject { helper.page_color_scheme }
 
     context 'when force_color_scheme is present' do
-      before { helper.content_for(:force_color_scheme) { 'value' } }
+      before { helper.content_for(:force_color_scheme) { 'dark' } }
 
-      it { is_expected.to eq('value') }
+      it { is_expected.to eq('dark') }
     end
 
     context 'when force_color_scheme is absent' do
       it { is_expected.to eq('auto') }
+    end
+
+    context 'when the active skin only supports dark mode' do
+      before do
+        allow(helper).to receive(:active_page_skin).and_return('dark-only')
+        allow(Themes.instance).to receive(:supported_color_schemes).with('glitch', 'dark-only').and_return(%w(dark))
+      end
+
+      it { is_expected.to eq('dark') }
+    end
+  end
+
+  describe '#skin_label' do
+    before do
+      allow(Themes.instance).to receive(:supported_color_schemes).with('glitch', 'dark-only').and_return(%w(dark))
+    end
+
+    it 'marks skins that only support dark mode' do
+      expect(helper.skin_label('glitch', 'dark-only')).to include(I18n.t('themes.dark_only'))
     end
   end
 

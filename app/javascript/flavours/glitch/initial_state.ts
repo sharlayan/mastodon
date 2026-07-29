@@ -133,6 +133,11 @@ export const pageBlogViewSkin = document
 export const pageBlogViewViewerSkin = document
   .querySelector('head meta[name=pageBlogViewViewerSkin]')
   ?.getAttribute('content');
+export const pageBlogViewColorSchemes = document
+  .querySelector('head meta[name=pageBlogViewColorSchemes]')
+  ?.getAttribute('content')
+  ?.split(' ')
+  .filter(Boolean) ?? ['auto', 'light', 'dark'];
 
 export const isServerPageBlogViewPath = (pathname: string): boolean =>
   Boolean(

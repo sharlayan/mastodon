@@ -91,7 +91,26 @@ module ThemeHelper
   end
 
   def page_color_scheme
-    content_for(:force_color_scheme).presence || color_scheme
+    requested = content_for(:force_color_scheme).presence || color_scheme
+    Themes.instance.resolve_color_scheme(current_flavour, active_page_skin, requested)
+  end
+
+  def active_page_skin
+    (respond_to?(:page_blog_view_skin) && page_blog_view_skin.presence) || current_skin
+  end
+
+  def active_supported_color_schemes
+    Themes.instance.supported_color_schemes(current_flavour, active_page_skin)
+  end
+
+  def skin_label(flavour, skin)
+    label = I18n.t("skins.#{flavour}.#{skin}", default: skin)
+    schemes = Themes.instance.supported_color_schemes(flavour, skin)
+    schemes == ['dark'] ? "#{label} (#{I18n.t('themes.dark_only')})" : label
+  end
+
+  def supported_color_scheme_collection
+    user_settings_collection('web.color_scheme') & active_supported_color_schemes
   end
 
   private

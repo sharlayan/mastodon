@@ -325,6 +325,8 @@
   "pages.add_block.text": "Add text",
   "pages.add_block.youtube": "Add YouTube video",
   "pages.back_to_top": "Back to top",
+  "pages.color_scheme": "Color scheme",
+  "pages.color_scheme.dark_only": "This theme only supports dark mode.",
   "pages.block.character_count_with_spaces": "With spaces: {count}",
   "pages.block.character_count_without_spaces": "Without spaces: {count}",
   "pages.block.move_down": "Move down",

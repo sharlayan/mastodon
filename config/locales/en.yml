@@ -2222,6 +2222,7 @@ en:
     review_link: Review terms of service
     title: The terms of service of %{domain} are changing
   themes:
+    dark_only: Dark mode only
     default: Mastodon
   time:
     formats:

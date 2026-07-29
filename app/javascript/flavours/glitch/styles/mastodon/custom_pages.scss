@@ -1190,6 +1190,25 @@ html.page-blog-view {
   }
 }
 
+.page-show__color-scheme {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+
+  select {
+    color: var(--primary-text-color);
+    background: var(--background-color);
+    border: 1px solid var(--background-border-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+  }
+
+  small {
+    color: var(--secondary-text-color);
+  }
+}
+
 .page-show__sidebar {
   display: none;
 }

@@ -1,5 +1,7 @@
 ---
 ja:
+  themes:
+    dark_only: ダークモード専用
   misskey_registry:
     scope_too_large: レジストリスコープが大きすぎるため返せません。
   status_drafts:

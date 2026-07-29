@@ -10,6 +10,7 @@ class Themes
     dark: '#181820',
     light: '#ffffff',
   }.freeze
+  COLOR_SCHEMES = %w(auto light dark).freeze
 
   def initialize
     @flavours = {}
@@ -70,6 +71,25 @@ class Themes
   def skins_for(name)
     skins = @flavours[name]['skins']
     skins.include?('default') && skins.include?('mastodon-light') ? ['system'] + skins : skins
+  end
+
+  def supported_color_schemes(flavour, skin)
+    return COLOR_SCHEMES unless @flavours.key?(flavour)
+    return COLOR_SCHEMES unless skins_for(flavour).include?(skin)
+
+    configured = @flavours.dig(flavour, 'skin_color_schemes', skin)
+    schemes = Array(configured).map(&:to_s) & COLOR_SCHEMES
+    schemes.presence || COLOR_SCHEMES
+  end
+
+  def resolve_color_scheme(flavour, skin, requested)
+    supported = supported_color_schemes(flavour, skin)
+    requested = requested.to_s
+    return requested if supported.include?(requested)
+    return 'dark' if supported.include?('dark') && !supported.include?('light')
+    return 'light' if supported.include?('light') && !supported.include?('dark')
+
+    supported.first || 'auto'
   end
 
   def flavours_and_skins

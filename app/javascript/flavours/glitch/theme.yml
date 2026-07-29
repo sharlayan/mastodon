@@ -17,3 +17,15 @@ locales: locales
 #  (OPTIONAL) A file to use as the preview screenshot for the flavour,
 #  or an array thereof. These are the full path from `app/javascript/`.
 screenshot: flavours/glitch/images/glitch-preview.png
+
+# Skin capabilities are consumed by both Rails SSR and the glitch frontend.
+# Missing or invalid entries retain the backwards-compatible auto/light/dark set.
+skin_color_schemes:
+  default:
+    - auto
+    - light
+    - dark
+  birdsiteui:
+    - auto
+    - light
+    - dark

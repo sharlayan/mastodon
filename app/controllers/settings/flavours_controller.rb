@@ -21,8 +21,15 @@ class Settings::FlavoursController < Settings::BaseController
   end
 
   def update
-    current_user.settings.update(flavour: params.require(:flavour), skin: params.dig(:user, :setting_skin))
+    flavour = params.require(:flavour)
+    skin = params.dig(:user, :setting_skin)
+    return redirect_to(action: 'show', flavour: current_flavour) unless Themes.instance.flavours.include?(flavour) && Themes.instance.skins_for(flavour).include?(skin)
+
+    settings = { flavour: flavour, skin: skin }
+    supported = Themes.instance.supported_color_schemes(flavour, skin)
+    settings[:color_scheme] = supported.first if supported.one?
+    current_user.settings.update(settings)
     current_user.save
-    redirect_to action: 'show', flavour: params[:flavour]
+    redirect_to action: 'show', flavour: flavour
   end
 end

@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
 
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { apiRequestPut } from 'flavours/glitch/api';
-import { applyColorScheme, applyContrast, getColorScheme, getContrast } from 'flavours/glitch/utils/theme';
+import { applyColorScheme, applyContrast, getColorScheme, getContrast, getSupportedColorSchemes } from 'flavours/glitch/utils/theme';
 
 const messages = defineMessages({
   color_scheme_auto: { id: 'settings.color_scheme.auto', defaultMessage: 'Sync with system' },
@@ -51,7 +51,11 @@ RadioGroup.propTypes = {
 };
 
 const QuickPreferences = ({ intl }) => {
-  const [currentColorScheme, setCurrentColorScheme] = useState(getColorScheme());
+  const supportedColorSchemes = getSupportedColorSchemes();
+  const [currentColorScheme, setCurrentColorScheme] = useState(() => {
+    const savedColorScheme = getColorScheme();
+    return supportedColorSchemes.includes(savedColorScheme) ? savedColorScheme : supportedColorSchemes[0];
+  });
   const [currentContrast, setCurrentContrast] = useState(getContrast());
 
   const persist = useCallback((data) => {
@@ -87,7 +91,7 @@ const QuickPreferences = ({ intl }) => {
           { value: 'auto', message: intl.formatMessage(messages.color_scheme_auto) },
           { value: 'light', message: intl.formatMessage(messages.color_scheme_light) },
           { value: 'dark', message: intl.formatMessage(messages.color_scheme_dark) },
-        ]}
+        ].filter(({ value }) => supportedColorSchemes.includes(value))}
       />
       <RadioGroup
         id='mastodon-settings--contrast'

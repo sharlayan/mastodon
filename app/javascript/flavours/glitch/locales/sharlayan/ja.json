@@ -325,6 +325,8 @@
   "pages.add_block.text": "テキストを追加",
   "pages.add_block.youtube": "YouTube 動画を追加",
   "pages.back_to_top": "一番上へ",
+  "pages.color_scheme": "カラーモード",
+  "pages.color_scheme.dark_only": "このテーマはダークモードのみ対応しています。",
   "pages.block.character_count_with_spaces": "空白を含む: {count}文字",
   "pages.block.character_count_without_spaces": "空白を除く: {count}文字",
   "pages.block.move_down": "下へ移動",
