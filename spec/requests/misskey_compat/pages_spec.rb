@@ -146,6 +146,46 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response.parsed_body).to_not include('pages/show', 'i/pages', 'i/page-likes', 'users/pages')
     end
 
+    it 'rejects direct calls while the Pages feature is disabled' do
+      Setting.pages_enabled = false
+
+      post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(published_page.id) }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('UNAVAILABLE')
+    end
+
+    it 'keeps Sharlayan-only metadata out of the Misskey Page schema' do
+      published_page.update!(category: 'Journal', is_main: true)
+
+      post '/api/pages/show', params: { i: read_token, pageId: MisskeyCompat::MiId.encode(published_page.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to_not include(:category, :is_main, :views_count, :visibility)
+    end
+
+    it 'applies encoded ID cursors to page lists' do
+      newer_page = Fabricate(:page, account: account)
+
+      post '/api/i/pages', params: {
+        i: read_token,
+        untilId: MisskeyCompat::MiId.encode(newer_page.id),
+      }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(published_page.id))
+      expect(response.parsed_body.pluck(:id)).to_not include(MisskeyCompat::MiId.encode(newer_page.id))
+
+      post '/api/i/pages', params: {
+        i: read_token,
+        sinceId: MisskeyCompat::MiId.encode(published_page.id),
+      }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(newer_page.id))
+      expect(response.parsed_body.pluck(:id)).to_not include(MisskeyCompat::MiId.encode(published_page.id))
+    end
+
     it 'hides pages owned by a suspended account' do
       viewer = Fabricate(:user)
       viewer_token = Fabricate(:accessible_access_token, resource_owner_id: viewer.id, scopes: 'read').token
@@ -249,6 +289,33 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(Page).to_not exist(page.id)
     end
 
+    it 'preserves Sharlayan-only metadata during a Misskey update' do
+      page = Fabricate(
+        :page,
+        account: account,
+        category: 'Journal',
+        visibility: 'password',
+        access_password: 'correct-password'
+      )
+      password_digest = page.access_password_digest
+
+      post '/api/pages/update', params: {
+        i: write_token,
+        pageId: MisskeyCompat::MiId.encode(page.id),
+        title: 'Updated through Misskey',
+        category: 'Ignored',
+        visibility: 'public',
+      }, as: :json
+
+      expect(response).to have_http_status(204)
+      expect(page.reload).to have_attributes(
+        title: 'Updated through Misskey',
+        category: 'Journal',
+        visibility: 'password',
+        access_password_digest: password_digest
+      )
+    end
+
     it 'reuses one pointer when a Drive file is used in the content and header', :attachment_processing do
       Setting.drive_enabled = true
       drive_file = DriveFile.create!(account: account, file: attachment_fixture('attachment.jpg'))
@@ -337,6 +404,16 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
     it 'does not expose a liked page after it becomes a draft' do
       PageLike.create!(account: account, page: other_page)
       other_page.update!(draft: true)
+
+      post '/api/i/page-likes', params: { i: read_token }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to be_empty
+    end
+
+    it 'does not expose a liked password-protected page' do
+      PageLike.create!(account: account, page: other_page)
+      other_page.update!(visibility: 'password', access_password: 'correct-password')
 
       post '/api/i/page-likes', params: { i: read_token }, as: :json
 
