@@ -5,7 +5,6 @@ import { Link, useLocation } from 'react-router-dom';
 
 import FavoriteIcon from '@/material-icons/400-24px/favorite-fill.svg?react';
 import FavoriteBorderIcon from '@/material-icons/400-24px/favorite.svg?react';
-import VisibilityIcon from '@/material-icons/400-24px/visibility.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 import { FormattedDateWrapper } from 'flavours/glitch/components/formatted_date';
 import { Icon } from 'flavours/glitch/components/icon';
@@ -13,10 +12,6 @@ import { Icon } from 'flavours/glitch/components/icon';
 const messages = defineMessages({
   createdAt: { id: 'pages.created_at', defaultMessage: 'Created' },
   updatedAt: { id: 'pages.updated_at', defaultMessage: 'Updated' },
-  viewsCount: {
-    id: 'pages.views_count',
-    defaultMessage: '{count, plural, one {# view} other {# views}}',
-  },
 });
 
 export const PageShowFooter: React.FC<{
@@ -62,12 +57,6 @@ export const PageShowFooter: React.FC<{
           </div>
         </dl>
         <div className='page__footer-actions'>
-          <span className='page__views-count'>
-            <Icon id='visibility' icon={VisibilityIcon} />
-            {intl.formatMessage(messages.viewsCount, {
-              count: page.views_count,
-            })}
-          </span>
           <button
             type='button'
             className={classNames('page__like-button', { active: page.liked })}
