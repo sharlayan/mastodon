@@ -7,8 +7,12 @@
   /clips/(*any)
   /conversations/(*any)
   /custom_emoji_mutes
+  /domain_mutes
   /drive
+  /drafts
   /pages/(*any)
   /reaction_mutes
   /reactions
+  /scheduled
+  /timelines/scheduled
 ).each { |path| get path, to: 'home#index' }
