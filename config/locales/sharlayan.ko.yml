@@ -353,6 +353,9 @@ ko:
       있습니다.
     preamble_html: 웹 인터페이스에서 본인 세션에만 적용되는 CSS를 직접 지정할 수 있습니다. 잘못되었거나 악의적인 CSS는 레이아웃을
       망가뜨릴 수 있으며, 그럴 경우 로그인 폼에서 <strong>커스텀 CSS 비활성화</strong>를 선택해 복구할 수 있습니다.
+  custom_emoji_mutes:
+    errors:
+      limit: 커스텀 이모지 뮤트 최대 개수를 초과합니다
   exports:
     clips: 클립
     pages: 페이지

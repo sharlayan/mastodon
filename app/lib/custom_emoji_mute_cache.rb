@@ -2,6 +2,7 @@
 
 class CustomEmojiMuteCache
   KEY_PREFIX = 'custom_emoji_mutes:v1'
+  MAX_RULES = CustomEmojiMute::PER_ACCOUNT_LIMIT
 
   class << self
     def read(account_id)
@@ -10,7 +11,12 @@ class CustomEmojiMuteCache
       raw = RedisConnection.with { |redis| redis.get(key(account_id)) }
       return [] if raw.blank?
 
-      JSON.parse(raw).filter_map do |rule|
+      parsed = JSON.parse(raw)
+      return [] unless parsed.is_a?(Array)
+
+      parsed.first(MAX_RULES).filter_map do |rule|
+        next unless rule.is_a?(Hash)
+
         prefix = rule['prefix'].to_s.strip.downcase
         next if prefix.blank?
 
@@ -28,6 +34,7 @@ class CustomEmojiMuteCache
         .for_account(account_id)
         .where.not(prefix: '')
         .order(:id)
+        .limit(MAX_RULES)
         .pluck(:prefix, :domain)
         .filter_map do |prefix, domain|
           normalized_prefix = prefix.to_s.strip.downcase
@@ -40,7 +47,12 @@ class CustomEmojiMuteCache
         end
 
       RedisConnection.with do |redis|
-        redis.set(key(account_id), JSON.generate(rules))
+        if rules.empty?
+          redis.del(key(account_id))
+        else
+          redis.set(key(account_id), JSON.generate(rules))
+        end
+
         redis.publish("timeline:system:#{account_id}", JSON.generate(event: 'custom_emoji_mutes_changed'))
       end
       rules

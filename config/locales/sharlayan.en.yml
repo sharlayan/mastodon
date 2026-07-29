@@ -391,6 +391,9 @@ en:
     preamble_html: Define your own CSS that will be applied only to your own session
       in the web interface. Invalid or malicious CSS can break the layout; if that
       happens, tick <strong>Disable custom CSS</strong> on the login form to recover.
+  custom_emoji_mutes:
+    errors:
+      limit: You have reached the maximum number of custom emoji mutes
   exports:
     clips: Clips
     pages: Pages

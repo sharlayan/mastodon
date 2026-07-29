@@ -24,6 +24,7 @@ import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
 const environment = process.env.NODE_ENV || 'development';
 const PERMISSION_VIEW_FEEDS = 0x0000000000100000;
+const CUSTOM_EMOJI_MUTE_RULE_LIMIT = 200;
 
 // Correctly detect and load .env or .env.production file based on environment:
 const dotenvFile = environment === 'production' ? '.env.production' : '.env';
@@ -414,7 +415,7 @@ const startServer = async () => {
     try {
       const raw = await redisClient.get(redisNamespaced(`custom_emoji_mutes:v1:${accountId}`));
       const rules = raw ? JSON.parse(raw) : [];
-      return Array.isArray(rules) ? rules : [];
+      return Array.isArray(rules) ? rules.slice(0, CUSTOM_EMOJI_MUTE_RULE_LIMIT) : [];
     } catch (err) {
       logger.warn({ err, accountId }, 'Unable to load custom emoji mute cache');
       return [];
@@ -697,7 +698,7 @@ const startServer = async () => {
      * @param {object|string} payload
      */
     const transmit = (event, payload) => {
-      if (req.externalClient && payload && typeof payload === 'object') {
+      if (req.externalClient && req.customEmojiMutes?.length > 0 && payload && typeof payload === 'object') {
         if (mutedReactionNotification(payload, req.customEmojiMutes)) return;
         payload = structuredClone(payload);
         filterCustomEmojiPayload(payload, req.customEmojiMutes);

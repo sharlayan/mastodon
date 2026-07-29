@@ -41,7 +41,8 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   end
 
   def likes
-    likes = apply_like_range(current_account.page_likes.joins(:page).merge(Page.where(visibility: %w(public authenticated)))).includes(page: [:account, :eye_catching_media_attachment]).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    visible_pages = current_account.page_likes.joins(page: :account).where(pages: { visibility: %w(public authenticated) }).merge(Account.without_suspended)
+    likes = apply_like_range(visible_pages).includes(page: [:account, :eye_catching_media_attachment]).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
     render json: likes.map { |like| { id: MisskeyCompat::MiId.encode(like.id), page: serialize(like.page, include_content: false) } }
   end
 

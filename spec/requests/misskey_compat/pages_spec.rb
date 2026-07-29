@@ -324,6 +324,16 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response.parsed_body.dig(:error, :code)).to eq('YOUR_PAGE')
     end
 
+    it 'does not expose a liked page owned by a suspended account' do
+      PageLike.create!(account: account, page: other_page)
+      other_page.account.suspend!
+
+      post '/api/i/page-likes', params: { i: read_token }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to be_empty
+    end
+
     it 'does not expose a liked page after it becomes a draft' do
       PageLike.create!(account: account, page: other_page)
       other_page.update!(draft: true)

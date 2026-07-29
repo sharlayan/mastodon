@@ -20,12 +20,14 @@ class CustomEmojiMute < ApplicationRecord
   after_commit :rewrite_response_filter_cache
 
   PREFIX_LIMIT = 100
+  PER_ACCOUNT_LIMIT = 200
 
   normalizes :prefix, with: ->(prefix) { prefix.to_s.strip }
   normalizes :domain, with: ->(domain) { domain.to_s.downcase.strip }
 
   validates :prefix, presence: true, length: { maximum: PREFIX_LIMIT }
   validates :prefix, uniqueness: { scope: %i(account_id domain) }
+  validate :validate_per_account_limit, on: :create
 
   scope :for_account, ->(account_id) { where(account_id: account_id) }
 
@@ -45,6 +47,12 @@ class CustomEmojiMute < ApplicationRecord
   end
 
   private
+
+  def validate_per_account_limit
+    return if account_id.blank?
+
+    errors.add(:base, I18n.t('custom_emoji_mutes.errors.limit')) if self.class.for_account(account_id).count >= PER_ACCOUNT_LIMIT
+  end
 
   def rewrite_response_filter_cache
     CustomEmojiMuteCache.write(account_id)

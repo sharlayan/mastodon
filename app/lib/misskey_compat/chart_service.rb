@@ -5,6 +5,7 @@ class MisskeyCompat::ChartService
   CURRENT_CACHE_TTL = 5.minutes
   FINALIZED_CACHE_TTL = 30.days
   MAX_LIMIT = 500
+  SPANS = { 'hour' => 1.hour, 'day' => 1.day }.freeze
 
   SCHEMAS = {
     active_users: %w(readWrite read write registeredWithinWeek registeredWithinMonth registeredWithinYear registeredOutsideWeek registeredOutsideMonth registeredOutsideYear),
@@ -57,7 +58,7 @@ class MisskeyCompat::ChartService
     @suppressed = suppressed
     @latest = parse_latest(offset)
 
-    raise InvalidParameter.new('#/properties/span', 'must be one of hour, day') unless %w(hour day).include?(@span)
+    raise InvalidParameter.new('#/properties/span', "must be one of #{SPANS.keys.join(', ')}") unless SPANS.key?(@span)
     raise InvalidParameter.new('#/properties/name', 'unknown chart') unless SCHEMAS.key?(@name)
   end
 
@@ -111,9 +112,11 @@ class MisskeyCompat::ChartService
   end
 
   def buckets
+    duration = SPANS.fetch(@span)
+
     @buckets ||= Array.new(@limit) do |index|
-      start_at = @latest - index.public_send(@span.pluralize)
-      Bucket.new(start_at, start_at + 1.public_send(@span))
+      start_at = @latest - (duration * index)
+      Bucket.new(start_at, start_at + duration)
     end
   end
 
