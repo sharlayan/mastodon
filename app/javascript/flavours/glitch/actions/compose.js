@@ -33,6 +33,8 @@ import { insertStatusIntoAccountTimelines } from './timelines_typed';
 let fetchComposeSuggestionsAccountsController;
 /** @type {AbortController | undefined} */
 let fetchComposeSuggestionsTagsController;
+/** @type {AbortController | undefined} */
+let searchComposeSuggestionsEmojiController;
 
 export const COMPOSE_CHANGE          = 'COMPOSE_CHANGE';
 export const COMPOSE_SUBMIT_REQUEST  = 'COMPOSE_SUBMIT_REQUEST';
@@ -212,16 +214,7 @@ export function directCompose(account) {
   };
 }
 
-/**
- * @callback ComposeSuccessCallback
- * @param {Object} status
- */
-
-/**
- * @param {null | string} overridePrivacy
- * @param {undefined | ComposeSuccessCallback} successCallback
- */
-export function submitCompose(overridePrivacy = null, successCallback = undefined) {
+export function submitCompose(successCallback, overridePrivacy) {
   return function (dispatch, getState) {
     const statusText   = getState().getIn(['compose', 'text'], '');
     const media        = getState().getIn(['compose', 'media_attachments']);
@@ -580,9 +573,8 @@ export function undoUploadCompose(media_id) {
 }
 
 export function clearComposeSuggestions() {
-  if (fetchComposeSuggestionsAccountsController) {
-    fetchComposeSuggestionsAccountsController.abort();
-  }
+  fetchComposeSuggestionsAccountsController?.abort();
+  searchComposeSuggestionsEmojiController?.abort();
   return {
     type: COMPOSE_SUGGESTIONS_CLEAR,
   };
@@ -615,7 +607,16 @@ const fetchComposeSuggestionsAccounts = throttle((dispatch, token) => {
   });
 }, 200, { leading: true, trailing: true });
 
-const fetchComposeSuggestionsEmojis = createFetchComposeEmojiSuggestions({ emojiSearch: emojiMartSearch, readySuggestions: readyComposeSuggestionsEmojis });
+const searchComposeSuggestionsEmojis = createFetchComposeEmojiSuggestions({ emojiSearch: emojiMartSearch, readySuggestions: readyComposeSuggestionsEmojis });
+
+const fetchComposeSuggestionsEmojis = (dispatch, getState, token) => {
+  dispatch(clearComposeSuggestions());
+  searchComposeSuggestionsEmojiController = new AbortController();
+
+  void searchComposeSuggestionsEmojis(dispatch, getState, token, searchComposeSuggestionsEmojiController.signal).finally(() => {
+    searchComposeSuggestionsEmojiController = undefined;
+  });
+}
 
 const fetchComposeSuggestionsTags = throttle((dispatch, token) => {
   if (fetchComposeSuggestionsTagsController) {
