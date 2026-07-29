@@ -1638,6 +1638,23 @@ html .scrollable {
   }
 }
 
+.page-index__create-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--background-border-color);
+
+  .button {
+    display: inline-flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-align: center;
+  }
+}
+
 .booklet-list-item {
   border-bottom: 1px solid var(--background-border-color);
 

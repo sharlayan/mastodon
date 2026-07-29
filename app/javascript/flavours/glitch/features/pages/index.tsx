@@ -117,7 +117,6 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setTab('featured');
   }, []);
 
-  const createBooklet = tab === 'my-booklets';
   const initialLoading = signedIn && loadedTab !== tab;
 
   return (
@@ -131,22 +130,6 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         icon='description'
         iconComponent={DescriptionIcon}
         multiColumn={multiColumn}
-        extraButton={
-          signedIn && (
-            <Link
-              to={createBooklet ? '/pages/booklets/new' : '/pages/new'}
-              className='column-header__button'
-              title={intl.formatMessage(
-                createBooklet ? messages.createBooklet : messages.createPage,
-              )}
-              aria-label={intl.formatMessage(
-                createBooklet ? messages.createBooklet : messages.createPage,
-              )}
-            >
-              <Icon id='plus' icon={AddIcon} />
-            </Link>
-          )
-        }
       />
       <div className='account__section-headline page-index__tabs'>
         <button
@@ -187,6 +170,18 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           />
         </button>
       </div>
+      {signedIn && (
+        <div className='page-index__create-actions'>
+          <Link to='/pages/new' className='button'>
+            <Icon id='plus' icon={AddIcon} />
+            {intl.formatMessage(messages.createPage)}
+          </Link>
+          <Link to='/pages/booklets/new' className='button button-secondary'>
+            <Icon id='plus' icon={AddIcon} />
+            {intl.formatMessage(messages.createBooklet)}
+          </Link>
+        </div>
+      )}
       <ScrollableList
         scrollKey={`pages-${tab}`}
         onLoadMore={handleLoadMore}
