@@ -7,6 +7,7 @@ export interface ApiPageTextBlock {
   id: string;
   type: 'text';
   text: string;
+  spoiler?: boolean;
 }
 
 export interface ApiPageSectionBlock {
@@ -21,6 +22,7 @@ export interface ApiPageImageBlock {
   type: 'image';
   fileId: string | null;
   noUpscale?: boolean;
+  spoiler?: boolean;
 }
 
 export interface ApiPageNoteBlock {

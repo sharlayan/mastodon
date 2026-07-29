@@ -51,6 +51,13 @@ interface PageMediaEntry {
   media: ApiPageJSON['attached_media'][number];
 }
 
+const flattenPageBlocks = (blocks: ApiPageBlock[]): ApiPageBlock[] =>
+  blocks.flatMap((block) =>
+    block.type === 'section'
+      ? [block, ...flattenPageBlocks(block.children)]
+      : [block],
+  );
+
 const collectPageMedia = (page: ApiPageJSON): PageMediaEntry[] => {
   const entries: PageMediaEntry[] = [];
 
@@ -63,7 +70,7 @@ const collectPageMedia = (page: ApiPageJSON): PageMediaEntry[] => {
 
   const collectBlocks = (blocks: ApiPageBlock[]) => {
     for (const block of blocks) {
-      if (block.type === 'image' && block.fileId) {
+      if (block.type === 'image' && block.fileId && !block.spoiler) {
         const media = page.attached_media.find(
           (item) => item.id === block.fileId,
         );
@@ -340,13 +347,30 @@ const PageShow: React.FC<{
   }, [history]);
 
   const handleOpenMedia = useCallback<PageMediaOpenHandler>(
-    (key) => {
+    (key, isolated = false) => {
       if (!currentPage) {
         return;
       }
 
-      const entries = collectPageMedia(currentPage);
+      let entries = collectPageMedia(currentPage);
+      if (isolated) {
+        const blockId = key.startsWith('block:') ? key.slice(6) : '';
+        const block = flattenPageBlocks(currentPage.content).find(
+          (item) => item.id === blockId,
+        );
+        const media =
+          block?.type === 'image'
+            ? currentPage.attached_media.find(
+                (item) => item.id === block.fileId,
+              )
+            : undefined;
+        entries = media ? [{ key, media }] : [];
+      }
       const index = entries.findIndex((entry) => entry.key === key);
+
+      if (entries.length === 0) {
+        return;
+      }
 
       dispatch(
         openModal({

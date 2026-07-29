@@ -378,6 +378,42 @@
     }
   }
 
+  &__spoiler {
+    padding: 16px;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 8px;
+    background: var(--color-bg-secondary);
+    text-align: center;
+
+    &--revealed {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      text-align: inherit;
+    }
+  }
+
+  &__spoiler-toggle {
+    padding: 8px 14px;
+    border: 1px solid var(--color-border-primary);
+    border-radius: calc(1px * infinity);
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-bg-tertiary);
+    }
+  }
+
+  &__spoiler-content {
+    margin-top: 12px;
+  }
+
+  &__spoiler--revealed &__spoiler-content {
+    margin-top: 8px;
+  }
+
   &__footer {
     margin-top: 24px;
     padding-top: 16px;
@@ -576,7 +612,7 @@
     }
   }
 
-  &__image-option {
+  &__block-option {
     display: flex;
     align-items: center;
     gap: 8px;

@@ -4,7 +4,7 @@ class Api::V1::PagesController < Api::BaseController
   include Api::AnonymousPageViewLimit
   include Api::PageSearchEngineAccess
 
-  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed url size).freeze
+  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale spoiler note detailed url size).freeze
 
   vary_by 'Authorization, User-Agent'
 
@@ -172,6 +172,11 @@ class Api::V1::PagesController < Api::BaseController
 
       block = block.stringify_keys.slice(*ALLOWED_BLOCK_KEYS)
       block['noUpscale'] = ActiveModel::Type::Boolean.new.cast(block['noUpscale']) if block['type'] == 'image' && block.key?('noUpscale')
+      if Page::SPOILER_BLOCK_TYPES.include?(block['type'])
+        block['spoiler'] = ActiveModel::Type::Boolean.new.cast(block['spoiler']) if block.key?('spoiler')
+      else
+        block.delete('spoiler')
+      end
       block['children'] = sanitize_blocks(block['children'], depth + 1) if block.key?('children')
       block
     end

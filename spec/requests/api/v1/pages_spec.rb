@@ -365,6 +365,27 @@ RSpec.describe 'Pages' do
       expect(Page.find_by!(name: 'original-image-size').content.dig(0, 'noUpscale')).to be true
     end
 
+    it 'normalizes spoilers only for text and image blocks' do
+      post '/api/v1/pages', params: {
+        title: 'Spoiler blocks',
+        name: 'spoiler-blocks',
+        content: [
+          { id: 'text', type: 'text', text: 'Hidden text', spoiler: 'true' },
+          { id: 'image', type: 'image', fileId: nil, spoiler: true },
+          { id: 'section', type: 'section', title: 'Section', spoiler: true, children: [] },
+          { id: 'note', type: 'note', note: nil, spoiler: true },
+        ],
+      }, headers: headers, as: :json
+
+      expect(response).to have_http_status(200)
+      content = response.parsed_body[:content]
+      expect(content[0]).to include(type: 'text', spoiler: true)
+      expect(content[1]).to include(type: 'image', spoiler: true)
+      expect(content[2]).to_not have_key(:spoiler)
+      expect(content[3]).to_not have_key(:spoiler)
+      expect(Page.find_by!(name: 'spoiler-blocks').content).to eq(content.map(&:deep_stringify_keys))
+    end
+
     it 'rejects content deeper than the server traversal budget' do
       root = { type: 'section', children: [] }
       current = root

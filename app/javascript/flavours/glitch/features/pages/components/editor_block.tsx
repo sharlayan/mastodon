@@ -58,6 +58,10 @@ const messages = defineMessages({
     id: 'pages.block.no_upscale',
     defaultMessage: 'Do not enlarge beyond the original size',
   },
+  spoiler: {
+    id: 'pages.block.spoiler',
+    defaultMessage: 'Hide as spoiler',
+  },
   youtubePlaceholder: {
     id: 'pages.block.youtube_placeholder',
     defaultMessage: 'YouTube video URL',
@@ -167,6 +171,13 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
     [onUpdate, blockId],
   );
 
+  const handleSpoilerChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      onUpdate(blockId, { spoiler: event.target.checked });
+    },
+    [onUpdate, blockId],
+  );
+
   const handleYoutubeUrlChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       onUpdate(blockId, { url: event.target.value });
@@ -241,6 +252,14 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
               })}
             </span>
           </div>
+          <label className='page-editor__block-option'>
+            <input
+              type='checkbox'
+              checked={block.spoiler ?? false}
+              onChange={handleSpoilerChange}
+            />
+            <span>{intl.formatMessage(messages.spoiler)}</span>
+          </label>
         </>
       )}
 
@@ -259,13 +278,21 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
             value={getMedia(block.fileId)}
             onChange={handleImageChange}
           />
-          <label className='page-editor__image-option'>
+          <label className='page-editor__block-option'>
             <input
               type='checkbox'
               checked={block.noUpscale ?? false}
               onChange={handleImageNoUpscaleChange}
             />
             <span>{intl.formatMessage(messages.noUpscale)}</span>
+          </label>
+          <label className='page-editor__block-option'>
+            <input
+              type='checkbox'
+              checked={block.spoiler ?? false}
+              onChange={handleSpoilerChange}
+            />
+            <span>{intl.formatMessage(messages.spoiler)}</span>
           </label>
         </>
       )}

@@ -9,7 +9,7 @@ import { SectionBlock } from './section_block';
 import { TextBlock } from './text_block';
 import { YoutubeBlock } from './youtube_block';
 
-export type PageMediaOpenHandler = (key: string) => void;
+export type PageMediaOpenHandler = (key: string, isolated?: boolean) => void;
 
 export const PageBlock: React.FC<{
   block: ApiPageBlock;

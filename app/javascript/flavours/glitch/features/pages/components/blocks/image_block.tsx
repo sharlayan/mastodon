@@ -9,6 +9,7 @@ import type {
 import { useVisibility } from 'flavours/glitch/hooks/useVisibility';
 
 import type { PageMediaOpenHandler } from './index';
+import { Spoiler } from './spoiler';
 
 const observerOptions = { rootMargin: '400px 0px' };
 
@@ -20,8 +21,8 @@ export const ImageBlock: React.FC<{
   const media = page.attached_media.find((item) => item.id === block.fileId);
   const { hasIntersected, observedRef } = useVisibility({ observerOptions });
   const handleOpenMedia = useCallback(() => {
-    onOpenMedia(`block:${block.id}`);
-  }, [block.id, onOpenMedia]);
+    onOpenMedia(`block:${block.id}`, block.spoiler);
+  }, [block.id, block.spoiler, onOpenMedia]);
 
   if (!media) {
     return null;
@@ -40,7 +41,7 @@ export const ImageBlock: React.FC<{
         }
       : undefined;
 
-  return (
+  const content = (
     <div
       ref={observedRef}
       className={classNames('page__block', 'page__block--image', {
@@ -77,5 +78,13 @@ export const ImageBlock: React.FC<{
         )}
       </button>
     </div>
+  );
+
+  return block.spoiler ? (
+    <Spoiler className='page__block page__block--image-spoiler'>
+      {content}
+    </Spoiler>
+  ) : (
+    content
   );
 };

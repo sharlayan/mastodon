@@ -68,6 +68,23 @@ RSpec.describe Page do
       expect(page).to_not be_valid
     end
 
+    it 'allows boolean spoilers on text and image blocks only', :aggregate_failures do
+      supported = Fabricate.build(
+        :page,
+        account: account,
+        content: [
+          { type: 'text', text: 'hidden', spoiler: true },
+          { type: 'image', fileId: nil, spoiler: false },
+        ]
+      )
+      invalid_value = Fabricate.build(:page, account: account, content: [{ type: 'text', text: 'hidden', spoiler: 'true' }])
+      unsupported_type = Fabricate.build(:page, account: account, content: [{ type: 'note', note: nil, spoiler: true }])
+
+      expect(supported).to be_valid
+      expect(invalid_value).to_not be_valid
+      expect(unsupported_type).to_not be_valid
+    end
+
     it 'accepts supported YouTube URLs and sizes, and rejects invalid values' do
       page = Fabricate.build(:page, account: account, content: [{ type: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', size: 'large' }])
 

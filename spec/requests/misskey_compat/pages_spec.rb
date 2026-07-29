@@ -213,6 +213,30 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(page.content.first).to include('url' => 'https://youtu.be/dQw4w9WgXcQ', 'size' => 'small')
     end
 
+    it 'does not expose or accept Sharlayan spoiler attributes' do
+      page = Fabricate(
+        :page,
+        account: account,
+        content: [{ id: 'text', type: 'text', text: 'Hidden', spoiler: true }]
+      )
+
+      post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(page.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:content, 0)).to_not have_key(:spoiler)
+      expect(page.reload.content.first['spoiler']).to be true
+
+      post '/api/pages/create', params: {
+        i: write_token,
+        title: 'Compat spoiler input',
+        name: 'compat-spoiler-input',
+        content: [{ id: 'text', type: 'text', text: 'Visible', spoiler: true }],
+      }, as: :json
+
+      created = Page.find(MisskeyCompat::MiId.decode(response.parsed_body[:id]))
+      expect(created.content.first).to_not have_key('spoiler')
+    end
+
     it 'updates and deletes an owned page with void responses' do
       page = Fabricate(:page, account: account)
 

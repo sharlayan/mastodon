@@ -8,11 +8,17 @@ export const createBlock = (type: PageBlockType): ApiPageBlock => {
 
   switch (type) {
     case 'text':
-      return { id, type: 'text', text: '' };
+      return { id, type: 'text', text: '', spoiler: false };
     case 'section':
       return { id, type: 'section', title: '', children: [] };
     case 'image':
-      return { id, type: 'image', fileId: null, noUpscale: false };
+      return {
+        id,
+        type: 'image',
+        fileId: null,
+        noUpscale: false,
+        spoiler: false,
+      };
     case 'note':
       return { id, type: 'note', note: null, detailed: false };
     case 'youtube':
