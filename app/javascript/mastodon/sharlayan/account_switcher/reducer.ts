@@ -9,6 +9,7 @@ import {
   fetchAccountSwitches,
   deleteAccountSwitch,
   setLinkedUnreadCounts,
+  incrementLinkedUnreadCount,
 } from './actions';
 
 const AuthorizationRecord = ImmutableRecord({
@@ -69,6 +70,14 @@ export const accountSwitchesReducer: Reducer<State> = (
       map = map.set(accountId, count);
     }
     return state.set('linkedUnreadCounts', map);
+  } else if (incrementLinkedUnreadCount.match(action)) {
+    return state.update('linkedUnreadCounts', (counts) => {
+      const unreadCounts = counts as ImmutableMap<string, number>;
+      return unreadCounts.set(
+        action.payload,
+        Math.min((unreadCounts.get(action.payload) ?? 0) + 1, 100),
+      );
+    });
   }
 
   return state;

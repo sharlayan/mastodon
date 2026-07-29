@@ -13,6 +13,9 @@ import {
 export const setLinkedUnreadCounts = createAction<Record<string, number>>(
   'accountSwitches/setLinkedUnreadCounts',
 );
+export const incrementLinkedUnreadCount = createAction<string>(
+  'accountSwitches/incrementLinkedUnreadCount',
+);
 
 export const fetchAccountSwitches = createDataLoadingThunk(
   'accountSwitches/fetch',

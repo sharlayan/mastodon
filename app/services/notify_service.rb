@@ -289,16 +289,14 @@ class NotifyService < BaseService
   end
 
   def push_to_linked_account_subscribers!
-    # Find main accounts that have push_forward enabled for this sub-account
-    linked_auths = AccountSwitchAuthorization.push_forwarding
+    linked_auths = AccountSwitchAuthorization
       .where(target_account_id: @recipient.id)
       .joins('INNER JOIN users ON users.account_id = account_switch_authorizations.account_id')
 
-    linked_auths.pluck('users.id').each do |main_user_id|
+    linked_auths.push_forwarding.pluck('users.id').each do |main_user_id|
       ::Web::LinkedPushNotificationWorker.perform_async(main_user_id, @notification.id)
     end
 
-    # Also push to streaming for main accounts currently connected
     linked_auths.pluck('account_switch_authorizations.account_id').each do |main_account_id|
       push_linked_notification_to_streaming!(main_account_id)
     end

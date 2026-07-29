@@ -2,6 +2,7 @@ import { showAlert } from 'flavours/glitch/actions/alerts';
 import { updateStatusReaction } from 'flavours/glitch/actions/statuses';
 import { fillAntennaTimelineGaps } from 'flavours/glitch/actions/timelines';
 import { me } from 'flavours/glitch/initial_state';
+import { incrementLinkedUnreadCount } from 'flavours/glitch/sharlayan/account_switcher/actions';
 
 const linkedNotificationPreferenceKey = (accountId) => `linked_notif_prefs_${accountId}`;
 const linkedNotificationLastSeenKey = (accountId, linkedAccountId) => `linked_notif_last_id_${accountId}_${linkedAccountId}`;
@@ -68,6 +69,10 @@ export const handleSharlayanStreamingEvent = ({
 
   if (alert) {
     dispatch(showAlert(alert));
+  }
+
+  if (String(linked.linked_account_id) !== String(me)) {
+    dispatch(incrementLinkedUnreadCount(String(linked.linked_account_id)));
   }
 
   updateLinkedNotificationLastSeen({ activeAccountId: me, linked, storage });

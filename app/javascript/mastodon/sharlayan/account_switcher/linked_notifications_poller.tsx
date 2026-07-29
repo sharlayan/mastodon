@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from 'mastodon/store';
 import { fetchAccountSwitches, setLinkedUnreadCounts } from './actions';
 import { apiGetLinkedUnreadCounts } from './api';
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 5 * 60_000;
 
 export const LinkedNotificationsPoller: React.FC = () => {
   const dispatch = useAppDispatch();

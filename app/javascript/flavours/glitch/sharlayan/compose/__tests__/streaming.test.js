@@ -71,6 +71,23 @@ describe('compose streaming extensions', () => {
     expect(values.linked_notif_last_id_1_2).toBe('11');
   });
 
+  it('increments the linked unread count from the streaming event', () => {
+    const dispatch = vi.fn();
+
+    expect(handleSharlayanStreamingEvent({
+      data: { event: 'linked_notification', payload: JSON.stringify(linked) },
+      dispatch,
+      getState: () => ({ accountSwitches: new Map([['rootAccountId', '1']]) }),
+      messages: {},
+      storage: createStorage(),
+    })).toBe(true);
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'accountSwitches/incrementLinkedUnreadCount',
+      payload: '2',
+    });
+  });
+
   it('preserves the antenna timeline id, channel, params, and gap fill', () => {
     const connectTimeline = vi.fn((_timeline, _channel, _params, options) => options);
     const fillGaps = vi.fn((id) => ({ id }));

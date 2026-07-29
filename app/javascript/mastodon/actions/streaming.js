@@ -4,6 +4,7 @@ import { getLocale } from '../locales';
 import { connectStream } from '../stream';
 
 import { me } from '../initial_state';
+import { incrementLinkedUnreadCount } from '../sharlayan/account_switcher/actions';
 
 import { showAlert } from './alerts';
 import {
@@ -131,6 +132,8 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
 
             // Skip toast if the linked account is the currently active account
             if (String(linked.linked_account_id) !== String(me)) {
+              dispatch(incrementLinkedUnreadCount(String(linked.linked_account_id)));
+
               // Check inApp preference from localStorage
               const rootAccountId = getState().accountSwitches?.get('rootAccountId') ?? me;
               let inAppEnabled = false;

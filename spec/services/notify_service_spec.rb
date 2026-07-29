@@ -13,6 +13,31 @@ RSpec.describe NotifyService do
 
   it { expect { subject }.to change(Notification, :count).by(1) }
 
+  describe 'linked-account streaming' do
+    let(:root_user) { Fabricate(:user) }
+    let(:notification) { Fabricate(:notification, account: recipient, from_account: sender, type: :follow, activity: activity) }
+    let(:service) { described_class.new }
+    let(:redis_client) { instance_double(Redis) }
+
+    before do
+      Fabricate(:account_switch_authorization, account: root_user.account, target_account: recipient, push_forward: false)
+      service.instance_variable_set(:@recipient, recipient)
+      service.instance_variable_set(:@notification, notification)
+      allow(service).to receive(:redis).and_return(redis_client)
+      allow(redis_client).to receive(:exists?).and_return(true)
+      allow(redis_client).to receive(:publish)
+    end
+
+    it 'publishes unread updates even when web push forwarding is disabled' do
+      service.send(:push_to_linked_account_subscribers!)
+
+      expect(redis_client).to have_received(:publish).with(
+        "timeline:#{root_user.account.id}:notifications",
+        include('"event":"linked_notification"')
+      )
+    end
+  end
+
   it 'does not notify when sender is blocked' do
     recipient.block!(sender)
     expect { subject }.to_not change(Notification, :count)
