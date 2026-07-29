@@ -3,11 +3,16 @@ import type { ChangeEventHandler, SyntheticEvent } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
+import { Link } from 'react-router-dom';
 
+import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
+import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import LockIcon from '@/material-icons/400-24px/lock.svg?react';
 import PersonShieldIcon from '@/material-icons/400-24px/person_shield.svg?react';
 import PreviewOffIcon from '@/material-icons/400-24px/preview_off.svg?react';
+import PushPinFillIcon from '@/material-icons/400-24px/push_pin-fill.svg?react';
+import PushPinIcon from '@/material-icons/400-24px/push_pin.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { Icon } from 'flavours/glitch/components/icon';
@@ -58,6 +63,7 @@ export const PageShowContent: React.FC<{
   onOpenEyeCatchingMedia: () => void;
   onLikeToggle: () => void;
   onMainToggle: () => void;
+  onDelete: () => void;
 }> = ({
   page,
   isOwner,
@@ -73,6 +79,7 @@ export const PageShowContent: React.FC<{
   onOpenEyeCatchingMedia,
   onLikeToggle,
   onMainToggle,
+  onDelete,
 }) => {
   const intl = useIntl();
   const eyeCatchingMedia = page.eye_catching_media_attachment;
@@ -165,15 +172,74 @@ export const PageShowContent: React.FC<{
             />
           )}
         </h1>
-        {page.category && (
-          <span className='page__category'>{page.category}</span>
-        )}
       </div>
+
+      {isOwner && (
+        <div className='page__title-actions'>
+          <Link
+            to={{
+              pathname: `/pages/${page.id}/edit`,
+              state: { fromPageShow: true, pageName: page.name },
+            }}
+            title={intl.formatMessage({
+              id: 'pages.edit',
+              defaultMessage: 'Edit page',
+            })}
+            aria-label={intl.formatMessage({
+              id: 'pages.edit',
+              defaultMessage: 'Edit page',
+            })}
+          >
+            <Icon id='pencil' icon={EditIcon} />
+          </Link>
+          <button
+            type='button'
+            title={intl.formatMessage({
+              id: 'pages.delete',
+              defaultMessage: 'Delete page',
+            })}
+            aria-label={intl.formatMessage({
+              id: 'pages.delete',
+              defaultMessage: 'Delete page',
+            })}
+            onClick={onDelete}
+          >
+            <Icon id='trash' icon={DeleteIcon} />
+          </button>
+          {page.visibility === 'public' && !page.draft && (
+            <button
+              type='button'
+              title={intl.formatMessage(
+                page.is_main
+                  ? {
+                      id: 'pages.unset_main',
+                      defaultMessage: 'Remove main page',
+                    }
+                  : {
+                      id: 'pages.set_main',
+                      defaultMessage: 'Set as main page',
+                    },
+              )}
+              aria-pressed={page.is_main}
+              onClick={onMainToggle}
+            >
+              <Icon
+                id='pin'
+                icon={page.is_main ? PushPinFillIcon : PushPinIcon}
+              />
+            </button>
+          )}
+        </div>
+      )}
 
       {page.summary && <p className='page__summary'>{page.summary}</p>}
       {page.page_series && (
-        <aside className='page__series'>
-          {page.page_series.cover_media_attachment && (
+        <aside
+          className={classNames('page__series', {
+            'page__series--main': page.series_main,
+          })}
+        >
+          {page.series_main && page.page_series.cover_media_attachment && (
             <img
               className='page__series-cover'
               src={page.page_series.cover_media_attachment.url}
@@ -184,7 +250,7 @@ export const PageShowContent: React.FC<{
           )}
           <div className='page__series-details'>
             <strong>
-              {page.page_series.title}
+              [{page.page_series.title}]
               {page.series_main && (
                 <span className='page__series-main'>
                   {intl.formatMessage(messages.seriesMain)}
@@ -241,7 +307,6 @@ export const PageShowContent: React.FC<{
             previousPage={previousPage}
             nextPage={nextPage}
             onLikeToggle={onLikeToggle}
-            onMainToggle={onMainToggle}
           />
         </>
       )}

@@ -33,6 +33,8 @@ export const sharlayanRouteDescriptors = [
   { key: 'clip-edit', path: '/clips/:id/edit', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-show', path: '/clips/:id', featureGate: () => clipsEnabled, lazyComponent: ClipTimeline },
   { key: 'page-new', path: '/pages/new', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/editor') },
+  { key: 'booklet-new', path: '/pages/booklets/new', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/booklet_editor') },
+  { key: 'booklet-edit', path: '/pages/booklets/:id/edit', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/booklet_editor') },
   { key: 'page-edit', path: '/pages/:id/edit', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/editor') },
   { key: 'page-show', path: '/pages/:id', featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages/show') },
   { key: 'pages', path: '/pages', exact: true, featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/pages') },

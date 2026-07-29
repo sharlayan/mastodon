@@ -41,7 +41,6 @@ import {
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import type { PageMediaOpenHandler } from './components/blocks';
-import { PageShowCategoryMenu } from './components/page_show_category_menu';
 import { PageShowContent } from './components/page_show_content';
 import { PageShowHeader } from './components/page_show_header';
 import { PageShowSidebar } from './components/page_show_sidebar';
@@ -115,9 +114,6 @@ const PageShow: React.FC<{
   } | null>(null);
   const [errorId, setErrorId] = useState<string | null>(null);
   const [wideView, setWideView] = useState(false);
-  const [category, setCategory] = useState(
-    history.location.state?.pageCategory ?? '',
-  );
   const [password, setPassword] = useState('');
   const [unlocking, setUnlocking] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
@@ -283,20 +279,6 @@ const PageShow: React.FC<{
     setWideView((value) => !value);
   }, []);
 
-  const handleCategoryChange = useCallback(
-    (nextCategory: string) => {
-      setCategory(nextCategory);
-      history.replace({
-        ...history.location,
-        state: {
-          ...(history.location.state ?? {}),
-          pageCategory: nextCategory || undefined,
-        },
-      });
-    },
-    [history],
-  );
-
   const handleUnlock = useCallback(
     (event: React.SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -455,11 +437,7 @@ const PageShow: React.FC<{
             left.series_position - right.series_position ||
             left.id.localeCompare(right.id),
         )
-    : category
-      ? visibleAccountPages.filter(
-          (accountPage) => accountPage.category === category,
-        )
-      : visibleAccountPages;
+    : visibleAccountPages;
   const currentPageIndex = filteredAccountPages.findIndex(
     (accountPage) => accountPage.id === id,
   );
@@ -488,17 +466,10 @@ const PageShow: React.FC<{
             isWideView={wideView}
             multiColumn={multiColumn}
             onBack={handleBack}
-            onDelete={handleDelete}
             onReport={handleReport}
-            onMainToggle={handleMainToggle}
             onWideViewToggle={handleWideViewToggle}
           />
           <div ref={scrollableRef} className='scrollable'>
-            <PageShowCategoryMenu
-              pages={visibleAccountPages}
-              value={category}
-              onChange={handleCategoryChange}
-            />
             <div
               className={classNames('page-show__content', {
                 'page-show__content--blog': useBlogView,
@@ -526,6 +497,7 @@ const PageShow: React.FC<{
                 onOpenEyeCatchingMedia={handleOpenEyeCatchingMedia}
                 onLikeToggle={handleLikeToggle}
                 onMainToggle={handleMainToggle}
+                onDelete={handleDelete}
               />
             </div>
             {!useBlogView && !wideView && (
@@ -533,14 +505,6 @@ const PageShow: React.FC<{
                 page={currentPage}
                 pages={filteredAccountPages}
                 isBlogView={false}
-                position='bottom'
-              />
-            )}
-            {useBlogView && (
-              <PageShowCategoryMenu
-                pages={visibleAccountPages}
-                value={category}
-                onChange={handleCategoryChange}
                 position='bottom'
               />
             )}

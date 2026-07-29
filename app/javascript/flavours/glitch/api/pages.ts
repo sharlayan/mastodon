@@ -114,6 +114,9 @@ export const apiUnsetSeriesMainPage = (pageId: string) =>
 export const apiGetPageSeries = () =>
   apiRequestGet<ApiPageSeriesJSON[]>('v1/page_series');
 
+export const apiGetOtherPageSeries = () =>
+  apiRequestGet<ApiPageSeriesJSON[]>('v1/page_series/others');
+
 export const apiCreatePageSeries = (series: {
   title: string;
   description?: string | null;

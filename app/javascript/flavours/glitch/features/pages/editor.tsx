@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -9,10 +9,7 @@ import { Helmet } from '@unhead/react/helmet';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import {
   apiGetPage,
-  apiGetPageCategories,
   apiGetPageSeries,
-  apiCreatePageSeries,
-  apiUpdatePageSeries,
   apiSetSeriesMainPage,
   apiUnsetSeriesMainPage,
   apiCreatePage,
@@ -63,38 +60,8 @@ const messages = defineMessages({
     defaultMessage: 'You will be able to access it at: {url}',
   },
   summary: { id: 'pages.field.summary', defaultMessage: 'Summary' },
-  category: { id: 'pages.field.category', defaultMessage: 'Category' },
-  categoryHint: {
-    id: 'pages.field.category_hint',
-    defaultMessage: 'Enter up to 30 characters. Leave blank for no category.',
-  },
-  previousCategory: {
-    id: 'pages.field.previous_category',
-    defaultMessage: 'Previously used categories',
-  },
-  previousCategoryPlaceholder: {
-    id: 'pages.field.previous_category_placeholder',
-    defaultMessage: 'Select a category',
-  },
   series: { id: 'pages.field.series', defaultMessage: 'Booklet' },
   seriesNone: { id: 'pages.series.none', defaultMessage: 'No Booklet' },
-  seriesNew: { id: 'pages.series.new', defaultMessage: 'Create a new Booklet' },
-  seriesTitle: {
-    id: 'pages.field.series_title',
-    defaultMessage: 'Booklet title',
-  },
-  seriesDescription: {
-    id: 'pages.field.series_description',
-    defaultMessage: 'Booklet description',
-  },
-  seriesCover: {
-    id: 'pages.field.series_cover',
-    defaultMessage: 'Booklet cover',
-  },
-  seriesCoverHint: {
-    id: 'pages.field.series_cover_hint',
-    defaultMessage: 'Displayed at a 3:4 ratio, up to 600 × 800 px.',
-  },
   seriesPosition: {
     id: 'pages.field.series_position',
     defaultMessage: 'Order in Booklet',
@@ -162,17 +129,10 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [title, setTitle] = useState('');
   const [name, setName] = useState(() => Date.now().toString());
   const [summary, setSummary] = useState('');
-  const [category, setCategory] = useState('');
-  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [pageSeriesId, setPageSeriesId] = useState('');
   const [pageSeriesOptions, setPageSeriesOptions] = useState<
     ApiPageSeriesJSON[]
   >([]);
-  const [newSeriesTitle, setNewSeriesTitle] = useState('');
-  const [newSeriesDescription, setNewSeriesDescription] = useState('');
-  const [seriesCover, setSeriesCover] = useState<ApiMediaAttachmentJSON | null>(
-    null,
-  );
   const [seriesPosition, setSeriesPosition] = useState(0);
   const [seriesMain, setSeriesMain] = useState(false);
   const [visibility, setVisibility] = useState<ApiPageVisibility>('public');
@@ -202,12 +162,6 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [useBlogView]);
 
   useEffect(() => {
-    apiGetPageCategories()
-      .then((categories) => {
-        setCategoryOptions(categories);
-        return categories;
-      })
-      .catch(() => undefined);
     apiGetPageSeries()
       .then((series) => {
         setPageSeriesOptions(series);
@@ -226,9 +180,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setTitle(page.title);
         setName(page.name);
         setSummary(page.summary ?? '');
-        setCategory(page.category ?? '');
         setPageSeriesId(page.page_series_id ?? '');
-        setSeriesCover(page.page_series?.cover_media_attachment ?? null);
         setSeriesPosition(page.series_position);
         setSeriesMain(page.series_main);
         setVisibility(page.visibility);
@@ -268,42 +220,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
-  const handleCategoryChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setCategory(event.target.value);
-    },
-    [],
-  );
-
-  const handlePreviousCategoryChange = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) => {
-      setCategory(event.target.value);
-    },
-    [],
-  );
-
   const handleSeriesChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
-      const nextSeriesId = event.target.value;
-      setPageSeriesId(nextSeriesId);
-      setSeriesCover(
-        pageSeriesOptions.find((series) => series.id === nextSeriesId)
-          ?.cover_media_attachment ?? null,
-      );
-    },
-    [pageSeriesOptions],
-  );
-
-  const handleNewSeriesTitleChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setNewSeriesTitle(event.target.value);
-    },
-    [],
-  );
-
-  const handleNewSeriesDescriptionChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setNewSeriesDescription(event.target.value);
+      setPageSeriesId(event.target.value);
     },
     [],
   );
@@ -397,11 +316,6 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   const handleSave = useCallback(() => {
-    if (pageSeriesId === '__new__' && !newSeriesTitle.trim()) {
-      setError(true);
-      return;
-    }
-
     setSaving(true);
     setError(false);
 
@@ -409,7 +323,6 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       title,
       name,
       summary: summary || null,
-      category: category || null,
       page_series_id: seriesId,
       series_position: seriesPosition,
       visibility,
@@ -419,20 +332,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       content,
       eye_catching_media_attachment_id: eyeCatching?.id ?? null,
     });
-    const seriesRequest =
-      pageSeriesId === '__new__'
-        ? apiCreatePageSeries({
-            title: newSeriesTitle,
-            description: newSeriesDescription || null,
-            cover_media_attachment_id: seriesCover?.id ?? null,
-          }).then((series) => series.id)
-        : pageSeriesId
-          ? apiUpdatePageSeries(pageSeriesId, {
-              cover_media_attachment_id: seriesCover?.id ?? null,
-            }).then((series) => series.id)
-          : Promise.resolve(null);
-
-    seriesRequest
+    Promise.resolve(pageSeriesId || null)
       .then((seriesId) =>
         isEditing
           ? apiUpdatePage(id, buildPayload(seriesId))
@@ -475,11 +375,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     title,
     name,
     summary,
-    category,
     pageSeriesId,
-    newSeriesTitle,
-    newSeriesDescription,
-    seriesCover,
     seriesPosition,
     seriesMain,
     visibility,
@@ -495,10 +391,6 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     isEditing ? messages.editHeading : messages.newHeading,
   );
   const pageUrl = `https://${domain}/@${account?.username ?? ''}/pages/${name}`;
-  const sortedCategoryOptions = useMemo(
-    () => categoryOptions.toSorted((a, b) => a.localeCompare(b, intl.locale)),
-    [categoryOptions, intl.locale],
-  );
 
   return (
     <Column
@@ -542,45 +434,10 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   {series.title}
                 </option>
               ))}
-              <option value='__new__'>
-                {intl.formatMessage(messages.seriesNew)}
-              </option>
             </SelectField>
-
-            {pageSeriesId === '__new__' && (
-              <>
-                <TextInputField
-                  id='page_series_title'
-                  required
-                  maxLength={100}
-                  label={intl.formatMessage(messages.seriesTitle)}
-                  value={newSeriesTitle}
-                  onChange={handleNewSeriesTitleChange}
-                />
-                <TextAreaField
-                  id='page_series_description'
-                  maxLength={500}
-                  label={intl.formatMessage(messages.seriesDescription)}
-                  value={newSeriesDescription}
-                  onChange={handleNewSeriesDescriptionChange}
-                />
-              </>
-            )}
 
             {pageSeriesId && (
               <>
-                <div className='page-editor__booklet-cover'>
-                  <span className='page-editor__label'>
-                    {intl.formatMessage(messages.seriesCover)}
-                  </span>
-                  <span className='page-editor__hint'>
-                    {intl.formatMessage(messages.seriesCoverHint)}
-                  </span>
-                  <ImageUploadField
-                    value={seriesCover}
-                    onChange={setSeriesCover}
-                  />
-                </div>
                 <TextInputField
                   id='page_series_position'
                   type='number'
@@ -623,35 +480,6 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               label={intl.formatMessage(messages.summary)}
               value={summary}
               onChange={handleSummaryChange}
-            />
-          </div>
-
-          <div className='fields-group'>
-            {sortedCategoryOptions.length > 0 && (
-              <SelectField
-                id='page_previous_category'
-                label={intl.formatMessage(messages.previousCategory)}
-                value={sortedCategoryOptions.includes(category) ? category : ''}
-                onChange={handlePreviousCategoryChange}
-              >
-                <option value=''>
-                  {intl.formatMessage(messages.previousCategoryPlaceholder)}
-                </option>
-                {sortedCategoryOptions.map((categoryOption) => (
-                  <option key={categoryOption} value={categoryOption}>
-                    {categoryOption}
-                  </option>
-                ))}
-              </SelectField>
-            )}
-
-            <TextInputField
-              id='page_category'
-              maxLength={30}
-              label={intl.formatMessage(messages.category)}
-              hint={intl.formatMessage(messages.categoryHint)}
-              value={category}
-              onChange={handleCategoryChange}
             />
           </div>
 
@@ -753,9 +581,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             <button
               type='button'
               className='button'
-              disabled={
-                saving || (pageSeriesId === '__new__' && !newSeriesTitle.trim())
-              }
+              disabled={saving}
               onClick={handleSave}
             >
               {intl.formatMessage(messages.save)}

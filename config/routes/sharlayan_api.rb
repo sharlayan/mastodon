@@ -145,7 +145,11 @@ namespace :api, format: false do
       end
     end
 
-    resources :page_series, only: [:index, :create, :update, :destroy]
+    resources :page_series, only: [:index, :create, :update, :destroy] do
+      collection do
+        get :others
+      end
+    end
 
     resources :antennas, only: [:index, :create, :show, :update, :destroy] do
       scope module: :antennas do

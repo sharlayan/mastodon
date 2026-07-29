@@ -2,13 +2,24 @@
 
 class Api::V1::PageSeriesController < Api::BaseController
   before_action :require_feature_enabled!
-  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index]
-  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index]
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :others]
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :others]
   before_action :require_user!
   before_action :set_series, only: [:update, :destroy]
 
   def index
     series = current_account.page_series.includes(:pages, :cover_media_attachment).order(:title)
+    render json: series, each_serializer: REST::PageSeriesSerializer
+  end
+
+  def others
+    series = PageSeries.joins(:main_page)
+      .where(pages: { visibility: 'public' })
+      .where.not(account_id: current_account.id)
+      .includes(:account, :main_page, :cover_media_attachment, :pages)
+      .order(updated_at: :desc)
+      .limit(100)
+      .reject { |booklet| booklet.account.unavailable? }
     render json: series, each_serializer: REST::PageSeriesSerializer
   end
 

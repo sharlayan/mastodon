@@ -42,6 +42,38 @@ RSpec.describe 'Page series' do
     expect(response).to have_http_status(422)
   end
 
+  it 'lists public Booklets from other accounts' do
+    other_account = Fabricate(:account)
+    booklet = Fabricate(:page_series, account: other_account, title: 'Public guide')
+    representative = Fabricate(
+      :page,
+      account: other_account,
+      page_series: booklet,
+      name: 'guide',
+      visibility: 'public'
+    )
+    booklet.update!(main_page: representative)
+
+    own_booklet = Fabricate(:page_series, account: user.account)
+    own_page = Fabricate(:page, account: user.account, page_series: own_booklet, visibility: 'public')
+    own_booklet.update!(main_page: own_page)
+
+    private_booklet = Fabricate(:page_series, account: other_account)
+    private_page = Fabricate(:page, account: other_account, page_series: private_booklet, visibility: 'private')
+    private_booklet.update_column(:main_page_id, private_page.id)
+
+    get '/api/v1/page_series/others', headers: headers
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.pluck(:id)).to contain_exactly(booklet.id.to_s)
+    expect(response.parsed_body.first).to include(
+      account_id: other_account.id.to_s,
+      main_page_name: 'guide',
+      pages_count: 1
+    )
+    expect(response.parsed_body.first.dig(:account, :id)).to eq(other_account.id.to_s)
+  end
+
   it 'assigns pages, orders them, and selects a public representative page' do
     cover = Fabricate(:media_attachment, account: user.account)
     series = Fabricate(:page_series, account: user.account, cover_media_attachment: cover)

@@ -179,6 +179,39 @@
     margin-bottom: 8px;
   }
 
+  &__title-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 12px;
+
+    a,
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 0;
+      border-radius: 6px;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-secondary);
+      cursor: pointer;
+
+      &:hover,
+      &:focus-visible {
+        color: var(--color-text-primary);
+        background: var(--color-bg-tertiary);
+      }
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
   &__title {
     display: flex;
     align-items: center;
@@ -1532,10 +1565,14 @@ html .scrollable {
   }
 }
 
+.page__series--main {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+}
+
 .page__series-cover {
-  width: min(100%, 600px);
-  max-width: 600px;
-  max-height: 800px;
+  width: 120px;
+  height: 160px;
   aspect-ratio: 3 / 4;
   object-fit: cover;
   border-radius: 6px;
@@ -1544,11 +1581,12 @@ html .scrollable {
 .page__series-details {
   min-width: 0;
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 @media screen and (width <= 760px) {
-  .page__series {
-    flex-direction: column;
+  .page__series--main {
+    grid-template-columns: 120px minmax(0, 1fr);
   }
 }
 
@@ -1557,4 +1595,78 @@ html .scrollable {
   color: var(--highlight-text-color);
   font-size: 0.85em;
   font-weight: 400;
+}
+
+.page-index__tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  button {
+    min-width: 0;
+    padding-inline: 8px;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+}
+
+.booklet-list-item {
+  border-bottom: 1px solid var(--background-border-color);
+
+  &__link {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr);
+    gap: 16px;
+    padding: 16px;
+    color: inherit;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--on-surface-color);
+    }
+  }
+
+  &__cover {
+    display: block;
+    width: 90px;
+    height: 120px;
+    border-radius: 6px;
+    background: var(--background-color);
+    object-fit: cover;
+  }
+
+  &__cover--empty {
+    border: 1px dashed var(--background-border-color);
+  }
+
+  &__details {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+    overflow-wrap: anywhere;
+
+    strong {
+      color: var(--primary-text-color);
+      font-size: 16px;
+    }
+
+    > span {
+      color: var(--secondary-text-color);
+      white-space: pre-wrap;
+    }
+  }
+
+  &__author {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: auto;
+  }
+}
+
+@media screen and (width <= 480px) {
+  .page-index__tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

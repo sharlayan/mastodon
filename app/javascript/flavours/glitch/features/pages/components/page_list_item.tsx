@@ -29,15 +29,9 @@ const messages = defineMessages({
 
 export const PageListItem: React.FC<{
   page: ApiPageJSON;
-  showCategory?: boolean;
   active?: boolean;
   replaceHistory?: boolean;
-}> = ({
-  page,
-  showCategory = true,
-  active = false,
-  replaceHistory = false,
-}) => {
+}> = ({ page, active = false, replaceHistory = false }) => {
   const intl = useIntl();
   const location = useLocation();
   const headerUrl = page.eye_catching_media_attachment?.url;
@@ -102,19 +96,11 @@ export const PageListItem: React.FC<{
               <span className='page-list-item__title-text'>
                 {page.title || page.name}
               </span>
-              {showCategory && page.category && (
-                <>
-                  {' · '}
-                  <span className='page-list-item__category'>
-                    {page.category}
-                  </span>
-                </>
-              )}
               {page.page_series && (
                 <>
                   {' · '}
                   <span className='page-list-item__series'>
-                    {page.page_series.title}
+                    [{page.page_series.title}]
                   </span>
                 </>
               )}

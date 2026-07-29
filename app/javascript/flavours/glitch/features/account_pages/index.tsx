@@ -17,7 +17,6 @@ import {
   ItemList,
   Scrollable,
 } from '@/flavours/glitch/components/scrollable_list/components';
-import { CategoryFilter } from '@/flavours/glitch/features/pages/components/category_filter';
 import { PageListItem } from '@/flavours/glitch/features/pages/components/page_list_item';
 import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bundle_column_error';
 import Column from '@/flavours/glitch/features/ui/components/column';
@@ -34,7 +33,6 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   const [fetchedAccountId, setFetchedAccountId] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [category, setCategory] = useState('');
   const requestGeneration = useRef(0);
 
   useEffect(() => {
@@ -44,7 +42,6 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
       apiGetAccountPages(accountId)
         .then((data) => {
           if (requestGeneration.current === generation) {
-            setCategory('');
             setFetchedPages(data);
             setFetchedAccountId(accountId);
             setHasMore(data.length === PAGE_LIST_LIMIT);
@@ -116,11 +113,6 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
         ? []
         : fetchedPages
       : null;
-  const visiblePages =
-    pages && category
-      ? pages.filter((page) => page.category === category)
-      : pages;
-
   return (
     <Column>
       <ColumnBackButton />
@@ -130,19 +122,11 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
           <AccountHeader accountId={accountId} hideTabs={forceEmptyState} />
         )}
 
-        {pages && (
-          <CategoryFilter
-            pages={pages}
-            value={category}
-            onChange={setCategory}
-          />
-        )}
-
-        {visiblePages === null ? (
+        {pages === null ? (
           <div className='scrollable__append'>
             <LoadingIndicator />
           </div>
-        ) : visiblePages.length === 0 ? (
+        ) : pages.length === 0 ? (
           <div className='empty-column-indicator'>
             <FormattedMessage
               id='empty_column.account_pages'
@@ -151,7 +135,7 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
           </div>
         ) : (
           <ItemList>
-            {visiblePages.map((page) => (
+            {pages.map((page) => (
               <PageListItem key={page.id} page={page} />
             ))}
           </ItemList>
