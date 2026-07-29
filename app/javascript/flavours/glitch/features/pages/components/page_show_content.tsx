@@ -37,6 +37,10 @@ const messages = defineMessages({
     defaultMessage: 'Only me',
   },
   main: { id: 'pages.main', defaultMessage: 'Main page' },
+  seriesMain: {
+    id: 'pages.series.main',
+    defaultMessage: 'Representative page',
+  },
 });
 
 export const PageShowContent: React.FC<{
@@ -167,6 +171,21 @@ export const PageShowContent: React.FC<{
       </div>
 
       {page.summary && <p className='page__summary'>{page.summary}</p>}
+      {page.page_series && (
+        <aside className='page__series'>
+          <strong>
+            {page.page_series.title}
+            {page.series_main && (
+              <span className='page__series-main'>
+                {intl.formatMessage(messages.seriesMain)}
+              </span>
+            )}
+          </strong>
+          {page.page_series.description && (
+            <p>{page.page_series.description}</p>
+          )}
+        </aside>
+      )}
 
       {page.locked ? (
         <form className='page__password-form' onSubmit={onUnlock}>

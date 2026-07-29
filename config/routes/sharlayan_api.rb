@@ -134,6 +134,8 @@ namespace :api, format: false do
         post :unlike
         post :main, action: :set_main
         delete :main, action: :unset_main
+        post :series_main, action: :set_series_main
+        delete :series_main, action: :unset_series_main
         post :unlock
       end
 
@@ -142,6 +144,8 @@ namespace :api, format: false do
         get :featured
       end
     end
+
+    resources :page_series, only: [:index, :create, :update, :destroy]
 
     resources :antennas, only: [:index, :create, :show, :update, :destroy] do
       scope module: :antennas do

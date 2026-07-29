@@ -10,6 +10,10 @@ import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import {
   apiGetPage,
   apiGetPageCategories,
+  apiGetPageSeries,
+  apiCreatePageSeries,
+  apiSetSeriesMainPage,
+  apiUnsetSeriesMainPage,
   apiCreatePage,
   apiUpdatePage,
 } from 'flavours/glitch/api/pages';
@@ -18,6 +22,7 @@ import type {
   ApiPageBlock,
   ApiPageBlockType,
   ApiPageFont,
+  ApiPageSeriesJSON,
   ApiPageVisibility,
 } from 'flavours/glitch/api_types/pages';
 import { Column } from 'flavours/glitch/components/column';
@@ -69,6 +74,29 @@ const messages = defineMessages({
   previousCategoryPlaceholder: {
     id: 'pages.field.previous_category_placeholder',
     defaultMessage: 'Select a category',
+  },
+  series: { id: 'pages.field.series', defaultMessage: 'Series' },
+  seriesNone: { id: 'pages.series.none', defaultMessage: 'No series' },
+  seriesNew: { id: 'pages.series.new', defaultMessage: 'Create a new series' },
+  seriesTitle: {
+    id: 'pages.field.series_title',
+    defaultMessage: 'Series title',
+  },
+  seriesDescription: {
+    id: 'pages.field.series_description',
+    defaultMessage: 'Series description',
+  },
+  seriesPosition: {
+    id: 'pages.field.series_position',
+    defaultMessage: 'Order in series',
+  },
+  seriesPositionHint: {
+    id: 'pages.field.series_position_hint',
+    defaultMessage: 'Lower numbers appear first.',
+  },
+  seriesMain: {
+    id: 'pages.field.series_main',
+    defaultMessage: 'Use as the representative page for this series',
   },
   visibility: { id: 'pages.field.visibility', defaultMessage: 'Visibility' },
   visibilityPublic: {
@@ -127,6 +155,14 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [summary, setSummary] = useState('');
   const [category, setCategory] = useState('');
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [pageSeriesId, setPageSeriesId] = useState('');
+  const [pageSeriesOptions, setPageSeriesOptions] = useState<
+    ApiPageSeriesJSON[]
+  >([]);
+  const [newSeriesTitle, setNewSeriesTitle] = useState('');
+  const [newSeriesDescription, setNewSeriesDescription] = useState('');
+  const [seriesPosition, setSeriesPosition] = useState(0);
+  const [seriesMain, setSeriesMain] = useState(false);
   const [visibility, setVisibility] = useState<ApiPageVisibility>('public');
   const [password, setPassword] = useState('');
   const [hasExistingPassword, setHasExistingPassword] = useState(false);
@@ -160,6 +196,12 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         return categories;
       })
       .catch(() => undefined);
+    apiGetPageSeries()
+      .then((series) => {
+        setPageSeriesOptions(series);
+        return series;
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -173,6 +215,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setName(page.name);
         setSummary(page.summary ?? '');
         setCategory(page.category ?? '');
+        setPageSeriesId(page.page_series_id ?? '');
+        setSeriesPosition(page.series_position);
+        setSeriesMain(page.series_main);
         setVisibility(page.visibility);
         setHasExistingPassword(page.visibility === 'password');
         setFont(page.font);
@@ -220,6 +265,43 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handlePreviousCategoryChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       setCategory(event.target.value);
+    },
+    [],
+  );
+
+  const handleSeriesChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setPageSeriesId(event.target.value);
+    },
+    [],
+  );
+
+  const handleNewSeriesTitleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setNewSeriesTitle(event.target.value);
+    },
+    [],
+  );
+
+  const handleNewSeriesDescriptionChange = useCallback(
+    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setNewSeriesDescription(event.target.value);
+    },
+    [],
+  );
+
+  const handleSeriesPositionChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setSeriesPosition(
+        Math.max(0, Number.parseInt(event.target.value, 10) || 0),
+      );
+    },
+    [],
+  );
+
+  const handleSeriesMainChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setSeriesMain(event.target.checked);
     },
     [],
   );
@@ -297,27 +379,54 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   const handleSave = useCallback(() => {
+    if (pageSeriesId === '__new__' && !newSeriesTitle.trim()) {
+      setError(true);
+      return;
+    }
+
     setSaving(true);
     setError(false);
 
-    const payload = {
+    const buildPayload = (seriesId: string | null) => ({
       title,
       name,
       summary: summary || null,
       category: category || null,
+      page_series_id: seriesId,
+      series_position: seriesPosition,
       visibility,
       ...(password ? { password } : {}),
       font,
       align_center: alignCenter,
       content,
       eye_catching_media_attachment_id: eyeCatching?.id ?? null,
-    };
+    });
+    const seriesRequest =
+      pageSeriesId === '__new__'
+        ? apiCreatePageSeries({
+            title: newSeriesTitle,
+            description: newSeriesDescription || null,
+          }).then((series) => series.id)
+        : Promise.resolve(pageSeriesId || null);
 
-    const request = isEditing
-      ? apiUpdatePage(id, payload)
-      : apiCreatePage(payload);
-
-    request
+    seriesRequest
+      .then((seriesId) =>
+        isEditing
+          ? apiUpdatePage(id, buildPayload(seriesId))
+          : apiCreatePage(buildPayload(seriesId)),
+      )
+      .then((savedPage) => {
+        if (!savedPage.page_series_id || savedPage.visibility !== 'public') {
+          return savedPage;
+        }
+        if (seriesMain && !savedPage.series_main) {
+          return apiSetSeriesMainPage(savedPage.id);
+        }
+        if (!seriesMain && savedPage.series_main) {
+          return apiUnsetSeriesMainPage(savedPage.id);
+        }
+        return savedPage;
+      })
       .then((page) => {
         if (
           isEditing &&
@@ -344,6 +453,11 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     name,
     summary,
     category,
+    pageSeriesId,
+    newSeriesTitle,
+    newSeriesDescription,
+    seriesPosition,
+    seriesMain,
     visibility,
     password,
     font,
@@ -387,6 +501,69 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               value={title}
               onChange={handleTitleChange}
             />
+          </div>
+
+          <div className='fields-group'>
+            <SelectField
+              id='page_series'
+              label={intl.formatMessage(messages.series)}
+              value={pageSeriesId}
+              onChange={handleSeriesChange}
+            >
+              <option value=''>
+                {intl.formatMessage(messages.seriesNone)}
+              </option>
+              {pageSeriesOptions.map((series) => (
+                <option key={series.id} value={series.id}>
+                  {series.title}
+                </option>
+              ))}
+              <option value='__new__'>
+                {intl.formatMessage(messages.seriesNew)}
+              </option>
+            </SelectField>
+
+            {pageSeriesId === '__new__' && (
+              <>
+                <TextInputField
+                  id='page_series_title'
+                  required
+                  maxLength={100}
+                  label={intl.formatMessage(messages.seriesTitle)}
+                  value={newSeriesTitle}
+                  onChange={handleNewSeriesTitleChange}
+                />
+                <TextAreaField
+                  id='page_series_description'
+                  maxLength={500}
+                  label={intl.formatMessage(messages.seriesDescription)}
+                  value={newSeriesDescription}
+                  onChange={handleNewSeriesDescriptionChange}
+                />
+              </>
+            )}
+
+            {pageSeriesId && (
+              <>
+                <TextInputField
+                  id='page_series_position'
+                  type='number'
+                  min={0}
+                  max={1000000}
+                  label={intl.formatMessage(messages.seriesPosition)}
+                  hint={intl.formatMessage(messages.seriesPositionHint)}
+                  value={seriesPosition.toString()}
+                  onChange={handleSeriesPositionChange}
+                />
+                {visibility === 'public' && (
+                  <CheckboxField
+                    label={intl.formatMessage(messages.seriesMain)}
+                    checked={seriesMain}
+                    onChange={handleSeriesMainChange}
+                  />
+                )}
+              </>
+            )}
           </div>
 
           <div className='fields-group'>
@@ -540,7 +717,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             <button
               type='button'
               className='button'
-              disabled={saving}
+              disabled={
+                saving || (pageSeriesId === '__new__' && !newSeriesTitle.trim())
+              }
               onClick={handleSave}
             >
               {intl.formatMessage(messages.save)}

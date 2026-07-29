@@ -156,12 +156,14 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
     end
 
     it 'keeps Sharlayan-only metadata out of the Misskey Page schema' do
-      published_page.update!(category: 'Journal', is_main: true)
+      series = Fabricate(:page_series, account: account)
+      published_page.update!(category: 'Journal', is_main: true, page_series: series, series_position: 2)
+      series.update!(main_page: published_page)
 
       post '/api/pages/show', params: { i: read_token, pageId: MisskeyCompat::MiId.encode(published_page.id) }, as: :json
 
       expect(response).to have_http_status(200)
-      expect(response.parsed_body).to_not include(:category, :is_main, :views_count, :visibility)
+      expect(response.parsed_body).to_not include(:category, :is_main, :views_count, :visibility, :page_series, :page_series_id, :series_position, :series_main)
     end
 
     it 'applies encoded ID cursors to page lists' do
@@ -290,12 +292,15 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
     end
 
     it 'preserves Sharlayan-only metadata during a Misskey update' do
+      series = Fabricate(:page_series, account: account)
       page = Fabricate(
         :page,
         account: account,
         category: 'Journal',
         visibility: 'password',
-        access_password: 'correct-password'
+        access_password: 'correct-password',
+        page_series: series,
+        series_position: 2
       )
       password_digest = page.access_password_digest
 
@@ -305,6 +310,8 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
         title: 'Updated through Misskey',
         category: 'Ignored',
         visibility: 'public',
+        pageSeriesId: nil,
+        seriesPosition: 0,
       }, as: :json
 
       expect(response).to have_http_status(204)
@@ -312,7 +319,9 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
         title: 'Updated through Misskey',
         category: 'Journal',
         visibility: 'password',
-        access_password_digest: password_digest
+        access_password_digest: password_digest,
+        page_series_id: series.id,
+        series_position: 2
       )
     end
 

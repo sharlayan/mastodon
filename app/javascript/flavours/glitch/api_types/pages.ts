@@ -56,6 +56,19 @@ export type ApiPageVisibility =
   | 'password'
   | 'private';
 
+export interface ApiPageSeriesSummaryJSON {
+  id: string;
+  title: string;
+  description: string | null;
+  main_page_id: string | null;
+}
+
+export interface ApiPageSeriesJSON extends ApiPageSeriesSummaryJSON {
+  pages_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ApiPageJSON {
   id: string;
   title: string;
@@ -70,6 +83,10 @@ export interface ApiPageJSON {
   align_center: boolean;
   hide_title_when_pinned: boolean;
   is_main: boolean;
+  page_series_id: string | null;
+  page_series: ApiPageSeriesSummaryJSON | null;
+  series_position: number;
+  series_main: boolean;
   font: ApiPageFont;
   account_id: string;
   account: ApiAccountJSON;

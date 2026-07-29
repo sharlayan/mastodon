@@ -14,14 +14,14 @@ class Api::V1::PagesController < Api::BaseController
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock]
 
   before_action :require_user!, except: [:show, :unlock]
-  before_action :set_page, only: [:show, :update, :destroy, :like, :unlike, :set_main, :unset_main]
+  before_action :set_page, only: [:show, :update, :destroy, :like, :unlike, :set_main, :unset_main, :set_series_main, :unset_series_main]
 
   rescue_from Page::ContentLimitError do
     render json: { error: 'Page content exceeds the allowed limits' }, status: 422
   end
 
   def index
-    @pages = current_account.pages.order(is_main: :desc, id: :desc)
+    @pages = current_account.pages.includes(:page_series).order(is_main: :desc, id: :desc)
       .offset([params[:offset].to_i, 0].max)
       .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
     render json: @pages, each_serializer: REST::PageSummarySerializer
@@ -57,7 +57,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def featured
-    @pages = Page.featured.limit(Page::LIST_LIMIT).to_a
+    @pages = Page.featured.includes(:page_series).limit(Page::LIST_LIMIT).to_a
     render json: @pages, each_serializer: REST::PageSummarySerializer
   end
 
@@ -114,6 +114,36 @@ class Api::V1::PagesController < Api::BaseController
     render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
+  def set_series_main
+    authorize_owner!
+
+    Page.transaction do
+      @page.lock!
+      return not_found unless @page.eligible_for_main? && @page.page_series
+
+      @page.page_series.with_lock do
+        @page.page_series.update!(main_page: @page)
+      end
+    end
+
+    render json: @page, serializer: REST::PageSerializer, page_unlocked: true
+  end
+
+  def unset_series_main
+    authorize_owner!
+
+    Page.transaction do
+      @page.lock!
+      return not_found unless @page.page_series
+
+      @page.page_series.with_lock do
+        @page.page_series.update!(main_page: nil) if @page.page_series.main_page_id == @page.id
+      end
+    end
+
+    render json: @page, serializer: REST::PageSerializer, page_unlocked: true
+  end
+
   private
 
   def require_feature_enabled!
@@ -141,7 +171,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def page_params
-    permitted = params.permit(:title, :name, :summary, :category, :draft, :visibility, :password, :align_center, :hide_title_when_pinned, :font, :eye_catching_media_attachment_id).merge(content_params)
+    permitted = params.permit(:title, :name, :summary, :category, :draft, :visibility, :password, :align_center, :hide_title_when_pinned, :font, :eye_catching_media_attachment_id, :page_series_id, :series_position).merge(content_params)
     if permitted.key?(:draft) && !permitted.key?(:visibility)
       permitted[:visibility] = ActiveModel::Type::Boolean.new.cast(permitted[:draft]) ? 'private' : 'public'
     end

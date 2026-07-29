@@ -7,6 +7,7 @@ import {
 import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
 import type {
   ApiPageJSON,
+  ApiPageSeriesJSON,
   ApiPageUnlockJSON,
 } from 'flavours/glitch/api_types/pages';
 
@@ -103,6 +104,28 @@ export const apiSetMainPage = (pageId: string) =>
 
 export const apiUnsetMainPage = (pageId: string) =>
   apiRequestDelete<ApiPageJSON>(`v1/pages/${pageId}/main`);
+
+export const apiSetSeriesMainPage = (pageId: string) =>
+  apiRequestPost<ApiPageJSON>(`v1/pages/${pageId}/series_main`);
+
+export const apiUnsetSeriesMainPage = (pageId: string) =>
+  apiRequestDelete<ApiPageJSON>(`v1/pages/${pageId}/series_main`);
+
+export const apiGetPageSeries = () =>
+  apiRequestGet<ApiPageSeriesJSON[]>('v1/page_series');
+
+export const apiCreatePageSeries = (series: {
+  title: string;
+  description?: string | null;
+}) => apiRequestPost<ApiPageSeriesJSON>('v1/page_series', series);
+
+export const apiUpdatePageSeries = (
+  seriesId: string,
+  series: { title?: string; description?: string | null },
+) => apiRequestPut<ApiPageSeriesJSON>(`v1/page_series/${seriesId}`, series);
+
+export const apiDeletePageSeries = (seriesId: string) =>
+  apiRequestDelete(`v1/page_series/${seriesId}`);
 
 export const apiUploadPageMedia = (file: File) => {
   const data = new FormData();

@@ -50,7 +50,7 @@ class Api::V1::Accounts::PagesController < Api::BaseController
     pages = @account.pages.listed
     pages = pages.where.not(visibility: 'authenticated') if current_account.nil?
 
-    pages.order(is_main: :desc, id: :desc)
+    pages.includes(:page_series).order(is_main: :desc, id: :desc)
       .offset([params[:offset].to_i, 0].max)
       .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
   end

@@ -110,6 +110,14 @@ export const PageListItem: React.FC<{
                   </span>
                 </>
               )}
+              {page.page_series && (
+                <>
+                  {' · '}
+                  <span className='page-list-item__series'>
+                    {page.page_series.title}
+                  </span>
+                </>
+              )}
             </span>
             <span className='page-list-item__author'>
               {page.account.display_name || page.account.username} · @

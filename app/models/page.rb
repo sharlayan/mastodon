@@ -17,6 +17,7 @@
 #  is_main                          :boolean          default(FALSE), not null
 #  likes_count                      :integer          default(0), not null
 #  name                             :string           not null
+#  series_position                  :integer          default(0), not null
 #  summary                          :text
 #  title                            :string           default(""), not null
 #  visibility                       :string           default("public"), not null
@@ -24,6 +25,7 @@
 #  updated_at                       :datetime         not null
 #  account_id                       :bigint(8)        not null
 #  eye_catching_media_attachment_id :bigint(8)
+#  page_series_id                   :bigint(8)
 #
 
 class Page < ApplicationRecord
@@ -39,6 +41,7 @@ class Page < ApplicationRecord
   NAME_LENGTH_LIMIT = 256
   SUMMARY_LENGTH_LIMIT = 256
   CATEGORY_LENGTH_LIMIT = 30
+  SERIES_POSITION_LIMIT = 1_000_000
   NAME_RE = %r{\A[^\s:/?#\[\]@!$&'()*+,;=\\%\x00-\x20]{1,256}\z}
   FONTS = %w(sans-serif serif).freeze
   VISIBILITIES = %w(public authenticated password private).freeze
@@ -60,6 +63,7 @@ class Page < ApplicationRecord
 
   belongs_to :account
   belongs_to :eye_catching_media_attachment, class_name: 'MediaAttachment', optional: true
+  belongs_to :page_series, optional: true, inverse_of: :pages
 
   has_many :page_likes, inverse_of: :page, dependent: :destroy
   has_many :page_reports, dependent: :delete_all
@@ -68,11 +72,13 @@ class Page < ApplicationRecord
   before_validation :synchronize_visibility
   before_validation :clear_unused_password
   before_validation :clear_main_unless_public
+  after_update :clear_previous_series_main
 
   validates :title, length: { maximum: TITLE_LENGTH_LIMIT }
   validates :name, presence: true, length: { maximum: NAME_LENGTH_LIMIT }, format: { with: NAME_RE }, uniqueness: { scope: :account_id }
   validates :summary, length: { maximum: SUMMARY_LENGTH_LIMIT }
   validates :category, length: { maximum: CATEGORY_LENGTH_LIMIT }
+  validates :series_position, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: SERIES_POSITION_LIMIT }
   validates :font, inclusion: { in: FONTS }
   validates :visibility, inclusion: { in: VISIBILITIES }
   validates :access_password, length: { in: Devise.password_length }, allow_nil: true
@@ -80,6 +86,7 @@ class Page < ApplicationRecord
   validate :validate_attached_media
   validate :validate_access_password
   validate :validate_eye_catching_media_attachment
+  validate :validate_page_series
   validate :validate_account_pages_limit, on: :create
   validate :validate_daily_create_limit, on: :create
 
@@ -168,6 +175,10 @@ class Page < ApplicationRecord
     authenticated_views_count + anonymous_views_count
   end
 
+  def series_main?
+    page_series&.main_page_id == id
+  end
+
   private
 
   def synchronize_visibility
@@ -192,6 +203,17 @@ class Page < ApplicationRecord
 
   def normalize_category
     self.category = category&.strip.presence
+  end
+
+  def validate_page_series
+    errors.add(:page_series, :invalid) if page_series && page_series.account_id != account_id
+  end
+
+  def clear_previous_series_main
+    return unless saved_change_to_page_series_id? || !eligible_for_main?
+
+    PageSeries.where(main_page_id: id).update_all(main_page_id: nil)
+    association(:page_series).reset
   end
 
   def attached_media_ids(blocks = content)

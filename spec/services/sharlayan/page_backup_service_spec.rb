@@ -24,17 +24,43 @@ RSpec.describe Sharlayan::PageBackupService do
   end
 
   it 'exports and restores page data without retaining source IDs' do
+    series = Fabricate(:page_series, account: account, title: 'Manuals', description: 'A series')
     page = Fabricate(:page, account: account, name: 'guide', title: 'Guide', content: [{ 'id' => 'text', 'type' => 'text', 'text' => 'Saved text' }])
-    page.update!(visibility: 'private', category: 'notes')
+    page.update!(category: 'notes', page_series: series, series_position: 2)
+    series.update!(main_page: page)
+    original_page_id = page.id
+    original_series_id = series.id
 
     archive_upload(service.export) do |upload|
       account.pages.destroy_all
+      account.page_series.destroy_all
       service.import!(upload)
     end
 
     restored = account.pages.sole
-    expect(restored).to have_attributes(name: 'guide', title: 'Guide', visibility: 'private', category: 'notes')
+    restored_series = account.page_series.sole
+    expect(restored.id).to_not eq(original_page_id)
+    expect(restored_series.id).to_not eq(original_series_id)
+    expect(restored).to have_attributes(name: 'guide', title: 'Guide', category: 'notes', page_series: restored_series, series_position: 2)
+    expect(restored_series).to have_attributes(title: 'Manuals', description: 'A series', main_page: restored)
     expect(restored.content).to eq([{ 'id' => 'text', 'type' => 'text', 'text' => 'Saved text' }])
+  end
+
+  it 'continues to import version 1 archives without series data' do
+    archive = zip_archive do |zip|
+      zip.get_output_stream(described_class::MANIFEST) do |io|
+        io.write({
+          format: described_class::FORMAT,
+          version: 1,
+          pages: [{ title: 'Legacy', name: 'legacy', content: [], visibility: 'public' }],
+          media: [],
+        }.to_json)
+      end
+    end
+
+    archive_upload(archive) { |upload| service.import!(upload) }
+
+    expect(account.pages.sole).to have_attributes(title: 'Legacy', page_series: nil)
   end
 
   it 'restores page media with remapped attachment IDs' do

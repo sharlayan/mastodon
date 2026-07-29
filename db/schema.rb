@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_085200) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_153801) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1336,6 +1336,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_085200) do
     t.index ["report_id"], name: "index_page_reports_on_report_id"
   end
 
+  create_table "page_series", id: :bigint, default: -> { "timestamp_id('page_series'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.bigint "main_page_id"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "title"], name: "index_page_series_on_account_id_and_title", unique: true
+    t.index ["main_page_id"], name: "index_page_series_on_main_page_id", unique: true, where: "(main_page_id IS NOT NULL)"
+  end
+
   create_table "pages", id: :bigint, default: -> { "timestamp_id('pages'::text)" }, force: :cascade do |t|
     t.string "access_password_digest"
     t.bigint "account_id", null: false
@@ -1352,6 +1363,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_085200) do
     t.boolean "is_main", default: false, null: false
     t.integer "likes_count", default: 0, null: false
     t.string "name", null: false
+    t.bigint "page_series_id"
+    t.integer "series_position", default: 0, null: false
     t.text "summary"
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
@@ -1361,6 +1374,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_085200) do
     t.index ["account_id"], name: "index_pages_on_account_id_where_is_main", unique: true, where: "is_main"
     t.index ["eye_catching_media_attachment_id"], name: "index_pages_on_eye_catching_media_attachment_id"
     t.index ["likes_count"], name: "index_pages_on_likes_count"
+    t.index ["page_series_id", "series_position", "id"], name: "index_pages_on_series_order"
+    t.index ["page_series_id"], name: "index_pages_on_page_series_id"
     t.index ["visibility"], name: "index_pages_on_visibility"
   end
 
@@ -2113,8 +2128,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_085200) do
   add_foreign_key "page_likes", "pages", on_delete: :cascade
   add_foreign_key "page_reports", "pages", on_delete: :cascade
   add_foreign_key "page_reports", "reports", on_delete: :cascade
+  add_foreign_key "page_series", "accounts", on_delete: :cascade
+  add_foreign_key "page_series", "pages", column: "main_page_id", on_delete: :nullify
   add_foreign_key "pages", "accounts", on_delete: :cascade
   add_foreign_key "pages", "media_attachments", column: "eye_catching_media_attachment_id", on_delete: :nullify
+  add_foreign_key "pages", "page_series", on_delete: :nullify
   add_foreign_key "poll_votes", "accounts", on_delete: :cascade
   add_foreign_key "poll_votes", "polls", on_delete: :cascade
   add_foreign_key "polls", "accounts", on_delete: :cascade

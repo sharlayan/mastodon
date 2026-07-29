@@ -444,11 +444,22 @@ const PageShow: React.FC<{
         ...(accountPages ?? []),
       ]
     : [];
-  const filteredAccountPages = category
-    ? visibleAccountPages.filter(
-        (accountPage) => accountPage.category === category,
-      )
-    : visibleAccountPages;
+  const filteredAccountPages = currentPage?.page_series_id
+    ? visibleAccountPages
+        .filter(
+          (accountPage) =>
+            accountPage.page_series_id === currentPage.page_series_id,
+        )
+        .toSorted(
+          (left, right) =>
+            left.series_position - right.series_position ||
+            left.id.localeCompare(right.id),
+        )
+    : category
+      ? visibleAccountPages.filter(
+          (accountPage) => accountPage.category === category,
+        )
+      : visibleAccountPages;
   const currentPageIndex = filteredAccountPages.findIndex(
     (accountPage) => accountPage.id === id,
   );

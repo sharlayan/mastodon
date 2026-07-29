@@ -2,13 +2,15 @@
 
 class Sharlayan::PageBackupService
   FORMAT = 'sharlayan-pages-backup'
-  VERSION = 1
+  VERSION = 2
+  SUPPORTED_VERSIONS = [1, VERSION].freeze
   MANIFEST = 'pages.json'
   MAX_ARCHIVE_SIZE = 100.megabytes
   MAX_MEDIA_SIZE = 100.megabytes
   MAX_MANIFEST_SIZE = 5.megabytes
   MAX_ARCHIVE_ENTRIES = 10_000
   MAX_UNCOMPRESSED_SIZE = MAX_MANIFEST_SIZE + MAX_MEDIA_SIZE
+  MAX_SERIES = 500
 
   class InvalidArchive < StandardError; end
 
@@ -45,10 +47,18 @@ class Sharlayan::PageBackupService
 
       ApplicationRecord.transaction do
         @account.lock!
-        @account.pages.destroy_all if overwrite
+        if overwrite
+          @account.pages.destroy_all
+          @account.page_series.destroy_all
+        end
         validate_import_capacity!(data.fetch('pages').size)
         media_ids = import_media!(zip, data.fetch('media'))
-        data.fetch('pages').each { |attributes| import_page!(attributes, media_ids) }
+        series_ids = import_series!(data.fetch('series', []))
+        page_ids = data.fetch('pages').to_h do |attributes|
+          page = import_page!(attributes, media_ids, series_ids)
+          [attributes['backup_id'].to_s, page.id]
+        end
+        restore_series_mains!(data.fetch('series', []), series_ids, page_ids)
       end
     end
   rescue Zip::Error, JSON::ParserError, KeyError, ActiveRecord::RecordInvalid => e
@@ -61,14 +71,28 @@ class Sharlayan::PageBackupService
     {
       format: FORMAT,
       version: VERSION,
+      series: @account.page_series.reorder(:id).map { |series| series_attributes(series) },
       pages: @account.pages.reorder(:id).map { |page| page_attributes(page) },
       media: paths.map { |attachment, path| media_attributes(attachment, path) },
     }
   end
 
   def page_attributes(page)
-    page.slice('title', 'name', 'summary', 'category', 'content', 'align_center', 'hide_title_when_pinned', 'font', 'visibility', 'access_password_digest')
-      .merge('eye_catching_media_attachment_id' => page.eye_catching_media_attachment_id)
+    page.slice('title', 'name', 'summary', 'category', 'content', 'align_center', 'hide_title_when_pinned', 'font', 'visibility', 'access_password_digest', 'series_position')
+      .merge(
+        'backup_id' => page.id,
+        'page_series_id' => page.page_series_id,
+        'eye_catching_media_attachment_id' => page.eye_catching_media_attachment_id
+      )
+  end
+
+  def series_attributes(series)
+    {
+      id: series.id,
+      title: series.title,
+      description: series.description,
+      main_page_id: series.main_page_id,
+    }
   end
 
   def media_attributes(attachment, path)
@@ -101,10 +125,18 @@ class Sharlayan::PageBackupService
   end
 
   def validate_manifest!(data)
-    raise InvalidArchive unless data['format'] == FORMAT && data['version'] == VERSION
+    raise InvalidArchive unless data['format'] == FORMAT && SUPPORTED_VERSIONS.include?(data['version'])
     raise InvalidArchive unless data['pages'].is_a?(Array) && data['media'].is_a?(Array)
+    raise InvalidArchive unless data.fetch('series', []).is_a?(Array)
     raise InvalidArchive if data['pages'].size > Page.limit_for(@account)
+    raise InvalidArchive if data.fetch('series', []).size > MAX_SERIES
     raise InvalidArchive if data['media'].size > MAX_ARCHIVE_ENTRIES - 1
+
+    return unless data['version'] == VERSION
+
+    series_ids = data.fetch('series', []).map { |series| series.fetch('id').to_s }
+    page_ids = data['pages'].map { |page| page.fetch('backup_id').to_s }
+    raise InvalidArchive unless series_ids.uniq.size == series_ids.size && page_ids.uniq.size == page_ids.size
   end
 
   def validate_archive!(zip)
@@ -174,12 +206,31 @@ class Sharlayan::PageBackupService
     copied
   end
 
-  def import_page!(attributes, media_ids)
+  def import_series!(series)
+    series.to_h do |attributes|
+      imported = @account.page_series.create!(
+        title: available_series_title(attributes.fetch('title')),
+        description: attributes['description']
+      )
+      [attributes.fetch('id').to_s, imported.id]
+    end
+  end
+
+  def import_page!(attributes, media_ids, series_ids)
     attributes = attributes.slice(*Page.attribute_names).except('id', 'account_id', 'created_at', 'updated_at', 'likes_count', 'draft')
     attributes['content'] = replace_media_ids(attributes['content'], media_ids)
     attributes['eye_catching_media_attachment_id'] = media_ids[attributes['eye_catching_media_attachment_id'].to_s]
+    attributes['page_series_id'] = series_ids.fetch(attributes['page_series_id'].to_s) if attributes['page_series_id'].present?
     attributes['name'] = available_name(attributes.fetch('name'))
     @account.pages.create!(attributes)
+  end
+
+  def restore_series_mains!(series, series_ids, page_ids)
+    series.each do |attributes|
+      next if attributes['main_page_id'].blank?
+
+      @account.page_series.find(series_ids.fetch(attributes.fetch('id').to_s)).update!(main_page_id: page_ids.fetch(attributes['main_page_id'].to_s))
+    end
   end
 
   def replace_media_ids(blocks, media_ids)
@@ -200,5 +251,14 @@ class Sharlayan::PageBackupService
     sequence = 1
     sequence += 1 while @account.pages.exists?(name: "#{base}-#{sequence}")
     "#{base}-#{sequence}"
+  end
+
+  def available_series_title(title)
+    return title unless @account.page_series.exists?(title: title)
+
+    base = title.first(PageSeries::TITLE_LENGTH_LIMIT - 10)
+    sequence = 1
+    sequence += 1 while @account.page_series.exists?(title: "#{base} (#{sequence})")
+    "#{base} (#{sequence})"
   end
 end
