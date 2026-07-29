@@ -117,11 +117,16 @@ export const apiGetPageSeries = () =>
 export const apiCreatePageSeries = (series: {
   title: string;
   description?: string | null;
+  cover_media_attachment_id?: string | null;
 }) => apiRequestPost<ApiPageSeriesJSON>('v1/page_series', series);
 
 export const apiUpdatePageSeries = (
   seriesId: string,
-  series: { title?: string; description?: string | null },
+  series: {
+    title?: string;
+    description?: string | null;
+    cover_media_attachment_id?: string | null;
+  },
 ) => apiRequestPut<ApiPageSeriesJSON>(`v1/page_series/${seriesId}`, series);
 
 export const apiDeletePageSeries = (seriesId: string) =>

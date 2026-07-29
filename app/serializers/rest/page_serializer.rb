@@ -32,6 +32,8 @@ class REST::PageSerializer < ActiveModel::Serializer
       title: object.page_series.title,
       description: object.page_series.description,
       main_page_id: object.page_series.main_page_id&.to_s,
+      cover_media_attachment_id: object.page_series.cover_media_attachment_id&.to_s,
+      cover_media_attachment: object.page_series.cover_media_attachment && REST::MediaAttachmentSerializer.new(object.page_series.cover_media_attachment).as_json,
     }
   end
 

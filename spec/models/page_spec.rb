@@ -162,5 +162,13 @@ RSpec.describe Page do
       expect(MediaAttachment.referenced_by_page).to_not include(media)
       expect(MediaAttachment.unattached).to include(media)
     end
+
+    it 'includes media used as a Booklet cover' do
+      media = Fabricate(:media_attachment, account: account)
+      Fabricate(:page_series, account: account, cover_media_attachment: media)
+
+      expect(MediaAttachment.referenced_by_page).to include(media)
+      expect(MediaAttachment.unattached).to_not include(media)
+    end
   end
 end

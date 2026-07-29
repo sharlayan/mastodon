@@ -173,17 +173,28 @@ export const PageShowContent: React.FC<{
       {page.summary && <p className='page__summary'>{page.summary}</p>}
       {page.page_series && (
         <aside className='page__series'>
-          <strong>
-            {page.page_series.title}
-            {page.series_main && (
-              <span className='page__series-main'>
-                {intl.formatMessage(messages.seriesMain)}
-              </span>
-            )}
-          </strong>
-          {page.page_series.description && (
-            <p>{page.page_series.description}</p>
+          {page.page_series.cover_media_attachment && (
+            <img
+              className='page__series-cover'
+              src={page.page_series.cover_media_attachment.url}
+              alt=''
+              decoding='async'
+              loading='lazy'
+            />
           )}
+          <div className='page__series-details'>
+            <strong>
+              {page.page_series.title}
+              {page.series_main && (
+                <span className='page__series-main'>
+                  {intl.formatMessage(messages.seriesMain)}
+                </span>
+              )}
+            </strong>
+            {page.page_series.description && (
+              <p>{page.page_series.description}</p>
+            )}
+          </div>
         </aside>
       )}
 

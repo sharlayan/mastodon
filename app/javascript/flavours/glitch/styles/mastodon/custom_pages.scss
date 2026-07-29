@@ -612,6 +612,24 @@
     }
   }
 
+  &__booklet-cover {
+    margin: 12px 0;
+
+    .page-editor__hint {
+      display: block;
+      margin: 4px 0 8px;
+      color: var(--secondary-text-color);
+      font-size: 13px;
+    }
+
+    .page-editor__image-upload__preview {
+      width: min(100%, 300px);
+      max-height: 400px;
+      aspect-ratio: 3 / 4;
+      object-fit: cover;
+    }
+  }
+
   &__block-option {
     display: flex;
     align-items: center;
@@ -1494,6 +1512,9 @@ html .scrollable {
 }
 
 .page__series {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
   margin: 0 0 24px;
   padding: 12px 16px;
   border: 1px solid var(--background-border-color);
@@ -1508,6 +1529,26 @@ html .scrollable {
   p {
     margin-top: 4px;
     color: var(--secondary-text-color);
+  }
+}
+
+.page__series-cover {
+  width: min(100%, 600px);
+  max-width: 600px;
+  max-height: 800px;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.page__series-details {
+  min-width: 0;
+  flex: 1;
+}
+
+@media screen and (width <= 760px) {
+  .page__series {
+    flex-direction: column;
   }
 }
 

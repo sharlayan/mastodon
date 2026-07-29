@@ -15,6 +15,12 @@ module Sharlayan::MediaAttachmentExtensions
               jsonb_build_object('media_id', to_jsonb(media_attachments.id::text))
             ))
     )
+    OR EXISTS (
+      SELECT 1
+      FROM page_series
+      WHERE page_series.account_id = media_attachments.account_id
+        AND page_series.cover_media_attachment_id = media_attachments.id
+    )
   SQL
 
   included do

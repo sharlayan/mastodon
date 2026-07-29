@@ -61,6 +61,8 @@ export interface ApiPageSeriesSummaryJSON {
   title: string;
   description: string | null;
   main_page_id: string | null;
+  cover_media_attachment_id: string | null;
+  cover_media_attachment: ApiMediaAttachmentJSON | null;
 }
 
 export interface ApiPageSeriesJSON extends ApiPageSeriesSummaryJSON {

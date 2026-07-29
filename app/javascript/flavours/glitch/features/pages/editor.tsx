@@ -12,6 +12,7 @@ import {
   apiGetPageCategories,
   apiGetPageSeries,
   apiCreatePageSeries,
+  apiUpdatePageSeries,
   apiSetSeriesMainPage,
   apiUnsetSeriesMainPage,
   apiCreatePage,
@@ -85,6 +86,14 @@ const messages = defineMessages({
   seriesDescription: {
     id: 'pages.field.series_description',
     defaultMessage: 'Booklet description',
+  },
+  seriesCover: {
+    id: 'pages.field.series_cover',
+    defaultMessage: 'Booklet cover',
+  },
+  seriesCoverHint: {
+    id: 'pages.field.series_cover_hint',
+    defaultMessage: 'Displayed at a 3:4 ratio, up to 600 × 800 px.',
   },
   seriesPosition: {
     id: 'pages.field.series_position',
@@ -161,6 +170,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   >([]);
   const [newSeriesTitle, setNewSeriesTitle] = useState('');
   const [newSeriesDescription, setNewSeriesDescription] = useState('');
+  const [seriesCover, setSeriesCover] = useState<ApiMediaAttachmentJSON | null>(
+    null,
+  );
   const [seriesPosition, setSeriesPosition] = useState(0);
   const [seriesMain, setSeriesMain] = useState(false);
   const [visibility, setVisibility] = useState<ApiPageVisibility>('public');
@@ -216,6 +228,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setSummary(page.summary ?? '');
         setCategory(page.category ?? '');
         setPageSeriesId(page.page_series_id ?? '');
+        setSeriesCover(page.page_series?.cover_media_attachment ?? null);
         setSeriesPosition(page.series_position);
         setSeriesMain(page.series_main);
         setVisibility(page.visibility);
@@ -271,9 +284,14 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleSeriesChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
-      setPageSeriesId(event.target.value);
+      const nextSeriesId = event.target.value;
+      setPageSeriesId(nextSeriesId);
+      setSeriesCover(
+        pageSeriesOptions.find((series) => series.id === nextSeriesId)
+          ?.cover_media_attachment ?? null,
+      );
     },
-    [],
+    [pageSeriesOptions],
   );
 
   const handleNewSeriesTitleChange = useCallback(
@@ -406,8 +424,13 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         ? apiCreatePageSeries({
             title: newSeriesTitle,
             description: newSeriesDescription || null,
+            cover_media_attachment_id: seriesCover?.id ?? null,
           }).then((series) => series.id)
-        : Promise.resolve(pageSeriesId || null);
+        : pageSeriesId
+          ? apiUpdatePageSeries(pageSeriesId, {
+              cover_media_attachment_id: seriesCover?.id ?? null,
+            }).then((series) => series.id)
+          : Promise.resolve(null);
 
     seriesRequest
       .then((seriesId) =>
@@ -456,6 +479,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     pageSeriesId,
     newSeriesTitle,
     newSeriesDescription,
+    seriesCover,
     seriesPosition,
     seriesMain,
     visibility,
@@ -545,6 +569,18 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
             {pageSeriesId && (
               <>
+                <div className='page-editor__booklet-cover'>
+                  <span className='page-editor__label'>
+                    {intl.formatMessage(messages.seriesCover)}
+                  </span>
+                  <span className='page-editor__hint'>
+                    {intl.formatMessage(messages.seriesCoverHint)}
+                  </span>
+                  <ImageUploadField
+                    value={seriesCover}
+                    onChange={setSeriesCover}
+                  />
+                </div>
                 <TextInputField
                   id='page_series_position'
                   type='number'

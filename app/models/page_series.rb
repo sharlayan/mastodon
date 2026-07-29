@@ -4,13 +4,14 @@
 #
 # Table name: page_series
 #
-#  id           :bigint(8)        not null, primary key
-#  description  :text
-#  title        :string           not null
-#  created_at   :datetime         not null
-#  updated_at   :datetime         not null
-#  account_id   :bigint(8)        not null
-#  main_page_id :bigint(8)
+#  id                        :bigint(8)        not null, primary key
+#  description               :text
+#  title                     :string           not null
+#  created_at                :datetime         not null
+#  updated_at                :datetime         not null
+#  account_id                :bigint(8)        not null
+#  cover_media_attachment_id :bigint(8)
+#  main_page_id              :bigint(8)
 #
 class PageSeries < ApplicationRecord
   TITLE_LENGTH_LIMIT = 100
@@ -18,6 +19,7 @@ class PageSeries < ApplicationRecord
   PER_ACCOUNT_LIMIT = 500
 
   belongs_to :account
+  belongs_to :cover_media_attachment, class_name: 'MediaAttachment', optional: true
   belongs_to :main_page, class_name: 'Page', optional: true
 
   has_many :pages, -> { order(:series_position, :id) }, inverse_of: :page_series, dependent: :nullify
@@ -27,6 +29,7 @@ class PageSeries < ApplicationRecord
   validates :title, presence: true, length: { maximum: TITLE_LENGTH_LIMIT }, uniqueness: { scope: :account_id }
   validates :description, length: { maximum: DESCRIPTION_LENGTH_LIMIT }
   validate :validate_main_page
+  validate :validate_cover_media_attachment
   validate :validate_account_series_limit, on: :create
 
   private
@@ -40,6 +43,12 @@ class PageSeries < ApplicationRecord
     return if main_page.nil?
 
     errors.add(:main_page, :invalid) unless main_page.account_id == account_id && main_page.page_series_id == id && main_page.eligible_for_main?
+  end
+
+  def validate_cover_media_attachment
+    return if cover_media_attachment.nil? || cover_media_attachment.account_id == account_id
+
+    errors.add(:cover_media_attachment, :invalid)
   end
 
   def validate_account_series_limit

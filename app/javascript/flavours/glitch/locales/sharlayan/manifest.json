@@ -377,6 +377,8 @@
   "pages.field.previous_category",
   "pages.field.previous_category_placeholder",
   "pages.field.series",
+  "pages.field.series_cover",
+  "pages.field.series_cover_hint",
   "pages.field.series_description",
   "pages.field.series_main",
   "pages.field.series_position",

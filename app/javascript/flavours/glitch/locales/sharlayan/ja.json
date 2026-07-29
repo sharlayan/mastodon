@@ -378,6 +378,8 @@
   "pages.field.previous_category_placeholder": "カテゴリーを選択",
   "pages.field.series": "小冊子",
   "pages.field.series_description": "小冊子の説明",
+  "pages.field.series_cover": "小冊子の表紙",
+  "pages.field.series_cover_hint": "3:4の比率で表示され、最大サイズは600 × 800pxです。",
   "pages.field.series_main": "この小冊子の代表ページとして使用",
   "pages.field.series_position": "小冊子内の順序",
   "pages.field.series_position_hint": "小さい数字ほど先に表示されます。",

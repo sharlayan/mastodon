@@ -378,6 +378,8 @@
   "pages.field.previous_category_placeholder": "Select a category",
   "pages.field.series": "Booklet",
   "pages.field.series_description": "Booklet description",
+  "pages.field.series_cover": "Booklet cover",
+  "pages.field.series_cover_hint": "Displayed at a 3:4 ratio, up to 600 × 800 px.",
   "pages.field.series_main": "Use as the representative page for this Booklet",
   "pages.field.series_position": "Order in Booklet",
   "pages.field.series_position_hint": "Lower numbers appear first.",

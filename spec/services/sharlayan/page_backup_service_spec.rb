@@ -46,6 +46,21 @@ RSpec.describe Sharlayan::PageBackupService do
     expect(restored.content).to eq([{ 'id' => 'text', 'type' => 'text', 'text' => 'Saved text' }])
   end
 
+  it 'restores Booklet cover media with a remapped attachment ID' do
+    cover = Fabricate(:media_attachment, account: account)
+    Fabricate(:page_series, account: account, cover_media_attachment: cover)
+
+    archive_upload(service.export) do |upload|
+      account.page_series.destroy_all
+      cover.destroy!
+      service.import!(upload)
+    end
+
+    restored_cover = account.page_series.sole.cover_media_attachment
+    expect(restored_cover).to be_present
+    expect(restored_cover.id).to_not eq(cover.id)
+  end
+
   it 'continues to import version 1 archives without series data' do
     archive = zip_archive do |zip|
       zip.get_output_stream(described_class::MANIFEST) do |io|

@@ -2,8 +2,8 @@
 
 class Sharlayan::PageBackupService
   FORMAT = 'sharlayan-pages-backup'
-  VERSION = 2
-  SUPPORTED_VERSIONS = [1, VERSION].freeze
+  VERSION = 3
+  SUPPORTED_VERSIONS = [1, 2, VERSION].freeze
   MANIFEST = 'pages.json'
   MAX_ARCHIVE_SIZE = 100.megabytes
   MAX_MEDIA_SIZE = 100.megabytes
@@ -53,7 +53,7 @@ class Sharlayan::PageBackupService
         end
         validate_import_capacity!(data.fetch('pages').size)
         media_ids = import_media!(zip, data.fetch('media'))
-        series_ids = import_series!(data.fetch('series', []))
+        series_ids = import_series!(data.fetch('series', []), media_ids)
         page_ids = data.fetch('pages').to_h do |attributes|
           page = import_page!(attributes, media_ids, series_ids)
           [attributes['backup_id'].to_s, page.id]
@@ -92,6 +92,7 @@ class Sharlayan::PageBackupService
       title: series.title,
       description: series.description,
       main_page_id: series.main_page_id,
+      cover_media_attachment_id: series.cover_media_attachment_id,
     }
   end
 
@@ -106,7 +107,10 @@ class Sharlayan::PageBackupService
   end
 
   def page_attachments
-    ids = @account.pages.flat_map { |page| page.attached_media.ids + [page.eye_catching_media_attachment_id] }.compact.uniq
+    ids = @account.pages.flat_map { |page| page.attached_media.ids + [page.eye_catching_media_attachment_id] }
+      .concat(@account.page_series.pluck(:cover_media_attachment_id))
+      .compact
+      .uniq
     @account.media_attachments.where(id: ids).to_a
   end
 
@@ -132,7 +136,7 @@ class Sharlayan::PageBackupService
     raise InvalidArchive if data.fetch('series', []).size > MAX_SERIES
     raise InvalidArchive if data['media'].size > MAX_ARCHIVE_ENTRIES - 1
 
-    return unless data['version'] == VERSION
+    return if data['version'] == 1
 
     series_ids = data.fetch('series', []).map { |series| series.fetch('id').to_s }
     page_ids = data['pages'].map { |page| page.fetch('backup_id').to_s }
@@ -206,11 +210,12 @@ class Sharlayan::PageBackupService
     copied
   end
 
-  def import_series!(series)
+  def import_series!(series, media_ids)
     series.to_h do |attributes|
       imported = @account.page_series.create!(
         title: available_series_title(attributes.fetch('title')),
-        description: attributes['description']
+        description: attributes['description'],
+        cover_media_attachment_id: media_ids[attributes['cover_media_attachment_id'].to_s]
       )
       [attributes.fetch('id').to_s, imported.id]
     end

@@ -8,7 +8,7 @@ class Api::V1::PageSeriesController < Api::BaseController
   before_action :set_series, only: [:update, :destroy]
 
   def index
-    series = current_account.page_series.includes(:pages).order(:title)
+    series = current_account.page_series.includes(:pages, :cover_media_attachment).order(:title)
     render json: series, each_serializer: REST::PageSeriesSerializer
   end
 
@@ -38,6 +38,6 @@ class Api::V1::PageSeriesController < Api::BaseController
   end
 
   def series_params
-    params.permit(:title, :description)
+    params.permit(:title, :description, :cover_media_attachment_id)
   end
 end

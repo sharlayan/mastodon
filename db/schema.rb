@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_162300) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_165802) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1338,12 +1338,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_162300) do
 
   create_table "page_series", id: :bigint, default: -> { "timestamp_id('pages'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
+    t.bigint "cover_media_attachment_id"
     t.datetime "created_at", null: false
     t.text "description"
     t.bigint "main_page_id"
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id", "title"], name: "index_page_series_on_account_id_and_title", unique: true
+    t.index ["cover_media_attachment_id"], name: "index_page_series_on_cover_media_attachment_id"
     t.index ["main_page_id"], name: "index_page_series_on_main_page_id", unique: true, where: "(main_page_id IS NOT NULL)"
   end
 
@@ -2129,6 +2131,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_162300) do
   add_foreign_key "page_reports", "pages", on_delete: :cascade
   add_foreign_key "page_reports", "reports", on_delete: :cascade
   add_foreign_key "page_series", "accounts", on_delete: :cascade
+  add_foreign_key "page_series", "media_attachments", column: "cover_media_attachment_id", on_delete: :nullify
   add_foreign_key "page_series", "pages", column: "main_page_id", on_delete: :nullify
   add_foreign_key "pages", "accounts", on_delete: :cascade
   add_foreign_key "pages", "media_attachments", column: "eye_catching_media_attachment_id", on_delete: :nullify

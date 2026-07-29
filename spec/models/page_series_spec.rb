@@ -30,6 +30,15 @@ RSpec.describe PageSeries do
     expect(series.errors.of_kind?(:main_page, :invalid)).to be true
   end
 
+  it 'accepts only cover media owned by the same account' do
+    own_cover = Fabricate(:media_attachment, account: account)
+    other_cover = Fabricate(:media_attachment)
+
+    expect(series.update(cover_media_attachment: own_cover)).to be true
+    expect(series.update(cover_media_attachment: other_cover)).to be false
+    expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true
+  end
+
   it 'clears the main page when that page leaves the series' do
     page = Fabricate(:page, account: account, page_series: series)
     series.update!(main_page: page)

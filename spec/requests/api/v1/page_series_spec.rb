@@ -8,10 +8,17 @@ RSpec.describe 'Page series' do
   before { Setting.pages_enabled = true }
 
   it 'creates, lists, updates, and deletes an owned series' do
-    post '/api/v1/page_series', params: { title: ' Guides ', description: 'A collection' }, headers: headers
+    cover = Fabricate(:media_attachment, account: user.account)
+    post '/api/v1/page_series', params: { title: ' Guides ', description: 'A collection', cover_media_attachment_id: cover.id }, headers: headers
     expect(response).to have_http_status(200)
     series_id = response.parsed_body[:id]
-    expect(response.parsed_body).to include(title: 'Guides', description: 'A collection', pages_count: 0)
+    expect(response.parsed_body).to include(
+      title: 'Guides',
+      description: 'A collection',
+      cover_media_attachment_id: cover.id.to_s,
+      pages_count: 0
+    )
+    expect(response.parsed_body.dig(:cover_media_attachment, :id)).to eq(cover.id.to_s)
 
     get '/api/v1/page_series', headers: headers
     expect(response.parsed_body.pluck(:id)).to contain_exactly(series_id)
@@ -27,8 +34,17 @@ RSpec.describe 'Page series' do
     expect(page.reload.page_series).to be_nil
   end
 
+  it 'rejects cover media owned by another account' do
+    cover = Fabricate(:media_attachment)
+
+    post '/api/v1/page_series', params: { title: 'Guides', cover_media_attachment_id: cover.id }, headers: headers
+
+    expect(response).to have_http_status(422)
+  end
+
   it 'assigns pages, orders them, and selects a public representative page' do
-    series = Fabricate(:page_series, account: user.account)
+    cover = Fabricate(:media_attachment, account: user.account)
+    series = Fabricate(:page_series, account: user.account, cover_media_attachment: cover)
     page = Fabricate(:page, account: user.account)
 
     put "/api/v1/pages/#{page.id}", params: { page_series_id: series.id, series_position: 3 }, headers: headers
@@ -39,6 +55,7 @@ RSpec.describe 'Page series' do
       series_main: false
     )
     expect(response.parsed_body.dig(:page_series, :title)).to eq(series.title)
+    expect(response.parsed_body.dig(:page_series, :cover_media_attachment, :id)).to eq(cover.id.to_s)
 
     post "/api/v1/pages/#{page.id}/series_main", headers: headers
     expect(response).to have_http_status(200)
