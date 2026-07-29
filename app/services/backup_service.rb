@@ -46,6 +46,8 @@ class BackupService < BaseService
           media_attachments = status.ordered_media_attachments
 
           item[:object][:attachment].each_with_index do |attachment, index|
+            next if attachment[:url].blank?
+
             attachment[:url] = media_archive_path(media_attachments[index], attachment[:url])
           end
         end
