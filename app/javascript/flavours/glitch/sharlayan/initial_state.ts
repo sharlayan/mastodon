@@ -39,6 +39,7 @@ export interface SharlayanInitialStateMeta {
   roleplay_mode: boolean;
   admin_timeline_enabled?: boolean;
   admin_timeline_owner_viewer?: boolean;
+  soft_hide_deletion?: boolean;
   visible_reactions: number;
   show_instance_info: boolean;
   custom_emoji_size: boolean;
@@ -113,5 +114,6 @@ export const readSharlayanInitialState = (
     forceRoundAvatar: getMeta('force_round_avatar') ?? false,
     adminTimelineEnabled: getMeta('admin_timeline_enabled') === true,
     adminTimelineOwnerViewer: getMeta('admin_timeline_owner_viewer'),
+    softHideDeletion: getMeta('soft_hide_deletion') === true,
   };
 };

@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 class StatusPolicy < ApplicationPolicy
+  include Sharlayan::StatusRoleplayPolicy
+
   def show?
     return false if author.unavailable?
     return false if local_only? && (current_account.nil? || !current_account.local?)
+    return roleplay_hidden_show? unless roleplay_hidden_show?.nil?
 
     if requires_mention?
       owned? || mention_exists?

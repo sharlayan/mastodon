@@ -7,4 +7,5 @@ module Sharlayan::RESTStatusSerialization
   include Sharlayan::REST::Status::LimitedScope
   include Sharlayan::REST::Status::Mfm
   include Sharlayan::REST::Status::Reactions
+  include Sharlayan::REST::Status::RoleplayHidden
 end

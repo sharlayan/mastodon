@@ -6,6 +6,7 @@ module Sharlayan::AdminSettingsExtensions
   KEYS = %i(
     theme_color
     force_local_only
+    soft_hide_deletion
     local_account_statuses_access
     local_status_page_access
     reaction_local_emoji_only
@@ -49,6 +50,7 @@ module Sharlayan::AdminSettingsExtensions
 
   BOOLEAN_KEYS = %i(
     force_local_only
+    soft_hide_deletion
     reaction_local_emoji_only
     reactions_enabled
     mfm_enabled

@@ -17,6 +17,7 @@ module Sharlayan::InitialStateRoleplay
     if Sharlayan::AdminTimeline.enabled?
       store[:admin_timeline_enabled] = true
       store[:admin_timeline_owner_viewer] = admin_timeline_owner_viewer?
+      store[:soft_hide_deletion] = Setting.soft_hide_deletion
     end
 
     store

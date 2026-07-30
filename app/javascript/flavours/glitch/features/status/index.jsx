@@ -312,7 +312,9 @@ class Status extends ImmutablePureComponent {
       });
     };
 
-    if (!deleteModal) {
+    const purge = !!status.get('rp_hidden');
+
+    if (!deleteModal && !purge) {
       dispatch(deleteStatus(status.get('id'), withRedraft))
         .then(() => {
           if (!withRedraft) {
@@ -328,6 +330,7 @@ class Status extends ImmutablePureComponent {
         modalProps: {
           statusId: status.get('id'),
           withRedraft,
+          purge,
           onDeleteSuccess: handleDeleteSuccess
         }
       }));

@@ -7,6 +7,7 @@ const {
   collectionsEnabled,
   forceRoundAvatar,
   roleplayMode,
+  softHideDeletion,
 } = sharlayanInitialState;
 
 export const canUseAdminTimeline = (
@@ -21,4 +22,5 @@ export {
   collectionsEnabled,
   forceRoundAvatar,
   roleplayMode,
+  softHideDeletion,
 };

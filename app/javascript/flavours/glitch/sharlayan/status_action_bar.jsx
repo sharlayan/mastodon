@@ -4,10 +4,13 @@ import AddReactionIcon from '@/material-icons/400-24px/add_reaction.svg?react';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
+import { adminTimelineOwnerViewer, roleplayMode, softHideDeletion } from 'flavours/glitch/sharlayan/roleplay';
 
 const messages = defineMessages({
   react: { id: 'status.react', defaultMessage: 'React' },
   addToClip: { id: 'status.add_to_clip', defaultMessage: 'Add to clip' },
+  deleteAdmin: { id: 'status.delete_admin', defaultMessage: 'Delete (Admin)' },
+  purgeAdmin: { id: 'status.purge_admin', defaultMessage: 'Remove' },
 });
 
 const noop = () => {}; // EmojiPickerDropdown handles the click on the react button
@@ -23,6 +26,39 @@ export const sharlayanAddToClipMenuItem = (intl, { enabled, statusId, dispatch }
       modalType: 'CLIP_ADD',
       modalProps: { statusId },
     })),
+  };
+};
+
+// Hidden posts are only ever serialized for the owner, so this returns
+// 'purge' for them and offers the owner-only delete on other people's posts.
+export const sharlayanRoleplayStatusAction = ({
+  status,
+  writtenByMe,
+  isRemote,
+  roleplayEnabled = roleplayMode,
+  softHideEnabled = softHideDeletion,
+  ownerViewer = adminTimelineOwnerViewer,
+}) => {
+  if (!roleplayEnabled || !softHideEnabled || !ownerViewer || isRemote) {
+    return null;
+  }
+
+  if (status.get('rp_hidden')) {
+    return 'purge';
+  }
+
+  return writtenByMe ? null : 'delete';
+};
+
+export const sharlayanRoleplayStatusMenuItem = (intl, action, onDelete) => {
+  if (!action) {
+    return null;
+  }
+
+  return {
+    text: intl.formatMessage(action === 'purge' ? messages.purgeAdmin : messages.deleteAdmin),
+    action: onDelete,
+    dangerous: true,
   };
 };
 

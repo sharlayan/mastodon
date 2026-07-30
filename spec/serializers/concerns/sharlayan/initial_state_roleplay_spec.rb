@@ -54,7 +54,8 @@ RSpec.describe Sharlayan::InitialStateRoleplay do
       roleplay_mode: true,
       force_round_avatar: true,
       admin_timeline_enabled: true,
-      admin_timeline_owner_viewer: true
+      admin_timeline_owner_viewer: true,
+      soft_hide_deletion: false
     )
   end
 

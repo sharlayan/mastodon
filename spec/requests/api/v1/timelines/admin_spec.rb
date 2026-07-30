@@ -76,6 +76,43 @@ RSpec.describe 'Management timeline API' do
     end
   end
 
+  context 'with soft-hidden statuses' do
+    let(:hidden) { status_for(:public, local_only: true) }
+
+    before do
+      Setting.soft_hide_deletion = true
+      RpHiddenStatus.create!(status: hidden)
+    end
+
+    after do
+      Setting.soft_hide_deletion = false
+    end
+
+    context 'when the viewer is the owner' do
+      let(:role) { UserRole.find_by(name: 'Owner') }
+
+      before do
+        role.update!(extra_permissions: UserRole::EXTRA_FLAGS[:view_admin_timeline])
+      end
+
+      it 'returns the hidden status flagged as hidden', :aggregate_failures do
+        get '/api/v1/timelines/admin', headers: headers
+
+        expect(response).to have_http_status(200)
+        entry = response.parsed_body.find { |status| status[:id] == hidden.id.to_s }
+        expect(entry).to be_present
+        expect(entry[:rp_hidden]).to be(true)
+      end
+    end
+
+    it 'hides it from a non-owner administrator', :aggregate_failures do
+      get '/api/v1/timelines/admin', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to_not include(hidden.id.to_s)
+    end
+  end
+
   context 'without the management timeline permission' do
     before { role.update!(extra_permissions: 0, permissions: 0) }
 

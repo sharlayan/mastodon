@@ -16,17 +16,21 @@ class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
 
     render json: @statuses,
            each_serializer: REST::StatusSerializer,
-           relationships: @relationships
+           relationships: @relationships,
+           rp_admin: soft_hide_viewer?
   end
 
   private
 
   def load_statuses
-    preload_collection(admin_statuses, Status)
+    preload_collection(admin_statuses, Status).tap do |statuses|
+      ActiveRecord::Associations::Preloader.new(records: statuses, associations: :rp_hidden_status).call if soft_hide_viewer?
+    end
   end
 
   def admin_statuses
-    scope = Status.admin_timeline_eligible.where(account: Account.local).order(id: :desc)
+    base = soft_hide_viewer? ? Status.with_rp_hidden : Status
+    scope = base.admin_timeline_eligible.where(account: Account.local).order(id: :desc)
 
     scope = scope.where.not(visibility: hidden_visibilities) if hidden_visibilities.any?
 
@@ -66,6 +70,10 @@ class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
   def owner_viewer?
     role = current_user.role
     !role.everyone? && role.position == top_role_position
+  end
+
+  def soft_hide_viewer?
+    Setting.soft_hide_deletion && owner_viewer?
   end
 
   def top_role_position

@@ -122,14 +122,17 @@ const mapDispatchToProps = (dispatch, { contextType }) => ({
   },
 
   onDelete (status, withRedraft = false) {
-    if (!deleteModal) {
+    const purge = !!status.get('rp_hidden');
+
+    if (!deleteModal && !purge) {
       dispatch(deleteStatus(status.get('id'), withRedraft));
     } else {
       dispatch(openModal({
         modalType: 'CONFIRM_DELETE_STATUS',
         modalProps: {
           statusId: status.get('id'),
-          withRedraft
+          withRedraft,
+          purge
         }
       }));
     }
