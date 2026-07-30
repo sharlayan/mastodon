@@ -39,6 +39,31 @@ RSpec.describe Sharlayan::HomeFeedBoundary do
     it { is_expected.to be_nil }
   end
 
+  context 'when the only reblog is hidden from the home feed' do
+    before do
+      account.mute!(bob, notifications: false)
+      Fabricate(:status, account: bob, reblog: original)
+    end
+
+    it { is_expected.to be_nil }
+  end
+
+  context 'when an older reblog is hidden from the home feed' do
+    let(:muted)   { Fabricate(:account) }
+    let!(:hidden) { Fabricate(:status, account: muted, reblog: original) }
+    let!(:shown)  { Fabricate(:status, account: bob, reblog: original) }
+
+    before do
+      account.follow!(muted)
+      account.mute!(muted, notifications: false)
+    end
+
+    it 'skips the hidden reblog and returns the visible one' do
+      expect(subject).to eq shown.id
+      expect(subject).to_not eq hidden.id
+    end
+  end
+
   context 'when several followed accounts reblogged the status' do
     let!(:first)  { Fabricate(:status, account: bob, reblog: original) }
     let!(:second) { Fabricate(:status, account: account, reblog: original) }
