@@ -24,6 +24,9 @@
 /public/packs
 /public/packs-dev
 /public/packs-test
+/public/misskey
+/public/fluent-emoji
+/public/twemoji
 stats.html
 .env
 .env.production

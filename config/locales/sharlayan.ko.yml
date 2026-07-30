@@ -160,14 +160,14 @@ ko:
       all: 전체
       attached: 첨부됨
       attached_error: 이 드라이브 파일은 살아있는 게시물에 첨부되어 있어 삭제할 수 없습니다.
-      description_html: 계정별 드라이브 라이브러리에 보관된 파일입니다. orphan 파일은 더 이상 살아있는 게시물에 첨부되지
+      description_html: 계정별 드라이브 라이브러리에 보관된 파일입니다. 독립 파일은 더 이상 살아있는 게시물에 첨부되지
         않은 파일로, 정리할 수 있습니다.
       destroy: 삭제
-      destroy_orphaned: orphan 파일 모두 삭제
-      destroy_orphaned_confirm: 모든 orphan 드라이브 파일을 영구히 삭제할까요?
+      destroy_orphaned: 독립 파일 모두 삭제
+      destroy_orphaned_confirm: 모든 독립 드라이브 파일을 영구히 삭제할까요?
       file: 파일
       filter: 필터
-      orphaned: orphan
+      orphaned: 독립 파일
       owner: 소유자
       size: 크기
       status: 상태

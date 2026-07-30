@@ -21,7 +21,7 @@
 
   = f.simple_fields_for :settings, current_user.settings do |ff|
     .fields-group
-      = ff.input :auto_accept_followed, wrapper: :with_label, glitch_only: true
+      = ff.input :auto_accept_followed, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_auto_accept_followed'), hint: I18n.t('simple_form.hints.defaults.setting_auto_accept_followed'), glitch_only: true
 
   %h2= t('privacy.search')
 
@@ -50,13 +50,13 @@
       = ff.input :show_application, wrapper: :with_label
 
     .fields-group
-      = ff.input :show_reactions, wrapper: :with_label, glitch_only: true
+      = ff.input :show_reactions, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_show_reactions'), hint: I18n.t('simple_form.hints.defaults.setting_show_reactions'), glitch_only: true
 
     .fields-group
-      = ff.input :hide_online_status, wrapper: :with_label, glitch_only: true
+      = ff.input :hide_online_status, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_hide_online_status'), hint: I18n.t('simple_form.hints.defaults.setting_hide_online_status'), glitch_only: true
 
     .fields-group
-      = ff.input :prevent_ai_learning, wrapper: :with_label, glitch_only: true
+      = ff.input :prevent_ai_learning, wrapper: :with_label, label: I18n.t('simple_form.labels.defaults.setting_prevent_ai_learning'), hint: I18n.t('simple_form.hints.defaults.setting_prevent_ai_learning'), glitch_only: true
 
   %aside.callout
     = material_symbol 'info'
