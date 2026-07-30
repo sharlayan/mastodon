@@ -11,6 +11,7 @@ import { Helmet } from '@unhead/react/helmet';
 
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
+import { showAlert } from 'flavours/glitch/actions/alerts';
 import { openModal } from 'flavours/glitch/actions/modal';
 import {
   apiGetPage,
@@ -116,6 +117,10 @@ const messages = defineMessages({
   darkOnly: {
     id: 'pages.color_scheme.dark_only',
     defaultMessage: 'This theme only supports dark mode.',
+  },
+  linkCopied: {
+    id: 'pages.link_copied',
+    defaultMessage: 'Page link copied to clipboard.',
   },
 });
 
@@ -305,6 +310,25 @@ const PageShow: React.FC<{
       })
       .catch(() => undefined);
   }, [id, page]);
+
+  const handleShare = useCallback(() => {
+    if (currentPage?.visibility !== 'public') {
+      return;
+    }
+
+    const url = `${window.location.origin}/@${currentPage.account.acct}/pages/${encodeURIComponent(currentPage.name)}`;
+    const supportsNativeShare = 'share' in navigator;
+
+    if (supportsNativeShare) {
+      void navigator.share({
+        title: currentPage.title,
+        url,
+      });
+    } else {
+      void navigator.clipboard.writeText(url);
+      dispatch(showAlert({ message: messages.linkCopied }));
+    }
+  }, [currentPage, dispatch]);
 
   const handleWideViewToggle = useCallback(() => {
     setWideView((value) => !value);
@@ -552,6 +576,7 @@ const PageShow: React.FC<{
                 onOpenEyeCatchingMedia={handleOpenEyeCatchingMedia}
                 onLikeToggle={handleLikeToggle}
                 onMainToggle={handleMainToggle}
+                onShare={handleShare}
                 onDelete={handleDelete}
               />
             </div>

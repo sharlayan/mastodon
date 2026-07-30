@@ -13,6 +13,7 @@ import PersonShieldIcon from '@/material-icons/400-24px/person_shield.svg?react'
 import PreviewOffIcon from '@/material-icons/400-24px/preview_off.svg?react';
 import PushPinFillIcon from '@/material-icons/400-24px/push_pin-fill.svg?react';
 import PushPinIcon from '@/material-icons/400-24px/push_pin.svg?react';
+import ShareIcon from '@/material-icons/400-24px/share.svg?react';
 import VisibilityIcon from '@/material-icons/400-24px/visibility.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 import { Avatar } from 'flavours/glitch/components/avatar';
@@ -65,6 +66,7 @@ export const PageShowContent: React.FC<{
   onOpenEyeCatchingMedia: () => void;
   onLikeToggle: () => void;
   onMainToggle: () => void;
+  onShare: () => void;
   onDelete: () => void;
 }> = ({
   page,
@@ -81,6 +83,7 @@ export const PageShowContent: React.FC<{
   onOpenEyeCatchingMedia,
   onLikeToggle,
   onMainToggle,
+  onShare,
   onDelete,
 }) => {
   const intl = useIntl();
@@ -210,27 +213,43 @@ export const PageShowContent: React.FC<{
               <Icon id='trash' icon={DeleteIcon} />
             </button>
             {page.visibility === 'public' && !page.draft && (
-              <button
-                type='button'
-                title={intl.formatMessage(
-                  page.is_main
-                    ? {
-                        id: 'pages.unset_main',
-                        defaultMessage: 'Remove main page',
-                      }
-                    : {
-                        id: 'pages.set_main',
-                        defaultMessage: 'Set as main page',
-                      },
-                )}
-                aria-pressed={page.is_main}
-                onClick={onMainToggle}
-              >
-                <Icon
-                  id='pin'
-                  icon={page.is_main ? PushPinFillIcon : PushPinIcon}
-                />
-              </button>
+              <>
+                <button
+                  type='button'
+                  title={intl.formatMessage({
+                    id: 'pages.share',
+                    defaultMessage: 'Share',
+                  })}
+                  aria-label={intl.formatMessage({
+                    id: 'pages.share',
+                    defaultMessage: 'Share',
+                  })}
+                  onClick={onShare}
+                >
+                  <Icon id='share' icon={ShareIcon} />
+                </button>
+                <button
+                  type='button'
+                  title={intl.formatMessage(
+                    page.is_main
+                      ? {
+                          id: 'pages.unset_main',
+                          defaultMessage: 'Remove main page',
+                        }
+                      : {
+                          id: 'pages.set_main',
+                          defaultMessage: 'Set as main page',
+                        },
+                  )}
+                  aria-pressed={page.is_main}
+                  onClick={onMainToggle}
+                >
+                  <Icon
+                    id='pin'
+                    icon={page.is_main ? PushPinFillIcon : PushPinIcon}
+                  />
+                </button>
+              </>
             )}
           </div>
         )}
