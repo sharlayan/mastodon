@@ -16,6 +16,9 @@ on:
       - .github/workflows/crowdin-upload.yml
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   upload-translations:
     runs-on: ubuntu-latest

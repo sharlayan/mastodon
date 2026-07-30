@@ -8,6 +8,9 @@ on:
       - 'stable-*'
   pull_request:
 
+permissions:
+  contents: read
+
 env:
   BUNDLE_CLEAN: true
   BUNDLE_FROZEN: true

@@ -22,6 +22,9 @@ on:
       - '**/*.haml'
       - 'Gemfile*'
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest

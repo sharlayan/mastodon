@@ -30,6 +30,9 @@ on:
       - '**/*.tsx'
       - '.github/workflows/lint-js.yml'
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest

@@ -24,6 +24,9 @@ on:
       - '**/*.scss'
       - '.github/workflows/lint-css.yml'
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest

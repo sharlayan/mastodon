@@ -22,6 +22,9 @@ on:
       - '.github/workflows/test-migrations.yml'
       - 'lib/tasks/tests.rake'
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

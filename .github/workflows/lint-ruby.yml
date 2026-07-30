@@ -24,6 +24,9 @@ on:
       - '**/*.rake'
       - '.github/workflows/lint-ruby.yml'
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
