@@ -11,7 +11,7 @@ RSpec.describe 'Management timeline API' do
   let(:poster) { Fabricate(:account) }
 
   around do |example|
-    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true') do
       Rails.application.reload_routes!
       example.run
     end
@@ -50,12 +50,30 @@ RSpec.describe 'Management timeline API' do
     expect(ids).to_not include(*hidden.map { |status| status.id.to_s })
   end
 
-  it 'is not reachable while roleplay mode is disabled' do
-    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
-      get '/api/v1/timelines/admin', headers: headers
-    end
+  it 'hides conversations a remote account takes part in' do
+    remote = Fabricate(:account, domain: 'remote.example', username: 'stranger')
+    mentioning = status_for(:direct, local_only: true)
+    Fabricate(:mention, status: mentioning, account: remote)
+    replying = Fabricate(:status, account: poster, visibility: :private, local_only: true, in_reply_to_account_id: remote.id)
+    local_only_dm = status_for(:direct, local_only: true)
 
-    expect(response).to have_http_status(404)
+    ids = timeline_ids
+
+    expect(ids).to include(local_only_dm.id.to_s)
+    expect(ids).to_not include(mentioning.id.to_s, replying.id.to_s)
+  end
+
+  it 'is not reachable while either gate is disabled' do
+    [
+      { OC_ROLEPLAY_OPTION: 'false', OC_ADMIN_TIMELINE_OPTION: 'true' },
+      { OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'false' },
+    ].each do |env|
+      ClimateControl.modify(**env) do
+        get '/api/v1/timelines/admin', headers: headers
+      end
+
+      expect(response).to have_http_status(404)
+    end
   end
 
   context 'without the management timeline permission' do

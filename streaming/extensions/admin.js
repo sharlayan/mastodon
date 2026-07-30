@@ -1,9 +1,10 @@
 import { AuthenticationError } from '../errors.js';
+import { isAdminTimelineEnabled } from './admin_gate.js';
 
 const CHANNEL_NAME = 'admin';
 const EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE = 1 << 1;
 
-const enabled = () => process.env.OC_ROLEPLAY_OPTION === 'true';
+const enabled = isAdminTimelineEnabled;
 
 const channelNameFromPath = (path) => enabled() && path === '/api/v1/streaming/admin' ? CHANNEL_NAME : undefined;
 

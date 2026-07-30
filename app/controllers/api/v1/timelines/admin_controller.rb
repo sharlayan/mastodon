@@ -1,11 +1,9 @@
 # frozen_string_literal: true
 
 class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
-  include RoleplayModeHelper
-
   before_action -> { doorkeeper_authorize! :read, :'read:statuses' }
   before_action :require_user!
-  before_action :require_roleplay_mode!
+  before_action :require_admin_timeline_enabled!
   before_action :require_admin_timeline_access!
 
   PERMITTED_PARAMS = %i(limit hide_public hide_unlisted hide_private group_direct).freeze
@@ -82,8 +80,8 @@ class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
     end
   end
 
-  def require_roleplay_mode!
-    not_found unless roleplay_mode?
+  def require_admin_timeline_enabled!
+    not_found unless Sharlayan::AdminTimeline.enabled?
   end
 
   def require_admin_timeline_access!

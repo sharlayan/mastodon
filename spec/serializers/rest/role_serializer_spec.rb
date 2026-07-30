@@ -43,16 +43,21 @@ RSpec.describe REST::RoleSerializer do
     end
   end
 
-  it 'omits community permissions outside roleplay mode' do
-    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
-      expect(subject).to_not have_key('extra_permissions')
+  it 'omits community permissions while the management timeline gate is off' do
+    [
+      { OC_ROLEPLAY_OPTION: 'false', OC_ADMIN_TIMELINE_OPTION: 'false' },
+      { OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'false' },
+    ].each do |env|
+      ClimateControl.modify(**env) do
+        expect(subject).to_not have_key('extra_permissions')
+      end
     end
   end
 
-  it 'includes community permissions in roleplay mode' do
+  it 'includes community permissions once the management timeline is enabled' do
     role.extra_permissions = UserRole::EXTRA_FLAGS[:view_admin_timeline]
 
-    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true') do
       expect(subject['extra_permissions']).to eq(UserRole::EXTRA_FLAGS[:view_admin_timeline].to_s)
     end
   end

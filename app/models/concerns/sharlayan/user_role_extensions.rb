@@ -8,12 +8,14 @@ module Sharlayan::UserRoleExtensions
     view_admin_timeline: (1 << 1),
   }.freeze
 
-  ROLEPLAY_ONLY_EXTRA_FLAGS = %i(view_admin_timeline).freeze
+  GATED_EXTRA_FLAGS = {
+    view_admin_timeline: -> { Sharlayan::AdminTimeline.enabled? },
+  }.freeze
 
   module ExtraFlags
     NONE = 0
     ALL  = EXTRA_FLAGS.values.reduce(0, &:|)
-    ROLEPLAY_ONLY = EXTRA_FLAGS.values_at(*ROLEPLAY_ONLY_EXTRA_FLAGS).reduce(0, &:|)
+    GATED = EXTRA_FLAGS.values_at(*GATED_EXTRA_FLAGS.keys).reduce(0, &:|)
 
     CATEGORIES = {
       api: %i(
@@ -33,13 +35,23 @@ module Sharlayan::UserRoleExtensions
     validate :validate_sharlayan_own_role_edition
   end
 
+  class_methods do
+    def extra_flag_available?(privilege)
+      gate = GATED_EXTRA_FLAGS[privilege.to_sym]
+      gate.nil? || gate.call
+    end
+
+    def unavailable_extra_flags_mask
+      GATED_EXTRA_FLAGS.keys.reject { |privilege| extra_flag_available?(privilege) }.sum { |privilege| EXTRA_FLAGS[privilege] }
+    end
+  end
+
   def extra_permissions_as_keys
     EXTRA_FLAGS.keys.select { |privilege| extra_permissions & EXTRA_FLAGS[privilege] == EXTRA_FLAGS[privilege] }.map(&:to_s)
   end
 
   def extra_permissions_as_keys=(value)
-    privileges = value.filter_map(&:presence)
-    privileges -= ROLEPLAY_ONLY_EXTRA_FLAGS.map(&:to_s) unless RoleplayModeHelper.roleplay_mode?
+    privileges = value.filter_map(&:presence).select { |privilege| self.class.extra_flag_available?(privilege) }
 
     self.extra_permissions = privileges.reduce(ExtraFlags::NONE) { |bitmask, privilege| EXTRA_FLAGS.key?(privilege.to_sym) ? (bitmask | EXTRA_FLAGS[privilege.to_sym]) : bitmask }
   end
@@ -54,7 +66,7 @@ module Sharlayan::UserRoleExtensions
   end
 
   def computed_extra_permissions
-    mask_roleplay_only_extra_permissions(raw_computed_extra_permissions)
+    raw_computed_extra_permissions & ~self.class.unavailable_extra_flags_mask
   end
 
   private
@@ -67,12 +79,6 @@ module Sharlayan::UserRoleExtensions
       computed = self.class.everyone.extra_permissions | extra_permissions
       administrator? ? ExtraFlags::ALL : computed
     end
-  end
-
-  def mask_roleplay_only_extra_permissions(value)
-    return value if RoleplayModeHelper.roleplay_mode?
-
-    value & ~ExtraFlags::ROLEPLAY_ONLY
   end
 
   def in_extra_permissions?(privilege)

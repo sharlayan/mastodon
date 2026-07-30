@@ -1,10 +1,11 @@
+import { isAdminTimelineEnabled } from './admin_gate.js';
 import * as antenna from './antenna.js';
 import { authenticateFallback } from './auth.js';
 import { createDomainFilter } from './domain_filter.js';
 import { normalizeLanguage } from './language.js';
 import { createMisskeyExtension } from './misskey.js';
 
-const admin = process.env.OC_ROLEPLAY_OPTION === 'true' ? await import('./admin.js') : undefined;
+const admin = isAdminTimelineEnabled() ? await import('./admin.js') : undefined;
 
 const dispatchCallbacks = (callbacks, message, onError) => {
   callbacks.forEach(callback => {

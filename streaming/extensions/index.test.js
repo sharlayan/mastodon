@@ -4,12 +4,32 @@ import test from 'node:test';
 import { AuthenticationError } from '../errors.js';
 import { createMisskeyCompat } from '../misskey_compat.js';
 import { authorizeChannel as authorizeAdminChannel } from './admin.js';
+import { isAdminTimelineEnabled } from './admin_gate.js';
 import { authorizeChannel } from './antenna.js';
 import { ACCESS_TOKEN_QUERY, authenticateFallback } from './auth.js';
 import { createDomainFilter } from './domain_filter.js';
 import { dispatchCallbacks } from './index.js';
 import { acceptsLanguage } from './language.js';
 import { createEnabledCheck, loadGrantPermissions } from './misskey.js';
+
+const withEnv = (vars, body) => {
+  const previous = {};
+
+  for (const [key, value] of Object.entries(vars)) {
+    previous[key] = process.env[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+
+  try {
+    return body();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+};
 
 test('Misskey fallback is fail-closed when compatibility is disabled', async () => {
   await assert.rejects(
@@ -25,28 +45,41 @@ test('Misskey fallback is fail-closed when the setting lookup fails', async () =
   );
 });
 
-test('OAuth token query loads community permissions only in roleplay mode', () => {
+test('OAuth token query loads community permissions only behind the management timeline gate', () => {
   assert.match(ACCESS_TOKEN_QUERY, /expires_in IS NULL/);
   assert.match(ACCESS_TOKEN_QUERY, /users\.disabled IS FALSE/);
   assert.match(ACCESS_TOKEN_QUERY, /accounts\.suspended_at IS NULL/);
-  if (process.env.OC_ROLEPLAY_OPTION === 'true') {
+  if (isAdminTimelineEnabled()) {
     assert.match(ACCESS_TOKEN_QUERY, /extra_permissions/);
   } else {
     assert.doesNotMatch(ACCESS_TOKEN_QUERY, /extra_permissions/);
   }
 });
 
-test('Management timeline authorization requires roleplay mode and permission', () => {
-  const previous = process.env.OC_ROLEPLAY_OPTION;
+test('Management timeline gate requires both roleplay mode and its own flag', () => {
+  withEnv({ OC_ROLEPLAY_OPTION: undefined, OC_ADMIN_TIMELINE_OPTION: undefined }, () =>
+    assert.equal(isAdminTimelineEnabled(), false)
+  );
+  withEnv({ OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: undefined }, () =>
+    assert.equal(isAdminTimelineEnabled(), false)
+  );
+  withEnv({ OC_ROLEPLAY_OPTION: undefined, OC_ADMIN_TIMELINE_OPTION: 'true' }, () =>
+    assert.equal(isAdminTimelineEnabled(), false)
+  );
+  withEnv({ OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true' }, () =>
+    assert.equal(isAdminTimelineEnabled(), true)
+  );
+});
 
-  try {
-    delete process.env.OC_ROLEPLAY_OPTION;
+test('Management timeline authorization requires the gate and the permission', () => {
+  withEnv({ OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: undefined }, () => {
     assert.throws(
       () => authorizeAdminChannel({ extraPermissions: 2 }, 'admin'),
       AuthenticationError
     );
+  });
 
-    process.env.OC_ROLEPLAY_OPTION = 'true';
+  withEnv({ OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true' }, () => {
     assert.throws(
       () => authorizeAdminChannel({ extraPermissions: 0 }, 'admin'),
       AuthenticationError
@@ -58,10 +91,7 @@ test('Management timeline authorization requires roleplay mode and permission', 
         options: { needsFiltering: false, allowLocalOnly: true },
       }
     );
-  } finally {
-    if (previous === undefined) delete process.env.OC_ROLEPLAY_OPTION;
-    else process.env.OC_ROLEPLAY_OPTION = previous;
-  }
+  });
 });
 
 test('Antenna authorization rejects an antenna owned by another account', async () => {

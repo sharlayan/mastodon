@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 Rails.application.config.after_initialize do
-  next unless ENV['OC_ROLEPLAY_OPTION'] == 'true'
+  if Sharlayan::AdminTimeline.enabled?
+    FanOutOnWriteService.prepend Sharlayan::AdminTimelineFanOut::FanOut
+    RemoveStatusService.prepend Sharlayan::AdminTimelineFanOut::Remove
+  end
 
-  FanOutOnWriteService.prepend Sharlayan::AdminTimelineFanOut::FanOut
-  RemoveStatusService.prepend Sharlayan::AdminTimelineFanOut::Remove
+  next unless Sharlayan::AdminTimeline.roleplay_mode?
 
   begin
     next unless ActiveRecord::Base.connection.table_exists?('settings')

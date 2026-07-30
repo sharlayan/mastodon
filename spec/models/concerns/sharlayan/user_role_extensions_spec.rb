@@ -12,22 +12,38 @@ RSpec.describe UserRole do
 
       expect(role.can_extra?(:bypass_rate_limit)).to be true
 
-      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true') do
         expect(administrator.computed_extra_permissions).to eq(described_class::ExtraFlags::ALL)
       end
     end
 
-    it 'masks roleplay-only permissions outside roleplay mode' do
+    it 'masks gated permissions while the management timeline gate is off' do
       administrator = Fabricate(:user_role, permissions: described_class::FLAGS[:administrator])
       stale = Fabricate(:user_role, extra_permissions: described_class::EXTRA_FLAGS[:view_admin_timeline])
 
-      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
-        expect(administrator.computed_extra_permissions)
-          .to eq(described_class::ExtraFlags::ALL & ~described_class::ExtraFlags::ROLEPLAY_ONLY)
-        expect(administrator.can_extra?(:view_admin_timeline)).to be false
-        expect(administrator.can_extra?(:bypass_rate_limit)).to be true
-        expect(stale.can_extra?(:view_admin_timeline)).to be false
+      [
+        { OC_ROLEPLAY_OPTION: 'false', OC_ADMIN_TIMELINE_OPTION: 'false' },
+        { OC_ROLEPLAY_OPTION: 'false', OC_ADMIN_TIMELINE_OPTION: 'true' },
+        { OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'false' },
+      ].each do |env|
+        ClimateControl.modify(**env) do
+          expect(administrator.computed_extra_permissions)
+            .to eq(described_class::ExtraFlags::ALL & ~described_class::ExtraFlags::GATED)
+          expect(administrator.can_extra?(:view_admin_timeline)).to be false
+          expect(administrator.can_extra?(:bypass_rate_limit)).to be true
+          expect(stale.can_extra?(:view_admin_timeline)).to be false
+        end
       end
+    end
+
+    it 'drops gated permission keys on assignment while the gate is off' do
+      role = Fabricate.build(:user_role)
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'false') do
+        role.extra_permissions_as_keys = %w(bypass_rate_limit view_admin_timeline)
+      end
+
+      expect(role.extra_permissions_as_keys).to contain_exactly('bypass_rate_limit')
     end
 
     it 'round-trips known keys and ignores unknown keys' do

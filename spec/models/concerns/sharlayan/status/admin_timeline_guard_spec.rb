@@ -4,6 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Sharlayan::Status::AdminTimelineGuard do
   let(:account) { Fabricate(:account) }
+  let(:remote_account) { Fabricate(:account, domain: 'remote.example', username: 'stranger') }
 
   def status_for(visibility, local_only:)
     Fabricate(:status, account: account, visibility: visibility, local_only: local_only)
@@ -20,6 +21,26 @@ RSpec.describe Sharlayan::Status::AdminTimelineGuard do
         expect(status_for(visibility, local_only: true)).to be_admin_timeline_eligible
         expect(status_for(visibility, local_only: false)).to_not be_admin_timeline_eligible
       end
+    end
+
+    it 'rejects local-only conversations that mention a remote account' do
+      status = status_for(:direct, local_only: true)
+      Fabricate(:mention, status: status, account: remote_account)
+
+      expect(status.reload).to_not be_admin_timeline_eligible
+    end
+
+    it 'rejects local-only conversations replying to a remote account' do
+      status = Fabricate(:status, account: account, visibility: :private, local_only: true, in_reply_to_account_id: remote_account.id)
+
+      expect(status).to_not be_admin_timeline_eligible
+    end
+
+    it 'keeps public posts that mention a remote account' do
+      status = status_for(:public, local_only: false)
+      Fabricate(:mention, status: status, account: remote_account)
+
+      expect(status.reload).to be_admin_timeline_eligible
     end
   end
 
@@ -38,6 +59,17 @@ RSpec.describe Sharlayan::Status::AdminTimelineGuard do
         .and not_include(federated_direct)
         .and not_include(federated_private)
         .and not_include(federated_unlisted)
+    end
+
+    it 'excludes conversations a remote account takes part in' do
+      mentioning = status_for(:direct, local_only: true)
+      Fabricate(:mention, status: mentioning, account: remote_account)
+      replying = Fabricate(:status, account: account, visibility: :private, local_only: true, in_reply_to_account_id: remote_account.id)
+
+      expect(Status.admin_timeline_eligible)
+        .to include(local_direct)
+        .and not_include(mentioning)
+        .and not_include(replying)
     end
 
     it 'treats a null local_only column as federated' do

@@ -43,13 +43,32 @@ RSpec.describe Sharlayan::InitialStateRoleplay do
     end
     store = { antenna_enabled: true, mfm_enabled: false, show_avatar_decorations: false }
 
-    expect(serializer.apply_sharlayan_roleplay_meta!(store)).to eq(
+    result = ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true') do
+      serializer.apply_sharlayan_roleplay_meta!(store)
+    end
+
+    expect(result).to eq(
       antenna_enabled: false,
       mfm_enabled: true,
       show_avatar_decorations: true,
       roleplay_mode: true,
       force_round_avatar: true,
+      admin_timeline_enabled: true,
       admin_timeline_owner_viewer: true
     )
+  end
+
+  it 'omits management timeline meta while its gate is off' do
+    allow(RoleplayModeHelper).to receive(:roleplay_mode?).and_return(true)
+    allow(Setting).to receive(:[]).and_wrap_original do |original, key|
+      %w(force_mfm_enabled force_avatar_decorations force_round_avatar).include?(key) || original.call(key)
+    end
+    store = { antenna_enabled: true, mfm_enabled: false, show_avatar_decorations: false }
+
+    result = ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: nil) do
+      serializer.apply_sharlayan_roleplay_meta!(store)
+    end
+
+    expect(result).to_not include(:admin_timeline_enabled, :admin_timeline_owner_viewer)
   end
 end

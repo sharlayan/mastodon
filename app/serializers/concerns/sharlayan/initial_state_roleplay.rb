@@ -14,7 +14,11 @@ module Sharlayan::InitialStateRoleplay
     store[:mfm_enabled] = true if Setting['force_mfm_enabled']
     store[:show_avatar_decorations] = true if Setting['force_avatar_decorations']
     store[:force_round_avatar] = Setting['force_round_avatar']
-    store[:admin_timeline_owner_viewer] = admin_timeline_owner_viewer?
+    if Sharlayan::AdminTimeline.enabled?
+      store[:admin_timeline_enabled] = true
+      store[:admin_timeline_owner_viewer] = admin_timeline_owner_viewer?
+    end
+
     store
   end
 

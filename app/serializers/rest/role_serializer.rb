@@ -5,7 +5,7 @@ class REST::RoleSerializer < ActiveModel::Serializer
 
   attributes :collection_limit, :page_limit, :daily_page_limit
 
-  attribute :extra_permissions, if: :roleplay_mode_enabled?
+  attribute :extra_permissions, if: :admin_timeline_enabled?
 
   def id
     object.id.to_s
@@ -15,8 +15,8 @@ class REST::RoleSerializer < ActiveModel::Serializer
     object.computed_permissions.to_s
   end
 
-  def roleplay_mode_enabled?
-    RoleplayModeHelper.roleplay_mode?
+  def admin_timeline_enabled?
+    Sharlayan::AdminTimeline.enabled?
   end
 
   def extra_permissions

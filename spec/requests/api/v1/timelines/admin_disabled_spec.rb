@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Management timeline while roleplay mode is off' do
+RSpec.describe 'Management timeline while its gate is off' do
   let(:role) { Fabricate(:user_role, permissions: UserRole::FLAGS[:administrator]) }
   let(:user) { Fabricate(:user, role: role) }
   let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:statuses') }
@@ -23,13 +23,19 @@ RSpec.describe 'Management timeline while roleplay mode is off' do
     expect(response).to have_http_status(404)
   end
 
-  it 'strips the roleplay-only permission from a stale role bit' do
+  it 'stays off when roleplay mode alone is on' do
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: nil) do
+      expect(Sharlayan::AdminTimeline.enabled?).to be(false)
+    end
+  end
+
+  it 'strips the gated permission from a stale role bit' do
     role.update_column(:extra_permissions, UserRole::EXTRA_FLAGS[:view_admin_timeline])
 
     expect(role.reload.can_extra?(:view_admin_timeline)).to be(false)
   end
 
-  it 'does not grant the roleplay-only permission to administrators' do
+  it 'does not grant the gated permission to administrators' do
     expect(role.can_extra?(:view_admin_timeline)).to be(false)
     expect(role.can_extra?(:bypass_rate_limit)).to be(true)
   end
