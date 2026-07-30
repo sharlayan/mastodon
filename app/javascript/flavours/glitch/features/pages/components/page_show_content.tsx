@@ -19,6 +19,8 @@ import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { Icon } from 'flavours/glitch/components/icon';
 
+import { getPageDisplayTitle } from '../util/page_title';
+
 import type { PageMediaOpenHandler } from './blocks';
 import { PageBlockList } from './blocks';
 import { PageNoteFetchProvider } from './blocks/note_fetch_context';
@@ -149,7 +151,7 @@ export const PageShowContent: React.FC<{
               aria-label={intl.formatMessage(messages.main)}
             />
           )}
-          <span className='page__title-text'>{page.title}</span>
+          <span className='page__title-text'>{getPageDisplayTitle(page)}</span>
           {page.visibility !== 'public' && (
             <Icon
               id={

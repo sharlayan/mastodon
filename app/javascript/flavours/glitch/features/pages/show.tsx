@@ -49,6 +49,7 @@ import type { PageMediaOpenHandler } from './components/blocks';
 import { PageShowContent } from './components/page_show_content';
 import { PageShowHeader } from './components/page_show_header';
 import { PageShowSidebar } from './components/page_show_sidebar';
+import { getPageDisplayTitle } from './util/page_title';
 
 interface PageMediaEntry {
   key: string;
@@ -321,7 +322,7 @@ const PageShow: React.FC<{
 
     if (supportsNativeShare) {
       void navigator.share({
-        title: currentPage.title,
+        title: getPageDisplayTitle(currentPage),
         url,
       });
     } else {
@@ -491,7 +492,7 @@ const PageShow: React.FC<{
   }
 
   const title = currentPage
-    ? currentPage.title
+    ? getPageDisplayTitle(currentPage)
     : intl.formatMessage(messages.heading);
   const accountPages =
     accountPagesResult && accountPagesResult.accountId === currentPageAccountId
