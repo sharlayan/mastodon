@@ -368,6 +368,7 @@ en:
       too_many_keywords: You have reached the maximum number of keywords for this
         antenna
       too_many_tags: You have reached the maximum number of hashtags for this antenna
+      too_long_keyword: Keywords must be at most %{count} characters long
       too_short_keyword: Keywords must be at least %{count} characters long
   appearance:
     customized: Customized - Emojis

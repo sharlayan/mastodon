@@ -303,7 +303,7 @@ button {
     }
 
     &.copied {
-      color: var(--mas-status-success-color);
+      color: var(--color-text-success);
       transition: none;
     }
   }

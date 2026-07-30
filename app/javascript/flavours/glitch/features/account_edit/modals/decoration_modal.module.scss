@@ -151,11 +151,11 @@
 }
 
 .actionBtnDanger {
-  color: var(--color-text-danger);
+  color: var(--color-text-error);
   border-color: transparent;
 
   &:hover {
-    background: color-mix(in srgb, var(--color-text-danger) 8%, transparent);
+    background: color-mix(in srgb, var(--color-text-error) 8%, transparent);
   }
 }
 
@@ -270,7 +270,7 @@
 }
 
 .decorationTileSelected {
-  border-color: var(--color-brand-primary);
+  border-color: var(--color-border-brand);
   background: var(--color-bg-brand-softest);
 }
 

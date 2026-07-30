@@ -317,6 +317,7 @@ ja:
       too_many_domains: このアンテナのドメイン上限数に達しています
       too_many_keywords: このアンテナのキーワード上限数に達しています
       too_many_tags: このアンテナのハッシュタグ上限数に達しています
+      too_long_keyword: キーワードは%{count}文字以内で入力してください
       too_short_keyword: キーワードは%{count}文字以上である必要があります
   appearance:
     customized: カスタマイズ - 絵文字

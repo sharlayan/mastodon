@@ -62,9 +62,8 @@ const hasScope = (request, ...scopes) => Array.isArray(request.scopes) && scopes
 
 // MiAuth tokens only carry the `misskey` OAuth scope, so their read access is
 // decided by the granted Misskey permissions instead, mirroring
-// Api::MisskeyCompat::BaseController#require_user!. Timelines and notes need no
-// specific permission in Misskey, the drive channel needs `read:drive`.
-const canReadStatuses = (request, grantPermissions) => Array.isArray(grantPermissions) || hasScope(request, 'read', 'read:statuses');
+// Api::MisskeyCompat::BaseController#require_user!.
+const canReadStatuses = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:account') : hasScope(request, 'read', 'read:statuses'));
 
 const canReadDrive = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:drive') : hasScope(request, 'read', 'read:drive'));
 

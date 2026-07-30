@@ -27,6 +27,20 @@ RSpec.describe Antenna do
       antenna = Fabricate.build(:antenna, keywords: ['a'], any_keywords: false)
       expect(antenna).to_not be_valid
     end
+
+    it 'rejects oversized include and exclude keyword lists' do
+      too_many = Array.new(described_class::KEYWORDS_PER_ANTENNA_LIMIT + 1, 'keyword')
+
+      expect(Fabricate.build(:antenna, keywords: too_many, any_keywords: false)).to_not be_valid
+      expect(Fabricate.build(:antenna, exclude_keywords: too_many)).to_not be_valid
+    end
+
+    it 'rejects oversized include and exclude keywords' do
+      too_long = 'a' * (described_class::MAX_KEYWORD_LENGTH + 1)
+
+      expect(Fabricate.build(:antenna, keywords: [too_long], any_keywords: false)).to_not be_valid
+      expect(Fabricate.build(:antenna, exclude_keywords: [too_long])).to_not be_valid
+    end
   end
 
   describe '#matches? and .matching' do
@@ -49,6 +63,14 @@ RSpec.describe Antenna do
       antenna = Fabricate(:antenna, account: account, any_keywords: false, keywords: %w(art), exclude_keywords: %w(spoiler))
       expect(antenna.matches?(status_with(text: 'my art is great'))).to be true
       expect(antenna.matches?(status_with(text: 'art spoiler ahead'))).to be false
+    end
+
+    it 'applies excluded domains without recursive lookup' do
+      remote_author = Fabricate(:account, domain: 'remote.example')
+      status = Fabricate(:status, account: remote_author, text: 'hello', visibility: :public)
+      antenna = Fabricate(:antenna, account: account, any_keywords: false, keywords: %w(hello), exclude_domains: %w(remote.example))
+
+      expect(antenna.matches?(status)).to be false
     end
 
     it 'requires the account include condition when any_accounts is false' do

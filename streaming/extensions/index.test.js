@@ -329,6 +329,19 @@ test('MiAuth tokens can stream timelines and notes without a Mastodon read scope
   assert.deepEqual(subscribed, ['misskey:timeline:7', 'misskey:timeline:public:local', 'misskey:note:9abcdefghijklmno']);
 });
 
+test('MiAuth tokens need read:account for timelines and notes', async () => {
+  for (const permissions of [[], ['read:drive']]) {
+    const { compat, session, subscribed } = createCompatFixture(permissions);
+
+    compat.handleMessage(session, { type: 'connect', body: { id: 'ch1', channel: 'homeTimeline' } });
+    compat.handleMessage(session, { type: 'connect', body: { id: 'ch2', channel: 'localTimeline' } });
+    compat.handleMessage(session, { type: 'subNote', body: { id: '9abcdefghijklmno' } });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.deepEqual(subscribed, []);
+  }
+});
+
 test('MiAuth tokens need the read:drive permission for the drive channel', async () => {
   const withoutDrive = createCompatFixture([]);
   const withDrive = createCompatFixture(['read:drive']);

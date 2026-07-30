@@ -38,7 +38,7 @@
   padding: 4px;
   border: 0;
   border-radius: 4px;
-  background: var(--background-color, #1f232b);
+  background: var(--color-bg-primary, #1f232b);
   color: inherit;
   cursor: pointer;
   overflow: hidden;

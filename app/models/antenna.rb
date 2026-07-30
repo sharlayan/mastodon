@@ -32,6 +32,7 @@ class Antenna < ApplicationRecord
   TAGS_PER_ANTENNA_LIMIT     = 50
   KEYWORDS_PER_ANTENNA_LIMIT = 100
   MIN_KEYWORD_LENGTH         = 2
+  MAX_KEYWORD_LENGTH         = 256
   TITLE_LENGTH_LIMIT         = 256
 
   belongs_to :account
@@ -116,7 +117,7 @@ class Antenna < ApplicationRecord
     return false unless match_tags?(tag_ids)
     return false unless match_keywords?(text)
 
-    return false if excluded_domains.include?(domain)
+    return false if exclude_domains.include?(domain)
     return false if excluded_account_ids.include?(account.id)
     return false if (excluded_tag_ids & tag_ids).any?
     return false if exclude_keywords.any? { |keyword| text.include?(keyword) }
@@ -150,10 +151,6 @@ class Antenna < ApplicationRecord
     keywords.any? { |keyword| text.include?(keyword) }
   end
 
-  def excluded_domains
-    exclude_domains
-  end
-
   def excluded_account_ids
     exclude_accounts.map(&:to_i)
   end
@@ -167,10 +164,11 @@ class Antenna < ApplicationRecord
   end
 
   def validate_keyword_length
-    return if keywords.blank?
+    keyword_lists = [keywords, exclude_keywords]
 
-    errors.add(:keywords, I18n.t('antennas.errors.too_short_keyword', count: MIN_KEYWORD_LENGTH)) if keywords.any? { |keyword| keyword.to_s.length < MIN_KEYWORD_LENGTH }
-    errors.add(:keywords, I18n.t('antennas.errors.too_many_keywords', limit: KEYWORDS_PER_ANTENNA_LIMIT)) if keywords.size > KEYWORDS_PER_ANTENNA_LIMIT
+    errors.add(:keywords, I18n.t('antennas.errors.too_many_keywords', limit: KEYWORDS_PER_ANTENNA_LIMIT)) if keyword_lists.any? { |list| list.size > KEYWORDS_PER_ANTENNA_LIMIT }
+    errors.add(:keywords, I18n.t('antennas.errors.too_short_keyword', count: MIN_KEYWORD_LENGTH)) if keyword_lists.flatten.any? { |keyword| keyword.to_s.length < MIN_KEYWORD_LENGTH }
+    errors.add(:keywords, I18n.t('antennas.errors.too_long_keyword', count: MAX_KEYWORD_LENGTH)) if keyword_lists.flatten.any? { |keyword| keyword.to_s.length > MAX_KEYWORD_LENGTH }
   end
 
   def clean_feed_manager

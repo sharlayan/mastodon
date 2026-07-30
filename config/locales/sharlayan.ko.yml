@@ -332,6 +332,7 @@ ko:
       too_many_domains: 이 안테나의 도메인 최대 개수를 초과합니다
       too_many_keywords: 이 안테나의 키워드 최대 개수를 초과합니다
       too_many_tags: 이 안테나의 해시태그 최대 개수를 초과합니다
+      too_long_keyword: 키워드는 최대 %{count}자까지 입력할 수 있습니다
       too_short_keyword: 키워드는 최소 %{count}자 이상이어야 합니다
   appearance:
     customized: 서버 전용 - 에모지

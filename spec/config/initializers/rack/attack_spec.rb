@@ -237,4 +237,13 @@ RSpec.describe Rack::Attack, type: :request do
       end
     end
   end
+
+  describe 'throttle Misskey-compatible URL previews by IP address' do
+    let(:throttle) { 'throttle_misskey_url_preview' }
+    let(:limit) { 100 }
+    let(:period) { 10.minutes }
+    let(:request) { -> { get '/url?url=https%3A%2F%2Fremote.example%2Farticle', headers: { 'REMOTE_ADDR' => remote_ip } } }
+
+    it_behaves_like 'throttled endpoint'
+  end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_165802) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_30_150300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1481,6 +1481,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_165802) do
     t.bigint "preview_card_id", null: false
     t.bigint "status_id", null: false
     t.string "url"
+    t.index ["url", "status_id"], name: "index_preview_cards_statuses_on_url_and_status_id"
   end
 
   create_table "quotes", id: :bigint, default: -> { "timestamp_id('quotes'::text)" }, force: :cascade do |t|

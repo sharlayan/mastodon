@@ -6,6 +6,33 @@ class MisskeyCompat::ChartService
   FINALIZED_CACHE_TTL = 30.days
   MAX_LIMIT = 500
   SPANS = { 'hour' => 1.hour, 'day' => 1.day }.freeze
+  QUALIFIED_COLUMNS = {
+    ['accounts', :created_at] => 'accounts.created_at',
+    ['drive_files', :created_at] => 'drive_files.created_at',
+    ['follows', :created_at] => 'follows.created_at',
+    ['media_attachments', :created_at] => 'media_attachments.created_at',
+    ['status_reactions', :created_at] => 'status_reactions.created_at',
+    ['statuses', :created_at] => 'statuses.created_at',
+    ['statuses', :deleted_at] => 'statuses.deleted_at',
+    ['users', :last_active_at] => 'users.last_active_at',
+  }.freeze
+  BUCKET_SQL = SPANS.keys.index_with do |span|
+    QUALIFIED_COLUMNS.values.index_with do |column|
+      "date_trunc('#{span}', #{column} AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'"
+    end.freeze
+  end.freeze
+  DISTINCT_COUNT_SQL = {
+    'statuses.account_id' => 'COUNT(DISTINCT statuses.account_id)',
+    'users.account_id' => 'COUNT(DISTINCT users.account_id)',
+  }.freeze
+  SUM_SQL = {
+    'drive_files.storage_file_size' => 'COALESCE(SUM(drive_files.storage_file_size), 0) / 1000.0',
+    'media_attachments.file_file_size' => 'COALESCE(SUM(media_attachments.file_file_size), 0) / 1000.0',
+  }.freeze
+  FEDERATION_DOMAIN_COLUMNS = {
+    pub: 'accounts.domain',
+    sub: 'target_accounts_follows.domain',
+  }.freeze
 
   SCHEMAS = {
     active_users: %w(readWrite read write registeredWithinWeek registeredWithinMonth registeredWithinYear registeredOutsideWeek registeredOutsideMonth registeredOutsideYear),
@@ -341,8 +368,8 @@ class MisskeyCompat::ChartService
   def populate_federation(records)
     sub = Follow.joins(:account, :target_account).where(accounts: { domain: nil }).where.not(target_accounts_follows: { domain: nil })
     pub = Follow.joins(:account, :target_account).where.not(accounts: { domain: nil }).where(target_accounts_follows: { domain: nil })
-    sub_first_seen = federation_first_seen(sub, 'target_accounts_follows.domain')
-    pub_first_seen = federation_first_seen(pub, 'accounts.domain')
+    sub_first_seen = federation_first_seen(sub, :sub)
+    pub_first_seen = federation_first_seen(pub, :pub)
     pubsub_first_seen = sub_first_seen.keys.intersection(pub_first_seen.keys).index_with do |domain|
       [sub_first_seen.fetch(domain), pub_first_seen.fetch(domain)].max
     end
@@ -357,8 +384,8 @@ class MisskeyCompat::ChartService
     end
   end
 
-  def federation_first_seen(scope, domain_column)
-    scope.reorder(nil).group(Arel.sql(domain_column)).minimum(:created_at)
+  def federation_first_seen(scope, direction)
+    scope.reorder(nil).group(Arel.sql(FEDERATION_DOMAIN_COLUMNS.fetch(direction))).minimum(:created_at)
   end
 
   def count_seen_before(first_seen, time)
@@ -442,21 +469,22 @@ class MisskeyCompat::ChartService
   def grouped_distinct_count(scope, timestamp, expression)
     scope = scope.reorder(nil)
     column = qualified_column(scope, timestamp)
-    scope.where(timestamp => range).group(Arel.sql(bucket_sql(column))).pluck(Arel.sql(bucket_sql(column)), Arel.sql("COUNT(DISTINCT #{expression})")).to_h { |time, count| [time.to_time.to_i, count] }
+    scope.where(timestamp => range).group(Arel.sql(bucket_sql(column))).pluck(Arel.sql(bucket_sql(column)), Arel.sql(DISTINCT_COUNT_SQL.fetch(expression))).to_h { |time, count| [time.to_time.to_i, count] }
   end
 
   def grouped_count_and_sum(scope, timestamp, sum_column)
     scope = scope.reorder(nil)
     column = qualified_column(scope, timestamp)
-    scope.where(timestamp => range).group(Arel.sql(bucket_sql(column))).pluck(Arel.sql(bucket_sql(column)), Arel.sql('COUNT(*)'), Arel.sql("COALESCE(SUM(#{scope.table_name}.#{sum_column}), 0) / 1000.0")).to_h { |time, count, sum| [time.to_time.to_i, [count, sum.to_f]] }
+    sum = SUM_SQL.fetch("#{scope.table_name}.#{sum_column}")
+    scope.where(timestamp => range).group(Arel.sql(bucket_sql(column))).pluck(Arel.sql(bucket_sql(column)), Arel.sql('COUNT(*)'), Arel.sql(sum)).to_h { |time, count, total| [time.to_time.to_i, [count, total.to_f]] }
   end
 
   def qualified_column(scope, timestamp)
-    "#{scope.table_name}.#{timestamp}"
+    QUALIFIED_COLUMNS.fetch([scope.table_name, timestamp])
   end
 
   def bucket_sql(column)
-    "date_trunc('#{@span}', #{column} AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'"
+    BUCKET_SQL.fetch(@span).fetch(column)
   end
 
   def range
