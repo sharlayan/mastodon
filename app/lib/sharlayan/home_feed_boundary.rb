@@ -29,7 +29,7 @@ class Sharlayan::HomeFeedBoundary
     reblogs
       .where(account_id: @account.following.select(:id))
       .or(reblogs.where(account_id: @account.id))
-      .includes(:tags)
+      .includes(:tags, :account, reblog: :account)
       .reorder(id: :asc)
       .limit(CANDIDATE_LIMIT)
       .to_a
