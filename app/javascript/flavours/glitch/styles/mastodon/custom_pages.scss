@@ -1209,7 +1209,7 @@ html.page-blog-view {
   select {
     color: var(--primary-text-color);
     background: var(--background-color);
-    border: 1px solid var(--background-border-color);
+    border: 1px solid var(--color-border-primary);
     border-radius: 4px;
     padding: 4px 8px;
   }
@@ -1579,7 +1579,7 @@ html .scrollable {
   gap: 16px;
   margin: 24px 0 0;
   padding: 12px 16px;
-  border: 1px solid var(--background-border-color);
+  border: 1px solid var(--color-border-primary);
   border-radius: 8px;
   background: var(--background-color);
 
@@ -1642,7 +1642,7 @@ html .scrollable {
   display: flex;
   gap: 8px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--background-border-color);
+  border-bottom: 1px solid var(--color-border-primary);
 
   .button {
     display: inline-flex;
@@ -1655,8 +1655,14 @@ html .scrollable {
   }
 }
 
+.layout-multiple-columns .page-index {
+  &__create-actions {
+    border-inline: 1px solid var(--color-border-primary);
+  }
+}
+
 .booklet-list-item {
-  border-bottom: 1px solid var(--background-border-color);
+  border-bottom: 1px solid var(--color-border-primary);
 
   &__link {
     display: grid;
@@ -1682,7 +1688,7 @@ html .scrollable {
   }
 
   &__cover--empty {
-    border: 1px dashed var(--background-border-color);
+    border: 1px dashed var(--color-border-primary);
   }
 
   &__details {
