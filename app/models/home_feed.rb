@@ -29,7 +29,7 @@ class HomeFeed < Feed
       remaining_limit = limit - statuses.size
 
       max_id = statuses.last.id unless statuses.empty?
-      statuses + from_database(remaining_limit, max_id, since_id, min_id)
+      statuses + from_database(remaining_limit, max_id, since_id, min_id, preceding_statuses: statuses)
     end
   end
 
@@ -57,7 +57,7 @@ class HomeFeed < Feed
 
   protected
 
-  def from_database(limit, max_id, since_id, min_id)
+  def from_database(limit, max_id, since_id, min_id, preceding_statuses: [])
     tag_following_ids = TagFollow.where(account: @account).pluck(:tag_id)
     following_ids     = @account.active_relationships.pluck(:target_account_id)
     all_account_ids   = following_ids + [@account.id]
@@ -79,16 +79,47 @@ class HomeFeed < Feed
       scope = scope.or(Status.where(visibility: :public).where(tag_exists.exists))
     end
 
+    aggregate_reblogs = @account.user&.aggregates_reblogs?
+    fetch_limit       = aggregate_reblogs && min_id.blank? ? limit + FeedManager::REBLOG_FALLOFF : limit
+
+    if aggregate_reblogs && preceding_statuses.empty? && max_id.present?
+      preceding_statuses = scope
+        .where(Status.arel_table[:id].gteq(max_id))
+        .includes(:tags)
+        .reorder(id: :asc)
+        .limit(FeedManager::REBLOG_FALLOFF)
+        .to_a
+        .reverse
+      preceding_statuses = FeedManager.instance.filter_home_statuses(preceding_statuses, @account, tag_following_ids.to_set)
+    end
+
     statuses = scope
       .includes(:tags)
-      .to_a_paginated_by_id(limit, min_id: min_id, max_id: max_id, since_id: since_id)
+      .to_a_paginated_by_id(fetch_limit, min_id: min_id, max_id: max_id, since_id: since_id)
 
     statuses = FeedManager.instance.filter_home_statuses(statuses, @account, tag_following_ids.to_set)
+    statuses = aggregate_database_reblogs(statuses, preceding_statuses).first(limit) if aggregate_reblogs
 
     statuses.sort_by { |status| -status.id }
   end
 
   private
+
+  def aggregate_database_reblogs(statuses, preceding_statuses)
+    recent_status_ids = preceding_statuses.last(FeedManager::REBLOG_FALLOFF).map { |status| status.reblog_of_id || status.id }
+
+    statuses.reject do |status|
+      status_id = status.reblog_of_id || status.id
+      duplicate = status.reblog? && recent_status_ids.include?(status_id)
+
+      unless duplicate
+        recent_status_ids.shift if recent_status_ids.size >= FeedManager::REBLOG_FALLOFF
+        recent_status_ids << status_id
+      end
+
+      duplicate
+    end
+  end
 
   def fetch_min_redis_id
     redis.zrangebyscore(key, '(0', '(+inf', limit: [0, 1]).first&.to_i

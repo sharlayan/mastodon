@@ -101,6 +101,45 @@ RSpec.describe HomeFeed do
         results = subject.get(3, nil, nil, 0)
         expect(results.map(&:id)).to eq [3, 2, 1]
       end
+
+      it 'groups repeated boosts loaded from the database' do
+        other_followed = Fabricate(:account)
+        account.follow!(other_followed)
+        original = Fabricate(:status, account: other, id: 20)
+        Fabricate(:status, account: followed, id: 21, reblog: original)
+        Fabricate(:status, account: other_followed, id: 22, reblog: original)
+
+        results = subject.get(10)
+
+        expect(results.map(&:id)).to include(22)
+        expect(results.map(&:id)).to_not include(21)
+      end
+
+      it 'groups repeated boosts across database pagination requests' do
+        other_followed = Fabricate(:account)
+        account.follow!(other_followed)
+        original = Fabricate(:status, account: other, id: 20)
+        Fabricate(:status, account: followed, id: 21, reblog: original)
+        Fabricate(:status, account: other_followed, id: 22, reblog: original)
+
+        results = subject.get(10, 22)
+
+        expect(results.map(&:id)).to_not include(21)
+      end
+
+      it 'keeps repeated boosts when boost grouping is disabled' do
+        account.user.settings['aggregate_reblogs'] = false
+        account.user.save!
+        other_followed = Fabricate(:account)
+        account.follow!(other_followed)
+        original = Fabricate(:status, account: other, id: 20)
+        Fabricate(:status, account: followed, id: 21, reblog: original)
+        Fabricate(:status, account: other_followed, id: 22, reblog: original)
+
+        results = subject.get(10)
+
+        expect(results.map(&:id)).to include(21, 22)
+      end
     end
   end
 end
