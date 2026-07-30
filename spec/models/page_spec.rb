@@ -85,6 +85,18 @@ RSpec.describe Page do
       expect(unsupported_type).to_not be_valid
     end
 
+    it 'allows supported formats on text blocks only', :aggregate_failures do
+      markdown = Fabricate.build(:page, account: account, content: [{ type: 'text', text: '# Heading', format: 'markdown' }])
+      legacy_mfm = Fabricate.build(:page, account: account, content: [{ type: 'text', text: '$[x2 text]' }])
+      unknown_format = Fabricate.build(:page, account: account, content: [{ type: 'text', text: 'text', format: 'html' }])
+      non_text_format = Fabricate.build(:page, account: account, content: [{ type: 'section', title: 'Heading', format: 'markdown', children: [] }])
+
+      expect(markdown).to be_valid
+      expect(legacy_mfm).to be_valid
+      expect(unknown_format).to_not be_valid
+      expect(non_text_format).to_not be_valid
+    end
+
     it 'accepts supported YouTube URLs and sizes, and rejects invalid values' do
       page = Fabricate.build(:page, account: account, content: [{ type: 'youtube', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', size: 'large' }])
 

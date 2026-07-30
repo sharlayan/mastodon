@@ -94,6 +94,23 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response.parsed_body.dig(:content, 0, :text)).to eq('Full body')
     end
 
+    it 'downgrades REST Markdown blocks without exposing the private format field' do
+      published_page.update!(content: [{
+        'id' => 'body',
+        'type' => 'text',
+        'text' => "## Heading\n\n**Bold** `$[x2 literal]`",
+        'format' => 'markdown',
+      }])
+
+      post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(published_page.id) }, as: :json
+
+      block = response.parsed_body.dig(:content, 0)
+      expect(response).to have_http_status(200)
+      expect(block).to_not have_key(:format)
+      expect(block[:text]).to include('Heading', 'Bold', '\\$[x2 literal]')
+      expect(block[:text]).to_not include('##', '**')
+    end
+
     it 'hides pages from anonymous crawlers according to the owner setting' do
       user.settings['noindex'] = true
       user.save!

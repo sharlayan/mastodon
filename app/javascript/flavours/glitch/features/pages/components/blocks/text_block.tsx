@@ -5,7 +5,14 @@ import { Spoiler } from './spoiler';
 
 const TextContent: React.FC<{ block: ApiPageTextBlock }> = ({ block }) => (
   <div className='page__block page__block--text'>
-    <MfmRenderer text={block.text} />
+    {block.format === 'markdown' ? (
+      <div
+        className='page__block__markdown'
+        dangerouslySetInnerHTML={{ __html: block.html ?? '' }}
+      />
+    ) : (
+      <MfmRenderer text={block.text} />
+    )}
   </div>
 );
 

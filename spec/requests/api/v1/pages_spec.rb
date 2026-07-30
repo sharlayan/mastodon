@@ -116,6 +116,38 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'text block formats' do
+    it 'stores Markdown format and returns server-rendered sanitized HTML' do
+      post '/api/v1/pages', params: {
+        title: 'Markdown page',
+        name: 'markdown-page',
+        content: [{
+          id: 'body',
+          type: 'text',
+          text: "## Heading\n\n**Bold** <script>alert(1)</script> ![image](https://example.com/image.png)",
+          format: 'markdown',
+        }],
+      }, headers: headers, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(Page.last.content.first).to include('format' => 'markdown')
+      expect(response.parsed_body.dig(:content, 0, :format)).to eq('markdown')
+      expect(response.parsed_body.dig(:content, 0, :html)).to include('<h2>Heading</h2>', '<strong>Bold</strong>')
+      expect(response.parsed_body.dig(:content, 0, :html)).to_not include('<script', '<img')
+    end
+
+    it 'rejects unsupported text formats' do
+      post '/api/v1/pages', params: {
+        title: 'Invalid page',
+        name: 'invalid-format',
+        content: [{ id: 'body', type: 'text', text: 'text', format: 'html' }],
+      }, headers: headers, as: :json
+
+      expect(response).to have_http_status(422)
+      expect(Page).to_not exist(name: 'invalid-format')
+    end
+  end
+
   describe 'GET /api/v1/pages/categories' do
     before do
       Fabricate(:page, account: user.account, category: 'Guides')

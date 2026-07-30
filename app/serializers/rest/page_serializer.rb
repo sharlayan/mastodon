@@ -50,7 +50,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def content
-    locked ? [] : object.renderable_content
+    locked ? [] : serialize_blocks(object.renderable_content)
   end
 
   def eye_catching_media_attachment
@@ -71,5 +71,14 @@ class REST::PageSerializer < ActiveModel::Serializer
 
   def header_visible?
     !locked || instance_options[:include_locked_header]
+  end
+
+  def serialize_blocks(blocks)
+    Array(blocks).map do |source|
+      block = source.deep_dup
+      block['html'] = AdvancedTextFormatter.new(block['text'], content_type: 'text/markdown').to_s if block['type'] == 'text' && block['format'] == 'markdown'
+      block['children'] = serialize_blocks(block['children']) if block['children'].is_a?(Array)
+      block
+    end
   end
 end

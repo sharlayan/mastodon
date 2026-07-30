@@ -362,6 +362,42 @@
       overflow-wrap: break-word;
     }
 
+    &__markdown {
+      p,
+      ul,
+      ol,
+      blockquote,
+      pre {
+        margin: 0 0 0.8em;
+      }
+
+      > :last-child {
+        margin-bottom: 0;
+      }
+
+      ul,
+      ol {
+        padding-inline-start: 2em;
+      }
+
+      blockquote {
+        padding-inline-start: 1em;
+        border-inline-start: 3px solid var(--color-border-primary);
+        color: var(--color-text-secondary);
+      }
+
+      pre {
+        padding: 12px;
+        overflow-x: auto;
+        border-radius: 6px;
+        background: var(--color-bg-secondary);
+      }
+
+      code {
+        font-family: $font-monospace;
+      }
+    }
+
     &--image img,
     &--image video {
       display: block;

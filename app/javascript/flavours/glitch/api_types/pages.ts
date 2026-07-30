@@ -7,6 +7,8 @@ export interface ApiPageTextBlock {
   id: string;
   type: 'text';
   text: string;
+  format?: 'mfm' | 'markdown';
+  html?: string;
   spoiler?: boolean;
 }
 

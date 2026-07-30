@@ -47,6 +47,7 @@ class Page < ApplicationRecord
   VISIBILITIES = %w(public authenticated password private).freeze
   BLOCK_TYPES = %w(text section image note youtube).freeze
   SPOILER_BLOCK_TYPES = %w(text image).freeze
+  TEXT_FORMATS = %w(mfm markdown).freeze
   MAX_BLOCKS = 500
   MAX_BLOCK_DEPTH = 10
   MAX_CONTENT_BYTES = 512.kilobytes
@@ -252,7 +253,7 @@ class Page < ApplicationRecord
       type_counts[type] += 1 if type
       type_limit = BLOCK_TYPE_LIMITS[type]
 
-      unless block.is_a?(Hash) && BLOCK_TYPES.include?(type) && count <= MAX_BLOCKS && depth <= MAX_BLOCK_DEPTH && (type_limit.nil? || type_counts[type] <= type_limit) && valid_block_strings?(block) && valid_spoiler_option?(block)
+      unless block.is_a?(Hash) && BLOCK_TYPES.include?(type) && count <= MAX_BLOCKS && depth <= MAX_BLOCK_DEPTH && (type_limit.nil? || type_counts[type] <= type_limit) && valid_block_strings?(block) && valid_spoiler_option?(block) && valid_text_format?(block)
         errors.add(:content, :invalid)
         return
       end
@@ -292,6 +293,12 @@ class Page < ApplicationRecord
     return true unless block.key?('spoiler')
 
     SPOILER_BLOCK_TYPES.include?(block['type']) && [true, false].include?(block['spoiler'])
+  end
+
+  def valid_text_format?(block)
+    return true unless block.key?('format')
+
+    block['type'] == 'text' && TEXT_FORMATS.include?(block['format'])
   end
 
   def valid_youtube_url?(url)

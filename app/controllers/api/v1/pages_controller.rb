@@ -4,7 +4,7 @@ class Api::V1::PagesController < Api::BaseController
   include Api::AnonymousPageViewLimit
   include Api::PageSearchEngineAccess
 
-  ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale spoiler note detailed url size).freeze
+  ALLOWED_BLOCK_KEYS = %w(id type text format title children fileId noUpscale spoiler note detailed url size).freeze
 
   vary_by 'Authorization, User-Agent'
 

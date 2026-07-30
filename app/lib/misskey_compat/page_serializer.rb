@@ -42,6 +42,10 @@ class MisskeyCompat::PageSerializer
 
       block = source.deep_dup
       block.delete('spoiler')
+      if block['type'] == 'text' && block.delete('format') == 'markdown'
+        html = AdvancedTextFormatter.new(block['text'], content_type: 'text/markdown').to_s
+        block['text'] = Nokogiri::HTML5.fragment(html).text.gsub('$[', '\\$[')
+      end
       block['fileId'] = serialize_media_id(media_by_id[block['fileId'].to_s]) if block['type'] == 'image' && block['fileId'].present?
       block['note'] = MisskeyCompat::MiId.encode(block['note']) if block['type'] == 'note' && block['note'].present?
       block['children'] = serialize_blocks(block['children'], media_by_id) if block['children'].is_a?(Array)

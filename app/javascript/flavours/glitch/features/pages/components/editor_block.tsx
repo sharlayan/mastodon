@@ -36,7 +36,19 @@ const messages = defineMessages({
   },
   textPlaceholder: {
     id: 'pages.block.text_placeholder',
-    defaultMessage: 'Write text (MFM supported)…',
+    defaultMessage: 'Write text…',
+  },
+  textFormat: {
+    id: 'pages.block.text_format',
+    defaultMessage: 'Text format',
+  },
+  textFormatMfm: {
+    id: 'pages.block.text_format.mfm',
+    defaultMessage: 'MFM',
+  },
+  textFormatMarkdown: {
+    id: 'pages.block.text_format.markdown',
+    defaultMessage: 'Markdown',
   },
   characterCountWithSpaces: {
     id: 'pages.block.character_count_with_spaces',
@@ -133,6 +145,13 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
   const handleTextChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
       onUpdate(blockId, { text: event.target.value });
+    },
+    [onUpdate, blockId],
+  );
+
+  const handleTextFormatChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      onUpdate(blockId, { format: event.target.value });
     },
     [onUpdate, blockId],
   );
@@ -234,6 +253,20 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
 
       {block.type === 'text' && (
         <>
+          <label className='page-editor__block-option'>
+            <span>{intl.formatMessage(messages.textFormat)}</span>
+            <select
+              value={block.format ?? 'mfm'}
+              onChange={handleTextFormatChange}
+            >
+              <option value='mfm'>
+                {intl.formatMessage(messages.textFormatMfm)}
+              </option>
+              <option value='markdown'>
+                {intl.formatMessage(messages.textFormatMarkdown)}
+              </option>
+            </select>
+          </label>
           <textarea
             className='page-editor__textarea'
             value={block.text}
