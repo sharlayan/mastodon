@@ -3,7 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Management timeline API' do
-  let(:role) { Fabricate(:user_role, permissions: UserRole::FLAGS[:administrator]) }
+  let(:role_extra_permissions) { UserRole::EXTRA_FLAGS[:view_admin_timeline] }
+  let(:role) { Fabricate(:user_role, permissions: UserRole::FLAGS[:administrator], extra_permissions: role_extra_permissions) }
   let(:user) { Fabricate(:user, role: role) }
   let(:scopes) { 'read:statuses' }
   let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: scopes) }
@@ -17,10 +18,6 @@ RSpec.describe 'Management timeline API' do
     end
 
     Rails.application.reload_routes!
-  end
-
-  before do
-    role.update!(extra_permissions: UserRole::EXTRA_FLAGS[:view_admin_timeline])
   end
 
   def status_for(visibility, local_only:)
@@ -40,14 +37,34 @@ RSpec.describe 'Management timeline API' do
     expect(timeline_ids).to include(federated.id.to_s, local.id.to_s)
   end
 
-  it 'hides federated direct, followers-only and unlisted posts' do
-    hidden = %i(direct private unlisted).map { |visibility| status_for(visibility, local_only: false) }
-    shown = %i(direct private unlisted).map { |visibility| status_for(visibility, local_only: true) }
+  it 'hides federated direct, followers-only, unlisted and limited posts' do
+    hidden = %i(direct private unlisted limited).map { |visibility| status_for(visibility, local_only: false) }
+    shown = %i(direct private unlisted limited).map { |visibility| status_for(visibility, local_only: true) }
 
     ids = timeline_ids
 
     expect(ids).to include(*shown.map { |status| status.id.to_s })
     expect(ids).to_not include(*hidden.map { |status| status.id.to_s })
+  end
+
+  it 'does not list cached posts authored by remote accounts' do
+    remote = Fabricate(:account, domain: 'remote.example', username: 'remote-poster')
+    status = Fabricate(:status, account: remote, visibility: :public, local_only: false)
+
+    expect(timeline_ids).to_not include(status.id.to_s)
+  end
+
+  context 'when community mode is enabled after a federated install' do
+    let(:role_extra_permissions) { 0 }
+
+    it 'lets an existing administrator search legacy posts without a stored extra-permission bit' do
+      legacy_public = status_for(:public, local_only: false)
+      legacy_restricted = status_for(:private, local_only: false)
+
+      expect(timeline_ids)
+        .to include(legacy_public.id.to_s)
+        .and not_include(legacy_restricted.id.to_s)
+    end
   end
 
   it 'hides conversations a remote account takes part in' do

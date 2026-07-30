@@ -2,8 +2,15 @@ import { AuthenticationError } from '../errors.js';
 import { firstParam } from '../utils.js';
 import { isAdminTimelineEnabled } from './admin_gate.js';
 
+const PERMISSION_ADMINISTRATOR = 1 << 0;
+const EXTRA_PERMISSIONS_ALL = (1 << 2) - 1;
+
 const extraPermissionsSelect = isAdminTimelineEnabled()
-  ? ", COALESCE(user_roles.extra_permissions, 0) | COALESCE((SELECT extra_permissions FROM user_roles WHERE id = -99), 0) AS extra_permissions"
+  ? `, CASE
+      WHEN COALESCE(user_roles.permissions, 0) & ${PERMISSION_ADMINISTRATOR} = ${PERMISSION_ADMINISTRATOR}
+        THEN ${EXTRA_PERMISSIONS_ALL}
+      ELSE COALESCE(user_roles.extra_permissions, 0) | COALESCE((SELECT extra_permissions FROM user_roles WHERE id = -99), 0)
+    END AS extra_permissions`
   : '';
 const ACCESS_TOKEN_QUERY = `SELECT oauth_access_tokens.id, oauth_access_tokens.resource_owner_id, users.account_id, users.chosen_languages, oauth_access_tokens.scopes, COALESCE(user_roles.permissions, 0) AS permissions, COALESCE(oauth_applications.superapp, FALSE) AS superapp${extraPermissionsSelect} FROM oauth_access_tokens INNER JOIN users ON oauth_access_tokens.resource_owner_id = users.id INNER JOIN accounts ON accounts.id = users.account_id LEFT OUTER JOIN user_roles ON user_roles.id = users.role_id LEFT OUTER JOIN oauth_applications ON oauth_applications.id = oauth_access_tokens.application_id WHERE oauth_access_tokens.token = $1 AND oauth_access_tokens.revoked_at IS NULL AND (oauth_access_tokens.expires_in IS NULL OR oauth_access_tokens.created_at + oauth_access_tokens.expires_in * INTERVAL '1 second' > NOW()) AND users.disabled IS FALSE AND accounts.suspended_at IS NULL LIMIT 1`;
 

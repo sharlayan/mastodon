@@ -51,6 +51,7 @@ test('OAuth token query loads community permissions only behind the management t
   assert.match(ACCESS_TOKEN_QUERY, /accounts\.suspended_at IS NULL/);
   if (isAdminTimelineEnabled()) {
     assert.match(ACCESS_TOKEN_QUERY, /extra_permissions/);
+    assert.match(ACCESS_TOKEN_QUERY, /WHEN COALESCE\(user_roles\.permissions, 0\) & 1 = 1\s+THEN 3/);
   } else {
     assert.doesNotMatch(ACCESS_TOKEN_QUERY, /extra_permissions/);
   }

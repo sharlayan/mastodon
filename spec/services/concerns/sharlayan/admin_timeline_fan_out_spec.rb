@@ -37,10 +37,17 @@ RSpec.describe Sharlayan::AdminTimelineFanOut do
   end
 
   it 'does not publish federated restricted posts' do
-    %i(direct private unlisted).each do |visibility|
+    %i(direct private unlisted limited).each do |visibility|
       status = Fabricate(:status, account: account, visibility: visibility, local_only: false)
 
       expect(publish_calls_for(status)).to eq(0)
     end
+  end
+
+  it 'does not publish cached posts authored by remote accounts' do
+    remote = Fabricate(:account, domain: 'remote.example', username: 'remote-poster')
+    status = Fabricate(:status, account: remote, visibility: :public, local_only: false)
+
+    expect(publish_calls_for(status)).to eq(0)
   end
 end
