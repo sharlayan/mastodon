@@ -6,6 +6,8 @@ class Api::V1::Timelines::HomeController < Api::V1::Timelines::BaseController
   before_action -> { doorkeeper_authorize! :read, :'read:statuses' }
   before_action :require_user!
 
+  include Sharlayan::ReblogBoundaryPagination
+
   PERMITTED_PARAMS = %i(local limit).freeze
 
   def show
