@@ -32,6 +32,10 @@
   margin-left: calc(var(--size-avatar) + var(--gap-default));
 }
 
+html .page-index__create-actions {
+  border-inline: unset;
+}
+
 .layout-single-column,
 .layout-multiple-columns {
   .columns-area__panels__pane--compositional
@@ -241,6 +245,8 @@
     mask-image: var(--icon-antenna-filled);
   }
 
+  .item-list .lists__item__title .page-list-item__main-icon path,
+  .lists__item__title .page-list-item__main-icon path,
   .item-list .lists__item__title .page-list-item__visibility-icon path,
   .lists__item__title .page-list-item__visibility-icon path {
     display: unset;

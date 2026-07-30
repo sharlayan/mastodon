@@ -374,6 +374,7 @@
   "pages.booklet.new": "Create Booklet",
   "pages.booklet.none_yet": "No Booklets yet.",
   "pages.booklet.pages_count": "{count, plural, one {# page} other {# pages}}",
+  "pages.booklet.preview": "Preview",
   "pages.booklet.save_error": "Could not save the Booklet.",
   "pages.youtube.video": "YouTube video",
   "pages.field.eye_catching": "Header image",

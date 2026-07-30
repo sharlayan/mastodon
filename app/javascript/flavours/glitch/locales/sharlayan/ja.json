@@ -374,6 +374,7 @@
   "pages.booklet.new": "小冊子を作成",
   "pages.booklet.none_yet": "小冊子はまだありません。",
   "pages.booklet.pages_count": "{count, plural, other {#ページ}}",
+  "pages.booklet.preview": "プレビュー",
   "pages.booklet.save_error": "小冊子を保存できませんでした。",
   "pages.youtube.video": "YouTube 動画",
   "pages.field.eye_catching": "ヘッダー画像",

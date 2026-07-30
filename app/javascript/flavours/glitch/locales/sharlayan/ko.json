@@ -374,6 +374,7 @@
   "pages.booklet.new": "소책자 만들기",
   "pages.booklet.none_yet": "아직 소책자가 없습니다.",
   "pages.booklet.pages_count": "{count, plural, other {페이지 #개}}",
+  "pages.booklet.preview": "미리보기",
   "pages.booklet.save_error": "소책자를 저장할 수 없습니다.",
   "pages.youtube.video": "YouTube 영상",
   "pages.field.eye_catching": "헤더 이미지",

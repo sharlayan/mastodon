@@ -42,6 +42,10 @@ const messages = defineMessages({
     id: 'pages.field.series_cover_hint',
     defaultMessage: 'Displayed at a 3:4 ratio, up to 600 × 800 px.',
   },
+  preview: {
+    id: 'pages.booklet.preview',
+    defaultMessage: 'Preview',
+  },
   save: { id: 'pages.save', defaultMessage: 'Save' },
   saveError: {
     id: 'pages.booklet.save_error',
@@ -154,6 +158,31 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
             </span>
             <ImageUploadField value={cover} onChange={setCover} />
           </div>
+          <section
+            className='page-editor__booklet-preview'
+            aria-label={intl.formatMessage(messages.preview)}
+          >
+            <span className='page-editor__label'>
+              {intl.formatMessage(messages.preview)}
+            </span>
+            <div className='page-editor__booklet-preview-card'>
+              {cover ? (
+                <img
+                  className='page-editor__booklet-preview-cover'
+                  src={cover.preview_url || cover.url}
+                  alt=''
+                />
+              ) : (
+                <span className='page-editor__booklet-preview-cover page-editor__booklet-preview-cover--empty' />
+              )}
+              <div className='page-editor__booklet-preview-details'>
+                <strong className={title.trim() ? undefined : 'is-placeholder'}>
+                  [{title.trim() || intl.formatMessage(messages.title)}]
+                </strong>
+                {description && <p>{description}</p>}
+              </div>
+            </div>
+          </section>
           <div className='page-editor__actions'>
             <button
               type='button'
