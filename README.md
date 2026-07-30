@@ -47,7 +47,7 @@ Mastodon 포크들에서 Emoji Reaction 을 지원하는 여러 버전을 참고
 - 설치 시 선택하거나 ENV 에서 설정을 변경할 수 있습니다.
 
 > [!CAUTION]
-> 이 기능은 .env 파일에서 `OC_ROLEPLAY_OPTION` 설정을 활성화 (`True`)해야만 동작합니다.
+> 이 기능은 .env 파일에서 `OC_ROLEPLAY_OPTION` 및 `OC_ADMIN_TIMELINE_OPTION` 설정을 활성화 (`True`)해야만 동작합니다.
 > 절대 이 기능을 실제 연합 중인 서버에서 사용하지 마십시오. 운영의 신뢰성을 깨트릴 수 있습니다.
 > 활성화 시 개인 멘션 선택 시 경고 메시지에 안내 문구가 출력됩니다.
 
