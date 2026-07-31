@@ -45,4 +45,18 @@ RSpec.describe REST::MediaAttachmentSerializer do
     expect(URI(result[:url]).path).to eq(drive_file.file.url(:original))
     expect(URI(result[:thumbnailUrl]).path).to eq(drive_file.file.url(:small))
   end
+
+  it 'uses the redownload proxy for an evicted remote attachment in Misskey-compatible output' do
+    remote_attachment = MediaAttachment.create!(
+      account: account,
+      status: status,
+      remote_url: 'https://remote.example/media.jpg'
+    )
+
+    result = MisskeyCompat::DriveFileSerializer.serialize(remote_attachment)
+
+    expect(remote_attachment).to be_needs_redownload
+    expect(URI(result[:url]).path).to eq("/media_proxy/#{remote_attachment.id}/original")
+    expect(URI(result[:thumbnailUrl]).path).to eq("/media_proxy/#{remote_attachment.id}/small")
+  end
 end

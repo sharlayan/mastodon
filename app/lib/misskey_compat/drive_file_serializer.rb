@@ -25,8 +25,8 @@ class MisskeyCompat::DriveFileSerializer
       isSensitive: sensitive.nil? ? (media.status&.sensitive? || false) : sensitive,
       blurhash: media.blurhash,
       properties: dimensions(media),
-      url: full_media_attachment_url(media),
-      thumbnailUrl: full_media_attachment_preview_url(media),
+      url: media_url(media),
+      thumbnailUrl: media_thumbnail_url(media),
       comment: media.description,
       folderId: nil,
       userId: MisskeyCompat::MiId.encode(media.account_id),
@@ -34,6 +34,18 @@ class MisskeyCompat::DriveFileSerializer
   end
 
   private
+
+  def media_url(media)
+    return media_proxy_url(media.id, :original) if media.needs_redownload?
+
+    full_media_attachment_url(media)
+  end
+
+  def media_thumbnail_url(media)
+    return media_proxy_url(media.id, :small) if media.needs_redownload?
+
+    full_media_attachment_preview_url(media)
+  end
 
   def media_md5(media)
     stored = media.file_meta.is_a?(Hash) ? media.file_meta['md5'].presence : nil
