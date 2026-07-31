@@ -53,5 +53,19 @@ RSpec.describe EmojiFormatter do
         expect(subject).to include('boop <img rel="emoji" draggable="false" width="16" height="16" class="emojione custom-emoji" alt=":coolcat:"')
       end
     end
+
+    context 'when a shortcode directly follows a word character' do
+      let(:text) { preformat_text('Name:coolcat:') }
+
+      it 'does not convert the shortcode by default' do
+        expect(subject).to_not include('<img rel="emoji"')
+      end
+
+      it 'converts the shortcode when unbounded shortcodes are allowed' do
+        result = described_class.new(text, emojis, allow_unbounded_shortcodes: true).to_s
+
+        expect(result).to include('Name<img rel="emoji"')
+      end
+    end
   end
 end

@@ -33,6 +33,7 @@ class CustomEmoji < ApplicationRecord
   LIMIT = Sharlayan::CustomEmojiExtensions::LIMIT
   SHORTCODE_RE_FRAGMENT = Sharlayan::CustomEmojiExtensions::SHORTCODE_RE_FRAGMENT
   SCAN_RE = Sharlayan::CustomEmojiExtensions::SCAN_RE
+  UNBOUNDED_SCAN_RE = Sharlayan::CustomEmojiExtensions::UNBOUNDED_SCAN_RE
   SHORTCODE_ONLY_RE = Sharlayan::CustomEmojiExtensions::SHORTCODE_ONLY_RE
   IMAGE_MIME_TYPES = Sharlayan::CustomEmojiExtensions::IMAGE_MIME_TYPES
 
@@ -83,10 +84,11 @@ class CustomEmoji < ApplicationRecord
   end
 
   class << self
-    def from_text(text, domain = nil)
+    def from_text(text, domain = nil, allow_unbounded_shortcodes: false)
       return [] if text.blank?
 
-      shortcodes = text.scan(SCAN_RE).map(&:first).uniq
+      pattern = allow_unbounded_shortcodes ? UNBOUNDED_SCAN_RE : SCAN_RE
+      shortcodes = text.scan(pattern).map(&:first).uniq
 
       return [] if shortcodes.empty?
 

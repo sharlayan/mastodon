@@ -14,6 +14,7 @@ class EmojiFormatter
   # @option options [Boolean] :animate
   # @option options [String] :style
   # @option options [String] :raw_shortcode
+  # @option options [Boolean] :allow_unbounded_shortcodes
   def initialize(html, custom_emojis, options = {})
     raise ArgumentError unless html.html_safe?
 
@@ -50,13 +51,13 @@ class EmojiFormatter
           shortcode = text[(shortname_start_index + 1)..(i - 1)]
           char_after = text[i + 1]
 
-          next unless (char_after.nil? || !DISALLOWED_BOUNDING_REGEX.match?(char_after)) && (emoji = emoji_map[shortcode])
+          next unless (allow_unbounded_shortcodes? || char_after.nil? || !DISALLOWED_BOUNDING_REGEX.match?(char_after)) && (emoji = emoji_map[shortcode])
 
           result << tree.document.create_text_node(text[last_index..(shortname_start_index - 1)]) if shortname_start_index.positive?
           result << tree.document.fragment(tag_for_emoji(shortcode, emoji))
 
           last_index = i + 1
-        elsif text[i] == ':' && (i.zero? || !DISALLOWED_BOUNDING_REGEX.match?(text[i - 1]))
+        elsif text[i] == ':' && (allow_unbounded_shortcodes? || i.zero? || !DISALLOWED_BOUNDING_REGEX.match?(text[i - 1]))
           inside_shortname = true
           shortname_start_index = i
         end
@@ -108,5 +109,9 @@ class EmojiFormatter
 
   def raw_shortcode?
     @options[:raw_shortcode]
+  end
+
+  def allow_unbounded_shortcodes?
+    @options[:allow_unbounded_shortcodes]
   end
 end

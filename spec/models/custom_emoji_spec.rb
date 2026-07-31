@@ -76,6 +76,18 @@ RSpec.describe CustomEmoji, :attachment_processing do
         expect(subject).to include(emojo)
       end
     end
+
+    context 'when a shortcode directly follows a word character' do
+      let(:text) { 'Name:coolcat:' }
+
+      it 'returns no records by default' do
+        expect(subject).to be_empty
+      end
+
+      it 'returns records when unbounded shortcodes are allowed' do
+        expect(described_class.from_text(text, nil, allow_unbounded_shortcodes: true)).to include(emojo)
+      end
+    end
   end
 
   describe 'Normalizations' do

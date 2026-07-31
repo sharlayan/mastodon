@@ -15,6 +15,13 @@ RSpec.describe AccountsHelper do
 
       expect(helper.display_name(account)).to eq 'Username'
     end
+
+    it 'emojifies a shortcode directly following a display name' do
+      Fabricate(:custom_emoji, shortcode: 'coolcat')
+      account = Account.new(display_name: 'Name:coolcat:', username: 'Username')
+
+      expect(helper.display_name(account, custom_emojify: true)).to include('<img rel="emoji"')
+    end
   end
 
   describe '#acct' do

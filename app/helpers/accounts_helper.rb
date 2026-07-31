@@ -5,7 +5,7 @@ module AccountsHelper
     str = account.display_name.presence || account.username
 
     if options[:custom_emojify]
-      prerender_custom_emojis(h(str), account.emojis)
+      prerender_custom_emojis(h(str), account.emojis, allow_unbounded_shortcodes: true)
     else
       str
     end

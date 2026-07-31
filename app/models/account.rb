@@ -486,7 +486,10 @@ class Account < ApplicationRecord
   inverse_alias :unlocked, :locked
 
   def emojis
-    @emojis ||= CustomEmoji.from_text(emojifiable_text, domain)
+    @emojis ||= (
+      CustomEmoji.from_text(emojifiable_text, domain) +
+      CustomEmoji.from_text(display_name, domain, allow_unbounded_shortcodes: true)
+    ).uniq(&:id)
   end
 
   before_validation :prepare_contents, if: :local?

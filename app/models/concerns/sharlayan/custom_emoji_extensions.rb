@@ -11,6 +11,7 @@ module Sharlayan::CustomEmojiExtensions
   SCAN_RE = /(?<=[^a-zA-Z0-9_]|\n|^)
     :(#{SHORTCODE_RE_FRAGMENT}):
     (?=[^a-zA-Z0-9_]|$)/x
+  UNBOUNDED_SCAN_RE = /:(#{SHORTCODE_RE_FRAGMENT}):/
   SHORTCODE_ONLY_RE = /\A#{SHORTCODE_RE_FRAGMENT}\z/
 
   IMAGE_MIME_TYPES = %w(image/png image/gif image/webp image/jpeg).freeze
