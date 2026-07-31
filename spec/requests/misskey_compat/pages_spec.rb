@@ -180,7 +180,7 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       post '/api/pages/show', params: { i: read_token, pageId: MisskeyCompat::MiId.encode(published_page.id) }, as: :json
 
       expect(response).to have_http_status(200)
-      expect(response.parsed_body).to_not include(:category, :is_main, :views_count, :visibility, :page_series, :page_series_id, :series_position, :series_main)
+      expect(response.parsed_body).to_not include(:category, :is_main, :views_count, :visibility, :booklet, :booklet_id, :booklet_position, :booklet_main)
     end
 
     it 'applies encoded ID cursors to page lists' do

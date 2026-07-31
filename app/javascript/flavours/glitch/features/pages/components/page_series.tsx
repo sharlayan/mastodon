@@ -16,20 +16,20 @@ export const PageSeries: React.FC<{
 }> = ({ page }) => {
   const intl = useIntl();
 
-  if (!page.page_series) {
+  if (!page.booklet) {
     return null;
   }
 
   return (
     <aside
       className={classNames('page__series', {
-        'page__series--main': page.series_main,
+        'page__series--with-cover': page.booklet.cover_media_attachment,
       })}
     >
-      {page.series_main && page.page_series.cover_media_attachment && (
+      {page.booklet.cover_media_attachment && (
         <img
           className='page__series-cover'
-          src={page.page_series.cover_media_attachment.url}
+          src={page.booklet.cover_media_attachment.url}
           alt=''
           decoding='async'
           loading='lazy'
@@ -37,14 +37,14 @@ export const PageSeries: React.FC<{
       )}
       <div className='page__series-details'>
         <strong>
-          [{page.page_series.title}]
-          {page.series_main && (
+          [{page.booklet.title}]
+          {page.booklet_main && (
             <span className='page__series-main'>
               {intl.formatMessage(messages.seriesMain)}
             </span>
           )}
         </strong>
-        {page.page_series.description && <p>{page.page_series.description}</p>}
+        {page.booklet.description && <p>{page.booklet.description}</p>}
       </div>
     </aside>
   );

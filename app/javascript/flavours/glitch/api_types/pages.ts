@@ -90,10 +90,10 @@ export interface ApiPageJSON {
   align_center: boolean;
   hide_title_when_pinned: boolean;
   is_main: boolean;
-  page_series_id: string | null;
-  page_series: ApiPageSeriesSummaryJSON | null;
-  series_position: number;
-  series_main: boolean;
+  booklet_id: string | null;
+  booklet: ApiPageSeriesSummaryJSON | null;
+  booklet_position: number;
+  booklet_main: boolean;
   font: ApiPageFont;
   account_id: string;
   account: ApiAccountJSON;

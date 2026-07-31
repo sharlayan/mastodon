@@ -171,7 +171,9 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def page_params
-    permitted = params.permit(:title, :name, :summary, :category, :draft, :visibility, :password, :align_center, :hide_title_when_pinned, :font, :eye_catching_media_attachment_id, :page_series_id, :series_position).merge(content_params)
+    permitted = params.permit(:title, :name, :summary, :category, :draft, :visibility, :password, :align_center, :hide_title_when_pinned, :font, :eye_catching_media_attachment_id, :booklet_id, :booklet_position).merge(content_params)
+    permitted[:page_series_id] = permitted.delete(:booklet_id) if permitted.key?(:booklet_id)
+    permitted[:series_position] = permitted.delete(:booklet_position) if permitted.key?(:booklet_position)
     if permitted.key?(:draft) && !permitted.key?(:visibility)
       permitted[:visibility] = ActiveModel::Type::Boolean.new.cast(permitted[:draft]) ? 'private' : 'public'
     end

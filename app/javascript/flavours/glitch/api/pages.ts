@@ -105,10 +105,10 @@ export const apiSetMainPage = (pageId: string) =>
 export const apiUnsetMainPage = (pageId: string) =>
   apiRequestDelete<ApiPageJSON>(`v1/pages/${pageId}/main`);
 
-export const apiSetSeriesMainPage = (pageId: string) =>
+export const apiSetBookletMainPage = (pageId: string) =>
   apiRequestPost<ApiPageJSON>(`v1/pages/${pageId}/series_main`);
 
-export const apiUnsetSeriesMainPage = (pageId: string) =>
+export const apiUnsetBookletMainPage = (pageId: string) =>
   apiRequestDelete<ApiPageJSON>(`v1/pages/${pageId}/series_main`);
 
 export const apiGetPageSeries = () =>

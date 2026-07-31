@@ -10,8 +10,8 @@ import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import {
   apiGetPage,
   apiGetPageSeries,
-  apiSetSeriesMainPage,
-  apiUnsetSeriesMainPage,
+  apiSetBookletMainPage,
+  apiUnsetBookletMainPage,
   apiCreatePage,
   apiUpdatePage,
 } from 'flavours/glitch/api/pages';
@@ -60,18 +60,18 @@ const messages = defineMessages({
     defaultMessage: 'You will be able to access it at: {url}',
   },
   summary: { id: 'pages.field.summary', defaultMessage: 'Summary' },
-  series: { id: 'pages.field.series', defaultMessage: 'Booklet' },
-  seriesNone: { id: 'pages.series.none', defaultMessage: 'No Booklet' },
-  seriesPosition: {
-    id: 'pages.field.series_position',
+  booklet: { id: 'pages.field.booklet', defaultMessage: 'Booklet' },
+  bookletNone: { id: 'pages.booklet.none', defaultMessage: 'No Booklet' },
+  bookletPosition: {
+    id: 'pages.field.booklet_position',
     defaultMessage: 'Order in Booklet',
   },
-  seriesPositionHint: {
-    id: 'pages.field.series_position_hint',
+  bookletPositionHint: {
+    id: 'pages.field.booklet_position_hint',
     defaultMessage: 'Lower numbers appear first.',
   },
-  seriesMain: {
-    id: 'pages.field.series_main',
+  bookletMain: {
+    id: 'pages.field.booklet_main',
     defaultMessage: 'Use as the representative page for this Booklet',
   },
   visibility: { id: 'pages.field.visibility', defaultMessage: 'Visibility' },
@@ -129,12 +129,10 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [title, setTitle] = useState('');
   const [name, setName] = useState(() => Date.now().toString());
   const [summary, setSummary] = useState('');
-  const [pageSeriesId, setPageSeriesId] = useState('');
-  const [pageSeriesOptions, setPageSeriesOptions] = useState<
-    ApiPageSeriesJSON[]
-  >([]);
-  const [seriesPosition, setSeriesPosition] = useState(0);
-  const [seriesMain, setSeriesMain] = useState(false);
+  const [bookletId, setBookletId] = useState('');
+  const [bookletOptions, setBookletOptions] = useState<ApiPageSeriesJSON[]>([]);
+  const [bookletPosition, setBookletPosition] = useState(0);
+  const [bookletMain, setBookletMain] = useState(false);
   const [visibility, setVisibility] = useState<ApiPageVisibility>('public');
   const [password, setPassword] = useState('');
   const [hasExistingPassword, setHasExistingPassword] = useState(false);
@@ -163,9 +161,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   useEffect(() => {
     apiGetPageSeries()
-      .then((series) => {
-        setPageSeriesOptions(series);
-        return series;
+      .then((booklets) => {
+        setBookletOptions(booklets);
+        return booklets;
       })
       .catch(() => undefined);
   }, []);
@@ -180,9 +178,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setTitle(page.title);
         setName(page.name);
         setSummary(page.summary ?? '');
-        setPageSeriesId(page.page_series_id ?? '');
-        setSeriesPosition(page.series_position);
-        setSeriesMain(page.series_main);
+        setBookletId(page.booklet_id ?? '');
+        setBookletPosition(page.booklet_position);
+        setBookletMain(page.booklet_main);
         setVisibility(page.visibility);
         setHasExistingPassword(page.visibility === 'password');
         setFont(page.font);
@@ -220,25 +218,25 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
-  const handleSeriesChange = useCallback(
+  const handleBookletChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
-      setPageSeriesId(event.target.value);
+      setBookletId(event.target.value);
     },
     [],
   );
 
-  const handleSeriesPositionChange = useCallback(
+  const handleBookletPositionChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      setSeriesPosition(
+      setBookletPosition(
         Math.max(0, Number.parseInt(event.target.value, 10) || 0),
       );
     },
     [],
   );
 
-  const handleSeriesMainChange = useCallback(
+  const handleBookletMainChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      setSeriesMain(event.target.checked);
+      setBookletMain(event.target.checked);
     },
     [],
   );
@@ -319,12 +317,12 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setSaving(true);
     setError(false);
 
-    const buildPayload = (seriesId: string | null) => ({
+    const buildPayload = (selectedBookletId: string | null) => ({
       title,
       name,
       summary: summary || null,
-      page_series_id: seriesId,
-      series_position: seriesPosition,
+      booklet_id: selectedBookletId,
+      booklet_position: bookletPosition,
       visibility,
       ...(password ? { password } : {}),
       font,
@@ -332,21 +330,21 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       content,
       eye_catching_media_attachment_id: eyeCatching?.id ?? null,
     });
-    Promise.resolve(pageSeriesId || null)
-      .then((seriesId) =>
+    Promise.resolve(bookletId || null)
+      .then((selectedBookletId) =>
         isEditing
-          ? apiUpdatePage(id, buildPayload(seriesId))
-          : apiCreatePage(buildPayload(seriesId)),
+          ? apiUpdatePage(id, buildPayload(selectedBookletId))
+          : apiCreatePage(buildPayload(selectedBookletId)),
       )
       .then((savedPage) => {
-        if (!savedPage.page_series_id || savedPage.visibility !== 'public') {
+        if (!savedPage.booklet_id || savedPage.visibility !== 'public') {
           return savedPage;
         }
-        if (seriesMain && !savedPage.series_main) {
-          return apiSetSeriesMainPage(savedPage.id);
+        if (bookletMain && !savedPage.booklet_main) {
+          return apiSetBookletMainPage(savedPage.id);
         }
-        if (!seriesMain && savedPage.series_main) {
-          return apiUnsetSeriesMainPage(savedPage.id);
+        if (!bookletMain && savedPage.booklet_main) {
+          return apiUnsetBookletMainPage(savedPage.id);
         }
         return savedPage;
       })
@@ -375,9 +373,9 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     title,
     name,
     summary,
-    pageSeriesId,
-    seriesPosition,
-    seriesMain,
+    bookletId,
+    bookletPosition,
+    bookletMain,
     visibility,
     password,
     font,
@@ -417,46 +415,6 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               value={title}
               onChange={handleTitleChange}
             />
-          </div>
-
-          <div className='fields-group'>
-            <SelectField
-              id='page_series'
-              label={intl.formatMessage(messages.series)}
-              value={pageSeriesId}
-              onChange={handleSeriesChange}
-            >
-              <option value=''>
-                {intl.formatMessage(messages.seriesNone)}
-              </option>
-              {pageSeriesOptions.map((series) => (
-                <option key={series.id} value={series.id}>
-                  {series.title}
-                </option>
-              ))}
-            </SelectField>
-
-            {pageSeriesId && (
-              <>
-                <TextInputField
-                  id='page_series_position'
-                  type='number'
-                  min={0}
-                  max={1000000}
-                  label={intl.formatMessage(messages.seriesPosition)}
-                  hint={intl.formatMessage(messages.seriesPositionHint)}
-                  value={seriesPosition.toString()}
-                  onChange={handleSeriesPositionChange}
-                />
-                {visibility === 'public' && (
-                  <CheckboxField
-                    label={intl.formatMessage(messages.seriesMain)}
-                    checked={seriesMain}
-                    onChange={handleSeriesMainChange}
-                  />
-                )}
-              </>
-            )}
           </div>
 
           <div className='fields-group'>
@@ -503,6 +461,47 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 {intl.formatMessage(messages.visibilityPrivate)}
               </option>
             </SelectField>
+          </div>
+
+          <div className='fields-group fields-group-booklet'>
+            <SelectField
+              id='page_booklet'
+              label={intl.formatMessage(messages.booklet)}
+              value={bookletId}
+              onChange={handleBookletChange}
+            >
+              <option value=''>
+                {intl.formatMessage(messages.bookletNone)}
+              </option>
+              {bookletOptions.map((booklet) => (
+                <option key={booklet.id} value={booklet.id}>
+                  {booklet.title}
+                </option>
+              ))}
+            </SelectField>
+
+            {bookletId && (
+              <>
+                <TextInputField
+                  id='page_booklet_position'
+                  type='number'
+                  min={0}
+                  max={1000000}
+                  label={intl.formatMessage(messages.bookletPosition)}
+                  hint={intl.formatMessage(messages.bookletPositionHint)}
+                  value={bookletPosition.toString()}
+                  onChange={handleBookletPositionChange}
+                />
+                {visibility === 'public' && (
+                  <CheckboxField
+                    label={intl.formatMessage(messages.bookletMain)}
+                    checked={bookletMain}
+                    onChange={handleBookletMainChange}
+                    wrapperClassName='page-editor__booklet-main'
+                  />
+                )}
+              </>
+            )}
           </div>
 
           {visibility === 'password' && (

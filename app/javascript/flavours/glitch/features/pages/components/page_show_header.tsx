@@ -13,8 +13,6 @@ import { Avatar } from 'flavours/glitch/components/avatar';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import { Icon } from 'flavours/glitch/components/icon';
 
-import { getPageDisplayTitle } from '../util/page_title';
-
 const messages = defineMessages({
   create: { id: 'pages.create', defaultMessage: 'Create page' },
   report: { id: 'pages.report', defaultMessage: 'Report page' },
@@ -132,7 +130,7 @@ export const PageShowHeader: React.FC<{
 
   return (
     <ColumnHeader
-      title={getPageDisplayTitle(page)}
+      title={page.title}
       icon='description'
       iconComponent={DescriptionIcon}
       multiColumn={multiColumn}

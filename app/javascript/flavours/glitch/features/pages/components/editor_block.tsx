@@ -16,6 +16,8 @@ import type {
 import { Icon } from 'flavours/glitch/components/icon';
 import { useAppDispatch } from 'flavours/glitch/store';
 
+import { pageDocumentPlainText } from '../util/plain_text';
+
 import { BlockAddButtons } from './block_add_buttons';
 import { blockTypeMessages } from './block_messages';
 import { ImageUploadField } from './image_upload_field';
@@ -40,7 +42,7 @@ const messages = defineMessages({
   },
   textFormat: {
     id: 'pages.block.text_format',
-    defaultMessage: 'Text format',
+    defaultMessage: 'Document format',
   },
   textFormatMfm: {
     id: 'pages.block.text_format.mfm',
@@ -54,9 +56,9 @@ const messages = defineMessages({
     id: 'pages.block.character_count_with_spaces',
     defaultMessage: 'With spaces: {count}',
   },
-  characterCountWithoutSpaces: {
-    id: 'pages.block.character_count_without_spaces',
-    defaultMessage: 'Without spaces: {count}',
+  plainTextCharacterCount: {
+    id: 'pages.block.character_count_plain_text',
+    defaultMessage: 'Text only: {count}',
   },
   sectionPlaceholder: {
     id: 'pages.block.section_placeholder',
@@ -116,8 +118,10 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
   const dispatch = useAppDispatch();
   const blockId = block.id;
   const characterCount = block.type === 'text' ? length(block.text) : undefined;
-  const characterCountWithoutSpaces =
-    block.type === 'text' ? length(block.text.replace(/\s/gu, '')) : undefined;
+  const plainTextCharacterCount =
+    block.type === 'text'
+      ? length(pageDocumentPlainText(block.text, block.format ?? 'mfm'))
+      : undefined;
 
   const handleMoveUp = useCallback(() => {
     onMove(blockId, -1);
@@ -253,7 +257,7 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
 
       {block.type === 'text' && (
         <>
-          <label className='page-editor__block-option'>
+          <label className='page-editor__block-option page-editor__document-format'>
             <span>{intl.formatMessage(messages.textFormat)}</span>
             <select
               value={block.format ?? 'mfm'}
@@ -273,26 +277,28 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
             placeholder={intl.formatMessage(messages.textPlaceholder)}
             onChange={handleTextChange}
           />
-          <div className='page-editor__character-count'>
-            <span>
-              {intl.formatMessage(messages.characterCountWithSpaces, {
-                count: characterCount,
-              })}
-            </span>
-            <span>
-              {intl.formatMessage(messages.characterCountWithoutSpaces, {
-                count: characterCountWithoutSpaces,
-              })}
-            </span>
+          <div className='page-editor__text-meta'>
+            <label className='page-editor__block-option'>
+              <input
+                type='checkbox'
+                checked={block.spoiler ?? false}
+                onChange={handleSpoilerChange}
+              />
+              <span>{intl.formatMessage(messages.spoiler)}</span>
+            </label>
+            <div className='page-editor__character-count'>
+              <span>
+                {intl.formatMessage(messages.characterCountWithSpaces, {
+                  count: characterCount,
+                })}
+              </span>
+              <span>
+                {intl.formatMessage(messages.plainTextCharacterCount, {
+                  count: plainTextCharacterCount,
+                })}
+              </span>
+            </div>
           </div>
-          <label className='page-editor__block-option'>
-            <input
-              type='checkbox'
-              checked={block.spoiler ?? false}
-              onChange={handleSpoilerChange}
-            />
-            <span>{intl.formatMessage(messages.spoiler)}</span>
-          </label>
         </>
       )}
 

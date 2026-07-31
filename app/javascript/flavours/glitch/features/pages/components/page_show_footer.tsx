@@ -17,11 +17,10 @@ const messages = defineMessages({
 export const PageShowFooter: React.FC<{
   page: ApiPageJSON;
   isOwner: boolean;
-  isBlogView: boolean;
   previousPage: ApiPageJSON | null;
   nextPage: ApiPageJSON | null;
   onLikeToggle: () => void;
-}> = ({ page, isOwner, isBlogView, previousPage, nextPage, onLikeToggle }) => {
+}> = ({ page, isOwner, previousPage, nextPage, onLikeToggle }) => {
   const intl = useIntl();
   const location = useLocation();
 
@@ -77,7 +76,7 @@ export const PageShowFooter: React.FC<{
           </button>
         </div>
       </div>
-      {isBlogView && Boolean(previousPage ?? nextPage) && (
+      {Boolean(previousPage ?? nextPage) && (
         <nav
           className='page__pagination'
           aria-label={intl.formatMessage({

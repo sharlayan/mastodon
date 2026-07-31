@@ -40,7 +40,7 @@ const messages = defineMessages({
   cover: { id: 'pages.field.series_cover', defaultMessage: 'Booklet cover' },
   coverHint: {
     id: 'pages.field.series_cover_hint',
-    defaultMessage: 'Displayed at a 3:4 ratio, up to 600 × 800 px.',
+    defaultMessage: 'Crop to a 3:4 ratio, up to 600 × 800 px.',
   },
   preview: {
     id: 'pages.booklet.preview',

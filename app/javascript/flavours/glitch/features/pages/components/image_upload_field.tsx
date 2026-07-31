@@ -1,10 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 
-import { FormattedMessage } from 'react-intl';
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import { showAlertForError } from 'flavours/glitch/actions/alerts';
 import { openModal } from 'flavours/glitch/actions/modal';
-import { apiAttachDriveFile } from 'flavours/glitch/api/drive';
 import { apiUploadPageMedia } from 'flavours/glitch/api/pages';
 import type { ApiDriveFileJSON } from 'flavours/glitch/api_types/drive';
 import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
@@ -12,13 +11,53 @@ import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { driveEnabled } from 'flavours/glitch/initial_state';
 import { useAppDispatch } from 'flavours/glitch/store';
 
+const messages = defineMessages({
+  cropTitle: {
+    id: 'pages.booklet.crop_cover',
+    defaultMessage: 'Crop Booklet cover',
+  },
+});
+
 export const ImageUploadField: React.FC<{
   value: ApiMediaAttachmentJSON | null;
   onChange: (media: ApiMediaAttachmentJSON | null) => void;
 }> = ({ value, onChange }) => {
   const dispatch = useAppDispatch();
+  const intl = useIntl();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+
+  const openCropModal = useCallback(
+    (src: string, fileName: string) => {
+      dispatch(
+        openModal({
+          modalType: 'BOOKLET_COVER_CROP',
+          modalProps: {
+            src,
+            title: intl.formatMessage(messages.cropTitle),
+            onComplete: async (blob: Blob) => {
+              setUploading(true);
+              const uploadName = fileName.replace(/\.[^.]+$/, '') + '.png';
+              const file = new File([blob], uploadName, {
+                type: blob.type || 'image/png',
+              });
+
+              try {
+                const media = await apiUploadPageMedia(file);
+                onChange(media);
+              } finally {
+                setUploading(false);
+              }
+            },
+            onError: (error: unknown) => {
+              dispatch(showAlertForError(error));
+            },
+          },
+        }),
+      );
+    },
+    [dispatch, intl, onChange],
+  );
 
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,19 +67,17 @@ export const ImageUploadField: React.FC<{
         return;
       }
 
-      setUploading(true);
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        if (typeof reader.result === 'string') {
+          openCropModal(reader.result, file.name);
+        }
+      });
+      reader.readAsDataURL(file);
 
-      apiUploadPageMedia(file)
-        .then((media) => {
-          onChange(media);
-          return media;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          setUploading(false);
-        });
+      event.target.value = '';
     },
-    [onChange],
+    [openCropModal],
   );
 
   const handleBrowseClick = useCallback(() => {
@@ -52,8 +89,21 @@ export const ImageUploadField: React.FC<{
       setUploading(true);
 
       try {
-        const media = await apiAttachDriveFile(file.id);
-        onChange(media);
+        const response = await fetch(file.url, { credentials: 'include' });
+        if (!response.ok) {
+          throw new Error(`Could not load Drive image (${response.status})`);
+        }
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+          if (typeof reader.result === 'string') {
+            openCropModal(
+              reader.result,
+              file.file_name ?? file.name ?? 'booklet-cover',
+            );
+          }
+        });
+        reader.readAsDataURL(blob);
       } catch (error: unknown) {
         dispatch(showAlertForError(error));
         throw error;
@@ -61,7 +111,7 @@ export const ImageUploadField: React.FC<{
         setUploading(false);
       }
     },
-    [dispatch, onChange],
+    [dispatch, openCropModal],
   );
 
   const handleDriveClick = useCallback(() => {

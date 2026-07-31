@@ -79,19 +79,19 @@ RSpec.describe 'Page series' do
     series = Fabricate(:page_series, account: user.account, cover_media_attachment: cover)
     page = Fabricate(:page, account: user.account)
 
-    put "/api/v1/pages/#{page.id}", params: { page_series_id: series.id, series_position: 3 }, headers: headers
+    put "/api/v1/pages/#{page.id}", params: { booklet_id: series.id, booklet_position: 3 }, headers: headers
     expect(response).to have_http_status(200)
     expect(response.parsed_body).to include(
-      page_series_id: series.id.to_s,
-      series_position: 3,
-      series_main: false
+      booklet_id: series.id.to_s,
+      booklet_position: 3,
+      booklet_main: false
     )
-    expect(response.parsed_body.dig(:page_series, :title)).to eq(series.title)
-    expect(response.parsed_body.dig(:page_series, :cover_media_attachment, :id)).to eq(cover.id.to_s)
+    expect(response.parsed_body.dig(:booklet, :title)).to eq(series.title)
+    expect(response.parsed_body.dig(:booklet, :cover_media_attachment, :id)).to eq(cover.id.to_s)
 
     post "/api/v1/pages/#{page.id}/series_main", headers: headers
     expect(response).to have_http_status(200)
-    expect(response.parsed_body[:series_main]).to be true
+    expect(response.parsed_body[:booklet_main]).to be true
     expect(series.reload.main_page).to eq(page)
 
     delete "/api/v1/pages/#{page.id}/series_main", headers: headers
@@ -103,7 +103,7 @@ RSpec.describe 'Page series' do
     other_series = Fabricate(:page_series)
     page = Fabricate(:page, account: user.account, visibility: 'private')
 
-    put "/api/v1/pages/#{page.id}", params: { page_series_id: other_series.id }, headers: headers
+    put "/api/v1/pages/#{page.id}", params: { booklet_id: other_series.id }, headers: headers
     expect(response).to have_http_status(422)
 
     own_series = Fabricate(:page_series, account: user.account)

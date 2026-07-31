@@ -35,6 +35,10 @@ export const sharlayanModalComponents = {
       (module) => ({ default: module.DriveFileNameModal }),
     ),
   MFM_PREVIEW: () => Promise.resolve({ default: MfmPreviewModal }),
+  BOOKLET_COVER_CROP: () =>
+    import('@/flavours/glitch/features/pages/components/booklet_cover_crop_modal').then(
+      (module) => ({ default: module.BookletCoverCropModal }),
+    ),
   CONVERSATION_PARTICIPANTS: () =>
     Promise.resolve({ default: ConversationParticipantsModal }),
   ACCOUNT_SWITCHER: () =>

@@ -49,7 +49,6 @@ import type { PageMediaOpenHandler } from './components/blocks';
 import { PageShowContent } from './components/page_show_content';
 import { PageShowHeader } from './components/page_show_header';
 import { PageShowSidebar } from './components/page_show_sidebar';
-import { getPageDisplayTitle } from './util/page_title';
 
 interface PageMediaEntry {
   key: string;
@@ -322,7 +321,7 @@ const PageShow: React.FC<{
 
     if (supportsNativeShare) {
       void navigator.share({
-        title: getPageDisplayTitle(currentPage),
+        title: currentPage.title,
         url,
       });
     } else {
@@ -492,7 +491,7 @@ const PageShow: React.FC<{
   }
 
   const title = currentPage
-    ? getPageDisplayTitle(currentPage)
+    ? currentPage.title
     : intl.formatMessage(messages.heading);
   const accountPages =
     accountPagesResult && accountPagesResult.accountId === currentPageAccountId
@@ -506,15 +505,14 @@ const PageShow: React.FC<{
         ...(accountPages ?? []),
       ]
     : [];
-  const filteredAccountPages = currentPage?.page_series_id
+  const filteredAccountPages = currentPage?.booklet_id
     ? visibleAccountPages
         .filter(
-          (accountPage) =>
-            accountPage.page_series_id === currentPage.page_series_id,
+          (accountPage) => accountPage.booklet_id === currentPage.booklet_id,
         )
         .toSorted(
           (left, right) =>
-            left.series_position - right.series_position ||
+            left.booklet_position - right.booklet_position ||
             left.id.localeCompare(right.id),
         )
     : visibleAccountPages;

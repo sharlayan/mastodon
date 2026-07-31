@@ -3068,6 +3068,7 @@ __metadata:
     lande: "npm:^1.0.10"
     lint-staged: "npm:^17.0.0"
     lodash: "npm:^4.17.21"
+    marked: "npm:^4.3.0"
     marky: "npm:^1.2.5"
     mfm-js: "npm:0.25.0"
     msw: "npm:^2.12.1"
@@ -10143,7 +10144,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"marked@npm:^4.1.0":
+"marked@npm:^4.1.0, marked@npm:^4.3.0":
   version: 4.3.0
   resolution: "marked@npm:4.3.0"
   bin:

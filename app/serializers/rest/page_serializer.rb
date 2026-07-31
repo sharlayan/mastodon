@@ -2,7 +2,7 @@
 
 class REST::PageSerializer < ActiveModel::Serializer
   attributes :id, :title, :name, :summary, :category, :draft, :visibility, :locked, :content, :align_center, :is_main,
-             :hide_title_when_pinned, :font, :account_id, :page_series_id, :page_series, :series_position, :series_main,
+             :hide_title_when_pinned, :font, :account_id, :booklet_id, :booklet, :booklet_position, :booklet_main,
              :eye_catching_media_attachment_id, :likes_count, :views_count,
              :created_at, :updated_at
 
@@ -20,11 +20,11 @@ class REST::PageSerializer < ActiveModel::Serializer
     object.account_id.to_s
   end
 
-  def page_series_id
+  def booklet_id
     object.page_series_id&.to_s
   end
 
-  def page_series
+  def booklet
     return if object.page_series.nil?
 
     {
@@ -37,7 +37,11 @@ class REST::PageSerializer < ActiveModel::Serializer
     }
   end
 
-  def series_main
+  def booklet_position
+    object.series_position
+  end
+
+  def booklet_main
     object.series_main?
   end
 
