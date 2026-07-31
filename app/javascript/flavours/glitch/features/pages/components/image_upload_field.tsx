@@ -4,6 +4,7 @@ import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import { showAlertForError } from 'flavours/glitch/actions/alerts';
 import { openModal } from 'flavours/glitch/actions/modal';
+import { apiAttachDriveFile } from 'flavours/glitch/api/drive';
 import { apiUploadPageMedia } from 'flavours/glitch/api/pages';
 import type { ApiDriveFileJSON } from 'flavours/glitch/api_types/drive';
 import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
@@ -89,21 +90,8 @@ export const ImageUploadField: React.FC<{
       setUploading(true);
 
       try {
-        const response = await fetch(file.url, { credentials: 'include' });
-        if (!response.ok) {
-          throw new Error(`Could not load Drive image (${response.status})`);
-        }
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.addEventListener('load', () => {
-          if (typeof reader.result === 'string') {
-            openCropModal(
-              reader.result,
-              file.file_name ?? file.name ?? 'booklet-cover',
-            );
-          }
-        });
-        reader.readAsDataURL(blob);
+        const media = await apiAttachDriveFile(file.id);
+        onChange(media);
       } catch (error: unknown) {
         dispatch(showAlertForError(error));
         throw error;
@@ -111,7 +99,7 @@ export const ImageUploadField: React.FC<{
         setUploading(false);
       }
     },
-    [dispatch, openCropModal],
+    [dispatch, onChange],
   );
 
   const handleDriveClick = useCallback(() => {

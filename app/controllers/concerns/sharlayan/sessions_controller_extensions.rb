@@ -12,6 +12,14 @@ module Sharlayan::SessionsControllerExtensions
   end
 
   def destroy
+    parent_account = Account.find_by(id: switch_parent_stack.first)
+
+    if parent_account&.user&.active_for_authentication?
+      switch_to_user(parent_account.user, [], parent_account.id)
+      respond_to_account_return
+      return
+    end
+
     clear_switch_parent_stack
     super
   end
@@ -23,6 +31,10 @@ module Sharlayan::SessionsControllerExtensions
   end
 
   private
+
+  def continue_after?
+    switch_parent_stack.blank? && super
+  end
 
   def handle_account_switch
     unless user_signed_in?
@@ -44,12 +56,23 @@ module Sharlayan::SessionsControllerExtensions
       return
     end
 
+    switch_to_user(target_user, new_stack, target_account.id)
+    redirect_to root_path
+  end
+
+  def switch_to_user(target_user, new_stack, owner_id)
     sign_out(current_user)
     reset_session
     sign_in(target_user)
-    persist_switch_parent_stack(new_stack, target_account.id)
+    persist_switch_parent_stack(new_stack, owner_id)
     target_user.update_sign_in!(new_sign_in: true)
-    redirect_to root_path
+  end
+
+  def respond_to_account_return
+    respond_to do |format|
+      format.json { render json: { redirect_to: root_path }, status: 200 }
+      format.any { redirect_to root_path }
+    end
   end
 
   def compute_switch_stack(parent_stack, target_account)
