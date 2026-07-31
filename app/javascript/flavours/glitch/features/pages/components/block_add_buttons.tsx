@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { useIntl } from 'react-intl';
 
@@ -11,6 +11,12 @@ export const BlockAddButtons: React.FC<{
   onAdd: (type: ApiPageBlockType) => void;
 }> = ({ types, onAdd }) => {
   const intl = useIntl();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const addBlockLabel = intl.formatMessage({
+    id: 'pages.add_block',
+    defaultMessage: 'Add block',
+  });
 
   const handleClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -20,19 +26,55 @@ export const BlockAddButtons: React.FC<{
     [onAdd],
   );
 
+  const handleMobileMenuToggle = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const blockAdder = event.currentTarget.parentElement;
+      const willOpen = event.currentTarget.ariaExpanded !== 'true';
+
+      setIsMobileMenuOpen(willOpen);
+
+      if (willOpen && window.matchMedia('(width < 480px)').matches) {
+        requestAnimationFrame(() => {
+          blockAdder?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+      }
+    },
+    [],
+  );
+
+  const buttons = () =>
+    types.map((type) => (
+      <button
+        key={type}
+        type='button'
+        className='button button-secondary'
+        data-block-type={type}
+        onClick={handleClick}
+      >
+        {intl.formatMessage(addBlockMessages[type])}
+      </button>
+    ));
+
   return (
-    <div className='page-editor__add-buttons'>
-      {types.map((type) => (
+    <div className='page-editor__block-adder'>
+      <div className='page-editor__add-buttons page-editor__add-buttons--inline'>
+        {buttons()}
+      </div>
+
+      <div className='page-editor__block-adder__mobile'>
         <button
-          key={type}
           type='button'
           className='button button-secondary'
-          data-block-type={type}
-          onClick={handleClick}
+          aria-expanded={isMobileMenuOpen}
+          onClick={handleMobileMenuToggle}
         >
-          {intl.formatMessage(addBlockMessages[type])}
+          {addBlockLabel}
         </button>
-      ))}
+
+        {isMobileMenuOpen && (
+          <div className='page-editor__add-buttons'>{buttons()}</div>
+        )}
+      </div>
     </div>
   );
 };

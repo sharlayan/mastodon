@@ -667,6 +667,10 @@
     margin-top: 8px;
   }
 
+  &__block-adder__mobile {
+    display: none;
+  }
+
   &__actions {
     margin-top: 20px;
   }
@@ -779,6 +783,31 @@
 
   .fields-group {
     margin-bottom: 16px;
+  }
+
+  @media screen and (width < 480px) {
+    &__add-buttons--inline {
+      display: none;
+    }
+
+    &__block-adder__mobile {
+      display: block;
+      scroll-margin-block-end: 68px;
+
+      > .button {
+        width: 100%;
+      }
+    }
+
+    &__block-adder__mobile &__add-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 8px;
+
+      .button:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+      }
+    }
   }
 }
 
