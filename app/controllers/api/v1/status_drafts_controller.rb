@@ -55,6 +55,7 @@ class Api::V1::StatusDraftsController < Api::BaseController
       :status, :spoiler_text, :content_type, :local_only, :in_reply_to_id,
       :sensitive, :visibility, :circle_id, :language, :quoted_status_id,
       :quote_approval_policy, :scheduled_at,
+      :reaction_acceptance,
       clip_ids: [],
       poll: [:expires_in, :multiple, :hide_totals, { options: [] }]
     ).to_h

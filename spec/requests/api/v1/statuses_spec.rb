@@ -184,6 +184,28 @@ RSpec.describe '/api/v1/statuses' do
         end
       end
 
+      context 'with reaction acceptance' do
+        let(:params) { { status: 'Hello world', reaction_acceptance: 'nonSensitiveOnly' } }
+
+        it 'stores and returns the selected acceptance' do
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body[:reaction_acceptance]).to eq('nonSensitiveOnly')
+          expect(Status.last.reaction_acceptance).to eq('nonSensitiveOnly')
+        end
+      end
+
+      context 'without reaction acceptance and the user has a default' do
+        let(:user) { Fabricate(:user, settings: { default_reaction_acceptance: 'likeOnlyForRemote' }) }
+
+        it 'uses the server-stored default' do
+          subject
+          expect(response).to have_http_status(200)
+          expect(Status.last.reaction_acceptance).to eq('likeOnlyForRemote')
+        end
+      end
+
       context 'without a quote policy' do
         let(:user) do
           Fabricate(:user, settings: { default_quote_policy: 'followers' })

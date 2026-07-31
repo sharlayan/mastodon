@@ -12,6 +12,7 @@ import { CircleButton } from 'flavours/glitch/features/compose/components/circle
 import { ClipButton } from 'flavours/glitch/features/compose/components/clip_button';
 import { DraftButton } from 'flavours/glitch/features/compose/components/draft_button';
 import { MfmComposeHint } from 'flavours/glitch/features/compose/components/mfm_compose_hint';
+import { ReactionAcceptanceButton } from 'flavours/glitch/features/compose/components/reaction_acceptance_button';
 import { ScheduleButton } from 'flavours/glitch/features/compose/components/schedule_button';
 import type { SecondaryPrivacyButton } from 'flavours/glitch/features/compose/components/secondary_privacy_button';
 import { useAccount } from 'flavours/glitch/hooks/useAccount';
@@ -183,6 +184,7 @@ export const SharlayanComposeControls = ({
             iconOnly={false}
           />
         )}
+        <ReactionAcceptanceButton />
         {!isEditing && <DraftButton onSaveDraft={onSaveDraft} />}
       </div>
 

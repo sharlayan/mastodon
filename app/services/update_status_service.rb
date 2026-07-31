@@ -123,6 +123,7 @@ class UpdateStatusService < BaseService
     @status.sensitive    = @options[:sensitive] || @options[:spoiler_text].present? if @options.key?(:sensitive) || @options.key?(:spoiler_text)
     @status.language     = valid_locale_cascade(@options[:language], @status.language, @status.account.user&.preferred_posting_language, I18n.default_locale)
     @status.content_type = @options[:content_type] || @status.content_type
+    @status.reaction_acceptance = @options[:reaction_acceptance] if @options.key?(:reaction_acceptance)
     @status.quote_approval_policy = @options[:quote_approval_policy] if @options[:quote_approval_policy].present?
     apply_sharlayan_immediate_attributes
 

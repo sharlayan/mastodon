@@ -167,6 +167,10 @@ module User::HasSettings
     settings['default_quote_policy'] || 'public'
   end
 
+  def setting_default_reaction_acceptance
+    settings['default_reaction_acceptance']
+  end
+
   def setting_visible_reactions
     integer_cast_setting('visible_reactions', 0)
   end

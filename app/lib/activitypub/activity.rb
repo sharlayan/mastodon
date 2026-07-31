@@ -208,6 +208,7 @@ class ActivityPub::Activity
     emoji = CustomEmoji.find_by(shortcode: custom_emoji_parser.shortcode, domain: @account.domain)
     return emoji unless emoji.nil? ||
                         custom_emoji_parser.image_remote_url != emoji.image_remote_url ||
+                        (!custom_emoji_parser.sensitive.nil? && custom_emoji_parser.sensitive != emoji.is_sensitive?) ||
                         (custom_emoji_parser.updated_at && custom_emoji_parser.updated_at >= emoji.updated_at)
 
     begin
@@ -215,6 +216,7 @@ class ActivityPub::Activity
                                 shortcode: custom_emoji_parser.shortcode,
                                 uri: custom_emoji_parser.uri)
       emoji.image_remote_url = custom_emoji_parser.image_remote_url
+      emoji.is_sensitive = custom_emoji_parser.sensitive unless custom_emoji_parser.sensitive.nil?
       emoji.save
     rescue Seahorse::Client::NetworkingError => e
       Rails.logger.warn "Error fetching emoji: #{e}"

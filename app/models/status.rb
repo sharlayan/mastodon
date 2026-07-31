@@ -17,6 +17,7 @@
 #  mfm_text                     :text
 #  ordered_media_attachment_ids :bigint(8)        is an Array
 #  quote_approval_policy        :integer          default(0), not null
+#  reaction_acceptance          :string
 #  reply                        :boolean          default(FALSE), not null
 #  sensitive                    :boolean          default(FALSE), not null
 #  spoiler_text                 :text             default(""), not null

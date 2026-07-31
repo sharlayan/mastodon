@@ -152,6 +152,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def create
     status = if renote_id.present? && params[:text].blank?
+               reaction_acceptance_option if params.key?(:reactionAcceptance)
                ReblogService.new.call(current_account, quoted_status)
              else
                with_resolved_media_ids do |media_ids|
@@ -453,15 +454,18 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       quoted_status: quoted,
       poll: poll_options,
       scheduled_at: scheduled_at_option,
+      reaction_acceptance: reaction_acceptance_option,
     }.compact
   end
 
   def update_options
-    {
+    options = {
       text: composed_text(params[:text].to_s),
       content_type: composed_content_type,
       spoiler_text: params[:cw].to_s,
     }
+    options[:reaction_acceptance] = reaction_acceptance_option if params.key?(:reactionAcceptance)
+    options
   end
 
   def with_resolved_media_ids(status: nil, &block)
@@ -490,6 +494,15 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     return nil if params[:scheduledAt].blank?
 
     Time.at(params[:scheduledAt].to_i / 1000.0).utc
+  end
+
+  def reaction_acceptance_option
+    value = params[:reactionAcceptance]
+    return nil if value.nil?
+
+    raise ArgumentError, 'invalid reactionAcceptance' unless Sharlayan::Status::Reactions::REACTION_ACCEPTANCES.include?(value)
+
+    value
   end
 
   def poll_options
@@ -564,6 +577,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
         cw: params_hash['spoiler_text'].presence,
         visibility: MisskeyCompat::NoteSerializer::VISIBILITY_MAP.fetch(params_hash['visibility'], 'public'),
         localOnly: ActiveModel::Type::Boolean.new.cast(params_hash['local_only']) || false,
+        reactionAcceptance: params_hash['reaction_acceptance'],
         files: scheduled_status.media_attachments.map { |media| MisskeyCompat::DriveFileSerializer.serialize(media) },
         poll: nil,
         visibleUserIds: [],
@@ -588,6 +602,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     raise ArgumentError, 'text is too long' if params[:text].to_s.length > StatusLengthValidator::MAX_CHARS
     raise ArgumentError, 'cw is too long' if params[:cw].to_s.length > 100
     raise ArgumentError, 'too many files' if Array(params[:fileIds]).length > Status::MEDIA_ATTACHMENTS_LIMIT
+
+    reaction_acceptance_option if params.key?(:reactionAcceptance)
 
     poll = params[:poll]
     return if poll.blank?

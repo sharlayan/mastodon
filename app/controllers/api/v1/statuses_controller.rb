@@ -45,6 +45,7 @@ class Api::V1::StatusesController < Api::BaseController
       poll: status_params[:poll],
       content_type: status_params[:content_type],
       local_only: status_params[:local_only],
+      **(status_params.key?(:reaction_acceptance) ? { reaction_acceptance: status_params[:reaction_acceptance] } : {}),
       allowed_mentions: status_params[:allowed_mentions],
       clip_ids: status_params[:clip_ids],
       idempotency: request.headers['Idempotency-Key'],
@@ -72,6 +73,7 @@ class Api::V1::StatusesController < Api::BaseController
     }
 
     update_options[:quote_approval_policy] = quote_approval_policy if status_params[:quote_approval_policy].present?
+    update_options[:reaction_acceptance] = status_params[:reaction_acceptance] if status_params.key?(:reaction_acceptance)
 
     UpdateStatusService.new.call(@status, current_account.id, update_options)
 
@@ -152,6 +154,7 @@ class Api::V1::StatusesController < Api::BaseController
       :scheduled_at,
       :content_type,
       :local_only,
+      :reaction_acceptance,
       allowed_mentions: [],
       clip_ids: [],
       media_ids: [],

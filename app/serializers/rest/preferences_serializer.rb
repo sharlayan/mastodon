@@ -5,6 +5,7 @@ class REST::PreferencesSerializer < ActiveModel::Serializer
   attribute :posting_default_sensitive, key: 'posting:default:sensitive'
   attribute :posting_default_language, key: 'posting:default:language'
   attribute :posting_default_quote_policy, key: 'posting:default:quote_policy'
+  attribute :posting_default_reaction_acceptance, key: 'posting:default:reaction_acceptance'
 
   attribute :reading_default_sensitive_media, key: 'reading:expand:media'
   attribute :reading_default_sensitive_text, key: 'reading:expand:spoilers'
@@ -16,6 +17,10 @@ class REST::PreferencesSerializer < ActiveModel::Serializer
 
   def posting_default_quote_policy
     object.user.setting_default_quote_policy
+  end
+
+  def posting_default_reaction_acceptance
+    object.user.setting_default_reaction_acceptance
   end
 
   def posting_default_sensitive

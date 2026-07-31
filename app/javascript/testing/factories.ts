@@ -133,6 +133,7 @@ export const statusFactoryAPI: FactoryFunction<ApiStatusJSON> = ({
   sensitive: false,
   visibility: 'public',
   language: 'en',
+  reaction_acceptance: null,
   uri: 'https://example.com/status/1',
   url: 'https://example.com/status/1',
   replies_count: 0,

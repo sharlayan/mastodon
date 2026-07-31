@@ -92,6 +92,12 @@ export interface ApiStatusJSON {
   visibility: StatusVisibility;
   limited_scope?: string;
   language: string;
+  reaction_acceptance:
+    | 'likeOnly'
+    | 'likeOnlyForRemote'
+    | 'nonSensitiveOnly'
+    | 'nonSensitiveOnlyForLocalLikeOnlyForRemote'
+    | null;
   uri: string;
   url: string;
   replies_count: number;

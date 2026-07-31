@@ -9,6 +9,7 @@ RSpec.describe UserSettings do
     expect(settings[:hide_online_status]).to be true
     expect(settings[:show_online_status]).to be false
     expect(settings[:default_quote_policy]).to eq('nobody')
+    expect(settings[:default_reaction_acceptance]).to be_nil
     expect(settings[:visible_reactions]).to eq(6)
     expect(settings[:drive_keep_original_filename]).to be true
     expect(settings[:drive_upload_original_image]).to be true
@@ -27,6 +28,7 @@ RSpec.describe UserSettings do
     expect { settings[:'web.mfm_fold_mode'] = 'unknown' }.to raise_error(ArgumentError)
     expect { settings[:'web.pages_view'] = 'magazine' }.to raise_error(ArgumentError)
     expect { settings[:'web.pages_blog_list_position'] = 'top' }.to raise_error(ArgumentError)
+    expect { settings[:default_reaction_acceptance] = 'customOnly' }.to raise_error(ArgumentError)
     expect { settings[:'avatar_decorations.shape'] = 'triangle' }.to raise_error(ArgumentError)
   end
 

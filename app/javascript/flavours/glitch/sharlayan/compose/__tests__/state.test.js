@@ -8,6 +8,7 @@ import {
 import { composeReducer } from '../../../reducers/compose';
 import {
   changeScheduledAt,
+  changeReactionAcceptance,
   discardCompose,
   resetScheduledComposeState,
   resetSharlayanComposeState,
@@ -28,17 +29,37 @@ describe('Sharlayan compose state', () => {
       clip_ids: [],
       scheduled_at: null,
       draft_id: null,
+      reaction_acceptance: null,
+      default_reaction_acceptance: null,
     });
     expect(resetSharlayanComposeState(state).toJS()).toEqual({
       circle_id: null,
       clip_ids: [],
       scheduled_at: null,
       draft_id: null,
+      reaction_acceptance: null,
+      default_reaction_acceptance: null,
       text: 'keep me',
     });
     expect(resetScheduledComposeState(state).get('circle_id')).toBe('circle-id');
     expect(resetScheduledComposeState(state).get('clip_ids').toArray()).toEqual(['clip-id']);
     expect(resetScheduledComposeState(state).get('scheduled_at')).toBeNull();
+  });
+
+  it('changes and resets reaction acceptance', () => {
+    let state = composeReducer(undefined, changeReactionAcceptance('likeOnly'));
+    expect(state.get('reaction_acceptance')).toBe('likeOnly');
+
+    state = composeReducer(state, discardCompose());
+    expect(state.get('reaction_acceptance')).toBeNull();
+  });
+
+  it('restores the server default reaction acceptance after discard', () => {
+    const state = composeReducer(undefined, discardCompose())
+      .set('default_reaction_acceptance', 'likeOnlyForRemote')
+      .set('reaction_acceptance', 'likeOnly');
+
+    expect(composeReducer(state, discardCompose()).get('reaction_acceptance')).toBe('likeOnlyForRemote');
   });
 
   it('handles circle and clip selection through the core reducer hook', () => {

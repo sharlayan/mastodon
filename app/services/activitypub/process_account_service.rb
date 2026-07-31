@@ -624,12 +624,14 @@ class ActivityPub::ProcessAccountService < BaseService
     image_url = tag['icon']['url']
     uri       = tag['id']
     updated   = tag['updated']
+    sensitive = tag['isSensitive'] if tag.key?('isSensitive')
     emoji     = CustomEmoji.find_by(shortcode: shortcode, domain: @account.domain)
 
-    return unless emoji.nil? || image_url != emoji.image_remote_url || (updated && updated >= emoji.updated_at)
+    return unless emoji.nil? || image_url != emoji.image_remote_url || (!sensitive.nil? && sensitive != emoji.is_sensitive?) || (updated && updated >= emoji.updated_at)
 
     emoji ||= CustomEmoji.new(domain: @account.domain, shortcode: shortcode, uri: uri)
     emoji.image_remote_url = image_url
+    emoji.is_sensitive = sensitive unless sensitive.nil?
     emoji.save
   end
 

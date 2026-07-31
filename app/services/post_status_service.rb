@@ -294,6 +294,7 @@ class PostStatusService < BaseService
       application: @options[:application],
       content_type: @options[:content_type] || @account.user&.setting_default_content_type,
       local_only: @options[:local_only],
+      reaction_acceptance: @options.fetch(:reaction_acceptance, @account.user&.setting_default_reaction_acceptance),
       rate_limit: @options[:with_rate_limit],
       quote_approval_policy: @options[:quote_approval_policy],
     }.compact

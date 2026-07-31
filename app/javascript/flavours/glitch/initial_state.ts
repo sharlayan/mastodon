@@ -92,6 +92,7 @@ interface InitialStateCompose {
   default_sensitive?: boolean;
   default_language?: string;
   default_quote_policy?: string;
+  default_reaction_acceptance?: string | null;
   me?: string;
 }
 

@@ -19,6 +19,7 @@ class UserSettings
   setting :default_content_type, default: 'text/plain'
   setting :hide_followers_count, default: false
   setting :default_quote_policy, default: 'nobody', in: %w(public followers nobody) # patch for default no-quote my statuses
+  setting :default_reaction_acceptance, default: nil, in: Sharlayan::Status::Reactions::REACTION_ACCEPTANCES
   setting :email_subscriptions, default: false
 
   setting_inverse_alias :indexable, :noindex

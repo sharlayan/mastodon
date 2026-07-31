@@ -103,4 +103,42 @@ RSpec.describe ReactService, type: :service do
       expect(StatusReaction.where(account: sender, status: status, name: '👍').count).to eq 1
     end
   end
+
+  describe 'reaction acceptance' do
+    let(:status) { Fabricate(:status, reaction_acceptance: acceptance) }
+
+    context 'when only likes are accepted' do
+      let(:acceptance) { 'likeOnly' }
+
+      it 'normalizes a local reaction to a like' do
+        reaction = subject.call(sender, status, '👍')
+
+        expect(reaction).to have_attributes(name: "\u2764", custom_emoji_id: nil)
+      end
+    end
+
+    context 'when sensitive custom emojis are excluded' do
+      let(:acceptance) { 'nonSensitiveOnly' }
+      let!(:emoji) { Fabricate(:custom_emoji, shortcode: 'sensitive', is_sensitive: true) }
+
+      it 'normalizes a sensitive custom emoji to a like' do
+        reaction = subject.call(sender, status, emoji.shortcode)
+
+        expect(reaction).to have_attributes(name: "\u2764", custom_emoji_id: nil)
+      end
+    end
+
+    context 'when only remote reactions are restricted to likes' do
+      let(:acceptance) { 'likeOnlyForRemote' }
+      let(:remote_sender) { Fabricate(:account, domain: 'remote.example') }
+
+      it 'keeps local reactions and normalizes remote reactions' do
+        local_reaction = subject.call(sender, status, '👍')
+        remote_reaction = subject.call(remote_sender, status, '🎉')
+
+        expect(local_reaction.name).to eq('👍')
+        expect(remote_reaction.name).to eq("\u2764")
+      end
+    end
+  end
 end

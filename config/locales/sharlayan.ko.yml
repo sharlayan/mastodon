@@ -356,7 +356,7 @@ ko:
       망가뜨릴 수 있으며, 그럴 경우 로그인 폼에서 <strong>커스텀 CSS 비활성화</strong>를 선택해 복구할 수 있습니다.
   custom_emoji_mutes:
     errors:
-      limit: 커스텀 이모지 뮤트 최대 개수를 초과합니다
+      limit: 커스텀 에모지 뮤트 최대 개수를 초과합니다
   exports:
     clips: 클립
     pages: 페이지
@@ -495,6 +495,12 @@ ko:
         setting_auto_quote_from_url: 게시물의 연합우주 게시물 링크를 자동으로 인용
         setting_bridge_unlisted_to_bsky: 제한된 공개 게시물을 블루스카이에 전체 공개로 전달
         setting_custom_emoji_size: 커스텀 에모지 원본 비율 표시
+        setting_default_reaction_acceptance: 기본 리액션 수신 범위
+        setting_default_reaction_acceptance_all: 모든 리액션 받기
+        setting_default_reaction_acceptance_like_only: 좋아요만 받기
+        setting_default_reaction_acceptance_like_only_remote: 리모트에서는 좋아요만 받기
+        setting_default_reaction_acceptance_non_sensitive: 민감한 에모지를 제외하고 받기
+        setting_default_reaction_acceptance_mixed: 민감한 에모지를 제외하고 받기(리모트에서는 좋아요만 받기)
         setting_default_quote_policy_private: 팔로워만으로 설정할 경우 다른 사람이 인용할 수 없습니다.
         setting_default_quote_policy_unlisted: 사용자의 게시물을 인용할 경우 인용된 게시물은 인기 게시물에서
           숨겨집니다.

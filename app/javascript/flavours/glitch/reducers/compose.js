@@ -677,6 +677,7 @@ export const composeReducer = (state = initialState, action) => {
       map.set('quoted_status_id', action.quoted_status_id);
       // Mastodon-authored posts can be expected to have at most one automatic approval policy
       map.set('quote_policy', action.status.getIn(['quote_approval', 'automatic', 0]) || 'nobody');
+      map.set('reaction_acceptance', action.status.get('reaction_acceptance') || null);
 
       if (action.status.get('spoiler_text').length > 0) {
         map.set('spoiler', true);
@@ -721,6 +722,7 @@ export const composeReducer = (state = initialState, action) => {
       map.set('quoted_status_id', action.status.getIn(['quote', 'quoted_status'], null));
       // Mastodon-authored posts can be expected to have at most one automatic approval policy
       map.set('quote_policy', action.status.getIn(['quote_approval', 'automatic', 0]) || 'nobody');
+      map.set('reaction_acceptance', action.status.get('reaction_acceptance') || null);
 
       if (action.spoiler_text.length > 0) {
         map.set('spoiler', true);

@@ -8,10 +8,14 @@ export const sharlayanComposeInitialState = ImmutableMap({
   clip_ids: ImmutableList(),
   scheduled_at: null,
   draft_id: null,
+  reaction_acceptance: null,
+  default_reaction_acceptance: null,
 });
 
 export const resetSharlayanComposeState = (state) =>
-  state.merge(sharlayanComposeInitialState);
+  state.merge(sharlayanComposeInitialState)
+    .set('default_reaction_acceptance', state.get('default_reaction_acceptance', null))
+    .set('reaction_acceptance', state.get('default_reaction_acceptance', null));
 
 export const resetScheduledComposeState = (state) =>
   state.set('scheduled_at', null);
@@ -23,6 +27,11 @@ export const discardCompose = () => ({
 export const changeScheduledAt = (scheduledAt) => ({
   type: 'COMPOSE_SCHEDULED_AT_CHANGE',
   scheduledAt: scheduledAt || null,
+});
+
+export const changeReactionAcceptance = (reactionAcceptance) => ({
+  type: 'COMPOSE_REACTION_ACCEPTANCE_CHANGE',
+  reactionAcceptance,
 });
 
 export const reduceSharlayanCompose = (
@@ -47,6 +56,10 @@ export const reduceSharlayanCompose = (
         ? list.filter(id => id !== action.payload)
         : list.push(action.payload)
     ));
+  }
+
+  if (action.type === 'COMPOSE_REACTION_ACCEPTANCE_CHANGE') {
+    return state.set('reaction_acceptance', action.reactionAcceptance);
   }
 
   if (action.type === 'COMPOSE_DISCARD') {

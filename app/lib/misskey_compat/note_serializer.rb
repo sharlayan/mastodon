@@ -37,7 +37,7 @@ class MisskeyCompat::NoteSerializer
       user: @context.user(status.account),
       visibility: VISIBILITY_MAP.fetch(status.visibility, 'public'),
       localOnly: status.local_only?,
-      reactionAcceptance: nil,
+      reactionAcceptance: status.reaction_acceptance,
       reactions: reactions,
       reactionEmojis: reaction_emojis,
       myReaction: my_reaction,

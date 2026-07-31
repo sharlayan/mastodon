@@ -42,6 +42,7 @@ const composePayload = (state) => {
     quoted_status_id: compose.get('quoted_status_id'),
     quote_approval_policy: compose.get('quote_policy'),
     scheduled_at: compose.get('scheduled_at'),
+    reaction_acceptance: compose.get('reaction_acceptance'),
   };
 };
 

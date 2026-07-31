@@ -32,6 +32,7 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
              cw: 'CW',
              visibility: 'followers',
              localOnly: true,
+             reactionAcceptance: 'nonSensitiveOnly',
              fileIds: [MisskeyCompat::MiId.encode(media.id)],
              poll: { choices: %w(One Two), multiple: true, expiredAfter: 3600 }
 
@@ -42,11 +43,20 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
       cw: 'CW',
       visibility: 'followers',
       localOnly: true,
+      reactionAcceptance: 'nonSensitiveOnly',
       isActuallyScheduled: false
     )
     expect(created[:poll]).to include(choices: %w(One Two), multiple: true, expiredAfter: 3600)
     expect(created[:fileIds]).to eq([MisskeyCompat::MiId.encode(media.id)])
     expect(media.reload.status_draft_id).to eq(StatusDraft.last.id)
+  end
+
+  it 'rejects an invalid reaction acceptance value' do
+    rpc_post 'notes/drafts/create', text: 'Invalid', reactionAcceptance: 'customOnly'
+
+    expect(response).to have_http_status(400)
+    expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+    expect(account.status_drafts).to be_empty
   end
 
   it 'accepts a Drive file ID and returns the same ID' do

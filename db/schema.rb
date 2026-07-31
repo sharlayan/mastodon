@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_30_150300) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_31_183100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1753,6 +1753,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_30_150300) do
     t.bigint "ordered_media_attachment_ids", array: true
     t.bigint "poll_id"
     t.integer "quote_approval_policy", default: 0, null: false
+    t.string "reaction_acceptance"
     t.bigint "reblog_of_id"
     t.boolean "reply", default: false, null: false
     t.boolean "sensitive", default: false, null: false

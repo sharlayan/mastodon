@@ -111,6 +111,7 @@ const localSettingsSlots = {
     { setting: ['show_clip_choice'], id: 'mastodon-settings--show_clip_choice', message: { id: 'settings.show_clip_choice', defaultMessage: 'Show clip selection in the compose box' } },
     { setting: ['show_schedule_button'], id: 'mastodon-settings--show_schedule_button', message: { id: 'settings.show_schedule_button', defaultMessage: 'Show schedule button in the compose box' } },
     { setting: ['show_draft_button'], id: 'mastodon-settings--show_draft_button', message: { id: 'settings.show_draft_button', defaultMessage: 'Show draft button in the compose box' }, hint: { id: 'settings.show_draft_button.hint', defaultMessage: 'Save drafts to the server and load them again from the compose box. Drafts stay available at the drafts column even when this is off' } },
+    { setting: ['show_reaction_acceptance'], id: 'mastodon-settings--show_reaction_acceptance', message: { id: 'settings.show_reaction_acceptance', defaultMessage: 'Show reaction acceptance in the compose box' } },
   ],
   'compose-form': [
     { setting: ['inline_compose_timelines'], id: 'mastodon-settings--inline_compose_timelines', message: { id: 'settings.inline_compose_timelines', defaultMessage: 'Show the compose box at the top of timelines' }, hint: { id: 'settings.inline_compose_timelines.hint', defaultMessage: 'Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)' } },

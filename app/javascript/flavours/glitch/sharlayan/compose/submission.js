@@ -17,5 +17,6 @@ export const getSharlayanComposeSubmission = ({ getState, effectiveStatusId, ove
     poll,
     quoteApprovalPolicy: ['private', 'direct', 'circle'].includes(visibility) ? 'nobody' : getState().getIn(['compose', 'quote_policy']),
     scheduledAt: effectiveStatusId === null ? getState().getIn(['compose', 'scheduled_at']) : undefined,
+    reactionAcceptance: getState().getIn(['compose', 'reaction_acceptance']),
   };
 };

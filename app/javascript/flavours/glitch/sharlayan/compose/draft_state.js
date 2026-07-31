@@ -40,6 +40,7 @@ export const reduceStatusDraftCompose = (state, action) => {
     map.set('quoted_status_id', params.get('quoted_status_id') || null);
     map.set('quote_policy', params.get('quote_approval_policy') || 'public');
     map.set('scheduled_at', params.get('scheduled_at') || null);
+    map.set('reaction_acceptance', params.get('reaction_acceptance') || null);
     map.set('sensitive', !!params.get('sensitive'));
     map.set('language', params.get('language') || state.get('default_language'));
     map.set('poll', pollState);

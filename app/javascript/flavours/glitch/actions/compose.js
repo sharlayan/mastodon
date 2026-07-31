@@ -263,7 +263,7 @@ export function submitCompose(successCallback, overridePrivacy) {
       });
     }
 
-    const { circleId, clipIds, poll, quoteApprovalPolicy, scheduledAt: newStatusScheduledAt, visibility } = getSharlayanComposeSubmission({ getState, effectiveStatusId, overridePrivacy });
+    const { circleId, clipIds, poll, quoteApprovalPolicy, reactionAcceptance, scheduledAt: newStatusScheduledAt, visibility } = getSharlayanComposeSubmission({ getState, effectiveStatusId, overridePrivacy });
 
     const doSubmit = () => api().request({
       url: effectiveStatusId === null ? '/api/v1/statuses' : `/api/v1/statuses/${effectiveStatusId}`,
@@ -285,6 +285,7 @@ export function submitCompose(successCallback, overridePrivacy) {
         quoted_status_id: getState().getIn(['compose', 'quoted_status_id']),
         quote_approval_policy: quoteApprovalPolicy,
         scheduled_at: newStatusScheduledAt,
+        reaction_acceptance: reactionAcceptance,
       },
       headers: {
         'Idempotency-Key': getState().getIn(['compose', 'idempotencyKey']),

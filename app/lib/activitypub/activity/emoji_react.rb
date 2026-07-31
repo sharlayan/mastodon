@@ -24,6 +24,8 @@ class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
       return if CustomEmojiMute.reaction_muted?(original_status.account_id, custom_emoji.shortcode, custom_emoji.domain)
     end
 
+    name, custom_emoji = original_status.accepted_reaction(name, custom_emoji, @account)
+
     return if @account.reacted?(original_status, name, custom_emoji)
 
     reaction = original_status.status_reactions.create!(account: @account, name: name, custom_emoji: custom_emoji)

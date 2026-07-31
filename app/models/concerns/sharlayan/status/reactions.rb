@@ -3,8 +3,12 @@
 module Sharlayan::Status::Reactions
   extend ActiveSupport::Concern
 
+  REACTION_ACCEPTANCES = %w(likeOnly likeOnlyForRemote nonSensitiveOnly nonSensitiveOnlyForLocalLikeOnlyForRemote).freeze
+  LIKE_REACTION = "\u2764"
+
   included do
     has_many :status_reactions, inverse_of: :status, dependent: :destroy
+    validates :reaction_acceptance, inclusion: { in: REACTION_ACCEPTANCES }, allow_nil: true
   end
 
   class_methods do
@@ -80,5 +84,14 @@ module Sharlayan::Status::Reactions
 
   def reactions_count
     status_stat&.reactions_count || 0
+  end
+
+  def accepted_reaction(name, custom_emoji, reacting_account)
+    remote_like_only = reacting_account.remote? && %w(likeOnlyForRemote nonSensitiveOnlyForLocalLikeOnlyForRemote).include?(reaction_acceptance)
+    sensitive_disallowed = custom_emoji&.is_sensitive? && %w(nonSensitiveOnly nonSensitiveOnlyForLocalLikeOnlyForRemote).include?(reaction_acceptance)
+
+    return [LIKE_REACTION, nil] if reaction_acceptance == 'likeOnly' || remote_like_only || sensitive_disallowed
+
+    [name, custom_emoji]
   end
 end

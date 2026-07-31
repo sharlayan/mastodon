@@ -100,5 +100,20 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
         expect(remote_sender.reacted?(status, remote_custom_emoji.shortcode, remote_custom_emoji)).to be true
       end
     end
+
+    context 'with a sensitive remote custom emoji that the status excludes' do
+      subject { described_class.new(json_remote_custom_emoji, remote_sender) }
+
+      before do
+        status.update!(reaction_acceptance: 'nonSensitiveOnly')
+        json_remote_custom_emoji[:tag].first[:isSensitive] = true
+        subject.perform
+      end
+
+      it 'stores the remote sensitivity and normalizes the reaction to a like' do
+        expect(remote_custom_emoji.reload).to be_is_sensitive
+        expect(remote_sender.reacted?(status, "\u2764")).to be true
+      end
+    end
   end
 end
