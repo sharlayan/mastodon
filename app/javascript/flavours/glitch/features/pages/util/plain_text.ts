@@ -1,6 +1,7 @@
 import { marked } from 'marked';
 import * as mfm from 'mfm-js';
 import type { MfmNode } from 'mfm-js';
+import { length } from 'stringz';
 
 export const pageDocumentPlainText = (
   source: string,
@@ -30,6 +31,11 @@ export const pageDocumentPlainText = (
     return source;
   }
 };
+
+export const pageDocumentTextOnlyLength = (
+  source: string,
+  format: 'mfm' | 'markdown',
+) => length(pageDocumentPlainText(source, format).replace(/\s/gu, ''));
 
 const mfmNodeText = (node: MfmNode): string => {
   if (node.children?.length) {

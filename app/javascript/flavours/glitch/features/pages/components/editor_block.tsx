@@ -16,7 +16,7 @@ import type {
 import { Icon } from 'flavours/glitch/components/icon';
 import { useAppDispatch } from 'flavours/glitch/store';
 
-import { pageDocumentPlainText } from '../util/plain_text';
+import { pageDocumentTextOnlyLength } from '../util/plain_text';
 
 import { BlockAddButtons } from './block_add_buttons';
 import { blockTypeMessages } from './block_messages';
@@ -120,7 +120,7 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
   const characterCount = block.type === 'text' ? length(block.text) : undefined;
   const plainTextCharacterCount =
     block.type === 'text'
-      ? length(pageDocumentPlainText(block.text, block.format ?? 'mfm'))
+      ? pageDocumentTextOnlyLength(block.text, block.format ?? 'mfm')
       : undefined;
 
   const handleMoveUp = useCallback(() => {

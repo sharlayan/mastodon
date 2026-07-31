@@ -329,7 +329,7 @@
   "pages.color_scheme": "색상 모드",
   "pages.color_scheme.dark_only": "이 테마는 다크 모드만 지원합니다.",
   "pages.block.character_count_with_spaces": "공백 포함: {count}자",
-  "pages.block.character_count_plain_text": "텍스트만: {count}자",
+  "pages.block.character_count_plain_text": "텍스트만(공백 제외): {count}자",
   "pages.block.move_down": "아래로 이동",
   "pages.block.move_up": "위로 이동",
   "pages.block.no_upscale": "원본보다 크게 확대하지 않음",

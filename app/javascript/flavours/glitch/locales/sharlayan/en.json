@@ -329,7 +329,7 @@
   "pages.color_scheme": "Color scheme",
   "pages.color_scheme.dark_only": "This theme only supports dark mode.",
   "pages.block.character_count_with_spaces": "With spaces: {count}",
-  "pages.block.character_count_plain_text": "Text only: {count}",
+  "pages.block.character_count_plain_text": "Text only, excluding spaces: {count}",
   "pages.block.move_down": "Move down",
   "pages.block.move_up": "Move up",
   "pages.block.no_upscale": "Do not enlarge beyond the original size",

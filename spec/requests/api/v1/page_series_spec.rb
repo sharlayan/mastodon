@@ -99,6 +99,26 @@ RSpec.describe 'Page series' do
     expect(series.reload.main_page).to be_nil
   end
 
+  it 'moves the representative page to the front while preserving the remaining order' do
+    series = Fabricate(:page_series, account: user.account)
+    first_page = Fabricate(:page, account: user.account, page_series: series, series_position: 0)
+    second_page = Fabricate(:page, account: user.account, page_series: series, series_position: 2)
+    representative = Fabricate(:page, account: user.account, page_series: series, series_position: 3)
+
+    post "/api/v1/pages/#{representative.id}/series_main", headers: headers
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body).to include(booklet_main: true, booklet_position: 0)
+    expect(series.reload.main_page).to eq(representative)
+    expect(series.pages.reload.pluck(:id, :series_position)).to eq(
+      [
+        [representative.id, 0],
+        [first_page.id, 1],
+        [second_page.id, 2],
+      ]
+    )
+  end
+
   it 'rejects another account series and non-public representative pages' do
     other_series = Fabricate(:page_series)
     page = Fabricate(:page, account: user.account, visibility: 'private')

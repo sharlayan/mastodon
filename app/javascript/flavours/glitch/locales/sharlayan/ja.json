@@ -329,7 +329,7 @@
   "pages.color_scheme": "カラーモード",
   "pages.color_scheme.dark_only": "このテーマはダークモードのみ対応しています。",
   "pages.block.character_count_with_spaces": "空白を含む: {count}文字",
-  "pages.block.character_count_plain_text": "テキストのみ: {count}文字",
+  "pages.block.character_count_plain_text": "テキストのみ（空白を除く）: {count}文字",
   "pages.block.move_down": "下へ移動",
   "pages.block.move_up": "上へ移動",
   "pages.block.no_upscale": "元のサイズより大きく拡大しない",

@@ -16,7 +16,7 @@ export const createBlock = (type: PageBlockType): ApiPageBlock => {
         id,
         type: 'image',
         fileId: null,
-        noUpscale: false,
+        noUpscale: true,
         spoiler: false,
       };
     case 'note':

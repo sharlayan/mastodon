@@ -122,10 +122,16 @@ class Api::V1::PagesController < Api::BaseController
       return not_found unless @page.eligible_for_main? && @page.page_series
 
       @page.page_series.with_lock do
+        ordered_pages = @page.page_series.pages.lock.to_a
+        ordered_pages = [@page] + ordered_pages.reject { |page| page.id == @page.id }
+        ordered_pages.each_with_index do |page, position|
+          page.update_column(:series_position, position) if page.series_position != position
+        end
         @page.page_series.update!(main_page: @page)
       end
     end
 
+    @page.reload
     render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 

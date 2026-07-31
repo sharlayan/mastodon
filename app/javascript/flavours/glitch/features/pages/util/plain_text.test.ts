@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { pageDocumentPlainText } from './plain_text';
+import {
+  pageDocumentPlainText,
+  pageDocumentTextOnlyLength,
+} from './plain_text';
 
 describe('pageDocumentPlainText', () => {
   it('removes MFM document syntax while preserving visible text', () => {
@@ -19,5 +22,14 @@ describe('pageDocumentPlainText', () => {
         'markdown',
       ),
     ).toBe('Heading\n\nbold label text');
+  });
+
+  it('excludes formatting syntax and whitespace from the text-only count', () => {
+    expect(
+      pageDocumentTextOnlyLength(
+        '# Heading\n\n**bold text**\t한 글　字',
+        'markdown',
+      ),
+    ).toBe(18);
   });
 });
