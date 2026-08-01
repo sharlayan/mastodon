@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_152200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -51,7 +51,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["account_id", "domain"], name: "index_account_domain_blocks_on_account_id_and_domain", unique: true
   end
 
-  create_table "account_domain_mutes", force: :cascade do |t|
+  create_table "account_domain_mutes", id: :bigint, default: -> { "timestamp_id('account_domain_mutes'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "domain", null: false
@@ -143,7 +143,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["account_id"], name: "index_account_statuses_cleanup_policies_on_account_id"
   end
 
-  create_table "account_switch_authorizations", force: :cascade do |t|
+  create_table "account_switch_authorizations", id: :bigint, default: -> { "timestamp_id('account_switch_authorizations'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.boolean "push_forward", default: false, null: false
@@ -310,7 +310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["year", "account_id"], name: "idx_on_year_account_id_ff3e167cef", unique: true
   end
 
-  create_table "antenna_accounts", force: :cascade do |t|
+  create_table "antenna_accounts", id: :bigint, default: -> { "timestamp_id('antenna_accounts'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "antenna_id", null: false
     t.datetime "created_at", null: false
@@ -321,7 +321,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["antenna_id"], name: "index_antenna_accounts_on_antenna_id"
   end
 
-  create_table "antenna_domains", force: :cascade do |t|
+  create_table "antenna_domains", id: :bigint, default: -> { "timestamp_id('antenna_domains'::text)" }, force: :cascade do |t|
     t.bigint "antenna_id", null: false
     t.datetime "created_at", null: false
     t.boolean "exclude", default: false, null: false
@@ -331,7 +331,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["antenna_id"], name: "index_antenna_domains_on_antenna_id"
   end
 
-  create_table "antenna_tags", force: :cascade do |t|
+  create_table "antenna_tags", id: :bigint, default: -> { "timestamp_id('antenna_tags'::text)" }, force: :cascade do |t|
     t.bigint "antenna_id", null: false
     t.datetime "created_at", null: false
     t.boolean "exclude", default: false, null: false
@@ -378,21 +378,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["rejected_by_account_id"], name: "index_appeals_on_rejected_by_account_id", where: "(rejected_by_account_id IS NOT NULL)"
   end
 
-  create_table "avatar_decoration_categories", force: :cascade do |t|
+  create_table "avatar_decoration_categories", id: :bigint, default: -> { "timestamp_id('avatar_decoration_categories'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "name"
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_avatar_decoration_categories_on_name", unique: true
   end
 
-  create_table "avatar_decoration_domain_blocks", force: :cascade do |t|
+  create_table "avatar_decoration_domain_blocks", id: :bigint, default: -> { "timestamp_id('avatar_decoration_domain_blocks'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "domain", null: false
     t.datetime "updated_at", null: false
     t.index ["domain"], name: "index_avatar_decoration_domain_blocks_on_domain", unique: true
   end
 
-  create_table "avatar_decoration_mutes", force: :cascade do |t|
+  create_table "avatar_decoration_mutes", id: :bigint, default: -> { "timestamp_id('avatar_decoration_mutes'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.bigint "target_account_id"
@@ -404,7 +404,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["target_account_id"], name: "index_avatar_decoration_mutes_on_target_account_id"
   end
 
-  create_table "avatar_decorations", force: :cascade do |t|
+  create_table "avatar_decorations", id: :bigint, default: -> { "timestamp_id('avatar_decorations'::text)" }, force: :cascade do |t|
     t.boolean "approved", default: false, null: false
     t.bigint "category_id"
     t.datetime "created_at", null: false
@@ -448,7 +448,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["target_account_id"], name: "index_blocks_on_target_account_id"
   end
 
-  create_table "board_announcement_attachments", force: :cascade do |t|
+  create_table "board_announcement_attachments", id: :bigint, default: -> { "timestamp_id('board_announcement_attachments'::text)" }, force: :cascade do |t|
     t.string "blurhash"
     t.bigint "board_announcement_id"
     t.datetime "created_at", null: false
@@ -462,7 +462,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["board_announcement_id"], name: "index_board_announcement_attachments_on_board_announcement_id"
   end
 
-  create_table "board_announcement_reactions", force: :cascade do |t|
+  create_table "board_announcement_reactions", id: :bigint, default: -> { "timestamp_id('board_announcement_reactions'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "board_announcement_id", null: false
     t.datetime "created_at", null: false
@@ -475,7 +475,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["custom_emoji_id"], name: "index_board_announcement_reactions_on_custom_emoji_id", where: "(custom_emoji_id IS NOT NULL)"
   end
 
-  create_table "board_announcement_reads", force: :cascade do |t|
+  create_table "board_announcement_reads", id: :bigint, default: -> { "timestamp_id('board_announcement_reads'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "board_announcement_id", null: false
     t.datetime "created_at", null: false
@@ -485,7 +485,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["board_announcement_id"], name: "index_board_announcement_reads_on_board_announcement_id"
   end
 
-  create_table "board_announcements", force: :cascade do |t|
+  create_table "board_announcements", id: :bigint, default: -> { "timestamp_id('board_announcements'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.datetime "created_at", null: false
     t.string "display", default: "normal", null: false
@@ -549,7 +549,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["reference_account_id"], name: "index_canonical_email_blocks_on_reference_account_id"
   end
 
-  create_table "circle_accounts", force: :cascade do |t|
+  create_table "circle_accounts", id: :bigint, default: -> { "timestamp_id('circle_accounts'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "circle_id", null: false
     t.datetime "created_at", null: false
@@ -561,7 +561,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["follow_id"], name: "index_circle_accounts_on_follow_id"
   end
 
-  create_table "circle_statuses", force: :cascade do |t|
+  create_table "circle_statuses", id: :bigint, default: -> { "timestamp_id('circle_statuses'::text)" }, force: :cascade do |t|
     t.bigint "circle_id", null: false
     t.datetime "created_at", null: false
     t.bigint "status_id", null: false
@@ -571,7 +571,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["status_id"], name: "index_circle_statuses_on_status_id"
   end
 
-  create_table "circles", force: :cascade do |t|
+  create_table "circles", id: :bigint, default: -> { "timestamp_id('circles'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "title", default: "", null: false
@@ -579,7 +579,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["account_id"], name: "index_circles_on_account_id"
   end
 
-  create_table "clip_favourites", force: :cascade do |t|
+  create_table "clip_favourites", id: :bigint, default: -> { "timestamp_id('clip_favourites'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "clip_id", null: false
     t.datetime "created_at", null: false
@@ -674,7 +674,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["uri"], name: "index_conversations_on_uri", unique: true, opclass: :text_pattern_ops, where: "(uri IS NOT NULL)"
   end
 
-  create_table "custom_csses", force: :cascade do |t|
+  create_table "custom_csses", id: :bigint, default: -> { "timestamp_id('custom_csses'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "css", default: "", null: false
     t.datetime "updated_at", null: false
@@ -690,7 +690,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["name"], name: "index_custom_emoji_categories_on_name", unique: true
   end
 
-  create_table "custom_emoji_mutes", force: :cascade do |t|
+  create_table "custom_emoji_mutes", id: :bigint, default: -> { "timestamp_id('custom_emoji_mutes'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "domain", default: "", null: false
@@ -779,7 +779,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["domain"], name: "index_domain_blocks_on_domain", unique: true
   end
 
-  create_table "drive_file_names", force: :cascade do |t|
+  create_table "drive_file_names", id: :bigint, default: -> { "timestamp_id('drive_file_names'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "drive_file_id", null: false
     t.string "name", limit: 128, default: "", null: false
@@ -787,7 +787,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["drive_file_id"], name: "index_drive_file_names_on_drive_file_id", unique: true
   end
 
-  create_table "drive_files", force: :cascade do |t|
+  create_table "drive_files", id: :bigint, default: -> { "timestamp_id('drive_files'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "blurhash"
     t.datetime "created_at", null: false
@@ -816,7 +816,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["account_id"], name: "index_drive_files_on_account_id"
   end
 
-  create_table "drive_folders", force: :cascade do |t|
+  create_table "drive_folders", id: :bigint, default: -> { "timestamp_id('drive_folders'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "name", default: "", null: false
@@ -908,7 +908,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["fasp_provider_id"], name: "index_fasp_subscriptions_on_fasp_provider_id"
   end
 
-  create_table "favorite_emojis", force: :cascade do |t|
+  create_table "favorite_emojis", id: :bigint, default: -> { "timestamp_id('favorite_emojis'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "emoji_type", null: false
@@ -1005,7 +1005,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["user_id"], name: "index_identities_on_user_id"
   end
 
-  create_table "instance_metadata", force: :cascade do |t|
+  create_table "instance_metadata", id: :bigint, default: -> { "timestamp_id('instance_metadata'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "domain", null: false
     t.string "favicon_url"
@@ -1164,7 +1164,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["status_id"], name: "index_mentions_on_status_id"
   end
 
-  create_table "misskey_access_grants", force: :cascade do |t|
+  create_table "misskey_access_grants", id: :bigint, default: -> { "timestamp_id('misskey_access_grants'::text)" }, force: :cascade do |t|
     t.bigint "access_token_id", null: false
     t.datetime "created_at", null: false
     t.string "permissions", default: [], null: false, array: true
@@ -1172,7 +1172,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["access_token_id"], name: "index_misskey_access_grants_on_access_token_id", unique: true
   end
 
-  create_table "misskey_federation_instance_stats", force: :cascade do |t|
+  create_table "misskey_federation_instance_stats", id: :bigint, default: -> { "timestamp_id('misskey_federation_instance_stats'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "domain", null: false
     t.datetime "first_retrieved_at"
@@ -1184,7 +1184,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["domain"], name: "index_misskey_federation_instance_stats_on_domain", unique: true
   end
 
-  create_table "misskey_registry_items", force: :cascade do |t|
+  create_table "misskey_registry_items", id: :bigint, default: -> { "timestamp_id('misskey_registry_items'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "domain"
@@ -1195,7 +1195,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["account_id", "domain", "scope"], name: "idx_on_account_id_domain_scope_aaf77e84e7"
   end
 
-  create_table "misskey_retention_aggregations", force: :cascade do |t|
+  create_table "misskey_retention_aggregations", id: :bigint, default: -> { "timestamp_id('misskey_retention_aggregations'::text)" }, force: :cascade do |t|
     t.bigint "cohort_account_ids", default: [], null: false, array: true
     t.datetime "created_at", null: false
     t.jsonb "data", default: {}, null: false
@@ -1316,7 +1316,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["uid"], name: "index_oauth_applications_on_uid", unique: true
   end
 
-  create_table "page_likes", force: :cascade do |t|
+  create_table "page_likes", id: :bigint, default: -> { "timestamp_id('page_likes'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.bigint "page_id", null: false
@@ -1326,7 +1326,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["page_id"], name: "index_page_likes_on_page_id"
   end
 
-  create_table "page_reports", force: :cascade do |t|
+  create_table "page_reports", id: :bigint, default: -> { "timestamp_id('page_reports'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "page_id", null: false
     t.bigint "report_id", null: false
@@ -1504,7 +1504,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["status_id"], name: "index_quotes_on_status_id", unique: true
   end
 
-  create_table "reaction_mutes", force: :cascade do |t|
+  create_table "reaction_mutes", id: :bigint, default: -> { "timestamp_id('reaction_mutes'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.bigint "target_account_id"
@@ -1661,7 +1661,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["version"], name: "index_software_updates_on_version", unique: true
   end
 
-  create_table "status_drafts", force: :cascade do |t|
+  create_table "status_drafts", id: :bigint, default: -> { "timestamp_id('status_drafts'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.jsonb "data", default: {}, null: false
@@ -1695,7 +1695,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
     t.index ["status_id"], name: "index_status_pins_on_status_id"
   end
 
-  create_table "status_reactions", force: :cascade do |t|
+  create_table "status_reactions", id: :bigint, default: -> { "timestamp_id('status_reactions'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.bigint "custom_emoji_id"

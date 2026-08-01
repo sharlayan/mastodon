@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require Rails.root.join('db', 'migrate', '20260801151200_use_snowflake_ids_for_clips', '20260801151200_use_snowflake_ids_for_clips')
+require Rails.root.join('db', 'migrate', '20260801151200_use_snowflake_ids_for_clips.rb')
 
 RSpec.describe UseSnowflakeIdsForClips do
   describe '#migrate_legacy_ids!' do
@@ -17,6 +17,7 @@ RSpec.describe UseSnowflakeIdsForClips do
 
       expect(migrated_clip.id).to_not eq(1)
       expect(Mastodon::Snowflake.to_time(migrated_clip.id)).to be_within(1.minute).of(clip.created_at)
+      expect(migrated_clip.account).to eq(owner)
       expect(clip_status.reload.clip_id).to eq(migrated_clip.id)
       expect(favourite.reload.clip_id).to eq(migrated_clip.id)
     end
