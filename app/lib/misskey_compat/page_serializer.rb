@@ -44,7 +44,7 @@ class MisskeyCompat::PageSerializer
       block.delete('spoiler')
       if block['type'] == 'text' && block.delete('format') == 'markdown'
         html = AdvancedTextFormatter.new(block['text'], content_type: 'text/markdown').to_s
-        block['text'] = Nokogiri::HTML5.fragment(html).text.gsub('$[', '\\$[')
+        block['text'] = Nokogiri::HTML5.fragment(html).text.gsub(/(\\*)\$\[/) { "#{Regexp.last_match(1) * 2}\\$[" }
       end
       block['fileId'] = serialize_media_id(media_by_id[block['fileId'].to_s]) if block['type'] == 'image' && block['fileId'].present?
       block['note'] = MisskeyCompat::MiId.encode(block['note']) if block['type'] == 'note' && block['note'].present?
