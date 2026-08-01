@@ -47,11 +47,12 @@ module Mastodon
       {
         mastodon: 11,
         glitch: 1,
+        sharlayan: 1,
       }
     end
 
     def repository
-      source_configuration[:repository] || "sharlayan/mastodon/tree/#{current_git_branch}"
+      source_configuration[:repository]
     end
 
     def source_base_url
@@ -91,38 +92,57 @@ module Mastodon
       Rails.configuration.x.mastodon
     end
 
+    # custom area
+    def sharlayan_local_version
+      '2026.08.01'
+    end
+
     def read_git_head_file
-      head_file_path = '.git/HEAD'
-      File.read(head_file_path).strip
-    rescue Errno::ENOENT, Errno::EACCES, IOError
-      ''
+      @read_git_head_file ||= begin
+        head_file_path = '.git/HEAD'
+        File.read(head_file_path).strip
+      rescue Errno::ENOENT, Errno::EACCES, IOError
+        ''
+      end
     end
 
     def read_git_hash_from_file
-      head_file_content = read_git_head_file
-      return '' if head_file_content.empty?
+      @read_git_hash_from_file ||= begin
+        head_file_content = read_git_head_file
 
-      if head_file_content.start_with?('ref:')
-        ref_path = head_file_content.sub('ref: ', '').strip
-        ref_file_path = File.join('.git', ref_path)
-        ref_file_content = File.read(ref_file_path).strip
-        ref_file_content[0, 5]
-      else
-        head_file_content[0, 5]
+        if head_file_content.empty?
+          ''
+        elsif head_file_content.start_with?('ref:')
+          ref_path = head_file_content.sub('ref: ', '').strip
+          ref_file_path = File.join('.git', ref_path)
+          File.read(ref_file_path).strip[0, 5]
+        else
+          head_file_content[0, 5]
+        end
+      rescue Errno::ENOENT, Errno::EACCES, IOError
+        ''
       end
-    rescue Errno::ENOENT, Errno::EACCES, IOError
-      ''
     end
 
     def current_git_branch
-      head_file_content = read_git_head_file
-      return 'dev' if head_file_content.empty?
+      @current_git_branch ||= begin
+        head_file_content = read_git_head_file
 
-      if head_file_content.start_with?('ref: refs/heads/')
-        head_file_content.delete_prefix('ref: refs/heads/')
-      else
-        'Detached from HEAD'
+        if head_file_content.empty?
+          'dev'
+        elsif head_file_content.start_with?('ref: refs/heads/')
+          head_file_content.delete_prefix('ref: refs/heads/')
+        else
+          'Detached from HEAD'
+        end
       end
+    end
+
+    def preload_git_state!
+      read_git_head_file
+      read_git_hash_from_file
+      current_git_branch
+      nil
     end
   end
 end

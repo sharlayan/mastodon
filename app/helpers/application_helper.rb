@@ -215,21 +215,11 @@ module ApplicationHelper
   end
 
   def read_git_head_file
-    head_file_path = '.git/HEAD'
-    File.read(head_file_path).strip
-  rescue Errno::ENOENT, Errno::EACCES, IOError
-    ''
+    Mastodon::Version.read_git_head_file
   end
 
   def current_git_branch
-    head_file_content = read_git_head_file
-    return 'dev' if head_file_content.empty?
-
-    if head_file_content.start_with?('ref: refs/heads/')
-      head_file_content.delete_prefix('ref: refs/heads/')
-    else
-      'Detached from HEAD'
-    end
+    Mastodon::Version.current_git_branch
   end
 
   def render_initial_state
