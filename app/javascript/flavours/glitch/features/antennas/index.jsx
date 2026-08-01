@@ -15,6 +15,7 @@ import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import RadarIcon from '@/material-icons/400-24px/radar.svg?react';
 import { fetchAntennas, createAntenna, deleteAntenna } from 'flavours/glitch/actions/antennas';
+import { openModal } from 'flavours/glitch/actions/modal';
 import Column from 'flavours/glitch/components/column';
 import ColumnHeader from 'flavours/glitch/components/column_header';
 import { Icon } from 'flavours/glitch/components/icon';
@@ -25,6 +26,9 @@ const messages = defineMessages({
   create: { id: 'antennas.create_antenna', defaultMessage: 'Create antenna' },
   edit: { id: 'antennas.edit', defaultMessage: 'Edit antenna' },
   delete: { id: 'antennas.delete', defaultMessage: 'Delete antenna' },
+  deleteConfirm: { id: 'confirmations.delete_antenna.confirm', defaultMessage: 'Delete' },
+  deleteMessage: { id: 'confirmations.delete_antenna.message', defaultMessage: 'This permanently deletes the antenna and its collected posts. The posts themselves will not be deleted.' },
+  deleteTitle: { id: 'confirmations.delete_antenna.title', defaultMessage: 'Delete “{name}”?' },
   title: { id: 'antennas.new.title_placeholder', defaultMessage: 'New antenna title' },
 });
 
@@ -33,8 +37,16 @@ const AntennaItem = ({ id, title }) => {
   const intl = useIntl();
 
   const handleDeleteClick = useCallback(() => {
-    dispatch(deleteAntenna(id));
-  }, [dispatch, id]);
+    dispatch(openModal({
+      modalType: 'CONFIRM',
+      modalProps: {
+        title: intl.formatMessage(messages.deleteTitle, { name: title }),
+        message: intl.formatMessage(messages.deleteMessage),
+        confirm: intl.formatMessage(messages.deleteConfirm),
+        onConfirm: () => dispatch(deleteAntenna(id)),
+      },
+    }));
+  }, [dispatch, id, intl, title]);
 
   return (
     <div className='lists__item'>

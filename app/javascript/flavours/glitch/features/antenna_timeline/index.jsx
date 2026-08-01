@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { PureComponent } from 'react';
 
-import { FormattedMessage } from 'react-intl';
+import { defineMessages, FormattedMessage } from 'react-intl';
 
 import { Helmet } from '@unhead/react/helmet';
 import { Link, withRouter } from 'react-router-dom';
@@ -13,16 +13,24 @@ import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import RadarIcon from '@/material-icons/400-24px/radar.svg?react';
 import { fetchAntenna, deleteAntenna } from 'flavours/glitch/actions/antennas';
+import { openModal } from 'flavours/glitch/actions/modal';
 import { addColumn, removeColumn, moveColumn } from 'flavours/glitch/actions/columns';
 import { connectAntennaStream } from 'flavours/glitch/actions/streaming';
 import { expandAntennaTimeline } from 'flavours/glitch/actions/timelines';
 import Column from 'flavours/glitch/components/column';
 import ColumnHeader from 'flavours/glitch/components/column_header';
 import { Icon }  from 'flavours/glitch/components/icon';
+import { injectIntl } from 'flavours/glitch/components/intl';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import BundleColumnError from 'flavours/glitch/features/ui/components/bundle_column_error';
 import StatusListContainer from 'flavours/glitch/features/ui/containers/status_list_container';
 import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
+
+const messages = defineMessages({
+  deleteConfirm: { id: 'confirmations.delete_antenna.confirm', defaultMessage: 'Delete' },
+  deleteMessage: { id: 'confirmations.delete_antenna.message', defaultMessage: 'This permanently deletes the antenna and its collected posts. The posts themselves will not be deleted.' },
+  deleteTitle: { id: 'confirmations.delete_antenna.title', defaultMessage: 'Delete “{name}”?' },
+});
 
 const mapStateToProps = (state, props) => ({
   antenna: state.getIn(['antennas', props.params.id]),
@@ -38,6 +46,7 @@ class AntennaTimeline extends PureComponent {
     hasUnread: PropTypes.bool,
     multiColumn: PropTypes.bool,
     antenna: PropTypes.oneOfType([ImmutablePropTypes.map, PropTypes.bool]),
+    intl: PropTypes.object.isRequired,
     ...WithRouterPropTypes,
   };
 
@@ -104,16 +113,27 @@ class AntennaTimeline extends PureComponent {
   };
 
   handleDeleteClick = () => {
-    const { dispatch, columnId, history } = this.props;
+    const { antenna, columnId, dispatch, history, intl } = this.props;
     const { id } = this.props.params;
+    const title = antenna ? antenna.get('title') : id;
 
-    dispatch(deleteAntenna(id));
+    dispatch(openModal({
+      modalType: 'CONFIRM',
+      modalProps: {
+        title: intl.formatMessage(messages.deleteTitle, { name: title }),
+        message: intl.formatMessage(messages.deleteMessage),
+        confirm: intl.formatMessage(messages.deleteConfirm),
+        onConfirm: () => {
+          dispatch(deleteAntenna(id));
 
-    if (columnId) {
-      dispatch(removeColumn(columnId));
-    } else {
-      history.push('/antennas');
-    }
+          if (columnId) {
+            dispatch(removeColumn(columnId));
+          } else {
+            history.push('/antennas');
+          }
+        },
+      },
+    }));
   };
 
   render () {
@@ -181,4 +201,4 @@ class AntennaTimeline extends PureComponent {
 
 }
 
-export default withRouter(connect(mapStateToProps)(AntennaTimeline));
+export default withRouter(injectIntl(connect(mapStateToProps)(AntennaTimeline)));
