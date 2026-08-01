@@ -92,7 +92,7 @@ class UserSettings
 
     typecast_value = definition.type_cast(value)
 
-    raise ArgumentError, "Invalid value for setting #{definition.key}: #{typecast_value}" if definition.in.present? && definition.in.exclude?(typecast_value)
+    raise ArgumentError, "Invalid value for setting #{definition.key}: #{typecast_value}" unless definition.valid_value?(typecast_value)
 
     if typecast_value.nil?
       @original_hash.delete(definition.key)

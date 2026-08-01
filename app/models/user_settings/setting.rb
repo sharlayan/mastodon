@@ -49,11 +49,22 @@ class UserSettings::Setting
   end
 
   def type_cast(value)
-    if type.respond_to?(:cast)
-      type.cast(value)
-    else
-      value
-    end
+    cast_value = type.respond_to?(:cast) ? type.cast(value) : value
+
+    return nil if cast_value == '' && nullable?
+
+    cast_value
+  end
+
+  def nullable?
+    @in.present? && default_value.nil?
+  end
+
+  def valid_value?(value)
+    return true if @in.blank?
+    return true if value.nil? && nullable?
+
+    @in.include?(value)
   end
 
   def to_a

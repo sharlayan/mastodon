@@ -58,6 +58,14 @@ RSpec.describe UserSettings do
       it 'raises an error when given an invalid value' do
         expect { subject[:'web.display_media'] = 'invalid value' }.to raise_error ArgumentError
       end
+
+      context 'when the setting defaults to nil' do
+        it 'clears the attribute when given a blank value' do
+          subject[:default_reaction_acceptance] = 'likeOnly'
+
+          expect { subject[:default_reaction_acceptance] = '' }.to change { subject[:default_reaction_acceptance] }.from('likeOnly').to(nil)
+        end
+      end
     end
   end
 
