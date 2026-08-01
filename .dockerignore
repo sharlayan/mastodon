@@ -20,6 +20,7 @@ postgres
 postgres14
 redis
 elasticsearch
+opensearch
 chart
 storybook-static
 .yarn/
