@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_31_183100) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_01_151200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -599,7 +599,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_31_183100) do
     t.index ["status_id"], name: "index_clip_statuses_on_status_id"
   end
 
-  create_table "clips", force: :cascade do |t|
+  create_table "clips", id: :bigint, default: -> { "timestamp_id('clips'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.text "description"
