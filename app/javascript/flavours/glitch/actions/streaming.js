@@ -89,11 +89,15 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
       },
 
       onDisconnect() {
-        dispatch(disconnectTimeline({ timeline: timelineId }));
+        const { fallback } = options;
 
-        if (options.fallback) {
-          // @ts-expect-error
-          pollingId = setTimeout(() => useFallback(options.fallback), randomUpTo(40000));
+        if (fallback) {
+          pollingId = setTimeout(() => {
+            dispatch(disconnectTimeline({ timeline: timelineId }));
+            useFallback(fallback);
+          }, randomUpTo(40000));
+        } else {
+          dispatch(disconnectTimeline({ timeline: timelineId }));
         }
       },
 
