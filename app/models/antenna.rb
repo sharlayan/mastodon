@@ -57,9 +57,9 @@ class Antenna < ApplicationRecord
     target = status.reblog? ? status.reblog : status
     return [] if target.nil?
 
-    domain  = target.account.domain || Rails.configuration.x.local_domain
+    domain = target.account.domain || Rails.configuration.x.local_domain
     tag_ids = target.tags.map(&:id)
-    text    = target.searchable_text.to_s
+    text    = keyword_searchable_text(target)
 
     domain_antenna_ids  = AntennaDomain.includes_only.where(name: domain).pluck(:antenna_id)
     account_antenna_ids = AntennaAccount.includes_only.where(account_id: target.account_id).pluck(:antenna_id)
@@ -110,7 +110,7 @@ class Antenna < ApplicationRecord
     account = target.account
     domain  ||= account.domain || Rails.configuration.x.local_domain
     tag_ids ||= target.tags.map(&:id)
-    text    ||= target.searchable_text.to_s
+    text    ||= self.class.keyword_searchable_text(target)
 
     return false unless match_domain?(domain)
     return false unless match_account?(account.id)
@@ -123,6 +123,10 @@ class Antenna < ApplicationRecord
     return false if exclude_keywords.any? { |keyword| text.include?(keyword) }
 
     true
+  end
+
+  def self.keyword_searchable_text(status)
+    status.searchable_text.to_s.gsub(Account::MENTION_RE) { "@#{Regexp.last_match(1).split('@', 2).first}" }
   end
 
   private

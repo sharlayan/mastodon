@@ -59,6 +59,16 @@ RSpec.describe Antenna do
       expect(antenna.matches?(status_with(text: 'nothing here'))).to be false
     end
 
+    it 'does not match keywords against a mention domain' do
+      mentioned_account = Fabricate(:account, domain: 'sharlayan.in')
+      status = status_with(text: '@mentioned@sharlayan.in hello')
+      Fabricate(:mention, status: status, account: mentioned_account)
+      antenna = Fabricate(:antenna, account: account, any_keywords: false, keywords: %w(sharlayan))
+
+      expect(antenna.matches?(status)).to be false
+      expect(described_class.matching(status)).to_not include(antenna)
+    end
+
     it 'applies exclude keywords' do
       antenna = Fabricate(:antenna, account: account, any_keywords: false, keywords: %w(art), exclude_keywords: %w(spoiler))
       expect(antenna.matches?(status_with(text: 'my art is great'))).to be true
