@@ -50,6 +50,16 @@ class RateLimiter
       period: 1.hour.freeze,
     }.freeze,
 
+    misskey_miauth_hourly: {
+      limit: 10,
+      period: 1.hour.freeze,
+    }.freeze,
+
+    misskey_miauth_daily: {
+      limit: 30,
+      period: 24.hours.freeze,
+    }.freeze,
+
     drive_uploads: {
       limit: 100,
       period: 30.minutes.freeze,

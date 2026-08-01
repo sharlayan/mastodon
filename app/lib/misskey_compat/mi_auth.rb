@@ -21,7 +21,6 @@ module MisskeyCompat::MiAuth
     read:clip-favorite write:clip-favorite
     write:report-abuse
   ).freeze
-  UNSAFE_CALLBACK_SCHEMES = %w(javascript file data mailto tel vbscript).freeze
 
   module_function
 
@@ -47,7 +46,7 @@ module MisskeyCompat::MiAuth
     return false if callback.blank?
 
     uri = Addressable::URI.parse(callback)
-    uri.scheme.present? && UNSAFE_CALLBACK_SCHEMES.exclude?(uri.scheme.downcase)
+    uri.scheme&.downcase == 'https' && uri.host.present? && uri.userinfo.blank?
   rescue Addressable::URI::InvalidURIError
     false
   end

@@ -17,3 +17,5 @@
         = link_to '앱으로 돌아가기', @callback, class: 'btn button'
     - else
       %p 인증이 완료되었습니다. 앱으로 돌아가 주세요.
+
+    %p= link_to t('settings.authorized_apps'), oauth_authorized_applications_path

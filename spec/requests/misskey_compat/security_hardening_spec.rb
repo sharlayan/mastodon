@@ -92,6 +92,64 @@ RSpec.describe 'Misskey-compat security hardening' do
       expect(response).to have_http_status(403)
       expect(response.parsed_body.dig('error', 'code')).to eq('PERMISSION_DENIED')
     end
+
+    it 'rejects a token owned by a disabled user' do
+      user.update!(disabled: true)
+
+      post '/api/i', params: { i: token }, as: :json
+
+      expect(response).to have_http_status(403)
+    end
+
+    it 'rejects a token owned by a suspended account' do
+      account.update!(suspended_at: Time.current)
+
+      post '/api/i', params: { i: token }, as: :json
+
+      expect(response).to have_http_status(403)
+    end
+  end
+
+  describe 'relationship exclusion filters' do
+    let(:excluded) { Fabricate(:account) }
+
+    before { account.block!(excluded) }
+
+    it 'excludes blocked accounts from follower collections' do
+      target = Fabricate(:account)
+      Fabricate(:follow, account: excluded, target_account: target)
+
+      post '/api/users/followers', params: { i: token, userId: target.id.to_s }, as: :json
+
+      expect(response.parsed_body).to be_empty
+    end
+
+    it 'excludes blocked accounts from following collections' do
+      target = Fabricate(:account)
+      Fabricate(:follow, account: target, target_account: excluded)
+
+      post '/api/users/following', params: { i: token, userId: target.id.to_s }, as: :json
+
+      expect(response.parsed_body).to be_empty
+    end
+
+    it 'excludes blocked reactors from note reaction details' do
+      status = Fabricate(:status, account: account)
+      Fabricate(:status_reaction, status: status, account: excluded, name: '👍', custom_emoji: nil)
+
+      post '/api/notes/reactions', params: { i: token, noteId: status.id.to_s }, as: :json
+
+      expect(response.parsed_body).to be_empty
+    end
+
+    it 'excludes featured notes authored by blocked accounts' do
+      status = Fabricate(:status, account: excluded, visibility: :public)
+      status.status_stat.update!(favourites_count: 1)
+
+      post '/api/users/featured-notes', params: { i: token, userId: excluded.id.to_s }, as: :json
+
+      expect(response.parsed_body).to be_empty
+    end
   end
 
   describe 'POST /api/users/show (feature gate)' do

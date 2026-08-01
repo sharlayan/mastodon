@@ -32,6 +32,34 @@ RSpec.describe 'Account switching' do
       expect(body[:parent][:id]).to eq(parent.id.to_s)
       expect(body[:root_account_id]).to eq(parent.id.to_s)
     end
+
+    it 'refuses a disabled child account' do
+      child_user.update!(disabled: true)
+
+      switch_to_child
+
+      expect(response).to redirect_to(root_path)
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_failed'))
+    end
+  end
+
+  describe 'link authentication' do
+    let(:state) { SecureRandom.hex(32) }
+
+    before do
+      MultiAccounts::StateStore.store!(state, SecureRandom.uuid, parent_user.id)
+    end
+
+    it 'refuses to authorize a disabled target account' do
+      child_user.update!(disabled: true)
+
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: child_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response).to have_http_status(200)
+      expect(response.body).to include(I18n.t('devise.failure.inactive'))
+    end
   end
 
   describe 'while switched into a child account' do

@@ -22,7 +22,7 @@ class MultiAccounts::AuthController < ApplicationController
       return
     end
 
-    unless user.active_for_authentication?
+    unless user.functional?
       flash.now[:alert] = I18n.t("devise.failure.#{user.inactive_message}")
       render :new
       return
@@ -49,7 +49,7 @@ class MultiAccounts::AuthController < ApplicationController
 
     user = User.find_by(id: state_data[:authenticated_user_id])
 
-    unless user
+    unless user&.functional?
       flash.now[:alert] = I18n.t('devise.failure.timeout')
       @user = User.new
       render :new
@@ -96,7 +96,7 @@ class MultiAccounts::AuthController < ApplicationController
     target_account = user.account
     source_user = User.find_by(id: @state_data[:user_id])
 
-    unless source_user
+    unless source_user&.functional? && user.functional?
       render plain: I18n.t('devise.failure.timeout'), status: 400
       return
     end
@@ -108,7 +108,12 @@ class MultiAccounts::AuthController < ApplicationController
     root_parent_id = parent_stack.first
     if root_parent_id.present?
       root_account = Account.find_by(id: root_parent_id)
-      source_account = root_account if root_account
+      unless root_account&.user&.functional?
+        render plain: I18n.t('devise.failure.timeout'), status: 400
+        return
+      end
+
+      source_account = root_account
     end
 
     if target_account.id == source_account.id

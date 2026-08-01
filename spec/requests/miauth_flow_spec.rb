@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'MiAuth web flow' do
   let(:user) { Fabricate(:user) }
   let(:session_id) { SecureRandom.uuid }
-  let(:callback) { 'flare://Callback/SignIn/Misskey' }
+  let(:callback) { 'https://client.example/callback' }
   let(:rate_limiter) { instance_double(RateLimiter, record!: true) }
 
   before do
@@ -27,7 +27,7 @@ RSpec.describe 'MiAuth web flow' do
       expect(response).to have_http_status(200)
     end
 
-    it 'renders the completion page that navigates to the deeplink callback with session on approve' do
+    it 'renders the completion page that navigates to the HTTPS callback with session on approve' do
       post "/miauth/#{session_id}", params: { name: 'Flare', callback: callback }
       expect(response).to have_http_status(200)
       expect(response.body).to include("#{callback}?session=#{session_id}")
@@ -68,6 +68,21 @@ RSpec.describe 'MiAuth web flow' do
       second = MisskeyCompat::MiAuth.issue_token(user, name: 'Second', callback: 'second://callback')
 
       expect(first.application_id).to_not eq(second.application_id)
+    end
+
+    it 'lists issued client applications in Mastodon authorized-app settings' do
+      post "/miauth/#{session_id}", params: { name: 'Visible client', callback: callback }
+      token = Doorkeeper::AccessToken.where(resource_owner_id: user.id).order(id: :desc).first
+      application = token.application
+
+      expect(response.body).to include(oauth_authorized_applications_path)
+
+      get oauth_authorized_applications_path
+      expect(response).to have_http_status(200)
+      expect(response.body).to include(application.name)
+
+      delete oauth_authorized_application_path(application)
+      expect(token.reload.revoked_at).to be_present
     end
 
     it 'converts an existing coarse-scope client application to the isolated scope' do
@@ -121,10 +136,32 @@ RSpec.describe 'MiAuth web flow' do
       expect(user.account.statuses.where(text: 'scope isolation')).to_not exist
     end
 
-    it 'ignores unsafe callback schemes on approve' do
-      post "/miauth/#{session_id}", params: { name: 'Flare', callback: 'javascript:alert(1)' }
-      expect(response).to have_http_status(200)
-      expect(response.body).to_not include('javascript:alert(1)')
+    it 'rejects every non-HTTPS callback on approve' do
+      ['http://client.example/callback', 'flare://Callback/SignIn/Misskey', 'javascript:alert(1)'].each do |unsafe_callback|
+        post "/miauth/#{session_id}", params: { name: 'Flare', callback: unsafe_callback }
+        expect(response).to have_http_status(400)
+        expect(response.body).to_not include(unsafe_callback)
+      end
+    end
+
+    it 'enforces both issuance limits and rolls back a successful counter when the other limit rejects' do
+      expect(RateLimiter::FAMILIES[:misskey_miauth_hourly]).to include(limit: 10, period: 1.hour)
+      expect(RateLimiter::FAMILIES[:misskey_miauth_daily]).to include(limit: 30, period: 24.hours)
+
+      calls = 0
+      allow(rate_limiter).to receive(:record!) do
+        calls += 1
+        raise Mastodon::RateLimitExceededError if calls == 2
+      end
+      allow(rate_limiter).to receive(:rollback!).and_return(true)
+      allow(MisskeyCompat::MiAuth).to receive(:issue_token).and_call_original
+
+      post "/miauth/#{session_id}", params: { name: 'Limited', callback: callback }
+
+      expect(calls).to eq(2)
+      expect(response).to have_http_status(429)
+      expect(rate_limiter).to have_received(:rollback!)
+      expect(MisskeyCompat::MiAuth).to_not have_received(:issue_token)
     end
 
     it 'rejects session identifiers with insufficient entropy' do
@@ -132,6 +169,17 @@ RSpec.describe 'MiAuth web flow' do
 
       expect(response).to have_http_status(404)
     end
+  end
+
+  it 'does not return a claimed token for an account that became unavailable' do
+    sign_in user
+    post "/miauth/#{session_id}", params: { name: 'Flare', callback: callback }
+    user.account.update!(suspended_at: Time.current)
+
+    post "/api/miauth/#{session_id}/check", as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body).to eq('ok' => false)
   end
 
   describe 'detailed user serialization for Flare' do

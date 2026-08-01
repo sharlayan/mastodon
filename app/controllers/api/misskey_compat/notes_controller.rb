@@ -90,7 +90,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def note_reactions
-    scope = @note.status_reactions.includes(:account, :custom_emoji).order(id: :desc)
+    scope = @note.status_reactions.joins(:account).merge(Account.without_suspended)
+    scope = scope.merge(Account.not_excluded_by_account(current_account)) if current_account
+    scope = scope.includes(:account, :custom_emoji).order(id: :desc)
     scope = scope.where(name: reaction_type_name(params[:type])) if params[:type].present?
     scope = scope.where(id: ...(until_id.to_i)) if until_id.present?
     scope = scope.where('status_reactions.id > ?', since_id.to_i) if since_id.present?

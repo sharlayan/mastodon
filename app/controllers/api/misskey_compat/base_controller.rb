@@ -95,6 +95,8 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     if current_user.nil?
       code = params[:i].present? ? 'AUTHENTICATION_FAILED' : 'CREDENTIAL_REQUIRED'
       render_error('Authentication required', code, 401)
+    elsif !current_user.functional?
+      render_error('Account is not available', 'AUTHENTICATION_FAILED', 403)
     elsif current_misskey_grant ? !current_misskey_grant.allows?(required_misskey_permission) : !current_token.scopes.exists?(required_token_scope)
       render_error('Insufficient token scope', 'PERMISSION_DENIED', 403)
     end

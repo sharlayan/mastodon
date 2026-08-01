@@ -14,7 +14,7 @@ class Api::MisskeyCompat::MiauthController < Api::MisskeyCompat::BaseController
     return render json: { ok: false } unless access_token&.accessible?
 
     user = User.find_by(id: access_token.resource_owner_id)
-    return render json: { ok: false } if user.nil?
+    return render json: { ok: false } unless user&.functional?
 
     render json: {
       ok: true,

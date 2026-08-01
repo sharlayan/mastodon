@@ -80,7 +80,9 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     target = Account.find(params[:userId])
     return render json: [] if collections_hidden?(target, target.hides_followers?)
 
-    follows = paginate_follows(Follow.where(target_account_id: target.id).includes(:account).order(id: :desc))
+    scope = Follow.where(target_account_id: target.id)
+    scope = scope.where(account_id: visible_account_ids) unless current_account.id == target.id
+    follows = paginate_follows(scope.includes(:account).order(id: :desc))
     render json: follows.map { |follow|
       { id: MisskeyCompat::MiId.encode(follow.id), createdAt: follow.created_at.iso8601, followerId: MisskeyCompat::MiId.encode(follow.account_id), follower: MisskeyCompat::UserSerializer.serialize(follow.account) }
     }
@@ -92,7 +94,9 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     target = Account.find(params[:userId])
     return render json: [] if collections_hidden?(target, target.hides_following?)
 
-    follows = paginate_follows(Follow.where(account_id: target.id).includes(:target_account).order(id: :desc))
+    scope = Follow.where(account_id: target.id)
+    scope = scope.where(target_account_id: visible_account_ids) unless current_account.id == target.id
+    follows = paginate_follows(scope.includes(:target_account).order(id: :desc))
     render json: follows.map { |follow|
       { id: MisskeyCompat::MiId.encode(follow.id), createdAt: follow.created_at.iso8601, followeeId: MisskeyCompat::MiId.encode(follow.target_account_id), followee: MisskeyCompat::UserSerializer.serialize(follow.target_account) }
     }
@@ -128,6 +132,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
       .joins(:status_stat)
       .where('status_stats.reblogs_count + status_stats.favourites_count > 0')
       .order(id: :desc)
+    scope = scope.not_excluded_by_account(current_account) if current_account
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('statuses.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     statuses = scope.limit(pagination_limit).to_a
@@ -153,6 +158,10 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   private
+
+  def visible_account_ids
+    Account.without_suspended.not_excluded_by_account(current_account).select(:id)
+  end
 
   def account_relationships(accounts)
     AccountRelationshipsPresenter.new(accounts, current_account.id) if current_account

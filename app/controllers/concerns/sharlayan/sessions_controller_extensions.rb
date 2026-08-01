@@ -14,7 +14,7 @@ module Sharlayan::SessionsControllerExtensions
   def destroy
     parent_account = Account.find_by(id: switch_parent_stack.first)
 
-    if parent_account&.user&.active_for_authentication?
+    if parent_account&.user&.functional?
       switch_to_user(parent_account.user, [], parent_account.id)
       respond_to_account_return
       return
@@ -45,7 +45,7 @@ module Sharlayan::SessionsControllerExtensions
     target_account = Account.find_by(id: params[:switch_to])
     target_user = target_account&.user
 
-    unless target_user&.active_for_authentication?
+    unless target_user&.functional?
       redirect_to root_path, alert: I18n.t('account_switcher.switch_failed')
       return
     end
