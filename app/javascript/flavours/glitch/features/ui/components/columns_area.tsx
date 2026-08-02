@@ -33,6 +33,10 @@ import {
   ListTimeline,
   Directory,
 } from '../util/async-components';
+import {
+  ColumnWidthContext,
+  normalizeColumnWidth,
+} from '../util/column_width_context';
 import { useColumnsContext } from '../util/columns_context';
 
 import Bundle from './bundle';
@@ -78,7 +82,7 @@ export const useColumnIndexContext = () => useContext(ColumnIndexContext);
 interface Column {
   uuid: string;
   id: keyof typeof componentMap;
-  params?: null | Record<{ other?: unknown }>;
+  params?: null | Record<{ other?: unknown; width?: number }>;
 }
 
 type FetchedComponent = React.FC<{
@@ -166,26 +170,32 @@ export const ColumnsArea = forwardRef<
           ? column.get('params')?.toJS()
           : null;
         const other = params?.other ?? {};
+        const width = normalizeColumnWidth(params?.width);
+        const customized = params?.width != null;
         const uuid = column.get('uuid');
         const id = column.get('id');
 
         return (
           <ColumnIndexContext.Provider value={index} key={uuid}>
-            <Bundle
-              key={uuid}
-              fetchComponent={componentMap[id]}
-              loading={renderLoading(id)}
-              error={ErrorComponent}
+            <ColumnWidthContext.Provider
+              value={{ columnId: uuid, customized, width }}
             >
-              {(SpecificComponent: FetchedComponent) => (
-                <SpecificComponent
-                  columnId={uuid}
-                  params={params}
-                  multiColumn
-                  {...other}
-                />
-              )}
-            </Bundle>
+              <Bundle
+                key={uuid}
+                fetchComponent={componentMap[id]}
+                loading={renderLoading(id)}
+                error={ErrorComponent}
+              >
+                {(SpecificComponent: FetchedComponent) => (
+                  <SpecificComponent
+                    columnId={uuid}
+                    params={params}
+                    multiColumn
+                    {...other}
+                  />
+                )}
+              </Bundle>
+            </ColumnWidthContext.Provider>
           </ColumnIndexContext.Provider>
         );
       })}

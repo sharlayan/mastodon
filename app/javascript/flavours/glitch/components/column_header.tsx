@@ -9,12 +9,16 @@ import ArrowBackIcon from '@/material-icons/400-24px/arrow_back.svg?react';
 import ChevronLeftIcon from '@/material-icons/400-24px/chevron_left.svg?react';
 import ChevronRightIcon from '@/material-icons/400-24px/chevron_right.svg?react';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
+import FitScreenIcon from '@/material-icons/400-24px/fit_screen.svg?react';
 import UnfoldLessIcon from '@/material-icons/400-24px/unfold_less.svg?react';
 import UnfoldMoreIcon from '@/material-icons/400-24px/unfold_more.svg?react';
+import { openModal } from 'flavours/glitch/actions/modal';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
+import { useColumnWidthContext } from 'flavours/glitch/features/ui/util/column_width_context';
 import { ButtonInTabsBar } from 'flavours/glitch/features/ui/util/columns_context';
 import { useIdentity } from 'flavours/glitch/identity_context';
+import { useAppDispatch } from 'flavours/glitch/store';
 
 import { useColumnIndexContext } from '../features/ui/components/columns_area';
 import { getColumnSkipLinkId } from '../features/ui/components/skip_links';
@@ -119,6 +123,8 @@ export const ColumnHeader: React.FC<Props> = ({
   onPin,
 }) => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const { columnId, width } = useColumnWidthContext();
   const { signedIn } = useIdentity();
   const history = useAppHistory();
   const [collapsed, setCollapsed] = useState(true);
@@ -157,6 +163,17 @@ export const ColumnHeader: React.FC<Props> = ({
     onPin?.();
   }, [history, pinned, onPin]);
 
+  const handleWidth = useCallback(() => {
+    if (columnId && width) {
+      dispatch(
+        openModal({
+          modalType: 'COLUMN_WIDTH',
+          modalProps: { columnId, width },
+        }),
+      );
+    }
+  }, [columnId, dispatch, width]);
+
   const wrapperClassName = classNames('column-header__wrapper', className, {
     active,
   });
@@ -186,14 +203,27 @@ export const ColumnHeader: React.FC<Props> = ({
 
   if (multiColumn && pinned) {
     pinButton = (
-      <button
-        className='text-btn column-header__setting-btn'
-        onClick={handlePin}
-        type='button'
-      >
-        <Icon id='times' icon={CloseIcon} />{' '}
-        <FormattedMessage id='column_header.unpin' defaultMessage='Unpin' />
-      </button>
+      <div className='column-header__setting-actions'>
+        <button
+          className='text-btn column-header__setting-btn'
+          onClick={handlePin}
+          type='button'
+        >
+          <Icon id='times' icon={CloseIcon} />{' '}
+          <FormattedMessage id='column_header.unpin' defaultMessage='Unpin' />
+        </button>
+        <button
+          className='text-btn column-header__setting-btn'
+          onClick={handleWidth}
+          type='button'
+        >
+          <Icon id='fit-screen' icon={FitScreenIcon} />{' '}
+          <FormattedMessage
+            id='column_header.adjust_width'
+            defaultMessage='Adjust width'
+          />
+        </button>
+      </div>
     );
 
     moveButtons = (
