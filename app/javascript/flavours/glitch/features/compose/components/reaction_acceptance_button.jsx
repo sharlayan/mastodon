@@ -40,9 +40,6 @@ export const ReactionAcceptanceButton = () => {
     (value) => dispatch(changeReactionAcceptance(value === 'all' ? null : value)),
     [dispatch],
   );
-
-  if (!visible) return null;
-
   const options = useMemo(
     () =>
       REACTION_ACCEPTANCE_OPTIONS.map(([value, message]) => ({
@@ -51,6 +48,8 @@ export const ReactionAcceptanceButton = () => {
       })),
     [handleChange, intl],
   );
+
+  if (!visible) return null;
 
   const label = intl.formatMessage(
     REACTION_ACCEPTANCE_OPTIONS.find(([value]) => value === acceptance)?.[1] || messages.all,
