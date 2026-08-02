@@ -6,7 +6,7 @@ import api from '../api';
 
 import { showAlert } from './alerts';
 import { ensureComposeIsVisible, setComposeToStatus } from './compose';
-import { importFetchedStatus, importFetchedAccount } from './importer';
+import { importFetchedStatus, importFetchedAccount, importFetchedStatusReactions } from './importer';
 import { fetchContext } from './statuses_typed';
 import { deleteFromTimelines } from './timelines';
 
@@ -212,12 +212,12 @@ export const updateStatus = (status, { bogusQuotePolicy }) => dispatch =>
 // Reaction-only update: refresh the status in place *only* if it is already
 // loaded (i.e. on screen). Never insert it into a timeline, so that follower-only
 // statuses are not re-injected into home timelines when they get reactions.
-export const updateStatusReaction = (status, { bogusQuotePolicy }) => (dispatch, getState) => {
+export const updateStatusReaction = status => (dispatch, getState) => {
   if (!getState().getIn(['statuses', status.id])) {
     return;
   }
 
-  dispatch(importFetchedStatus(status, { bogusQuotePolicy }));
+  dispatch(importFetchedStatusReactions(status));
 };
 
 export function muteStatus(id) {

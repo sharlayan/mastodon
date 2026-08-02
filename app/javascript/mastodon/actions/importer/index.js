@@ -8,6 +8,7 @@ import { fetchAccountsForCollectionPreview } from '@/mastodon/reducers/slices/co
 
 export const STATUS_IMPORT   = 'STATUS_IMPORT';
 export const STATUSES_IMPORT = 'STATUSES_IMPORT';
+export const STATUS_REACTIONS_IMPORT = 'STATUS_REACTIONS_IMPORT';
 export const FILTERS_IMPORT  = 'FILTERS_IMPORT';
 
 function pushUnique(array, object) {
@@ -22,6 +23,10 @@ export function importStatus(status) {
 
 export function importStatuses(statuses) {
   return { type: STATUSES_IMPORT, statuses };
+}
+
+export function importStatusReactions(status) {
+  return { type: STATUS_REACTIONS_IMPORT, status };
 }
 
 export function importFilters(filters) {
@@ -54,6 +59,17 @@ export function importFetchedAccounts(accounts) {
 
 export function importFetchedStatus(status, options = {}) {
   return importFetchedStatuses([status], options);
+}
+
+export function importFetchedStatusReactions(status) {
+  return dispatch => {
+    const accounts = status.reactions
+      .flatMap(reaction => reaction.users || [])
+      .filter(user => user);
+
+    dispatch(importFetchedAccounts(accounts));
+    dispatch(importStatusReactions(status));
+  };
 }
 
 export function importFetchedStatuses(statuses, options = {}) {

@@ -8,11 +8,14 @@ RSpec.describe BroadcastStatusUpdateWorker do
   let(:account)  { Fabricate(:account) }
   let(:follower) { Fabricate(:account) }
   let(:status)   { Fabricate(:status, account: account) }
+  let(:published_messages) { [] }
 
   before do
     follower.user # ensure user is created
     follower.follow!(account)
-    allow(redis).to receive(:publish)
+    allow(redis).to receive(:publish) do |channel, message|
+      published_messages << [channel, JSON.parse(message)]
+    end
   end
 
   describe '#perform' do
@@ -25,6 +28,21 @@ RSpec.describe BroadcastStatusUpdateWorker do
         subject.perform(status.id)
 
         expect(redis).to have_received(:publish).with("timeline:status:#{status.id}", a_string_including('"event":"status.reaction"'))
+      end
+
+      it 'only includes reaction update data in the payload' do
+        reactor = Fabricate(:account)
+        Fabricate(:status_reaction, status: status, account: reactor, name: '👍')
+
+        subject.perform(status.id)
+
+        message = published_messages.find { |channel, _message| channel == "timeline:status:#{status.id}" }.last
+        expect(message['payload']).to match(
+          'id' => status.id.to_s,
+          'reactions_count' => 1,
+          'reactions' => [include('name' => '👍', 'count' => 1, 'users' => [include('id' => reactor.id.to_s)])]
+        )
+        expect(message['payload'].keys).to contain_exactly('id', 'reactions_count', 'reactions')
       end
 
       it 'publishes to the public timeline' do

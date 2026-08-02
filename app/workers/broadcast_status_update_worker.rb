@@ -12,10 +12,7 @@ class BroadcastStatusUpdateWorker
     # silenced account updated on public timeline. disabled it
     return if status.account.nil? || status.account.suspended? || status.account.silenced?
 
-    payload = InlineRenderer.render(status, nil, :status)
-    return if payload.nil?
-
-    message = JSON.generate(event: 'status.reaction', payload: payload)
+    message = JSON.generate(event: 'status.reaction', payload: reaction_payload(status.proper))
 
     # Always publish to status-specific channel for users currently viewing this status
     redis.publish("timeline:status:#{status.id}", message)
@@ -28,6 +25,19 @@ class BroadcastStatusUpdateWorker
   end
 
   private
+
+  def reaction_payload(status)
+    reactions = status.reactions
+
+    {
+      id: status.id.to_s,
+      reactions_count: status.reactions_count,
+      reactions: ActiveModelSerializers::SerializableResource.new(
+        reactions,
+        each_serializer: REST::ReactionSerializer
+      ).as_json,
+    }
+  end
 
   def status_too_old?(status)
     status.created_at < 7.days.ago

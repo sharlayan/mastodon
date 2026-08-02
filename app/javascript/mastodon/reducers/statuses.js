@@ -2,7 +2,7 @@ import { Map as ImmutableMap, fromJS } from 'immutable';
 
 import { timelineDelete } from 'mastodon/actions/timelines_typed';
 
-import { STATUS_IMPORT, STATUSES_IMPORT } from '../actions/importer';
+import { STATUS_IMPORT, STATUS_REACTIONS_IMPORT, STATUSES_IMPORT } from '../actions/importer';
 import { normalizeStatusTranslation } from '../actions/importer/normalizer';
 import {
   FAVOURITE_REQUEST,
@@ -35,6 +35,23 @@ const importStatus = (state, status) => state.set(status.id, fromJS(status));
 
 const importStatuses = (state, statuses) =>
   state.withMutations(mutable => statuses.forEach(status => importStatus(mutable, status)));
+
+const importStatusReactions = (state, status) => {
+  const currentStatus = state.get(status.id);
+  if (!currentStatus) {
+    return state;
+  }
+
+  const currentReactions = currentStatus.get('reactions');
+  const reactions = fromJS(status.reactions).map(reaction => {
+    const currentReaction = currentReactions?.find(item => item.get('name') === reaction.get('name'));
+    return currentReaction?.get('me') ? reaction.set('me', true) : reaction;
+  });
+
+  return state
+    .setIn([status.id, 'reactions'], reactions)
+    .setIn([status.id, 'reactions_count'], status.reactions_count);
+};
 
 const deleteStatus = (state, id, references) => {
   references.forEach(ref => {
@@ -106,6 +123,8 @@ export default function statuses(state = initialState, action) {
     return importStatus(state, action.status);
   case STATUSES_IMPORT:
     return importStatuses(state, action.statuses);
+  case STATUS_REACTIONS_IMPORT:
+    return importStatusReactions(state, action.status);
   case FAVOURITE_REQUEST:
     return state.setIn([action.status.get('id'), 'favourited'], true);
   case FAVOURITE_FAIL:
