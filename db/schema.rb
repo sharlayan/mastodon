@@ -1564,6 +1564,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010300) do
     t.index ["target_account_id"], name: "index_reports_on_target_account_id"
   end
 
+  create_table "rp_hidden_statuses", id: :bigint, default: -> { "timestamp_id('rp_hidden_statuses'::text)" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "hidden_by_account_id"
+    t.boolean "media_moved", default: false, null: false
+    t.bigint "status_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hidden_by_account_id"], name: "index_rp_hidden_statuses_on_hidden_by_account_id"
+    t.index ["status_id"], name: "index_rp_hidden_statuses_on_status_id", unique: true
+  end
+
   create_table "rule_translations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "hint", default: "", null: false
@@ -2158,6 +2168,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010300) do
   add_foreign_key "reports", "accounts", column: "target_account_id", name: "fk_eb37af34f0", on_delete: :cascade
   add_foreign_key "reports", "accounts", name: "fk_4b81f7522c", on_delete: :cascade
   add_foreign_key "reports", "oauth_applications", column: "application_id", on_delete: :nullify
+  add_foreign_key "rp_hidden_statuses", "accounts", column: "hidden_by_account_id", on_delete: :nullify
+  add_foreign_key "rp_hidden_statuses", "statuses", on_delete: :cascade
   add_foreign_key "rule_translations", "rules", on_delete: :cascade
   add_foreign_key "scheduled_statuses", "accounts", on_delete: :cascade
   add_foreign_key "session_activations", "oauth_access_tokens", column: "access_token_id", name: "fk_957e5bda89", on_delete: :cascade
