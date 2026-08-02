@@ -50,6 +50,24 @@ RSpec.describe Sharlayan::Status::Reactions do
       expect(reaction.users).to contain_exactly(visible_account)
       expect(reaction.account_ids).to contain_exactly(visible_account.id.to_s)
     end
+
+    it 'calculates the same emoji count independently for viewers with different mutes' do
+      other_viewer = Fabricate(:account)
+      muted_account = Fabricate(:account)
+      visible_account = Fabricate(:account)
+      slugcat_emoji = Fabricate(:custom_emoji, shortcode: 'slugcat', domain: nil)
+      Fabricate(:status_reaction, status: status, account: muted_account, name: 'slugcat', custom_emoji: slugcat_emoji)
+      Fabricate(:status_reaction, status: status, account: visible_account, name: 'slugcat', custom_emoji: slugcat_emoji)
+      viewer.mute!(muted_account)
+
+      viewer_reaction = Status.reaction_groups_map([status.id], viewer.id).fetch(status.id).find { |reaction| reaction.name == 'slugcat' }
+      other_viewer_reaction = Status.reaction_groups_map([status.id], other_viewer.id).fetch(status.id).find { |reaction| reaction.name == 'slugcat' }
+
+      expect(viewer_reaction.count).to eq(1)
+      expect(viewer_reaction.account_ids).to contain_exactly(visible_account.id.to_s)
+      expect(other_viewer_reaction.count).to eq(2)
+      expect(other_viewer_reaction.account_ids).to contain_exactly(muted_account.id.to_s, visible_account.id.to_s)
+    end
   end
 
   describe '#reactions' do

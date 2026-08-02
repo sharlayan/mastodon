@@ -8,6 +8,7 @@ const MAX_NOTE_SUBSCRIPTIONS = 100;
 const MAX_CHANNEL_ID_LENGTH = 128;
 const MAX_CHANNEL_NAME_LENGTH = 64;
 const MAX_DATABASE_ID = 9223372036854775807n;
+const REACTION_NOTE_UPDATE_TYPES = new Set(['reacted', 'unreacted']);
 
 const MI_ID_TIME2000 = 946684800000;
 
@@ -107,11 +108,12 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
  * @param {function(string[]): function(): void} deps.subscriptionHeartbeat
  * @param {Function} deps.channelNameToIds
  * @param {Function} deps.authorizeStatusAccess
+ * @param {Function} deps.loadExcludedReactionAccountIds
  * @param {Function} deps.loadGrantPermissions
  * @param {function(): Promise.<boolean>} deps.isEnabled
  * @param {import('pino').Logger} deps.logger
  */
-const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadGrantPermissions, isEnabled, logger }) => {
+const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadGrantPermissions, isEnabled, logger }) => {
   const send = (session, type, body) => {
     const ws = session.websocket;
     if (ws.readyState !== ws.OPEN) return;
@@ -172,7 +174,18 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
       const listener = (json) => {
         if (!json || json.event !== 'noteUpdated') return;
-        send(session, 'noteUpdated', json.payload);
+
+        const reactionAccountId = REACTION_NOTE_UPDATE_TYPES.has(json.payload?.type) ? decodeDatabaseId(json.payload?.body?.userId) : undefined;
+        if (!reactionAccountId) {
+          send(session, 'noteUpdated', json.payload);
+          return;
+        }
+
+        loadExcludedReactionAccountIds(session.request.accountId, [reactionAccountId])
+          .then((excludedAccountIds) => {
+            if (excludedAccountIds.length === 0) send(session, 'noteUpdated', json.payload);
+          })
+          .catch((err) => logger.error({ err }, 'misskey compat reaction filter failed'));
       };
 
       subscribe(channel, listener);

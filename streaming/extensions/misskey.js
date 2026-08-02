@@ -1,4 +1,5 @@
 import { createMisskeyCompat } from '../misskey_compat.js';
+import { excludedReactionAccountIds } from '../reaction_account_filter.js';
 
 const createEnabledCheck = (pgPool, logger, now = Date.now) => {
   let setting = { value: false, checkedAt: 0 };
@@ -68,6 +69,7 @@ const createMisskeyExtension = (deps) => {
   const compat = createMisskeyCompat({
     ...deps,
     authorizeStatusAccess: (statusId, req) => authorizeStatusAccess(deps.pgPool, statusId, req),
+    loadExcludedReactionAccountIds: (viewerAccountId, reactionAccountIds) => excludedReactionAccountIds(deps.pgPool, viewerAccountId, reactionAccountIds),
     loadGrantPermissions: (req) => loadGrantPermissions(deps.pgPool, deps.logger, req),
     isEnabled,
   });

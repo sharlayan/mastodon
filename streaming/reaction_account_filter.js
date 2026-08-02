@@ -8,6 +8,27 @@ const reactionAccountIds = (payload) => {
   )))];
 };
 
+const excludedReactionAccountIds = async (pgPool, viewerAccountId, candidateAccountIds) => {
+  if (candidateAccountIds.length === 0) return [];
+
+  const { rows } = await pgPool.query(`SELECT target_account_id AS id
+                                       FROM mutes
+                                       WHERE account_id = $1
+                                         AND target_account_id = ANY($2::bigint[])
+                                       UNION
+                                       SELECT target_account_id AS id
+                                       FROM blocks
+                                       WHERE account_id = $1
+                                         AND target_account_id = ANY($2::bigint[])
+                                       UNION
+                                       SELECT account_id AS id
+                                       FROM blocks
+                                       WHERE target_account_id = $1
+                                         AND account_id = ANY($2::bigint[])`, [viewerAccountId, candidateAccountIds]);
+
+  return rows.map(({ id }) => String(id));
+};
+
 const filterReactionAccounts = (payload, excludedAccountIds) => {
   if (!Array.isArray(payload?.reactions) || excludedAccountIds.length === 0) return payload;
 
@@ -27,7 +48,18 @@ const filterReactionAccounts = (payload, excludedAccountIds) => {
     return reaction.count > 0;
   });
 
+  if (typeof filtered.reactions_count === 'number') {
+    filtered.reactions_count = filtered.reactions.reduce((sum, reaction) => sum + reaction.count, 0);
+  }
+
   return filtered;
 };
 
-export { filterReactionAccounts, reactionAccountIds };
+const filterReactionPayload = async (pgPool, viewerAccountId, payload) => {
+  const accountIds = reactionAccountIds(payload);
+  const excludedAccountIds = await excludedReactionAccountIds(pgPool, viewerAccountId, accountIds);
+
+  return filterReactionAccounts(payload, excludedAccountIds);
+};
+
+export { excludedReactionAccountIds, filterReactionAccounts, filterReactionPayload, reactionAccountIds };

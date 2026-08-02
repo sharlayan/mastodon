@@ -131,6 +131,64 @@ test('Misskey cleanup removes channel and note subscriptions', () => {
   assert.equal(session.misskeyNotes.size, 0);
 });
 
+const createReactionStreamingFixture = (excludedAccountIds) => {
+  let listener;
+  const sent = [];
+  const compat = createMisskeyCompat({
+    subscribe: (_channel, callback) => { listener = callback; },
+    unsubscribe: () => {},
+    subscriptionHeartbeat: () => () => {},
+    channelNameToIds: async () => ({ channelIds: [] }),
+    authorizeStatusAccess: async () => true,
+    loadExcludedReactionAccountIds: async () => excludedAccountIds,
+    loadGrantPermissions: async () => undefined,
+    isEnabled: async () => true,
+    logger: { error: () => {}, warn: () => {} },
+  });
+  const session = {
+    request: { accountId: '7', scopes: ['read:statuses'] },
+    websocket: { readyState: 1, OPEN: 1, send: (message) => sent.push(JSON.parse(message)) },
+  };
+
+  return {
+    compat,
+    session,
+    sent,
+    listener: () => listener,
+  };
+};
+
+test('Misskey noteUpdated forwards reactions from accounts without mute or block relationships', async () => {
+  const fixture = createReactionStreamingFixture([]);
+  fixture.compat.handleMessage(fixture.session, { type: 'subNote', body: { id: '0000000000000009' } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  fixture.listener()({
+    event: 'noteUpdated',
+    payload: { id: '0000000000000009', type: 'reacted', body: { reaction: '👍', userId: '0000000000000008' } },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(fixture.sent, [{
+    type: 'noteUpdated',
+    body: { id: '0000000000000009', type: 'reacted', body: { reaction: '👍', userId: '0000000000000008' } },
+  }]);
+});
+
+test('Misskey noteUpdated drops reactions from muted or blocked accounts', async () => {
+  const fixture = createReactionStreamingFixture(['8']);
+  fixture.compat.handleMessage(fixture.session, { type: 'subNote', body: { id: '0000000000000009' } });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  fixture.listener()({
+    event: 'noteUpdated',
+    payload: { id: '0000000000000009', type: 'unreacted', body: { reaction: '👍', userId: '0000000000000008' } },
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(fixture.sent, []);
+});
+
 test('Misskey note subscription limit reserves slots before asynchronous authorization', async () => {
   let authorizationCalls = 0;
   let releaseAuthorization;

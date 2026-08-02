@@ -19,7 +19,7 @@ import { setupMetrics } from './metrics.js';
 import * as Redis from './redis.js';
 import { ACCESS_TOKEN_QUERY } from './extensions/auth.js';
 import { filterPayload as filterCustomEmojiPayload, mutedReactionNotification } from './custom_emoji_filter.js';
-import { filterReactionAccounts, reactionAccountIds } from './reaction_account_filter.js';
+import { filterReactionPayload } from './reaction_account_filter.js';
 import { createStreamingExtensions } from './extensions/index.js';
 import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
@@ -733,28 +733,8 @@ const startServer = async () => {
       }
 
       if (event === 'status.reaction' && req.accountId) {
-        const accountIds = reactionAccountIds(payload);
-
-        if (accountIds.length === 0) {
-          transmit(event, payload);
-          return;
-        }
-
-        pgPool.query(`SELECT target_account_id AS id
-                      FROM mutes
-                      WHERE account_id = $1
-                        AND target_account_id = ANY($2::bigint[])
-                      UNION
-                      SELECT target_account_id AS id
-                      FROM blocks
-                      WHERE account_id = $1
-                        AND target_account_id = ANY($2::bigint[])
-                      UNION
-                      SELECT account_id AS id
-                      FROM blocks
-                      WHERE target_account_id = $1
-                        AND account_id = ANY($2::bigint[])`, [req.accountId, accountIds])
-          .then(({ rows }) => transmit(event, filterReactionAccounts(payload, rows.map(({ id }) => id))))
+        filterReactionPayload(pgPool, req.accountId, payload)
+          .then((filteredPayload) => transmit(event, filteredPayload))
           .catch((err) => log.error(err));
         return;
       }
