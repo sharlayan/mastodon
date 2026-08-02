@@ -6,6 +6,7 @@ import {
   catFederationEnabled,
   me,
   showCat,
+  showCatSpeak,
   showFederatedCat,
 } from 'flavours/glitch/initial_state';
 
@@ -33,6 +34,13 @@ export function catEffectsVisibleFor(
   }
 
   return true;
+}
+
+export function catSpeakVisibleFor(
+  acct: string | undefined,
+  isCat: boolean | undefined,
+): boolean {
+  return showCatSpeak && catEffectsVisibleFor(acct, isCat);
 }
 
 function nyaifyPlain(text: string): string {

@@ -104,6 +104,11 @@
                label: t('simple_form.labels.defaults.setting_show_cat'),
                hint: t('simple_form.hints.defaults.setting_show_cat'),
                sharlayan_only: true
+    = ff.input :'cat.show_speak',
+               wrapper: :with_label,
+               label: t('simple_form.labels.defaults.setting_show_cat_speak'),
+               hint: t('simple_form.hints.defaults.setting_show_cat_speak'),
+               sharlayan_only: true
     - if Setting.cat_federation_enabled
       = ff.input :'cat.show_federated',
                  wrapper: :with_label,

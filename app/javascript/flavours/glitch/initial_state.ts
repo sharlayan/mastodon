@@ -248,6 +248,7 @@ export const {
   catEnabled,
   catFederationEnabled,
   showCat,
+  showCatSpeak,
   showFederatedCat,
 } = readSharlayanInitialState(initialState, Boolean(me));
 

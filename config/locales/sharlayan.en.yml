@@ -525,6 +525,8 @@ en:
           Off by default.
         setting_show_cat: Show cat ears on cat accounts' avatars and cat speak (nyaify)
           on their posts. On by default.
+        setting_show_cat_speak: Apply cat speak (nyaify) to cat accounts' posts. Turn
+          this off to keep cat ears while displaying posts as written.
         setting_show_federated_avatar_decorations: Also show decorations received
           from Misskey-compatible servers
         setting_show_federated_cat: Also apply cat effects to cat accounts received
@@ -592,6 +594,7 @@ en:
           Button
         setting_show_avatar_decorations: Show avatar decorations
         setting_show_cat: Show cat ears and cat speak
+        setting_show_cat_speak: Show cat speak (nyaify)
         setting_show_federated_avatar_decorations: Show avatar decorations from federated
           servers
         setting_show_federated_cat: Show cat effects from federated servers

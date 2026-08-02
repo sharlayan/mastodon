@@ -53,6 +53,7 @@ module Sharlayan::InitialStateSerializerExtensions
       show_avatar_decorations: object_account_user.settings['avatar_decorations.show'],
       show_federated_avatar_decorations: object_account_user.settings['avatar_decorations.show_federated'],
       show_cat: object_account_user.settings['cat.show'],
+      show_cat_speak: object_account_user.settings['cat.show_speak'],
       show_federated_cat: object_account_user.settings['cat.show_federated'],
       avatar_decoration_shape: object_account_user.settings['avatar_decorations.shape'],
       color_scheme: object_account_user.settings['web.color_scheme'],

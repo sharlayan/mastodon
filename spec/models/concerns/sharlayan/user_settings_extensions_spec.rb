@@ -21,6 +21,9 @@ RSpec.describe UserSettings do
     expect(settings[:'web.pages_blog_list_position']).to eq('left')
     expect(settings[:'web.ignore_others_pages_view']).to be false
     expect(settings[:'avatar_decorations.shape']).to eq('none')
+    expect(settings[:'cat.show']).to be true
+    expect(settings[:'cat.show_speak']).to be true
+    expect(settings[:'cat.show_federated']).to be true
     expect(settings[:'notification_emails.reaction']).to be false
   end
 

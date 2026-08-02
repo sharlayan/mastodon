@@ -14,7 +14,7 @@ import { Icon } from 'flavours/glitch/components/icon';
 import { Poll } from 'flavours/glitch/components/poll';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
 import { languages as preloadedLanguages } from 'flavours/glitch/initial_state';
-import { catEffectsVisibleFor, nyaifyHtml } from 'flavours/glitch/sharlayan/nyaify';
+import { catSpeakVisibleFor, nyaifyHtml } from 'flavours/glitch/sharlayan/nyaify';
 import { SharlayanStatusContentTooltip, renderSharlayanMfmContent, sharlayanStatusContentState } from 'flavours/glitch/sharlayan/status_content';
 
 import { EmojiHTML } from './emoji/html';
@@ -202,7 +202,7 @@ class StatusContent extends PureComponent {
 
     let content = (statusContent ?? getStatusContent(status)).replace(/(<br\s*\/?>)+[\s\n]*$/, '');
     const account = status.get('account');
-    if (account && catEffectsVisibleFor(account.get('acct'), account.get('is_cat'))) {
+    if (account && catSpeakVisibleFor(account.get('acct'), account.get('is_cat'))) {
       content = nyaifyHtml(content);
     }
     const language = status.getIn(['translation', 'language']) || status.get('language');

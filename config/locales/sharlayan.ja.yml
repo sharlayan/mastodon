@@ -444,6 +444,7 @@ ja:
         setting_reaction_custom_emoji_size: リアクションボタンでも横長のカスタム絵文字を元の比率で表示します。
         setting_show_avatar_decorations: アバターデコレーションを表示します。デフォルトではオフです。
         setting_show_cat: 猫アカウントのアバターに猫耳を、投稿に猫語（nyaify）を表示します。デフォルトではオンです。
+        setting_show_cat_speak: 猫アカウントの投稿に猫語（nyaify）を適用します。オフにすると、猫耳を残したまま投稿を原文どおりに表示します。
         setting_show_federated_avatar_decorations: Misskey互換サーバーから受信したアバターデコレーションも表示します
         setting_show_federated_cat: 連合サーバーから受信した猫アカウントにも猫の効果を適用します
         setting_show_online_status: あなたがオンラインか、最近アクティブか、オフラインかを他の人が確認できます。無効にすると、状態はすべての人に不明として表示されます。
@@ -496,6 +497,7 @@ ja:
         setting_reaction_custom_emoji_size: リアクションボタンのカスタム絵文字を元の比率で表示
         setting_show_avatar_decorations: アバターデコレーションを表示
         setting_show_cat: 猫耳と猫語を表示
+        setting_show_cat_speak: 猫語（nyaify）を表示
         setting_show_federated_avatar_decorations: 連合サーバーからのアバターデコレーションを表示
         setting_show_federated_cat: 連合サーバーの猫の効果を表示
         setting_show_online_status: 自分のオンライン状態を共有する

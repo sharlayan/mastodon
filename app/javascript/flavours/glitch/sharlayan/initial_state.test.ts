@@ -19,6 +19,7 @@ const meta: SharlayanInitialStateMeta = {
   show_avatar_decorations: true,
   show_federated_avatar_decorations: true,
   show_cat: true,
+  show_cat_speak: false,
   show_federated_cat: true,
   avatar_decoration_shape: 'square',
   local_account_statuses_access: 'authenticated',
@@ -49,6 +50,7 @@ describe('Sharlayan initial state', () => {
         catEnabled: true,
         catFederationEnabled: true,
         showCat: true,
+        showCatSpeak: false,
         showFederatedCat: true,
         customEmojiMutes: [],
         reactionMutes: [],
@@ -68,6 +70,7 @@ describe('Sharlayan initial state', () => {
       catEnabled: false,
       catFederationEnabled: false,
       showCat: true,
+      showCatSpeak: true,
       showFederatedCat: true,
     });
   });

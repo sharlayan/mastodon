@@ -31,6 +31,7 @@ export interface SharlayanInitialStateMeta {
   show_avatar_decorations?: boolean;
   show_federated_avatar_decorations?: boolean;
   show_cat?: boolean;
+  show_cat_speak?: boolean;
   show_federated_cat?: boolean;
   avatar_decoration_shape?: 'none' | 'round' | 'square';
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
@@ -103,6 +104,7 @@ export const readSharlayanInitialState = (
     catEnabled: getMeta('cat_enabled') === true,
     catFederationEnabled: getMeta('cat_federation_enabled') === true,
     showCat: getMeta('show_cat') ?? true,
+    showCatSpeak: getMeta('show_cat_speak') ?? true,
     showFederatedCat: getMeta('show_federated_cat') ?? true,
     avatarDecorationShape:
       getMeta('avatar_decoration_shape') ?? (isSignedIn ? 'none' : 'round'),

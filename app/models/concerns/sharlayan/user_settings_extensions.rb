@@ -62,6 +62,7 @@ module Sharlayan::UserSettingsExtensions
     def apply_cat_settings(settings)
       settings.namespace :cat do
         setting :show, default: true
+        setting :show_speak, default: true
         setting :show_federated, default: true
       end
     end

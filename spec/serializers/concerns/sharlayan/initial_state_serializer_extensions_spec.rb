@@ -14,6 +14,9 @@ RSpec.describe InitialStateSerializer do
       mfm_fold_mode: 'sensitive',
       ignore_others_pages_view: false,
       avatar_decoration_shape: 'none',
+      show_cat: true,
+      show_cat_speak: true,
+      show_federated_cat: true,
       custom_emoji_mutes: [],
       reaction_mutes: []
     )
