@@ -31,6 +31,25 @@ RSpec.describe Sharlayan::Status::Reactions do
 
       expect(groups.map(&:name)).to contain_exactly('party')
     end
+
+    it 'excludes muted accounts from groups, counts, users, and account ids' do
+      visible_account = Fabricate(:account)
+      muted_account = Fabricate(:account)
+      other_muted_account = Fabricate(:account)
+      Fabricate(:status_reaction, status: status, account: visible_account, name: '👍', custom_emoji: nil)
+      Fabricate(:status_reaction, status: status, account: muted_account, name: '👍', custom_emoji: nil)
+      Fabricate(:status_reaction, status: status, account: other_muted_account, name: '👎', custom_emoji: nil)
+      viewer.mute!(muted_account)
+      viewer.mute!(other_muted_account)
+
+      groups = Status.reaction_groups_map([status.id], viewer.id).fetch(status.id)
+      reaction = groups.find { |group| group.name == '👍' }
+
+      expect(groups.map(&:name)).to contain_exactly('party', '👍')
+      expect(reaction.count).to eq(1)
+      expect(reaction.users).to contain_exactly(visible_account)
+      expect(reaction.account_ids).to contain_exactly(visible_account.id.to_s)
+    end
   end
 
   describe '#reactions' do

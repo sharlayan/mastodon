@@ -52,6 +52,17 @@ RSpec.describe 'API V1 Statuses Reacted by Accounts' do
             include(name: '👍', account: include(id: alice.id.to_s))
           )
       end
+
+      it 'does not return muted users' do
+        user.account.mute!(bob)
+
+        subject
+
+        expect(response.parsed_body)
+          .to contain_exactly(
+            include(name: '👍', account: include(id: alice.id.to_s))
+          )
+      end
     end
   end
 
