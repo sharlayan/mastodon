@@ -27,6 +27,18 @@ RSpec.describe PageSeries do
     expect(series.update(main_page: page)).to be true
   end
 
+  it 'uses the oldest public page as its entry page when no main page is set' do
+    newer_page = Fabricate(:page, account: account, page_series: series, created_at: 1.day.ago)
+    oldest_page = Fabricate(:page, account: account, page_series: series, created_at: 2.days.ago)
+    Fabricate(:page, account: account, page_series: series, visibility: 'private', created_at: 3.days.ago)
+
+    expect(series.reload.entry_page).to eq(oldest_page)
+
+    series.update!(main_page: newer_page)
+
+    expect(series.entry_page).to eq(newer_page)
+  end
+
   it 'rejects a main page from another series or account' do
     other_page = Fabricate(:page)
 

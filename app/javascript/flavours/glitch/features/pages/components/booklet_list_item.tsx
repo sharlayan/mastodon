@@ -24,8 +24,8 @@ export const BookletListItem: React.FC<{
   owned?: boolean;
 }> = ({ booklet, owned = false }) => {
   const intl = useIntl();
-  const href = booklet.main_page_name
-    ? `/@${booklet.account.acct}/pages/${encodeURIComponent(booklet.main_page_name)}`
+  const href = booklet.entry_page_name
+    ? `/@${booklet.account.acct}/pages/${encodeURIComponent(booklet.entry_page_name)}`
     : `/@${booklet.account.acct}/pages`;
 
   return (

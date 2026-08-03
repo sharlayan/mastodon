@@ -12,8 +12,8 @@ class Api::V1::Accounts::PageSeriesController < Api::V1::Accounts::BaseControlle
   def index
     return render json: [] if @account.unavailable? || page_hidden_from_search_engine?(@account)
 
-    series = @account.page_series.joins(:main_page)
-      .where(pages: { visibility: 'public' })
+    series = @account.page_series
+      .where(id: Page.where(visibility: 'public', draft: false).select(:page_series_id))
       .includes(:account, :main_page, :cover_media_attachment, :pages)
       .order(updated_at: :desc)
     render json: series, each_serializer: REST::PageSeriesSerializer

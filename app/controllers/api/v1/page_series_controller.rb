@@ -8,13 +8,13 @@ class Api::V1::PageSeriesController < Api::BaseController
   before_action :set_series, only: [:update, :destroy]
 
   def index
-    series = current_account.page_series.includes(:pages, :cover_media_attachment).order(:title)
+    series = current_account.page_series.includes(:main_page, :pages, :cover_media_attachment).order(:title)
     render json: series, each_serializer: REST::PageSeriesSerializer
   end
 
   def others
-    series = PageSeries.joins(:main_page)
-      .where(pages: { visibility: 'public' })
+    series = PageSeries
+      .where(id: Page.where(visibility: 'public', draft: false).select(:page_series_id))
       .where(displayed: true)
       .where.not(account_id: current_account.id)
       .includes(:account, :main_page, :cover_media_attachment, :pages)

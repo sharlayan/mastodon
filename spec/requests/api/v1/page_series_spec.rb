@@ -71,9 +71,38 @@ RSpec.describe 'Page series' do
     expect(response.parsed_body.first).to include(
       account_id: other_account.id.to_s,
       main_page_name: 'guide',
+      entry_page_id: representative.id.to_s,
+      entry_page_name: 'guide',
       pages_count: 1
     )
     expect(response.parsed_body.first.dig(:account, :id)).to eq(other_account.id.to_s)
+  end
+
+  it 'uses the oldest public page to open a Booklet without a representative page' do
+    other_account = Fabricate(:account)
+    booklet = Fabricate(:page_series, account: other_account, title: 'Public guide')
+    Fabricate(:page, account: other_account, page_series: booklet, name: 'newer', visibility: 'public', created_at: 1.day.ago)
+    oldest_page = Fabricate(:page, account: other_account, page_series: booklet, name: 'oldest', visibility: 'public', created_at: 2.days.ago)
+    Fabricate(:page, account: other_account, page_series: booklet, name: 'private', visibility: 'private', created_at: 3.days.ago)
+
+    get '/api/v1/page_series/others', headers: headers
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item[:id] == booklet.id.to_s }).to include(
+      main_page_id: nil,
+      main_page_name: nil,
+      entry_page_id: oldest_page.id.to_s,
+      entry_page_name: 'oldest'
+    )
+    expect(response.parsed_body.pluck(:id)).to include(booklet.id.to_s)
+
+    get "/api/v1/accounts/#{other_account.id}/page_series"
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item[:id] == booklet.id.to_s }).to include(
+      entry_page_id: oldest_page.id.to_s,
+      entry_page_name: 'oldest'
+    )
   end
 
   it 'excludes privately displayed Booklets from the public bookcase but includes them on the owner profile' do

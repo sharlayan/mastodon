@@ -72,6 +72,8 @@ export interface ApiPageSeriesJSON extends ApiPageSeriesSummaryJSON {
   account_id: string;
   account: ApiAccountJSON;
   main_page_name: string | null;
+  entry_page_id: string | null;
+  entry_page_name: string | null;
   pages_count: number;
   created_at: string;
   updated_at: string;

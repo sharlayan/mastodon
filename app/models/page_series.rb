@@ -34,6 +34,14 @@ class PageSeries < ApplicationRecord
   validate :validate_cover_media_attachment
   validate :validate_account_series_limit, on: :create
 
+  def entry_page(preloaded_pages: nil)
+    return main_page if valid_main_page?(main_page)
+
+    return preloaded_pages.select(&:eligible_for_main?).min_by { |page| [page.created_at, page.id] } if preloaded_pages
+
+    pages.where(visibility: 'public', draft: false).reorder(:created_at, :id).first
+  end
+
   private
 
   def normalize_text
@@ -44,7 +52,11 @@ class PageSeries < ApplicationRecord
   def validate_main_page
     return if main_page.nil?
 
-    errors.add(:main_page, :invalid) unless main_page.account_id == account_id && main_page.page_series_id == id && main_page.eligible_for_main?
+    errors.add(:main_page, :invalid) unless valid_main_page?(main_page)
+  end
+
+  def valid_main_page?(page)
+    page&.account_id == account_id && page.page_series_id == id && page.eligible_for_main?
   end
 
   def validate_cover_media_attachment
