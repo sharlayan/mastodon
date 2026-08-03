@@ -1471,13 +1471,16 @@ ja:
       other: エラーが発生しました！ 以下の%{count}件のエラーを確認してください
   imports:
     errors:
+      clip_status_not_found_warning: インポートするクリップ内の一部の投稿には移行可能なアドレスがないか、このサーバーにまだ認識されていません。Mastodonはインポート中にアドレスのある投稿を取得しますが、アドレスのない投稿は追加できません。
       empty: CSVファイルの内容がありません
       incompatible_type: 選択したインポート項目とファイルの内容が異なります
       invalid_csv_file: '無効なCSVファイルです。エラー: %{error}'
       over_rows_processing_limit: "%{count}行以上"
+      status_not_found_warning: 一部の項目は、このサーバーにまだ認識されていない投稿を参照しています。インポート時に完全には復元されない可能性があります。
       too_large: ファイルが大きすぎます
     failures: 失敗
     imported: インポート済み
+    lists_following_warning: Misskeyとは異なり、Mastodonのリストにはフォロー中のアカウントのみ追加できます。このリストをインポートすると、まだフォローしていないアカウントを自動的にフォローします。
     mismatched_types_warning: インポート項目と異なるファイルを選択している可能性があります。続ける前にファイルの内容をもう一度確認してください。
     modes:
       merge: 統合

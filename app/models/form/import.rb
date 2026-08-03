@@ -18,7 +18,7 @@ class Form::Import
     muting: ['Account address', 'Hide notifications'],
     domain_blocking: ['#domain'],
     bookmarks: ['#uri'],
-    lists: ['List name', 'Account address'],
+    lists: ['List name', 'Account address', 'withReplies'],
   }.freeze
 
   KNOWN_FIRST_HEADERS = EXPECTED_HEADERS_BY_TYPE.values.map(&:first).uniq.freeze
@@ -34,6 +34,7 @@ class Form::Import
     '#domain' => 'domain',
     '#uri' => 'uri',
     'List name' => 'list_name',
+    'withReplies' => 'with_replies',
   }.freeze
 
   class EmptyFileError < StandardError; end
@@ -45,23 +46,25 @@ class Form::Import
   validate :validate_data
 
   def guessed_type
-    if csv_headers_match?('Hide notifications') || file_name_matches?('mutes') || file_name_matches?('muted_accounts')
+    if csv_headers_match?('Hide notifications') || file_name_matches?('mutes') || file_name_matches?('muted_accounts') || file_name_matches?('mute-')
       :muting
-    elsif csv_headers_match?('Show boosts') || csv_headers_match?('Notify on new posts') || csv_headers_match?('Languages') || file_name_matches?('follows') || file_name_matches?('following_accounts')
+    elsif csv_headers_match?('Show boosts') || csv_headers_match?('Notify on new posts') || csv_headers_match?('Languages') || file_name_matches?('follows') || file_name_matches?('following_accounts') || file_name_matches?('following-')
       :following
-    elsif file_name_matches?('blocks') || file_name_matches?('blocked_accounts')
+    elsif file_name_matches?('blocks') || file_name_matches?('blocked_accounts') || file_name_matches?('blocking-')
       :blocking
     elsif file_name_matches?('domain_blocks') || file_name_matches?('blocked_domains')
       :domain_blocking
     elsif file_name_matches?('bookmarks')
       :bookmarks
-    elsif file_name_matches?('lists')
+    elsif file_name_matches?('lists') || file_name_matches?('user-lists-')
       :lists
     end
   end
 
   def guessed_type_json
-    JSON_TYPES.find { |json_type| parse_json.key?(json_type.to_s) }
+    return :clips if misskey_clips_json?
+
+    JSON_TYPES.find { |json_type| parse_json.is_a?(Hash) && parse_json.key?(json_type.to_s) }
   end
 
   # Whether the uploaded CSV file seems to correspond to a different import type than the one selected
@@ -101,6 +104,8 @@ class Form::Import
     return false unless content_type_is_json?
 
     import_statuses = json_data.pluck(:statuses).flatten.uniq
+    return true if type.to_sym == :clips && misskey_clips_json? && misskey_clips_contain_unaddressed_notes?
+
     db_statuses = Status.where(uri: import_statuses)
     import_statuses.count != db_statuses.count
   end
@@ -124,7 +129,7 @@ class Form::Import
     when :bookmarks
       ['#uri']
     when :lists
-      ['List name', 'Account address']
+      ['List name', 'Account address', 'withReplies']
     end
   end
 
@@ -135,6 +140,8 @@ class Form::Import
       case field_info.header
       when 'Show boosts', 'Notify on new posts', 'Hide notifications'
         ActiveModel::Type::Boolean.new.cast(field&.downcase)
+      when 'withReplies'
+        ActiveModel::Type::Boolean.new.cast(field&.delete_prefix('withReplies=')&.downcase)
       when 'Languages'
         field&.split(',')&.map(&:strip)&.presence
       when 'Account address'
@@ -204,8 +211,12 @@ class Form::Import
   end
 
   def validate_json_data
+    unless allowed_type_for_json? && json_data_source.is_a?(Array)
+      errors.add(:data, I18n.t('imports.errors.incompatible_type'))
+      return
+    end
+
     errors.add(:data, I18n.t('imports.errors.over_rows_processing_limit', count: ROWS_PROCESSING_LIMIT)) if json_data.count > ROWS_PROCESSING_LIMIT
-    errors.add(:data, I18n.t('imports.errors.incompatible_type')) unless allowed_type_for_json?
   end
 
   def content_type_is_json?
@@ -213,7 +224,40 @@ class Form::Import
   end
 
   def json_data
-    parse_json[type.to_s].map(&:deep_symbolize_keys)
+    json_data_source.map(&:deep_symbolize_keys)
+  end
+
+  def json_data_source
+    return misskey_clips_data if type.to_sym == :clips && misskey_clips_json?
+    return unless parse_json.is_a?(Hash)
+
+    parse_json[type.to_s]
+  end
+
+  def misskey_clips_json?
+    return false unless parse_json.is_a?(Array)
+    return true if parse_json.empty? && file_name_matches?('clips-')
+
+    parse_json.all? do |clip|
+      clip.is_a?(Hash) && clip['name'].is_a?(String) && clip['clipNotes'].is_a?(Array) && clip['clipNotes'].all? { |clip_note| clip_note.is_a?(Hash) && clip_note['note'].is_a?(Hash) }
+    end
+  end
+
+  def misskey_clips_data
+    parse_json.map do |clip|
+      {
+        title: clip['name'],
+        description: clip['description'],
+        public: false,
+        statuses: clip['clipNotes'].filter_map { |clip_note| clip_note.dig('note', 'uri').presence || clip_note.dig('note', 'url').presence }.uniq,
+      }
+    end
+  end
+
+  def misskey_clips_contain_unaddressed_notes?
+    parse_json.any? do |clip|
+      clip['clipNotes'].any? { |clip_note| clip_note.dig('note', 'uri').blank? && clip_note.dig('note', 'url').blank? }
+    end
   end
 
   def parse_json

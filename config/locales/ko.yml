@@ -1619,14 +1619,17 @@ ko:
       other: 오류가 발생했습니다. 아래 %{count}개 오류를 확인해 주십시오
   imports:
     errors:
+      clip_status_not_found_warning: 가져온 클립의 일부 게시물에 이전 가능한 주소가 없거나 아직 이 서버에 알려지지 않았습니다. Mastodon은 가져오는 동안 주소가 있는 게시물을 가져오며, 주소가 없는 게시물은 추가할 수 없습니다.
       empty: 빈 CSV 파일
       incompatible_type: 호환되지 않는 가져오기 유형을 선택함
       invalid_csv_file: '올바르지 않은 CSV 파일입니다. 오류: %{error}'
       invalid_json_file: '올바르지 않은 JSON 파일입니다. 오류: %{error}'
       over_rows_processing_limit: "%{count}개 이상의 열을 포함합니다"
+      status_not_found_warning: 일부 항목이 이 서버에 아직 알려지지 않은 게시물을 참조합니다. 해당 게시물은 가져오기 과정에서 완전히 복원되지 않을 수 있습니다.
       too_large: 파일이 너무 큼
     failures: 실패
     imported: 가져옴
+    lists_following_warning: Mastodon 리스트에는 Misskey와 달리 팔로우 중인 계정만 포함할 수 있습니다. 이 리스트를 가져오면 아직 팔로우하지 않은 계정을 자동으로 팔로우합니다.
     mismatched_types_warning: 가져오기할 때 잘못된 유형을 선택했을 수 있으니, 꼭 두 번 체크해주세요.
     modes:
       merge: 병합

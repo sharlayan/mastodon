@@ -54,6 +54,15 @@ RSpec.describe Form::Import do
       end
     end
 
+    describe 'when the import is a Misskey clips export' do
+      let(:data)        { fixture_file_upload('misskey_clips.json', 'application/json') }
+      let(:import_type) { 'clips' }
+
+      it 'passes validation' do
+        expect(subject).to be_valid
+      end
+    end
+
     context 'when the file too large' do
       let(:import_type) { 'following' }
       let(:import_file) { 'imports.txt' }
@@ -115,6 +124,14 @@ RSpec.describe Form::Import do
     it_behaves_like 'valid import', 'blocking', 'following_accounts.csv'
     it_behaves_like 'valid import', 'muting', 'following_accounts.csv'
 
+    # Importing the headerless acct,withReplies format emitted by Misskey
+    it_behaves_like 'valid import', 'following', 'misskey_following.csv'
+
+    # Importing the headerless formats emitted by Misskey
+    it_behaves_like 'valid import', 'muting', 'misskey_mute.csv'
+    it_behaves_like 'valid import', 'blocking', 'misskey_blocking.csv'
+    it_behaves_like 'valid import', 'lists', 'misskey_user_lists.csv'
+
     # Importing domain blocks with headers into incompatible types
     it_behaves_like 'incompatible import type', 'following', 'domain_blocks.csv'
     it_behaves_like 'incompatible import type', 'blocking', 'domain_blocks.csv'
@@ -155,6 +172,11 @@ RSpec.describe Form::Import do
       it_behaves_like 'with enough information', 'blocking', 'imports.txt', 'following_accounts.csv', :following
       it_behaves_like 'with enough information', 'muting', 'imports.txt', 'following_accounts.csv', :following
 
+      it_behaves_like 'with enough information', 'following', 'misskey_following.csv', 'following-2026-08-03-12-34-56.csv', :following
+      it_behaves_like 'with enough information', 'muting', 'misskey_mute.csv', 'mute-2026-08-03-12-34-56.csv', :muting
+      it_behaves_like 'with enough information', 'blocking', 'misskey_blocking.csv', 'blocking-2026-08-03-12-34-56.csv', :blocking
+      it_behaves_like 'with enough information', 'lists', 'misskey_user_lists.csv', 'user-lists-2026-08-03-12-34-56.csv', :lists
+
       it_behaves_like 'with enough information', 'following', 'imports.txt', 'follows.csv', :following
       it_behaves_like 'with enough information', 'blocking', 'imports.txt', 'follows.csv', :following
       it_behaves_like 'with enough information', 'muting', 'imports.txt', 'follows.csv', :following
@@ -174,6 +196,15 @@ RSpec.describe Form::Import do
       it_behaves_like 'with enough information', 'following', 'imports.txt', 'mutes.csv', :muting
       it_behaves_like 'with enough information', 'blocking', 'imports.txt', 'mutes.csv', :muting
       it_behaves_like 'with enough information', 'muting', 'imports.txt', 'mutes.csv', :muting
+    end
+  end
+
+  describe '#guessed_type_json' do
+    let(:data)        { fixture_file_upload('misskey_clips.json', 'application/json') }
+    let(:import_type) { 'clips' }
+
+    it 'recognizes the array format emitted by Misskey as clips' do
+      expect(subject.guessed_type_json).to eq(:clips)
     end
   end
 
@@ -332,6 +363,35 @@ RSpec.describe Form::Import do
       end
     end
 
+    describe 'when importing a Misskey clips export' do
+      let(:import_type) { 'clips' }
+      let(:data) { fixture_file_upload('misskey_clips.json', 'application/json') }
+
+      before { subject.save }
+
+      it 'converts Misskey clips and keeps resolvable post URIs' do
+        expect(account.bulk_imports.first.rows.pluck(:data))
+          .to contain_exactly(
+            {
+              'title' => 'Reference',
+              'description' => 'Posts to revisit',
+              'public' => false,
+              'statuses' => ['https://remote.example/users/alice/statuses/123'],
+            },
+            {
+              'title' => 'Empty clip',
+              'description' => nil,
+              'public' => false,
+              'statuses' => [],
+            }
+          )
+      end
+
+      it 'marks the import for a warning when a Misskey clip note has no portable address' do
+        expect(account.bulk_imports.first).to have_attributes(missing_status: true)
+      end
+    end
+
     it_behaves_like('on successful import', 'following', 'merge', 'imports.txt', %w(user@example.com user@test.com).map { |acct| { 'acct' => acct } })
     it_behaves_like('on successful import', 'following', 'overwrite', 'imports.txt', %w(user@example.com user@test.com).map { |acct| { 'acct' => acct } })
     it_behaves_like('on successful import', 'blocking', 'merge', 'imports.txt', %w(user@example.com user@test.com).map { |acct| { 'acct' => acct } })
@@ -345,15 +405,36 @@ RSpec.describe Form::Import do
       { 'acct' => 'user@test.com', 'show_reblogs' => true, 'notify' => true, 'languages' => %w(en fr) },
     ]
 
+    it_behaves_like 'on successful import', 'following', 'merge', 'misskey_following.csv', [
+      { 'acct' => 'alice@misskey.example' },
+      { 'acct' => 'bob@remote.example' },
+    ]
+
+    it_behaves_like 'on successful import', 'muting', 'merge', 'misskey_mute.csv', [
+      { 'acct' => 'alice@misskey.example' },
+      { 'acct' => 'bob@remote.example' },
+    ]
+
+    it_behaves_like 'on successful import', 'blocking', 'merge', 'misskey_blocking.csv', [
+      { 'acct' => 'carol@misskey.example' },
+      { 'acct' => 'dave@remote.example' },
+    ]
+
+    it_behaves_like 'on successful import', 'lists', 'merge', 'misskey_user_lists.csv', [
+      { 'list_name' => 'Friends', 'acct' => 'alice@misskey.example', 'with_replies' => true },
+      { 'list_name' => 'Friends', 'acct' => 'bob@remote.example', 'with_replies' => false },
+      { 'list_name' => 'News', 'acct' => 'carol@news.example', 'with_replies' => false },
+    ]
+
     it_behaves_like 'on successful import', 'muting', 'merge', 'muted_accounts.csv', [
       { 'acct' => 'user@example.com', 'hide_notifications' => true },
       { 'acct' => 'user@test.com', 'hide_notifications' => false },
     ]
 
     it_behaves_like 'on successful import', 'lists', 'merge', 'lists.csv', [
-      { 'acct' => 'gargron@example.com', 'list_name' => 'Mastodon project' },
-      { 'acct' => 'mastodon@example.com', 'list_name' => 'Mastodon project' },
-      { 'acct' => 'foo@example.com', 'list_name' => 'test' },
+      { 'acct' => 'gargron@example.com', 'list_name' => 'Mastodon project', 'with_replies' => nil },
+      { 'acct' => 'mastodon@example.com', 'list_name' => 'Mastodon project', 'with_replies' => nil },
+      { 'acct' => 'foo@example.com', 'list_name' => 'test', 'with_replies' => nil },
     ]
 
     # Based on the bug report 20571 where UTF-8 encoded domains were rejecting import of their users

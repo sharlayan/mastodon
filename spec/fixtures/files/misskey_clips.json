@@ -1,0 +1,47 @@
+[
+  {
+    "id": "a123456789",
+    "name": "Reference",
+    "description": "Posts to revisit",
+    "lastClippedAt": "2026-08-03T03:00:00.000Z",
+    "clipNotes": [
+      {
+        "id": "cn123456789",
+        "createdAt": "2026-08-03T03:00:00.000Z",
+        "note": {
+          "id": "n123456789",
+          "uri": "https://remote.example/users/alice/statuses/123",
+          "url": "https://remote.example/@alice/123",
+          "user": {
+            "id": "u123456789",
+            "username": "alice",
+            "host": "remote.example",
+            "uri": "https://remote.example/users/alice"
+          }
+        }
+      },
+      {
+        "id": "cn987654321",
+        "createdAt": "2026-08-03T04:00:00.000Z",
+        "note": {
+          "id": "n987654321",
+          "uri": null,
+          "url": null,
+          "user": {
+            "id": "u987654321",
+            "username": "local",
+            "host": null,
+            "uri": null
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "a987654321",
+    "name": "Empty clip",
+    "description": null,
+    "lastClippedAt": null,
+    "clipNotes": []
+  }
+]

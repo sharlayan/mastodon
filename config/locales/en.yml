@@ -1694,6 +1694,7 @@ en:
       other: Something isn't quite right yet! Please review %{count} errors below
   imports:
     errors:
+      clip_status_not_found_warning: Some posts in the imported clips have no portable address or are not yet known by this server. Mastodon will try to fetch addressed posts during import; posts without an address cannot be added.
       empty: Empty CSV file
       incompatible_type: Incompatible with the selected import type
       invalid_csv_file: 'Invalid CSV file. Error: %{error}'
@@ -1703,6 +1704,7 @@ en:
       too_large: File is too large
     failures: Failures
     imported: Imported
+    lists_following_warning: Unlike Misskey, Mastodon lists can only contain accounts you follow. Importing this list will automatically follow any accounts you do not already follow.
     mismatched_types_warning: It appears you may have selected the wrong type for this import, please double-check.
     modes:
       merge: Merge

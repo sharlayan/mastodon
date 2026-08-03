@@ -56,6 +56,22 @@ RSpec.describe Settings::ImportsController do
         expect(response).to have_http_status(200)
       end
     end
+
+    context 'with an unconfirmed list import' do
+      let(:bulk_import) { Fabricate(:bulk_import, account: user.account, type: :lists, state: :unconfirmed) }
+
+      it 'warns that non-followed accounts will be followed' do
+        expect(response.body).to include(I18n.t('imports.lists_following_warning'))
+      end
+    end
+
+    context 'with a Misskey clip import containing non-portable posts' do
+      let(:bulk_import) { Fabricate(:bulk_import, account: user.account, type: :clips, state: :unconfirmed, missing_status: true) }
+
+      it 'warns that posts without addresses cannot be imported' do
+        expect(response.body).to include(I18n.t('imports.errors.clip_status_not_found_warning'))
+      end
+    end
   end
 
   describe 'POST #confirm' do
@@ -314,6 +330,10 @@ RSpec.describe Settings::ImportsController do
     it_behaves_like 'successful import', 'domain_blocking', 'domain_blocks.csv', 'overwrite'
     it_behaves_like 'successful import', 'bookmarks', 'bookmark-imports.txt', 'merge'
     it_behaves_like 'successful import', 'bookmarks', 'bookmark-imports.txt', 'overwrite'
+    it_behaves_like 'successful import', 'following', 'misskey_following.csv', 'merge'
+    it_behaves_like 'successful import', 'muting', 'misskey_mute.csv', 'merge'
+    it_behaves_like 'successful import', 'blocking', 'misskey_blocking.csv', 'merge'
+    it_behaves_like 'successful import', 'lists', 'misskey_user_lists.csv', 'merge'
 
     it_behaves_like 'unsuccessful import', 'following', 'domain_blocks.csv', 'merge'
     it_behaves_like 'unsuccessful import', 'following', 'domain_blocks.csv', 'overwrite'
@@ -346,6 +366,17 @@ RSpec.describe Settings::ImportsController do
           expect { subject }.to_not(change { user.account.bulk_imports.count })
           expect(response.body).to include('field_with_errors')
         end
+      end
+    end
+
+    context 'with a Misskey clips export' do
+      subject { post :create, params: { form_import: { type: 'clips', mode: 'merge', data: data } } }
+
+      let(:data) { fixture_file_upload('misskey_clips.json', 'application/json') }
+
+      it 'creates an unconfirmed clips import' do
+        expect { subject }.to change { user.account.bulk_imports.where(type: :clips, state: :unconfirmed).count }.by(1)
+        expect(response).to redirect_to(settings_import_path(user.account.bulk_imports.first))
       end
     end
   end

@@ -111,12 +111,33 @@ RSpec.describe BulkImportRowService do
       end
     end
 
+    context 'when importing a compatible clip' do
+      let(:import_type) { 'clips' }
+      let(:target_status) { Fabricate(:status) }
+      let(:data) do
+        {
+          'title' => 'Imported from Misskey',
+          'description' => 'Portable posts',
+          'public' => false,
+          'statuses' => [ActivityPub::TagManager.instance.uri_for(target_status)],
+        }
+      end
+
+      it 'creates the clip with the resolved post' do
+        expect { subject.call(import_row) }.to change { account.clips.count }.by(1)
+
+        expect(account.clips.last)
+          .to have_attributes(title: 'Imported from Misskey', description: 'Portable posts', public: false)
+        expect(account.clips.last.statuses).to contain_exactly(target_status)
+      end
+    end
+
     context 'when importing a list row' do
       let(:import_type) { 'lists' }
       let(:target_account) { Fabricate(:account) }
       let(:list_name) { 'my list' }
       let(:data) do
-        { 'acct' => target_account.acct, 'list_name' => list_name }
+        { 'acct' => target_account.acct, 'list_name' => list_name, 'with_replies' => true }
       end
 
       shared_examples 'common behavior' do
@@ -147,6 +168,17 @@ RSpec.describe BulkImportRowService do
 
         context 'when the target account is neither followed nor requested' do
           it_behaves_like 'row import success and list addition'
+
+          it 'follows the target account before adding it to the list' do
+            expect { subject.call(import_row) }
+              .to change { account.following?(target_account) }.from(false).to(true)
+          end
+
+          it 'preserves the Misskey withReplies membership setting' do
+            subject.call(import_row)
+
+            expect(ListAccount.find_by!(list: account.owned_lists.find_by!(title: list_name), account: target_account)).to be_with_replies
+          end
         end
 
         context 'when the target account is the user themself' do

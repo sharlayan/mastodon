@@ -5,7 +5,10 @@
   .flash-message.warning= t('imports.mismatched_types_warning')
 
 - if @bulk_import&.missing_status == true
-  .flash-message.warning= I18n.t('imports.errors.status_not_found_warning')
+  .flash-message.warning= t(@bulk_import.clips? ? 'imports.errors.clip_status_not_found_warning' : 'imports.errors.status_not_found_warning')
+
+- if @bulk_import.lists?
+  .flash-message.warning= t('imports.lists_following_warning')
 
 - if @bulk_import.overwrite?
   %p.hint= t("imports.overwrite_preambles.#{@bulk_import.type}_html", filename: @bulk_import.original_filename, count: @bulk_import.total_items)

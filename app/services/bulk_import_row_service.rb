@@ -42,6 +42,7 @@ class BulkImportRowService
       FollowService.new.call(@account, @target_account) unless @account.id == @target_account.id
 
       list.accounts << @target_account
+      list.list_accounts.find_by!(account: @target_account).update!(with_replies: @data['with_replies']) unless @data['with_replies'].nil?
     when :custom_filters
       filter = @account.custom_filters.create!(title: @data['title'], context: @data['context'])
       filter.keywords = @data['keywords_attributes'].map { |keyword| CustomFilterKeyword.new(keyword: keyword['keyword'], whole_word: keyword['whole_word']) }
