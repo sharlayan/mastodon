@@ -91,6 +91,6 @@ class Relay < ApplicationRecord
   end
 
   def ensure_disabled
-    disable! if enabled?
+    disable! if enabled? || paused?
   end
 end
