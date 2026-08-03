@@ -6,7 +6,7 @@ module RoutingHelper
   extend ActiveSupport::Concern
 
   include ActionView::Helpers::AssetTagHelper
-  include ViteRails::TagHelpers
+  include Vite::TagsHelper
 
   included do
     include Rails.application.routes.url_helpers
