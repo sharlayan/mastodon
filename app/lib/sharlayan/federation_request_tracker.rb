@@ -12,6 +12,8 @@ class Sharlayan::FederationRequestTracker
     deliver_failed: :deliver_failed_count,
     inbox_received: :inbox_received_count,
   }.freeze
+  CONTACT_METRIC = :contacted
+  KNOWN_INSTANCE_CACHE_TTL = 5.minutes
 
   class << self
     def enabled?
@@ -30,6 +32,10 @@ class Sharlayan::FederationRequestTracker
 
     def track_inbox_received!(url_or_domain, at_time: Time.now.utc)
       increment(:inbox_received, url_or_domain, at_time)
+    end
+
+    def track_unverified_contact!(url_or_domain, at_time: Time.now.utc)
+      increment(CONTACT_METRIC, url_or_domain, at_time, known_instances_only: true)
     end
 
     def flush!(now: Time.now.utc)
@@ -55,11 +61,12 @@ class Sharlayan::FederationRequestTracker
 
     private
 
-    def increment(metric, url_or_domain, at_time)
+    def increment(metric, url_or_domain, at_time, known_instances_only: false)
       return unless enabled?
 
       domain = normalize_domain(url_or_domain)
       return if domain.nil? || domain.include?(FIELD_SEPARATOR)
+      return if known_instances_only && !known_instance?(domain)
 
       key = key_at(at_time)
 
@@ -87,15 +94,22 @@ class Sharlayan::FederationRequestTracker
       rows.size
     end
 
+    def known_instance?(domain)
+      Rails.cache.fetch("sharlayan:federation_known_instance:#{domain}", expires_in: KNOWN_INSTANCE_CACHE_TTL) do
+        Instance.exists?(domain: domain)
+      end
+    end
+
     def build_rows(bucket_at, counters)
-      accumulator = Hash.new { |hash, domain| hash[domain] = METRICS.values.index_with { 0 } }
+      accumulator = {}
 
       counters.each do |field, value|
         domain, metric = field.split(FIELD_SEPARATOR, 2)
         column = METRICS[metric&.to_sym]
-        next if domain.blank? || column.nil?
+        next if domain.blank? || (column.nil? && metric != CONTACT_METRIC.to_s)
 
-        accumulator[domain][column] += value.to_i
+        columns = (accumulator[domain] ||= METRICS.values.index_with { 0 })
+        columns[column] += value.to_i if column
       end
 
       accumulator.map { |domain, columns| columns.merge(domain: domain, bucket_at: bucket_at) }

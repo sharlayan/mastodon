@@ -214,6 +214,28 @@ RSpec.describe 'ActivityPub Inboxes' do
           expect(response)
             .to have_http_status(202)
         end
+
+        it 'does not record a contact for a domain that is not a known instance' do
+          post(inbox_path, params: unknown_actor.to_json, headers:)
+
+          expect(Sharlayan::FederationRequestTracker.flush!).to eq(0)
+          expect(FederationRequestStatistic.count).to eq(0)
+        end
+
+        context 'when the actor domain is a known instance' do
+          before do
+            Fabricate(:account, domain: 'unknown-actor.host')
+            Instance.refresh
+          end
+
+          it 'records the contact without counting it as a received request' do
+            post(inbox_path, params: unknown_actor.to_json, headers:)
+
+            expect(Sharlayan::FederationRequestTracker.flush!).to eq(1)
+            expect(FederationRequestStatistic.find_by(domain: 'unknown-actor.host'))
+              .to have_attributes(inbox_received_count: 0, deliver_succeeded_count: 0, deliver_failed_count: 0)
+          end
+        end
       end
     end
   end

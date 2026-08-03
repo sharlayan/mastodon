@@ -54,6 +54,40 @@ RSpec.describe Sharlayan::FederationRequestTracker do
     end
   end
 
+  describe '.track_unverified_contact!' do
+    before do
+      Fabricate(:account, domain: 'known.example')
+      Instance.refresh
+    end
+
+    it 'records a zeroed row for a domain already known as an instance' do
+      described_class.track_unverified_contact!('https://known.example/users/alice')
+
+      expect(described_class.flush!).to eq(1)
+
+      record = FederationRequestStatistic.find_by(domain: 'known.example')
+      expect(record.bucket_at).to eq(Time.utc(2026, 8, 4, 12))
+      expect(record).to have_attributes(inbox_received_count: 0, deliver_succeeded_count: 0, deliver_failed_count: 0)
+    end
+
+    it 'ignores domains that are not known instances' do
+      described_class.track_unverified_contact!('https://forged.example/users/alice')
+
+      expect(described_class.flush!).to eq(0)
+      expect(FederationRequestStatistic.count).to eq(0)
+    end
+
+    it 'leaves verified counters untouched on an existing row' do
+      described_class.track_inbox_received!('known.example')
+      described_class.flush!
+
+      described_class.track_unverified_contact!('known.example')
+      described_class.flush!
+
+      expect(FederationRequestStatistic.find_by(domain: 'known.example').inbox_received_count).to eq(1)
+    end
+  end
+
   describe '.flush!' do
     it 'accumulates buffered counters into hourly rows per domain' do
       described_class.track_deliver_success!('https://example.com/inbox')

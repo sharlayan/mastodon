@@ -30,14 +30,25 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
   end
 
   def skip_unknown_actor_activity
-    head 202 if unknown_affected_account?
+    return unless unknown_affected_account?
+
+    Sharlayan::FederationRequestTracker.track_unverified_contact!(parsed_body['actor'])
+    head 202
   end
 
   def unknown_affected_account?
-    json = JSON.parse(body)
+    json = parsed_body
     json.is_a?(Hash) && %w(Delete Update).include?(json['type']) && json['actor'].present? && json['actor'] == value_or_id(json['object']) && !Account.exists?(uri: json['actor'])
-  rescue JSON::ParserError
-    false
+  end
+
+  def parsed_body
+    return @parsed_body if defined?(@parsed_body)
+
+    @parsed_body = begin
+      JSON.parse(body)
+    rescue JSON::ParserError
+      nil
+    end
   end
 
   def account_required?
