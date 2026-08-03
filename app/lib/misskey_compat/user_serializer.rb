@@ -7,6 +7,10 @@ class MisskeyCompat::UserSerializer
     new.serialize(account, detailed: detailed, viewer: viewer, me_user: me_user, context: context, relationships: relationships)
   end
 
+  def self.avatar_decorations_for(account)
+    new.avatar_decorations_for(account)
+  end
+
   def serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil)
     @context = context
     data = {
@@ -33,6 +37,21 @@ class MisskeyCompat::UserSerializer
     end
 
     data
+  end
+
+  def avatar_decorations_for(account)
+    AvatarDecoration.visible_configs_for(account).map do |config, decoration|
+      {
+        id: MisskeyCompat::MiId.encode(decoration.id),
+        url: full_asset_url(decoration.image_url),
+        angle: config['angle'] || 0.0,
+        flipH: config['flip_h'] || false,
+        offsetX: config['offset_x'] || 0.0,
+        offsetY: config['offset_y'] || 0.0,
+        scale: config['scale'] || 1.0,
+        opacity: config['opacity'] || 1.0,
+      }
+    end
   end
 
   private
@@ -228,33 +247,6 @@ class MisskeyCompat::UserSerializer
       faviconUrl: favicon,
       themeColor: metadata&.theme_color_with_fallback,
     }
-  end
-
-  def avatar_decorations_for(account)
-    return [] unless Setting.avatar_decorations_enabled
-    return [] if account.local? && Setting.avatar_decorations_local_only_view
-    return [] if account.avatar_decorations_blocked || account.avatar_decorations.blank?
-
-    decoration_ids = account.avatar_decorations.filter_map { |config| config['id'] }
-    return [] if decoration_ids.empty?
-
-    decorations_by_id = AvatarDecoration.find_many_cached(decoration_ids).index_by(&:id)
-
-    account.avatar_decorations.filter_map do |config|
-      decoration = decorations_by_id[config['id']]
-      next if decoration.nil?
-
-      {
-        id: MisskeyCompat::MiId.encode(decoration.id),
-        url: full_asset_url(decoration.image_url),
-        angle: config['angle'] || 0.0,
-        flipH: config['flip_h'] || false,
-        offsetX: config['offset_x'] || 0.0,
-        offsetY: config['offset_y'] || 0.0,
-        scale: config['scale'] || 1.0,
-        opacity: config['opacity'] || 1.0,
-      }
-    end
   end
 
   def fields_for(account)

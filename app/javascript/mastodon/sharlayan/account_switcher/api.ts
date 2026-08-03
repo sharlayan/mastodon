@@ -8,6 +8,9 @@ export const apiGetAccountSwitches = () =>
 export const apiDeleteAccountSwitch = (id: string) =>
   apiRequestDelete(`v1/account_switches/${id}`);
 
+export const apiDeleteInboundAccountSwitch = (id: string) =>
+  apiRequestDelete(`v1/account_switches/${id}/inbound`);
+
 export const apiGetLinkedUnreadCounts = () =>
   apiRequestGet<Record<string, number>>(
     'v1/account_switches/linked_unread_counts',

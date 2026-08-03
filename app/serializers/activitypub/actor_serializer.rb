@@ -175,15 +175,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   end
 
   def misskey_avatar_decorations
-    decoration_ids = object.avatar_decorations.filter_map { |d| d['id'] }
-    return [] if decoration_ids.empty?
-
-    decorations_by_id = AvatarDecoration.find_many_cached(decoration_ids).index_by(&:id)
-
-    object.avatar_decorations.filter_map do |config|
-      decoration = decorations_by_id[config['id']]
-      next if decoration.nil?
-
+    AvatarDecoration.visible_configs_for(object).map do |config, decoration|
       {
         id: decoration.id.to_s,
         url: full_asset_url(decoration.image_url),

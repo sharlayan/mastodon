@@ -503,15 +503,7 @@ class ActivityPub::ProcessAccountService < BaseService
 
       RedownloadAvatarDecorationWorker.enqueue(decoration.id, account_id: @account.id) if decoration.image_file_name.blank?
 
-      decoration_configs << {
-        'id' => decoration.id,
-        'angle' => d['angle'].to_f.clamp(-0.5, 0.5),
-        'flip_h' => d['flipH'] == true,
-        'offset_x' => d['offsetX'].to_f.clamp(-0.25, 0.25),
-        'offset_y' => d['offsetY'].to_f.clamp(-0.25, 0.25),
-        'scale' => (d['scale'] || d['scaleX'] || 1.0).to_f.clamp(0.5, 1.5),
-        'opacity' => (d['opacity'] || 1.0).to_f.clamp(0.1, 1.0),
-      }
+      decoration_configs << AvatarDecoration.normalize_config(decoration.id, d)
     end
 
     @account.avatar_decorations = decoration_configs

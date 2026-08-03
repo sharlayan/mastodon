@@ -67,15 +67,9 @@ class FetchRemoteAvatarDecorationsWorker
         next
       end
 
-      decoration_configs << {
-        'id' => local_dec.id,
-        'angle' => ud['angle'].to_f.clamp(-0.5, 0.5),
-        'flip_h' => ud['flipH'] == true,
-        'offset_x' => ud['offsetX'].to_f.clamp(-0.25, 0.25),
-        'offset_y' => ud['offsetY'].to_f.clamp(-0.25, 0.25),
-        'scale' => (ud['scale'] || 1.0).to_f.clamp(0.5, 1.5),
-        'opacity' => (ud['opacity'] || 1.0).to_f.clamp(0.1, 1.0),
-      }
+      next unless local_dec.persisted?
+
+      decoration_configs << AvatarDecoration.normalize_config(local_dec.id, ud)
     end
 
     account.update_columns(avatar_decorations: decoration_configs)

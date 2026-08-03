@@ -9,6 +9,7 @@ import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
 import CheckIcon from '@/material-icons/400-24px/person_shield.svg?react';
+import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
 import { Avatar } from 'mastodon/components/avatar';
 import { DisplayName } from 'mastodon/components/display_name';
 import { Toggle } from 'mastodon/components/form_fields';
@@ -20,6 +21,7 @@ import { useAppSelector, useAppDispatch } from 'mastodon/store';
 import {
   fetchAccountSwitches,
   deleteAccountSwitch,
+  deleteInboundAccountSwitch,
   enableLinkedPushForward,
   disableLinkedPushForward,
 } from './actions';
@@ -81,6 +83,22 @@ const messages = defineMessages({
     id: 'account_switcher.notif_hint',
     defaultMessage:
       'Receive notifications for this account while using another account',
+  },
+  settings: {
+    id: 'account_switcher.settings',
+    defaultMessage: 'Linked account settings',
+  },
+  linkedBy: {
+    id: 'account_switcher.linked_by',
+    defaultMessage: 'Accounts that can switch to this account',
+  },
+  noLinkedBy: {
+    id: 'account_switcher.no_linked_by',
+    defaultMessage: 'No other account can switch to this account.',
+  },
+  revokeInboundConfirm: {
+    id: 'account_switcher.revoke_inbound_confirm',
+    defaultMessage: 'Revoke access from {name} (@{acct})?',
   },
 });
 
@@ -158,8 +176,12 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const [addingAccount, setAddingAccount] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const items = useAppSelector((state) => state.accountSwitches.get('items'));
+  const inboundItems = useAppSelector((state) =>
+    state.accountSwitches.get('inboundItems'),
+  );
   const parentAccountId = useAppSelector(
     (state) => state.accountSwitches.get('parentAccountId') as string | null,
   );
@@ -310,7 +332,26 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           intl.formatMessage(messages.switchAccountConfirm, { name }),
         )
       ) {
-        window.location.href = `/auth/sign_in?switch_to=${_accountId}`;
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '/auth/switch_account';
+
+        const accountField = document.createElement('input');
+        accountField.type = 'hidden';
+        accountField.name = 'switch_to';
+        accountField.value = _accountId;
+        form.appendChild(accountField);
+
+        const csrfField = document.createElement('input');
+        csrfField.type = 'hidden';
+        csrfField.name = 'authenticity_token';
+        csrfField.value =
+          document.querySelector<HTMLMetaElement>('meta[name=csrf-token]')
+            ?.content ?? '';
+        form.appendChild(csrfField);
+
+        document.body.appendChild(form);
+        form.submit();
       }
     },
     [intl],
@@ -325,76 +366,164 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
         }[];
       }
     | undefined;
+  const inboundAuthList = inboundItems as typeof authList;
 
   const handleAddAccountClick = useCallback(() => {
     void handleAddAccount();
   }, [handleAddAccount]);
 
+  const handleToggleSettings = useCallback(() => {
+    setShowSettings((value) => !value);
+  }, []);
+
   return (
     <div className='modal-root__modal account-switcher-modal'>
       <div className='account-switcher-modal__header'>
         <h3>{intl.formatMessage(messages.title)}</h3>
-        <IconButton
-          icon=''
-          iconComponent={CloseIcon}
-          onClick={onClose}
-          title={intl.formatMessage(messages.close)}
-        />
+        <div className='account-switcher-modal__header-actions'>
+          <IconButton
+            icon=''
+            iconComponent={SettingsIcon}
+            onClick={handleToggleSettings}
+            title={intl.formatMessage(messages.settings)}
+          />
+          <IconButton
+            icon=''
+            iconComponent={CloseIcon}
+            onClick={onClose}
+            title={intl.formatMessage(messages.close)}
+          />
+        </div>
       </div>
 
       <div className='account-switcher-modal__content'>
-        {parentAccountId && (
-          <ParentAccountItem
-            accountId={parentAccountId}
-            rootAccountId={rootAccountId ?? ''}
-            onSwitch={handleSwitchAccount}
-          />
-        )}
-
-        {me && (
-          <CurrentAccountItem
-            isMain={parentAccountId === null}
-            rootAccountId={rootAccountId ?? ''}
-            hasLinkedAccounts={
-              !loaded ||
-              parentAccountId !== null ||
-              (authList?.toArray().length ?? 0) > 0
-            }
-          />
-        )}
-
-        {isLoading && !loaded && (
-          <div className='account-switcher-modal__loading'>
-            <div className='loading-indicator__figure' />
+        {showSettings ? (
+          <div className='account-switcher-modal__linked-settings'>
+            <h4>{intl.formatMessage(messages.linkedBy)}</h4>
+            {(inboundAuthList?.toArray().length ?? 0) === 0 ? (
+              <p>{intl.formatMessage(messages.noLinkedBy)}</p>
+            ) : (
+              inboundAuthList
+                ?.toArray()
+                .map((auth) => (
+                  <InboundAccountItem
+                    key={auth.id}
+                    authId={auth.id}
+                    accountId={auth.target_account_id}
+                    canRevoke={auth.target_account_id !== parentAccountId}
+                  />
+                ))
+            )}
           </div>
+        ) : (
+          <>
+            {parentAccountId && (
+              <ParentAccountItem
+                accountId={parentAccountId}
+                rootAccountId={rootAccountId ?? ''}
+                onSwitch={handleSwitchAccount}
+              />
+            )}
+
+            {me && (
+              <CurrentAccountItem
+                isMain={parentAccountId === null}
+                rootAccountId={rootAccountId ?? ''}
+                hasLinkedAccounts={
+                  !loaded ||
+                  parentAccountId !== null ||
+                  (authList?.toArray().length ?? 0) > 0
+                }
+              />
+            )}
+
+            {isLoading && !loaded && (
+              <div className='account-switcher-modal__loading'>
+                <div className='loading-indicator__figure' />
+              </div>
+            )}
+
+            {authList?.toArray().map((auth) => (
+              <SwitchableAccountItem
+                key={auth.id}
+                authId={auth.id}
+                accountId={auth.target_account_id}
+                rootAccountId={rootAccountId ?? ''}
+                onSwitch={handleSwitchAccount}
+                onRemove={handleRemoveAccount}
+                canRemove={parentAccountId === null}
+              />
+            ))}
+          </>
         )}
-
-        {authList?.toArray().map((auth) => (
-          <SwitchableAccountItem
-            key={auth.id}
-            authId={auth.id}
-            accountId={auth.target_account_id}
-            rootAccountId={rootAccountId ?? ''}
-            onSwitch={handleSwitchAccount}
-            onRemove={handleRemoveAccount}
-            canRemove={parentAccountId === null}
-          />
-        ))}
       </div>
 
-      <div className='account-switcher-modal__footer'>
+      {!showSettings && (
+        <div className='account-switcher-modal__footer'>
+          <button
+            className='account-switcher-modal__add-button'
+            onClick={handleAddAccountClick}
+            disabled={addingAccount}
+            type='button'
+          >
+            <Icon id='person-add' icon={PersonAddIcon} />
+            <span>
+              {addingAccount ? '...' : intl.formatMessage(messages.addAccount)}
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const InboundAccountItem: React.FC<{
+  authId: string;
+  accountId: string;
+  canRevoke: boolean;
+}> = ({ authId, accountId, canRevoke }) => {
+  const intl = useIntl();
+  const dispatch = useAppDispatch();
+  const account = useAppSelector((state) => state.accounts.get(accountId));
+  const accountData = account as unknown as
+    | { get(key: string): string }
+    | undefined;
+  const displayName = getAccountDisplayName(accountData, accountId);
+  const acct = accountData?.get('acct') ?? accountId;
+
+  const handleRevoke = useCallback(() => {
+    if (
+      window.confirm(
+        intl.formatMessage(messages.revokeInboundConfirm, {
+          name: displayName,
+          acct,
+        }),
+      )
+    ) {
+      void dispatch(deleteInboundAccountSwitch({ id: authId }));
+    }
+  }, [acct, authId, dispatch, displayName, intl]);
+
+  if (!account) return null;
+
+  return (
+    <div className='account-switcher-modal__item account-switcher-modal__item--inbound'>
+      <div className='account-switcher-modal__item__avatar'>
+        <Avatar account={account as never} size={36} />
+      </div>
+      <div className='account-switcher-modal__item__info'>
+        <DisplayName account={account as never} />
+      </div>
+      {canRevoke && (
         <button
-          className='account-switcher-modal__add-button'
-          onClick={handleAddAccountClick}
-          disabled={addingAccount}
+          className='account-switcher-modal__remove-button'
+          onClick={handleRevoke}
           type='button'
+          title={intl.formatMessage(messages.removeAccount)}
         >
-          <Icon id='person-add' icon={PersonAddIcon} />
-          <span>
-            {addingAccount ? '...' : intl.formatMessage(messages.addAccount)}
-          </span>
+          <Icon id='person-remove' icon={PersonRemoveIcon} />
         </button>
-      </div>
+      )}
     </div>
   );
 };

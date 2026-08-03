@@ -5,7 +5,7 @@ class PurgeBrokenCustomEmojiWorker
 
   sidekiq_options queue: 'pull', retry: 0
 
-  def perform(dry_run = false) # rubocop:disable Style/OptionalBooleanParameter
+  def perform(dry_run = true) # rubocop:disable Style/OptionalBooleanParameter
     purged = 0
 
     CustomEmoji.local.reorder(nil).find_each do |emoji|

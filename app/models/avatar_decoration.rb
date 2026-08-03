@@ -59,6 +59,67 @@ class AvatarDecoration < ApplicationRecord
   validate :image_or_remote_url_present
   validates :remote_id, uniqueness: { scope: :host }, allow_nil: true
 
+  CONFIG_BOUNDS = {
+    'angle' => (-0.5..0.5),
+    'offset_x' => (-0.25..0.25),
+    'offset_y' => (-0.25..0.25),
+    'scale' => (0.5..1.5),
+    'opacity' => (0.1..1.0),
+  }.freeze
+
+  CONFIG_ALIASES = {
+    'flip_h' => %w(flipH),
+    'offset_x' => %w(offsetX),
+    'offset_y' => %w(offsetY),
+    'scale' => %w(scaleX),
+  }.freeze
+
+  CONFIG_DEFAULTS = { 'scale' => 1.0, 'opacity' => 1.0 }.freeze
+
+  FLIP_H_TRUE_VALUES = [true, 'true', '1', 1].freeze
+
+  def self.normalize_config(id, source)
+    config = { 'id' => id, 'flip_h' => FLIP_H_TRUE_VALUES.include?(config_value(source, 'flip_h')) }
+
+    CONFIG_BOUNDS.each do |key, bounds|
+      raw = config_value(source, key)
+      raw = CONFIG_DEFAULTS[key] if raw.nil?
+      config[key] = raw.to_f.clamp(bounds)
+    end
+
+    config
+  end
+
+  def self.config_value(source, key)
+    keys = [key, *CONFIG_ALIASES.fetch(key, [])]
+    keys.each do |candidate|
+      value = source[candidate] || source[candidate.to_sym]
+      return value unless value.nil?
+    end
+
+    nil
+  end
+
+  def self.visible_configs_for(account)
+    return [] unless Setting.avatar_decorations_enabled
+    return [] if account.avatar_decorations_blocked || account.avatar_decorations.blank?
+    return [] if account.local? && Setting.avatar_decorations_local_only_view
+
+    ids = account.avatar_decorations.filter_map { |config| config['id'] }
+    return [] if ids.empty?
+
+    decorations_by_id = find_many_cached(ids).index_by(&:id)
+    blocked_domains = AvatarDecorationDomainBlock.blocked_domains_cached
+
+    account.avatar_decorations.filter_map do |config|
+      decoration = decorations_by_id[config['id']]
+      next if decoration.nil?
+      next if decoration.host.present? && blocked_domains.include?(decoration.host)
+
+      [config, decoration]
+    end
+  end
+
   def self.find_many_cached(ids)
     cache = RequestStore.store[:avatar_decorations_by_id] ||= {}
     missing_ids = ids.reject { |id| cache.key?(id) }

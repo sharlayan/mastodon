@@ -5,8 +5,6 @@ class UpdateAccountService < BaseService
 
   MAX_DECORATIONS = 16
 
-  FLIP_H_TRUE_VALUES = ['true', true].freeze
-
   def call(account, params, raise_error: false)
     was_locked    = account.locked
     update_method = raise_error ? :update! : :update
@@ -41,15 +39,7 @@ class UpdateAccountService < BaseService
       id = d[:id].to_s
       next unless available_ids.include?(id)
 
-      {
-        'id' => id.to_i,
-        'angle' => d[:angle].to_f.clamp(-0.5, 0.5),
-        'flip_h' => FLIP_H_TRUE_VALUES.include?(d[:flip_h]),
-        'offset_x' => d[:offset_x].to_f.clamp(-0.25, 0.25),
-        'offset_y' => d[:offset_y].to_f.clamp(-0.25, 0.25),
-        'scale' => d[:scale].to_f.clamp(0.5, 1.5),
-        'opacity' => d[:opacity].to_f.clamp(0.1, 1.0),
-      }
+      AvatarDecoration.normalize_config(id.to_i, d)
     end
 
     params.merge(avatar_decorations: sanitized)
