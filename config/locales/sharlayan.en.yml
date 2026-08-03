@@ -302,6 +302,15 @@ en:
         title: Drive
       extensions:
         title: Extensions
+      federation_instance_edges:
+        enabled: Aggregate the instance federation graph
+        enabled_hint: A nightly job groups boosts, replies, and quotes by the domains
+          on both sides, one row per instance-to-instance edge. The result is the
+          fediverse as seen from here — edges between two remote servers are included,
+          but only where their activity reached us. Disable to skip the nightly scan.
+        roleplay_hint: Unavailable while roleplay server mode is enabled. The instance
+          federation graph is never aggregated in that mode.
+        title: Instance federation graph
       federation_request_statistics:
         enabled: Record per-domain federation request counts
         enabled_hint: When enabled, the server counts delivery successes, delivery failures,

@@ -104,3 +104,7 @@
       cron: '<%= Random.rand(0..59) %> <%= Random.rand(3..5) %> * * *'
       class: Scheduler::FederationRequestStatisticsCleanupScheduler
       queue: scheduler
+    federation_instance_edges_scheduler:
+      cron: '<%= Random.rand(0..59) %> <%= Random.rand(4..6) %> * * *'
+      class: Scheduler::FederationInstanceEdgesScheduler
+      queue: scheduler

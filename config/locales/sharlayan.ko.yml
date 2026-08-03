@@ -275,6 +275,13 @@ ko:
         title: 드라이브
       extensions:
         title: 확장 기능
+      federation_instance_edges:
+        enabled: 인스턴스 연합 그래프 집계
+        enabled_hint: 매일 새벽 작업이 부스트, 답글, 인용을 양쪽 도메인으로 묶어 인스턴스 간 엣지마다 1행을 저장합니다. 이 서버에서
+          관측한 만큼의 연합우주 그래프로, 원격 서버 사이의 엣지도 그 활동이 여기까지 도달한 범위에서 포함됩니다. 비활성화하면
+          야간 스캔을 건너뜁니다.
+        roleplay_hint: 롤플레이 서버 모드에서는 사용할 수 없습니다. 이 모드에서는 인스턴스 연합 그래프를 집계하지 않습니다.
+        title: 인스턴스 연합 그래프
       federation_request_statistics:
         enabled: 도메인별 연합 요청 횟수 기록
         enabled_hint: 활성화하면 원격 도메인마다 배달 성공, 배달 실패, 수리된 inbox 요청 횟수를 세고 Misskey 호환 AP 요청 차트에

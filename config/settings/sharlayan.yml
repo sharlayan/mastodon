@@ -32,6 +32,7 @@ defaults:
   board_announcements_enabled: true
   antenna_enabled: true
   federation_request_statistics_enabled: true
+  federation_instance_edges_enabled: true
   online_status_enabled: false
   drive_enabled: false
   drive_quota: 500

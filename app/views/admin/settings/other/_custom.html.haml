@@ -91,6 +91,13 @@
             hint: roleplay_mode? ? t('admin.settings.federation_request_statistics.roleplay_hint') : t('admin.settings.federation_request_statistics.enabled_hint'),
             disabled: roleplay_mode?,
             sharlayan_only: true
+  = f.input :federation_instance_edges_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.federation_instance_edges.enabled'),
+            hint: roleplay_mode? ? t('admin.settings.federation_instance_edges.roleplay_hint') : t('admin.settings.federation_instance_edges.enabled_hint'),
+            disabled: roleplay_mode?,
+            sharlayan_only: true
 
 .fields-group
   = f.input :auto_quote_from_url,

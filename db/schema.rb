@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_04_061200) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_073500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -940,6 +940,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_04_061200) do
     t.datetime "updated_at", precision: nil, null: false
     t.index ["account_id", "tag_id"], name: "index_featured_tags_on_account_id_and_tag_id", unique: true
     t.index ["tag_id"], name: "index_featured_tags_on_tag_id"
+  end
+
+  create_table "federation_instance_edges", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "first_seen_at"
+    t.datetime "last_seen_at"
+    t.bigint "quotes_count", default: 0, null: false
+    t.bigint "reblogs_count", default: 0, null: false
+    t.bigint "replies_count", default: 0, null: false
+    t.string "source_domain"
+    t.string "target_domain"
+    t.datetime "updated_at", null: false
+    t.index ["source_domain", "target_domain"], name: "index_federation_instance_edges_on_source_and_target", unique: true, nulls_not_distinct: true
+    t.index ["target_domain"], name: "index_federation_instance_edges_on_target_domain"
+    t.index ["updated_at"], name: "index_federation_instance_edges_on_updated_at"
   end
 
   create_table "federation_request_statistics", force: :cascade do |t|

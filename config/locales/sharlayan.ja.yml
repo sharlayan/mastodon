@@ -265,6 +265,12 @@ ja:
         title: ドライブ
       extensions:
         title: 拡張機能
+      federation_instance_edges:
+        enabled: インスタンス連合グラフを集計する
+        enabled_hint: >-
+          毎晩のジョブがブースト・返信・引用を双方のドメインでまとめ、インスタンス間のエッジごとに1行を保存します。このサーバーから観測できた範囲の連合宇宙のグラフで、リモートサーバー同士のエッジもその活動がここに届いた分だけ含まれます。無効にすると夜間スキャンを行いません。
+        roleplay_hint: ロールプレイサーバーモードでは利用できません。このモードではインスタンス連合グラフを集計しません。
+        title: インスタンス連合グラフ
       federation_request_statistics:
         enabled: ドメインごとの連合リクエスト数を記録する
         enabled_hint: >-

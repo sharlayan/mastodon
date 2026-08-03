@@ -27,6 +27,7 @@ module Sharlayan::AdminSettingsExtensions
     board_announcements_enabled
     instance_metadata_enabled
     antenna_enabled
+    federation_instance_edges_enabled
     federation_request_statistics_enabled
     misskey_compat_enabled
     misskey_compat_signin_flow_enabled
@@ -65,6 +66,7 @@ module Sharlayan::AdminSettingsExtensions
     board_announcements_enabled
     instance_metadata_enabled
     antenna_enabled
+    federation_instance_edges_enabled
     federation_request_statistics_enabled
     misskey_compat_enabled
     misskey_compat_signin_flow_enabled
