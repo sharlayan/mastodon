@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::Accounts::StatusesController < Api::BaseController
+class Api::V1::Accounts::StatusesController < Api::V1::Accounts::BaseController
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }
   before_action :set_account
   before_action :require_account_statuses_access!
@@ -17,10 +17,6 @@ class Api::V1::Accounts::StatusesController < Api::BaseController
 
   def require_account_statuses_access!
     require_local_content_access!(Setting.local_account_statuses_access) if @account.local?
-  end
-
-  def set_account
-    @account = Account.find(params[:account_id])
   end
 
   def load_statuses
