@@ -38,14 +38,16 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
   private
 
   def find_account
+    scope = Account.without_requested_deletion
+
     if params[:userId].present?
-      Account.find_by(id: params[:userId])
+      scope.find_by(id: params[:userId])
     else
       username = params[:username].to_s.strip
       return nil if username.blank?
 
       domain = params[:host].to_s.strip.presence
-      domain.nil? ? Account.local.find_by(username: username) : Account.find_by(username: username, domain: domain)
+      domain.nil? ? scope.local.find_by(username: username) : scope.find_by(username: username, domain: domain)
     end
   end
 end

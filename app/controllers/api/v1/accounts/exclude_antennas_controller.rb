@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::Accounts::ExcludeAntennasController < Api::BaseController
+class Api::V1::Accounts::ExcludeAntennasController < Api::V1::Accounts::BaseController
   include Api::AntennaFeatureConcern
 
   before_action -> { doorkeeper_authorize! :read, :'read:lists' }
@@ -14,11 +14,5 @@ class Api::V1::Accounts::ExcludeAntennasController < Api::BaseController
                   Antenna.where(account: current_account).select { |antenna| antenna.exclude_accounts.map(&:to_i).include?(@account.id) }
                 end
     render json: @antennas, each_serializer: REST::AntennaSerializer
-  end
-
-  private
-
-  def set_account
-    @account = Account.find(params[:account_id])
   end
 end

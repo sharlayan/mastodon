@@ -602,6 +602,16 @@ RSpec.describe 'Pages' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(page.id.to_s)
     end
+
+    it 'hides account-scoped pages after the account requests deletion' do
+      page.account.mark_deleted!
+
+      get "/api/v1/accounts/#{page.account_id}/pages"
+      expect(response).to have_http_status(404)
+
+      get "/api/v1/accounts/#{page.account_id}/pages/#{page.name}"
+      expect(response).to have_http_status(404)
+    end
   end
 
   describe 'suspended account visibility' do

@@ -35,8 +35,8 @@ class Clip < ApplicationRecord
 
   scope :public_clips, -> { where(public: true) }
 
-  def visible_to?(account)
-    public? || account&.id == account_id
+  def visible_to?(viewer_account)
+    !account.unavailable? && (public? || viewer_account&.id == account_id)
   end
 
   def favourited_by?(account)

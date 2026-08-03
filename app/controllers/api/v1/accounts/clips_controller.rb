@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::Accounts::ClipsController < Api::BaseController
+class Api::V1::Accounts::ClipsController < Api::V1::Accounts::BaseController
   before_action :require_feature_enabled!
   before_action -> { authorize_if_got_token! :read, :'read:lists' }
   before_action :set_account
@@ -15,10 +15,6 @@ class Api::V1::Accounts::ClipsController < Api::BaseController
 
   def require_feature_enabled!
     not_found unless Setting.clips_enabled
-  end
-
-  def set_account
-    @account = Account.find(params[:account_id])
   end
 
   def load_clips

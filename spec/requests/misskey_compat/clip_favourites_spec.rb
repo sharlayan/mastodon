@@ -95,5 +95,14 @@ RSpec.describe 'Misskey-compat clip favourites' do
       )
       expect(response.parsed_body).to all(include(favoritedCount: 1, isFavorited: true))
     end
+
+    it 'hides favorites owned by an account that has requested deletion' do
+      public_clip.account.mark_deleted!
+
+      post '/api/clips/my-favorites', params: { i: read_token }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to contain_exactly(MisskeyCompat::MiId.encode(own_clip.id))
+    end
   end
 end

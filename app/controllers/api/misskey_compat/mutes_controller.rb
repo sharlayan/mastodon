@@ -72,7 +72,7 @@ class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
   end
 
   def set_target!
-    @target = Account.find(params[:userId])
+    @target = Account.without_requested_deletion.find(params[:userId])
   rescue ActiveRecord::RecordNotFound
     render_error('No such user', 'NO_SUCH_USER', 404)
   end

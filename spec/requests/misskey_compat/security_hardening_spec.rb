@@ -159,6 +159,51 @@ RSpec.describe 'Misskey-compat security hardening' do
       expect(response).to have_http_status(404)
       expect(response.parsed_body.deep_symbolize_keys[:error][:code]).to eq('ENDPOINT_DISABLED')
     end
+
+    it 'hides an account that has requested deletion' do
+      account.mark_deleted!
+
+      post '/api/users/show', params: { userId: account.id.to_s }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_USER')
+    end
+
+    it 'hides the deleted account from account content endpoints' do
+      target = Fabricate(:user).account
+      target.mark_deleted!
+
+      %w(notes followers following reactions featured-notes).each do |endpoint|
+        post "/api/users/#{endpoint}", params: { i: token, userId: target.id.to_s }, as: :json
+
+        expect(response).to have_http_status(404), endpoint
+        expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_USER'), endpoint
+      end
+    end
+
+    it 'rejects account-targeting writes for the deleted account' do
+      target = Fabricate(:user).account
+      target.mark_deleted!
+
+      {
+        'following/create' => {},
+        'blocking/create' => {},
+        'mute/create' => {},
+        'users/update-memo' => { memo: 'memo' },
+        'users/report-abuse' => { comment: 'report' },
+      }.each do |endpoint, extra_params|
+        post "/api/#{endpoint}", params: { i: token, userId: target.id.to_s, **extra_params }, as: :json
+
+        expect(response).to have_http_status(404), endpoint
+        expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_USER'), endpoint
+      end
+
+      list = account.owned_lists.create!(title: 'List')
+      post '/api/users/lists/push', params: { i: token, listId: list.id.to_s, userId: target.id.to_s }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_USER')
+    end
   end
 
   describe 'POST /api/notes/polls/vote (visibility)' do

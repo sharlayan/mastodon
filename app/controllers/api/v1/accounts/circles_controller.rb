@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::Accounts::CirclesController < Api::BaseController
+class Api::V1::Accounts::CirclesController < Api::V1::Accounts::BaseController
   before_action :require_feature_enabled!
   before_action -> { doorkeeper_authorize! :read, :'read:lists' }
   before_action :require_user!
@@ -15,9 +15,5 @@ class Api::V1::Accounts::CirclesController < Api::BaseController
 
   def require_feature_enabled!
     not_found unless Setting.circles_enabled
-  end
-
-  def set_account
-    @account = Account.find(params[:account_id])
   end
 end

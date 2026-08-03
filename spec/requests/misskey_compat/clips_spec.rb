@@ -47,6 +47,15 @@ RSpec.describe 'Misskey-compat clips' do
       expect(response.parsed_body.pluck(:id)).to_not include(MisskeyCompat::MiId.encode(hidden_status.id))
     end
 
+    it 'hides clips owned by an account that has requested deletion' do
+      clip.account.mark_deleted!
+
+      post '/api/clips/notes', params: { clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_CLIP')
+    end
+
     it 'rate limits authenticated callers as potential attackers' do
       limiter = RateLimiter.new(user.account, family: :clip_notes)
       RateLimiter::FAMILIES[:clip_notes][:limit].times { limiter.record! }

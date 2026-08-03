@@ -18,7 +18,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def notes
-    account = Account.find(params[:userId])
+    account = Account.without_requested_deletion.find(params[:userId])
     filter = AccountStatusesFilter.new(account, current_account, statuses_filter_params)
     statuses = filter.results.to_a_paginated_by_id(pagination_limit, max_id: params[:untilId].presence, since_id: params[:sinceId].presence).to_a
     Status.preload_cacheable_associations(statuses)
@@ -60,7 +60,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def update_memo
-    target = Account.find(params[:userId])
+    target = Account.without_requested_deletion.find(params[:userId])
     memo = params[:memo].to_s
 
     if memo.blank?
@@ -77,7 +77,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def followers
-    target = Account.find(params[:userId])
+    target = Account.without_requested_deletion.find(params[:userId])
     return render json: [] if collections_hidden?(target, target.hides_followers?)
 
     scope = Follow.where(target_account_id: target.id)
@@ -91,7 +91,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def following
-    target = Account.find(params[:userId])
+    target = Account.without_requested_deletion.find(params[:userId])
     return render json: [] if collections_hidden?(target, target.hides_following?)
 
     scope = Follow.where(account_id: target.id)
@@ -105,7 +105,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def reactions
-    account = Account.find(params[:userId])
+    account = Account.without_requested_deletion.find(params[:userId])
     return render json: [] if collections_hidden?(account, false)
     return render json: [] unless reactions_public?(account)
 
@@ -124,7 +124,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def featured_notes
-    account = Account.find(params[:userId])
+    account = Account.without_requested_deletion.find(params[:userId])
     return render json: [] if collections_hidden?(account, false)
 
     scope = account.statuses
@@ -145,7 +145,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def report_abuse
-    target = Account.find(params[:userId])
+    target = Account.without_requested_deletion.find(params[:userId])
     ReportService.new.call(current_account, target, comment: params[:comment].to_s)
     head 204
   rescue ActiveRecord::RecordNotFound
@@ -153,7 +153,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def pinned_users
-    accounts = Account.local.discoverable.order('account_stats.followers_count DESC').limit(pagination_limit)
+    accounts = Account.local.discoverable.without_requested_deletion.order('account_stats.followers_count DESC').limit(pagination_limit)
     render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true) }
   end
 

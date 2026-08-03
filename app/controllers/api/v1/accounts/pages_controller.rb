@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V1::Accounts::PagesController < Api::BaseController
+class Api::V1::Accounts::PagesController < Api::V1::Accounts::BaseController
   include Api::AnonymousPageViewLimit
   include Api::PageSearchEngineAccess
 
@@ -30,10 +30,6 @@ class Api::V1::Accounts::PagesController < Api::BaseController
 
   def require_feature_enabled!
     not_found unless Setting.pages_enabled
-  end
-
-  def set_account
-    @account = Account.find(params[:account_id])
   end
 
   def set_page

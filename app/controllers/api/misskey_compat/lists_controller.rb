@@ -36,7 +36,7 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
   end
 
   def push
-    account = Account.find_by(id: params[:userId])
+    account = Account.without_requested_deletion.find_by(id: params[:userId])
     return render_error('No such user', 'NO_SUCH_USER', 404) if account.nil?
     return render_error('You can only add users you follow', 'NOT_FOLLOWING', 400) unless account.id == current_account.id || current_account.following?(account)
 
@@ -67,7 +67,7 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
   end
 
   def update_membership
-    account = Account.find_by(id: params[:userId])
+    account = Account.without_requested_deletion.find_by(id: params[:userId])
     return render_error('No such user', 'NO_SUCH_USER', 404, id: '588e7f72-c744-4a61-b180-d354e912bda2') if account.nil?
 
     membership = @list.list_accounts.find_by(account: account)

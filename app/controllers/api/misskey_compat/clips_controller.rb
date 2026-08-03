@@ -74,7 +74,7 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
   end
 
   def by_user
-    account = Account.find(params[:userId])
+    account = Account.without_requested_deletion.find(params[:userId])
     clips = account.clips.public_clips.includes(:account).to_a
     render json: serialize_many(clips)
   rescue ActiveRecord::RecordNotFound
