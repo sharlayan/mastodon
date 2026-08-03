@@ -15,14 +15,16 @@ import {
 import { DialogModal } from './dialog_modal';
 
 interface Props {
-  columnId: string;
+  columnId?: string;
   width: number;
+  onSave?: (width: number) => void;
   onClose: () => void;
 }
 
 export const ColumnWidthModal: React.FC<Props> = ({
   columnId,
   width,
+  onSave,
   onClose,
 }) => {
   const dispatch = useAppDispatch();
@@ -38,12 +40,17 @@ export const ColumnWidthModal: React.FC<Props> = ({
   const handleSubmit = useCallback(
     (event: React.SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault();
-      dispatch(
-        changeColumnParams(columnId, ['width'], normalizeColumnWidth(value)),
-      );
+      const normalizedWidth = normalizeColumnWidth(value);
+
+      if (onSave) {
+        onSave(normalizedWidth);
+      } else if (columnId) {
+        dispatch(changeColumnParams(columnId, ['width'], normalizedWidth));
+      }
+
       onClose();
     },
-    [columnId, dispatch, onClose, value],
+    [columnId, dispatch, onClose, onSave, value],
   );
 
   return (

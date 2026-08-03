@@ -17,6 +17,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('inline_compose_timelines')).toBe(false);
     expect(state.get('disable_inline_compose_reply_modal')).toBe(false);
     expect(state.get('use_publish_toot')).toBe(false);
+    expect(state.get('deck_unpinned_column_width')).toBe(350);
     expect(state.get('content_font_size')).toBe('medium');
     expect(state.get('sensitive_emoji_display')).toBe('show');
     expect(state.get('hide_compose_language')).toBe(false);
@@ -53,6 +54,16 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('stretch')).toBe(true);
     expect(state.get('hicolor_privacy_icons')).toBe(false);
     expect(state.getIn(['status_icons', 'visibility'])).toBe(true);
+  });
+
+  it('stores the shared width for the unpinned deck column', () => {
+    const state = localSettings(initial(), {
+      type: 'LOCAL_SETTING_CHANGE',
+      key: ['deck_unpinned_column_width'],
+      value: 520,
+    });
+
+    expect(state.get('deck_unpinned_column_width')).toBe(520);
   });
 
   it('applies LOCAL_SETTING_IMPORT via the Sharlayan reducer branch', () => {

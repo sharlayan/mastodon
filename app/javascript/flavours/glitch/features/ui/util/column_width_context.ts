@@ -21,6 +21,7 @@ interface ColumnWidthContextValue {
   columnId?: string;
   customized?: boolean;
   width?: number;
+  onSave?: (width: number) => void;
 }
 
 export const ColumnWidthContext = createContext<ColumnWidthContextValue>({});

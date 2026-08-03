@@ -12,7 +12,8 @@ import classNames from 'classnames';
 
 import type { List, Record } from 'immutable';
 
-import { useAppSelector } from '@/flavours/glitch/store';
+import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
+import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
 import { Footer } from 'flavours/glitch/features/custom_homepage/components/footer';
 import { Header } from 'flavours/glitch/features/custom_homepage/components/header';
 import { CollapsibleNavigationPanel } from 'flavours/glitch/features/navigation_panel';
@@ -107,6 +108,20 @@ export const ColumnsArea = forwardRef<
   const isModalOpen = useAppSelector(
     (state) => !state.modal.get('stack').isEmpty(),
   );
+  const dispatch = useAppDispatch();
+  const unpinnedColumnWidth = normalizeColumnWidth(
+    useAppSelector(
+      (state) =>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        state.local_settings.get('deck_unpinned_column_width') as unknown,
+    ),
+  );
+  const saveUnpinnedColumnWidth = useCallback(
+    (width: number) => {
+      dispatch(changeLocalSetting(['deck_unpinned_column_width'], width));
+    },
+    [dispatch],
+  );
 
   if (pageBlogView) {
     return (
@@ -200,13 +215,21 @@ export const ColumnsArea = forwardRef<
         );
       })}
 
-      <ColumnIndexContext.Provider value={columns.size}>
-        {Children.map(children, (child) =>
-          isValidElement<{ multiColumn?: boolean }>(child)
-            ? cloneElement(child, { multiColumn: true })
-            : child,
-        )}
-      </ColumnIndexContext.Provider>
+      <ColumnWidthContext.Provider
+        value={{
+          customized: true,
+          width: unpinnedColumnWidth,
+          onSave: saveUnpinnedColumnWidth,
+        }}
+      >
+        <ColumnIndexContext.Provider value={columns.size}>
+          {Children.map(children, (child) =>
+            isValidElement<{ multiColumn?: boolean }>(child)
+              ? cloneElement(child, { multiColumn: true })
+              : child,
+          )}
+        </ColumnIndexContext.Provider>
+      </ColumnWidthContext.Provider>
     </main>
   );
 });

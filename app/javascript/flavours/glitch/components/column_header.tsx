@@ -124,7 +124,7 @@ export const ColumnHeader: React.FC<Props> = ({
 }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
-  const { columnId, width } = useColumnWidthContext();
+  const { columnId, width, onSave } = useColumnWidthContext();
   const { signedIn } = useIdentity();
   const history = useAppHistory();
   const [collapsed, setCollapsed] = useState(true);
@@ -164,15 +164,17 @@ export const ColumnHeader: React.FC<Props> = ({
   }, [history, pinned, onPin]);
 
   const handleWidth = useCallback(() => {
-    if (columnId && width) {
+    if ((columnId || onSave) && width) {
       dispatch(
         openModal({
           modalType: 'COLUMN_WIDTH',
-          modalProps: { columnId, width },
+          modalProps: { columnId, width, onSave },
         }),
       );
     }
-  }, [columnId, dispatch, width]);
+  }, [columnId, dispatch, onSave, width]);
+
+  const canAdjustWidth = multiColumn && Boolean(width && (columnId ?? onSave));
 
   const wrapperClassName = classNames('column-header__wrapper', className, {
     active,
@@ -248,16 +250,33 @@ export const ColumnHeader: React.FC<Props> = ({
         </button>
       </div>
     );
-  } else if (multiColumn && onPin) {
+  } else if (multiColumn && (onPin || canAdjustWidth)) {
     pinButton = (
-      <button
-        className='text-btn column-header__setting-btn'
-        onClick={handlePin}
-        type='button'
-      >
-        <Icon id='plus' icon={AddIcon} />{' '}
-        <FormattedMessage id='column_header.pin' defaultMessage='Pin' />
-      </button>
+      <div className='column-header__setting-actions'>
+        {onPin && (
+          <button
+            className='text-btn column-header__setting-btn'
+            onClick={handlePin}
+            type='button'
+          >
+            <Icon id='plus' icon={AddIcon} />{' '}
+            <FormattedMessage id='column_header.pin' defaultMessage='Pin' />
+          </button>
+        )}
+        {canAdjustWidth && (
+          <button
+            className='text-btn column-header__setting-btn'
+            onClick={handleWidth}
+            type='button'
+          >
+            <Icon id='fit-screen' icon={FitScreenIcon} />{' '}
+            <FormattedMessage
+              id='column_header.adjust_width'
+              defaultMessage='Adjust width'
+            />
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -279,7 +298,7 @@ export const ColumnHeader: React.FC<Props> = ({
     );
   }
 
-  if (signedIn && (children || (multiColumn && onPin))) {
+  if (signedIn && (children || (multiColumn && (onPin || canAdjustWidth)))) {
     collapseButton = (
       <button
         className={collapsibleButtonClassName}

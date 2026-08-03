@@ -21,6 +21,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   disable_inline_compose_reply_modal: false,
   inline_compose_tabs: ImmutableList(),
   use_publish_toot: false,
+  deck_unpinned_column_width: 350,
   content_font_size: 'medium',
   sensitive_emoji_display: 'show',
   sync_to_server: false,
