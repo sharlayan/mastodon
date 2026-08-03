@@ -8,9 +8,9 @@ RSpec.describe 'Misskey-compat meta endpoint' do
 
   describe 'POST /api/meta' do
     before do
-      allow(ViteRuby.instance.manifest)
-        .to receive(:path_for)
-        .with('icons/android-chrome-512x512.png')
+      allow(Vite.tagger)
+        .to receive(:vite_asset_path)
+        .with(anything, 'icons/android-chrome-512x512.png')
         .and_return('/packs/default-server-icon.png')
     end
 
