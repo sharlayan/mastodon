@@ -17,6 +17,10 @@ RSpec.describe PageSeries do
     expect(series).to have_attributes(title: 'Guides', description: 'A collection')
   end
 
+  it 'defaults to being displayed in the public bookcase' do
+    expect(series).to be_displayed
+  end
+
   it 'accepts a public page from the same series as its main page' do
     page = Fabricate(:page, account: account, page_series: series)
 

@@ -9,7 +9,7 @@ class Api::V1::PagesController < Api::BaseController
   vary_by 'Authorization, User-Agent'
 
   before_action :require_feature_enabled!
-  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories, :featured]
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories, :featured, :statistics]
   before_action -> { authorize_if_got_token! :read, :'read:accounts' }, only: [:show, :unlock]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock]
 
@@ -59,6 +59,30 @@ class Api::V1::PagesController < Api::BaseController
   def featured
     @pages = Page.featured.includes(page_series: :cover_media_attachment).limit(Page::LIST_LIMIT).to_a
     render json: @pages, each_serializer: REST::PageSummarySerializer
+  end
+
+  def statistics
+    days = params[:days].to_i.clamp(30, 365)
+    days = 365 if params[:days].blank?
+    first_date = Time.zone.today - (days - 1).days
+    statistics = current_account.page_daily_statistics.where(activity_date: first_date..Time.zone.today).index_by(&:activity_date)
+    total_characters = current_account.pages.sum('COALESCE(text_characters_count, 0)')
+    first_page_date = current_account.pages.minimum(:created_at)&.in_time_zone&.to_date
+    first_recorded_creation_date = current_account.page_daily_statistics.where('pages_created_count > 0').minimum(:activity_date)
+    first_written_on = [first_page_date, first_recorded_creation_date].compact.min
+
+    render json: {
+      total_characters: total_characters,
+      first_written_on: first_written_on&.iso8601,
+      days: (first_date..Time.zone.today).map do |date|
+        statistic = statistics[date]
+        {
+          date: date.iso8601,
+          characters_delta: statistic&.characters_delta.to_i,
+          activity: statistic&.activity || 'none',
+        }
+      end,
+    }
   end
 
   def create

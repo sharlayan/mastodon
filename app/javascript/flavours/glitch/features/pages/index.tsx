@@ -4,32 +4,41 @@ import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import { Link } from 'react-router-dom';
 
+import type { Map as ImmutableMap } from 'immutable';
+
 import { Helmet } from '@unhead/react/helmet';
 
 import { NotSignedInIndicator } from '@/flavours/glitch/components/not_signed_in_indicator';
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
+import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
 import {
   apiGetFeaturedPages,
   apiGetOtherPageSeries,
   apiGetPages,
   apiGetPageSeries,
+  apiGetPageWritingStatistics,
   PAGE_LIST_LIMIT,
 } from 'flavours/glitch/api/pages';
 import type {
   ApiPageJSON,
   ApiPageSeriesJSON,
+  ApiPageWritingStatisticsJSON,
 } from 'flavours/glitch/api_types/pages';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
+import SettingToggle from 'flavours/glitch/features/notifications/components/setting_toggle';
+import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { BookletListItem } from './components/booklet_list_item';
 import { PageListItem } from './components/page_list_item';
+import { WritingStatistics } from './components/writing_statistics';
 
-type PagesTab = 'mine' | 'my-booklets' | 'other-booklets' | 'featured';
+type Bookcase = 'mine' | 'public';
+type Shelf = 'pages' | 'booklets';
 
 const messages = defineMessages({
   heading: { id: 'column.pages', defaultMessage: 'Pages' },
@@ -38,44 +47,65 @@ const messages = defineMessages({
     id: 'pages.booklet.new',
     defaultMessage: 'Create Booklet',
   },
+  showActivity: {
+    id: 'pages.statistics.show_activity',
+    defaultMessage: 'Show activity',
+  },
+  showReport: {
+    id: 'pages.statistics.show_report',
+    defaultMessage: 'Show writing report',
+  },
 });
 
 export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
+  const dispatch = useAppDispatch();
   const { signedIn } = useIdentity();
-  const [tab, setTab] = useState<PagesTab>('mine');
+  const pageSettings = useAppSelector(
+    (state) =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      state.local_settings.get('pages') as ImmutableMap<string, boolean>,
+  );
+  const showWritingStatistics = pageSettings.get('show_activity', true);
+  const showWritingReport = pageSettings.get('show_report', true);
+  const [bookcase, setBookcase] = useState<Bookcase>('mine');
+  const [shelf, setShelf] = useState<Shelf>('pages');
   const [pages, setPages] = useState<ApiPageJSON[]>([]);
   const [booklets, setBooklets] = useState<ApiPageSeriesJSON[]>([]);
-  const [loadedTab, setLoadedTab] = useState<PagesTab | null>(null);
+  const [statistics, setStatistics] =
+    useState<ApiPageWritingStatisticsJSON | null>(null);
+  const [loadedView, setLoadedView] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const requestGeneration = useRef(0);
+  const view = `${bookcase}-${shelf}`;
 
   useEffect(() => {
     const generation = ++requestGeneration.current;
     if (!signedIn) return;
+
     const request =
-      tab === 'mine'
-        ? apiGetPages()
-        : tab === 'featured'
+      bookcase === 'mine'
+        ? shelf === 'pages'
+          ? apiGetPages()
+          : apiGetPageSeries()
+        : shelf === 'pages'
           ? apiGetFeaturedPages()
-          : tab === 'my-booklets'
-            ? apiGetPageSeries()
-            : apiGetOtherPageSeries();
+          : apiGetOtherPageSeries();
 
     void request
       .then((data) => {
         if (requestGeneration.current !== generation) return;
-        if (tab === 'mine' || tab === 'featured') {
+        if (shelf === 'pages') {
           setPages(data as ApiPageJSON[]);
           setBooklets([]);
-          setHasMore(tab === 'mine' && data.length === PAGE_LIST_LIMIT);
+          setHasMore(bookcase === 'mine' && data.length === PAGE_LIST_LIMIT);
         } else {
           setBooklets(data as ApiPageSeriesJSON[]);
           setPages([]);
           setHasMore(false);
         }
-        setLoadedTab(tab);
+        setLoadedView(view);
         setLoading(false);
       })
       .catch(() => {
@@ -83,13 +113,28 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setPages([]);
         setBooklets([]);
         setHasMore(false);
-        setLoadedTab(tab);
+        setLoadedView(view);
         setLoading(false);
       });
-  }, [signedIn, tab]);
+  }, [bookcase, shelf, signedIn, view]);
+
+  useEffect(() => {
+    if (!signedIn || !showWritingStatistics || statistics) return;
+
+    void apiGetPageWritingStatistics()
+      .then(setStatistics)
+      .catch(() => undefined);
+  }, [showWritingStatistics, signedIn, statistics]);
 
   const handleLoadMore = useCallback(() => {
-    if (!signedIn || loading || !hasMore || tab !== 'mine') return;
+    if (
+      !signedIn ||
+      loading ||
+      !hasMore ||
+      bookcase !== 'mine' ||
+      shelf !== 'pages'
+    )
+      return;
     const generation = requestGeneration.current;
     setLoading(true);
     void apiGetPages(pages.length)
@@ -102,22 +147,28 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       .catch(() => {
         setLoading(false);
       });
-  }, [hasMore, loading, pages.length, signedIn, tab]);
+  }, [bookcase, hasMore, loading, pages.length, shelf, signedIn]);
 
-  const showMine = useCallback(() => {
-    setTab('mine');
+  const initialLoading = signedIn && loadedView !== view;
+  const mine = bookcase === 'mine';
+  const showMyBookcase = useCallback(() => {
+    setBookcase('mine');
   }, []);
-  const showMyBooklets = useCallback(() => {
-    setTab('my-booklets');
+  const showPublicBookcase = useCallback(() => {
+    setBookcase('public');
   }, []);
-  const showOtherBooklets = useCallback(() => {
-    setTab('other-booklets');
+  const showPages = useCallback(() => {
+    setShelf('pages');
   }, []);
-  const showFeatured = useCallback(() => {
-    setTab('featured');
+  const showBooklets = useCallback(() => {
+    setShelf('booklets');
   }, []);
-
-  const initialLoading = signedIn && loadedTab !== tab;
+  const changePageSetting = useCallback(
+    (key: string[], checked: boolean) => {
+      dispatch(changeLocalSetting(['pages', ...key], checked));
+    },
+    [dispatch],
+  );
 
   return (
     <Column
@@ -131,65 +182,120 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         iconComponent={DescriptionIcon}
         multiColumn={multiColumn}
       />
-      <div className='account__section-headline page-index__tabs'>
+      <div className='account__section-headline page-index__bookcases'>
         <button
           type='button'
-          className={tab === 'mine' ? 'active' : undefined}
-          onClick={showMine}
-        >
-          <FormattedMessage id='pages.tab.mine' defaultMessage='My pages' />
-        </button>
-        <button
-          type='button'
-          className={tab === 'my-booklets' ? 'active' : undefined}
-          onClick={showMyBooklets}
+          className={mine ? 'active' : undefined}
+          onClick={showMyBookcase}
         >
           <FormattedMessage
-            id='pages.tab.my_booklets'
-            defaultMessage='My Booklets'
+            id='pages.bookcase.mine'
+            defaultMessage='My bookcase'
           />
         </button>
         <button
           type='button'
-          className={tab === 'other-booklets' ? 'active' : undefined}
-          onClick={showOtherBooklets}
+          className={!mine ? 'active' : undefined}
+          onClick={showPublicBookcase}
         >
           <FormattedMessage
-            id='pages.tab.other_booklets'
-            defaultMessage="Other people's Booklets"
-          />
-        </button>
-        <button
-          type='button'
-          className={tab === 'featured' ? 'active' : undefined}
-          onClick={showFeatured}
-        >
-          <FormattedMessage
-            id='pages.tab.featured'
-            defaultMessage='Featured pages'
+            id='pages.bookcase.public'
+            defaultMessage='Public bookcase'
           />
         </button>
       </div>
-      {signedIn && (
+      <div className='page-index__controls'>
+        <div className='page-index__tabs' role='tablist'>
+          <button
+            type='button'
+            role='tab'
+            aria-selected={shelf === 'pages'}
+            className={shelf === 'pages' ? 'active' : undefined}
+            onClick={showPages}
+          >
+            {mine ? (
+              <FormattedMessage id='pages.tab.mine' defaultMessage='My pages' />
+            ) : (
+              <FormattedMessage
+                id='pages.tab.featured'
+                defaultMessage='Featured pages'
+              />
+            )}
+          </button>
+          <button
+            type='button'
+            role='tab'
+            aria-selected={shelf === 'booklets'}
+            className={shelf === 'booklets' ? 'active' : undefined}
+            onClick={showBooklets}
+          >
+            {mine ? (
+              <FormattedMessage
+                id='pages.tab.my_booklets'
+                defaultMessage='My Booklets'
+              />
+            ) : (
+              <FormattedMessage
+                id='pages.tab.other_booklets'
+                defaultMessage='Public Booklets'
+              />
+            )}
+          </button>
+        </div>
+        {signedIn && mine && (
+          <div className='page-index__display-settings'>
+            <SettingToggle
+              prefix='pages'
+              settings={pageSettings}
+              settingPath={['show_activity']}
+              onChange={changePageSetting}
+              label={intl.formatMessage(messages.showActivity)}
+              defaultValue
+            />
+          </div>
+        )}
+      </div>
+      {signedIn &&
+        mine &&
+        shelf === 'pages' &&
+        showWritingStatistics &&
+        statistics && (
+          <WritingStatistics
+            statistics={statistics}
+            showReport={showWritingReport}
+            reportToggle={
+              <SettingToggle
+                prefix='pages'
+                settings={pageSettings}
+                settingPath={['show_report']}
+                onChange={changePageSetting}
+                label={intl.formatMessage(messages.showReport)}
+                defaultValue
+              />
+            }
+          />
+        )}
+      {signedIn && mine && (
         <div className='page-index__create-actions'>
-          <Link to='/pages/new' className='button'>
+          <Link
+            to={shelf === 'pages' ? '/pages/new' : '/pages/booklets/new'}
+            className='button'
+          >
             <Icon id='plus' icon={AddIcon} />
-            {intl.formatMessage(messages.createPage)}
-          </Link>
-          <Link to='/pages/booklets/new' className='button button-secondary'>
-            <Icon id='plus' icon={AddIcon} />
-            {intl.formatMessage(messages.createBooklet)}
+            {intl.formatMessage(
+              shelf === 'pages' ? messages.createPage : messages.createBooklet,
+            )}
           </Link>
         </div>
       )}
       <ScrollableList
-        scrollKey={`pages-${tab}`}
+        scrollKey={`pages-${view}`}
         onLoadMore={handleLoadMore}
-        hasMore={loadedTab === tab && hasMore}
+        hasMore={loadedView === view && hasMore}
         isLoading={loading || initialLoading}
         showLoading={initialLoading}
         emptyMessage={
-          tab.includes('booklets') ? (
+          shelf === 'booklets' ? (
             <FormattedMessage
               id='pages.booklet.none_yet'
               defaultMessage='No Booklets yet.'
@@ -205,15 +311,11 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       >
         {!signedIn ? (
           <NotSignedInIndicator />
-        ) : tab === 'mine' || tab === 'featured' ? (
+        ) : shelf === 'pages' ? (
           pages.map((page) => <PageListItem key={page.id} page={page} />)
         ) : (
           booklets.map((booklet) => (
-            <BookletListItem
-              key={booklet.id}
-              booklet={booklet}
-              owned={tab === 'my-booklets'}
-            />
+            <BookletListItem key={booklet.id} booklet={booklet} owned={mine} />
           ))
         )}
       </ScrollableList>

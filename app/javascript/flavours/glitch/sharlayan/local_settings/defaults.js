@@ -29,6 +29,10 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   media: ImmutableMap({
     no_autoplay_gifv: false,
   }),
+  pages: ImmutableMap({
+    show_activity: true,
+    show_report: true,
+  }),
   navigation_panel: ImmutableMap({
     order: ImmutableList(),
     hidden: ImmutableMap(),

@@ -92,3 +92,7 @@
       cron: '<%= Random.rand(0..59) %> <%= Random.rand(4..6) %> * * *'
       class: Scheduler::MisskeyCompat::FederationStatsScheduler
       queue: scheduler
+    page_writing_statistics_scheduler:
+      cron: '<%= Random.rand(0..59) %> <%= Random.rand(1..3) %> * * *'
+      class: Scheduler::PageWritingStatisticsScheduler
+      queue: scheduler

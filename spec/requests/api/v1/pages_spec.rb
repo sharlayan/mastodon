@@ -7,6 +7,30 @@ RSpec.describe 'Pages' do
 
   before { Setting.pages_enabled = true }
 
+  describe 'GET /api/v1/pages/statistics' do
+    it 'returns up to 365 cached daily values and the current total character count' do
+      page = Fabricate(:page, account: user.account, summary: 'summary', content: [{ type: 'text', text: '**hello world**' }], created_at: 2.months.ago)
+      PageDailyStatistic.record!(account_id: user.account_id, characters_delta: 3, updated: 1, activity_date: 1.day.ago.to_date)
+
+      get '/api/v1/pages/statistics', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:total_characters]).to eq(page.text_characters_count)
+      expect(response.parsed_body[:first_written_on]).to eq(2.months.ago.to_date.iso8601)
+      expect(response.parsed_body[:days].size).to eq(365)
+      expect(response.parsed_body[:days].last).to include(activity: 'created')
+      expect(response.parsed_body[:days].second_to_last).to include(characters_delta: 3, activity: 'updated')
+    end
+
+    it 'clamps a requested range to 30 through 365 days' do
+      get '/api/v1/pages/statistics', params: { days: 7 }, headers: headers
+      expect(response.parsed_body[:days].size).to eq(30)
+
+      get '/api/v1/pages/statistics', params: { days: 500 }, headers: headers
+      expect(response.parsed_body[:days].size).to eq(365)
+    end
+  end
+
   describe 'POST /api/v1/pages' do
     subject do
       post '/api/v1/pages', params: {

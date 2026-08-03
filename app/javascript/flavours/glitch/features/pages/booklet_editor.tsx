@@ -16,6 +16,7 @@ import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_att
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import {
+  SelectField,
   TextAreaField,
   TextInputField,
 } from 'flavours/glitch/components/form_fields';
@@ -62,6 +63,7 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [cover, setCover] = useState<ApiMediaAttachmentJSON | null>(null);
+  const [displayed, setDisplayed] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
 
@@ -79,6 +81,13 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
     [],
   );
 
+  const handleDisplayedChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      setDisplayed(event.currentTarget.value === 'public');
+    },
+    [],
+  );
+
   useEffect(() => {
     if (!id) return;
 
@@ -88,6 +97,7 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
       setTitle(booklet.title);
       setDescription(booklet.description ?? '');
       setCover(booklet.cover_media_attachment);
+      setDisplayed(booklet.displayed);
     });
   }, [id]);
 
@@ -99,6 +109,7 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
       title,
       description: description || null,
       cover_media_attachment_id: cover?.id ?? null,
+      displayed,
     };
     const request = id
       ? apiUpdatePageSeries(id, payload)
@@ -111,7 +122,7 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
         setSaving(false);
         setError(true);
       });
-  }, [cover, description, history, id, title]);
+  }, [cover, description, displayed, history, id, title]);
 
   const heading = intl.formatMessage(
     id ? messages.editHeading : messages.newHeading,
@@ -157,6 +168,35 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
               {intl.formatMessage(messages.coverHint)}
             </span>
             <ImageUploadField value={cover} onChange={setCover} />
+          </div>
+          <div className='fields-group'>
+            <SelectField
+              id='booklet_displayed'
+              label={intl.formatMessage({
+                id: 'pages.field.booklet_displayed',
+                defaultMessage: 'Showcase visibility',
+              })}
+              hint={intl.formatMessage({
+                id: 'pages.field.booklet_displayed_hint',
+                defaultMessage:
+                  'Hidden Booklets remain visible from your profile.',
+              })}
+              value={displayed ? 'public' : 'private'}
+              onChange={handleDisplayedChange}
+            >
+              <option value='public'>
+                {intl.formatMessage({
+                  id: 'pages.field.booklet_displayed.public',
+                  defaultMessage: 'Public',
+                })}
+              </option>
+              <option value='private'>
+                {intl.formatMessage({
+                  id: 'pages.field.booklet_displayed.private',
+                  defaultMessage: 'Private',
+                })}
+              </option>
+            </SelectField>
           </div>
           <section
             className='page-editor__booklet-preview'

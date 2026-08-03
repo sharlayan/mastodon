@@ -15,6 +15,7 @@ class Api::V1::PageSeriesController < Api::BaseController
   def others
     series = PageSeries.joins(:main_page)
       .where(pages: { visibility: 'public' })
+      .where(displayed: true)
       .where.not(account_id: current_account.id)
       .includes(:account, :main_page, :cover_media_attachment, :pages)
       .order(updated_at: :desc)
@@ -49,6 +50,6 @@ class Api::V1::PageSeriesController < Api::BaseController
   end
 
   def series_params
-    params.permit(:title, :description, :cover_media_attachment_id)
+    params.permit(:title, :description, :cover_media_attachment_id, :displayed)
   end
 end

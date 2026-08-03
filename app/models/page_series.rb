@@ -6,6 +6,7 @@
 #
 #  id                        :bigint(8)        not null, primary key
 #  description               :text
+#  displayed                 :boolean          default(TRUE), not null
 #  title                     :string           not null
 #  created_at                :datetime         not null
 #  updated_at                :datetime         not null
@@ -28,6 +29,7 @@ class PageSeries < ApplicationRecord
 
   validates :title, presence: true, length: { maximum: TITLE_LENGTH_LIMIT }, uniqueness: { scope: :account_id }
   validates :description, length: { maximum: DESCRIPTION_LENGTH_LIMIT }
+  validates :displayed, inclusion: { in: [true, false] }
   validate :validate_main_page
   validate :validate_cover_media_attachment
   validate :validate_account_series_limit, on: :create

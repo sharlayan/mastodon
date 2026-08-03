@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_010300) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_03_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1317,6 +1317,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010300) do
     t.index ["uid"], name: "index_oauth_applications_on_uid", unique: true
   end
 
+  create_table "page_daily_statistics", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.date "activity_date", null: false
+    t.integer "characters_delta", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.integer "pages_created_count", default: 0, null: false
+    t.integer "pages_updated_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "activity_date"], name: "index_page_daily_statistics_on_account_and_date", unique: true
+  end
+
   create_table "page_likes", id: :bigint, default: -> { "timestamp_id('page_likes'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
@@ -1342,6 +1353,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010300) do
     t.bigint "cover_media_attachment_id"
     t.datetime "created_at", null: false
     t.text "description"
+    t.boolean "displayed", default: true, null: false
     t.bigint "main_page_id"
     t.string "title", null: false
     t.datetime "updated_at", null: false
@@ -1369,6 +1381,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010300) do
     t.bigint "page_series_id"
     t.integer "series_position", default: 0, null: false
     t.text "summary"
+    t.integer "text_characters_count"
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.string "visibility", default: "public", null: false
@@ -2139,6 +2152,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_010300) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id", name: "fk_f5fc4c1ee3", on_delete: :cascade
   add_foreign_key "oauth_access_tokens", "users", column: "resource_owner_id", name: "fk_e84df68546", on_delete: :cascade
   add_foreign_key "oauth_applications", "users", column: "owner_id", name: "fk_b0988c7c0a", on_delete: :cascade
+  add_foreign_key "page_daily_statistics", "accounts", on_delete: :cascade
   add_foreign_key "page_likes", "accounts", on_delete: :cascade
   add_foreign_key "page_likes", "pages", on_delete: :cascade
   add_foreign_key "page_reports", "pages", on_delete: :cascade

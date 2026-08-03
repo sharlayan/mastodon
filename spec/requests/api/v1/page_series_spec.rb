@@ -9,12 +9,13 @@ RSpec.describe 'Page series' do
 
   it 'creates, lists, updates, and deletes an owned series' do
     cover = Fabricate(:media_attachment, account: user.account)
-    post '/api/v1/page_series', params: { title: ' Guides ', description: 'A collection', cover_media_attachment_id: cover.id }, headers: headers
+    post '/api/v1/page_series', params: { title: ' Guides ', description: 'A collection', cover_media_attachment_id: cover.id, displayed: false }, headers: headers
     expect(response).to have_http_status(200)
     series_id = response.parsed_body[:id]
     expect(response.parsed_body).to include(
       title: 'Guides',
       description: 'A collection',
+      displayed: false,
       cover_media_attachment_id: cover.id.to_s,
       pages_count: 0
     )
@@ -23,9 +24,10 @@ RSpec.describe 'Page series' do
     get '/api/v1/page_series', headers: headers
     expect(response.parsed_body.pluck(:id)).to contain_exactly(series_id)
 
-    put "/api/v1/page_series/#{series_id}", params: { title: 'Manuals' }, headers: headers
+    put "/api/v1/page_series/#{series_id}", params: { title: 'Manuals', displayed: true }, headers: headers
     expect(response).to have_http_status(200)
     expect(response.parsed_body[:title]).to eq('Manuals')
+    expect(response.parsed_body[:displayed]).to be true
 
     page = Fabricate(:page, account: user.account, page_series_id: series_id)
     delete "/api/v1/page_series/#{series_id}", headers: headers
@@ -72,6 +74,21 @@ RSpec.describe 'Page series' do
       pages_count: 1
     )
     expect(response.parsed_body.first.dig(:account, :id)).to eq(other_account.id.to_s)
+  end
+
+  it 'excludes privately displayed Booklets from the public bookcase but includes them on the owner profile' do
+    other_account = Fabricate(:account)
+    booklet = Fabricate(:page_series, account: other_account, displayed: false)
+    representative = Fabricate(:page, account: other_account, page_series: booklet, visibility: 'public')
+    booklet.update!(main_page: representative)
+
+    get '/api/v1/page_series/others', headers: headers
+    expect(response.parsed_body.pluck(:id)).to_not include(booklet.id.to_s)
+
+    get "/api/v1/accounts/#{other_account.id}/page_series"
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.pluck(:id)).to include(booklet.id.to_s)
+    expect(response.parsed_body.first[:displayed]).to be false
   end
 
   it 'assigns pages, orders them, and selects a public representative page' do

@@ -17,6 +17,7 @@ module Sharlayan::Account::Associations
         has_many :drive_folders, dependent: :destroy
         has_many :pages, dependent: :destroy
         has_many :page_series, dependent: :destroy
+        has_many :page_daily_statistics, dependent: :destroy
         has_many :page_likes, dependent: :destroy
         has_many :antennas, inverse_of: :account, dependent: :destroy
         has_many :misskey_registry_items, dependent: :destroy

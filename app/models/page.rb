@@ -19,6 +19,7 @@
 #  name                             :string           not null
 #  series_position                  :integer          default(0), not null
 #  summary                          :text
+#  text_characters_count            :integer
 #  title                            :string           default(""), not null
 #  visibility                       :string           default("public"), not null
 #  created_at                       :datetime         not null
@@ -61,6 +62,7 @@ class Page < ApplicationRecord
     'note' => 20,
     'youtube' => 16,
   }.freeze
+  WRITING_ATTRIBUTES = %w(title summary content).freeze
 
   belongs_to :account
   belongs_to :eye_catching_media_attachment, class_name: 'MediaAttachment', optional: true
@@ -73,7 +75,12 @@ class Page < ApplicationRecord
   before_validation :synchronize_visibility
   before_validation :clear_unused_password
   before_validation :clear_main_unless_public
+  before_validation :recompute_text_characters_count, if: :should_recompute_text_characters_count?
   after_update :clear_previous_series_main
+  before_destroy :ensure_text_characters_count
+  after_create_commit :record_created_writing_statistics
+  after_update_commit :record_updated_writing_statistics
+  after_destroy_commit :record_destroyed_writing_statistics
 
   validates :title, length: { maximum: TITLE_LENGTH_LIMIT }
   validates :name, presence: true, length: { maximum: NAME_LENGTH_LIMIT }, format: { with: NAME_RE }, uniqueness: { scope: :account_id }
@@ -181,6 +188,40 @@ class Page < ApplicationRecord
   end
 
   private
+
+  def should_recompute_text_characters_count?
+    text_characters_count.nil? || WRITING_ATTRIBUTES.any? { |attribute| will_save_change_to_attribute?(attribute) }
+  end
+
+  def recompute_text_characters_count
+    self.text_characters_count = PageTextCharacterCounter.call(summary: summary, content: content)
+  end
+
+  def ensure_text_characters_count
+    self.text_characters_count ||= PageTextCharacterCounter.call(summary: summary, content: content)
+  end
+
+  def record_created_writing_statistics
+    PageDailyStatistic.record!(account_id: account_id, characters_delta: text_characters_count.to_i, created: 1)
+  end
+
+  def record_updated_writing_statistics
+    delta = if previous_changes.key?('text_characters_count')
+              previous_changes['text_characters_count'].last.to_i - previous_changes['text_characters_count'].first.to_i
+            else
+              0
+            end
+    writing_updated = (previous_changes.keys & WRITING_ATTRIBUTES).any?
+    return if delta.zero? && !writing_updated
+
+    PageDailyStatistic.record!(account_id: account_id, characters_delta: delta, updated: writing_updated ? 1 : 0)
+  end
+
+  def record_destroyed_writing_statistics
+    return unless Account.exists?(account_id)
+
+    PageDailyStatistic.record!(account_id: account_id, characters_delta: -text_characters_count.to_i, updated: 1)
+  end
 
   def synchronize_visibility
     if will_save_change_to_draft? && (!will_save_change_to_visibility? || (new_record? && visibility == 'public'))

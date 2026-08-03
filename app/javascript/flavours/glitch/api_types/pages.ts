@@ -68,12 +68,25 @@ export interface ApiPageSeriesSummaryJSON {
 }
 
 export interface ApiPageSeriesJSON extends ApiPageSeriesSummaryJSON {
+  displayed: boolean;
   account_id: string;
   account: ApiAccountJSON;
   main_page_name: string | null;
   pages_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export type ApiPageActivity = 'none' | 'updated' | 'created';
+
+export interface ApiPageWritingStatisticsJSON {
+  total_characters: number;
+  first_written_on: string | null;
+  days: {
+    date: string;
+    characters_delta: number;
+    activity: ApiPageActivity;
+  }[];
 }
 
 export interface ApiPageJSON {

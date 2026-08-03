@@ -101,6 +101,7 @@ namespace :api, format: false do
         resources :circles, only: :index
         resources :clips, only: :index
         resources :pages, only: [:index, :show], param: :name
+        resources :page_series, only: :index
         resources :antennas, only: :index
         resources :exclude_antennas, only: :index
       end
@@ -142,6 +143,7 @@ namespace :api, format: false do
       collection do
         get :categories
         get :featured
+        get :statistics
       end
     end
 

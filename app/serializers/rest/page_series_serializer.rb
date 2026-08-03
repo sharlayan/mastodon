@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::PageSeriesSerializer < ActiveModel::Serializer
-  attributes :id, :title, :description, :account_id, :main_page_id, :main_page_name, :cover_media_attachment_id, :pages_count, :created_at, :updated_at
+  attributes :id, :title, :description, :displayed, :account_id, :main_page_id, :main_page_name, :cover_media_attachment_id, :pages_count, :created_at, :updated_at
 
   belongs_to :account, serializer: REST::AccountSerializer
   has_one :cover_media_attachment, serializer: REST::MediaAttachmentSerializer

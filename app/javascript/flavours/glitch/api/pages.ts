@@ -8,6 +8,7 @@ import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_att
 import type {
   ApiPageJSON,
   ApiPageSeriesJSON,
+  ApiPageWritingStatisticsJSON,
   ApiPageUnlockJSON,
 } from 'flavours/glitch/api_types/pages';
 
@@ -41,6 +42,11 @@ export const apiGetPageCategories = () =>
 export const apiGetFeaturedPages = () =>
   apiRequestGet<ApiPageJSON[]>('v1/pages/featured');
 
+export const apiGetPageWritingStatistics = () =>
+  apiRequestGet<ApiPageWritingStatisticsJSON>('v1/pages/statistics', {
+    days: 365,
+  });
+
 export const apiGetAccountPages = (accountId: string, offset = 0) =>
   apiRequestGet<ApiPageJSON[]>(`v1/accounts/${accountId}/pages`, {
     limit: PAGE_LIST_LIMIT,
@@ -51,6 +57,9 @@ export const apiGetAccountPage = (accountId: string, name: string) =>
   apiRequestGet<ApiPageJSON>(
     `v1/accounts/${accountId}/pages/${encodeURIComponent(name)}`,
   );
+
+export const apiGetAccountPageSeries = (accountId: string) =>
+  apiRequestGet<ApiPageSeriesJSON[]>(`v1/accounts/${accountId}/page_series`);
 
 export const apiGetPage = async (pageId: string) => {
   const page = await apiRequestGet<ApiPageJSON>(`v1/pages/${pageId}`);
@@ -121,6 +130,7 @@ export const apiCreatePageSeries = (series: {
   title: string;
   description?: string | null;
   cover_media_attachment_id?: string | null;
+  displayed?: boolean;
 }) => apiRequestPost<ApiPageSeriesJSON>('v1/page_series', series);
 
 export const apiUpdatePageSeries = (
@@ -129,6 +139,7 @@ export const apiUpdatePageSeries = (
     title?: string;
     description?: string | null;
     cover_media_attachment_id?: string | null;
+    displayed?: boolean;
   },
 ) => apiRequestPut<ApiPageSeriesJSON>(`v1/page_series/${seriesId}`, series);
 

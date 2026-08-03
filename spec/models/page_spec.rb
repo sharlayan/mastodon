@@ -5,6 +5,32 @@ require 'rails_helper'
 RSpec.describe Page do
   let(:account) { Fabricate(:account) }
 
+  describe 'writing statistics' do
+    it 'stores the visible character count and tracks create, update, and delete deltas' do
+      page = Fabricate(:page, account: account, summary: '요 약', content: [{ type: 'text', text: '**hello**' }])
+      statistic = PageDailyStatistic.find_by!(account: account, activity_date: Time.zone.today)
+
+      expect(page.text_characters_count).to eq(7)
+      expect(statistic).to have_attributes(characters_delta: 7, pages_created_count: 1, pages_updated_count: 0)
+      expect(statistic.activity).to eq('created')
+
+      page.update!(summary: '요약문')
+      expect(statistic.reload).to have_attributes(characters_delta: 8, pages_created_count: 1, pages_updated_count: 1)
+
+      page.destroy!
+      expect(statistic.reload).to have_attributes(characters_delta: 0, pages_created_count: 1, pages_updated_count: 2)
+      expect(statistic.activity).to eq('created')
+    end
+
+    it 'does not mark non-writing metadata changes as an update' do
+      page = Fabricate(:page, account: account, content: [{ type: 'text', text: 'hello' }])
+
+      page.update!(visibility: 'private')
+
+      expect(PageDailyStatistic.find_by!(account: account)).to have_attributes(pages_created_count: 1, pages_updated_count: 0)
+    end
+  end
+
   describe 'content validation' do
     it 'accepts content at the block-count boundary' do
       page = Fabricate.build(:page, account: account, content: Array.new(described_class::MAX_BLOCKS) { { type: 'text', text: 'x' } })
