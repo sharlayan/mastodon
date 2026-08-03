@@ -46,7 +46,6 @@ import {
   ConfirmResumeDraftModal,
 } from './confirmation_modals';
 import DeprecatedSettingsModal from './deprecated_settings_modal';
-import DoodleModal from 'flavours/glitch/sharlayan/compose/layered_doodle_modal';
 import { FavouriteModal } from './favourite_modal';
 import { ImageModal } from './image_modal';
 import { MediaModal } from './media_modal';
@@ -63,7 +62,7 @@ export const MODAL_COMPONENTS = {
   'IMAGE': () => Promise.resolve({ default: ImageModal }),
   'BOOST': () => Promise.resolve({ default: BoostModal }),
   'FAVOURITE': () => Promise.resolve({ default: FavouriteModal }),
-  'DOODLE': () => Promise.resolve({ default: DoodleModal }),
+  'DOODLE': () => import('@/flavours/glitch/sharlayan/compose/layered_doodle_modal'),
   'CONFIRM': () => Promise.resolve({ default: ConfirmationModal }),
   'CONFIRM_DELETE_STATUS': () => Promise.resolve({ default: ConfirmDeleteStatusModal }),
   'CONFIRM_DELETE_LIST': () => Promise.resolve({ default: ConfirmDeleteListModal }),
