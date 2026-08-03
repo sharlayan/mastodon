@@ -192,7 +192,7 @@ const DecorationTooltip: FC<DecorationTooltipProps> = ({
 interface DecorationTileProps {
   decoration: ApiAvatarDecorationJSON;
   isSelected: boolean;
-  onSelect: (id: number) => void;
+  onSelect: (id: string) => void;
 }
 
 const DecorationTile: FC<DecorationTileProps> = ({
@@ -200,13 +200,12 @@ const DecorationTile: FC<DecorationTileProps> = ({
   isSelected,
   onSelect,
 }) => {
-  const numericId = parseInt(decoration.id, 10);
   const [buttonEl, setButtonEl] = useState<HTMLButtonElement | null>(null);
   const [hovered, setHovered] = useState(false);
 
   const handleClick = useCallback(() => {
-    onSelect(numericId);
-  }, [onSelect, numericId]);
+    onSelect(decoration.id);
+  }, [onSelect, decoration.id]);
 
   const handleMouseEnter = useCallback(() => {
     setHovered(true);
@@ -268,7 +267,7 @@ type Level = 1 | 2 | 3;
 interface AvatarPreviewProps {
   avatarUrl: string | undefined;
   configs: ActiveDecorationConfig[];
-  decorationsById: Map<number, ApiAvatarDecorationJSON>;
+  decorationsById: Map<string, ApiAvatarDecorationJSON>;
   focusedInstanceId?: string | null;
 }
 
@@ -376,7 +375,7 @@ const ActiveListItem: FC<ActiveListItemProps> = ({
             {url && <img src={url} alt='' className={classes.listItemImg} />}
           </div>
           <span className={classes.listItemName}>
-            {decoration?.name ?? String(config.id)}
+            {decoration?.name ?? config.id}
           </span>
         </button>
         <div className={classes.listItemReorder}>
@@ -561,7 +560,7 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
   const [level, setLevel] = useState<Level>(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [pendingAddId, setPendingAddId] = useState<number | null>(null);
+  const [pendingAddId, setPendingAddId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
@@ -600,7 +599,7 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
   }, []);
 
   const decorationsById = useMemo(
-    () => new Map((available ?? []).map((d) => [parseInt(d.id, 10), d])),
+    () => new Map((available ?? []).map((d) => [d.id, d])),
     [available],
   );
 
@@ -665,8 +664,8 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
     }
   }, [dispatch, isPending, configs, onClose]);
 
-  const handleSelectPending = useCallback((numericId: number) => {
-    setPendingAddId((prev) => (prev === numericId ? null : numericId));
+  const handleSelectPending = useCallback((id: string) => {
+    setPendingAddId((prev) => (prev === id ? null : id));
   }, []);
 
   const handleConfirmAdd = useCallback(() => {
@@ -775,12 +774,11 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
         : [];
 
     const renderTile = (decoration: ApiAvatarDecorationJSON) => {
-      const numericId = parseInt(decoration.id, 10);
       return (
         <DecorationTile
           key={decoration.id}
           decoration={decoration}
-          isSelected={pendingAddId === numericId}
+          isSelected={pendingAddId === decoration.id}
           onSelect={handleSelectPending}
         />
       );

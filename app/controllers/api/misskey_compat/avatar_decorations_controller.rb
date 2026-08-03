@@ -9,7 +9,8 @@ class Api::MisskeyCompat::AvatarDecorationsController < ApplicationController
 
   def index
     return render json: [] unless Setting.avatar_decorations_enabled &&
-                                  Setting.avatar_decorations_federation_enabled
+                                  Setting.avatar_decorations_federation_enabled &&
+                                  !Setting.avatar_decorations_local_only_view
     return if rate_limited_by_ip?
 
     decorations = AvatarDecoration.local.approved

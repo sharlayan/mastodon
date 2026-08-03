@@ -168,6 +168,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   def avatar_decorations_enabled?
     Setting.avatar_decorations_enabled &&
       Setting.avatar_decorations_federation_enabled &&
+      !Setting.avatar_decorations_local_only_view &&
       !object.unavailable? &&
       !object.avatar_decorations_blocked &&
       object.avatar_decorations.any?

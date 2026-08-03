@@ -5,6 +5,38 @@ require 'rails_helper'
 RSpec.describe UpdateAccountService do
   subject { described_class.new }
 
+  describe 'updating avatar decorations' do
+    let(:account) { Fabricate(:user).account }
+
+    before do
+      Setting.avatar_decorations_enabled = true
+    end
+
+    context 'when local decorations are enabled' do
+      before { Setting.avatar_decorations_local_only_view = false }
+
+      it 'saves an available local decoration selection' do
+        decoration = Fabricate(:avatar_decoration, approved: true)
+
+        subject.call(account, { avatar_decorations: [{ id: decoration.id, scale: 1.2 }] })
+
+        expect(account.reload.avatar_decorations).to contain_exactly(include('id' => decoration.id, 'scale' => 1.2))
+      end
+    end
+
+    context 'when only remote decorations may be viewed' do
+      before { Setting.avatar_decorations_local_only_view = true }
+
+      it 'rejects local decoration selections' do
+        decoration = Fabricate(:avatar_decoration, approved: true)
+
+        subject.call(account, { avatar_decorations: [{ id: decoration.id }] })
+
+        expect(account.reload.avatar_decorations).to be_empty
+      end
+    end
+  end
+
   describe 'switching form locked to unlocked accounts', :inline_jobs do
     let(:account) { Fabricate(:account, locked: true) }
     let(:alice)   { Fabricate(:account) }

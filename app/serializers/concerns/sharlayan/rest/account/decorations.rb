@@ -13,6 +13,7 @@ module Sharlayan::REST::Account::Decorations
 
   def avatar_decorations
     return [] if object.unavailable? || object.avatar_decorations.blank?
+    return [] if object.local? && Setting.avatar_decorations_local_only_view
 
     decoration_ids = object.avatar_decorations.filter_map { |decoration| decoration['id'] }
     return [] if decoration_ids.empty?

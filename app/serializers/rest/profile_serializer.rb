@@ -48,6 +48,8 @@ class REST::ProfileSerializer < ActiveModel::Serializer
   end
 
   def avatar_decorations
-    object.avatar_decorations || []
+    return [] if Setting.avatar_decorations_local_only_view
+
+    object.avatar_decorations.map { |config| config.merge('id' => config['id'].to_s) }
   end
 end

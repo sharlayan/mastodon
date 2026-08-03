@@ -2,7 +2,7 @@ import type { ApiAccountFieldJSON } from './accounts';
 import type { ApiFeaturedTagJSON } from './tags';
 
 export interface ApiProfileDecorationConfigJSON {
-  id: number;
+  id: string;
   angle: number;
   flip_h: boolean;
   offset_x: number;

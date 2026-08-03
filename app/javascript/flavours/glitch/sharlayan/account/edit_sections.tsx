@@ -4,6 +4,10 @@ import { useCallback } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 
 import { openModal } from '@/flavours/glitch/actions/modal';
+import {
+  avatarDecorationsEnabled,
+  avatarDecorationsLocalOnlyView,
+} from '@/flavours/glitch/initial_state';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
 import { EditButton } from '../../features/account_edit/components/edit_button';
@@ -80,38 +84,40 @@ export const SharlayanAccountEditSections: FC<Props> = ({
         {hasFollowMessage && <span>{followedMessage}</span>}
       </AccountEditSection>
 
-      <AccountEditSection
-        title={messages.decorationsTitle}
-        description={messages.decorationsPlaceholder}
-        showDescription={!hasDecorations}
-        buttons={
-          <EditButton
-            onClick={handleDecorationsEdit}
-            label={intl.formatMessage(messages.decorationsEditLabel)}
-            icon={hasDecorations}
-          />
-        }
-      >
-        {hasDecorations && (
-          <span>
-            {decorationCount === 1
-              ? intl.formatMessage(
-                  {
-                    id: 'account_edit.decorations.count_one',
-                    defaultMessage: '{count} decoration',
-                  },
-                  { count: decorationCount },
-                )
-              : intl.formatMessage(
-                  {
-                    id: 'account_edit.decorations.count_other',
-                    defaultMessage: '{count} decorations',
-                  },
-                  { count: decorationCount },
-                )}
-          </span>
-        )}
-      </AccountEditSection>
+      {avatarDecorationsEnabled && !avatarDecorationsLocalOnlyView && (
+        <AccountEditSection
+          title={messages.decorationsTitle}
+          description={messages.decorationsPlaceholder}
+          showDescription={!hasDecorations}
+          buttons={
+            <EditButton
+              onClick={handleDecorationsEdit}
+              label={intl.formatMessage(messages.decorationsEditLabel)}
+              icon={hasDecorations}
+            />
+          }
+        >
+          {hasDecorations && (
+            <span>
+              {decorationCount === 1
+                ? intl.formatMessage(
+                    {
+                      id: 'account_edit.decorations.count_one',
+                      defaultMessage: '{count} decoration',
+                    },
+                    { count: decorationCount },
+                  )
+                : intl.formatMessage(
+                    {
+                      id: 'account_edit.decorations.count_other',
+                      defaultMessage: '{count} decorations',
+                    },
+                    { count: decorationCount },
+                  )}
+            </span>
+          )}
+        </AccountEditSection>
+      )}
     </>
   );
 };

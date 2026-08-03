@@ -9,6 +9,7 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
     avatar_decorations = []
 
     if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled &&
+       (!@account.local? || !Setting.avatar_decorations_local_only_view) &&
        !@account.avatar_decorations_blocked && @account.avatar_decorations.any?
 
       decoration_ids = @account.avatar_decorations.filter_map { |d| d['id'] }

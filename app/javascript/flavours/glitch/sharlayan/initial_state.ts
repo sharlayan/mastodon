@@ -24,6 +24,7 @@ export interface SharlayanInitialStateMeta {
   board_announcements_enabled: boolean;
   avatar_decorations_enabled: boolean;
   avatar_decorations_federation_enabled: boolean;
+  avatar_decorations_local_only_view: boolean;
   cat_enabled: boolean;
   cat_federation_enabled: boolean;
   color_scheme?: 'auto' | 'light' | 'dark';
@@ -98,6 +99,8 @@ export const readSharlayanInitialState = (
     avatarDecorationsFederationEnabled: getMeta(
       'avatar_decorations_federation_enabled',
     ),
+    avatarDecorationsLocalOnlyView:
+      getMeta('avatar_decorations_local_only_view') === true,
     showAvatarDecorations: getMeta('show_avatar_decorations') ?? false,
     showFederatedAvatarDecorations:
       getMeta('show_federated_avatar_decorations') ?? false,

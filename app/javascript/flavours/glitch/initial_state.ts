@@ -242,6 +242,7 @@ export const {
   mfmFoldMode,
   avatarDecorationsEnabled,
   avatarDecorationsFederationEnabled,
+  avatarDecorationsLocalOnlyView,
   showAvatarDecorations,
   showFederatedAvatarDecorations,
   avatarDecorationShape,

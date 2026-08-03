@@ -212,7 +212,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   end
 
   def avatar_decoration_limit
-    return 0 unless Setting.avatar_decorations_enabled
+    return 0 unless Setting.avatar_decorations_enabled && !Setting.avatar_decorations_local_only_view
 
     Setting.avatar_decorations_max_count.to_i.clamp(0, UpdateAccountService::MAX_DECORATIONS)
   end

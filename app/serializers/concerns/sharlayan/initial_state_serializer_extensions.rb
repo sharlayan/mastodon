@@ -30,6 +30,7 @@ module Sharlayan::InitialStateSerializerExtensions
       board_announcements_enabled: Setting.board_announcements_enabled,
       avatar_decorations_enabled: Setting.avatar_decorations_enabled,
       avatar_decorations_federation_enabled: Setting.avatar_decorations_federation_enabled,
+      avatar_decorations_local_only_view: Setting.avatar_decorations_local_only_view,
       cat_enabled: Setting.cat_enabled,
       cat_federation_enabled: Setting.cat_federation_enabled,
       local_account_statuses_access: Setting.local_account_statuses_access,

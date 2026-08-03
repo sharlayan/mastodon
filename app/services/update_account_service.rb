@@ -29,7 +29,8 @@ class UpdateAccountService < BaseService
   private
 
   def process_avatar_decorations(account, params)
-    return params unless Setting.avatar_decorations_enabled && account.local?
+    return params unless account.local?
+    return params.merge(avatar_decorations: []) unless Setting.avatar_decorations_enabled && !Setting.avatar_decorations_local_only_view
 
     effective_max = Setting.avatar_decorations_max_count.to_i.clamp(0, MAX_DECORATIONS)
     raw = Array(params[:avatar_decorations]).first(effective_max)

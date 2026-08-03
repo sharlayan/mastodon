@@ -84,6 +84,24 @@ RSpec.describe 'Profile API' do
 
     it_behaves_like 'forbidden for wrong scope', 'read read:accounts'
 
+    context 'with an avatar decoration' do
+      let(:decoration) { Fabricate(:avatar_decoration, id: 9_007_199_254_740_993, approved: true) }
+      let(:params) { { avatar_decorations: [{ id: decoration.id.to_s, scale: 1.2 }] } }
+
+      before do
+        Setting.avatar_decorations_enabled = true
+        Setting.avatar_decorations_local_only_view = false
+      end
+
+      it 'saves and returns the decoration configuration' do
+        patch '/api/v1/profile', headers: headers, params: params, as: :json
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body[:avatar_decorations]).to contain_exactly(include(id: decoration.id.to_s, scale: 1.2))
+        expect(account.reload.avatar_decorations).to contain_exactly(include('id' => decoration.id, 'scale' => 1.2))
+      end
+    end
+
     describe 'with invalid data' do
       let(:params) { { note: 'a' * 2 * Account::NOTE_LENGTH_LIMIT } }
 

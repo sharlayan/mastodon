@@ -201,6 +201,10 @@
   overflow: visible;
 }
 
+.detailed-status__display-name .account__avatar.account__avatar--decorated {
+  overflow: visible;
+}
+
 .account-switcher-modal__item__avatar {
   flex-shrink: 0;
   position: relative;

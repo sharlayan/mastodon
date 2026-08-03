@@ -232,6 +232,7 @@ class MisskeyCompat::UserSerializer
 
   def avatar_decorations_for(account)
     return [] unless Setting.avatar_decorations_enabled
+    return [] if account.local? && Setting.avatar_decorations_local_only_view
     return [] if account.avatar_decorations_blocked || account.avatar_decorations.blank?
 
     decoration_ids = account.avatar_decorations.filter_map { |config| config['id'] }

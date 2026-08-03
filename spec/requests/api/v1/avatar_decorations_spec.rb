@@ -41,6 +41,16 @@ RSpec.describe 'Avatar Decorations' do
         expect(response).to have_http_status(404)
       end
     end
+
+    context 'when only remote decorations may be viewed' do
+      before { Setting.avatar_decorations_local_only_view = true }
+
+      it 'returns 404' do
+        get api_v1_avatar_decorations_path, headers: headers
+
+        expect(response).to have_http_status(404)
+      end
+    end
   end
 
   describe 'POST /api/v1/avatar_decoration_mutes' do

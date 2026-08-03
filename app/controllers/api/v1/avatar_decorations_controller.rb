@@ -35,6 +35,6 @@ class Api::V1::AvatarDecorationsController < Api::BaseController
   private
 
   def require_feature_enabled!
-    not_found unless Setting.avatar_decorations_enabled
+    not_found unless Setting.avatar_decorations_enabled && !Setting.avatar_decorations_local_only_view
   end
 end
