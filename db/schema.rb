@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_03_172525) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_04_061200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -940,6 +940,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_03_172525) do
     t.datetime "updated_at", precision: nil, null: false
     t.index ["account_id", "tag_id"], name: "index_featured_tags_on_account_id_and_tag_id", unique: true
     t.index ["tag_id"], name: "index_featured_tags_on_tag_id"
+  end
+
+  create_table "federation_request_statistics", force: :cascade do |t|
+    t.datetime "bucket_at", null: false
+    t.datetime "created_at", null: false
+    t.bigint "deliver_failed_count", default: 0, null: false
+    t.bigint "deliver_succeeded_count", default: 0, null: false
+    t.string "domain", null: false
+    t.bigint "inbox_received_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["bucket_at"], name: "index_federation_request_statistics_on_bucket_at"
+    t.index ["domain", "bucket_at"], name: "index_federation_request_statistics_on_domain_and_bucket", unique: true
   end
 
   create_table "follow_recommendation_mutes", force: :cascade do |t|

@@ -84,6 +84,13 @@
             label: t('admin.settings.instance_metadata.enabled'),
             hint: t('admin.settings.instance_metadata.enabled_hint'),
             sharlayan_only: true
+  = f.input :federation_request_statistics_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.federation_request_statistics.enabled'),
+            hint: roleplay_mode? ? t('admin.settings.federation_request_statistics.roleplay_hint') : t('admin.settings.federation_request_statistics.enabled_hint'),
+            disabled: roleplay_mode?,
+            sharlayan_only: true
 
 .fields-group
   = f.input :auto_quote_from_url,

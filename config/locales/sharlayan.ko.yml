@@ -275,6 +275,13 @@ ko:
         title: 드라이브
       extensions:
         title: 확장 기능
+      federation_request_statistics:
+        enabled: 도메인별 연합 요청 횟수 기록
+        enabled_hint: 활성화하면 원격 도메인마다 배달 성공, 배달 실패, 수리된 inbox 요청 횟수를 세고 Misskey 호환 AP 요청 차트에
+          반영합니다. 집계는 Redis에 모았다가 1분에 한 번 데이터베이스에 접습니다. 통계보다 CPU 여유가 중요하면 비활성화해 이 배경
+          작업을 없앨 수 있습니다. 이미 쌓인 행은 유지되지만 더 늘어나지 않습니다.
+        roleplay_hint: 롤플레이 서버 모드에서는 사용할 수 없습니다. 이 모드에서는 도메인별 연합 요청 횟수를 기록하지 않습니다.
+        title: 연합 요청 통계
       instance_metadata:
         enabled: 서버 정보 바 및 인스턴스 메타데이터 수집 활성화
         enabled_hint: 활성화하면 다른 서버의 게시물에 서버 정보 바(이름, 테마 색상, 파비콘)가 표시되고 연합 인스턴스의 메타데이터를

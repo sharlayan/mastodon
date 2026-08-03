@@ -265,6 +265,12 @@ ja:
         title: ドライブ
       extensions:
         title: 拡張機能
+      federation_request_statistics:
+        enabled: ドメインごとの連合リクエスト数を記録する
+        enabled_hint: >-
+          有効にすると、リモートドメインごとに配送成功・配送失敗・受理したinboxリクエストの回数を計測し、Misskey互換のAPリクエストチャートに反映します。集計はRedisにまとめ、1分ごとにデータベースへ書き込みます。統計よりCPUの余裕を優先する場合は無効にしてこのバックグラウンド処理をなくせます。すでに蓄積された行は保持されますが、それ以上増えません。
+        roleplay_hint: ロールプレイサーバーモードでは利用できません。このモードではドメインごとの連合リクエスト数を記録しません。
+        title: 連合リクエスト統計
       instance_metadata:
         enabled: サーバー情報バーとメタデータ収集を有効にする
         enabled_hint: >-

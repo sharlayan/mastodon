@@ -7,6 +7,7 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
   before_action :skip_unknown_actor_activity
   before_action :require_actor_signature!
   skip_before_action :authenticate_user!
+  after_action :track_inbox_request
 
   def create
     upgrade_account
@@ -16,6 +17,13 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
   end
 
   private
+
+  def track_inbox_request
+    domain = signed_request_actor&.domain
+    return if domain.blank?
+
+    Sharlayan::FederationRequestTracker.track_inbox_received!(domain)
+  end
 
   def skip_large_payload
     head 413 if request.content_length > ActivityPub::Activity::MAX_JSON_SIZE

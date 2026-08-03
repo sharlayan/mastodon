@@ -18,6 +18,14 @@ RSpec.describe 'ActivityPub Inboxes' do
           expect(response)
             .to have_http_status(202)
         end
+
+        it 'counts the inbox request against the sending domain' do
+          subject
+
+          expect(Sharlayan::FederationRequestTracker.flush!).to eq(1)
+          expect(FederationRequestStatistic.find_by(domain: 'example.com'))
+            .to have_attributes(inbox_received_count: 1, deliver_succeeded_count: 0)
+        end
       end
 
       context 'with an excessively large payload' do
@@ -30,6 +38,12 @@ RSpec.describe 'ActivityPub Inboxes' do
 
           expect(response)
             .to have_http_status(413)
+        end
+
+        it 'does not count a rejected payload as a received request' do
+          subject
+
+          expect(Sharlayan::FederationRequestTracker.flush!).to eq(0)
         end
       end
 

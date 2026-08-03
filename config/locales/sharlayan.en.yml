@@ -302,6 +302,17 @@ en:
         title: Drive
       extensions:
         title: Extensions
+      federation_request_statistics:
+        enabled: Record per-domain federation request counts
+        enabled_hint: When enabled, the server counts delivery successes, delivery failures,
+          and accepted inbox requests for each remote domain, and Misskey-compatible
+          AP request charts report them. Counting is buffered in Redis and folded into
+          the database once a minute. Disable to remove that background work if CPU
+          headroom matters more than the statistics; existing rows are kept but stop
+          growing.
+        roleplay_hint: Unavailable while roleplay server mode is enabled. Per-domain
+          federation request counts are never recorded in that mode.
+        title: Federation request statistics
       instance_metadata:
         enabled: Enable instance information bar and metadata collection
         enabled_hint: When enabled, posts from other servers show an instance information

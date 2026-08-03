@@ -96,3 +96,11 @@
       cron: '<%= Random.rand(0..59) %> <%= Random.rand(1..3) %> * * *'
       class: Scheduler::PageWritingStatisticsScheduler
       queue: scheduler
+    federation_request_statistics_scheduler:
+      interval: 1 minute
+      class: Scheduler::FederationRequestStatisticsScheduler
+      queue: scheduler
+    federation_request_statistics_cleanup_scheduler:
+      cron: '<%= Random.rand(0..59) %> <%= Random.rand(3..5) %> * * *'
+      class: Scheduler::FederationRequestStatisticsCleanupScheduler
+      queue: scheduler

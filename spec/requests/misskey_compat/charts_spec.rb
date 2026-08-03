@@ -60,7 +60,7 @@ RSpec.describe 'Misskey-compat charts' do
     Setting.drive_enabled = false
   end
 
-  it 'returns the stable zero-valued shape for data Mastodon does not retain' do
+  it 'returns the stable zero-valued shape when no federation requests were recorded' do
     post '/api/charts/ap-request', params: { span: 'day', limit: 2 }, as: :json
 
     expect(response).to have_http_status(200)
@@ -68,6 +68,56 @@ RSpec.describe 'Misskey-compat charts' do
       'deliverFailed' => [0, 0],
       'deliverSucceeded' => [0, 0],
       'inboxReceived' => [0, 0]
+    )
+  end
+
+  it 'sums recorded federation requests across every domain for the server-wide chart' do
+    Fabricate(:federation_request_statistic, domain: 'a.example', bucket_at: Time.utc(2026, 7, 24, 12), deliver_succeeded_count: 3, deliver_failed_count: 1, inbox_received_count: 5)
+    Fabricate(:federation_request_statistic, domain: 'b.example', bucket_at: Time.utc(2026, 7, 24, 12), deliver_succeeded_count: 4, inbox_received_count: 2)
+    Fabricate(:federation_request_statistic, domain: 'a.example', bucket_at: Time.utc(2026, 7, 24, 10), deliver_failed_count: 7)
+
+    post '/api/charts/ap-request', params: { span: 'hour', limit: 3 }, as: :json
+
+    expect(response.parsed_body).to eq(
+      'deliverFailed' => [1, 0, 7],
+      'deliverSucceeded' => [7, 0, 0],
+      'inboxReceived' => [7, 0, 0]
+    )
+  end
+
+  it 'reports zeroes for recorded federation requests once the admin disables the counter' do
+    Fabricate(:federation_request_statistic, domain: 'a.example', bucket_at: Time.utc(2026, 7, 24, 12), deliver_succeeded_count: 3, inbox_received_count: 5)
+    Setting.federation_request_statistics_enabled = false
+
+    post '/api/charts/ap-request', params: { span: 'hour', limit: 1 }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body).to eq(
+      'deliverFailed' => [0],
+      'deliverSucceeded' => [0],
+      'inboxReceived' => [0]
+    )
+    expect(MisskeyCompat::ChartService.new(name: :ap_request, span: 'hour', limit: 1).call)
+      .to eq('deliverFailed' => [0], 'deliverSucceeded' => [0], 'inboxReceived' => [0])
+
+    Setting.federation_request_statistics_enabled = true
+
+    expect(MisskeyCompat::ChartService.new(name: :ap_request, span: 'hour', limit: 1).call)
+      .to eq('deliverFailed' => [0], 'deliverSucceeded' => [3], 'inboxReceived' => [5])
+  ensure
+    Setting.federation_request_statistics_enabled = true
+  end
+
+  it 'scopes recorded federation requests to the queried host for the instance chart' do
+    Fabricate(:federation_request_statistic, domain: 'a.example', bucket_at: Time.utc(2026, 7, 24, 12), deliver_succeeded_count: 3, deliver_failed_count: 1, inbox_received_count: 5)
+    Fabricate(:federation_request_statistic, domain: 'b.example', bucket_at: Time.utc(2026, 7, 24, 12), deliver_succeeded_count: 4)
+
+    post '/api/charts/instance', params: { span: 'hour', limit: 2, host: 'a.example' }, as: :json
+
+    expect(response.parsed_body['requests']).to eq(
+      'succeeded' => [3, 0],
+      'failed' => [1, 0],
+      'received' => [5, 0]
     )
   end
 

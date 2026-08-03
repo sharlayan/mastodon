@@ -36,6 +36,14 @@ RSpec.describe ActivityPub::DeliveryWorker do
         end
       end
 
+      it 'counts the delivery against the target domain' do
+        subject.perform(payload, sender.id, url)
+
+        expect(Sharlayan::FederationRequestTracker.flush!).to eq(1)
+        expect(FederationRequestStatistic.find_by(domain: 'example.com'))
+          .to have_attributes(deliver_succeeded_count: 1, deliver_failed_count: 0)
+      end
+
       def request_to_url
         a_request(:post, url)
           .with(
@@ -54,6 +62,15 @@ RSpec.describe ActivityPub::DeliveryWorker do
       it 'raises error' do
         expect { subject.perform(payload, sender.id, url) }
           .to raise_error Mastodon::UnexpectedResponseError
+      end
+
+      it 'counts the failure against the target domain' do
+        expect { subject.perform(payload, sender.id, url) }
+          .to raise_error Mastodon::UnexpectedResponseError
+
+        expect(Sharlayan::FederationRequestTracker.flush!).to eq(1)
+        expect(FederationRequestStatistic.find_by(domain: 'example.com'))
+          .to have_attributes(deliver_succeeded_count: 0, deliver_failed_count: 1)
       end
     end
   end

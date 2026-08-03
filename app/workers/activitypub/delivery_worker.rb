@@ -38,8 +38,10 @@ class ActivityPub::DeliveryWorker
     if @inbox_url.present?
       if @performed
         failure_tracker.track_success!
-      elsif !@unsalvageable
-        failure_tracker.track_failure!
+        Sharlayan::FederationRequestTracker.track_deliver_success!(@inbox_url)
+      else
+        failure_tracker.track_failure! unless @unsalvageable
+        Sharlayan::FederationRequestTracker.track_deliver_failure!(@inbox_url)
       end
     end
   end

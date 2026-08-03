@@ -9,6 +9,7 @@ class MisskeyCompat::ChartService
   QUALIFIED_COLUMNS = {
     ['accounts', :created_at] => 'accounts.created_at',
     ['drive_files', :created_at] => 'drive_files.created_at',
+    ['federation_request_statistics', :bucket_at] => 'federation_request_statistics.bucket_at',
     ['follows', :created_at] => 'follows.created_at',
     ['media_attachments', :created_at] => 'media_attachments.created_at',
     ['status_reactions', :created_at] => 'status_reactions.created_at',
@@ -33,6 +34,16 @@ class MisskeyCompat::ChartService
     pub: 'accounts.domain',
     sub: 'target_accounts_follows.domain',
   }.freeze
+  AP_REQUEST_COLUMNS = {
+    'deliverSucceeded' => :deliver_succeeded_count,
+    'deliverFailed' => :deliver_failed_count,
+    'inboxReceived' => :inbox_received_count,
+  }.freeze
+  INSTANCE_REQUEST_COLUMNS = {
+    'requests.succeeded' => :deliver_succeeded_count,
+    'requests.failed' => :deliver_failed_count,
+    'requests.received' => :inbox_received_count,
+  }.freeze
 
   SCHEMAS = {
     active_users: %w(readWrite read write registeredWithinWeek registeredWithinMonth registeredWithinYear registeredOutsideWeek registeredOutsideMonth registeredOutsideYear),
@@ -55,6 +66,7 @@ class MisskeyCompat::ChartService
     users: %w(local.total local.inc local.dec remote.total remote.inc remote.dec),
   }.freeze
 
+  REQUEST_CHARTS = %i(ap_request instance).freeze
   STATUS_KINDS = %i(normal reply renote with_file).freeze
   EMPTY_STATUS_EVENT = { count: 0, normal: 0, reply: 0, renote: 0, with_file: 0 }.freeze
 
@@ -149,7 +161,19 @@ class MisskeyCompat::ChartService
 
   def cache_key(bucket)
     group = @group.nil? ? '-' : Digest::SHA256.hexdigest(@group.to_s)
-    "misskey_compat:chart:v#{CACHE_VERSION}:#{@name}:#{@span}:#{group}:#{bucket.start_at.to_i}"
+    "misskey_compat:chart:v#{CACHE_VERSION}:#{@name}:#{@span}:#{group}:#{bucket.start_at.to_i}#{cache_key_suffix}"
+  end
+
+  def cache_key_suffix
+    return '' unless REQUEST_CHARTS.include?(@name)
+
+    @cache_key_suffix ||= request_statistics_enabled? ? ':req' : ':noreq'
+  end
+
+  def request_statistics_enabled?
+    return @request_statistics_enabled if defined?(@request_statistics_enabled)
+
+    @request_statistics_enabled = Sharlayan::FederationRequestTracker.enabled?
   end
 
   def write_records(generated, selected, ttl)
@@ -183,6 +207,8 @@ class MisskeyCompat::ChartService
       populate_federation(records)
     when :instance
       populate_instance(records)
+    when :ap_request
+      populate_ap_request(records)
     end
 
     records
@@ -392,8 +418,41 @@ class MisskeyCompat::ChartService
     first_seen.count { |_domain, seen_at| seen_at < time }
   end
 
+  def populate_ap_request(records)
+    populate_request_sums(records, FederationRequestStatistic.all, AP_REQUEST_COLUMNS)
+  end
+
+  def populate_instance_requests(records)
+    populate_request_sums(records, FederationRequestStatistic.for_domain(@group), INSTANCE_REQUEST_COLUMNS)
+  end
+
+  def populate_request_sums(records, scope, mapping)
+    return unless request_statistics_enabled?
+
+    sums = grouped_request_sums(scope)
+
+    buckets.each do |bucket|
+      totals = sums.fetch(bucket.start_at.to_i, nil)
+      next if totals.nil?
+
+      mapping.each { |key, column| records[bucket][key] = totals.fetch(column) }
+    end
+  end
+
+  def grouped_request_sums(scope)
+    column = qualified_column(scope, :bucket_at)
+    sums = FederationRequestStatistic::COUNTER_COLUMNS.map { |name| "COALESCE(SUM(federation_request_statistics.#{name}), 0)" }
+
+    scope.reorder(nil)
+      .where(bucket_at: range)
+      .group(Arel.sql(bucket_sql(column)))
+      .pluck(Arel.sql(bucket_sql(column)), *sums.map { |sum| Arel.sql(sum) })
+      .to_h { |time, *totals| [time.to_time.to_i, FederationRequestStatistic::COUNTER_COLUMNS.zip(totals.map(&:to_i)).to_h] }
+  end
+
   def populate_instance(records)
     accounts = Account.where(domain: @group)
+    populate_instance_requests(records)
     populate_instance_statuses(records, accounts)
     populate_instance_accounts(records, accounts)
     populate_instance_follows(records, accounts)
