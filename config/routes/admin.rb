@@ -95,6 +95,8 @@ namespace :admin do
   end
 
   resources :relays, only: [:index, :new, :create, :destroy] do
+    post :pause, on: :member
+    post :resume, on: :member
     member do
       post :enable
       post :disable

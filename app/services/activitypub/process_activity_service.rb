@@ -31,6 +31,8 @@ class ActivityPub::ProcessActivityService < BaseService
 
     return unless supported_context?(@json)
 
+    return if Relay.exists?(inbox_url: @account.inbox_url, state: Relay.states[:paused])
+
     if different_actor?
       # This has been relayed by a different account.
       # Record where it's coming from and try to verify proof of the activity.

@@ -761,6 +761,9 @@ en:
       enabled: Enabled
       inbox_url: Relay URL
       pending: Waiting for relay's approval
+      pause: Pause temporarily
+      paused: Paused
+      resume: Resume
       save_and_enable: Save and enable
       setup: Setup a relay connection
       signatures_not_enabled: Relays may not work correctly while secure mode or limited federation mode is enabled

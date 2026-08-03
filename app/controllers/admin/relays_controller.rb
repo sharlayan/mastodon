@@ -50,6 +50,20 @@ module Admin
       redirect_to admin_relays_path
     end
 
+    def pause
+      authorize :relay, :update?
+      @relay.pause!
+      log_action :disable, @relay
+      redirect_to admin_relays_path
+    end
+
+    def resume
+      authorize :relay, :update?
+      @relay.resume!
+      log_action :enable, @relay
+      redirect_to admin_relays_path
+    end
+
     private
 
     def set_relay

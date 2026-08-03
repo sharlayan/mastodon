@@ -638,6 +638,9 @@ ja:
       enabled: 有効
       inbox_url: リレーURL
       pending: リレーサーバーの承認待ちです
+      pause: 一時停止
+      paused: 一時停止中
+      resume: 再開
       save_and_enable: 保存して有効にする
       setup: リレー接続を設定する
       signatures_not_enabled: セキュアモードまたは連合制限モードが有効の場合、リレーは正常に動作しません

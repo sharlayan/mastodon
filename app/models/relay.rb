@@ -15,7 +15,7 @@
 class Relay < ApplicationRecord
   validates :inbox_url, presence: true, uniqueness: true, url: true # rubocop:disable Rails/UniqueValidationWithoutIndex
 
-  enum :state, { idle: 0, pending: 1, accepted: 2, rejected: 3 }
+  enum :state, { idle: 0, pending: 1, accepted: 2, rejected: 3, paused: 4 }
 
   scope :enabled, -> { accepted }
 
@@ -45,6 +45,14 @@ class Relay < ApplicationRecord
     update!(state: :idle, follow_activity_id: nil)
     reset_delivery_tracker
     ActivityPub::DeliveryWorker.perform_async(payload, some_local_account.id, inbox_url)
+  end
+
+  def pause!
+    update!(state: :paused)
+  end
+
+  def resume!
+    update!(state: :accepted)
   end
 
   private

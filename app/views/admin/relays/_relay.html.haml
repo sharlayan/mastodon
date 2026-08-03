@@ -7,6 +7,11 @@
         = material_symbol('check')
         &nbsp;
         = t 'admin.relays.enabled'
+    - elsif relay.paused?
+      %span.warning-hint
+        = material_symbol('pause')
+        &nbsp;
+        = t 'admin.relays.paused'
     - elsif relay.pending?
       = material_symbol('hourglass')
       &nbsp;
@@ -18,7 +23,9 @@
         = t 'admin.relays.disabled'
   %td
     - if relay.accepted?
-      = table_link_to 'power_off', t('admin.relays.disable'), disable_admin_relay_path(relay), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
+      = table_link_to 'pause', t('admin.relays.pause'), pause_admin_relay_path(relay), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
+    - elsif relay.paused?
+      = table_link_to 'play_arrow', t('admin.relays.resume'), resume_admin_relay_path(relay), method: :post
     - elsif !relay.pending?
       = table_link_to 'power_off', t('admin.relays.enable'), enable_admin_relay_path(relay), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
 
