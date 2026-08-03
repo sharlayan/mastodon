@@ -260,20 +260,22 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         shelf === 'pages' &&
         showWritingStatistics &&
         statistics && (
-          <WritingStatistics
-            statistics={statistics}
-            showReport={showWritingReport}
-            reportToggle={
-              <SettingToggle
-                prefix='pages'
-                settings={pageSettings}
-                settingPath={['show_report']}
-                onChange={changePageSetting}
-                label={intl.formatMessage(messages.showReport)}
-                defaultValue
-              />
-            }
-          />
+          <div className='page-index__statistics'>
+            <WritingStatistics
+              statistics={statistics}
+              showReport={showWritingReport}
+              reportToggle={
+                <SettingToggle
+                  prefix='pages'
+                  settings={pageSettings}
+                  settingPath={['show_report']}
+                  onChange={changePageSetting}
+                  label={intl.formatMessage(messages.showReport)}
+                  defaultValue
+                />
+              }
+            />
+          </div>
         )}
       {signedIn && mine && (
         <div className='page-index__create-actions'>

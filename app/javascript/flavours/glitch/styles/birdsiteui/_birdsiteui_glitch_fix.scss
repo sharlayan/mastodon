@@ -32,8 +32,19 @@
   margin-left: calc(var(--size-avatar) + var(--gap-default));
 }
 
-html .page-index-column {
-  border-inline: unset;
+html {
+  .layout-single-column,
+  .layout-multiple-columns {
+    .page-index-column {
+      > .page-index__bookcases,
+      > .page-index__controls,
+      > .page-index__statistics,
+      > .page-index__create-actions,
+      > .scrollable {
+        border-inline: 0;
+      }
+    }
+  }
 }
 
 .layout-single-column,
