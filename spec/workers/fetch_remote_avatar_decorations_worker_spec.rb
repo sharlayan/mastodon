@@ -40,4 +40,18 @@ RSpec.describe FetchRemoteAvatarDecorationsWorker do
     expect(RedownloadAvatarDecorationWorker).to have_received(:enqueue).with(decoration.id, account_id: account.id)
     expect(image_request).to_not have_been_requested
   end
+
+  it 'ignores malformed catalogue entries while using a valid user decoration fallback URL' do
+    stub_request(:post, 'https://remote.example/api/users/show')
+      .to_return(status: 200, body: { avatarDecorations: [{ id: 'new', url: 'https://remote.example/fallback.png' }] }.to_json)
+    stub_request(:post, 'https://remote.example/api/get-avatar-decorations')
+      .to_return(status: 200, body: [nil, 'invalid', { id: 'other' }].to_json)
+    allow(RedownloadAvatarDecorationWorker).to receive(:enqueue)
+
+    worker.perform(account.id)
+
+    decoration = AvatarDecoration.find_by!(host: account.domain, remote_id: 'new')
+    expect(decoration.image_remote_url).to eq('https://remote.example/fallback.png')
+    expect(account.reload.avatar_decorations).to contain_exactly(include('id' => decoration.id))
+  end
 end
