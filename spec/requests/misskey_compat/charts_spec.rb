@@ -137,8 +137,7 @@ RSpec.describe 'Misskey-compat charts' do
   end
 
   it 'generates every supported chart shape' do
-    account = Fabricate(:account)
-    user_id = MisskeyCompat::MiId.encode(account.id)
+    user_id = MisskeyCompat::MiId.encode(user.account.id)
     Setting.drive_enabled = true
 
     requests = %w(active-users drive federation notes users).index_with { {} }
@@ -161,8 +160,22 @@ RSpec.describe 'Misskey-compat charts' do
     expect(response).to have_http_status(401)
   end
 
+  it 'refuses every per-user chart for a different account' do
+    other = Fabricate(:account)
+    Setting.drive_enabled = true
+
+    %w(drive following notes pv reactions).each do |name|
+      post "/api/charts/user/#{name}", params: { i: token, userId: MisskeyCompat::MiId.encode(other.id), span: 'day', limit: 1 }, as: :json
+
+      expect(response).to have_http_status(403), name
+      expect(response.parsed_body.dig('error', 'code')).to eq('PERMISSION_DENIED')
+    end
+  ensure
+    Setting.drive_enabled = false
+  end
+
   describe 'charts/user/following' do
-    let(:account) { Fabricate(:account) }
+    let(:account) { user.account }
     let(:target)  { Fabricate(:account) }
 
     before { Fabricate(:follow, account: account, target_account: target) }

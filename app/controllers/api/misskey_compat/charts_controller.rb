@@ -61,6 +61,7 @@ class Api::MisskeyCompat::ChartsController < Api::MisskeyCompat::BaseController
   def render_user_chart(name, suppressed: false)
     account_id = params[:userId].to_s
     return render_invalid_param('#/properties/userId', 'must be a valid user id') unless account_id.match?(/\A[1-9]\d*\z/)
+    return render_error('Access denied', 'PERMISSION_DENIED', 403) unless account_id.to_i == current_account.id
 
     render_chart(name, group: account_id.to_i, suppressed: suppressed)
   end
