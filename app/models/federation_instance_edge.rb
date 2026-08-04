@@ -25,24 +25,13 @@ class FederationInstanceEdge < ApplicationRecord
   scope :inbound_to, ->(domain) { where(target_domain: domain) }
   scope :touching, ->(domain) { where(source_domain: domain).or(where(target_domain: domain)) }
 
-  def self.replace_all!(rows, started_at:)
+  def self.replace_all_from_sql!(snapshot_sql, started_at:)
     transaction do
-      rows.each_slice(1_000) do |slice|
-        upsert_all(
-          slice,
-          unique_by: %i(source_domain target_domain),
-          on_duplicate: Arel.sql(<<~SQL.squish)
-            reblogs_count = excluded.reblogs_count,
-            replies_count = excluded.replies_count,
-            quotes_count = excluded.quotes_count,
-            first_seen_at = excluded.first_seen_at,
-            last_seen_at = excluded.last_seen_at,
-            updated_at = excluded.updated_at
-          SQL
-        )
-      end
+      statement = sanitize_sql_array([snapshot_sql, { started_at: }])
+      affected_rows = connection.update(statement, "#{name} Snapshot")
 
       where(updated_at: ...started_at).delete_all
+      affected_rows
     end
   end
 

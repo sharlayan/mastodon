@@ -25,7 +25,7 @@ RSpec.describe Sharlayan::FederationEdgeAggregator do
       original = Fabricate(:status, account: remote_d)
       Fabricate(:status, account: remote_b, reblog: original)
 
-      described_class.call
+      expect(described_class.call).to eq(1)
 
       expect(edge('b.example', 'd.example'))
         .to have_attributes(reblogs_count: 1, replies_count: 0, quotes_count: 0)
