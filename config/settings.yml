@@ -19,6 +19,7 @@ defaults: &defaults
   show_staff_badge: true
   preview_sensitive_media: false
   noindex: true
+  norss: false
   flavour: 'glitch'
   skin: 'default'
   thumbnail_description: ''

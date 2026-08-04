@@ -19,6 +19,11 @@ RSpec.describe Form::AdminSettings do
   end
 
   describe '#save' do
+    it 'saves the RSS default setting as a boolean' do
+      expect { described_class.new(norss: '1').save }
+        .to change(Setting, :norss).from(false).to(true)
+    end
+
     it 'saves the circles feature setting as a boolean' do
       expect { described_class.new(circles_enabled: '1').save }
         .to change(Setting, :circles_enabled).from(false).to(true)

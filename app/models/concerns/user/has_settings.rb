@@ -47,6 +47,10 @@ module User::HasSettings
     settings['prevent_ai_learning']
   end
 
+  def setting_norss
+    settings['norss']
+  end
+
   def setting_boost_modal
     settings['web.reblog_modal']
   end

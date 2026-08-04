@@ -17,6 +17,7 @@ module Sharlayan::UserSettingsExtensions
       settings.setting :show_reactions, default: true
       settings.setting :hide_online_status, default: true
       settings.setting :prevent_ai_learning, default: false
+      settings.setting :norss, default: -> { ::Setting.norss }
       settings.setting :visible_reactions, default: 6
       settings.setting :bridge_unlisted_to_bsky, default: false
       settings.setting :auto_quote_from_url, default: false
@@ -26,6 +27,7 @@ module Sharlayan::UserSettingsExtensions
       settings.setting :drive_default_folder_id, default: nil
       settings.setting :drive_upload_original_image, default: true
       settings.setting_inverse_alias :show_online_status, :hide_online_status
+      settings.setting_inverse_alias :enable_rss, :norss
     end
 
     def apply_web_settings(settings)

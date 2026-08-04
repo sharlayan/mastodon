@@ -832,6 +832,9 @@ ja:
       default_noindex:
         desc_html: この設定を自分で変更していない全ユーザーに影響します
         title: デフォルトで検索エンジンによるインデックスを拒否する
+      default_norss:
+        desc_html: この設定を自分で変更していない全ユーザーに影響します
+        title: デフォルトでユーザーの RSS フィードを無効にする
       discovery:
         follow_recommendations: おすすめフォロー
         preamble: 必ずしも知っている人がMastodonに居ない新規ユーザーに定着してもらうには、興味深いコンテンツを表示することが役に立ちます。あなたのサーバーの種々のディスカバリー機能の動作を設定してください。

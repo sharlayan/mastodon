@@ -10,6 +10,7 @@ ja:
         setting_default_content_type_x-mfm: トゥートを作成するとき特に指定がない限りMFM (Markup language For Misskey) で書かれているとします
         setting_default_language: あなたのトゥートの言語を自動検出しますが必ずしも正確ではありません
         setting_show_followers_count: あなたのプロフィールにフォロワー数を表示します。 フォロワー数を非表示にすると、自分自身からも非表示になり、一部のアプリケーションではフォロワー数がマイナスになることがあります。
+        setting_enable_rss: Mastodon は既定で公開投稿の RSS フィードを提供します。
         setting_skin: 選択したMastodonフレーバーに変更します
     labels:
       defaults:
@@ -20,6 +21,7 @@ ja:
         setting_default_content_type_x-mfm: MFM
         setting_favourite_modal: お気に入りをする前に確認ダイアログを表示する
         setting_show_followers_count: フォロワー数を表示
+        setting_enable_rss: 公開投稿の RSS フィードを有効にする
         setting_skin: スキン
         setting_system_emoji_font: 絵文字にシステム既定のフォントを使用する（Glitch Edition フレーバーのみに適用されます）
         setting_visible_reactions: 表示する絵文字リアクションの数

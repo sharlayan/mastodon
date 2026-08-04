@@ -10,9 +10,27 @@ RSpec.describe UserSettings do
     expect(settings[:show_online_status]).to be false
     expect(settings[:default_quote_policy]).to eq('nobody')
     expect(settings[:default_reaction_acceptance]).to be_nil
+    expect(settings[:norss]).to be false
+    expect(settings[:enable_rss]).to be true
     expect(settings[:visible_reactions]).to eq(6)
     expect(settings[:drive_keep_original_filename]).to be true
     expect(settings[:drive_upload_original_image]).to be true
+  end
+
+  it 'uses the instance RSS setting until a user changes it' do
+    Setting.norss = true
+
+    expect(settings[:norss]).to be true
+    expect(settings[:enable_rss]).to be false
+  ensure
+    Setting.norss = false
+  end
+
+  it 'persists the enable_rss inverse alias as norss' do
+    settings[:enable_rss] = false
+
+    expect(settings[:norss]).to be true
+    expect(settings.as_json).to include(norss: true)
   end
 
   it 'registers namespaced MFM, avatar decoration, and notification settings' do

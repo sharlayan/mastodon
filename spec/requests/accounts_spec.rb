@@ -112,6 +112,18 @@ RSpec.describe 'Accounts show response' do
           it_behaves_like 'common HTML response'
         end
 
+        context 'when the account has disabled RSS' do
+          before do
+            account.user.settings[:norss] = true
+            account.user.save!
+            get short_account_path(username: account.username), as: format
+          end
+
+          it 'does not advertise an RSS feed' do
+            expect(response.parsed_body.css('[type="application/rss+xml"]')).to be_empty
+          end
+        end
+
         context 'with replies' do
           before do
             get short_account_with_replies_path(username: account.username), as: format
@@ -269,6 +281,19 @@ RSpec.describe 'Accounts show response' do
             expect(response.body).to_not include(status_tag_for(status_private))
             expect(response.body).to_not include(status_tag_for(status_reblog.reblog))
             expect(response.body).to_not include(status_tag_for(status_reply))
+          end
+        end
+
+        context 'when the account has disabled RSS' do
+          before do
+            account.user.settings[:norss] = true
+            account.user.save!
+            get short_account_path(username: account.username, format: format)
+          end
+
+          it 'returns an empty RSS feed' do
+            expect(response).to have_http_status(200)
+            expect(response.body).to_not include(status_tag_for(status))
           end
         end
 
