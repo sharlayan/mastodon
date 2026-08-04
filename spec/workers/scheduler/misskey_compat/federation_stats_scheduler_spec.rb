@@ -5,13 +5,23 @@ require 'rails_helper'
 RSpec.describe Scheduler::MisskeyCompat::FederationStatsScheduler do
   subject(:worker) { described_class.new }
 
-  before { Setting.misskey_compat_enabled = true }
-  after  { Setting.misskey_compat_enabled = false }
+  before do
+    Setting.misskey_compat_enabled = true
+    allow(Sharlayan::FederationAggregationRunner).to receive(:call).and_yield
+  end
+
+  after { Setting.misskey_compat_enabled = false }
 
   it 'does nothing when Misskey compatibility is disabled' do
     Setting.misskey_compat_enabled = false
 
     expect { worker.perform }.to_not change(MisskeyFederationInstanceStat, :count)
+  end
+
+  it 'runs the snapshot through the shared federation aggregation runner' do
+    worker.perform
+
+    expect(Sharlayan::FederationAggregationRunner).to have_received(:call)
   end
 
   it 'aggregates per-domain user, note and follow counts' do

@@ -32,7 +32,6 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
   def skip_unknown_actor_activity
     return unless unknown_affected_account?
 
-    Sharlayan::FederationRequestTracker.track_unverified_contact!(parsed_body['actor'])
     head 202
   end
 

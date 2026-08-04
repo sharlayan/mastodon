@@ -8,6 +8,12 @@ class Scheduler::MisskeyCompat::FederationStatsScheduler
   def perform
     return unless Setting.misskey_compat_enabled
 
+    Sharlayan::FederationAggregationRunner.call { aggregate }
+  end
+
+  private
+
+  def aggregate
     now = Time.now.utc
 
     users = Account.remote.reorder(nil).group(:domain).count
@@ -21,8 +27,6 @@ class Scheduler::MisskeyCompat::FederationStatsScheduler
 
     MisskeyFederationInstanceStat.upsert_all(rows, unique_by: :domain)
   end
-
-  private
 
   def local_follows_remote_by_domain
     Follow.unscoped.joins(:account, :target_account)

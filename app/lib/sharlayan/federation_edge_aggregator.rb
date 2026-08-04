@@ -19,7 +19,7 @@ class Sharlayan::FederationEdgeAggregator
     def call(started_at: Time.now.utc)
       return 0 unless enabled?
 
-      new(started_at).call
+      Sharlayan::FederationAggregationRunner.call { new(started_at).call }
     end
   end
 

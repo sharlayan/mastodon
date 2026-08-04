@@ -12,6 +12,15 @@ RSpec.describe Sharlayan::FederationEdgeAggregator do
   end
 
   describe '.call' do
+    before do
+      Setting.federation_instance_edges_enabled = true
+      allow(Sharlayan::FederationAggregationRunner).to receive(:call).and_yield
+    end
+
+    after do
+      Setting.federation_instance_edges_enabled = false
+    end
+
     it 'records a remote-to-remote edge observed only through a boost' do
       original = Fabricate(:status, account: remote_d)
       Fabricate(:status, account: remote_b, reblog: original)
@@ -102,8 +111,12 @@ RSpec.describe Sharlayan::FederationEdgeAggregator do
 
       expect(described_class.call).to eq(0)
       expect(FederationInstanceEdge.count).to eq(0)
-    ensure
-      Setting.federation_instance_edges_enabled = true
+    end
+
+    it 'runs the snapshot through the shared federation aggregation runner' do
+      described_class.call
+
+      expect(Sharlayan::FederationAggregationRunner).to have_received(:call)
     end
 
     it 'does nothing in roleplay mode' do

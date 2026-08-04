@@ -89,7 +89,7 @@
       class: Scheduler::MisskeyCompat::RetentionAggregationScheduler
       queue: scheduler
     misskey_compat_federation_stats_scheduler:
-      cron: '<%= Random.rand(0..59) %> <%= Random.rand(4..6) %> * * *'
+      cron: '<%= Random.rand(0..59) %> <%= Random.rand(2..3) %> * * *'
       class: Scheduler::MisskeyCompat::FederationStatsScheduler
       queue: scheduler
     page_writing_statistics_scheduler:
@@ -105,6 +105,6 @@
       class: Scheduler::FederationRequestStatisticsCleanupScheduler
       queue: scheduler
     federation_instance_edges_scheduler:
-      cron: '<%= Random.rand(0..59) %> <%= Random.rand(4..6) %> * * *'
+      cron: '<%= Random.rand(0..59) %> <%= Random.rand(6..8) %> * * *'
       class: Scheduler::FederationInstanceEdgesScheduler
       queue: scheduler
