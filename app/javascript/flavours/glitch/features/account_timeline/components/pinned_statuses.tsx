@@ -19,6 +19,9 @@ export const renderPinnedStatusHeader: StatusHeaderRenderFn = ({
   featured,
   mediaIcons,
   settings,
+  collapseEnabled,
+  collapsed,
+  setCollapsed,
   ...args
 }) => {
   const icons = settings && (
@@ -26,6 +29,9 @@ export const renderPinnedStatusHeader: StatusHeaderRenderFn = ({
       status={args.status}
       mediaIcons={mediaIcons}
       settings={settings}
+      collapsible={collapseEnabled}
+      collapsed={collapsed}
+      setCollapsed={setCollapsed}
     />
   );
 

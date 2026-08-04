@@ -14,6 +14,7 @@ import { languages } from 'flavours/glitch/initial_state';
 import { RelativeTimestamp } from './relative_timestamp';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 
+import { CollapseButton } from './collapse_button';
 import { VisibilityIcon } from './visibility_icon';
 
 const messages = defineMessages({
@@ -48,6 +49,9 @@ class StatusIcons extends PureComponent {
     mediaIcons: PropTypes.arrayOf(PropTypes.string),
     intl: PropTypes.object.isRequired,
     settings: ImmutablePropTypes.map.isRequired,
+    collapsible: PropTypes.bool,
+    collapsed: PropTypes.bool,
+    setCollapsed: PropTypes.func,
   };
 
   render () {
@@ -56,6 +60,9 @@ class StatusIcons extends PureComponent {
       mediaIcons,
       settings,
       intl,
+      collapsible,
+      collapsed,
+      setCollapsed,
     } = this.props;
 
     return (
@@ -81,6 +88,7 @@ class StatusIcons extends PureComponent {
             />}
           {settings.get('media') && !!mediaIcons && mediaIcons.map(icon => (<MediaIcon key={`media-icon--${icon}`} className='status__media-icon' icon={icon} />))}
           {settings.get('visibility') && <VisibilityIcon visibility={status.get('visibility')} />}
+          {collapsible && <CollapseButton collapsed={collapsed} setCollapsed={setCollapsed} />}
         </div>
       </div>
     );

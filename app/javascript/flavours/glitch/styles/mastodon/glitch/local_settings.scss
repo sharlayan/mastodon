@@ -61,6 +61,10 @@
     margin-top: 16px;
     margin-bottom: 4px;
   }
+
+  #mastodon-settings--collapsed-auto-height {
+    width: calc(4ch + 20px);
+  }
 }
 
 .glitch.local-settings__header {

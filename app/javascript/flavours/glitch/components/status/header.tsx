@@ -34,6 +34,9 @@ export interface StatusHeaderProps {
   featured?: boolean;
   mediaIcons?: string[];
   settings?: ImmutableMap<string, unknown>;
+  collapseEnabled?: boolean;
+  collapsed?: boolean;
+  setCollapsed?: (value: boolean) => void;
 }
 
 export type StatusHeaderRenderFn = (args: StatusHeaderProps) => ReactNode;

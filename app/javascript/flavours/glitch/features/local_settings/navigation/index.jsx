@@ -75,18 +75,18 @@ class LocalSettingsNavigation extends PureComponent {
         />
         {renderSharlayanLocalSettingsNavigationItems('after-media', { NavigationItem: LocalSettingsNavigationItem, index, intl, onNavigate })}
         <LocalSettingsNavigationItem
-          active={index === 8}
+          active={index === 9}
           className='preferences'
           href={preferencesLink}
-          index={8}
+          index={9}
           icon='cog'
           iconComponent={SettingsIcon}
           title={intl.formatMessage(messages.preferences)}
         />
         <LocalSettingsNavigationItem
-          active={index === 9}
+          active={index === 10}
           className='close'
-          index={9}
+          index={10}
           onNavigate={onClose}
           icon='times'
           iconComponent={CloseIcon}

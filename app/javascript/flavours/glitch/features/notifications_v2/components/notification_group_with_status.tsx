@@ -1,13 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { JSX } from 'react';
 
 import classNames from 'classnames';
+
+import type { Map as ImmutableMap } from 'immutable';
 
 import { LinkedDisplayName } from '@/flavours/glitch/components/display_name';
 import { replyComposeById } from 'flavours/glitch/actions/compose';
 import { navigateToStatus } from 'flavours/glitch/actions/statuses';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { AvatarGroup } from 'flavours/glitch/components/avatar_group';
+import { CollapseButton } from 'flavours/glitch/components/collapse_button';
 import { Hotkeys } from 'flavours/glitch/components/hotkeys';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
@@ -65,6 +68,27 @@ export const NotificationGroupWithStatus: React.FC<{
     state.accounts.get(accountIds.at(0) ?? ''),
   );
 
+  const collapseEnabled = useAppSelector(
+    (state) =>
+      (state.local_settings as ImmutableMap<string, unknown>).getIn([
+        'collapsed',
+        'enabled',
+      ]) as boolean,
+  );
+  const autoCollapseEnabled = useAppSelector((state) => {
+    const settings = (
+      state.local_settings as ImmutableMap<string, unknown>
+    ).getIn(['collapsed', 'auto']) as ImmutableMap<string, unknown>;
+    return (
+      settings.get('all') === true || settings.get('notifications') === true
+    );
+  });
+  const [wasUnreadOnMount] = useState(unread);
+  const [manuallyCollapsed, setCollapsed] = useState<boolean | null>(null);
+  const collapsed =
+    collapseEnabled &&
+    (manuallyCollapsed ?? (autoCollapseEnabled && !wasUnreadOnMount));
+
   const label = useMemo(
     () =>
       labelRenderer(
@@ -88,8 +112,11 @@ export const NotificationGroupWithStatus: React.FC<{
       reply: () => {
         dispatch(replyComposeById(statusId));
       },
+      toggleCollapse: () => {
+        if (collapseEnabled) setCollapsed(!collapsed);
+      },
     }),
-    [dispatch, statusId],
+    [dispatch, statusId, collapseEnabled, collapsed],
   );
 
   return (
@@ -123,6 +150,12 @@ export const NotificationGroupWithStatus: React.FC<{
               {actions && (
                 <div className='notification-group__actions'>{actions}</div>
               )}
+              {collapseEnabled && statusId && (
+                <CollapseButton
+                  collapsed={collapsed}
+                  setCollapsed={setCollapsed}
+                />
+              )}
             </div>
 
             <h2 className='notification-group__main__header__label'>
@@ -138,7 +171,7 @@ export const NotificationGroupWithStatus: React.FC<{
             </h2>
           </div>
 
-          {statusId && (
+          {!collapsed && statusId && (
             <div className='notification-group__main__status'>
               <EmbeddedStatus statusId={statusId} />
             </div>

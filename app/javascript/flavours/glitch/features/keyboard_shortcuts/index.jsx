@@ -5,6 +5,7 @@ import { defineMessages, FormattedMessage } from 'react-intl';
 import { Helmet } from '@unhead/react/helmet';
 
 import ImmutablePureComponent from 'react-immutable-pure-component';
+import { connect } from 'react-redux';
 
 import InfoIcon from '@/material-icons/400-24px/info.svg?react';
 import Column from 'flavours/glitch/components/column';
@@ -20,10 +21,11 @@ class KeyboardShortcuts extends ImmutablePureComponent {
   static propTypes = {
     intl: PropTypes.object.isRequired,
     multiColumn: PropTypes.bool,
+    collapseEnabled: PropTypes.bool,
   };
 
   render () {
-    const { intl, multiColumn } = this.props;
+    const { intl, multiColumn, collapseEnabled } = this.props;
 
     return (
       <Column>
@@ -91,6 +93,12 @@ class KeyboardShortcuts extends ImmutablePureComponent {
                 <td><kbd>h</kbd></td>
                 <td><FormattedMessage id='keyboard_shortcuts.toggle_sensitivity' defaultMessage='to show/hide media' /></td>
               </tr>
+              {collapseEnabled && (
+                <tr>
+                  <td><kbd>Shift</kbd>+<kbd>X</kbd></td>
+                  <td><FormattedMessage id='keyboard_shortcuts.toggle_collapse' defaultMessage='to collapse/uncollapse posts' /></td>
+                </tr>
+              )}
               <tr>
                 <td><kbd>k</kbd>, <FormattedMessage id='keyboard_shortcuts.keys.alt' defaultMessage='Alt' tagName='kbd' />+<FormattedMessage id='keyboard_shortcuts.keys.page_up' defaultMessage='Page Up' tagName='kbd' /></td>
                 <td><FormattedMessage id='keyboard_shortcuts.up' defaultMessage='to move up in the list' /></td>
@@ -208,4 +216,8 @@ class KeyboardShortcuts extends ImmutablePureComponent {
 
 }
 
-export default injectIntl(KeyboardShortcuts);
+const mapStateToProps = state => ({
+  collapseEnabled: state.getIn(['local_settings', 'collapsed', 'enabled']),
+});
+
+export default connect(mapStateToProps)(injectIntl(KeyboardShortcuts));

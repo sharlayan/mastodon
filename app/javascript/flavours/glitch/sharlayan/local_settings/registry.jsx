@@ -9,6 +9,7 @@ import CloudSyncIcon from '@/material-icons/400-24px/cloud_sync.svg?react';
 import ListIcon from '@/material-icons/400-24px/list.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings-fill.svg?react';
 import TuneIcon from '@/material-icons/400-24px/tune.svg?react';
+import UnfoldLessIcon from '@/material-icons/400-24px/unfold_less.svg?react';
 import { Button } from '@/flavours/glitch/components/button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { injectIntl } from '@/flavours/glitch/components/intl';
@@ -20,6 +21,7 @@ import NavigationPanelSettings from '../../features/local_settings/page/navigati
 import StatusActionBarSettings from '../../features/local_settings/page/status_action_bar';
 import LocalSettingsPageItem from '../../features/local_settings/page/item';
 import QuickPreferences from '../../features/local_settings/page/quick_preferences';
+import CollapsedStatusesSettings from '../../features/local_settings/page/collapsed_statuses';
 
 const messages = defineMessages({
   title: { id: 'navigation_bar.app_settings', defaultMessage: 'App settings' },
@@ -69,6 +71,7 @@ export const getSharlayanLocalSettingsPage = (index, pages) => {
   if (index === 5) return ConnectedSyncSettingsPage;
   if (index === 6) return NavigationPanelSettings;
   if (index === 7) return StatusActionBarSettings;
+  if (index === 8) return CollapsedStatusesSettings;
 
   return pages[[0, null, 1, 2, 3][index]];
 };
@@ -160,6 +163,7 @@ export const renderSharlayanLocalSettingsNavigationItems = (slot, { NavigationIt
       { index: 6, icon: 'list', iconComponent: ListIcon, title: intl.formatMessage(messages.navigation_panel) },
       { index: 7, icon: 'drag', iconComponent: TuneIcon, title: intl.formatMessage(messages.status_action_bar) },
       { index: 5, icon: 'cloud', iconComponent: CloudSyncIcon, title: intl.formatMessage(messages.sync) },
+      { index: 8, icon: 'unfold-less', iconComponent: UnfoldLessIcon, title: intl.formatMessage({ id: 'settings.collapsed_statuses', defaultMessage: 'Collapsed posts' }) },
     ];
 
   return items.map(item => <NavigationItem key={item.index} active={index === item.index} onNavigate={onNavigate} {...item} />);

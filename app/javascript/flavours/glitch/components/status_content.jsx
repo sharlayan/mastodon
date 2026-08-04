@@ -90,6 +90,7 @@ class StatusContent extends PureComponent {
     localMfmEnabled: PropTypes.bool,
     localMfmAnimations: PropTypes.bool,
     localMfmFoldMode: PropTypes.string,
+    collapsed: PropTypes.bool,
     // from react-router
     match: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
@@ -222,7 +223,7 @@ class StatusContent extends PureComponent {
     );
 
     const poll = !!status.get('poll') && (
-      <Poll pollId={status.get('poll')} statusUrl={status.get('uri')} accountId={status.getIn(['account', 'id'])} lang={language} />
+      <Poll pollId={status.get('poll')} statusUrl={status.get('uri')} accountId={status.getIn(['account', 'id'])} lang={language} collapsed={this.props.collapsed} />
     );
 
     const contentElement = renderSharlayanMfmContent(status, {

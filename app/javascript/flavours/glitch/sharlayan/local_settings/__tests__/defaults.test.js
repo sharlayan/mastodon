@@ -29,6 +29,11 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('sync_to_server')).toBe(false);
     expect(state.get('synced_at')).toBe(null);
     expect(state.get('inline_compose_tabs')).toEqual(ImmutableList());
+    expect(state.getIn(['collapsed', 'enabled'])).toBe(true);
+    expect(state.getIn(['collapsed', 'auto', 'notifications'])).toBe(true);
+    expect(state.getIn(['collapsed', 'auto', 'lengthy'])).toBe(true);
+    expect(state.getIn(['collapsed', 'auto', 'height'])).toBe(400);
+    expect(state.getIn(['collapsed', 'show_action_bar'])).toBe(true);
   });
 
   it('deep-merges nested defaults without dropping upstream keys', () => {

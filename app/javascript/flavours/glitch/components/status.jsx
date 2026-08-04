@@ -155,6 +155,8 @@ class Status extends ImmutablePureComponent {
     revealBehindCW: undefined,
     showCard: false,
     showDespiteFilter: undefined,
+    isCollapsed: false,
+    autoCollapsed: false,
   };
 
   // Avoid checking props that are functions (and whose equality will always
@@ -180,6 +182,7 @@ class Status extends ImmutablePureComponent {
     'isExpanded',
     'showMedia',
     'showDespiteFilter',
+    'isCollapsed',
   ];
 
   static getDerivedStateFromProps(nextProps, prevState) {
@@ -196,12 +199,26 @@ class Status extends ImmutablePureComponent {
       updated = true;
     }
 
+    if (!nextProps.settings.getIn(['collapsed', 'enabled']) && prevState.isCollapsed) {
+      update.isCollapsed = false;
+      updated = true;
+    }
+
+    if (nextProps.settings.getIn(['content_warnings', 'shared_state']) &&
+      nextProps.status?.get('spoiler_text')?.length && nextProps.status?.get('hidden') === false &&
+      prevState.statusPropHidden !== false && prevState.isCollapsed
+    ) {
+      update.isCollapsed = false;
+      updated = true;
+    }
+
     // The “expanded” prop is used to one-off change the local state.
     // It's used in the thread view when unfolding/re-folding all CWs at once.
     if (nextProps.expanded !== prevState.expandedProp &&
       nextProps.expanded !== undefined
     ) {
       update.isExpanded = nextProps.expanded;
+      if (nextProps.expanded) update.isCollapsed = false;
       updated = true;
     }
 
@@ -228,6 +245,26 @@ class Status extends ImmutablePureComponent {
     // happens, might be because status === null.
     if (node === undefined) return;
 
+    const { status, settings, muted, prepend, isQuotedPost } = this.props;
+    const autoCollapseSettings = settings.getIn(['collapsed', 'auto']);
+
+    if (settings.getIn(['collapsed', 'enabled']) && !(settings.getIn(['content_warnings', 'shared_state']) && status.get('spoiler_text').length && !status.get('hidden')) && !isQuotedPost) {
+      let autoCollapseHeight = Number.parseInt(autoCollapseSettings.get('height'), 10) || 400;
+      if (status.get('media_attachments').size && !muted) autoCollapseHeight += 210;
+
+      if (autoCollapseSettings.get('all') ||
+        (autoCollapseSettings.get('notifications') && muted) ||
+        (autoCollapseSettings.get('lengthy') && node.clientHeight > autoCollapseHeight) ||
+        (autoCollapseSettings.get('reblogs') && prepend === 'reblogged_by') ||
+        (autoCollapseSettings.get('replies') && status.get('in_reply_to_id', null) !== null) ||
+        (autoCollapseSettings.get('media') && !status.get('spoiler_text').length && status.get('media_attachments').size > 0) ||
+        (autoCollapseSettings.get('quotes') && !!status.get('quote'))
+      ) {
+        this.setCollapsed(true);
+        this.setState({ autoCollapsed: true });
+      }
+    }
+
     // Hack to fix timeline jumps when a preview card is fetched
     this.setState({
       showCard: !this.props.muted && !this.props.hidden && this.props.status && this.props.status.get('card') && this.props.settings.get('inline_preview_cards'),
@@ -240,10 +277,12 @@ class Status extends ImmutablePureComponent {
     if (!this.props.getScrollPosition) return null;
 
     const { muted, hidden, status, settings } = this.props;
+    const { autoCollapsed } = this.state;
 
     const doShowCard = !muted && !hidden && status && status.get('card') && settings.get('inline_preview_cards');
-    if (doShowCard && !this.state.showCard) {
+    if (autoCollapsed || (doShowCard && !this.state.showCard)) {
       if (doShowCard) this.setState({ showCard: true });
+      if (autoCollapsed) this.setState({ autoCollapsed: false });
       return this.props.getScrollPosition();
     } else {
       return null;
@@ -279,12 +318,22 @@ class Status extends ImmutablePureComponent {
     }
   }
 
+  setCollapsed = (value) => {
+    if (this.props.settings.getIn(['collapsed', 'enabled'])) {
+      if (value) this.setExpansion(false);
+      this.setState({ isCollapsed: value });
+    } else {
+      this.setState({ isCollapsed: false });
+    }
+  };
+
   setExpansion = (value) => {
     if (this.props.settings.getIn(['content_warnings', 'shared_state']) && this.props.status.get('hidden') === value) {
       this.props.onToggleHidden(this.props.status);
     }
 
     this.setState({ isExpanded: value });
+    if (value) this.setCollapsed(false);
   };
 
   handleToggleMediaVisibility = () => {
@@ -295,7 +344,13 @@ class Status extends ImmutablePureComponent {
     e.preventDefault();
 
     if (e?.button === 0 && !(e?.ctrlKey || e?.metaKey)) {
-      this._openStatus();
+      if (this.state.isCollapsed) {
+        this.setCollapsed(false);
+      } else if (e?.shiftKey) {
+        this.setCollapsed(true);
+      } else {
+        this._openStatus();
+      }
     } else if (e?.button === 1 || (e?.button === 0 && (e?.ctrlKey || e?.metaKey))) {
       this._openStatus(true);
     }
@@ -423,6 +478,11 @@ class Status extends ImmutablePureComponent {
     history.push(`/@${status.getIn(['account', 'acct'])}`);
   };
 
+  handleHotkeyCollapse = () => {
+    if (!this.props.settings.getIn(['collapsed', 'enabled'])) return;
+    this.setCollapsed(!this.state.isCollapsed);
+  };
+
   handleHotkeyToggleSensitive = () => {
     this.handleToggleMediaVisibility();
   };
@@ -516,6 +576,7 @@ class Status extends ImmutablePureComponent {
       toggleSensitive: this.handleHotkeyToggleSensitive,
       openMedia: this.handleHotkeyOpenMedia,
       onTranslate: this.handleTranslate,
+      toggleCollapse: this.handleHotkeyCollapse,
     };
 
     let prepend, rebloggedByText;
@@ -525,6 +586,9 @@ class Status extends ImmutablePureComponent {
     const connectReply = nextInReplyToId && nextInReplyToId === status.get('id');
     const matchedFilters = status.get('matched_filters');
     const instanceInfo = status.get('instance_metadata');
+    const collapseEnabled = settings.getIn(['collapsed', 'enabled']);
+    const showActionBar = settings.getIn(['collapsed', 'show_action_bar']);
+    const { isCollapsed } = this.state;
 
     if (hidden) {
       return (
@@ -574,6 +638,7 @@ class Status extends ImmutablePureComponent {
           <AttachmentList
             compact
             media={status.get('media_attachments')}
+            collapsed={isCollapsed}
           />,
         );
       } else if (['image', 'gifv', 'unknown'].includes(status.getIn(['media_attachments', 0, 'type'])) || status.get('media_attachments').size > 1) {
@@ -587,7 +652,7 @@ class Status extends ImmutablePureComponent {
                 letterbox={settings.getIn(['media', 'letterbox'])}
                 fullwidth={!rootId && settings.getIn(['media', 'fullwidth'])}
                 disableGifvAutoplay={settings.getIn(['media', 'no_autoplay_gifv'])}
-                hidden={!expanded}
+                hidden={isCollapsed || !expanded}
                 onOpenMedia={this.handleOpenMedia}
                 cacheWidth={this.props.cacheMediaWidth}
                 defaultWidth={this.props.cachedMediaWidth}
@@ -644,7 +709,7 @@ class Status extends ImmutablePureComponent {
               sensitive={status.get('sensitive')}
               letterbox={settings.getIn(['media', 'letterbox'])}
               fullwidth={!rootId && settings.getIn(['media', 'fullwidth'])}
-              preventPlayback={!expanded}
+              preventPlayback={isCollapsed || !expanded}
               onOpenVideo={this.handleOpenVideo}
               deployPictureInPicture={pictureInPicture.get('available') ? this.handleDeployPictureInPicture : undefined}
               visible={this.state.showMedia}
@@ -724,28 +789,33 @@ class Status extends ImmutablePureComponent {
 
     const {statusContentProps, hashtagBar} = getHashtagBarForStatus(status);
 
+    const statusIcons = (
+      <StatusIcons
+        status={status}
+        mediaIcons={mediaIcons}
+        settings={settings.get('status_icons')}
+        collapsible={!muted && collapseEnabled}
+        collapsed={isCollapsed}
+        setCollapsed={this.setCollapsed}
+      />
+    );
+
     const header = this.props.headerRenderFn
-      ? this.props.headerRenderFn({ statusId: status.get('id'), status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured, mediaIcons, settings: settings.get('status_icons') })
+      ? this.props.headerRenderFn({ statusId: status.get('id'), status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured, mediaIcons, settings: settings.get('status_icons'), collapseEnabled, collapsed: isCollapsed, setCollapsed: this.setCollapsed })
       : (
         <StatusHeader
           statusId={status.get('id')}
           account={account}
           avatarSize={avatarSize}
           onHeaderClick={this.handleHeaderClick}
-          contentBeforeDate={
-            <StatusIcons
-              status={status}
-              mediaIcons={mediaIcons}
-              settings={settings.get('status_icons')}
-            />
-          }
+          contentBeforeDate={statusIcons}
         />
       );
 
     return (
       <Hotkeys handlers={handlers} focusable={!unfocusable}>
         <div
-          className={classNames('status__wrapper', 'focusable', `status__wrapper-${status.get('visibility')}`, { 'status__wrapper-reply': !!status.get('in_reply_to_id'), 'status__wrapper--in-thread': !!rootId, unread })}
+          className={classNames('status__wrapper', 'focusable', `status__wrapper-${status.get('visibility')}`, { 'status__wrapper-reply': !!status.get('in_reply_to_id'), 'status__wrapper--in-thread': !!rootId, unread, collapsed: isCollapsed })}
           {...selectorAttribs}
           tabIndex={unfocusable ? null : 0}
           data-featured={featured ? 'true' : null}
@@ -772,23 +842,24 @@ class Status extends ImmutablePureComponent {
           >
             {(connectReply || connectUp || connectToRoot) && <div className={classNames('status__line', { 'status__line--full': connectReply, 'status__line--first': !status.get('in_reply_to_id') && !connectToRoot })} />}
 
-            {(!muted) && header}
+            {(!muted || !isCollapsed) && header}
 
-            {settings.get('show_instance_info') && instanceInfo && (settings.get('show_instance_info_local') || !isLocalInstanceDomain(instanceInfo.get('domain'))) && (
+            {!isCollapsed && settings.get('show_instance_info') && instanceInfo && (settings.get('show_instance_info_local') || !isLocalInstanceDomain(instanceInfo.get('domain'))) && (
               <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
             )}
 
             <ContentWarning statusId={status.get('id')} expanded={expanded} onClick={this.handleExpandedToggle} icons={mediaIcons} />
 
             {expanded && (
-              <>
+              <div className='status__content__wrapper'>
                 <StatusContent
                   status={status}
                   onClick={this.handleClick}
                   onTranslate={this.handleTranslate}
-                  collapsible
+                  collapsible={!collapseEnabled}
                   media={media}
                   onCollapsedToggle={this.handleCollapsedToggle}
+                  collapsed={isCollapsed}
                   mfmEnabled={this.props.mfmEnabled}
                   {...statusContentProps}
                 />
@@ -797,13 +868,13 @@ class Status extends ImmutablePureComponent {
                 {hashtagBar}
 
                 {children}
-              </>
+              </div>
             )}
 
             {/* This is a glitch-soc addition to have a placeholder */}
             {!expanded && <MentionsPlaceholder status={status} />}
 
-            {(showActions && !isQuotedPost) &&
+            {(showActions && !isQuotedPost) && (!isCollapsed || !(muted || !showActionBar)) &&
               <StatusReactions
                 statusId={status.get('id')}
                 reactions={status.get('reactions')}
@@ -814,7 +885,7 @@ class Status extends ImmutablePureComponent {
               />
             }
 
-            {(showActions && !isQuotedPost) &&
+            {(showActions && !isQuotedPost) && (!isCollapsed || !(muted || !showActionBar)) &&
               <StatusActionBar
                 status={status}
                 account={status.get('account')}

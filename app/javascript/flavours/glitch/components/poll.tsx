@@ -43,6 +43,7 @@ interface PollProps {
   statusUrl: string;
   lang?: string;
   disabled?: boolean;
+  collapsed?: boolean;
 }
 
 export const Poll: React.FC<PollProps> = ({
@@ -50,6 +51,7 @@ export const Poll: React.FC<PollProps> = ({
   disabled,
   accountId,
   statusUrl,
+  collapsed,
 }) => {
   // Third party hooks
   const poll = useAppSelector((state) => state.polls[pollId]);
@@ -177,6 +179,7 @@ export const Poll: React.FC<PollProps> = ({
             showResults={showResults}
             active={!!selected[i]}
             onChange={handleOptionChange}
+            collapsed={collapsed}
           />
         ))}
       </ul>
@@ -188,13 +191,19 @@ export const Poll: React.FC<PollProps> = ({
             disabled={voteDisabled}
             onClick={handleVote}
             type='button'
+            tabIndex={collapsed ? -1 : undefined}
           >
             <FormattedMessage id='poll.vote' defaultMessage='Vote' />
           </button>
         )}
         {!showResults && (
           <>
-            <button className='poll__link' onClick={handleReveal} type='button'>
+            <button
+              className='poll__link'
+              onClick={handleReveal}
+              type='button'
+              tabIndex={collapsed ? -1 : undefined}
+            >
               <FormattedMessage id='poll.reveal' defaultMessage='See results' />
             </button>{' '}
             ·{' '}
@@ -206,6 +215,7 @@ export const Poll: React.FC<PollProps> = ({
               className='poll__link'
               onClick={handleRefresh}
               type='button'
+              tabIndex={collapsed ? -1 : undefined}
             >
               <FormattedMessage id='poll.refresh' defaultMessage='Refresh' />
             </button>{' '}
@@ -226,11 +236,21 @@ type PollOptionProps = Pick<PollProps, 'disabled' | 'lang'> & {
   option: Model.PollOption;
   index: number;
   showResults?: boolean;
+  collapsed?: boolean;
 };
 
 const PollOption: React.FC<PollOptionProps> = (props) => {
-  const { active, lang, disabled, poll, option, index, showResults, onChange } =
-    props;
+  const {
+    active,
+    lang,
+    disabled,
+    poll,
+    option,
+    index,
+    showResults,
+    onChange,
+    collapsed,
+  } = props;
   const voted = option.voted || poll.own_votes?.includes(index);
   const title = option.translation?.title ?? option.title;
 
@@ -296,6 +316,7 @@ const PollOption: React.FC<PollOptionProps> = (props) => {
           checked={active}
           onChange={handleOptionChange}
           disabled={disabled}
+          tabIndex={collapsed ? -1 : undefined}
         />
 
         {!showResults && (
@@ -304,7 +325,7 @@ const PollOption: React.FC<PollOptionProps> = (props) => {
               checkbox: poll.multiple,
               active,
             })}
-            tabIndex={0}
+            tabIndex={collapsed ? -1 : 0}
             role={poll.multiple ? 'checkbox' : 'radio'}
             onKeyDown={handleOptionKeyPress}
             aria-checked={active}

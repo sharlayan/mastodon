@@ -26,6 +26,20 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   sensitive_emoji_display: 'show',
   sync_to_server: false,
   synced_at: null,
+  collapsed: ImmutableMap({
+    enabled: true,
+    auto: ImmutableMap({
+      all: false,
+      notifications: true,
+      lengthy: true,
+      reblogs: false,
+      replies: false,
+      media: false,
+      quotes: false,
+      height: 400,
+    }),
+    show_action_bar: true,
+  }),
   media: ImmutableMap({
     no_autoplay_gifv: false,
   }),

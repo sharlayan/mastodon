@@ -91,6 +91,13 @@ function optionPlus(key: string): KeyMatcher {
   });
 }
 
+function shiftPlus(key: string): KeyMatcher {
+  return (event) => ({
+    isMatch: event.shiftKey && matchesKeyCode(key, event.code),
+    priority: hotkeyPriority.combo,
+  });
+}
+
 /**
  * Matches when all provided keys are pressed in sequence.
  */
@@ -142,6 +149,7 @@ const hotkeyMatcherMap = {
   toggleComposeSpoilers: optionPlus('x'),
   openMedia: just('e'),
   onTranslate: just('t'),
+  toggleCollapse: shiftPlus('x'),
   goToHome: sequence('g', 'h'),
   goToExplore: sequence('g', 'e'),
   goToNotifications: sequence('g', 'n'),
