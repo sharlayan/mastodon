@@ -9,8 +9,8 @@ ko:
         setting_default_content_type_plain: 게시물을 작성할 때, 형식을 지정하지 않았다면, 일반적인 텍스트라고 가정합니다. (마스토돈의 기본 동작)
         setting_default_content_type_x-mfm: 게시물을 작성할 때, 형식을 지정하지 않았다면, MFM (Markup language For Misskey)이라고 가정합니다
         setting_default_language: 작성하는 게시물의 언어는 자동으로 설정될 수 있습니다, 하지만 언제나 정확하지는 않습니다
-        setting_show_followers_count: 팔로워 카운트를 프로필에 표시합니다. 팔로워 수를 숨기면 나에게도 보이지 않으며 몇몇 앱에서는 팔로워 수가 음수로 표시될 수 있습니다.
         setting_enable_rss: Mastodon은 기본적으로 공개 게시물의 RSS 피드를 제공합니다.
+        setting_show_followers_count: 팔로워 카운트를 프로필에 표시합니다. 팔로워 수를 숨기면 나에게도 보이지 않으며 몇몇 앱에서는 팔로워 수가 음수로 표시될 수 있습니다.
         setting_skin: 선택한 마스토돈 풍미의 스킨을 바꿉니다
     labels:
       defaults:
@@ -19,9 +19,9 @@ ko:
         setting_default_content_type_markdown: 마크다운
         setting_default_content_type_plain: 일반 텍스트
         setting_default_content_type_x-mfm: MFM
+        setting_enable_rss: 공개 게시물 RSS 피드 활성화
         setting_favourite_modal: 관심글을 지정할 때 확인창을 띄웁니다(글리치 풍미에만 적용됨)
         setting_show_followers_count: 팔로워 수 표시
-        setting_enable_rss: 공개 게시물 RSS 피드 활성화
         setting_skin: 스킨
         setting_system_emoji_font: 에모지에 시스템 기본 폰트 적용하기 (글리치 풍미에만 적용됨)
         setting_visible_reactions: 에모지 리액션 표시 수
