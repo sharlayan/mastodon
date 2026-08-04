@@ -95,7 +95,7 @@
     "lodash": "^4.17.21",
     "marked": "^4.3.0",
     "marky": "^1.2.5",
-    "mfm-js": "0.25.0",
+    "mfm-js": "0.26.0",
     "path-complete-extname": "^1.0.0",
     "perfect-freehand": "1.2.3",
     "postcss-preset-env": "^11.0.0",

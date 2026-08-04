@@ -3065,7 +3065,7 @@ __metadata:
     lodash: "npm:^4.17.21"
     marked: "npm:^4.3.0"
     marky: "npm:^1.2.5"
-    mfm-js: "npm:0.25.0"
+    mfm-js: "npm:0.26.0"
     msw: "npm:^2.12.1"
     msw-storybook-addon: "npm:^2.0.6"
     oxfmt: "npm:^0.47.0"
@@ -3169,6 +3169,13 @@ __metadata:
     "@types/react": ">=16"
     react: ">=16"
   checksum: 10c0/381ed1211ba2b8491bf0ad9ef0d8d1badcdd114e1931d55d44019d4b827cc2752586708f9c7d2f9c3244150ed81f1f671a6ca95fae0edd5797fb47a22e06ceca
+  languageName: node
+  linkType: hard
+
+"@misskey-dev/emoji-data@npm:17.0.0":
+  version: 17.0.0
+  resolution: "@misskey-dev/emoji-data@npm:17.0.0"
+  checksum: 10c0/3e1265a3783143c3090ccd9082e7be131db0b8121b5778a9c12f57be4e11e596ca2b8ea34ae230f3ae4bedeef2697b05ddcb5380b6a9e4e26554f8ff9e8a6e2b
   languageName: node
   linkType: hard
 
@@ -4399,13 +4406,6 @@ __metadata:
   peerDependencies:
     "@testing-library/dom": ">=7.21.4"
   checksum: 10c0/75fea130a52bf320d35d46ed54f3eec77e71a56911b8b69a3fe29497b0b9947b2dc80d30f04054ad4ce7f577856ae3e5397ea7dff0ef14944d3909784c7a93fe
-  languageName: node
-  linkType: hard
-
-"@twemoji/parser@npm:16.0.0":
-  version: 16.0.0
-  resolution: "@twemoji/parser@npm:16.0.0"
-  checksum: 10c0/b1976e6ee3354ee7d021a1b97f1befa0db585adee34998f5b27f618a0ab50840e30b7cb5af384365e038f0e91e52680704c111225f8441d2b58ec1a0a6926d4d
   languageName: node
   linkType: hard
 
@@ -10343,12 +10343,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mfm-js@npm:0.25.0":
-  version: 0.25.0
-  resolution: "mfm-js@npm:0.25.0"
+"mfm-js@npm:0.26.0":
+  version: 0.26.0
+  resolution: "mfm-js@npm:0.26.0"
   dependencies:
-    "@twemoji/parser": "npm:16.0.0"
-  checksum: 10c0/670d149b20e552b275f0ca3211dfe54a26e61ae881b09279fee6fdd7715dd4503cd7e1e9daf247efb90b0ac65c4ce52c554458479518f98c35bd62284963f98e
+    "@misskey-dev/emoji-data": "npm:17.0.0"
+  checksum: 10c0/ca9c64383d6f116cb5738de9d9782964e74706bd640d3963d6ba6843ebd8d595854a62a28c69bc7e5e352b6adb8842b319797382b15db104cff36bfc747eafb3
   languageName: node
   linkType: hard
 
