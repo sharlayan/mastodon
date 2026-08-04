@@ -31,7 +31,7 @@ export const ROOT_FOLDER_ID = null;
 const messages = defineMessages({
   attachedFile: {
     id: 'drive.delete_attached_error',
-    defaultMessage: 'Files attached to a post cannot be deleted.',
+    defaultMessage: 'Files used by a post or page cannot be deleted.',
   },
   transferred: {
     id: 'drive.transfer_to_posts_success',

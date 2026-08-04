@@ -8,7 +8,7 @@ export const pageDocumentPlainText = (
   format: 'mfm' | 'markdown',
 ) => {
   if (format === 'markdown') {
-    const html = marked.parse(source);
+    const html = marked.parse(source, { async: false });
     const withBlockBreaks = html
       .replace(/<br\s*\/?>/giu, '\n')
       .replace(
