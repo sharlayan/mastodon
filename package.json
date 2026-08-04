@@ -93,7 +93,7 @@
     "js-yaml": "^5.2.2",
     "lande": "^1.0.10",
     "lodash": "^4.17.21",
-    "marked": "^4.3.0",
+    "marked": "^18.0.0",
     "marky": "^1.2.5",
     "mfm-js": "0.26.0",
     "path-complete-extname": "^1.0.0",
