@@ -89,7 +89,11 @@ class Sharlayan::FederationEdgeAggregator
     def call(started_at: Time.now.utc)
       return 0 unless enabled?
 
-      Sharlayan::FederationAggregationRunner.call { FederationInstanceEdge.replace_all_from_sql!(SNAPSHOT_SQL, started_at:) }
+      ActiveSupport::Notifications.instrument('federation_edge_snapshot.sharlayan') do |payload|
+        result = Sharlayan::FederationAggregationRunner.call { FederationInstanceEdge.replace_all_from_sql!(SNAPSHOT_SQL, started_at:) }
+        payload[:affected_rows] = result
+        result
+      end
     end
   end
 end

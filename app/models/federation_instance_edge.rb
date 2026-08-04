@@ -18,6 +18,8 @@
 
 class FederationInstanceEdge < ApplicationRecord
   COUNTER_COLUMNS = %i(reblogs_count replies_count quotes_count).freeze
+  SNAPSHOT_STATEMENT_TIMEOUT_SQL = 'SET LOCAL statement_timeout = 900000'
+  SNAPSHOT_LOCK_TIMEOUT_SQL = 'SET LOCAL lock_timeout = 5000'
 
   scope :involving_local, -> { where(source_domain: nil).or(where(target_domain: nil)) }
   scope :between_remotes, -> { where.not(source_domain: nil).where.not(target_domain: nil) }
@@ -27,6 +29,9 @@ class FederationInstanceEdge < ApplicationRecord
 
   def self.replace_all_from_sql!(snapshot_sql, started_at:)
     transaction do
+      connection.execute(SNAPSHOT_STATEMENT_TIMEOUT_SQL)
+      connection.execute(SNAPSHOT_LOCK_TIMEOUT_SQL)
+
       statement = sanitize_sql_array([snapshot_sql, { started_at: }])
       affected_rows = connection.update(statement, "#{name} Snapshot")
 

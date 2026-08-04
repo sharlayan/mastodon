@@ -119,6 +119,20 @@ RSpec.describe Sharlayan::FederationEdgeAggregator do
       expect(Sharlayan::FederationAggregationRunner).to have_received(:call)
     end
 
+    it 'instruments the snapshot result for production measurements' do
+      events = []
+      callback = ->(*args) { events << ActiveSupport::Notifications::Event.new(*args) }
+
+      ActiveSupport::Notifications.subscribed(callback, 'federation_edge_snapshot.sharlayan') do
+        Fabricate(:status, account: remote_b, reblog: Fabricate(:status, account: remote_d))
+        described_class.call
+      end
+
+      expect(events.one?).to be true
+      expect(events.first.payload[:affected_rows]).to eq(1)
+      expect(events.first.duration).to be >= 0
+    end
+
     it 'does nothing in roleplay mode' do
       Fabricate(:status, account: remote_b, reblog: Fabricate(:status, account: remote_d))
 
