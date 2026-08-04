@@ -3063,7 +3063,7 @@ __metadata:
     lande: "npm:^1.0.10"
     lint-staged: "npm:^17.0.0"
     lodash: "npm:^4.17.21"
-    marked: "npm:^4.3.0"
+    marked: "npm:^18.0.0"
     marky: "npm:^1.2.5"
     mfm-js: "npm:0.26.0"
     msw: "npm:^2.12.1"
@@ -10264,7 +10264,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"marked@npm:^4.1.0, marked@npm:^4.3.0":
+"marked@npm:^18.0.0":
+  version: 18.0.7
+  resolution: "marked@npm:18.0.7"
+  bin:
+    marked: bin/marked.js
+  checksum: 10c0/84fc25d8583ff5c7b200dc6719e238472bb50e93b656b724ddfac4469c71ab1ef36bc8b4c1b2b26efabe713fd9a3437e3fd8af8555379c988dd902299842a730
+  languageName: node
+  linkType: hard
+
+"marked@npm:^4.1.0":
   version: 4.3.0
   resolution: "marked@npm:4.3.0"
   bin:
