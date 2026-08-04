@@ -54,9 +54,9 @@ class Sharlayan::FederationEdgeAggregator
         .joins('INNER JOIN statuses reblogged_statuses ON reblogged_statuses.id = statuses.reblog_of_id')
         .joins('INNER JOIN accounts reblogged_accounts ON reblogged_accounts.id = reblogged_statuses.account_id')
         .where.not(reblog_of_id: nil),
-      'accounts.domain',
-      'reblogged_accounts.domain',
-      'statuses.created_at'
+      Arel.sql('accounts.domain'),
+      Arel.sql('reblogged_accounts.domain'),
+      Arel.sql('statuses.created_at')
     )
   end
 
@@ -66,9 +66,9 @@ class Sharlayan::FederationEdgeAggregator
         .joins(:account)
         .joins('INNER JOIN accounts replied_accounts ON replied_accounts.id = statuses.in_reply_to_account_id')
         .where.not(in_reply_to_account_id: nil),
-      'accounts.domain',
-      'replied_accounts.domain',
-      'statuses.created_at'
+      Arel.sql('accounts.domain'),
+      Arel.sql('replied_accounts.domain'),
+      Arel.sql('statuses.created_at')
     )
   end
 
@@ -78,19 +78,19 @@ class Sharlayan::FederationEdgeAggregator
         .joins(:account)
         .joins('INNER JOIN accounts quoted_accounts ON quoted_accounts.id = quotes.quoted_account_id')
         .where.not(quoted_account_id: nil),
-      'accounts.domain',
-      'quoted_accounts.domain',
-      'quotes.created_at'
+      Arel.sql('accounts.domain'),
+      Arel.sql('quoted_accounts.domain'),
+      Arel.sql('quotes.created_at')
     )
   end
 
   def grouped(scope, source_column, target_column, timestamp_column)
-    scope.group(Arel.sql(source_column), Arel.sql(target_column)).pluck(
-      Arel.sql(source_column),
-      Arel.sql(target_column),
-      Arel.sql('COUNT(*)'),
-      Arel.sql("MIN(#{timestamp_column})"),
-      Arel.sql("MAX(#{timestamp_column})")
+    scope.group(source_column, target_column).pluck(
+      source_column,
+      target_column,
+      Arel.star.count,
+      timestamp_column.minimum,
+      timestamp_column.maximum
     )
   end
 
