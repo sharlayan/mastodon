@@ -11,6 +11,10 @@ class Themes
     light: '#ffffff',
   }.freeze
   COLOR_SCHEMES = %w(auto light dark).freeze
+  MANDATORY_SKINS = %w(system default mastodon-light).freeze
+
+  GLITCH_ONLY = ActiveModel::Type::Boolean.new.cast(ENV.fetch('GLITCH_ONLY', false)) || false
+  DISABLED_SKINS = ENV.fetch('DISABLED_SKINS', '').split(/\s*,\s*/).map(&:strip).reject { |skin| skin.blank? || MANDATORY_SKINS.include?(skin) }.freeze
 
   def initialize
     @flavours = {}
@@ -21,6 +25,10 @@ class Themes
 
       dir = pathname.dirname
       name = dir.basename.to_s
+
+      # Sharlayan: flavours excluded from the build must not be selectable
+      next if GLITCH_ONLY && name != 'glitch'
+
       locales = []
       screenshots = []
 
@@ -51,6 +59,7 @@ class Themes
       skin = pathname.basename.to_s
       name = pathname.dirname.basename.to_s
       next unless @flavours[name]
+      next if DISABLED_SKINS.include?(skin.delete_suffix(ext))
 
       if pathname.directory?
         @flavours[name]['skins'] << skin if pathname.glob('{common,index,application}.{css,scss}').any?

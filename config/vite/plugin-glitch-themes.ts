@@ -7,9 +7,29 @@ import path from 'node:path';
 import glob from 'fast-glob';
 import * as yaml from 'js-yaml';
 import type { Plugin } from 'vite';
+import { loadEnv } from 'vite';
 
 interface Flavour {
   pack_directory: string;
+}
+
+// Skins that are always built, as the flavour selection UI and the
+// `system` skin depend on them being available.
+const MANDATORY_SKINS: readonly string[] = [
+  'system',
+  'default',
+  'mastodon-light',
+];
+
+function isTruthy(value: string | undefined) {
+  return ['true', '1', 'yes', 'on'].includes((value ?? '').toLowerCase());
+}
+
+function parseList(value: string | undefined) {
+  return (value ?? '')
+    .split(/\s*,\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 export function GlitchThemes(): Plugin {
@@ -18,7 +38,7 @@ export function GlitchThemes(): Plugin {
 
   return {
     name: 'glitch-themes',
-    async config(userConfig) {
+    async config(userConfig, configEnv) {
       const existingInputs = userConfig.build?.rolldownOptions?.input;
 
       if (typeof existingInputs === 'string') {
@@ -39,12 +59,29 @@ export function GlitchThemes(): Plugin {
 
       jsRoot = userConfig.root;
 
+      // Sharlayan: the same variables are read by `Themes` on the Rails side,
+      // so they have to be resolved from the dotenv files as well.
+      const env = {
+        ...loadEnv(configEnv.mode, userConfig.envDir, ''),
+        ...process.env,
+      };
+      const glitchOnly = isTruthy(env.GLITCH_ONLY);
+      const disabledSkins = parseList(env.DISABLED_SKINS).filter(
+        (skin) => !MANDATORY_SKINS.includes(skin),
+      );
+
       const glitchFlavourFiles = glob.sync(
         path.resolve(userConfig.root, 'flavours/*/theme.yml'),
       );
 
       for (const flavourFile of glitchFlavourFiles) {
         const flavourName = path.basename(path.dirname(flavourFile));
+
+        // Sharlayan: skip every other flavour to save compile time
+        if (glitchOnly && flavourName !== 'glitch') {
+          continue;
+        }
+
         const flavourString = await fs.readFile(flavourFile, 'utf8');
         const flavourDef = yaml.load(flavourString, {
           filename: 'theme.yml',
@@ -64,6 +101,13 @@ export function GlitchThemes(): Plugin {
           `app/javascript/skins/${flavourName}/*.{css,scss}`,
         );
         for (const entrypoint of skinFiles) {
+          const skinName = path.basename(entrypoint, path.extname(entrypoint));
+
+          // Sharlayan: skip skins excluded from the build
+          if (disabledSkins.includes(skinName)) {
+            continue;
+          }
+
           const name = `skins/${flavourName}/${path.basename(entrypoint)}`;
           entrypoints[name] = path.resolve(userConfig.envDir, entrypoint);
         }
@@ -72,7 +116,13 @@ export function GlitchThemes(): Plugin {
           `app/javascript/skins/${flavourName}/*/{index,common,application}.{css,scss}`,
         );
         for (const entrypoint of alternateSkinFiles) {
-          const name = `skins/${flavourName}/${path.basename(path.dirname(entrypoint))}`;
+          const skinName = path.basename(path.dirname(entrypoint));
+
+          if (disabledSkins.includes(skinName)) {
+            continue;
+          }
+
+          const name = `skins/${flavourName}/${skinName}`;
           entrypoints[name] = path.resolve(userConfig.envDir, entrypoint);
         }
       }
