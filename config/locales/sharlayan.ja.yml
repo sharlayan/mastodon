@@ -23,6 +23,8 @@ ja:
     accounts:
       block_avatar_decorations: アバターデコレーションをブロック
       blocked_avatar_decorations_msg: "%{username}のアバターデコレーションをブロックしました"
+      drive_usage: ドライブ使用量
+      drive_usage_unlimited: 無制限
       refresh_avatar_decorations: アバターデコレーションを更新
       refreshed_avatar_decorations_msg: "%{username}のアバターデコレーション更新をキューに追加しました"
       unblock_avatar_decorations: アバターデコレーションのブロックを解除

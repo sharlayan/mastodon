@@ -3,6 +3,26 @@
 require 'rails_helper'
 
 RSpec.describe 'Admin Accounts' do
+  describe 'GET /admin/accounts/:id' do
+    let(:account) { Fabricate(:account) }
+
+    before do
+      sign_in Fabricate(:admin_user)
+      Setting.drive_enabled = true
+      account.user.role.update!(drive_quota: 10)
+      DriveFile.insert_all!([{ account_id: account.id, storage_file_size: 3.megabytes }])
+    end
+
+    it 'displays the account drive storage usage and quota' do
+      get admin_account_path(id: account.id)
+
+      expect(response).to have_http_status(200)
+      expect(response.body).to include(I18n.t('admin.accounts.drive_usage'))
+      expect(response.body).to include(ActiveSupport::NumberHelper.number_to_human_size(3.megabytes))
+      expect(response.body).to include(ActiveSupport::NumberHelper.number_to_human_size(10.megabytes))
+    end
+  end
+
   describe 'POST /admin/accounts/batch' do
     before { sign_in Fabricate(:admin_user) }
 

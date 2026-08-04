@@ -23,6 +23,8 @@ en:
     accounts:
       block_avatar_decorations: Block avatar decorations
       blocked_avatar_decorations_msg: Avatar decorations blocked for %{username}
+      drive_usage: Drive storage usage
+      drive_usage_unlimited: unlimited
       refresh_avatar_decorations: Refresh avatar decorations
       refreshed_avatar_decorations_msg: Successfully enqueued avatar decoration refresh
         for %{username}

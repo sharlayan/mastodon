@@ -23,6 +23,8 @@ ko:
     accounts:
       block_avatar_decorations: 장식 표시 끄기
       blocked_avatar_decorations_msg: "%{username}의 아바타 장식을 표시하지 않습니다"
+      drive_usage: 드라이브 사용량
+      drive_usage_unlimited: 무제한
       refresh_avatar_decorations: 아바타 장식 업데이트
       refreshed_avatar_decorations_msg: "%{username}의 아바타 장식 업데이트를 요청했습니다"
       unblock_avatar_decorations: 장식 표시 켜기

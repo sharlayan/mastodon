@@ -28,7 +28,7 @@
     %table.table.inline-table
       %tbody
         - if @account.local?
-          = render 'admin/accounts/local_account', account: @account
+          = render 'admin/accounts/local_account', account: @account, drive_used_bytes: @drive_used_bytes, drive_quota_bytes: @drive_quota_bytes
         - else
           = render 'admin/accounts/remote_account', account: @account, domain_block: @domain_block
 

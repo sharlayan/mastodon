@@ -39,6 +39,8 @@ module Admin
       @moderation_notes        = @account.targeted_moderation_notes.chronological.includes(:account)
       @warnings                = @account.strikes.includes(:target_account, :account, :appeal).latest
       @domain_block            = DomainBlock.rule_for(@account.domain)
+      @drive_used_bytes        = @account.drive_files.sum(:storage_file_size) if @account.local? && Setting.drive_enabled
+      @drive_quota_bytes       = @account.drive_quota_bytes if @drive_used_bytes
     end
 
     def memorialize

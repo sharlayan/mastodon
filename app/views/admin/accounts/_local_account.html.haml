@@ -17,6 +17,16 @@
       = account.user_role&.name
   %td
     = table_link_to 'contact_mail', t('admin.accounts.change_role.label'), admin_user_role_path(account.user) if can?(:change_role, account.user)
+- if drive_used_bytes
+  %tr
+    %th= t('admin.accounts.drive_usage')
+    %td
+      = number_to_human_size(drive_used_bytes)
+      - if drive_quota_bytes.zero?
+        = " / #{t('admin.accounts.drive_usage_unlimited')}"
+      - else
+        = " / #{number_to_human_size(drive_quota_bytes)}"
+    %td
 %tr
   %th{ rowspan: can?(:create, :email_domain_block) ? 3 : 2 }= t('admin.accounts.email')
   %td{ rowspan: can?(:create, :email_domain_block) ? 3 : 2 }= account.user_email
