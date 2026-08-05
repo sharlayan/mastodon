@@ -2,7 +2,8 @@ import { useCallback } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
-import UnfoldLessIcon from '@/material-icons/400-24px/unfold_less.svg?react';
+import ExpandLessIcon from '@/material-icons/400-24px/expand_less.svg?react';
+import ExpandMoreIcon from '@/material-icons/400-24px/expand_more.svg?react';
 
 import { IconButton } from './icon_button';
 
@@ -31,13 +32,12 @@ export const CollapseButton: React.FC<{
   return (
     <IconButton
       className='status__collapse-button'
-      animate
       active={collapsed}
       title={intl.formatMessage(
         collapsed ? messages.uncollapse : messages.collapse,
       )}
-      icon='unfold-less'
-      iconComponent={UnfoldLessIcon}
+      icon={collapsed ? 'expand-more' : 'expand-less'}
+      iconComponent={collapsed ? ExpandMoreIcon : ExpandLessIcon}
       onClick={handleClick}
     />
   );
