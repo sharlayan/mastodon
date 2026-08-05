@@ -2,7 +2,7 @@ import type { Map as ImmutableMap } from 'immutable';
 
 import { unescapeHTML } from '@/flavours/glitch/utils/html';
 
-export const COLLAPSE_BUTTON_CHARACTER_THRESHOLD = 300;
+export const COLLAPSE_BUTTON_CHARACTER_THRESHOLD = 0;
 
 export const isLongStatus = (
   status: ImmutableMap<string, unknown>,
