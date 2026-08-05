@@ -4,6 +4,7 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
   include JsonLdHelper
 
   before_action :skip_large_payload
+  before_action :decorate_trace
   before_action :skip_unknown_actor_activity
   before_action :require_actor_signature!
   skip_before_action :authenticate_user!
@@ -29,6 +30,10 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
     head 413 if request.content_length > ActivityPub::Activity::MAX_JSON_SIZE
   end
 
+  def decorate_trace
+    ActivityPub::OpenTelemetry.decorate_current_span(payload: parsed_body)
+  end
+
   def skip_unknown_actor_activity
     return unless unknown_affected_account?
 
@@ -37,17 +42,9 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
 
   def unknown_affected_account?
     json = parsed_body
+    return false if json.nil?
+
     json.is_a?(Hash) && %w(Delete Update).include?(json['type']) && json['actor'].present? && json['actor'] == value_or_id(json['object']) && !Account.exists?(uri: json['actor'])
-  end
-
-  def parsed_body
-    return @parsed_body if defined?(@parsed_body)
-
-    @parsed_body = begin
-      JSON.parse(body)
-    rescue JSON::ParserError
-      nil
-    end
   end
 
   def account_required?
@@ -71,6 +68,14 @@ class ActivityPub::InboxesController < ActivityPub::BaseController
     request.body.rewind if request.body.respond_to?(:rewind)
 
     @body
+  end
+
+  def parsed_body
+    return @parsed_body if defined?(@parsed_body)
+
+    @parsed_body = JSON.parse(body)
+  rescue JSON::ParserError
+    @parsed_body = nil
   end
 
   def upgrade_account
