@@ -63,6 +63,8 @@ initializeLogLevel(process.env, environment);
  *   cachedFilters: unknown
  *   scopes: string[]
  *   necessaryScopes: string[]
+ *   externalClient: boolean
+ *   customEmojiMutes: unknown[]
  * }} Request
  */
 
@@ -410,6 +412,10 @@ const startServer = async () => {
     };
   };
 
+  /**
+   * @param {string} accountId
+   * @returns {Promise<unknown[]>}
+   */
   const loadCustomEmojiMutes = async (accountId) => {
     if (!accountId) return [];
 
