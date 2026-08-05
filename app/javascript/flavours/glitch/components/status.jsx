@@ -35,7 +35,7 @@ import StatusPrepend from './status_prepend';
 import { CollectionPreviewCard } from '../features/collections/components/collection_preview_card';
 import { compareUrls } from '../utils/compare_urls';
 import { FOCUS_TARGET } from './navigation_focus_target';
-import { COLLAPSE_BUTTON_CHARACTER_THRESHOLD } from 'flavours/glitch/sharlayan/post_collapsing';
+import { COLLAPSE_BUTTON_CHARACTER_THRESHOLD, isLengthyStatus, parseCharacterLimit } from 'flavours/glitch/sharlayan/post_collapsing';
 
 import InstanceBadge, { isLocalInstanceDomain } from './instance_badge';
 
@@ -269,12 +269,13 @@ class Status extends ImmutablePureComponent {
     const autoCollapseSettings = settings.getIn(['collapsed', 'auto']);
 
     if (settings.getIn(['collapsed', 'enabled']) && !(settings.getIn(['content_warnings', 'shared_state']) && status.get('spoiler_text').length && !status.get('hidden')) && !isQuotedPost) {
+      const autoCollapseCharacterLimit = autoCollapseSettings.get('character_limit');
       let autoCollapseHeight = Number.parseInt(autoCollapseSettings.get('height'), 10) || 400;
-      if (status.get('media_attachments').size && !muted) autoCollapseHeight += 210;
+      if (parseCharacterLimit(autoCollapseCharacterLimit) === null && status.get('media_attachments').size && !muted) autoCollapseHeight += 210;
 
       if (autoCollapseSettings.get('all') ||
         (autoCollapseSettings.get('notifications') && muted) ||
-        (autoCollapseSettings.get('lengthy') && node.clientHeight > autoCollapseHeight) ||
+        (autoCollapseSettings.get('lengthy') && isLengthyStatus(status, autoCollapseCharacterLimit, node.clientHeight, autoCollapseHeight)) ||
         (autoCollapseSettings.get('reblogs') && prepend === 'reblogged_by') ||
         (autoCollapseSettings.get('replies') && status.get('in_reply_to_id', null) !== null) ||
         (autoCollapseSettings.get('media') && !status.get('spoiler_text').length && status.get('media_attachments').size > 0) ||

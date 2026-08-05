@@ -36,6 +36,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
       replies: false,
       media: false,
       quotes: false,
+      character_limit: '',
       height: 400,
     }),
     show_action_bar: true,

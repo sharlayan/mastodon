@@ -2,6 +2,8 @@ import PropTypes from 'prop-types';
 
 import { FormattedMessage } from 'react-intl';
 
+import { parseCharacterLimit } from 'flavours/glitch/sharlayan/post_collapsing';
+
 import LocalSettingsPageItem from './item';
 
 const CollapsedStatusesSettings = ({ onChange, settings }) => (
@@ -37,7 +39,11 @@ const CollapsedStatusesSettings = ({ onChange, settings }) => (
       <LocalSettingsPageItem settings={settings} item={['collapsed', 'auto', 'media']} id='mastodon-settings--collapsed-auto-media' onChange={onChange} dependsOn={[['collapsed', 'enabled']]} dependsOnNot={[['collapsed', 'auto', 'all']]}>
         <FormattedMessage id='settings.auto_collapse_media' defaultMessage='Posts with media' />
       </LocalSettingsPageItem>
-      <LocalSettingsPageItem settings={settings} item={['collapsed', 'auto', 'height']} id='mastodon-settings--collapsed-auto-height' placeholder='400' onChange={onChange} dependsOn={[['collapsed', 'enabled']]} dependsOnNot={[['collapsed', 'auto', 'all']]} inputProps={{ type: 'number', min: '200', max: '999' }}>
+      <LocalSettingsPageItem settings={settings} item={['collapsed', 'auto', 'character_limit']} id='mastodon-settings--collapsed-auto-character-limit' placeholder='500' onChange={onChange} dependsOn={[['collapsed', 'enabled']]} dependsOnNot={[['collapsed', 'auto', 'all']]} inputProps={{ type: 'number', min: '1', max: '99999' }}>
+        <FormattedMessage id='settings.auto_collapse_character_limit' defaultMessage='Character count for a post to be considered lengthy' />
+        <span className='hint'><FormattedMessage id='settings.auto_collapse_character_limit_hint' defaultMessage='Leave blank to use the height setting instead.' /></span>
+      </LocalSettingsPageItem>
+      <LocalSettingsPageItem settings={settings} item={['collapsed', 'auto', 'height']} id='mastodon-settings--collapsed-auto-height' placeholder='400' onChange={onChange} dependsOn={[['collapsed', 'enabled']]} dependsOnNot={[['collapsed', 'auto', 'all']]} disabled={parseCharacterLimit(settings.getIn(['collapsed', 'auto', 'character_limit'])) !== null} inputProps={{ type: 'number', min: '200', max: '999' }}>
         <FormattedMessage id='settings.auto_collapse_height' defaultMessage='Height (in pixels) for a post to be considered lengthy' />
       </LocalSettingsPageItem>
     </section>

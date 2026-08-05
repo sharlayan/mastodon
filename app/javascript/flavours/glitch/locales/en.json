@@ -46,6 +46,8 @@
   "settings.always_show_spoilers_field": "Always enable the Content Warning field",
   "settings.auto_collapse": "Automatic collapsing",
   "settings.auto_collapse_all": "Everything",
+  "settings.auto_collapse_character_limit": "Character count for a post to be considered lengthy",
+  "settings.auto_collapse_character_limit_hint": "Leave blank to use the height setting instead.",
   "settings.auto_collapse_height": "Height (in pixels) for a post to be considered lengthy",
   "settings.auto_collapse_lengthy": "Lengthy posts",
   "settings.auto_collapse_media": "Posts with media",

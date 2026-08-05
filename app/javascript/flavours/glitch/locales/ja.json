@@ -37,6 +37,8 @@
   "settings.always_show_spoilers_field": "常にコンテンツワーニング設定を表示する(指定がない場合は通常投稿)",
   "settings.auto_collapse": "自動折りたたみ",
   "settings.auto_collapse_all": "すべて",
+  "settings.auto_collapse_character_limit": "長い投稿と見なす文字数",
+  "settings.auto_collapse_character_limit_hint": "空欄の場合は、代わりに高さの設定を使用します。",
   "settings.auto_collapse_height": "長い投稿と見なす高さ（ピクセル）",
   "settings.auto_collapse_lengthy": "長い投稿",
   "settings.auto_collapse_media": "メディア付き投稿",

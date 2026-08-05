@@ -32,6 +32,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.getIn(['collapsed', 'enabled'])).toBe(true);
     expect(state.getIn(['collapsed', 'auto', 'notifications'])).toBe(true);
     expect(state.getIn(['collapsed', 'auto', 'lengthy'])).toBe(true);
+    expect(state.getIn(['collapsed', 'auto', 'character_limit'])).toBe('');
     expect(state.getIn(['collapsed', 'auto', 'height'])).toBe(400);
     expect(state.getIn(['collapsed', 'show_action_bar'])).toBe(true);
   });

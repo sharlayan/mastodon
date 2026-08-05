@@ -46,6 +46,8 @@
   "settings.always_show_spoilers_field": "열람주의 항목을 언제나 활성화",
   "settings.auto_collapse": "자동으로 접기",
   "settings.auto_collapse_all": "모두",
+  "settings.auto_collapse_character_limit": "긴 글로 간주할 글자 수",
+  "settings.auto_collapse_character_limit_hint": "비워 두면 높이 설정을 대신 사용합니다.",
   "settings.auto_collapse_height": "긴 글로 간주할 높이(픽셀)",
   "settings.auto_collapse_lengthy": "긴 글",
   "settings.auto_collapse_media": "미디어가 있는 글",
