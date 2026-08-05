@@ -46,7 +46,7 @@ class AvatarDecoration < ApplicationRecord
   }
 
   has_attached_file :image,
-                    styles: { static: { format: :png, convert_options: '-coalesce +profile "!icc,*"' } },
+                    styles: { static: { format: :png, convert_options: '-coalesce +profile "!icc,*"', file_geometry_parser: FastGeometryParser } },
                     validate_media_type: false,
                     processors: [:lazy_thumbnail]
 
