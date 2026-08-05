@@ -7,7 +7,11 @@ import ColumnHeader from '../../../components/column_header';
 import { isMobile } from '../../../is_mobile';
 import { scrollTop } from '../../../scroll';
 
+import { ColumnWidthContext } from '../util/column_width_context';
+
 export default class Column extends PureComponent {
+
+  static contextType = ColumnWidthContext;
 
   static propTypes = {
     heading: PropTypes.string,
@@ -54,6 +58,7 @@ export default class Column extends PureComponent {
 
   render () {
     const { heading, icon, iconComponent, children, active, hideHeadingOnMobile, alwaysShowBackButton, name } = this.props;
+    const { customized, width } = this.context;
 
     const showHeading = heading && (!hideHeadingOnMobile || (hideHeadingOnMobile && !isMobile(window.innerWidth)));
 
@@ -70,6 +75,7 @@ export default class Column extends PureComponent {
         aria-labelledby={columnHeaderId}
         className='column'
         onScroll={this.handleScroll}
+        style={customized && width ? { '--column-width': `${width}px` } : undefined}
       >
         {header}
         {children}
