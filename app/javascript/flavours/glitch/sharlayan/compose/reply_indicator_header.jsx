@@ -14,7 +14,7 @@ const messages = defineMessages({
   cancel: { id: 'reply_indicator.cancel', defaultMessage: 'Cancel' },
 });
 
-export const SharlayanReplyIndicatorHeader = ({ account }) => {
+export const SharlayanReplyIndicatorHeader = ({ account, isInline }) => {
   const intl = useIntl();
   const dispatch = useDispatch();
 
@@ -28,13 +28,16 @@ export const SharlayanReplyIndicatorHeader = ({ account }) => {
         <DisplayName account={account} />
       </Permalink>
 
-      <div className='reply-indicator__cancel'>
-        <IconButton title={intl.formatMessage(messages.cancel)} icon='times' iconComponent={CloseIcon} onClick={handleCancelClick} inverted />
-      </div>
+      {isInline && (
+        <div className='reply-indicator__cancel'>
+          <IconButton title={intl.formatMessage(messages.cancel)} icon='times' iconComponent={CloseIcon} onClick={handleCancelClick} inverted />
+        </div>
+      )}
     </div>
   );
 };
 
 SharlayanReplyIndicatorHeader.propTypes = {
   account: PropTypes.object.isRequired,
+  isInline: PropTypes.bool,
 };

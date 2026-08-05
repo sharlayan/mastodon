@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import { FormattedMessage } from 'react-intl';
 
 import { useSelector } from 'react-redux';
@@ -10,7 +11,7 @@ import { Permalink } from 'flavours/glitch/components/permalink';
 import { EmbeddedStatusContent } from 'flavours/glitch/features/notifications_v2/components/embedded_status_content';
 import { SharlayanReplyIndicatorHeader } from 'flavours/glitch/sharlayan/compose/reply_indicator_header';
 
-export const ReplyIndicator = () => {
+export const ReplyIndicator = ({ isInline }) => {
   const inReplyToId = useSelector(state => state.getIn(['compose', 'in_reply_to']));
   const status = useSelector(state => state.getIn(['statuses', inReplyToId]));
   const account = useSelector(state => state.getIn(['accounts', status?.get('account')]));
@@ -28,7 +29,7 @@ export const ReplyIndicator = () => {
       </Permalink>
 
       <div className='reply-indicator__main'>
-        <SharlayanReplyIndicatorHeader account={account} />
+        <SharlayanReplyIndicatorHeader account={account} isInline={isInline} />
 
         <EmbeddedStatusContent
           className='reply-indicator__content translate'
@@ -44,4 +45,8 @@ export const ReplyIndicator = () => {
       </div>
     </div>
   );
+};
+
+ReplyIndicator.propTypes = {
+  isInline: PropTypes.bool,
 };

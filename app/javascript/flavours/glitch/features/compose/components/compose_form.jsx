@@ -66,6 +66,7 @@ class ComposeForm extends ImmutablePureComponent {
     isSubmitting: PropTypes.bool,
     isChangingUpload: PropTypes.bool,
     isEditing: PropTypes.bool,
+    isInline: PropTypes.bool,
     isUploading: PropTypes.bool,
     onChange: PropTypes.func.isRequired,
     onSubmit: PropTypes.func.isRequired,
@@ -284,7 +285,7 @@ class ComposeForm extends ImmutablePureComponent {
         })}
         onSubmit={this.handleSubmit}
       >
-        <ReplyIndicator />
+        <ReplyIndicator isInline={this.props.isInline} />
         {!withoutNavigation && <NavigationBar />}
         <Warning />
 
