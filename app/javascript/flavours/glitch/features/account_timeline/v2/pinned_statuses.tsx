@@ -75,6 +75,7 @@ export const renderPinnedStatusHeader: StatusHeaderRenderFn = ({
   mediaIcons,
   settings,
   collapseEnabled,
+  collapseButtonCharacterLimit,
   collapsed,
   setCollapsed,
   ...args
@@ -85,6 +86,7 @@ export const renderPinnedStatusHeader: StatusHeaderRenderFn = ({
       mediaIcons={mediaIcons}
       settings={settings}
       collapsible={collapseEnabled}
+      collapseButtonCharacterLimit={collapseButtonCharacterLimit}
       collapsed={collapsed}
       setCollapsed={setCollapsed}
     />

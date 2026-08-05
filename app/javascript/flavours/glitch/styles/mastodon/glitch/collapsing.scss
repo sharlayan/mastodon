@@ -11,7 +11,7 @@
   }
 
   .status__content__wrapper {
-    height: 20px;
+    height: 60px;
     overflow: hidden;
     text-overflow: ellipsis;
     padding-top: 0;
@@ -28,7 +28,19 @@
   }
 }
 
+.notification-ungrouped {
+  .status__wrapper.collapsed {
+    .status__content__wrapper {
+      height: 20px;
+    }
+  }
+}
+
 .status__collapse-button {
+  order: 99;
+  width: 20px;
+  height: 16px;
+
   --default-icon-color: var(--color-text-brand);
   --hover-icon-color: var(--color-text-brand-soft);
 

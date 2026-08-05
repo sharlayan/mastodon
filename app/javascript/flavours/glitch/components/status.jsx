@@ -35,6 +35,7 @@ import StatusPrepend from './status_prepend';
 import { CollectionPreviewCard } from '../features/collections/components/collection_preview_card';
 import { compareUrls } from '../utils/compare_urls';
 import { FOCUS_TARGET } from './navigation_focus_target';
+import { COLLAPSE_BUTTON_CHARACTER_THRESHOLD } from 'flavours/glitch/sharlayan/post_collapsing';
 
 import InstanceBadge, { isLocalInstanceDomain } from './instance_badge';
 
@@ -119,6 +120,8 @@ class Status extends ImmutablePureComponent {
     onTranslate: PropTypes.func,
     onInteractionModal: PropTypes.func,
     muted: PropTypes.bool,
+    collapsed: PropTypes.bool,
+    collapseButtonCharacterLimit: PropTypes.number,
     hidden: PropTypes.bool,
     unread: PropTypes.bool,
     featured: PropTypes.bool,
@@ -155,7 +158,12 @@ class Status extends ImmutablePureComponent {
     revealBehindCW: undefined,
     showCard: false,
     showDespiteFilter: undefined,
-    isCollapsed: false,
+    isCollapsed: this.props.settings.getIn(['collapsed', 'enabled']) && (
+      this.props.collapsed ?? (
+        this.props.contextType === 'notifications' &&
+        !this.props.isQuotedPost
+      )
+    ),
     autoCollapsed: false,
   };
 
@@ -169,6 +177,8 @@ class Status extends ImmutablePureComponent {
     'muted',
     'notification',
     'hidden',
+    'collapsed',
+    'collapseButtonCharacterLimit',
     'expanded',
     'unread',
     'pictureInPicture',
@@ -188,6 +198,16 @@ class Status extends ImmutablePureComponent {
   static getDerivedStateFromProps(nextProps, prevState) {
     let update = {};
     let updated = false;
+
+    if (nextProps.collapsed !== prevState.collapsedProp) {
+      update.collapsedProp = nextProps.collapsed;
+      if (nextProps.collapsed !== undefined) {
+        update.isCollapsed =
+          nextProps.settings.getIn(['collapsed', 'enabled']) &&
+          nextProps.collapsed;
+      }
+      updated = true;
+    }
 
     // Make sure the state mirrors props we track…
     if (nextProps.expanded !== prevState.expandedProp) {
@@ -529,6 +549,8 @@ class Status extends ImmutablePureComponent {
       unread,
       showActions = true,
       isQuotedPost = false,
+      contextType,
+      collapseButtonCharacterLimit = COLLAPSE_BUTTON_CHARACTER_THRESHOLD,
       pictureInPicture,
       previousId,
       nextInReplyToId,
@@ -794,14 +816,15 @@ class Status extends ImmutablePureComponent {
         status={status}
         mediaIcons={mediaIcons}
         settings={settings.get('status_icons')}
-        collapsible={!muted && collapseEnabled}
+        collapsible={(contextType === 'notifications' || !muted) && collapseEnabled}
+        collapseButtonCharacterLimit={contextType === 'notifications' ? null : collapseButtonCharacterLimit}
         collapsed={isCollapsed}
         setCollapsed={this.setCollapsed}
       />
     );
 
     const header = this.props.headerRenderFn
-      ? this.props.headerRenderFn({ statusId: status.get('id'), status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured, mediaIcons, settings: settings.get('status_icons'), collapseEnabled, collapsed: isCollapsed, setCollapsed: this.setCollapsed })
+      ? this.props.headerRenderFn({ statusId: status.get('id'), status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured, mediaIcons, settings: settings.get('status_icons'), collapseEnabled, collapseButtonCharacterLimit: contextType === 'notifications' ? null : collapseButtonCharacterLimit, collapsed: isCollapsed, setCollapsed: this.setCollapsed })
       : (
         <StatusHeader
           statusId={status.get('id')}
@@ -842,7 +865,7 @@ class Status extends ImmutablePureComponent {
           >
             {(connectReply || connectUp || connectToRoot) && <div className={classNames('status__line', { 'status__line--full': connectReply, 'status__line--first': !status.get('in_reply_to_id') && !connectToRoot })} />}
 
-            {(!muted || !isCollapsed) && header}
+            {(contextType === 'notifications' || !muted || !isCollapsed) && header}
 
             {!isCollapsed && settings.get('show_instance_info') && instanceInfo && (settings.get('show_instance_info_local') || !isLocalInstanceDomain(instanceInfo.get('domain'))) && (
               <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />

@@ -35,6 +35,7 @@ export interface StatusHeaderProps {
   mediaIcons?: string[];
   settings?: ImmutableMap<string, unknown>;
   collapseEnabled?: boolean;
+  collapseButtonCharacterLimit?: number | null;
   collapsed?: boolean;
   setCollapsed?: (value: boolean) => void;
 }

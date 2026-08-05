@@ -11,6 +11,7 @@ import HomeIcon from '@/material-icons/400-24px/home.svg?react';
 import { Icon } from 'flavours/glitch/components/icon';
 import { MediaIcon } from 'flavours/glitch/components/media_icon';
 import { languages } from 'flavours/glitch/initial_state';
+import { shouldShowCollapseButton } from 'flavours/glitch/sharlayan/post_collapsing';
 import { RelativeTimestamp } from './relative_timestamp';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 
@@ -50,6 +51,7 @@ class StatusIcons extends PureComponent {
     intl: PropTypes.object.isRequired,
     settings: ImmutablePropTypes.map.isRequired,
     collapsible: PropTypes.bool,
+    collapseButtonCharacterLimit: PropTypes.number,
     collapsed: PropTypes.bool,
     setCollapsed: PropTypes.func,
   };
@@ -61,6 +63,7 @@ class StatusIcons extends PureComponent {
       settings,
       intl,
       collapsible,
+      collapseButtonCharacterLimit,
       collapsed,
       setCollapsed,
     } = this.props;
@@ -88,7 +91,7 @@ class StatusIcons extends PureComponent {
             />}
           {settings.get('media') && !!mediaIcons && mediaIcons.map(icon => (<MediaIcon key={`media-icon--${icon}`} className='status__media-icon' icon={icon} />))}
           {settings.get('visibility') && <VisibilityIcon visibility={status.get('visibility')} />}
-          {collapsible && <CollapseButton collapsed={collapsed} setCollapsed={setCollapsed} />}
+          {collapsible && shouldShowCollapseButton(status, collapsed, collapseButtonCharacterLimit) && <CollapseButton collapsed={collapsed} setCollapsed={setCollapsed} />}
         </div>
       </div>
     );

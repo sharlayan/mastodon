@@ -44,7 +44,7 @@ export const NotificationWithStatus: React.FC<{
   labelSeeMoreHref,
   type,
   unread,
-  collapsed,
+  collapsed = true,
   openAsConversation,
 }) => {
   const dispatch = useAppDispatch();
@@ -135,9 +135,8 @@ export const NotificationWithStatus: React.FC<{
           skipPrepend
           avatarSize={40}
           unfocusable
+          collapsed={collapsed}
           onClick={openAsConversation ? handleOpen : undefined}
-          // patch for old notification style
-          collapsed={collapsed ?? false}
         />
       </div>
     </Hotkeys>

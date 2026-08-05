@@ -22,9 +22,10 @@ import { EmbeddedStatusContent } from './embedded_status_content';
 
 export type Mention = RecordOf<ApiMentionJSON>;
 
-export const EmbeddedStatus: React.FC<{ statusId: string }> = ({
-  statusId,
-}) => {
+export const EmbeddedStatus: React.FC<{
+  statusId: string;
+  collapsed?: boolean;
+}> = ({ statusId, collapsed = false }) => {
   const history = useHistory();
   const clickCoordinatesRef = useRef<[number, number]>(null);
   const dispatch = useAppDispatch();
@@ -114,14 +115,14 @@ export const EmbeddedStatus: React.FC<{ statusId: string }> = ({
         expanded={expanded}
       />
 
-      {(!hasContentWarning || expanded) && (
+      {!collapsed && (!hasContentWarning || expanded) && (
         <EmbeddedStatusContent
           className='notification-group__embedded-status__content reply-indicator__content translate'
           status={status}
         />
       )}
 
-      {expanded && (poll || mediaAttachmentsSize > 0) && (
+      {!collapsed && expanded && (poll || mediaAttachmentsSize > 0) && (
         <div className='notification-group__embedded-status__attachments reply-indicator__attachments'>
           {!!poll && (
             <>

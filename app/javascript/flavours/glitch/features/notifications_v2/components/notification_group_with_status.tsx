@@ -75,19 +75,8 @@ export const NotificationGroupWithStatus: React.FC<{
         'enabled',
       ]) as boolean,
   );
-  const autoCollapseEnabled = useAppSelector((state) => {
-    const settings = (
-      state.local_settings as ImmutableMap<string, unknown>
-    ).getIn(['collapsed', 'auto']) as ImmutableMap<string, unknown>;
-    return (
-      settings.get('all') === true || settings.get('notifications') === true
-    );
-  });
-  const [wasUnreadOnMount] = useState(unread);
   const [manuallyCollapsed, setCollapsed] = useState<boolean | null>(null);
-  const collapsed =
-    collapseEnabled &&
-    (manuallyCollapsed ?? (autoCollapseEnabled && !wasUnreadOnMount));
+  const collapsed = collapseEnabled && (manuallyCollapsed ?? true);
 
   const label = useMemo(
     () =>
@@ -171,9 +160,9 @@ export const NotificationGroupWithStatus: React.FC<{
             </h2>
           </div>
 
-          {!collapsed && statusId && (
+          {statusId && (
             <div className='notification-group__main__status'>
-              <EmbeddedStatus statusId={statusId} />
+              <EmbeddedStatus statusId={statusId} collapsed={collapsed} />
             </div>
           )}
 
