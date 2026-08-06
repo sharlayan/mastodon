@@ -1,3 +1,4 @@
+import escapeTextContentForBrowser from 'escape-html';
 import { Map as ImmutableMap, fromJS } from 'immutable';
 
 import { timelineDelete } from 'flavours/glitch/actions/timelines_typed';
@@ -41,6 +42,12 @@ const importStatus = (state, status) => state.set(status.id, fromJS(status));
 const importStatuses = (state, statuses) =>
   state.withMutations(mutable => statuses.forEach(status => importStatus(mutable, status)));
 
+const normalizeReactionUser = user => {
+  const displayName = (user.get('display_name') || '').trim();
+
+  return user.set('display_name_html', escapeTextContentForBrowser(displayName.length === 0 ? (user.get('username') ?? '') : displayName));
+};
+
 const importStatusReactions = (state, status) => {
   const currentStatus = state.get(status.id);
   if (!currentStatus) {
@@ -49,8 +56,10 @@ const importStatusReactions = (state, status) => {
 
   const currentReactions = currentStatus.get('reactions');
   const reactions = fromJS(status.reactions).map(reaction => {
-    const currentReaction = currentReactions?.find(item => item.get('name') === reaction.get('name'));
-    return currentReaction?.get('me') ? reaction.set('me', true) : reaction;
+    const users = reaction.get('users');
+    const normalized = users ? reaction.set('users', users.map(normalizeReactionUser)) : reaction;
+    const currentReaction = currentReactions?.find(item => item.get('name') === normalized.get('name'));
+    return currentReaction?.get('me') ? normalized.set('me', true) : normalized;
   });
 
   return state

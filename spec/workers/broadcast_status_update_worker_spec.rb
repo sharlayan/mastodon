@@ -45,6 +45,32 @@ RSpec.describe BroadcastStatusUpdateWorker do
         expect(message['payload'].keys).to contain_exactly('id', 'reactions_count', 'reactions')
       end
 
+      it 'sends only the fields the client renders for each reaction user' do
+        reactor = Fabricate(:account)
+        Fabricate(:status_reaction, status: status, account: reactor, name: '👍')
+
+        subject.perform(status.id)
+
+        message = published_messages.find { |channel, _message| channel == "timeline:status:#{status.id}" }.last
+        reaction = message['payload']['reactions'].first
+
+        expect(reaction['users'].first.keys).to contain_exactly(
+          'id', 'username', 'acct', 'display_name', 'avatar', 'avatar_static', 'is_cat', 'emojis'
+        )
+        expect(reaction).to_not have_key('local_counterpart')
+      end
+
+      it 'keeps the full account payload on the REST serializer' do
+        reactor = Fabricate(:account)
+        Fabricate(:status_reaction, status: status, account: reactor, name: '👍')
+
+        rest = ActiveModelSerializers::SerializableResource.new(
+          status.reactions, each_serializer: REST::ReactionSerializer
+        ).as_json.first
+
+        expect(rest[:users].first.keys).to include(:note, :fields, :followers_count, :url)
+      end
+
       it 'publishes to the public timeline' do
         subject.perform(status.id)
 

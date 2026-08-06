@@ -34,7 +34,7 @@ class BroadcastStatusUpdateWorker
       reactions_count: status.reactions_count,
       reactions: ActiveModelSerializers::SerializableResource.new(
         reactions,
-        each_serializer: REST::ReactionSerializer
+        each_serializer: REST::StreamingReactionSerializer
       ).as_json,
     }
   end

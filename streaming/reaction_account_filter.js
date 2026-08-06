@@ -8,9 +8,47 @@ const reactionAccountIds = (payload) => {
   )))];
 };
 
-const excludedReactionAccountIds = async (pgPool, viewerAccountId, candidateAccountIds) => {
-  if (candidateAccountIds.length === 0) return [];
+const EXCLUSION_CACHE_TTL = 5000;
+const EXCLUSION_CACHE_MAX_ENTRIES = 5000;
 
+const exclusionCache = new Map();
+
+const exclusionCacheKey = (viewerAccountId, candidateAccountIds) => `${viewerAccountId}:${candidateAccountIds.join(',')}`;
+
+const pruneExclusionCache = (checkedAt) => {
+  for (const [key, entry] of exclusionCache) {
+    if (checkedAt - entry.checkedAt >= EXCLUSION_CACHE_TTL) exclusionCache.delete(key);
+  }
+
+  while (exclusionCache.size > EXCLUSION_CACHE_MAX_ENTRIES) {
+    exclusionCache.delete(exclusionCache.keys().next().value);
+  }
+};
+
+const clearExcludedReactionAccountIdsCache = () => exclusionCache.clear();
+
+const excludedReactionAccountIds = (pgPool, viewerAccountId, candidateAccountIds, now = Date.now) => {
+  if (candidateAccountIds.length === 0) return Promise.resolve([]);
+
+  const key = exclusionCacheKey(viewerAccountId, candidateAccountIds);
+  const checkedAt = now();
+  const cached = exclusionCache.get(key);
+
+  if (cached && checkedAt - cached.checkedAt < EXCLUSION_CACHE_TTL) return cached.promise;
+
+  const promise = queryExcludedReactionAccountIds(pgPool, viewerAccountId, candidateAccountIds);
+
+  exclusionCache.set(key, { checkedAt, promise });
+  pruneExclusionCache(checkedAt);
+
+  promise.catch(() => {
+    if (exclusionCache.get(key)?.promise === promise) exclusionCache.delete(key);
+  });
+
+  return promise;
+};
+
+const queryExcludedReactionAccountIds = async (pgPool, viewerAccountId, candidateAccountIds) => {
   const { rows } = await pgPool.query(`SELECT target_account_id AS id
                                        FROM mutes
                                        WHERE account_id = $1
@@ -62,4 +100,4 @@ const filterReactionPayload = async (pgPool, viewerAccountId, payload) => {
   return filterReactionAccounts(payload, excludedAccountIds);
 };
 
-export { excludedReactionAccountIds, filterReactionAccounts, filterReactionPayload, reactionAccountIds };
+export { clearExcludedReactionAccountIdsCache, excludedReactionAccountIds, filterReactionAccounts, filterReactionPayload, reactionAccountIds };

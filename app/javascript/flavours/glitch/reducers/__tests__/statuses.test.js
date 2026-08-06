@@ -25,4 +25,42 @@ describe('statuses reducer reaction updates', () => {
     expect(nextState.getIn(['20', 'reactions', 0, 'count'])).toBe(2);
     expect(nextState.getIn(['20', 'reactions', 0, 'me'])).toBe(true);
   });
+
+  it('derives display_name_html for reaction users from the lightweight payload', () => {
+    const state = fromJS({
+      20: { id: '20', reactions_count: 0, reactions: [] },
+    });
+
+    const nextState = statuses(state, importStatusReactions({
+      id: '20',
+      reactions_count: 2,
+      reactions: [{
+        name: '👍',
+        count: 2,
+        users: [
+          { id: '11', username: 'alice', acct: 'alice', display_name: '<b>Alice</b>' },
+          { id: '12', username: 'bob', acct: 'bob@remote.test', display_name: '  ' },
+        ],
+      }],
+    }));
+
+    const users = nextState.getIn(['20', 'reactions', 0, 'users']);
+
+    expect(users.getIn([0, 'display_name_html'])).toBe('&lt;b&gt;Alice&lt;/b&gt;');
+    expect(users.getIn([1, 'display_name_html'])).toBe('bob');
+  });
+
+  it('leaves a reaction without users untouched', () => {
+    const state = fromJS({
+      20: { id: '20', reactions_count: 0, reactions: [] },
+    });
+
+    const nextState = statuses(state, importStatusReactions({
+      id: '20',
+      reactions_count: 1,
+      reactions: [{ name: '👍', count: 1 }],
+    }));
+
+    expect(nextState.getIn(['20', 'reactions', 0, 'users'])).toBeUndefined();
+  });
 });

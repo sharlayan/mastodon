@@ -101,6 +101,31 @@ const parseJSON = (json, req) => {
 };
 
 /**
+ * @type {WeakMap<object, string>}
+ */
+const encodedPayloads = new WeakMap();
+
+/**
+ * @param {object|string} payload
+ * @returns {string}
+ */
+const encodePayload = (payload) => {
+  // TODO: Replace "string"-based delete payloads with object payloads:
+  if (typeof payload !== 'object' || payload === null) {
+    return payload;
+  }
+
+  let encoded = encodedPayloads.get(payload);
+
+  if (encoded === undefined) {
+    encoded = JSON.stringify(payload);
+    encodedPayloads.set(payload, encoded);
+  }
+
+  return encoded;
+};
+
+/**
  * Parses the query string from a request object.
  * @param {Request?} req
  */
@@ -710,8 +735,7 @@ const startServer = async () => {
         payload = structuredClone(payload);
         filterCustomEmojiPayload(payload, req.customEmojiMutes);
       }
-      // TODO: Replace "string"-based delete payloads with object payloads:
-      const encodedPayload = typeof payload === 'object' ? JSON.stringify(payload) : payload;
+      const encodedPayload = encodePayload(payload);
 
       metrics.messagesSent.labels({ type: destinationType }).inc(1);
 
@@ -1099,6 +1123,7 @@ const startServer = async () => {
    * @typedef StreamParams
    * @property {string} [tag]
    * @property {string} [list]
+   * @property {string} [antenna]
    * @property {string} [only_media]
    */
 
@@ -1235,6 +1260,8 @@ const startServer = async () => {
   const streamNameFromChannelName = (channelName, params) => {
     if (channelName === 'list' && params.list) {
       return [channelName, params.list];
+    } else if (channelName === 'antenna' && params.antenna) {
+      return [channelName, params.antenna];
     } else if (['hashtag', 'hashtag:local'].includes(channelName) && params.tag) {
       return [channelName, params.tag];
     } else {
@@ -1285,7 +1312,8 @@ const startServer = async () => {
       if (websocket.isAlive && websocket.readyState === websocket.OPEN) {
         websocket.send(JSON.stringify({
           error: errorMessage,
-          status: statusCode
+          status: statusCode,
+          stream: streamNameFromChannelName(channelName, params)
         }));
       }
     });

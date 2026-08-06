@@ -52,21 +52,59 @@ const removeSubscription = subscription => {
   }
 };
 
+const MAX_SUBSCRIPTION_RETRIES = 5;
+const SUBSCRIPTION_RETRY_DELAY = 2000;
+
+/**
+ * @type {Object.<string, number>}
+ */
+const subscriptionRetries = {};
+
 /**
  * @param {Subscription} subscription
  */
-const subscribe = ({ channelName, params, onConnect }) => {
+const sendSubscribe = ({ channelName, params }) => {
+  // @ts-expect-error
+  sharedConnection.send(JSON.stringify({ type: 'subscribe', stream: channelName, ...params }));
+};
+
+/**
+ * @param {Subscription} subscription
+ */
+const subscribe = subscription => {
+  const { channelName, params, onConnect } = subscription;
   const key = channelNameWithInlineParams(channelName, params);
 
   subscriptionCounters[key] = subscriptionCounters[key] || 0;
 
   if (subscriptionCounters[key] === 0) {
-    // @ts-expect-error
-    sharedConnection.send(JSON.stringify({ type: 'subscribe', stream: channelName, ...params }));
+    sendSubscribe(subscription);
   }
 
   subscriptionCounters[key] += 1;
   onConnect();
+};
+
+/**
+ * @param {Subscription} subscription
+ */
+const retrySubscription = subscription => {
+  const key = channelNameWithInlineParams(subscription.channelName, subscription.params);
+  const attempt = (subscriptionRetries[key] ?? 0) + 1;
+
+  if (attempt > MAX_SUBSCRIPTION_RETRIES) {
+    return;
+  }
+
+  subscriptionRetries[key] = attempt;
+
+  setTimeout(() => {
+    if (subscriptions.indexOf(subscription) === -1 || sharedConnection?.readyState !== WebSocketClient.OPEN) {
+      return;
+    }
+
+    sendSubscribe(subscription);
+  }, SUBSCRIPTION_RETRY_DELAY * (2 ** (attempt - 1)));
 };
 
 /**
@@ -87,8 +125,36 @@ const unsubscribe = ({ channelName, params, onDisconnect }) => {
   onDisconnect();
 };
 
+/**
+ * @param {Array.<string>} stream
+ * @returns {Array.<Subscription>}
+ */
+const subscriptionsForStream = stream => subscriptions.filter(({ channelName, params }) => {
+  const streamChannelName = stream[0];
+
+  if (stream.length === 1) {
+    return channelName === streamChannelName;
+  }
+
+  const streamIdentifier = stream[1];
+
+  if (['hashtag', 'hashtag:local'].includes(channelName)) {
+    return channelName === streamChannelName && params.tag === streamIdentifier;
+  } else if (channelName === 'list') {
+    return channelName === streamChannelName && params.list === streamIdentifier;
+  } else if (channelName === 'antenna') {
+    return channelName === streamChannelName && params.antenna === streamIdentifier;
+  }
+
+  return false;
+});
+
 const sharedCallbacks = {
   connected() {
+    Object.keys(subscriptionRetries).forEach(key => {
+      delete subscriptionRetries[key];
+    });
+
     subscriptions.forEach(subscription => subscribe(subscription));
   },
 
@@ -96,25 +162,21 @@ const sharedCallbacks = {
   received(data) {
     const { stream } = data;
 
-    subscriptions.filter(({ channelName, params }) => {
-      const streamChannelName = stream[0];
+    if (data.error) {
+      console.error(`Streaming subscription failed${Array.isArray(stream) ? ` for ${stream.join(':')}` : ''}:`, data.error);
 
-      if (stream.length === 1) {
-        return channelName === streamChannelName;
+      if (Array.isArray(stream)) {
+        subscriptionsForStream(stream).forEach(subscription => retrySubscription(subscription));
       }
 
-      const streamIdentifier = stream[1];
+      return;
+    }
 
-      if (['hashtag', 'hashtag:local'].includes(channelName)) {
-        return channelName === streamChannelName && params.tag === streamIdentifier;
-      } else if (channelName === 'list') {
-        return channelName === streamChannelName && params.list === streamIdentifier;
-      } else if (channelName === 'antenna') {
-        return channelName === streamChannelName && params.antenna === streamIdentifier;
-      }
+    if (!Array.isArray(stream)) {
+      return;
+    }
 
-      return false;
-    }).forEach(subscription => {
+    subscriptionsForStream(stream).forEach(subscription => {
       subscription.onReceive(data);
     });
   },

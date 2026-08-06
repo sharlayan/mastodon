@@ -73,18 +73,13 @@ describe('status importer recursion guards', () => {
     expect(accountsAction.payload.accounts.map(item => item.id)).toEqual(['10', '11', '12']);
   });
 
-  it('imports accounts and a reaction delta without normalizing a full status', () => {
-    const reactor = account('11');
+  it('imports a reaction delta without touching the account store', () => {
     const reactionUpdate = {
       id: '20',
       reactions_count: 1,
-      reactions: [{ name: '👍', count: 1, users: [reactor] }],
+      reactions: [{ name: '👍', count: 1, users: [{ id: '11', acct: 'user11', username: 'user11' }] }],
     };
-    const dispatched = [];
 
-    importFetchedStatusReactions(reactionUpdate)(action => dispatched.push(action));
-
-    expect(dispatched[0].payload.accounts.map(item => item.id)).toEqual(['11']);
-    expect(dispatched[1]).toEqual({ type: 'STATUS_REACTIONS_IMPORT', status: reactionUpdate });
+    expect(importFetchedStatusReactions(reactionUpdate)).toEqual({ type: 'STATUS_REACTIONS_IMPORT', status: reactionUpdate });
   });
 });

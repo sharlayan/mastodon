@@ -1,7 +1,11 @@
 import assert from 'node:assert';
 import { test } from 'node:test';
 
-import { excludedReactionAccountIds, filterReactionAccounts, filterReactionPayload, reactionAccountIds } from './reaction_account_filter.js';
+import { clearExcludedReactionAccountIdsCache, excludedReactionAccountIds, filterReactionAccounts, filterReactionPayload, reactionAccountIds } from './reaction_account_filter.js';
+
+test.beforeEach(() => {
+  clearExcludedReactionAccountIdsCache();
+});
 
 const payload = {
   id: 'status-1',
@@ -51,6 +55,46 @@ test('queries mute and both block directions for reaction accounts', async () =>
   assert.deepEqual(calls[0].params, ['9', ['1', '2']]);
   assert.match(calls[0].sql, /FROM mutes/);
   assert.equal((calls[0].sql.match(/FROM blocks/g) || []).length, 2);
+});
+
+test('resolves one query for a burst of subscriptions sharing a viewer and payload', async () => {
+  let calls = 0;
+  const pgPool = {
+    query: async () => {
+      calls += 1;
+      return { rows: [] };
+    },
+  };
+
+  await Promise.all([
+    excludedReactionAccountIds(pgPool, '9', ['1', '2']),
+    excludedReactionAccountIds(pgPool, '9', ['1', '2']),
+    excludedReactionAccountIds(pgPool, '9', ['1', '2']),
+  ]);
+  await excludedReactionAccountIds(pgPool, '9', ['1', '2']);
+
+  assert.equal(calls, 1);
+
+  await excludedReactionAccountIds(pgPool, '8', ['1', '2']);
+  await excludedReactionAccountIds(pgPool, '9', ['1', '3']);
+  await excludedReactionAccountIds(pgPool, '9', ['1', '2'], () => Date.now() + 60_000);
+
+  assert.equal(calls, 4);
+});
+
+test('does not cache a failed exclusion lookup', async () => {
+  let calls = 0;
+  const pgPool = {
+    query: async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('connection terminated');
+      return { rows: [{ id: 2 }] };
+    },
+  };
+
+  await assert.rejects(excludedReactionAccountIds(pgPool, '9', ['1', '2']));
+  assert.deepEqual(await excludedReactionAccountIds(pgPool, '9', ['1', '2']), ['2']);
+  assert.equal(calls, 2);
 });
 
 test('keeps reactions from accounts without mute or block relationships', async () => {

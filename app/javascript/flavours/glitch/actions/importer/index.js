@@ -67,14 +67,7 @@ export function importFetchedStatus(status, options = {}) {
 }
 
 export function importFetchedStatusReactions(status) {
-  return dispatch => {
-    const accounts = status.reactions
-      .flatMap(reaction => reaction.users || [])
-      .filter(user => user);
-
-    dispatch(importFetchedAccounts(accounts));
-    dispatch(importStatusReactions(status));
-  };
+  return importStatusReactions(status);
 }
 
 export function importFetchedStatuses(statuses, options = {}) {
