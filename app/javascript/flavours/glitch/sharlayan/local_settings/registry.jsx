@@ -160,10 +160,10 @@ export const renderSharlayanLocalSettingsNavigationItems = (slot, { NavigationIt
   const items = slot === 'after-general'
     ? [{ index: 1, icon: 'sliders', iconComponent: TuneIcon, title: intl.formatMessage(messages.quick_preferences) }]
     : [
-      { index: 6, icon: 'list', iconComponent: ListIcon, title: intl.formatMessage(messages.navigation_panel) },
-      { index: 7, icon: 'drag', iconComponent: TuneIcon, title: intl.formatMessage(messages.status_action_bar) },
-      { index: 5, icon: 'cloud', iconComponent: CloudSyncIcon, title: intl.formatMessage(messages.sync) },
       { index: 8, icon: 'unfold-less', iconComponent: UnfoldLessIcon, title: intl.formatMessage({ id: 'settings.collapsed_statuses', defaultMessage: 'Collapsed posts' }) },
+      { index: 7, icon: 'drag', iconComponent: TuneIcon, title: intl.formatMessage(messages.status_action_bar) },
+      { index: 6, icon: 'list', iconComponent: ListIcon, title: intl.formatMessage(messages.navigation_panel) },
+      { index: 5, icon: 'cloud', iconComponent: CloudSyncIcon, title: intl.formatMessage(messages.sync) },
     ];
 
   return items.map(item => <NavigationItem key={item.index} active={index === item.index} onNavigate={onNavigate} {...item} />);
