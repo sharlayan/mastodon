@@ -442,6 +442,7 @@
   "pages.report": "Report page",
   "pages.save": "Save",
   "pages.save_error": "Could not save the page. Check the title and display address.",
+  "pages.title_required": "Enter a title of at least one character.",
   "pages.share": "Share",
   "pages.spoiler.hide": "Hide spoiler",
   "pages.spoiler.show": "Show spoiler",

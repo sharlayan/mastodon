@@ -31,6 +31,19 @@ RSpec.describe Page do
     end
   end
 
+  describe 'title validation' do
+    it 'rejects a blank or whitespace-only title' do
+      expect(Fabricate.build(:page, account: account, title: '')).to_not be_valid
+      expect(Fabricate.build(:page, account: account, title: '   ')).to_not be_valid
+    end
+
+    it 'accepts a single-character title and strips surrounding whitespace' do
+      page = Fabricate(:page, account: account, title: ' x ')
+
+      expect(page.title).to eq('x')
+    end
+  end
+
   describe 'content validation' do
     it 'accepts content at the block-count boundary' do
       page = Fabricate.build(:page, account: account, content: Array.new(described_class::MAX_BLOCKS) { { type: 'text', text: 'x' } })

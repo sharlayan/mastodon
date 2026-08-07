@@ -442,6 +442,7 @@
   "pages.report": "페이지 신고",
   "pages.save": "저장",
   "pages.save_error": "페이지를 저장할 수 없습니다. 제목과 표시할 주소를 확인하세요.",
+  "pages.title_required": "제목을 1글자 이상 입력하세요.",
   "pages.share": "공유",
   "pages.spoiler.hide": "스포일러 가리기",
   "pages.spoiler.show": "스포일러 보기",

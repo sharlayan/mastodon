@@ -442,6 +442,7 @@
   "pages.report": "ページを通報",
   "pages.save": "保存",
   "pages.save_error": "ページを保存できませんでした。タイトルと表示するアドレスを確認してください。",
+  "pages.title_required": "タイトルを1文字以上入力してください。",
   "pages.share": "共有",
   "pages.spoiler.hide": "ネタバレを隠す",
   "pages.spoiler.show": "ネタバレを見る",

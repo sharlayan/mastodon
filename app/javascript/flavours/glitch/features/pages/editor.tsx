@@ -107,6 +107,10 @@ const messages = defineMessages({
     defaultMessage: 'Center align',
   },
   save: { id: 'pages.save', defaultMessage: 'Save' },
+  titleRequired: {
+    id: 'pages.title_required',
+    defaultMessage: 'Enter a title of at least one character.',
+  },
 });
 
 const TOP_LEVEL_TYPES: ApiPageBlockType[] = [
@@ -147,6 +151,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   >({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  const [titleError, setTitleError] = useState(false);
   const useBlogView = isServerPageBlogViewPath(window.location.pathname);
 
   useEffect(() => {
@@ -200,6 +205,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleTitleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setTitle(event.target.value);
+      setTitleError(false);
     },
     [],
   );
@@ -313,12 +319,20 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
+  const trimmedTitle = title.trim();
+
   const handleSave = useCallback(() => {
+    if (!trimmedTitle) {
+      setTitleError(true);
+      return;
+    }
+
     setSaving(true);
     setError(false);
+    setTitleError(false);
 
     const buildPayload = (selectedBookletId: string | null) => ({
-      title,
+      title: trimmedTitle,
       name,
       summary: summary || null,
       booklet_id: selectedBookletId,
@@ -370,7 +384,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [
     isEditing,
     id,
-    title,
+    trimmedTitle,
     name,
     summary,
     bookletId,
@@ -412,6 +426,14 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               required
               maxLength={256}
               label={intl.formatMessage(messages.title)}
+              status={
+                titleError
+                  ? {
+                      variant: 'error',
+                      message: intl.formatMessage(messages.titleRequired),
+                    }
+                  : undefined
+              }
               value={title}
               onChange={handleTitleChange}
             />

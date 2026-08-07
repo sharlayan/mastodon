@@ -71,6 +71,7 @@ class Page < ApplicationRecord
   has_many :page_likes, inverse_of: :page, dependent: :destroy
   has_many :page_reports, dependent: :delete_all
 
+  before_validation :normalize_title
   before_validation :normalize_category
   before_validation :synchronize_visibility
   before_validation :clear_unused_password
@@ -82,7 +83,7 @@ class Page < ApplicationRecord
   after_update_commit :record_updated_writing_statistics
   after_destroy_commit :record_destroyed_writing_statistics
 
-  validates :title, length: { maximum: TITLE_LENGTH_LIMIT }
+  validates :title, presence: true, length: { maximum: TITLE_LENGTH_LIMIT }
   validates :name, presence: true, length: { maximum: NAME_LENGTH_LIMIT }, format: { with: NAME_RE }, uniqueness: { scope: :account_id }
   validates :summary, length: { maximum: SUMMARY_LENGTH_LIMIT }
   validates :category, length: { maximum: CATEGORY_LENGTH_LIMIT }
@@ -242,6 +243,10 @@ class Page < ApplicationRecord
 
   def validate_access_password
     errors.add(:access_password, :blank) if password_visibility? && access_password_digest.blank?
+  end
+
+  def normalize_title
+    self.title = title.strip if title.is_a?(String)
   end
 
   def normalize_category

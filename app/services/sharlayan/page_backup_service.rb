@@ -227,6 +227,7 @@ class Sharlayan::PageBackupService
     attributes['eye_catching_media_attachment_id'] = media_ids[attributes['eye_catching_media_attachment_id'].to_s]
     attributes['page_series_id'] = series_ids.fetch(attributes['page_series_id'].to_s) if attributes['page_series_id'].present?
     attributes['name'] = available_name(attributes.fetch('name'))
+    attributes['title'] = attributes['title'].presence || attributes['name']
     @account.pages.create!(attributes)
   end
 

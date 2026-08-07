@@ -442,6 +442,7 @@
   "pages.report",
   "pages.save",
   "pages.save_error",
+  "pages.title_required",
   "pages.share",
   "pages.spoiler.hide",
   "pages.spoiler.show",
