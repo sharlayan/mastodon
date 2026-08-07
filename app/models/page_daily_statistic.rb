@@ -19,7 +19,11 @@ class PageDailyStatistic < ApplicationRecord
   validates :activity_date, presence: true, uniqueness: { scope: :account_id }
 
   class << self
-    def record!(account_id:, characters_delta: 0, created: 0, updated: 0, activity_date: Time.zone.today)
+    def current_activity_date(time = Time.now.getlocal)
+      time.to_time.getlocal.to_date
+    end
+
+    def record!(account_id:, characters_delta: 0, created: 0, updated: 0, activity_date: current_activity_date)
       upsert(
         {
           account_id: account_id,

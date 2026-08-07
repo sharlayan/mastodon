@@ -64,17 +64,18 @@ class Api::V1::PagesController < Api::BaseController
   def statistics
     days = params[:days].to_i.clamp(30, 365)
     days = 365 if params[:days].blank?
-    first_date = Time.zone.today - (days - 1).days
-    statistics = current_account.page_daily_statistics.where(activity_date: first_date..Time.zone.today).index_by(&:activity_date)
+    current_date = PageDailyStatistic.current_activity_date
+    first_date = current_date - (days - 1).days
+    statistics = current_account.page_daily_statistics.where(activity_date: first_date..current_date).index_by(&:activity_date)
     total_characters = current_account.pages.sum('COALESCE(text_characters_count, 0)')
-    first_page_date = current_account.pages.minimum(:created_at)&.in_time_zone&.to_date
+    first_page_date = current_account.pages.minimum(:created_at)&.to_time&.getlocal&.to_date
     first_recorded_creation_date = current_account.page_daily_statistics.where('pages_created_count > 0').minimum(:activity_date)
     first_written_on = [first_page_date, first_recorded_creation_date].compact.min
 
     render json: {
       total_characters: total_characters,
       first_written_on: first_written_on&.iso8601,
-      days: (first_date..Time.zone.today).map do |date|
+      days: (first_date..current_date).map do |date|
         statistic = statistics[date]
         {
           date: date.iso8601,

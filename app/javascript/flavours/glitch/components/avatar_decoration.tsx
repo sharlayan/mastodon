@@ -10,6 +10,7 @@ import {
 import type { Account } from 'flavours/glitch/models/account';
 
 import { buildDecorationTransform } from './avatar_decoration_utils';
+import { RetryingImage } from './retrying_image';
 
 interface Props {
   account:
@@ -53,7 +54,7 @@ export const AvatarDecoration: React.FC<Props> = ({
       aria-hidden='true'
     >
       {visibleDecorations.map((decoration, index) => (
-        <img
+        <RetryingImage
           key={`${decoration.id}-${index}`}
           className='account__avatar__decoration'
           src={animate || hovering ? decoration.url : decoration.static_url}

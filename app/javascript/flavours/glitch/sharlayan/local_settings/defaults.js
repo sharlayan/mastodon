@@ -27,7 +27,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   sync_to_server: false,
   synced_at: null,
   collapsed: ImmutableMap({
-    enabled: true,
+    enabled: false,
     auto: ImmutableMap({
       all: false,
       notifications: true,

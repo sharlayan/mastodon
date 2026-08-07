@@ -8,7 +8,7 @@ RSpec.describe Page do
   describe 'writing statistics' do
     it 'stores the visible character count and tracks create, update, and delete deltas' do
       page = Fabricate(:page, account: account, summary: '요 약', content: [{ type: 'text', text: '**hello**' }])
-      statistic = PageDailyStatistic.find_by!(account: account, activity_date: Time.zone.today)
+      statistic = PageDailyStatistic.find_by!(account: account, activity_date: PageDailyStatistic.current_activity_date)
 
       expect(page.text_characters_count).to eq(7)
       expect(statistic).to have_attributes(characters_delta: 7, pages_created_count: 1, pages_updated_count: 0)
@@ -20,6 +20,20 @@ RSpec.describe Page do
       page.destroy!
       expect(statistic.reload).to have_attributes(characters_delta: 0, pages_created_count: 1, pages_updated_count: 2)
       expect(statistic.activity).to eq('created')
+    end
+
+    it 'uses the server local date instead of the Rails UTC date' do
+      original_tz = ENV.fetch('TZ', nil)
+      ENV['TZ'] = 'Asia/Seoul'
+
+      travel_to Time.utc(2026, 8, 7, 15, 30) do
+        page = Fabricate(:page, account: account)
+
+        expect(PageDailyStatistic.find_by!(account: account)).to have_attributes(activity_date: Date.new(2026, 8, 8))
+        expect(page).to be_persisted
+      end
+    ensure
+      ENV['TZ'] = original_tz
     end
 
     it 'does not mark non-writing metadata changes as an update' do

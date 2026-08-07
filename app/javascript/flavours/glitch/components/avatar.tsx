@@ -11,6 +11,8 @@ import { useSharlayanAvatarExtras } from 'flavours/glitch/sharlayan/account/avat
 
 import { useAccount } from '../hooks/useAccount';
 
+import { RetryingImage } from './retrying_image';
+
 interface Props {
   account?: Pick<
     Account | AccountShapeFull,
@@ -46,7 +48,6 @@ export const Avatar: React.FC<Props> = ({
 }) => {
   const { hovering, handleMouseEnter, handleMouseLeave } = useHovering(animate);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   const style = {
     ...styleFromParent,
@@ -59,10 +60,6 @@ export const Avatar: React.FC<Props> = ({
   const handleLoad = useCallback(() => {
     setLoading(false);
   }, [setLoading]);
-
-  const handleError = useCallback(() => {
-    setError(true);
-  }, [setError]);
 
   const { decorationClassNames, avatarExtras } = useSharlayanAvatarExtras({
     account,
@@ -84,9 +81,7 @@ export const Avatar: React.FC<Props> = ({
       style={style}
       data-avatar-of={account && `@${account.acct}`}
     >
-      {src && !error && (
-        <img src={src} alt={alt} onLoad={handleLoad} onError={handleError} />
-      )}
+      {src && <RetryingImage src={src} alt={alt} onLoad={handleLoad} />}
 
       {avatarExtras}
 
