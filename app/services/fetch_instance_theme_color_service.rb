@@ -19,6 +19,10 @@ class FetchInstanceThemeColorService < BaseService
   ].freeze
 
   INSTANCE_NAME_MAX_LENGTH = 100
+  MAX_COUNTER_VALUE = (2**63) - 1
+  PUBLIC_BOOLEAN_VALUES = [true, false].freeze
+
+  MISSKEY_SOFTWARE = %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick).freeze
 
   ALLOWED_FAVICON_CONTENT_TYPES = %w(
     image/png
@@ -59,6 +63,7 @@ class FetchInstanceThemeColorService < BaseService
     favicon_url = extract_favicon_url
     software_info = determine_software_info(nodeinfo)
     instance_name = determine_instance_name(nodeinfo, misskey_meta)
+    usage_attributes = collect_usage_attributes(nodeinfo, software_info[:software], misskey_meta)
 
     local_favicon_path = download_and_save_favicon(favicon_url) if favicon_url.present?
 
@@ -82,6 +87,11 @@ class FetchInstanceThemeColorService < BaseService
     end
 
     attributes[:instance_name] = instance_name if instance_name.present? && instance_name != @domain
+
+    if usage_attributes.present?
+      attributes.merge!(usage_attributes)
+      attributes[:usage_updated_at] = Time.now.utc
+    end
 
     if nodeinfo.present?
       wire_features = extract_nodeinfo_features
@@ -324,6 +334,83 @@ class FetchInstanceThemeColorService < BaseService
     }
   end
 
+  def collect_usage_attributes(nodeinfo, software, misskey_meta)
+    attributes = extract_nodeinfo_usage(nodeinfo)
+
+    fallback = if MISSKEY_SOFTWARE.include?(software)
+                 extract_misskey_usage(misskey_meta)
+               elsif software.blank? || %w(mastodon glitchsoc kmyblue).include?(software)
+                 extract_mastodon_usage
+               else
+                 {}
+               end
+
+    fallback.merge(attributes)
+  end
+
+  def extract_nodeinfo_usage(nodeinfo)
+    return {} unless nodeinfo.is_a?(Hash)
+
+    usage = nodeinfo['usage']
+    return {} unless usage.is_a?(Hash)
+
+    users = usage['users'].is_a?(Hash) ? usage['users'] : {}
+
+    compact_usage_attributes(
+      local_users_count: public_counter(users['total']),
+      local_posts_count: public_counter(usage['localPosts'] || usage['local_posts']),
+      local_comments_count: public_counter(usage['localComments'] || usage['local_comments']),
+      active_users_monthly_count: public_counter(users['activeMonth'] || users['active_month']),
+      active_users_halfyear_count: public_counter(users['activeHalfyear'] || users['active_halfyear']),
+      open_registrations: public_boolean(nodeinfo['openRegistrations'], nodeinfo['open_registrations'])
+    )
+  end
+
+  def extract_misskey_usage(meta)
+    stats = fetch_misskey_stats
+    stats = {} unless stats.is_a?(Hash)
+
+    compact_usage_attributes(
+      local_users_count: public_counter(stats['originalUsersCount']),
+      local_posts_count: public_counter(stats['originalNotesCount']),
+      known_instances_count: public_counter(stats['instances']),
+      open_registrations: inverse_public_boolean(meta&.[]('disableRegistration'))
+    )
+  end
+
+  def extract_mastodon_usage
+    v1 = fetch_mastodon_instance_v1
+    v2 = fetch_mastodon_instance_v2
+    stats = v1['stats'].is_a?(Hash) ? v1['stats'] : {}
+    v2_usage = v2['usage'].is_a?(Hash) ? v2['usage'] : {}
+    v2_users = v2_usage['users'].is_a?(Hash) ? v2_usage['users'] : {}
+    registrations = v2['registrations'].is_a?(Hash) ? v2['registrations'] : {}
+
+    compact_usage_attributes(
+      local_users_count: public_counter(stats['user_count']),
+      local_posts_count: public_counter(stats['status_count']),
+      active_users_monthly_count: public_counter(v2_users['active_month']),
+      known_instances_count: public_counter(stats['domain_count']),
+      open_registrations: public_boolean(registrations['enabled'])
+    )
+  end
+
+  def compact_usage_attributes(attributes)
+    attributes.compact
+  end
+
+  def public_counter(value)
+    value if value.is_a?(Integer) && value.between?(0, MAX_COUNTER_VALUE)
+  end
+
+  def public_boolean(*values)
+    values.find { |value| PUBLIC_BOOLEAN_VALUES.include?(value) }
+  end
+
+  def inverse_public_boolean(value)
+    !value if PUBLIC_BOOLEAN_VALUES.include?(value)
+  end
+
   def determine_instance_name(nodeinfo, misskey_meta)
     metadata = nodeinfo_metadata(nodeinfo)
     name = normalize_instance_name(metadata['nodeName'])
@@ -374,7 +461,7 @@ class FetchInstanceThemeColorService < BaseService
 
   def fetch_misskey_meta(nodeinfo)
     software = nodeinfo_software(nodeinfo)['name']
-    return nil unless software.is_a?(String) && %w(misskey sharkey firefish calckey foundkey magnetar iceshrimp catodon cherrypick).include?(software.downcase)
+    return nil unless software.is_a?(String) && MISSKEY_SOFTWARE.include?(software.downcase)
 
     api_url = "https://#{@domain}/api/meta"
 
@@ -397,6 +484,13 @@ class FetchInstanceThemeColorService < BaseService
     nil
   rescue *NETWORK_ERRORS, JSON::ParserError
     nil
+  end
+
+  def fetch_misskey_stats
+    return @misskey_stats if defined?(@misskey_stats_fetched)
+
+    @misskey_stats_fetched = true
+    @misskey_stats = fetch_json(:post, "https://#{@domain}/api/stats")
   end
 
   def extract_open_graph_title
@@ -432,33 +526,40 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def fetch_instance_name_from_api
-    api_url = "https://#{@domain}/api/v1/instance"
+    [fetch_mastodon_instance_v1, fetch_mastodon_instance_v2].each do |instance_data|
+      title = instance_data['title']
+      return title if title.is_a?(String) && title.present?
+    end
 
-    request = Request.new(:get, api_url)
+    nil
+  end
+
+  def fetch_mastodon_instance_v1
+    return @mastodon_instance_v1 if defined?(@mastodon_instance_v1_fetched)
+
+    @mastodon_instance_v1_fetched = true
+    @mastodon_instance_v1 = fetch_json(:get, "https://#{@domain}/api/v1/instance") || {}
+  end
+
+  def fetch_mastodon_instance_v2
+    return @mastodon_instance_v2 if defined?(@mastodon_instance_v2_fetched)
+
+    @mastodon_instance_v2_fetched = true
+    @mastodon_instance_v2 = fetch_json(:get, "https://#{@domain}/api/v2/instance") || {}
+  end
+
+  def fetch_json(method, url)
+    request = Request.new(method, url)
     request.add_headers('User-Agent' => Mastodon::Version.user_agent)
+    request.add_headers('Content-Type' => 'application/json') if method == :post
 
     request.perform do |response|
-      if response.code == 200
-        response_body = response.body_with_limit
-        instance_data = JSON.parse(response_body)
+      next unless response.code == 200
 
-        return instance_data['title'] if instance_data.is_a?(Hash) && instance_data['title'].is_a?(String) && instance_data['title'].present?
-      end
+      parsed = JSON.parse(response.body_with_limit)
+      return parsed if parsed.is_a?(Hash)
     end
 
-    api_v2_url = "https://#{@domain}/api/v2/instance"
-
-    request_v2 = Request.new(:get, api_v2_url)
-    request_v2.add_headers('User-Agent' => Mastodon::Version.user_agent)
-
-    request_v2.perform do |response|
-      if response.code == 200
-        response_body = response.body_with_limit
-        instance_data = JSON.parse(response_body)
-
-        return instance_data['title'] if instance_data.is_a?(Hash) && instance_data['title'].is_a?(String) && instance_data['title'].present?
-      end
-    end
     nil
   rescue *NETWORK_ERRORS, JSON::ParserError
     nil

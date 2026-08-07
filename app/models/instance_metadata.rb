@@ -7,15 +7,23 @@ require 'request_store'
 # Table name: instance_metadata
 #
 #  id                          :bigint(8)        not null, primary key
+#  active_users_halfyear_count :bigint(8)
+#  active_users_monthly_count  :bigint(8)
 #  domain                      :string           not null
 #  favicon_url                 :string
 #  features                    :jsonb            not null
 #  instance_name               :string
+#  known_instances_count       :bigint(8)
+#  local_comments_count        :bigint(8)
+#  local_posts_count           :bigint(8)
+#  local_users_count           :bigint(8)
 #  metadata_updated_at         :datetime
+#  open_registrations          :boolean
 #  software                    :string
 #  supports_avatar_decorations :boolean          default(FALSE), not null
 #  theme_color                 :string
 #  theme_color_updated_at      :datetime
+#  usage_updated_at            :datetime
 #  version                     :string
 #  created_at                  :datetime         not null
 #  updated_at                  :datetime         not null

@@ -13,6 +13,7 @@ RSpec.describe FetchInstanceThemeColorService do
     stub_request(:get, "https://#{domain}").to_return(status: 200, body: default_html, headers: { 'Content-Type' => 'text/html' })
     stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 404)
     stub_request(:post, "https://#{domain}/api/meta").to_return(status: 404)
+    stub_request(:post, "https://#{domain}/api/stats").to_return(status: 404)
     stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 404)
     stub_request(:get, "https://#{domain}/manifest.json").to_return(status: 404)
     stub_request(:get, "https://#{domain}/api/v1/instance").to_return(status: 404)
@@ -46,13 +47,18 @@ RSpec.describe FetchInstanceThemeColorService do
     HTML
   end
 
-  def stub_nodeinfo(software: 'mastodon', version: '4.0.0', metadata: {}, relation: 'http://nodeinfo.diaspora.software/ns/schema/2.1')
+  def stub_nodeinfo(software: 'mastodon', version: '4.0.0', metadata: {}, usage: nil, open_registrations: nil, relation: 'http://nodeinfo.diaspora.software/ns/schema/2.1')
     nodeinfo_url = "https://#{domain}/nodeinfo/2.1"
     well_known = { links: [{ rel: relation, href: nodeinfo_url }] }.to_json
-    nodeinfo = { software: { name: software, version: version }, metadata: metadata }.to_json
+    nodeinfo = { software: { name: software, version: version }, metadata: metadata }
+    nodeinfo[:usage] = usage unless usage.nil?
+    unless open_registrations.nil?
+      registration_key = relation.end_with?('/2.1') ? :openRegistrations : :open_registrations
+      nodeinfo[registration_key] = open_registrations
+    end
 
     stub_request(:get, "https://#{domain}/.well-known/nodeinfo").to_return(status: 200, body: well_known, headers: { 'Content-Type' => 'application/json' })
-    stub_request(:get, nodeinfo_url).to_return(status: 200, body: nodeinfo, headers: { 'Content-Type' => 'application/json' })
+    stub_request(:get, nodeinfo_url).to_return(status: 200, body: nodeinfo.to_json, headers: { 'Content-Type' => 'application/json' })
   end
 
   describe '#call' do
@@ -94,6 +100,113 @@ RSpec.describe FetchInstanceThemeColorService do
 
       expect(WebMock).to have_requested(:get, "https://#{domain}/.well-known/nodeinfo").once
       expect(WebMock).to have_requested(:get, "https://#{domain}/nodeinfo/2.0").once
+    end
+  end
+
+  describe 'usage metric collection' do
+    it 'stores public NodeInfo 2.1 usage fields' do
+      stub_nodeinfo(
+        usage: {
+          users: { total: 120, activeMonth: 34, activeHalfyear: 78 },
+          localPosts: 4567,
+          localComments: 89,
+        },
+        open_registrations: false
+      )
+
+      result = subject.call(domain)
+
+      expect(result).to have_attributes(
+        local_users_count: 120,
+        local_posts_count: 4567,
+        local_comments_count: 89,
+        active_users_monthly_count: 34,
+        active_users_halfyear_count: 78,
+        open_registrations: false
+      )
+      expect(result.usage_updated_at).to be_within(5.seconds).of(Time.now.utc)
+    end
+
+    it 'accepts the NodeInfo 2.0 snake_case field names' do
+      stub_nodeinfo(
+        relation: 'http://nodeinfo.diaspora.software/ns/schema/2.0',
+        usage: {
+          users: { total: 12, active_month: 3, active_halfyear: 7 },
+          local_posts: 45,
+          local_comments: 6,
+        },
+        open_registrations: true
+      )
+
+      result = subject.call(domain)
+
+      expect(result).to have_attributes(
+        local_users_count: 12,
+        local_posts_count: 45,
+        local_comments_count: 6,
+        active_users_monthly_count: 3,
+        active_users_halfyear_count: 7,
+        open_registrations: true
+      )
+    end
+
+    it 'uses the Misskey stats endpoint for fields absent from NodeInfo' do
+      stub_nodeinfo(software: 'misskey', usage: { users: { activeMonth: 9 } })
+      stub_request(:post, "https://#{domain}/api/meta").to_return(
+        status: 200,
+        body: { name: 'Remote Misskey', disableRegistration: false }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+      stub_request(:post, "https://#{domain}/api/stats").to_return(
+        status: 200,
+        body: { originalUsersCount: 200, originalNotesCount: 3_000, instances: 50 }.to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+
+      result = subject.call(domain)
+
+      expect(result).to have_attributes(
+        local_users_count: 200,
+        local_posts_count: 3_000,
+        active_users_monthly_count: 9,
+        known_instances_count: 50,
+        open_registrations: true
+      )
+    end
+
+    it 'uses Mastodon instance APIs for fields absent from NodeInfo' do
+      stub_nodeinfo(usage: {})
+      stub_request(:get, "https://#{domain}/api/v1/instance").to_return(
+        status: 200,
+        body: { title: 'Remote', stats: { user_count: 40, status_count: 500, domain_count: 60 } }.to_json
+      )
+      stub_request(:get, "https://#{domain}/api/v2/instance").to_return(
+        status: 200,
+        body: { usage: { users: { active_month: 8 } }, registrations: { enabled: true } }.to_json
+      )
+
+      result = subject.call(domain)
+
+      expect(result).to have_attributes(
+        local_users_count: 40,
+        local_posts_count: 500,
+        active_users_monthly_count: 8,
+        known_instances_count: 60,
+        open_registrations: true
+      )
+    end
+
+    it 'does not replace stored values with missing or invalid public data' do
+      metadata = Fabricate(
+        :instance_metadata,
+        domain: domain,
+        local_users_count: 10,
+        local_posts_count: 20,
+        usage_updated_at: 2.days.ago
+      )
+      stub_nodeinfo(usage: { users: { total: 'unknown' }, localPosts: -1 })
+
+      expect { subject.call(domain) }.to_not(change { metadata.reload.slice(:local_users_count, :local_posts_count, :usage_updated_at) })
     end
   end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_05_130216) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_08_073400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1048,17 +1048,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_05_130216) do
   end
 
   create_table "instance_metadata", id: :bigint, default: -> { "timestamp_id('instance_metadata'::text)" }, force: :cascade do |t|
+    t.bigint "active_users_halfyear_count"
+    t.bigint "active_users_monthly_count"
     t.datetime "created_at", null: false
     t.string "domain", null: false
     t.string "favicon_url"
     t.jsonb "features", default: [], null: false
     t.string "instance_name"
+    t.bigint "known_instances_count"
+    t.bigint "local_comments_count"
+    t.bigint "local_posts_count"
+    t.bigint "local_users_count"
     t.datetime "metadata_updated_at"
+    t.boolean "open_registrations"
     t.string "software"
     t.boolean "supports_avatar_decorations", default: false, null: false
     t.string "theme_color"
     t.datetime "theme_color_updated_at"
     t.datetime "updated_at", null: false
+    t.datetime "usage_updated_at"
     t.string "version"
     t.index ["domain"], name: "index_instance_metadata_on_domain", unique: true
     t.index ["favicon_url"], name: "index_instance_metadata_on_favicon_url_hash", where: "(favicon_url IS NOT NULL)", using: :hash

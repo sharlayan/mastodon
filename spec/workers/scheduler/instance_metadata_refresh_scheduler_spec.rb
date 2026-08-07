@@ -28,11 +28,19 @@ RSpec.describe Scheduler::InstanceMetadataRefreshScheduler do
         scheduler.perform
         expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with('empty-software.example.com')
       end
+
+      it 'enqueues a fresh domain immediately when the public posts count is missing' do
+        Fabricate(:instance_metadata, domain: 'missing-posts.example.com', software: 'mastodon', instance_name: 'Test', local_posts_count: nil, theme_color_updated_at: 1.hour.ago, metadata_updated_at: 1.hour.ago)
+
+        scheduler.perform
+
+        expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with('missing-posts.example.com').once
+      end
     end
 
     context 'with outdated domains' do
       it 'enqueues workers for domains with outdated theme_color' do
-        Fabricate(:instance_metadata, domain: 'outdated.example.com', software: 'mastodon', instance_name: 'Test', theme_color_updated_at: 8.days.ago)
+        Fabricate(:instance_metadata, domain: 'outdated.example.com', software: 'mastodon', instance_name: 'Test', local_posts_count: 1, theme_color_updated_at: 8.days.ago)
         scheduler.perform
         expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with('outdated.example.com')
       end
@@ -48,7 +56,7 @@ RSpec.describe Scheduler::InstanceMetadataRefreshScheduler do
       end
 
       it 'skips active domains that already have metadata in the active domains phase' do
-        Fabricate(:instance_metadata, domain: 'has-metadata.example.com', software: 'mastodon', instance_name: 'Test', theme_color_updated_at: 1.hour.ago, metadata_updated_at: 1.hour.ago)
+        Fabricate(:instance_metadata, domain: 'has-metadata.example.com', software: 'mastodon', instance_name: 'Test', local_posts_count: 1, theme_color_updated_at: 1.hour.ago, metadata_updated_at: 1.hour.ago)
         account = Fabricate(:account, domain: 'has-metadata.example.com')
         Fabricate(:account_stat, account: account, last_status_at: 5.days.ago)
 
