@@ -1,14 +1,29 @@
+const reactionUsersCache = new WeakMap();
+
 const getReactionUsers = (state, id) => {
   const reactions = state.getIn(['statuses', id, 'reactions']);
   if (!reactions) return null;
 
-  return reactions.map(reaction => {
+  const accounts = state.get('accounts');
+  let accountsCache = reactionUsersCache.get(reactions);
+  if (!accountsCache) {
+    accountsCache = new WeakMap();
+    reactionUsersCache.set(reactions, accountsCache);
+  }
+
+  const cached = accountsCache.get(accounts);
+  if (cached) return cached;
+
+  const resolved = reactions.map(reaction => {
     const users = reaction.get('users');
     if (!users) return null;
     return users
-      .map(user => user && state.getIn(['accounts', user.get('id')]))
+      .map(user => user && accounts.get(user.get('id')))
       .filter(account => !!account);
   });
+
+  accountsCache.set(accounts, resolved);
+  return resolved;
 };
 
 export const sharlayanStatusInputSelectors = [

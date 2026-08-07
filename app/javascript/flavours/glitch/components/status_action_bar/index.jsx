@@ -34,7 +34,7 @@ import { BoostButton } from '../status/boost_button';
 import { RemoveQuoteHint } from './remove_quote_hint';
 import { quoteItemState } from '../status/boost_button_utils';
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
-import { computeStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
+import { selectStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { removeStatusFromAntenna } from '@/flavours/glitch/actions/antennas';
 
@@ -84,7 +84,7 @@ const mapStateToProps = (state, { status, contextType }) => {
     antennaTitle: antennaId ? state.getIn(['antennas', antennaId, 'title']) : null,
     quotedAccountId: quotedStatusId ? state.getIn(['statuses', quotedStatusId, 'account']) : null,
     statusQuoteState: selectStatusConditions(state, status.get('id')),
-    statusActionBarOrder: computeStatusActionBarOrder(state.getIn(['local_settings', 'status_action_bar', 'order'])?.toJS()),
+    statusActionBarOrder: selectStatusActionBarOrder(state),
     statusActionBarHidden: state.getIn(['local_settings', 'status_action_bar', 'hidden']),
   });
 };

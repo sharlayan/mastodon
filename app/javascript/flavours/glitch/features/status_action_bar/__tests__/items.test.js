@@ -1,4 +1,6 @@
-import { computeStatusActionBarOrder, STATUS_ACTION_BAR_ITEMS } from '../items';
+import { fromJS } from 'immutable';
+
+import { computeStatusActionBarOrder, selectStatusActionBarOrder, STATUS_ACTION_BAR_ITEMS } from '../items';
 
 describe('computeStatusActionBarOrder', () => {
   it('uses the default order when no order is stored', () => {
@@ -23,5 +25,15 @@ describe('computeStatusActionBarOrder', () => {
       'bookmark',
       'quote',
     ]);
+  });
+
+  it('keeps the same normalized order while unrelated state changes', () => {
+    const state = fromJS({
+      compose: { text: '' },
+      local_settings: { status_action_bar: { order: ['quote', 'clip'] } },
+    });
+    const changedCompose = state.setIn(['compose', 'text'], 'a');
+
+    expect(selectStatusActionBarOrder(changedCompose)).toBe(selectStatusActionBarOrder(state));
   });
 });

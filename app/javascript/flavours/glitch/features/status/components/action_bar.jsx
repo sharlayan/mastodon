@@ -26,7 +26,7 @@ import { me, quickBoosting, reactionsEnabled, clipsEnabled } from '../../../init
 import { BoostButton } from '@/flavours/glitch/components/status/boost_button';
 import { quoteItemState } from '@/flavours/glitch/components/status/boost_button_utils';
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
-import { computeStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
+import { selectStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
 import { openModal } from '@/flavours/glitch/actions/modal';
 
 const messages = defineMessages({
@@ -64,7 +64,7 @@ const mapStateToProps = (state, { status }) => {
   return ({
     quotedAccountId: quotedStatusId ? state.getIn(['statuses', quotedStatusId, 'account']) : null,
     statusQuoteState: selectStatusConditions(state, status.get('id')),
-    statusActionBarOrder: computeStatusActionBarOrder(state.getIn(['local_settings', 'status_action_bar', 'order'])?.toJS()),
+    statusActionBarOrder: selectStatusActionBarOrder(state),
     statusActionBarHidden: state.getIn(['local_settings', 'status_action_bar', 'hidden']),
   });
 };

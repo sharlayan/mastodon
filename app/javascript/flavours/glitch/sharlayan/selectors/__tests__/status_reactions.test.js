@@ -30,6 +30,17 @@ describe('Sharlayan status reaction selectors', () => {
     expect(selectReblog(state, { id: '1' })).toBeNull();
   });
 
+  it('keeps resolved users stable while unrelated state changes', () => {
+    const state = stateWith({
+      '1': { reactions: [{ name: '👍', users: [{ id: 'a' }] }] },
+    }, {
+      a: { id: 'a', username: 'alice' },
+    });
+    const changedCompose = state.setIn(['compose', 'text'], 'a');
+
+    expect(selectBase(changedCompose, { id: '1' })).toBe(selectBase(state, { id: '1' }));
+  });
+
   it('sets resolved reaction users onto the base status map', () => {
     const statusBase = fromJS({ reactions: [{ name: '👍', users: [{ id: 'a' }] }] });
     const resolved = ImmutableList([ImmutableList([ImmutableMap({ id: 'a', username: 'alice' })])]);

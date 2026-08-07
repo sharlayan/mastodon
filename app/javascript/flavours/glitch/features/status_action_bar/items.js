@@ -1,3 +1,5 @@
+import { createSelector } from '@reduxjs/toolkit';
+
 export const STATUS_ACTION_BAR_ITEMS = [
   'favourite',
   'reaction',
@@ -23,3 +25,8 @@ export const computeStatusActionBarOrder = (storedOrder = []) => {
 
   return [...validStoredOrder, ...STATUS_ACTION_BAR_ITEMS.filter(key => !validStoredOrder.includes(key))];
 };
+
+export const selectStatusActionBarOrder = createSelector(
+  [(state) => state.getIn(['local_settings', 'status_action_bar', 'order'])],
+  (storedOrder) => computeStatusActionBarOrder(storedOrder?.toJS()),
+);
