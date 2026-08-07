@@ -40,6 +40,13 @@ export const shouldShowCollapseButton = (
 ): boolean =>
   collapsed || characterLimit === null || isLongStatus(status, characterLimit);
 
+export const shouldAutoCollapseNotification = (
+  settings: ImmutableMap<string, unknown>,
+  unread: boolean,
+): boolean =>
+  !unread &&
+  (settings.get('all') === true || settings.get('notifications') === true);
+
 export const isLengthyStatus = (
   status: ImmutableMap<string, unknown>,
   characterLimitValue: unknown,

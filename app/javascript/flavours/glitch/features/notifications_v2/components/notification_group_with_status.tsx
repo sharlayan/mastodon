@@ -16,6 +16,7 @@ import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
 import { NOTIFICATIONS_GROUP_MAX_AVATARS } from 'flavours/glitch/models/notification_group';
+import { shouldAutoCollapseNotification } from 'flavours/glitch/sharlayan/post_collapsing';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import { EmbeddedStatus } from './embedded_status';
@@ -75,8 +76,19 @@ export const NotificationGroupWithStatus: React.FC<{
         'enabled',
       ]) as boolean,
   );
+  const autoCollapseSettings = useAppSelector(
+    (state) =>
+      (state.local_settings as ImmutableMap<string, unknown>).getIn([
+        'collapsed',
+        'auto',
+      ]) as ImmutableMap<string, unknown>,
+  );
+  const [wasUnreadOnMount] = useState(unread);
   const [manuallyCollapsed, setCollapsed] = useState<boolean | null>(null);
-  const collapsed = collapseEnabled && (manuallyCollapsed ?? true);
+  const collapsed =
+    collapseEnabled &&
+    (manuallyCollapsed ??
+      shouldAutoCollapseNotification(autoCollapseSettings, wasUnreadOnMount));
 
   const label = useMemo(
     () =>

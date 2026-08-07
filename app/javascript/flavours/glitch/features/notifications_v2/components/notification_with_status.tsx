@@ -1,6 +1,8 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import classNames from 'classnames';
+
+import type { Map as ImmutableMap } from 'immutable';
 
 import { LinkedDisplayName } from '@/flavours/glitch/components/display_name';
 import { replyComposeById } from 'flavours/glitch/actions/compose';
@@ -18,6 +20,7 @@ import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { StatusQuoteManager } from 'flavours/glitch/components/status_quoted';
 import { getStatusHidden } from 'flavours/glitch/selectors/filters';
+import { shouldAutoCollapseNotification } from 'flavours/glitch/sharlayan/post_collapsing';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import type { LabelRenderer } from './notification_group_with_status';
@@ -48,6 +51,16 @@ export const NotificationWithStatus: React.FC<{
   openAsConversation,
 }) => {
   const dispatch = useAppDispatch();
+  const [wasUnreadOnMount] = useState(unread);
+  const autoCollapseEnabled = useAppSelector((state) =>
+    shouldAutoCollapseNotification(
+      (state.local_settings as ImmutableMap<string, unknown>).getIn([
+        'collapsed',
+        'auto',
+      ]) as ImmutableMap<string, unknown>,
+      wasUnreadOnMount,
+    ),
+  );
 
   const account = useAppSelector((state) =>
     state.accounts.get(accountIds.at(0) ?? ''),
@@ -135,7 +148,7 @@ export const NotificationWithStatus: React.FC<{
           skipPrepend
           avatarSize={40}
           unfocusable
-          collapsed={collapsed}
+          collapsed={autoCollapseEnabled && collapsed}
           onClick={openAsConversation ? handleOpen : undefined}
         />
       </div>

@@ -7,6 +7,7 @@ import {
   isLongStatus,
   isLengthyStatus,
   parseCharacterLimit,
+  shouldAutoCollapseNotification,
   shouldShowCollapseButton,
 } from './post_collapsing';
 
@@ -87,5 +88,16 @@ describe('post collapsing', () => {
     expect(isLengthyStatus(longStatus, String(characterLimit), 100, 400)).toBe(
       true,
     );
+  });
+
+  it('only automatically collapses read notifications when configured', () => {
+    const enabled = fromJS({ all: false, notifications: true });
+    const disabled = fromJS({ all: false, notifications: false });
+    const all = fromJS({ all: true, notifications: false });
+
+    expect(shouldAutoCollapseNotification(enabled, false)).toBe(true);
+    expect(shouldAutoCollapseNotification(enabled, true)).toBe(false);
+    expect(shouldAutoCollapseNotification(disabled, false)).toBe(false);
+    expect(shouldAutoCollapseNotification(all, false)).toBe(true);
   });
 });

@@ -158,12 +158,7 @@ class Status extends ImmutablePureComponent {
     revealBehindCW: undefined,
     showCard: false,
     showDespiteFilter: undefined,
-    isCollapsed: this.props.settings.getIn(['collapsed', 'enabled']) && (
-      this.props.collapsed ?? (
-        this.props.contextType === 'notifications' &&
-        !this.props.isQuotedPost
-      )
-    ),
+    isCollapsed: this.props.settings.getIn(['collapsed', 'enabled']) && (this.props.collapsed ?? false),
     autoCollapsed: false,
   };
 
