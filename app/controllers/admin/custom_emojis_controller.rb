@@ -47,8 +47,6 @@ module Admin
       @custom_emoji = CustomEmoji.find(params[:id])
       return redirect_to admin_custom_emojis_path, alert: I18n.t('admin.custom_emojis.not_permitted') unless @custom_emoji.local?
 
-      # The shortcode is the emoji's identity (referenced by existing posts and
-      # federation), so it must not be mutated after creation.
       if @custom_emoji.update(resource_params.except(:shortcode))
         log_action :update, @custom_emoji
         purge_emoji_cache

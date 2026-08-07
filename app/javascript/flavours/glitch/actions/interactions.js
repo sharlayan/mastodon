@@ -63,7 +63,6 @@ export const REACTION_FETCH_REQUEST = 'REACTION_FETCH_REQUEST';
 export const REACTION_FETCH_SUCCESS = 'REACTION_FETCH_SUCCESS';
 export const REACTION_FETCH_FAIL    = 'REACTION_FETCH_FAIL';
 
-// unlinked code (will matching)
 export const REACTION_UPDATE = 'REACTION_UPDATE';
 
 export * from "./interactions_typed";
@@ -474,8 +473,6 @@ export function addReaction(statusId, name, url) {
       dispatch(addReactionRequest(statusId, name, url));
     }
 
-    // encodeURIComponent is required for the Keycap Number Sign emoji, see:
-    // <https://github.com/glitch-soc/mastodon/pull/1980#issuecomment-1345538932>
     api().post(`/api/v1/statuses/${statusId}/react/${encodeURIComponent(name)}`).then(response => {
       dispatch(addReactionSuccess(statusId, name));
       dispatch(importFetchedStatus(response.data));

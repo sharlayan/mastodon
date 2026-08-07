@@ -25,12 +25,10 @@ class InstanceMetadata < ApplicationRecord
   validates :domain, presence: true, uniqueness: true
 
   DEFAULT_THEME_COLORS = {
-    # Mastodon family
     # Icon source: https://github.com/mastodon/mastodon/blob/main/app/javascript/images/logo-symbol-icon.svg
     'mastodon' => '#6364FF',
     'kmyblue' => '#6364FF',
 
-    # Misskey family
     # Icon source: https://github.com/misskey-dev/misskey/blob/159b1a44/packages/backend/assets/favicon.png
     'misskey' => '#A1CA03',
     'calckey' => '#31748F',
@@ -42,16 +40,13 @@ class InstanceMetadata < ApplicationRecord
     'catodon' => '#A1CA03',
     'cherrypick' => '#A1CA03',
 
-    # Pleroma family
     # Icon source: https://git.pleroma.social/pleroma/pleroma/-/blob/0a076443/priv/static/static/logo.svg
     'pleroma' => '#FBA457',
     'akkoma' => '#593196',
 
-    # Kbin family
     'kbin' => '#000000',
     'mbin' => '#00BC8C',
 
-    # Fedify framework and implementations
     # Icon source: https://github.com/fedify-dev/fedify/blob/c2352c0e/logo.svg
     'fedify' => '#0284C7',
     # Icon source: https://github.com/fedify-dev/hollo/blob/56f37f74/docs/public/favicon.svg
@@ -59,7 +54,6 @@ class InstanceMetadata < ApplicationRecord
     # Icon source: https://github.com/hackers-pub/hackerspub/blob/346a7aa4/web/static/favicon.svg
     'hackerspub' => '#000000',
 
-    # Independent software
     'lemmy' => '#00BC8C',
     # Icon source: https://github.com/Chocobozzz/PeerTube/blob/fe0da961/client/src/assets/images/logo.svg
     'peertube' => '#F1680D',

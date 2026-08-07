@@ -122,7 +122,6 @@ class ApplicationController < ActionController::Base
     @switch_parent_stack = resolve_switch_parent_stack
   end
 
-  # owner_id is passed explicitly right after a switch, when current_account still memoizes the previous account
   def persist_switch_parent_stack(new_stack, owner_id)
     @switch_parent_stack = Array(new_stack).map(&:to_i)
 

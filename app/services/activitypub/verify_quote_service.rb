@@ -15,7 +15,6 @@ class ActivityPub::VerifyQuoteService < BaseService
 
     fetch_quoted_post_if_needed!(fetchable_quoted_uri, prefetched_body: prefetched_quoted_object)
 
-    # Misskey has no quote limit...
     if quote.legacy? && quote.quoted_status_id.present? && misskey_source?
       quote.accept!
       return

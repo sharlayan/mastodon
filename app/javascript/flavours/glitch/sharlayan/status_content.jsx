@@ -25,7 +25,6 @@ export const sharlayanStatusContentState = (state) => ({
 export const isSharlayanMfmStatus = (status, { mfmEnabled, localMfmEnabled }) =>
   status.get('mfm') && mfmEnabled !== false && localMfmEnabled !== false;
 
-// Returns the rendered MFM content element, or null when the status is not MFM.
 export const renderSharlayanMfmContent = (status, { content, language, mfmEnabled, localMfmEnabled, localMfmAnimations, localMfmFoldMode }) => {
   if (!isSharlayanMfmStatus(status, { mfmEnabled, localMfmEnabled })) {
     return null;
@@ -34,7 +33,6 @@ export const renderSharlayanMfmContent = (status, { content, language, mfmEnable
   const mfmAnimationsEnabled = localMfmAnimations !== false;
   const mfmFoldMode = localMfmFoldMode ?? 'sensitive';
 
-  // MFM content: use stored mfm_text if available, otherwise extract from HTML
   const mfmSourceText = status.get('mfm_text') || extractPlainTextFromHtml(content);
   const hasMfmFn = hasAnyMfmFn(mfmSourceText);
   const shouldFoldMfm = (

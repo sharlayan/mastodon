@@ -38,8 +38,6 @@ class HtmlAwareFormatter
     if %w(text/markdown text/html).include?(@options[:content_type])
       AdvancedTextFormatter.new(text, options).to_s
     else
-      # text/x-mfm and text/plain both use plain text formatting
-      # MFM parsing is done client-side; server only sets the mfm flag
       TextFormatter.new(text, options).to_s
     end
   end

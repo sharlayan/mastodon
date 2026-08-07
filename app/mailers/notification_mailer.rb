@@ -39,15 +39,6 @@ class NotificationMailer < ApplicationMailer
     mail subject: default_i18n_subject(name: @account.acct)
   end
 
-  # disabled for mailer(like spamming)
-  # def reaction
-  #   return unless @user.functional? && @status.present?
-  #
-  #   locale_for_account(@me) do
-  #     mail subject: default_i18n_subject(name: @account.acct)
-  #   end
-  # end
-
   def reblog
     mail subject: default_i18n_subject(name: @account.acct)
   end
@@ -91,8 +82,6 @@ class NotificationMailer < ApplicationMailer
   end
 
   def thread_by_conversation!
-    # patch in origin(emojireact) branch, but recovered it
-    # return if @status.conversation.nil?
     return if @status&.conversation.nil?
 
     conversation_message_id = "<conversation-#{@status.conversation.id}.#{@status.conversation.created_at.to_date}@#{Rails.configuration.x.local_domain}>"

@@ -3,7 +3,6 @@ ENV_FILE=".env.production"
 RUBY_VERSION=$(cat .ruby-version)
 
 rails_export () {
-  # for ruby rails command error...
   export LD_PRELOAD=/lib/x86_64-linux-gnu/libjemalloc.so.2
 
   eval "$(rbenv init -)"

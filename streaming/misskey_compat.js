@@ -61,9 +61,6 @@ const extractTag = (params) => {
 
 const hasScope = (request, ...scopes) => Array.isArray(request.scopes) && scopes.some((scope) => request.scopes.includes(scope));
 
-// MiAuth tokens only carry the `misskey` OAuth scope, so their read access is
-// decided by the granted Misskey permissions instead, mirroring
-// Api::MisskeyCompat::BaseController#require_user!.
 const canReadStatuses = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:account') : hasScope(request, 'read', 'read:statuses'));
 
 const canReadDrive = (request, grantPermissions) => (Array.isArray(grantPermissions) ? grantPermissions.includes('read:drive') : hasScope(request, 'read', 'read:drive'));

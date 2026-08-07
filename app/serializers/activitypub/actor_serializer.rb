@@ -60,7 +60,6 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   has_one :endpoints, serializer: EndpointsSerializer
 
-  # disable default account icon
   has_one :icon,  serializer: ActivityPub::ImageSerializer
   has_one :image, serializer: ActivityPub::ImageSerializer, if: :header_exists?
 

@@ -339,7 +339,6 @@
     }
   }
 
-  // fix for media infinity grown :(
   &--has-media {
     width: 100%;
 
@@ -567,7 +566,6 @@
   }
 }
 
-// fix for height
 .layout-single-column.conversation-detail-active {
   .columns-area__panels__main {
     height: 100vh;

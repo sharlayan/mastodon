@@ -28,7 +28,6 @@ class ActivityPub::Activity
     private
 
     def klass_for(json)
-      # force redirect for Misskey compatibility
       json['type'] = 'EmojiReact' if json['type'].eql?('Like') && json['content'].present?
 
       case json['type']
@@ -195,9 +194,6 @@ class ActivityPub::Activity
     nil
   end
 
-  # Ensure emoji declared in the activity's tags are
-  # present in the database and downloaded to the local cache.
-  # Required by EmojiReact and Like for emoji reactions.
   def process_emoji_tags(name, tags)
     tag = as_array(tags).find { |item| item['type'] == 'Emoji' }
     return if tag.nil?

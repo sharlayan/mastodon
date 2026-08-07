@@ -48,9 +48,6 @@ const authorizeStatusAccess = async (pgPool, statusId, req) => {
   return result.rows.length > 0;
 };
 
-// MiAuth grants hold the Misskey permissions of a `misskey`-scoped token. A
-// missing grant (or an unavailable table) yields undefined, which leaves the
-// OAuth scopes as the only authority.
 const loadGrantPermissions = async (pgPool, logger, req) => {
   if (!req.accessTokenId) return undefined;
 

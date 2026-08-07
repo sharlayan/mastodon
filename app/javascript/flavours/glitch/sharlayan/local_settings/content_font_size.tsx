@@ -27,7 +27,6 @@ export const applyContentFontSize = (value: unknown) => {
   });
 };
 
-// Applied before the app is mounted so posts never render at the wrong size
 export const applyStoredContentFontSize = () => {
   const localSettings = initialState?.local_settings as
     | Record<string, unknown>

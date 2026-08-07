@@ -109,7 +109,6 @@ class REST::V1::InstanceSerializer < ActiveModel::Serializer
     UserRole.everyone.can?(:invite_users)
   end
 
-  # for third party apps
   def fedibird_capabilities
     capabilities = [
       :emoji_reaction,

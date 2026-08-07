@@ -26,7 +26,6 @@ class Themes
       dir = pathname.dirname
       name = dir.basename.to_s
 
-      # Sharlayan: flavours excluded from the build must not be selectable
       next if GLITCH_ONLY && name != 'glitch'
 
       locales = []

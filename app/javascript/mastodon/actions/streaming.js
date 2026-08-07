@@ -126,7 +126,6 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
             // @ts-expect-error
             const notificationJSON = JSON.parse(data.payload);
             dispatch(updateNotifications(notificationJSON, messages, locale));
-            // TODO: remove this once the groups feature replaces the previous one
             dispatch(processNewNotificationForGroups(notificationJSON));
             break;
           }
@@ -134,11 +133,9 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
             // @ts-expect-error
             const linked = JSON.parse(data.payload);
 
-            // Skip toast if the linked account is the currently active account
             if (String(linked.linked_account_id) !== String(me)) {
               dispatch(incrementLinkedUnreadCount(String(linked.linked_account_id)));
 
-              // Check inApp preference from localStorage
               const rootAccountId = getState().accountSwitches?.get('rootAccountId') ?? me;
               let inAppEnabled = false;
               try {
@@ -156,7 +153,6 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
               }
             }
 
-            // Update lastSeenId so the poller won't show duplicates
             if (me) {
               const key = `linked_notif_last_id_${me}_${linked.linked_account_id}`;
               const prev = localStorage.getItem(key);

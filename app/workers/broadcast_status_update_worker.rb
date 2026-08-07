@@ -9,16 +9,12 @@ class BroadcastStatusUpdateWorker
   def perform(status_id)
     status = Status.find(status_id)
 
-    # silenced account updated on public timeline. disabled it
     return if status.account.nil? || status.account.suspended? || status.account.silenced?
 
     message = JSON.generate(event: 'status.reaction', payload: reaction_payload(status.proper))
 
-    # Always publish to status-specific channel for users currently viewing this status
     redis.publish("timeline:status:#{status.id}", message)
 
-    # Avoid bumping stale posts back into home/public timelines when they merely
-    # receive a new reaction; only refresh the status-specific channel for those.
     broadcast_to_all_followers(status, message) unless status_too_old?(status)
   rescue ActiveRecord::RecordNotFound
     true
@@ -53,7 +49,6 @@ class BroadcastStatusUpdateWorker
 
     redis.publish("timeline:#{status.account_id}", message)
 
-    # if muted user, ignore it
     muted_by_ids = Mute.where(target_account_id: status.account_id).pluck(:account_id)
 
     list_excluded_ids = ListAccount

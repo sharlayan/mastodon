@@ -1,5 +1,3 @@
-// See app/serializers/rest/clip_serializer.rb
-
 export interface ApiClipJSON {
   id: string;
   title: string;

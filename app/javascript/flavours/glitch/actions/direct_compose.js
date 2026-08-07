@@ -155,7 +155,6 @@ export const uploadDirectMedia = (conversationId, files) => (dispatch, getState)
     if (status === 200) {
       dispatch({ type: DIRECT_COMPOSE_UPLOAD_SUCCESS, conversationId, media });
     } else if (status === 202) {
-      // Server-side processing still in progress, poll until ready.
       const poll = () => {
         api().get(`/api/v1/media/${media.id}`).then(response => {
           if (response.status === 200) {

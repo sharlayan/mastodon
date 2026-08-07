@@ -18,7 +18,6 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
     Trends.statuses.register(original_status)
   end
 
-  # custom function for emojireact
   def misskey_reaction(original_status)
     raw_name = @json['content'] || @json['_misskey_reaction']
 
@@ -35,7 +34,6 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
 
       custom_emoji = process_emoji_tags(name, @json['tag'])
 
-      # invalid custom emoji, treat it as a regular like
       return false if custom_emoji.nil?
 
       return true if CustomEmojiMute.reaction_muted?(original_status.account_id, custom_emoji.shortcode, custom_emoji.domain)
@@ -50,7 +48,6 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
     LocalNotificationWorker.perform_async(original_status.account_id, reaction.id, 'StatusReaction', 'reaction') if original_status.account.local?
     BroadcastStatusUpdateWorker.perform_async(original_status.id)
     true
-  # account tried to react with disabled custom emoji. Returning true to discard activity.
   rescue ActiveRecord::RecordInvalid
     true
   end

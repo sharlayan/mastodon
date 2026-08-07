@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
-# Converts MFM (Markup language For Misskey) syntax to HTML fallback.
-# Used when federating local MFM posts to non-MFM servers via ActivityPub.
-# Follows Misskey's fallback behavior: function nodes render as <i>content</i>,
-# with special handling for ruby and unixtime.
 module MfmHtmlConverter
-  # Matches $[fn.args content] or $[fn content] (handles one level of nested brackets)
   MFM_FUNC_PATTERN = /\$\[(\w+)(?:\.\S+?)?\s((?:[^\[\]]|\[(?:[^\[\]])*\])*)\]/
 
   BOLD_PATTERN = /\*\*(.+?)\*\*/m
@@ -15,7 +10,6 @@ module MfmHtmlConverter
   INLINE_CODE_PATTERN = /`([^`\n]+)`/
   BLOCK_CODE_PATTERN = /```(?:\w+\n)?([\s\S]+?)```/m
 
-  # Matches custom emoji shortcodes like :emoji_name: (alphanumeric and underscores only)
   EMOJI_SHORTCODE_PATTERN = /:([a-zA-Z0-9_]+):/
 
   HTML_TAG_PATTERN = /<[^>]*>/
@@ -51,9 +45,6 @@ module MfmHtmlConverter
     restore_emojis(html, emoji_map)
   end
 
-  # Post-process already-HTML-formatted text (from TextFormatter) to convert
-  # remaining MFM syntax. None of $, [, ], *, ~ are HTML-special so they are
-  # safe to process in HTML output.
   def self.convert_in_html(html)
     return html if html.blank?
 
@@ -77,7 +68,6 @@ module MfmHtmlConverter
     restore_tags(restore_emojis(result, emoji_map), tag_map)
   end
 
-  # Masks HTML tags so MFM patterns can only match inside text nodes
   def self.extract_tags(html)
     tag_map = {}
     result = html.gsub(HTML_TAG_PATTERN) do |match|
@@ -138,10 +128,8 @@ module MfmHtmlConverter
       when 'small'
         "<small>#{content}</small>"
       when 'blur'
-        # visible as blurred text on supported clients; show as span for others
         "<span>#{content}</span>"
       else
-        # Default: italic fallback (matches Misskey fnDefault behavior)
         "<i>#{content}</i>"
       end
     end

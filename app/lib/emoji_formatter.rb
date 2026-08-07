@@ -3,7 +3,6 @@
 class EmojiFormatter
   include RoutingHelper
 
-  # allow relayed emojis
   DISALLOWED_BOUNDING_REGEX = /[a-zA-Z0-9_]/
 
   attr_reader :html, :custom_emojis, :options
@@ -14,7 +13,6 @@ class EmojiFormatter
   # @option options [Boolean] :animate
   # @option options [String] :style
   # @option options [String] :raw_shortcode
-  # @option options [Boolean] :allow_unbounded_shortcodes
   def initialize(html, custom_emojis, options = {})
     raise ArgumentError unless html.html_safe?
 

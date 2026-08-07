@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 class FetchInstanceThemeColorService < BaseService
-  # 그만 고장났으면 좋겠다
-  # 테스트 환경에서는 기본적으로 원격 fetch를 건너뜀
-  # 필요한 spec만 allow_remote_fetch_in_test로 활성화.
   @allow_remote_fetch_in_test = false
 
   class << self
@@ -67,12 +64,8 @@ class FetchInstanceThemeColorService < BaseService
 
     local_favicon_path ||= generate_blank_favicon if @metadata.favicon_url.blank?
 
-    # 새로 얻은 유효한 값일 때만 덮어씀.
-    # 부분 실패 시 기존 데이터를 절대 훼손하지 않음.
     attributes = { metadata_updated_at: Time.now.utc }
 
-    # 테마색: 기존 값 유지. 업데이트 실패 시 기본색으로 돌아가는 것 방지 처리
-    # 최초 fetch일 때만 소프트웨어 기본색으로 적용.
     if theme_color.present?
       attributes[:theme_color] = theme_color
       attributes[:theme_color_updated_at] = Time.now.utc
@@ -81,21 +74,15 @@ class FetchInstanceThemeColorService < BaseService
       attributes[:theme_color_updated_at] = Time.now.utc
     end
 
-    # 파비콘: 로컬에 다운로드한 경로만 저장(원격 URL은 CSP 위반) - 원격 주소 그대로 쓰는 경우가 종종 있었음.
-    # 실패 시 기존 값 유지.
     attributes[:favicon_url] = local_favicon_path if local_favicon_path.present?
 
-    # 소프트웨어 / 버전: 감지 실패 시 기존 값 유지.
     if software_info[:software].present?
       attributes[:software] = software_info[:software]
       attributes[:version] = software_info[:version]
     end
 
-    # 도메인 자체가 반환되면 "찾지 못함"을 의미
-    # 실제 이름을 도메인으로 덮어쓰지 않음.
     attributes[:instance_name] = instance_name if instance_name.present? && instance_name != @domain
 
-    # nodeinfo가 도달 가능했을 때만 갱신, 아니면 일시적 실패가 known-true 플래그를 초기화함.
     if nodeinfo.present?
       wire_features = extract_nodeinfo_features
       attributes[:supports_avatar_decorations] = wire_features.include?('avatarDecorations')
@@ -106,7 +93,6 @@ class FetchInstanceThemeColorService < BaseService
 
     @metadata
   rescue *NETWORK_ERRORS
-    # 완전 실패: 기존 데이터는 유지하고 다음 갱신만 스로틀.
     @metadata.update(metadata_updated_at: Time.now.utc)
 
     nil
@@ -118,7 +104,6 @@ class FetchInstanceThemeColorService < BaseService
     Rails.env.test? && !self.class.allow_remote_fetch_in_test
   end
 
-  # kmyblue 포크에서 차용한 기능. 전달 실패 서버는 탐색 안 함.
   def domain_unavailable?
     unavailable_domains_map = Rails.cache.fetch('unavailable_domains') { UnavailableDomain.pluck(:domain).index_with(true) }
     unavailable_domains_map[@domain].present?
@@ -129,7 +114,6 @@ class FetchInstanceThemeColorService < BaseService
     @metadata
   end
 
-  # 테스트 전용 경로: HTTP 없이 기본값만 기록하고 다음 갱신을 스로틀.
   def skip_remote_fetch!
     attributes = { metadata_updated_at: Time.now.utc }
 
@@ -324,7 +308,6 @@ class FetchInstanceThemeColorService < BaseService
     features = nodeinfo.dig('metadata', 'features')
     return features if features.is_a?(Array)
 
-    # Also check the boolean shorthand we emit ourselves
     nodeinfo.dig('metadata', 'avatarDecorations') ? ['avatarDecorations'] : []
   rescue
     []
@@ -449,7 +432,6 @@ class FetchInstanceThemeColorService < BaseService
   end
 
   def fetch_instance_name_from_api
-    # Mastodon API v1
     api_url = "https://#{@domain}/api/v1/instance"
 
     request = Request.new(:get, api_url)
@@ -464,7 +446,6 @@ class FetchInstanceThemeColorService < BaseService
       end
     end
 
-    # Mastodon API v2
     api_v2_url = "https://#{@domain}/api/v2/instance"
 
     request_v2 = Request.new(:get, api_v2_url)

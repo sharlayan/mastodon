@@ -121,7 +121,6 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
             // @ts-expect-error
             const notificationJSON = JSON.parse(data.payload);
             dispatch(updateNotifications(notificationJSON, messages, locale));
-            // TODO: remove this once the groups feature replaces the previous one
             dispatch(processNewNotificationForGroups(notificationJSON));
             break;
           }

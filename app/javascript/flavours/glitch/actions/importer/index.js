@@ -102,7 +102,6 @@ export function importFetchedStatuses(statuses, options = {}) {
         pushUnique(polls, createPollFromServerJSON(status.poll, getState().polls[status.poll.id]));
       }
 
-      // need error check
       if (status.reactions && Array.isArray(status.reactions)) {
         status.reactions
           .flatMap(reaction => reaction.users || [])

@@ -50,9 +50,7 @@ const MembersLink: React.FC<{
         setAvatarAccounts(data.slice(0, 3));
         return '';
       })
-      .catch(() => {
-        // Nothing
-      });
+      .catch(() => undefined);
   }, [id]);
 
   return (

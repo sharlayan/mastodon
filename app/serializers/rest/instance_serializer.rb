@@ -150,7 +150,6 @@ class REST::InstanceSerializer < ActiveModel::Serializer
     }
   end
 
-  # for third party apps
   def fedibird_capabilities
     capabilities = [
       :emoji_reaction,

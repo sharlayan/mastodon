@@ -4,10 +4,6 @@ import { useRouteMatch, useLocation } from 'react-router-dom';
 
 const PUBLIC_TIMELINE_PATHS = ['/public', '/public/local'];
 
-// Public/local timeline links must stay mutually exclusive: react-router's
-// default prefix matching keeps `/public` active while on `/public/local`, so
-// Sharlayan compares the exact pathname instead. `match` drives the active icon
-// and `isActive` (when defined) overrides NavLink's own matching.
 export function useSharlayanColumnLinkActive(
   to: string | { pathname?: string } | undefined,
 ): { match: unknown; isActive?: () => boolean } {

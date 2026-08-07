@@ -13,8 +13,6 @@ interface Flavour {
   pack_directory: string;
 }
 
-// Skins that are always built, as the flavour selection UI and the
-// `system` skin depend on them being available.
 const MANDATORY_SKINS: readonly string[] = [
   'system',
   'default',
@@ -59,8 +57,6 @@ export function GlitchThemes(): Plugin {
 
       jsRoot = userConfig.root;
 
-      // Sharlayan: the same variables are read by `Themes` on the Rails side,
-      // so they have to be resolved from the dotenv files as well.
       const env = {
         ...loadEnv(configEnv.mode, userConfig.envDir, ''),
         ...process.env,
@@ -77,7 +73,6 @@ export function GlitchThemes(): Plugin {
       for (const flavourFile of glitchFlavourFiles) {
         const flavourName = path.basename(path.dirname(flavourFile));
 
-        // Sharlayan: skip every other flavour to save compile time
         if (glitchOnly && flavourName !== 'glitch') {
           continue;
         }
@@ -103,7 +98,6 @@ export function GlitchThemes(): Plugin {
         for (const entrypoint of skinFiles) {
           const skinName = path.basename(entrypoint, path.extname(entrypoint));
 
-          // Sharlayan: skip skins excluded from the build
           if (disabledSkins.includes(skinName)) {
             continue;
           }

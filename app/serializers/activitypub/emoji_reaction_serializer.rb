@@ -35,8 +35,6 @@ class ActivityPub::EmojiReactionSerializer < ActivityPub::Serializer
 
   alias reaction content
 
-  # Akkoma (and possibly others) expect `tag` to be an array, so we can't just
-  # use the has_one shorthand because we need to wrap it into an array manually
   def custom_emoji
     [ActivityPub::EmojiSerializer.new(object.custom_emoji).serializable_hash]
   end

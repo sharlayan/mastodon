@@ -71,7 +71,6 @@ describe('Sharlayan status content helpers', () => {
     });
 
     expect(element.props.className).toContain('status__content__text');
-    // long text (> MFM_FOLD_LENGTH_THRESHOLD) folds into a <details>
     expect(element.props.children.type).toBe('details');
   });
 

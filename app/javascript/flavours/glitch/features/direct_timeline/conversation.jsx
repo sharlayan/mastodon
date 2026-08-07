@@ -109,8 +109,6 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
     headerTitle = <FormattedMessage {...messages.titleMore} values={{ name1: nameNode(recipientAccounts[0]), name2: nameNode(recipientAccounts[1]), count: recipientAccounts.length - 2 }} />;
   }
 
-  // Timelines are stored newest-first; render chronologically (oldest → newest)
-  // for a chat-like layout with the latest message at the bottom.
   const orderedIds = useMemo(() => statusIds.reverse(), [statusIds]);
   const oldestId = statusIds.last();
   const latestId = statusIds.first();
@@ -160,8 +158,6 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   }, [dispatch, conversationId]);
 
   useEffect(() => {
-    // The body-height fix is only needed for the single-column (route) view;
-    // pinned deck columns are already height-bounded by the columns layout.
     if (multiColumn) {
       return undefined;
     }
@@ -173,8 +169,6 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
     };
   }, [multiColumn]);
 
-  // Re-arm the initial pin-to-bottom for each thread (same route reuses the
-  // component instance across conversation switches).
   const didInitialScrollRef = useRef(false);
 
   useEffect(() => {

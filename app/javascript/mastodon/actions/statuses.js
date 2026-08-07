@@ -209,9 +209,6 @@ export function deleteStatusFail(id, error) {
 export const updateStatus = (status, { bogusQuotePolicy }) => dispatch =>
   dispatch(importFetchedStatus(status, { bogusQuotePolicy }));
 
-// Reaction-only update: refresh the status in place *only* if it is already
-// loaded (i.e. on screen). Never insert it into a timeline, so that follower-only
-// statuses are not re-injected into home timelines when they get reactions.
 export const updateStatusReaction = status => (dispatch, getState) => {
   if (!getState().getIn(['statuses', status.id])) {
     return;

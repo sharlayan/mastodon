@@ -43,7 +43,7 @@ class RedownloadAvatarDecorationWorker
 
     decoration.repair_image!
   rescue ActiveRecord::RecordNotFound
-    # Do nothing
+    nil
   end
 
   private

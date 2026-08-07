@@ -92,7 +92,6 @@ module Mastodon
       Rails.configuration.x.mastodon
     end
 
-    # custom area
     def sharlayan_local_version
       '2026.08.01'
     end

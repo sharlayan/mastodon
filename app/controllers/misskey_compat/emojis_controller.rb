@@ -30,7 +30,6 @@ module MisskeyCompat
 
     private
 
-    # `@.` is how Misskey spells "this server" in a reaction/emoji name.
     def local_host?(host)
       host.blank? || host == '.'
     end

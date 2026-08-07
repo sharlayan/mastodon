@@ -1,5 +1,3 @@
-// See app/serializers/rest/board_announcement_serializer.rb
-
 import type { ApiCustomEmojiJSON } from './custom_emoji';
 
 export interface ApiBoardAnnouncementAttachmentJSON {

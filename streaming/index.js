@@ -110,7 +110,6 @@ const encodedPayloads = new WeakMap();
  * @returns {string}
  */
 const encodePayload = (payload) => {
-  // TODO: Replace "string"-based delete payloads with object payloads:
   if (typeof payload !== 'object' || payload === null) {
     return payload;
   }

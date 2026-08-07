@@ -86,10 +86,6 @@
   position: relative;
 }
 
-// ===== MFM Animated elements =====
-// Animations are paused by default and play on hover over .mfm-container
-// Speed/delay are controlled via CSS custom properties set by the renderer.
-
 .mfm-tada {
   display: inline-block;
   animation-name: mfm-tada;
@@ -198,7 +194,6 @@
   animation-play-state: paused;
 }
 
-// Hover: resume all animated children when hovering over the status wrapper
 .status__wrapper:hover .mfm-tada,
 .status__wrapper:hover .mfm-jelly,
 .status__wrapper:hover .mfm-twitch,
@@ -221,8 +216,6 @@
 .detailed-status:hover .mfm-rainbow {
   animation-play-state: running;
 }
-
-// ===== @keyframes =====
 
 @keyframes mfm-tada {
   0% {
@@ -555,8 +548,6 @@
   }
 }
 
-// === Reduced motion: disable all animations unless user explicitly disabled reduce-motion ===
-// The MFM preview modal always plays animations regardless of this preference.
 html:not(.no-reduce-motion) .mfm-container:not(.mfm-preview-modal *) {
   .mfm-tada,
   .mfm-jelly,
@@ -577,7 +568,6 @@ html:not(.no-reduce-motion) .mfm-sparkle-particle:not(.mfm-preview-modal *) {
   display: none;
 }
 
-// MFM preview modal: animations always run (no hover required, ignores reduce-motion)
 .mfm-preview-modal .mfm-container {
   .mfm-tada,
   .mfm-jelly,

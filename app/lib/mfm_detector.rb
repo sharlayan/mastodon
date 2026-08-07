@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module MfmDetector
-  # MFM function syntax: $[functionName.arg1=value1,arg2 content]
   MFM_PATTERN = /\$\[(\w+)(?:[.\s])/
 
   ALLOWED_TAGS = %w(

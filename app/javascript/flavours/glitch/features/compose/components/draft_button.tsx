@@ -113,8 +113,6 @@ export const DraftButton: FC<DraftButtonProps> = ({
     [drafts, loadDraft],
   );
 
-  // A single saved draft has nothing to pick from, so load it right away
-  // instead of showing a one-item list.
   const handleLoad = useCallback(() => {
     setIsLoading(true);
 

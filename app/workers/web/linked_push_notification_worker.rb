@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-# Sends push notifications to a main user's subscriptions when a linked (child)
-# account receives a notification. The payload contains only display data
-# (title/body/icon); no access token or fetchable notification_id is included,
-# so the service worker renders directly from the payload.
 class Web::LinkedPushNotificationWorker
   include Sidekiq::Worker
   include RoutingHelper

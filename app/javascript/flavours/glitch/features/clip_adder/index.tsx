@@ -107,9 +107,7 @@ export const ClipAdder: React.FC<{
           })
         : Promise.resolve(),
     ])
-      .catch(() => {
-        // Nothing
-      })
+      .catch(() => undefined)
       .finally(() => {
         if (active) setLoading(false);
       });

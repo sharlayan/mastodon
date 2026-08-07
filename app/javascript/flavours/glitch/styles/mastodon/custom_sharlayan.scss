@@ -12,7 +12,6 @@ html {
   @include meta.load-css('sharlayan/reactions');
   @include meta.load-css('sharlayan/admin');
 
-  /* instance badge */
   .instance-badge {
     display: flex;
     box-sizing: border-box;
@@ -88,7 +87,6 @@ html {
     margin-inline-start: 0;
   }
 
-  /* default */
   [class^='notification'] .status .reactions-bar {
     margin-inline-start: var(--status-gutter-width, 0);
     width: calc(100% - var(--status-gutter-width, 0px));

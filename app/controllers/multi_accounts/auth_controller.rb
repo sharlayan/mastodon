@@ -103,7 +103,6 @@ class MultiAccounts::AuthController < ApplicationController
 
     source_account = source_user.account
 
-    # If the OAuth flow was initiated while a sub-account was active, resolve the root account
     parent_stack = Array(@state_data[:switch_parent_stack])
     root_parent_id = parent_stack.first
     if root_parent_id.present?

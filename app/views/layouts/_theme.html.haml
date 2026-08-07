@@ -11,8 +11,6 @@
     - theme[:preload]&.each do |link|
       %link{ href: asset_pack_path("#{link}.js"), crossorigin: 'anonymous', rel: 'preload', as: 'script' }/
 
--# import font
 = stylesheet_link_tag '/static/fonts/ffxiv_lodestone/ffxiv_lodestone.css?v=1.4', skip_pipeline: true, media: 'all', id: 'extended-fonts-ffxiv'
 
--# glitch / vanilla shared extra css
 = stylesheet_link_tag '/static/styles/extrafix.css?v=1.4', skip_pipeline: true, media: 'all', id: 'extrafix'

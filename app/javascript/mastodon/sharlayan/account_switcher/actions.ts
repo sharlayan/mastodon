@@ -27,7 +27,6 @@ export const fetchAccountSwitches = createDataLoadingThunk(
     if (data.parent) accounts.push(data.parent);
     dispatch(importFetchedAccounts(accounts));
 
-    // Sync push_forward from server to localStorage so all devices stay consistent
     const rootId = data.root_account_id;
     if (rootId) {
       const key = `linked_notif_prefs_${rootId}`;

@@ -1,5 +1,3 @@
-// See app/serializers/rest/page_serializer.rb
-
 import type { ApiAccountJSON } from './accounts';
 import type { ApiMediaAttachmentJSON } from './media_attachments';
 

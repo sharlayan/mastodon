@@ -18,7 +18,6 @@ class Api::V1::AccountSwitchesController < Api::BaseController
 
     children_owner = resolve_children_owner
 
-    # Exclude current account and self-referential (main→main) from children list
     exclude_ids = [current_account.id, children_owner.id].uniq
     children = children_owner.account_switch_authorizations
       .where.not(target_account_id: exclude_ids)
@@ -77,7 +76,6 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   def create_push_forward
     auth = find_linked_authorization
 
-    # Auto-create self-referential auth for main account's own push forwarding
     if auth.nil?
       owner = resolve_children_owner
       if params[:linked_account_id].to_s == owner.id.to_s
