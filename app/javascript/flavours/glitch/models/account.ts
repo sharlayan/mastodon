@@ -8,6 +8,7 @@ import type {
   ApiAccountRoleJSON,
   ApiAccountJSON,
   ApiAvatarDecorationJSON,
+  ApiStreamingReactionAccountJSON,
 } from 'flavours/glitch/api_types/accounts';
 import { unescapeHTML } from 'flavours/glitch/utils/html';
 
@@ -180,5 +181,23 @@ export function createAccountFromServerJSON(serverJSON: ApiAccountJSON) {
       accountJSON.url?.startsWith('https://')
         ? accountJSON.url
         : accountJSON.uri,
+  });
+}
+
+export function createAccountFromStreamingReactionJSON(
+  serverJSON: ApiStreamingReactionAccountJSON,
+) {
+  const displayName =
+    serverJSON.display_name.trim().length === 0
+      ? serverJSON.username
+      : serverJSON.display_name;
+
+  return AccountFactory({
+    ...serverJSON,
+    avatar_decorations: serverJSON.avatar_decorations ?? [],
+    emojis: ImmutableList(
+      serverJSON.emojis.map((emoji) => CustomEmojiFactory(emoji)),
+    ),
+    display_name_html: escapeTextContentForBrowser(displayName),
   });
 }

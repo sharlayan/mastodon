@@ -20,8 +20,7 @@ describe('Sharlayan status reaction selectors', () => {
     expect(base.get(0).map(acc => acc.get('username'))).toEqual(ImmutableList(['alice']));
 
     const reblog = selectReblog(state, { id: '1' });
-    // missing account is filtered out
-    expect(reblog.get(0).map(acc => acc.get('username'))).toEqual(ImmutableList(['bob']));
+    expect(reblog.get(0).map(acc => acc.get('id'))).toEqual(ImmutableList(['b', 'missing']));
   });
 
   it('returns null when there are no reactions or no reblog', () => {
@@ -39,6 +38,14 @@ describe('Sharlayan status reaction selectors', () => {
     const changedCompose = state.setIn(['compose', 'text'], 'a');
 
     expect(selectBase(changedCompose, { id: '1' })).toBe(selectBase(state, { id: '1' }));
+  });
+
+  it('keeps an embedded streaming reaction user when the account is not in state', () => {
+    const state = stateWith({
+      '1': { reactions: [{ name: '👍', users: [{ id: 'missing', username: 'alice' }] }] },
+    }, {});
+
+    expect(selectBase(state, { id: '1' }).getIn([0, 0, 'username'])).toBe('alice');
   });
 
   it('sets resolved reaction users onto the base status map', () => {

@@ -1,7 +1,7 @@
-import escapeTextContentForBrowser from 'escape-html';
 import { Map as ImmutableMap, fromJS } from 'immutable';
 
 import { timelineDelete } from 'flavours/glitch/actions/timelines_typed';
+import { createAccountFromStreamingReactionJSON } from 'flavours/glitch/models/account';
 
 import { STATUS_IMPORT, STATUS_REACTIONS_IMPORT, STATUSES_IMPORT } from '../actions/importer';
 import { normalizeStatusTranslation } from '../actions/importer/normalizer';
@@ -43,9 +43,7 @@ const importStatuses = (state, statuses) =>
   state.withMutations(mutable => statuses.forEach(status => importStatus(mutable, status)));
 
 const normalizeReactionUser = user => {
-  const displayName = (user.get('display_name') || '').trim();
-
-  return user.set('display_name_html', escapeTextContentForBrowser(displayName.length === 0 ? (user.get('username') ?? '') : displayName));
+  return createAccountFromStreamingReactionJSON(user.toJS());
 };
 
 const importStatusReactions = (state, status) => {

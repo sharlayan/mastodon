@@ -18,7 +18,7 @@ const getReactionUsers = (state, id) => {
     const users = reaction.get('users');
     if (!users) return null;
     return users
-      .map(user => user && accounts.get(user.get('id')))
+      .map(user => user && (accounts.get(user.get('id')) || user))
       .filter(account => !!account);
   });
 
