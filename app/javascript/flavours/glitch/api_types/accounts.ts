@@ -94,6 +94,7 @@ export interface BaseApiAccountJSON {
   online_status: ApiOnlineStatus;
   pages_view?: 'list' | 'blog';
   pages_blog_list_position?: 'left' | 'right';
+  invalid_handle?: boolean;
 }
 
 export interface ApiServerFeaturesJSON {

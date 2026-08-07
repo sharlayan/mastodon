@@ -98,6 +98,22 @@ describe('sharlayanReactionMuteItems', () => {
       ),
     ).toEqual(['account.menu.mute_decorations', 'account.menu.mute_reactions']);
   });
+
+  it('drops the domain reaction mute for accounts with invalid handles', () => {
+    expect(
+      texts(
+        headerMenu.sharlayanReactionMuteItems(
+          context({
+            account: {
+              ...context().account,
+              invalid_handle: true,
+            },
+            remoteDomain: 'handle.invalid',
+          }),
+        ),
+      ),
+    ).toEqual(['account.menu.mute_decorations', 'account.menu.mute_reactions']);
+  });
 });
 
 describe('sharlayan admin decoration items', () => {

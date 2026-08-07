@@ -153,7 +153,7 @@ export function sharlayanReactionMuteItems({
     },
   });
 
-  if (remoteDomain) {
+  if (remoteDomain && !account.invalid_handle) {
     items.push({
       text: intl.formatMessage(messages.muteDomainReactions, {
         domain: remoteDomain,

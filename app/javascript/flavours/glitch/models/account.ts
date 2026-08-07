@@ -134,6 +134,7 @@ export const accountDefaultValues: AccountShape = {
   online_status: 'unknown',
   pages_view: 'list',
   pages_blog_list_position: 'left',
+  invalid_handle: false,
   // This comes from `ApiMutedAccountJSON`, but we should eventually
   // store that in a different object.
   mute_expires_at: null,
