@@ -33,7 +33,6 @@ RSpec.describe 'Misskey-compat ID translation' do
       expect(note['userId']).to match(/\A[0-9a-z]{16}\z/)
       expect(MisskeyCompat::MiId.decode(note['id'])).to eq(status.id.to_s)
 
-      # Feed the encoded id straight back as a noteId param.
       post '/api/notes/show', params: { i: token, noteId: note['id'] }, as: :json
       expect(response).to have_http_status(200)
       expect(MisskeyCompat::MiId.decode(response.parsed_body['id'])).to eq(status.id.to_s)

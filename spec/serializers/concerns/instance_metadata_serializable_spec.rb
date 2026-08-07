@@ -4,7 +4,6 @@ require 'rails_helper'
 require 'request_store'
 
 RSpec.describe InstanceMetadataSerializable do
-  # Create a test serializer that includes the concern
   let(:test_serializer_class) do
     Class.new(ActiveModel::Serializer) do
       include InstanceMetadataSerializable

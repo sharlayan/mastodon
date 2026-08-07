@@ -3,7 +3,6 @@
 class AddDriveAccessKeyToMediaAttachments < ActiveRecord::Migration[8.1]
   disable_ddl_transaction!
 
-  # Dummy class, to make migration possible across version changes
   class MediaAttachment < ApplicationRecord; end
 
   def up

@@ -20,10 +20,8 @@ class MoveEmojiReactionSettings < ActiveRecord::Migration[6.1]
   end
 
   def up
-    # check settings
     return unless ActiveRecord::Base.connection.table_exists?('settings')
 
-    # check thing_type
     return unless ActiveRecord::Base.connection.column_exists?('settings', 'thing_type')
     return unless ActiveRecord::Base.connection.column_exists?('settings', 'thing_id')
 
@@ -53,11 +51,8 @@ class MoveEmojiReactionSettings < ActiveRecord::Migration[6.1]
       end
     end
   rescue ActiveRecord::StatementInvalid => e
-    # skipping if not exists legacy settings
     Rails.logger.info "Skipping MoveEmojiReactionSettings migration: #{e.message}"
   end
 
-  def down
-    # skip
-  end
+  def down; end
 end

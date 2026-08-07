@@ -67,7 +67,6 @@ RSpec.describe MisskeyCompat::MiId do
     it 'maps a date+1ms increment (Aria Id.next) to +65536 in snowflake space' do
       id = 116_880_102_873_070_420
       encoded = described_class.encode(id)
-      # Simulate Aria's aidx toString(next()): increment the 8-char time part by 1
       next_time = (encoded[0, 8].to_i(36) + 1).to_s(36).rjust(8, '0')
       next_id = described_class.decode("#{next_time}#{encoded[8, 8]}")
       expect(next_id.to_i - id).to eq(65_536)

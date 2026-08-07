@@ -3,7 +3,6 @@
 class AddMfmToAccounts < ActiveRecord::Migration[7.2]
   disable_ddl_transaction!
 
-  # Dummy class, to make migration possible across version changes
   class Account < ApplicationRecord; end
 
   def up

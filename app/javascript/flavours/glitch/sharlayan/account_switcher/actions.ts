@@ -43,9 +43,7 @@ export const fetchAccountSwitches = createDataLoadingThunk(
           };
         }
         localStorage.setItem(key, JSON.stringify(prefs));
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     }
 
     return data;

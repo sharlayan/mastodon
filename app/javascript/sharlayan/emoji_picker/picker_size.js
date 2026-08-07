@@ -50,9 +50,7 @@ export class EmojiPickerSizeObserver {
     this.timeout = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ width, height }));
-      } catch {
-        // ignore save fail
-      }
+      } catch {}
     }, SAVE_DEBOUNCE_MS);
   }
 

@@ -7,7 +7,5 @@ class FixMissingShareKeyOnGeneratedAnnualReports < ActiveRecord::Migration[8.1]
     add_column :collections, :item_count, :integer, default: 0, null: false unless column_exists?(:collections, :item_count)
   end
 
-  def down
-    # no-op: columns are part of the canonical schema
-  end
+  def down; end
 end

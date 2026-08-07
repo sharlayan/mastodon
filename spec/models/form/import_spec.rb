@@ -124,10 +124,8 @@ RSpec.describe Form::Import do
     it_behaves_like 'valid import', 'blocking', 'following_accounts.csv'
     it_behaves_like 'valid import', 'muting', 'following_accounts.csv'
 
-    # Importing the headerless acct,withReplies format emitted by Misskey
     it_behaves_like 'valid import', 'following', 'misskey_following.csv'
 
-    # Importing the headerless formats emitted by Misskey
     it_behaves_like 'valid import', 'muting', 'misskey_mute.csv'
     it_behaves_like 'valid import', 'blocking', 'misskey_blocking.csv'
     it_behaves_like 'valid import', 'lists', 'misskey_user_lists.csv'

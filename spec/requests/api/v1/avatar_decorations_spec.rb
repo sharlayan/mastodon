@@ -8,8 +8,6 @@ RSpec.describe 'Avatar Decorations' do
   before do
     Setting.avatar_decorations_enabled = true
 
-    # Remote decorations are cached locally: assigning image_remote_url downloads
-    # the image, so stub those fetches with a valid PNG.
     stub_request(:get, %r{\Ahttps://(example\.com|remote\.example)/})
       .to_return(status: 200, body: Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').read, headers: { 'Content-Type' => 'image/png' })
   end

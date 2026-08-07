@@ -30,7 +30,6 @@ export const LinkedNotificationsPoller: React.FC = () => {
       const counts = await apiGetLinkedUnreadCounts();
       dispatch(setLinkedUnreadCounts(counts));
     } catch {
-      // Silently swallow polling errors
     } finally {
       pollingRef.current = false;
     }

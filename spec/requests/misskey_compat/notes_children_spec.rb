@@ -9,26 +9,6 @@ RSpec.describe 'Misskey-compat notes/children endpoint' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
-  # 게시글의 댓글이 평탄화되는 문제 재현 스펙
-  # 원글
-  # ├댓글 1
-  # │└댓글 3
-  # │ └댓글 4
-  # └댓글 2
-  #
-  # 상태를 재현
-  # Aria 에서 다음과 같이 보였음
-  # 원글
-  # ├댓글 1
-  # │└댓글 3
-  # │ └댓글 4
-  # ├댓글 3
-  # │└댓글 4
-  # ├댓글 4
-  # └댓글 2
-  #
-  # 왜 저에게 이런 시련을
-
   it 'returns only direct replies when a remote note has multiple reply branches' do
     remote_account = Fabricate(:account, domain: 'remote.example')
     root = Fabricate(:status, account: remote_account, text: 'post 1')

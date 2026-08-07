@@ -8,11 +8,8 @@ RSpec.describe FetchInstanceThemeColorService do
   let(:domain) { 'remote.example.com' }
 
   before do
-    # This spec exercises the real remote fetch, so opt out of the test-env
-    # network guard that other specs rely on.
     described_class.allow_remote_fetch_in_test = true
 
-    # Default stubs for all external requests
     stub_request(:get, "https://#{domain}").to_return(status: 200, body: default_html, headers: { 'Content-Type' => 'text/html' })
     stub_request(:get, "https://#{domain}/nodeinfo/2.1").to_return(status: 404)
     stub_request(:post, "https://#{domain}/api/meta").to_return(status: 404)
@@ -23,7 +20,6 @@ RSpec.describe FetchInstanceThemeColorService do
     stub_request(:get, "https://#{domain}/favicon.ico").to_return(status: 200, body: 'fake-ico-data')
     stub_request(:get, "https://#{domain}/custom-favicon.png").to_return(status: 200, body: 'png-data')
 
-    # Ensure favicon storage directory exists
     storage_path = Rails.public_path.join('system', 'instance_favicons')
     FileUtils.mkdir_p(storage_path)
   end
@@ -31,7 +27,6 @@ RSpec.describe FetchInstanceThemeColorService do
   after do
     described_class.allow_remote_fetch_in_test = false
 
-    # Clean up favicon files
     storage_path = Rails.public_path.join('system', 'instance_favicons')
     FileUtils.rm_rf(storage_path)
   end
@@ -165,8 +160,6 @@ RSpec.describe FetchInstanceThemeColorService do
   end
 
   describe 'favicon detection' do
-    # The service stores favicons under a SHA1 digest of the domain and derives
-    # the file extension from the response Content-Type.
     let(:favicon_dir) { '/system/instance_favicons' }
     let(:domain_digest) { Digest::SHA1.hexdigest(domain) }
 

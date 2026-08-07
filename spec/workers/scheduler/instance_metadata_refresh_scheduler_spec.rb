@@ -48,17 +48,14 @@ RSpec.describe Scheduler::InstanceMetadataRefreshScheduler do
       end
 
       it 'skips active domains that already have metadata in the active domains phase' do
-        # Create metadata first so account callback finds it exists
         Fabricate(:instance_metadata, domain: 'has-metadata.example.com', software: 'mastodon', instance_name: 'Test', theme_color_updated_at: 1.hour.ago, metadata_updated_at: 1.hour.ago)
         account = Fabricate(:account, domain: 'has-metadata.example.com')
         Fabricate(:account_stat, account: account, last_status_at: 5.days.ago)
 
-        # Reset mock after account creation callback
         allow(InstanceMetadataUpdateWorker).to receive(:perform_async)
 
         scheduler.perform
 
-        # Should not be called because metadata exists with fresh data
         expect(InstanceMetadataUpdateWorker).to_not have_received(:perform_async).with('has-metadata.example.com')
       end
     end
@@ -66,10 +63,5 @@ RSpec.describe Scheduler::InstanceMetadataRefreshScheduler do
     it 'runs without error when no records exist' do
       expect { scheduler.perform }.to_not raise_error
     end
-
-    # NOTE: Account model has after_commit callback that calls
-    # InstanceMetadataUpdateWorker.perform_async when domain is present.
-    # Tests above account for this by using at_least(:once) or by
-    # clearing mock counts after account creation.
   end
 end

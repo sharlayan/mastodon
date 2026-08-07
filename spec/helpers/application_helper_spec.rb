@@ -304,7 +304,6 @@ RSpec.describe ApplicationHelper do
       helper.extend anonymous_visitor_helpers
     end
 
-    # Stands in for the Devise/controller helpers a logged-out visitor would get
     def anonymous_visitor_helpers
       Module.new do
         def current_user; end

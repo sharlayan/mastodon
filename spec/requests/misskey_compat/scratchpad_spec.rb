@@ -58,7 +58,6 @@ RSpec.describe 'Misskey-compat scratchpad' do
   describe 'POST /scratchpad' do
     before do
       sign_in user
-      # Trigger creation of a SessionActivation with an access token
       get about_path
     end
 

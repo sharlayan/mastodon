@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rename from 20250204193201_create_custom_emoji_mutes.rb
-
 class CreateCustomEmojiMutes < ActiveRecord::Migration[8.1]
   def change
     create_table :custom_emoji_mutes do |t|
