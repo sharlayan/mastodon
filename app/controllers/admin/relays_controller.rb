@@ -2,6 +2,9 @@
 
 module Admin
   class RelaysController < BaseController
+    include RoleplayModeHelper
+
+    before_action :require_relays_available!
     before_action :set_relay, except: [:index, :new, :create]
     before_action :warn_signatures_not_enabled!, only: [:new, :create, :enable]
 
@@ -65,6 +68,10 @@ module Admin
     end
 
     private
+
+    def require_relays_available!
+      not_found if roleplay_mode?
+    end
 
     def set_relay
       @relay = Relay.find(params[:id])
