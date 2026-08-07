@@ -3,12 +3,17 @@
 class TransferDriveFileToMediaAttachmentsService < BaseService
   class NotAttachedError < StandardError; end
   class UnsupportedFileError < StandardError; end
+  class PageAttachedError < StandardError; end
 
   def call(drive_file)
     raise UnsupportedFileError unless MediaAttachment.supported_mime_types.include?(drive_file.file_content_type)
 
     drive_file.with_lock do
-      attachments = drive_file.media_attachments.attached.order(:id).lock.to_a
+      pointers = drive_file.media_attachments.order(:id).lock.to_a
+      raise PageAttachedError if MediaAttachment.where(id: pointers).referenced_by_page.exists?
+
+      attached_ids = MediaAttachment.attached.where(id: pointers).ids.to_set
+      attachments = pointers.select { |pointer| attached_ids.include?(pointer.id) }
       raise NotAttachedError if attachments.empty?
 
       attachments.each do |attachment|

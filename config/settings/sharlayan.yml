@@ -21,6 +21,7 @@ defaults:
   clips_enabled: false
   auto_quote_from_url: false
   pages_enabled: false
+  pages_drive_only: false
   avatar_decorations_enabled: false
   avatar_decorations_federation_enabled: false
   avatar_decorations_local_only_view: false

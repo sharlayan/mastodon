@@ -66,6 +66,31 @@ RSpec.describe 'Pages' do
         expect(response).to have_http_status(422)
       end
     end
+
+    context 'when pages are limited to Drive files' do
+      before { Setting.pages_drive_only = true }
+
+      let(:media_attachment) { Fabricate(:media_attachment, account: user.account) }
+
+      it 'rejects a regular media attachment' do
+        expect { subject }.to_not change(Page, :count)
+        expect(response).to have_http_status(422)
+      end
+
+      it 'accepts a Drive pointer' do
+        drive_file = user.account.drive_files.create!(file: attachment_fixture('attachment.jpg'))
+        pointer = drive_file.build_pointer(user.account).tap(&:save!)
+
+        post '/api/v1/pages', params: {
+          title: 'Drive page',
+          name: 'drive-page',
+          content: [{ id: 'image', type: 'image', fileId: pointer.id.to_s }],
+          eye_catching_media_attachment_id: pointer.id,
+        }, headers: headers, as: :json
+
+        expect(response).to have_http_status(200)
+      end
+    end
   end
 
   describe 'draft visibility' do

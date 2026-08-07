@@ -44,6 +44,15 @@ RSpec.describe 'Page series' do
     expect(response).to have_http_status(422)
   end
 
+  it 'rejects a non-Drive cover when pages are limited to Drive files' do
+    Setting.pages_drive_only = true
+    cover = Fabricate(:media_attachment, account: user.account)
+
+    post '/api/v1/page_series', params: { title: 'Guides', cover_media_attachment_id: cover.id }, headers: headers
+
+    expect(response).to have_http_status(422)
+  end
+
   it 'lists public Booklets from other accounts' do
     other_account = Fabricate(:account)
     booklet = Fabricate(:page_series, account: other_account, title: 'Public guide')

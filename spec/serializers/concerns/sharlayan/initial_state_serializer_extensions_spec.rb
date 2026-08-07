@@ -44,6 +44,7 @@ RSpec.describe InitialStateSerializer do
       circles_enabled: Setting.circles_enabled,
       clips_enabled: Setting.clips_enabled,
       pages_enabled: Setting.pages_enabled,
+      pages_drive_only: Setting.pages_drive_only,
       drive_enabled: Setting.drive_enabled,
       roleplay_mode: RoleplayModeHelper.roleplay_mode?
     )

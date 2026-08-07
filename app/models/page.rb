@@ -92,6 +92,7 @@ class Page < ApplicationRecord
   validates :access_password, length: { in: Devise.password_length }, allow_nil: true
   validate :validate_content
   validate :validate_attached_media
+  validate :validate_drive_only_media
   validate :validate_access_password
   validate :validate_eye_catching_media_attachment
   validate :validate_page_series
@@ -377,8 +378,16 @@ class Page < ApplicationRecord
     ids = attached_media_ids
     return if ids.empty? || account_id.blank?
 
-    valid_ids = ids.all? { |id| id.to_s.match?(/\A\d+\z/) } && account.media_attachments.where(id: ids).count == ids.size
+    valid_ids = ids.all? { |id| id.to_s.match?(/\A\d+\z/) } && account.media_attachments.where(id: ids).lock.to_a.size == ids.size
     errors.add(:content, :invalid) unless valid_ids
+  end
+
+  def validate_drive_only_media
+    return unless Setting.pages_drive_only
+    return if account_id.blank?
+
+    ids = attached_media_ids + [eye_catching_media_attachment_id].compact
+    errors.add(:content, :invalid) if account.media_attachments.where(id: ids, drive_file_id: nil).lock.exists?
   end
 
   def validate_account_pages_limit
@@ -396,7 +405,8 @@ class Page < ApplicationRecord
   end
 
   def validate_eye_catching_media_attachment
-    return if eye_catching_media_attachment.nil? || eye_catching_media_attachment.account_id == account_id
+    return if eye_catching_media_attachment.nil?
+    return if account_id.present? && account.media_attachments.where(id: eye_catching_media_attachment_id).lock.exists?
 
     errors.add(:eye_catching_media_attachment, :invalid)
   end

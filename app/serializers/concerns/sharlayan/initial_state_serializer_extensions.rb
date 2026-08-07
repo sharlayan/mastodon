@@ -25,6 +25,7 @@ module Sharlayan::InitialStateSerializerExtensions
       circles_enabled: Setting.circles_enabled,
       clips_enabled: Setting.clips_enabled,
       pages_enabled: Setting.pages_enabled,
+      pages_drive_only: Setting.pages_drive_only,
       antenna_enabled: Setting.antenna_enabled,
       drive_enabled: Setting.drive_enabled,
       board_announcements_enabled: Setting.board_announcements_enabled,

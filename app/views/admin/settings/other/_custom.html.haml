@@ -35,6 +35,14 @@
             sharlayan_only: true
 
 .fields-group
+  = f.input :pages_drive_only,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.pages.drive_only'),
+            hint: t('admin.settings.pages.drive_only_hint'),
+            sharlayan_only: true
+
+.fields-group
   = f.input :antenna_enabled,
             as: :boolean,
             wrapper: :with_label,

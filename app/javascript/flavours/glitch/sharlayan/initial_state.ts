@@ -19,6 +19,7 @@ export interface SharlayanInitialStateMeta {
   circles_enabled: boolean;
   clips_enabled: boolean;
   pages_enabled: boolean;
+  pages_drive_only: boolean;
   antenna_enabled: boolean;
   drive_enabled: boolean;
   board_announcements_enabled: boolean;
@@ -78,6 +79,7 @@ export const readSharlayanInitialState = (
     circlesEnabled: getMeta('circles_enabled') === true,
     clipsEnabled: getMeta('clips_enabled') === true,
     pagesEnabled: getMeta('pages_enabled') === true,
+    pagesDriveOnly: getMeta('pages_drive_only') === true,
     antennaEnabled: getMeta('antenna_enabled') === true,
     driveEnabled: getMeta('drive_enabled') === true,
     boardAnnouncementsEnabled: getMeta('board_announcements_enabled') === true,

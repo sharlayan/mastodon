@@ -352,6 +352,8 @@ en:
           no online status is collected or shown to anyone, regardless of user settings.
         title: Online Status
       pages:
+        drive_only: Only allow Drive files on pages
+        drive_only_hint: Require page images and Booklet covers to come from Drive. Existing non-Drive media stays readable but must be removed or replaced before editing the page.
         enabled: Enable pages
         enabled_hint: Allow users to create block-based public pages. When disabled,
           existing pages are kept but cannot be accessed.

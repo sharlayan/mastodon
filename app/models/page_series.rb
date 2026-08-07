@@ -32,6 +32,7 @@ class PageSeries < ApplicationRecord
   validates :displayed, inclusion: { in: [true, false] }
   validate :validate_main_page
   validate :validate_cover_media_attachment
+  validate :validate_drive_only_cover
   validate :validate_account_series_limit, on: :create
 
   def entry_page(preloaded_pages: nil)
@@ -60,9 +61,16 @@ class PageSeries < ApplicationRecord
   end
 
   def validate_cover_media_attachment
-    return if cover_media_attachment.nil? || cover_media_attachment.account_id == account_id
+    return if cover_media_attachment.nil?
+    return if account_id.present? && account.media_attachments.where(id: cover_media_attachment_id).lock.exists?
 
     errors.add(:cover_media_attachment, :invalid)
+  end
+
+  def validate_drive_only_cover
+    return unless Setting.pages_drive_only && cover_media_attachment.present?
+
+    errors.add(:cover_media_attachment, :invalid) if account.media_attachments.where(id: cover_media_attachment_id, drive_file_id: nil).lock.exists?
   end
 
   def validate_account_series_limit

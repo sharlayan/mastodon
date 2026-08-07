@@ -129,6 +129,8 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
     render json: { error: 'Drive file is not attached to a post', code: 'NOT_ATTACHED' }, status: 422
   rescue TransferDriveFileToMediaAttachmentsService::UnsupportedFileError
     render json: { error: 'Drive file cannot be converted to a media attachment', code: 'INVALID_FILE_TYPE' }, status: 422
+  rescue TransferDriveFileToMediaAttachmentsService::PageAttachedError
+    render json: { error: 'Drive files used by pages cannot be converted to post attachments', code: 'PAGE_ATTACHED' }, status: 422
   end
 
   private

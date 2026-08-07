@@ -17,6 +17,7 @@ module Sharlayan::AdminSettingsExtensions
     clips_enabled
     auto_quote_from_url
     pages_enabled
+    pages_drive_only
     rate_limit_bypass_enabled
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
@@ -58,6 +59,7 @@ module Sharlayan::AdminSettingsExtensions
     clips_enabled
     auto_quote_from_url
     pages_enabled
+    pages_drive_only
     avatar_decorations_enabled
     avatar_decorations_federation_enabled
     avatar_decorations_local_only_view

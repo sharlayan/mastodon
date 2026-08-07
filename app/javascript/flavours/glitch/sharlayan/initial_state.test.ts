@@ -7,6 +7,7 @@ const meta: SharlayanInitialStateMeta = {
   circles_enabled: true,
   clips_enabled: true,
   pages_enabled: true,
+  pages_drive_only: true,
   antenna_enabled: true,
   drive_enabled: true,
   board_announcements_enabled: true,
@@ -44,6 +45,7 @@ describe('Sharlayan initial state', () => {
       {
         maxReactions: 5,
         driveEnabled: true,
+        pagesDriveOnly: true,
         antennaEnabled: true,
         showInstanceInfo: true,
         mfmFoldMode: 'all',
@@ -64,6 +66,7 @@ describe('Sharlayan initial state', () => {
     expect(readSharlayanInitialState()).toMatchObject({
       maxReactions: 1,
       driveEnabled: false,
+      pagesDriveOnly: false,
       antennaEnabled: false,
       reactionsEnabled: true,
       mfmEnabled: true,

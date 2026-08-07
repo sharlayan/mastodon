@@ -223,6 +223,7 @@ export const {
   circlesEnabled,
   clipsEnabled,
   pagesEnabled,
+  pagesDriveOnly,
   antennaEnabled,
   driveEnabled,
   boardAnnouncementsEnabled,

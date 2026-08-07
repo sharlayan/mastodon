@@ -9,7 +9,7 @@ import { apiUploadPageMedia } from 'flavours/glitch/api/pages';
 import type { ApiDriveFileJSON } from 'flavours/glitch/api_types/drive';
 import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
-import { driveEnabled } from 'flavours/glitch/initial_state';
+import { driveEnabled, pagesDriveOnly } from 'flavours/glitch/initial_state';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 const messages = defineMessages({
@@ -137,16 +137,18 @@ export const ImageUploadField: React.FC<{
         <LoadingIndicator />
       ) : (
         <div className='page-editor__image-upload__actions'>
-          <button
-            type='button'
-            className='button button-secondary'
-            onClick={handleBrowseClick}
-          >
-            <FormattedMessage
-              id='pages.upload_image'
-              defaultMessage='Upload image'
-            />
-          </button>
+          {!pagesDriveOnly && (
+            <button
+              type='button'
+              className='button button-secondary'
+              onClick={handleBrowseClick}
+            >
+              <FormattedMessage
+                id='pages.upload_image'
+                defaultMessage='Upload image'
+              />
+            </button>
+          )}
 
           {driveEnabled && (
             <button
@@ -178,6 +180,7 @@ export const ImageUploadField: React.FC<{
 
       <input
         ref={inputRef}
+        disabled={pagesDriveOnly}
         type='file'
         accept='image/*'
         style={{ display: 'none' }}
