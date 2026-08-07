@@ -11,7 +11,7 @@ import { fetchClips } from '@/flavours/glitch/actions/clips';
 import { openModal } from '@/flavours/glitch/actions/modal';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { clipsEnabled, me } from '@/flavours/glitch/initial_state';
-import { getOrderedClips } from '@/flavours/glitch/selectors/clips';
+import { getOrderedAccountClips } from '@/flavours/glitch/selectors/clips';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
 
@@ -27,9 +27,7 @@ interface ClipButtonProps {
 export const ClipButton: FC<ClipButtonProps> = ({ disabled = false }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
-  const clips = useAppSelector((state) =>
-    getOrderedClips(state).filter((clip) => clip.account_id === me),
-  );
+  const clips = useAppSelector((state) => getOrderedAccountClips(state, me));
   const selectedCount = useAppSelector(
     (state) => (state.compose.get('clip_ids') as ImmutableList<string>).size,
   );

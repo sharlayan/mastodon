@@ -20,6 +20,7 @@ import Column from 'flavours/glitch/components/column';
 import ColumnHeader from 'flavours/glitch/components/column_header';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
+import { getAvailableAntennas } from 'flavours/glitch/selectors/antennas';
 
 const messages = defineMessages({
   heading: { id: 'column.antennas', defaultMessage: 'Antennas' },
@@ -74,7 +75,7 @@ AntennaItem.propTypes = {
 const Antennas = ({ multiColumn }) => {
   const dispatch = useDispatch();
   const intl = useIntl();
-  const antennas = useSelector(state => state.get('antennas').filter(item => !!item).toList());
+  const antennas = useSelector(getAvailableAntennas);
   const [title, setTitle] = useState('');
   const [created, setCreated] = useState(null);
 

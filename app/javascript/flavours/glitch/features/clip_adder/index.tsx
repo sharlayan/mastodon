@@ -21,7 +21,7 @@ import { Toggle } from 'flavours/glitch/components/form_fields';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import { me } from 'flavours/glitch/initial_state';
 import type { Clip } from 'flavours/glitch/models/clip';
-import { getOrderedClips } from 'flavours/glitch/selectors/clips';
+import { getOrderedAccountClips } from 'flavours/glitch/selectors/clips';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 const messages = defineMessages({
@@ -92,9 +92,7 @@ export const ClipAdder: React.FC<{
   const intl = useIntl();
   const titleId = useId();
   const dispatch = useAppDispatch();
-  const clips = useAppSelector((state) =>
-    getOrderedClips(state).filter((clip) => clip.account_id === me),
-  );
+  const clips = useAppSelector((state) => getOrderedAccountClips(state, me));
   const [loading, setLoading] = useState(true);
   const [memberClipIds, setMemberClipIds] = useState<Set<string>>(new Set());
 

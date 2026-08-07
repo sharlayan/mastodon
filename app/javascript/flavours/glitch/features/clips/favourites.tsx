@@ -14,7 +14,7 @@ import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
-import { getOrderedClips } from 'flavours/glitch/selectors/clips';
+import { getOrderedFavouriteClips } from 'flavours/glitch/selectors/clips';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { ClipFavouriteButton } from './components/favourite_button';
@@ -28,9 +28,7 @@ const ClipFavourites: React.FC<{ multiColumn?: boolean }> = ({
 }) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
-  const clips = useAppSelector((state) =>
-    getOrderedClips(state).filter((clip) => clip.favourited),
-  );
+  const clips = useAppSelector(getOrderedFavouriteClips);
 
   useEffect(() => {
     void dispatch(fetchFavouriteClips());

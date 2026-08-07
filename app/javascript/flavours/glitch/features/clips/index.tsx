@@ -23,7 +23,7 @@ import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import { me } from 'flavours/glitch/initial_state';
 import type { Clip } from 'flavours/glitch/models/clip';
-import { getOrderedClips } from 'flavours/glitch/selectors/clips';
+import { getOrderedAccountClips } from 'flavours/glitch/selectors/clips';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import { ClipFavouriteButton } from './components/favourite_button';
@@ -97,9 +97,7 @@ const Clips: React.FC<{
 }> = ({ multiColumn }) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
-  const clips = useAppSelector((state) =>
-    getOrderedClips(state).filter((clip) => clip.account_id === me),
-  );
+  const clips = useAppSelector((state) => getOrderedAccountClips(state, me));
   const { signedIn } = useIdentity();
 
   useEffect(() => {

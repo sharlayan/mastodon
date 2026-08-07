@@ -24,6 +24,7 @@ import ColumnHeader from 'flavours/glitch/components/column_header';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import { me } from 'flavours/glitch/initial_state';
+import { makeGetConversationRecipientAccounts } from 'flavours/glitch/sharlayan/conversations/selectors';
 
 import { ChatMessage } from './components/chat_message';
 import { DirectComposer } from './components/direct_composer';
@@ -91,9 +92,8 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
     return ids;
   }, [conversation, statusIds, statuses]);
 
-  const recipientAccounts = useSelector(state => recipientIds
-    .map(id => state.getIn(['accounts', id]))
-    .filter(Boolean));
+  const getRecipientAccounts = useMemo(makeGetConversationRecipientAccounts, []);
+  const recipientAccounts = useSelector(state => getRecipientAccounts(state, recipientIds));
 
   const nameNode = useCallback(account => (
     <DisplayName key={account.get('id')} account={account} variant='simple' />

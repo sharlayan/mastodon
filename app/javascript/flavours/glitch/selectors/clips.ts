@@ -14,3 +14,16 @@ export const getOrderedClips = createAppSelector(
   (clips) =>
     clips.sort((a: Clip, b: Clip) => a.title.localeCompare(b.title)).toArray(),
 );
+
+export const getOrderedAccountClips = createAppSelector(
+  [
+    getOrderedClips,
+    (_state, accountId: string | null | undefined) => accountId,
+  ],
+  (clips, accountId) => clips.filter((clip) => clip.account_id === accountId),
+);
+
+export const getOrderedFavouriteClips = createAppSelector(
+  [getOrderedClips],
+  (clips) => clips.filter((clip) => clip.favourited),
+);

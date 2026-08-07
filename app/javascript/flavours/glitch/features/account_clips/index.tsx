@@ -18,7 +18,7 @@ import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bund
 import Column from '@/flavours/glitch/features/ui/components/column';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';
-import { getOrderedClips } from '@/flavours/glitch/selectors/clips';
+import { getOrderedAccountClips } from '@/flavours/glitch/selectors/clips';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import LockIcon from '@/material-icons/400-24px/lock.svg?react';
 import PublicIcon from '@/material-icons/400-24px/public.svg?react';
@@ -39,7 +39,7 @@ const AccountClips: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   }, [accountId, dispatch]);
 
   const clips = useAppSelector((state) =>
-    getOrderedClips(state).filter((clip) => clip.account_id === accountId),
+    getOrderedAccountClips(state, accountId),
   );
 
   if (accountId === null) {
