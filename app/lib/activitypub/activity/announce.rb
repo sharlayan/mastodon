@@ -84,7 +84,20 @@ class ActivityPub::Activity::Announce < ActivityPub::Activity
   end
 
   def reject_relay?
-    requested_through_relay? && DomainBlock.reject_relay?(@account.domain)
+    requested_through_relay? && DomainBlock.reject_relay?(relayed_status_domain)
+  end
+
+  def relayed_status_domain
+    known_status = status_from_uri(object_uri)
+    return known_status.account.domain unless known_status.nil?
+
+    actor_uri = value_or_id(first_of_value(@object['attributedTo'])) if @object.is_a?(Hash)
+    actor_uri ||= object_uri
+    return if actor_uri.blank?
+
+    Addressable::URI.parse(actor_uri).normalized_host
+  rescue Addressable::URI::InvalidURIError
+    nil
   end
 
   def reblog_of_local_status?

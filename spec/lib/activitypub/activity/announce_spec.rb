@@ -183,6 +183,38 @@ RSpec.describe ActivityPub::Activity::Announce do
       end
     end
 
+    context 'when a relay announces a post from a domain that rejects relay delivery' do
+      subject { described_class.new(json, relay_account) }
+
+      let!(:relay_account) { Fabricate(:account, inbox_url: 'https://relay.example.com/inbox', domain: 'relay.example.com') }
+      let(:relay) { Fabricate(:relay, inbox_url: 'https://relay.example.com/inbox', state: :accepted) }
+
+      let(:json) do
+        super().merge(actor: relay_account.uri)
+      end
+
+      let(:object_json) do
+        {
+          id: 'https://remote.example/users/alice/statuses/1',
+          type: 'Note',
+          attributedTo: 'https://remote.example/users/alice',
+          content: 'Hello from a relay',
+          to: 'https://www.w3.org/ns/activitystreams#Public',
+        }
+      end
+
+      before do
+        relay
+        Fabricate(:domain_block, domain: 'remote.example', severity: :noop, reject_relay: true)
+        subject.perform
+      end
+
+      it 'rejects the post based on its original author domain' do
+        expect(relay_account.statuses).to be_empty
+        expect(Status.find_by(uri: 'https://remote.example/users/alice/statuses/1')).to be_nil
+      end
+    end
+
     context 'when the sender has no relevance to local activity' do
       before do
         subject.perform
