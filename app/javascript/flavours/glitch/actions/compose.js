@@ -11,7 +11,7 @@ import { tagHistory } from 'flavours/glitch/settings';
 import { emojiMartSearch } from '@/flavours/glitch/features/emoji/picker';
 import { createDriveFileAttachment } from '@/flavours/glitch/sharlayan/compose/drive_attachment';
 import { createFetchComposeEmojiSuggestions } from '@/flavours/glitch/sharlayan/compose/emoji_suggestions';
-import { handleReplyForInlineCompose } from '@/flavours/glitch/sharlayan/compose/inline_reply_navigation';
+import { handleDirectForInlineCompose, handleReplyForInlineCompose } from '@/flavours/glitch/sharlayan/compose/inline_reply_navigation';
 import {
   getScheduledSubmissionContext,
   handleScheduledComposeSuccess,
@@ -203,14 +203,16 @@ export function mentionComposeById(accountId) {
   };
 }
 
-export function directCompose(account) {
+export function directCompose(account, useInlineComposeModal = false) {
   return (dispatch, getState) => {
     dispatch({
       type: COMPOSE_DIRECT,
       account: account,
     });
 
-    ensureComposeIsVisible(getState);
+    if (!useInlineComposeModal || !handleDirectForInlineCompose(dispatch, getState)) {
+      ensureComposeIsVisible(getState);
+    }
   };
 }
 

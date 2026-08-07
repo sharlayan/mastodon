@@ -312,7 +312,7 @@ function getMenuItems({
       {
         text: intl.formatMessage(redesignMessages.direct),
         action: () => {
-          dispatch(directCompose(account));
+          dispatch(directCompose(account, true));
         },
       },
       null,

@@ -1,5 +1,6 @@
 import {
   shouldExitDetailedForInlineCompose,
+  shouldOpenInlineComposeDirectModal,
   shouldOpenInlineComposeReplyModal,
 } from '../inline_reply_navigation';
 
@@ -98,6 +99,21 @@ describe('inline compose reply navigation', () => {
       enabled: true,
       layout: 'single-column',
       pathname: '/explore',
+    })).toBe(false);
+  });
+
+  it('uses the direct-message popup whenever inline compose is enabled in single-column mode', () => {
+    expect(shouldOpenInlineComposeDirectModal({
+      enabled: true,
+      layout: 'single-column',
+    })).toBe(true);
+    expect(shouldOpenInlineComposeDirectModal({
+      enabled: false,
+      layout: 'single-column',
+    })).toBe(false);
+    expect(shouldOpenInlineComposeDirectModal({
+      enabled: true,
+      layout: 'multi-column',
     })).toBe(false);
   });
 });

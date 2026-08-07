@@ -28,8 +28,8 @@ export interface InlineComposeModalRef {
 
 export const InlineComposeModal = forwardRef<
   InlineComposeModalRef,
-  { onClose: () => void }
->(({ onClose }, ref) => {
+  { onClose: () => void; title?: 'reply' | 'direct' }
+>(({ onClose, title = 'reply' }, ref) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
   const submitted = useRef(false);
@@ -62,7 +62,14 @@ export const InlineComposeModal = forwardRef<
     <div className='modal-root__modal inline-compose-modal'>
       <div className='inline-compose-modal__header'>
         <h1>
-          <FormattedMessage id='status.reply' defaultMessage='Reply' />
+          {title === 'direct' ? (
+            <FormattedMessage
+              id='account.menu.direct'
+              defaultMessage='Privately mention'
+            />
+          ) : (
+            <FormattedMessage id='status.reply' defaultMessage='Reply' />
+          )}
         </h1>
         <IconButton
           title={intl.formatMessage(messages.close)}

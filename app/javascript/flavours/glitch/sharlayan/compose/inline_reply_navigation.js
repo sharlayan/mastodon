@@ -21,6 +21,9 @@ export const shouldOpenInlineComposeReplyModal = ({
   ...options
 }) => isSingleColumnInlineComposeRoute(options) && !disablePopup;
 
+export const shouldOpenInlineComposeDirectModal = ({ enabled, layout }) =>
+  enabled && layout !== 'multi-column';
+
 const scrollToTopAfterNavigation = () => {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -62,5 +65,22 @@ export const handleReplyForInlineCompose = (dispatch, getState) => {
     browserHistory.push('/', { focusTarget: false });
   }
 
+  return true;
+};
+
+export const handleDirectForInlineCompose = (dispatch, getState) => {
+  const options = {
+    enabled: getState().getIn(['local_settings', 'inline_compose_timelines'], false),
+    layout: layoutFromWindow(),
+  };
+
+  if (!shouldOpenInlineComposeDirectModal(options)) {
+    return false;
+  }
+
+  dispatch(openModal({
+    modalType: 'INLINE_COMPOSE',
+    modalProps: { title: 'direct' },
+  }));
   return true;
 };
