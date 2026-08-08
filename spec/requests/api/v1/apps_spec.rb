@@ -3,6 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe 'Apps' do
+  before { Rack::Attack.enabled = false }
+  after { Rack::Attack.enabled = true }
+
   describe 'POST /api/v1/apps' do
     subject do
       post '/api/v1/apps', params: params
