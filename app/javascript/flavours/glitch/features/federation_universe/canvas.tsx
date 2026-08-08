@@ -31,6 +31,7 @@ interface ProjectedNode {
   radius: number;
   perspective: number;
   visible: boolean;
+  renderable: boolean;
 }
 
 interface Camera {
@@ -43,6 +44,9 @@ interface Camera {
 }
 
 const STAR_COUNT = 220;
+const RENDER_MARGIN = 80;
+const MINIMUM_RENDER_RADIUS = 0.7;
+const MAX_CONNECTION_DRAW_DISTANCE = 8_000;
 const FORWARD_STEP = 700;
 const LATERAL_STEP = 550;
 const VERTICAL_STEP = 550;
@@ -123,20 +127,33 @@ const projectNodes = (
 ) =>
   nodes.map((node): ProjectedNode => {
     const projected = projectPosition(node, camera, width, height);
+    const radius = Math.max(2, node.radius * projected.perspective);
+    const inViewport =
+      projected.x + radius >= -RENDER_MARGIN &&
+      projected.x - radius <= width + RENDER_MARGIN &&
+      projected.y + radius >= -RENDER_MARGIN &&
+      projected.y - radius <= height + RENDER_MARGIN;
 
     return {
       node,
       ...projected,
-      radius: Math.max(2, node.radius * projected.perspective),
+      radius,
+      renderable:
+        projected.visible &&
+        inViewport &&
+        node.radius * projected.perspective >= MINIMUM_RENDER_RADIUS,
     };
   });
+
+const connectionDistance = (first: UniverseNode, second: UniverseNode) =>
+  Math.hypot(first.x - second.x, first.y - second.y, first.z - second.z);
 
 const findPoint = (points: ProjectedNode[], x: number, y: number) => {
   let closest: ProjectedNode | undefined;
   let closestDistance = 24;
 
   for (const point of points) {
-    if (!point.visible) continue;
+    if (!point.renderable) continue;
 
     const distance = Math.hypot(point.x - x, point.y - y) - point.radius;
     if (distance < closestDistance) {
@@ -428,20 +445,21 @@ export const FederationUniverseCanvas: React.FC<{
       for (const [connectedId, interactions] of connected) {
         const target = pointsById.get(connectedId);
         if (!focus || !target) continue;
-        const margin = 80;
         const focusInViewport =
-          focus.x >= -margin &&
-          focus.x <= width + margin &&
-          focus.y >= -margin &&
-          focus.y <= height + margin;
+          focus.x >= -RENDER_MARGIN &&
+          focus.x <= width + RENDER_MARGIN &&
+          focus.y >= -RENDER_MARGIN &&
+          focus.y <= height + RENDER_MARGIN;
         const targetInViewport =
-          target.x >= -margin &&
-          target.x <= width + margin &&
-          target.y >= -margin &&
-          target.y <= height + margin;
+          target.x >= -RENDER_MARGIN &&
+          target.x <= width + RENDER_MARGIN &&
+          target.y >= -RENDER_MARGIN &&
+          target.y <= height + RENDER_MARGIN;
         if (
-          !focus.visible ||
-          !target.visible ||
+          !focus.renderable ||
+          !target.renderable ||
+          connectionDistance(focus.node, target.node) >
+            MAX_CONNECTION_DRAW_DISTANCE ||
           (!focusInViewport && !targetInViewport)
         )
           continue;
@@ -460,7 +478,13 @@ export const FederationUniverseCanvas: React.FC<{
       }
 
       points
-        .filter((point) => point.visible)
+        .filter(
+          (point) =>
+            point.renderable ||
+            selectedRef.current === point.node.id ||
+            hoveredRef.current === point.node.id ||
+            point.node.local,
+        )
         .sort((first, second) => second.z - first.z)
         .forEach((point) => {
           const selected = selectedRef.current === point.node.id;

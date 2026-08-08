@@ -14,6 +14,8 @@ export interface UniverseNode extends ApiFederationUniverseNode {
 const WORLD_SCALE = 25;
 const LAYOUT_ITERATIONS = 140;
 const REPULSION_INTERVAL = 4;
+const REPULSION_CELL_SIZE = 360;
+const COLLISION_CELL_SIZE = 96;
 const STRONG_INTERACTION_REFERENCE = Math.log1p(20_000);
 
 interface LayoutEdge {
@@ -21,6 +23,46 @@ interface LayoutEdge {
   target: UniverseNode;
   interactions: number;
 }
+
+type PairCallback = (first: UniverseNode, second: UniverseNode) => void;
+
+const cellKey = (x: number, y: number, z: number) => `${x}:${y}:${z}`;
+
+const forEachNearbyPair = (
+  nodes: UniverseNode[],
+  cellSize: number,
+  callback: PairCallback,
+) => {
+  const cells = new Map<string, { node: UniverseNode; index: number }[]>();
+
+  for (const [index, node] of nodes.entries()) {
+    const x = Math.floor(node.x / cellSize);
+    const y = Math.floor(node.y / cellSize);
+    const z = Math.floor(node.z / cellSize);
+    const key = cellKey(x, y, z);
+    const cell = cells.get(key) ?? [];
+    cell.push({ node, index });
+    cells.set(key, cell);
+  }
+
+  for (const [firstIndex, first] of nodes.entries()) {
+    const x = Math.floor(first.x / cellSize);
+    const y = Math.floor(first.y / cellSize);
+    const z = Math.floor(first.z / cellSize);
+
+    for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+      for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+        for (let offsetZ = -1; offsetZ <= 1; offsetZ += 1) {
+          for (const candidate of cells.get(
+            cellKey(x + offsetX, y + offsetY, z + offsetZ),
+          ) ?? []) {
+            if (candidate.index > firstIndex) callback(first, candidate.node);
+          }
+        }
+      }
+    }
+  }
+};
 
 const hash = (value: string) => {
   let result = 2166136261;
@@ -139,42 +181,30 @@ export const buildUniverseLayout = (
     }
 
     if (iteration % REPULSION_INTERVAL === 0) {
-      for (let firstIndex = 0; firstIndex < nodes.length; firstIndex += 1) {
-        const first = nodes[firstIndex];
-        if (!first) continue;
+      forEachNearbyPair(nodes, REPULSION_CELL_SIZE, (first, second) => {
+        const dx = second.x - first.x;
+        const dy = second.y - first.y;
+        const dz = second.z - first.z;
+        const distanceSquared = Math.max(100, dx * dx + dy * dy + dz * dz);
+        const distance = Math.sqrt(distanceSquared);
+        const force =
+          (1_800 * REPULSION_INTERVAL * (0.25 + cooling * 0.75)) /
+          distanceSquared /
+          distance;
+        const firstMovement = movement.get(first.id);
+        const secondMovement = movement.get(second.id);
 
-        for (
-          let secondIndex = firstIndex + 1;
-          secondIndex < nodes.length;
-          secondIndex += 1
-        ) {
-          const second = nodes[secondIndex];
-          if (!second) continue;
-
-          const dx = second.x - first.x;
-          const dy = second.y - first.y;
-          const dz = second.z - first.z;
-          const distanceSquared = Math.max(100, dx * dx + dy * dy + dz * dz);
-          const distance = Math.sqrt(distanceSquared);
-          const force =
-            (1_800 * REPULSION_INTERVAL * (0.25 + cooling * 0.75)) /
-            distanceSquared /
-            distance;
-          const firstMovement = movement.get(first.id);
-          const secondMovement = movement.get(second.id);
-
-          if (!first.local && firstMovement) {
-            firstMovement.x -= dx * force;
-            firstMovement.y -= dy * force;
-            firstMovement.z -= dz * force;
-          }
-          if (!second.local && secondMovement) {
-            secondMovement.x += dx * force;
-            secondMovement.y += dy * force;
-            secondMovement.z += dz * force;
-          }
+        if (!first.local && firstMovement) {
+          firstMovement.x -= dx * force;
+          firstMovement.y -= dy * force;
+          firstMovement.z -= dz * force;
         }
-      }
+        if (!second.local && secondMovement) {
+          secondMovement.x += dx * force;
+          secondMovement.y += dy * force;
+          secondMovement.z += dz * force;
+        }
+      });
     }
 
     for (const node of nodes) {
@@ -194,41 +224,29 @@ export const buildUniverseLayout = (
   }
 
   for (let iteration = 0; iteration < 24; iteration += 1) {
-    for (let firstIndex = 0; firstIndex < nodes.length; firstIndex += 1) {
-      const first = nodes[firstIndex];
-      if (!first) continue;
+    forEachNearbyPair(nodes, COLLISION_CELL_SIZE, (first, second) => {
+      const dx = second.x - first.x;
+      const dy = second.y - first.y;
+      const dz = second.z - first.z;
+      const distance = Math.max(0.001, Math.hypot(dx, dy, dz));
+      const minimumDistance = 34 + (first.radius + second.radius) * 1.6;
+      if (distance >= minimumDistance) return;
 
-      for (
-        let secondIndex = firstIndex + 1;
-        secondIndex < nodes.length;
-        secondIndex += 1
-      ) {
-        const second = nodes[secondIndex];
-        if (!second) continue;
+      const force = ((minimumDistance - distance) / distance) * 0.32;
+      const firstShare = second.mass / (first.mass + second.mass);
+      const secondShare = first.mass / (first.mass + second.mass);
 
-        const dx = second.x - first.x;
-        const dy = second.y - first.y;
-        const dz = second.z - first.z;
-        const distance = Math.max(0.001, Math.hypot(dx, dy, dz));
-        const minimumDistance = 34 + (first.radius + second.radius) * 1.6;
-        if (distance >= minimumDistance) continue;
-
-        const force = ((minimumDistance - distance) / distance) * 0.32;
-        const firstShare = second.mass / (first.mass + second.mass);
-        const secondShare = first.mass / (first.mass + second.mass);
-
-        if (!first.local) {
-          first.x -= dx * force * firstShare;
-          first.y -= dy * force * firstShare;
-          first.z -= dz * force * firstShare;
-        }
-        if (!second.local) {
-          second.x += dx * force * secondShare;
-          second.y += dy * force * secondShare;
-          second.z += dz * force * secondShare;
-        }
+      if (!first.local) {
+        first.x -= dx * force * firstShare;
+        first.y -= dy * force * firstShare;
+        first.z -= dz * force * firstShare;
       }
-    }
+      if (!second.local) {
+        second.x += dx * force * secondShare;
+        second.y += dy * force * secondShare;
+        second.z += dz * force * secondShare;
+      }
+    });
   }
 
   for (const node of nodes) {
