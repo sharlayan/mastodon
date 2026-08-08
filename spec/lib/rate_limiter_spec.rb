@@ -31,4 +31,12 @@ RSpec.describe RateLimiter do
 
     expect(redis.get(key)).to be_nil
   end
+
+  it 'uses Redis time instead of application time for its window' do
+    allow(redis).to receive(:time).and_return([1_786_190_000, 0])
+
+    travel_to Time.utc(2023, 12, 20) do
+      expect(limiter.send(:last_epoch_time)).to eq(1_786_190_000)
+    end
+  end
 end

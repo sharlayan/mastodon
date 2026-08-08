@@ -151,6 +151,6 @@ class RateLimiter
   end
 
   def last_epoch_time
-    @last_epoch_time ||= Time.now.to_i
+    @last_epoch_time ||= redis.time.first.to_i
   end
 end
