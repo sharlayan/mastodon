@@ -529,8 +529,6 @@ en:
           Emoji
         setting_avatar_decoration_shape: Force the profile image shape while an avatar
           decoration is active.
-        setting_hide_online_status: Hide your online status from apps that support
-          it (such as Misskey-compatible clients).
         setting_mfm_animations: Play animations in MFM content (spin, bounce, shake,
           etc.). Disabling this will show static fallbacks instead.
         setting_mfm_enabled: Render MFM-formatted content from Misskey and compatible
@@ -599,7 +597,6 @@ en:
         setting_avatar_decoration_shape_none: Don't force
         setting_avatar_decoration_shape_round: Round
         setting_avatar_decoration_shape_square: Square
-        setting_hide_online_status: Hide online status
         setting_mfm_animations: Enable MFM animations
         setting_mfm_enabled: Enable MFM rendering
         setting_mfm_fold_mode: MFM post folding

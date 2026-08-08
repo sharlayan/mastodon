@@ -449,7 +449,6 @@ ja:
           未収載（ホーム）の投稿は連合上では静かなままにしつつ、Blueskyブリッジ（bsky.brid.gy）には公開として配送し、Blueskyへ転送されるようにします。ブリッジアカウントのフォローが必要です。
         setting_custom_emoji_size: 横長のカスタム絵文字を元の比率で表示します。
         setting_avatar_decoration_shape: デコレーション表示時にプロフィール画像の形を強制します。
-        setting_hide_online_status: 対応しているアプリ（Misskey互換クライアントなど）でオンライン状態を非表示にします。
         setting_mfm_animations: MFMコンテンツのアニメーション（spin、bounce、shakeなど）を再生します。無効にすると静止した代替表示になります。
         setting_mfm_enabled: MisskeyおよびMisskey互換サーバーのMFM形式のコンテンツをアニメーションとスタイル付きで表示します
         setting_mfm_fold_mode: MFM投稿を折りたたむ基準を選択します。「閲覧注意」はアニメーション・拡大縮小・枠線効果のある投稿を折りたたみます。「すべて」はすべてのMFM投稿を折りたたみます。
@@ -495,7 +494,6 @@ ja:
         setting_avatar_decoration_shape_none: 使用しない
         setting_avatar_decoration_shape_round: 円形
         setting_avatar_decoration_shape_square: 四角形
-        setting_hide_online_status: オンライン状態を隠す
         setting_mfm_animations: MFMアニメーションを有効にする
         setting_mfm_enabled: MFMレンダリングを有効にする
         setting_mfm_fold_mode: MFM投稿の折りたたみ

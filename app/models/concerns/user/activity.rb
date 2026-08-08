@@ -31,7 +31,7 @@ module User::Activity
   end
 
   def online_status
-    return 'unknown' if settings['hide_online_status']
+    return 'unknown' unless settings['show_online_status']
     return 'unknown' if last_active_at.nil?
 
     elapsed = Time.now.utc - last_active_at

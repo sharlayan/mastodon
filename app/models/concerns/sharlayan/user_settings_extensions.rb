@@ -15,7 +15,7 @@ module Sharlayan::UserSettingsExtensions
     def apply_root_settings(settings)
       settings.setting :auto_accept_followed, default: false
       settings.setting :show_reactions, default: true
-      settings.setting :hide_online_status, default: true
+      settings.setting :show_online_status, default: false
       settings.setting :prevent_ai_learning, default: false
       settings.setting :norss, default: -> { ::Setting.norss }
       settings.setting :visible_reactions, default: 6
@@ -26,7 +26,6 @@ module Sharlayan::UserSettingsExtensions
       settings.setting :drive_keep_original_filename, default: true
       settings.setting :drive_default_folder_id, default: nil
       settings.setting :drive_upload_original_image, default: true
-      settings.setting_inverse_alias :show_online_status, :hide_online_status
       settings.setting_inverse_alias :enable_rss, :norss
     end
 

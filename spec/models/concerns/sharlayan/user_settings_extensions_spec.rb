@@ -6,7 +6,6 @@ RSpec.describe UserSettings do
   subject(:settings) { described_class.new({}) }
 
   it 'provides privacy-safe and Drive defaults' do
-    expect(settings[:hide_online_status]).to be true
     expect(settings[:show_online_status]).to be false
     expect(settings[:default_quote_policy]).to eq('nobody')
     expect(settings[:default_reaction_acceptance]).to be_nil

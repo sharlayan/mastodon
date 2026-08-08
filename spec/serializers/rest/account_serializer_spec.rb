@@ -79,7 +79,7 @@ RSpec.describe REST::AccountSerializer do
     before do
       allow(Setting).to receive(:[]).and_call_original
       allow(Setting).to receive(:[]).with('online_status_enabled').and_return(true)
-      user.settings['hide_online_status'] = false
+      user.settings['show_online_status'] = true
       user.last_active_at = 1.minute.ago
     end
 
@@ -103,8 +103,8 @@ RSpec.describe REST::AccountSerializer do
       end
     end
 
-    context 'when the user hides their status' do
-      before { user.settings['hide_online_status'] = true }
+    context 'when the user does not share their status' do
+      before { user.settings['show_online_status'] = false }
 
       it 'does not expose the status' do
         expect(subject['online_status']).to eq('unknown')

@@ -98,7 +98,7 @@ class MisskeyCompat::UserSerializer
       noCrawle: user.settings['noindex'] || false,
       preventAiLearning: user.settings['prevent_ai_learning'] || false,
       isExplorable: account.discoverable?,
-      hideOnlineStatus: user.settings['hide_online_status'] || false,
+      hideOnlineStatus: !user.settings['show_online_status'],
       ffVisibility: ff_visibility,
       followingVisibility: ff_visibility,
       followersVisibility: ff_visibility,

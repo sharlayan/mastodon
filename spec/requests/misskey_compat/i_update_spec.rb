@@ -109,7 +109,13 @@ RSpec.describe 'Misskey-compat i endpoints' do
       expect(user.settings['noindex']).to be(true)
       expect(user.settings['default_sensitive']).to be(true)
       expect(user.settings['show_reactions']).to be(false)
-      expect(user.settings['hide_online_status']).to be(true)
+      expect(user.settings['show_online_status']).to be(false)
+      expect(response.parsed_body[:hideOnlineStatus]).to be(true)
+
+      update(hideOnlineStatus: false)
+
+      expect(user.reload.settings['show_online_status']).to be(true)
+      expect(response.parsed_body[:hideOnlineStatus]).to be(false)
     end
 
     it 'stores muted words as encoded JSON' do
