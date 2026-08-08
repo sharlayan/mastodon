@@ -23,6 +23,10 @@ RSpec.describe Sharlayan::FederationAggregationRunner do
     expect(successful_runner_class.new.call { 7 }).to eq(7)
   end
 
+  it 'runs an aggregation through the real Redis lock' do
+    expect(described_class.call { 7 }).to eq(7)
+  end
+
   it 'returns zero without running the aggregation when the lock is unavailable' do
     aggregation = instance_spy(Proc)
 

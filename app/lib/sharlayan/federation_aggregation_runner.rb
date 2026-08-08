@@ -2,6 +2,7 @@
 
 class Sharlayan::FederationAggregationRunner
   include Lockable
+  include Redisable
 
   LOCK_NAME = 'sharlayan:federation_aggregation'
   LOCK_TIMEOUT = 1.day
