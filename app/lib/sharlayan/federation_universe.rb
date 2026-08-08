@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Sharlayan::FederationUniverse
-  MAX_EDGES = 2_500
+  MAX_EDGES = 250
   INTERACTIONS_SQL = '(reblogs_count + replies_count + quotes_count) DESC, source_domain ASC NULLS FIRST, target_domain ASC'
 
   def as_json

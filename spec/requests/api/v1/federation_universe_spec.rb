@@ -35,6 +35,22 @@ RSpec.describe 'Federation universe' do
     )
   end
 
+  it 'caps the response to the graph layout budget' do
+    (Sharlayan::FederationUniverse::MAX_EDGES + 1).times do |index|
+      FederationInstanceEdge.create!(
+        source_domain: "source-#{index}.example",
+        target_domain: "target-#{index}.example",
+        reblogs_count: index + 1
+      )
+    end
+
+    get '/api/v1/federation_universe', headers: headers
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body['edges']).to have_attributes(length: Sharlayan::FederationUniverse::MAX_EDGES)
+    expect(response.parsed_body['edges'].first).to include('source' => 'source-250.example')
+  end
+
   it 'is unavailable when aggregation is disabled' do
     Setting.federation_instance_edges_enabled = false
 
