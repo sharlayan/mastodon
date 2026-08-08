@@ -585,6 +585,20 @@ html.content-font-size__xx_large {
     border: 0;
     box-shadow: none;
   }
+
+  &--collapsed {
+    cursor: text;
+
+    .compose-form__dropdowns,
+    .compose-form__footer,
+    .compose-form__mfm-hint {
+      display: none;
+    }
+
+    .autosuggest-textarea__textarea {
+      min-height: 48px;
+    }
+  }
 }
 
 .compose-form__dropdowns {

@@ -555,6 +555,8 @@
   "settings.fullwidth_view": "컬럼을 창 넓이에 맞추기 (데스크탑 모드 전용)",
   "settings.fullwidth_view_hint": "컬럼들을 창 크기에 맞추어 각 컬럼의 너비를 조절합니다.",
   "settings.hide_mfm_compose_hint": "작성창에서 MFM 미리보기와 문법 링크 숨기기",
+  "settings.inline_compose_expand_on_click": "클릭할 때 인라인 작성창 확장",
+  "settings.inline_compose_expand_on_click.hint": "트위터처럼 인라인 작성창을 간결하게 표시하고 클릭하면 전체 작성 도구를 펼칩니다",
   "settings.inline_compose_timelines": "타임라인 상단에 작성창 표시",
   "settings.inline_compose_timelines.hint": "트위터 방식: 홈, 로컬, 연합 타임라인 위에 작성창을 표시합니다 (단일 컬럼 모드에서만)",
   "settings.media_no_autoplay_gifv": "첨부된 GIF 자동재생 안함",

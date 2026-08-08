@@ -555,6 +555,8 @@
   "settings.fullwidth_view",
   "settings.fullwidth_view_hint",
   "settings.hide_mfm_compose_hint",
+  "settings.inline_compose_expand_on_click",
+  "settings.inline_compose_expand_on_click.hint",
   "settings.inline_compose_timelines",
   "settings.inline_compose_timelines.hint",
   "settings.media_no_autoplay_gifv",

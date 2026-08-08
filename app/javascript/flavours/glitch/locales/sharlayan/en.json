@@ -555,6 +555,8 @@
   "settings.fullwidth_view": "Stretch columns to full width (Desktop mode only)",
   "settings.fullwidth_view_hint": "Stretches columns to fill all the available space.",
   "settings.hide_mfm_compose_hint": "Hide MFM preview and syntax link in the compose box",
+  "settings.inline_compose_expand_on_click": "Expand the inline compose box when clicked",
+  "settings.inline_compose_expand_on_click.hint": "Keep the inline compose box compact until you click it, similar to Twitter",
   "settings.inline_compose_timelines": "Show the compose box at the top of timelines",
   "settings.inline_compose_timelines.hint": "Twitter-style: display the compose box above the home, local and federated timelines (single-column mode only)",
   "settings.media_no_autoplay_gifv": "Do not autoplay attached GIFs",

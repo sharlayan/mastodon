@@ -555,6 +555,8 @@
   "settings.fullwidth_view": "カラムを画面幅に合わせる（デスクトップモードのみ）",
   "settings.fullwidth_view_hint": "利用できる幅いっぱいにカラムを広げます。",
   "settings.hide_mfm_compose_hint": "投稿ボックスのMFMプレビューと構文リンクを非表示",
+  "settings.inline_compose_expand_on_click": "クリック時にインライン投稿欄を展開",
+  "settings.inline_compose_expand_on_click.hint": "Twitterのようにインライン投稿欄をコンパクトに表示し、クリックすると投稿ツール全体を展開します",
   "settings.inline_compose_timelines": "タイムラインの上部に投稿ボックスを表示",
   "settings.inline_compose_timelines.hint": "Twitter風: ホーム・ローカル・連合タイムラインの上部に投稿ボックスを表示します（シングルカラムモードのみ）",
   "settings.media_no_autoplay_gifv": "添付されたGIFを自動再生しない",

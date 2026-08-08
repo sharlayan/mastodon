@@ -6,6 +6,8 @@ import { matchPath, useLocation } from 'react-router-dom';
 
 import { fromJS } from 'immutable';
 
+import classNames from 'classnames';
+
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
@@ -41,11 +43,26 @@ export const InlineComposeShell = () => {
 
   const enabled = useAppSelector((state) => state.local_settings.get('inline_compose_timelines', false)) && !!me;
   const savedTabs = useAppSelector((state) => state.local_settings.get('inline_compose_tabs'));
+  const expandOnClick = useAppSelector((state) => state.local_settings.get('inline_compose_expand_on_click', false));
+  const hasComposeContents = useAppSelector((state) => {
+    const compose = state.get('compose');
+
+    return compose.get('text').trim().length > 0
+      || compose.get('spoiler_text').trim().length > 0
+      || compose.get('in_reply_to') !== null
+      || compose.get('id') !== null
+      || compose.get('poll') !== null
+      || compose.get('quoted_status_id') !== null
+      || compose.get('media_attachments').size > 0;
+  });
+  const isSubmitting = useAppSelector((state) => state.getIn(['compose', 'is_submitting']));
   const lists = useAppSelector((state) => getOrderedLists(state));
   const antennas = useAppSelector((state) => state.get('antennas'));
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [composeExpanded, setComposeExpanded] = useState(false);
   const menuRef = useRef(null);
+  const wasSubmitting = useRef(isSubmitting);
 
   const savedTabList = useMemo(() => (savedTabs ? savedTabs.toJS() : []), [savedTabs]);
 
@@ -78,6 +95,20 @@ export const InlineComposeShell = () => {
   );
 
   const active = enabled && isFeedRoute;
+
+  useEffect(() => {
+    if (!expandOnClick || hasComposeContents) {
+      setComposeExpanded(true);
+    }
+  }, [expandOnClick, hasComposeContents]);
+
+  useEffect(() => {
+    if (expandOnClick && wasSubmitting.current && !isSubmitting && !hasComposeContents) {
+      setComposeExpanded(false);
+    }
+
+    wasSubmitting.current = isSubmitting;
+  }, [expandOnClick, hasComposeContents, isSubmitting]);
 
   useEffect(() => {
     if (!active) {
@@ -231,7 +262,11 @@ export const InlineComposeShell = () => {
         </div>
       </div>
 
-      <div className='inline-compose-form'>
+      <div
+        className={classNames('inline-compose-form', { 'inline-compose-form--collapsed': expandOnClick && !composeExpanded })}
+        onClick={() => setComposeExpanded(true)}
+        onFocusCapture={() => setComposeExpanded(true)}
+      >
         <ComposeFormContainer isInline withoutNavigation />
       </div>
     </div>
