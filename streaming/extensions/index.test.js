@@ -26,6 +26,7 @@ test('Misskey fallback is fail-closed when the setting lookup fails', async () =
 
 test('OAuth token query preserves expiry and account security conditions', () => {
   assert.match(ACCESS_TOKEN_QUERY, /expires_in IS NULL/);
+  assert.match(ACCESS_TOKEN_QUERY, /CURRENT_TIMESTAMP AT TIME ZONE 'UTC'/);
   assert.match(ACCESS_TOKEN_QUERY, /users\.disabled IS FALSE/);
   assert.match(ACCESS_TOKEN_QUERY, /accounts\.suspended_at IS NULL/);
 });
