@@ -10,6 +10,7 @@
   /domain_mutes
   /drive
   /drafts
+  /federation/universe
   /pages/(*any)
   /reaction_mutes
   /reactions

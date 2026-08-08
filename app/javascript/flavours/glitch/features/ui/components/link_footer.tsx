@@ -1,6 +1,8 @@
+import { useCallback, useRef } from 'react';
+
 import { FormattedMessage } from 'react-intl';
 
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 
 import {
   domain,
@@ -9,6 +11,7 @@ import {
   statusPageUrl,
   profile_directory as canProfileDirectory,
   termsOfServiceEnabled,
+  federationUniverseEnabled,
 } from 'flavours/glitch/initial_state';
 
 import classes from './link_footer.module.scss';
@@ -17,6 +20,16 @@ export const LinkFooter: React.FC<{
   context?: 'default' | 'multi-column' | 'about';
 }> = ({ context = 'default' }) => {
   const multiColumn = context === 'multi-column';
+  const history = useHistory();
+  const versionClicks = useRef(0);
+  const handleVersionClick = useCallback(() => {
+    versionClicks.current += 1;
+
+    if (versionClicks.current === 5) {
+      versionClicks.current = 0;
+      history.push('/federation/universe');
+    }
+  }, [history]);
 
   return (
     <footer className={classes.wrapper} data-context={context}>
@@ -117,7 +130,19 @@ export const LinkFooter: React.FC<{
         </ul>
       </section>
       <section>
-        <h2 className={classes.version}>v{version}</h2>
+        <h2 className={classes.version}>
+          {federationUniverseEnabled ? (
+            <button
+              type='button'
+              className={classes.versionButton}
+              onClick={handleVersionClick}
+            >
+              v{version}
+            </button>
+          ) : (
+            <>v{version}</>
+          )}
+        </h2>
       </section>
     </footer>
   );

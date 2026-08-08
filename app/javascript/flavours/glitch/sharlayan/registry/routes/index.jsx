@@ -3,6 +3,7 @@ import {
   circlesEnabled,
   clipsEnabled,
   driveEnabled,
+  federationUniverseEnabled,
   pagesEnabled,
 } from 'flavours/glitch/initial_state';
 
@@ -53,6 +54,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'account-page', path: ['/@:acct/pages/:name', '/accounts/:id/pages/:name'], featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/account_pages/show') },
   { key: 'account-pages', path: ['/@:acct/pages', '/accounts/:id/pages'], exact: true, featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/account_pages') },
   { key: 'domain-mutes', path: '/domain_mutes', featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/domain_mutes') },
+  { key: 'federation-universe', path: '/federation/universe', featureGate: () => federationUniverseEnabled, lazyComponent: () => import('../../../features/federation_universe').then(({ FederationUniverse }) => ({ default: FederationUniverse })) },
   { key: 'custom-emoji-mutes', path: '/custom_emoji_mutes', featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/custom_emoji_mutes') },
   { key: 'reaction-mutes', path: '/reaction_mutes', featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/reaction_mutes') },
   { key: 'clips', path: '/clips', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips') },

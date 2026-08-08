@@ -45,4 +45,12 @@ describe('Sharlayan More menu registry', () => {
 
     expect(itemPaths(items)).toEqual(['action', 'action']);
   });
+
+  it('does not expose the federation universe in the More menu', () => {
+    const items: MenuItem[] = [{ text: 'logout', action: vi.fn() }];
+
+    extendSharlayanMoreMenuItems(items, formatMessage, vi.fn(), false);
+
+    expect(itemPaths(items)).toEqual(['action', 'action']);
+  });
 });

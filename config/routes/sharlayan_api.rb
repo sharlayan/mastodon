@@ -26,6 +26,7 @@ namespace :api, format: false do
       end
     end
     resource :appearance, only: [:update], controller: :appearance
+    resource :federation_universe, only: :show
 
     resources :board_announcements, only: [:index, :show] do
       scope module: :board_announcements do

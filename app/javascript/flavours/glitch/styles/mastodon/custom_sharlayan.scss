@@ -7,6 +7,7 @@ html {
   @include meta.load-css('sharlayan/avatars');
   @include meta.load-css('sharlayan/clips');
   @include meta.load-css('sharlayan/compose');
+  @include meta.load-css('sharlayan/federation_universe');
   @include meta.load-css('sharlayan/misc');
   @include meta.load-css('sharlayan/navigation');
   @include meta.load-css('sharlayan/reactions');

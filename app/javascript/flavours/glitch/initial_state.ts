@@ -219,6 +219,7 @@ export const {
   localAccountStatusesAccess,
   localStatusPageAccess,
   forceLocalOnly,
+  federationUniverseEnabled,
   roleplayMode,
   circlesEnabled,
   clipsEnabled,

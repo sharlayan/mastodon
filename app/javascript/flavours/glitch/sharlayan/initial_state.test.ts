@@ -4,6 +4,7 @@ import type { SharlayanInitialStateMeta } from './initial_state';
 const meta: SharlayanInitialStateMeta = {
   max_reactions: 3,
   force_local_only: true,
+  federation_universe_enabled: true,
   circles_enabled: true,
   clips_enabled: true,
   pages_enabled: true,
@@ -45,6 +46,7 @@ describe('Sharlayan initial state', () => {
       {
         maxReactions: 5,
         driveEnabled: true,
+        federationUniverseEnabled: true,
         pagesDriveOnly: true,
         antennaEnabled: true,
         showInstanceInfo: true,
