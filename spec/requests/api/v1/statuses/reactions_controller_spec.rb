@@ -32,6 +32,8 @@ RSpec.describe 'Reactions', :inline_jobs do
       end
 
       it 'rate limits repeated authenticated reaction changes' do
+        allow(redis).to receive(:time).and_return([1_786_190_000, 0])
+
         limiter = RateLimiter.new(user.account, family: :status_reactions)
         RateLimiter::FAMILIES[:status_reactions][:limit].times { limiter.record! }
 
