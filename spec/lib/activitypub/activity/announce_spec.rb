@@ -229,6 +229,45 @@ RSpec.describe ActivityPub::Activity::Announce do
       end
     end
 
+    context 'when a relay actor announces a post' do
+      subject { described_class.new(json, relay_account) }
+
+      let!(:relay_account) { Fabricate(:account, inbox_url: 'https://relay.example.com/inbox', domain: 'relay.example.com') }
+      let!(:relay) { Fabricate(:relay, inbox_url: relay_account.inbox_url, state: :accepted, suppress_public_timeline_stream: true) }
+      let!(:remote_account) { Fabricate(:account, uri: 'https://remote.example/users/alice', domain: 'remote.example') }
+
+      let(:json) do
+        super().merge(actor: relay_account.uri)
+      end
+
+      let(:object_json) { 'https://remote.example/users/alice/statuses/1' }
+
+      let(:fetched_object_json) do
+        {
+          '@context': 'https://www.w3.org/ns/activitystreams',
+          id: object_json,
+          type: 'Note',
+          attributedTo: 'https://remote.example/users/alice',
+          content: 'Hello from a relay',
+          to: 'https://www.w3.org/ns/activitystreams#Public',
+        }
+      end
+
+      before do
+        relay
+        remote_account
+        stub_request(:get, object_json).to_return(body: fetched_object_json.to_json, headers: { 'Content-Type': 'application/activity+json' })
+        subject.perform
+      end
+
+      it 'passes the suppression setting to the fetched status distribution' do
+        status = Status.find_by(uri: object_json)
+
+        expect(DistributionWorker)
+          .to have_enqueued_sidekiq_job(status.id, hash_including('suppress_public_timeline_stream' => true))
+      end
+    end
+
     context 'when the sender has no relevance to local activity' do
       before do
         subject.perform

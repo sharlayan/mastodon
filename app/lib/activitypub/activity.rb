@@ -119,7 +119,7 @@ class ActivityPub::Activity
 
       if actor_id == @account.uri
         virtual_object = { 'type' => 'Create', 'actor' => actor_id, 'object' => @object }
-        return ActivityPub::Activity.factory(virtual_object, @account, **@options).perform
+        return ActivityPub::Activity.factory(virtual_object, @account, **activity_options_with_relay_actor).perform
       end
     end
 
@@ -171,7 +171,7 @@ class ActivityPub::Activity
     if object_uri.start_with?('http')
       return if ActivityPub::TagManager.instance.local_uri?(object_uri)
 
-      ActivityPub::FetchRemoteStatusService.new.call(object_uri, on_behalf_of: @account.followers.local.first, request_id: @options[:request_id], relayed_through_actor: @options[:relayed_through_actor])
+      ActivityPub::FetchRemoteStatusService.new.call(object_uri, on_behalf_of: @account.followers.local.first, request_id: @options[:request_id], relayed_through_actor: relay_actor)
     elsif @object['url'].present?
       ::FetchRemoteStatusService.new.call(@object['url'], request_id: @options[:request_id])
     end
@@ -187,6 +187,16 @@ class ActivityPub::Activity
 
   def requested_through_relay?
     @options[:relayed_through_actor] && Relay.find_by(inbox_url: @options[:relayed_through_actor].inbox_url)&.enabled?
+  end
+
+  def relay_actor
+    return @options[:relayed_through_actor] if @options[:relayed_through_actor].is_a?(Account)
+
+    @account if Relay.find_by(inbox_url: @account.inbox_url)&.enabled?
+  end
+
+  def activity_options_with_relay_actor
+    relay_actor.nil? ? @options : @options.merge(relayed_through_actor: relay_actor)
   end
 
   def reject_payload!

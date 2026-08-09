@@ -1477,6 +1477,28 @@ RSpec.describe ActivityPub::Activity::Create do
       end
     end
 
+    context 'when received through a relay that suppresses the public timeline stream' do
+      subject { described_class.new(json, sender, relayed_through_actor: relay_account) }
+
+      let!(:relay_account) { Fabricate(:account, domain: 'relay.example', inbox_url: 'https://relay.example/inbox') }
+      let!(:relay) { Fabricate(:relay, inbox_url: relay_account.inbox_url, state: :accepted, suppress_public_timeline_stream: true) }
+      let(:object_json) { build_object(to: 'https://www.w3.org/ns/activitystreams#Public') }
+
+      before do
+        relay
+        allow(redis).to receive(:publish)
+        subject.perform
+        DistributionWorker.drain
+      end
+
+      it 'does not broadcast the status to federated timeline streams' do
+        expect(redis)
+          .to_not have_received(:publish).with('timeline:public', anything)
+        expect(redis)
+          .to_not have_received(:publish).with('timeline:public:remote', anything)
+      end
+    end
+
     context 'when the sender has no relevance to local activity' do
       subject { described_class.new(json, sender, delivery: true) }
 
