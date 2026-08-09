@@ -21,6 +21,8 @@ RSpec.configure do |config|
     Rails.application.load_seed
     Chewy.strategy(:bypass)
 
+    Setting.where(var: RoleplayResetService::RESET_SETTING_KEYS.map(&:to_s)).destroy_all unless RoleplayModeHelper.roleplay_mode?
+
     # NOTE: we switched registrations mode to closed by default, but the specs
     # very heavily rely on having it enabled by default, as it relies on users
     # being approved by default except in select cases where explicitly testing
