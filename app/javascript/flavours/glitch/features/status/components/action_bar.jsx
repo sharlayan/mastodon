@@ -21,7 +21,7 @@ import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend
 
 import { IconButton } from '../../../components/icon_button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
-import { SharlayanStatusReactionButton, sharlayanAddToClipMenuItem } from 'flavours/glitch/sharlayan/status_action_bar';
+import { SharlayanStatusReactionButton, sharlayanAddToClipMenuItem, sharlayanRoleplayStatusAction, sharlayanRoleplayStatusMenuItem } from 'flavours/glitch/sharlayan/status_action_bar';
 import { me, quickBoosting, reactionsEnabled, clipsEnabled } from '../../../initial_state';
 import { BoostButton } from '@/flavours/glitch/components/status/boost_button';
 import { quoteItemState } from '@/flavours/glitch/components/status/boost_button_utils';
@@ -190,6 +190,8 @@ class ActionBar extends PureComponent {
     const account            = status.get('account');
     const writtenByMe        = status.getIn(['account', 'id']) === me;
     const isRemote           = status.getIn(['account', 'username']) !== status.getIn(['account', 'acct']);
+    const roleplayAction     = sharlayanRoleplayStatusAction({ status, writtenByMe, isRemote });
+    const roleplayMenuItem   = sharlayanRoleplayStatusMenuItem(intl, roleplayAction, this.handleDeleteClick);
 
     let menu = [];
 
@@ -227,20 +229,29 @@ class ActionBar extends PureComponent {
       menu.push(null);
 
       if (writtenByMe) {
-        if (pinnableStatus) {
-          menu.push({ text: intl.formatMessage(status.get('pinned') ? messages.unpin : messages.pin), action: this.handlePinClick });
+        if (roleplayAction === 'purge') {
+          menu.push(roleplayMenuItem);
+        } else {
+          if (pinnableStatus) {
+            menu.push({ text: intl.formatMessage(status.get('pinned') ? messages.unpin : messages.pin), action: this.handlePinClick });
+            menu.push(null);
+          }
+
+          menu.push({ text: intl.formatMessage(mutingConversation ? messages.unmuteConversation : messages.muteConversation), action: this.handleConversationMuteClick });
+          if (!['private', 'direct'].includes(status.get('visibility'))) {
+            menu.push({ text: intl.formatMessage(messages.quotePolicyChange), action: this.handleQuotePolicyChange });
+          }
+          menu.push(null);
+          menu.push({ text: intl.formatMessage(messages.edit), action: this.handleEditClick });
+          menu.push({ text: intl.formatMessage(messages.delete), action: this.handleDeleteClick, dangerous: true });
+          menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
+        }
+      } else {
+        if (roleplayMenuItem) {
+          menu.push(roleplayMenuItem);
           menu.push(null);
         }
 
-        menu.push({ text: intl.formatMessage(mutingConversation ? messages.unmuteConversation : messages.muteConversation), action: this.handleConversationMuteClick });
-        if (!['private', 'direct'].includes(status.get('visibility'))) {
-          menu.push({ text: intl.formatMessage(messages.quotePolicyChange), action: this.handleQuotePolicyChange });
-        }
-        menu.push(null);
-        menu.push({ text: intl.formatMessage(messages.edit), action: this.handleEditClick });
-        menu.push({ text: intl.formatMessage(messages.delete), action: this.handleDeleteClick, dangerous: true });
-        menu.push({ text: intl.formatMessage(messages.redraft), action: this.handleRedraftClick, dangerous: true });
-      } else {
         if (!account.get('invalid_handle')) {
           menu.push({ text: intl.formatMessage(messages.mention, { name: status.getIn(['account', 'username']) }), action: this.handleMentionClick });
           menu.push({ text: intl.formatMessage(messages.direct, { name: status.getIn(['account', 'username']) }), action: this.handleDirectClick });

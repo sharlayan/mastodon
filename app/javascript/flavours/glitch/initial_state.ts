@@ -251,6 +251,8 @@ export const {
   showFederatedAvatarDecorations,
   avatarDecorationShape,
   forceRoundAvatar,
+  adminTimelineOwnerViewer,
+  softHideDeletion,
   catEnabled,
   catFederationEnabled,
   showCat,

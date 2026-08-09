@@ -170,6 +170,7 @@ class Form::AdminSettings
 
     KEYS.each do |key|
       next if PSEUDO_KEYS.include?(key) || !instance_variable_defined?(:"@#{key}")
+      next if key == :soft_hide_deletion && !roleplay_mode?
 
       # DESTRUCTIVE: Discards submitted values for forced roleplay settings.
       # 파괴적: 강제 롤플레이 설정에 제출된 값을 버립니다.

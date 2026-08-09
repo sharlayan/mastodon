@@ -60,6 +60,8 @@ module Sharlayan::InitialStateSerializerExtensions
       show_federated_cat: object_account_user.settings['cat.show_federated'],
       avatar_decoration_shape: object_account_user.settings['avatar_decorations.shape'],
       force_round_avatar: RoleplayModeHelper.roleplay_mode? && Setting['force_round_avatar'],
+      admin_timeline_owner_viewer: roleplay_owner_viewer?,
+      soft_hide_deletion: Sharlayan::SoftHide.enabled?,
       color_scheme: object_account_user.settings['web.color_scheme'],
       contrast: object_account_user.settings['web.contrast'],
       custom_emoji_mute_hidden: object_account_user.settings['web.custom_emoji_mute_hidden'],
@@ -79,5 +81,12 @@ module Sharlayan::InitialStateSerializerExtensions
     return true if RoleplayModeHelper.roleplay_mode? && Setting['force_mfm_enabled']
 
     object_account_user.settings_mfm_enabled
+  end
+
+  def roleplay_owner_viewer?
+    return false unless RoleplayModeHelper.roleplay_mode?
+
+    role = object_account_user.role
+    role.present? && !role.everyone? && role.position == UserRole.assignable.maximum(:position)
   end
 end

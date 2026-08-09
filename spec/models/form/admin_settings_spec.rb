@@ -33,6 +33,15 @@ RSpec.describe Form::AdminSettings do
         .to change(Setting, :circles_enabled).from(false).to(true)
     end
 
+    it 'does not allow soft-hide deletion to be configured outside roleplay mode' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+        Setting.soft_hide_deletion = false
+
+        expect { described_class.new(soft_hide_deletion: '1').save }
+          .to not_change(Setting, :soft_hide_deletion)
+      end
+    end
+
     it 'saves roleplay avatar display overrides as booleans' do
       expect do
         described_class.new(
@@ -58,6 +67,11 @@ RSpec.describe Form::AdminSettings do
         expect(settings.local_account_statuses_access).to eq('authenticated')
         expect(settings.local_status_page_access).to eq('authenticated')
         expect(settings.norss).to be(true)
+      end
+
+      it 'saves the soft-hide deletion setting as a boolean' do
+        expect { described_class.new(soft_hide_deletion: '1').save }
+          .to change(Setting, :soft_hide_deletion).from(false).to(true)
       end
 
       it 'persists forced settings instead of submitted values' do

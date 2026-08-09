@@ -863,6 +863,12 @@ class Status extends ImmutablePureComponent {
 
             {(contextType === 'notifications' || !muted || !isCollapsed) && header}
 
+            {status.get('rp_hidden') && (
+              <div className='status__rp-hidden-badge'>
+                <FormattedMessage id='status.rp_hidden' defaultMessage='Deleted' />
+              </div>
+            )}
+
             {!isCollapsed && settings.get('show_instance_info') && instanceInfo && (settings.get('show_instance_info_local') || !isLocalInstanceDomain(instanceInfo.get('domain'))) && (
               <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
             )}

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::StatusesController < Api::BaseController
+  prepend Sharlayan::Api::StatusesRoleplayDeletion
+
   include Authorization
   include Api::InteractionPoliciesConcern
 

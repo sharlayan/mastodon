@@ -51,6 +51,20 @@ RSpec.describe 'Admin Settings Other' do
       expect(response.parsed_body.at_css('input[name="form_admin_settings[federation_request_statistics_enabled]"][disabled]')).to be_present
       expect(response.parsed_body.at_css('input[name="form_admin_settings[federation_instance_edges_enabled]"][disabled]')).to be_present
     end
+
+    it 'shows soft-hide deletion only in roleplay mode' do
+      ClimateControl.modify OC_ROLEPLAY_OPTION: 'false' do
+        get admin_settings_other_path
+      end
+
+      expect(response.parsed_body.at_css('input[type="checkbox"][name="form_admin_settings[soft_hide_deletion]"]')).to be_nil
+
+      ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
+        get admin_settings_other_path
+      end
+
+      expect(response.parsed_body.at_css('input[type="checkbox"][name="form_admin_settings[soft_hide_deletion]"]')).to be_present
+    end
   end
 
   describe 'PUT /admin/settings/other' do

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class MediaController < ApplicationController
+  prepend Sharlayan::MediaRoleplayController
+
   include Authorization
   include RoutingHelper
 

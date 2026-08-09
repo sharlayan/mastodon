@@ -294,6 +294,13 @@ en:
         enabled_hint: Allow users to create clips and collect posts into named collections.
           When disabled, existing clips are kept but cannot be accessed.
         title: Clips
+      community_mode:
+        soft_hide_deletion: Keep deleted posts for the owner
+        soft_hide_deletion_hint: When a post is deleted, hide it instead of destroying
+          it. Hidden posts and their media leave every feed, search index and public
+          page, and only the owner can still read them from the management timeline.
+          Deleting a hidden post again removes it permanently.
+        title: Community mode
       custom:
         title: Custom
       discovery:

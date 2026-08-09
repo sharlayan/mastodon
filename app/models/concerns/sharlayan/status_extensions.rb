@@ -7,4 +7,5 @@ module Sharlayan::StatusExtensions
   include Sharlayan::Status::DomainMutes
   include Sharlayan::Status::MediaLimits
   include Sharlayan::Status::Reactions
+  include Sharlayan::Status::RoleplayHidden
 end
