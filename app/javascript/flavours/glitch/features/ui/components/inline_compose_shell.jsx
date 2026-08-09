@@ -153,6 +153,12 @@ export const InlineComposeShell = () => {
 
   const toggleMenu = useCallback(() => setMenuOpen((open) => !open), []);
 
+  const handleComposeBlur = useCallback((event) => {
+    if (expandOnClick && !hasComposeContents && !event.currentTarget.contains(event.relatedTarget)) {
+      setComposeExpanded(false);
+    }
+  }, [expandOnClick, hasComposeContents]);
+
   const addTab = useCallback((type, id) => {
     const next = savedTabList.filter((tab) => !(tab.type === type && String(tab.id) === String(id)));
     next.push({ type, id: String(id) });
@@ -265,6 +271,7 @@ export const InlineComposeShell = () => {
       <div
         className={classNames('inline-compose-form', { 'inline-compose-form--collapsed': expandOnClick && !composeExpanded })}
         onClick={() => setComposeExpanded(true)}
+        onBlurCapture={handleComposeBlur}
         onFocusCapture={() => setComposeExpanded(true)}
       >
         <ComposeFormContainer isInline withoutNavigation />
