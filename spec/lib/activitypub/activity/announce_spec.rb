@@ -150,6 +150,20 @@ RSpec.describe ActivityPub::Activity::Announce do
         end
       end
 
+      context 'when the relay suppresses the public timeline stream' do
+        before do
+          relay.update(state: :accepted, suppress_public_timeline_stream: true)
+          subject.perform
+        end
+
+        it 'passes the suppression setting to the fetched status distribution' do
+          status = Status.find_by(uri: 'https://example.com/actor/hello-world')
+
+          expect(DistributionWorker)
+            .to have_enqueued_sidekiq_job(status.id, hash_including('suppress_public_timeline_stream' => true))
+        end
+      end
+
       context 'when the relay is enabled but the sender domain rejects relay' do
         before do
           Fabricate(:domain_block, domain: sender.domain, reject_relay: true)

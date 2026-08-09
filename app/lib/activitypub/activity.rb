@@ -119,7 +119,7 @@ class ActivityPub::Activity
 
       if actor_id == @account.uri
         virtual_object = { 'type' => 'Create', 'actor' => actor_id, 'object' => @object }
-        return ActivityPub::Activity.factory(virtual_object, @account, request_id: @options[:request_id]).perform
+        return ActivityPub::Activity.factory(virtual_object, @account, **@options).perform
       end
     end
 
@@ -171,7 +171,7 @@ class ActivityPub::Activity
     if object_uri.start_with?('http')
       return if ActivityPub::TagManager.instance.local_uri?(object_uri)
 
-      ActivityPub::FetchRemoteStatusService.new.call(object_uri, on_behalf_of: @account.followers.local.first, request_id: @options[:request_id])
+      ActivityPub::FetchRemoteStatusService.new.call(object_uri, on_behalf_of: @account.followers.local.first, request_id: @options[:request_id], relayed_through_actor: @options[:relayed_through_actor])
     elsif @object['url'].present?
       ::FetchRemoteStatusService.new.call(@object['url'], request_id: @options[:request_id])
     end
