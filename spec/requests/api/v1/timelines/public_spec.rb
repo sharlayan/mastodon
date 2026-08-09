@@ -138,5 +138,36 @@ RSpec.describe 'Public' do
         it_behaves_like 'a successful request to the public timeline'
       end
     end
+
+    context 'when roleplay mode is enabled' do
+      let(:expected_statuses) { [] }
+
+      around do |example|
+        ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
+          example.run
+        end
+      end
+
+      before do
+        Setting.local_live_feed_access = 'authenticated'
+        Setting.remote_live_feed_access = 'authenticated'
+      end
+
+      context 'without timeline filters' do
+        it_behaves_like 'a successful request to the public timeline'
+      end
+
+      context 'with the local timeline filter' do
+        let(:params) { { local: true } }
+
+        it_behaves_like 'a successful request to the public timeline'
+      end
+
+      context 'with the remote timeline filter' do
+        let(:params) { { remote: true } }
+
+        it_behaves_like 'a successful request to the public timeline'
+      end
+    end
   end
 end

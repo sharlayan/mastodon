@@ -153,6 +153,7 @@
   "compose_form.clip.select",
   "compose_form.mfm.preview",
   "compose_form.mfm.syntax_docs",
+  "compose_form.rp_server_dm_warning",
   "compose_form.publish_toot",
   "compose_form.schedule",
   "compose_form.schedule_for",

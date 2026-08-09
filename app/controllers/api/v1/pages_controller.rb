@@ -3,6 +3,7 @@
 class Api::V1::PagesController < Api::BaseController
   include Api::AnonymousPageViewLimit
   include Api::PageSearchEngineAccess
+  include Api::PagesRoleplayAccessConcern
 
   ALLOWED_BLOCK_KEYS = %w(id type text format title children fileId noUpscale spoiler note detailed url size).freeze
 

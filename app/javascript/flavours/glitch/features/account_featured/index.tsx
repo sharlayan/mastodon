@@ -24,7 +24,7 @@ import Column from '@/flavours/glitch/features/ui/components/column';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';
-import { me } from '@/flavours/glitch/initial_state';
+import { collectionsEnabled, me } from '@/flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 
@@ -66,7 +66,7 @@ const AccountFeatured: React.FC<{ multiColumn: boolean }> = ({
       ) as ImmutableList<string>,
   );
   const { collections, status: collectionsLoadStatus } =
-    useCollectionsCreatedBy(accountId);
+    useCollectionsCreatedBy(collectionsEnabled ? accountId : null);
 
   const { listedCollections = [], unlistedCollections = [] } = Object.groupBy(
     collections,
@@ -93,11 +93,14 @@ const AccountFeatured: React.FC<{ multiColumn: boolean }> = ({
   );
 
   const hasCollections =
-    collectionsLoadStatus === 'idle' && listedCollections.length > 0;
+    collectionsEnabled &&
+    collectionsLoadStatus === 'idle' &&
+    listedCollections.length > 0;
 
   const hasFeaturedAccounts = !featuredAccountIds.isEmpty();
 
-  const isLoading = !accountId || collectionsLoadStatus !== 'idle';
+  const isLoading =
+    !accountId || (collectionsEnabled && collectionsLoadStatus !== 'idle');
 
   if (accountId === null) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
@@ -157,53 +160,57 @@ const AccountFeatured: React.FC<{ multiColumn: boolean }> = ({
             </ItemList>
           </>
         )}
-        <Subheading as='header'>
-          <h2>
-            <FormattedMessage
-              id='account.featured.collections'
-              defaultMessage='Collections'
-            />
-          </h2>
-          {isOwnProfile && (
-            <SubheadingLink to='/collections/new' icon={AddIcon}>
-              <FormattedMessage
-                id='account.featured.new_collection'
-                defaultMessage='New collection'
+        {collectionsEnabled && (
+          <>
+            <Subheading as='header'>
+              <h2>
+                <FormattedMessage
+                  id='account.featured.collections'
+                  defaultMessage='Collections'
+                />
+              </h2>
+              {isOwnProfile && (
+                <SubheadingLink to='/collections/new' icon={AddIcon}>
+                  <FormattedMessage
+                    id='account.featured.new_collection'
+                    defaultMessage='New collection'
+                  />
+                </SubheadingLink>
+              )}
+            </Subheading>
+            {hasCollections ? (
+              <ItemList>
+                <TruncatedListItems
+                  visibleItems={listedCollections}
+                  truncatedItems={isOwnProfile ? unlistedCollections : []}
+                  toggleButton={{
+                    title: (
+                      <FormattedMessage
+                        id='collections.unlisted_collections_with_count'
+                        defaultMessage='Unlisted collections ({count})'
+                        values={{ count: unlistedCollections.length }}
+                      />
+                    ),
+                    subtitle: (
+                      <FormattedMessage
+                        id='collections.unlisted_collections_description'
+                        defaultMessage='These don’t appear on your profile to others. Anyone with the link can discover them.'
+                      />
+                    ),
+                  }}
+                  renderListItem={renderListItem}
+                />
+              </ItemList>
+            ) : (
+              <EmptyMessage
+                withoutAddCollectionButton
+                blockedBy={blockedBy}
+                hidden={hidden}
+                suspended={suspended}
+                accountId={accountId}
               />
-            </SubheadingLink>
-          )}
-        </Subheading>
-        {hasCollections ? (
-          <ItemList>
-            <TruncatedListItems
-              visibleItems={listedCollections}
-              truncatedItems={isOwnProfile ? unlistedCollections : []}
-              toggleButton={{
-                title: (
-                  <FormattedMessage
-                    id='collections.unlisted_collections_with_count'
-                    defaultMessage='Unlisted collections ({count})'
-                    values={{ count: unlistedCollections.length }}
-                  />
-                ),
-                subtitle: (
-                  <FormattedMessage
-                    id='collections.unlisted_collections_description'
-                    defaultMessage='These don’t appear on your profile to others. Anyone with the link can discover them.'
-                  />
-                ),
-              }}
-              renderListItem={renderListItem}
-            />
-          </ItemList>
-        ) : (
-          <EmptyMessage
-            withoutAddCollectionButton
-            blockedBy={blockedBy}
-            hidden={hidden}
-            suspended={suspended}
-            accountId={accountId}
-          />
+            )}
+          </>
         )}
         <RemoteHint accountId={accountId} />
       </Scrollable>

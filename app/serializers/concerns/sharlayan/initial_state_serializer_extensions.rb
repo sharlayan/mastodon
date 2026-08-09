@@ -49,16 +49,17 @@ module Sharlayan::InitialStateSerializerExtensions
       reaction_custom_emoji_size: object_account_user.settings_reaction_custom_emoji_size,
       reaction_local_emoji_only: Setting.reaction_local_emoji_only,
       reactions_enabled: Setting.reactions_enabled,
-      mfm_enabled: object_account_user.settings_mfm_enabled,
+      mfm_enabled: mfm_enabled,
       mfm_animations: object_account_user.settings_mfm_animations,
       mfm_fold_mode: object_account_user.settings_mfm_fold_mode,
       mfm_allow_composition: Setting.mfm_allow_composition,
-      show_avatar_decorations: object_account_user.settings['avatar_decorations.show'],
+      show_avatar_decorations: show_avatar_decorations,
       show_federated_avatar_decorations: object_account_user.settings['avatar_decorations.show_federated'],
       show_cat: object_account_user.settings['cat.show'],
       show_cat_speak: object_account_user.settings['cat.show_speak'],
       show_federated_cat: object_account_user.settings['cat.show_federated'],
       avatar_decoration_shape: object_account_user.settings['avatar_decorations.shape'],
+      force_round_avatar: RoleplayModeHelper.roleplay_mode? && Setting['force_round_avatar'],
       color_scheme: object_account_user.settings['web.color_scheme'],
       contrast: object_account_user.settings['web.contrast'],
       custom_emoji_mute_hidden: object_account_user.settings['web.custom_emoji_mute_hidden'],
@@ -66,5 +67,17 @@ module Sharlayan::InitialStateSerializerExtensions
       custom_emoji_mutes: object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions, hide_in_picker: mute.hide_in_picker } },
       reaction_mutes: object.current_account.reaction_mutes.includes(:target_account).order(id: :desc).map { |mute| { id: mute.id.to_s, target_account_id: mute.target_account_id&.to_s, target_acct: mute.target_account&.acct, target_domain: mute.target_domain } },
     }
+  end
+
+  def show_avatar_decorations
+    return true if RoleplayModeHelper.roleplay_mode? && Setting['force_avatar_decorations']
+
+    object_account_user.settings['avatar_decorations.show']
+  end
+
+  def mfm_enabled
+    return true if RoleplayModeHelper.roleplay_mode? && Setting['force_mfm_enabled']
+
+    object_account_user.settings_mfm_enabled
   end
 end

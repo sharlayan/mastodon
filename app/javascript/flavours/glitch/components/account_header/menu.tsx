@@ -30,6 +30,7 @@ import {
 } from '@/flavours/glitch/features/collections/utils';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
+import { collectionsEnabled } from '@/flavours/glitch/initial_state';
 import type { Account } from '@/flavours/glitch/models/account';
 import type { MenuItem } from '@/flavours/glitch/models/dropdown_menu';
 import type { Relationship } from '@/flavours/glitch/models/relationship';
@@ -351,8 +352,9 @@ function getMenuItems({
 
   // Add to collection
   if (
-    canAccountBeAdded(account) ||
-    (canAccountBeAddedByFollowers(account) && relationship?.following)
+    collectionsEnabled &&
+    (canAccountBeAdded(account) ||
+      (canAccountBeAddedByFollowers(account) && relationship?.following))
   ) {
     items.push({
       text: intl.formatMessage(redesignMessages.addToCollection),

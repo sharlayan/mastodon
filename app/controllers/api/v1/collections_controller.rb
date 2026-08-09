@@ -3,6 +3,7 @@
 class Api::V1::CollectionsController < Api::BaseController
   include Authorization
   include DeprecationConcern
+  include CollectionsFeatureConcern
 
   DEFAULT_COLLECTIONS_LIMIT = 40
   MAX_COLLECTIONS_LIMIT = 100

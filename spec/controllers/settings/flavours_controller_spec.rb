@@ -5,6 +5,10 @@ require 'rails_helper'
 RSpec.describe Settings::FlavoursController do
   let(:user) { Fabricate(:user) }
 
+  around do |example|
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') { example.run }
+  end
+
   before do
     sign_in user, scope: :user
     allow(Themes.instance).to receive(:flavours).and_return(%w(glitch schnozzberry))
@@ -12,6 +16,22 @@ RSpec.describe Settings::FlavoursController do
   end
 
   describe 'PUT #update' do
+    context 'when roleplay mode is enabled' do
+      around do |example|
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+      end
+
+      before do
+        allow(Themes.instance).to receive(:skins_for).with('glitch').and_return(%w(default))
+      end
+
+      it 'forces the glitch flavour' do
+        put :update, params: { flavour: 'schnozzberry' }
+
+        expect(user.reload.setting_flavour).to eq('glitch')
+      end
+    end
+
     describe 'without a user[setting_skin] parameter' do
       it 'sets the selected flavour' do
         put :update, params: { flavour: 'schnozzberry' }

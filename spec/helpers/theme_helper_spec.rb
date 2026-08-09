@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe ThemeHelper do
+  around do |example|
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') { example.run }
+  end
+
   describe 'theme_style_tags' do
     let(:result) { helper.theme_style_tags(theme) }
 
@@ -139,6 +143,14 @@ RSpec.describe ThemeHelper do
         context 'when theme is not valid' do
           it { is_expected.to eq(['glitch', 'default']) }
         end
+      end
+    end
+  end
+
+  describe '#current_flavour' do
+    it 'forces the glitch flavour in roleplay mode' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        expect(helper.current_flavour).to eq('glitch')
       end
     end
   end

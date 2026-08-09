@@ -35,8 +35,10 @@ import { useIdentity } from 'flavours/glitch/identity_context';
 import {
   antennaEnabled,
   boardAnnouncementsEnabled,
+  collectionsEnabled,
   localLiveFeedAccess,
   me,
+  publicTimelinesEnabled,
   remoteLiveFeedAccess,
   trendsEnabled,
 } from 'flavours/glitch/initial_state';
@@ -170,8 +172,9 @@ export const useSharlayanPrimaryNavigation = (
     [navOrder],
   );
   const feedsAllowed =
-    canViewFeed(signedIn, permissions, localLiveFeedAccess) ||
-    canViewFeed(signedIn, permissions, remoteLiveFeedAccess);
+    publicTimelinesEnabled &&
+    (canViewFeed(signedIn, permissions, localLiveFeedAccess) ||
+      canViewFeed(signedIn, permissions, remoteLiveFeedAccess));
   const renderers: Partial<Record<string, (id?: string) => ReactNode>> = {};
 
   if (signedIn) {
@@ -245,17 +248,19 @@ export const useSharlayanPrimaryNavigation = (
         id={id}
       />
     );
-    renderers.collections = (id) => (
-      <ColumnLink
-        transparent
-        to={`/@${account?.acct}/collections`}
-        icon='collections'
-        iconComponent={CollectionsIcon}
-        activeIconComponent={CollectionsActiveIcon}
-        text={intl.formatMessage(messages.collections)}
-        id={id}
-      />
-    );
+    if (collectionsEnabled) {
+      renderers.collections = (id) => (
+        <ColumnLink
+          transparent
+          to={`/@${account?.acct}/collections`}
+          icon='collections'
+          iconComponent={CollectionsIcon}
+          activeIconComponent={CollectionsActiveIcon}
+          text={intl.formatMessage(messages.collections)}
+          id={id}
+        />
+      );
+    }
     renderers.direct = (id) => (
       <ColumnLink
         transparent

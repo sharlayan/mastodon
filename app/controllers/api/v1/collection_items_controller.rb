@@ -3,6 +3,7 @@
 class Api::V1::CollectionItemsController < Api::BaseController
   include Authorization
   include DeprecationConcern
+  include CollectionsFeatureConcern
 
   deprecate_api '2026-06-10', if: :alpha_path?
 

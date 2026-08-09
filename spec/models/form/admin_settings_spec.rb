@@ -20,13 +20,65 @@ RSpec.describe Form::AdminSettings do
 
   describe '#save' do
     it 'saves the RSS default setting as a boolean' do
-      expect { described_class.new(norss: '1').save }
-        .to change(Setting, :norss).from(false).to(true)
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+        Setting.norss = false
+
+        expect { described_class.new(norss: '1').save }
+          .to change(Setting, :norss).from(false).to(true)
+      end
     end
 
     it 'saves the circles feature setting as a boolean' do
       expect { described_class.new(circles_enabled: '1').save }
         .to change(Setting, :circles_enabled).from(false).to(true)
+    end
+
+    it 'saves roleplay avatar display overrides as booleans' do
+      expect do
+        described_class.new(
+          force_avatar_decorations: '1',
+          force_round_avatar: '1'
+        ).save
+      end.to change(Setting, :force_avatar_decorations).from(false).to(true)
+        .and change(Setting, :force_round_avatar).from(false).to(true)
+    end
+
+    context 'when roleplay mode is enabled' do
+      around do |example|
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+      end
+
+      it 'returns authenticated access for the administrator form' do
+        settings = described_class.new
+
+        expect(settings.local_live_feed_access).to eq('authenticated')
+        expect(settings.remote_live_feed_access).to eq('authenticated')
+        expect(settings.local_topic_feed_access).to eq('authenticated')
+        expect(settings.remote_topic_feed_access).to eq('authenticated')
+        expect(settings.local_account_statuses_access).to eq('authenticated')
+        expect(settings.local_status_page_access).to eq('authenticated')
+        expect(settings.norss).to be(true)
+      end
+
+      it 'persists forced settings instead of submitted values' do
+        described_class.new(
+          local_live_feed_access: 'public',
+          remote_live_feed_access: 'public',
+          local_topic_feed_access: 'public',
+          remote_topic_feed_access: 'public',
+          local_account_statuses_access: 'public',
+          local_status_page_access: 'public',
+          norss: '0'
+        ).save
+
+        expect(Setting.local_live_feed_access).to eq('authenticated')
+        expect(Setting.remote_live_feed_access).to eq('authenticated')
+        expect(Setting.local_topic_feed_access).to eq('authenticated')
+        expect(Setting.remote_topic_feed_access).to eq('authenticated')
+        expect(Setting.local_account_statuses_access).to eq('authenticated')
+        expect(Setting.local_status_page_access).to eq('authenticated')
+        expect(Setting.norss).to be(true)
+      end
     end
 
     it 'saves drive settings with their declared types' do

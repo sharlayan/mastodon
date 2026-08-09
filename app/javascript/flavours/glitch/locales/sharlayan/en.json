@@ -153,6 +153,7 @@
   "compose_form.clip.select": "Select clip",
   "compose_form.mfm.preview": "Preview",
   "compose_form.mfm.syntax_docs": "MFM syntax",
+  "compose_form.rp_server_dm_warning": "Server administrators can read direct messages for moderation.",
   "compose_form.publish_toot": "Toot",
   "compose_form.schedule": "Schedule",
   "compose_form.schedule_for": "Schedule for",

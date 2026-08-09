@@ -6,6 +6,7 @@ import type { ApiOnlineStatus } from 'flavours/glitch/api_types/accounts';
 import {
   avatarDecorationShape,
   avatarDecorationsEnabled,
+  forceRoundAvatar,
   me,
   showAvatarDecorations,
   showFederatedAvatarDecorations,
@@ -100,9 +101,14 @@ export function useSharlayanAvatarExtras({
     'account__avatar--online-status': displayOnlineStatus,
     'account__avatar--cat': showCatEars,
     'account__avatar--force-round':
-      showCatEars || (hasDecorations && avatarDecorationShape === 'round'),
+      forceRoundAvatar ||
+      showCatEars ||
+      (hasDecorations && avatarDecorationShape === 'round'),
     'account__avatar--force-square':
-      !showCatEars && hasDecorations && avatarDecorationShape === 'square',
+      !forceRoundAvatar &&
+      !showCatEars &&
+      hasDecorations &&
+      avatarDecorationShape === 'square',
   };
 
   const avatarExtras = (

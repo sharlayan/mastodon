@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class CollectionsController < ApplicationController
+  include CollectionsFeatureConcern
   include WebAppControllerConcern
   include SignatureAuthentication
   include Authorization

@@ -2,6 +2,7 @@
 
 class Api::V1::InCollectionsController < Api::BaseController
   include Authorization
+  include CollectionsFeatureConcern
 
   DEFAULT_COLLECTIONS_LIMIT = 40
 

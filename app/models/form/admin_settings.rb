@@ -4,6 +4,7 @@ class Form::AdminSettings
   include ActiveModel::Model
 
   include AuthorizedFetchHelper
+  include RoleplayModeHelper
 
   KEYS = (%i(
     site_contact_username
@@ -116,6 +117,7 @@ class Form::AdminSettings
   attr_accessor(*KEYS)
 
   validates :registrations_mode, inclusion: { in: REGISTRATION_MODES }, if: -> { defined?(@registrations_mode) }
+  validates :registrations_mode, exclusion: { in: %w(open) }, if: -> { defined?(@registrations_mode) && roleplay_mode? }
   validates :site_contact_email, :site_contact_username, presence: true, if: -> { defined?(@site_contact_username) || defined?(@site_contact_email) }
   validates :site_contact_username, existing_username: true, if: -> { defined?(@site_contact_username) }
   validates :bootstrap_timeline_accounts, existing_username: { multiple: true }, if: -> { defined?(@bootstrap_timeline_accounts) }
@@ -139,6 +141,8 @@ class Form::AdminSettings
 
       stored_value = if UPLOAD_KEYS.include?(key)
                        SiteUpload.where(var: key).first_or_initialize(var: key)
+                     elsif roleplay_mode? && Sharlayan::RoleplayForcedSettings::SETTINGS.key?(key)
+                       Sharlayan::RoleplayForcedSettings::SETTINGS[key]
                      elsif OVERRIDEN_SETTINGS.include?(key)
                        public_send(OVERRIDEN_SETTINGS[key])
                      else
@@ -166,6 +170,14 @@ class Form::AdminSettings
 
     KEYS.each do |key|
       next if PSEUDO_KEYS.include?(key) || !instance_variable_defined?(:"@#{key}")
+
+      # DESTRUCTIVE: Discards submitted values for forced roleplay settings.
+      # 파괴적: 강제 롤플레이 설정에 제출된 값을 버립니다.
+      if roleplay_mode? && Sharlayan::RoleplayForcedSettings::SETTINGS.key?(key)
+        setting = Setting.where(var: key).first_or_initialize(var: key)
+        setting.update(value: Sharlayan::RoleplayForcedSettings::SETTINGS[key])
+        next
+      end
 
       cache_digest_value(key) if DIGEST_KEYS.include?(key)
 

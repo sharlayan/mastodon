@@ -5,6 +5,10 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::Collections' do
   include_context 'with API authentication', oauth_scopes: 'read:collections write:collections'
 
+  around do |example|
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') { example.run }
+  end
+
   describe 'GET /api/v1/accounts/:account_id/collections' do
     subject do
       get "/api/v1/accounts/#{account.id}/collections", headers: headers, params: params

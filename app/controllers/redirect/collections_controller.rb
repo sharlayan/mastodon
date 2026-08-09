@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Redirect::CollectionsController < Redirect::BaseController
+  include CollectionsFeatureConcern
+
   private
 
   def set_resource

@@ -38,6 +38,36 @@ RSpec.describe InitialStateSerializer do
     expect(described_class.new(presenter).meta[:show_instance_info]).to be false
   end
 
+  it 'forces avatar decoration display in roleplay mode when configured' do
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+      allow(Setting).to receive(:[]).and_call_original
+      allow(Setting).to receive(:[])
+        .with('force_avatar_decorations')
+        .and_return(true)
+      allow(Setting).to receive(:[])
+        .with('force_round_avatar')
+        .and_return(true)
+      user = Fabricate(:user)
+      presenter = InitialStatePresenter.new(current_account: user.account, settings: {})
+
+      expect(described_class.new(presenter).meta).to include(
+        show_avatar_decorations: true,
+        force_round_avatar: true
+      )
+    end
+  end
+
+  it 'forces MFM rendering in roleplay mode when configured' do
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+      allow(Setting).to receive(:[]).and_call_original
+      allow(Setting).to receive(:[]).with('force_mfm_enabled').and_return(true)
+      user = Fabricate(:user)
+      presenter = InitialStatePresenter.new(current_account: user.account, settings: {})
+
+      expect(described_class.new(presenter).meta[:mfm_enabled]).to be(true)
+    end
+  end
+
   it 'adds server feature gates for guests without signed-in snapshots' do
     meta = described_class.new(InitialStatePresenter.new(settings: {})).meta
 

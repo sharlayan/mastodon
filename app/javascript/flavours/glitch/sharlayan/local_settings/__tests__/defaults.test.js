@@ -1,7 +1,7 @@
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import localSettings from 'flavours/glitch/reducers/local_settings';
-import { showInstanceInfo } from 'flavours/glitch/initial_state';
+import { roleplayMode, showInstanceInfo } from 'flavours/glitch/initial_state';
 
 import { sharlayanLocalSettingsDefaults } from '../defaults';
 
@@ -14,7 +14,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('show_follow_list_bio')).toBe(true);
     expect(state.get('show_others_online_status')).toBe(false);
     expect(state.get('show_instance_info')).toBe(showInstanceInfo === true);
-    expect(state.get('inline_compose_timelines')).toBe(false);
+    expect(state.get('inline_compose_timelines')).toBe(roleplayMode);
     expect(state.get('inline_compose_expand_on_click')).toBe(false);
     expect(state.get('disable_inline_compose_reply_modal')).toBe(false);
     expect(state.get('use_publish_toot')).toBe(false);

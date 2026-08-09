@@ -25,7 +25,11 @@ import { Icon } from 'flavours/glitch/components/icon';
 import glitchedElephant1 from 'flavours/glitch/images/mbstobon-ui-0.png';
 import glitchedElephant2 from 'flavours/glitch/images/mbstobon-ui-1.png';
 import glitchedElephant3 from 'flavours/glitch/images/mbstobon-ui-2.png';
-import { mascot, reduceMotion } from 'flavours/glitch/initial_state';
+import {
+  mascot,
+  publicTimelinesEnabled,
+  reduceMotion,
+} from 'flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { messages as navbarMessages } from '../ui/components/navigation_bar';
@@ -169,26 +173,28 @@ const Compose: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
               </span>
             </Link>
           )}
-          {!columns.some((column) => column.get('id') === 'COMMUNITY') && (
-            <Link
-              to='/public/local'
-              className='drawer__tab'
-              title={intl.formatMessage(messages.live_feed_local)}
-              aria-label={intl.formatMessage(messages.live_feed_local)}
-            >
-              <Icon id='users' icon={PeopleIcon} />
-            </Link>
-          )}
-          {!columns.some((column) => column.get('id') === 'PUBLIC') && (
-            <Link
-              to='/public'
-              className='drawer__tab'
-              title={intl.formatMessage(messages.live_feed_public)}
-              aria-label={intl.formatMessage(messages.live_feed_public)}
-            >
-              <Icon id='globe' icon={PublicIcon} />
-            </Link>
-          )}
+          {publicTimelinesEnabled &&
+            !columns.some((column) => column.get('id') === 'COMMUNITY') && (
+              <Link
+                to='/public/local'
+                className='drawer__tab'
+                title={intl.formatMessage(messages.live_feed_local)}
+                aria-label={intl.formatMessage(messages.live_feed_local)}
+              >
+                <Icon id='users' icon={PeopleIcon} />
+              </Link>
+            )}
+          {publicTimelinesEnabled &&
+            !columns.some((column) => column.get('id') === 'PUBLIC') && (
+              <Link
+                to='/public'
+                className='drawer__tab'
+                title={intl.formatMessage(messages.live_feed_public)}
+                aria-label={intl.formatMessage(messages.live_feed_public)}
+              >
+                <Icon id='globe' icon={PublicIcon} />
+              </Link>
+            )}
           <a
             onClick={handleSettingsClick}
             href='/settings/preferences'

@@ -33,6 +33,7 @@ require_relative '../lib/paperclip/type_corrector'
 require_relative '../lib/paperclip/response_with_limit_adapter'
 require_relative '../lib/terrapin/multi_pipe_extensions'
 require_relative '../lib/mastodon/middleware/public_file_server'
+require_relative '../lib/mastodon/middleware/roleplay_federation_block'
 require_relative '../lib/mastodon/middleware/socket_cleanup'
 require_relative '../lib/mastodon/email_configuration_helper'
 require_relative '../lib/mastodon/feature'
@@ -86,6 +87,7 @@ module Mastodon
     config.public_file_server.enabled = false
 
     config.middleware.use Mastodon::Middleware::PublicFileServer if Rails.env.local? || ENV['RAILS_SERVE_STATIC_FILES'] == 'true'
+    config.middleware.use Mastodon::Middleware::RoleplayFederationBlock if ENV['OC_ROLEPLAY_OPTION'] == 'true'
     config.middleware.use Rack::Attack
     config.middleware.use Mastodon::Middleware::SocketCleanup
 

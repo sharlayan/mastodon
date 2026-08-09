@@ -35,6 +35,10 @@ import { Button } from '@/flavours/glitch/components/button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { computeNavigationOrder, isNavigationItemAlwaysVisible, NAVIGATION_PANEL_ITEMS, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
+import {
+  collectionsEnabled,
+  publicTimelinesEnabled,
+} from '@/flavours/glitch/initial_state';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
 const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, locked, intl, onToggle, onMove }) => {
@@ -109,9 +113,16 @@ NavigationPanelSettingsItem.propTypes = {
 
 const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   const dispatch = useAppDispatch();
-  const order = computeNavigationOrder(settings.getIn(['navigation_panel', 'order'])?.toJS());
+  const unavailableItems = [
+    ...(!publicTimelinesEnabled ? ['federated', 'local'] : []),
+    ...(!collectionsEnabled ? ['collections'] : []),
+  ];
+  const availableItems = NAVIGATION_PANEL_ITEMS.filter(
+    (key) => !unavailableItems.includes(key),
+  );
+  const order = computeNavigationOrder(settings.getIn(['navigation_panel', 'order'])?.toJS()).filter((key) => availableItems.includes(key));
   const hidden = settings.getIn(['navigation_panel', 'hidden']) ?? ImmutableMap();
-  const usingDefaults = fromJS(order).equals(fromJS(NAVIGATION_PANEL_ITEMS)) && hidden.isEmpty();
+  const usingDefaults = fromJS(order).equals(fromJS(availableItems)) && hidden.isEmpty();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

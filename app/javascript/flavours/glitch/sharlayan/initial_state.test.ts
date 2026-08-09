@@ -25,6 +25,7 @@ const meta: SharlayanInitialStateMeta = {
   show_cat_speak: false,
   show_federated_cat: true,
   avatar_decoration_shape: 'square',
+  force_round_avatar: false,
   local_account_statuses_access: 'authenticated',
   local_status_page_access: 'public',
   roleplay_mode: false,
@@ -47,11 +48,14 @@ describe('Sharlayan initial state', () => {
         maxReactions: 5,
         driveEnabled: true,
         federationUniverseEnabled: true,
+        publicTimelinesEnabled: true,
+        collectionsEnabled: true,
         pagesDriveOnly: true,
         antennaEnabled: true,
         showInstanceInfo: true,
         mfmFoldMode: 'all',
         avatarDecorationShape: 'square',
+        forceRoundAvatar: false,
         avatarDecorationsLocalOnlyView: true,
         catEnabled: true,
         catFederationEnabled: true,
@@ -70,16 +74,32 @@ describe('Sharlayan initial state', () => {
       driveEnabled: false,
       pagesDriveOnly: false,
       antennaEnabled: false,
+      publicTimelinesEnabled: true,
+      collectionsEnabled: true,
       reactionsEnabled: true,
       mfmEnabled: true,
       mfmFoldMode: 'sensitive',
       avatarDecorationShape: 'round',
+      forceRoundAvatar: false,
       avatarDecorationsLocalOnlyView: false,
       catEnabled: false,
       catFederationEnabled: false,
       showCat: true,
       showCatSpeak: true,
       showFederatedCat: true,
+    });
+  });
+
+  it('disables public timelines in roleplay mode', () => {
+    expect(
+      readSharlayanInitialState({
+        meta: { ...meta, roleplay_mode: true },
+      }),
+    ).toMatchObject({
+      roleplayMode: true,
+      publicTimelinesEnabled: false,
+      collectionsEnabled: false,
+      forceRoundAvatar: false,
     });
   });
 });

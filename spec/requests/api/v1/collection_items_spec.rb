@@ -5,6 +5,10 @@ require 'rails_helper'
 RSpec.describe 'Api::V1Alpha::CollectionItems' do
   include_context 'with API authentication', oauth_scopes: 'read:collections write:collections'
 
+  around do |example|
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') { example.run }
+  end
+
   describe 'POST /api/v1/collections/:collection_id/items' do
     subject do
       post "/api/v1/collections/#{collection.id}/items", headers: headers, params: params

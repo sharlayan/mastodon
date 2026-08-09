@@ -17,6 +17,7 @@ import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
 import { Footer } from 'flavours/glitch/features/custom_homepage/components/footer';
 import { Header } from 'flavours/glitch/features/custom_homepage/components/header';
 import { CollapsibleNavigationPanel } from 'flavours/glitch/features/navigation_panel';
+import { publicTimelinesEnabled } from 'flavours/glitch/initial_state';
 import { sharlayanColumnComponents } from 'flavours/glitch/sharlayan/registry/routes';
 import { SharlayanColumnsAreaExtensions } from 'flavours/glitch/sharlayan/registry/ui';
 
@@ -105,6 +106,12 @@ export const ColumnsArea = forwardRef<
   const columns = useAppSelector(
     (state) => state.settings.get('columns') as List<Record<Column>>,
   );
+  const visibleColumns = publicTimelinesEnabled
+    ? columns
+    : columns.filter(
+        (column) =>
+          !['PUBLIC', 'REMOTE', 'COMMUNITY'].includes(column.get('id')),
+      );
   const isModalOpen = useAppSelector(
     (state) => !state.modal.get('stack').isEmpty(),
   );
@@ -180,7 +187,7 @@ export const ColumnsArea = forwardRef<
       ref={ref}
       tabIndex={isModalOpen ? undefined : 0}
     >
-      {columns.map((column, index) => {
+      {visibleColumns.map((column, index) => {
         const params = column.get('params')
           ? column.get('params')?.toJS()
           : null;
@@ -222,7 +229,7 @@ export const ColumnsArea = forwardRef<
           onSave: saveUnpinnedColumnWidth,
         }}
       >
-        <ColumnIndexContext.Provider value={columns.size}>
+        <ColumnIndexContext.Provider value={visibleColumns.size}>
           {Children.map(children, (child) =>
             isValidElement<{ multiColumn?: boolean }>(child)
               ? cloneElement(child, { multiColumn: true })

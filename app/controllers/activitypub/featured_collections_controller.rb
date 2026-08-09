@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class ActivityPub::FeaturedCollectionsController < ApplicationController
+  include CollectionsFeatureConcern
   include SignatureAuthentication
   include Authorization
   include AccountOwnedConcern

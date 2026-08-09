@@ -17,6 +17,9 @@ defaults:
   misskey_compat_expose_follow_graph: false
   mfm_enabled: false
   mfm_allow_composition: false
+  force_mfm_enabled: false
+  force_avatar_decorations: false
+  force_round_avatar: false
   circles_enabled: false
   clips_enabled: false
   auto_quote_from_url: false

@@ -4,7 +4,7 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import { animated, useSpring } from '@react-spring/web';
 
-import { me } from 'flavours/glitch/initial_state';
+import { me, roleplayMode } from 'flavours/glitch/initial_state';
 import { useAppSelector } from 'flavours/glitch/store';
 import type { RootState } from 'flavours/glitch/store';
 import { HASHTAG_PATTERN_REGEX } from 'flavours/glitch/utils/hashtags';
@@ -26,6 +26,14 @@ export const Warning = () => {
   if (needsLockWarning) {
     return (
       <WarningMessage>
+        {roleplayMode && (
+          <>
+            <FormattedMessage
+              id='compose_form.rp_server_dm_warning'
+              defaultMessage='Server administrators can read direct messages for moderation.'
+            />{' '}
+          </>
+        )}
         <FormattedMessage
           id='compose_form.lock_disclaimer'
           defaultMessage='Your account is not {locked}. Anyone can follow you to view your follower-only posts.'

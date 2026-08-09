@@ -13,6 +13,20 @@ RSpec.describe PublicFeed do
   describe '#get' do
     subject { described_class.new(nil).get(20).map(&:id) }
 
+    context 'when roleplay mode is enabled' do
+      around do |example|
+        ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
+          example.run
+        end
+      end
+
+      it 'returns an empty list' do
+        Fabricate(:status, visibility: :public)
+
+        expect(subject).to be_empty
+      end
+    end
+
     it 'only includes statuses with public visibility' do
       public_status = Fabricate(:status, visibility: :public)
       private_status = Fabricate(:status, visibility: :private)

@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe AccountSearchService do
+  around do |example|
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') { example.run }
+  end
+
   describe '#call' do
     context 'with a query to ignore' do
       it 'returns empty array for missing query' do
@@ -65,6 +69,17 @@ RSpec.describe AccountSearchService do
         allow(ResolveAccountService).to receive(:new).and_return(service)
 
         subject.call('newuser@remote.com', nil, limit: 10, resolve: false)
+        expect(service).to_not have_received(:call)
+      end
+
+      it 'does not follow the remote account in roleplay mode' do
+        service = instance_double(ResolveAccountService, call: nil)
+        allow(ResolveAccountService).to receive(:new).and_return(service)
+
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+          subject.call('newuser@remote.com', nil, limit: 10, resolve: true)
+        end
+
         expect(service).to_not have_received(:call)
       end
     end

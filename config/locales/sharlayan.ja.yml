@@ -1,5 +1,9 @@
 ---
 ja:
+  roleplay_reset:
+    apply_hint: ロールプレイ強制設定を削除するには、--apply を付けてもう一度実行してください。
+    disable_first: このコマンドを実行する前に OC_ROLEPLAY_OPTION を無効にして再起動してください。
+    restart: 復元した設定を反映するには、アプリケーションプロセスを再起動してください。
   account_switcher:
     switch_failed: アカウントが見つかりません。
     switch_unauthorized: このアカウントに切り替える権限がありません。
@@ -208,6 +212,18 @@ ja:
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
     settings:
+      roleplay:
+        title: コミュニティモードの設定
+        notice_html: コミュニティモードでは非公開運用を保護するため、以下の設定が強制されます。モードが有効な間は変更できません。
+      community_mode_override:
+        title: コミュニティモード強制設定
+        preamble: コミュニティモードが有効な間、これらのオプションは各ユーザーの個人設定を上書きし、全ユーザーに対して機能を強制的に適用します。
+        force_avatar_decorations: アバターデコレーション表示の強制
+        force_avatar_decorations_hint: 各ユーザーのアバターデコレーション表示設定を無視し、全ユーザーにアバターデコレーションを表示します。上記でアバターデコレーションが有効になっている必要があります。
+        force_round_avatar: アバター画像を円形に強制
+        force_round_avatar_hint: テーマに関係なく、全ユーザーのアバター画像を円形で表示します。
+        force_mfm_enabled: MFMレンダリングを強制
+        force_mfm_enabled_hint: 各ユーザーのMFMレンダリング設定を無視し、すべてのユーザーにMFMを表示します。
       allow_user_custom_css:
         desc_html: ユーザーがウェブインターフェースで、自分のセッションにのみ適用されるカスタムCSSを設定できるようにします。無効にすると、保存済みのユーザーCSSも適用されなくなります。
         title: ユーザーのカスタムCSSを許可する

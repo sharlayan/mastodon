@@ -153,6 +153,7 @@
   "compose_form.clip.select": "クリップを選択",
   "compose_form.mfm.preview": "プレビュー",
   "compose_form.mfm.syntax_docs": "MFM構文",
+  "compose_form.rp_server_dm_warning": "サーバー管理者はモデレーションのためにダイレクトメッセージを閲覧できます。",
   "compose_form.publish_toot": "トゥート",
   "compose_form.schedule": "予約",
   "compose_form.schedule_for": "予約日時",

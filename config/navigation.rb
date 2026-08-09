@@ -26,7 +26,8 @@ SimpleNavigation::Configuration.run do |navigation|
     end
 
     n.item :flavours, safe_join([material_symbol('brush'), t('settings.flavours')]), settings_flavours_path do |flavours|
-      Themes.instance.flavours.each do |flavour|
+      available_flavours = RoleplayModeHelper.roleplay_mode? ? Themes.instance.flavours & ['glitch'] : Themes.instance.flavours
+      available_flavours.each do |flavour|
         flavours.item flavour.to_sym, safe_join([material_symbol('star-fill'), t("flavours.#{flavour}.name", default: flavour)]), settings_flavour_path(flavour)
       end
     end

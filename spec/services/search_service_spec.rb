@@ -5,6 +5,10 @@ require 'rails_helper'
 RSpec.describe SearchService do
   subject { described_class.new }
 
+  around do |example|
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') { example.run }
+  end
+
   describe '#call' do
     describe 'with a blank query' do
       it 'returns empty results without searching' do
@@ -53,6 +57,20 @@ RSpec.describe SearchService do
           results = subject.call(query, nil, 10, resolve: true)
           expect(service).to have_received(:call).with(query, on_behalf_of: nil)
           expect(results).to eq empty_results.merge(statuses: [status])
+        end
+      end
+
+      context 'when roleplay mode is enabled' do
+        it 'does not resolve the URL' do
+          service = instance_double(AccountSearchService, call: [])
+          allow(AccountSearchService).to receive(:new).and_return(service)
+          allow(ResolveURLService).to receive(:new)
+
+          ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+            subject.call(query, nil, 10, resolve: true)
+          end
+
+          expect(ResolveURLService).to_not have_received(:new)
         end
       end
     end

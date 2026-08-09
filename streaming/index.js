@@ -21,6 +21,7 @@ import { ACCESS_TOKEN_QUERY } from './extensions/auth.js';
 import { filterPayload as filterCustomEmojiPayload, mutedReactionNotification } from './custom_emoji_filter.js';
 import { filterReactionPayload } from './reaction_account_filter.js';
 import { createStreamingExtensions } from './extensions/index.js';
+import { isRoleplayPublicTimelineChannel } from './extensions/roleplay.js';
 import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -1147,6 +1148,14 @@ const startServer = async () => {
    * @returns {Promise.<{ channelIds: string[], options: { needsFiltering: boolean, filterLocal?: boolean, filterRemote?: boolean, allowLocalOnly?: boolean } }>}
    */
   const channelNameToIds = (req, name, params) => new Promise((resolve, reject) => {
+    if (isRoleplayPublicTimelineChannel(name)) {
+      resolve({
+        channelIds: [],
+        options: { needsFiltering: false, allowLocalOnly: false },
+      });
+      return;
+    }
+
     /**
      * @param {string} feedKind
      * @param {string} channelId

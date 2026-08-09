@@ -5,9 +5,11 @@ import {
   driveEnabled,
   federationUniverseEnabled,
   pagesEnabled,
+  publicTimelinesEnabled,
 } from 'flavours/glitch/initial_state';
 
 const alwaysEnabled = () => true;
+const publicTimelineFeatureEnabled = () => publicTimelinesEnabled;
 
 export const PublicTimeline = () => import('../../../features/public_timeline');
 export const CommunityTimeline = () => import('../../../features/community_timeline');
@@ -26,8 +28,8 @@ export const sharlayanColumnComponents = {
 };
 
 export const sharlayanRouteDescriptors = [
-  { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: alwaysEnabled, lazyComponent: PublicTimeline },
-  { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: alwaysEnabled, lazyComponent: CommunityTimeline },
+  { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: publicTimelineFeatureEnabled, lazyComponent: PublicTimeline },
+  { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: publicTimelineFeatureEnabled, lazyComponent: CommunityTimeline },
   { key: 'conversation', path: '/conversations/:conversationId', featureGate: alwaysEnabled, lazyComponent: ConversationThread },
   { key: 'clip-new', path: '/clips/new', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-favourites', path: '/clips/favourites', exact: true, featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/favourites') },

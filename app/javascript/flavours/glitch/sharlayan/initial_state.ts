@@ -37,6 +37,7 @@ export interface SharlayanInitialStateMeta {
   show_cat_speak?: boolean;
   show_federated_cat?: boolean;
   avatar_decoration_shape?: 'none' | 'round' | 'square';
+  force_round_avatar?: boolean;
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
   roleplay_mode: boolean;
@@ -78,6 +79,8 @@ export const readSharlayanInitialState = (
     forceLocalOnly: getMeta('force_local_only') === true,
     federationUniverseEnabled: getMeta('federation_universe_enabled') === true,
     roleplayMode: getMeta('roleplay_mode') === true,
+    publicTimelinesEnabled: getMeta('roleplay_mode') !== true,
+    collectionsEnabled: getMeta('roleplay_mode') !== true,
     circlesEnabled: getMeta('circles_enabled') === true,
     clipsEnabled: getMeta('clips_enabled') === true,
     pagesEnabled: getMeta('pages_enabled') === true,
@@ -115,5 +118,6 @@ export const readSharlayanInitialState = (
     showFederatedCat: getMeta('show_federated_cat') ?? true,
     avatarDecorationShape:
       getMeta('avatar_decoration_shape') ?? (isSignedIn ? 'none' : 'round'),
+    forceRoundAvatar: getMeta('force_round_avatar') === true,
   };
 };

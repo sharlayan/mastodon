@@ -48,6 +48,8 @@ module User::HasSettings
   end
 
   def setting_norss
+    return true if RoleplayModeHelper.roleplay_mode?
+
     settings['norss']
   end
 

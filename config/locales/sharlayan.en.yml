@@ -1,5 +1,9 @@
 ---
 en:
+  roleplay_reset:
+    apply_hint: Run again with --apply to remove the roleplay overrides.
+    disable_first: Disable OC_ROLEPLAY_OPTION and restart before running this command.
+    restart: Restart the application processes to load the restored settings.
   account_switcher:
     switch_failed: Account not found.
     switch_unauthorized: You are not authorized to switch to this account.
@@ -224,6 +228,18 @@ en:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
     settings:
+      roleplay:
+        title: Community mode settings
+        notice_html: Community mode forces the settings below to protect the server's private operation. They cannot be changed while the mode is enabled.
+      community_mode_override:
+        title: Community Mode Overrides
+        preamble: While Community Mode is active, these options override each user's personal preference and force the feature on for everyone.
+        force_avatar_decorations: Force avatar decoration display
+        force_avatar_decorations_hint: Ignore each user's avatar decoration display preference and show avatar decorations for everyone. Requires avatar decorations to be enabled above.
+        force_round_avatar: Force round avatar images
+        force_round_avatar_hint: Display every avatar image as a circle for all users, regardless of theme.
+        force_mfm_enabled: Force MFM rendering
+        force_mfm_enabled_hint: Ignore each user's MFM rendering preference and render MFM for everyone.
       allow_user_custom_css:
         desc_html: Let users define their own custom CSS that is applied only to their
           own session in the web interface. When disabled, any stored user CSS stops

@@ -5,6 +5,7 @@ import { FormattedMessage } from 'react-intl';
 
 import { fetchRelationships } from '@/flavours/glitch/actions/accounts';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
+import { roleplayMode } from '@/flavours/glitch/initial_state';
 import type { AccountRole } from '@/flavours/glitch/models/account';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 
@@ -44,13 +45,14 @@ export const AccountBadges: FC<{ accountId: string }> = ({ accountId }) => {
   const domain = account.acct.includes('@')
     ? account.acct.split('@')[1]
     : localDomain;
+  const roleDomain = roleplayMode ? undefined : `(${domain})`;
   account.roles.forEach((role) => {
     if (isAdminBadge(role)) {
       badges.push(
         <AdminBadge
           key={role.id}
           label={role.name}
-          domain={`(${domain})`}
+          domain={roleDomain}
           roleId={role.id}
           color={role.color}
         />,
@@ -60,7 +62,7 @@ export const AccountBadges: FC<{ accountId: string }> = ({ accountId }) => {
         <Badge
           key={role.id}
           label={role.name}
-          domain={`(${domain})`}
+          domain={roleDomain}
           roleId={role.id}
           color={role.color}
         />,

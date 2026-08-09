@@ -502,6 +502,18 @@ class User < ApplicationRecord
     ActivityTracker.record('activity:logins', id)
     UserMailer.welcome(self).deliver_later(wait: 1.hour)
     TriggerWebhookWorker.perform_async('account.approved', 'Account', account_id)
+    setup_roleplay_notification_policy!
+  end
+
+  def setup_roleplay_notification_policy!
+    return unless RoleplayModeHelper.roleplay_mode?
+
+    NotificationPolicy.find_or_initialize_by(account_id: account_id).update(
+      for_not_following: :accept,
+      for_not_followers: :accept,
+      for_new_accounts: :accept,
+      for_private_mentions: :accept
+    )
   end
 
   def prepare_returning_user!
