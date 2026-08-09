@@ -54,7 +54,7 @@ class FanOutOnWriteService < BaseService
 
   def fan_out_to_public_streams!
     broadcast_to_hashtag_streams!
-    broadcast_to_public_streams!
+    broadcast_to_public_streams! unless @options[:suppress_public_timeline_stream]
   end
 
   def deliver_to_self!

@@ -30,6 +30,24 @@ RSpec.describe Sharlayan::ActivityPubCreateExtensions do
         limited_scope: nil
       )
     end
+
+    it 'suppresses the public timeline stream for a relay configured to do so' do
+      relay_account = Fabricate(:account, domain: 'relay.example', inbox_url: 'https://relay.example/inbox')
+      Fabricate(:relay, inbox_url: relay_account.inbox_url, state: :accepted, suppress_public_timeline_stream: true)
+
+      activity.instance_variable_set(:@options, { relayed_through_actor: relay_account })
+
+      expect(activity.send(:relay_public_timeline_stream_suppressed?)).to be(true)
+    end
+
+    it 'does not suppress the public timeline stream for a relay with it enabled' do
+      relay_account = Fabricate(:account, domain: 'relay.example', inbox_url: 'https://relay.example/inbox')
+      Fabricate(:relay, inbox_url: relay_account.inbox_url, state: :accepted)
+
+      activity.instance_variable_set(:@options, { relayed_through_actor: relay_account })
+
+      expect(activity.send(:relay_public_timeline_stream_suppressed?)).to be(false)
+    end
   end
 
   describe '#download_remote_media_with_budget!' do

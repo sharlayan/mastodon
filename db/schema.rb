@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_085200) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_182000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1593,6 +1593,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_085200) do
     t.string "follow_activity_id"
     t.string "inbox_url", default: "", null: false
     t.integer "state", default: 0, null: false
+    t.boolean "suppress_public_timeline_stream", default: false, null: false
     t.datetime "updated_at", precision: nil, null: false
   end
 

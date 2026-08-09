@@ -243,6 +243,7 @@ ja:
         update_custom_emoji: カスタム絵文字を更新
         update_domain_block: ドメインブロックを更新
         update_ip_block: IPルールを更新
+        update_relay: リレー設定を更新
         update_report: 通報の更新
         update_status: 投稿を更新
         update_user_role: ロールを更新
@@ -311,6 +312,7 @@ ja:
         update_custom_emoji_html: "%{name}さんがカスタム絵文字 %{target}を更新しました"
         update_domain_block_html: "%{name}さんが%{target}のドメインブロックを更新しました"
         update_ip_block_html: "%{name} さんがIP %{target} のルールを更新しました"
+        update_relay_html: "%{name} さんがリレー %{target} の設定を変更しました"
         update_report_html: "%{name} さんが通報 %{target} を更新しました"
         update_status_html: "%{name}さんが%{target}さんの投稿を更新しました"
         update_user_role_html: "%{name}さんがロール『%{target}』を変更しました"
@@ -640,11 +642,17 @@ ja:
       pending: リレーサーバーの承認待ちです
       pause: 一時停止
       paused: 一時停止中
+      public_timeline_stream: 連合タイムラインのライブフィード
+      public_timeline_stream_enabled: 有効
+      public_timeline_stream_suppressed: 受信投稿では無効
       resume: 再開
+      resume_public_timeline_stream: ライブフィードを有効化
       save_and_enable: 保存して有効にする
       setup: リレー接続を設定する
       signatures_not_enabled: セキュアモードまたは連合制限モードが有効の場合、リレーは正常に動作しません
       status: ステータス
+      suppress_public_timeline_stream: ライブフィードを無効化
+      suppress_public_timeline_stream_hint: このリレーからの投稿を受信・保存しますが、連合タイムラインのライブフィードには追加しません。タイムラインを再読み込みすると投稿は引き続き表示されます。
       title: リレー
     report_notes:
       created_msg: 通報メモを書き込みました！

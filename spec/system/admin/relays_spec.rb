@@ -76,5 +76,20 @@ RSpec.describe 'Admin Relays' do
           .to change { relay.reload.pending? }.to(true)
       end
     end
+
+    describe 'Toggling the federated timeline live feed' do
+      let!(:relay) { Fabricate :relay }
+
+      it 'changes whether received posts are added to the live feed' do
+        visit admin_relays_path
+
+        expect { click_on I18n.t('admin.relays.suppress_public_timeline_stream') }
+          .to change { relay.reload.suppress_public_timeline_stream? }.from(false).to(true)
+        expect(page).to have_text(I18n.t('admin.relays.public_timeline_stream_suppressed'))
+
+        expect { click_on I18n.t('admin.relays.resume_public_timeline_stream') }
+          .to change { relay.reload.suppress_public_timeline_stream? }.from(true).to(false)
+      end
+    end
   end
 end

@@ -67,6 +67,13 @@ module Admin
       redirect_to admin_relays_path
     end
 
+    def toggle_public_timeline_stream
+      authorize :relay, :update?
+      @relay.update!(suppress_public_timeline_stream: !@relay.suppress_public_timeline_stream?)
+      log_action :update, @relay
+      redirect_to admin_relays_path
+    end
+
     private
 
     def require_relays_available!
@@ -79,7 +86,7 @@ module Admin
 
     def resource_params
       params
-        .expect(relay: [:inbox_url])
+        .expect(relay: [:inbox_url, :suppress_public_timeline_stream])
     end
 
     def warn_signatures_not_enabled!

@@ -97,6 +97,7 @@ namespace :admin do
   resources :relays, only: [:index, :new, :create, :destroy] do
     post :pause, on: :member
     post :resume, on: :member
+    post :toggle_public_timeline_stream, on: :member
     member do
       post :enable
       post :disable

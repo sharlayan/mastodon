@@ -75,6 +75,19 @@ RSpec.describe FanOutOnWriteService do
           .and enqueue_sidekiq_job(LocalNotificationWorker).with(eve.id, anything, 'Mention', 'mention', { 'silenced' => true })
       end
     end
+
+    context 'when the public timeline stream is suppressed' do
+      it 'keeps other public distribution but does not broadcast to public timeline streams', :inline_jobs do
+        subject.call(status, suppress_public_timeline_stream: true)
+
+        expect(redis)
+          .to have_received(:publish).with('timeline:hashtag:hoge', anything)
+        expect(redis)
+          .to_not have_received(:publish).with('timeline:public', anything)
+        expect(redis)
+          .to_not have_received(:publish).with('timeline:public:local', anything)
+      end
+    end
   end
 
   context 'when status is limited' do

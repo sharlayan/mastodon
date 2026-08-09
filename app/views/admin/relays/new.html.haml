@@ -6,6 +6,7 @@
 
   .field-group
     = f.input :inbox_url, as: :string, wrapper: :with_block_label
+    = f.input :suppress_public_timeline_stream, as: :boolean, wrapper: :with_label, hint: t('admin.relays.suppress_public_timeline_stream_hint')
 
   .actions
     = f.button :button, t('admin.relays.save_and_enable'), type: :submit

@@ -4,12 +4,13 @@
 #
 # Table name: relays
 #
-#  id                 :bigint(8)        not null, primary key
-#  inbox_url          :string           default(""), not null
-#  state              :integer          default("idle"), not null
-#  created_at         :datetime         not null
-#  updated_at         :datetime         not null
-#  follow_activity_id :string
+#  id                              :bigint(8)        not null, primary key
+#  inbox_url                       :string           default(""), not null
+#  state                           :integer          default("idle"), not null
+#  suppress_public_timeline_stream :boolean          default(FALSE), not null
+#  created_at                      :datetime         not null
+#  updated_at                      :datetime         not null
+#  follow_activity_id              :string
 #
 
 class Relay < ApplicationRecord

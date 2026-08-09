@@ -30,4 +30,17 @@ module Sharlayan::ActivityPubCreateExtensions
   def accepted_through_relay?
     requested_through_relay? && !DomainBlock.reject_relay?(@account.domain)
   end
+
+  def relay_public_timeline_stream_suppressed?
+    relay = relay_from_delivery
+    relay&.enabled? && relay.suppress_public_timeline_stream?
+  end
+
+  def relay_from_delivery
+    return unless @options[:relayed_through_actor].is_a?(Account)
+
+    return @relay_from_delivery if defined?(@relay_from_delivery)
+
+    @relay_from_delivery = Relay.find_by(inbox_url: @options[:relayed_through_actor].inbox_url)
+  end
 end

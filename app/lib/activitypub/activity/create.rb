@@ -91,7 +91,12 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     LinkCrawlWorker.perform_in(rand(DISTRIBUTE_DELAY), @status.id, @links.first)
 
     # Distribute into home and list feeds and notify mentioned accounts
-    ::DistributionWorker.perform_async(@status.id, { 'silenced_account_ids' => @silenced_account_ids }) if @options[:override_timestamps] || @status.within_realtime_window?
+    if @options[:override_timestamps] || @status.within_realtime_window?
+      ::DistributionWorker.perform_async(@status.id, {
+        'silenced_account_ids' => @silenced_account_ids,
+        'suppress_public_timeline_stream' => relay_public_timeline_stream_suppressed?,
+      })
+    end
   end
 
   def find_existing_status

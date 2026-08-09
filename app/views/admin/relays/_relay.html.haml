@@ -22,6 +22,11 @@
         &nbsp;
         = t 'admin.relays.disabled'
   %td
+    - if relay.suppress_public_timeline_stream?
+      %span.warning-hint= t('admin.relays.public_timeline_stream_suppressed')
+    - else
+      %span.positive-hint= t('admin.relays.public_timeline_stream_enabled')
+  %td
     - if relay.accepted?
       = table_link_to 'pause', t('admin.relays.pause'), pause_admin_relay_path(relay), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
       = table_link_to 'power_off', t('admin.relays.disable'), disable_admin_relay_path(relay), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
@@ -31,4 +36,7 @@
     - elsif !relay.pending?
       = table_link_to 'power_off', t('admin.relays.enable'), enable_admin_relay_path(relay), method: :post, data: { confirm: t('admin.accounts.are_you_sure') }
 
+    = table_link_to relay.suppress_public_timeline_stream? ? 'play_arrow' : 'pause',
+                    relay.suppress_public_timeline_stream? ? t('admin.relays.resume_public_timeline_stream') : t('admin.relays.suppress_public_timeline_stream'),
+                    toggle_public_timeline_stream_admin_relay_path(relay), method: :post
     = table_link_to 'close', t('admin.relays.delete'), admin_relay_path(relay), method: :delete, data: { confirm: t('admin.accounts.are_you_sure') }
