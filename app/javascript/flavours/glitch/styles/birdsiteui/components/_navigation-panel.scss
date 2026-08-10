@@ -1,3 +1,5 @@
+@use '../variables/icon-mixin' as icons;
+
 // Navigation panel, column links, notification filter bar, badges
 .layout-single-column,
 .layout-multiple-columns {
@@ -297,7 +299,7 @@
   }
 
   .status__prepend .icon-retweet {
-    background-image: var(--icon-boost-status-prepend);
+    @include icons.icon-swap(boost, $color: var(--color-text-success));
   }
 
   .notification-group .notification-group__icon .icon,

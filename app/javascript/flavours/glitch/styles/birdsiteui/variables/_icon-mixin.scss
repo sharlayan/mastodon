@@ -1,0 +1,62 @@
+@mixin icon($glyph, $weight: regular, $color: currentcolor, $size: null) {
+  $suffix: '';
+
+  @if $weight == fill {
+    $suffix: '-fill';
+  }
+
+  $mask: var(--icon-#{$glyph}#{$suffix});
+
+  background-image: none;
+  background-color: $color;
+
+  -webkit-mask-image: $mask;
+  mask-image: $mask;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+
+  @if $size {
+    -webkit-mask-size: $size $size;
+    mask-size: $size $size;
+    height: $size;
+    width: $size;
+  } @else {
+    -webkit-mask-size: contain;
+    mask-size: contain;
+  }
+}
+
+@mixin icon-swap($glyph, $weight: regular, $color: currentcolor) {
+  $suffix: '';
+
+  @if $weight == fill {
+    $suffix: '-fill';
+  }
+
+  background-image: none;
+  background-color: $color;
+  -webkit-mask-image: var(--icon-#{$glyph}#{$suffix});
+  mask-image: var(--icon-#{$glyph}#{$suffix});
+}
+
+@mixin icon-box($size: contain) {
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: $size;
+  mask-size: $size;
+}
+
+@mixin icon-glyph($glyph, $weight: regular) {
+  $suffix: '';
+
+  @if $weight == fill {
+    $suffix: '-fill';
+  }
+
+  -webkit-mask-image: var(--icon-#{$glyph}#{$suffix});
+  mask-image: var(--icon-#{$glyph}#{$suffix});
+}

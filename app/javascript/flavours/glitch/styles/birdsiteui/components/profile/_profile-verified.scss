@@ -1,3 +1,5 @@
+@use '../../variables/icon-mixin' as icons;
+
 // Verified colors, joined label, profile link fields
 .layout-single-column,
 .layout-multiple-columns {
@@ -62,8 +64,9 @@
     )
     ._comp_account_header__fieldList
     .verified__mark {
-    background-image: var(--icon-verified-smaller);
-    background-repeat: no-repeat;
+    @include icons.icon-swap(verified, fill, var(--color-bg-brand-base));
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
     content: '';
     height: 15px;
     width: 15px;
@@ -165,8 +168,9 @@
   }
 
   [class*='_comp_account_list_item__verifiedBadge'] svg {
-    background-image: var(--icon-verified-smaller);
-    background-repeat: no-repeat;
+    @include icons.icon-swap(verified, fill, var(--color-bg-brand-base));
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
     height: 15px;
     width: 15px;
   }

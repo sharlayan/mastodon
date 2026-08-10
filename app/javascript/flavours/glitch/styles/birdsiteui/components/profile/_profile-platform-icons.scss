@@ -1,3 +1,5 @@
+@use '../../variables/icon-mixin' as icons;
+
 // Platform-specific icons using dd[title] URL detection
 .layout-single-column,
 .layout-multiple-columns {
@@ -247,7 +249,7 @@
         dd[title*='nostr:' i]
       )
     )::after {
-    background-image: var(--icon-link);
+    @include icons.icon-swap(link, $color: var(--color-dim));
     content: '';
     height: 18.5px;
     width: 18.5px;
@@ -257,7 +259,7 @@
   ._comp_account_header__bioButtonsWrapper
     ._comp_account_header__fieldList
     dl:not(:has(a)):not(:first-of-type)::after {
-    background-image: var(--icon-label);
+    @include icons.icon-swap(label, $color: var(--color-dim));
     content: '';
     height: 18.5px;
     width: 18.5px;

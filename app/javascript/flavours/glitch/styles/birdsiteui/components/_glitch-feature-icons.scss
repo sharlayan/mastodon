@@ -1,0 +1,333 @@
+@use '../variables/icon-mixin' as icons;
+
+.layout-single-column,
+.layout-multiple-columns {
+  .compose-form__buttons .icon-button .icon,
+  .privacy-dropdown__option .icon,
+  .status__info__icons .icon,
+  .drawer__header .icon,
+  .navigation-panel__list-panel__header .icon-button .icon,
+  .column-header__button .icon,
+  .column-header__back-button .icon {
+    @include icons.icon-box(contain);
+  }
+
+  .compose-form__buttons .icon-button .icon > path,
+  .privacy-dropdown__option .icon > path,
+  .status__info__icons .icon > path,
+  .drawer__header .icon > path,
+  .navigation-panel__list-panel__header .icon-button .icon > path,
+  .column-header__button .icon > path,
+  .column-header__back-button .icon > path {
+    display: none;
+  }
+
+  .compose-form__buttons .icon-button .icon-image,
+  .compose-form__upload-button .icon-button .icon-paperclip {
+    @include icons.icon-swap(attachment, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button .icon-mood {
+    @include icons.icon-swap(emoji, $color: var(--color-dim));
+  }
+
+  .compose-form__upload__actions .icon-button .icon,
+  .compose-form__upload__warning .icon-button .icon,
+  .compose-form__upload__visualizer .icon {
+    @include icons.icon-box(contain);
+  }
+
+  .compose-form__upload__actions .icon-button .icon > path,
+  .compose-form__upload__warning .icon-button .icon > path,
+  .compose-form__upload__visualizer .icon > path {
+    display: none;
+  }
+
+  .compose-form__upload__delete .icon-close {
+    @include icons.icon-swap(close, $color: var(--color-light-text));
+  }
+
+  .compose-form__upload__actions .icon-edit {
+    @include icons.icon-swap(pencil, $color: var(--color-light-text));
+  }
+
+  .compose-form__upload__warning .icon-warning {
+    @include icons.icon-swap(warning, $color: currentcolor);
+  }
+
+  .compose-form__upload__visualizer .icon-sound {
+    @include icons.icon-swap(sound, $color: var(--color-light-text));
+  }
+
+  .compose-form__poll-button .icon-tasks {
+    @include icons.icon-swap(poll, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button .icon-quickreply {
+    @include icons.icon-swap(quickreply, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button .icon-warning,
+  .compose-form__buttons .icon-button[aria-controls='cw-spoiler-input'] .icon {
+    @include icons.icon-swap(warning, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button .icon-brush,
+  .privacy-dropdown__option .icon-brush {
+    @include icons.icon-swap(brush, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button .icon-file-text,
+  .privacy-dropdown__option .icon-file-text {
+    @include icons.icon-swap(content-type, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button .icon-arrow-circle-down,
+  .privacy-dropdown__option .icon-arrow-circle-down {
+    @include icons.icon-swap(markdown, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button .icon-link,
+  .privacy-dropdown__option .icon-link {
+    @include icons.icon-swap(federated, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button .icon-link-slash,
+  .privacy-dropdown__option .icon-link-slash {
+    @include icons.icon-swap(local-only, $color: var(--color-dim));
+  }
+
+  .privacy-dropdown__option .icon-cloud-upload {
+    @include icons.icon-swap(upload-file, $color: var(--color-dim));
+  }
+
+  .privacy-dropdown__option .icon-paint-brush {
+    @include icons.icon-swap(brush, $color: var(--color-dim));
+  }
+
+  .privacy-dropdown__option .icon-cloud {
+    @include icons.icon-swap(cloud, $color: var(--color-dim));
+  }
+
+  .compose-form__buttons .icon-button.active .icon-mood,
+  .compose-form__buttons .icon-button.active .icon-quickreply,
+  .compose-form__buttons .icon-button.active .icon-warning,
+  .compose-form__buttons
+    .icon-button.active[aria-controls='cw-spoiler-input']
+    .icon,
+  .compose-form__buttons .icon-button.active .icon-brush,
+  .compose-form__buttons .icon-button.active .icon-file-text,
+  .compose-form__buttons .icon-button.active .icon-arrow-circle-down,
+  .compose-form__buttons .icon-button.active .icon-link,
+  .compose-form__buttons .icon-button.active .icon-link-slash,
+  .privacy-dropdown__option.active .icon {
+    background-color: var(--color-light-text);
+  }
+
+  .compose-form__dropdowns .dropdown-button .icon-globe {
+    @include icons.icon-swap(planet, $color: var(--color-dim));
+  }
+
+  .compose-form__dropdowns .dropdown-button .icon-lock {
+    @include icons.icon-swap(lock, $color: var(--color-dim));
+  }
+
+  .status.status-public .status__info__icons .status__visibility-icon,
+  .status .status__info__icons .icon-globe {
+    @include icons.icon-swap(planet, $color: var(--color-dim));
+  }
+
+  .status.status-unlisted .status__info__icons .status__visibility-icon,
+  .status .status__info__icons .icon-unlock {
+    @include icons.icon-swap(unlisted, $color: var(--color-dim));
+  }
+
+  .status.status-private .status__info__icons .status__visibility-icon,
+  .status .status__info__icons .icon-lock {
+    @include icons.icon-swap(lock, $color: var(--color-dim));
+  }
+
+  .status.status-direct .status__info__icons .status__visibility-icon,
+  .status .status__info__icons .icon-at {
+    @include icons.icon-swap(direct, $color: var(--color-dim));
+  }
+
+  .status .status__info__icons .icon-home {
+    @include icons.icon-swap(local-only, $color: var(--color-dim));
+  }
+
+  .status .status__info__icons .icon-comment {
+    @include icons.icon-swap(reply, $color: var(--color-dim));
+  }
+
+  .status .status__info__icons .icon-picture-o {
+    @include icons.icon-swap(image, $color: var(--color-dim));
+  }
+
+  .status .status__info__icons .icon-tasks {
+    @include icons.icon-swap(poll, $color: var(--color-dim));
+  }
+
+  .status .status__info__icons .icon-video-camera {
+    @include icons.icon-swap(video, $color: var(--color-dim));
+  }
+
+  .drawer__header .icon-bars {
+    @include icons.icon-swap(menu, $color: var(--color-light-text));
+  }
+
+  .drawer__header .icon-users {
+    @include icons.icon-swap(community, $color: var(--color-light-text));
+  }
+
+  .drawer__header .icon-cogs {
+    @include icons.icon-swap(sliders, $color: var(--color-light-text));
+  }
+
+  .drawer__header .icon-sign-out {
+    @include icons.icon-swap(sign-out, $color: var(--color-light-text));
+  }
+
+  .navigation-bar__switch-account .icon {
+    @include icons.icon-swap(switch-account, $color: var(--color-dim));
+  }
+
+  .column-header__back-button .icon-chevron-left {
+    @include icons.icon-swap(back, $color: var(--color-light-text));
+  }
+
+  .column-header__button .icon-eye-slash {
+    @include icons.icon-swap(eye-slash, $color: var(--color-dim));
+  }
+
+  .navigation-panel__list-panel__header .icon-button .icon-down {
+    @include icons.icon-swap(down, $color: var(--color-dim));
+  }
+
+  .notification__filter-bar {
+    .icon-user-plus {
+      @include icons.icon-swap(user-plus, $color: var(--color-dim));
+    }
+
+    .icon-tasks {
+      @include icons.icon-swap(poll, $color: var(--color-dim));
+    }
+
+    .icon-collections {
+      @include icons.icon-swap(collections, $color: var(--color-dim));
+    }
+
+    .icon-add_reaction {
+      @include icons.icon-swap(emoji, $color: var(--color-dim));
+    }
+
+    .active {
+      .icon-user-plus {
+        @include icons.icon-swap(user-plus, fill, var(--color-light-text));
+      }
+
+      .icon-tasks {
+        @include icons.icon-swap(poll, fill, var(--color-light-text));
+      }
+
+      .icon-collections {
+        @include icons.icon-swap(collections, fill, var(--color-light-text));
+      }
+
+      .icon-add_reaction {
+        @include icons.icon-swap(emoji, fill, var(--color-light-text));
+      }
+
+      .icon-retweet,
+      .icon-repeat {
+        @include icons.icon-swap(boost, fill, var(--color-light-text));
+      }
+
+      .icon-mailreply,
+      .icon-reply,
+      .icon-reply-all {
+        @include icons.icon-swap(reply, fill, var(--color-light-text));
+      }
+    }
+  }
+
+  .filtered-notifications-banner .icon-filtered-notifications {
+    @include icons.icon-swap(bell-slash, $color: var(--color-dim));
+  }
+
+  .column-header__button .icon-plus {
+    @include icons.icon-swap(plus, $color: var(--color-light-text));
+  }
+
+  .search__icon--clear-button .icon-times-circle {
+    display: none;
+  }
+}
+
+.local-settings__navigation__item .icon,
+.local-settings__header__button .icon {
+  @include icons.icon-box(contain);
+}
+
+.local-settings__navigation__item .icon > path,
+.local-settings__header__button .icon > path {
+  display: none;
+}
+
+.local-settings__navigation__item {
+  .icon-cogs {
+    @include icons.icon-swap(sliders, $color: var(--color-light-text));
+  }
+
+  .icon-sliders {
+    @include icons.icon-swap(sliders, $color: var(--color-light-text));
+  }
+
+  .icon-pencil {
+    @include icons.icon-swap(pencil, $color: var(--color-light-text));
+  }
+
+  .icon-image {
+    @include icons.icon-swap(image, $color: var(--color-light-text));
+  }
+
+  .icon-list {
+    @include icons.icon-swap(list, $color: var(--color-light-text));
+  }
+
+  .icon-cloud {
+    @include icons.icon-swap(cloud, $color: var(--color-light-text));
+  }
+
+  .icon-drag {
+    @include icons.icon-swap(drag, $color: var(--color-light-text));
+  }
+
+  .icon-unfold-less {
+    @include icons.icon-swap(collapse, $color: var(--color-light-text));
+  }
+
+  .icon-warning {
+    @include icons.icon-swap(warning, $color: var(--color-light-text));
+  }
+}
+
+.local-settings__header__button {
+  .icon-cog {
+    @include icons.icon-swap(gear, $color: var(--color-light-text));
+  }
+
+  .icon-times {
+    @include icons.icon-swap(close, $color: var(--color-light-text));
+  }
+}
+
+.emoji-mart .emoji-mart-category-label span::before {
+  @include icons.icon(down, $color: var(--color-dim));
+}
+
+.emoji-mart section.shown .emoji-mart-category-label span::before {
+  @include icons.icon-glyph(up);
+
+  background-image: none;
+}

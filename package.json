@@ -137,6 +137,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@formatjs/cli": "^6.1.1",
+    "@phosphor-icons/core": "2.1.1",
     "@storybook/addon-a11y": "^10.3.0",
     "@storybook/addon-docs": "^10.3.0",
     "@storybook/addon-vitest": "^10.3.0",

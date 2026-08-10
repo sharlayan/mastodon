@@ -1,3 +1,5 @@
+@use '../../variables/icon-mixin' as icons;
+
 // Profile field layout - reset MiniCard grid to inline flex
 @use 'field-selectors' as *;
 
@@ -60,8 +62,9 @@
   }
 
   #{$field-list} > #{$field-item} span[class*='fieldVerifiedIcon'] svg {
-    background-image: var(--icon-verified-smaller);
-    background-repeat: no-repeat;
+    @include icons.icon-swap(verified, fill, var(--color-bg-brand-base));
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
     height: 15px;
     width: 15px;
   }

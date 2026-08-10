@@ -1,3 +1,5 @@
+@use '../variables/icon-mixin' as icons;
+
 // Mobile devices
 .layout-single-column,
 .layout-multiple-columns {
@@ -230,11 +232,17 @@
     }
 
     .status button.icon-button:not(.active):hover .icon-bookmark {
-      background-image: var(--icon-bookmark-status-hover-red);
+      @include icons.icon-swap(
+        bookmark,
+        $color: var(--color-text-bookmark-highlight)
+      );
     }
 
     button.icon-button:not(.active):hover .icon-retweet {
-      background-image: var(--icon-boost-active) !important;
+      background-image: none !important;
+      background-color: var(--color-text-success) !important;
+      -webkit-mask-image: var(--icon-boost) !important;
+      mask-image: var(--icon-boost) !important;
     }
   }
 

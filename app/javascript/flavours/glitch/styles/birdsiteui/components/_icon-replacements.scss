@@ -1,15 +1,27 @@
+@use '../variables/icon-mixin' as icons;
+
 // Icon replacements for navigation, status, notifications
+
+html .icon-button .icon-retweet,
+html .icon-button .icon-repeat {
+  animation: none !important;
+}
+
 .layout-single-column,
 .layout-multiple-columns {
   // Replace bookmark icon
   .status .icon-button:hover:focus .icon-bookmark,
   .status .icon-button:focus .icon-bookmark,
   .status .icon-button.active .icon-bookmark {
-    background-image: var(--icon-bookmark-active);
+    @include icons.icon-swap(
+      bookmark,
+      fill,
+      var(--color-text-bookmark-highlight)
+    );
   }
 
   .status button.icon-button:hover .icon-bookmark {
-    background-image: var(--icon-bookmark-status-hover);
+    @include icons.icon-swap(bookmark, $color: var(--color-icon-interactive));
   }
 
   // Replace the original icons (after 4.3.0)
@@ -41,8 +53,7 @@
   .status__action-bar .icon,
   .notification__filter-bar .icon,
   .column-link .icon {
-    background-position: center;
-    background-repeat: no-repeat;
+    @include icons.icon-box(var(--size-icon) var(--size-icon));
     position: relative;
   }
 
@@ -53,14 +64,13 @@
   .notification__filter-bar .icon,
   .column-header__button .icon-sliders,
   .column-link .icon {
-    background-size: var(--size-icon) var(--size-icon);
+    @include icons.icon-box(var(--size-icon) var(--size-icon));
     height: var(--size-icon);
     width: var(--size-icon);
   }
 
   [class*='_comp_account_header__buttons'] .icon {
-    background-position: center;
-    background-size: var(--size-icon) var(--size-icon);
+    @include icons.icon-box(var(--size-icon) var(--size-icon));
   }
 
   .status__prepend .icon.icon-at {
@@ -102,7 +112,6 @@
 
   // ...except for these icons, we kinda like them as they are
   .icon-user-plus.column-link__icon path,
-  .icon.icon-collections path,
   .icon.icon-undefined path,
   .icon.icon-users path,
   [class*='_comp_account_header__buttons'] .optional path,
@@ -122,108 +131,117 @@
   // Home icon
   .ui__navigation-bar__item[href='/home'] .icon,
   .column-link .icon-home {
-    background-image: var(--icon-home);
+    @include icons.icon-swap(home, $color: var(--color-light-text));
   }
 
   .ui__navigation-bar__item[href='/home'].active .icon,
   .column-link.active .icon-home {
-    background-image: var(--icon-home-column-link-active);
+    @include icons.icon-swap(home, fill, var(--color-light-text));
   }
 
   .notification__filter-bar .icon-home {
-    background-image: var(--icon-home-notification);
+    @include icons.icon-swap(home, $color: var(--color-dim));
   }
 
   .notification__filter-bar .active .icon-home {
-    background-image: var(--icon-home-notification-active);
+    @include icons.icon-swap(home, fill, var(--color-light-text));
   }
 
   .list-adder__lists .icon-plus {
     --size-icon: 20px;
-    background-image: var(--icon-plus);
+    @include icons.icon-swap(plus, $color: var(--color-dim));
   }
 
   .list-adder__lists .icon-times {
     --size-icon: 20px;
-    background-image: var(--icon-checked-green);
+    @include icons.icon-swap(checked, $color: var(--color-icon-affirm));
   }
 
   .list-adder__lists .icon-button:hover .icon-plus {
-    background-image: var(--icon-plus-green);
+    @include icons.icon-swap(plus, $color: var(--color-icon-affirm));
   }
 
   .list-adder__lists .icon-button:hover .icon-times {
-    background-image: var(--icon-cross-red);
+    @include icons.icon-swap(cross, $color: var(--color-icon-destruct));
   }
 
   // Notifications icon
   .ui__navigation-bar__item[href='/notifications'] .icon,
   .icon.icon-bell-o,
   .column-link .icon-bell {
-    background-image: var(--icon-bell);
+    @include icons.icon-swap(bell, $color: var(--color-light-text));
   }
 
   .ui__navigation-bar__item[href='/notifications'].active .icon,
   .column-link.active .icon-bell {
-    background-image: var(--icon-bell-active);
+    @include icons.icon-swap(bell, fill, var(--color-light-text));
   }
 
   // Explore icon
   .ui__navigation-bar__item[href='/explore'] .icon,
   .column-link .icon-explore,
   .column-link .icon-hashtag {
-    background-image: var(--icon-hashtag);
+    @include icons.icon-swap(hashtag, $color: var(--color-light-text));
   }
 
   .ui__navigation-bar__item[href='/explore'].active .icon,
   .column-link.active .icon-explore,
   .column-link.active .icon-hashtag {
-    background-image: var(--icon-hashtag-active);
+    @include icons.icon-swap(hashtag, fill, var(--color-light-text));
   }
 
   // Live feeds icon
   .column-link .icon-globe {
-    background-image: var(--icon-globe);
+    @include icons.icon-swap(globe, $color: var(--color-light-text));
   }
 
   .column-link.active .icon-globe {
-    background-image: var(--icon-globe-active);
+    @include icons.icon-swap(globe, fill, var(--color-light-text));
   }
 
   // Private mentions icon
   .column-link .icon-at {
-    background-image: var(--icon-direct-messages);
+    @include icons.icon-swap(direct-messages, $color: var(--color-light-text));
   }
 
   .column-link.active .icon-at {
-    background-image: var(--icon-direct-messages-active);
+    @include icons.icon-swap(direct-messages, fill, var(--color-light-text));
     transform: scale(1.15);
+  }
+
+  .column-link .icon-collections,
+  .ui__navigation-bar__item .icon-collections {
+    @include icons.icon-swap(collections, $color: var(--color-light-text));
+  }
+
+  .column-link.active .icon-collections {
+    @include icons.icon-swap(collections, fill, var(--color-light-text));
   }
 
   // Bookmarks icon
   .column-link .icon-bookmarks {
-    background-image: var(--icon-bookmark-column-link);
+    @include icons.icon-swap(bookmark, $color: var(--color-light-text));
   }
 
   .column-link.active .icon-bookmarks {
-    background-image: var(--icon-bookmark-column-link-active);
+    @include icons.icon-swap(bookmark, fill, var(--color-light-text));
   }
 
   // Preferences icon
   .column-link .icon-cog {
     --size-icon: 22px;
-    background-image: var(--icon-sliders-contrast);
+    @include icons.icon-swap(sliders, $color: var(--color-light-text));
   }
 
   // Settings icon
   .column-header__button .icon-sliders {
     --size-icon: 20px;
-    background-image: var(--icon-sliders);
+    @include icons.icon-swap(sliders, $color: var(--color-dim));
   }
 
   .column-header__button.active .icon-sliders {
     // Use contrast icon
-    background-image: var(--icon-sliders-contrast);
+    @include icons.icon-swap(sliders, $color: var(--color-light-text));
 
     // Disable rotate
     transform: none;
@@ -232,55 +250,61 @@
   // Administration icon
   .column-link .icon-tachometer {
     --size-icon: 22px;
-    background-image: var(--icon-administration);
+    @include icons.icon-swap(administration, $color: var(--color-light-text));
   }
 
   // Moderation icon
   .column-link .icon-flag {
     --size-icon: 22px;
-    background-image: var(--icon-moderation);
+    @include icons.icon-swap(moderation, $color: var(--color-light-text));
   }
 
   // Replace retweet icon
   .notification__filter-bar .icon-retweet {
-    background-image: var(--icon-boost-notification-filter-bar);
+    @include icons.icon-swap(boost, $color: var(--color-dim));
   }
 
   .notification__filter-bar .active .icon-retweet {
-    background-image: var(--icon-boost-notification-filter-bar-active);
+    @include icons.icon-swap(boost, $color: var(--color-light-text));
   }
 
   .notification__filter-bar .active .icon-mailreply,
   .notification__filter-bar .active .icon-reply-all,
   .notification__filter-bar .active .icon-reply {
-    background-image: var(--icon-reply-nofitication-filter-bar-active);
+    @include icons.icon-swap(reply, $color: var(--color-light-text));
   }
 
   .detailed-status button.icon-button .icon-retweet,
   .status button.icon-button .icon-retweet {
-    background-image: var(--icon-boost-status);
-    background-position: center;
-    background-repeat: no-repeat;
+    @include icons.icon-swap(boost, $color: var(--color-dim));
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
   }
 
   // Replace notification retweet icon
   .notification-group--reblog .icon-repeat,
   .notification-reblog .icon-retweet {
-    background-image: var(--icon-boost-notification-wrapper);
+    @include icons.icon-swap(boost, $color: var(--color-text-success));
   }
 
   button.icon-button .icon-retweet {
     --size-icon: 20px;
-    background-image: var(--icon-boost);
-    background-position: center;
-    background-repeat: no-repeat;
+    @include icons.icon-swap(boost, $color: var(--color-dim));
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
   }
 
   button.icon-button:hover .icon-retweet,
   button.icon-button.active .icon-retweet {
-    background-image: var(--icon-boost-active);
-    background-position: center;
-    background-repeat: no-repeat;
+    @include icons.icon-swap(boost, $color: var(--color-text-success));
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
   }
 
   // Un-boost and un-bookmark styles
@@ -289,12 +313,12 @@
   button.icon-button:not(.active):focus .icon-retweet,
   button.icon-button:not(.active):hover .icon-retweet {
     animation: none;
-    background-image: var(--icon-boost);
+    @include icons.icon-swap(boost, $color: var(--color-dim));
   }
 
   .status button.icon-button:not(.active):focus .icon-bookmark,
   .status button.icon-button:not(.active):hover .icon-bookmark {
-    background-image: var(--icon-bookmark);
+    @include icons.icon-swap(bookmark, $color: var(--color-dim));
   }
 
   // Un-boost and un-bookmark numbers on explore page
@@ -307,7 +331,7 @@
   // Replace bookmark icon
   .detailed-status .icon-bookmark,
   .status .icon-bookmark {
-    background-image: var(--icon-bookmark);
+    @include icons.icon-swap(bookmark, $color: var(--color-dim));
   }
 
   button.icon-button:hover .icon-retweet ~ span,
@@ -334,74 +358,85 @@
   .status .icon-mail-reply,
   .status .icon-reply,
   .status .icon-reply-all {
-    background-image: var(--icon-reply);
+    @include icons.icon-swap(reply, $color: var(--color-dim));
   }
 
   .detailed-status__action-bar .icon-mail-reply,
   .detailed-status__action-bar .icon-reply,
   .detailed-status__action-bar .icon-reply-all {
-    background-image: var(--icon-reply-detailed-status-action-bar);
+    @include icons.icon-swap(reply, $color: var(--color-dim));
   }
 
   .detailed-status__action-bar .icon-button:hover .icon-mail-reply,
   .detailed-status__action-bar .icon-button:hover .icon-reply,
   .detailed-status__action-bar .icon-button:hover .icon-reply-all {
-    background-image: var(--icon-reply-detailed-status-action-bar-hover);
+    @include icons.icon-swap(reply, $color: var(--color-icon-interactive));
   }
 
   .conversation .icon-button:hover .icon-reply {
-    background-image: var(--icon-reply-conversation);
+    @include icons.icon-swap(reply, $color: var(--color-icon-interactive));
   }
 
   .detailed-status__action-bar .icon-bookmark {
-    background-image: var(--icon-bookmark-detailed-status-action-bar);
+    @include icons.icon-swap(bookmark, $color: var(--color-dim));
   }
 
   .detailed-status__action-bar .icon-button:hover .icon-bookmark {
-    background-image: var(--icon-bookmark-detailed-status-action-bar-hover);
+    @include icons.icon-swap(
+      bookmark,
+      $color: var(--color-text-bookmark-highlight)
+    );
   }
 
   .detailed-status__action-bar .icon-button.active .icon-bookmark {
-    background-image: var(--icon-bookmark-detailed-status-action-bar-active);
+    @include icons.icon-swap(
+      bookmark,
+      fill,
+      var(--color-text-bookmark-highlight)
+    );
   }
 
   .status button.icon-button:hover .icon-mail-reply,
   .status button.icon-button:hover .icon-reply,
   .status button.icon-button:hover .icon-reply-all {
-    background-image: var(--icon-reply-status-hover);
+    @include icons.icon-swap(reply, $color: var(--color-icon-interactive));
   }
 
   // More icons
   .icon-list-ul {
-    background-image: var(--icon-list);
+    @include icons.icon-swap(list, $color: var(--color-light-text));
     top: 1px;
   }
 
   // "More" icon
   .icon-ellipsis-h {
-    background-image: var(--icon-more-status-action-bar);
-    background-position: center;
-    background-repeat: no-repeat;
+    @include icons.icon-swap(more, $color: var(--color-dim));
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
   }
 
   .column-link .icon.icon-.column-link__icon,
   .icon-ellipsis-v {
-    background-image: var(--icon-more);
-    background-position: center;
-    background-repeat: no-repeat;
+    @include icons.icon-swap(more-vertical, $color: var(--color-light-text));
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
   }
 
   .icon-search {
-    background-image: var(--icon-search-opaque);
+    @include icons.icon-swap(search, $color: var(--color-light-text));
   }
 
   // Close icon
   .icon-close {
-    background-image: var(--icon-close);
+    @include icons.icon-swap(close, $color: var(--color-light-text));
   }
 
   .status .icon-close {
-    background-image: var(--icon-close-action-bar);
+    @include icons.icon-swap(close, $color: var(--color-dim));
   }
 
   .relationship-tag {
@@ -416,10 +451,5 @@
   .detailed-status__action-bar .icon-button {
     min-width: 24px;
     position: relative;
-  }
-
-  .detailed-status__action-bar-dropdown .icon-button::after,
-  .detailed-status__button .icon-button::after {
-    transform: translateX(-6px);
   }
 }

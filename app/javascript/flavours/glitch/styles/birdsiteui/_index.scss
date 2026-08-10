@@ -4,6 +4,7 @@
 
 // CSS properties
 @use 'variables/tokens';
+@use 'variables/icons-phosphor';
 @use 'variables/variables-base';
 @use 'variables/variables-high-contrast';
 @use 'variables/variables-ipad-landscape';
@@ -116,3 +117,4 @@
 // Advanced web interface
 @use 'layouts/advanced-web-interface';
 @use 'birdsiteui_glitch_fix';
+@use 'components/glitch-feature-icons';

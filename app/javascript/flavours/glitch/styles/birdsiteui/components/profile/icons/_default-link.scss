@@ -1,3 +1,5 @@
+@use '../../../variables/icon-mixin' as icons;
+
 // Default link icon for fields with URLs that don't match a known platform
 @use '../field-selectors' as *;
 
@@ -36,7 +38,7 @@
         dd a[href*='nostr:' i]
       )
     )::before {
-    background-image: var(--icon-link);
+    @include icons.icon-swap(link, $color: var(--color-dim));
     content: '';
   }
 }

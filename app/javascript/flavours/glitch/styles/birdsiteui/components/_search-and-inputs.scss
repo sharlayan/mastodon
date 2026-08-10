@@ -1,3 +1,5 @@
+@use '../variables/icon-mixin' as icons;
+
 // Emoji-mart, search, inputs, placeholders
 .layout-single-column,
 .layout-multiple-columns {
@@ -34,10 +36,13 @@
 
   // Search
   .search__icon-wrapper .search__icon {
-    background-image: var(--icon-search);
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 20px;
+    @include icons.icon-swap(search, $color: var(--color-dim));
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 20px;
+    mask-size: 20px;
     display: inline-block;
     height: 24px;
     inset-inline-start: unset;
@@ -48,7 +53,7 @@
   }
 
   .search__icon-wrapper.has-value .search__icon {
-    background-image: var(--icon-close-action-bar);
+    @include icons.icon-swap(close, $color: var(--color-dim));
   }
 
   .search__icon-wrapper .search__icon path {

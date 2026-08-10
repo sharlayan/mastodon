@@ -1,3 +1,5 @@
+@use '../../variables/icon-mixin' as icons;
+
 // Profile basics
 .layout-single-column,
 .layout-multiple-columns {
@@ -23,8 +25,9 @@
   }
 
   .account__domain-pill__popout__parts > div:nth-child(2) svg {
-    background-image: var(--icon-globe-purple);
-    background-size: 24px;
+    @include icons.icon-swap(globe, $color: var(--color-icon-federated));
+    -webkit-mask-size: 24px;
+    mask-size: 24px;
   }
 
   .account__domain-pill__popout__handle {

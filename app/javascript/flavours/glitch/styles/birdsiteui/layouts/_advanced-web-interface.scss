@@ -45,11 +45,6 @@
     top: 0;
   }
 
-  // Drawer ordering (compose panel at end)
-  .drawer {
-    order: 999999;
-  }
-
   // Column container
   .column {
     border-right: 1px solid var(--color-border);

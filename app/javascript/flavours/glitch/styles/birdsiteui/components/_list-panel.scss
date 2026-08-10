@@ -1,3 +1,5 @@
+@use '../variables/icon-mixin' as icons;
+
 // List panel, mobile search, compact compose button, responsive breakpoints
 .layout-single-column,
 .layout-multiple-columns {
@@ -9,15 +11,25 @@
   // More compact compose button on mobile
   .ui__header__links .button.button-secondary[href='/publish'] {
     background-color: var(--color-accent-dark);
-    background-image: var(--icon-compose);
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 22px;
     border: 0;
     box-sizing: border-box;
     color: var(--color-light-purple);
     height: 35px;
+    position: relative;
     width: 45px;
+  }
+
+  .ui__header__links .button.button-secondary[href='/publish']::before {
+    @include icons.icon(
+      compose,
+      $color: var(--color-text-on-brand-base),
+      $size: 22px
+    );
+
+    content: '';
+    inset: 0;
+    margin: auto;
+    position: absolute;
   }
 
   .ui__header__links
