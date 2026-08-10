@@ -36,6 +36,14 @@ RSpec.describe AdvancedTextFormatter do
         end
       end
 
+      context 'with underlined text' do
+        let(:text) { '_underlined_' }
+
+        it 'preserves underline markup' do
+          expect(subject).to include '<u>underlined</u>'
+        end
+      end
+
       context 'with a block code' do
         let(:text) { "test\n\n```\nint main(void) {\n  return 0; // https://joinmastodon.org/foo\n}\n```\n" }
 
@@ -74,6 +82,18 @@ RSpec.describe AdvancedTextFormatter do
 
         it 'creates a mention link' do
           expect(subject).to include '<a href="https://cb6e6126.ngrok.io/@alice" class="u-url mention">@<span>alice</span></a></span>'
+        end
+      end
+
+      context 'with an underscored mention followed by its status URL' do
+        let(:account) { Fabricate(:account, username: 'ac_count__', domain: 'example.com', uri: 'https://example.com/users/ac_count__', url: 'https://example.com/@ac_count__') }
+        let(:preloaded_accounts) { [account] }
+        let(:text) { '@ac_count__@example.com https://example.com/@ac_count__/117071597770660844' }
+
+        it 'does not interpret underscores across the mention and URL as underline markup' do
+          expect(subject).to include '<a href="https://example.com/@ac_count__" class="u-url mention"'
+          expect(subject).to include 'href="https://example.com/@ac_count__/117071597770660844"'
+          expect(subject).to_not include '<u>'
         end
       end
 
