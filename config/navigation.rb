@@ -25,13 +25,6 @@ SimpleNavigation::Configuration.run do |navigation|
       s.item :custom_css, safe_join([material_symbol('code'), t('settings.custom_css')]), settings_preferences_custom_css_path
     end
 
-    n.item :flavours, safe_join([material_symbol('brush'), t('settings.flavours')]), settings_flavours_path do |flavours|
-      available_flavours = RoleplayModeHelper.roleplay_mode? ? Themes.instance.flavours & ['glitch'] : Themes.instance.flavours
-      available_flavours.each do |flavour|
-        flavours.item flavour.to_sym, safe_join([material_symbol('star-fill'), t("flavours.#{flavour}.name", default: flavour)]), settings_flavour_path(flavour)
-      end
-    end
-
     n.item :relationships, safe_join([material_symbol('groups'), t('settings.relationships')]), relationships_path, if: -> { current_user.functional? && !self_destruct } do |s|
       s.item :current, safe_join([material_symbol('groups'), t('settings.relationships')]), relationships_path
       s.item :severed_relationships, safe_join([material_symbol('link_off'), t('settings.severed_relationships')]), severed_relationships_path

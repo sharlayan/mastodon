@@ -375,6 +375,7 @@ ko:
       too_long_keyword: 키워드는 최대 %{count}자까지 입력할 수 있습니다
       too_short_keyword: 키워드는 최소 %{count}자 이상이어야 합니다
   appearance:
+    theme: 풍미 / 테마
     customized: 서버 전용 - 에모지
     misskey_flavour: 서버 전용 - 미스키 풍미
   auth:

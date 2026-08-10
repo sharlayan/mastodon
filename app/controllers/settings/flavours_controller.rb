@@ -10,16 +10,11 @@ class Settings::FlavoursController < Settings::BaseController
   skip_before_action :require_functional!
 
   def index
-    redirect_to action: 'show', flavour: current_flavour
+    redirect_to settings_preferences_appearance_path
   end
 
   def show
-    return redirect_to action: 'show', flavour: 'glitch' if roleplay_mode? && params[:flavour] != 'glitch'
-
-    redirect_to action: 'show', flavour: current_flavour unless Themes.instance.flavours.include?(params[:flavour]) || (params[:flavour] == current_flavour)
-
-    @listing = roleplay_mode? ? ['glitch'] : Themes.instance.flavours
-    @selected = params[:flavour]
+    redirect_to settings_preferences_appearance_path
   end
 
   def update

@@ -418,6 +418,7 @@ en:
       too_long_keyword: Keywords must be at most %{count} characters long
       too_short_keyword: Keywords must be at least %{count} characters long
   appearance:
+    theme: Flavour / theme
     customized: Customized - Emojis
     misskey_flavour: Customized - Misskey Flavour
   auth:

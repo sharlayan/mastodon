@@ -356,6 +356,7 @@ ja:
       too_long_keyword: キーワードは%{count}文字以内で入力してください
       too_short_keyword: キーワードは%{count}文字以上である必要があります
   appearance:
+    theme: フレーバー / テーマ
     customized: カスタマイズ - 絵文字
     misskey_flavour: カスタマイズ - Misskeyフレーバー
   auth:
