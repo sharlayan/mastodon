@@ -19,8 +19,17 @@ RSpec.describe InitialStateSerializer do
       show_cat_speak: true,
       show_federated_cat: true,
       custom_emoji_mutes: [],
-      reaction_mutes: []
+      reaction_mutes: [],
+      inline_compose_tabs: []
     )
+  end
+
+  it 'exposes parsed inline compose tabs for the signed-in user' do
+    user = Fabricate(:user)
+    user.settings[:inline_compose_tabs] = [{ type: 'list', id: '123' }].to_json
+    presenter = InitialStatePresenter.new(current_account: user.account, settings: {})
+
+    expect(described_class.new(presenter).meta[:inline_compose_tabs]).to eq([{ 'type' => 'list', 'id' => '123' }])
   end
 
   it 'uses the legacy server instance badge preference as the local default seed' do

@@ -26,6 +26,7 @@ module Sharlayan::UserSettingsExtensions
       settings.setting :drive_keep_original_filename, default: true
       settings.setting :drive_default_folder_id, default: nil
       settings.setting :drive_upload_original_image, default: true
+      settings.setting :inline_compose_tabs, default: '[]'
       settings.setting_inverse_alias :enable_rss, :norss
     end
 

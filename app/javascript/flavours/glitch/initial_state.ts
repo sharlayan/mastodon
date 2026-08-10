@@ -237,6 +237,7 @@ export const {
   customEmojiMuteHidden,
   ignoreOthersPagesView,
   reactionMutes,
+  inlineComposeTabs,
   reactionCustomEmojiSize,
   reactionLocalEmojiOnly,
   reactionsEnabled,

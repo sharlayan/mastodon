@@ -14,6 +14,7 @@ RSpec.describe UserSettings do
     expect(settings[:visible_reactions]).to eq(6)
     expect(settings[:drive_keep_original_filename]).to be true
     expect(settings[:drive_upload_original_image]).to be true
+    expect(settings[:inline_compose_tabs]).to eq('[]')
   end
 
   it 'uses the instance RSS setting until a user changes it' do

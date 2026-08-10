@@ -13,6 +13,11 @@ export interface ApiReactionMuteJSON {
   target_domain: string | null;
 }
 
+export interface InlineComposeTab {
+  type: 'list' | 'antenna';
+  id: string;
+}
+
 export interface SharlayanInitialStateMeta {
   max_reactions: number;
   force_local_only: boolean;
@@ -57,6 +62,7 @@ export interface SharlayanInitialStateMeta {
   ignore_others_pages_view?: boolean;
   custom_emoji_mutes?: ApiCustomEmojiMuteJSON[];
   reaction_mutes?: ApiReactionMuteJSON[];
+  inline_compose_tabs?: InlineComposeTab[];
 }
 
 export interface SharlayanInitialState {
@@ -97,6 +103,7 @@ export const readSharlayanInitialState = (
     customEmojiMuteHidden: getMeta('custom_emoji_mute_hidden') === true,
     ignoreOthersPagesView: getMeta('ignore_others_pages_view') === true,
     reactionMutes: getMeta('reaction_mutes') ?? [],
+    inlineComposeTabs: getMeta('inline_compose_tabs') ?? [],
     reactionCustomEmojiSize: getMeta('reaction_custom_emoji_size'),
     reactionLocalEmojiOnly: getMeta('reaction_local_emoji_only'),
     reactionsEnabled: getMeta('reactions_enabled') !== false,

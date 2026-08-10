@@ -29,7 +29,6 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('zoom_emojis_on_hover')).toBe(true);
     expect(state.get('sync_to_server')).toBe(false);
     expect(state.get('synced_at')).toBe(null);
-    expect(state.get('inline_compose_tabs')).toEqual(ImmutableList());
     expect(state.getIn(['collapsed', 'enabled'])).toBe(false);
     expect(state.getIn(['collapsed', 'auto', 'notifications'])).toBe(true);
     expect(state.getIn(['collapsed', 'auto', 'lengthy'])).toBe(true);

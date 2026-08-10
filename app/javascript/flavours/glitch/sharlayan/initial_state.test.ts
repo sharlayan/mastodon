@@ -39,6 +39,7 @@ const meta: SharlayanInitialStateMeta = {
   mfm_animations: true,
   mfm_fold_mode: 'all',
   mfm_allow_composition: true,
+  inline_compose_tabs: [{ type: 'list', id: '123' }],
 };
 
 describe('Sharlayan initial state', () => {
@@ -64,6 +65,7 @@ describe('Sharlayan initial state', () => {
         showFederatedCat: true,
         customEmojiMutes: [],
         reactionMutes: [],
+        inlineComposeTabs: [{ type: 'list', id: '123' }],
       },
     );
   });
@@ -87,6 +89,7 @@ describe('Sharlayan initial state', () => {
       showCat: true,
       showCatSpeak: true,
       showFederatedCat: true,
+      inlineComposeTabs: [],
     });
   });
 

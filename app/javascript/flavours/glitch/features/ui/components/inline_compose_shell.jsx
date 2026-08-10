@@ -4,8 +4,6 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import { matchPath, useLocation } from 'react-router-dom';
 
-import { fromJS } from 'immutable';
-
 import classNames from 'classnames';
 
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
@@ -17,12 +15,12 @@ import PublicIcon from '@/material-icons/400-24px/public.svg?react';
 import RadarIcon from '@/material-icons/400-24px/radar.svg?react';
 import { fetchAntennas } from 'flavours/glitch/actions/antennas';
 import { mountCompose, unmountCompose } from 'flavours/glitch/actions/compose';
-import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
+import { apiRequestPut } from 'flavours/glitch/api';
 import { fetchLists } from 'flavours/glitch/actions/lists_typed';
 import { Icon } from 'flavours/glitch/components/icon';
 import { TabList, TabLink } from 'flavours/glitch/components/tab_list';
 import ComposeFormContainer from 'flavours/glitch/features/compose/containers/compose_form_container';
-import { me, antennaEnabled, publicTimelinesEnabled } from 'flavours/glitch/initial_state';
+import { me, antennaEnabled, inlineComposeTabs, publicTimelinesEnabled } from 'flavours/glitch/initial_state';
 import { getOrderedLists } from 'flavours/glitch/selectors/lists';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
@@ -42,7 +40,6 @@ export const InlineComposeShell = () => {
   const location = useLocation();
 
   const enabled = useAppSelector((state) => state.local_settings.get('inline_compose_timelines', false)) && !!me;
-  const savedTabs = useAppSelector((state) => state.local_settings.get('inline_compose_tabs'));
   const expandOnClick = useAppSelector((state) => state.local_settings.get('inline_compose_expand_on_click', false));
   const hasComposeContents = useAppSelector((state) => {
     const compose = state.get('compose');
@@ -60,11 +57,10 @@ export const InlineComposeShell = () => {
   const antennas = useAppSelector((state) => state.get('antennas'));
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [savedTabList, setSavedTabList] = useState(inlineComposeTabs);
   const [composeExpanded, setComposeExpanded] = useState(false);
   const menuRef = useRef(null);
   const wasSubmitting = useRef(isSubmitting);
-
-  const savedTabList = useMemo(() => (savedTabs ? savedTabs.toJS() : []), [savedTabs]);
 
   const tabs = useMemo(() => {
     const base = [{ to: '/home', label: intl.formatMessage(messages.home), icon: 'home', iconComponent: HomeIcon }];
@@ -165,14 +161,16 @@ export const InlineComposeShell = () => {
   const addTab = useCallback((type, id) => {
     const next = savedTabList.filter((tab) => !(tab.type === type && String(tab.id) === String(id)));
     next.push({ type, id: String(id) });
-    dispatch(changeLocalSetting(['inline_compose_tabs'], fromJS(next)));
+    setSavedTabList(next);
+    void apiRequestPut('v1/inline_compose_tabs', { tabs: next }).catch(() => undefined);
     setMenuOpen(false);
-  }, [dispatch, savedTabList]);
+  }, [savedTabList]);
 
   const removeTab = useCallback((tab) => {
     const next = savedTabList.filter((item) => !(item.type === tab.type && String(item.id) === String(tab.id)));
-    dispatch(changeLocalSetting(['inline_compose_tabs'], fromJS(next)));
-  }, [dispatch, savedTabList]);
+    setSavedTabList(next);
+    void apiRequestPut('v1/inline_compose_tabs', { tabs: next }).catch(() => undefined);
+  }, [savedTabList]);
 
   const availableLists = useMemo(
     () => lists.filter((list) => !savedTabList.some((tab) => tab.type === 'list' && String(tab.id) === String(list.id))),

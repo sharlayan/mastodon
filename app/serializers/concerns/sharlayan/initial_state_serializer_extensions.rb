@@ -66,6 +66,7 @@ module Sharlayan::InitialStateSerializerExtensions
       contrast: object_account_user.settings['web.contrast'],
       custom_emoji_mute_hidden: object_account_user.settings['web.custom_emoji_mute_hidden'],
       ignore_others_pages_view: object_account_user.settings['web.ignore_others_pages_view'],
+      inline_compose_tabs: inline_compose_tabs,
       custom_emoji_mutes: object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions, hide_in_picker: mute.hide_in_picker } },
       reaction_mutes: object.current_account.reaction_mutes.includes(:target_account).order(id: :desc).map { |mute| { id: mute.id.to_s, target_account_id: mute.target_account_id&.to_s, target_acct: mute.target_account&.acct, target_domain: mute.target_domain } },
     }
@@ -75,6 +76,13 @@ module Sharlayan::InitialStateSerializerExtensions
     return true if RoleplayModeHelper.roleplay_mode? && Setting['force_avatar_decorations']
 
     object_account_user.settings['avatar_decorations.show']
+  end
+
+  def inline_compose_tabs
+    value = JSON.parse(object_account_user.settings[:inline_compose_tabs])
+    value.is_a?(Array) ? value : []
+  rescue JSON::ParserError, TypeError
+    []
   end
 
   def mfm_enabled
