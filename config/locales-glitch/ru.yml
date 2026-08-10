@@ -16,5 +16,3 @@ ru:
     localization:
       glitch_guide_link: https://crowdin.com/project/glitch-soc
       glitch_guide_link_text: И для glitch-soc тоже!
-  settings:
-    flavours: Стили
