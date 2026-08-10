@@ -162,6 +162,20 @@ en:
       reset_cache: Reset cache
       reset_cache_done_msg: Custom emoji cache has been reset
       shortcode_readonly_hint: The shortcode cannot be changed after creation.
+    dashboard:
+      force_local_only_notice:
+        access_hint: Review the profile and post access settings on the same screen as
+          well. They may still be restricted to logged-in users.
+        action: Open federation settings
+        message: Every new post is kept local-only and is not delivered to other servers.
+          Community mode leaves this setting enabled, so turn it off manually if this
+          server is no longer meant to be closed.
+        title: Forced local-only posting is enabled
+      roleplay_non_local_only_statuses:
+        message: Local posts that are not local-only were found at boot. They may have
+          been created before roleplay mode was enabled or through a client that ignores
+          the forced setting, and can still be delivered or fetched outside this server.
+        title: Posts that are not local-only exist on this roleplay-only server
     domain_blocks:
       block_trends: Block from trends
       block_trends_hint: Exclude posts and hashtags from this domain from trend calculations

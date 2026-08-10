@@ -266,8 +266,22 @@ RSpec.describe UserRole do
       expect(subject.everyone?).to be true
     end
 
-    it 'has default permissions' do
-      expect(subject.permissions).to eq described_class::FLAGS[:invite_users]
+    context 'when the role does not exist yet' do
+      before do
+        described_class.where(id: described_class::EVERYONE_ROLE_ID).delete_all
+      end
+
+      it 'has no permissions in roleplay mode' do
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+          expect(subject.permissions).to eq described_class::Flags::NONE
+        end
+      end
+
+      it 'has default permissions outside roleplay mode' do
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+          expect(subject.permissions).to eq described_class::FLAGS[:invite_users]
+        end
+      end
     end
 
     it 'has negative position' do

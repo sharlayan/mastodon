@@ -13,5 +13,6 @@ mode = apply ? 'Applied' : 'Dry run'
 
 puts "#{mode}:"
 puts "  setting overrides: #{summary[:settings]}"
+puts "  Everyone role: #{summary[:everyone_role]}"
 puts "  notification policies: #{summary[:notification_policies]}"
 puts I18n.t(apply ? 'roleplay_reset.restart' : 'roleplay_reset.apply_hint')

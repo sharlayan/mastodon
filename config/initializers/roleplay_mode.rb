@@ -15,4 +15,12 @@ Rails.application.config.after_initialize do
   rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished => e
     Rails.logger.debug { "Skipping roleplay forced settings: #{e.class}" }
   end
+
+  begin
+    next unless ActiveRecord::Base.connection.table_exists?('statuses')
+
+    Rails.configuration.x.roleplay_non_local_only_statuses = Status.local.not_local_only.exists?
+  rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid, ActiveRecord::ConnectionNotEstablished => e
+    Rails.logger.debug { "Skipping roleplay non-local-only status check: #{e.class}" }
+  end
 end
