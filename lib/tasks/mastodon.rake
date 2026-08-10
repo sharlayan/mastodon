@@ -38,6 +38,11 @@ namespace :mastodon do
       prompt.say('Single user mode disables registrations and redirects the landing page to your public profile.')
       env['SINGLE_USER_MODE'] = prompt.yes?('Do you want to enable single user mode?', default: false)
 
+      prompt.say "\n"
+
+      prompt.say('Community (roleplay) server mode forces local-only posting and locks several privacy settings for a closed, authenticated-only instance.')
+      env['OC_ROLEPLAY_OPTION'] = prompt.yes?('Do you want to install in community (roleplay) server mode?', default: false)
+
       %w(SECRET_KEY_BASE).each do |key|
         env[key] = SecureRandom.hex(64)
       end
