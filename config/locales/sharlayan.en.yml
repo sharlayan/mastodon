@@ -9,6 +9,9 @@ en:
     switch_unauthorized: You are not authorized to switch to this account.
   accounts:
     refetch_local_error: Cannot refresh a local account
+  datetime:
+    distance_in_words:
+      ago: ago
   activerecord:
     errors:
       models:
@@ -459,6 +462,7 @@ en:
       limit: You have reached the maximum number of custom emoji mutes
   exports:
     clips: Clips
+    json: JSON
     pages: Pages
   page_backups:
     title: Pages backup

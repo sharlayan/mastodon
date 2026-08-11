@@ -9,6 +9,9 @@ ko:
     switch_unauthorized: 이 계정으로 전환할 권한이 없습니다.
   accounts:
     refetch_local_error: 로컬 계정은 새로고침할 수 없습니다
+  datetime:
+    distance_in_words:
+      ago: 전
   activerecord:
     errors:
       models:
@@ -411,6 +414,7 @@ ko:
       limit: 커스텀 에모지 뮤트 최대 개수를 초과합니다
   exports:
     clips: 클립
+    json: JSON
     pages: 페이지
   page_backups:
     title: 페이지 백업
