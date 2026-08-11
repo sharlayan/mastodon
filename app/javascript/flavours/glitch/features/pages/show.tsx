@@ -35,6 +35,7 @@ import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle
 import {
   domain,
   ignoreOthersPagesView,
+  pageBlogViewAccount,
   pageBlogViewSkin,
   pageBlogViewViewerSkin,
   pageBlogViewColorSchemes,
@@ -42,6 +43,7 @@ import {
   title as siteTitle,
 } from 'flavours/glitch/initial_state';
 import { useAppDispatch } from 'flavours/glitch/store';
+import { pageBlogThemeNeedsReload } from 'flavours/glitch/utils/page_blog_theme';
 import { applyPageColorScheme } from 'flavours/glitch/utils/theme';
 import type { ColorScheme } from 'flavours/glitch/utils/theme';
 
@@ -442,6 +444,21 @@ const PageShow: React.FC<{
       document.body.classList.remove('page-wide-view', 'page-blog-view');
     };
   }, [wideView, useBlogView]);
+
+  useEffect(() => {
+    if (
+      pageBlogThemeNeedsReload({
+        useBlogView,
+        pathname: window.location.pathname,
+        serverAccount: pageBlogViewAccount,
+        skin: pageBlogViewSkin,
+        viewerSkin: pageBlogViewViewerSkin,
+        stylesheetPresent: Boolean(document.getElementById('page-blog-theme')),
+      })
+    ) {
+      window.location.reload();
+    }
+  }, [useBlogView]);
 
   useEffect(() => {
     if (!useBlogView || !pageBlogViewSkin) {

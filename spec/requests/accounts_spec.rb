@@ -392,6 +392,18 @@ RSpec.describe 'Accounts show response' do
       expect(response.parsed_body.at('html')&.[]('data-color-scheme')).to eq('auto')
     end
 
+    it 'renders an available non-default target account skin for an anonymous visitor' do
+      account.user.settings['skin'] = 'birdsiteui'
+      account.user.save!
+
+      get "/@#{account.username}/pages/example"
+
+      expect(response.parsed_body.at('meta[name="pageBlogViewSkin"]')&.[]('content')).to eq('birdsiteui')
+      expect(response.parsed_body.at('link#page-blog-theme')&.[]('href')).to include('birdsiteui')
+      expect(response.parsed_body.at('body')&.[]('class')).to include('skin-birdsiteui')
+      expect(response.parsed_body.at('html')&.[]('data-color-scheme')).to eq('auto')
+    end
+
     it 'does not expose the guard when the visitor ignores account settings' do
       visitor = Fabricate(:user)
       visitor.settings['web.ignore_others_pages_view'] = true

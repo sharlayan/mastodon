@@ -5,6 +5,7 @@ import type {
   SharlayanInitialState,
   SharlayanInitialStateMeta,
 } from './sharlayan/initial_state';
+import { isPageBlogViewPath } from './utils/page_blog_theme';
 
 export type {
   ApiCustomEmojiMuteJSON,
@@ -125,7 +126,7 @@ export const hasMultiColumnPath: boolean =
   initialPath === '/home' ||
   initialPath.startsWith('/deck');
 
-const pageBlogViewAccount = document
+export const pageBlogViewAccount = document
   .querySelector('head meta[name=pageBlogViewAccount]')
   ?.getAttribute('content');
 export const pageBlogViewSkin = document
@@ -141,12 +142,7 @@ export const pageBlogViewColorSchemes = document
   .filter(Boolean) ?? ['auto', 'light', 'dark'];
 
 export const isServerPageBlogViewPath = (pathname: string): boolean =>
-  Boolean(
-    pageBlogViewAccount &&
-    (pathname === `/@${pageBlogViewAccount}/pages` ||
-      pathname.startsWith(`/@${pageBlogViewAccount}/pages/`) ||
-      /^\/pages(?:\/[0-9]+(?:\/edit)?|\/new)$/.test(pathname)),
-  );
+  isPageBlogViewPath(pathname, pageBlogViewAccount);
 
 // Glitch-soc-specific “local settings”
 if (initialState) {
