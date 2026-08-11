@@ -3,7 +3,7 @@ import { Map as ImmutableMap } from 'immutable';
 import { connect } from 'react-redux';
 
 
-import { useEmoji } from '../../../actions/emojis';
+import { emojiUse } from '../../../actions/emojis';
 import { addFavoriteEmoji, removeFavoriteEmoji } from '../../../actions/favorite_emojis';
 import { changeSetting } from '../../../actions/settings';
 import EmojiPickerDropdown from '../components/emoji_picker_dropdown';
@@ -60,8 +60,7 @@ const mapDispatchToProps = (dispatch, { onPickEmoji }) => ({
   },
 
   onPickEmoji: emoji => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- this is not a react hook
-    dispatch(useEmoji(emoji));
+    dispatch(emojiUse(emoji));
 
     if (onPickEmoji) {
       onPickEmoji(emoji);
