@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { GLYPHS } from './birdsiteui-glyphs.mjs';
@@ -78,8 +79,8 @@ lines.push('}', '');
 fs.writeFileSync(outFile, lines.join('\n'));
 
 const bytes = fs.statSync(outFile).size;
-console.log(
+process.stdout.write(
   `${path.relative(root, outFile)}: 글리프 ${Object.keys(GLYPHS).length}개 / 변수 ${
     Object.keys(GLYPHS).length * 2
-  }개 / ${(bytes / 1024).toFixed(1)}KB`,
+  }개 / ${(bytes / 1024).toFixed(1)}KB\n`,
 );
