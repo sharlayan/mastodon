@@ -9,6 +9,9 @@ ja:
     switch_unauthorized: このアカウントに切り替える権限がありません。
   accounts:
     refetch_local_error: ローカルアカウントは更新できません
+  datetime:
+    distance_in_words:
+      ago: 前
   activerecord:
     errors:
       models:
@@ -391,6 +394,7 @@ ja:
       limit: カスタム絵文字ミュートの上限数に達しています
   exports:
     clips: クリップ
+    json: JSON
     pages: ページ
   page_backups:
     title: ページのバックアップ
