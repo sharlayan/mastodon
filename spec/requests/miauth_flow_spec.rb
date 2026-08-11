@@ -33,6 +33,19 @@ RSpec.describe 'MiAuth web flow' do
       expect(response.body).to include("#{callback}?session=#{session_id}")
     end
 
+    it 'allows native application callback schemes' do
+      native_callbacks = ['aria://aria/miauth', 'flare://Callback/SignIn/Misskey', 'another-client+auth://callback/miauth']
+
+      native_callbacks.each do |native_callback|
+        get "/miauth/#{session_id}", params: { name: 'Native client', callback: native_callback }
+        expect(response).to have_http_status(200)
+
+        post "/miauth/#{session_id}", params: { name: 'Native client', callback: native_callback }
+        expect(response).to have_http_status(200)
+        expect(response.body).to include("#{native_callback}?session=#{session_id}")
+      end
+    end
+
     it 'allows the issued token to be claimed only once' do
       post "/miauth/#{session_id}", params: { name: 'Flare', callback: callback, permission: 'read:account,write:notes' }
       expect(response).to have_http_status(200)
@@ -136,8 +149,8 @@ RSpec.describe 'MiAuth web flow' do
       expect(user.account.statuses.where(text: 'scope isolation')).to_not exist
     end
 
-    it 'rejects every non-HTTPS callback on approve' do
-      ['http://client.example/callback', 'flare://Callback/SignIn/Misskey', 'javascript:alert(1)'].each do |unsafe_callback|
+    it 'rejects unsafe callback schemes on approve' do
+      ['http://client.example/callback', 'javascript:alert(1)', 'file:///tmp/token', 'data:text/plain,token', 'mailto:client@example.com', 'tel:1234', 'vbscript:alert(1)'].each do |unsafe_callback|
         post "/miauth/#{session_id}", params: { name: 'Flare', callback: unsafe_callback }
         expect(response).to have_http_status(400)
         expect(response.body).to_not include(unsafe_callback)

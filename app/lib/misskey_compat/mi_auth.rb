@@ -5,6 +5,7 @@ module MisskeyCompat::MiAuth
   APP_NAME = 'Misskey (MiAuth)'
   TOKEN_SCOPE = 'misskey'
   TOKEN_TTL = 30.days
+  UNSAFE_CALLBACK_SCHEMES = %w(http javascript file data mailto tel vbscript).freeze
   SUPPORTED_PERMISSIONS = %w(
     read:account write:account
     read:blocks write:blocks
@@ -46,7 +47,10 @@ module MisskeyCompat::MiAuth
     return false if callback.blank?
 
     uri = Addressable::URI.parse(callback)
-    uri.scheme&.downcase == 'https' && uri.host.present? && uri.userinfo.blank?
+    scheme = uri.scheme&.downcase
+    return false if scheme.blank? || UNSAFE_CALLBACK_SCHEMES.include?(scheme) || uri.userinfo.present?
+
+    scheme != 'https' || uri.host.present?
   rescue Addressable::URI::InvalidURIError
     false
   end
