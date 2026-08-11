@@ -74,7 +74,7 @@ const styleStringToObject = (style: string): React.CSSProperties => {
     result[camelCased] = value;
   }
 
-  return result as React.CSSProperties;
+  return result;
 };
 
 export const handleBoardAttribute: OnAttributeHandler = (name, value) => {

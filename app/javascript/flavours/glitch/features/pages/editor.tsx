@@ -286,11 +286,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleUpdate = useCallback((blockId: string, patch: PageBlockPatch) => {
     setContent((blocks) =>
-      updateBlockInTree(
-        blocks,
-        blockId,
-        (block) => ({ ...block, ...patch }) as ApiPageBlock,
-      ),
+      updateBlockInTree(blocks, blockId, (block) => ({ ...block, ...patch })),
     );
   }, []);
 

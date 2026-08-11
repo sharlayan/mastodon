@@ -509,10 +509,10 @@ const InboundAccountItem: React.FC<{
   return (
     <div className='account-switcher-modal__item account-switcher-modal__item--inbound'>
       <div className='account-switcher-modal__item__avatar'>
-        <Avatar account={account as never} size={36} />
+        <Avatar account={account} size={36} />
       </div>
       <div className='account-switcher-modal__item__info'>
-        <DisplayName account={account as never} />
+        <DisplayName account={account} />
       </div>
       {canRevoke && (
         <button
@@ -641,7 +641,7 @@ const ParentAccountItem: React.FC<{
         title={intl.formatMessage(messages.backTo, { name: displayName })}
       >
         <div className='account-switcher-modal__item__avatar'>
-          <Avatar account={account as never} size={36} />
+          <Avatar account={account} size={36} />
           {unreadCount > 0 && (
             <span className='account-switcher-modal__unread-badge'>
               {unreadCount > 99 ? '99+' : unreadCount}
@@ -652,7 +652,7 @@ const ParentAccountItem: React.FC<{
           <span className='account-switcher-modal__parent-label'>
             {intl.formatMessage(messages.parentAccount)}
           </span>
-          <DisplayName account={account as never} />
+          <DisplayName account={account} />
         </div>
         <div className='account-switcher-modal__item__actions'>
           <button
@@ -786,7 +786,7 @@ const CurrentAccountItem: React.FC<{
     >
       <div className='account-switcher-modal__item__row'>
         <div className='account-switcher-modal__item__avatar'>
-          <Avatar account={account as never} size={36} />
+          <Avatar account={account} size={36} />
         </div>
         <div className='account-switcher-modal__item__info'>
           <span className='account-switcher-modal__parent-label'>
@@ -794,7 +794,7 @@ const CurrentAccountItem: React.FC<{
               isMain ? messages.parentAccount : messages.currentAccount,
             )}
           </span>
-          <DisplayName account={account as never} />
+          <DisplayName account={account} />
         </div>
         <div className='account-switcher-modal__item__actions'>
           {hasLinkedAccounts && (
@@ -979,7 +979,7 @@ const SwitchableAccountItem: React.FC<{
         title={intl.formatMessage(messages.switchTo, { name: displayName })}
       >
         <div className='account-switcher-modal__item__avatar'>
-          <Avatar account={account as never} size={36} />
+          <Avatar account={account} size={36} />
           {unreadCount > 0 && (
             <span className='account-switcher-modal__unread-badge'>
               {unreadCount > 99 ? '99+' : unreadCount}
@@ -987,7 +987,7 @@ const SwitchableAccountItem: React.FC<{
           )}
         </div>
         <div className='account-switcher-modal__item__info'>
-          <DisplayName account={account as never} />
+          <DisplayName account={account} />
         </div>
         <div className='account-switcher-modal__item__actions'>
           <button

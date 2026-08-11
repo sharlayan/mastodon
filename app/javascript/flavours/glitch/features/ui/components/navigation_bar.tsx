@@ -73,7 +73,7 @@ const PublishButton = () => {
       title={intl.formatMessage(messages.publish)}
       to={{ pathname: '/publish', state: { focusTarget: false } }}
       icon={<Icon id='' icon={AddIcon} />}
-      onClick={handleClick as React.MouseEventHandler<HTMLAnchorElement>}
+      onClick={handleClick}
     />
   );
 };
