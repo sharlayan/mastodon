@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 Rails.application.config.after_initialize do
+  if Sharlayan::AdminTimeline.enabled?
+    FanOutOnWriteService.prepend Sharlayan::AdminTimelineFanOut::FanOut
+    RemoveStatusService.prepend Sharlayan::AdminTimelineFanOut::Remove
+  end
+
   next unless RoleplayModeHelper.roleplay_mode?
 
   begin

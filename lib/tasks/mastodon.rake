@@ -41,7 +41,10 @@ namespace :mastodon do
       prompt.say "\n"
 
       prompt.say('Community (roleplay) server mode forces local-only posting and locks several privacy settings for a closed, authenticated-only instance.')
+      prompt.say('It also enables the management timeline, which lets holders of the `view_admin_timeline` role privilege read every local post.')
+
       env['OC_ROLEPLAY_OPTION'] = prompt.yes?('Do you want to install in community (roleplay) server mode?', default: false)
+      env['OC_ADMIN_TIMELINE_OPTION'] = env['OC_ROLEPLAY_OPTION']
 
       %w(SECRET_KEY_BASE).each do |key|
         env[key] = SecureRandom.hex(64)

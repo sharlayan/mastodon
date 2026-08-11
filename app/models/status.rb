@@ -51,6 +51,7 @@ class Status < ApplicationRecord
   include Status::Visibility
   include Status::InteractionPolicyConcern
   include Sharlayan::StatusExtensions
+  include Sharlayan::Status::AdminTimelineGuard
 
   CACHEABLE_ASSOCIATIONS = [
     :application,

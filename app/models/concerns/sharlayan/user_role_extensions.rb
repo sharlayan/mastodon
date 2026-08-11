@@ -5,15 +5,25 @@ module Sharlayan::UserRoleExtensions
 
   EXTRA_FLAGS = {
     bypass_rate_limit: (1 << 0),
+    view_admin_timeline: (1 << 1),
+  }.freeze
+
+  GATED_EXTRA_FLAGS = {
+    view_admin_timeline: -> { Sharlayan::AdminTimeline.enabled? },
   }.freeze
 
   module ExtraFlags
     NONE = 0
     ALL  = EXTRA_FLAGS.values.reduce(0, &:|)
+    GATED = EXTRA_FLAGS.values_at(*GATED_EXTRA_FLAGS.keys).reduce(0, &:|)
 
     CATEGORIES = {
       api: %i(
         bypass_rate_limit
+      ).freeze,
+
+      moderation: %i(
+        view_admin_timeline
       ).freeze,
     }.freeze
   end
@@ -25,12 +35,25 @@ module Sharlayan::UserRoleExtensions
     validate :validate_sharlayan_own_role_edition
   end
 
+  class_methods do
+    def extra_flag_available?(privilege)
+      gate = GATED_EXTRA_FLAGS[privilege.to_sym]
+      gate.nil? || gate.call
+    end
+
+    def unavailable_extra_flags_mask
+      GATED_EXTRA_FLAGS.keys.reject { |privilege| extra_flag_available?(privilege) }.sum { |privilege| EXTRA_FLAGS[privilege] }
+    end
+  end
+
   def extra_permissions_as_keys
     EXTRA_FLAGS.keys.select { |privilege| extra_permissions & EXTRA_FLAGS[privilege] == EXTRA_FLAGS[privilege] }.map(&:to_s)
   end
 
   def extra_permissions_as_keys=(value)
-    self.extra_permissions = value.filter_map(&:presence).reduce(ExtraFlags::NONE) { |bitmask, privilege| EXTRA_FLAGS.key?(privilege.to_sym) ? (bitmask | EXTRA_FLAGS[privilege.to_sym]) : bitmask }
+    privileges = value.filter_map(&:presence).select { |privilege| self.class.extra_flag_available?(privilege) }
+
+    self.extra_permissions = privileges.reduce(ExtraFlags::NONE) { |bitmask, privilege| EXTRA_FLAGS.key?(privilege.to_sym) ? (bitmask | EXTRA_FLAGS[privilege.to_sym]) : bitmask }
   end
 
   def can_extra?(*any_of_privileges)
@@ -43,16 +66,20 @@ module Sharlayan::UserRoleExtensions
   end
 
   def computed_extra_permissions
+    raw_computed_extra_permissions & ~self.class.unavailable_extra_flags_mask
+  end
+
+  private
+
+  def raw_computed_extra_permissions
     return extra_permissions if everyone?
     return ExtraFlags::NONE if nobody?
 
-    @computed_extra_permissions ||= begin
+    @raw_computed_extra_permissions ||= begin
       computed = self.class.everyone.extra_permissions | extra_permissions
       administrator? ? ExtraFlags::ALL : computed
     end
   end
-
-  private
 
   def in_extra_permissions?(privilege)
     raise ArgumentError, "Unknown extra privilege: #{privilege}" unless EXTRA_FLAGS.key?(privilege)

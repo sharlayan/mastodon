@@ -2,6 +2,7 @@
 
 class InitialStateSerializer < ActiveModel::Serializer
   include RoutingHelper
+  include Sharlayan::InitialStateRoleplay
   prepend Sharlayan::InitialStateSerializerExtensions
 
   attributes :meta, :compose, :accounts,

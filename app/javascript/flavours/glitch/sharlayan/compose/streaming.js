@@ -3,6 +3,7 @@ import { updateStatusReaction } from 'flavours/glitch/actions/statuses';
 import { fillAntennaTimelineGaps } from 'flavours/glitch/actions/timelines';
 import { me } from 'flavours/glitch/initial_state';
 import { incrementLinkedUnreadCount } from 'flavours/glitch/sharlayan/account_switcher/actions';
+import { adminTimelineOwnerViewer } from 'flavours/glitch/sharlayan/roleplay';
 
 const linkedNotificationPreferenceKey = (accountId) => `linked_notif_prefs_${accountId}`;
 const linkedNotificationLastSeenKey = (accountId, linkedAccountId) => `linked_notif_last_id_${accountId}_${linkedAccountId}`;
@@ -83,3 +84,21 @@ export const createAntennaStreamConnector = ({ connectTimeline, fillGaps = fillA
   connectTimeline(`antenna:${antennaId}`, 'antenna', { antenna: antennaId }, {
     fillGaps: () => fillGaps(antennaId),
   });
+
+export const createAdminStreamConnector = ({ adminTimelineId, connectTimeline, fillGaps }) => filters => {
+  const { hidePublic, hideUnlisted, hidePrivate, groupDirect } = filters ?? {};
+  const normalizedFilters = { hidePublic, hideUnlisted, hidePrivate, groupDirect };
+
+  return connectTimeline(adminTimelineId(normalizedFilters), 'admin', {}, {
+    accept: ({ visibility, in_reply_to_id }) => {
+      if (hidePublic && visibility === 'public') return false;
+      if (hideUnlisted && visibility === 'unlisted') return false;
+      if (hidePrivate && visibility === 'private') return false;
+      if ((visibility === 'direct' || visibility === 'limited') && !adminTimelineOwnerViewer) return false;
+      if (groupDirect && visibility === 'direct' && in_reply_to_id) return false;
+
+      return true;
+    },
+    fillGaps: () => fillGaps(normalizedFilters),
+  });
+};

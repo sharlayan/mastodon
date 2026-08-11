@@ -6,12 +6,12 @@ import type { ApiOnlineStatus } from 'flavours/glitch/api_types/accounts';
 import {
   avatarDecorationShape,
   avatarDecorationsEnabled,
-  forceRoundAvatar,
   me,
   showAvatarDecorations,
   showFederatedAvatarDecorations,
 } from 'flavours/glitch/initial_state';
 import type { Account, AccountShapeFull } from 'flavours/glitch/models/account';
+import { forceRoundAvatar } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppSelector } from 'flavours/glitch/store';
 
 import { AvatarDecoration } from '../../components/avatar_decoration';

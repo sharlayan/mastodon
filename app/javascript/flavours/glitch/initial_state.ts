@@ -69,6 +69,7 @@ interface IntialStateRole {
   id: string;
   name: string;
   permissions: string;
+  extra_permissions?: string;
   color: string;
   highlighted: boolean;
   collection_limit: number;
@@ -208,6 +209,11 @@ export const statusPageUrl = getMeta('status_page_url');
 export const sso_redirect = getMeta('sso_redirect');
 export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const wrapstodon = getMeta('wrapstodon');
+export const sharlayanInitialState = readSharlayanInitialState(
+  initialState,
+  Boolean(me),
+);
+
 export const {
   colorScheme,
   contrast,
@@ -216,9 +222,7 @@ export const {
   localStatusPageAccess,
   forceLocalOnly,
   federationUniverseEnabled,
-  roleplayMode,
   publicTimelinesEnabled,
-  collectionsEnabled,
   circlesEnabled,
   clipsEnabled,
   pagesEnabled,
@@ -247,9 +251,6 @@ export const {
   showAvatarDecorations,
   showFederatedAvatarDecorations,
   avatarDecorationShape,
-  forceRoundAvatar,
-  adminTimelineOwnerViewer,
-  softHideDeletion,
   catEnabled,
   catFederationEnabled,
   showCat,
@@ -259,7 +260,7 @@ export const {
   userThemeCatalog,
   userThemeDefaults,
   userTheme,
-} = readSharlayanInitialState(initialState, Boolean(me));
+} = sharlayanInitialState;
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

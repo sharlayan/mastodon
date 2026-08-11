@@ -1,8 +1,9 @@
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import { LOCAL_SETTING_IMPORT } from 'flavours/glitch/actions/local_settings';
-import { roleplayMode, showInstanceInfo } from 'flavours/glitch/initial_state';
+import { showInstanceInfo } from 'flavours/glitch/initial_state';
 import { STATUS_ACTION_BAR_DEFAULT_HIDDEN } from 'flavours/glitch/features/status_action_bar/items';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 
 export const sharlayanLocalSettingsDefaults = ImmutableMap({
   zoom_emojis_on_hover: true,

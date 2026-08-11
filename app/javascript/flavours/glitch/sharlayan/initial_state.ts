@@ -46,6 +46,7 @@ export interface SharlayanInitialStateMeta {
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
   roleplay_mode: boolean;
+  admin_timeline_enabled?: boolean;
   admin_timeline_owner_viewer?: boolean;
   soft_hide_deletion?: boolean;
   user_themes_enabled?: boolean;
@@ -131,8 +132,9 @@ export const readSharlayanInitialState = (
     showFederatedCat: getMeta('show_federated_cat') ?? true,
     avatarDecorationShape:
       getMeta('avatar_decoration_shape') ?? (isSignedIn ? 'none' : 'round'),
-    forceRoundAvatar: getMeta('force_round_avatar') === true,
-    adminTimelineOwnerViewer: getMeta('admin_timeline_owner_viewer') === true,
+    forceRoundAvatar: getMeta('force_round_avatar') ?? false,
+    adminTimelineEnabled: getMeta('admin_timeline_enabled') === true,
+    adminTimelineOwnerViewer: getMeta('admin_timeline_owner_viewer'),
     softHideDeletion: getMeta('soft_hide_deletion') === true,
     userThemesEnabled: getMeta('user_themes_enabled') !== false,
     userThemeCatalog: getMeta('user_theme_catalog') ?? '[]',

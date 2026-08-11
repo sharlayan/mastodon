@@ -14,7 +14,7 @@ module Sharlayan::InitialStateSerializerExtensions
   def meta
     store = super
     store.merge!(signed_in_meta) if object.current_account
-    store
+    apply_sharlayan_roleplay_meta!(store)
   end
 
   private
