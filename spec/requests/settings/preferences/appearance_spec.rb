@@ -3,6 +3,17 @@
 require 'rails_helper'
 
 RSpec.describe 'Settings Preferences Appearance' do
+  describe 'GET /settings/preferences/appearance' do
+    before { sign_in Fabricate(:user) }
+
+    it 'renders the theme selector with standard label spacing' do
+      get settings_preferences_appearance_path
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.at_css('.input.select.with_label .label_input > label[for="theme"] + .label_input__wrapper select#theme')).to be_present
+    end
+  end
+
   describe 'PUT /settings/preferences/appearance' do
     let(:user) { Fabricate(:user) }
 
