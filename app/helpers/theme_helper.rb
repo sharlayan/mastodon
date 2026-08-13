@@ -77,7 +77,11 @@ module ThemeHelper
 
   def current_skin
     skins = Themes.instance.skins_for(current_flavour)
-    [current_user&.setting_skin, Setting.skin, 'default'].find { |skin| skins.include?(skin) }
+    [roleplay_forced_skin, current_user&.setting_skin, Setting.skin, 'default'].compact.find { |skin| skins.include?(skin) }
+  end
+
+  def roleplay_forced_skin
+    Setting.roleplay_forced_skin.presence if roleplay_mode?
   end
 
   def current_theme

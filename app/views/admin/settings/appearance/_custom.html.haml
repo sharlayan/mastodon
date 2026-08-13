@@ -113,6 +113,15 @@
   %p.lead= t('admin.settings.community_mode_override.preamble')
 
   .fields-group
+    = f.input :roleplay_forced_skin,
+              collection: Themes.instance.skins_for('glitch').map { |skin| [skin_label('glitch', skin), skin] },
+              include_blank: t('admin.settings.community_mode_override.roleplay_forced_skin_none'),
+              wrapper: :with_label,
+              label: t('admin.settings.community_mode_override.roleplay_forced_skin'),
+              hint: t('admin.settings.community_mode_override.roleplay_forced_skin_hint'),
+              sharlayan_only: true
+
+  .fields-group
     = f.input :force_avatar_decorations,
               as: :boolean,
               wrapper: :with_label,

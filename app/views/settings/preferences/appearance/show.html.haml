@@ -21,15 +21,16 @@
                 selected: current_user.time_zone || Time.zone.tzinfo.name,
                 wrapper: :with_label
 
-  .fields-group
-    .input.select.optional.with_label
-      .label_input
-        = label_tag :theme, t('appearance.theme'), class: 'select optional'
-        .label_input__wrapper
-          = select_tag :theme,
-                       grouped_options_for_select(available_themes_for_select, "#{current_flavour}/#{current_skin}"),
-                       class: 'select optional',
-                       form: :edit_user
+  - if roleplay_forced_skin.blank?
+    .fields-group
+      .input.select.optional.with_label
+        .label_input
+          = label_tag :theme, t('appearance.theme'), class: 'select optional'
+          .label_input__wrapper
+            = select_tag :theme,
+                         grouped_options_for_select(available_themes_for_select, "#{current_flavour}/#{current_skin}"),
+                         class: 'select optional',
+                         form: :edit_user
 
   .fields-group
     = f.simple_fields_for :settings, current_user.settings do |ff|

@@ -17,6 +17,7 @@ module Sharlayan::AdminSettingsExtensions
     force_mfm_enabled
     force_avatar_decorations
     force_round_avatar
+    roleplay_forced_skin
     circles_enabled
     clips_enabled
     auto_quote_from_url
@@ -103,6 +104,7 @@ module Sharlayan::AdminSettingsExtensions
     validates :user_theme_catalog, :user_theme_defaults, length: { maximum: 65_536 }, if: -> { defined?(@user_theme_catalog) || defined?(@user_theme_defaults) }
     validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }
     validate :validate_misskey_signin_origins, if: -> { defined?(@misskey_compat_signin_flow_allowed_origins) }
+    validate :validate_roleplay_forced_skin, if: -> { defined?(@roleplay_forced_skin) }
   end
 
   private
@@ -119,5 +121,11 @@ module Sharlayan::AdminSettingsExtensions
     return if rejected.empty?
 
     errors.add(:misskey_compat_signin_flow_allowed_origins, I18n.t('admin.settings.misskey_compat.signin_flow_allowed_origins_invalid', origins: rejected.join(', ')))
+  end
+
+  def validate_roleplay_forced_skin
+    return if @roleplay_forced_skin.blank? || Themes.instance.skins_for('glitch').include?(@roleplay_forced_skin)
+
+    errors.add(:roleplay_forced_skin, :inclusion)
   end
 end

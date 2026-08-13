@@ -258,6 +258,9 @@ ja:
         force_round_avatar_hint: テーマに関係なく、全ユーザーのアバター画像を円形で表示します。
         force_mfm_enabled: MFMレンダリングを強制
         force_mfm_enabled_hint: 各ユーザーのMFMレンダリング設定を無視し、すべてのユーザーにMFMを表示します。
+        roleplay_forced_skin: Webテーマを強制
+        roleplay_forced_skin_hint: コミュニティモードが有効な間、インストール済みのglitchテーマから選択したテーマをすべてのWebユーザーに強制します。個人のテーマ選択は保持されますが、表示には適用されません。
+        roleplay_forced_skin_none: テーマを強制しない
       allow_user_custom_css:
         desc_html: ユーザーがウェブインターフェースで、自分のセッションにのみ適用されるカスタムCSSを設定できるようにします。無効にすると、保存済みのユーザーCSSも適用されなくなります。
         title: ユーザーのカスタムCSSを許可する
