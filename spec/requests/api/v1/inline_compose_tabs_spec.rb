@@ -42,5 +42,25 @@ RSpec.describe 'Inline compose tabs API' do
         expect(response).to have_http_status(400)
       end
     end
+
+    context 'with an oversized tab ID' do
+      let(:params) { { tabs: [{ type: 'list', id: '9' * 10_000 }] } }
+
+      it 'returns a bad request without storing the oversized value' do
+        expect { subject }.to_not(change { user.reload.settings[:inline_compose_tabs] })
+
+        expect(response).to have_http_status(400)
+      end
+    end
+
+    context 'with an ID outside the database range' do
+      let(:params) { { tabs: [{ type: 'antenna', id: (2**63).to_s }] } }
+
+      it 'returns a bad request without changing settings' do
+        expect { subject }.to_not(change { user.reload.settings[:inline_compose_tabs] })
+
+        expect(response).to have_http_status(400)
+      end
+    end
   end
 end

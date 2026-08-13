@@ -32,6 +32,22 @@ RSpec.describe InitialStateSerializer do
     expect(described_class.new(presenter).meta[:inline_compose_tabs]).to eq([{ 'type' => 'list', 'id' => '123' }])
   end
 
+  it 'does not expose oversized inline compose tab IDs' do
+    user = Fabricate(:user)
+    user.settings[:inline_compose_tabs] = [{ type: 'list', id: '9' * 10_000 }].to_json
+    presenter = InitialStatePresenter.new(current_account: user.account, settings: {})
+
+    expect(described_class.new(presenter).meta[:inline_compose_tabs]).to eq([])
+  end
+
+  it 'does not expose more than the maximum number of inline compose tabs' do
+    user = Fabricate(:user)
+    user.settings[:inline_compose_tabs] = Array.new(101) { |index| { type: 'list', id: (index + 1).to_s } }.to_json
+    presenter = InitialStatePresenter.new(current_account: user.account, settings: {})
+
+    expect(described_class.new(presenter).meta[:inline_compose_tabs]).to eq([])
+  end
+
   it 'uses the legacy server instance badge preference as the local default seed' do
     user = Fabricate(:user)
     user.settings.as_json[:'web.show_instance_info'] = true
