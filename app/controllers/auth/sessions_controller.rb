@@ -64,7 +64,7 @@ class Auth::SessionsController < Devise::SessionsController
   def after_sign_in_path_for(resource)
     last_url = stored_location_for(:user)
 
-    if home_paths(resource).include?(last_url)
+    if home_paths(resource).include?(last_url) || service_worker_path?(last_url)
       root_path
     else
       last_url || root_path
@@ -98,6 +98,14 @@ class Auth::SessionsController < Devise::SessionsController
     paths << short_account_path(username: resource.account) if single_user_mode? && resource.is_a?(User)
 
     paths
+  end
+
+  def service_worker_path?(url)
+    return false if url.blank?
+
+    URI(url).path == '/sw.js'
+  rescue URI::InvalidURIError
+    false
   end
 
   def continue_after?
