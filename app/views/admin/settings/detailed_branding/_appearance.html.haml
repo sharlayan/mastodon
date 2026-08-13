@@ -1,0 +1,56 @@
+%p.lead= t('admin.settings.custom_sections.appearance_preamble')
+
+%h2= t('admin.settings.custom.title')
+
+.fields-group
+  = f.input :allow_user_custom_css, as: :boolean, wrapper: :with_label, label: t('admin.settings.allow_user_custom_css.title'), hint: t('admin.settings.allow_user_custom_css.desc_html'), sharlayan_only: true
+
+%h2= t('admin.settings.user_themes.title')
+
+.fields-group
+  = f.input :user_themes_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.user_themes.enabled'),
+            hint: t('admin.settings.user_themes.enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
+  = f.input :user_theme_catalog,
+            as: :text,
+            input_html: { rows: 12 },
+            wrapper: :with_block_label,
+            label: t('admin.settings.user_themes.catalog'),
+            hint: t('admin.settings.user_themes.catalog_hint'),
+            sharlayan_only: true
+
+.fields-group
+  = f.input :user_theme_defaults,
+            as: :text,
+            input_html: { rows: 6 },
+            wrapper: :with_block_label,
+            label: t('admin.settings.user_themes.defaults'),
+            hint: t('admin.settings.user_themes.defaults_hint'),
+            sharlayan_only: true
+
+- if roleplay_mode?
+  %h2= t('admin.settings.community_mode_override.title')
+
+  %p.lead= t('admin.settings.community_mode_override.preamble')
+
+  .fields-group
+    = f.input :roleplay_forced_skin,
+              collection: Themes.instance.skins_for('glitch').map { |skin| [skin_label('glitch', skin), skin] },
+              include_blank: t('admin.settings.community_mode_override.roleplay_forced_skin_none'),
+              wrapper: :with_label,
+              label: t('admin.settings.community_mode_override.roleplay_forced_skin'),
+              hint: t('admin.settings.community_mode_override.roleplay_forced_skin_hint'),
+              sharlayan_only: true
+
+  .fields-group
+    = f.input :force_round_avatar,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.community_mode_override.force_round_avatar'),
+              hint: t('admin.settings.community_mode_override.force_round_avatar_hint'),
+              sharlayan_only: true

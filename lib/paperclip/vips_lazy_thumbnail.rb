@@ -38,21 +38,22 @@ module Paperclip
       dst = TempfileFactory.new.generate([@basename, @format ? ".#{@format}" : @current_format].join)
 
       if preserve_animation?
-        if @target_geometry.nil? || (@current_geometry.width <= @target_geometry.width && @current_geometry.height <= @target_geometry.height)
+        if @target_geometry.nil?
           target_width = 'iw'
           target_height = 'ih'
+        elsif @crop
+          scale = [@target_geometry.width.to_f / @current_geometry.width, @target_geometry.height.to_f / @current_geometry.height].max.clamp(0, 1)
+          target_width = (@current_geometry.width * scale).round
+          target_height = (@current_geometry.height * scale).round
+          crop_scale = [target_width / @target_geometry.width.to_f, target_height / @target_geometry.height.to_f, 1].min
+          crop_width = (@target_geometry.width * crop_scale).round
+          crop_height = (@target_geometry.height * crop_scale).round
         else
           scale = [@target_geometry.width.to_f / @current_geometry.width, @target_geometry.height.to_f / @current_geometry.height].min
+          scale = 1 if scale > 1
           target_width = (@current_geometry.width * scale).round
           target_height = (@current_geometry.height * scale).round
         end
-
-        # The only situation where we use crop on GIFs is cropping them to a square
-        # aspect ratio, such as for avatars, so this is the only special case we
-        # implement. If cropping ever becomes necessary for other situations, this will
-        # need to be expanded.
-        crop_width = crop_height = [target_width, target_height].min if @target_geometry&.square?
-        crop_width = crop_height = "'min(iw,ih)'" if crop_width == 'ih'
 
         filter = begin
           if @crop
@@ -136,7 +137,7 @@ module Paperclip
     end
 
     def needs_different_geometry?
-      (options[:geometry] && @current_geometry.width != @target_geometry.width && @current_geometry.height != @target_geometry.height) ||
+      (options[:geometry] && (@current_geometry.width != @target_geometry.width || @current_geometry.height != @target_geometry.height)) ||
         (options[:pixels] && @current_geometry.width * @current_geometry.height > options[:pixels])
     end
 

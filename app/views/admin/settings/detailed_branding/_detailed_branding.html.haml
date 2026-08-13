@@ -1,0 +1,72 @@
+%p.lead= t('admin.settings.detailed_branding.preamble')
+
+%h2= t('admin.settings.detailed_branding.visual_identity')
+
+.fields-group
+  = f.input :theme_color,
+            input_html: { type: 'color' },
+            wrapper: :with_label
+
+%h2= t('admin.settings.branding.logos.title')
+
+- [[:logo_icon, 79, 79], [:logo_wordmark_dark, 261, 66], [:logo_wordmark_light, 261, 66]].each do |name, width, height|
+  .fields-row
+    .fields-row__column.fields-row__column-6.fields-group
+      = f.input name,
+                as: :file,
+                input_html: { accept: f.object.class::UPLOAD_MIME_TYPES },
+                label: t("admin.settings.branding.logos.#{name.to_s.delete_prefix('logo_')}.title"),
+                hint: t("admin.settings.branding.logos.#{name.to_s.delete_prefix('logo_')}.hint"),
+                wrapper: :with_block_label
+    .fields-row__column.fields-row__column-6.fields-group
+      - upload = admin_settings.public_send(name)
+      - if upload.persisted?
+        = image_tag upload.file.url, class: 'fields-group__thumbnail', width: width, height: height
+        = link_to admin_site_upload_path(upload), data: { method: :delete }, class: 'link-button link-button--destructive' do
+          = material_symbol 'delete'
+          = t('admin.site_uploads.delete')
+
+%h2= t('admin.settings.detailed_branding.interface')
+
+.fields-group
+  = f.input :custom_css,
+            as: :text,
+            input_html: { rows: 8 },
+            wrapper: :with_block_label
+
+%h2= t('admin.settings.mascots.title')
+
+%p.lead= t('admin.settings.mascots.preamble')
+
+.fields-row
+  .fields-row__column.fields-row__column-6.fields-group
+    = f.input :mascot,
+              as: :file,
+              input_html: { accept: f.object.class::UPLOAD_MIME_TYPES },
+              label: t('admin.settings.mascots.vanilla'),
+              hint: t('admin.settings.mascots.vanilla_hint'),
+              wrapper: :with_block_label
+  .fields-row__column.fields-row__column-6.fields-group
+    - if admin_settings.mascot.persisted?
+      = image_tag admin_settings.mascot.file.url, class: 'fields-group__thumbnail'
+      = link_to admin_site_upload_path(admin_settings.mascot), data: { method: :delete }, class: 'link-button link-button--destructive' do
+        = material_symbol 'delete'
+        = t('admin.site_uploads.delete')
+
+- (1..4).each do |slot|
+  - name = :"glitch_mascot#{slot}"
+  - upload = admin_settings.public_send(name)
+  .fields-row
+    .fields-row__column.fields-row__column-6.fields-group
+      = f.input name,
+                as: :file,
+                input_html: { accept: f.object.class::UPLOAD_MIME_TYPES },
+                label: t('admin.settings.mascots.glitch_slot', slot: slot),
+                hint: t('admin.settings.mascots.glitch_hint'),
+                wrapper: :with_block_label
+    .fields-row__column.fields-row__column-6.fields-group
+      - if upload.persisted?
+        = image_tag upload.file.url, class: 'fields-group__thumbnail'
+        = link_to admin_site_upload_path(upload), data: { method: :delete }, class: 'link-button link-button--destructive' do
+          = material_symbol 'delete'
+          = t('admin.site_uploads.delete')

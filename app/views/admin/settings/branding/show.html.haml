@@ -28,58 +28,6 @@
               input_html: { rows: 2, maxlength: Form::AdminSettings::DESCRIPTION_LIMIT },
               wrapper: :with_block_label
 
-  .fields-group
-    = f.input :theme_color,
-              input_html: { type: 'color' },
-              wrapper: :with_label
-
-  %h2= t('admin.settings.branding.logos.title')
-
-  .fields-row
-    .fields-row__column.fields-row__column-6.fields-group
-      = f.input :logo_icon,
-                as: :file,
-                input_html: { accept: f.object.class::UPLOAD_MIME_TYPES },
-                label: t('admin.settings.branding.logos.icon.title'),
-                hint: t('admin.settings.branding.logos.icon.hint'),
-                wrapper: :with_block_label
-    .fields-row__column.fields-row__column-6.fields-group
-      - if @admin_settings.logo_icon.persisted?
-        = image_tag @admin_settings.logo_icon.file.url, class: 'fields-group__thumbnail', width: 79, height: 79
-        = link_to admin_site_upload_path(@admin_settings.logo_icon), data: { method: :delete }, class: 'link-button link-button--destructive' do
-          = material_symbol 'delete'
-          = t('admin.site_uploads.delete')
-
-  .fields-row
-    .fields-row__column.fields-row__column-6.fields-group
-      = f.input :logo_wordmark_dark,
-                as: :file,
-                input_html: { accept: f.object.class::UPLOAD_MIME_TYPES },
-                label: t('admin.settings.branding.logos.wordmark_dark.title'),
-                hint: t('admin.settings.branding.logos.wordmark_dark.hint'),
-                wrapper: :with_block_label
-    .fields-row__column.fields-row__column-6.fields-group
-      - if @admin_settings.logo_wordmark_dark.persisted?
-        = image_tag @admin_settings.logo_wordmark_dark.file.url, class: 'fields-group__thumbnail', width: 261, height: 66
-        = link_to admin_site_upload_path(@admin_settings.logo_wordmark_dark), data: { method: :delete }, class: 'link-button link-button--destructive' do
-          = material_symbol 'delete'
-          = t('admin.site_uploads.delete')
-
-  .fields-row
-    .fields-row__column.fields-row__column-6.fields-group
-      = f.input :logo_wordmark_light,
-                as: :file,
-                input_html: { accept: f.object.class::UPLOAD_MIME_TYPES },
-                label: t('admin.settings.branding.logos.wordmark_light.title'),
-                hint: t('admin.settings.branding.logos.wordmark_light.hint'),
-                wrapper: :with_block_label
-    .fields-row__column.fields-row__column-6.fields-group
-      - if @admin_settings.logo_wordmark_light.persisted?
-        = image_tag @admin_settings.logo_wordmark_light.file.url, class: 'fields-group__thumbnail', width: 261, height: 66
-        = link_to admin_site_upload_path(@admin_settings.logo_wordmark_light), data: { method: :delete }, class: 'link-button link-button--destructive' do
-          = material_symbol 'delete'
-          = t('admin.site_uploads.delete')
-
   .fields-row
     .fields-row__column.fields-row__column-6.fields-group
       = f.input :thumbnail,
