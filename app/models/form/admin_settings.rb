@@ -28,6 +28,9 @@ class Form::AdminSettings
     thumbnail
     thumbnail_description
     mascot
+    logo_icon
+    logo_wordmark_dark
+    logo_wordmark_light
     show_reblogs_in_public_timelines
     show_replies_in_public_timelines
     trends
@@ -87,6 +90,9 @@ class Form::AdminSettings
   UPLOAD_KEYS = %i(
     thumbnail
     mascot
+    logo_icon
+    logo_wordmark_dark
+    logo_wordmark_light
     app_icon
     favicon
   ).freeze

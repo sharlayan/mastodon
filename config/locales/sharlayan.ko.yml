@@ -229,6 +229,18 @@ ko:
       privileges:
         invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
     settings:
+      branding:
+        logos:
+          icon:
+            hint: 권장 파일 크기는 79×79px입니다. 내비게이션 등 작은 영역에서는 32×32px로 표시됩니다.
+            title: 심볼 로고
+          title: 브랜딩 로고
+          wordmark_dark:
+            hint: 권장 파일 크기는 261×66px입니다. 어두운 배경에 사용하며, 등록하지 않으면 밝은 배경용 로고를 대신 사용합니다.
+            title: 어두운 배경용 전체 로고
+          wordmark_light:
+            hint: 권장 파일 크기는 261×66px입니다. 밝은 배경에 사용하며, 등록하지 않으면 어두운 배경용 로고를 대신 사용합니다.
+            title: 밝은 배경용 전체 로고
       roleplay:
         title: 커뮤니티 모드 설정
         notice_html: 커뮤니티 모드는 폐쇄형 운영을 보호하기 위해 아래 설정을 강제합니다. 모드가 활성화된 동안에는 변경할 수 없습니다.

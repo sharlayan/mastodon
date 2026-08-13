@@ -245,6 +245,18 @@ en:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
     settings:
+      branding:
+        logos:
+          icon:
+            hint: Recommended file size is 79×79 px. Displayed at 32×32 px in navigation and other compact surfaces.
+            title: Symbol logo
+          title: Branding logos
+          wordmark_dark:
+            hint: Recommended file size is 261×66 px. Used on dark backgrounds. If omitted, the light-background logo is used instead.
+            title: Full logo for dark backgrounds
+          wordmark_light:
+            hint: Recommended file size is 261×66 px. Used on light backgrounds. If omitted, the dark-background logo is used instead.
+            title: Full logo for light backgrounds
       roleplay:
         title: Community mode settings
         notice_html: Community mode forces the settings below to protect the server's private operation. They cannot be changed while the mode is enabled.
