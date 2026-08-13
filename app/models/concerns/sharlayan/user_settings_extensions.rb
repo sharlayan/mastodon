@@ -44,6 +44,7 @@ module Sharlayan::UserSettingsExtensions
         setting :ignore_others_pages_view, default: false
         setting :use_server_css, default: true
         setting :use_custom_css, default: false
+        setting :user_theme, default: '{}'
       end
     end
 

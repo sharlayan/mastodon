@@ -24,6 +24,7 @@ RSpec.describe 'Appearance API' do
         'color_scheme' => 'dark',
         'contrast' => 'high',
         'expand_content_warnings' => false,
+        'user_theme' => '{}',
       })
       settings = user.reload.settings
       expect(settings['web.color_scheme']).to eq('dark')
@@ -46,6 +47,7 @@ RSpec.describe 'Appearance API' do
           'color_scheme' => 'light',
           'contrast' => 'high',
           'expand_content_warnings' => false,
+          'user_theme' => '{}',
         })
       end
     end
@@ -70,6 +72,38 @@ RSpec.describe 'Appearance API' do
 
         expect(response).to have_http_status(400)
         expect(response.parsed_body).to include('error' => "Invalid value for 'web.expand_content_warnings'")
+      end
+    end
+
+    context 'when a user theme is supplied' do
+      let(:theme_json) { '{"dark":{"theme":"ocean","variables":{"--color-bg-primary":"#001122"}}}' }
+      let(:params) { { user_theme: Base64.strict_encode64(theme_json) } }
+
+      it 'stores the frontend theme JSON without interpreting its variables' do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(user.reload.settings['web.user_theme']).to eq(params[:user_theme])
+      end
+    end
+
+    context 'when a user theme exceeds the storage limit' do
+      let(:params) { { user_theme: Base64.strict_encode64('x' * (32.kilobytes + 1)) } }
+
+      it 'returns a bad request without changing settings' do
+        expect { subject }.to_not(change { user.reload.settings.as_json })
+
+        expect(response).to have_http_status(400)
+      end
+    end
+
+    context 'when a user theme is not strict Base64' do
+      let(:params) { { user_theme: '{"dark":{}}' } }
+
+      it 'returns a bad request without changing settings' do
+        expect { subject }.to_not(change { user.reload.settings.as_json })
+
+        expect(response).to have_http_status(400)
       end
     end
 

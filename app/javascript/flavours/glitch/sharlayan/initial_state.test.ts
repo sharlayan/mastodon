@@ -66,6 +66,10 @@ describe('Sharlayan initial state', () => {
         customEmojiMutes: [],
         reactionMutes: [],
         inlineComposeTabs: [{ type: 'list', id: '123' }],
+        userThemesEnabled: true,
+        userThemeCatalog: '[]',
+        userThemeDefaults: '{}',
+        userTheme: '{}',
       },
     );
   });
@@ -90,6 +94,10 @@ describe('Sharlayan initial state', () => {
       showCatSpeak: true,
       showFederatedCat: true,
       inlineComposeTabs: [],
+      userThemesEnabled: true,
+      userThemeCatalog: '[]',
+      userThemeDefaults: '{}',
+      userTheme: '{}',
     });
   });
 

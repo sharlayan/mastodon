@@ -36,7 +36,10 @@ module Sharlayan::InitialStateSerializerExtensions
       cat_federation_enabled: Setting.cat_federation_enabled,
       local_account_statuses_access: Setting.local_account_statuses_access,
       local_status_page_access: Setting.local_status_page_access,
-      roleplay_mode: RoleplayModeHelper.roleplay_mode?
+      roleplay_mode: RoleplayModeHelper.roleplay_mode?,
+      user_themes_enabled: Setting.user_themes_enabled,
+      user_theme_catalog: Setting.user_theme_catalog,
+      user_theme_defaults: Setting.user_theme_defaults
     )
   end
 
@@ -67,6 +70,7 @@ module Sharlayan::InitialStateSerializerExtensions
       custom_emoji_mute_hidden: object_account_user.settings['web.custom_emoji_mute_hidden'],
       ignore_others_pages_view: object_account_user.settings['web.ignore_others_pages_view'],
       inline_compose_tabs: inline_compose_tabs,
+      user_theme: object_account_user.settings['web.user_theme'],
       custom_emoji_mutes: object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions, hide_in_picker: mute.hide_in_picker } },
       reaction_mutes: object.current_account.reaction_mutes.includes(:target_account).order(id: :desc).map { |mute| { id: mute.id.to_s, target_account_id: mute.target_account_id&.to_s, target_acct: mute.target_account&.acct, target_domain: mute.target_domain } },
     }

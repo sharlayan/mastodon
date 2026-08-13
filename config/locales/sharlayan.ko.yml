@@ -229,6 +229,14 @@ ko:
       privileges:
         invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
     settings:
+      user_themes:
+        catalog: 서버 테마 카탈로그 JSON
+        catalog_hint: id, name, variables.light / variables.dark 맵을 가진 테마 배열입니다. 프런트엔드가 허용한 CSS 변수만 적용됩니다.
+        defaults: 서버 기본 테마 JSON
+        defaults_hint: light와 dark 항목에 테마 ID와 선택적인 variables 맵을 지정합니다. 선택한 풍미의 기본값을 유지하려면 {}를 사용합니다.
+        enabled: 사용자 변수 테마 허용
+        enabled_hint: 사용자가 선택한 풍미와 테마 위에 서버 테마 및 허용된 CSS 변수 값을 덮어쓸 수 있게 합니다.
+        title: 사용자 변수 테마
       branding:
         logos:
           icon:

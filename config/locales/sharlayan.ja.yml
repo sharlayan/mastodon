@@ -226,6 +226,14 @@ ja:
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
     settings:
+      user_themes:
+        catalog: サーバーテーマカタログJSON
+        catalog_hint: id、name、variables.light / variables.darkマップを持つテーマの配列です。フロントエンドで許可されたCSS変数のみ適用されます。
+        defaults: サーバーデフォルトテーマJSON
+        defaults_hint: lightとdarkにテーマIDと任意のvariablesマップを指定します。選択したフレーバーのデフォルトを維持するには{}を使用します。
+        enabled: ユーザー変数テーマを許可
+        enabled_hint: 選択したフレーバーとテーマの上に、サーバーテーマおよび許可されたCSS変数値を上書きできるようにします。
+        title: ユーザー変数テーマ
       branding:
         logos:
           icon:
