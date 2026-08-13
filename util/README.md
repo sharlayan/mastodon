@@ -36,7 +36,7 @@ PostgreSQL, Redis, `.env.production`을 초기화하고
 `RAILS_ENV=production bundle exec rails db:prepare`를 실행한 다음
 `mastodon-*` 서비스 3개를 시작합니다.
 
-Sharlayan 나이틀리 및 수동 이미지 빌드 워크플로는
+Custodon 나이틀리 및 수동 이미지 빌드 워크플로는
 `mastodon-assets-<commit>.tar.gz`도 게시합니다. 소스 checkout 루트에서 압축을 풀면 1GB
 호스트에서 직접 컴파일하지 않고 해당 commit과 일치하는 `public/packs`와 `public/assets`를
 설치할 수 있습니다.

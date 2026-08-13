@@ -841,7 +841,7 @@ ja:
         title: 背景画像
       detailed_branding:
         interface: ウェブインターフェース
-        preamble: サーバーのビジュアルアイデンティティと Sharlayan 固有の機能を詳細に設定します。
+        preamble: サーバーのビジュアルアイデンティティと Custodon 固有の機能を詳細に設定します。
         title: 詳細ブランディング
         visual_identity: ビジュアルアイデンティティ
       captcha_enabled:
@@ -856,7 +856,7 @@ ja:
         appearance_preamble: カスタムテーマと表示オプションを設定します。
         detailed_branding: 詳細ブランディング
         extensions: 拡張機能
-        extensions_preamble: Sharlayan の拡張機能とサーバー機能を設定します。
+        extensions_preamble: Custodon の拡張機能とサーバー機能を設定します。
         misskey_flavour: Misskey テイスト
         misskey_flavour_preamble: Misskey に着想を得た機能とクライアント互換性を設定します。
       default_noindex:

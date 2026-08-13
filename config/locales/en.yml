@@ -979,7 +979,7 @@ en:
         title: Background image
       detailed_branding:
         interface: Web interface
-        preamble: Customize your server's visual identity and Sharlayan-specific features.
+        preamble: Customize your server's visual identity and Custodon-specific features.
         title: Detailed branding
         visual_identity: Visual identity
       captcha_enabled:
@@ -994,7 +994,7 @@ en:
         appearance_preamble: Configure custom themes and visual presentation options.
         detailed_branding: Detailed branding
         extensions: Extensions
-        extensions_preamble: Configure Sharlayan extensions and server-side capabilities.
+        extensions_preamble: Configure Custodon extensions and server-side capabilities.
         misskey_flavour: Misskey flavour
         misskey_flavour_preamble: Configure Misskey-inspired features and client compatibility.
       default_noindex:

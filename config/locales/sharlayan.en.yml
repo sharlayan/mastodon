@@ -647,7 +647,7 @@ en:
       user_role:
         drive_quota: Maximum total size of each user's Drive library in megabytes.
           Leave blank to use the server default. Set to 0 for unlimited.
-        extra_permissions_as_keys: Additional Sharlayan-specific permissions granted
+        extra_permissions_as_keys: Additional Custodon-specific permissions granted
           to this role
     labels:
       defaults:

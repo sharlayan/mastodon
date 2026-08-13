@@ -51,7 +51,7 @@ export async function loadLocale() {
       : commonSharlayanLocaleFiles['/mastodon/locales/sharlayan/en.json'];
 
     if (!commonSharlayanLocaleFile)
-      throw new Error('Could not load the common Sharlayan locale JSON file');
+      throw new Error('Could not load the common Custodon locale JSON file');
 
     const { default: commonSharlayanLocaleData } =
       await commonSharlayanLocaleFile();
@@ -73,7 +73,7 @@ export async function loadLocale() {
       : sharlayanLocaleFiles['./sharlayan/en.json'];
 
     if (!sharlayanLocaleFile)
-      throw new Error('Could not load the Sharlayan locale JSON file');
+      throw new Error('Could not load the Custodon locale JSON file');
 
     const { default: sharlayanLocaleData } = await sharlayanLocaleFile();
 
