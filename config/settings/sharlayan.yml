@@ -44,3 +44,6 @@ defaults:
   drive_max_file_size: 20
   drive_allowed_extensions: ''
   status_character_limit: 500
+  user_themes_enabled: true
+  user_theme_catalog: '[]'
+  user_theme_defaults: '{}'

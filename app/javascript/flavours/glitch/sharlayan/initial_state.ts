@@ -48,6 +48,10 @@ export interface SharlayanInitialStateMeta {
   roleplay_mode: boolean;
   admin_timeline_owner_viewer?: boolean;
   soft_hide_deletion?: boolean;
+  user_themes_enabled?: boolean;
+  user_theme_catalog?: string;
+  user_theme_defaults?: string;
+  user_theme?: string;
   visible_reactions: number;
   show_instance_info: boolean;
   custom_emoji_size: boolean;
@@ -130,5 +134,9 @@ export const readSharlayanInitialState = (
     forceRoundAvatar: getMeta('force_round_avatar') === true,
     adminTimelineOwnerViewer: getMeta('admin_timeline_owner_viewer') === true,
     softHideDeletion: getMeta('soft_hide_deletion') === true,
+    userThemesEnabled: getMeta('user_themes_enabled') !== false,
+    userThemeCatalog: getMeta('user_theme_catalog') ?? '[]',
+    userThemeDefaults: getMeta('user_theme_defaults') ?? '{}',
+    userTheme: getMeta('user_theme') ?? '{}',
   };
 };

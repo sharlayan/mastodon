@@ -6,6 +6,7 @@ import { connect } from 'react-redux';
 
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import CloudSyncIcon from '@/material-icons/400-24px/cloud_sync.svg?react';
+import ColorsIcon from '@/material-icons/400-24px/colors.svg?react';
 import ListIcon from '@/material-icons/400-24px/list.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings-fill.svg?react';
 import TuneIcon from '@/material-icons/400-24px/tune.svg?react';
@@ -14,18 +15,21 @@ import { Button } from '@/flavours/glitch/components/button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { fetchLocalSettingsFromServer, pushLocalSettingsToServer } from 'flavours/glitch/actions/local_settings';
-import { me } from 'flavours/glitch/initial_state';
+import { me, userThemesEnabled } from 'flavours/glitch/initial_state';
 import { preferencesLink } from 'flavours/glitch/utils/backend_links';
 
+import CollapsedStatusesSettings from '../../features/local_settings/page/collapsed_statuses';
 import NavigationPanelSettings from '../../features/local_settings/page/navigation_panel';
 import StatusActionBarSettings from '../../features/local_settings/page/status_action_bar';
 import LocalSettingsPageItem from '../../features/local_settings/page/item';
 import QuickPreferences from '../../features/local_settings/page/quick_preferences';
-import CollapsedStatusesSettings from '../../features/local_settings/page/collapsed_statuses';
+
+import UserThemePage from './user_theme_page';
 
 const messages = defineMessages({
   title: { id: 'navigation_bar.app_settings', defaultMessage: 'App settings' },
   quick_preferences: { id: 'settings.quick_preferences', defaultMessage: 'Quick preferences' },
+  user_theme: { id: 'settings.user_theme', defaultMessage: 'User theme' },
   navigation_panel: { id: 'settings.navigation_panel', defaultMessage: 'Navigation panel' },
   status_action_bar: { id: 'settings.status_action_bar', defaultMessage: 'Post action bar' },
   sync: { id: 'settings.sync', defaultMessage: 'Server sync' },
@@ -72,6 +76,7 @@ export const getSharlayanLocalSettingsPage = (index, pages) => {
   if (index === 6) return NavigationPanelSettings;
   if (index === 7) return StatusActionBarSettings;
   if (index === 8) return CollapsedStatusesSettings;
+  if (index === 9 && userThemesEnabled) return UserThemePage;
 
   return pages[[0, null, 1, 2, 3][index]];
 };
@@ -159,7 +164,10 @@ export const SharlayanLocalSettingsSlot = injectIntl(LocalSettingsSlot);
 
 export const renderSharlayanLocalSettingsNavigationItems = (slot, { NavigationItem, index, intl, onNavigate }) => {
   const items = slot === 'after-general'
-    ? [{ index: 1, icon: 'sliders', iconComponent: TuneIcon, title: intl.formatMessage(messages.quick_preferences) }]
+    ? [
+      { index: 1, icon: 'sliders', iconComponent: TuneIcon, title: intl.formatMessage(messages.quick_preferences) },
+      ...(userThemesEnabled ? [{ index: 9, icon: 'colors', iconComponent: ColorsIcon, title: intl.formatMessage(messages.user_theme) }] : []),
+    ]
     : [
       { index: 8, icon: 'unfold-less', iconComponent: UnfoldLessIcon, title: intl.formatMessage({ id: 'settings.collapsed_statuses', defaultMessage: 'Collapsed posts' }) },
       { index: 7, icon: 'drag', iconComponent: TuneIcon, title: intl.formatMessage(messages.status_action_bar) },

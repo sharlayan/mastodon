@@ -12,6 +12,7 @@ class Api::V1::AppearanceController < Api::BaseController
       color_scheme: current_user.settings['web.color_scheme'],
       contrast: current_user.settings['web.contrast'],
       expand_content_warnings: current_user.settings['web.expand_content_warnings'],
+      user_theme: current_user.settings['web.user_theme'],
     }
   end
 
@@ -28,6 +29,18 @@ class Api::V1::AppearanceController < Api::BaseController
       raise Mastodon::InvalidParameterError, "Invalid value for 'web.expand_content_warnings'" unless [true, false, 'true', 'false'].include?(value)
 
       settings['web.expand_content_warnings'] = ActiveModel::Type::Boolean.new.cast(value)
+    end
+
+    if params.key?(:user_theme)
+      value = params[:user_theme].to_s
+      decoded_size = begin
+        Base64.strict_decode64(value).bytesize
+      rescue ArgumentError
+        raise Mastodon::InvalidParameterError, "Invalid value for 'web.user_theme'"
+      end
+      raise Mastodon::InvalidParameterError, "Invalid value for 'web.user_theme'" if decoded_size > 32.kilobytes
+
+      settings['web.user_theme'] = value
     end
 
     settings.each do |key, value|

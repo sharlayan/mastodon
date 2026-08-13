@@ -245,6 +245,14 @@ en:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
     settings:
+      user_themes:
+        catalog: Server theme catalog JSON
+        catalog_hint: An array of themes with id, name, and variables.light / variables.dark maps. Only frontend-allowed CSS variables are applied.
+        defaults: Server default theme JSON
+        defaults_hint: A map containing light and dark entries with a theme ID and optional variables map. Use {} to keep the selected flavour defaults.
+        enabled: Allow user variable themes
+        enabled_hint: Let users layer server themes and their own allowed CSS variable values over the selected flavour and theme.
+        title: User variable themes
       branding:
         logos:
           icon:
