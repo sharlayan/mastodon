@@ -576,7 +576,7 @@ ko:
       user_role:
         drive_quota: 이 역할을 가진 사용자별 드라이브 라이브러리의 최대 용량을 MB 단위로 지정합니다. 비워 두면 서버 기본값을
           사용하고, 0이면 무제한입니다.
-        extra_permissions_as_keys: 이 역할에 부여되는 Sharlayan 전용 추가 권한입니다
+        extra_permissions_as_keys: 이 역할에 부여되는 커스토돈 전용 추가 권한입니다
     labels:
       defaults:
         custom_css_text: 커스텀 CSS

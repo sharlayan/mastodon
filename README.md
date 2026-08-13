@@ -1,4 +1,4 @@
-# Mastodon Glitch - Sharlayan flavour
+# Mastodon Glitch - Custodon flavour
 
 Mastodon 포크들에서 Emoji Reaction 을 지원하는 여러 버전을 참고하여 재구성한 버전입니다.
 참고한 버전은 기능에 별도 표시를 해 두었습니다.

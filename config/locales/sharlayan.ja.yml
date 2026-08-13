@@ -543,7 +543,7 @@ ja:
         theme_color: ブラウザのアドレスバーやアプリUIで使われるアクセントカラー。
       user_role:
         drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
-        extra_permissions_as_keys: このロールに付与されるSharlayan独自の追加権限
+        extra_permissions_as_keys: このロールに付与されるCustodon独自の追加権限
     labels:
       defaults:
         custom_css_text: カスタムCSS
