@@ -226,6 +226,18 @@ ja:
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
     settings:
+      branding:
+        logos:
+          icon:
+            hint: 推奨ファイルサイズは79×79pxです。ナビゲーションなどの小さい領域では32×32pxで表示されます。
+            title: シンボルロゴ
+          title: ブランディングロゴ
+          wordmark_dark:
+            hint: 推奨ファイルサイズは261×66pxです。暗い背景で使用します。未設定の場合は明るい背景用ロゴを使用します。
+            title: 暗い背景用フルロゴ
+          wordmark_light:
+            hint: 推奨ファイルサイズは261×66pxです。明るい背景で使用します。未設定の場合は暗い背景用ロゴを使用します。
+            title: 明るい背景用フルロゴ
       roleplay:
         title: コミュニティモードの設定
         notice_html: コミュニティモードでは非公開運用を保護するため、以下の設定が強制されます。モードが有効な間は変更できません。
