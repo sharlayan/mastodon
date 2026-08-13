@@ -14,6 +14,18 @@ RSpec.describe 'Admin Settings Appearance' do
       expect(response.parsed_body.at_css('input[name="form_admin_settings[user_themes_enabled]"]')).to be_nil
     end
 
+    it 'renders the server background upload only in custom appearance' do
+      get admin_settings_appearance_path
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[background_image]"]')).to be_nil
+
+      get admin_settings_custom_appearance_path
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[background_image]"]')).to be_present
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[background_color]"]')).to be_present
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[background_opacity]"][min="0"][max="100"]')).to be_present
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[background_on_settings_pages]"]')).to be_present
+      expect(response.parsed_body.at_css('.user-theme-catalog-example code').text).to include('"light"', '"dark"')
+    end
+
     it 'hides cat settings in roleplay mode' do
       ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
         get admin_settings_custom_misskey_flavour_path
@@ -37,6 +49,23 @@ RSpec.describe 'Admin Settings Appearance' do
   end
 
   describe 'PUT /admin/settings/detailed_branding' do
+    it 'stores the server background image' do
+      patch admin_settings_custom_appearance_path, params: {
+        form_admin_settings: {
+          background_image: fixture_file_upload('600x400.webp', 'image/webp'),
+          background_color: '#102030',
+          background_opacity: '45',
+          background_on_settings_pages: '1',
+        },
+      }
+
+      expect(response).to redirect_to(admin_settings_custom_appearance_path)
+      expect(SiteUpload.find_by(var: 'background_image')).to be_present
+      expect(Setting.background_color).to eq('#102030')
+      expect(Setting.background_opacity).to eq(45)
+      expect(Setting.background_on_settings_pages).to be(true)
+    end
+
     it 'stores server theme JSON as settings' do
       catalog = '[{"id":"ocean","name":"Ocean","variables":{"dark":{"--color-bg-primary":"#001122"}}}]'
       defaults = '{"dark":{"theme":"ocean"}}'

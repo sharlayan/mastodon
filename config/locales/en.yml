@@ -968,6 +968,15 @@ en:
       branding:
         preamble: Your server's branding differentiates it from other servers in the network. This information may be displayed across a variety of environments, such as Mastodon's web interface, native applications, in link previews on other websites and within messaging apps, and so on. For this reason, it is best to keep this information clear, short and concise.
         title: Branding
+      background_image:
+        color: Background color
+        color_hint: Enter a hexadecimal color. Leave empty to use the current theme's default background color.
+        hint: Displayed behind every element using a centered cover layout. Leave empty to use no image.
+        opacity: Background opacity (%)
+        opacity_hint: Set the opacity of the background image and color from 0 to 100.
+        on_settings_pages: Show background on settings pages
+        on_settings_pages_hint: Also apply the server background to user and administrator settings pages rendered by the server. Other server-rendered pages remain unchanged.
+        title: Background image
       detailed_branding:
         interface: Web interface
         preamble: Customize your server's visual identity and Sharlayan-specific features.
