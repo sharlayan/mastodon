@@ -1,5 +1,6 @@
-import { Map as ImmutableMap } from 'immutable';
+import { Map as ImmutableMap, fromJS } from 'immutable';
 
+import { updateStatus } from '../../statuses';
 import { importFetchedAccounts, importFetchedStatusReactions, importFetchedStatuses } from '../index';
 
 const account = (id, moved = null) => ({
@@ -81,5 +82,34 @@ describe('status importer recursion guards', () => {
     };
 
     expect(importFetchedStatusReactions(reactionUpdate)).toEqual({ type: 'STATUS_REACTIONS_IMPORT', status: reactionUpdate });
+  });
+
+  it('preserves reactions when importing a status edit', () => {
+    const author = account('10');
+    const editedStatus = {
+      ...status('20', author),
+      content: '<p>Edited</p>',
+      reactions_count: 0,
+      reactions: [],
+      reacted: false,
+    };
+    const oldStatus = fromJS({
+      id: '20',
+      reactions_count: 1,
+      reactions: [{ name: '👍', count: 1, me: true }],
+      reacted: true,
+    });
+    const state = getState().setIn(['statuses', '20'], oldStatus);
+    const dispatched = [];
+    let importEdit;
+
+    updateStatus(editedStatus, { bogusQuotePolicy: false })(action => { importEdit = action; });
+    importEdit(action => dispatched.push(action), () => state);
+
+    const statusesAction = dispatched.find(action => action.type === 'STATUSES_IMPORT');
+    expect(statusesAction.statuses[0].content).toBe('<p>Edited</p>');
+    expect(statusesAction.statuses[0].reactions_count).toBe(1);
+    expect(statusesAction.statuses[0].reactions.toJS()).toEqual([{ name: '👍', count: 1, me: true }]);
+    expect(statusesAction.statuses[0].reacted).toBe(true);
   });
 });

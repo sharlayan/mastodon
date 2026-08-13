@@ -210,7 +210,7 @@ export function deleteStatusFail(id, error) {
 }
 
 export const updateStatus = (status, { bogusQuotePolicy }) => dispatch =>
-  dispatch(importFetchedStatus(status, { bogusQuotePolicy }));
+  dispatch(importFetchedStatus(status, { bogusQuotePolicy, preserveReactions: true }));
 
 export const updateStatusReaction = status => (dispatch, getState) => {
   if (!getState().getIn(['statuses', status.id])) {
