@@ -97,6 +97,19 @@ RSpec.describe 'Appearance API' do
       end
     end
 
+    context 'when a user theme payload exceeds the encoded limit' do
+      let(:params) { { user_theme: 'A' * 1.megabyte } }
+
+      before { allow(Base64).to receive(:strict_decode64).and_call_original }
+
+      it 'returns a bad request without decoding the payload' do
+        expect { subject }.to_not(change { user.reload.settings.as_json })
+
+        expect(response).to have_http_status(400)
+        expect(Base64).to_not have_received(:strict_decode64).with(params[:user_theme])
+      end
+    end
+
     context 'when a user theme is not strict Base64' do
       let(:params) { { user_theme: '{"dark":{}}' } }
 

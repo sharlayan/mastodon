@@ -1,6 +1,17 @@
 # frozen_string_literal: true
 
 module BrandingHelper
+  CSS_URL_ESCAPES = {
+    '\\' => '%5C',
+    "'" => '%27',
+    '"' => '%22',
+    '(' => '%28',
+    ')' => '%29',
+    '<' => '%3C',
+    '>' => '%3E',
+    '&' => '\26 ',
+  }.freeze
+
   def logo_as_symbol(version = :icon)
     case version
     when :icon
@@ -49,6 +60,6 @@ module BrandingHelper
   private
 
   def branding_logo_css_url(url)
-    url.gsub('\\', '%5C').gsub("'", '%27').gsub('"', '%22').gsub('(', '%28').gsub(')', '%29').gsub('<', '%3C').gsub('&', '\\26 ').gsub(/\s/, '%20')
+    url.gsub(/[\\'"()<>&\s]/) { |character| CSS_URL_ESCAPES.fetch(character, '%20') }
   end
 end
