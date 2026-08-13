@@ -93,7 +93,7 @@ module Mastodon
     end
 
     def sharlayan_local_version
-      '2026.08.11.1'
+      '2026.08.13.1'
     end
 
     def read_git_head_file
