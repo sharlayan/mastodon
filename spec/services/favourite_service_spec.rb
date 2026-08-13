@@ -36,4 +36,16 @@ RSpec.describe FavouriteService do
         .to have_been_made.once
     end
   end
+
+  describe 'silent interaction delivery' do
+    let(:bob) { Fabricate(:account, protocol: :activitypub, username: 'bob', domain: 'bird.makeup', inbox_url: 'https://bird.makeup/users/bob/inbox') }
+    let(:status) { Fabricate(:status, account: bob) }
+
+    it 'creates a favourite without delivering a like activity' do
+      subject.call(sender, status)
+
+      expect(status.favourites.first).to be_present
+      expect(ActivityPub::DeliveryWorker).to_not have_enqueued_sidekiq_job
+    end
+  end
 end

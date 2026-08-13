@@ -100,6 +100,14 @@ RSpec.describe StatusPolicy, type: :model do
 
   context 'with the permission of quote?' do
     permissions :quote? do
+      it 'ignores the advertised quote policy for a BirdsiteLive status' do
+        bridge_account = Fabricate(:account, domain: 'bridge.example')
+        bridge_status = Fabricate(:status, account: bridge_account, quote_approval_policy: 'nobody')
+        Fabricate(:instance_metadata, domain: bridge_account.domain, software: 'birdsitelive')
+
+        expect(subject).to permit(bob, bridge_status)
+      end
+
       it 'does not grant access when direct and account is viewer' do
         status.visibility = :direct
 
@@ -180,6 +188,20 @@ RSpec.describe StatusPolicy, type: :model do
         viewer = Fabricate(:account)
         viewer.follow!(status.account)
         expect(subject).to permit(viewer, status)
+      end
+    end
+  end
+
+  context 'with the permission of reply?' do
+    permissions :reply? do
+      it 'denies replies to a BirdsiteLive status' do
+        bridge_status = Fabricate(:status, account: Fabricate(:account, domain: 'bird.makeup'))
+
+        expect(subject).to_not permit(bob, bridge_status)
+      end
+
+      it 'allows replies to an ordinary visible status' do
+        expect(subject).to permit(bob, status)
       end
     end
   end
