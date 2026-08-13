@@ -110,6 +110,8 @@ describe('Sharlayan initial state', () => {
       roleplayMode: true,
       publicTimelinesEnabled: false,
       collectionsEnabled: false,
+      catEnabled: false,
+      catFederationEnabled: false,
       forceRoundAvatar: false,
     });
   });

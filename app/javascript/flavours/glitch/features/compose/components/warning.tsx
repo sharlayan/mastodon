@@ -26,14 +26,6 @@ export const Warning = () => {
   if (needsLockWarning) {
     return (
       <WarningMessage>
-        {roleplayMode && (
-          <>
-            <FormattedMessage
-              id='compose_form.rp_server_dm_warning'
-              defaultMessage='Server administrators can read direct messages for moderation.'
-            />{' '}
-          </>
-        )}
         <FormattedMessage
           id='compose_form.lock_disclaimer'
           defaultMessage='Your account is not {locked}. Anyone can follow you to view your follower-only posts.'
@@ -66,6 +58,15 @@ export const Warning = () => {
   if (directMessageWarning) {
     return (
       <WarningMessage>
+        {roleplayMode && (
+          <>
+            <FormattedMessage
+              id='compose_form.rp_server_dm_warning'
+              defaultMessage='Server administrators can read direct messages for moderation.'
+            />
+            <br />
+          </>
+        )}
         <FormattedMessage
           id='compose_form.encryption_warning'
           defaultMessage='Posts on Mastodon are not end-to-end encrypted. Do not share any dangerous information over Mastodon.'
