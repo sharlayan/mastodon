@@ -5,9 +5,9 @@ require 'rails_helper'
 RSpec.describe StatusLengthValidator do
   subject { Fabricate.build :status }
 
-  before { stub_const 'StatusLengthValidator::MAX_CHARS', 100 }
+  before { Setting.status_character_limit = 100 }
 
-  let(:over_limit_text) { 'a' * described_class::MAX_CHARS * 2 }
+  let(:over_limit_text) { 'a' * described_class.max_chars * 2 }
 
   context 'when status is remote' do
     before { subject.update! account: Fabricate(:account, domain: 'host.example') }
@@ -68,8 +68,8 @@ RSpec.describe StatusLengthValidator do
   end
 
   context 'with special character strings' do
-    let(:multibyte_emoji) { '✨' * described_class::MAX_CHARS }
-    let(:zwj_sequence) { '🏳️‍⚧️' * described_class::MAX_CHARS }
+    let(:multibyte_emoji) { '✨' * described_class.max_chars }
+    let(:zwj_sequence) { '🏳️‍⚧️' * described_class.max_chars }
 
     it { is_expected.to allow_values(multibyte_emoji, zwj_sequence).for(:text) }
   end
@@ -77,7 +77,7 @@ RSpec.describe StatusLengthValidator do
   private
 
   def too_long_message
-    I18n.t('statuses.over_character_limit', max: described_class::MAX_CHARS)
+    I18n.t('statuses.over_character_limit', max: described_class.max_chars)
   end
 
   def starting_string

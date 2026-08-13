@@ -5,8 +5,19 @@ require 'rails_helper'
 RSpec.describe Form::AdminSettings do
   it 'registers Sharlayan settings with the required storage types' do
     expect(described_class::KEYS).to include(:theme_color, :local_status_page_access, :norss, :reactions_enabled, :drive_allowed_extensions)
-    expect(described_class::INTEGER_KEYS).to include(:avatar_decorations_max_count, :drive_quota, :drive_max_file_size)
+    expect(described_class::INTEGER_KEYS).to include(:avatar_decorations_max_count, :drive_quota, :drive_max_file_size, :status_character_limit)
     expect(described_class::BOOLEAN_KEYS).to include(:norss, :reactions_enabled, :pages_enabled, :pages_drive_only, :drive_enabled)
+  end
+
+  it 'requires a positive status character limit' do
+    expect(described_class.new(status_character_limit: '500')).to be_valid
+    expect(described_class.new(status_character_limit: '0')).to_not be_valid
+  end
+
+  it 'uses MAX_TOOT_CHARS as the default when configured' do
+    ClimateControl.modify MAX_TOOT_CHARS: '1000' do
+      expect(Sharlayan::SettingExtensions.sharlayan_defaults.fetch('status_character_limit')).to eq(1000)
+    end
   end
 
   it 'validates feed access modes and theme colors' do

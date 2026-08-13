@@ -121,7 +121,7 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
     it 'rejects oversized search terms before querying tags' do
       allow(Tag).to receive(:search_for).and_call_original
 
-      post '/api/hashtags/search', params: { i: read_token, query: 'a' * (Api::MisskeyCompat::HashtagsController::SEARCH_QUERY_LENGTH_LIMIT + 1) }, as: :json
+      post '/api/hashtags/search', params: { i: read_token, query: 'a' * (StatusLengthValidator.max_chars + 1) }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to eq([])

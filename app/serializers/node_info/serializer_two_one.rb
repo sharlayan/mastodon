@@ -64,7 +64,7 @@ class NodeInfo::SerializerTwoOne < ActiveModel::Serializer
       'enableRecaptcha' => false,
       'enableMcaptcha' => false,
       'enableTurnstile' => false,
-      'maxNoteTextLength' => StatusLengthValidator::MAX_CHARS,
+      'maxNoteTextLength' => StatusLengthValidator.max_chars,
       'enableEmail' => true,
       'enableServiceWorker' => true,
       'proxyAccountName' => '',
