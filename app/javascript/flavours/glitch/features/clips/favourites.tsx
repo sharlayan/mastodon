@@ -11,7 +11,7 @@ import PublicIcon from '@/material-icons/400-24px/public.svg?react';
 import StarIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import { fetchFavouriteClips } from 'flavours/glitch/actions/clips';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import { getOrderedFavouriteClips } from 'flavours/glitch/selectors/clips';

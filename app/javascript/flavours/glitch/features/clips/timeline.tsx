@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 
 import { FormattedMessage } from 'react-intl';
 
@@ -18,8 +18,7 @@ import {
 } from 'flavours/glitch/actions/columns';
 import { expandClipTimeline } from 'flavours/glitch/actions/timelines';
 import { Column } from 'flavours/glitch/components/column';
-import type { ColumnRef } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
@@ -39,7 +38,6 @@ const ClipTimeline: React.FC<{
   const { id: routeId } = useParams<{ id: string }>();
   const id = params?.id ?? routeId;
   const pinned = !!columnId;
-  const columnRef = useRef<ColumnRef>(null);
   const clip = useAppSelector((state) => state.clips.get(id));
 
   useEffect(() => {
@@ -81,10 +79,6 @@ const ClipTimeline: React.FC<{
     [dispatch, columnId],
   );
 
-  const handleHeaderClick = useCallback(() => {
-    columnRef.current?.scrollTop();
-  }, []);
-
   if (clip === null) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
   }
@@ -93,7 +87,7 @@ const ClipTimeline: React.FC<{
   const isOwner = !!clip && clip.account_id === accountId;
 
   return (
-    <Column bindToDocument={!multiColumn} ref={columnRef} label={title}>
+    <Column bindToDocument={!multiColumn} label={title}>
       <ColumnHeader
         icon='note-stack-add'
         iconComponent={NoteStackAddIcon}
@@ -101,7 +95,7 @@ const ClipTimeline: React.FC<{
         multiColumn={multiColumn}
         onPin={handlePin}
         onMove={handleMove}
-        onClick={handleHeaderClick}
+        scrollTopOnClick
         pinned={pinned}
         showBackButton={!pinned}
         extraButton={

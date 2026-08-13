@@ -1,17 +1,16 @@
 import {
   Children,
   cloneElement,
-  createContext,
   forwardRef,
   isValidElement,
   useCallback,
-  useContext,
 } from 'react';
 
 import classNames from 'classnames';
 
 import type { List, Record } from 'immutable';
 
+import { ColumnIndexContext } from '@/flavours/glitch/components/column/context';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
 import { Footer } from 'flavours/glitch/features/custom_homepage/components/footer';
@@ -77,9 +76,6 @@ const TabsBarPortal = () => {
 
   return <div id='tabs-bar__portal' ref={setRef} />;
 };
-
-export const ColumnIndexContext = createContext(1);
-export const useColumnIndexContext = () => useContext(ColumnIndexContext);
 
 interface Column {
   uuid: string;

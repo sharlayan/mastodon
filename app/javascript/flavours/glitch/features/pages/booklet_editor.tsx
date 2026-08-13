@@ -14,7 +14,7 @@ import {
 } from 'flavours/glitch/api/pages';
 import type { ApiMediaAttachmentJSON } from 'flavours/glitch/api_types/media_attachments';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import {
   SelectField,
   TextAreaField,

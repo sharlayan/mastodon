@@ -22,7 +22,7 @@ import type { ApiAccountJSON } from 'flavours/glitch/api_types/accounts';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { AvatarGroup } from 'flavours/glitch/components/avatar_group';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { TextInputField } from 'flavours/glitch/components/form_fields';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';

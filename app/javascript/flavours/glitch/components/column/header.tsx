@@ -20,11 +20,11 @@ import { ButtonInTabsBar } from 'flavours/glitch/features/ui/util/columns_contex
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { useAppDispatch } from 'flavours/glitch/store';
 
-import { useColumnIndexContext } from '../features/ui/components/columns_area';
-import { getColumnSkipLinkId } from '../features/ui/components/skip_links';
+import { getColumnSkipLinkId } from '../../features/ui/components/skip_links';
+import { NavigationFocusTarget } from '../navigation_focus_target';
+import { useAppHistory } from '../router';
 
-import { NavigationFocusTarget } from './navigation_focus_target';
-import { useAppHistory } from './router';
+import { useColumn, useColumnIndexContext } from './context';
 
 export const messages = defineMessages({
   show: { id: 'column_header.show_settings', defaultMessage: 'Show settings' },
@@ -83,7 +83,7 @@ const BackButton: React.FC<{
   );
 };
 
-export interface Props {
+export interface ColumnHeaderProps {
   title?: React.ReactNode;
   icon?: string;
   iconComponent?: IconProp;
@@ -97,13 +97,14 @@ export interface Props {
   placeholder?: boolean;
   appendContent?: React.ReactNode;
   collapseIssues?: boolean;
+  scrollTopOnClick?: boolean;
   onClick?: () => void;
   onBack?: () => void;
   onMove?: (arg0: number) => void;
   onPin?: () => void;
 }
 
-export const ColumnHeader: React.FC<Props> = ({
+export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   title,
   icon,
   iconComponent,
@@ -117,6 +118,7 @@ export const ColumnHeader: React.FC<Props> = ({
   placeholder,
   appendContent,
   collapseIssues,
+  scrollTopOnClick,
   onClick,
   onBack,
   onMove,
@@ -139,9 +141,13 @@ export const ColumnHeader: React.FC<Props> = ({
     [setCollapsed, setAnimating],
   );
 
+  const { scrollTop } = useColumn();
   const handleTitleClick = useCallback(() => {
     onClick?.();
-  }, [onClick]);
+    if (scrollTopOnClick) {
+      scrollTop();
+    }
+  }, [onClick, scrollTop, scrollTopOnClick]);
 
   const handleMoveLeft = useCallback(() => {
     onMove?.(-1);
@@ -347,7 +353,7 @@ export const ColumnHeader: React.FC<Props> = ({
             as='h1'
             className='column-header__title-wrapper'
           >
-            {onClick ? (
+            {onClick || scrollTopOnClick ? (
               <button
                 onClick={handleTitleClick}
                 className={titleClassNames}
@@ -394,6 +400,3 @@ export const ColumnHeader: React.FC<Props> = ({
     return <ButtonInTabsBar>{component}</ButtonInTabsBar>;
   }
 };
-
-// eslint-disable-next-line import/no-default-export
-export default ColumnHeader;

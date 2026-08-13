@@ -14,8 +14,8 @@ import {
   fetchAntenna,
   saveAntenna,
 } from 'flavours/glitch/actions/antennas';
-import Column from 'flavours/glitch/components/column';
-import ColumnHeader from 'flavours/glitch/components/column_header';
+import { Column } from 'flavours/glitch/components/column';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 

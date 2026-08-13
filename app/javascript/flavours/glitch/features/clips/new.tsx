@@ -18,7 +18,7 @@ import {
   updateClip,
 } from 'flavours/glitch/actions/clips';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import {
   TextInputField,
   TextAreaField,

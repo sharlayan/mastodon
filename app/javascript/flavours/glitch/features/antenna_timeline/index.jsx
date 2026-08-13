@@ -17,8 +17,8 @@ import { openModal } from 'flavours/glitch/actions/modal';
 import { addColumn, removeColumn, moveColumn } from 'flavours/glitch/actions/columns';
 import { connectAntennaStream } from 'flavours/glitch/actions/streaming';
 import { expandAntennaTimeline } from 'flavours/glitch/actions/timelines';
-import Column from 'flavours/glitch/components/column';
-import ColumnHeader from 'flavours/glitch/components/column_header';
+import { Column } from 'flavours/glitch/components/column';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Icon }  from 'flavours/glitch/components/icon';
 import { injectIntl } from 'flavours/glitch/components/intl';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
@@ -66,10 +66,6 @@ class AntennaTimeline extends PureComponent {
     dispatch(moveColumn(columnId, dir));
   };
 
-  handleHeaderClick = () => {
-    this.column.scrollTop();
-  };
-
   componentDidMount () {
     const { dispatch } = this.props;
     const { id } = this.props.params;
@@ -102,10 +98,6 @@ class AntennaTimeline extends PureComponent {
       this.disconnect = null;
     }
   }
-
-  setRef = c => {
-    this.column = c;
-  };
 
   handleLoadMore = maxId => {
     const { id } = this.props.params;
@@ -157,7 +149,7 @@ class AntennaTimeline extends PureComponent {
     }
 
     return (
-      <Column bindToDocument={!multiColumn} ref={this.setRef} label={title}>
+      <Column bindToDocument={!multiColumn} label={title}>
         <ColumnHeader
           icon='radar'
           iconComponent={RadarIcon}
@@ -165,7 +157,7 @@ class AntennaTimeline extends PureComponent {
           title={title}
           onPin={this.handlePin}
           onMove={this.handleMove}
-          onClick={this.handleHeaderClick}
+          scrollTopOnClick
           pinned={pinned}
           multiColumn={multiColumn}
         >

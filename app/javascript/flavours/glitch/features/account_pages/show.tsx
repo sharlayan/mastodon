@@ -4,10 +4,10 @@ import { useParams } from 'react-router-dom';
 
 import { apiGetAccountPage } from '@/flavours/glitch/api/pages';
 import type { ApiPageJSON } from '@/flavours/glitch/api_types/pages';
+import { Column } from '@/flavours/glitch/components/column';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import PageShow from '@/flavours/glitch/features/pages/show';
 import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bundle_column_error';
-import Column from '@/flavours/glitch/features/ui/components/column';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
 
 const AccountPage: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {

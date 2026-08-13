@@ -14,7 +14,7 @@ import type {
 } from 'flavours/glitch/api/federation_universe';
 import { apiGetFederationUniverse } from 'flavours/glitch/api/federation_universe';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import {
