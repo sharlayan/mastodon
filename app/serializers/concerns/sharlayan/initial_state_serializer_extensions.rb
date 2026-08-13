@@ -80,8 +80,8 @@ module Sharlayan::InitialStateSerializerExtensions
 
   def inline_compose_tabs
     value = JSON.parse(object_account_user.settings[:inline_compose_tabs])
-    value.is_a?(Array) ? value : []
-  rescue JSON::ParserError, TypeError
+    Sharlayan::InlineComposeTabs.normalize(value)
+  rescue JSON::ParserError, TypeError, Mastodon::InvalidParameterError
     []
   end
 

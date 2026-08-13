@@ -10,7 +10,6 @@ default_roles.each_value do |config|
   permissions = config['permissions'].dup
   extra_permissions = (config['extra_permissions'] || []).dup
   permissions << 'invite_users' if RoleplayModeHelper.roleplay_mode? && %w(Moderator Admin).include?(config['name'])
-  # extra_permissions << 'view_admin_timeline' if config['name'] == 'Admin' && Sharlayan::AdminTimeline.enabled?
 
   UserRole.create_with(position: config['position'], permissions_as_keys: permissions, extra_permissions_as_keys: extra_permissions, highlighted: true).find_or_create_by(name: config['name'])
 end
