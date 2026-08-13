@@ -11,6 +11,8 @@ Rails.application.config.after_initialize do
   begin
     next unless ActiveRecord::Base.connection.table_exists?('settings')
 
+    Sharlayan::RoleplayForcedSettings.apply_defaults!
+
     # DESTRUCTIVE: Rewrites forced settings while roleplay mode is enabled.
     # 파괴적: 롤플레이 모드가 켜진 동안 강제 설정을 덮어씁니다.
     Sharlayan::RoleplayForcedSettings::SETTINGS.each do |var, value|

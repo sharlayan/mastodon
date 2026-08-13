@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 module Sharlayan::RoleplayForcedSettings
+  DEFAULT_SETTINGS = {
+    user_themes_enabled: false,
+  }.freeze
+
   SETTINGS = {
     antenna_enabled: false,
     cat_enabled: false,
@@ -22,4 +26,11 @@ module Sharlayan::RoleplayForcedSettings
     authorized_fetch: true,
     trends: false,
   }.freeze
+
+  def self.apply_defaults!
+    DEFAULT_SETTINGS.each do |var, value|
+      setting = Setting.where(var: var.to_s).first_or_initialize(var: var.to_s)
+      setting.update(value: value) if setting.new_record?
+    end
+  end
 end
