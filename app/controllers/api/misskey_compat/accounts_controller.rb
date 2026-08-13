@@ -20,7 +20,8 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   def notes
     account = Account.without_requested_deletion.find(params[:userId])
     filter = AccountStatusesFilter.new(account, current_account, statuses_filter_params)
-    statuses = filter.results.to_a_paginated_by_id(pagination_limit, max_id: params[:untilId].presence, since_id: params[:sinceId].presence).to_a
+    scope = apply_compat_date_range(filter.results)
+    statuses = scope.to_a_paginated_by_id(pagination_limit, max_id: params[:untilId].presence, since_id: params[:sinceId].presence).to_a
     Status.preload_cacheable_associations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
