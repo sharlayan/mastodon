@@ -375,7 +375,20 @@
 
 .user-theme__variables {
   display: grid;
-  gap: 8px;
+  gap: 18px;
+}
+
+.user-theme__variable-group {
+  h3 {
+    margin: 0 0 8px;
+    color: var(--color-text-primary);
+    font-size: 14px;
+  }
+
+  &__items {
+    display: grid;
+    gap: 8px;
+  }
 }
 
 .user-theme__variable {
@@ -414,6 +427,10 @@
       background: var(--color-bg-secondary);
       color: var(--color-text-primary);
       font: inherit;
+    }
+
+    &--length {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
