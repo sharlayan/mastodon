@@ -3,7 +3,6 @@
 class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseController
   include Api::AccountRateLimit
 
-  SEARCH_QUERY_LENGTH_LIMIT = StatusLengthValidator::MAX_CHARS
   SEARCH_OFFSET_LIMIT = 1_000
 
   requires_misskey_permission 'read:account', :index, :trend, :search, :show, :users
@@ -66,7 +65,7 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
 
   def search
     query = params[:query].to_s.strip.delete_prefix('#')
-    return render json: [] if query.blank? || query.length > SEARCH_QUERY_LENGTH_LIMIT
+    return render json: [] if query.blank? || query.length > StatusLengthValidator.max_chars
 
     tags = Tag.search_for(query, pagination_limit, params[:offset].to_i.clamp(0, SEARCH_OFFSET_LIMIT), exclude_unreviewed: false)
 

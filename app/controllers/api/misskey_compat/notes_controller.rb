@@ -601,7 +601,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def validate_draft_params!
     raise ArgumentError, 'scheduled drafts are not supported' if ActiveModel::Type::Boolean.new.cast(params[:isActuallyScheduled])
-    raise ArgumentError, 'text is too long' if params[:text].to_s.length > StatusLengthValidator::MAX_CHARS
+    raise ArgumentError, 'text is too long' if params[:text].to_s.length > StatusLengthValidator.max_chars
     raise ArgumentError, 'cw is too long' if params[:cw].to_s.length > 100
     raise ArgumentError, 'too many files' if Array(params[:fileIds]).length > Status::MEDIA_ATTACHMENTS_LIMIT
 

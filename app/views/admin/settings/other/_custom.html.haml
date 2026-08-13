@@ -1,3 +1,14 @@
+%h2= t('admin.settings.status_character_limit.title')
+
+.fields-group
+  = f.input :status_character_limit,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.status_character_limit.label'),
+            hint: t('admin.settings.status_character_limit.hint'),
+            input_html: { min: 1 },
+            sharlayan_only: true
+
 %h2= t('admin.settings.rate_limit_bypass.title')
 
 .fields-group

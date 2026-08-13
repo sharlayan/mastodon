@@ -101,6 +101,11 @@ RSpec.describe Form::AdminSettings do
         .and change(Setting, :drive_quota).from(500).to(2048)
     end
 
+    it 'saves the status character limit as an integer' do
+      expect { described_class.new(status_character_limit: '1000').save }
+        .to change(Setting, :status_character_limit).from(500).to(1000)
+    end
+
     it 'rejects a negative drive quota' do
       settings = described_class.new(drive_quota: '-1')
 
