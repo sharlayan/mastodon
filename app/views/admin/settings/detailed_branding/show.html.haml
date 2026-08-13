@@ -1,0 +1,15 @@
+- content_for :page_title do
+  = t("admin.settings.custom_sections.#{@section}")
+
+- content_for :heading do
+  %h1= t('admin.settings.title')
+  = render partial: 'admin/settings/shared/links'
+
+= render 'links'
+
+= simple_form_for @admin_settings, url: @form_url do |f|
+  = render 'shared/error_messages', object: @admin_settings
+  = render @section, f: f, admin_settings: @admin_settings
+
+  .actions
+    = f.button :button, t('generic.save_changes'), type: :submit

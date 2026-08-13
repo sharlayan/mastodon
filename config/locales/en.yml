@@ -968,6 +968,11 @@ en:
       branding:
         preamble: Your server's branding differentiates it from other servers in the network. This information may be displayed across a variety of environments, such as Mastodon's web interface, native applications, in link previews on other websites and within messaging apps, and so on. For this reason, it is best to keep this information clear, short and concise.
         title: Branding
+      detailed_branding:
+        interface: Web interface
+        preamble: Customize your server's visual identity and Sharlayan-specific features.
+        title: Detailed branding
+        visual_identity: Visual identity
       captcha_enabled:
         desc_html: This relies on external scripts from hCaptcha, which may be a security and privacy concern. In addition, <strong>this can make the registration process significantly less accessible to some (especially disabled) people</strong>. For these reasons, please consider alternative measures such as approval-based or invite-based registration.
         title: Require new users to solve a CAPTCHA to confirm their account
@@ -975,6 +980,14 @@ en:
         danger_zone: Danger zone
         preamble: Control how user-generated content is stored in Mastodon.
         title: Content retention
+      custom_sections:
+        appearance: Appearance
+        appearance_preamble: Configure custom themes and visual presentation options.
+        detailed_branding: Detailed branding
+        extensions: Extensions
+        extensions_preamble: Configure Sharlayan extensions and server-side capabilities.
+        misskey_flavour: Misskey flavour
+        misskey_flavour_preamble: Configure Misskey-inspired features and client compatibility.
       default_noindex:
         desc_html: Affects all users who have not changed this setting themselves
         title: Opt users out of search engine indexing by default

@@ -24,7 +24,7 @@ module Paperclip
     end
 
     def needs_different_geometry?
-      (options[:geometry] && @current_geometry.width != @target_geometry.width && @current_geometry.height != @target_geometry.height) ||
+      (options[:geometry] && (@current_geometry.width != @target_geometry.width || @current_geometry.height != @target_geometry.height)) ||
         (options[:pixels] && @current_geometry.width * @current_geometry.height > options[:pixels])
     end
 

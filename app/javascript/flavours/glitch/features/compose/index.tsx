@@ -26,7 +26,7 @@ import glitchedElephant1 from 'flavours/glitch/images/mbstobon-ui-0.png';
 import glitchedElephant2 from 'flavours/glitch/images/mbstobon-ui-1.png';
 import glitchedElephant3 from 'flavours/glitch/images/mbstobon-ui-2.png';
 import {
-  mascot,
+  glitchMascots,
   publicTimelinesEnabled,
   reduceMotion,
 } from 'flavours/glitch/initial_state';
@@ -118,12 +118,13 @@ const Compose: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
     setElefriend((elefriend + 1) % totalElefriends);
   }, [elefriend, setElefriend]);
 
-  const elephant = [
+  const elephantDefaults = [
     glitchedElephant1,
     glitchedElephant2,
     glitchedElephant3,
     elephantUIPlane,
-  ][elefriend];
+  ];
+  const elephant = glitchMascots[elefriend] ?? elephantDefaults[elefriend];
 
   const scrollNavbarIntoView = useCallback(() => {
     const navbar = document.querySelector('.navigation-panel');
@@ -230,7 +231,7 @@ const Compose: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
               className='drawer__inner__mastodon with-zig-zag-decoration'
               onClick={handleCycleElefriend}
             >
-              <img alt='' draggable='false' src={mascot ?? elephant} />
+              <img alt='' draggable='false' src={elephant} />
             </div>
           </div>
         </div>
