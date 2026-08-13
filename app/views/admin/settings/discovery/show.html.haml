@@ -18,6 +18,7 @@
   .fields-group
     = f.input :trends,
               as: :boolean,
+              disabled: roleplay_locked,
               wrapper: :with_label
 
   .fields-group
