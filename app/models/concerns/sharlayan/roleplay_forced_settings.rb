@@ -18,5 +18,6 @@ module Sharlayan::RoleplayForcedSettings
     activity_api_enabled: false,
     peers_api_enabled: false,
     authorized_fetch: true,
+    trends: false,
   }.freeze
 end
