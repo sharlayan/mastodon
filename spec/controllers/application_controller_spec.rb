@@ -134,4 +134,25 @@ RSpec.describe ApplicationController do
       expect { controller.raise_not_found }.to raise_error(ActionController::RoutingError, 'No route matches unmatched')
     end
   end
+
+  describe 'before_action :store_referrer' do
+    before do
+      routes.draw { get 'success' => 'anonymous#success' }
+      allow(controller).to receive(:devise_controller?).and_return(true)
+    end
+
+    it 'does not store the service worker as a redirect location' do
+      request.headers['Referer'] = 'http://test.host/sw.js'
+      get 'success'
+
+      expect(controller.stored_location_for(:user)).to be_nil
+    end
+
+    it 'stores a regular same-origin page as a redirect location' do
+      request.headers['Referer'] = 'http://test.host/explore'
+      get 'success'
+
+      expect(controller.stored_location_for(:user)).to eq '/explore'
+    end
+  end
 end

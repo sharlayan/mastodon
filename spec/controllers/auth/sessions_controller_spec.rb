@@ -77,6 +77,17 @@ RSpec.describe Auth::SessionsController do
         end
       end
 
+      context 'when the service worker is the stored location' do
+        before do
+          allow(controller).to receive(:stored_location_for).with(:user).and_return('/sw.js')
+          post :create, params: { user: { email: user.email, password: user.password } }
+        end
+
+        it 'redirects to home' do
+          expect(response).to redirect_to(root_path)
+        end
+      end
+
       context 'when using an invalid password' do
         before do
           post :create, params: { user: { email: 'pam_user1', password: 'WRONGPW' } }
