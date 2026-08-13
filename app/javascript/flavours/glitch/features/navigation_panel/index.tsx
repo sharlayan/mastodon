@@ -36,6 +36,7 @@ import {
   SharlayanNavigationExtensions,
   useSharlayanPrimaryNavigation,
 } from 'flavours/glitch/sharlayan/registry/navigation';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import { AnnualReportNavItem } from '../annual_report/nav_item';
@@ -221,7 +222,7 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
 
             <SharlayanAntennaPanel />
 
-            <FollowedTagsPanel />
+            {!roleplayMode && <FollowedTagsPanel />}
 
             <li role='separator' />
 

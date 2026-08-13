@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class REST::PageSerializer < ActiveModel::Serializer
+  include Sharlayan::RESTPageRoleplaySerialization
+
   attributes :id, :title, :name, :summary, :category, :draft, :visibility, :locked, :content, :align_center, :is_main,
              :hide_title_when_pinned, :font, :account_id, :booklet_id, :booklet, :booklet_position, :booklet_main,
              :eye_catching_media_attachment_id, :likes_count, :views_count,
@@ -50,7 +52,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   end
 
   def locked
-    object.password_visibility? && object.account_id != scope&.account_id && !instance_options[:page_unlocked]
+    object.password_visibility? && object.account_id != scope&.account_id && !instance_options[:page_unlocked] && !roleplay_owner?
   end
 
   def content

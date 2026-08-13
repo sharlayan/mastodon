@@ -2,6 +2,7 @@
 
 module Api::AntennaFeatureConcern
   extend ActiveSupport::Concern
+  include RoleplayModeHelper
 
   included do
     before_action :require_antenna_enabled!
@@ -10,6 +11,6 @@ module Api::AntennaFeatureConcern
   private
 
   def require_antenna_enabled!
-    not_found unless Setting.antenna_enabled
+    not_found if roleplay_mode? || !Setting.antenna_enabled
   end
 end
