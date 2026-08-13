@@ -375,16 +375,44 @@
 
 .user-theme__variables {
   display: grid;
-  gap: 18px;
+  gap: 12px;
+}
+
+.user-theme__category-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--color-bg-secondary);
+
+  button {
+    min-width: 0;
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 7px;
+    color: var(--color-text-secondary);
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--color-text-primary);
+    }
+
+    &.active {
+      color: var(--color-text-primary);
+      background: var(--color-bg-primary);
+    }
+  }
 }
 
 .user-theme__variable-group {
-  h3 {
-    margin: 0 0 8px;
-    color: var(--color-text-primary);
-    font-size: 14px;
-  }
-
   &__items {
     display: grid;
     gap: 8px;
