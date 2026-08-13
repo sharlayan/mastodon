@@ -425,6 +425,7 @@ class Status extends ImmutablePureComponent {
 
   handleHotkeyReply = e => {
     e.preventDefault();
+    if (this.props.status.get('repliable') === false) return;
     this.props.onReply(this.props.status);
   };
 

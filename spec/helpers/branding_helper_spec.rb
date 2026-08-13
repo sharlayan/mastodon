@@ -31,6 +31,17 @@ RSpec.describe BrandingHelper do
       expect(styles).to include('@media(prefers-color-scheme:light)')
     end
 
+    it 'escapes CSS and HTML delimiters in the logo URL' do
+      presenter = instance_double(InstancePresenter, logo_icon: upload_with_url(%q{/system/a&b'c"d(e)f<g>h i.png?x=1&y=2}), logo_wordmark_dark: nil, logo_wordmark_light: nil)
+      allow(helper).to receive(:instance_presenter).and_return(presenter)
+
+      styles = helper.branding_logo_styles
+
+      expect(styles).to include('url(/system/a\26 b%27c%22d%28e%29f%3Cg%3Eh%20i.png?x=1\26 y=2)')
+      expect(styles).to_not include('&amp;')
+      expect(styles.scan('</style>').size).to eq(1)
+    end
+
     it 'uses the available full logo for both color schemes' do
       presenter = instance_double(InstancePresenter, logo_icon: nil, logo_wordmark_dark: upload_with_url('/dark.png'), logo_wordmark_light: nil)
       allow(helper).to receive(:instance_presenter).and_return(presenter)
