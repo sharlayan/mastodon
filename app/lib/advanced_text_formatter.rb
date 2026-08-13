@@ -99,9 +99,28 @@ class AdvancedTextFormatter < TextFormatter
 
   private
 
-  def format_markdown(html)
-    html = markdown_formatter.render(html)
+  def format_markdown(text)
+    text, placeholder = protect_entity_underscores(text)
+    html = markdown_formatter.render(text)
+    html.gsub!(placeholder, '_')
     html.delete("\r").delete("\n")
+  end
+
+  def protect_entity_underscores(text)
+    placeholder = "MARKDOWNUNDERSCORE#{SecureRandom.hex(8)}"
+    text = text.dup
+
+    Extractor.extract_entities_with_indices(text, extract_url_without_protocol: false).reverse_each do |entity|
+      next unless entity[:url] || entity[:screen_name]
+
+      range = entity[:indices].first...entity[:indices].last
+      value = text[range]
+      next unless value.include?('_')
+
+      text[range] = value.gsub('_', placeholder)
+    end
+
+    [text, placeholder]
   end
 
   def markdown_formatter
