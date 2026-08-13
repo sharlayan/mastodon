@@ -6,10 +6,22 @@ import { Globals } from '@react-spring/web';
 import * as perf from '@/flavours/glitch/utils/performance';
 import { setupBrowserNotifications } from 'flavours/glitch/actions/notifications';
 import Mastodon from 'flavours/glitch/containers/mastodon';
-import { me, reduceMotion } from 'flavours/glitch/initial_state';
+import {
+  me,
+  reduceMotion,
+  userTheme,
+  userThemeCatalog,
+  userThemeDefaults,
+  userThemesEnabled,
+} from 'flavours/glitch/initial_state';
 import ready from 'flavours/glitch/ready';
 import { applyStoredContentFontSize } from 'flavours/glitch/sharlayan/local_settings/content_font_size';
 import { applyStoredSensitiveEmojiDisplay } from 'flavours/glitch/sharlayan/local_settings/sensitive_emoji_display';
+import {
+  parseUserThemeCatalog,
+  resolveUserThemeConfig,
+  watchUserTheme,
+} from 'flavours/glitch/sharlayan/user_theme';
 import { store } from 'flavours/glitch/store';
 
 import { isDevelopment, isProduction } from './utils/environment';
@@ -19,6 +31,11 @@ function main() {
 
   applyStoredContentFontSize();
   applyStoredSensitiveEmojiDisplay();
+  watchUserTheme(
+    resolveUserThemeConfig(userTheme, userThemeDefaults),
+    parseUserThemeCatalog(userThemeCatalog),
+    userThemesEnabled,
+  );
 
   return ready(async () => {
     const mountNode = document.getElementById('mastodon');

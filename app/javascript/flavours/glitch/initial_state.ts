@@ -255,6 +255,10 @@ export const {
   showCat,
   showCatSpeak,
   showFederatedCat,
+  userThemesEnabled,
+  userThemeCatalog,
+  userThemeDefaults,
+  userTheme,
 } = readSharlayanInitialState(initialState, Boolean(me));
 
 const displayNames =

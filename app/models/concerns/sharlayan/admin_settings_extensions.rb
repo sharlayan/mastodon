@@ -45,6 +45,9 @@ module Sharlayan::AdminSettingsExtensions
     drive_max_file_size
     drive_allowed_extensions
     status_character_limit
+    user_themes_enabled
+    user_theme_catalog
+    user_theme_defaults
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -87,6 +90,7 @@ module Sharlayan::AdminSettingsExtensions
     misskey_compat_expose_follow_graph
     online_status_enabled
     drive_enabled
+    user_themes_enabled
   ).freeze
 
   included do
@@ -96,6 +100,7 @@ module Sharlayan::AdminSettingsExtensions
     validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
     validates :status_character_limit, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@status_character_limit) }
     validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }
+    validates :user_theme_catalog, :user_theme_defaults, length: { maximum: 65_536 }, if: -> { defined?(@user_theme_catalog) || defined?(@user_theme_defaults) }
     validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }
     validate :validate_misskey_signin_origins, if: -> { defined?(@misskey_compat_signin_flow_allowed_origins) }
   end

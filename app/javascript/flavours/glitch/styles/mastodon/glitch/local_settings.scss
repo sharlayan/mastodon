@@ -319,6 +319,110 @@
   margin-top: 12px;
 }
 
+.user-theme__scheme {
+  margin-top: 22px;
+  padding-top: 2px;
+  border-top: 1px solid var(--color-border-primary);
+
+  &__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    .button {
+      flex: 0 0 auto;
+    }
+  }
+}
+
+.user-theme__share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+
+  input[type='file'] {
+    display: none;
+  }
+}
+
+.user-theme__error {
+  margin-top: 10px;
+  color: var(--color-text-error);
+}
+
+.user-theme__select {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+
+  select {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 9px 32px 9px 10px;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 4px;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    font: inherit;
+  }
+}
+
+.user-theme__variables {
+  display: grid;
+  gap: 8px;
+}
+
+.user-theme__variable {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 12px;
+
+  code {
+    overflow-wrap: anywhere;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+  }
+
+  &__inputs {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 6px;
+
+    input[type='color'] {
+      box-sizing: border-box;
+      width: 42px;
+      height: 36px;
+      padding: 2px;
+      border: 1px solid var(--color-border-primary);
+      border-radius: 4px;
+      background: var(--color-bg-secondary);
+    }
+
+    input[type='text'] {
+      box-sizing: border-box;
+      min-width: 0;
+      padding: 7px 9px;
+      border: 1px solid var(--color-border-primary);
+      border-radius: 4px;
+      background: var(--color-bg-secondary);
+      color: var(--color-text-primary);
+      font: inherit;
+    }
+  }
+
+  @media screen and (width <= 630px) {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
 @media screen and (width <= 630px) {
   .glitch.local-settings {
     width: min(96vw, 880px);

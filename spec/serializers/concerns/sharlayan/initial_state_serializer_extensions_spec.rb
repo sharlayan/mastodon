@@ -20,7 +20,8 @@ RSpec.describe InitialStateSerializer do
       show_federated_cat: true,
       custom_emoji_mutes: [],
       reaction_mutes: [],
-      inline_compose_tabs: []
+      inline_compose_tabs: [],
+      user_theme: '{}'
     )
   end
 
@@ -102,7 +103,10 @@ RSpec.describe InitialStateSerializer do
       pages_enabled: Setting.pages_enabled,
       pages_drive_only: Setting.pages_drive_only,
       drive_enabled: Setting.drive_enabled,
-      roleplay_mode: RoleplayModeHelper.roleplay_mode?
+      roleplay_mode: RoleplayModeHelper.roleplay_mode?,
+      user_themes_enabled: Setting.user_themes_enabled,
+      user_theme_catalog: Setting.user_theme_catalog,
+      user_theme_defaults: Setting.user_theme_defaults
     )
     expect(meta).to_not include(:custom_emoji_mutes, :reaction_mutes, :federation_universe_enabled)
   end
