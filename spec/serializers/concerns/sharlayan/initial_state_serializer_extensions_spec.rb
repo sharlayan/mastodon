@@ -3,6 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe InitialStateSerializer do
+  it 'exposes the four glitch mascot slots in order' do
+    first = Fabricate(:site_upload, var: 'glitch_mascot1')
+    fourth = Fabricate(:site_upload, var: 'glitch_mascot4')
+    meta = described_class.new(InitialStatePresenter.new(settings: {})).meta
+
+    expect(meta[:glitch_mascots]).to eq [first.file.url, nil, nil, fourth.file.url]
+  end
+
   it 'adds signed-in Sharlayan preferences and mute snapshots' do
     user = Fabricate(:user)
     presenter = InitialStatePresenter.new(current_account: user.account, settings: {})

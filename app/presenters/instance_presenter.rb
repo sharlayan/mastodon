@@ -86,6 +86,13 @@ class InstancePresenter < ActiveModelSerializers::Model
     @mascot ||= Rails.cache.fetch('site_uploads/mascot') { SiteUpload.find_by(var: 'mascot') }
   end
 
+  def glitch_mascots
+    @glitch_mascots ||= (1..4).map do |slot|
+      var = "glitch_mascot#{slot}"
+      Rails.cache.fetch("site_uploads/#{var}") { SiteUpload.find_by(var: var) }
+    end
+  end
+
   def favicon
     return @favicon if defined?(@favicon)
 
