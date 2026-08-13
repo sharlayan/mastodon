@@ -110,6 +110,14 @@ RSpec.describe InstancePresenter do
     end
   end
 
+  describe '#background_image' do
+    it 'returns the configured site upload' do
+      background_image = Fabricate(:site_upload, var: 'background_image')
+
+      expect(instance_presenter.background_image).to eq(background_image)
+    end
+  end
+
   describe '#glitch_mascots' do
     it 'returns each mascot in slot order and preserves empty slots' do
       first = Fabricate(:site_upload, var: 'glitch_mascot1')

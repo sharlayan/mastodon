@@ -228,6 +228,7 @@ ja:
     settings:
       user_themes:
         catalog: サーバーテーマカタログJSON
+        catalog_example: 'ライト／ダークテーマの短い例：'
         catalog_hint: id、name、variables.light / variables.darkマップを持つテーマの配列です。フロントエンドで許可されたCSS変数のみ適用されます。
         defaults: サーバーデフォルトテーマJSON
         defaults_hint: lightとdarkにテーマIDと任意のvariablesマップを指定します。選択したフレーバーのデフォルトを維持するには{}を使用します。

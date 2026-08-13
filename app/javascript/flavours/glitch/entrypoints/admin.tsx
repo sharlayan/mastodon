@@ -3,7 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { decode, ValidationError } from 'blurhash';
 import { on } from 'delegated-events';
 
+import type { InitialState } from 'flavours/glitch/initial_state';
 import ready from 'flavours/glitch/ready';
+import {
+  applyServerBackground,
+  isSettingsPath,
+} from 'flavours/glitch/sharlayan/server_background';
 
 const setAnnouncementEndsAttributes = (target: HTMLInputElement) => {
   const valid = target.value && target.validity.valid;
@@ -309,6 +314,21 @@ async function mountReactComponent(element: Element) {
 }
 
 ready(() => {
+  const initialStateText =
+    document.getElementById('initial-state')?.textContent;
+  if (initialStateText && isSettingsPath(window.location.pathname)) {
+    const { meta } = JSON.parse(initialStateText) as InitialState;
+    if (meta.background_on_settings_pages) {
+      applyServerBackground({
+        color: meta.background_color,
+        opacity: meta.background_opacity,
+        pathname: window.location.pathname,
+        showOnSettings: true,
+        url: meta.background_image,
+      });
+    }
+  }
+
   const domainBlockSeveritySelect = document.querySelector<HTMLSelectElement>(
     'select#domain_block_severity',
   );

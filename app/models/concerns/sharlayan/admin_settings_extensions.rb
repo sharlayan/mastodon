@@ -5,6 +5,9 @@ module Sharlayan::AdminSettingsExtensions
 
   KEYS = %i(
     theme_color
+    background_color
+    background_opacity
+    background_on_settings_pages
     force_local_only
     norss
     soft_hide_deletion
@@ -53,12 +56,14 @@ module Sharlayan::AdminSettingsExtensions
 
   INTEGER_KEYS = %i(
     avatar_decorations_max_count
+    background_opacity
     drive_quota
     drive_max_file_size
     status_character_limit
   ).freeze
 
   BOOLEAN_KEYS = %i(
+    background_on_settings_pages
     force_local_only
     norss
     soft_hide_deletion
@@ -100,7 +105,9 @@ module Sharlayan::AdminSettingsExtensions
     validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@drive_quota) }
     validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
     validates :status_character_limit, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@status_character_limit) }
+    validates :background_opacity, numericality: { only_integer: true, in: 0..100 }, if: -> { defined?(@background_opacity) }
     validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }
+    validates :background_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, allow_blank: true, if: -> { defined?(@background_color) }
     validates :user_theme_catalog, :user_theme_defaults, length: { maximum: 65_536 }, if: -> { defined?(@user_theme_catalog) || defined?(@user_theme_defaults) }
     validate :validate_drive_allowed_extensions, if: -> { defined?(@drive_allowed_extensions) }
     validate :validate_misskey_signin_origins, if: -> { defined?(@misskey_compat_signin_flow_allowed_origins) }

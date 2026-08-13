@@ -28,6 +28,7 @@ class Form::AdminSettings
     thumbnail
     thumbnail_description
     mascot
+    background_image
     glitch_mascot1
     glitch_mascot2
     glitch_mascot3
@@ -94,6 +95,7 @@ class Form::AdminSettings
   UPLOAD_KEYS = %i(
     thumbnail
     mascot
+    background_image
     glitch_mascot1
     glitch_mascot2
     glitch_mascot3

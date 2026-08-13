@@ -55,6 +55,7 @@ class SiteUpload < ApplicationRecord
     }.freeze,
 
     mascot: {}.freeze,
+    background_image: {}.freeze,
     glitch_mascot1: {}.freeze,
     glitch_mascot2: {}.freeze,
     glitch_mascot3: {}.freeze,
