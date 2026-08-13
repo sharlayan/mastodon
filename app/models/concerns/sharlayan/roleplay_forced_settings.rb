@@ -2,6 +2,12 @@
 
 module Sharlayan::RoleplayForcedSettings
   DEFAULT_SETTINGS = {
+    avatar_decorations_enabled: false,
+    circles_enabled: false,
+    online_status_enabled: false,
+    rate_limit_bypass_enabled: true,
+    reactions_enabled: false,
+    status_character_limit: 1500,
     user_themes_enabled: false,
   }.freeze
 

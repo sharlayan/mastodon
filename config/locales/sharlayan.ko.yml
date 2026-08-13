@@ -231,6 +231,7 @@ ko:
     settings:
       user_themes:
         catalog: 서버 테마 카탈로그 JSON
+        catalog_example: '밝음/어두움 테마 간단 예시:'
         catalog_hint: id, name, variables.light / variables.dark 맵을 가진 테마 배열입니다. 프런트엔드가 허용한 CSS 변수만 적용됩니다.
         defaults: 서버 기본 테마 JSON
         defaults_hint: light와 dark 항목에 테마 ID와 선택적인 variables 맵을 지정합니다. 선택한 풍미의 기본값을 유지하려면 {}를 사용합니다.

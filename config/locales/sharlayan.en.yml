@@ -247,6 +247,7 @@ en:
     settings:
       user_themes:
         catalog: Server theme catalog JSON
+        catalog_example: 'Short light/dark example:'
         catalog_hint: An array of themes with id, name, and variables.light / variables.dark maps. Only frontend-allowed CSS variables are applied.
         defaults: Server default theme JSON
         defaults_hint: A map containing light and dark entries with a theme ID and optional variables map. Use {} to keep the selected flavour defaults.
