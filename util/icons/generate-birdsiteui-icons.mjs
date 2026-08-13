@@ -23,7 +23,6 @@ const version = JSON.parse(
 
 function normalize(svg) {
   return svg
-    .replace(/\s*<!--[\s\S]*?-->\s*/g, '')
     .replace(/fill="currentColor"/g, 'fill="#000"')
     .replace(/stroke="currentColor"/g, 'stroke="#000"')
     .replace(/\s+/g, ' ')

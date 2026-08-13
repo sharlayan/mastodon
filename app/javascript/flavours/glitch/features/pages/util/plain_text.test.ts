@@ -24,6 +24,10 @@ describe('pageDocumentPlainText', () => {
     ).toBe('Heading\n\nbold label text');
   });
 
+  it('handles tokenizer control-character input without recursion', () => {
+    expect(() => pageDocumentPlainText('\t\v\n', 'markdown')).not.toThrow();
+  });
+
   it('excludes formatting syntax and whitespace from the text-only count', () => {
     expect(
       pageDocumentTextOnlyLength(
