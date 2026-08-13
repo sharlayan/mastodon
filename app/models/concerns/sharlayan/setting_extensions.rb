@@ -9,6 +9,8 @@ module Sharlayan::SettingExtensions
 
   def sharlayan_defaults
     content = Rails.root.join('config', 'settings', 'sharlayan.yml').read
-    YAML.safe_load(content).fetch('defaults')
+    defaults = YAML.safe_load(content).fetch('defaults')
+    defaults['status_character_limit'] = ENV.fetch('MAX_TOOT_CHARS', defaults.fetch('status_character_limit')).to_i
+    defaults
   end
 end

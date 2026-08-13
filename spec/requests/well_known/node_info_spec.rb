@@ -106,7 +106,7 @@ RSpec.describe 'The well-known node-info endpoints' do
             'disableRegistration' => be_in([true, false]),
             'disableLocalTimeline' => false,
             'disableGlobalTimeline' => false,
-            'maxNoteTextLength' => StatusLengthValidator::MAX_CHARS,
+            'maxNoteTextLength' => StatusLengthValidator.max_chars,
             'proxyAccountName' => ''
           )
         )
