@@ -1,0 +1,93 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require_relative '../config/boot'
+require_relative '../config/environment'
+
+abort 'development environment required' unless Rails.env.development?
+
+password = ENV.fetch('DEV_TEST_PASSWORD', 'devtest1234')
+
+fixtures = [
+  {
+    username: 'dev_aurora',
+    display_name: '오로라',
+    note: '짧은 일상 게시글을 확인하는 테스트 계정입니다.',
+    text: "좋은 아침이에요! 오늘도 즐거운 하루 보내세요.\n\n#일상 #테스트",
+    visibility: :public,
+  },
+  {
+    username: 'dev_borealis',
+    display_name: 'Borealis',
+    note: 'multilingual timeline fixture account',
+    text: "hello from the development instance\nthis post checks multiline rendering and #hashtags",
+    visibility: :public,
+    language: 'en',
+  },
+  {
+    username: 'dev_hikari',
+    display_name: 'ひかり',
+    note: '日本語表示を確認するためのテストアカウントです。',
+    text: '開発インスタンスからのテスト投稿です。日本語の表示を確認します。 #テスト',
+    visibility: :unlisted,
+    language: 'ja',
+  },
+  {
+    username: 'dev_nova',
+    display_name: 'Nova 🔭',
+    note: '내용 경고와 긴 텍스트 표시를 확인하는 테스트 계정입니다.',
+    text: '접혀 있는 본문입니다. 내용 경고를 펼쳤을 때 레이아웃과 여백이 올바른지 확인합니다.',
+    spoiler_text: '개발 테스트용 내용 경고',
+    visibility: :public,
+  },
+  {
+    username: 'dev_solis',
+    display_name: 'Solis',
+    note: '비공개 범위 표시를 확인하는 테스트 계정입니다.',
+    text: '팔로워 전용 게시글의 공개 범위 아이콘과 타임라인 표시를 확인합니다.',
+    visibility: :private,
+  },
+].freeze
+
+results = fixtures.map do |fixture|
+  account = Account.find_or_initialize_by(username: fixture[:username], domain: nil)
+  account.display_name = fixture[:display_name]
+  account.note = fixture[:note]
+  account.save!
+
+  user = User.find_or_initialize_by(account: account)
+  if user.new_record?
+    user.assign_attributes(
+      email: "#{fixture[:username]}@localhost",
+      password: password,
+      password_confirmation: password,
+      agreement: true,
+      confirmed_at: Time.now.utc,
+      approved: true,
+      bypass_registration_checks: true
+    )
+  end
+  user.save!
+  user.mark_email_as_confirmed!
+  user.approve!
+
+  status = account.statuses.order(:id).first
+  status ||= PostStatusService.new.call(
+    account,
+    text: fixture[:text],
+    spoiler_text: fixture[:spoiler_text],
+    visibility: fixture[:visibility],
+    language: fixture.fetch(:language, 'ko'),
+    local_only: true
+  )
+
+  {
+    account: account.acct,
+    status_id: status.id.to_s,
+    visibility: status.visibility,
+    local_only: status.local_only?,
+    url: ActivityPub::TagManager.instance.url_for(status),
+  }
+end
+
+puts JSON.pretty_generate(results)
