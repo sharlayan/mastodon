@@ -3,10 +3,12 @@ name: Check i18n
 on:
   push:
     branches:
+      - 'develop'
       - 'main'
       - 'stable-*'
   pull_request:
     branches:
+      - 'develop'
       - 'main'
       - 'stable-*'
 
