@@ -430,7 +430,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     return @reply_status = nil if reply_id.nil?
 
     status = Status.find_by(id: reply_id)
-    raise NoSuchReplyTargetError if status.nil? || !StatusPolicy.new(current_account, status).show?
+    raise NoSuchReplyTargetError if status.nil? || !StatusPolicy.new(current_account, status).reply?
 
     @reply_status = status
   end

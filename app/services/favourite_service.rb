@@ -32,7 +32,7 @@ class FavouriteService < BaseService
 
     if status.account.local?
       LocalNotificationWorker.perform_async(status.account_id, favourite.id, 'Favourite', 'favourite')
-    elsif status.account.activitypub?
+    elsif status.account.activitypub? && !Sharlayan::SilentInteractionDelivery.suppressed_for?(status.account)
       ActivityPub::DeliveryWorker.perform_async(build_json(favourite), favourite.account_id, status.account.inbox_url)
     end
   end

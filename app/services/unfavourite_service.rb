@@ -6,7 +6,7 @@ class UnfavouriteService < BaseService
   def call(account, status)
     favourite = Favourite.find_by!(account: account, status: status)
     favourite.destroy!
-    create_notification(favourite) if !status.account.local? && status.account.activitypub?
+    create_notification(favourite) if !status.account.local? && status.account.activitypub? && !Sharlayan::SilentInteractionDelivery.suppressed_for?(status.account)
     favourite
   end
 
