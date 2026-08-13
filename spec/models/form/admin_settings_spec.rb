@@ -68,6 +68,8 @@ RSpec.describe Form::AdminSettings do
         expect(settings.local_status_page_access).to eq('authenticated')
         expect(settings.norss).to be(true)
         expect(settings.trends).to be(false)
+        expect(settings.cat_enabled).to be(false)
+        expect(settings.cat_federation_enabled).to be(false)
       end
 
       it 'saves the soft-hide deletion setting as a boolean' do
@@ -84,7 +86,9 @@ RSpec.describe Form::AdminSettings do
           local_account_statuses_access: 'public',
           local_status_page_access: 'public',
           norss: '0',
-          trends: '1'
+          trends: '1',
+          cat_enabled: '1',
+          cat_federation_enabled: '1'
         ).save
 
         expect(Setting.local_live_feed_access).to eq('authenticated')
@@ -95,6 +99,8 @@ RSpec.describe Form::AdminSettings do
         expect(Setting.local_status_page_access).to eq('authenticated')
         expect(Setting.norss).to be(true)
         expect(Setting.trends).to be(false)
+        expect(Setting.cat_enabled).to be(false)
+        expect(Setting.cat_federation_enabled).to be(false)
       end
     end
 

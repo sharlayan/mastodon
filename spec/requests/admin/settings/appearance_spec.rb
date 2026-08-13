@@ -14,6 +14,16 @@ RSpec.describe 'Admin Settings Appearance' do
       expect(response.parsed_body.at_css('textarea[name="form_admin_settings[user_theme_catalog]"]')).to be_present
       expect(response.parsed_body.at_css('textarea[name="form_admin_settings[user_theme_defaults]"]')).to be_present
     end
+
+    it 'hides cat settings in roleplay mode' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        get admin_settings_appearance_path
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body.at_css('input[name="form_admin_settings[cat_enabled]"]')).to be_nil
+        expect(response.parsed_body.at_css('input[name="form_admin_settings[cat_federation_enabled]"]')).to be_nil
+      end
+    end
   end
 
   describe 'PUT /admin/settings/appearance' do

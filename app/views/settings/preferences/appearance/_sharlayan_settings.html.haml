@@ -102,7 +102,7 @@
                  hint: t('simple_form.hints.defaults.setting_avatar_decoration_shape'),
                  sharlayan_only: true
 
-- if Setting.cat_enabled
+- if Setting.cat_enabled && !roleplay_mode?
   %h2= t 'settings.cat'
   .fields-group
     = ff.input :'cat.show',
