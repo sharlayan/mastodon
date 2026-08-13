@@ -2,6 +2,7 @@
 
 module Sharlayan::UserRoleExtensions
   extend ActiveSupport::Concern
+  include Redisable
 
   EXTRA_FLAGS = {
     bypass_rate_limit: (1 << 0),
@@ -33,6 +34,11 @@ module Sharlayan::UserRoleExtensions
 
     validate :validate_extra_permissions_elevation
     validate :validate_sharlayan_own_role_edition
+
+    before_save :capture_admin_timeline_stream_accounts, if: :admin_timeline_authorization_will_change?
+    before_destroy :capture_admin_timeline_stream_accounts
+    after_commit :reauthorize_admin_timeline_stream_accounts, on: %i(create update destroy)
+    after_rollback :clear_admin_timeline_stream_accounts
   end
 
   class_methods do
@@ -96,5 +102,36 @@ module Sharlayan::UserRoleExtensions
 
   def validate_extra_permissions_elevation
     errors.add(:extra_permissions_as_keys, :elevated) if defined?(@current_account) && @current_account.user_role.computed_extra_permissions & extra_permissions != extra_permissions
+  end
+
+  def admin_timeline_authorization_will_change?
+    Sharlayan::AdminTimeline.enabled? && (new_record? || will_save_change_to_permissions? || will_save_change_to_extra_permissions? || will_save_change_to_position?)
+  end
+
+  def capture_admin_timeline_stream_accounts
+    return unless Sharlayan::AdminTimeline.enabled?
+
+    @admin_timeline_stream_account_ids = users.where.not(account_id: nil).pluck(:account_id) | admin_timeline_viewer_account_ids
+  end
+
+  def reauthorize_admin_timeline_stream_accounts
+    return unless defined?(@admin_timeline_stream_account_ids)
+
+    account_ids = @admin_timeline_stream_account_ids | admin_timeline_viewer_account_ids
+    payload = { event: :kill }.to_json
+    with_redis { |connection| account_ids.each { |account_id| connection.publish("timeline:system:#{account_id}", payload) } }
+  ensure
+    clear_admin_timeline_stream_accounts
+  end
+
+  def admin_timeline_viewer_account_ids
+    viewer_roles = self.class.select { |role| role.can_extra?(:view_admin_timeline) }
+    users = User.where.not(account_id: nil)
+
+    viewer_roles.any?(&:everyone?) ? users.pluck(:account_id) : users.where(role_id: viewer_roles.map(&:id)).pluck(:account_id)
+  end
+
+  def clear_admin_timeline_stream_accounts
+    remove_instance_variable(:@admin_timeline_stream_account_ids) if defined?(@admin_timeline_stream_account_ids)
   end
 end

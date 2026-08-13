@@ -131,7 +131,7 @@ class HideStatusService < BaseService
   def remove_from_admin
     return unless defined?(Sharlayan::AdminTimeline) && Sharlayan::AdminTimeline.enabled? && @account.local?
 
-    redis.publish(Sharlayan::AdminTimeline::REDIS_CHANNEL, @payload)
+    Sharlayan::AdminTimeline::REMOVAL_REDIS_CHANNELS.each { |channel| redis.publish(channel, @payload) }
   end
 
   def deindex

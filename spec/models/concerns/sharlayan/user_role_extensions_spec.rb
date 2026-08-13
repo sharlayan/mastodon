@@ -68,4 +68,47 @@ RSpec.describe UserRole do
       expect(role.errors.of_kind?(:extra_permissions_as_keys, :own_role)).to be true
     end
   end
+
+  describe 'management timeline stream authorization' do
+    around do |example|
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true') { example.run }
+    end
+
+    it 'disconnects affected streams when the permission is revoked' do
+      role = Fabricate(:user_role, extra_permissions: described_class::EXTRA_FLAGS[:view_admin_timeline])
+      user = Fabricate(:user, role: role)
+      connection = instance_double(Redis)
+      allow(connection).to receive(:publish)
+      allow(RedisConnection).to receive(:with).and_yield(connection)
+
+      role.update!(extra_permissions: 0)
+
+      expect(connection).to have_received(:publish).with("timeline:system:#{user.account_id}", { event: :kill }.to_json)
+    end
+
+    it 'disconnects existing viewers when the top role changes' do
+      owner_role = described_class.find_by!(name: 'Owner')
+      owner = Fabricate(:user, role: owner_role)
+      connection = instance_double(Redis)
+      allow(connection).to receive(:publish)
+      allow(RedisConnection).to receive(:with).and_yield(connection)
+
+      Fabricate(:user_role, position: described_class.maximum(:position) + 1)
+
+      expect(connection).to have_received(:publish).with("timeline:system:#{owner.account_id}", { event: :kill }.to_json)
+    end
+
+    it 'disconnects inherited viewers when the everyone permission is revoked' do
+      everyone = described_class.everyone
+      everyone.update!(extra_permissions: described_class::EXTRA_FLAGS[:view_admin_timeline])
+      user = Fabricate(:user, role: nil)
+      connection = instance_double(Redis)
+      allow(connection).to receive(:publish)
+      allow(RedisConnection).to receive(:with).and_yield(connection)
+
+      everyone.update!(extra_permissions: 0)
+
+      expect(connection).to have_received(:publish).with("timeline:system:#{user.account_id}", { event: :kill }.to_json)
+    end
+  end
 end

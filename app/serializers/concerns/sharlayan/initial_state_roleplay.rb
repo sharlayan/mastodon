@@ -26,10 +26,6 @@ module Sharlayan::InitialStateRoleplay
   private
 
   def admin_timeline_owner_viewer?
-    role = object_account_user&.role
-    return false if role.nil? || role.everyone?
-
-    top_position = UserRole.assignable.maximum(:position)
-    role.position == top_position
+    Sharlayan::AdminTimeline.owner_role?(object_account_user&.role)
   end
 end

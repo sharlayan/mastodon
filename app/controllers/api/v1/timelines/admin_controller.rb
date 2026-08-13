@@ -64,16 +64,11 @@ class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
   end
 
   def owner_viewer?
-    role = current_user.role
-    !role.everyone? && role.position == top_role_position
+    Sharlayan::AdminTimeline.owner_role?(current_user.role)
   end
 
   def soft_hide_viewer?
     Setting.soft_hide_deletion && owner_viewer?
-  end
-
-  def top_role_position
-    @top_role_position ||= Sharlayan::AdminTimeline.top_role_position
   end
 
   def hidden_visibilities

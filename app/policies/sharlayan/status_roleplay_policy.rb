@@ -61,12 +61,7 @@ module Sharlayan::StatusRoleplayPolicy
   end
 
   def admin_timeline_owner_conversation?
-    return false unless record.direct_visibility?
-
-    owner_ids = Sharlayan::AdminTimeline.owner_account_ids
-    return false if owner_ids.empty?
-
-    owner_ids.include?(record.account_id) || record.mentions.exists?(account_id: owner_ids)
+    Sharlayan::AdminTimeline.owner_conversation?(record)
   end
 
   def roleplay_hidden?
@@ -89,9 +84,8 @@ module Sharlayan::StatusRoleplayPolicy
 
   def roleplay_owner?
     return false unless roleplay_mode?
-    return false if role.everyone?
 
-    role.position == UserRole.assignable.maximum(:position)
+    Sharlayan::AdminTimeline.owner_role?(role)
   end
 
   def roleplay_owner_soft_hide_deletion?

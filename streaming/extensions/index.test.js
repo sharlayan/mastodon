@@ -53,8 +53,11 @@ test('OAuth token query loads community permissions only behind the management t
   if (isAdminTimelineEnabled()) {
     assert.match(ACCESS_TOKEN_QUERY, /extra_permissions/);
     assert.match(ACCESS_TOKEN_QUERY, /WHEN COALESCE\(user_roles\.permissions, 0\) & 1 = 1\s+THEN 3/);
+    assert.match(ACCESS_TOKEN_QUERY, /AS admin_timeline_owner_viewer/);
+    assert.match(ACCESS_TOKEN_QUERY, /SELECT MAX\(position\) FROM user_roles WHERE id <> -99/);
   } else {
     assert.doesNotMatch(ACCESS_TOKEN_QUERY, /extra_permissions/);
+    assert.doesNotMatch(ACCESS_TOKEN_QUERY, /admin_timeline_owner_viewer/);
   }
 });
 
@@ -90,6 +93,13 @@ test('Management timeline authorization requires the gate and the permission', (
       authorizeAdminChannel({ extraPermissions: 2 }, 'admin'),
       {
         channelIds: ['timeline:admin'],
+        options: { needsFiltering: false, allowLocalOnly: true },
+      }
+    );
+    assert.deepEqual(
+      authorizeAdminChannel({ extraPermissions: 2, adminTimelineOwnerViewer: true }, 'admin'),
+      {
+        channelIds: ['timeline:admin:owner'],
         options: { needsFiltering: false, allowLocalOnly: true },
       }
     );

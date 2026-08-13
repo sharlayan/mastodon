@@ -18,7 +18,7 @@ const authorizeChannel = (req, name) => {
   }
 
   return {
-    channelIds: ['timeline:admin'],
+    channelIds: [req.adminTimelineOwnerViewer ? 'timeline:admin:owner' : 'timeline:admin'],
     options: { needsFiltering: false, allowLocalOnly: true },
   };
 };
