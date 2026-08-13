@@ -82,6 +82,7 @@ export const readSharlayanInitialState = (
 ) => {
   const getMeta = <K extends keyof SharlayanInitialStateMeta>(key: K) =>
     initialState?.meta[key];
+  const roleplayMode = getMeta('roleplay_mode') === true;
 
   return {
     colorScheme: getMeta('color_scheme') ?? 'auto',
@@ -91,9 +92,9 @@ export const readSharlayanInitialState = (
     localStatusPageAccess: getMeta('local_status_page_access'),
     forceLocalOnly: getMeta('force_local_only') === true,
     federationUniverseEnabled: getMeta('federation_universe_enabled') === true,
-    roleplayMode: getMeta('roleplay_mode') === true,
-    publicTimelinesEnabled: getMeta('roleplay_mode') !== true,
-    collectionsEnabled: getMeta('roleplay_mode') !== true,
+    roleplayMode,
+    publicTimelinesEnabled: !roleplayMode,
+    collectionsEnabled: !roleplayMode,
     circlesEnabled: getMeta('circles_enabled') === true,
     clipsEnabled: getMeta('clips_enabled') === true,
     pagesEnabled: getMeta('pages_enabled') === true,
@@ -125,8 +126,9 @@ export const readSharlayanInitialState = (
     showAvatarDecorations: getMeta('show_avatar_decorations') ?? false,
     showFederatedAvatarDecorations:
       getMeta('show_federated_avatar_decorations') ?? false,
-    catEnabled: getMeta('cat_enabled') === true,
-    catFederationEnabled: getMeta('cat_federation_enabled') === true,
+    catEnabled: !roleplayMode && getMeta('cat_enabled') === true,
+    catFederationEnabled:
+      !roleplayMode && getMeta('cat_federation_enabled') === true,
     showCat: getMeta('show_cat') ?? true,
     showCatSpeak: getMeta('show_cat_speak') ?? true,
     showFederatedCat: getMeta('show_federated_cat') ?? true,

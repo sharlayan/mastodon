@@ -136,20 +136,21 @@
               hint: t('admin.settings.community_mode_override.force_mfm_enabled_hint'),
               sharlayan_only: true
 
-%h2= t('admin.settings.cat.title')
+- unless roleplay_mode?
+  %h2= t('admin.settings.cat.title')
 
-.fields-group
-  = f.input :cat_enabled,
-            as: :boolean,
-            wrapper: :with_label,
-            label: t('admin.settings.cat.enabled'),
-            hint: t('admin.settings.cat.enabled_hint'),
-            sharlayan_only: true
+  .fields-group
+    = f.input :cat_enabled,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.cat.enabled'),
+              hint: t('admin.settings.cat.enabled_hint'),
+              sharlayan_only: true
 
-.fields-group
-  = f.input :cat_federation_enabled,
-            as: :boolean,
-            wrapper: :with_label,
-            label: t('admin.settings.cat.federation_enabled'),
-            hint: t('admin.settings.cat.federation_enabled_hint'),
-            sharlayan_only: true
+  .fields-group
+    = f.input :cat_federation_enabled,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.cat.federation_enabled'),
+              hint: t('admin.settings.cat.federation_enabled_hint'),
+              sharlayan_only: true

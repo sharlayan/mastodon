@@ -3,6 +3,8 @@
 module Sharlayan::RoleplayForcedSettings
   SETTINGS = {
     antenna_enabled: false,
+    cat_enabled: false,
+    cat_federation_enabled: false,
     federation_instance_edges_enabled: false,
     federation_request_statistics_enabled: false,
     force_local_only: true,
