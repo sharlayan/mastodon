@@ -277,6 +277,9 @@ en:
         force_round_avatar_hint: Display every avatar image as a circle for all users, regardless of theme.
         force_mfm_enabled: Force MFM rendering
         force_mfm_enabled_hint: Ignore each user's MFM rendering preference and render MFM for everyone.
+        roleplay_forced_skin: Force web theme
+        roleplay_forced_skin_hint: Force the selected installed glitch theme for every web user while Community Mode is active. Personal theme selections are preserved but not rendered.
+        roleplay_forced_skin_none: Do not force a theme
       allow_user_custom_css:
         desc_html: Let users define their own custom CSS that is applied only to their
           own session in the web interface. When disabled, any stored user CSS stops

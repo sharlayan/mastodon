@@ -12,6 +12,17 @@ RSpec.describe 'Settings Preferences Appearance' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('.input.select.with_label .label_input > label[for="theme"] + .label_input__wrapper select#theme')).to be_present
     end
+
+    it 'hides the theme selector when roleplay mode forces a skin' do
+      Setting.roleplay_forced_skin = 'default'
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        get settings_preferences_appearance_path
+      end
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.at_css('select#theme')).to be_nil
+    end
   end
 
   describe 'PUT /settings/preferences/appearance' do

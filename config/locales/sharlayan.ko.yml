@@ -261,6 +261,9 @@ ko:
         force_round_avatar_hint: 테마와 상관없이 모든 사용자의 아바타 이미지를 원형으로 표시합니다.
         force_mfm_enabled: MFM 렌더링 강제
         force_mfm_enabled_hint: 각 사용자의 MFM 렌더링 설정을 무시하고 모든 사용자에게 MFM을 표시합니다.
+        roleplay_forced_skin: 웹 테마 강제
+        roleplay_forced_skin_hint: 커뮤니티 모드가 활성화된 동안 설치된 glitch 테마 중 선택한 테마를 모든 웹 사용자에게 강제합니다. 개인 테마 선택은 보존되지만 화면에는 적용되지 않습니다.
+        roleplay_forced_skin_none: 테마를 강제하지 않음
       allow_user_custom_css:
         desc_html: 사용자가 웹 인터페이스에서 본인 세션에만 적용되는 커스텀 CSS를 직접 지정할 수 있도록 허용합니다. 비활성화하면
           저장된 사용자 CSS도 더 이상 적용되지 않습니다.
