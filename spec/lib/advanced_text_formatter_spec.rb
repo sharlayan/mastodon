@@ -88,12 +88,39 @@ RSpec.describe AdvancedTextFormatter do
       context 'with an underscored mention followed by its status URL' do
         let(:account) { Fabricate(:account, username: 'ac_count__', domain: 'example.com', uri: 'https://example.com/users/ac_count__', url: 'https://example.com/@ac_count__') }
         let(:preloaded_accounts) { [account] }
-        let(:text) { '@ac_count__@example.com https://example.com/@ac_count__/117071597770660844' }
+        let(:text) { '@ac_count__@example.com https://example.com/@ac_count__/test' }
 
         it 'does not interpret underscores across the mention and URL as underline markup' do
           expect(subject).to include '<a href="https://example.com/@ac_count__" class="u-url mention"'
-          expect(subject).to include 'href="https://example.com/@ac_count__/117071597770660844"'
+          expect(subject).to include 'href="https://example.com/@ac_count__/test"'
           expect(subject).to_not include '<u>'
+        end
+      end
+
+      context 'with an underscored URL in a Markdown link' do
+        let(:text) { '[link](https://example.com/a_b)' }
+
+        it 'preserves the Markdown link syntax' do
+          expect(subject).to include '<a href="https://example.com/a_b"'
+          expect(subject).to include '>link</a>'
+          expect(subject).to_not include '[link]('
+        end
+      end
+
+      context 'with an underscored URL in inline code' do
+        let(:text) { '`https://example.com/a_b`' }
+
+        it 'preserves the inline code syntax' do
+          expect(subject).to include '<code>https://example.com/a_b</code>'
+          expect(subject).to_not include '<a href='
+        end
+      end
+
+      context 'with underscores outside links and account names' do
+        let(:text) { 'before _underlined_ after' }
+
+        it 'retains regular Markdown underline formatting' do
+          expect(subject).to include 'before <u>underlined</u> after'
         end
       end
 
