@@ -5,7 +5,7 @@ import { FormattedMessage } from 'react-intl';
 import { Button } from '@/flavours/glitch/components/button';
 import { apiRequestPut } from 'flavours/glitch/api';
 import { userTheme, userThemeCatalog, userThemeDefaults } from 'flavours/glitch/initial_state';
-import { applyUserTheme, containsUnsafeUserThemeValue, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, portableUserThemeConfig, resolveUserThemeConfig, USER_THEME_VARIABLES, watchUserTheme } from 'flavours/glitch/sharlayan/user_theme';
+import { containsUnsafeUserThemeValue, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, portableUserThemeConfig, resolveUserThemeConfig, USER_THEME_VARIABLE_GROUPS, watchUserTheme } from 'flavours/glitch/sharlayan/user_theme';
 
 const hexColor = (value) => {
   const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
@@ -32,7 +32,7 @@ const UserThemePage = () => {
     persist({ ...config, [scheme]: { ...config[scheme], theme } });
   }, [config, persist]);
 
-  const previewVariable = useCallback((scheme, variable, value) => {
+  const editVariable = useCallback((scheme, variable, value) => {
     const nextConfig = {
       ...config,
       [scheme]: {
@@ -41,12 +41,11 @@ const UserThemePage = () => {
       },
     };
     setConfig(nextConfig);
-    applyUserTheme(nextConfig, catalog);
-  }, [catalog, config]);
+  }, [config]);
 
   const persistVariable = useCallback((scheme, variable, value) => {
     const variables = { ...config[scheme].variables };
-    if (value.trim() && isSafeUserThemeValue(value.trim())) {
+    if (value.trim() && isSafeUserThemeValue(variable, value.trim())) {
       variables[variable] = value.trim();
       setUnsafeValue(false);
     } else if (value.trim()) {
@@ -99,7 +98,7 @@ const UserThemePage = () => {
       </div>
       <p className='hint'><FormattedMessage id='settings.user_theme.share_hint' defaultMessage='Theme files contain only the selected light/dark themes and allowed variable overrides.' /></p>
       {importError && <p className='user-theme__error'><FormattedMessage id='settings.user_theme.import_invalid' defaultMessage='This theme file is invalid.' /></p>}
-      {unsafeValue && <p className='user-theme__error'><FormattedMessage id='settings.user_theme.unsafe_value' defaultMessage='A value containing a resource reference or a non-color CSS value was removed.' /></p>}
+      {unsafeValue && <p className='user-theme__error'><FormattedMessage id='settings.user_theme.unsafe_value' defaultMessage='An unsupported or unsafe CSS value was removed.' /></p>}
       {['light', 'dark'].map(scheme => (
         <section className='user-theme__scheme' key={scheme}>
           <div className='user-theme__scheme__heading'>
@@ -114,18 +113,25 @@ const UserThemePage = () => {
             </select>
           </label>
           <div className='user-theme__variables'>
-            {USER_THEME_VARIABLES.map(variable => {
-              const value = config[scheme].variables[variable] ?? '';
-              return (
-                <label className='user-theme__variable' key={variable}>
-                  <code>{variable}</code>
-                  <span className='user-theme__variable__inputs'>
-                    <input type='color' value={hexColor(value)} aria-label={variable} onChange={event => persistVariable(scheme, variable, event.target.value)} />
-                    <input type='text' value={value} placeholder='inherit' onChange={event => previewVariable(scheme, variable, event.target.value)} onBlur={event => persistVariable(scheme, variable, event.target.value)} />
-                  </span>
-                </label>
-              );
-            })}
+            {USER_THEME_VARIABLE_GROUPS.map(group => (
+              <section className='user-theme__variable-group' key={group.id}>
+                <h3><FormattedMessage id={`settings.user_theme.category.${group.id}`} defaultMessage={group.id} /></h3>
+                <div className='user-theme__variable-group__items'>
+                  {group.variables.map(({ name, type }) => {
+                    const value = config[scheme].variables[name] ?? '';
+                    return (
+                      <label className='user-theme__variable' key={name}>
+                        <code>{name}</code>
+                        <span className={`user-theme__variable__inputs user-theme__variable__inputs--${type}`}>
+                          {type === 'color' && <input type='color' value={hexColor(value)} aria-label={name} onChange={event => editVariable(scheme, name, event.target.value)} onBlur={event => persistVariable(scheme, name, event.target.value)} />}
+                          <input type='text' value={value} placeholder='inherit' onChange={event => editVariable(scheme, name, event.target.value)} onBlur={event => persistVariable(scheme, name, event.target.value)} />
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         </section>
       ))}

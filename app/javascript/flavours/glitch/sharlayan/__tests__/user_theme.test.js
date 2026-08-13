@@ -1,4 +1,4 @@
-import { applyUserTheme, containsUnsafeUserThemeValue, decodeUserThemeStorage, encodeUserThemeStorage, parseUserThemeCatalog, portableUserThemeConfig, resolveUserThemeConfig } from '../user_theme';
+import { applyUserTheme, containsUnsafeUserThemeValue, decodeUserThemeStorage, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, portableUserThemeConfig, resolveUserThemeConfig } from '../user_theme';
 
 describe('user theme variables', () => {
   afterEach(() => {
@@ -21,6 +21,20 @@ describe('user theme variables', () => {
 
     expect(containsUnsafeUserThemeValue(imported)).toBe(true);
     expect(resolveUserThemeConfig(imported, {}).dark.variables).toEqual({ '--color-text-primary': '#ffffff' });
+  });
+
+  test('accepts spacing and corner lengths while keeping variable-specific validation', () => {
+    expect(isSafeUserThemeValue('--space-md', '18px')).toBe(true);
+    expect(isSafeUserThemeValue('--radius-sm', '0.5rem')).toBe(true);
+    expect(isSafeUserThemeValue('--radius-sm', '-1px')).toBe(false);
+    expect(isSafeUserThemeValue('--space-md', '#ffffff')).toBe(false);
+    expect(isSafeUserThemeValue('--color-bg-primary', '18px')).toBe(false);
+  });
+
+  test('normalizes non-color theme variables', () => {
+    const config = resolveUserThemeConfig({ dark: { variables: { '--space-md': '18px', '--radius-sm': '0.5rem' } } }, {});
+
+    expect(config.dark.variables).toEqual({ '--space-md': '18px', '--radius-sm': '0.5rem' });
   });
 
   test('round-trips UTF-8 theme JSON through opaque Base64 storage', () => {

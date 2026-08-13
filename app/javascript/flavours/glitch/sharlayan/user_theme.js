@@ -1,20 +1,64 @@
-export const USER_THEME_VARIABLES = [
-  '--color-text-primary',
-  '--color-text-secondary',
-  '--color-text-brand',
-  '--color-bg-primary',
-  '--color-bg-secondary',
-  '--color-bg-tertiary',
-  '--color-bg-brand-base',
-  '--color-bg-brand-soft',
-  '--color-bg-brand-softest',
-  '--color-border-primary',
-  '--color-border-strong',
-  '--color-border-brand',
+export const USER_THEME_VARIABLE_GROUPS = [
+  {
+    id: 'text',
+    variables: [
+      { name: '--color-text-primary', type: 'color' },
+      { name: '--color-text-secondary', type: 'color' },
+      { name: '--color-text-brand', type: 'color' },
+    ],
+  },
+  {
+    id: 'backgrounds',
+    variables: [
+      { name: '--color-bg-primary', type: 'color' },
+      { name: '--color-bg-secondary', type: 'color' },
+      { name: '--color-bg-tertiary', type: 'color' },
+      { name: '--color-bg-brand-base', type: 'color' },
+      { name: '--color-bg-brand-soft', type: 'color' },
+      { name: '--color-bg-brand-softest', type: 'color' },
+    ],
+  },
+  {
+    id: 'borders',
+    variables: [
+      { name: '--color-border-primary', type: 'color' },
+      { name: '--color-border-strong', type: 'color' },
+      { name: '--color-border-brand', type: 'color' },
+    ],
+  },
+  {
+    id: 'spacing',
+    variables: [
+      { name: '--space-3xs', type: 'length' },
+      { name: '--space-2xs', type: 'length' },
+      { name: '--space-xs', type: 'length' },
+      { name: '--space-sm', type: 'length' },
+      { name: '--space-md', type: 'length' },
+      { name: '--space-lg', type: 'length' },
+      { name: '--space-xl', type: 'length' },
+      { name: '--space-2xl', type: 'length' },
+      { name: '--space-3xl', type: 'length' },
+      { name: '--space-4xl', type: 'length' },
+      { name: '--space-5xl', type: 'length' },
+    ],
+  },
+  {
+    id: 'corners',
+    variables: [
+      { name: '--radius-xs', type: 'length' },
+      { name: '--radius-sm', type: 'length' },
+      { name: '--radius-md', type: 'length' },
+      { name: '--radius-lg', type: 'length' },
+      { name: '--radius-xl', type: 'length' },
+    ],
+  },
 ];
+
+export const USER_THEME_VARIABLES = USER_THEME_VARIABLE_GROUPS.flatMap(group => group.variables.map(variable => variable.name));
 
 const SCHEMES = ['light', 'dark'];
 const VARIABLE_SET = new Set(USER_THEME_VARIABLES);
+const VARIABLE_TYPES = new Map(USER_THEME_VARIABLE_GROUPS.flatMap(group => group.variables.map(variable => [variable.name, variable.type])));
 const REFERENCE_FUNCTION = /(?:url|src|image-set|cross-fade|element|paint|var|env)\s*\(/i;
 
 export const encodeUserThemeStorage = (value) => {
@@ -37,15 +81,20 @@ export const decodeUserThemeStorage = (value) => {
   }
 };
 
-export const isSafeUserThemeValue = (value) => {
+export const isSafeUserThemeValue = (variable, value) => {
   if (typeof value !== 'string' || value.length > 256 || REFERENCE_FUNCTION.test(value)) return false;
-  if (typeof CSS !== 'undefined' && typeof CSS.supports === 'function') return CSS.supports('color', value);
+  const type = VARIABLE_TYPES.get(variable);
+  if (!type) return false;
+  if (typeof CSS !== 'undefined' && typeof CSS.supports === 'function') {
+    const property = type === 'color' ? 'color' : variable.startsWith('--radius-') ? 'border-radius' : 'margin';
+    return CSS.supports(property, value);
+  }
   return true;
 };
 
 export const containsUnsafeUserThemeValue = (value) => {
   const parsed = parseObject(value);
-  return SCHEMES.some(scheme => Object.values(parseObject(parsed[scheme]?.variables)).some(candidate => !isSafeUserThemeValue(candidate)));
+  return SCHEMES.some(scheme => Object.entries(parseObject(parsed[scheme]?.variables)).some(([name, candidate]) => VARIABLE_SET.has(name) && !isSafeUserThemeValue(name, candidate)));
 };
 
 const parseObject = (value) => {
@@ -58,7 +107,7 @@ const parseObject = (value) => {
 };
 
 const normalizeVariables = (variables) => Object.fromEntries(
-  Object.entries(parseObject(variables)).filter(([name, value]) => VARIABLE_SET.has(name) && isSafeUserThemeValue(value)),
+  Object.entries(parseObject(variables)).filter(([name, value]) => VARIABLE_SET.has(name) && isSafeUserThemeValue(name, value)),
 );
 
 const normalizeScheme = (scheme) => {
