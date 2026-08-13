@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -8,8 +8,7 @@ import VolumeOffIcon from '@/material-icons/400-24px/volume_off.svg?react';
 import { apiGetDomainMutes } from 'flavours/glitch/api/domain_mutes';
 import type { ApiDomainMuteJSON } from 'flavours/glitch/api_types/domain_mute';
 import { Column } from 'flavours/glitch/components/column';
-import type { ColumnRef } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { MutedDomain } from 'flavours/glitch/components/muted_domain';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 
@@ -23,7 +22,6 @@ const Mutes: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   const [loading, setLoading] = useState(true);
   const [next, setNext] = useState<string | undefined>();
   const hasMore = !!next;
-  const columnRef = useRef<ColumnRef>(null);
 
   useEffect(() => {
     void apiGetDomainMutes()
@@ -59,10 +57,6 @@ const Mutes: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
       });
   }, [setLoading, setDomains, setNext, next]);
 
-  const handleHeaderClick = useCallback(() => {
-    columnRef.current?.scrollTop();
-  }, []);
-
   const handleUnmute = useCallback((domain: string) => {
     setDomains((prev) => prev.filter((d) => d.domain !== domain));
   }, []);
@@ -77,14 +71,13 @@ const Mutes: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   return (
     <Column
       bindToDocument={!multiColumn}
-      ref={columnRef}
       label={intl.formatMessage(messages.heading)}
     >
       <ColumnHeader
         icon='ban'
         iconComponent={VolumeOffIcon}
         title={intl.formatMessage(messages.heading)}
-        onClick={handleHeaderClick}
+        scrollTopOnClick
         multiColumn={multiColumn}
         showBackButton
       />

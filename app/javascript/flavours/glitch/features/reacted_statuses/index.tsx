@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -17,8 +17,7 @@ import {
   setReactionFilter,
 } from 'flavours/glitch/actions/reactions';
 import { Column } from 'flavours/glitch/components/column';
-import type { ColumnRef } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import StatusList from 'flavours/glitch/components/status_list';
 import { getStatusList } from 'flavours/glitch/selectors';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
@@ -35,7 +34,6 @@ const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
 }) => {
   const dispatch = useAppDispatch();
   const intl = useIntl();
-  const columnRef = useRef<ColumnRef>(null);
   const statusIds = useAppSelector((state) =>
     getStatusList(state, 'reactions'),
   );
@@ -73,10 +71,6 @@ const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
     [dispatch, columnId],
   );
 
-  const handleHeaderClick = useCallback(() => {
-    columnRef.current?.scrollTop();
-  }, []);
-
   const handleLoadMore = useCallback(() => {
     dispatch(expandReactedStatuses());
   }, [dispatch]);
@@ -100,7 +94,6 @@ const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
   return (
     <Column
       bindToDocument={!multiColumn}
-      ref={columnRef}
       label={intl.formatMessage(messages.heading)}
     >
       <ColumnHeader
@@ -109,7 +102,7 @@ const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
         title={intl.formatMessage(messages.heading)}
         onPin={handlePin}
         onMove={handleMove}
-        onClick={handleHeaderClick}
+        scrollTopOnClick
         pinned={pinned}
         multiColumn={multiColumn}
         showBackButton

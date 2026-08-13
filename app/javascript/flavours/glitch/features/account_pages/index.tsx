@@ -14,7 +14,8 @@ import type {
   ApiPageSeriesJSON,
 } from '@/flavours/glitch/api_types/pages';
 import { AccountHeader } from '@/flavours/glitch/components/account_header';
-import { ColumnBackButton } from '@/flavours/glitch/components/column_back_button';
+import { Column } from '@/flavours/glitch/components/column';
+import { ColumnBackButton } from '@/flavours/glitch/components/column/back_button';
 import { LoadMore } from '@/flavours/glitch/components/load_more';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { RemoteHint } from '@/flavours/glitch/components/remote_hint';
@@ -25,7 +26,6 @@ import {
 import { BookletListItem } from '@/flavours/glitch/features/pages/components/booklet_list_item';
 import { PageListItem } from '@/flavours/glitch/features/pages/components/page_list_item';
 import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bundle_column_error';
-import Column from '@/flavours/glitch/features/ui/components/column';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';

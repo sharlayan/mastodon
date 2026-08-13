@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -12,8 +12,7 @@ import {
 } from 'flavours/glitch/actions/reaction_mutes';
 import { Button } from 'flavours/glitch/components/button';
 import { Column } from 'flavours/glitch/components/column';
-import type { ColumnRef } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import type { ApiReactionMuteJSON } from 'flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
@@ -94,11 +93,6 @@ const ReactionMutes: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
     [dispatch],
   );
 
-  const columnRef = useRef<ColumnRef>(null);
-  const handleHeaderClick = useCallback(() => {
-    columnRef.current?.scrollTop();
-  }, []);
-
   const emptyMessage = (
     <FormattedMessage
       id='empty_column.reaction_mutes'
@@ -109,14 +103,13 @@ const ReactionMutes: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   return (
     <Column
       bindToDocument={!multiColumn}
-      ref={columnRef}
       label={intl.formatMessage(messages.heading)}
     >
       <ColumnHeader
         icon='heart-o'
         iconComponent={HeartBrokenIcon}
         title={intl.formatMessage(messages.heading)}
-        onClick={handleHeaderClick}
+        scrollTopOnClick
         multiColumn={multiColumn}
         showBackButton
       />

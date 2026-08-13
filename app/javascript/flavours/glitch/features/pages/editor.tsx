@@ -24,7 +24,7 @@ import type {
   ApiPageVisibility,
 } from 'flavours/glitch/api_types/pages';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import {
   TextInputField,
   TextAreaField,

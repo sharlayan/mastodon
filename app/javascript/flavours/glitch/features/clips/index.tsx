@@ -17,7 +17,7 @@ import StarIcon from '@/material-icons/400-24px/star-fill.svg?react';
 import SquigglyArrow from '@/svg-icons/squiggly_arrow.svg?react';
 import { fetchClips, deleteClip } from 'flavours/glitch/actions/clips';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';

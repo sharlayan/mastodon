@@ -6,7 +6,8 @@ import { Link } from 'react-router-dom';
 
 import { fetchAccountClips } from '@/flavours/glitch/actions/clips';
 import { AccountHeader } from '@/flavours/glitch/components/account_header';
-import { ColumnBackButton } from '@/flavours/glitch/components/column_back_button';
+import { Column } from '@/flavours/glitch/components/column';
+import { ColumnBackButton } from '@/flavours/glitch/components/column/back_button';
 import { Icon } from '@/flavours/glitch/components/icon';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { RemoteHint } from '@/flavours/glitch/components/remote_hint';
@@ -15,7 +16,6 @@ import {
   Scrollable,
 } from '@/flavours/glitch/components/scrollable_list/components';
 import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bundle_column_error';
-import Column from '@/flavours/glitch/features/ui/components/column';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';
 import { getOrderedAccountClips } from '@/flavours/glitch/selectors/clips';

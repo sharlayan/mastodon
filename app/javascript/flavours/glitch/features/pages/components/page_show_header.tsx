@@ -10,7 +10,7 @@ import FullscreenExitIcon from '@/material-icons/400-24px/fullscreen_exit.svg?re
 import OpenInNewIcon from '@/material-icons/400-24px/open_in_new.svg?react';
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 import { Avatar } from 'flavours/glitch/components/avatar';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Icon } from 'flavours/glitch/components/icon';
 
 const messages = defineMessages({

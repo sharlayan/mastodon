@@ -19,8 +19,8 @@ import { dismissNotificationsForStatuses } from 'flavours/glitch/actions/notific
 import { connectDirectStream } from 'flavours/glitch/actions/streaming';
 import { isNonStatusId } from 'flavours/glitch/actions/timelines_typed';
 import { CircularProgress } from 'flavours/glitch/components/circular_progress';
-import Column from 'flavours/glitch/components/column';
-import ColumnHeader from 'flavours/glitch/components/column_header';
+import { Column } from 'flavours/glitch/components/column';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import { me } from 'flavours/glitch/initial_state';
@@ -43,7 +43,6 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   const pinned = !!columnId;
   const intl = useIntl();
   const dispatch = useDispatch();
-  const columnRef = useRef();
   const messagesRef = useRef();
   const timelineId = `conversation:${conversationId}`;
 
@@ -224,10 +223,6 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
     dispatch(moveColumn(columnId, dir));
   }, [dispatch, columnId]);
 
-  const handleHeaderClick = useCallback(() => {
-    columnRef.current?.scrollTop();
-  }, []);
-
   const participantsButton = recipientAccounts.length > 0 ? (
     <IconButton
       className='column-header__button'
@@ -239,14 +234,14 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   ) : undefined;
 
   return (
-    <Column bindToDocument={!multiColumn} ref={columnRef} label={intl.formatMessage(messages.title)}>
+    <Column bindToDocument={!multiColumn} label={intl.formatMessage(messages.title)}>
       <ColumnHeader
         icon='envelope'
         iconComponent={MailIcon}
         title={headerTitle}
         onPin={handlePin}
         onMove={handleMove}
-        onClick={handleHeaderClick}
+        scrollTopOnClick
         pinned={pinned}
         multiColumn={multiColumn}
         showBackButton={!pinned}

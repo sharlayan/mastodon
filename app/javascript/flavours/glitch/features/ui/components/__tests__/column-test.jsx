@@ -1,15 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
+import { Column } from '@/flavours/glitch/components/column';
 import { ColumnWidthContext } from 'flavours/glitch/features/ui/util/column_width_context';
 
-import Column from '../column';
-
-vi.mock('flavours/glitch/components/column_header', () => ({
-  default: () => null,
-}));
-
-describe('legacy Column', () => {
+describe('Column', () => {
   it('applies a customized width from the deck column context', () => {
     render(
       <ColumnWidthContext.Provider value={{ customized: true, width: 520 }}>

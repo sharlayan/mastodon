@@ -15,7 +15,7 @@ import SquigglyArrow from '@/svg-icons/squiggly_arrow.svg?react';
 import { fetchCircles } from 'flavours/glitch/actions/circles';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';

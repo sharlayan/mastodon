@@ -10,7 +10,7 @@ import CloudIcon from '@/material-icons/400-24px/cloud.svg?react';
 import { openModal } from 'flavours/glitch/actions/modal';
 import type { ApiDriveFileJSON } from 'flavours/glitch/api_types/drive';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { useAppDispatch } from 'flavours/glitch/store';

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -30,8 +30,7 @@ import type {
   ApiBoardAnnouncementIcon,
 } from 'flavours/glitch/api_types/board_announcements';
 import { Column } from 'flavours/glitch/components/column';
-import type { ColumnRef } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { EmojiHTML } from 'flavours/glitch/components/emoji/html';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
@@ -235,7 +234,6 @@ const BoardAnnouncements: React.FC<{
 }> = ({ columnId, multiColumn }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
-  const columnRef = useRef<ColumnRef>(null);
   const { singleColumn } = useLayout();
   const wideMatch = useWideMatch();
   const wide = singleColumn || wideMatch;
@@ -273,10 +271,6 @@ const BoardAnnouncements: React.FC<{
     [dispatch, columnId],
   );
 
-  const handleHeaderClick = useCallback(() => {
-    columnRef.current?.scrollTop();
-  }, []);
-
   const handleRefresh = useCallback(() => {
     void dispatch(fetchBoardAnnouncements());
   }, [dispatch]);
@@ -286,7 +280,6 @@ const BoardAnnouncements: React.FC<{
   return (
     <Column
       bindToDocument={!multiColumn}
-      ref={columnRef}
       label={intl.formatMessage(messages.heading)}
     >
       <ColumnHeader
@@ -295,7 +288,7 @@ const BoardAnnouncements: React.FC<{
         title={intl.formatMessage(messages.heading)}
         onPin={handlePin}
         onMove={handleMove}
-        onClick={handleHeaderClick}
+        scrollTopOnClick
         pinned={pinned}
         multiColumn={multiColumn}
         showBackButton

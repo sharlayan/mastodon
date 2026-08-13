@@ -27,7 +27,7 @@ import type {
   ApiPageWritingStatisticsJSON,
 } from 'flavours/glitch/api_types/pages';
 import { Column } from 'flavours/glitch/components/column';
-import { ColumnHeader } from 'flavours/glitch/components/column_header';
+import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import SettingToggle from 'flavours/glitch/features/notifications/components/setting_toggle';
