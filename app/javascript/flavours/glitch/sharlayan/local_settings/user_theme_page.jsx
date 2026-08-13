@@ -18,6 +18,7 @@ const UserThemePage = () => {
   const catalog = useMemo(() => parseUserThemeCatalog(userThemeCatalog), []);
   const serverDefaults = useMemo(() => resolveUserThemeConfig({}, userThemeDefaults), []);
   const [config, setConfig] = useState(() => resolveUserThemeConfig(userTheme, userThemeDefaults));
+  const [activeCategories, setActiveCategories] = useState({ light: USER_THEME_VARIABLE_GROUPS[0].id, dark: USER_THEME_VARIABLE_GROUPS[0].id });
   const [importError, setImportError] = useState(false);
   const [unsafeValue, setUnsafeValue] = useState(false);
   const importInput = useRef(null);
@@ -113,9 +114,30 @@ const UserThemePage = () => {
             </select>
           </label>
           <div className='user-theme__variables'>
-            {USER_THEME_VARIABLE_GROUPS.map(group => (
-              <section className='user-theme__variable-group' key={group.id}>
-                <h3><FormattedMessage id={`settings.user_theme.category.${group.id}`} defaultMessage={group.id} /></h3>
+            <div className='user-theme__category-tabs' role='tablist'>
+              {USER_THEME_VARIABLE_GROUPS.map(group => (
+                <button
+                  type='button'
+                  role='tab'
+                  id={`user-theme-${scheme}-category-${group.id}`}
+                  aria-controls={`user-theme-${scheme}-variables-${group.id}`}
+                  aria-selected={activeCategories[scheme] === group.id}
+                  className={activeCategories[scheme] === group.id ? 'active' : undefined}
+                  onClick={() => setActiveCategories(current => ({ ...current, [scheme]: group.id }))}
+                  key={group.id}
+                >
+                  <FormattedMessage id={`settings.user_theme.category.${group.id}`} defaultMessage={group.id} />
+                </button>
+              ))}
+            </div>
+            {USER_THEME_VARIABLE_GROUPS.filter(group => group.id === activeCategories[scheme]).map(group => (
+              <section
+                className='user-theme__variable-group'
+                role='tabpanel'
+                id={`user-theme-${scheme}-variables-${group.id}`}
+                aria-labelledby={`user-theme-${scheme}-category-${group.id}`}
+                key={group.id}
+              >
                 <div className='user-theme__variable-group__items'>
                   {group.variables.map(({ name, type }) => {
                     const value = config[scheme].variables[name] ?? '';
