@@ -9,6 +9,8 @@ RSpec.describe 'Admin Settings Appearance' do
     it 'keeps custom settings out of the appearance tab' do
       get admin_settings_appearance_path
 
+      expect(response.parsed_body.at_css('textarea[name="form_admin_settings[custom_css]"]')).to be_present
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[mascot]"]')).to be_present
       expect(response.parsed_body.at_css('input[name="form_admin_settings[user_themes_enabled]"]')).to be_nil
     end
 
