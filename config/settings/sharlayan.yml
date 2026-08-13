@@ -21,6 +21,7 @@ defaults:
   force_mfm_enabled: false
   force_avatar_decorations: false
   force_round_avatar: false
+  roleplay_forced_skin: ''
   circles_enabled: false
   clips_enabled: false
   auto_quote_from_url: false

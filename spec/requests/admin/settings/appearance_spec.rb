@@ -24,6 +24,17 @@ RSpec.describe 'Admin Settings Appearance' do
         expect(response.parsed_body.at_css('input[name="form_admin_settings[cat_federation_enabled]"]')).to be_nil
       end
     end
+
+    it 'renders the forced roleplay theme selector only in roleplay mode' do
+      get admin_settings_appearance_path
+      expect(response.parsed_body.at_css('select[name="form_admin_settings[roleplay_forced_skin]"]')).to be_nil
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        get admin_settings_appearance_path
+
+        expect(response.parsed_body.at_css('select[name="form_admin_settings[roleplay_forced_skin]"]')).to be_present
+      end
+    end
   end
 
   describe 'PUT /admin/settings/appearance' do
@@ -37,6 +48,17 @@ RSpec.describe 'Admin Settings Appearance' do
       expect(Setting.user_themes_enabled).to be(true)
       expect(Setting.user_theme_catalog).to eq(catalog)
       expect(Setting.user_theme_defaults).to eq(defaults)
+    end
+
+    it 'stores an installed forced roleplay theme' do
+      allow(Themes.instance).to receive(:skins_for).with('glitch').and_return(%w(default contrast))
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        put admin_settings_appearance_path, params: { form_admin_settings: { roleplay_forced_skin: 'contrast' } }
+      end
+
+      expect(response).to redirect_to(admin_settings_appearance_path)
+      expect(Setting.roleplay_forced_skin).to eq('contrast')
     end
   end
 end

@@ -145,6 +145,25 @@ RSpec.describe ThemeHelper do
         end
       end
     end
+
+    context 'when roleplay mode forces an installed skin' do
+      before do
+        allow(Themes.instance).to receive(:skins_for).with('glitch').and_return(%w(default contrast))
+        Setting.roleplay_forced_skin = 'contrast'
+      end
+
+      it 'overrides the user skin only while roleplay mode is enabled' do
+        allow(helper).to receive(:current_user).and_return(Fabricate(:user, settings: { skin: 'default' }))
+
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+          expect(helper.current_theme).to eq(%w(glitch contrast))
+        end
+
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+          expect(helper.current_theme).to eq(%w(glitch default))
+        end
+      end
+    end
   end
 
   describe '#current_flavour' do
