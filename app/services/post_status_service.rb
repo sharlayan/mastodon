@@ -86,6 +86,8 @@ class PostStatusService < BaseService
   end
 
   def preprocess_attributes!
+    raise Mastodon::NotPermittedError if @in_reply_to.present? && !StatusPolicy.new(@account, @in_reply_to).reply?
+
     fill_blank_text!
     @sharlayan_pipeline = Sharlayan::PostStatusPipeline.new(account: @account, options: @options, text: @text, in_reply_to: @in_reply_to, quoted_status: @quoted_status)
     @sharlayan_pipeline.prepare!(

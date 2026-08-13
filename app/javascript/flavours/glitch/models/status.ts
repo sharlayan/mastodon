@@ -87,6 +87,7 @@ export interface StatusShape {
   reblogged: boolean;
   reblogs_count: number;
   replies_count: number;
+  repliable: boolean;
   visibility: StatusVisibility;
 }
 export type ExpandedStatusShape = Omit<StatusShape, 'account' | 'reblog'> & {

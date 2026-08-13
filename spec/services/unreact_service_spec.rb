@@ -44,6 +44,22 @@ RSpec.describe UnreactService, type: :service do
     end
   end
 
+  describe 'silent interaction delivery' do
+    let(:bob) { Fabricate(:account, protocol: :activitypub, username: 'bob', domain: 'bird.makeup', inbox_url: 'https://bird.makeup/users/bob/inbox') }
+    let(:status) { Fabricate(:status, account: bob) }
+
+    before do
+      sender.status_reactions.create!(status: status, name: '👍')
+      subject.call(sender, status, '👍')
+    end
+
+    it 'removes the reaction without targeting the bridge inbox' do
+      expect(status.reactions.first).to be_nil
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '')
+      expect(ActivityPub::ReactionsDistributionWorker).to_not have_enqueued_sidekiq_job(anything, sender.id, bob.inbox_url)
+    end
+  end
+
   describe 'when reaction does not exist' do
     let(:status) { Fabricate(:status) }
 

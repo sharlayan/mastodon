@@ -118,7 +118,7 @@ class Api::V1::StatusesController < Api::BaseController
 
   def set_thread
     @thread = Status.find(status_params[:in_reply_to_id]) if status_params[:in_reply_to_id].present?
-    authorize(@thread, :show?) if @thread.present?
+    authorize(@thread, :reply?) if @thread.present?
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     render json: { error: I18n.t('statuses.errors.in_reply_not_found') }, status: 404
   end

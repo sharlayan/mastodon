@@ -42,6 +42,21 @@ RSpec.describe ReactService, type: :service do
     end
   end
 
+  describe 'silent interaction delivery' do
+    let(:bob) { Fabricate(:account, protocol: :activitypub, username: 'bob', domain: 'bird.makeup', inbox_url: 'https://bird.makeup/users/bob/inbox') }
+    let(:status) { Fabricate(:status, account: bob) }
+
+    before do
+      subject.call(sender, status, '👍')
+    end
+
+    it 'creates a reaction without targeting the bridge inbox' do
+      expect(status.reactions.first).to be_present
+      expect(ActivityPub::ReactionsDistributionWorker).to have_enqueued_sidekiq_job(anything, sender.id, '')
+      expect(ActivityPub::ReactionsDistributionWorker).to_not have_enqueued_sidekiq_job(anything, sender.id, bob.inbox_url)
+    end
+  end
+
   describe 'distribution to the reactor followers' do
     let(:status) { Fabricate(:status, account: sender) }
 
