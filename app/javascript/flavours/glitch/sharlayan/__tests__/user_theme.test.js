@@ -1,4 +1,4 @@
-import { applyUserTheme, containsUnsafeUserThemeValue, decodeUserThemeStorage, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, portableUserThemeConfig, resolveUserThemeConfig } from '../user_theme';
+import { applyUserTheme, containsUnsafeUserThemeValue, decodeUserThemeStorage, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, parseUserThemeOverrides, portableUserThemeConfig, resolveUserThemeConfig } from '../user_theme';
 
 describe('user theme variables', () => {
   afterEach(() => {
@@ -37,10 +37,10 @@ describe('user theme variables', () => {
     expect(config.dark.variables).toEqual({ '--space-md': '18px', '--radius-sm': '0.5rem' });
   });
 
-  test('round-trips UTF-8 theme JSON through opaque Base64 storage', () => {
+  test('stores UTF-8 theme JSON without Base64 encoding', () => {
     const json = JSON.stringify({ name: '밝은 테마', dark: { theme: '夜' } });
 
-    expect(decodeUserThemeStorage(encodeUserThemeStorage(json))).toBe(json);
+    expect(encodeUserThemeStorage(json)).toBe(json);
   });
 
   test('reads legacy plain JSON storage values', () => {
@@ -81,6 +81,14 @@ describe('user theme variables', () => {
     const config = resolveUserThemeConfig({}, { dark: { theme: 'server-dark', variables: { '--color-bg-primary': '#101010' } } });
 
     expect(config.dark).toEqual({ theme: 'server-dark', variables: { '--color-bg-primary': '#101010' } });
+  });
+
+  test('keeps user overrides separate when server defaults change', () => {
+    const overrides = parseUserThemeOverrides({ dark: { variables: { '--color-text-primary': '#ffffff' } } });
+    const config = resolveUserThemeConfig(overrides, { dark: { theme: 'new-default', variables: { '--color-bg-primary': '#202020' } } });
+
+    expect(overrides.dark).toEqual({ variables: { '--color-text-primary': '#ffffff' } });
+    expect(config.dark).toEqual({ theme: 'new-default', variables: { '--color-bg-primary': '#202020', '--color-text-primary': '#ffffff' } });
   });
 
   test('removes stored overrides when the server disables user themes', () => {
