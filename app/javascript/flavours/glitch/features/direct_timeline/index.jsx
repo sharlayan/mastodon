@@ -33,6 +33,7 @@ const DirectTimeline = ({ columnId, multiColumn }) => {
   // glitch-soc additions
   const hasUnread = useSelector(state => state.getIn(['timelines', 'direct', 'unread']) > 0);
   const conversationsMode = useSelector(state => state.getIn(['settings', 'direct', 'conversations']));
+  const preserveGroup = useSelector(state => state.getIn(['settings', 'direct', 'preserve_group_on_new_mentions'], false));
 
   const handlePin = useCallback(() => {
     if (columnId) {
@@ -58,7 +59,7 @@ const DirectTimeline = ({ columnId, multiColumn }) => {
     dispatch(mountConversations());
 
     if (conversationsMode) {
-      dispatch(expandConversations());
+      dispatch(expandConversations({ replace: true }));
     } else {
       dispatch(expandDirectTimeline());
     }
@@ -69,7 +70,7 @@ const DirectTimeline = ({ columnId, multiColumn }) => {
       dispatch(unmountConversations());
       disconnect();
     };
-  }, [dispatch, conversationsMode]);
+  }, [dispatch, conversationsMode, preserveGroup]);
 
   return (
     <Column bindToDocument={!multiColumn} ref={columnRef} label={intl.formatMessage(messages.title)}>

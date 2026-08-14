@@ -188,6 +188,7 @@
   "custom_emoji_mutes.reject_reactions_badge": "Reactions blocked",
   "custom_emoji_mutes.unmute": "Unmute",
   "direct.group_by_accounts": "Group by account",
+  "direct.preserve_group_on_new_mentions": "Keep the existing group when mentioning new users",
   "direct.start_conversation": "Start a new conversation",
   "direct_composer.cancel_reply": "Cancel reply",
   "direct_composer.placeholder": "Send a message…",

@@ -188,6 +188,7 @@
   "custom_emoji_mutes.reject_reactions_badge",
   "custom_emoji_mutes.unmute",
   "direct.group_by_accounts",
+  "direct.preserve_group_on_new_mentions",
   "direct.start_conversation",
   "direct_composer.cancel_reply",
   "direct_composer.placeholder",

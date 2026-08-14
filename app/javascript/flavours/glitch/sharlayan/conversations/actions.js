@@ -1,9 +1,13 @@
 import { Set as ImmutableSet } from 'immutable';
 
-export const groupedConversationParams = maxId => ({ max_id: maxId, grouped: '1' });
+export const groupedConversationParams = (maxId, preserveGroup = false) => ({
+  max_id: maxId,
+  grouped: '1',
+  ...(preserveGroup ? { preserve_group: '1' } : {}),
+});
 
-export const expandGroupedConversationStatuses = (expandTimeline, conversationId, { maxId } = {}) =>
-  expandTimeline(`conversation:${conversationId}`, `/api/v1/conversations/${conversationId}/statuses`, { max_id: maxId });
+export const expandGroupedConversationStatuses = (expandTimeline, conversationId, { maxId, preserveGroup = false } = {}) =>
+  expandTimeline(`conversation:${conversationId}`, `/api/v1/conversations/${conversationId}/statuses`, { max_id: maxId, ...(preserveGroup ? { preserve_group: '1' } : {}) });
 
 export const updateGroupedConversationTimeline = ({ dispatch, getState, updateTimeline, conversation }) => {
   if (!conversation.last_status) return;

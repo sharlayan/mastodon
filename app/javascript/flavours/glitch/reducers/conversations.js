@@ -50,8 +50,12 @@ const updateConversation = (state, item) => state.update('items', list => {
   }
 });
 
-const expandNormalizedConversations = (state, conversations, next, isLoadingRecent) => {
+const expandNormalizedConversations = (state, conversations, next, isLoadingRecent, replace) => {
   let items = ImmutableList(conversations.map(conversationToMap));
+
+  if (replace) {
+    return state.merge({ items, isLoading: false, hasMore: !!next });
+  }
 
   return state.withMutations(mutable => {
     if (!items.isEmpty()) {
@@ -100,7 +104,7 @@ export default function conversations(state = initialState, action) {
   case CONVERSATIONS_FETCH_FAIL:
     return state.set('isLoading', false);
   case CONVERSATIONS_FETCH_SUCCESS:
-    return expandNormalizedConversations(state, action.conversations, action.next, action.isLoadingRecent);
+    return expandNormalizedConversations(state, action.conversations, action.next, action.isLoadingRecent, action.replace);
   case CONVERSATIONS_UPDATE:
     return updateConversation(state, action.conversation);
   case CONVERSATIONS_MOUNT:

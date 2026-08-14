@@ -17,6 +17,7 @@ import { markConversationRead, expandConversationStatuses } from 'flavours/glitc
 import { openModal } from 'flavours/glitch/actions/modal';
 import { dismissNotificationsForStatuses } from 'flavours/glitch/actions/notification_groups';
 import { connectDirectStream } from 'flavours/glitch/actions/streaming';
+import { clearTimeline } from 'flavours/glitch/actions/timelines';
 import { isNonStatusId } from 'flavours/glitch/actions/timelines_typed';
 import { CircularProgress } from 'flavours/glitch/components/circular_progress';
 import Column from 'flavours/glitch/components/column';
@@ -48,6 +49,7 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   const timelineId = `conversation:${conversationId}`;
 
   const conversation = useSelector(state => state.getIn(['conversations', 'items']).find(item => item.get('id') === conversationId));
+  const preserveGroup = useSelector(state => state.getIn(['settings', 'direct', 'preserve_group_on_new_mentions'], false));
 
   const items = useSelector(state => state.getIn(['timelines', timelineId, 'items']) || ImmutableList());
   const isLoading = useSelector(state => state.getIn(['timelines', timelineId, 'isLoading'], false));
@@ -146,8 +148,9 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   }, []);
 
   useEffect(() => {
-    dispatch(expandConversationStatuses(conversationId));
-    dispatch(markConversationRead(conversationId));
+    dispatch(clearTimeline(timelineId));
+    dispatch(expandConversationStatuses(conversationId, { preserveGroup }));
+    dispatch(markConversationRead(conversationId, preserveGroup));
 
     const disconnect = dispatch(connectDirectStream());
 
@@ -155,7 +158,7 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
       disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, conversationId]);
+  }, [dispatch, conversationId, preserveGroup]);
 
   useEffect(() => {
     if (multiColumn) {
