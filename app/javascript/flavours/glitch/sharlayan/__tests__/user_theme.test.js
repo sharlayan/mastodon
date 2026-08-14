@@ -1,9 +1,10 @@
-import { applyUserTheme, containsUnsafeUserThemeValue, decodeUserThemeStorage, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, parseUserThemeOverrides, portableUserThemeConfig, resolveUserThemeConfig } from '../user_theme';
+import { applyUserTheme, BIRDSITEUI_USER_THEME, containsUnsafeUserThemeValue, decodeUserThemeStorage, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, parseUserThemeOverrides, portableUserThemeConfig, resolveUserThemeConfig, userThemeCatalogForActiveSkin } from '../user_theme';
 
 describe('user theme variables', () => {
   afterEach(() => {
     document.documentElement.removeAttribute('style');
     document.documentElement.dataset.colorScheme = 'dark';
+    document.head.querySelectorAll('link[rel~="stylesheet"]').forEach(link => link.remove());
   });
 
   test('normalizes server themes to the frontend allowlist', () => {
@@ -14,6 +15,29 @@ describe('user theme variables', () => {
     }]));
 
     expect(catalog[0].variables.dark).toEqual({ '--color-bg-primary': '#001122' });
+  });
+
+  test('appends the BirdSiteUI preset while preserving server themes', () => {
+    const stylesheet = document.createElement('link');
+    stylesheet.rel = 'stylesheet';
+    stylesheet.href = '/packs-test/skins/glitch/birdsiteui/application.css';
+    document.head.appendChild(stylesheet);
+
+    const catalog = userThemeCatalogForActiveSkin([{
+      id: 'ocean',
+      name: 'Ocean',
+      variables: { dark: { '--color-bg-primary': '#001122' } },
+    }]);
+
+    expect(catalog.map(theme => theme.id)).toEqual(['ocean', BIRDSITEUI_USER_THEME.id]);
+    expect(catalog[1].variables.light['--color-bg-primary']).toBe('#fff');
+    expect(catalog[1].variables.dark['--color-bg-primary']).toBe('#1e2028');
+  });
+
+  test('does not add the BirdSiteUI preset to other skins', () => {
+    const catalog = userThemeCatalogForActiveSkin([]);
+
+    expect(catalog).toEqual([]);
   });
 
   test('removes resource references and reports unsafe imported values', () => {
