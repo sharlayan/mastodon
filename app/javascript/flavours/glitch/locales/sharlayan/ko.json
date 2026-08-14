@@ -188,6 +188,7 @@
   "custom_emoji_mutes.reject_reactions_badge": "리액션 차단됨",
   "custom_emoji_mutes.unmute": "뮤트 해제",
   "direct.group_by_accounts": "사용자별로 묶기",
+  "direct.preserve_group_on_new_mentions": "새 유저를 언급해도 기존 그룹 유지",
   "direct.start_conversation": "새 대화를 시작하세요",
   "direct_composer.cancel_reply": "답글 취소",
   "direct_composer.placeholder": "메시지 보내기…",

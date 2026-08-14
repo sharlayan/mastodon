@@ -35,28 +35,30 @@ export const unmountConversations = () => ({
   type: CONVERSATIONS_UNMOUNT,
 });
 
-export const markConversationRead = (conversationId) => (dispatch) => {
+export const markConversationRead = (conversationId, preserveGroup = false) => (dispatch) => {
   dispatch({
     type: CONVERSATIONS_READ,
     id: conversationId,
   });
 
-  api().post(`/api/v1/conversations/${conversationId}/read`);
+  api().post(`/api/v1/conversations/${conversationId}/read`, null, { params: { preserve_group: preserveGroup || undefined } });
 };
 
-export const expandConversationStatuses = (conversationId, { maxId } = {}) =>
-  expandGroupedConversationStatuses(expandTimeline, conversationId, { maxId });
+export const expandConversationStatuses = (conversationId, { maxId, preserveGroup = false } = {}) =>
+  expandGroupedConversationStatuses(expandTimeline, conversationId, { maxId, preserveGroup });
 
-export const expandConversations = ({ maxId } = {}) => (dispatch, getState) => {
+export const expandConversations = ({ maxId, replace = false } = {}) => (dispatch, getState) => {
   dispatch(expandConversationsRequest());
 
-  const params = groupedConversationParams(maxId);
+  const preserveGroup = getState().getIn(['settings', 'direct', 'preserve_group_on_new_mentions'], false);
+  const params = groupedConversationParams(maxId, preserveGroup);
 
-  if (!maxId) {
+  if (!maxId && !preserveGroup && !replace) {
     params.since_id = getState().getIn(['conversations', 'items', 0, 'last_status']);
   }
 
   const isLoadingRecent = !!params.since_id;
+  const replaceItems = !maxId && (preserveGroup || replace);
 
   api().get('/api/v1/conversations', { params })
     .then(response => {
@@ -64,7 +66,7 @@ export const expandConversations = ({ maxId } = {}) => (dispatch, getState) => {
 
       dispatch(importFetchedAccounts(response.data.reduce((aggr, item) => aggr.concat(item.accounts), [])));
       dispatch(importFetchedStatuses(response.data.map(item => item.last_status).filter(x => !!x)));
-      dispatch(expandConversationsSuccess(response.data, next ? next.uri : null, isLoadingRecent));
+      dispatch(expandConversationsSuccess(response.data, next ? next.uri : null, isLoadingRecent, replaceItems));
     })
     .catch(err => dispatch(expandConversationsFail(err)));
 };
@@ -73,11 +75,12 @@ export const expandConversationsRequest = () => ({
   type: CONVERSATIONS_FETCH_REQUEST,
 });
 
-export const expandConversationsSuccess = (conversations, next, isLoadingRecent) => ({
+export const expandConversationsSuccess = (conversations, next, isLoadingRecent, replace = false) => ({
   type: CONVERSATIONS_FETCH_SUCCESS,
   conversations,
   next,
   isLoadingRecent,
+  replace,
 });
 
 export const expandConversationsFail = error => ({
@@ -86,6 +89,18 @@ export const expandConversationsFail = error => ({
 });
 
 export const updateConversations = conversation => (dispatch, getState) => {
+  if (getState().getIn(['settings', 'direct', 'preserve_group_on_new_mentions'], false)) {
+    const accountIds = new Set(conversation.accounts.map(account => account.id));
+    const expandedGroup = getState().getIn(['conversations', 'items']).some(item => (
+      item.get('accounts').size < accountIds.size && item.get('accounts').every(accountId => accountIds.has(accountId))
+    ));
+
+    if (expandedGroup) {
+      dispatch(expandConversations());
+      return;
+    }
+  }
+
   dispatch(importFetchedAccounts(conversation.accounts));
 
   if (conversation.last_status) {

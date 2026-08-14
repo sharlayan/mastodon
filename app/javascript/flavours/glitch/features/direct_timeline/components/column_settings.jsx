@@ -31,6 +31,7 @@ class ColumnSettings extends PureComponent {
         <section>
           <div className='column-settings__row'>
             <SettingToggle settings={settings} settingPath={['conversations']} onChange={onChange} label={<FormattedMessage id='direct.group_by_accounts' defaultMessage='Group by account' />} />
+            <SettingToggle settings={settings} settingPath={['preserve_group_on_new_mentions']} onChange={onChange} disabled={!settings.get('conversations')} label={<FormattedMessage id='direct.preserve_group_on_new_mentions' defaultMessage='Keep the existing group when mentioning new users' />} />
           </div>
         </section>
 

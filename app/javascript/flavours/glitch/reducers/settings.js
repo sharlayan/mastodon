@@ -111,6 +111,7 @@ const initialState = ImmutableMap({
 
   direct: ImmutableMap({
     conversations: true,
+    preserve_group_on_new_mentions: false,
     regex: ImmutableMap({
       body: '',
     }),
