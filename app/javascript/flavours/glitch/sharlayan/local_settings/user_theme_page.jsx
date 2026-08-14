@@ -7,13 +7,13 @@ import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import { Button } from '@/flavours/glitch/components/button';
 import { apiRequestPut } from 'flavours/glitch/api';
 import { userTheme, userThemeCatalog, userThemeDefaults } from 'flavours/glitch/initial_state';
-import { containsUnsafeUserThemeValue, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, parseUserThemeOverrides, portableUserThemeConfig, resolveUserThemeConfig, USER_THEME_VARIABLE_GROUPS, watchUserTheme } from 'flavours/glitch/sharlayan/user_theme';
+import { containsUnsafeUserThemeValue, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeOverrides, portableUserThemeConfig, resolveUserThemeConfig, userThemeCatalogForActiveSkin, USER_THEME_VARIABLE_GROUPS, watchUserTheme } from 'flavours/glitch/sharlayan/user_theme';
 
 import ColorPicker from './color_picker';
 
 const UserThemePage = () => {
   const intl = useIntl();
-  const catalog = useMemo(() => parseUserThemeCatalog(userThemeCatalog), []);
+  const catalog = useMemo(() => userThemeCatalogForActiveSkin(userThemeCatalog), []);
   const [overrides, setOverrides] = useState(() => parseUserThemeOverrides(userTheme));
   const config = useMemo(() => resolveUserThemeConfig(overrides, userThemeDefaults), [overrides]);
   const [activeCategories, setActiveCategories] = useState({ light: USER_THEME_VARIABLE_GROUPS[0].id, dark: USER_THEME_VARIABLE_GROUPS[0].id });
