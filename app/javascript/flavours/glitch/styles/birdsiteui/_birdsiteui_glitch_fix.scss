@@ -29,7 +29,13 @@ html {
   }
 
   .status {
+    --avatar-width: calc(var(--size-avatar) + var(--gap-default));
     --status-gutter-width: calc(var(--size-avatar) + var(--gap-default));
+  }
+
+  .status--in-thread > .status__content__wrapper {
+    margin-inline-start: var(--avatar-width);
+    width: calc(100% - var(--avatar-width));
   }
 
   [class*='_comp_number_fields__item'] button {
