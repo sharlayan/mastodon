@@ -172,6 +172,14 @@
     @include icons.icon-swap(video, $color: var(--color-dim));
   }
 
+  .status__collapse-button .icon-expand-less {
+    @include icons.icon-swap(up);
+  }
+
+  .status__collapse-button .icon-expand-more {
+    @include icons.icon-swap(down);
+  }
+
   .drawer__header .icon-bars {
     @include icons.icon-swap(menu, $color: var(--color-light-text));
   }
