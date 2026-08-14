@@ -1,20 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { FormattedMessage } from 'react-intl';
+import { FormattedMessage, useIntl } from 'react-intl';
+
+import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 
 import { Button } from '@/flavours/glitch/components/button';
 import { apiRequestPut } from 'flavours/glitch/api';
 import { userTheme, userThemeCatalog, userThemeDefaults } from 'flavours/glitch/initial_state';
 import { containsUnsafeUserThemeValue, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, parseUserThemeOverrides, portableUserThemeConfig, resolveUserThemeConfig, USER_THEME_VARIABLE_GROUPS, watchUserTheme } from 'flavours/glitch/sharlayan/user_theme';
 
-const hexColor = (value) => {
-  const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
-  if (!match) return '#000000';
-  if (match[1].length === 6) return value;
-  return `#${match[1].split('').map(character => character.repeat(2)).join('')}`;
-};
+import ColorPicker from './color_picker';
 
 const UserThemePage = () => {
+  const intl = useIntl();
   const catalog = useMemo(() => parseUserThemeCatalog(userThemeCatalog), []);
   const [overrides, setOverrides] = useState(() => parseUserThemeOverrides(userTheme));
   const config = useMemo(() => resolveUserThemeConfig(overrides, userThemeDefaults), [overrides]);
@@ -70,6 +68,18 @@ const UserThemePage = () => {
     const schemeOverrides = { ...overrides[scheme], variables };
     if (Object.keys(variables).length === 0) delete schemeOverrides.variables;
     updateOverrides({ ...overrides, [scheme]: schemeOverrides });
+  }, [overrides, updateOverrides]);
+
+  const deleteVariable = useCallback((scheme, variable) => {
+    const variables = { ...overrides[scheme]?.variables };
+    delete variables[variable];
+    const schemeOverrides = { ...overrides[scheme] };
+    if (Object.keys(variables).length > 0) schemeOverrides.variables = variables;
+    else delete schemeOverrides.variables;
+    const nextOverrides = { ...overrides };
+    if (Object.keys(schemeOverrides).length > 0) nextOverrides[scheme] = schemeOverrides;
+    else delete nextOverrides[scheme];
+    updateOverrides(nextOverrides);
   }, [overrides, updateOverrides]);
 
   const resetScheme = useCallback((scheme) => {
@@ -164,14 +174,25 @@ const UserThemePage = () => {
                 <div className='user-theme__variable-group__items'>
                   {group.variables.map(({ name, type }) => {
                     const value = config[scheme].variables[name] ?? '';
+                    const hasOverride = Object.hasOwn(overrides[scheme]?.variables ?? {}, name);
                     return (
-                      <label className='user-theme__variable' key={name}>
+                      <div className='user-theme__variable' key={name}>
                         <code>{name}</code>
                         <span className={`user-theme__variable__inputs user-theme__variable__inputs--${type}`}>
-                          {type === 'color' && <input type='color' value={hexColor(value)} aria-label={name} onChange={event => editVariable(scheme, name, event.target.value)} onBlur={event => persistVariable(scheme, name, event.target.value)} />}
-                          <input type='text' value={value} placeholder='inherit' onChange={event => editVariable(scheme, name, event.target.value)} onBlur={event => persistVariable(scheme, name, event.target.value)} />
+                          {type === 'color' && <ColorPicker value={value} variable={name} onChange={nextValue => editVariable(scheme, name, nextValue)} />}
+                          <input type='text' value={value} aria-label={name} placeholder='inherit' onChange={event => editVariable(scheme, name, event.target.value)} onBlur={event => persistVariable(scheme, name, event.target.value)} />
+                          <button
+                            type='button'
+                            className='user-theme__variable__delete'
+                            disabled={!hasOverride}
+                            aria-label={intl.formatMessage({ id: 'settings.user_theme.delete_value', defaultMessage: 'Remove custom value for {variable}' }, { variable: name })}
+                            title={intl.formatMessage({ id: 'settings.user_theme.delete_value', defaultMessage: 'Remove custom value for {variable}' }, { variable: name })}
+                            onClick={() => deleteVariable(scheme, name)}
+                          >
+                            <DeleteIcon />
+                          </button>
                         </span>
-                      </label>
+                      </div>
                     );
                   })}
                 </div>
