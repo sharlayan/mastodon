@@ -117,6 +117,28 @@ RSpec.describe 'API V1 Conversations' do
       )
     end
 
+    it 'keeps a long participant expansion chain in one group' do
+      previous_status = expanded_status
+      additional_users = Fabricate.times(6, :user)
+
+      additional_users.each do |additional_user|
+        mentioned_accounts = [other, third, *additional_users.take_while { |candidate| candidate != additional_user }, additional_user]
+        previous_status = PostStatusService.new.call(
+          user.account,
+          text: mentioned_accounts.map { |mentioned_user| "@#{mentioned_user.account.acct}" }.join(' '),
+          visibility: 'direct',
+          thread: previous_status
+        )
+        AccountConversation.add_status(user.account, previous_status)
+      end
+
+      get '/api/v1/conversations', params: { grouped: '1', preserve_group: '1' }, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.one?).to be true
+      expect(response.parsed_body.first[:accounts].pluck(:id)).to contain_exactly(other.account.id.to_s, third.account.id.to_s, *additional_users.map { |additional_user| additional_user.account.id.to_s })
+    end
+
     it 'does not merge a separately started conversation with the expanded branch' do
       separate_status = PostStatusService.new.call(user.account, text: "Separate @#{other.account.acct} @#{third.account.acct}", visibility: 'direct')
       AccountConversation.add_status(user.account, separate_status)
