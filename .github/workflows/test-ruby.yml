@@ -70,13 +70,13 @@ jobs:
         if: matrix.mode == 'test'
         run: |
           rm -f public/sw.js public/sw.js.map
-          cp public/packs-test/sw.js public/sw.js
-          cp public/packs-test/sw.js.map public/sw.js.map
-          sed -i 's#from"\./#from"/packs-test/#g' public/sw.js
+          cp public/packs/sw.js public/sw.js
+          cp public/packs/sw.js.map public/sw.js.map
+          sed -i 's#from"\./#from"/packs/#g' public/sw.js
 
       - name: Archive asset artifacts
         run: |
-          tar --exclude={"*.br","*.gz"} -zcf artifacts.tar.gz public/assets public/packs* public/sw.js public/sw.js.map tmp/cache/vite/last-build*.json
+          tar --exclude={"*.br","*.gz"} -zcf artifacts.tar.gz public/assets public/packs* public/sw.js public/sw.js.map
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: matrix.mode == 'test'

@@ -71,6 +71,22 @@ RSpec.describe REST::StatusSerializer do
       end
     end
 
+    context 'when the status is from BirdsiteLive' do
+      let(:bob) { Fabricate(:account, username: 'bob', domain: 'bird.makeup') }
+      let(:status) { Fabricate(:status, account: bob, quote_approval_policy: 'nobody') }
+
+      it 'serializes automatic quote approval and disables replies' do
+        expect(subject).to include(
+          'repliable' => false,
+          'quote_approval' => {
+            'automatic' => ['public'],
+            'manual' => [],
+            'current_user' => 'automatic',
+          }
+        )
+      end
+    end
+
     context 'with only trusted counts' do
       it 'shows the trusted counts' do
         expect(subject['reblogs_count']).to eq(10)

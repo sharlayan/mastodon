@@ -12,7 +12,11 @@ class StatusPolicy < ApplicationPolicy
   end
 
   def quote?
-    show? && !blocking_author? && record.quote_policy_for_account(current_account) != :denied
+    show? && !blocking_author? && (Sharlayan::SilentInteractionDelivery.quote_policy_ignored_for?(record) || record.quote_policy_for_account(current_account) != :denied)
+  end
+
+  def reply?
+    show? && !blocking_author? && !Sharlayan::SilentInteractionDelivery.reply_suppressed_for?(record)
   end
 
   def reblog?

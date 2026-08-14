@@ -1,0 +1,78 @@
+%p.lead= t('admin.settings.custom_sections.misskey_flavour_preamble')
+
+%h2= t('admin.settings.board_announcements.title')
+
+.fields-group
+  = f.input :board_announcements_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.board_announcements.enabled'), hint: t('admin.settings.board_announcements.enabled_hint'), sharlayan_only: true
+
+%h2= t('admin.settings.reactions.title')
+
+.fields-group
+  = f.input :reactions_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.reactions.enabled'), hint: t('admin.settings.reactions.enabled_hint'), sharlayan_only: true
+  = f.input :reaction_local_emoji_only, as: :boolean, wrapper: :with_label, label: t('admin.settings.reaction_local_emoji_only.title'), hint: t('admin.settings.reaction_local_emoji_only.desc_html'), sharlayan_only: true
+
+%h2= t('admin.settings.mfm.title')
+
+.fields-group
+  = f.input :mfm_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.mfm_enabled.title'), hint: t('admin.settings.mfm_enabled.desc_html'), sharlayan_only: true
+  = f.input :mfm_allow_composition, as: :boolean, wrapper: :with_label, label: t('admin.settings.mfm_allow_composition.title'), hint: t('admin.settings.mfm_allow_composition.desc_html'), sharlayan_only: true
+
+%h2= t('admin.settings.online_status.title')
+
+.fields-group
+  = f.input :online_status_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.online_status.enabled'), hint: t('admin.settings.online_status.enabled_hint'), sharlayan_only: true
+
+%h2= t('admin.settings.avatar_decorations.title')
+
+.fields-group
+  = f.input :avatar_decorations_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.avatar_decorations.enabled'), hint: t('admin.settings.avatar_decorations.enabled_hint'), sharlayan_only: true
+  = f.input :avatar_decorations_federation_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.avatar_decorations.federation_enabled'),
+            hint: t('admin.settings.avatar_decorations.federation_enabled_hint'),
+            sharlayan_only: true
+  = f.input :avatar_decorations_local_only_view,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.avatar_decorations.local_only_view'),
+            hint: t('admin.settings.avatar_decorations.local_only_view_hint'),
+            sharlayan_only: true
+  = f.input :avatar_decorations_max_count,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.avatar_decorations.max_count'),
+            hint: t('admin.settings.avatar_decorations.max_count_hint'),
+            input_html: { min: 0, max: 16 },
+            sharlayan_only: true
+
+- if roleplay_mode?
+  %h2= t('admin.settings.community_mode_override.title')
+
+  .fields-group
+    = f.input :force_avatar_decorations,
+              as: :boolean,
+              wrapper: :with_label,
+              label: t('admin.settings.community_mode_override.force_avatar_decorations'),
+              hint: t('admin.settings.community_mode_override.force_avatar_decorations_hint'),
+              sharlayan_only: true
+    = f.input :force_mfm_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.community_mode_override.force_mfm_enabled'), hint: t('admin.settings.community_mode_override.force_mfm_enabled_hint'), sharlayan_only: true
+- else
+  %h2= t('admin.settings.cat.title')
+
+  .fields-group
+    = f.input :cat_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.cat.enabled'), hint: t('admin.settings.cat.enabled_hint'), sharlayan_only: true
+    = f.input :cat_federation_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.cat.federation_enabled'), hint: t('admin.settings.cat.federation_enabled_hint'), sharlayan_only: true
+
+%h2= t('admin.settings.misskey_compat.title')
+
+.fields-group
+  = f.input :misskey_compat_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.misskey_compat.enabled'), hint: t('admin.settings.misskey_compat.enabled_hint'), sharlayan_only: true
+  = f.input :misskey_compat_signin_flow_enabled, as: :boolean, wrapper: :with_label, label: t('admin.settings.misskey_compat.signin_flow_enabled'), hint: t('admin.settings.misskey_compat.signin_flow_enabled_hint'), sharlayan_only: true
+  = f.input :misskey_compat_signin_flow_allowed_origins,
+            as: :string,
+            label: t('admin.settings.misskey_compat.signin_flow_allowed_origins'),
+            hint: t('admin.settings.misskey_compat.signin_flow_allowed_origins_hint'),
+            input_html: { autocomplete: 'off', placeholder: 'https://misskey.example' },
+            sharlayan_only: true
+  = f.input :misskey_compat_expose_follow_graph, as: :boolean, wrapper: :with_label, label: t('admin.settings.misskey_compat.expose_follow_graph'), hint: t('admin.settings.misskey_compat.expose_follow_graph_hint'), sharlayan_only: true

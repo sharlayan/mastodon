@@ -99,28 +99,28 @@ class AdvancedTextFormatter < TextFormatter
 
   private
 
-  def format_markdown(html)
-    html, placeholders = protect_markdown_entities(html)
-    html = markdown_formatter.render(html)
-    placeholders.each { |placeholder, entity| html.gsub!(placeholder, ERB::Util.h(entity)) }
+  def format_markdown(text)
+    text, placeholder = protect_entity_underscores(text)
+    html = markdown_formatter.render(text)
+    html.gsub!(placeholder, '_')
     html.delete("\r").delete("\n")
   end
 
-  def protect_markdown_entities(text)
-    entities = Extractor.extract_entities_with_indices(text, extract_url_without_protocol: false).select do |entity|
-      text[entity[:indices].first...entity[:indices].last].include?('_')
-    end
-    placeholders = {}
-    protected_text = text.dup
+  def protect_entity_underscores(text)
+    placeholder = "MARKDOWNUNDERSCORE#{SecureRandom.hex(8)}"
+    text = text.dup
 
-    entities.reverse_each.with_index do |entity, index|
+    Extractor.extract_entities_with_indices(text, extract_url_without_protocol: false).reverse_each do |entity|
+      next unless entity[:url] || entity[:screen_name]
+
       range = entity[:indices].first...entity[:indices].last
-      placeholder = "MARKDOWNENTITY#{index}#{SecureRandom.hex(8)}"
-      placeholders[placeholder] = protected_text[range]
-      protected_text[range] = placeholder
+      value = text[range]
+      next unless value.include?('_')
+
+      text[range] = value.gsub('_', placeholder)
     end
 
-    [protected_text, placeholders]
+    [text, placeholder]
   end
 
   def markdown_formatter

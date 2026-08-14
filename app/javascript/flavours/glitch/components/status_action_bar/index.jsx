@@ -441,10 +441,11 @@ class StatusActionBar extends ImmutablePureComponent {
         <div className='status__action-bar__button-wrapper'>
           <IconButton
             className='status__action-bar-button'
+            disabled={status.get('repliable') === false}
             title={replyTitle}
             icon={replyIcon}
             iconComponent={replyIconComponent}
-            onClick={this.handleReplyClick}
+            onClick={status.get('repliable') === false ? undefined : this.handleReplyClick}
             counter={showReplyCount ? status.get('replies_count') : undefined}
             obfuscateCount
           />

@@ -34,7 +34,11 @@ interface InitialStateMeta extends SharlayanInitialStateMeta {
   expand_spoilers?: boolean;
   limited_federation_mode: boolean;
   locale: string;
-  mascot: string | null;
+  background_image?: string;
+  background_color?: string;
+  background_opacity: number;
+  background_on_settings_pages: boolean;
+  glitch_mascots: (string | null)[];
   me?: string;
   moved_to_account_id?: string;
   owner?: string;
@@ -182,7 +186,10 @@ export const setExpandSpoilers = (value: boolean) => {
 };
 export const forceSingleColumn = !getMeta('advanced_layout');
 export const limitedFederationMode = getMeta('limited_federation_mode');
-export const mascot = getMeta('mascot');
+export const glitchMascots = getMeta('glitch_mascots') ?? [];
+export const backgroundImage = getMeta('background_image');
+export const backgroundColor = getMeta('background_color');
+export const backgroundOpacity = getMeta('background_opacity');
 export const me = getMeta('me');
 export const movedToAccountId = getMeta('moved_to_account_id');
 export const owner = getMeta('owner');

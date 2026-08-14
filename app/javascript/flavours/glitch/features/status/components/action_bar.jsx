@@ -310,7 +310,7 @@ class ActionBar extends PureComponent {
 
     return (
       <div className='detailed-status__action-bar'>
-        <div className='detailed-status__button'><IconButton title={intl.formatMessage(messages.reply)} icon={replyIcon} iconComponent={replyIconComponent} onClick={this.handleReplyClick} /></div>
+        <div className='detailed-status__button'><IconButton disabled={status.get('repliable') === false} title={intl.formatMessage(messages.reply)} icon={replyIcon} iconComponent={replyIconComponent} onClick={status.get('repliable') === false ? undefined : this.handleReplyClick} /></div>
         <div className='detailed-status__button'>
           <BoostButton statusId={status.get('id')} forceStandalone={quoteExposed} />
         </div>

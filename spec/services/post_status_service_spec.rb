@@ -27,6 +27,14 @@ RSpec.describe PostStatusService do
     expect(status.thread).to eq in_reply_to_status
   end
 
+  it 'rejects a response to a BirdsiteLive status' do
+    in_reply_to_status = Fabricate(:status, account: Fabricate(:account, domain: 'bird.makeup'))
+
+    expect do
+      subject.call(Fabricate(:account), text: 'test status update', thread: in_reply_to_status)
+    end.to raise_error(Mastodon::NotPermittedError)
+  end
+
   context 'when scheduling a status' do
     let!(:account)         { Fabricate(:account) }
     let!(:future)          { Time.now.utc + 2.hours }

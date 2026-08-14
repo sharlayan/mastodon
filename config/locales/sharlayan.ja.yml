@@ -232,6 +232,7 @@ ja:
     settings:
       user_themes:
         catalog: サーバーテーマカタログJSON
+        catalog_example: 'ライト／ダークテーマの短い例：'
         catalog_hint: id、name、variables.light / variables.darkマップを持つテーマの配列です。フロントエンドで許可されたCSS変数のみ適用されます。
         defaults: サーバーデフォルトテーマJSON
         defaults_hint: lightとdarkにテーマIDと任意のvariablesマップを指定します。選択したフレーバーのデフォルトを維持するには{}を使用します。
@@ -241,15 +242,22 @@ ja:
       branding:
         logos:
           icon:
-            hint: 推奨ファイルサイズは79×79pxです。ナビゲーションなどの小さい領域では32×32pxで表示されます。
+            hint: サイズを変更せず、中央を1:1の比率で切り抜きます。高密度画面では237×237px以上を推奨し、小さい領域では32×32pxで表示されます。
             title: シンボルロゴ
           title: ブランディングロゴ
           wordmark_dark:
-            hint: 推奨ファイルサイズは261×66pxです。暗い背景で使用します。未設定の場合は明るい背景用ロゴを使用します。
+            hint: サイズを変更せず、中央を261:66の比率で切り抜きます。783×198px以上を推奨します。暗い背景で使用し、未設定の場合は明るい背景用ロゴを使用します。
             title: 暗い背景用フルロゴ
           wordmark_light:
-            hint: 推奨ファイルサイズは261×66pxです。明るい背景で使用します。未設定の場合は暗い背景用ロゴを使用します。
+            hint: サイズを変更せず、中央を261:66の比率で切り抜きます。783×198px以上を推奨します。明るい背景で使用し、未設定の場合は暗い背景用ロゴを使用します。
             title: 明るい背景用フルロゴ
+      mascots:
+        glitch_hint: glitchで切り替わる4枚のマスコットのうち、このスロットを置き換えます。未設定の場合は内蔵画像を使用します。
+        glitch_slot: Glitchマスコット%{slot}
+        preamble: 従来のvanillaマスコットと、glitchで切り替わる各マスコット画像を設定します。
+        title: マスコット
+        vanilla: Vanillaマスコット
+        vanilla_hint: vanillaの上級者向けWebインターフェースで使用します。
       roleplay:
         title: コミュニティモードの設定
         notice_html: コミュニティモードでは非公開運用を保護するため、以下の設定が強制されます。モードが有効な間は変更できません。
@@ -262,6 +270,9 @@ ja:
         force_round_avatar_hint: テーマに関係なく、全ユーザーのアバター画像を円形で表示します。
         force_mfm_enabled: MFMレンダリングを強制
         force_mfm_enabled_hint: 各ユーザーのMFMレンダリング設定を無視し、すべてのユーザーにMFMを表示します。
+        roleplay_forced_skin: Webテーマを強制
+        roleplay_forced_skin_hint: コミュニティモードが有効な間、インストール済みのglitchテーマから選択したテーマをすべてのWebユーザーに強制します。個人のテーマ選択は保持されますが、表示には適用されません。
+        roleplay_forced_skin_none: テーマを強制しない
       allow_user_custom_css:
         desc_html: ユーザーがウェブインターフェースで、自分のセッションにのみ適用されるカスタムCSSを設定できるようにします。無効にすると、保存済みのユーザーCSSも適用されなくなります。
         title: ユーザーのカスタムCSSを許可する
@@ -536,7 +547,7 @@ ja:
         theme_color: ブラウザのアドレスバーやアプリUIで使われるアクセントカラー。
       user_role:
         drive_quota: このロールを持つユーザーごとのドライブライブラリ最大容量をMB単位で指定します。空欄の場合はサーバーの既定値、0の場合は無制限です。
-        extra_permissions_as_keys: このロールに付与されるSharlayan独自の追加権限
+        extra_permissions_as_keys: このロールに付与されるCustodon独自の追加権限
     labels:
       defaults:
         custom_css_text: カスタムCSS

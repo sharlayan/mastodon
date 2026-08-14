@@ -24,8 +24,15 @@ module Paperclip
     end
 
     def needs_different_geometry?
-      (options[:geometry] && @current_geometry.width != @target_geometry.width && @current_geometry.height != @target_geometry.height) ||
+      (options[:geometry] && different_geometry?) ||
         (options[:pixels] && @current_geometry.width * @current_geometry.height > options[:pixels])
+    end
+
+    def different_geometry?
+      width_differs = @current_geometry.width != @target_geometry.width
+      height_differs = @current_geometry.height != @target_geometry.height
+
+      @crop ? width_differs || height_differs : width_differs && height_differs
     end
 
     def needs_different_format?

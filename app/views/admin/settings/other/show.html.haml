@@ -22,7 +22,5 @@
   .fields-group
     = f.input :outgoing_spoilers, wrapper: :with_label, label: t('admin.settings.outgoing_spoilers.title'), hint: t('admin.settings.outgoing_spoilers.desc_html'), glitch_only: true
 
-  = render 'custom', f: f
-
   .actions
     = f.button :button, t('generic.save_changes'), type: :submit

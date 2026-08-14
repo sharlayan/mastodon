@@ -55,12 +55,14 @@ class SiteUpload < ApplicationRecord
     }.freeze,
 
     mascot: {}.freeze,
-    logo_icon: {}.freeze,
-    logo_wordmark_dark: {}.freeze,
-    logo_wordmark_light: {}.freeze,
+    background_image: {}.freeze,
+    glitch_mascot1: {}.freeze,
+    glitch_mascot2: {}.freeze,
+    glitch_mascot3: {}.freeze,
+    glitch_mascot4: {}.freeze,
   }.freeze
 
-  has_attached_file :file, styles: ->(file) { STYLES[file.instance.var.to_sym] }, convert_options: { all: '-coalesce +profile "!icc,*" +set date:modify +set date:create +set date:timestamp' }, processors: [:lazy_thumbnail, :blurhash_transcoder, :type_corrector]
+  has_attached_file :file, styles: ->(file) { styles_for(file) }, convert_options: { all: '-coalesce +profile "!icc,*" +set date:modify +set date:create +set date:timestamp' }, processors: [:lazy_thumbnail, :blurhash_transcoder, :type_corrector]
 
   validates_attachment_content_type :file, content_type: %r{\Aimage/.*\z}
   validates :file, presence: true
@@ -72,6 +74,39 @@ class SiteUpload < ApplicationRecord
   def cache_key
     "site_uploads/#{var}"
   end
+
+  def self.styles_for(attachment)
+    case attachment.instance.var.to_sym
+    when :logo_icon
+      logo_crop_style(attachment, 1, 1)
+    when :logo_wordmark_dark, :logo_wordmark_light
+      logo_crop_style(attachment, 261, 66)
+    else
+      STYLES[attachment.instance.var.to_sym]
+    end
+  end
+
+  def self.logo_crop_style(attachment, ratio_width, ratio_height)
+    width, height = attachment_dimensions(attachment)
+    return {} unless width && height
+
+    if width * ratio_height > height * ratio_width
+      width = (height * ratio_width / ratio_height.to_f).floor
+    else
+      height = (width * ratio_height / ratio_width.to_f).floor
+    end
+
+    { original: { geometry: "#{width}x#{height}#", file_geometry_parser: FastGeometryParser } }
+  end
+
+  def self.attachment_dimensions(attachment)
+    queued_file = attachment.queued_for_write[:original]
+    return FastImage.size(queued_file.path) if queued_file
+
+    attachment.instance.meta&.values_at('width', 'height')
+  end
+
+  private_class_method :styles_for, :logo_crop_style, :attachment_dimensions
 
   private
 

@@ -1,7 +1,7 @@
 ---
 ko:
   roleplay_reset:
-    apply_hint: 롤플레이 강제 설정을 제거하려면 --apply와 함께 다시 실행하세요.
+    apply_hint: 자캐 커뮤니티 강제 설정을 제거하려면 --apply와 함께 다시 실행하세요.
     disable_first: 이 명령을 실행하기 전에 OC_ROLEPLAY_OPTION을 끄고 재시작하세요.
     restart: 복구한 설정을 반영하려면 애플리케이션 프로세스를 재시작하세요.
   account_switcher:
@@ -164,9 +164,9 @@ ko:
           이 설정은 그대로 남으므로, 더 이상 폐쇄형으로 운영하지 않는다면 직접 꺼 주세요.
         title: 강제 로컬 전용 옵션이 켜져 있습니다
       roleplay_non_local_only_statuses:
-        message: 부팅 시점에 로컬 전용이 아닌 로컬 게시물이 확인되었습니다. 롤플레이 모드를 켜기 전에 작성되었거나 강제 설정을
+        message: 부팅 시점에 로컬 전용이 아닌 로컬 게시물이 확인되었습니다. 자캐 커뮤니티 모드를 켜기 전에 작성되었거나 강제 설정을
           반영하지 않는 클라이언트로 작성된 게시물일 수 있으며, 서버 밖으로 전달되거나 조회될 수 있습니다.
-        title: 롤플레이 전용 서버에 로컬 전용이 아닌 게시물이 있습니다
+        title: 자캐 커뮤니티 전용 서버에 로컬 전용이 아닌 게시물이 있습니다
     domain_blocks:
       block_trends: 유행에서 제외
       block_trends_hint: 이 도메인의 게시물과 해시태그를 유행 집계에서 제외합니다
@@ -235,6 +235,7 @@ ko:
     settings:
       user_themes:
         catalog: 서버 테마 카탈로그 JSON
+        catalog_example: '밝음/어두움 테마 간단 예시:'
         catalog_hint: id, name, variables.light / variables.dark 맵을 가진 테마 배열입니다. 프런트엔드가 허용한 CSS 변수만 적용됩니다.
         defaults: 서버 기본 테마 JSON
         defaults_hint: light와 dark 항목에 테마 ID와 선택적인 variables 맵을 지정합니다. 선택한 풍미의 기본값을 유지하려면 {}를 사용합니다.
@@ -244,15 +245,22 @@ ko:
       branding:
         logos:
           icon:
-            hint: 권장 파일 크기는 79×79px입니다. 내비게이션 등 작은 영역에서는 32×32px로 표시됩니다.
+            hint: 크기를 변경하지 않고 중앙을 1:1 비율로 자릅니다. 고밀도 화면에서는 최소 237×237px를 권장하며 작은 영역에서는 32×32px로 표시됩니다.
             title: 심볼 로고
           title: 브랜딩 로고
           wordmark_dark:
-            hint: 권장 파일 크기는 261×66px입니다. 어두운 배경에 사용하며, 등록하지 않으면 밝은 배경용 로고를 대신 사용합니다.
+            hint: 크기를 변경하지 않고 중앙을 261:66 비율로 자릅니다. 최소 783×198px를 권장합니다. 어두운 배경에 사용하며, 등록하지 않으면 밝은 배경용 로고를 대신 사용합니다.
             title: 어두운 배경용 전체 로고
           wordmark_light:
-            hint: 권장 파일 크기는 261×66px입니다. 밝은 배경에 사용하며, 등록하지 않으면 어두운 배경용 로고를 대신 사용합니다.
+            hint: 크기를 변경하지 않고 중앙을 261:66 비율로 자릅니다. 최소 783×198px를 권장합니다. 밝은 배경에 사용하며, 등록하지 않으면 어두운 배경용 로고를 대신 사용합니다.
             title: 밝은 배경용 전체 로고
+      mascots:
+        glitch_hint: glitch에서 순환하는 4개 마스코트 중 해당 슬롯을 대체합니다. 비워 두면 내장 이미지를 사용합니다.
+        glitch_slot: Glitch 마스코트 %{slot}
+        preamble: 기존 vanilla 마스코트와 glitch에서 순환하는 마스코트 이미지 각각을 설정합니다.
+        title: 마스코트
+        vanilla: Vanilla 마스코트
+        vanilla_hint: vanilla 고급 웹 인터페이스에서 사용합니다.
       roleplay:
         title: 커뮤니티 모드 설정
         notice_html: 커뮤니티 모드는 폐쇄형 운영을 보호하기 위해 아래 설정을 강제합니다. 모드가 활성화된 동안에는 변경할 수 없습니다.
@@ -265,6 +273,9 @@ ko:
         force_round_avatar_hint: 테마와 상관없이 모든 사용자의 아바타 이미지를 원형으로 표시합니다.
         force_mfm_enabled: MFM 렌더링 강제
         force_mfm_enabled_hint: 각 사용자의 MFM 렌더링 설정을 무시하고 모든 사용자에게 MFM을 표시합니다.
+        roleplay_forced_skin: 웹 테마 강제
+        roleplay_forced_skin_hint: 커뮤니티 모드가 활성화된 동안 설치된 glitch 테마 중 선택한 테마를 모든 웹 사용자에게 강제합니다. 개인 테마 선택은 보존되지만 화면에는 적용되지 않습니다.
+        roleplay_forced_skin_none: 테마를 강제하지 않음
       allow_user_custom_css:
         desc_html: 사용자가 웹 인터페이스에서 본인 세션에만 적용되는 커스텀 CSS를 직접 지정할 수 있도록 허용합니다. 비활성화하면
           저장된 사용자 CSS도 더 이상 적용되지 않습니다.
@@ -342,14 +353,14 @@ ko:
         enabled_hint: 매일 새벽 작업이 부스트, 답글, 인용을 양쪽 도메인으로 묶어 인스턴스 간 엣지마다 1행을 저장합니다. 이 서버에서
           관측한 만큼의 연합우주 그래프로, 원격 서버 사이의 엣지도 그 활동이 여기까지 도달한 범위에서 포함됩니다. 비활성화하면
           야간 스캔을 건너뜁니다.
-        roleplay_hint: 롤플레이 서버 모드에서는 사용할 수 없습니다. 이 모드에서는 인스턴스 연합 그래프를 집계하지 않습니다.
+        roleplay_hint: 자캐 커뮤니티 서버 모드에서는 사용할 수 없습니다. 이 모드에서는 인스턴스 연합 그래프를 집계하지 않습니다.
         title: 인스턴스 연합 그래프
       federation_request_statistics:
         enabled: 도메인별 연합 요청 횟수 기록
         enabled_hint: 활성화하면 원격 도메인마다 배달 성공, 배달 실패, 수리된 inbox 요청 횟수를 세고 Misskey 호환 AP 요청 차트에
           반영합니다. 집계는 Redis에 모았다가 1분에 한 번 데이터베이스에 접습니다. 통계보다 CPU 여유가 중요하면 비활성화해 이 배경
           작업을 없앨 수 있습니다. 이미 쌓인 행은 유지되지만 더 늘어나지 않습니다.
-        roleplay_hint: 롤플레이 서버 모드에서는 사용할 수 없습니다. 이 모드에서는 도메인별 연합 요청 횟수를 기록하지 않습니다.
+        roleplay_hint: 자캐 커뮤니티 서버 모드에서는 사용할 수 없습니다. 이 모드에서는 도메인별 연합 요청 횟수를 기록하지 않습니다.
         title: 연합 요청 통계
       instance_metadata:
         enabled: 서버 정보 바 및 인스턴스 메타데이터 수집 활성화
@@ -569,7 +580,7 @@ ko:
       user_role:
         drive_quota: 이 역할을 가진 사용자별 드라이브 라이브러리의 최대 용량을 MB 단위로 지정합니다. 비워 두면 서버 기본값을
           사용하고, 0이면 무제한입니다.
-        extra_permissions_as_keys: 이 역할에 부여되는 Sharlayan 전용 추가 권한입니다
+        extra_permissions_as_keys: 이 역할에 부여되는 커스토돈 전용 추가 권한입니다
     labels:
       defaults:
         custom_css_text: 커스텀 CSS

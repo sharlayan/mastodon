@@ -251,6 +251,7 @@ en:
     settings:
       user_themes:
         catalog: Server theme catalog JSON
+        catalog_example: 'Short light/dark example:'
         catalog_hint: An array of themes with id, name, and variables.light / variables.dark maps. Only frontend-allowed CSS variables are applied.
         defaults: Server default theme JSON
         defaults_hint: A map containing light and dark entries with a theme ID and optional variables map. Use {} to keep the selected flavour defaults.
@@ -260,15 +261,22 @@ en:
       branding:
         logos:
           icon:
-            hint: Recommended file size is 79×79 px. Displayed at 32×32 px in navigation and other compact surfaces.
+            hint: Center-cropped to a 1:1 ratio without resizing. Use at least 237×237 px for sharp display on high-density screens; displayed at 32×32 px in compact surfaces.
             title: Symbol logo
           title: Branding logos
           wordmark_dark:
-            hint: Recommended file size is 261×66 px. Used on dark backgrounds. If omitted, the light-background logo is used instead.
+            hint: Center-cropped to a 261:66 ratio without resizing. Use at least 783×198 px. Used on dark backgrounds; if omitted, the light-background logo is used instead.
             title: Full logo for dark backgrounds
           wordmark_light:
-            hint: Recommended file size is 261×66 px. Used on light backgrounds. If omitted, the dark-background logo is used instead.
+            hint: Center-cropped to a 261:66 ratio without resizing. Use at least 783×198 px. Used on light backgrounds; if omitted, the dark-background logo is used instead.
             title: Full logo for light backgrounds
+      mascots:
+        glitch_hint: Replaces this slot in glitch's four-image rotating mascot set. The built-in image is used when left empty.
+        glitch_slot: Glitch mascot %{slot}
+        preamble: Configure the legacy vanilla mascot and each image in glitch's rotating mascot set.
+        title: Mascots
+        vanilla: Vanilla mascot
+        vanilla_hint: Used by the vanilla advanced web interface.
       roleplay:
         title: Community mode settings
         notice_html: Community mode forces the settings below to protect the server's private operation. They cannot be changed while the mode is enabled.
@@ -281,6 +289,9 @@ en:
         force_round_avatar_hint: Display every avatar image as a circle for all users, regardless of theme.
         force_mfm_enabled: Force MFM rendering
         force_mfm_enabled_hint: Ignore each user's MFM rendering preference and render MFM for everyone.
+        roleplay_forced_skin: Force web theme
+        roleplay_forced_skin_hint: Force the selected installed glitch theme for every web user while Community Mode is active. Personal theme selections are preserved but not rendered.
+        roleplay_forced_skin_none: Do not force a theme
       allow_user_custom_css:
         desc_html: Let users define their own custom CSS that is applied only to their
           own session in the web interface. When disabled, any stored user CSS stops
@@ -640,7 +651,7 @@ en:
       user_role:
         drive_quota: Maximum total size of each user's Drive library in megabytes.
           Leave blank to use the server default. Set to 0 for unlimited.
-        extra_permissions_as_keys: Additional Sharlayan-specific permissions granted
+        extra_permissions_as_keys: Additional Custodon-specific permissions granted
           to this role
     labels:
       defaults:

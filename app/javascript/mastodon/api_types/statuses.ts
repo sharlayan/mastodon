@@ -105,6 +105,7 @@ export interface ApiStatusJSON {
   favourites_count: number;
   quotes_count: number;
   edited_at?: string;
+  repliable: boolean;
   mfm: boolean;
 
   favourited?: boolean;

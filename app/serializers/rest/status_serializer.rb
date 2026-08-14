@@ -9,7 +9,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
   attributes :id, :created_at, :in_reply_to_id, :in_reply_to_account_id,
              :sensitive, :spoiler_text, :visibility, :language,
              :uri, :url, :replies_count, :reblogs_count,
-             :favourites_count, :quotes_count, :edited_at
+             :favourites_count, :quotes_count, :edited_at, :repliable
   attribute :reaction_acceptance
 
   attribute :favourited, if: :current_user?
@@ -178,11 +178,23 @@ class REST::StatusSerializer < ActiveModel::Serializer
   end
 
   def quote_approval
+    if Sharlayan::SilentInteractionDelivery.quote_policy_ignored_for?(object.proper)
+      return {
+        automatic: ['public'],
+        manual: [],
+        current_user: 'automatic',
+      }
+    end
+
     {
       automatic: object.proper.quote_policy_as_keys(:automatic),
       manual: object.proper.quote_policy_as_keys(:manual),
       current_user: object.proper.quote_policy_for_account(current_user&.account),
     }
+  end
+
+  def repliable
+    !Sharlayan::SilentInteractionDelivery.reply_suppressed_for?(object.proper)
   end
 
   private

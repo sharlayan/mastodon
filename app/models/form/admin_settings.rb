@@ -28,6 +28,11 @@ class Form::AdminSettings
     thumbnail
     thumbnail_description
     mascot
+    background_image
+    glitch_mascot1
+    glitch_mascot2
+    glitch_mascot3
+    glitch_mascot4
     logo_icon
     logo_wordmark_dark
     logo_wordmark_light
@@ -90,6 +95,11 @@ class Form::AdminSettings
   UPLOAD_KEYS = %i(
     thumbnail
     mascot
+    background_image
+    glitch_mascot1
+    glitch_mascot2
+    glitch_mascot3
+    glitch_mascot4
     logo_icon
     logo_wordmark_dark
     logo_wordmark_light
@@ -179,7 +189,7 @@ class Form::AdminSettings
       next if key == :soft_hide_deletion && !roleplay_mode?
 
       # DESTRUCTIVE: Discards submitted values for forced roleplay settings.
-      # 파괴적: 강제 롤플레이 설정에 제출된 값을 버립니다.
+      # 파괴적: 강제 자캐 커뮤니티 설정에 제출된 값을 버립니다.
       if roleplay_mode? && Sharlayan::RoleplayForcedSettings::SETTINGS.key?(key)
         setting = Setting.where(var: key).first_or_initialize(var: key)
         setting.update(value: Sharlayan::RoleplayForcedSettings::SETTINGS[key])

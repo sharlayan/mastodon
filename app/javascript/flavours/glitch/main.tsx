@@ -7,6 +7,9 @@ import * as perf from '@/flavours/glitch/utils/performance';
 import { setupBrowserNotifications } from 'flavours/glitch/actions/notifications';
 import Mastodon from 'flavours/glitch/containers/mastodon';
 import {
+  backgroundColor,
+  backgroundImage,
+  backgroundOpacity,
   me,
   reduceMotion,
   userTheme,
@@ -17,6 +20,7 @@ import {
 import ready from 'flavours/glitch/ready';
 import { applyStoredContentFontSize } from 'flavours/glitch/sharlayan/local_settings/content_font_size';
 import { applyStoredSensitiveEmojiDisplay } from 'flavours/glitch/sharlayan/local_settings/sensitive_emoji_display';
+import { applyServerBackground } from 'flavours/glitch/sharlayan/server_background';
 import {
   parseUserThemeCatalog,
   resolveUserThemeConfig,
@@ -42,6 +46,11 @@ function main() {
     if (!mountNode) {
       throw new Error('Mount node not found');
     }
+    applyServerBackground({
+      color: backgroundColor,
+      opacity: backgroundOpacity,
+      url: backgroundImage,
+    });
     const props = JSON.parse(
       mountNode.getAttribute('data-props') ?? '{}',
     ) as Record<string, unknown>;

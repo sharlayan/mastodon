@@ -3,6 +3,28 @@
 require 'rails_helper'
 
 RSpec.describe InitialStateSerializer do
+  it 'exposes the server background image when configured' do
+    background_image = Fabricate(:site_upload, var: 'background_image')
+    Setting.background_color = '#102030'
+    Setting.background_opacity = 45
+    Setting.background_on_settings_pages = true
+
+    expect(described_class.new(InitialStatePresenter.new(settings: {})).meta).to include(
+      background_color: '#102030',
+      background_image: background_image.file.url,
+      background_opacity: 45,
+      background_on_settings_pages: true
+    )
+  end
+
+  it 'exposes the four glitch mascot slots in order' do
+    first = Fabricate(:site_upload, var: 'glitch_mascot1')
+    fourth = Fabricate(:site_upload, var: 'glitch_mascot4')
+    meta = described_class.new(InitialStatePresenter.new(settings: {})).meta
+
+    expect(meta[:glitch_mascots]).to eq [first.file.url, nil, nil, fourth.file.url]
+  end
+
   it 'adds signed-in Sharlayan preferences and mute snapshots' do
     user = Fabricate(:user)
     presenter = InitialStatePresenter.new(current_account: user.account, settings: {})

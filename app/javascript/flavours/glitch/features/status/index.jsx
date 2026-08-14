@@ -256,6 +256,8 @@ class Status extends ImmutablePureComponent {
     const { askReplyConfirmation, dispatch } = this.props;
     const { signedIn } = this.props.identity;
 
+    if (status.get('repliable') === false) return;
+
     if (signedIn) {
       if (askReplyConfirmation) {
         dispatch(openModal({ modalType: 'CONFIRM_REPLY', modalProps: { status } }));
@@ -654,9 +656,9 @@ class Status extends ImmutablePureComponent {
           icon='comment'
           iconComponent={ChatIcon}
           title={intl.formatMessage(messages.tootHeading)}
-          scrollTopOnClick
           showBackButton
           multiColumn={multiColumn}
+          scrollTopOnClick
           extraButton={(
             <button type='button' className='column-header__button' title={intl.formatMessage(!isExpanded ? messages.revealAll : messages.hideAll)} aria-label={intl.formatMessage(!isExpanded ? messages.revealAll : messages.hideAll)} onClick={this.handleToggleAll}><Icon id={!isExpanded ? 'eye' : 'eye-slash'} icon={isExpanded ? VisibilityIcon : VisibilityOffIcon} /></button>
           )}
