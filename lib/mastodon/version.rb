@@ -96,6 +96,11 @@ module Mastodon
       '2026.08.14.1'
     end
 
+    def sharlayan_image_version(branch)
+      branch_tag = branch.downcase.gsub(/[^a-z0-9_.-]+/, '-').gsub(/\A[-.]+|[-.]+\z/, '')
+      "v#{to_a.join('.')}-#{sharlayan_local_version}-#{branch_tag}"
+    end
+
     def read_git_head_file
       @read_git_head_file ||= begin
         head_file_path = '.git/HEAD'

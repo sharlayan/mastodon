@@ -62,10 +62,7 @@ const VARIABLE_TYPES = new Map(USER_THEME_VARIABLE_GROUPS.flatMap(group => group
 const REFERENCE_FUNCTION = /(?:url|src|image-set|cross-fade|element|paint|var|env)\s*\(/i;
 
 export const encodeUserThemeStorage = (value) => {
-  const bytes = new TextEncoder().encode(typeof value === 'string' ? value : JSON.stringify(value));
-  let binary = '';
-  bytes.forEach(byte => { binary += String.fromCharCode(byte); });
-  return window.btoa(binary);
+  return typeof value === 'string' ? value : JSON.stringify(value);
 };
 
 export const decodeUserThemeStorage = (value) => {
@@ -142,8 +139,27 @@ export const resolveUserThemeConfig = (userValue, defaultValue) => {
 
   return Object.fromEntries(SCHEMES.map(scheme => [
     scheme,
-    normalizeScheme(user[scheme] ?? defaults[scheme]),
+    {
+      theme: typeof user[scheme]?.theme === 'string' ? user[scheme].theme : normalizeScheme(defaults[scheme]).theme,
+      variables: {
+        ...normalizeScheme(defaults[scheme]).variables,
+        ...normalizeVariables(user[scheme]?.variables),
+      },
+    },
   ]));
+};
+
+export const parseUserThemeOverrides = (value) => {
+  const parsed = parseObject(typeof value === 'string' ? decodeUserThemeStorage(value) : value);
+
+  return Object.fromEntries(SCHEMES.flatMap(scheme => {
+    const source = parseObject(parsed[scheme]);
+    const variables = normalizeVariables(source.variables);
+    const entry = {};
+    if (typeof source.theme === 'string') entry.theme = source.theme;
+    if (Object.keys(variables).length > 0) entry.variables = variables;
+    return Object.keys(entry).length > 0 ? [[scheme, entry]] : [];
+  }));
 };
 
 export const portableUserThemeConfig = (config, catalog) => Object.fromEntries(SCHEMES.map(scheme => {

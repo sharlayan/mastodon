@@ -12,6 +12,7 @@ jobs:
   check-latest-stable:
     runs-on: ubuntu-latest
     outputs:
+      image_version: ${{ steps.version.outputs.image_version }}
       latest: ${{ steps.check.outputs.is_latest_stable }}
     steps:
       # Repository needs to be cloned to list branches
@@ -19,6 +20,34 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
+
+      - name: Read image version
+        id: version
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          mapfile -t branches < <(git for-each-ref --contains "$GITHUB_SHA" --format='%(refname:strip=3)' refs/remotes/origin \
+            | grep -v '^HEAD$' \
+            | sort -u)
+
+          source_branch=''
+          for preferred_branch in "$DEFAULT_BRANCH" main develop; do
+            for branch in "${branches[@]}"; do
+              if [[ "$branch" == "$preferred_branch" ]]; then
+                source_branch="$branch"
+                break 2
+              fi
+            done
+          done
+          source_branch="${source_branch:-${branches[0]}}"
+
+          if [[ -z "$source_branch" ]]; then
+            echo 'Unable to determine the source branch for this tag' >&2
+            exit 1
+          fi
+
+          image_version=$(ruby -Ilib -r mastodon/version -e 'puts Mastodon::Version.sharlayan_image_version(ARGV.fetch(0))' "$source_branch")
+          echo "image_version=$image_version" >> "$GITHUB_OUTPUT"
 
       - name: Check latest stable
         shell: bash
@@ -59,8 +88,7 @@ jobs:
       flavor: |
         latest=${{ needs.check-latest-stable.outputs.latest }}
       tags: |
-        type=pep440,pattern={{raw}}
-        type=pep440,pattern=v{{major}}.{{minor}}
+        type=raw,value=${{ needs.check-latest-stable.outputs.image_version }}
     secrets: inherit
 
   build-image-streaming:
@@ -77,6 +105,5 @@ jobs:
       flavor: |
         latest=${{ needs.check-latest-stable.outputs.latest }}
       tags: |
-        type=pep440,pattern={{raw}}
-        type=pep440,pattern=v{{major}}.{{minor}}
+        type=raw,value=${{ needs.check-latest-stable.outputs.image_version }}
     secrets: inherit
