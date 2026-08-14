@@ -955,9 +955,9 @@ ko:
         appearance_preamble: 커스텀 테마와 시각적 표시 옵션을 설정합니다.
         detailed_branding: 세부 브랜딩
         extensions: 확장 기능
-        extensions_preamble: 커스토돈 확장 기능과 서버 기능을 설정합니다.
+        extensions_preamble: 커스토돈 전용 확장 기능과 서버 기능을 설정합니다.
         misskey_flavour: 미스키 풍미
-        misskey_flavour_preamble: Misskey에서 영감을 받은 기능과 클라이언트 호환성을 설정합니다.
+        misskey_flavour_preamble: Misskey에서 유래한 호환 기능을 활성화하거나 설정합니다.
       default_noindex:
         desc_html: 이 설정을 개인적으로 바꾸지 않은 모든 사용자들에게 적용 됩니다
         title: 사용자들이 기본적으로 검색엔진에 인덱싱되지 않도록 합니다
