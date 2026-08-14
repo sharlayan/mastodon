@@ -1,6 +1,10 @@
 // Status layout - padding, RTL, action bar, notification exceptions
 .layout-single-column,
 .layout-multiple-columns {
+  .status__wrapper.collapsed .status__content__wrapper {
+    height: 32px;
+  }
+
   // Status update tinted to right
   .status:not(.status--in-thread) .hashtag-bar,
   .status__content--collapsed + .status__content__read-more-button,

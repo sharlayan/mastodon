@@ -59,6 +59,8 @@ export const GLYPHS = {
   'user-plus': 'user-plus',
   'bell-slash': 'bell-slash',
   cloud: 'cloud',
+  colors: 'palette',
+  'pipe-wrench': 'pipe-wrench',
   gear: 'gear',
   drag: 'arrows-out-cardinal',
   collapse: 'arrows-in-line-vertical',
