@@ -188,6 +188,7 @@
   "custom_emoji_mutes.reject_reactions_badge": "リアクション拒否",
   "custom_emoji_mutes.unmute": "ミュート解除",
   "direct.group_by_accounts": "アカウントでグループ化",
+  "direct.preserve_group_on_new_mentions": "新しいユーザーにメンションしても既存のグループを維持",
   "direct.start_conversation": "新しい会話を始める",
   "direct_composer.cancel_reply": "返信をキャンセル",
   "direct_composer.placeholder": "メッセージを送信…",
