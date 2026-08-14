@@ -36,21 +36,11 @@
     color: var(--color-light-text);
     font-weight: var(--font-weight-bold);
     padding-bottom: 12px;
-  }
-
-  // Active tab indicator pill
-  [class*='_comp_tab_list__tabList']
-    [class*='_comp_tab_list__tab'].active::after {
-    background-color: var(--color-accent);
-    border-radius: 9999px;
-    bottom: -1px;
-    content: '';
-    display: block;
-    height: 4px;
-    left: 50%;
-    min-width: 56px;
-    position: absolute;
-    transform: translateX(-50%);
+    text-decoration-color: var(--color-accent);
+    text-decoration-line: underline;
+    text-decoration-skip-ink: none;
+    text-decoration-thickness: 4px;
+    text-underline-offset: 14px;
   }
 
   // Filter dropdown (unchanged from before)
