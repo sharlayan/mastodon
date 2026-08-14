@@ -93,7 +93,7 @@ module Mastodon
     end
 
     def sharlayan_local_version
-      '2026.08.14.1'
+      '2026.08.14.2'
     end
 
     def sharlayan_image_version(branch)
