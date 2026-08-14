@@ -70,9 +70,9 @@ jobs:
         if: matrix.mode == 'test'
         run: |
           rm -f public/sw.js public/sw.js.map
-          cp public/packs-test/sw.js public/sw.js
-          cp public/packs-test/sw.js.map public/sw.js.map
-          sed -i 's#from"\./#from"/packs-test/#g' public/sw.js
+          cp public/packs/sw.js public/sw.js
+          cp public/packs/sw.js.map public/sw.js.map
+          sed -i 's#from"\./#from"/packs/#g' public/sw.js
 
       - name: Archive asset artifacts
         run: |
