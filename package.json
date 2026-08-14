@@ -9,6 +9,16 @@
     ".",
     "streaming"
   ],
+  "resolutions": {
+    "body-parser": "2.3.0",
+    "immutable@npm:^3.8.2": "4.3.9",
+    "kind-of": "6.0.3",
+    "nanoid": "3.3.18",
+    "picomatch@npm:^2.3.1": "2.3.2",
+    "qs": "6.15.2",
+    "yaml@npm:^1.10.0": "1.10.3",
+    "yaml@npm:^1.10.2": "1.10.3"
+  },
   "scripts": {
     "dev": "vite dev",
     "build:development": "cross-env RAILS_ENV=development NODE_ENV=development vite build --mode development",
@@ -195,9 +205,6 @@
     "typescript-eslint": "8.66.0",
     "typescript-plugin-css-modules": "5.2.0",
     "vitest": "4.1.10"
-  },
-  "resolutions": {
-    "kind-of": "6.0.3"
   },
   "peerDependenciesMeta": {
     "react": {
