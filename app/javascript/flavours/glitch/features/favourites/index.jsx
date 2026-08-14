@@ -72,14 +72,14 @@ class Favourites extends ImmutablePureComponent {
     const emptyMessage = <FormattedMessage id='empty_column.favourites' defaultMessage='No one has favorited this post yet. When someone does, they will show up here.' />;
 
     return (
-      <Column>
+      <Column bindToDocument={!multiColumn}>
         <ColumnHeader
           icon='star'
           iconComponent={StarIcon}
           title={intl.formatMessage(messages.heading)}
-          scrollTopOnClick
           showBackButton
           multiColumn={multiColumn}
+          scrollTopOnClick
           extraButton={(
             <button type='button' className='column-header__button' title={intl.formatMessage(messages.refresh)} aria-label={intl.formatMessage(messages.refresh)} onClick={this.handleRefresh}><Icon id='refresh' icon={RefreshIcon} /></button>
           )}
