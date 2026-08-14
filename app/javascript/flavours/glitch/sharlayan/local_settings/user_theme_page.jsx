@@ -5,7 +5,7 @@ import { FormattedMessage } from 'react-intl';
 import { Button } from '@/flavours/glitch/components/button';
 import { apiRequestPut } from 'flavours/glitch/api';
 import { userTheme, userThemeCatalog, userThemeDefaults } from 'flavours/glitch/initial_state';
-import { containsUnsafeUserThemeValue, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, portableUserThemeConfig, resolveUserThemeConfig, USER_THEME_VARIABLE_GROUPS, watchUserTheme } from 'flavours/glitch/sharlayan/user_theme';
+import { containsUnsafeUserThemeValue, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeCatalog, parseUserThemeOverrides, portableUserThemeConfig, resolveUserThemeConfig, USER_THEME_VARIABLE_GROUPS, watchUserTheme } from 'flavours/glitch/sharlayan/user_theme';
 
 const hexColor = (value) => {
   const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
@@ -16,36 +16,50 @@ const hexColor = (value) => {
 
 const UserThemePage = () => {
   const catalog = useMemo(() => parseUserThemeCatalog(userThemeCatalog), []);
-  const serverDefaults = useMemo(() => resolveUserThemeConfig({}, userThemeDefaults), []);
-  const [config, setConfig] = useState(() => resolveUserThemeConfig(userTheme, userThemeDefaults));
+  const [overrides, setOverrides] = useState(() => parseUserThemeOverrides(userTheme));
+  const config = useMemo(() => resolveUserThemeConfig(overrides, userThemeDefaults), [overrides]);
   const [activeCategories, setActiveCategories] = useState({ light: USER_THEME_VARIABLE_GROUPS[0].id, dark: USER_THEME_VARIABLE_GROUPS[0].id });
   const [importError, setImportError] = useState(false);
   const [unsafeValue, setUnsafeValue] = useState(false);
+  const [saveState, setSaveState] = useState('saved');
   const importInput = useRef(null);
+  const revision = useRef(0);
 
-  const persist = useCallback((nextConfig) => {
-    setConfig(nextConfig);
-    watchUserTheme(nextConfig, catalog);
-    apiRequestPut('v1/appearance', { user_theme: encodeUserThemeStorage(nextConfig) }).catch(() => undefined);
+  const updateOverrides = useCallback((nextOverrides) => {
+    revision.current += 1;
+    setOverrides(nextOverrides);
+    watchUserTheme(resolveUserThemeConfig(nextOverrides, userThemeDefaults), catalog);
+    setSaveState('dirty');
   }, [catalog]);
 
+  const save = useCallback(async () => {
+    const savedRevision = revision.current;
+    setSaveState('saving');
+    try {
+      await apiRequestPut('v1/appearance', { user_theme: encodeUserThemeStorage(overrides) });
+      setSaveState(revision.current === savedRevision ? 'saved' : 'dirty');
+    } catch {
+      setSaveState('error');
+    }
+  }, [overrides]);
+
   const changeTheme = useCallback((scheme, theme) => {
-    persist({ ...config, [scheme]: { ...config[scheme], theme } });
-  }, [config, persist]);
+    updateOverrides({ ...overrides, [scheme]: { ...overrides[scheme], theme } });
+  }, [overrides, updateOverrides]);
 
   const editVariable = useCallback((scheme, variable, value) => {
-    const nextConfig = {
-      ...config,
+    const nextOverrides = {
+      ...overrides,
       [scheme]: {
-        ...config[scheme],
-        variables: { ...config[scheme].variables, [variable]: value },
+        ...overrides[scheme],
+        variables: { ...overrides[scheme]?.variables, [variable]: value },
       },
     };
-    setConfig(nextConfig);
-  }, [config]);
+    updateOverrides(nextOverrides);
+  }, [overrides, updateOverrides]);
 
   const persistVariable = useCallback((scheme, variable, value) => {
-    const variables = { ...config[scheme].variables };
+    const variables = { ...overrides[scheme]?.variables };
     if (value.trim() && isSafeUserThemeValue(variable, value.trim())) {
       variables[variable] = value.trim();
       setUnsafeValue(false);
@@ -53,12 +67,16 @@ const UserThemePage = () => {
       delete variables[variable];
       setUnsafeValue(true);
     } else delete variables[variable];
-    persist({ ...config, [scheme]: { ...config[scheme], variables } });
-  }, [config, persist]);
+    const schemeOverrides = { ...overrides[scheme], variables };
+    if (Object.keys(variables).length === 0) delete schemeOverrides.variables;
+    updateOverrides({ ...overrides, [scheme]: schemeOverrides });
+  }, [overrides, updateOverrides]);
 
   const resetScheme = useCallback((scheme) => {
-    persist({ ...config, [scheme]: serverDefaults[scheme] });
-  }, [config, persist, serverDefaults]);
+    const nextOverrides = { ...overrides };
+    delete nextOverrides[scheme];
+    updateOverrides(nextOverrides);
+  }, [overrides, updateOverrides]);
 
   const exportTheme = useCallback(() => {
     const contents = JSON.stringify({ format: 'sharlayan-user-theme', version: 1, theme: portableUserThemeConfig(config, catalog) }, null, 2);
@@ -82,16 +100,21 @@ const UserThemePage = () => {
       const discardedUnsafeValue = containsUnsafeUserThemeValue(imported);
       setImportError(false);
       setUnsafeValue(discardedUnsafeValue);
-      persist(resolveUserThemeConfig(imported, {}));
+      updateOverrides(parseUserThemeOverrides(imported));
     } catch {
       setImportError(true);
     }
-  }, [persist]);
+  }, [updateOverrides]);
 
   return (
     <div className='glitch local-settings__page user-theme'>
       <h1><FormattedMessage id='settings.user_theme' defaultMessage='User theme' /></h1>
       <p className='hint'><FormattedMessage id='settings.user_theme.hint' defaultMessage='Layer a server theme and your own allowed CSS variable values over the selected flavour and theme.' /></p>
+      <div className='user-theme__share'>
+        <Button onClick={save} disabled={saveState === 'saved' || saveState === 'saving'}><FormattedMessage id='settings.user_theme.save' defaultMessage='Save changes' /></Button>
+        {saveState === 'saved' && <span><FormattedMessage id='settings.user_theme.saved' defaultMessage='Saved' /></span>}
+        {saveState === 'error' && <span className='user-theme__error'><FormattedMessage id='settings.user_theme.save_error' defaultMessage='Could not save the theme.' /></span>}
+      </div>
       <div className='user-theme__share'>
         <Button onClick={exportTheme}><FormattedMessage id='settings.user_theme.export' defaultMessage='Export' /></Button>
         <Button secondary onClick={() => importInput.current?.click()}><FormattedMessage id='settings.user_theme.import' defaultMessage='Import' /></Button>
