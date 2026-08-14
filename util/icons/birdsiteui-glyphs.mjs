@@ -35,6 +35,7 @@ export const GLYPHS = {
   calendar: 'calendar-blank',
   drafts: 'floppy-disk',
   clips: 'copy',
+  quote: 'quotes',
   attachment: 'paperclip',
 
   'switch-account': 'user-switch',
@@ -59,6 +60,8 @@ export const GLYPHS = {
   'user-plus': 'user-plus',
   'bell-slash': 'bell-slash',
   cloud: 'cloud',
+  colors: 'palette',
+  'pipe-wrench': 'pipe-wrench',
   gear: 'gear',
   drag: 'arrows-out-cardinal',
   collapse: 'arrows-in-line-vertical',

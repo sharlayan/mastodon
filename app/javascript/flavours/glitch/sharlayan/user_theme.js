@@ -61,6 +61,35 @@ const VARIABLE_SET = new Set(USER_THEME_VARIABLES);
 const VARIABLE_TYPES = new Map(USER_THEME_VARIABLE_GROUPS.flatMap(group => group.variables.map(variable => [variable.name, variable.type])));
 const REFERENCE_FUNCTION = /(?:url|src|image-set|cross-fade|element|paint|var|env)\s*\(/i;
 
+export const BIRDSITEUI_USER_THEME = {
+  id: 'sharlayan-birdsiteui',
+  name: 'BirdSiteUI',
+  variables: {
+    light: {
+      '--color-text-primary': '#1f1b23',
+      '--color-text-secondary': '#9388a6',
+      '--color-text-brand': '#6364ff',
+      '--color-bg-primary': '#fff',
+      '--color-bg-secondary': 'rgb(0 0 0 / 5%)',
+      '--color-bg-tertiary': 'rgb(0 0 0 / 8%)',
+      '--color-bg-brand-base': '#6364ff',
+      '--color-bg-brand-soft': 'rgb(99 100 255 / 15%)',
+      '--color-border-primary': '#e6e1ed',
+    },
+    dark: {
+      '--color-text-primary': '#fff',
+      '--color-text-secondary': '#717c9b',
+      '--color-text-brand': '#858afa',
+      '--color-bg-primary': '#1e2028',
+      '--color-bg-secondary': 'rgb(255 255 255 / 5%)',
+      '--color-bg-tertiary': 'rgb(255 255 255 / 10%)',
+      '--color-bg-brand-base': '#6364ff',
+      '--color-bg-brand-soft': 'rgb(99 100 255 / 15%)',
+      '--color-border-primary': '#38384d',
+    },
+  },
+};
+
 export const encodeUserThemeStorage = (value) => {
   return typeof value === 'string' ? value : JSON.stringify(value);
 };
@@ -131,6 +160,24 @@ export const parseUserThemeCatalog = (value) => {
   } catch {
     return [];
   }
+};
+
+export const isBirdSiteUIActive = (root = document) => {
+  if (root.body?.classList.contains('skin-birdsiteui')) return true;
+
+  return Array.from(root.querySelectorAll('link[rel~="stylesheet"]')).some(link =>
+    /(?:^|\/)skins\/glitch\/birdsiteui(?:\/|[-.])/.test(link.href),
+  );
+};
+
+export const userThemeCatalogForActiveSkin = (value, root = document) => {
+  const catalog = parseUserThemeCatalog(value);
+  if (!isBirdSiteUIActive(root)) return catalog;
+
+  return [
+    ...catalog.filter(theme => theme.id !== BIRDSITEUI_USER_THEME.id),
+    BIRDSITEUI_USER_THEME,
+  ];
 };
 
 export const resolveUserThemeConfig = (userValue, defaultValue) => {

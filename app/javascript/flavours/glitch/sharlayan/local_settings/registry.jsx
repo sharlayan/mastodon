@@ -165,7 +165,7 @@ export const SharlayanLocalSettingsSlot = injectIntl(LocalSettingsSlot);
 export const renderSharlayanLocalSettingsNavigationItems = (slot, { NavigationItem, index, intl, onNavigate }) => {
   const items = slot === 'after-general'
     ? [
-      { index: 1, icon: 'sliders', iconComponent: TuneIcon, title: intl.formatMessage(messages.quick_preferences) },
+      { index: 1, icon: 'pipe-wrench', iconComponent: TuneIcon, title: intl.formatMessage(messages.quick_preferences) },
       ...(userThemesEnabled ? [{ index: 9, icon: 'colors', iconComponent: ColorsIcon, title: intl.formatMessage(messages.user_theme) }] : []),
     ]
     : [

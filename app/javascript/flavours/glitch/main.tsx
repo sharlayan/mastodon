@@ -22,8 +22,8 @@ import { applyStoredContentFontSize } from 'flavours/glitch/sharlayan/local_sett
 import { applyStoredSensitiveEmojiDisplay } from 'flavours/glitch/sharlayan/local_settings/sensitive_emoji_display';
 import { applyServerBackground } from 'flavours/glitch/sharlayan/server_background';
 import {
-  parseUserThemeCatalog,
   resolveUserThemeConfig,
+  userThemeCatalogForActiveSkin,
   watchUserTheme,
 } from 'flavours/glitch/sharlayan/user_theme';
 import { store } from 'flavours/glitch/store';
@@ -37,7 +37,7 @@ function main() {
   applyStoredSensitiveEmojiDisplay();
   watchUserTheme(
     resolveUserThemeConfig(userTheme, userThemeDefaults),
-    parseUserThemeCatalog(userThemeCatalog),
+    userThemeCatalogForActiveSkin(userThemeCatalog),
     userThemesEnabled,
   );
 

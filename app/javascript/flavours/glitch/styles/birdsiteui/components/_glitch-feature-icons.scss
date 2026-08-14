@@ -172,6 +172,14 @@
     @include icons.icon-swap(video, $color: var(--color-dim));
   }
 
+  .status__collapse-button .icon-expand-less {
+    @include icons.icon(up, $size: 16px);
+  }
+
+  .status__collapse-button .icon-expand-more {
+    @include icons.icon(down, $size: 16px);
+  }
+
   .drawer__header .icon-bars {
     @include icons.icon-swap(menu, $color: var(--color-light-text));
   }
@@ -297,6 +305,14 @@
 
   .icon-cloud {
     @include icons.icon-swap(cloud, $color: var(--color-light-text));
+  }
+
+  .icon-colors {
+    @include icons.icon-swap(colors, $color: var(--color-light-text));
+  }
+
+  .icon-pipe-wrench {
+    @include icons.icon-swap(pipe-wrench, $color: var(--color-light-text));
   }
 
   .icon-drag {

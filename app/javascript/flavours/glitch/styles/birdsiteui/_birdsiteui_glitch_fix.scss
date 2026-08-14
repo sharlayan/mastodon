@@ -32,10 +32,6 @@ html {
     --status-gutter-width: calc(var(--size-avatar) + var(--gap-default));
   }
 
-  .status--is-quote {
-    --status-gutter-width: 0;
-  }
-
   [class*='_comp_number_fields__item'] button {
     font-size: inherit;
     font-weight: inherit;
@@ -50,12 +46,6 @@ html {
   .status > .instance-badge {
     margin-inline-start: var(--status-gutter-width);
     width: calc(100% - var(--status-gutter-width));
-  }
-
-  .status--is-quote > .reactions-bar,
-  .status--is-quote > .instance-badge {
-    margin-inline-start: 0;
-    width: 100%;
   }
 
   .account__avatar__decoration-layer,
@@ -302,8 +292,6 @@ html {
     }
 
     .compose-form {
-      padding-inline: 0;
-
       &__footer {
         padding-inline: 5px;
       }

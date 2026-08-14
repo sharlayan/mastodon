@@ -257,7 +257,7 @@ ko:
       mascots:
         glitch_hint: glitch에서 순환하는 4개 마스코트 중 해당 슬롯을 대체합니다. 비워 두면 내장 이미지를 사용합니다.
         glitch_slot: Glitch 마스코트 %{slot}
-        preamble: 기존 vanilla 마스코트와 glitch에서 순환하는 마스코트 이미지 각각을 설정합니다.
+        preamble: 고급 웹 인터페이스(덱 모드)에서 사용되는 마스코트 이미지를 설정합니다.
         title: 마스코트
         vanilla: Vanilla 마스코트
         vanilla_hint: vanilla 고급 웹 인터페이스에서 사용합니다.
