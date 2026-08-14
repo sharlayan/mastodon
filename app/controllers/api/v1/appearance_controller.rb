@@ -2,7 +2,6 @@
 
 class Api::V1::AppearanceController < Api::BaseController
   USER_THEME_MAX_BYTES = 32.kilobytes
-  USER_THEME_MAX_ENCODED_BYTES = 44.kilobytes
 
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }
   before_action :require_user!
@@ -36,14 +35,14 @@ class Api::V1::AppearanceController < Api::BaseController
 
     if params.key?(:user_theme)
       value = params[:user_theme].to_s
-      raise Mastodon::InvalidParameterError, "Invalid value for 'web.user_theme'" if value.bytesize > USER_THEME_MAX_ENCODED_BYTES
+      raise Mastodon::InvalidParameterError, "Invalid value for 'web.user_theme'" if value.bytesize > USER_THEME_MAX_BYTES
 
-      decoded_size = begin
-        Base64.strict_decode64(value).bytesize
-      rescue ArgumentError
+      begin
+        parsed = JSON.parse(value)
+        raise JSON::ParserError unless parsed.is_a?(Hash)
+      rescue JSON::ParserError
         raise Mastodon::InvalidParameterError, "Invalid value for 'web.user_theme'"
       end
-      raise Mastodon::InvalidParameterError, "Invalid value for 'web.user_theme'" if decoded_size > USER_THEME_MAX_BYTES
 
       settings['web.user_theme'] = value
     end

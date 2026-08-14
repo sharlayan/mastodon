@@ -77,7 +77,7 @@ RSpec.describe 'Appearance API' do
 
     context 'when a user theme is supplied' do
       let(:theme_json) { '{"dark":{"theme":"ocean","variables":{"--color-bg-primary":"#001122"}}}' }
-      let(:params) { { user_theme: Base64.strict_encode64(theme_json) } }
+      let(:params) { { user_theme: theme_json } }
 
       it 'stores the frontend theme JSON without interpreting its variables' do
         subject
@@ -88,7 +88,7 @@ RSpec.describe 'Appearance API' do
     end
 
     context 'when a user theme exceeds the storage limit' do
-      let(:params) { { user_theme: Base64.strict_encode64('x' * (32.kilobytes + 1)) } }
+      let(:params) { { user_theme: JSON.generate(value: 'x' * 32.kilobytes) } }
 
       it 'returns a bad request without changing settings' do
         expect { subject }.to_not(change { user.reload.settings.as_json })
@@ -97,21 +97,8 @@ RSpec.describe 'Appearance API' do
       end
     end
 
-    context 'when a user theme payload exceeds the encoded limit' do
-      let(:params) { { user_theme: 'A' * 1.megabyte } }
-
-      before { allow(Base64).to receive(:strict_decode64).and_call_original }
-
-      it 'returns a bad request without decoding the payload' do
-        expect { subject }.to_not(change { user.reload.settings.as_json })
-
-        expect(response).to have_http_status(400)
-        expect(Base64).to_not have_received(:strict_decode64).with(params[:user_theme])
-      end
-    end
-
-    context 'when a user theme is not strict Base64' do
-      let(:params) { { user_theme: '{"dark":{}}' } }
+    context 'when a user theme is not valid JSON' do
+      let(:params) { { user_theme: 'not-json' } }
 
       it 'returns a bad request without changing settings' do
         expect { subject }.to_not(change { user.reload.settings.as_json })
