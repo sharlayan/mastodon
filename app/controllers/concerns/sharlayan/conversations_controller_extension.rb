@@ -3,6 +3,7 @@
 module Sharlayan::ConversationsControllerExtension
   STATUSES_LIMIT = 50
   STATUSES_DEFAULT_LIMIT = 50
+  PreservedGroupRow = Data.define(:id, :conversation_id, :participant_account_ids, :last_status_id, :unread)
 
   def self.prepended(base)
     base.before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:statuses, :with_account, :with_status]
@@ -139,18 +140,18 @@ module Sharlayan::ConversationsControllerExtension
   end
 
   def preserved_group_definitions
-    rows = AccountConversation.where(account: current_account).select(:id, :conversation_id, :participant_account_ids, :last_status_id, :unread).to_a
+    rows = AccountConversation.where(account: current_account).pluck(:id, :conversation_id, :participant_account_ids, :last_status_id, :unread).map { |attributes| PreservedGroupRow.new(*attributes) }
     expanded = []
     consumed_ids = Set.new
 
     rows.group_by(&:conversation_id).each_value do |thread_rows|
-      leaves = thread_rows.reject do |candidate|
-        thread_rows.any? { |other| proper_participant_subset?(candidate.participant_account_ids, other.participant_account_ids) }
-      end
+      participant_sets = thread_rows.to_h { |row| [row.id, row.participant_account_ids.to_set] }
+      leaves = maximal_participant_rows(thread_rows, participant_sets)
+      members_by_leaf_id = preserved_members_by_leaf_id(thread_rows, leaves, participant_sets)
 
       leaves.each do |leaf|
-        members = thread_rows.select { |candidate| participant_subset?(candidate.participant_account_ids, leaf.participant_account_ids) }
-        next unless members.any? { |candidate| candidate.participant_account_ids != leaf.participant_account_ids }
+        members = members_by_leaf_id[leaf.id]
+        next if members.one?
 
         expanded << preserved_group_definition(leaf, members, expanded: true)
         consumed_ids.merge(members.map(&:id))
@@ -163,6 +164,32 @@ module Sharlayan::ConversationsControllerExtension
     end
 
     expanded + grouped
+  end
+
+  def maximal_participant_rows(rows, participant_sets)
+    rows.sort_by { |row| -participant_sets[row.id].size }.each_with_object([]) do |row, leaves|
+      row_participants = participant_sets[row.id]
+      leaves << row unless leaves.any? { |leaf| row_participants.proper_subset?(participant_sets[leaf.id]) }
+    end
+  end
+
+  def preserved_members_by_leaf_id(rows, leaves, participant_sets)
+    leaves_by_participant = Hash.new { |hash, participant_id| hash[participant_id] = [] }
+    leaves.each do |leaf|
+      participant_sets[leaf.id].each { |participant_id| leaves_by_participant[participant_id] << leaf }
+    end
+
+    rows.each_with_object(Hash.new { |hash, leaf_id| hash[leaf_id] = [] }) do |row, members|
+      row_participants = participant_sets[row.id]
+      candidates = if row_participants.empty?
+                     leaves
+                   else
+                     row_participants.map { |participant_id| leaves_by_participant[participant_id] }.min_by(&:size)
+                   end
+      candidates.each do |leaf|
+        members[leaf.id] << row if row_participants.subset?(participant_sets[leaf.id])
+      end
+    end
   end
 
   def preserved_group_definition(representative, members, expanded:)
@@ -187,14 +214,6 @@ module Sharlayan::ConversationsControllerExtension
     representative.member_ids = definition[:expanded] ? [representative.id] : definition[:member_ids]
     representative.group_unread = definition[:unread]
     representative
-  end
-
-  def participant_subset?(left, right)
-    (left - right).empty?
-  end
-
-  def proper_participant_subset?(left, right)
-    left != right && participant_subset?(left, right)
   end
 
   def next_path
