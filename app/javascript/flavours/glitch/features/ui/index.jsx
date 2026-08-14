@@ -131,6 +131,7 @@ class SwitchingColumnsArea extends PureComponent {
     layout: PropTypes.string.isRequired,
     forceOnboarding: PropTypes.bool,
     pageBlogView: PropTypes.bool,
+    minimalShell: PropTypes.bool,
   };
 
   componentDidMount () {
@@ -168,7 +169,7 @@ class SwitchingColumnsArea extends PureComponent {
   };
 
   render () {
-    const { children, pageBlogView, singleColumn, forceOnboarding } = this.props;
+    const { children, pageBlogView, singleColumn, forceOnboarding, minimalShell } = this.props;
     const { signedIn } = this.props.identity;
     const pathName = this.props.location.pathname;
 
@@ -195,7 +196,7 @@ class SwitchingColumnsArea extends PureComponent {
 
     return (
       <ColumnsContextProvider multiColumn={!singleColumn}>
-        <ColumnsArea ref={this.setRef} singleColumn={singleColumn} domain={domain} pageBlogView={pageBlogView} minimalShell={!signedIn && landingPage === 'overview' && pathName.startsWith('/overview')}>
+        <ColumnsArea ref={this.setRef} singleColumn={singleColumn} domain={domain} pageBlogView={pageBlogView} minimalShell={minimalShell}>
           <WrappedSwitch>
             <Redirect from='/' to={{pathname: rootRedirect, state: {...this.props.location.state, focusTarget: false}}} exact />
 
@@ -723,6 +724,7 @@ class UI extends PureComponent {
             layout={layout}
             forceOnboarding={firstLaunch && newAccount}
             pageBlogView={pageBlogView}
+            minimalShell={minimalShell}
           >
             {children}
           </SwitchingColumnsArea>
