@@ -35,6 +35,7 @@ export const GLYPHS = {
   calendar: 'calendar-blank',
   drafts: 'floppy-disk',
   clips: 'copy',
+  quote: 'quotes',
   attachment: 'paperclip',
 
   'switch-account': 'user-switch',

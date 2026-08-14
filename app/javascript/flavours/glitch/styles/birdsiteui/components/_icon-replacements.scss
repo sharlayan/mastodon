@@ -396,6 +396,16 @@ html .icon-button .icon-repeat {
     );
   }
 
+  .detailed-status__action-bar .icon-paperclip,
+  .status__action-bar .icon-paperclip {
+    @include icons.icon-swap(attachment);
+  }
+
+  .detailed-status__action-bar .icon-quote-right,
+  .status__action-bar .icon-quote-right {
+    @include icons.icon-swap(quote);
+  }
+
   .status button.icon-button:hover .icon-mail-reply,
   .status button.icon-button:hover .icon-reply,
   .status button.icon-button:hover .icon-reply-all {
