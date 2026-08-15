@@ -164,12 +164,20 @@
     @include icons.icon-swap(image, $color: var(--color-dim));
   }
 
+  .status .status__info__icons .icon-link {
+    @include icons.icon-swap(link, $color: var(--color-dim));
+  }
+
   .status .status__info__icons .icon-tasks {
     @include icons.icon-swap(poll, $color: var(--color-dim));
   }
 
   .status .status__info__icons .icon-video-camera {
     @include icons.icon-swap(video, $color: var(--color-dim));
+  }
+
+  .status .status__info__icons .icon-music {
+    @include icons.icon-swap(music, $color: var(--color-dim));
   }
 
   .status__collapse-button .icon-expand-less {

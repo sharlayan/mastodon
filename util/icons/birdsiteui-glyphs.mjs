@@ -49,6 +49,7 @@ export const GLYPHS = {
   'content-type': 'pencil-simple-line',
   poll: 'chart-bar-horizontal',
   video: 'video-camera',
+  music: 'music-note',
   unlisted: 'moon-stars',
   direct: 'envelope-simple',
   menu: 'list',
