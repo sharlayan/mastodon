@@ -31,13 +31,13 @@ class PermalinkRedirector
   def redirect_path
     return ActivityPub::TagManager.instance.url_for(object) || ActivityPub::TagManager.instance.uri_for(object) if object.present?
 
-    @path.delete_prefix('/deck') if @path.start_with?('/deck')
+    local_redirect_path
   end
 
   def redirect_uri
     return ActivityPub::TagManager.instance.uri_for(object) if object.present?
 
-    @path.delete_prefix('/deck') if @path.start_with?('/deck')
+    local_redirect_path
   end
 
   def redirect_confirmation_path
@@ -49,11 +49,18 @@ class PermalinkRedirector
     when 'Collection'
       redirect_collection_path(object.id)
     else
-      @path.delete_prefix('/deck') if @path.start_with?('/deck')
+      local_redirect_path
     end
   end
 
   private
+
+  def local_redirect_path
+    return unless @path.start_with?('/deck')
+
+    path = @path.delete_prefix('/deck')
+    "/#{path.sub(%r{\A/+}, '')}" if path.present?
+  end
 
   def at_username_status_request?
     at_username_request? && record_integer_id_request?
