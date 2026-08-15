@@ -101,7 +101,7 @@ class AdvancedTextFormatter < TextFormatter
 
   def format_markdown(text)
     text, placeholder = protect_entity_underscores(text)
-    html = markdown_formatter.render(text)
+    html = markdown_formatter(placeholder).render(text)
     html.gsub!(placeholder, '_')
     html.delete("\r").delete("\n")
   end
@@ -123,7 +123,7 @@ class AdvancedTextFormatter < TextFormatter
     [text, placeholder]
   end
 
-  def markdown_formatter
+  def markdown_formatter(placeholder)
     extensions = {
       autolink: true,
       no_intra_emphasis: true,
@@ -147,7 +147,7 @@ class AdvancedTextFormatter < TextFormatter
       hard_wrap: true,
       link_attributes: { target: '_blank', rel: 'nofollow noopener' },
     }) do |url|
-      link_to_url({ url: url })
+      link_to_url({ url: url.gsub(placeholder, '_') })
     end
 
     Redcarpet::Markdown.new(renderer, extensions)

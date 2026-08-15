@@ -7,7 +7,7 @@ import type { RenderSlideFn } from '@/flavours/glitch/components/carousel';
 import { Carousel } from '@/flavours/glitch/components/carousel';
 import { CustomEmojiProvider } from '@/flavours/glitch/components/emoji/context';
 import { useCustomEmojis } from '@/flavours/glitch/hooks/useCustomEmojis';
-import { glitchMascots } from '@/flavours/glitch/initial_state';
+import { glitchMascots, mascot } from '@/flavours/glitch/initial_state';
 import { createAppSelector, useAppSelector } from '@/flavours/glitch/store';
 import elephantUIPlane from '@/images/elephant_ui_plane.svg';
 
@@ -50,7 +50,7 @@ export const Announcements: FC = () => {
         className='announcements__mastodon'
         alt=''
         draggable='false'
-        src={glitchMascots[3] ?? elephantUIPlane}
+        src={glitchMascots[3] ?? mascot ?? elephantUIPlane}
       />
 
       <CustomEmojiProvider emojis={emojis}>
