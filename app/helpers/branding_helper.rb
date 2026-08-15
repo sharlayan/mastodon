@@ -50,6 +50,7 @@ module BrandingHelper
     if dark_wordmark_url && light_wordmark_url
       escaped_dark_url = branding_logo_css_url(dark_wordmark_url)
       escaped_light_url = branding_logo_css_url(light_wordmark_url)
+      rules << 'html{--branding-navigation-logo-display:block}'
       rules << "html{--branding-logo-wordmark:url(#{escaped_dark_url})}html[data-color-scheme=light]{--branding-logo-wordmark:url(#{escaped_light_url})}svg.logo--wordmark{background:var(--branding-logo-wordmark) center/contain no-repeat}svg.logo--wordmark use{display:none}"
       rules << "@media(prefers-color-scheme:light){html:not([data-color-scheme]){--branding-logo-wordmark:url(#{escaped_light_url})}}"
     end

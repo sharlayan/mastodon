@@ -18,16 +18,16 @@ RSpec.describe SiteUpload do
       expect(FastImage.size(upload.file.path)).to eq [400, 400]
     end
 
-    it 'center-crops wordmarks to the branding aspect ratio without reducing the width' do
+    it 'preserves the original dimensions of wordmarks' do
       upload = described_class.create!(var: 'logo_wordmark_dark', file: Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'files', '600x400.png'), 'image/png'))
 
-      expect(FastImage.size(upload.file.path)).to eq [600, 151]
+      expect(FastImage.size(upload.file.path)).to eq [600, 400]
     end
 
-    it 'preserves animation while cropping animated wordmarks' do
+    it 'preserves animated wordmarks without cropping' do
       upload = described_class.create!(var: 'logo_wordmark_light', file: Rack::Test::UploadedFile.new(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif'), 'image/gif'))
 
-      expect(FastImage.size(upload.file.path)).to eq [128, 32]
+      expect(FastImage.size(upload.file.path)).to eq [128, 128]
     end
   end
 end

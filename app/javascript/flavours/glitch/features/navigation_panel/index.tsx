@@ -4,7 +4,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import type { Map as ImmutableMap } from 'immutable';
 
@@ -24,6 +24,7 @@ import {
 } from 'flavours/glitch/actions/navigation';
 import { Account } from 'flavours/glitch/components/account';
 import { IconWithBadge } from 'flavours/glitch/components/icon_with_badge';
+import { WordmarkLogo } from 'flavours/glitch/components/logo';
 import { Search } from 'flavours/glitch/features/compose/components/search';
 import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 import { getNavigationSkipLinkId } from 'flavours/glitch/features/ui/components/skip_links';
@@ -195,6 +196,12 @@ export const NavigationPanel: React.FC<{ multiColumn?: boolean }> = ({
       className='navigation-panel'
       aria-label={intl.formatMessage(messages.main)}
     >
+      <div className='navigation-panel__logo'>
+        <Link to='/' className='column-link column-link--logo'>
+          <WordmarkLogo />
+        </Link>
+      </div>
+
       {showSearch && <Search singleColumn />}
 
       {!multiColumn && <ProfileCard />}

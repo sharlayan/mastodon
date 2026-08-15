@@ -3882,6 +3882,7 @@ a.account__display-name {
   }
 
   &__logo {
+    display: var(--branding-navigation-logo-display, none);
     margin-bottom: 12px;
   }
 
