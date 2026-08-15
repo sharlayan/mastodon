@@ -54,6 +54,7 @@ initializeLogLevel(process.env, environment);
  * @property {string} accountId
  * @property {string[]} chosenLanguages
  * @property {number} permissions
+ * @property {number} extraPermissions
  */
 
 /**
@@ -427,6 +428,8 @@ const startServer = async () => {
     req.permissions = result.rows[0].permissions;
     req.externalClient = !result.rows[0].superapp;
     req.customEmojiMutes = req.externalClient ? await loadCustomEmojiMutes(req.accountId) : [];
+    req.extraPermissions = result.rows[0].extra_permissions ?? 0;
+    req.adminTimelineOwnerViewer = result.rows[0].admin_timeline_owner_viewer === true;
 
     return {
       accessTokenId: result.rows[0].id,
@@ -434,6 +437,8 @@ const startServer = async () => {
       accountId: result.rows[0].account_id,
       chosenLanguages: result.rows[0].chosen_languages,
       permissions: result.rows[0].permissions,
+      extraPermissions: result.rows[0].extra_permissions ?? 0,
+      adminTimelineOwnerViewer: result.rows[0].admin_timeline_owner_viewer === true,
     };
   };
 

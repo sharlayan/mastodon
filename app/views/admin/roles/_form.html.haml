@@ -86,6 +86,9 @@
         %span.hint= t('simple_form.hints.user_role.extra_permissions_as_keys')
 
       - UserRole::ExtraFlags::CATEGORIES.each do |category, permissions|
+        - permissions = permissions.select { |permission| UserRole.extra_flag_available?(permission) }
+        - next if permissions.empty?
+
         %h2= t(category, scope: 'admin.roles.extra_categories')
 
         = form.input :extra_permissions_as_keys,

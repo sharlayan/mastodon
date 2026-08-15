@@ -10,6 +10,7 @@ export interface IdentityContextType {
   accountId: string | undefined;
   disabledAccountId: string | undefined;
   permissions: number;
+  extraPermissions: number;
 }
 
 export const identityContextPropShape = PropTypes.shape({
@@ -23,11 +24,13 @@ export const createIdentityContext = (state: InitialState) => ({
   accountId: state.meta.me,
   disabledAccountId: state.meta.disabled_account_id,
   permissions: state.role?.permissions ?? 0,
+  extraPermissions: state.role?.extra_permissions ?? 0,
 });
 
 export const IdentityContext = createContext<IdentityContextType>({
   signedIn: false,
   permissions: 0,
+  extraPermissions: 0,
   accountId: undefined,
   disabledAccountId: undefined,
 });

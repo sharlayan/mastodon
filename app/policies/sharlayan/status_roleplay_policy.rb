@@ -13,19 +13,19 @@ module Sharlayan::StatusRoleplayPolicy
   # but nobody may interact with them again.
   module PublicMethods
     def quote?
-      roleplay_hidden_interaction_allowed? && super
+      roleplay_interaction_allowed? && super
     end
 
     def reblog?
-      roleplay_hidden_interaction_allowed? && super
+      roleplay_interaction_allowed? && super
     end
 
     def favourite?
-      roleplay_hidden_interaction_allowed? && super
+      roleplay_interaction_allowed? && super
     end
 
     def react?
-      roleplay_hidden_interaction_allowed? && super
+      roleplay_interaction_allowed? && super
     end
 
     def destroy?
@@ -41,12 +41,27 @@ module Sharlayan::StatusRoleplayPolicy
 
   private
 
-  # Returns nil when the roleplay hidden gate does not apply, so that
-  # `StatusPolicy#show?` keeps evaluating its own rules.
-  def roleplay_hidden_show?
-    return @roleplay_hidden_show if defined?(@roleplay_hidden_show)
+  def roleplay_show_override
+    return @roleplay_show_override if defined?(@roleplay_show_override)
 
-    @roleplay_hidden_show = roleplay_owner? if roleplay_mode? && roleplay_hidden?
+    @roleplay_show_override =
+      if roleplay_mode? && roleplay_hidden?
+        roleplay_owner?
+      elsif admin_timeline_readable?
+        true
+      end
+  end
+
+  def admin_timeline_readable?
+    return false unless Sharlayan::AdminTimeline.enabled?
+    return false if current_account.nil? || !role.can_extra?(:view_admin_timeline)
+    return false unless author.local? && record.admin_timeline_eligible?
+
+    roleplay_owner? || !admin_timeline_owner_conversation?
+  end
+
+  def admin_timeline_owner_conversation?
+    Sharlayan::AdminTimeline.owner_conversation?(record)
   end
 
   def roleplay_hidden?
@@ -55,15 +70,22 @@ module Sharlayan::StatusRoleplayPolicy
     @roleplay_hidden = record.rp_hidden?
   end
 
+  def roleplay_interaction_allowed?
+    roleplay_hidden_interaction_allowed? && !admin_timeline_only_readable?
+  end
+
   def roleplay_hidden_interaction_allowed?
     !roleplay_mode? || !roleplay_hidden?
   end
 
+  def admin_timeline_only_readable?
+    admin_timeline_readable? && !visible_to_current_account?
+  end
+
   def roleplay_owner?
     return false unless roleplay_mode?
-    return false if role.everyone?
 
-    role.position == UserRole.assignable.maximum(:position)
+    Sharlayan::AdminTimeline.owner_role?(role)
   end
 
   def roleplay_owner_soft_hide_deletion?

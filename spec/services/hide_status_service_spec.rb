@@ -98,6 +98,18 @@ RSpec.describe HideStatusService do
       expect(Notification.where(activity_type: 'Favourite', activity_id: favourite.id)).to be_empty
     end
 
+    it 'removes the status from both isolated management streams' do
+      channels = []
+      allow(redis).to receive(:publish).and_wrap_original do |original, channel, payload|
+        channels << channel
+        original.call(channel, payload)
+      end
+
+      ClimateControl.modify(OC_ADMIN_TIMELINE_OPTION: 'true') { subject.call(status) }
+
+      expect(channels).to include('timeline:admin', 'timeline:admin:owner')
+    end
+
     it 'removes favourites and reactions with their cached counts' do
       favourite = Fabricate(:favourite, status: status, account: bob)
       reaction = Fabricate(:status_reaction, status: status, account: bob, name: '👍')

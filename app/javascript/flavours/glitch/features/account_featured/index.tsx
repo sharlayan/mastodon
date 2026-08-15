@@ -24,7 +24,8 @@ import { BundleColumnError } from '@/flavours/glitch/features/ui/components/bund
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { useAccountVisibility } from '@/flavours/glitch/hooks/useAccountVisibility';
-import { collectionsEnabled, me } from '@/flavours/glitch/initial_state';
+import { me } from '@/flavours/glitch/initial_state';
+import { collectionsEnabled } from '@/flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 

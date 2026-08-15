@@ -14,8 +14,8 @@ import { connectDirectStream } from 'flavours/glitch/actions/streaming';
 import { expandDirectTimeline } from 'flavours/glitch/actions/timelines';
 import { Column } from '@/flavours/glitch/components/column';
 import { ColumnHeader } from '@/flavours/glitch/components/column/header';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import StatusListContainer from 'flavours/glitch/features/ui/containers/status_list_container';
-import { roleplayMode } from 'flavours/glitch/initial_state';
 
 import { ConversationsList } from './components/conversations_list';
 import ColumnSettingsContainer from './containers/column_settings_container';

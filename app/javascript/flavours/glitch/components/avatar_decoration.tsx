@@ -3,12 +3,12 @@ import classNames from 'classnames';
 import {
   avatarDecorationShape,
   avatarDecorationsEnabled,
-  forceRoundAvatar,
   me,
   showAvatarDecorations,
   showFederatedAvatarDecorations,
 } from 'flavours/glitch/initial_state';
 import type { Account } from 'flavours/glitch/models/account';
+import { forceRoundAvatar } from 'flavours/glitch/sharlayan/roleplay';
 
 import { buildDecorationTransform } from './avatar_decoration_utils';
 import { RetryingImage } from './retrying_image';

@@ -5,8 +5,8 @@ import { FormattedMessage } from 'react-intl';
 
 import { fetchRelationships } from '@/flavours/glitch/actions/accounts';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
-import { roleplayMode } from '@/flavours/glitch/initial_state';
 import type { AccountRole } from '@/flavours/glitch/models/account';
+import { roleplayMode } from '@/flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import PersonIcon from '@/material-icons/400-24px/person.svg?react';
 

@@ -6,15 +6,9 @@ class StatusPolicy < ApplicationPolicy
   def show?
     return false if author.unavailable?
     return false if local_only? && (current_account.nil? || !current_account.local?)
-    return roleplay_hidden_show? unless roleplay_hidden_show?.nil?
+    return roleplay_show_override unless roleplay_show_override.nil?
 
-    if requires_mention?
-      owned? || mention_exists?
-    elsif private?
-      owned? || following_author? || mention_exists?
-    else
-      current_account.nil? || (!author_blocking? && !author_blocking_domain?)
-    end
+    visible_to_current_account?
   end
 
   def quote?
@@ -48,6 +42,16 @@ class StatusPolicy < ApplicationPolicy
   end
 
   private
+
+  def visible_to_current_account?
+    if requires_mention?
+      owned? || mention_exists?
+    elsif private?
+      owned? || following_author? || mention_exists?
+    else
+      current_account.nil? || (!author_blocking? && !author_blocking_domain?)
+    end
+  end
 
   def requires_mention?
     record.direct_visibility? || record.limited_visibility?

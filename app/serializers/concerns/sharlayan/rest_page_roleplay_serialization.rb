@@ -9,11 +9,11 @@ module Sharlayan::RESTPageRoleplaySerialization
     return false unless roleplay_mode?
 
     role = scope&.role
-    return false if role.nil? || role.everyone?
+    return false if role.nil?
 
     cache = RequestStore.store[:page_serializer_roleplay_owner] ||= {}
     cache.fetch(role.id) do
-      cache[role.id] = role.position == UserRole.assignable.maximum(:position)
+      cache[role.id] = Sharlayan::AdminTimeline.owner_role?(role)
     end
   end
 end

@@ -4,7 +4,8 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import { animated, useSpring } from '@react-spring/web';
 
-import { me, roleplayMode } from 'flavours/glitch/initial_state';
+import { me } from 'flavours/glitch/initial_state';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppSelector } from 'flavours/glitch/store';
 import type { RootState } from 'flavours/glitch/store';
 import { HASHTAG_PATTERN_REGEX } from 'flavours/glitch/utils/hashtags';

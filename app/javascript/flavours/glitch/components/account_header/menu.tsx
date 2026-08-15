@@ -30,7 +30,6 @@ import {
 } from '@/flavours/glitch/features/collections/utils';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
-import { collectionsEnabled } from '@/flavours/glitch/initial_state';
 import type { Account } from '@/flavours/glitch/models/account';
 import type { MenuItem } from '@/flavours/glitch/models/dropdown_menu';
 import type { Relationship } from '@/flavours/glitch/models/relationship';
@@ -45,6 +44,10 @@ import {
   sharlayanReactionMuteItems,
   sharlayanRefetchProfileItems,
 } from '@/flavours/glitch/sharlayan/account/header_menu';
+import {
+  collectionsEnabled,
+  roleplayMode,
+} from '@/flavours/glitch/sharlayan/roleplay';
 import type { AppDispatch } from '@/flavours/glitch/store';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import BlockIcon from '@/material-icons/400-24px/block.svg?react';
@@ -198,6 +201,10 @@ const redesignMessages = defineMessages({
     id: 'account.menu.direct',
     defaultMessage: 'Privately mention',
   },
+  directDm: {
+    id: 'account.menu.direct_dm',
+    defaultMessage: 'Send DM',
+  },
   mute: { id: 'account.menu.mute', defaultMessage: 'Mute account' },
   unmute: {
     id: 'account.menu.unmute',
@@ -319,7 +326,9 @@ function getMenuItems({
         },
 
         {
-          text: intl.formatMessage(redesignMessages.direct),
+          text: intl.formatMessage(
+            roleplayMode ? redesignMessages.directDm : redesignMessages.direct,
+          ),
           action: () => {
             dispatch(directCompose(account, true));
           },

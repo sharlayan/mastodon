@@ -1,7 +1,8 @@
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import localSettings from 'flavours/glitch/reducers/local_settings';
-import { roleplayMode, showInstanceInfo } from 'flavours/glitch/initial_state';
+import { showInstanceInfo } from 'flavours/glitch/initial_state';
+import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 
 import { sharlayanLocalSettingsDefaults } from '../defaults';
 

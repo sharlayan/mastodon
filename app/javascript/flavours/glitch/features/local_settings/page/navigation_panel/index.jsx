@@ -36,9 +36,13 @@ import { Icon } from '@/flavours/glitch/components/icon';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { computeNavigationOrder, isNavigationItemAlwaysVisible, NAVIGATION_PANEL_ITEMS, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
 import {
-  collectionsEnabled,
   publicTimelinesEnabled,
 } from '@/flavours/glitch/initial_state';
+import { useIdentity } from '@/flavours/glitch/identity_context';
+import {
+  canUseAdminTimeline,
+  collectionsEnabled,
+} from '@/flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
 const NavigationPanelSettingsItem = ({ itemKey, index, length, checked, locked, intl, onToggle, onMove }) => {
@@ -113,9 +117,12 @@ NavigationPanelSettingsItem.propTypes = {
 
 const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   const dispatch = useAppDispatch();
+  const { permissions, extraPermissions } = useIdentity();
+  const adminTimelineAvailable = canUseAdminTimeline(permissions, extraPermissions);
   const unavailableItems = [
     ...(!publicTimelinesEnabled ? ['federated', 'local'] : []),
     ...(!collectionsEnabled ? ['collections'] : []),
+    ...(!adminTimelineAvailable ? ['admin_timeline'] : []),
   ];
   const availableItems = NAVIGATION_PANEL_ITEMS.filter(
     (key) => !unavailableItems.includes(key),

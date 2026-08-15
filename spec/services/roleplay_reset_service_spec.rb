@@ -18,18 +18,21 @@ RSpec.describe RoleplayResetService do
 
   before do
     Setting.force_local_only = true
+    Setting.force_mfm_enabled = true
     everyone_role.update!(permissions: UserRole::Flags::NONE)
   end
 
   it 'reports changes without applying them by default' do
     expect { service.call }.to_not(change { Setting.find_by(var: 'force_local_only')&.value })
     expect(everyone_role.reload.permissions).to eq(UserRole::Flags::NONE)
+    expect(policy.reload.for_private_mentions).to eq('accept')
   end
 
-  it 'restores general-server defaults' do
+  it 'restores general-server settings and notification defaults' do
     service.call(apply: true)
 
     expect(Setting.find_by(var: 'force_local_only')).to be_nil
+    expect(Setting.find_by(var: 'force_mfm_enabled')).to be_nil
     expect(everyone_role.reload.permissions).to eq(UserRole::Flags::DEFAULT)
     expect(policy.reload).to have_attributes(
       for_not_following: 'accept',
