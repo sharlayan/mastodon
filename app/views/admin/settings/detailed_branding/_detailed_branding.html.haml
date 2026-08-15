@@ -9,7 +9,7 @@
 
 %h2= t('admin.settings.branding.logos.title')
 
-- [[:logo_icon, 79, 79], [:logo_wordmark_dark, 261, 66], [:logo_wordmark_light, 261, 66]].each do |name, width, height|
+- [[:logo_icon, 79, 79], [:logo_wordmark_dark, 261, nil], [:logo_wordmark_light, 261, nil]].each do |name, width, height|
   .fields-row
     .fields-row__column.fields-row__column-6.fields-group
       = f.input name,

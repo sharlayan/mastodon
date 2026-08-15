@@ -29,6 +29,7 @@ RSpec.describe BrandingHelper do
       expect(styles).to include('html{--branding-logo-wordmark:url(/system/site_uploads/logo_wordmark_dark/dark.png)}')
       expect(styles).to include('html[data-color-scheme=light]{--branding-logo-wordmark:url(/system/site_uploads/logo_wordmark_light/light.png)}')
       expect(styles).to include('@media(prefers-color-scheme:light)')
+      expect(styles).to include('--branding-navigation-logo-display:block')
     end
 
     it 'escapes CSS and HTML delimiters in the logo URL' do

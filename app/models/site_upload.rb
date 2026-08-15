@@ -80,7 +80,7 @@ class SiteUpload < ApplicationRecord
     when :logo_icon
       logo_crop_style(attachment, 1, 1)
     when :logo_wordmark_dark, :logo_wordmark_light
-      logo_crop_style(attachment, 261, 66)
+      {}
     else
       STYLES[attachment.instance.var.to_sym]
     end

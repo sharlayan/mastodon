@@ -7,7 +7,7 @@ RSpec.describe 'Admin Settings Branding' do
     before { sign_in Fabricate(:admin_user) }
 
     describe 'GET /admin/settings/detailed_branding' do
-      it 'renders each branding logo upload with its recommended size' do
+      it 'renders each branding logo upload with its display guidance' do
         get admin_settings_detailed_branding_path
 
         expect(response).to have_http_status(200)
@@ -17,7 +17,7 @@ RSpec.describe 'Admin Settings Branding' do
         expect(response.parsed_body.at_css('input[name="form_admin_settings[logo_wordmark_light]"]')).to be_present
         expect(response.parsed_body.css('input[name^="form_admin_settings[glitch_mascot"]').size).to eq(4)
         expect(response.body).to include('237×237')
-        expect(response.body).to include('783×198')
+        expect(response.body).to include('Displayed without cropping')
       end
     end
 

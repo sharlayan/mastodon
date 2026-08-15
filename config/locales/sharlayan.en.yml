@@ -261,10 +261,10 @@ en:
             title: Symbol logo
           title: Branding logos
           wordmark_dark:
-            hint: Center-cropped to a 261:66 ratio without resizing. Use at least 783×198 px. Used on dark backgrounds; if omitted, the light-background logo is used instead.
+            hint: Displayed without cropping while preserving the original aspect ratio. Used at the top of the navigation on dark backgrounds; if omitted, the light-background logo is used instead.
             title: Full logo for dark backgrounds
           wordmark_light:
-            hint: Center-cropped to a 261:66 ratio without resizing. Use at least 783×198 px. Used on light backgrounds; if omitted, the dark-background logo is used instead.
+            hint: Displayed without cropping while preserving the original aspect ratio. Used at the top of the navigation on light backgrounds; if omitted, the dark-background logo is used instead.
             title: Full logo for light backgrounds
       mascots:
         glitch_hint: Replaces this slot in glitch's four-image rotating mascot set. The built-in image is used when left empty.
