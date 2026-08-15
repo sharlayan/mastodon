@@ -5,3 +5,4 @@
       primary.item :appearance, t('admin.settings.appearance.title'), admin_settings_custom_appearance_path
       primary.item :misskey_flavour, t('admin.settings.custom_sections.misskey_flavour'), admin_settings_custom_misskey_flavour_path
       primary.item :extensions, t('admin.settings.extensions.title'), admin_settings_custom_extensions_path
+      primary.item :timeline_control, t('admin.settings.custom_sections.timeline_control'), admin_settings_custom_timeline_control_path, if: -> { roleplay_mode? }

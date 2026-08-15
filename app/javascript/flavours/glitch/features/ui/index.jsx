@@ -32,7 +32,7 @@ import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../act
 import { clearHeight } from '../../actions/height_cache';
 import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
 import { expandHomeTimeline } from '../../actions/timelines';
-import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, isServerPageBlogViewPath, publicTimelinesEnabled, collectionsEnabled } from '../../initial_state';
+import { initialState, me, owner, singleUserMode, trendsEnabled, landingPage, localLiveFeedAccess, disableHoverCards, domain, isServerPageBlogViewPath, federatedTimelineEnabled, localTimelineEnabled, collectionsEnabled } from '../../initial_state';
 import { renderSharlayanRoutes } from 'flavours/glitch/sharlayan/registry/routes/render';
 import { SharlayanUiExtensions, shouldIgnoreSharlayanDropTarget } from 'flavours/glitch/sharlayan/registry/ui';
 
@@ -603,11 +603,11 @@ class UI extends PureComponent {
   };
 
   handleHotkeyGoToLocal = () => {
-    this.props.history.push(publicTimelinesEnabled ? '/public/local' : '/home');
+    this.props.history.push(localTimelineEnabled ? '/public/local' : '/home');
   };
 
   handleHotkeyGoToFederated = () => {
-    this.props.history.push(publicTimelinesEnabled ? '/public' : '/home');
+    this.props.history.push(federatedTimelineEnabled ? '/public' : '/home');
   };
 
   handleHotkeyGoToDirect = () => {

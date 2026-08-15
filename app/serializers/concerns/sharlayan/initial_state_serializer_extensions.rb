@@ -37,6 +37,7 @@ module Sharlayan::InitialStateSerializerExtensions
       local_account_statuses_access: Setting.local_account_statuses_access,
       local_status_page_access: Setting.local_status_page_access,
       roleplay_mode: RoleplayModeHelper.roleplay_mode?,
+      roleplay_disable_local_timeline: RoleplayModeHelper.roleplay_local_timeline_disabled?,
       user_themes_enabled: Setting.user_themes_enabled,
       user_theme_catalog: Setting.user_theme_catalog,
       user_theme_defaults: Setting.user_theme_defaults

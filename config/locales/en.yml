@@ -997,6 +997,8 @@ en:
         extensions_preamble: Configure Custodon extensions and server-side capabilities.
         misskey_flavour: Misskey flavour
         misskey_flavour_preamble: Configure Misskey-inspired features and client compatibility.
+        timeline_control: Timeline control
+        timeline_control_preamble: Control public timelines for this OC roleplay server. The federated timeline is always disabled in OC roleplay mode.
       default_noindex:
         desc_html: Affects all users who have not changed this setting themselves
         title: Opt users out of search engine indexing by default
@@ -1022,6 +1024,10 @@ en:
           authenticated: Authenticated users only
           disabled: Require specific user role
           public: Everyone
+      timeline_control:
+        disable_local_timeline:
+          hint: Hide the local timeline and return no posts from its API. This is enabled by default in OC roleplay mode.
+          title: Disable local timeline
       landing_page:
         hints:
           about_html: A page with the description, contact information, rules and other information regarding this server.

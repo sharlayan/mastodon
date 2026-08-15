@@ -29,6 +29,7 @@ const meta: SharlayanInitialStateMeta = {
   local_account_statuses_access: 'authenticated',
   local_status_page_access: 'public',
   roleplay_mode: false,
+  roleplay_disable_local_timeline: false,
   visible_reactions: 8,
   show_instance_info: true,
   custom_emoji_size: true,
@@ -49,7 +50,8 @@ describe('Sharlayan initial state', () => {
         maxReactions: 5,
         driveEnabled: true,
         federationUniverseEnabled: true,
-        publicTimelinesEnabled: true,
+        localTimelineEnabled: true,
+        federatedTimelineEnabled: true,
         collectionsEnabled: true,
         pagesDriveOnly: true,
         antennaEnabled: true,
@@ -80,7 +82,8 @@ describe('Sharlayan initial state', () => {
       driveEnabled: false,
       pagesDriveOnly: false,
       antennaEnabled: false,
-      publicTimelinesEnabled: true,
+      localTimelineEnabled: true,
+      federatedTimelineEnabled: true,
       collectionsEnabled: true,
       reactionsEnabled: true,
       mfmEnabled: true,
@@ -101,18 +104,38 @@ describe('Sharlayan initial state', () => {
     });
   });
 
-  it('disables public timelines in roleplay mode', () => {
+  it('disables both timelines by default in roleplay mode', () => {
     expect(
       readSharlayanInitialState({
-        meta: { ...meta, roleplay_mode: true },
+        meta: {
+          ...meta,
+          roleplay_mode: true,
+          roleplay_disable_local_timeline: true,
+        },
       }),
     ).toMatchObject({
       roleplayMode: true,
-      publicTimelinesEnabled: false,
+      localTimelineEnabled: false,
+      federatedTimelineEnabled: false,
       collectionsEnabled: false,
       catEnabled: false,
       catFederationEnabled: false,
       forceRoundAvatar: false,
+    });
+  });
+
+  it('allows only the local timeline when enabled in roleplay mode', () => {
+    expect(
+      readSharlayanInitialState({
+        meta: {
+          ...meta,
+          roleplay_mode: true,
+          roleplay_disable_local_timeline: false,
+        },
+      }),
+    ).toMatchObject({
+      localTimelineEnabled: true,
+      federatedTimelineEnabled: false,
     });
   });
 });

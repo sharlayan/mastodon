@@ -77,6 +77,13 @@ RSpec.describe Form::AdminSettings do
           .to change(Setting, :soft_hide_deletion).from(false).to(true)
       end
 
+      it 'saves the local timeline control setting as a boolean' do
+        Setting.roleplay_disable_local_timeline = true
+
+        expect { described_class.new(roleplay_disable_local_timeline: '0').save }
+          .to change(Setting, :roleplay_disable_local_timeline).from(true).to(false)
+      end
+
       it 'persists forced settings instead of submitted values' do
         described_class.new(
           local_live_feed_access: 'public',

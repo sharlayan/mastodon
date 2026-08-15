@@ -7,6 +7,7 @@ module Sharlayan::RoleplayForcedSettings
     online_status_enabled: false,
     rate_limit_bypass_enabled: true,
     reactions_enabled: false,
+    roleplay_disable_local_timeline: true,
     status_character_limit: 1500,
     user_themes_enabled: false,
   }.freeze
