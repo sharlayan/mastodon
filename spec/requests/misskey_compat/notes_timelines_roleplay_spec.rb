@@ -10,6 +10,7 @@ RSpec.describe 'Misskey-compat roleplay timelines' do
     Setting.misskey_compat_enabled = true
     Setting.local_live_feed_access = 'authenticated'
     Setting.remote_live_feed_access = 'authenticated'
+    Setting.roleplay_disable_local_timeline = true
     Fabricate(:status, account: Fabricate(:account))
   end
 

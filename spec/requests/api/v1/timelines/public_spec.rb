@@ -151,6 +151,7 @@ RSpec.describe 'Public' do
       before do
         Setting.local_live_feed_access = 'authenticated'
         Setting.remote_live_feed_access = 'authenticated'
+        Setting.roleplay_disable_local_timeline = true
       end
 
       context 'without timeline filters' do
