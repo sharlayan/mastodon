@@ -50,7 +50,7 @@ export const Announcements: FC = () => {
         className='announcements__mastodon'
         alt=''
         draggable='false'
-        src={glitchMascots[3] ?? mascot ?? elephantUIPlane}
+        src={encodeURI(glitchMascots[3] ?? mascot ?? elephantUIPlane)}
       />
 
       <CustomEmojiProvider emojis={emojis}>
