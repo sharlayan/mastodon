@@ -30,4 +30,29 @@ RSpec.describe 'Misskey-compat timeline position restoration' do
     expect(ids).to match_array(in_window.map(&:id))
     expect(ids).to not_include(before_window.id, after_window.id)
   end
+
+  %w(
+    /api/notes/timeline
+    /api/notes/local-timeline
+    /api/notes/hybrid-timeline
+    /api/notes/global-timeline
+  ).each do |path|
+    it "returns the notes immediately following a lone sinceId cursor for #{path}" do
+      center = Fabricate(:status, account: user.account, id: Mastodon::Snowflake.id_at(3.hours.ago), text: 'center')
+      immediately_after = Fabricate(:status, account: user.account, id: Mastodon::Snowflake.id_at(3.hours.ago + 1.second), text: 'immediately-after')
+      nearby = Fabricate(:status, account: user.account, id: Mastodon::Snowflake.id_at(3.hours.ago + 2.seconds), text: 'nearby')
+      newest = Fabricate(:status, account: user.account, id: Mastodon::Snowflake.id_at(1.minute.ago), text: 'newest')
+
+      post path, params: {
+        i: token,
+        sinceId: MisskeyCompat::MiId.encode(center.id),
+        limit: 2,
+      }, as: :json
+
+      expect(response).to have_http_status(200)
+      ids = response.parsed_body.pluck('id').map { |id| MisskeyCompat::MiId.decode(id).to_i }
+      expect(ids).to contain_exactly(immediately_after.id, nearby.id)
+      expect(ids).to not_include(center.id, newest.id)
+    end
+  end
 end
