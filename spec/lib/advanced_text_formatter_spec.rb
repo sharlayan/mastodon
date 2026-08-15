@@ -116,6 +116,17 @@ RSpec.describe AdvancedTextFormatter do
         end
       end
 
+      context 'with an autolinked underscored URL long enough to be truncated' do
+        let(:text) { 'long https://example.com/very_long_path_segment_here_that_exceeds_thirty_chars/x end' }
+
+        it 'renders the shortened link without leaking the underscore placeholder', :aggregate_failures do
+          expect(subject).to include 'href="https://example.com/very_long_path_segment_here_that_exceeds_thirty_chars/x"'
+          expect(subject).to include '<span class="ellipsis">example.com/very_long_path_seg</span>'
+          expect(subject).to include '<span class="invisible">ment_here_that_exceeds_thirty_chars/x</span>'
+          expect(subject).to_not include 'MARKDOWNUNDERSCORE'
+        end
+      end
+
       context 'with underscores outside links and account names' do
         let(:text) { 'before _underlined_ after' }
 

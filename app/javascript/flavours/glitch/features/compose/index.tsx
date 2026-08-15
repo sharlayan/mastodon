@@ -29,6 +29,7 @@ import {
   glitchMascots,
   federatedTimelineEnabled,
   localTimelineEnabled,
+  mascot,
   reduceMotion,
 } from 'flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
@@ -125,7 +126,8 @@ const Compose: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
     glitchedElephant3,
     elephantUIPlane,
   ];
-  const elephant = glitchMascots[elefriend] ?? elephantDefaults[elefriend];
+  const elephant =
+    glitchMascots[elefriend] ?? mascot ?? elephantDefaults[elefriend];
 
   const scrollNavbarIntoView = useCallback(() => {
     const navbar = document.querySelector('.navigation-panel');
