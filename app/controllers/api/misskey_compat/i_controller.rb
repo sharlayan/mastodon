@@ -118,7 +118,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   end
 
   def fields_attributes
-    Array(params[:fields]).first(4).map do |field|
+    Array(params[:fields]).first(Account.fields_limit).map do |field|
       { name: field[:name].to_s, value: field[:value].to_s }
     end
   end

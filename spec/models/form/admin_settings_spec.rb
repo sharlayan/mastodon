@@ -122,6 +122,12 @@ RSpec.describe Form::AdminSettings do
         .to change(Setting, :status_character_limit).from(500).to(1000)
     end
 
+    it 'saves profile and remote media limits as integers' do
+      expect { described_class.new(profile_fields_limit: '12', remote_media_attachments_limit: '8').save }
+        .to change(Setting, :profile_fields_limit).from(10).to(12)
+        .and change(Setting, :remote_media_attachments_limit).from(16).to(8)
+    end
+
     it 'rejects a negative drive quota' do
       settings = described_class.new(drive_quota: '-1')
 

@@ -428,22 +428,23 @@ RSpec.describe ActivityPub::ProcessStatusUpdateService do
           type: 'Note',
           content: 'Hello universe',
           updated: '2021-09-08T22:39:25Z',
-          attachment: Array.new(Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT + 1) do |index|
+          attachment: Array.new(Status.remote_media_attachments_limit + 1) do |index|
             { type: 'Image', mediaType: 'image/png', url: "https://example.com/#{index}.png" }
           end,
         }
       end
 
       before do
+        Setting.remote_media_attachments_limit = 6
         allow(DomainBlock).to receive(:reject_media?).with('example.com').and_return(true)
       end
 
       it 'keeps exactly the configured number of attachments' do
         subject.call(status, json, json)
 
-        expect(status.reload.media_attachments.count).to eq(Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT)
-        expect(status.ordered_media_attachment_ids.size).to eq(Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT)
-        expect(status.media_attachments).to_not exist(remote_url: "https://example.com/#{Status::REMOTE_MEDIA_ATTACHMENTS_LIMIT}.png")
+        expect(status.reload.media_attachments.count).to eq(Status.remote_media_attachments_limit)
+        expect(status.ordered_media_attachment_ids.size).to eq(Status.remote_media_attachments_limit)
+        expect(status.media_attachments).to_not exist(remote_url: "https://example.com/#{Status.remote_media_attachments_limit}.png")
       end
     end
 
