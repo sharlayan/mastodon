@@ -560,6 +560,7 @@
   "settings.compose_reply_behavior": "返信を作成するとき:",
   "settings.disable_inline_compose_reply_modal": "返信の作成にポップアップを使用しない",
   "settings.disable_inline_compose_reply_modal.hint": "インライン投稿欄が有効な場合、タイムラインの返信には上部の投稿欄を使用し、投稿の詳細画面からはタイムラインに戻ります",
+  "settings.floating_compose_button": "モバイルでフローティング投稿ボタンを使用",
   "settings.fullwidth_view": "カラムを画面幅に合わせる（デスクトップモードのみ）",
   "settings.fullwidth_view_hint": "利用できる幅いっぱいにカラムを広げます。",
   "settings.hide_mfm_compose_hint": "投稿ボックスのMFMプレビューと構文リンクを非表示",

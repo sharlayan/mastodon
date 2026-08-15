@@ -5,6 +5,8 @@ import { useIntl, defineMessages, FormattedMessage } from 'react-intl';
 import classNames from 'classnames';
 import { NavLink, useRouteMatch } from 'react-router-dom';
 
+import type { Map as ImmutableMap } from 'immutable';
+
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import HomeActiveIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
@@ -46,14 +48,15 @@ const IconLabelButton: React.FC<{
   activeIcon?: React.ReactNode;
   title: string;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
-}> = ({ to, icon, activeIcon, title, onClick }) => {
+  className?: string;
+}> = ({ to, icon, activeIcon, title, onClick, className }) => {
   const match = useRouteMatch(
     typeof to === 'string' ? to : (to.pathname ?? ''),
   );
 
   return (
     <NavLink
-      className='ui__navigation-bar__item'
+      className={classNames('ui__navigation-bar__item', className)}
       activeClassName='active'
       to={to}
       aria-label={title}
@@ -67,6 +70,13 @@ const IconLabelButton: React.FC<{
 const PublishButton = () => {
   const intl = useIntl();
   const handleClick = useConfirmDraftBeforePublish();
+  const floating = useAppSelector(
+    (state) =>
+      (state.local_settings as ImmutableMap<string, unknown>).get(
+        'floating_compose_button',
+        false,
+      ) as boolean,
+  );
 
   return (
     <IconLabelButton
@@ -74,6 +84,9 @@ const PublishButton = () => {
       to={{ pathname: '/publish', state: { focusTarget: false } }}
       icon={<Icon id='' icon={AddIcon} />}
       onClick={handleClick}
+      className={classNames({
+        'ui__navigation-bar__item--floating-compose': floating,
+      })}
     />
   );
 };
