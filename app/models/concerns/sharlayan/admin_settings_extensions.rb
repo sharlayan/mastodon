@@ -9,6 +9,7 @@ module Sharlayan::AdminSettingsExtensions
     background_opacity
     background_on_settings_pages
     force_local_only
+    roleplay_disable_local_timeline
     norss
     soft_hide_deletion
     local_account_statuses_access
@@ -49,6 +50,8 @@ module Sharlayan::AdminSettingsExtensions
     drive_max_file_size
     drive_allowed_extensions
     status_character_limit
+    profile_fields_limit
+    remote_media_attachments_limit
     user_themes_enabled
     user_theme_catalog
     user_theme_defaults
@@ -60,11 +63,14 @@ module Sharlayan::AdminSettingsExtensions
     drive_quota
     drive_max_file_size
     status_character_limit
+    profile_fields_limit
+    remote_media_attachments_limit
   ).freeze
 
   BOOLEAN_KEYS = %i(
     background_on_settings_pages
     force_local_only
+    roleplay_disable_local_timeline
     norss
     soft_hide_deletion
     reaction_local_emoji_only
@@ -105,6 +111,8 @@ module Sharlayan::AdminSettingsExtensions
     validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@drive_quota) }
     validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
     validates :status_character_limit, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@status_character_limit) }
+    validates :profile_fields_limit, numericality: { only_integer: true, in: 0..ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS }, if: -> { defined?(@profile_fields_limit) }
+    validates :remote_media_attachments_limit, numericality: { only_integer: true, in: Status::MEDIA_ATTACHMENTS_LIMIT..16 }, if: -> { defined?(@remote_media_attachments_limit) }
     validates :background_opacity, numericality: { only_integer: true, in: 0..100 }, if: -> { defined?(@background_opacity) }
     validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }
     validates :background_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, allow_blank: true, if: -> { defined?(@background_color) }

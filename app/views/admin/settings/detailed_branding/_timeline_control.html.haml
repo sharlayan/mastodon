@@ -1,0 +1,9 @@
+%p.lead= t('admin.settings.custom_sections.timeline_control_preamble')
+
+.fields-group
+  = f.input :roleplay_disable_local_timeline,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.timeline_control.disable_local_timeline.title'),
+            hint: t('admin.settings.timeline_control.disable_local_timeline.hint'),
+            sharlayan_only: true

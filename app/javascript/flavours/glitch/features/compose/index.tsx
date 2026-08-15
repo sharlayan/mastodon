@@ -27,7 +27,9 @@ import glitchedElephant2 from 'flavours/glitch/images/mbstobon-ui-1.png';
 import glitchedElephant3 from 'flavours/glitch/images/mbstobon-ui-2.png';
 import {
   glitchMascots,
-  publicTimelinesEnabled,
+  federatedTimelineEnabled,
+  localTimelineEnabled,
+  mascot,
   reduceMotion,
 } from 'flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
@@ -124,7 +126,8 @@ const Compose: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
     glitchedElephant3,
     elephantUIPlane,
   ];
-  const elephant = glitchMascots[elefriend] ?? elephantDefaults[elefriend];
+  const elephant =
+    glitchMascots[elefriend] ?? mascot ?? elephantDefaults[elefriend];
 
   const scrollNavbarIntoView = useCallback(() => {
     const navbar = document.querySelector('.navigation-panel');
@@ -174,7 +177,7 @@ const Compose: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
               </span>
             </Link>
           )}
-          {publicTimelinesEnabled &&
+          {localTimelineEnabled &&
             !columns.some((column) => column.get('id') === 'COMMUNITY') && (
               <Link
                 to='/public/local'
@@ -185,7 +188,7 @@ const Compose: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
                 <Icon id='users' icon={PeopleIcon} />
               </Link>
             )}
-          {publicTimelinesEnabled &&
+          {federatedTimelineEnabled &&
             !columns.some((column) => column.get('id') === 'PUBLIC') && (
               <Link
                 to='/public'

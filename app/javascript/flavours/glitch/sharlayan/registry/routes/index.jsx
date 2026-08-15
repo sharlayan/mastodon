@@ -5,12 +5,12 @@ import {
   driveEnabled,
   federationUniverseEnabled,
   pagesEnabled,
-  publicTimelinesEnabled,
+  federatedTimelineEnabled,
+  localTimelineEnabled,
 } from 'flavours/glitch/initial_state';
 import { adminTimelineEnabled } from 'flavours/glitch/sharlayan/roleplay';
 
 const alwaysEnabled = () => true;
-const publicTimelineFeatureEnabled = () => publicTimelinesEnabled;
 
 export const PublicTimeline = () => import('../../../features/public_timeline');
 export const CommunityTimeline = () => import('../../../features/community_timeline');
@@ -31,8 +31,8 @@ export const sharlayanColumnComponents = {
 };
 
 export const sharlayanRouteDescriptors = [
-  { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: publicTimelineFeatureEnabled, lazyComponent: PublicTimeline },
-  { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: publicTimelineFeatureEnabled, lazyComponent: CommunityTimeline },
+  { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: () => federatedTimelineEnabled, lazyComponent: PublicTimeline },
+  { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: () => localTimelineEnabled, lazyComponent: CommunityTimeline },
   { key: 'conversation', path: '/conversations/:conversationId', featureGate: alwaysEnabled, lazyComponent: ConversationThread },
   { key: 'admin-timeline', path: '/timelines/admin', featureGate: () => adminTimelineEnabled, lazyComponent: AdminTimeline },
   { key: 'clip-new', path: '/clips/new', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },

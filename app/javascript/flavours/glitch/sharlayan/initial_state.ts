@@ -46,6 +46,7 @@ export interface SharlayanInitialStateMeta {
   local_account_statuses_access: 'public' | 'authenticated' | 'disabled';
   local_status_page_access: 'public' | 'authenticated' | 'disabled';
   roleplay_mode: boolean;
+  roleplay_disable_local_timeline: boolean;
   admin_timeline_enabled?: boolean;
   admin_timeline_owner_viewer?: boolean;
   soft_hide_deletion?: boolean;
@@ -93,7 +94,9 @@ export const readSharlayanInitialState = (
     forceLocalOnly: getMeta('force_local_only') === true,
     federationUniverseEnabled: getMeta('federation_universe_enabled') === true,
     roleplayMode,
-    publicTimelinesEnabled: !roleplayMode,
+    localTimelineEnabled:
+      !roleplayMode || getMeta('roleplay_disable_local_timeline') !== true,
+    federatedTimelineEnabled: !roleplayMode,
     collectionsEnabled: !roleplayMode,
     circlesEnabled: getMeta('circles_enabled') === true,
     clipsEnabled: getMeta('clips_enabled') === true,

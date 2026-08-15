@@ -34,7 +34,7 @@ const UserThemePage = () => {
     const savedRevision = revision.current;
     setSaveState('saving');
     try {
-      await apiRequestPut('v1/appearance', { user_theme: encodeUserThemeStorage(overrides) });
+      await apiRequestPut('v1/appearance', { user_theme: encodeUserThemeStorage(parseUserThemeOverrides(overrides)) });
       setSaveState(revision.current === savedRevision ? 'saved' : 'dirty');
     } catch {
       setSaveState('error');
@@ -173,8 +173,8 @@ const UserThemePage = () => {
               >
                 <div className='user-theme__variable-group__items'>
                   {group.variables.map(({ name, type }) => {
-                    const value = config[scheme].variables[name] ?? '';
                     const hasOverride = Object.hasOwn(overrides[scheme]?.variables ?? {}, name);
+                    const value = (hasOverride ? overrides[scheme].variables[name] : config[scheme].variables[name]) ?? '';
                     return (
                       <div className='user-theme__variable' key={name}>
                         <code>{name}</code>

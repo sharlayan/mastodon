@@ -715,6 +715,31 @@ RSpec.describe ActivityPub::Activity::Create do
         end
       end
 
+      context 'with more media attachments than the configured limit' do
+        let(:object_json) do
+          build_object(
+            attachment: Array.new(5) do |index|
+              {
+                type: 'Document',
+                mediaType: 'image/png',
+                url: "http://example.com/attachment-#{index}.png",
+              }
+            end
+          )
+        end
+
+        before do
+          Setting.remote_media_attachments_limit = 4
+          allow(DomainBlock).to receive(:reject_media?).with('example.com').and_return(true)
+        end
+
+        it 'creates only the configured number of attachments' do
+          subject.perform
+
+          expect(sender.statuses.first.media_attachments.size).to eq(4)
+        end
+      end
+
       context 'with media attachments with long description' do
         let(:object_json) do
           build_object(

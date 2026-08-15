@@ -380,6 +380,12 @@ ja:
         enabled: 特定の権限にAPIレート制限のバイパスを許可
         enabled_hint: 有効にすると、管理者またはDevOps権限を持つユーザーはAPIレート制限を受けなくなります。無効の場合はすべてのユーザーに制限が適用されます。
         title: APIレート制限のバイパス
+      content_limits:
+        profile_fields_limit: プロフィールのメタ情報項目数
+        profile_fields_limit_hint: ローカルプロフィールで許可するメタ情報項目の最大数です。変更はすぐに反映されます。上限を下げても、既存の超過項目はプロフィールを編集するまで表示されます。
+        remote_media_attachments_limit: リモート投稿のメディア添付数
+        remote_media_attachments_limit_hint: リモート投稿1件あたりに受信・表示するメディア添付の最大数です。4～16の範囲で設定してください。上限を下げても、すでに保存済みの超過添付は削除されません。
+        title: プロフィールとリモートコンテンツの上限
       status_character_limit:
         hint: 内容警告を含むローカル投稿の最大文字数です。変更はすぐに反映されます。
         label: 文字数制限

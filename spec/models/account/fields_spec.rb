@@ -13,11 +13,11 @@ RSpec.describe Account, '#fields' do
       it { is_expected.to_not allow_values(fields_over_limit, fields_empty_name).for(:fields) }
 
       def fields_empty_name_value
-        Array.new(described_class::DEFAULT_FIELDS_SIZE) { %w(name value).index_with('') }
+        Array.new(described_class.fields_limit) { %w(name value).index_with('') }
       end
 
       def fields_over_limit
-        Array.new(described_class::DEFAULT_FIELDS_SIZE + 1) { { 'name' => 'Name', 'value' => 'Value', 'verified_at' => '01/01/1970' } }
+        Array.new(described_class.fields_limit + 1) { { 'name' => 'Name', 'value' => 'Value', 'verified_at' => '01/01/1970' } }
       end
 
       def fields_empty_name
@@ -151,10 +151,10 @@ RSpec.describe Account, '#fields' do
   describe '#build_fields' do
     let(:account) { Fabricate.build :account }
 
-    before { stub_const('Account::DEFAULT_FIELDS_SIZE', 4) }
+    before { Setting.profile_fields_limit = 4 }
 
     context 'when fields already full' do
-      before { account.fields = Array.new(Account::DEFAULT_FIELDS_SIZE) { |i| { name: "Name#{i}", value: 'Test' } } }
+      before { account.fields = Array.new(described_class.fields_limit) { |i| { name: "Name#{i}", value: 'Test' } } }
 
       it 'returns nil without updating fields' do
         expect(account.build_fields)
@@ -162,7 +162,7 @@ RSpec.describe Account, '#fields' do
 
         expect(account.fields)
           .to be_an(Array)
-          .and have_attributes(size: Account::DEFAULT_FIELDS_SIZE)
+          .and have_attributes(size: described_class.fields_limit)
       end
     end
 

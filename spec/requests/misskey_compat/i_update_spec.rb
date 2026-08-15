@@ -92,13 +92,14 @@ RSpec.describe 'Misskey-compat i endpoints' do
       expect(account.reload.hide_collections).to be(false)
     end
 
-    it 'caps profile fields at four entries' do
+    it 'caps profile fields at the configured limit' do
+      Setting.profile_fields_limit = 5
       fields = (1..6).map { |i| { name: "k#{i}", value: "v#{i}" } }
 
       update(fields: fields)
 
       expect(response).to have_http_status(200)
-      expect(account.reload.fields.size).to eq(4)
+      expect(account.reload.fields.size).to eq(5)
     end
 
     it 'stores privacy toggles as user settings' do

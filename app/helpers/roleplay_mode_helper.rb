@@ -9,11 +9,21 @@ module RoleplayModeHelper
     roleplay_mode? && Rails.configuration.x.roleplay_non_local_only_statuses == true
   end
 
+  def roleplay_local_timeline_disabled?
+    roleplay_mode? && Setting.roleplay_disable_local_timeline
+  end
+
+  def roleplay_federated_timeline_disabled?
+    roleplay_mode?
+  end
+
   def force_local_only_leftover?
     !roleplay_mode? && Setting.force_local_only == true
   end
 
   module_function :roleplay_mode?
   module_function :roleplay_non_local_only_statuses?
+  module_function :roleplay_local_timeline_disabled?
+  module_function :roleplay_federated_timeline_disabled?
   module_function :force_local_only_leftover?
 end

@@ -76,7 +76,6 @@ class Account < ApplicationRecord
   BACKGROUND_REFRESH_INTERVAL = 1.week.freeze
   REFRESH_DEADLINE = 6.hours
   STALE_THRESHOLD = 1.day
-  DEFAULT_FIELDS_SIZE = (ENV['MAX_PROFILE_FIELDS'] || 10).to_i
   INSTANCE_ACTOR_ID = -99
 
   USERNAME_RE   = /[a-z0-9_]+([.-]+[a-z0-9_]+)*/i
@@ -138,7 +137,7 @@ class Account < ApplicationRecord
   validates_with UnreservedUsernameValidator, if: -> { local? && will_save_change_to_username? && !actor_type_application? && !user&.bypass_registration_checks }
   validates :display_name, length: { maximum: DISPLAY_NAME_LENGTH_LIMIT }, if: -> { local? && will_save_change_to_display_name? }
   validates :note, note_length: { maximum: NOTE_LENGTH_LIMIT }, if: -> { local? && will_save_change_to_note? }
-  validates :fields, length: { maximum: DEFAULT_FIELDS_SIZE }, if: -> { local? && will_save_change_to_fields? }
+  validates :fields, length: { maximum: ->(account) { account.class.fields_limit } }, if: -> { local? && will_save_change_to_fields? }
   validates_with EmptyProfileFieldNamesValidator, if: -> { local? && will_save_change_to_fields? }
   with_options on: :create, if: :local? do
     validates :followers_url, absence: true
@@ -400,6 +399,10 @@ class Account < ApplicationRecord
     end
   end
 
+  def self.fields_limit
+    Setting.profile_fields_limit
+  end
+
   def fields_attributes=(attributes)
     fields     = []
     old_fields = self[:fields] || []
@@ -421,12 +424,12 @@ class Account < ApplicationRecord
   end
 
   def build_fields
-    return if fields.size >= DEFAULT_FIELDS_SIZE
+    return if fields.size >= self.class.fields_limit
 
     tmp = self[:fields] || []
     tmp = [] if tmp.is_a?(Hash)
 
-    (DEFAULT_FIELDS_SIZE - tmp.size).times do
+    (self.class.fields_limit - tmp.size).times do
       tmp << { name: '', value: '' }
     end
 

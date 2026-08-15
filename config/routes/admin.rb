@@ -85,6 +85,8 @@ namespace :admin do
     patch 'custom/misskey_flavour', to: 'detailed_branding#update', defaults: { section: 'misskey_flavour' }
     get 'custom/extensions', to: 'detailed_branding#show', defaults: { section: 'extensions' }, as: :custom_extensions
     patch 'custom/extensions', to: 'detailed_branding#update', defaults: { section: 'extensions' }
+    get 'custom/timeline_control', to: 'detailed_branding#show', defaults: { section: 'timeline_control' }, as: :custom_timeline_control
+    patch 'custom/timeline_control', to: 'detailed_branding#update', defaults: { section: 'timeline_control' }
     resource :registrations, only: [:show, :update], controller: 'registrations'
     resource :content_retention, only: [:show, :update], controller: 'content_retention'
     resource :about, only: [:show, :update], controller: 'about'

@@ -11,6 +11,8 @@ module Sharlayan::SettingExtensions
     content = Rails.root.join('config', 'settings', 'sharlayan.yml').read
     defaults = YAML.safe_load(content).fetch('defaults')
     defaults['status_character_limit'] = ENV.fetch('MAX_TOOT_CHARS', defaults.fetch('status_character_limit')).to_i
+    defaults['profile_fields_limit'] = ENV.fetch('MAX_PROFILE_FIELDS', defaults.fetch('profile_fields_limit')).to_i.clamp(0, ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS)
+    defaults['remote_media_attachments_limit'] = ENV.fetch('REMOTE_MEDIA_ATTACHMENTS_LIMIT', defaults.fetch('remote_media_attachments_limit')).to_i.clamp(Status::MEDIA_ATTACHMENTS_LIMIT, 16)
     defaults
   end
 end

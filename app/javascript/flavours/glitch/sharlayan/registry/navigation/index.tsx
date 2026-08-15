@@ -38,7 +38,8 @@ import {
   boardAnnouncementsEnabled,
   localLiveFeedAccess,
   me,
-  publicTimelinesEnabled,
+  federatedTimelineEnabled,
+  localTimelineEnabled,
   remoteLiveFeedAccess,
   trendsEnabled,
 } from 'flavours/glitch/initial_state';
@@ -184,10 +185,6 @@ export const useSharlayanPrimaryNavigation = (
     () => computeNavigationOrder(navOrder?.toArray()),
     [navOrder],
   );
-  const feedsAllowed =
-    publicTimelinesEnabled &&
-    (canViewFeed(signedIn, permissions, localLiveFeedAccess) ||
-      canViewFeed(signedIn, permissions, remoteLiveFeedAccess));
   const renderers: Partial<Record<string, (id?: string) => ReactNode>> = {};
 
   if (signedIn) {
@@ -215,19 +212,25 @@ export const useSharlayanPrimaryNavigation = (
       />
     );
   }
-  if (feedsAllowed) {
-    if (!roleplayMode) {
-      renderers.federated = (id) => (
-        <ColumnLink
-          transparent
-          to='/public'
-          icon='globe'
-          iconComponent={PublicIcon}
-          text={intl.formatMessage(messages.federated)}
-          id={id}
-        />
-      );
-    }
+  if (
+    federatedTimelineEnabled &&
+    canViewFeed(signedIn, permissions, remoteLiveFeedAccess)
+  ) {
+    renderers.federated = (id) => (
+      <ColumnLink
+        transparent
+        to='/public'
+        icon='globe'
+        iconComponent={PublicIcon}
+        text={intl.formatMessage(messages.federated)}
+        id={id}
+      />
+    );
+  }
+  if (
+    localTimelineEnabled &&
+    canViewFeed(signedIn, permissions, localLiveFeedAccess)
+  ) {
     renderers.local = (id) => (
       <ColumnLink
         transparent

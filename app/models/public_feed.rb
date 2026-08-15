@@ -20,7 +20,7 @@ class PublicFeed
   # @param [Integer] min_id
   # @return [Array<Status>]
   def get(limit, max_id = nil, since_id = nil, min_id = nil)
-    return [] if RoleplayModeHelper.roleplay_mode?
+    return [] if requested_timeline_disabled?
     return [] if incompatible_feed_settings?
 
     scope = public_scope
@@ -47,6 +47,19 @@ class PublicFeed
 
   def incompatible_feed_settings?
     (local_only? && !user_has_access_to_feed?(local_feed_setting)) || (remote_only? && !user_has_access_to_feed?(remote_feed_setting))
+  end
+
+  def requested_timeline_disabled?
+    (options[:local] && roleplay_local_timeline_disabled?) ||
+      (!options[:local] && roleplay_federated_timeline_disabled?)
+  end
+
+  def roleplay_local_timeline_disabled?
+    RoleplayModeHelper.roleplay_local_timeline_disabled?
+  end
+
+  def roleplay_federated_timeline_disabled?
+    RoleplayModeHelper.roleplay_federated_timeline_disabled?
   end
 
   def user_has_access_to_feed?(setting)

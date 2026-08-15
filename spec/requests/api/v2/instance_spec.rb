@@ -72,7 +72,7 @@ RSpec.describe 'Instances' do
             max_header_description_length: Account::Header::MAX_DESCRIPTION_LENGTH,
             max_featured_tags: FeaturedTag::LIMIT,
             max_pinned_statuses: StatusPinValidator::PIN_LIMIT,
-            max_profile_fields: Account::DEFAULT_FIELDS_SIZE,
+            max_profile_fields: Account.fields_limit,
             profile_field_name_limit: Account::Field::MAX_CHARACTERS_LOCAL,
             profile_field_value_limit: Account::Field::MAX_CHARACTERS_LOCAL
           ),

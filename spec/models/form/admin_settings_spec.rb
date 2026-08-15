@@ -77,6 +77,13 @@ RSpec.describe Form::AdminSettings do
           .to change(Setting, :soft_hide_deletion).from(false).to(true)
       end
 
+      it 'saves the local timeline control setting as a boolean' do
+        Setting.roleplay_disable_local_timeline = true
+
+        expect { described_class.new(roleplay_disable_local_timeline: '0').save }
+          .to change(Setting, :roleplay_disable_local_timeline).from(true).to(false)
+      end
+
       it 'persists forced settings instead of submitted values' do
         described_class.new(
           local_live_feed_access: 'public',
@@ -113,6 +120,12 @@ RSpec.describe Form::AdminSettings do
     it 'saves the status character limit as an integer' do
       expect { described_class.new(status_character_limit: '1000').save }
         .to change(Setting, :status_character_limit).from(500).to(1000)
+    end
+
+    it 'saves profile and remote media limits as integers' do
+      expect { described_class.new(profile_fields_limit: '12', remote_media_attachments_limit: '8').save }
+        .to change(Setting, :profile_fields_limit).from(10).to(12)
+        .and change(Setting, :remote_media_attachments_limit).from(16).to(8)
     end
 
     it 'rejects a negative drive quota' do

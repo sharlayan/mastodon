@@ -23,6 +23,7 @@ export const GLYPHS = {
 
   search: 'magnifying-glass',
   plus: 'plus',
+  'pen-nib': 'pen-nib',
   close: 'x',
   compose: 'note-pencil',
   sliders: 'faders',
@@ -49,6 +50,7 @@ export const GLYPHS = {
   'content-type': 'pencil-simple-line',
   poll: 'chart-bar-horizontal',
   video: 'video-camera',
+  music: 'music-note',
   unlisted: 'moon-stars',
   direct: 'envelope-simple',
   menu: 'list',

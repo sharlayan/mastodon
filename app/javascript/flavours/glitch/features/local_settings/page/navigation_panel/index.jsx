@@ -36,7 +36,8 @@ import { Icon } from '@/flavours/glitch/components/icon';
 import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { computeNavigationOrder, isNavigationItemAlwaysVisible, NAVIGATION_PANEL_ITEMS, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
 import {
-  publicTimelinesEnabled,
+  federatedTimelineEnabled,
+  localTimelineEnabled,
 } from '@/flavours/glitch/initial_state';
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import {
@@ -120,7 +121,8 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   const { permissions, extraPermissions } = useIdentity();
   const adminTimelineAvailable = canUseAdminTimeline(permissions, extraPermissions);
   const unavailableItems = [
-    ...(!publicTimelinesEnabled ? ['federated', 'local'] : []),
+    ...(!federatedTimelineEnabled ? ['federated'] : []),
+    ...(!localTimelineEnabled ? ['local'] : []),
     ...(!collectionsEnabled ? ['collections'] : []),
     ...(!adminTimelineAvailable ? ['admin_timeline'] : []),
   ];

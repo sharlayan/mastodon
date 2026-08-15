@@ -345,6 +345,8 @@ RSpec.describe 'Pages' do
     let(:remote_ip) { '192.0.2.10' }
     let(:request_headers) { { 'REMOTE_ADDR' => remote_ip } }
 
+    before { allow_any_instance_of(RateLimiter).to receive(:last_epoch_time).and_return(1_800_000_000) } # rubocop:disable RSpec/AnyInstance
+
     def page_view_limiter(page, remote_ip)
       identity = Api::AnonymousPageViewLimit::RateLimitIdentity.new("#{remote_ip}:#{page.id}")
       RateLimiter.new(identity, family: :anonymous_page_views)
