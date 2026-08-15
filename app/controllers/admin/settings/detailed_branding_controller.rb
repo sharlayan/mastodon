@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Admin::Settings::DetailedBrandingController < Admin::SettingsController
+  include RoleplayModeHelper
+
   before_action :set_section
 
   private
