@@ -73,14 +73,14 @@ class Reblogs extends ImmutablePureComponent {
     const emptyMessage = <FormattedMessage id='status.reblogs.empty' defaultMessage='No one has boosted this post yet. When someone does, they will show up here.' />;
 
     return (
-      <Column>
+      <Column bindToDocument={!multiColumn}>
         <ColumnHeader
           icon='retweet'
           iconComponent={RepeatIcon}
           title={intl.formatMessage(messages.heading)}
-          scrollTopOnClick
           showBackButton
           multiColumn={multiColumn}
+          scrollTopOnClick
           extraButton={(
             <button type='button' className='column-header__button' title={intl.formatMessage(messages.refresh)} aria-label={intl.formatMessage(messages.refresh)} onClick={this.handleRefresh}><Icon id='refresh' icon={RefreshIcon} /></button>
           )}
