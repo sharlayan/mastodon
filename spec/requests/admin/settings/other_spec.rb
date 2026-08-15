@@ -16,6 +16,8 @@ RSpec.describe 'Admin Settings Other' do
       expect(response.parsed_body.at_css('input[name="form_admin_settings[drive_max_file_size]"][min="1"]')).to be_present
       expect(response.parsed_body.at_css('input[name="form_admin_settings[drive_allowed_extensions]"]')).to be_present
       expect(response.parsed_body.at_css('input[name="form_admin_settings[status_character_limit]"][min="1"]')).to be_present
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[profile_fields_limit]"][min="0"][max="50"]')).to be_present
+      expect(response.parsed_body.at_css('input[name="form_admin_settings[remote_media_attachments_limit]"][min="4"][max="16"]')).to be_present
     end
 
     it 'renders a separate default-off signin-flow control' do

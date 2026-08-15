@@ -435,6 +435,12 @@ en:
           are not subject to API rate limits. Leave disabled to apply rate limits
           to everyone.
         title: API Rate Limit Bypass
+      content_limits:
+        profile_fields_limit: Profile metadata fields
+        profile_fields_limit_hint: Maximum number of metadata fields allowed on a local profile. Changes take effect immediately; existing fields above a lowered limit remain visible until the profile is edited.
+        remote_media_attachments_limit: Remote post media attachments
+        remote_media_attachments_limit_hint: Maximum number of media attachments accepted and displayed per remote post. Must be between 4 and 16. Lowering the limit does not delete attachments already stored beyond it.
+        title: Profile and remote content limits
       status_character_limit:
         hint: Maximum number of characters allowed in a local post, including its content warning. Changes take effect immediately.
         label: Character limit

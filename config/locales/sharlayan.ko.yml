@@ -393,6 +393,12 @@ ko:
         enabled_hint: 활성화하면 관리자 또는 DevOps 권한을 가진 사용자가 API 제한(rate limit)을 받지 않습니다.
           비활성화하면 모든 사용자에게 제한이 적용됩니다.
         title: API 제한 우회
+      content_limits:
+        profile_fields_limit: 프로필 메타 정보 항목 수
+        profile_fields_limit_hint: 로컬 프로필에 허용할 최대 메타 정보 항목 수입니다. 변경 사항은 즉시 적용되며, 한도를 낮춰도 기존 초과 항목은 프로필을 편집하기 전까지 표시됩니다.
+        remote_media_attachments_limit: 원격 게시물 미디어 첨부 수
+        remote_media_attachments_limit_hint: 원격 게시물 하나에서 수신하고 표시할 최대 미디어 첨부 수입니다. 4~16 사이로 설정해야 하며, 한도를 낮춰도 이미 저장된 초과 첨부는 삭제하지 않습니다.
+        title: 프로필 및 원격 콘텐츠 제한
       status_character_limit:
         hint: 내용 경고를 포함한 로컬 게시물의 최대 글자 수입니다. 변경 사항은 즉시 적용됩니다.
         label: 글자 수 제한

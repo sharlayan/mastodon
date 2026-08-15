@@ -9,6 +9,26 @@
             input_html: { min: 1 },
             sharlayan_only: true
 
+%h2= t('admin.settings.content_limits.title')
+
+.fields-group
+  = f.input :profile_fields_limit,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.content_limits.profile_fields_limit'),
+            hint: t('admin.settings.content_limits.profile_fields_limit_hint'),
+            input_html: { min: 0, max: ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS },
+            sharlayan_only: true
+
+.fields-group
+  = f.input :remote_media_attachments_limit,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.content_limits.remote_media_attachments_limit'),
+            hint: t('admin.settings.content_limits.remote_media_attachments_limit_hint'),
+            input_html: { min: Status::MEDIA_ATTACHMENTS_LIMIT, max: 16 },
+            sharlayan_only: true
+
 %h2= t('admin.settings.rate_limit_bypass.title')
 
 .fields-group
