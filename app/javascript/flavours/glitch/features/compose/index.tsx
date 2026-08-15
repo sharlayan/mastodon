@@ -234,7 +234,11 @@ const Compose: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
               className='drawer__inner__mastodon with-zig-zag-decoration'
               onClick={handleCycleElefriend}
             >
-              <img alt='' draggable='false' src={elephant} />
+              <img
+                alt=''
+                draggable='false'
+                src={encodeURI(elephant ?? elephantUIPlane)}
+              />
             </div>
           </div>
         </div>
