@@ -560,6 +560,7 @@
   "settings.compose_reply_behavior": "When composing a reply:",
   "settings.disable_inline_compose_reply_modal": "Do not use a popup for replies",
   "settings.disable_inline_compose_reply_modal.hint": "When inline compose is enabled, use the compose box at the top of the timeline for replies; detailed posts will return to the timeline",
+  "settings.floating_compose_button": "Use a floating compose button on mobile",
   "settings.fullwidth_view": "Stretch columns to full width (Desktop mode only)",
   "settings.fullwidth_view_hint": "Stretches columns to fill all the available space.",
   "settings.hide_mfm_compose_hint": "Hide MFM preview and syntax link in the compose box",

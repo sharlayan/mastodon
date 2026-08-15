@@ -23,6 +23,7 @@ export const GLYPHS = {
 
   search: 'magnifying-glass',
   plus: 'plus',
+  'pen-nib': 'pen-nib',
   close: 'x',
   compose: 'note-pencil',
   sliders: 'faders',
