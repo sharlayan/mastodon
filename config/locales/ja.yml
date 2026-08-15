@@ -859,6 +859,8 @@ ja:
         extensions_preamble: Custodon の拡張機能とサーバー機能を設定します。
         misskey_flavour: Misskey テイスト
         misskey_flavour_preamble: Misskey に着想を得た機能とクライアント互換性を設定します。
+        timeline_control: タイムライン制御
+        timeline_control_preamble: このOCロールプレイサーバーの公開タイムラインを制御します。連合タイムラインはOCロールプレイモードでは常に無効です。
       default_noindex:
         desc_html: この設定を自分で変更していない全ユーザーに影響します
         title: デフォルトで検索エンジンによるインデックスを拒否する
@@ -883,6 +885,10 @@ ja:
           authenticated: ログイン済みユーザーのみ
           disabled: 特定ロールのユーザーのみ
           public: 制限なし
+      timeline_control:
+        disable_local_timeline:
+          hint: ローカルタイムラインを非表示にし、APIが投稿を返さないようにします。OCロールプレイモードではデフォルトで有効です。
+          title: ローカルタイムラインを無効化
       registrations:
         moderation_recommandation: 登録受付を開始する前に、迅速かつ適切にモデレーションを行うチームを編成しましょう！
         preamble: あなたのサーバー上でアカウントを作成できるユーザーを制御します。

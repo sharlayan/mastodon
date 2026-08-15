@@ -9,6 +9,7 @@ module Sharlayan::AdminSettingsExtensions
     background_opacity
     background_on_settings_pages
     force_local_only
+    roleplay_disable_local_timeline
     norss
     soft_hide_deletion
     local_account_statuses_access
@@ -65,6 +66,7 @@ module Sharlayan::AdminSettingsExtensions
   BOOLEAN_KEYS = %i(
     background_on_settings_pages
     force_local_only
+    roleplay_disable_local_timeline
     norss
     soft_hide_deletion
     reaction_local_emoji_only

@@ -37,7 +37,8 @@ import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { computeNavigationOrder, isNavigationItemAlwaysVisible, NAVIGATION_PANEL_ITEMS, navigationPanelItemMessages } from '@/flavours/glitch/features/navigation_panel/items';
 import {
   collectionsEnabled,
-  publicTimelinesEnabled,
+  federatedTimelineEnabled,
+  localTimelineEnabled,
 } from '@/flavours/glitch/initial_state';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
@@ -114,7 +115,8 @@ NavigationPanelSettingsItem.propTypes = {
 const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   const dispatch = useAppDispatch();
   const unavailableItems = [
-    ...(!publicTimelinesEnabled ? ['federated', 'local'] : []),
+    ...(!federatedTimelineEnabled ? ['federated'] : []),
+    ...(!localTimelineEnabled ? ['local'] : []),
     ...(!collectionsEnabled ? ['collections'] : []),
   ];
   const availableItems = NAVIGATION_PANEL_ITEMS.filter(

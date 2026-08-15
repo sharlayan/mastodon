@@ -5,6 +5,7 @@ defaults:
   background_opacity: 100
   background_on_settings_pages: false
   force_local_only: false
+  roleplay_disable_local_timeline: false
   soft_hide_deletion: false
   local_account_statuses_access: 'public'
   local_status_page_access: 'public'

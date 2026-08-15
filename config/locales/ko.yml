@@ -958,6 +958,8 @@ ko:
         extensions_preamble: 커스토돈 전용 확장 기능과 서버 기능을 설정합니다.
         misskey_flavour: 미스키 풍미
         misskey_flavour_preamble: Misskey에서 유래한 호환 기능을 활성화하거나 설정합니다.
+        timeline_control: 타임라인 제어
+        timeline_control_preamble: 이 자캐커뮤 서버의 공개 타임라인을 제어합니다. 연합 타임라인은 자캐커뮤 모드에서 항상 비활성화됩니다.
       default_noindex:
         desc_html: 이 설정을 개인적으로 바꾸지 않은 모든 사용자들에게 적용 됩니다
         title: 사용자들이 기본적으로 검색엔진에 인덱싱되지 않도록 합니다
@@ -983,6 +985,10 @@ ko:
           authenticated: 로그인한 사용자들만
           disabled: 특정한 사용자 역할 필요
           public: 모두
+      timeline_control:
+        disable_local_timeline:
+          hint: 로컬 타임라인을 숨기고 API가 게시물을 반환하지 않게 합니다. 자캐커뮤 모드에서는 기본으로 활성화됩니다.
+          title: 로컬 타임라인 비활성화
       landing_page:
         hints:
           about_html: 이 서버의 설명, 연락처, 규칙과 기타 정보들을 보여주는 페이지.

@@ -19,7 +19,10 @@ import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
 import { Footer } from 'flavours/glitch/features/custom_homepage/components/footer';
 import { Header } from 'flavours/glitch/features/custom_homepage/components/header';
 import { CollapsibleNavigationPanel } from 'flavours/glitch/features/navigation_panel';
-import { publicTimelinesEnabled } from 'flavours/glitch/initial_state';
+import {
+  federatedTimelineEnabled,
+  localTimelineEnabled,
+} from 'flavours/glitch/initial_state';
 import { sharlayanColumnComponents } from 'flavours/glitch/sharlayan/registry/routes';
 import { SharlayanColumnsAreaExtensions } from 'flavours/glitch/sharlayan/registry/ui';
 
@@ -111,12 +114,15 @@ export const ColumnsArea = forwardRef<
   const columns = useAppSelector(
     (state) => state.settings.get('columns') as List<Record<Column>>,
   );
-  const visibleColumns = publicTimelinesEnabled
-    ? columns
-    : columns.filter(
-        (column) =>
-          !['PUBLIC', 'REMOTE', 'COMMUNITY'].includes(column.get('id')),
-      );
+  const visibleColumns = columns.filter((column) => {
+    const columnId = column.get('id');
+
+    if (!localTimelineEnabled && columnId === 'COMMUNITY') return false;
+    if (!federatedTimelineEnabled && ['PUBLIC', 'REMOTE'].includes(columnId))
+      return false;
+
+    return true;
+  });
   const isModalOpen = useAppSelector(
     (state) => !state.modal.get('stack').isEmpty(),
   );

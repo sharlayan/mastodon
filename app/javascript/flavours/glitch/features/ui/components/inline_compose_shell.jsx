@@ -20,7 +20,7 @@ import { fetchLists } from 'flavours/glitch/actions/lists_typed';
 import { Icon } from 'flavours/glitch/components/icon';
 import { TabList, TabLink } from 'flavours/glitch/components/tab_list';
 import ComposeFormContainer from 'flavours/glitch/features/compose/containers/compose_form_container';
-import { me, antennaEnabled, inlineComposeTabs, publicTimelinesEnabled } from 'flavours/glitch/initial_state';
+import { me, antennaEnabled, federatedTimelineEnabled, inlineComposeTabs, localTimelineEnabled } from 'flavours/glitch/initial_state';
 import { getOrderedLists } from 'flavours/glitch/selectors/lists';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
@@ -65,11 +65,12 @@ export const InlineComposeShell = () => {
   const tabs = useMemo(() => {
     const base = [{ to: '/home', label: intl.formatMessage(messages.home), icon: 'home', iconComponent: HomeIcon }];
 
-    if (publicTimelinesEnabled) {
-      base.push(
-        { to: '/public/local', label: intl.formatMessage(messages.local), icon: 'users', iconComponent: PeopleIcon },
-        { to: '/public', label: intl.formatMessage(messages.federated), icon: 'globe', iconComponent: PublicIcon },
-      );
+    if (localTimelineEnabled) {
+      base.push({ to: '/public/local', label: intl.formatMessage(messages.local), icon: 'users', iconComponent: PeopleIcon });
+    }
+
+    if (federatedTimelineEnabled) {
+      base.push({ to: '/public', label: intl.formatMessage(messages.federated), icon: 'globe', iconComponent: PublicIcon });
     }
 
     const dynamic = savedTabList.map((tab) => {

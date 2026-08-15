@@ -10,12 +10,14 @@ class Admin::Settings::DetailedBrandingController < Admin::SettingsController
     when 'appearance' then admin_settings_custom_appearance_path
     when 'misskey_flavour' then admin_settings_custom_misskey_flavour_path
     when 'extensions' then admin_settings_custom_extensions_path
+    when 'timeline_control' then admin_settings_custom_timeline_control_path
     else admin_settings_detailed_branding_path
     end
   end
 
   def set_section
-    @section = params[:section].presence_in(%w(appearance misskey_flavour extensions)) || 'detailed_branding'
+    @section = params[:section].presence_in(%w(appearance misskey_flavour extensions timeline_control)) || 'detailed_branding'
+    not_found if @section == 'timeline_control' && !roleplay_mode?
     @form_url = after_update_redirect_path
   end
 end
