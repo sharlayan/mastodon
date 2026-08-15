@@ -46,6 +46,18 @@ RSpec.describe 'Admin Settings Appearance' do
         expect(response.parsed_body.at_css('select[name="form_admin_settings[roleplay_forced_skin]"]')).to be_present
       end
     end
+
+    it 'renders timeline controls only in roleplay mode' do
+      get admin_settings_custom_timeline_control_path
+      expect(response).to have_http_status(404)
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        get admin_settings_custom_timeline_control_path
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body.at_css('input[name="form_admin_settings[roleplay_disable_local_timeline]"]')).to be_present
+      end
+    end
   end
 
   describe 'PUT /admin/settings/detailed_branding' do
