@@ -60,6 +60,22 @@ RSpec.describe 'Misskey-compat clips' do
     end
   end
 
+  describe 'POST /api/clips/create' do
+    it 'locks the account while validating the per-account limit' do
+      queries = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        post '/api/clips/create', params: { i: write_token, name: 'bounded clip' }, as: :json
+      end
+
+      expect(response).to have_http_status(200)
+      expect(queries.any? { |sql| sql.include?('FROM "accounts"') && sql.include?('FOR UPDATE') }).to be(true)
+    end
+  end
+
   describe 'POST /api/clips/notes' do
     let(:clip) { Fabricate(:clip, public: true) }
     let!(:statuses) { Fabricate.times(21, :status) }
