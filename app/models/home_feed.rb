@@ -11,19 +11,20 @@ class HomeFeed < Feed
     max_id   = max_id.to_i if max_id.present?
     since_id = since_id.to_i if since_id.present?
     min_id   = min_id.to_i if min_id.present?
+    statuses = from_redis(limit, max_id, since_id, min_id)
 
     if min_id.present?
       redis_min_id = fetch_min_redis_id
-      return from_redis(limit, max_id, since_id, min_id) if redis_min_id && min_id >= redis_min_id
+      return from_database(limit, max_id, since_id, min_id) if redis_min_id.nil? || min_id < redis_min_id
+      return statuses if statuses.size >= limit
 
-      from_database(limit, max_id, since_id, min_id)
+      merge_forward_results(statuses, from_database(limit, max_id, since_id, min_id), limit)
     else
-      statuses = from_redis(limit, max_id, since_id, min_id)
       return statuses if statuses.size >= limit
 
       if since_id.present?
-        redis_min_id = fetch_min_redis_id
-        return statuses if redis_min_id.present? && since_id >= redis_min_id
+        database_statuses = from_database(limit, max_id, since_id, min_id, preceding_statuses: statuses)
+        return merge_reverse_results(statuses, database_statuses, limit)
       end
 
       remaining_limit = limit - statuses.size
@@ -104,6 +105,21 @@ class HomeFeed < Feed
   end
 
   private
+
+  def merge_forward_results(redis_statuses, database_statuses, limit)
+    (redis_statuses + database_statuses)
+      .uniq(&:id)
+      .sort_by(&:id)
+      .first(limit)
+      .reverse
+  end
+
+  def merge_reverse_results(redis_statuses, database_statuses, limit)
+    (redis_statuses + database_statuses)
+      .uniq(&:id)
+      .sort_by { |status| -status.id }
+      .first(limit)
+  end
 
   def aggregate_database_reblogs(statuses, preceding_statuses)
     recent_status_ids = preceding_statuses.last(FeedManager::REBLOG_FALLOFF).map { |status| status.reblog_of_id || status.id }
