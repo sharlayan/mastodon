@@ -15,9 +15,10 @@ RSpec.describe Form::AdminSettings do
     expect(described_class.new(background_color: 'red', background_opacity: '101')).to_not be_valid
   end
 
-  it 'requires a positive status character limit' do
+  it 'requires a status character limit of at least 300' do
     expect(described_class.new(status_character_limit: '500')).to be_valid
-    expect(described_class.new(status_character_limit: '0')).to_not be_valid
+    expect(described_class.new(status_character_limit: '299')).to_not be_valid
+    expect(described_class.new(status_character_limit: '300')).to be_valid
   end
 
   it 'validates configurable profile and remote media limits' do
@@ -28,6 +29,14 @@ RSpec.describe Form::AdminSettings do
   it 'uses MAX_TOOT_CHARS as the default when configured' do
     ClimateControl.modify MAX_TOOT_CHARS: '1000' do
       expect(Sharlayan::SettingExtensions.sharlayan_defaults.fetch('status_character_limit')).to eq(1000)
+    end
+  end
+
+  it 'uses the configured default when MAX_TOOT_CHARS is invalid or below the minimum' do
+    ['invalid', '299', ''].each do |value|
+      ClimateControl.modify MAX_TOOT_CHARS: value do
+        expect(Sharlayan::SettingExtensions.sharlayan_defaults.fetch('status_character_limit')).to eq(500)
+      end
     end
   end
 
