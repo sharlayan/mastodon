@@ -5,5 +5,11 @@
             as: :boolean,
             wrapper: :with_label,
             label: t('admin.settings.timeline_control.disable_local_timeline.title'),
-            hint: t('admin.settings.timeline_control.disable_local_timeline.hint'),
-            sharlayan_only: true
+            hint: t('admin.settings.timeline_control.disable_local_timeline.hint')
+
+.fields-group
+  = f.input :roleplay_hide_public_timelines_from_admins,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.timeline_control.hide_from_admins.title'),
+            hint: t('admin.settings.timeline_control.hide_from_admins.hint')

@@ -22,6 +22,8 @@ module Sharlayan::InitialStateSerializerExtensions
   def default_meta_store
     super.merge(
       force_local_only: Setting.force_local_only,
+      roleplay_disable_local_timeline: RoleplayModeHelper.roleplay_local_timeline_disabled?,
+      roleplay_hide_public_timelines_from_admins: RoleplayModeHelper.roleplay_public_timelines_hidden_from_admins?,
       circles_enabled: Setting.circles_enabled,
       clips_enabled: Setting.clips_enabled,
       pages_enabled: Setting.pages_enabled,
@@ -37,7 +39,6 @@ module Sharlayan::InitialStateSerializerExtensions
       local_account_statuses_access: Setting.local_account_statuses_access,
       local_status_page_access: Setting.local_status_page_access,
       roleplay_mode: RoleplayModeHelper.roleplay_mode?,
-      roleplay_disable_local_timeline: RoleplayModeHelper.roleplay_local_timeline_disabled?,
       user_themes_enabled: Setting.user_themes_enabled,
       user_theme_catalog: Setting.user_theme_catalog,
       user_theme_defaults: Setting.user_theme_defaults

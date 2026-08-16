@@ -1,5 +1,6 @@
 import type { ApiAnnualReportState } from './api/annual_report';
 import type { ApiAccountJSON } from './api_types/accounts';
+import { canViewFeed } from './permissions';
 import { readSharlayanInitialState } from './sharlayan/initial_state';
 import type {
   SharlayanInitialState,
@@ -226,8 +227,6 @@ export const {
   forceLocalOnly,
   federationUniverseEnabled,
   roleplayMode,
-  localTimelineEnabled,
-  federatedTimelineEnabled,
   collectionsEnabled,
   circlesEnabled,
   clipsEnabled,
@@ -271,6 +270,15 @@ export const {
   useMyArchive,
   userTheme,
 } = readSharlayanInitialState(initialState, Boolean(me));
+
+const rolePermissions = Number(initialState?.role?.permissions ?? 0);
+export const localTimelineEnabled =
+  canViewFeed(Boolean(me), rolePermissions, localLiveFeedAccess) &&
+  getMeta('roleplay_disable_local_timeline') !== true &&
+  getMeta('roleplay_hide_public_timelines_from_admins') !== true;
+export const federatedTimelineEnabled =
+  canViewFeed(Boolean(me), rolePermissions, remoteLiveFeedAccess) &&
+  getMeta('roleplay_hide_public_timelines_from_admins') !== true;
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

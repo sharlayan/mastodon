@@ -41,25 +41,17 @@ class PublicFeed
 
   attr_reader :account, :options
 
+  def requested_timeline_disabled?
+    RoleplayModeHelper.roleplay_public_timelines_hidden_from_admins? ||
+      (options[:local] && RoleplayModeHelper.roleplay_local_timeline_disabled?)
+  end
+
   def allow_local_only?
     local_account? && (local_only? || options[:allow_local_only])
   end
 
   def incompatible_feed_settings?
     (local_only? && !user_has_access_to_feed?(local_feed_setting)) || (remote_only? && !user_has_access_to_feed?(remote_feed_setting))
-  end
-
-  def requested_timeline_disabled?
-    (options[:local] && roleplay_local_timeline_disabled?) ||
-      (!options[:local] && roleplay_federated_timeline_disabled?)
-  end
-
-  def roleplay_local_timeline_disabled?
-    RoleplayModeHelper.roleplay_local_timeline_disabled?
-  end
-
-  def roleplay_federated_timeline_disabled?
-    RoleplayModeHelper.roleplay_federated_timeline_disabled?
   end
 
   def user_has_access_to_feed?(setting)

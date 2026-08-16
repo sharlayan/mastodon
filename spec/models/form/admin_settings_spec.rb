@@ -57,11 +57,11 @@ RSpec.describe Form::AdminSettings do
         ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
       end
 
-      it 'returns authenticated access for the administrator form' do
+      it 'returns permission-gated live feed access for the administrator form' do
         settings = described_class.new
 
-        expect(settings.local_live_feed_access).to eq('authenticated')
-        expect(settings.remote_live_feed_access).to eq('authenticated')
+        expect(settings.local_live_feed_access).to eq('disabled')
+        expect(settings.remote_live_feed_access).to eq('disabled')
         expect(settings.local_topic_feed_access).to eq('authenticated')
         expect(settings.remote_topic_feed_access).to eq('authenticated')
         expect(settings.local_account_statuses_access).to eq('authenticated')
@@ -77,11 +77,13 @@ RSpec.describe Form::AdminSettings do
           .to change(Setting, :soft_hide_deletion).from(false).to(true)
       end
 
-      it 'saves the local timeline control setting as a boolean' do
+      it 'saves both timeline control settings as booleans' do
         Setting.roleplay_disable_local_timeline = true
 
-        expect { described_class.new(roleplay_disable_local_timeline: '0').save }
-          .to change(Setting, :roleplay_disable_local_timeline).from(true).to(false)
+        expect do
+          described_class.new(roleplay_disable_local_timeline: '0', roleplay_hide_public_timelines_from_admins: '1').save
+        end.to change(Setting, :roleplay_disable_local_timeline).from(true).to(false)
+          .and change(Setting, :roleplay_hide_public_timelines_from_admins).from(false).to(true)
       end
 
       it 'persists forced settings instead of submitted values' do
@@ -98,8 +100,8 @@ RSpec.describe Form::AdminSettings do
           cat_federation_enabled: '1'
         ).save
 
-        expect(Setting.local_live_feed_access).to eq('authenticated')
-        expect(Setting.remote_live_feed_access).to eq('authenticated')
+        expect(Setting.local_live_feed_access).to eq('disabled')
+        expect(Setting.remote_live_feed_access).to eq('disabled')
         expect(Setting.local_topic_feed_access).to eq('authenticated')
         expect(Setting.remote_topic_feed_access).to eq('authenticated')
         expect(Setting.local_account_statuses_access).to eq('authenticated')
