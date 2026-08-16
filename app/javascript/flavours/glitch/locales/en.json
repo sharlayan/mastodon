@@ -76,6 +76,8 @@
   "settings.general": "General",
   "settings.hicolor_privacy_icons": "High color privacy icons",
   "settings.hicolor_privacy_icons.hint": "Display privacy icons in bright and easily distinguishable colors",
+  "settings.hide_timeline_account_handle": "Hide account handles on timeline posts",
+  "settings.hide_timeline_account_handle.hint": "Show only display names in the account information area of timeline posts",
   "settings.inline_preview_cards": "Inline preview cards for external links",
   "settings.layout_opts": "Layout options",
   "settings.media": "Media",
