@@ -21,7 +21,7 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
   def create
     antenna = current_account.antennas.new(title: antenna_title)
     apply_params!(antenna)
-    antenna.save!
+    current_account.with_lock { antenna.save! }
     sync_accounts!(antenna)
     render json: serialize(antenna)
   end

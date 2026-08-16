@@ -27,7 +27,7 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
   end
 
   def create
-    clip = Clip.create!(clip_params.merge(account: current_account))
+    clip = current_account.with_lock { current_account.clips.create!(clip_params) }
     render json: serialize(clip)
   rescue ActiveRecord::RecordInvalid => e
     render_error(e.to_s, 'INVALID_PARAM', 400)

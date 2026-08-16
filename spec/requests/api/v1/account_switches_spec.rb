@@ -55,6 +55,37 @@ RSpec.describe 'AccountSwitches' do
     end
   end
 
+  describe 'GET /api/v1/account_switches/linked_unread_counts' do
+    let(:second_child_user) { Fabricate(:user) }
+    let(:source_account) { Fabricate(:account) }
+
+    before do
+      stub_const('Api::V1::AccountSwitchesController::UNREAD_COUNT_LIMIT', 2)
+      Fabricate(:account_switch_authorization, account: user.account, target_account: child)
+      Fabricate(:account_switch_authorization, account: user.account, target_account: second_child_user.account)
+
+      read_notification = Fabricate(:notification, account: child, activity: Fabricate(:status, account: source_account))
+      Fabricate(:marker, user: child_user, timeline: 'notifications', last_read_id: read_notification.id)
+      3.times { Fabricate(:notification, account: child, activity: Fabricate(:status, account: source_account)) }
+    end
+
+    it 'uses one bounded notification query for all linked accounts' do
+      queries = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        get '/api/v1/account_switches/linked_unread_counts', headers: read_headers
+      end
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq(child.id.to_s => 2, second_child_user.account.id.to_s => 0)
+      expect(queries.count { |sql| sql.include?('FROM notifications') }).to eq(1)
+      expect(queries.grep(/COUNT\(\*\).*notifications/)).to be_empty
+    end
+  end
+
   describe 'inbound authorizations' do
     let(:linking_user) { Fabricate(:user) }
     let!(:auth) { Fabricate(:account_switch_authorization, account: linking_user.account, target_account: user.account) }

@@ -19,7 +19,7 @@ class Api::V1::AntennasController < Api::BaseController
   end
 
   def create
-    @antenna = Antenna.create!(antenna_params.merge(account: current_account))
+    @antenna = current_account.with_lock { current_account.antennas.create!(antenna_params) }
     render json: @antenna, serializer: REST::AntennaSerializer
   end
 
