@@ -347,7 +347,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def clips
     scope = Clip.public_clips.joins(:clip_statuses).where(clip_statuses: { status_id: @note.id })
-    render json: scope.map { |clip| MisskeyCompat::ClipSerializer.serialize(clip, current_account: current_account) }
+    scope = scope.where(id: ...params[:untilId].to_i) if params[:untilId].present?
+    scope = scope.where('clips.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
+    clips = scope.includes(:account).order(id: :desc).limit(pagination_limit(max: 100)).to_a
+    relationships = ClipRelationshipsPresenter.new(clips, current_account&.id)
+
+    render json: clips.map { |clip| MisskeyCompat::ClipSerializer.serialize(clip, current_account: current_account, relationships: relationships) }
   end
 
   def polls_recommendation
