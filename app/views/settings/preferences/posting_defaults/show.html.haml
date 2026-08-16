@@ -69,11 +69,12 @@
                  label: I18n.t('simple_form.labels.defaults.setting_default_sensitive'),
                  wrapper: :with_label
 
-    .fields-group
-      = ff.input :bridge_unlisted_to_bsky,
-                 hint: I18n.t('simple_form.hints.defaults.setting_bridge_unlisted_to_bsky'),
-                 label: I18n.t('simple_form.labels.defaults.setting_bridge_unlisted_to_bsky'),
-                 wrapper: :with_label
+    - unless roleplay_mode?
+      .fields-group
+        = ff.input :bridge_unlisted_to_bsky,
+                   hint: I18n.t('simple_form.hints.defaults.setting_bridge_unlisted_to_bsky'),
+                   label: I18n.t('simple_form.labels.defaults.setting_bridge_unlisted_to_bsky'),
+                   wrapper: :with_label
 
     - if Setting.auto_quote_from_url
       .fields-group

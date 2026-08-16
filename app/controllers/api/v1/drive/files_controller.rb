@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
 class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
+  include Api::AccountRateLimit
+
   before_action -> { doorkeeper_authorize! :read, :'read:drive' }, only: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
   before_action -> { doorkeeper_authorize! :write, :'write:media', :'write:drive' }, except: [:index, :show, :find, :find_by_hash, :check_existence, :attached_notes]
   before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
   before_action :set_file, only: [:show, :update, :destroy, :attach, :transfer_to_posts, :attached_notes]
-  after_action :insert_pagination_headers, only: :index
+  before_action :enforce_search_rate_limit!, only: [:find, :find_by_hash]
+  after_action :insert_pagination_headers, only: [:index, :find, :find_by_hash]
 
   LIMIT = 40
+  SEARCH_LIMIT = 20
   BULK_LIMIT = 100
 
   def index
@@ -25,7 +29,7 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   end
 
   def find_by_hash
-    @files = current_account.drive_files.where(md5: params[:md5]).to_a
+    @files = paginate_search(current_account.drive_files.where(md5: params[:md5]))
     render json: @files, each_serializer: REST::DriveFileSerializer, attached_ids: attached_ids_for(@files)
   end
 
@@ -141,6 +145,10 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
     RateLimiter.new(current_account, family: :drive_uploads).record!
   end
 
+  def enforce_search_rate_limit!
+    enforce_account_rate_limit!(:drive_searches)
+  end
+
   def drive_quota_full?
     quota = current_account.drive_quota_bytes
     quota.positive? && current_account.drive_files.sum(:storage_file_size).to_i >= quota
@@ -153,7 +161,15 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   def find_by_name
     scope = current_account.drive_files.eager_load(:custom_name)
     scope = params[:folder_id].present? ? scope.where(folder_id: params[:folder_id]) : scope.where(folder_id: nil)
-    scope.where('COALESCE(drive_file_names.name, drive_files.file_file_name) = ?', params[:name]).to_a
+    paginate_search(scope.where('COALESCE(drive_file_names.name, drive_files.file_file_name) = ?', params[:name]))
+  end
+
+  def paginate_search(scope)
+    scope.paginate_by_max_id(search_limit, params[:max_id], params[:since_id]).to_a
+  end
+
+  def search_limit
+    limit_param(SEARCH_LIMIT, SEARCH_LIMIT)
   end
 
   def load_attached_statuses
@@ -205,10 +221,14 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   end
 
   def next_path
+    return search_path(pagination_params(max_id: pagination_max_id)) if search_action? && records_continue?
+
     api_v1_drive_files_url pagination_params(max_id: pagination_max_id) if records_continue?
   end
 
   def prev_path
+    return search_path(pagination_params(since_id: pagination_since_id)) if search_action? && !@files.empty?
+
     api_v1_drive_files_url pagination_params(since_id: pagination_since_id) unless @files.empty?
   end
 
@@ -217,11 +237,25 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   end
 
   def records_continue?
-    @files.size == limit_param(LIMIT)
+    @files.size == (search_action? ? search_limit : limit_param(LIMIT))
   end
 
   def pagination_params(core_params)
+    return search_pagination_params(core_params) if search_action?
+
     params.slice(:limit, :folder_id, :type, :orphaned, :sort, :since_date, :until_date).permit(:limit, :folder_id, :type, :orphaned, :sort, :since_date, :until_date).merge(core_params)
+  end
+
+  def search_action?
+    action_name.in?(%w(find find_by_hash))
+  end
+
+  def search_path(pagination)
+    action_name == 'find' ? find_api_v1_drive_files_url(pagination) : find_by_hash_api_v1_drive_files_url(pagination)
+  end
+
+  def search_pagination_params(core_params)
+    params.slice(:limit, :name, :folder_id, :md5).permit(:limit, :name, :folder_id, :md5).merge(core_params)
   end
 
   def drive_metadata_params

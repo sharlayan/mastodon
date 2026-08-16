@@ -25,5 +25,29 @@ RSpec.describe Sharlayan::RoleplayForcedSettings do
       expect { described_class.apply_defaults! }
         .to(not_change { described_class::DEFAULT_SETTINGS.keys.index_with { |key| Setting.public_send(key) } })
     end
+
+    it 'raises when a default setting cannot be persisted' do
+      setting = instance_double(Setting, new_record?: true)
+      allow(Setting).to receive(:where).and_return(instance_double(ActiveRecord::Relation, first_or_initialize: setting))
+      allow(setting).to receive(:update!).and_raise(ActiveRecord::RecordInvalid.new(Setting.new))
+
+      expect { described_class.apply_defaults! }.to raise_error(ActiveRecord::RecordInvalid)
+    end
+  end
+
+  describe '.apply_forced!' do
+    it 'persists every forced setting' do
+      described_class.apply_forced!
+
+      expect(Setting.where(var: described_class::SETTINGS.keys.map(&:to_s)).to_h { |setting| [setting.var.to_sym, setting.value] }).to eq(described_class::SETTINGS)
+    end
+
+    it 'raises when a forced setting cannot be persisted' do
+      setting = instance_double(Setting, value: nil)
+      allow(Setting).to receive(:where).and_return(instance_double(ActiveRecord::Relation, first_or_initialize: setting))
+      allow(setting).to receive(:update!).and_raise(ActiveRecord::RecordInvalid.new(Setting.new))
+
+      expect { described_class.apply_forced! }.to raise_error(ActiveRecord::RecordInvalid)
+    end
   end
 end

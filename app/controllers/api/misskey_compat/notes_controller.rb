@@ -37,19 +37,19 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
 
   def timeline
-    render_notes HomeFeed.new(current_account).get(timeline_pagination_limit, timeline_until_id, timeline_since_id)
+    render_notes HomeFeed.new(current_account).get(timeline_pagination_limit, timeline_until_id, timeline_since_id, timeline_min_id)
   end
 
   def local_timeline
-    render_notes public_feed(local: true).get(timeline_pagination_limit, timeline_until_id, timeline_since_id)
+    render_notes public_feed(local: true).get(timeline_pagination_limit, timeline_until_id, timeline_since_id, timeline_min_id)
   end
 
   def hybrid_timeline
-    render_notes public_feed(allow_local_only: true).get(timeline_pagination_limit, timeline_until_id, timeline_since_id)
+    render_notes public_feed(allow_local_only: true).get(timeline_pagination_limit, timeline_until_id, timeline_since_id, timeline_min_id)
   end
 
   def global_timeline
-    render_notes public_feed.get(timeline_pagination_limit, timeline_until_id, timeline_since_id)
+    render_notes public_feed.get(timeline_pagination_limit, timeline_until_id, timeline_since_id, timeline_min_id)
   end
 
   def show
@@ -721,6 +721,14 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def timeline_since_id
+    timeline_until_id.present? ? timeline_since_boundary : nil
+  end
+
+  def timeline_min_id
+    timeline_until_id.blank? ? timeline_since_boundary : nil
+  end
+
+  def timeline_since_boundary
     since_id || snowflake_id_at(params[:sinceDate])
   end
 

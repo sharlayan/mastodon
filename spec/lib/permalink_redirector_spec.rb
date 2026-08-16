@@ -15,6 +15,13 @@ RSpec.describe PermalinkRedirector do
       expect(redirector.redirect_path).to eq '/directory?local=true'
     end
 
+    it 'normalizes protocol-relative deck paths to local paths' do
+      redirector = described_class.new('/deck//evil.example')
+
+      expect(redirector.redirect_path).to eq '/evil.example'
+      expect(redirector.redirect_uri).to eq '/evil.example'
+    end
+
     context 'when account is not suspended' do
       it 'returns path for legacy account links' do
         redirector = described_class.new('accounts/2')

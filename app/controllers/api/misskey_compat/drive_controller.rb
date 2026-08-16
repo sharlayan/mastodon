@@ -8,8 +8,10 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   before_action :require_user!, except: :unavailable
   before_action :require_drive_enabled!, only: [:index, :show, :update, :destroy, :find, :find_by_hash, :check_existence, :move_bulk, :upload_from_url]
   before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
+  before_action :enforce_search_rate_limit!, only: [:find, :find_by_hash]
 
   LIMIT = 100
+  SEARCH_LIMIT = 20
   BULK_LIMIT = 100
 
   rescue_from MisskeyCompat::DriveFileResolver::NoSuchFileError do
@@ -82,14 +84,14 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   def find
     return render_invalid_param('#/properties/name', 'name required') if params[:name].blank?
 
-    files = file_scope.eager_load(:custom_name).where('COALESCE(drive_file_names.name, drive_files.file_file_name) = ?', params[:name].to_s)
+    files = paginated_search(file_scope.eager_load(:custom_name).where('COALESCE(drive_file_names.name, drive_files.file_file_name) = ?', params[:name].to_s))
     render json: files.map { |file| MisskeyCompat::DriveFileSerializer.serialize(file) }
   end
 
   def find_by_hash
     return render_invalid_param('#/properties/md5', 'md5 required') if params[:md5].blank?
 
-    render json: current_account.drive_files.where(md5: params[:md5].to_s).map { |file| MisskeyCompat::DriveFileSerializer.serialize(file) }
+    render json: paginated_search(current_account.drive_files.where(md5: params[:md5].to_s)).map { |file| MisskeyCompat::DriveFileSerializer.serialize(file) }
   end
 
   def check_existence
@@ -128,6 +130,14 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     return if current_user.can_extra?(:bypass_rate_limit)
 
     rate_limited?(:drive_uploads)
+  end
+
+  def enforce_search_rate_limit!
+    rate_limited?(:drive_searches)
+  end
+
+  def paginated_search(scope)
+    apply_file_range(scope).reorder(id: :desc).limit(pagination_limit(default: SEARCH_LIMIT, max: SEARCH_LIMIT)).to_a
   end
 
   def drive_quota_full?

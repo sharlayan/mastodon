@@ -53,6 +53,36 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(response.parsed_body).to be(false)
     end
 
+    it 'paginates name and hash searches at 20 files per page' do
+      matching_files = Array.new(21) do
+        insert_drive_file.tap do |matching_file|
+          DriveFileName.create!(drive_file: matching_file, name: 'Shared')
+          matching_file.update_column(:md5, 'shared-hash')
+        end
+      end
+
+      rpc_post 'drive/files/find', name: 'Shared', folderId: nil, limit: 100
+      first_name_page = response.parsed_body.pluck(:id)
+      rpc_post 'drive/files/find', name: 'Shared', folderId: nil, limit: 100, untilId: first_name_page.last
+
+      expect(first_name_page.size).to eq(20)
+      expect(response.parsed_body.pluck(:id)).to contain_exactly(mi_id(matching_files.first.id))
+
+      rpc_post 'drive/files/find-by-hash', md5: 'shared-hash', limit: 100
+
+      expect(response.parsed_body.size).to eq(20)
+    end
+
+    it 'rate limits Drive search requests' do
+      limiter = RateLimiter.new(account, family: :drive_searches)
+      RateLimiter::FAMILIES[:drive_searches][:limit].times { limiter.record! }
+
+      rpc_post 'drive/files/find', name: 'Portrait'
+
+      expect(response).to have_http_status(429)
+      expect(response.parsed_body.dig(:error, :code)).to eq('RATE_LIMIT_EXCEEDED')
+    end
+
     it 'paginates beyond Aria default page size with untilId' do
       Array.new(40) { insert_drive_file }
 

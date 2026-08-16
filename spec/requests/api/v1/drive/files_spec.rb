@@ -83,6 +83,47 @@ RSpec.describe 'Drive files API' do
     end
   end
 
+  describe 'GET /api/v1/drive/files/find' do
+    it 'returns at most 20 matches and provides a cursor link' do
+      files = Array.new(21) { insert_drive_file }
+      files.each { |file| DriveFileName.create!(drive_file: file, name: 'Portrait') }
+
+      get '/api/v1/drive/files/find', headers: headers, params: { name: 'Portrait', limit: 100 }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq(20)
+      expect(response.headers['Link']).to include('rel="next"', 'name=Portrait')
+
+      get URI.parse(response.headers['Link'][/<([^>]+)>; rel="next"/, 1]).request_uri, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to contain_exactly(files.first.id.to_s)
+    end
+
+    it 'applies the Drive search request limit' do
+      limiter = RateLimiter.new(user.account, family: :drive_searches)
+      RateLimiter::FAMILIES[:drive_searches][:limit].times { limiter.record! }
+
+      get '/api/v1/drive/files/find', headers: headers, params: { name: 'Portrait' }
+
+      expect(response).to have_http_status(429)
+      expect(response.headers).to include('X-RateLimit-Limit', 'Retry-After')
+    end
+  end
+
+  describe 'GET /api/v1/drive/files/find_by_hash' do
+    it 'paginates matching hashes with at most 20 files per page' do
+      files = Array.new(21) { insert_drive_file }
+      DriveFile.where(id: files).update_all(md5: 'shared-hash')
+
+      get '/api/v1/drive/files/find_by_hash', headers: headers, params: { md5: 'shared-hash', limit: 100 }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq(20)
+      expect(response.headers['Link']).to include('rel="next"', 'md5=shared-hash')
+    end
+  end
+
   describe 'POST /api/v1/drive/files', :attachment_processing do
     it 'returns the existing file for a duplicate upload' do
       post_drive_file
