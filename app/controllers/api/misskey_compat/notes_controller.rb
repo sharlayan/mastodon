@@ -6,6 +6,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   class NoSuchReplyTargetError < StandardError; end
 
   CONVERSATION_OFFSET_LIMIT = 1_000
+  SCHEDULED_OFFSET_LIMIT = 1_000
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
@@ -200,8 +201,11 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def scheduled_list
+    offset = [params[:offset].to_i, 0].max
+    return render_invalid_param('#/properties/offset', "must be less than or equal to #{SCHEDULED_OFFSET_LIMIT}") if offset > SCHEDULED_OFFSET_LIMIT
+
     scope = current_account.scheduled_statuses.includes(:media_attachments).order(id: :desc)
-    scheduled = scope.limit(pagination_limit).offset(params[:offset].to_i).to_a
+    scheduled = scope.limit(pagination_limit).offset(offset).to_a
 
     render json: scheduled.map { |scheduled_status| serialize_scheduled(scheduled_status) }
   end
