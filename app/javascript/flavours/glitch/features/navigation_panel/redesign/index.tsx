@@ -2,6 +2,8 @@ import { useCallback } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
+import type { Map as ImmutableMap } from 'immutable';
+
 import {
   PenNibIcon,
   HouseIcon,
@@ -10,6 +12,7 @@ import {
   BellRingingIcon,
   ChatCircleIcon,
   BookmarkSimpleIcon,
+  BankIcon,
 } from '@phosphor-icons/react';
 
 import { useIdentity } from '@/flavours/glitch/identity_context';
@@ -40,6 +43,13 @@ export const RedesignNavigationPanel: React.FC<{ siteName?: string }> = ({
   const { signedIn } = useIdentity();
   const notificationsCount = useAppSelector(
     selectUnreadNotificationGroupsCount,
+  );
+  const useMyArchive = useAppSelector(
+    (state) =>
+      (state.local_settings as ImmutableMap<string, unknown>).get(
+        'use_my_archive',
+        false,
+      ) as boolean,
   );
 
   const openComposer = useCallback(() => {
@@ -93,9 +103,30 @@ export const RedesignNavigationPanel: React.FC<{ siteName?: string }> = ({
                 defaultMessage='Messages'
               />
             </NavigationLink>
-            <NavigationLink to='/bookmarks' iconComponent={BookmarkSimpleIcon}>
-              <FormattedMessage id='tabs_bar.saved' defaultMessage='Saved' />
-            </NavigationLink>
+            {useMyArchive ? (
+              <NavigationLink
+                to='/favourites'
+                iconComponent={BankIcon}
+                activePaths={[
+                  '/favourites',
+                  '/bookmarks',
+                  '/reactions',
+                  '/clips',
+                ]}
+              >
+                <FormattedMessage
+                  id='navigation_bar.my_archive'
+                  defaultMessage='My archive'
+                />
+              </NavigationLink>
+            ) : (
+              <NavigationLink
+                to='/bookmarks'
+                iconComponent={BookmarkSimpleIcon}
+              >
+                <FormattedMessage id='tabs_bar.saved' defaultMessage='Saved' />
+              </NavigationLink>
+            )}
           </ul>
           <footer className={classes.footer}>
             <NavigationAccountCard />

@@ -20,6 +20,7 @@ import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import StatusList from 'flavours/glitch/components/status_list';
 import { getStatusList } from 'flavours/glitch/selectors';
+import { MyArchiveTabs } from 'flavours/glitch/sharlayan/my_archive/tabs';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { ReactionSummaryBar } from './reaction_summary_bar';
@@ -106,6 +107,7 @@ const Reactions: React.FC<{ columnId: string; multiColumn: boolean }> = ({
         pinned={pinned}
         multiColumn={multiColumn}
         showBackButton
+        appendContent={<MyArchiveTabs />}
       >
         <ReactionSummaryBar
           summary={reactionSummary}

@@ -15,6 +15,7 @@ class Api::V1::AppearanceController < Api::BaseController
       contrast: current_user.settings['web.contrast'],
       expand_content_warnings: current_user.settings['web.expand_content_warnings'],
       user_theme: current_user.settings['web.user_theme'],
+      use_my_archive: current_user.settings['web.use_my_archive'],
     }
   end
 
@@ -45,6 +46,13 @@ class Api::V1::AppearanceController < Api::BaseController
       end
 
       settings['web.user_theme'] = value
+    end
+
+    if params.key?(:use_my_archive)
+      value = params[:use_my_archive]
+      raise Mastodon::InvalidParameterError, "Invalid value for 'web.use_my_archive'" unless [true, false, 'true', 'false'].include?(value)
+
+      settings['web.use_my_archive'] = ActiveModel::Type::Boolean.new.cast(value)
     end
 
     settings.each do |key, value|

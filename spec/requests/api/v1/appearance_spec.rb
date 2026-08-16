@@ -25,6 +25,7 @@ RSpec.describe 'Appearance API' do
         'contrast' => 'high',
         'expand_content_warnings' => false,
         'user_theme' => '{}',
+        'use_my_archive' => false,
       })
       settings = user.reload.settings
       expect(settings['web.color_scheme']).to eq('dark')
@@ -48,6 +49,7 @@ RSpec.describe 'Appearance API' do
           'contrast' => 'high',
           'expand_content_warnings' => false,
           'user_theme' => '{}',
+          'use_my_archive' => false,
         })
       end
     end
@@ -61,6 +63,29 @@ RSpec.describe 'Appearance API' do
         expect(response).to have_http_status(200)
         expect(response.parsed_body['expand_content_warnings']).to be true
         expect(user.reload.settings['web.expand_content_warnings']).to be true
+      end
+    end
+
+    context 'when use_my_archive is supplied' do
+      let(:params) { { use_my_archive: true } }
+
+      it 'updates the My archive preference' do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body['use_my_archive']).to be true
+        expect(user.reload.settings['web.use_my_archive']).to be true
+      end
+    end
+
+    context 'with an invalid use_my_archive value' do
+      let(:params) { { use_my_archive: 'invalid' } }
+
+      it 'returns a bad request without changing settings' do
+        expect { subject }.to_not(change { user.reload.settings.as_json })
+
+        expect(response).to have_http_status(400)
+        expect(response.parsed_body).to include('error' => "Invalid value for 'web.use_my_archive'")
       end
     end
 

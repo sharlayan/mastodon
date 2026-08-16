@@ -1,5 +1,7 @@
 import { useIntl, defineMessages } from 'react-intl';
 
+import type { Map as ImmutableMap } from 'immutable';
+
 import CalendarTodayIcon from '@/material-icons/400-24px/calendar_today.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import ExtensionIcon from '@/material-icons/400-24px/extension.svg?react';
@@ -14,6 +16,7 @@ import {
   pagesEnabled,
 } from 'flavours/glitch/initial_state';
 import { SharlayanCollapsiblePanel } from 'flavours/glitch/sharlayan/registry/navigation/collapsible_panel';
+import { useAppSelector } from 'flavours/glitch/store';
 
 const messages = defineMessages({
   extensions: {
@@ -41,6 +44,13 @@ const messages = defineMessages({
 
 export const ExtensionsPanel: React.FC = () => {
   const intl = useIntl();
+  const useMyArchive = useAppSelector(
+    (state) =>
+      (state.local_settings as ImmutableMap<string, unknown>).get(
+        'use_my_archive',
+        false,
+      ) as boolean,
+  );
 
   const children = [];
 
@@ -55,16 +65,18 @@ export const ExtensionsPanel: React.FC = () => {
     />,
   );
 
-  children.push(
-    <ColumnLink
-      key='reactions'
-      transparent
-      to='/reactions'
-      icon='mood'
-      iconComponent={MoodIcon}
-      text={intl.formatMessage(messages.reactions)}
-    />,
-  );
+  if (!useMyArchive) {
+    children.push(
+      <ColumnLink
+        key='reactions'
+        transparent
+        to='/reactions'
+        icon='mood'
+        iconComponent={MoodIcon}
+        text={intl.formatMessage(messages.reactions)}
+      />,
+    );
+  }
 
   children.push(
     <ColumnLink
@@ -77,7 +89,7 @@ export const ExtensionsPanel: React.FC = () => {
     />,
   );
 
-  if (clipsEnabled) {
+  if (clipsEnabled && !useMyArchive) {
     children.push(
       <ColumnLink
         key='clips'
