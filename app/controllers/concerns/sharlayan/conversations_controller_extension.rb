@@ -3,7 +3,55 @@
 module Sharlayan::ConversationsControllerExtension
   STATUSES_LIMIT = 50
   STATUSES_DEFAULT_LIMIT = 50
-  PreservedGroupRow = Data.define(:id, :conversation_id, :participant_account_ids, :last_status_id, :unread)
+  PRESERVED_GROUPS_SQL = <<~SQL.squish.freeze
+    WITH rows AS MATERIALIZED (
+      SELECT id, conversation_id, participant_account_ids, last_status_id, unread
+      FROM account_conversations
+      WHERE account_id = :account_id
+    ), leaves AS (
+      SELECT candidate.*
+      FROM rows candidate
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM rows superset
+        WHERE superset.conversation_id = candidate.conversation_id
+          AND candidate.participant_account_ids <@ superset.participant_account_ids
+          AND candidate.participant_account_ids <> superset.participant_account_ids
+      )
+    ), expanded AS (
+      SELECT TRUE AS expanded,
+             leaf.id AS representative_id,
+             (ARRAY_AGG(member.id ORDER BY member.last_status_id DESC, member.id DESC))[1] AS latest_id,
+             MAX(member.last_status_id) AS last_status_id,
+             ARRAY_AGG(member.id ORDER BY member.id) AS member_ids,
+             BOOL_OR(member.unread) AS unread
+      FROM leaves leaf
+      INNER JOIN rows member
+        ON member.conversation_id = leaf.conversation_id
+       AND member.participant_account_ids <@ leaf.participant_account_ids
+      GROUP BY leaf.id
+      HAVING COUNT(*) > 1
+    ), consumed AS (
+      SELECT DISTINCT UNNEST(member_ids) AS id
+      FROM expanded
+    ), grouped AS (
+      SELECT FALSE AS expanded,
+             (ARRAY_AGG(row.id ORDER BY row.last_status_id DESC, row.id DESC))[1] AS representative_id,
+             (ARRAY_AGG(row.id ORDER BY row.last_status_id DESC, row.id DESC))[1] AS latest_id,
+             MAX(row.last_status_id) AS last_status_id,
+             ARRAY_AGG(row.id ORDER BY row.id) AS member_ids,
+             BOOL_OR(row.unread) AS unread
+      FROM rows row
+      WHERE NOT EXISTS (SELECT 1 FROM consumed WHERE consumed.id = row.id)
+      GROUP BY row.participant_account_ids
+    )
+    SELECT expanded, representative_id, latest_id, last_status_id, member_ids, unread
+    FROM (
+      SELECT * FROM expanded
+      UNION ALL
+      SELECT * FROM grouped
+    ) definitions
+  SQL
 
   def self.prepended(base)
     base.before_action -> { doorkeeper_authorize! :read, :'read:statuses' }, only: [:statuses, :with_account, :with_status]
@@ -116,16 +164,8 @@ module Sharlayan::ConversationsControllerExtension
   end
 
   def preserved_group_conversations
-    definitions = preserved_group_definitions.sort_by { |definition| -definition[:last_status_id] }
-
-    max_id = params[:max_id].presence&.to_i
-    since_id = params[:since_id].presence&.to_i
-    min_id = params[:min_id].presence&.to_i
-    definitions.select! { |definition| definition[:last_status_id] < max_id } if max_id
-    definitions.select! { |definition| definition[:last_status_id] > since_id } if since_id
-    definitions.select! { |definition| definition[:last_status_id] > min_id } if min_id
     limit = limit_param(Api::V1::ConversationsController::LIMIT)
-    definitions = min_id ? definitions.last(limit) : definitions.first(limit)
+    definitions = preserved_group_definitions(limit: limit, max_id: params[:max_id], since_id: params[:since_id], min_id: params[:min_id])
 
     row_ids = definitions.flat_map { |definition| [definition[:representative_id], definition[:latest_id]] }.uniq
     conversations = paginated_conversations_scope.where(id: row_ids).index_by(&:id)
@@ -133,75 +173,48 @@ module Sharlayan::ConversationsControllerExtension
   end
 
   def preserved_group_members(conversation)
-    definitions = preserved_group_definitions
-    definition = definitions.find { |candidate| candidate[:representative_id] == conversation.id }
-    definition ||= definitions.find { |candidate| !candidate[:expanded] && candidate[:member_ids].include?(conversation.id) }
+    definition = preserved_group_definition_for(conversation.id)
     definition ? AccountConversation.where(account: current_account, id: definition[:member_ids]).to_a : [conversation]
   end
 
-  def preserved_group_definitions
-    rows = AccountConversation.where(account: current_account).pluck(:id, :conversation_id, :participant_account_ids, :last_status_id, :unread).map { |attributes| PreservedGroupRow.new(*attributes) }
-    expanded = []
-    consumed_ids = Set.new
-
-    rows.group_by(&:conversation_id).each_value do |thread_rows|
-      participant_sets = thread_rows.to_h { |row| [row.id, row.participant_account_ids.to_set] }
-      leaves = maximal_participant_rows(thread_rows, participant_sets)
-      members_by_leaf_id = preserved_members_by_leaf_id(thread_rows, leaves, participant_sets)
-
-      leaves.each do |leaf|
-        members = members_by_leaf_id[leaf.id]
-        next if members.one?
-
-        expanded << preserved_group_definition(leaf, members, expanded: true)
-        consumed_ids.merge(members.map(&:id))
-      end
-    end
-
-    grouped = rows.reject { |row| consumed_ids.include?(row.id) }.group_by { |row| row.participant_account_ids.sort }.values.map do |members|
-      representative = members.max_by(&:last_status_id)
-      preserved_group_definition(representative, members, expanded: false)
-    end
-
-    expanded + grouped
+  def preserved_group_definitions(limit:, max_id: nil, since_id: nil, min_id: nil)
+    conditions = []
+    conditions << 'last_status_id < :max_id' if max_id.present?
+    conditions << 'last_status_id > :since_id' if since_id.present?
+    conditions << 'last_status_id > :min_id' if min_id.present?
+    order = min_id.present? ? 'last_status_id ASC' : 'last_status_id DESC'
+    sql = <<~SQL.squish
+      #{PRESERVED_GROUPS_SQL}
+      #{"WHERE #{conditions.join(' AND ')}" if conditions.any?}
+      ORDER BY #{order}, representative_id DESC
+      LIMIT :limit
+    SQL
+    query_preserved_group_definitions(sql, limit: limit, max_id: max_id, since_id: since_id, min_id: min_id).then { |definitions| min_id.present? ? definitions.reverse : definitions }
   end
 
-  def maximal_participant_rows(rows, participant_sets)
-    rows.sort_by { |row| -participant_sets[row.id].size }.each_with_object([]) do |row, leaves|
-      row_participants = participant_sets[row.id]
-      leaves << row unless leaves.any? { |leaf| row_participants.proper_subset?(participant_sets[leaf.id]) }
-    end
+  def preserved_group_definition_for(conversation_id)
+    sql = <<~SQL.squish
+      #{PRESERVED_GROUPS_SQL}
+      WHERE representative_id = :conversation_id
+         OR (NOT expanded AND :conversation_id = ANY(member_ids))
+      ORDER BY (representative_id = :conversation_id) DESC
+      LIMIT 1
+    SQL
+    query_preserved_group_definitions(sql, conversation_id: conversation_id).first
   end
 
-  def preserved_members_by_leaf_id(rows, leaves, participant_sets)
-    leaves_by_participant = Hash.new { |hash, participant_id| hash[participant_id] = [] }
-    leaves.each do |leaf|
-      participant_sets[leaf.id].each { |participant_id| leaves_by_participant[participant_id] << leaf }
+  def query_preserved_group_definitions(sql, binds)
+    sanitized = AccountConversation.sanitize_sql_array([sql, { account_id: current_account.id, **binds.compact }])
+    AccountConversation.connection.select_all(sanitized).map do |row|
+      {
+        expanded: row.fetch('expanded'),
+        representative_id: row.fetch('representative_id').to_i,
+        latest_id: row.fetch('latest_id').to_i,
+        last_status_id: row.fetch('last_status_id').to_i,
+        member_ids: AccountConversation.type_for_attribute('participant_account_ids').deserialize(row.fetch('member_ids')),
+        unread: row.fetch('unread'),
+      }
     end
-
-    rows.each_with_object(Hash.new { |hash, leaf_id| hash[leaf_id] = [] }) do |row, members|
-      row_participants = participant_sets[row.id]
-      candidates = if row_participants.empty?
-                     leaves
-                   else
-                     row_participants.map { |participant_id| leaves_by_participant[participant_id] }.min_by(&:size)
-                   end
-      candidates.each do |leaf|
-        members[leaf.id] << row if row_participants.subset?(participant_sets[leaf.id])
-      end
-    end
-  end
-
-  def preserved_group_definition(representative, members, expanded:)
-    latest = members.max_by(&:last_status_id)
-    {
-      expanded: expanded,
-      representative_id: representative.id,
-      latest_id: latest.id,
-      last_status_id: latest.last_status_id,
-      member_ids: members.map(&:id),
-      unread: members.any?(&:unread),
-    }
   end
 
   def annotate_preserved_group(definition, conversations)
