@@ -37,7 +37,16 @@ module Sharlayan::RoleplayForcedSettings
   def self.apply_defaults!
     DEFAULT_SETTINGS.each do |var, value|
       setting = Setting.where(var: var.to_s).first_or_initialize(var: var.to_s)
-      setting.update(value: value) if setting.new_record?
+      setting.update!(value: value) if setting.new_record?
+    end
+  end
+
+  # DESTRUCTIVE: Rewrites forced settings while roleplay mode is enabled.
+  # 파괴적: 자캐 커뮤니티 모드가 켜진 동안 강제 설정을 덮어씁니다.
+  def self.apply_forced!
+    SETTINGS.each do |var, value|
+      setting = Setting.where(var: var.to_s).first_or_initialize(var: var.to_s)
+      setting.update!(value: value) unless setting.value == value
     end
   end
 end
