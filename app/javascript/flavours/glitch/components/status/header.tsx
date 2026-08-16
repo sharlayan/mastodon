@@ -114,10 +114,19 @@ const StatusDisplayName: FC<{
   status: Pick<StatusShape, 'created_at' | 'edited_at'>;
 }> = ({ statusAccount, friendAccount, avatarSize, status }) => {
   const AccountComponent = friendAccount ? AvatarOverlay : Avatar;
+  const hideAccountHandle = useAppSelector(
+    (state) =>
+      (state.local_settings as ImmutableMap<string, unknown>).get(
+        'hide_timeline_account_handle',
+        false,
+      ) as boolean,
+  );
+
   return (
     <LinkedDisplayName
       displayProps={{
         account: statusAccount,
+        variant: hideAccountHandle ? 'noDomain' : 'default',
         children: (
           <span className='status__display-name__created-time'>
             <RelativeTimestamp timestamp={status.created_at} />

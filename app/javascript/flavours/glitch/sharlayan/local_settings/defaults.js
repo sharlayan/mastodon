@@ -15,6 +15,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   show_reaction_acceptance: false,
   show_follow_list_bio: true,
   show_others_online_status: false,
+  hide_timeline_account_handle: false,
   show_instance_info: showInstanceInfo === true,
   show_instance_info_local: false,
   inline_compose_timelines: roleplayMode,
