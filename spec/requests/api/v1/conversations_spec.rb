@@ -91,6 +91,20 @@ RSpec.describe 'API V1 Conversations' do
       expect(response.parsed_body.first[:member_ids]).to contain_exactly(response.parsed_body.first[:id])
     end
 
+    it 'applies the group page limit in the database query' do
+      queries = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        queries << payload[:sql] if payload[:sql].include?('WITH rows AS MATERIALIZED')
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        get '/api/v1/conversations', params: { grouped: '1', preserve_group: '1' }, headers: headers
+      end
+
+      expect(response).to have_http_status(200)
+      expect(queries).to contain_exactly(include('LIMIT 20'))
+    end
+
     it 'returns the old and expanded messages without changing their recipients', :aggregate_failures do
       get '/api/v1/conversations', params: { grouped: '1', preserve_group: '1' }, headers: headers
       conversation_id = response.parsed_body.first[:id]
