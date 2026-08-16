@@ -30,6 +30,7 @@ const meta: SharlayanInitialStateMeta = {
   local_status_page_access: 'public',
   roleplay_mode: false,
   roleplay_disable_local_timeline: false,
+  roleplay_hide_public_timelines_from_admins: false,
   visible_reactions: 8,
   show_instance_info: true,
   custom_emoji_size: true,
@@ -51,8 +52,6 @@ describe('Sharlayan initial state', () => {
         maxReactions: 5,
         driveEnabled: true,
         federationUniverseEnabled: true,
-        localTimelineEnabled: true,
-        federatedTimelineEnabled: true,
         collectionsEnabled: true,
         pagesDriveOnly: true,
         antennaEnabled: true,
@@ -84,8 +83,6 @@ describe('Sharlayan initial state', () => {
       driveEnabled: false,
       pagesDriveOnly: false,
       antennaEnabled: false,
-      localTimelineEnabled: true,
-      federatedTimelineEnabled: true,
       collectionsEnabled: true,
       reactionsEnabled: true,
       mfmEnabled: true,
@@ -107,20 +104,17 @@ describe('Sharlayan initial state', () => {
     });
   });
 
-  it('disables both timelines by default in roleplay mode', () => {
+  it('leaves timeline availability to feed access permissions in roleplay mode', () => {
     expect(
       readSharlayanInitialState({
         meta: {
           ...meta,
           roleplay_mode: true,
-          roleplay_disable_local_timeline: true,
           use_my_archive: undefined,
         },
       }),
     ).toMatchObject({
       roleplayMode: true,
-      localTimelineEnabled: false,
-      federatedTimelineEnabled: false,
       collectionsEnabled: false,
       catEnabled: false,
       catFederationEnabled: false,
@@ -128,22 +122,6 @@ describe('Sharlayan initial state', () => {
       useMyArchive: true,
     });
   });
-
-  it('allows only the local timeline when enabled in roleplay mode', () => {
-    expect(
-      readSharlayanInitialState({
-        meta: {
-          ...meta,
-          roleplay_mode: true,
-          roleplay_disable_local_timeline: false,
-        },
-      }),
-    ).toMatchObject({
-      localTimelineEnabled: true,
-      federatedTimelineEnabled: false,
-    });
-  });
-
   it('preserves an explicit archive preference in roleplay mode', () => {
     expect(
       readSharlayanInitialState({

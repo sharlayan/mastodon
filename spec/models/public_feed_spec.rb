@@ -13,54 +13,6 @@ RSpec.describe PublicFeed do
   describe '#get' do
     subject { described_class.new(nil).get(20).map(&:id) }
 
-    context 'when roleplay mode is enabled' do
-      around do |example|
-        ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
-          example.run
-        end
-      end
-
-      it 'returns an empty list' do
-        Fabricate(:status, visibility: :public)
-
-        expect(subject).to be_empty
-      end
-
-      it 'keeps the federated timeline disabled when the local timeline is enabled' do
-        Setting.roleplay_disable_local_timeline = false
-        Fabricate(:status, visibility: :public)
-
-        expect(subject).to be_empty
-      end
-
-      it 'returns local posts when the local timeline is enabled' do
-        Setting.roleplay_disable_local_timeline = false
-        local_status = Fabricate(:status, visibility: :public)
-
-        result = described_class.new(nil, local: true).get(20).map(&:id)
-
-        expect(result).to include(local_status.id)
-      end
-
-      it 'keeps the local timeline empty when it is disabled' do
-        Setting.roleplay_disable_local_timeline = true
-        Fabricate(:status, visibility: :public)
-
-        result = described_class.new(nil, local: true).get(20)
-
-        expect(result).to be_empty
-      end
-    end
-
-    it 'ignores the roleplay local timeline setting outside roleplay mode' do
-      Setting.roleplay_disable_local_timeline = true
-      local_status = Fabricate(:status, visibility: :public)
-
-      result = described_class.new(nil, local: true).get(20).map(&:id)
-
-      expect(result).to include(local_status.id)
-    end
-
     it 'only includes statuses with public visibility' do
       public_status = Fabricate(:status, visibility: :public)
       private_status = Fabricate(:status, visibility: :private)

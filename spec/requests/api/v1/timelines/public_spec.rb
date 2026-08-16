@@ -149,9 +149,10 @@ RSpec.describe 'Public' do
       end
 
       before do
-        Setting.local_live_feed_access = 'authenticated'
-        Setting.remote_live_feed_access = 'authenticated'
-        Setting.roleplay_disable_local_timeline = true
+        Setting.local_live_feed_access = 'disabled'
+        Setting.remote_live_feed_access = 'disabled'
+        Setting.roleplay_disable_local_timeline = false
+        Setting.roleplay_hide_public_timelines_from_admins = false
       end
 
       context 'without timeline filters' do
@@ -168,6 +169,25 @@ RSpec.describe 'Public' do
         let(:params) { { remote: true } }
 
         it_behaves_like 'a successful request to the public timeline'
+      end
+
+      context 'when the user has permission to view disabled feeds' do
+        let(:expected_statuses) { [local_status, remote_status, media_status] }
+
+        before do
+          user.update!(role: Fabricate(:user_role, permissions: UserRole::FLAGS[:view_feeds]))
+        end
+
+        it_behaves_like 'a successful request to the public timeline'
+
+        it 'returns no posts when privileged users are also hidden' do
+          Setting.roleplay_hide_public_timelines_from_admins = true
+
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body).to be_empty
+        end
       end
     end
   end

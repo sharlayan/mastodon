@@ -68,7 +68,6 @@ export const InlineComposeShell = () => {
     if (localTimelineEnabled) {
       base.push({ to: '/public/local', label: intl.formatMessage(messages.local), icon: 'users', iconComponent: PeopleIcon });
     }
-
     if (federatedTimelineEnabled) {
       base.push({ to: '/public', label: intl.formatMessage(messages.federated), icon: 'globe', iconComponent: PublicIcon });
     }
