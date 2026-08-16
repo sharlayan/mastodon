@@ -43,8 +43,26 @@ RSpec.describe HomeFeed do
         expect(results.map(&:id)).to eq [15, 14, 12, 10]
       end
 
+      it 'fills a partial bounded Redis page from the database' do
+        redis.del(FeedManager.instance.key(:home, account.id))
+        redis.zadd(FeedManager.instance.key(:home, account.id), [[10, 10], [15, 15]])
+
+        results = subject.get(5, 16, 2, nil)
+
+        expect(results.map(&:id)).to eq [15, 14, 12, 10, 3]
+      end
+
       it 'with min_id present' do
         results = subject.get(3, nil, nil, 0)
+        expect(results.map(&:id)).to eq [3, 2, 1]
+      end
+
+      it 'fills a partial forward Redis page from the database' do
+        redis.del(FeedManager.instance.key(:home, account.id))
+        redis.zadd(FeedManager.instance.key(:home, account.id), [[1, 1], [10, 10]])
+
+        results = subject.get(3, nil, nil, 0)
+
         expect(results.map(&:id)).to eq [3, 2, 1]
       end
     end
