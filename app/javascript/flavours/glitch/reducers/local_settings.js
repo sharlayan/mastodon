@@ -5,6 +5,7 @@ import { Map as ImmutableMap } from 'immutable';
 import { LOCAL_SETTING_CHANGE, LOCAL_SETTING_DELETE } from 'flavours/glitch/actions/local_settings';
 import { STORE_HYDRATE } from 'flavours/glitch/actions/store';
 import { sharlayanLocalSettingsDefaults, sharlayanLocalSettingsReducer } from 'flavours/glitch/sharlayan/local_settings/defaults';
+import { useMyArchive } from 'flavours/glitch/initial_state';
 
 const initialState = ImmutableMap({
   fullwidth_columns: false,
@@ -47,7 +48,7 @@ const initialState = ImmutableMap({
   show_published_toast: true,
 }).mergeDeep(sharlayanLocalSettingsDefaults);
 
-const hydrate = (state, localSettings) => state.mergeDeep(localSettings);
+const hydrate = (state, localSettings) => state.mergeDeep(localSettings).set('use_my_archive', useMyArchive);
 
 export default function localSettings(state = initialState, action) {
   switch(action.type) {

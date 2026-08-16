@@ -45,6 +45,7 @@ module Sharlayan::UserSettingsExtensions
         setting :use_server_css, default: true
         setting :use_custom_css, default: false
         setting :user_theme, default: '{}'
+        setting :use_my_archive, default: -> { RoleplayModeHelper.roleplay_mode? }
       end
     end
 

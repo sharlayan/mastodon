@@ -19,6 +19,7 @@ import type { ColumnRef } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column_header';
 import StatusList from 'flavours/glitch/components/status_list';
 import { getStatusList } from 'flavours/glitch/selectors';
+import { MyArchiveTabs } from 'flavours/glitch/sharlayan/my_archive/tabs';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 const messages = defineMessages({
@@ -95,6 +96,7 @@ const Bookmarks: React.FC<{
         pinned={pinned}
         multiColumn={multiColumn}
         showBackButton
+        appendContent={<MyArchiveTabs />}
       />
 
       <StatusList

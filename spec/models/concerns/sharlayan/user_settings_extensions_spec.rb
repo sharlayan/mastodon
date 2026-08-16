@@ -45,6 +45,26 @@ RSpec.describe UserSettings do
     expect(settings[:'notification_emails.reaction']).to be false
   end
 
+  it 'disables My archive by default outside community mode' do
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+      expect(settings[:'web.use_my_archive']).to be false
+    end
+  end
+
+  it 'enables My archive by default in community mode' do
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+      expect(settings[:'web.use_my_archive']).to be true
+    end
+  end
+
+  it 'preserves an explicit My archive preference across mode changes' do
+    saved_settings = described_class.new('web.use_my_archive': false)
+
+    ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+      expect(saved_settings[:'web.use_my_archive']).to be false
+    end
+  end
+
   it 'rejects values outside Sharlayan setting allowlists' do
     expect { settings[:'web.mfm_fold_mode'] = 'unknown' }.to raise_error(ArgumentError)
     expect { settings[:'web.pages_view'] = 'magazine' }.to raise_error(ArgumentError)

@@ -24,6 +24,7 @@ import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import { me } from 'flavours/glitch/initial_state';
 import type { Clip } from 'flavours/glitch/models/clip';
 import { getOrderedAccountClips } from 'flavours/glitch/selectors/clips';
+import { MyArchiveTabs } from 'flavours/glitch/sharlayan/my_archive/tabs';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import { ClipFavouriteButton } from './components/favourite_button';
@@ -162,6 +163,7 @@ const Clips: React.FC<{
             </>
           )
         }
+        appendContent={<MyArchiveTabs />}
       />
 
       <ScrollableList

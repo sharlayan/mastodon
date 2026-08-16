@@ -268,6 +268,7 @@ export const {
   userThemesEnabled,
   userThemeCatalog,
   userThemeDefaults,
+  useMyArchive,
   userTheme,
 } = readSharlayanInitialState(initialState, Boolean(me));
 

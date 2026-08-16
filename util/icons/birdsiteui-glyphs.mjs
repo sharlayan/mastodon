@@ -14,6 +14,7 @@ export const GLYPHS = {
   planet: 'planet',
   pages: 'file-text',
   collections: 'shapes',
+  archive: 'bank',
 
   boost: 'repeat',
   reply: 'arrow-bend-up-left',
