@@ -13,7 +13,15 @@ RSpec.describe 'Account switching' do
 
   def switch_to_child
     sign_in parent_user
-    post switch_account_path, params: { switch_to: child.id }
+    switch_to(child)
+  end
+
+  def switch_to(account)
+    post switch_account_path, params: { switch_to: account.id }
+    if flash[:alert] == I18n.t('account_switcher.device_approval_required')
+      AccountSwitchDevice.find_by!(account:).update!(trusted_at: Time.current)
+      post switch_account_path, params: { switch_to: account.id }
+    end
   end
 
   def account_switches_as(user)
@@ -31,6 +39,17 @@ RSpec.describe 'Account switching' do
       body = account_switches_as(child_user)
       expect(body[:parent][:id]).to eq(parent.id.to_s)
       expect(body[:root_account_id]).to eq(parent.id.to_s)
+    end
+
+    it 'keeps existing linked accounts switchable when new server-stored links are disabled' do
+      Setting.server_stored_account_switching_enabled = false
+
+      switch_to_child
+
+      expect(response).to redirect_to(root_path)
+      expect(account_switches_as(child_user)[:parent][:id]).to eq(parent.id.to_s)
+    ensure
+      Setting.server_stored_account_switching_enabled = true
     end
 
     it 'refuses a disabled child account' do
@@ -60,6 +79,58 @@ RSpec.describe 'Account switching' do
       expect(response).to have_http_status(200)
       expect(response.body).to include(I18n.t('devise.failure.inactive'))
     end
+
+    it 'does not create a new link when server-stored additions are disabled' do
+      Setting.server_stored_account_switching_enabled = false
+
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: other_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response).to have_http_status(403)
+    ensure
+      Setting.server_stored_account_switching_enabled = true
+    end
+
+    it 'renders and completes an existing link as reauthentication' do
+      MultiAccounts::StateStore.update!(state, reauthenticate_account_id: child.id)
+
+      get multi_accounts_auth_sign_in_path(state: state)
+      expect(response.body).to include(I18n.t('multi_accounts.auth.reauthenticate_account'))
+
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: child_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response.body).to include(I18n.t('multi_accounts.auth.reauthentication_success_message'))
+      expect(AccountSwitchDevice.find_by!(account: child)).to be_trusted
+    end
+
+    it 'completes existing-link session authentication when new server-stored links are disabled' do
+      Setting.server_stored_account_switching_enabled = false
+      MultiAccounts::StateStore.update!(state, reauthenticate_account_id: child.id)
+
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: child_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response).to have_http_status(200)
+      expect(response.body).to include(I18n.t('multi_accounts.auth.reauthentication_success_message'))
+      expect(AccountSwitchDevice.find_by!(account: child)).to be_trusted
+    ensure
+      Setting.server_stored_account_switching_enabled = true
+    end
+
+    it 'does not turn reauthentication into a link for another account' do
+      MultiAccounts::StateStore.update!(state, reauthenticate_account_id: child.id)
+
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: other_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response.body).to include(I18n.t('multi_accounts.auth.reauthentication_account_mismatch'))
+      expect(AccountSwitchDevice.find_by(account: other_user.account)).to be_nil
+    end
   end
 
   describe 'while switched into a child account' do
@@ -88,7 +159,7 @@ RSpec.describe 'Account switching' do
     end
 
     it 'allows switching to another account authorized by the root without increasing depth' do
-      post switch_account_path, params: { switch_to: sibling_user.account.id }
+      switch_to(sibling_user.account)
 
       expect(response).to redirect_to(root_path)
       body = account_switches_as(sibling_user)
@@ -105,11 +176,11 @@ RSpec.describe 'Account switching' do
       Fabricate(:account_switch_authorization, account: child, target_account: second_child_user.account)
 
       sign_in parent_user
-      post switch_account_path, params: { switch_to: second_child_user.account.id }
+      switch_to(second_child_user.account)
     end
 
     it 'routes a sibling switch through the inherited root instead of the current account graph' do
-      post switch_account_path, params: { switch_to: child.id }
+      switch_to(child)
 
       expect(response).to redirect_to(root_path)
       body = account_switches_as(child_user)
@@ -164,7 +235,7 @@ RSpec.describe 'Account switching' do
       sign_in parent_user
       get root_path
 
-      expect(poll_as(parent_user, '/api/v1/account_switches')).to be_blank
+      expect(poll_as(parent_user, '/api/v1/account_switches')).to_not include('_mastodon_session')
       expect(poll_as(parent_user, '/api/v1/account_switches/linked_unread_counts')).to be_blank
     end
   end
@@ -189,6 +260,83 @@ RSpec.describe 'Account switching' do
       expect(response).to redirect_to(root_path)
       expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_unauthorized'))
       expect(account_switches_as(parent_user)[:parent]).to be_nil
+    end
+  end
+
+  describe 'per-account session authorization' do
+    let(:sibling_user) { Fabricate(:user) }
+    let(:sibling_authorization) { Fabricate(:account_switch_authorization, account: parent, target_account: sibling_user.account) }
+
+    before { sibling_authorization }
+
+    it 'keeps the current account signed in and creates an account-specific request on a new session' do
+      sign_in parent_user
+
+      expect do
+        post switch_account_path, params: { switch_to: child.id }
+      end.to change(AccountSwitchDeviceApproval, :count).by(1)
+
+      approval = AccountSwitchDeviceApproval.last
+      expect(response).to redirect_to(root_path)
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.device_approval_required'))
+      expect(approval).to have_attributes(account_id: parent.id, target_account_id: child.id)
+      expect(account_switches_as(parent_user)[:parent]).to be_nil
+    end
+
+    it 'does not authorize another linked account when one account is approved' do
+      sign_in parent_user
+      post switch_account_path, params: { switch_to: child.id }
+      AccountSwitchDevice.find_by!(account: child).update!(trusted_at: Time.current)
+      post switch_account_path, params: { switch_to: child.id }
+
+      post switch_account_path, params: { switch_to: sibling_user.account.id }
+
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.device_approval_required'))
+      expect(AccountSwitchDevice.find_by!(account: sibling_user.account)).to_not be_trusted
+    end
+
+    it 'retains linked-account authorization when the same device signs in again' do
+      sign_in parent_user
+      post switch_account_path, params: { switch_to: child.id }
+      AccountSwitchDevice.find_by!(account: child).update!(trusted_at: Time.current)
+
+      delete destroy_user_session_path
+      sign_in parent_user
+
+      expect do
+        post switch_account_path, params: { switch_to: child.id }
+      end.to_not change(AccountSwitchDeviceApproval, :count)
+
+      expect(flash[:alert]).to be_nil
+      expect(account_switches_as(child_user)[:parent][:id]).to eq(parent.id.to_s)
+    end
+
+    it 'still requires approval after the same device authorization was revoked' do
+      sign_in parent_user
+      post switch_account_path, params: { switch_to: child.id }
+      device = AccountSwitchDevice.find_by!(account: child)
+      device.update!(trusted_at: Time.current, revoked_at: Time.current)
+      AccountSwitchDeviceApproval.delete_all
+
+      delete destroy_user_session_path
+      sign_in parent_user
+
+      expect do
+        post switch_account_path, params: { switch_to: child.id }
+      end.to change(AccountSwitchDeviceApproval, :count).by(1)
+
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.device_approval_required'))
+      expect(account_switches_as(parent_user)[:parent]).to be_nil
+    end
+
+    it 'fully signs out an active linked session after its device authorization is revoked' do
+      switch_to_child
+      child.account_switch_devices.find_by!(token_digest: child.account_switch_devices.first.token_digest).update!(revoked_at: Time.current)
+
+      delete destroy_user_session_path
+
+      expect(response).to redirect_to(new_user_session_path)
+      expect(cookies[:switch_parent_stack]).to be_blank
     end
   end
 

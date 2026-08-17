@@ -11,6 +11,7 @@ const meta: SharlayanInitialStateMeta = {
   pages_drive_only: true,
   antenna_enabled: true,
   drive_enabled: true,
+  server_stored_account_switching_enabled: true,
   board_announcements_enabled: true,
   avatar_decorations_enabled: true,
   avatar_decorations_federation_enabled: true,

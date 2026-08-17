@@ -1,9 +1,9 @@
 - content_for :page_title do
-  = t('multi_accounts.auth.add_account')
+  = t(@reauthentication ? 'multi_accounts.auth.reauthenticate_account' : 'multi_accounts.auth.add_account')
 
 = simple_form_for @user, as: :user, url: multi_accounts_auth_sign_in_path(state: @state), html: { autocomplete: 'on', 'data-turbo': 'false' } do |f|
-  %h1.title= t('multi_accounts.auth.add_account')
-  %p.lead= t('multi_accounts.auth.sign_in_hint')
+  %h1.title= t(@reauthentication ? 'multi_accounts.auth.reauthenticate_account' : 'multi_accounts.auth.add_account')
+  %p.lead= t(@reauthentication ? 'multi_accounts.auth.reauthentication_hint' : 'multi_accounts.auth.sign_in_hint')
 
   .fields-group
     = f.input :email,

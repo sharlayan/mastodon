@@ -1,7 +1,7 @@
 - content_for :page_title do
-  = t('multi_accounts.auth.add_account')
+  = t(@reauthentication ? 'multi_accounts.auth.reauthenticate_account' : 'multi_accounts.auth.add_account')
 
-%p#message= t('multi_accounts.auth.success_message')
+%p#message= t(@reauthentication ? 'multi_accounts.auth.reauthentication_success_message' : 'multi_accounts.auth.success_message')
 
 %script{ nonce: request.content_security_policy_nonce }
   :plain
@@ -38,11 +38,11 @@
           if (attempts < 5) {
             setTimeout(tryClose, 500);
           } else {
-            document.getElementById('message').textContent = '#{j t('multi_accounts.auth.success_close_message')}';
+            document.getElementById('message').textContent = '#{j t(@reauthentication ? 'multi_accounts.auth.reauthentication_success_close_message' : 'multi_accounts.auth.success_close_message')}';
           }
         };
         setTimeout(tryClose, 300);
       } else {
-        document.getElementById('message').textContent = '#{j t('multi_accounts.auth.success_close_message')}';
+        document.getElementById('message').textContent = '#{j t(@reauthentication ? 'multi_accounts.auth.reauthentication_success_close_message' : 'multi_accounts.auth.success_close_message')}';
       }
     })();

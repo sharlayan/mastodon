@@ -45,6 +45,7 @@ defaults:
   federation_request_statistics_enabled: true
   federation_instance_edges_enabled: false
   online_status_enabled: false
+  server_stored_account_switching_enabled: true
   drive_enabled: false
   drive_quota: 500
   drive_max_file_size: 20

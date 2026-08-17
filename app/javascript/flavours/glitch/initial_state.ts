@@ -265,6 +265,7 @@ export const {
   showCatSpeak,
   showFederatedCat,
   userThemesEnabled,
+  serverStoredAccountSwitchingEnabled,
   userThemeCatalog,
   userThemeDefaults,
   useMyArchive,

@@ -409,6 +409,20 @@ const startServer = async () => {
     req.scopes.some(scope => necessaryScopes.includes(scope));
 
   /**
+   * @param {string} accessTokenId
+   * @param {string} linkedAccountId
+   * @returns {Promise<boolean>}
+   */
+  const linkedNotificationAuthorized = async (accessTokenId, linkedAccountId) => {
+    const result = await pgPool.query(
+      'SELECT 1 FROM account_switch_devices INNER JOIN session_activations ON session_activations.id = account_switch_devices.session_activation_id WHERE session_activations.access_token_id = $1 AND account_switch_devices.account_id = $2 AND account_switch_devices.trusted_at IS NOT NULL AND account_switch_devices.revoked_at IS NULL LIMIT 1',
+      [accessTokenId, linkedAccountId],
+    );
+
+    return result.rows.length > 0;
+  };
+
+  /**
    * @param {string} token
    * @param {Request} req
    * @returns {Promise<ResolvedAccount>}
@@ -765,6 +779,18 @@ const startServer = async () => {
       if (event === 'status.reaction' && req.accountId) {
         filterReactionPayload(pgPool, req.accountId, payload)
           .then((filteredPayload) => transmit(event, filteredPayload))
+          .catch((err) => log.error(err));
+        return;
+      }
+
+      if (event === 'linked_notification') {
+        const linkedPayload = typeof payload === 'string' ? parseJSON(payload, req) : payload;
+        if (!linkedPayload?.linked_account_id) return;
+
+        linkedNotificationAuthorized(req.accessTokenId, linkedPayload.linked_account_id)
+          .then((authorized) => {
+            if (authorized) transmit(event, payload);
+          })
           .catch((err) => log.error(err));
         return;
       }

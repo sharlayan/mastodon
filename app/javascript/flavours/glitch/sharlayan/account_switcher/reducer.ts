@@ -17,6 +17,8 @@ const AuthorizationRecord = ImmutableRecord({
   id: '',
   target_account_id: '',
   created_at: '',
+  session_authorized: false,
+  session_approval_pending: false,
 });
 
 type Authorization = ReturnType<typeof AuthorizationRecord>;
@@ -47,6 +49,8 @@ export const accountSwitchesReducer: Reducer<State> = (
           id: auth.id,
           target_account_id: auth.target_account.id,
           created_at: auth.created_at,
+          session_authorized: auth.session_authorized,
+          session_approval_pending: auth.session_approval_pending,
         }),
       ),
     );

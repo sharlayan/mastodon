@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_14_230100) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_013704) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -158,6 +158,41 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_230100) do
     t.index ["account_id", "target_account_id"], name: "index_account_switch_auths_on_account_and_target", unique: true
     t.index ["account_id"], name: "index_account_switch_authorizations_on_account_id"
     t.index ["target_account_id"], name: "index_account_switch_authorizations_on_target_account_id"
+  end
+
+  create_table "account_switch_device_approvals", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "account_switch_device_id", null: false
+    t.datetime "approved_at"
+    t.bigint "approved_by_device_id"
+    t.datetime "created_at", null: false
+    t.datetime "denied_at"
+    t.datetime "expires_at", null: false
+    t.inet "request_ip"
+    t.bigint "target_account_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "target_account_id", "account_switch_device_id"], name: "index_account_switch_device_approvals_on_request", unique: true
+    t.index ["account_id"], name: "index_account_switch_device_approvals_on_account_id"
+    t.index ["account_switch_device_id"], name: "idx_on_account_switch_device_id_51a39495ea"
+    t.index ["approved_by_device_id"], name: "index_account_switch_device_approvals_on_approved_by_device_id"
+    t.index ["target_account_id"], name: "index_account_switch_device_approvals_on_target_account_id"
+  end
+
+  create_table "account_switch_devices", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "first_seen_at", null: false
+    t.inet "first_seen_ip"
+    t.datetime "last_seen_at", null: false
+    t.inet "last_seen_ip"
+    t.datetime "revoked_at"
+    t.bigint "session_activation_id"
+    t.string "token_digest", null: false
+    t.datetime "trusted_at"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.index ["account_id", "token_digest"], name: "index_account_switch_devices_on_account_and_token", unique: true
+    t.index ["session_activation_id"], name: "index_account_switch_devices_on_session_activation_id"
   end
 
   create_table "account_warning_presets", force: :cascade do |t|
@@ -1627,7 +1662,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_230100) do
     t.index ["target_account_id"], name: "index_reports_on_target_account_id"
   end
 
-  create_table "rp_hidden_statuses", id: :bigint, default: -> { "timestamp_id('rp_hidden_statuses'::text)" }, force: :cascade do |t|
+  create_table "rp_hidden_statuses", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "hidden_by_account_id"
     t.boolean "media_moved", default: false, null: false
@@ -2078,6 +2113,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_230100) do
   add_foreign_key "account_summaries", "accounts", on_delete: :cascade
   add_foreign_key "account_switch_authorizations", "accounts", column: "target_account_id", on_delete: :cascade
   add_foreign_key "account_switch_authorizations", "accounts", on_delete: :cascade
+  add_foreign_key "account_switch_device_approvals", "account_switch_devices", column: "approved_by_device_id", on_delete: :nullify
+  add_foreign_key "account_switch_device_approvals", "account_switch_devices", on_delete: :cascade
+  add_foreign_key "account_switch_device_approvals", "accounts", column: "target_account_id", on_delete: :cascade
+  add_foreign_key "account_switch_device_approvals", "accounts", on_delete: :cascade
+  add_foreign_key "account_switch_devices", "accounts", on_delete: :cascade
+  add_foreign_key "account_switch_devices", "session_activations", on_delete: :nullify
   add_foreign_key "account_warnings", "accounts", column: "target_account_id", on_delete: :cascade
   add_foreign_key "account_warnings", "accounts", on_delete: :nullify
   add_foreign_key "account_warnings", "reports", on_delete: :cascade

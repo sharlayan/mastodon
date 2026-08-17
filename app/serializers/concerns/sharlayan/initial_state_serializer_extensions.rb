@@ -40,6 +40,7 @@ module Sharlayan::InitialStateSerializerExtensions
       local_status_page_access: Setting.local_status_page_access,
       roleplay_mode: RoleplayModeHelper.roleplay_mode?,
       user_themes_enabled: Setting.user_themes_enabled,
+      server_stored_account_switching_enabled: Setting.server_stored_account_switching_enabled,
       user_theme_catalog: Setting.user_theme_catalog,
       user_theme_defaults: Setting.user_theme_defaults
     )
