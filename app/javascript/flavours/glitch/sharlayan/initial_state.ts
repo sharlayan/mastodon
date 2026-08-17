@@ -51,6 +51,7 @@ export interface SharlayanInitialStateMeta {
   admin_timeline_owner_viewer?: boolean;
   soft_hide_deletion?: boolean;
   user_themes_enabled?: boolean;
+  server_stored_account_switching_enabled: boolean;
   user_theme_catalog?: string;
   user_theme_defaults?: string;
   user_theme?: string;
@@ -139,6 +140,8 @@ export const readSharlayanInitialState = (
     adminTimelineOwnerViewer: getMeta('admin_timeline_owner_viewer') === true,
     softHideDeletion: getMeta('soft_hide_deletion') === true,
     userThemesEnabled: getMeta('user_themes_enabled') !== false,
+    serverStoredAccountSwitchingEnabled:
+      getMeta('server_stored_account_switching_enabled') !== false,
     userThemeCatalog: getMeta('user_theme_catalog') ?? '[]',
     userThemeDefaults: getMeta('user_theme_defaults') ?? '{}',
     userTheme: getMeta('user_theme') ?? '{}',

@@ -37,6 +37,16 @@ RSpec.describe 'AccountSwitches' do
         expect(response).to have_http_status(200)
         expect(response.parsed_body[:children].map { |c| c[:target_account][:id] })
           .to contain_exactly(child.id.to_s)
+        expect(response.parsed_body[:children].first).to include(session_authorized: false, session_approval_pending: true)
+      end
+
+      it 'reports authorization for only the target account on this session' do
+        subject
+        AccountSwitchDevice.find_by!(account: child).update!(trusted_at: Time.current)
+
+        get '/api/v1/account_switches', headers: read_headers
+
+        expect(response.parsed_body[:children].first[:session_authorized]).to be true
       end
     end
 
@@ -70,6 +80,12 @@ RSpec.describe 'AccountSwitches' do
     end
 
     it 'uses one bounded notification query for all linked accounts' do
+      sign_in user
+      get root_path
+      get '/api/v1/account_switches', headers: read_headers
+      child.account_switch_devices.update_all(trusted_at: Time.current)
+      second_child_user.account.account_switch_devices.update_all(trusted_at: Time.current)
+
       queries = []
       callback = lambda do |_name, _started, _finished, _unique_id, payload|
         queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
@@ -83,6 +99,13 @@ RSpec.describe 'AccountSwitches' do
       expect(response.parsed_body).to eq(child.id.to_s => 2, second_child_user.account.id.to_s => 0)
       expect(queries.count { |sql| sql.include?('FROM notifications') }).to eq(1)
       expect(queries.grep(/COUNT\(\*\).*notifications/)).to be_empty
+    end
+
+    it 'returns no counts when linked accounts are not authorized for the current device' do
+      get '/api/v1/account_switches/linked_unread_counts', headers: read_headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq({})
     end
   end
 
@@ -116,6 +139,8 @@ RSpec.describe 'AccountSwitches' do
     it 'refuses to revoke the active parent while switched into the target account' do
       sign_in linking_user
       post switch_account_path, params: { switch_to: user.account.id }
+      AccountSwitchDevice.find_by!(account: user.account).update!(trusted_at: Time.current)
+      post switch_account_path, params: { switch_to: user.account.id }
 
       delete "/api/v1/account_switches/#{auth.id}/inbound", headers: write_headers
 
@@ -136,6 +161,8 @@ RSpec.describe 'AccountSwitches' do
 
     it 'refuses to unlink while switched into a linked account' do
       sign_in user
+      post switch_account_path, params: { switch_to: child.id }
+      AccountSwitchDevice.find_by!(account: child).update!(trusted_at: Time.current)
       post switch_account_path, params: { switch_to: child.id }
       child_token = Fabricate(:accessible_access_token, resource_owner_id: child_user.id, scopes: 'write:accounts')
 

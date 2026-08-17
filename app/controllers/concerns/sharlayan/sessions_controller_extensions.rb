@@ -2,6 +2,7 @@
 
 module Sharlayan::SessionsControllerExtensions
   extend ActiveSupport::Concern
+  include Sharlayan::AccountSwitchDeviceConcern
 
   prepended do
     before_action :authenticate_user!, only: :switch_account
@@ -13,14 +14,16 @@ module Sharlayan::SessionsControllerExtensions
 
   def destroy
     parent_account = Account.find_by(id: switch_parent_stack.first)
+    current_device = find_or_record_account_switch_device(current_account) if parent_account
 
-    if parent_account&.user&.functional?
+    if parent_account&.user&.functional? && current_device&.trusted?
       switch_to_user(parent_account.user, [], parent_account.id)
       respond_to_account_return
       return
     end
 
     clear_switch_parent_stack
+    cookies.delete(Sharlayan::AccountSwitchDeviceConcern::LEGACY_COOKIE)
     super
   end
 
@@ -56,15 +59,26 @@ module Sharlayan::SessionsControllerExtensions
       return
     end
 
-    switch_to_user(target_user, new_stack, target_account.id)
+    root_account = Account.find(new_stack.first || target_account.id)
+    if target_account.id != root_account.id
+      target_device = find_or_record_account_switch_device(target_account, trust: legacy_account_switch_session?)
+      unless target_device.trusted?
+        AccountSwitchDeviceApproval.request!(account: root_account, target_account:, account_switch_device: target_device, request_ip: request.remote_ip)
+        redirect_to root_path, alert: I18n.t('account_switcher.device_approval_required')
+        return
+      end
+    end
+
+    switch_to_user(target_user, new_stack, target_account.id, device: target_device)
     redirect_to root_path
   end
 
-  def switch_to_user(target_user, new_stack, owner_id)
+  def switch_to_user(target_user, new_stack, owner_id, device: nil)
     sign_out(current_user)
     reset_session
     sign_in(target_user)
     persist_switch_parent_stack(new_stack, owner_id)
+    bind_account_switch_device_to_current_session(device) if device
     target_user.update_sign_in!(new_sign_in: true)
   end
 
@@ -95,6 +109,7 @@ module Sharlayan::SessionsControllerExtensions
 
   def on_authentication_success(user, security_measure)
     disable_custom_css_if_requested(user)
+    trust_account_switch_device(user.account)
     super
   end
 

@@ -2,6 +2,7 @@ import {
   createAntennaStreamConnector,
   getLinkedNotificationAlert,
   handleSharlayanStreamingEvent,
+  linkedAccountSessionAuthorized,
   updateLinkedNotificationLastSeen,
 } from '../streaming';
 
@@ -20,6 +21,13 @@ const createStorage = (values = {}) => ({
   setItem: vi.fn((key, value) => {
     values[key] = value;
   }),
+});
+
+const accountSwitchState = (sessionAuthorized) => ({
+  accountSwitches: new Map([
+    ['rootAccountId', '1'],
+    ['items', [{ get: (key) => ({ target_account_id: '2', session_authorized: sessionAuthorized })[key] }]],
+  ]),
 });
 
 describe('compose streaming extensions', () => {
@@ -77,7 +85,7 @@ describe('compose streaming extensions', () => {
     expect(handleSharlayanStreamingEvent({
       data: { event: 'linked_notification', payload: JSON.stringify(linked) },
       dispatch,
-      getState: () => ({ accountSwitches: new Map([['rootAccountId', '1']]) }),
+      getState: () => accountSwitchState(true),
       messages: {},
       storage: createStorage(),
     })).toBe(true);
@@ -86,6 +94,23 @@ describe('compose streaming extensions', () => {
       type: 'accountSwitches/incrementLinkedUnreadCount',
       payload: '2',
     });
+  });
+
+  it('ignores linked notifications when the linked account session is not authorized', () => {
+    const dispatch = vi.fn();
+    const storage = createStorage();
+
+    expect(linkedAccountSessionAuthorized(accountSwitchState(false), '2')).toBe(false);
+    expect(handleSharlayanStreamingEvent({
+      data: { event: 'linked_notification', payload: JSON.stringify(linked) },
+      dispatch,
+      getState: () => accountSwitchState(false),
+      messages: {},
+      storage,
+    })).toBe(true);
+
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(storage.setItem).not.toHaveBeenCalled();
   });
 
   it('preserves the antenna timeline id, channel, params, and gap fill', () => {

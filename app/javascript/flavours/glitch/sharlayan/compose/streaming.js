@@ -7,6 +7,11 @@ import { incrementLinkedUnreadCount } from 'flavours/glitch/sharlayan/account_sw
 const linkedNotificationPreferenceKey = (accountId) => `linked_notif_prefs_${accountId}`;
 const linkedNotificationLastSeenKey = (accountId, linkedAccountId) => `linked_notif_last_id_${accountId}_${linkedAccountId}`;
 
+export const linkedAccountSessionAuthorized = (state, linkedAccountId) =>
+  state.accountSwitches?.get('items')?.some(
+    (item) => String(item.get('target_account_id')) === String(linkedAccountId) && item.get('session_authorized') === true,
+  ) ?? false;
+
 export const getLinkedNotificationAlert = ({ activeAccountId, linked, messages, rootAccountId, storage }) => {
   if (String(linked.linked_account_id) === String(activeAccountId)) {
     return null;
@@ -64,7 +69,12 @@ export const handleSharlayanStreamingEvent = ({
   }
 
   const linked = JSON.parse(data.payload);
-  const rootAccountId = getState().accountSwitches?.get('rootAccountId') ?? me;
+  const state = getState();
+  if (!linkedAccountSessionAuthorized(state, linked.linked_account_id)) {
+    return true;
+  }
+
+  const rootAccountId = state.accountSwitches?.get('rootAccountId') ?? me;
   const alert = getLinkedNotificationAlert({ activeAccountId: me, linked, messages, rootAccountId, storage });
 
   if (alert) {

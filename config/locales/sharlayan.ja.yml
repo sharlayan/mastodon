@@ -5,8 +5,37 @@ ja:
     disable_first: このコマンドを実行する前に OC_ROLEPLAY_OPTION を無効にして再起動してください。
     restart: 復元した設定を反映するには、アプリケーションプロセスを再起動してください。
   account_switcher:
+    server_stored_disabled: サーバーはチームアカウント形式でのアカウント追加を許可していません。アカウントは追加できませんが、切り替えは可能です。
+    device_approval_required: この端末で連携アカウントに再ログインするか、許可済みの端末からそのアカウントのリクエストを承認してください。
     switch_failed: アカウントが見つかりません。
     switch_unauthorized: このアカウントに切り替える権限がありません。
+  account_switch_devices:
+    account: アカウント
+    approve: 許可
+    approved: このアカウントへの新しいセッションからの切り替えを許可しました。
+    current_device_revoke: 現在使用中のセッションは解除できません。
+    denied: リクエストを拒否しました。
+    deny: 拒否
+    description: このブラウザーで切り替え可能な連携アカウントと、新しくログインしたセッションからのリクエストを管理します。権限は表示された各アカウントだけに適用されます。
+    empty: 保留中のリクエストはありません。
+    linked_accounts: 現在連携中のアカウント
+    linked_accounts_description: このブラウザーセッションで切り替えが許可されている連携アカウントです。
+    linked_at: 連携日時
+    linking_accounts: このアカウントを連携しているアカウント
+    linking_accounts_description: このアカウントを自分のアカウント切り替え一覧に追加しているアカウントです。
+    no_linked_accounts: このセッションで切り替えが許可されている連携アカウントはありません。
+    no_linking_accounts: このアカウントを連携しているアカウントはありません。
+    no_trusted_sessions: 許可済みのセッションはありません。
+    pending_requests: 保留中のセッションリクエスト
+    request_details: "@%{account}から%{time}にリクエスト · %{ip}"
+    revoke: 解除
+    revoke_confirm: このセッションからこのアカウントへの切り替え権限を解除しますか？
+    revoked: セッションの切り替え権限を解除しました。
+    session_details: "最終利用 %{time} · %{ip}"
+    self_approval: 別の許可済みセッションからこのリクエストを承認してください。
+    title: 連携アカウントのセッション
+    trusted_sessions: 許可済みセッション
+    untrusted: このセッションはまだこのアカウントに許可されていません。アカウント切り替え画面からこのアカウントに再ログインしてください。
   accounts:
     refetch_local_error: ローカルアカウントは更新できません
   datetime:
@@ -366,6 +395,9 @@ ja:
         enabled: オンライン状態表示を有効にする
         enabled_hint: 有効にすると、利用を選んだユーザーがオンライン・最近アクティブ・オフラインの状態をアバターのドットで共有できます。無効にすると、ユーザー設定に関わらずオンライン状態を収集も表示もしません。
         title: オンライン状態
+      server_stored_account_switching:
+        enabled: サーバー保存型のアカウント切り替えを許可する
+        enabled_hint: 連携情報をサーバーのデータベースに保存するローカルアカウントの追加を許可します。無効にしても既存の連携アカウントは引き続き切り替え・管理できますが、新しい連携は追加できません。
       pages:
         drive_only: ページではドライブのファイルのみ許可
         drive_only_hint: ページ画像と小冊子の表紙をドライブからの選択に限定します。既存のドライブ外メディアは引き続き表示されますが、ページを編集する前に削除または置換する必要があります。
@@ -479,6 +511,11 @@ ja:
       add_account: アカウントを追加
       authorization_complete: 認証が完了しました。このウィンドウを閉じてください。
       completing_authorization: 認証を完了しています...
+      reauthenticate_account: アカウントを再認証
+      reauthentication_account_mismatch: 再認証する連携アカウントでログインしてください。
+      reauthentication_hint: このセッションで連携アカウントを使用するため、もう一度ログインしてください。
+      reauthentication_success_close_message: アカウントを再認証しました。このウィンドウを閉じてください。
+      reauthentication_success_message: アカウントの再認証に成功しました。ウィンドウを閉じています...
       same_account: 現在ログイン中のアカウントと同じアカウントは追加できません。
       sign_in_hint: 追加したいアカウントでログインしてください。
       success_close_message: アカウントが追加されました。このウィンドウを閉じてください。

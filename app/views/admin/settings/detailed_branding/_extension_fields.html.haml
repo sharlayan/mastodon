@@ -128,6 +128,14 @@
 %h2= t('admin.settings.special_features.title')
 
 .fields-group
+  = f.input :server_stored_account_switching_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.server_stored_account_switching.enabled'),
+            hint: t('admin.settings.server_stored_account_switching.enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
   = f.input :instance_metadata_enabled,
             as: :boolean,
             wrapper: :with_label,

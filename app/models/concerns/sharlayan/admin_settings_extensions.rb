@@ -46,6 +46,7 @@ module Sharlayan::AdminSettingsExtensions
     misskey_compat_signin_flow_allowed_origins
     misskey_compat_expose_follow_graph
     online_status_enabled
+    server_stored_account_switching_enabled
     drive_enabled
     drive_quota
     drive_max_file_size
@@ -103,6 +104,7 @@ module Sharlayan::AdminSettingsExtensions
     misskey_compat_signin_flow_enabled
     misskey_compat_expose_follow_graph
     online_status_enabled
+    server_stored_account_switching_enabled
     drive_enabled
     user_themes_enabled
   ).freeze

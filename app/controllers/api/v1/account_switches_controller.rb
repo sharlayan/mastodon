@@ -2,6 +2,7 @@
 
 class Api::V1::AccountSwitchesController < Api::BaseController
   include RoutingHelper
+  include Sharlayan::AccountSwitchDeviceConcern
 
   UNREAD_COUNT_LIMIT = 100
   LINKED_UNREAD_COUNTS_SQL = <<~SQL.squish.freeze
@@ -54,6 +55,21 @@ class Api::V1::AccountSwitchesController < Api::BaseController
                        auth.present? ? Account.includes(:account_stat).find_by(id: direct_parent_id) : nil
                      end
 
+    serialized_children = ActiveModelSerializers::SerializableResource.new(
+      children,
+      each_serializer: REST::AccountSwitchAuthorizationSerializer,
+      scope: current_user,
+      scope_name: :current_user
+    ).as_json
+    child_authorization_state = children.index_by { |authorization| authorization.id.to_s }
+    serialized_children.each do |serialized|
+      authorization = child_authorization_state.fetch(serialized[:id].to_s)
+      device = find_or_record_account_switch_device(authorization.target_account, trust: legacy_account_switch_session?)
+      AccountSwitchDeviceApproval.request!(account: children_owner, target_account: authorization.target_account, account_switch_device: device, request_ip: request.remote_ip) unless device.trusted?
+      serialized[:session_authorized] = device.trusted?
+      serialized[:session_approval_pending] = AccountSwitchDeviceApproval.pending.exists?(account: children_owner, target_account: authorization.target_account, account_switch_device: device)
+    end
+
     render json: {
       root_account_id: children_owner.id.to_s,
       parent: parent_account && ActiveModelSerializers::SerializableResource.new(
@@ -62,21 +78,20 @@ class Api::V1::AccountSwitchesController < Api::BaseController
         scope: current_user,
         scope_name: :current_user
       ).as_json,
-      children: ActiveModelSerializers::SerializableResource.new(
-        children,
-        each_serializer: REST::AccountSwitchAuthorizationSerializer,
-        scope: current_user,
-        scope_name: :current_user
-      ).as_json,
+      children: serialized_children,
       inbound: inbound_authorizations,
     }
   end
 
   def linked_unread_counts
     children_owner = resolve_children_owner
+    device_digest = account_switch_device_digest
 
     auths = children_owner.account_switch_authorizations
       .where.not(target_account_id: current_account.id)
+      .joins('INNER JOIN account_switch_devices ON account_switch_devices.account_id = account_switch_authorizations.target_account_id')
+      .where(account_switch_devices: { token_digest: device_digest, revoked_at: nil })
+      .where.not(account_switch_devices: { trusted_at: nil })
       .includes(target_account: { user: :markers })
 
     render json: linked_unread_counts_for(auths)
