@@ -4,6 +4,20 @@
   margin-left: calc(var(--size-avatar) + var(--gap-default));
 }
 
+.layout-single-column,
+.layout-multiple-columns {
+  .column-link--transparent.active,
+  .ui__navigation-bar__item.active {
+    color: var(--color-accent);
+  }
+
+  .column-link--transparent.active .icon,
+  .ui__navigation-bar__item.active .icon {
+    background-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+}
+
 html {
   .layout-single-column,
   .layout-multiple-columns {
