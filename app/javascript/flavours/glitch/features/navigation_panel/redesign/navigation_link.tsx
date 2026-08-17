@@ -12,6 +12,7 @@ type NavigationLinkProps = {
   iconComponent: Icon;
   badgeCount?: number;
   withSpaceAfter?: boolean;
+  activePaths?: string[];
 } & (
   | ({ as?: 'button' } & React.ComponentPropsWithRef<'button'>)
   | ({ as?: 'link' } & NavLinkProps)
@@ -22,6 +23,7 @@ export const NavigationLink: React.FC<NavigationLinkProps> = ({
   iconComponent: IconComp,
   badgeCount = 0,
   withSpaceAfter,
+  activePaths,
   children,
   ...otherProps
 }) => {
@@ -33,8 +35,9 @@ export const NavigationLink: React.FC<NavigationLinkProps> = ({
   }
 
   const to = 'to' in otherProps && otherProps.to;
-  const isActive =
-    to && typeof to !== 'function'
+  const isActive = activePaths
+    ? activePaths.includes(location.pathname)
+    : to && typeof to !== 'function'
       ? !!matchPath(location.pathname, {
           path: typeof to === 'string' ? to : to.pathname,
         })

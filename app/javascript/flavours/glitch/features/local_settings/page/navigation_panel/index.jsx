@@ -120,11 +120,13 @@ const NavigationPanelSettings = ({ settings, onChange, intl }) => {
   const dispatch = useAppDispatch();
   const { permissions, extraPermissions } = useIdentity();
   const adminTimelineAvailable = canUseAdminTimeline(permissions, extraPermissions);
+  const useMyArchive = settings.get('use_my_archive', false);
   const unavailableItems = [
     ...(!federatedTimelineEnabled ? ['federated'] : []),
     ...(!localTimelineEnabled ? ['local'] : []),
     ...(!collectionsEnabled ? ['collections'] : []),
     ...(!adminTimelineAvailable ? ['admin_timeline'] : []),
+    ...(useMyArchive ? ['favourites', 'bookmarks'] : ['my_archive']),
   ];
   const availableItems = NAVIGATION_PANEL_ITEMS.filter(
     (key) => !unavailableItems.includes(key),

@@ -18,7 +18,7 @@ class Api::V1::ClipsController < Api::BaseController
   end
 
   def create
-    @clip = Clip.create!(clip_params.merge(account: current_account))
+    @clip = current_account.with_lock { current_account.clips.create!(clip_params) }
     render json: @clip, serializer: REST::ClipSerializer
   end
 

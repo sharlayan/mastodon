@@ -62,6 +62,8 @@
   "settings.general": "一般",
   "settings.hicolor_privacy_icons": "ハイカラーの公開範囲アイコン",
   "settings.hicolor_privacy_icons.hint": "公開範囲アイコンを明るく表示し見分けやすい色にします",
+  "settings.hide_timeline_account_handle": "タイムラインの投稿でアカウントのハンドルを隠す",
+  "settings.hide_timeline_account_handle.hint": "タイムライン投稿のアカウント情報欄には表示名のみを表示します",
   "settings.inline_preview_cards": "外部リンクに埋め込みプレビューを有効にする",
   "settings.layout_opts": "レイアウトの設定",
   "settings.media": "メディア",

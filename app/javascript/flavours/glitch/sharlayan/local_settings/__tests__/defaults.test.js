@@ -1,7 +1,7 @@
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import localSettings from 'flavours/glitch/reducers/local_settings';
-import { showInstanceInfo } from 'flavours/glitch/initial_state';
+import { showInstanceInfo, useMyArchive } from 'flavours/glitch/initial_state';
 import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 
 import { sharlayanLocalSettingsDefaults } from '../defaults';
@@ -23,6 +23,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('deck_unpinned_column_width')).toBe(350);
     expect(state.get('content_font_size')).toBe('medium');
     expect(state.get('sensitive_emoji_display')).toBe('show');
+    expect(state.get('use_my_archive')).toBe(useMyArchive);
     expect(state.get('hide_compose_language')).toBe(false);
     expect(state.get('hide_mfm_compose_hint')).toBe(false);
     expect(state.get('show_clip_choice')).toBe(true);
@@ -93,6 +94,15 @@ describe('sharlayan local_settings defaults', () => {
     });
 
     expect(state.get('show_instance_info')).toBe(storedValue);
+  });
+
+  it('prefers the account archive preference over a stored browser value', () => {
+    const state = localSettings(initial(), {
+      type: 'STORE_HYDRATE',
+      state: fromJS({ local_settings: { use_my_archive: !useMyArchive } }),
+    });
+
+    expect(state.get('use_my_archive')).toBe(useMyArchive);
   });
 
   it('exposes the defaults map for registry consumers', () => {

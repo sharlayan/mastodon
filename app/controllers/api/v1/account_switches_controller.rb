@@ -3,6 +3,28 @@
 class Api::V1::AccountSwitchesController < Api::BaseController
   include RoutingHelper
 
+  UNREAD_COUNT_LIMIT = 100
+  LINKED_UNREAD_COUNTS_SQL = <<~SQL.squish.freeze
+    WITH linked_accounts(account_id, last_read_id) AS (
+      SELECT * FROM UNNEST(ARRAY[:account_ids]::bigint[], ARRAY[:last_read_ids]::bigint[])
+    )
+    SELECT linked_accounts.account_id, COUNT(unread_notifications.id)
+    FROM linked_accounts
+    CROSS JOIN LATERAL (
+      SELECT notifications.id
+      FROM notifications
+      INNER JOIN accounts from_accounts ON from_accounts.id = notifications.from_account_id
+      WHERE notifications.account_id = linked_accounts.account_id
+        AND notifications.id > linked_accounts.last_read_id
+        AND notifications.filtered = FALSE
+        AND from_accounts.suspended_at IS NULL
+        AND from_accounts.requested_deletion_at IS NULL
+      ORDER BY notifications.id DESC
+      LIMIT :limit
+    ) unread_notifications
+    GROUP BY linked_accounts.account_id
+  SQL
+
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :linked_unread_counts]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:destroy, :destroy_inbound, :create_push_forward, :destroy_push_forward]
   before_action :require_user!
@@ -57,20 +79,7 @@ class Api::V1::AccountSwitchesController < Api::BaseController
       .where.not(target_account_id: current_account.id)
       .includes(target_account: { user: :markers })
 
-    counts = {}
-
-    auths.each do |auth|
-      acct = auth.target_account
-      next unless acct&.user
-
-      marker = acct.user.markers.find { |m| m.timeline == 'notifications' }
-      last_read_id = marker&.last_read_id&.positive? ? marker.last_read_id : nil
-      scope = Notification.where(account_id: acct.id).without_suspended.where(filtered: false)
-      scope = scope.where(id: ((last_read_id + 1)..)) if last_read_id
-      counts[acct.id.to_s] = [scope.count, 100].min
-    end
-
-    render json: counts
+    render json: linked_unread_counts_for(auths)
   end
 
   def create_push_forward
@@ -107,6 +116,23 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   end
 
   private
+
+  def linked_unread_counts_for(authorizations)
+    pairs = authorizations.filter_map do |authorization|
+      account = authorization.target_account
+      next unless account&.user
+
+      marker = account.user.markers.find { |item| item.timeline == 'notifications' }
+      [account.id, marker&.last_read_id.to_i]
+    end
+    return {} if pairs.empty?
+
+    query = Notification.sanitize_sql_array([LINKED_UNREAD_COUNTS_SQL,
+                                             { account_ids: pairs.map(&:first), last_read_ids: pairs.map(&:last), limit: UNREAD_COUNT_LIMIT }])
+    rows = Notification.connection.select_rows(query)
+
+    pairs.to_h { |account_id, _| [account_id.to_s, 0] }.merge(rows.to_h { |account_id, count| [account_id.to_s, count.to_i] })
+  end
 
   def require_root_account
     render json: { error: 'Cannot unlink accounts while switched into a linked account' }, status: 403 if switch_parent_stack.present?

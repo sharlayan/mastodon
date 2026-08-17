@@ -6,6 +6,7 @@ export const NAVIGATION_PANEL_ITEMS = [
   'notifications',
   'favourites',
   'bookmarks',
+  'my_archive',
   'collections',
   'direct',
   'board_announcements',
@@ -38,6 +39,7 @@ export const navigationPanelItemMessages: Record<
   },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
+  my_archive: { id: 'navigation_bar.my_archive', defaultMessage: 'My archive' },
   collections: {
     id: 'navigation_bar.collections',
     defaultMessage: 'Collections',

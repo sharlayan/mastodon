@@ -54,6 +54,7 @@ export interface SharlayanInitialStateMeta {
   user_theme_catalog?: string;
   user_theme_defaults?: string;
   user_theme?: string;
+  use_my_archive?: boolean;
   visible_reactions: number;
   show_instance_info: boolean;
   custom_emoji_size: boolean;
@@ -145,5 +146,6 @@ export const readSharlayanInitialState = (
     userThemeCatalog: getMeta('user_theme_catalog') ?? '[]',
     userThemeDefaults: getMeta('user_theme_defaults') ?? '{}',
     userTheme: getMeta('user_theme') ?? '{}',
+    useMyArchive: getMeta('use_my_archive') ?? roleplayMode,
   };
 };

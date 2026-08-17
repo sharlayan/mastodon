@@ -269,6 +269,7 @@ export const {
   userThemesEnabled,
   userThemeCatalog,
   userThemeDefaults,
+  useMyArchive,
   userTheme,
 } = sharlayanInitialState;
 

@@ -259,11 +259,13 @@
   }
 
   .column-link--transparent.active {
-    color: var(--color-light-text);
+    color: var(--color-accent);
     font-weight: var(--font-weight-bold);
   }
 
   // Top panel
+  .account__section-headline a.active::after,
+  .account__section-headline button.active::after,
   .notification__filter-bar a.active::after,
   .notification__filter-bar button.active::after {
     background-color: var(--color-accent);
@@ -277,18 +279,19 @@
     display: block;
     height: 4px;
     left: 50%;
-    width: var(--size-icon, 20px);
     position: absolute;
     transform: translateX(-50%);
   }
 
-  .account__section-headline a.active,
-  .account__section-headline button.active {
-    text-decoration-color: var(--color-accent);
-    text-decoration-line: underline;
-    text-decoration-skip-ink: none;
-    text-decoration-thickness: 4px;
-    text-underline-offset: 14px;
+  .account__section-headline a.active::after,
+  .account__section-headline button.active::after {
+    max-width: calc(100% - 24px);
+    width: 56px;
+  }
+
+  .notification__filter-bar a.active::after,
+  .notification__filter-bar button.active::after {
+    width: var(--size-icon, 20px);
   }
 
   // Notification icons

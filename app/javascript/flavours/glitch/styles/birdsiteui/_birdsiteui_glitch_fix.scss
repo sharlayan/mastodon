@@ -4,6 +4,20 @@
   margin-left: calc(var(--size-avatar) + var(--gap-default));
 }
 
+.layout-single-column,
+.layout-multiple-columns {
+  .column-link--transparent.active,
+  .ui__navigation-bar__item.active {
+    color: var(--color-accent);
+  }
+
+  .column-link--transparent.active .icon,
+  .ui__navigation-bar__item.active .icon {
+    background-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+}
+
 html {
   .layout-single-column,
   .layout-multiple-columns {
@@ -94,6 +108,7 @@ html {
   .column-link .icon-calendar,
   .column-link .icon-drafts,
   .column-link .icon-note-stack-add,
+  .column-link .icon-inventory-2,
   .column-link .icon-group,
   .column-link .icon-users,
   .column-link .icon-description,
@@ -144,6 +159,10 @@ html {
     @include icons.icon-glyph(clips);
   }
 
+  .column-link .icon-inventory-2 {
+    @include icons.icon-glyph(archive);
+  }
+
   .column-link .icon-group {
     @include icons.icon-glyph(group);
   }
@@ -190,6 +209,10 @@ html {
 
   .column-link.active .icon-note-stack-add {
     @include icons.icon-glyph(clips, fill);
+  }
+
+  .column-link.active .icon-inventory-2 {
+    @include icons.icon-glyph(archive, fill);
   }
 
   .column-link.active .icon-group {

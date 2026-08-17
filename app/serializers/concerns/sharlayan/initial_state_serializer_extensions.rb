@@ -72,6 +72,7 @@ module Sharlayan::InitialStateSerializerExtensions
       ignore_others_pages_view: object_account_user.settings['web.ignore_others_pages_view'],
       inline_compose_tabs: inline_compose_tabs,
       user_theme: object_account_user.settings['web.user_theme'],
+      use_my_archive: object_account_user.settings['web.use_my_archive'],
       custom_emoji_mutes: object.current_account.custom_emoji_mutes.order(id: :desc).map { |mute| { id: mute.id.to_s, prefix: mute.prefix, domain: mute.domain, reject_reactions: mute.reject_reactions, hide_in_picker: mute.hide_in_picker } },
       reaction_mutes: object.current_account.reaction_mutes.includes(:target_account).order(id: :desc).map { |mute| { id: mute.id.to_s, target_account_id: mute.target_account_id&.to_s, target_acct: mute.target_account&.acct, target_domain: mute.target_domain } },
     }

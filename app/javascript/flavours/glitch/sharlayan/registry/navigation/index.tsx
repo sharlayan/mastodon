@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
@@ -16,6 +16,8 @@ import CollectionsIcon from '@/material-icons/400-24px/category.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import HomeActiveIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
+import InventoryActiveIcon from '@/material-icons/400-24px/inventory_2-fill.svg?react';
+import InventoryIcon from '@/material-icons/400-24px/inventory_2.svg?react';
 import AdministrationIcon from '@/material-icons/400-24px/manufacturing.svg?react';
 import NotificationsActiveIcon from '@/material-icons/400-24px/notifications-fill.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
@@ -73,6 +75,7 @@ const messages = defineMessages({
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
+  myArchive: { id: 'navigation_bar.my_archive', defaultMessage: 'My archive' },
   collections: {
     id: 'navigation_bar.collections',
     defaultMessage: 'Collections',
@@ -179,6 +182,20 @@ export const useSharlayanPrimaryNavigation = (
         | ImmutableMap<string, boolean>
         | undefined,
   );
+  const useMyArchive = useAppSelector(
+    (state) =>
+      (state.local_settings as ImmutableMap<string, unknown>).get(
+        'use_my_archive',
+        false,
+      ) as boolean,
+  );
+  const isMyArchiveActive = useCallback(
+    (_match: unknown, location: { pathname: string }) =>
+      ['/favourites', '/bookmarks', '/reactions', '/clips'].includes(
+        location.pathname,
+      ),
+    [],
+  );
   const isMobileLayout = useBreakpoint('openable');
   const confirmDraftBeforePublish = useConfirmDraftBeforePublish();
   const orderedKeys = useMemo(
@@ -246,28 +263,46 @@ export const useSharlayanPrimaryNavigation = (
   }
   if (signedIn) {
     renderers.notifications = () => <NotificationsLink />;
-    renderers.favourites = (id) => (
-      <ColumnLink
-        transparent
-        to='/favourites'
-        icon='star'
-        iconComponent={StarIcon}
-        activeIconComponent={StarActiveIcon}
-        text={intl.formatMessage(messages.favourites)}
-        id={id}
-      />
-    );
-    renderers.bookmarks = (id) => (
-      <ColumnLink
-        transparent
-        to='/bookmarks'
-        icon='bookmarks'
-        iconComponent={BookmarksIcon}
-        activeIconComponent={BookmarksActiveIcon}
-        text={intl.formatMessage(messages.bookmarks)}
-        id={id}
-      />
-    );
+    renderers.favourites = useMyArchive
+      ? undefined
+      : (id) => (
+          <ColumnLink
+            transparent
+            to='/favourites'
+            icon='star'
+            iconComponent={StarIcon}
+            activeIconComponent={StarActiveIcon}
+            text={intl.formatMessage(messages.favourites)}
+            id={id}
+          />
+        );
+    renderers.bookmarks = useMyArchive
+      ? undefined
+      : (id) => (
+          <ColumnLink
+            transparent
+            to='/bookmarks'
+            icon='bookmarks'
+            iconComponent={BookmarksIcon}
+            activeIconComponent={BookmarksActiveIcon}
+            text={intl.formatMessage(messages.bookmarks)}
+            id={id}
+          />
+        );
+    renderers.my_archive = useMyArchive
+      ? (id) => (
+          <ColumnLink
+            transparent
+            to='/favourites'
+            icon='inventory-2'
+            iconComponent={InventoryIcon}
+            activeIconComponent={InventoryActiveIcon}
+            text={intl.formatMessage(messages.myArchive)}
+            isActive={isMyArchiveActive}
+            id={id}
+          />
+        )
+      : undefined;
     if (collectionsEnabled) {
       renderers.collections = (id) => (
         <ColumnLink

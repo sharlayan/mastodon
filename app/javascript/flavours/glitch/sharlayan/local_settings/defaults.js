@@ -1,7 +1,7 @@
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
 import { LOCAL_SETTING_IMPORT } from 'flavours/glitch/actions/local_settings';
-import { showInstanceInfo } from 'flavours/glitch/initial_state';
+import { showInstanceInfo, useMyArchive } from 'flavours/glitch/initial_state';
 import { STATUS_ACTION_BAR_DEFAULT_HIDDEN } from 'flavours/glitch/features/status_action_bar/items';
 import { roleplayMode } from 'flavours/glitch/sharlayan/roleplay';
 
@@ -16,6 +16,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   show_reaction_acceptance: false,
   show_follow_list_bio: true,
   show_others_online_status: false,
+  hide_timeline_account_handle: false,
   show_instance_info: showInstanceInfo === true,
   show_instance_info_local: false,
   inline_compose_timelines: roleplayMode,
@@ -26,6 +27,7 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   deck_unpinned_column_width: 350,
   content_font_size: 'medium',
   sensitive_emoji_display: 'show',
+  use_my_archive: useMyArchive,
   sync_to_server: false,
   synced_at: null,
   collapsed: ImmutableMap({

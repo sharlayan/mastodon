@@ -29,6 +29,18 @@ RSpec.describe 'Antennas' do
       expect(response.parsed_body[:title]).to eq('new antenna')
       expect(response.parsed_body[:keywords]).to eq(%w(commission))
     end
+
+    it 'locks the account while validating the per-account limit' do
+      queries = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { subject }
+
+      expect(response).to have_http_status(200)
+      expect(queries.any? { |sql| sql.include?('FROM "accounts"') && sql.include?('FOR UPDATE') }).to be(true)
+    end
   end
 
   describe 'PUT /api/v1/antennas/:id' do

@@ -41,6 +41,7 @@ const meta: SharlayanInitialStateMeta = {
   mfm_fold_mode: 'all',
   mfm_allow_composition: true,
   inline_compose_tabs: [{ type: 'list', id: '123' }],
+  use_my_archive: false,
 };
 
 describe('Sharlayan initial state', () => {
@@ -72,6 +73,7 @@ describe('Sharlayan initial state', () => {
         userThemeCatalog: '[]',
         userThemeDefaults: '{}',
         userTheme: '{}',
+        useMyArchive: false,
       },
     );
   });
@@ -101,6 +103,7 @@ describe('Sharlayan initial state', () => {
       userThemeCatalog: '[]',
       userThemeDefaults: '{}',
       userTheme: '{}',
+      useMyArchive: false,
     });
   });
 
@@ -111,6 +114,7 @@ describe('Sharlayan initial state', () => {
           ...meta,
           roleplay_mode: true,
           roleplay_disable_local_timeline: true,
+          use_my_archive: undefined,
         },
       }),
     ).toMatchObject({
@@ -121,6 +125,7 @@ describe('Sharlayan initial state', () => {
       catEnabled: false,
       catFederationEnabled: false,
       forceRoundAvatar: false,
+      useMyArchive: true,
     });
   });
 
@@ -136,6 +141,21 @@ describe('Sharlayan initial state', () => {
     ).toMatchObject({
       localTimelineEnabled: true,
       federatedTimelineEnabled: false,
+    });
+  });
+
+  it('preserves an explicit archive preference in roleplay mode', () => {
+    expect(
+      readSharlayanInitialState({
+        meta: {
+          ...meta,
+          roleplay_mode: true,
+          use_my_archive: false,
+        },
+      }),
+    ).toMatchObject({
+      roleplayMode: true,
+      useMyArchive: false,
     });
   });
 });
