@@ -4,6 +4,26 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   include RoutingHelper
 
   UNREAD_COUNT_LIMIT = 100
+  LINKED_UNREAD_COUNTS_SQL = <<~SQL.squish.freeze
+    WITH linked_accounts(account_id, last_read_id) AS (
+      SELECT * FROM UNNEST(ARRAY[:account_ids]::bigint[], ARRAY[:last_read_ids]::bigint[])
+    )
+    SELECT linked_accounts.account_id, COUNT(unread_notifications.id)
+    FROM linked_accounts
+    CROSS JOIN LATERAL (
+      SELECT notifications.id
+      FROM notifications
+      INNER JOIN accounts from_accounts ON from_accounts.id = notifications.from_account_id
+      WHERE notifications.account_id = linked_accounts.account_id
+        AND notifications.id > linked_accounts.last_read_id
+        AND notifications.filtered = FALSE
+        AND from_accounts.suspended_at IS NULL
+        AND from_accounts.requested_deletion_at IS NULL
+      ORDER BY notifications.id DESC
+      LIMIT :limit
+    ) unread_notifications
+    GROUP BY linked_accounts.account_id
+  SQL
 
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :linked_unread_counts]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:destroy, :destroy_inbound, :create_push_forward, :destroy_push_forward]
@@ -107,25 +127,9 @@ class Api::V1::AccountSwitchesController < Api::BaseController
     end
     return {} if pairs.empty?
 
-    values = pairs.map { |account_id, last_read_id| "(#{account_id.to_i}, #{last_read_id})" }.join(', ')
-    rows = Notification.connection.select_rows(<<~SQL.squish)
-      WITH linked_accounts(account_id, last_read_id) AS (VALUES #{values})
-      SELECT linked_accounts.account_id, COUNT(unread_notifications.id)
-      FROM linked_accounts
-      CROSS JOIN LATERAL (
-        SELECT notifications.id
-        FROM notifications
-        INNER JOIN accounts from_accounts ON from_accounts.id = notifications.from_account_id
-        WHERE notifications.account_id = linked_accounts.account_id
-          AND notifications.id > linked_accounts.last_read_id
-          AND notifications.filtered = FALSE
-          AND from_accounts.suspended_at IS NULL
-          AND from_accounts.requested_deletion_at IS NULL
-        ORDER BY notifications.id DESC
-        LIMIT #{UNREAD_COUNT_LIMIT}
-      ) unread_notifications
-      GROUP BY linked_accounts.account_id
-    SQL
+    query = Notification.sanitize_sql_array([LINKED_UNREAD_COUNTS_SQL,
+                                             { account_ids: pairs.map(&:first), last_read_ids: pairs.map(&:last), limit: UNREAD_COUNT_LIMIT }])
+    rows = Notification.connection.select_rows(query)
 
     pairs.to_h { |account_id, _| [account_id.to_s, 0] }.merge(rows.to_h { |account_id, count| [account_id.to_s, count.to_i] })
   end
