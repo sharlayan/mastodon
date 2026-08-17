@@ -8,7 +8,9 @@ RSpec.describe StatusPolicy, type: :model do
   let(:owner_role) { UserRole.find_by(name: 'Owner') }
   let(:owner)      { Fabricate(:user, role: owner_role).account }
   let(:viewer_role) { Fabricate(:user_role, permissions: UserRole::FLAGS[:manage_reports], extra_permissions: UserRole::EXTRA_FLAGS[:view_admin_timeline]) }
-  let(:viewer)     { Fabricate(:user, role: viewer_role).account }
+  let(:viewer) { Fabricate(:user, role: viewer_role).account }
+  let(:leader_role) { Fabricate(:user_role, extra_permissions: UserRole::EXTRA_FLAGS[:view_followers_admin_timeline]) }
+  let(:leader) { Fabricate(:user, role: leader_role).account }
   let(:stranger)   { Fabricate(:account, username: 'stranger') }
   let(:author)     { Fabricate(:account, username: 'author') }
 
@@ -30,6 +32,16 @@ RSpec.describe StatusPolicy, type: :model do
 
       it 'denies an account without the privilege' do
         expect(subject).to_not permit(stranger, status)
+      end
+
+      it 'permits a followers-only privilege holder when the author follows them' do
+        Fabricate(:follow, account: author, target_account: leader)
+
+        expect(subject).to permit(leader, status)
+      end
+
+      it 'denies a followers-only privilege holder when the author does not follow them' do
+        expect(subject).to_not permit(leader, status)
       end
     end
 

@@ -654,7 +654,7 @@
   "directory.recently_active": "Recently active",
   "disabled_account_banner.account_settings": "Account settings",
   "disabled_account_banner.text": "Your account {disabledAccount} is currently disabled.",
-  "dismissable_banner.admin_timeline": "This timeline is only visible to administrators while community mode is enabled. Public posts are always listed; posts with limited visibility appear only when they were never federated (local-only).",
+  "dismissable_banner.admin_timeline": "This timeline is available while community mode is enabled. Depending on your role, it shows all eligible local posts or eligible posts from accounts that follow you.",
   "dismissable_banner.community_timeline": "These are the most recent public posts from people whose accounts are hosted by {domain}.",
   "dismissable_banner.dismiss": "Dismiss",
   "dismissable_banner.public_timeline": "These are the most recent public posts from people on the fediverse that people on {domain} follow.",

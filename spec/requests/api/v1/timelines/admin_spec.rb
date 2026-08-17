@@ -139,4 +139,30 @@ RSpec.describe 'Management timeline API' do
       expect(response).to have_http_status(403)
     end
   end
+
+  context 'with the followers-only management timeline permission' do
+    let(:role_extra_permissions) { UserRole::EXTRA_FLAGS[:view_followers_admin_timeline] }
+    let(:role) { Fabricate(:user_role, extra_permissions: role_extra_permissions) }
+    let(:follower) { Fabricate(:account, username: 'follower') }
+    let(:unrelated) { Fabricate(:account, username: 'unrelated') }
+
+    before { Fabricate(:follow, account: follower, target_account: user.account) }
+
+    it 'lists eligible posts from the viewer followers only' do
+      follower_status = Fabricate(:status, account: follower, visibility: :private, local_only: true)
+      unrelated_status = Fabricate(:status, account: unrelated, visibility: :public)
+
+      expect(timeline_ids)
+        .to include(follower_status.id.to_s)
+        .and not_include(unrelated_status.id.to_s)
+    end
+
+    it 'hides owner conversations authored by a follower' do
+      owner = Fabricate(:user, role: UserRole.find_by(name: 'Owner')).account
+      status = Fabricate(:status, account: follower, visibility: :direct, local_only: true)
+      Fabricate(:mention, status: status, account: owner)
+
+      expect(timeline_ids).to_not include(status.id.to_s)
+    end
+  end
 end

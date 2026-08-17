@@ -30,6 +30,7 @@ RSpec.describe UserRole do
           expect(administrator.computed_extra_permissions)
             .to eq(described_class::ExtraFlags::ALL & ~described_class::ExtraFlags::GATED)
           expect(administrator.can_extra?(:view_admin_timeline)).to be false
+          expect(administrator.can_extra?(:view_followers_admin_timeline)).to be false
           expect(administrator.can_extra?(:bypass_rate_limit)).to be true
           expect(stale.can_extra?(:view_admin_timeline)).to be false
         end
@@ -52,6 +53,14 @@ RSpec.describe UserRole do
       role.extra_permissions_as_keys = %w(bypass_rate_limit unknown)
 
       expect(role.extra_permissions_as_keys).to contain_exactly('bypass_rate_limit')
+    end
+
+    it 'treats full management timeline access as including follower-scoped access' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true') do
+        role = Fabricate(:user_role, extra_permissions: described_class::EXTRA_FLAGS[:view_admin_timeline])
+
+        expect(role.can_extra?(:view_followers_admin_timeline)).to be true
+      end
     end
 
     it 'rejects unknown permission checks' do

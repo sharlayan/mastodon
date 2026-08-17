@@ -7,6 +7,7 @@ module Sharlayan
 
     REDIS_CHANNEL = 'timeline:admin'
     OWNER_REDIS_CHANNEL = 'timeline:admin:owner'
+    FOLLOWERS_REDIS_CHANNEL_PREFIX = 'timeline:admin:followers'
     REMOVAL_REDIS_CHANNELS = [REDIS_CHANNEL, OWNER_REDIS_CHANNEL].freeze
 
     module_function
@@ -46,8 +47,35 @@ module Sharlayan
       account_ids.include?(status.account_id) || status.mentions.exists?(account_id: account_ids)
     end
 
+    def role_can_view?(role)
+      role&.can_extra?(:view_admin_timeline, :view_followers_admin_timeline) || false
+    end
+
+    def full_viewer_role?(role)
+      role&.can_extra?(:view_admin_timeline) || false
+    end
+
+    def follower_viewer?(viewer, author)
+      ::Follow.exists?(account_id: author.id, target_account_id: viewer.id)
+    end
+
+    def follower_redis_channel(account_id)
+      "#{FOLLOWERS_REDIS_CHANNEL_PREFIX}:#{account_id}"
+    end
+
+    def follower_redis_channels_for(status, include_owner_conversation: false)
+      return [] if !include_owner_conversation && owner_conversation?(status)
+
+      status.account.active_relationships.pluck(:target_account_id).map { |account_id| follower_redis_channel(account_id) }
+    end
+
     def redis_channels_for(status)
-      owner_conversation?(status) ? [OWNER_REDIS_CHANNEL] : [REDIS_CHANNEL, OWNER_REDIS_CHANNEL]
+      channels = owner_conversation?(status) ? [OWNER_REDIS_CHANNEL] : [REDIS_CHANNEL, OWNER_REDIS_CHANNEL]
+      channels + follower_redis_channels_for(status)
+    end
+
+    def removal_redis_channels_for(status)
+      REMOVAL_REDIS_CHANNELS + follower_redis_channels_for(status, include_owner_conversation: true)
     end
   end
 end

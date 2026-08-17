@@ -632,7 +632,7 @@
   "directory.recently_active": "최근 활동",
   "disabled_account_banner.account_settings": "계정 설정",
   "disabled_account_banner.text": "당신의 계정 {disabledAccount}는 현재 비활성화 상태입니다.",
-  "dismissable_banner.admin_timeline": "커뮤니티 모드가 켜져 있는 동안 관리자만 볼 수 있는 타임라인입니다. 공개 게시물은 모두 표시되며, 공개 범위가 제한된 게시물은 연합되지 않은(로컬 전용) 경우에만 표시됩니다.",
+  "dismissable_banner.admin_timeline": "커뮤니티 모드가 켜져 있는 동안 사용할 수 있는 타임라인입니다. 역할에 따라 모든 적격 로컬 게시물 또는 자신을 팔로우하는 계정의 적격 게시물이 표시됩니다.",
   "dismissable_banner.community_timeline": "여기 있는 것들은 계정이 {domain}에 있는 사람들의 최근 공개 게시물들입니다.",
   "dismissable_banner.dismiss": "지우기",
   "dismissable_banner.public_timeline": "이 게시물들은 {domain}에 있는 사람들이 팔로우하는 페디버스 사용자들의 최신 공개 게시물입니다.",

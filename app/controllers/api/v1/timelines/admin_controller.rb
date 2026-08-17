@@ -35,6 +35,7 @@ class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
     scope = scope.where.not(visibility: hidden_visibilities) if hidden_visibilities.any?
 
     scope = exclude_owner_conversations(scope) unless owner_viewer?
+    scope = scope.where(account_id: current_account.followers.select(:id)) unless full_viewer?
 
     scope = scope.where('statuses.visibility != ? OR statuses.in_reply_to_id IS NULL', Status.visibilities[:direct]) if truthy_param?(:group_direct)
 
@@ -67,6 +68,10 @@ class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
     Sharlayan::AdminTimeline.owner_role?(current_user.role)
   end
 
+  def full_viewer?
+    Sharlayan::AdminTimeline.full_viewer_role?(current_user.role)
+  end
+
   def soft_hide_viewer?
     Setting.soft_hide_deletion && owner_viewer?
   end
@@ -84,7 +89,7 @@ class Api::V1::Timelines::AdminController < Api::V1::Timelines::BaseController
   end
 
   def require_admin_timeline_access!
-    render json: { error: 'This action is not allowed' }, status: 403 unless current_user.role.can_extra?(:view_admin_timeline)
+    render json: { error: 'This action is not allowed' }, status: 403 unless Sharlayan::AdminTimeline.role_can_view?(current_user.role)
   end
 
   def next_path

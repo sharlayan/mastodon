@@ -42,6 +42,14 @@ RSpec.describe Sharlayan::AdminTimelineFanOut do
     expect(published_channels_for(status)).to include('timeline:admin:owner')
   end
 
+  it 'publishes posts to management streams for accounts followed by the author' do
+    leader = Fabricate(:account, username: 'leader')
+    Fabricate(:follow, account: account, target_account: leader)
+    status = Fabricate(:status, account: account, visibility: :private, local_only: true)
+
+    expect(published_channels_for(status)).to include("timeline:admin:followers:#{leader.id}")
+  end
+
   it 'does not publish federated restricted posts' do
     %i(direct private unlisted limited).each do |visibility|
       status = Fabricate(:status, account: account, visibility: visibility, local_only: false)
@@ -70,12 +78,15 @@ RSpec.describe Sharlayan::AdminTimelineFanOut do
     end
 
     it 'publishes a direct post mentioning an owner only to the owner stream' do
+      leader = Fabricate(:account, username: 'leader')
+      Fabricate(:follow, account: account, target_account: leader)
       status = Fabricate(:status, account: account, visibility: :direct, local_only: true)
       Fabricate(:mention, status: status, account: owner)
 
       expect(published_channels_for(status))
         .to include('timeline:admin:owner')
         .and not_include('timeline:admin')
+        .and not_include("timeline:admin:followers:#{leader.id}")
     end
 
     it 'keeps an owner-authored public post on the regular stream' do

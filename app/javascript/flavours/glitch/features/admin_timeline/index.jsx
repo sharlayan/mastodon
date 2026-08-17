@@ -146,7 +146,7 @@ class AdminTimeline extends PureComponent {
         </ColumnHeader>
 
         <StatusListContainer
-          prepend={<DismissableBanner id='admin_timeline'><FormattedMessage id='dismissable_banner.admin_timeline' defaultMessage='This timeline is only visible to administrators while community mode is enabled. You can view every post on the server without restriction.' /></DismissableBanner>}
+          prepend={<DismissableBanner id='admin_timeline'><FormattedMessage id='dismissable_banner.admin_timeline' defaultMessage='This timeline is available while community mode is enabled. Depending on your role, it shows all eligible local posts or eligible posts from accounts that follow you.' /></DismissableBanner>}
           trackScroll={!pinned}
           scrollKey={`admin_timeline-${columnId}`}
           timelineId={adminTimelineId(this.filters())}

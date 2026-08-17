@@ -11,6 +11,8 @@ moderator:
 admin:
   name: Admin
   position: 100
+  extra_permissions:
+    - view_admin_timeline
   permissions:
     - view_dashboard
     - view_audit_log

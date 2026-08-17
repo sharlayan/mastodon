@@ -9,6 +9,7 @@ export const PERMISSION_VIEW_DASHBOARD = 0x0000000000000008;
 export const PERMISSION_ADMINISTRATOR = 0x0000000000000001;
 
 export const EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE = 0x0000000000000002;
+export const EXTRA_PERMISSION_VIEW_FOLLOWERS_ADMIN_TIMELINE = 0x0000000000000004;
 
 // These helpers don't quite align with the names/categories in UserRole,
 // but are likely "good enough" for the use cases at present.
@@ -38,7 +39,9 @@ export function canViewAdminTimeline(
   return (
     isAdministrator(permissions) ||
     (extraPermissions & EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE) ===
-      EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE
+      EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE ||
+    (extraPermissions & EXTRA_PERMISSION_VIEW_FOLLOWERS_ADMIN_TIMELINE) ===
+      EXTRA_PERMISSION_VIEW_FOLLOWERS_ADMIN_TIMELINE
   );
 }
 

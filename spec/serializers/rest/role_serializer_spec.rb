@@ -58,7 +58,8 @@ RSpec.describe REST::RoleSerializer do
     role.extra_permissions = UserRole::EXTRA_FLAGS[:view_admin_timeline]
 
     ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true', OC_ADMIN_TIMELINE_OPTION: 'true') do
-      expect(subject['extra_permissions']).to eq(UserRole::EXTRA_FLAGS[:view_admin_timeline].to_s)
+      expected = UserRole::EXTRA_FLAGS.values_at(:view_admin_timeline, :view_followers_admin_timeline).reduce(&:|)
+      expect(subject['extra_permissions']).to eq(expected.to_s)
     end
   end
 end

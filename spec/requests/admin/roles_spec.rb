@@ -230,6 +230,12 @@ RSpec.describe 'Admin Roles' do
 
         expect(created_role.can_extra?(:view_admin_timeline)).to be(true)
       end
+
+      it 'assigns the follower-scoped permission to a lower role' do
+        post admin_roles_path, params: { user_role: { name: 'Community role', position: 2, extra_permissions_as_keys: %w(view_followers_admin_timeline) } }
+
+        expect(created_role.can_extra?(:view_followers_admin_timeline)).to be(true)
+      end
     end
 
     context 'when a moderator lacks the management timeline permission' do

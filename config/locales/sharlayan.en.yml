@@ -245,6 +245,9 @@ en:
         view_admin_timeline: View the admin timeline
         view_admin_timeline_description: >-
           In community (roleplay) mode, users with this permission can view the admin timeline. Direct conversations involving an owner account remain hidden unless the viewer is an owner. Posts with limited visibility are only listed when they were never federated (local-only).
+        view_followers_admin_timeline: Remove visibility restrictions for followers' posts
+        view_followers_admin_timeline_description: >-
+          In community (roleplay) mode, users with this permission can view management-timeline-eligible posts from local accounts that follow them regardless of visibility. Direct conversations involving an owner account remain hidden.
       privileges:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval

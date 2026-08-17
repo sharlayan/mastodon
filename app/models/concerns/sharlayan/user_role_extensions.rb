@@ -7,10 +7,12 @@ module Sharlayan::UserRoleExtensions
   EXTRA_FLAGS = {
     bypass_rate_limit: (1 << 0),
     view_admin_timeline: (1 << 1),
+    view_followers_admin_timeline: (1 << 2),
   }.freeze
 
   GATED_EXTRA_FLAGS = {
     view_admin_timeline: -> { Sharlayan::AdminTimeline.enabled? },
+    view_followers_admin_timeline: -> { Sharlayan::AdminTimeline.enabled? },
   }.freeze
 
   module ExtraFlags
@@ -25,6 +27,7 @@ module Sharlayan::UserRoleExtensions
 
       moderation: %i(
         view_admin_timeline
+        view_followers_admin_timeline
       ).freeze,
     }.freeze
   end
@@ -78,13 +81,19 @@ module Sharlayan::UserRoleExtensions
   private
 
   def raw_computed_extra_permissions
-    return extra_permissions if everyone?
+    return implied_extra_permissions(extra_permissions) if everyone?
     return ExtraFlags::NONE if nobody?
 
     @raw_computed_extra_permissions ||= begin
       computed = self.class.everyone.extra_permissions | extra_permissions
-      administrator? ? ExtraFlags::ALL : computed
+      administrator? ? ExtraFlags::ALL : implied_extra_permissions(computed)
     end
+  end
+
+  def implied_extra_permissions(permissions)
+    return permissions unless permissions & EXTRA_FLAGS[:view_admin_timeline] == EXTRA_FLAGS[:view_admin_timeline]
+
+    permissions | EXTRA_FLAGS[:view_followers_admin_timeline]
   end
 
   def in_extra_permissions?(privilege)
@@ -125,7 +134,7 @@ module Sharlayan::UserRoleExtensions
   end
 
   def admin_timeline_viewer_account_ids
-    viewer_roles = self.class.select { |role| role.can_extra?(:view_admin_timeline) }
+    viewer_roles = self.class.select { |role| Sharlayan::AdminTimeline.role_can_view?(role) }
     users = User.where.not(account_id: nil)
 
     viewer_roles.any?(&:everyone?) ? users.pluck(:account_id) : users.where(role_id: viewer_roles.map(&:id)).pluck(:account_id)

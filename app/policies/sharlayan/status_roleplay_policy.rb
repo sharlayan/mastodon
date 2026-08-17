@@ -54,8 +54,9 @@ module Sharlayan::StatusRoleplayPolicy
 
   def admin_timeline_readable?
     return false unless Sharlayan::AdminTimeline.enabled?
-    return false if current_account.nil? || !role.can_extra?(:view_admin_timeline)
+    return false if current_account.nil? || !Sharlayan::AdminTimeline.role_can_view?(role)
     return false unless author.local? && record.admin_timeline_eligible?
+    return false if !Sharlayan::AdminTimeline.full_viewer_role?(role) && !Sharlayan::AdminTimeline.follower_viewer?(current_account, author)
 
     roleplay_owner? || !admin_timeline_owner_conversation?
   end

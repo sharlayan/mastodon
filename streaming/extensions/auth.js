@@ -3,13 +3,19 @@ import { firstParam } from '../utils.js';
 import { isAdminTimelineEnabled } from './admin_gate.js';
 
 const PERMISSION_ADMINISTRATOR = 1 << 0;
-const EXTRA_PERMISSIONS_ALL = (1 << 2) - 1;
+const EXTRA_PERMISSIONS_ALL = (1 << 3) - 1;
 
 const adminTimelineAccessSelect = isAdminTimelineEnabled()
   ? `, CASE
       WHEN COALESCE(user_roles.permissions, 0) & ${PERMISSION_ADMINISTRATOR} = ${PERMISSION_ADMINISTRATOR}
         THEN ${EXTRA_PERMISSIONS_ALL}
-      ELSE COALESCE(user_roles.extra_permissions, 0) | COALESCE((SELECT extra_permissions FROM user_roles WHERE id = -99), 0)
+      ELSE COALESCE(user_roles.extra_permissions, 0)
+        | COALESCE((SELECT extra_permissions FROM user_roles WHERE id = -99), 0)
+        | CASE
+            WHEN (COALESCE(user_roles.extra_permissions, 0) | COALESCE((SELECT extra_permissions FROM user_roles WHERE id = -99), 0)) & 2 = 2
+              THEN 4
+            ELSE 0
+          END
     END AS extra_permissions,
     CASE
       WHEN user_roles.id <> -99 AND user_roles.position = (SELECT MAX(position) FROM user_roles WHERE id <> -99)
