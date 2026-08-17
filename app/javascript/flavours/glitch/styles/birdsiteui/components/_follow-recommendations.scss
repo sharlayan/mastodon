@@ -1,8 +1,86 @@
 // Follow recommendations, "Who to follow"
 .layout-single-column,
 .layout-multiple-columns {
+  .inline-follow-suggestions,
+  .inline-follow-suggestions.focusable:focus-visible {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+  }
+
+  .inline-follow-suggestions {
+    gap: 0;
+    padding-top: 0;
+  }
+
+  .inline-follow-suggestions__header {
+    min-height: 53px;
+    padding-inline: 16px;
+  }
+
+  .inline-follow-suggestions__title {
+    color: var(--color-light-text);
+    font-size: var(--font-size-bigger);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height);
+  }
+
+  .inline-follow-suggestions__header__actions {
+    gap: 16px;
+  }
+
+  .inline-follow-suggestions__header__actions .link-button {
+    color: var(--color-accent);
+    font-size: var(--font-size-smaller);
+  }
+
+  .inline-follow-suggestions__header__actions .link-button:is(:hover, :focus) {
+    text-decoration: underline;
+  }
+
+  .inline-follow-suggestions__body__scrollable {
+    gap: 12px;
+    min-height: 224px;
+    padding: 0 16px 16px;
+  }
+
+  .inline-follow-suggestions__body__scrollable__card {
+    background: var(--color-bg);
+    border-color: var(--color-border);
+    border-radius: var(--border-radius);
+    color: var(--color-light-text);
+    padding: 16px;
+    width: 220px;
+  }
+
   .inline-follow-suggestions__body__scrollable__card .account__avatar {
     background-color: transparent;
     border: 0;
+  }
+
+  .inline-follow-suggestions__body__scrollable__card .display-name__html {
+    color: var(--color-light-text);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .inline-follow-suggestions__body__scrollable__card .display-name__account {
+    color: var(--color-dim);
+  }
+
+  .inline-follow-suggestions__body__scrollable__card > .icon-button {
+    color: var(--color-dim);
+  }
+
+  .inline-follow-suggestions__body__scrollable__card > .icon-button:hover {
+    color: var(--color-red);
+  }
+
+  .inline-follow-suggestions__body__scrollable__card > .button {
+    border-radius: 9999px;
+    color: var(--color-text-on-brand-base);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .inline-follow-suggestions__body__scroll-button {
+    color: var(--color-light-text);
   }
 }
