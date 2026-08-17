@@ -8,12 +8,15 @@ import {
 
 import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
 
+import { useHistory } from 'react-router-dom';
+
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import {
   discardCompose,
   mountCompose,
   unmountCompose,
 } from 'flavours/glitch/actions/compose';
+import { apiRequest } from 'flavours/glitch/api';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import ComposeFormContainer from 'flavours/glitch/features/compose/containers/compose_form_container';
 import { useAppDispatch } from 'flavours/glitch/store';
@@ -28,9 +31,14 @@ export interface InlineComposeModalRef {
 
 export const InlineComposeModal = forwardRef<
   InlineComposeModalRef,
-  { onClose: () => void; title?: 'reply' | 'direct' }
->(({ onClose, title = 'reply' }, ref) => {
+  {
+    onClose: () => void;
+    title?: 'reply' | 'direct';
+    navigateToConversation?: boolean;
+  }
+>(({ onClose, title = 'reply', navigateToConversation = false }, ref) => {
   const dispatch = useAppDispatch();
+  const history = useHistory();
   const intl = useIntl();
   const submitted = useRef(false);
 
@@ -53,10 +61,26 @@ export const InlineComposeModal = forwardRef<
     [dispatch],
   );
 
-  const handleSubmitSuccess = useCallback(() => {
-    submitted.current = true;
-    onClose();
-  }, [onClose]);
+  const handleSubmitSuccess = useCallback(
+    (status: { id?: string }) => {
+      submitted.current = true;
+      onClose();
+
+      if (navigateToConversation && status.id) {
+        void apiRequest<{ id: string | null }>(
+          'GET',
+          `v1/conversations/with_status/${status.id}`,
+        )
+          .then(({ id }) => {
+            if (id) {
+              history.push(`/conversations/${id}`);
+            }
+          })
+          .catch(() => undefined);
+      }
+    },
+    [history, navigateToConversation, onClose],
+  );
 
   return (
     <div className='modal-root__modal inline-compose-modal'>

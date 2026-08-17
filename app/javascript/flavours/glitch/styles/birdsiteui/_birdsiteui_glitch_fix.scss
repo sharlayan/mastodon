@@ -258,6 +258,14 @@ html {
     }
   }
 
+  .conversation-thread {
+    border-inline: 0;
+  }
+
+  &.conversation-detail-active .columns-area--mobile {
+    padding-bottom: 0;
+  }
+
   .column-link > span::before {
     display: none;
   }
