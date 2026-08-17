@@ -160,7 +160,12 @@ export const MentionSearch: React.FC = () => {
 
   const handleMention = useCallback(() => {
     if (selectedAccount) {
-      dispatch(directCompose(selectedAccount));
+      dispatch(
+        directCompose(selectedAccount, true, {
+          force: true,
+          navigateToConversation: true,
+        }),
+      );
       setSelectedId(null);
     }
   }, [dispatch, selectedAccount]);

@@ -6,6 +6,7 @@ import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 import { List as ImmutableList } from 'immutable';
 import { useDispatch, useSelector } from 'react-redux';
 import Textarea from 'react-textarea-autosize';
+import { length } from 'stringz';
 
 import AddPhotoAlternateIcon from '@/material-icons/400-24px/add_photo_alternate.svg?react';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
@@ -23,8 +24,10 @@ import {
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
+import { CharacterCounter } from 'flavours/glitch/features/compose/components/character_counter';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import { UploadProgress } from 'flavours/glitch/features/compose/components/upload_progress';
+import { countableText } from 'flavours/glitch/features/compose/util/counter';
 import { makeGetStatus } from 'flavours/glitch/selectors';
 
 const messages = defineMessages({
@@ -43,6 +46,7 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const intl = useIntl();
   const dispatch = useDispatch();
   const fileRef = useRef(null);
+  const inputRef = useRef(null);
   const textareaRef = useRef(null);
   const rowRef = useRef(null);
 
@@ -53,12 +57,14 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const isUploading  = useSelector(state => state.getIn(['direct_compose', conversationId, 'is_uploading'], false));
   const isSubmitting = useSelector(state => state.getIn(['direct_compose', conversationId, 'is_submitting'], false));
   const progress     = useSelector(state => state.getIn(['direct_compose', conversationId, 'progress'], 0));
+  const maxChars     = useSelector(state => state.getIn(['server', 'server', 'item', 'configuration', 'statuses', 'max_characters'], 500));
 
   const replyOverrideId   = useSelector(state => state.getIn(['direct_compose', conversationId, 'in_reply_to_id'], null));
   const replyStatus       = useSelector(state => replyOverrideId ? getStatus(state, { id: replyOverrideId }) : null);
   const effectiveReplyId  = replyOverrideId || inReplyToId;
 
-  const canSubmit = !isSubmitting && (text.trim().length > 0 || media.size > 0);
+  const countedText = `${spoiler ? spoilerText : ''}${countableText(text)}`;
+  const canSubmit = !isSubmitting && length(countedText) <= maxChars && (text.trim().length > 0 || media.size > 0);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -71,7 +77,7 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
     let tallest = 0;
 
     for (const child of row.children) {
-      if (child === textarea) {
+      if (child === inputRef.current) {
         continue;
       }
 
@@ -212,18 +218,23 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
           onChange={handleFileChange}
         />
 
-        <Textarea
-          ref={textareaRef}
-          className='direct-composer__textarea'
-          placeholder={intl.formatMessage(messages.placeholder)}
-          value={text}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          minRows={1}
-          maxRows={5}
-          disabled={isSubmitting}
-        />
+        <div className='direct-composer__input' ref={inputRef}>
+          <Textarea
+            ref={textareaRef}
+            className='direct-composer__textarea'
+            placeholder={intl.formatMessage(messages.placeholder)}
+            value={text}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            minRows={1}
+            maxRows={5}
+            disabled={isSubmitting}
+          />
+          <div className='direct-composer__counter'>
+            <CharacterCounter max={maxChars} text={countedText} />
+          </div>
+        </div>
 
         <button
           type='button'

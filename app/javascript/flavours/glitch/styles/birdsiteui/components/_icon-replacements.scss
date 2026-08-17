@@ -205,7 +205,11 @@ html .icon-button .icon-repeat {
   }
 
   .column-link.active .icon-at {
-    @include icons.icon-swap(direct-messages, fill, var(--color-light-text));
+    @include icons.icon-swap(
+      direct-messages-open,
+      fill,
+      var(--color-light-text)
+    );
     transform: scale(1.15);
   }
 

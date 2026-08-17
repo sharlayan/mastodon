@@ -1,7 +1,8 @@
 export const GLYPHS = {
   home: 'house',
   bell: 'bell',
-  'direct-messages': 'at',
+  'direct-messages': 'envelope',
+  'direct-messages-open': 'envelope-open',
   hashtag: 'hash',
   globe: 'globe',
   bookmark: 'bookmark-simple',

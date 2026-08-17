@@ -493,16 +493,23 @@
     min-width: 0;
   }
 
-  &__textarea {
+  &__input {
+    position: relative;
     order: 2;
     flex: 1 1 auto;
     align-self: stretch;
     min-width: 0;
     width: 0;
+  }
+
+  &__textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
     resize: none;
     border: 0;
     border-radius: 18px;
-    padding: 9px 14px;
+    padding: 9px 14px 24px;
     background: var(--color-bg-tertiary);
     color: var(--color-text-primary);
     font-size: 15px;
@@ -517,6 +524,16 @@
     &:focus {
       outline: 0;
     }
+  }
+
+  &__counter {
+    position: absolute;
+    inset-inline-end: 12px;
+    bottom: 5px;
+    color: var(--color-text-tertiary);
+    font-size: 12px;
+    line-height: 14px;
+    pointer-events: none;
   }
 
   &__button.icon-button {

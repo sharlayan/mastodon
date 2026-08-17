@@ -203,14 +203,14 @@ export function mentionComposeById(accountId) {
   };
 }
 
-export function directCompose(account, useInlineComposeModal = false) {
+export function directCompose(account, useInlineComposeModal = false, inlineComposeModalOptions = {}) {
   return (dispatch, getState) => {
     dispatch({
       type: COMPOSE_DIRECT,
       account: account,
     });
 
-    if (!useInlineComposeModal || !handleDirectForInlineCompose(dispatch, getState)) {
+    if (!useInlineComposeModal || !handleDirectForInlineCompose(dispatch, getState, inlineComposeModalOptions)) {
       ensureComposeIsVisible(getState);
     }
   };
