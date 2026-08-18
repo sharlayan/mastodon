@@ -136,7 +136,7 @@ html {
   }
 
   .column-link .icon-cogs {
-    @include icons.icon-glyph(settings);
+    @include icons.icon-glyph(app-settings);
   }
 
   .column-link .icon-puzzle-piece {
@@ -188,7 +188,7 @@ html {
   }
 
   .column-link.active .icon-cogs {
-    @include icons.icon-glyph(settings, fill);
+    @include icons.icon-glyph(app-settings, fill);
   }
 
   .column-link.active .icon-puzzle-piece {
