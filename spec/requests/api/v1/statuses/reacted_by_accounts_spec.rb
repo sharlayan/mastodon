@@ -63,6 +63,15 @@ RSpec.describe 'API V1 Statuses Reacted by Accounts' do
             include(name: '👍', account: include(id: alice.id.to_s))
           )
       end
+
+      it 'filters accounts by reaction name' do
+        get "/api/v1/statuses/#{status.id}/reacted_by", headers: headers, params: { name: '👍' }
+
+        expect(response.parsed_body)
+          .to contain_exactly(
+            include(name: '👍', account: include(id: alice.id.to_s))
+          )
+      end
     end
   end
 

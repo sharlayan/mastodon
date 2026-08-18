@@ -57,6 +57,7 @@ const messages = defineMessages({
   openOriginalPage: { id: 'account.open_original_page', defaultMessage: 'Open original page' },
   revokeQuote: { id: 'status.revoke_quote', defaultMessage: 'Remove my post from @{name}’s post' },
   quotePolicyChange: { id: 'status.quote_policy_change', defaultMessage: 'Change who can quote' },
+  reactions: { id: 'status.reactions', defaultMessage: 'Reactions' },
 });
 
 const mapStateToProps = (state, { status }) => {
@@ -180,6 +181,17 @@ class ActionBar extends PureComponent {
     navigator.clipboard.writeText(url);
   };
 
+  handleOpenReactions = () => {
+    const { status } = this.props;
+    this.props.dispatch(openModal({
+      modalType: 'STATUS_REACTIONS',
+      modalProps: {
+        statusId: status.get('id'),
+        reactions: status.get('reactions'),
+      },
+    }));
+  };
+
   render () {
     const { status, statusQuoteState, quotedAccountId, intl } = this.props;
     const { signedIn, permissions } = this.props.identity;
@@ -200,6 +212,10 @@ class ActionBar extends PureComponent {
     }
 
     menu.push({ text: intl.formatMessage(messages.copy), action: this.handleCopy });
+
+    if (status.get('reactions_count') > 0) {
+      menu.push({ text: intl.formatMessage(messages.reactions), action: this.handleOpenReactions });
+    }
 
     if (publicStatus && 'share' in navigator) {
       menu.push({ text: intl.formatMessage(messages.share), action: this.handleShare });

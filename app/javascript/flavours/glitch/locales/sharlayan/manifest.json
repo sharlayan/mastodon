@@ -641,6 +641,7 @@
   "status.add_to_clip",
   "status.mfm_fold_expand",
   "status.react",
+  "status.reactions",
   "status.remove_from_antenna",
   "status.remove_from_antenna_confirm",
   "status.remove_from_antenna_confirm_fallback"
