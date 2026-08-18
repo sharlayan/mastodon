@@ -18,6 +18,11 @@ class RateLimiter
       limit: 400,
       period: 24.hours.freeze,
     }.freeze,
+
+    status_reactions: {
+      limit: 120,
+      period: 5.minutes.freeze,
+    }.freeze,
   }.freeze
 
   def initialize(by, options = {})

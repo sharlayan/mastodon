@@ -51,6 +51,20 @@ export const UNBOOKMARK_REQUEST = 'UNBOOKMARKED_REQUEST';
 export const UNBOOKMARK_SUCCESS = 'UNBOOKMARKED_SUCCESS';
 export const UNBOOKMARK_FAIL    = 'UNBOOKMARKED_FAIL';
 
+export const REACTION_ADD_REQUEST = 'REACTION_ADD_REQUEST';
+export const REACTION_ADD_SUCCESS = 'REACTION_ADD_SUCCESS';
+export const REACTION_ADD_FAIL    = 'REACTION_ADD_FAIL';
+
+export const REACTION_REMOVE_REQUEST = 'REACTION_REMOVE_REQUEST';
+export const REACTION_REMOVE_SUCCESS = 'REACTION_REMOVE_SUCCESS';
+export const REACTION_REMOVE_FAIL    = 'REACTION_REMOVE_FAIL';
+
+export const REACTION_FETCH_REQUEST = 'REACTION_FETCH_REQUEST';
+export const REACTION_FETCH_SUCCESS = 'REACTION_FETCH_SUCCESS';
+export const REACTION_FETCH_FAIL    = 'REACTION_FETCH_FAIL';
+
+export const REACTION_UPDATE = 'REACTION_UPDATE';
+
 export * from "./interactions_typed";
 
 export function favourite(status) {
@@ -440,6 +454,139 @@ export function unpinFail(status, error) {
     status,
     error,
     skipLoading: true,
+  };
+}
+
+export function addReaction(statusId, name, url) {
+  return (dispatch, getState) => {
+    const status = getState().getIn(['statuses', statusId]);
+    let alreadyAdded = false;
+
+    if (status) {
+      const reaction = status.get('reactions').find(x => x.get('name') === name);
+      if (reaction && reaction.get('me')) {
+        alreadyAdded = true;
+      }
+    }
+
+    if (!alreadyAdded) {
+      dispatch(addReactionRequest(statusId, name, url));
+    }
+
+    api().post(`/api/v1/statuses/${statusId}/react/${encodeURIComponent(name)}`).then(response => {
+      dispatch(addReactionSuccess(statusId, name));
+      dispatch(importFetchedStatus(response.data));
+    }).catch(error => {
+      if (!alreadyAdded) {
+        dispatch(addReactionFail(statusId, name, error));
+      }
+    });
+  };
+}
+
+export function addReactionRequest(statusId, name, url) {
+  return {
+    type: REACTION_ADD_REQUEST,
+    id: statusId,
+    name,
+    url,
+    skipLoading: true,
+  };
+}
+
+export function addReactionSuccess(statusId, name) {
+  return {
+    type: REACTION_ADD_SUCCESS,
+    id: statusId,
+    name,
+    skipLoading: true,
+  };
+}
+
+export function addReactionFail(statusId, name, error) {
+  return {
+    type: REACTION_ADD_FAIL,
+    id: statusId,
+    name,
+    error,
+    skipLoading: true,
+  };
+}
+
+export function removeReaction(statusId, name) {
+  return (dispatch) => {
+    dispatch(removeReactionRequest(statusId, name));
+
+    api().post(`/api/v1/statuses/${statusId}/unreact/${encodeURIComponent(name)}`).then(response => {
+      dispatch(removeReactionSuccess(statusId, name));
+      dispatch(importFetchedStatus(response.data));
+    }).catch(error => {
+      dispatch(removeReactionFail(statusId, name, error));
+    });
+  };
+}
+
+export function removeReactionRequest(statusId, name) {
+  return {
+    type: REACTION_REMOVE_REQUEST,
+    id: statusId,
+    name,
+    skipLoading: true,
+  };
+}
+
+export function removeReactionSuccess(statusId, name) {
+  return {
+    type: REACTION_REMOVE_SUCCESS,
+    id: statusId,
+    name,
+    skipLoading: true,
+  };
+}
+
+export function removeReactionFail(statusId, name, error) {
+  return {
+    type: REACTION_REMOVE_FAIL,
+    id: statusId,
+    name,
+    error,
+    skipLoading: true,
+  };
+}
+
+export function fetchReaction(id) {
+  return (dispatch) => {
+    dispatch(fetchReactionRequest(id));
+
+    api().get(`/api/v1/statuses/${id}/reacted_by`).then(response => {
+      dispatch(importFetchedAccounts(response.data));
+      dispatch(fetchReactionSuccess(id, response.data));
+    }).catch(error => {
+      dispatch(fetchReactionFail(id, error));
+    });
+  };
+}
+
+export function fetchReactionRequest(id) {
+  return {
+    type: REACTION_FETCH_REQUEST,
+    id,
+  };
+}
+
+export function fetchReactionSuccess(id, accounts) {
+  return {
+    type: REACTION_FETCH_SUCCESS,
+    id,
+    accounts,
+  };
+}
+
+export function fetchReactionFail(id, error) {
+  return {
+    type: REACTION_FETCH_FAIL,
+    id,
+    error,
   };
 }
 

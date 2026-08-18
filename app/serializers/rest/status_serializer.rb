@@ -2,6 +2,7 @@
 
 class REST::StatusSerializer < ActiveModel::Serializer
   include FormattingHelper
+  include Sharlayan::REST::Status::Reactions
 
   # Please update `app/javascript/mastodon/api_types/statuses.ts` when making changes to the attributes
 
@@ -9,6 +10,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
              :sensitive, :spoiler_text, :visibility, :language,
              :uri, :url, :replies_count, :reblogs_count,
              :favourites_count, :quotes_count, :edited_at
+  attribute :reaction_acceptance
 
   attribute :favourited, if: :current_user?
   attribute :reblogged, if: :current_user?

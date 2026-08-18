@@ -83,6 +83,17 @@ export interface ApiMutedAccountJSON extends BaseApiAccountJSON {
 // objects, but we should refactor this in the future.
 export type ApiAccountJSON = ApiMutedAccountJSON;
 
+export type ApiStreamingReactionAccountJSON = Pick<
+  BaseApiAccountJSON,
+  | 'id'
+  | 'username'
+  | 'acct'
+  | 'display_name'
+  | 'avatar'
+  | 'avatar_static'
+  | 'emojis'
+>;
+
 // See app/serializers/rest/familiar_followers_serializer.rb
 export type ApiFamiliarFollowersJSON = {
   id: string;

@@ -12,6 +12,7 @@ export const allNotificationTypes: NotificationType[] = [
   'follow',
   'follow_request',
   'favourite',
+  'reaction',
   'reblog',
   'mention',
   'quote',
@@ -29,6 +30,7 @@ export const allNotificationTypes: NotificationType[] = [
 
 export type NotificationWithStatusType =
   | 'favourite'
+  | 'reaction'
   | 'reblog'
   | 'status'
   | 'mention'
@@ -68,14 +70,24 @@ export interface BaseNotificationGroupJSON {
   page_max_id?: string;
 }
 
+export interface ApiReactionEmojiJSON {
+  name: string;
+  url?: string;
+  static_url?: string;
+  is_sensitive?: boolean;
+  domain?: string;
+}
+
 interface NotificationGroupWithStatusJSON extends BaseNotificationGroupJSON {
   type: NotificationWithStatusType;
   status_id: string | null;
+  reaction?: ApiReactionEmojiJSON;
 }
 
 interface NotificationWithStatusJSON extends BaseNotificationJSON {
   type: NotificationWithStatusType;
   status: ApiStatusJSON | null;
+  reaction?: ApiReactionEmojiJSON;
 }
 
 interface ReportNotificationGroupJSON extends BaseNotificationGroupJSON {

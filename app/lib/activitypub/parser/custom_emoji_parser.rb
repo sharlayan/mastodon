@@ -24,4 +24,8 @@ class ActivityPub::Parser::CustomEmojiParser
   rescue ArgumentError
     nil
   end
+
+  def sensitive
+    @json['isSensitive'] if @json.key?('isSensitive')
+  end
 end

@@ -20,6 +20,8 @@ class UserSettings
   setting :hide_followers_count, default: false
   setting :default_quote_policy, default: 'public', in: %w(public followers nobody)
   setting :email_subscriptions, default: false
+  setting :visible_reactions, default: 6
+  setting :default_reaction_acceptance, default: nil, in: Sharlayan::Status::Reactions::REACTION_ACCEPTANCES
 
   setting_inverse_alias :indexable, :noindex
   setting_inverse_alias :show_followers_count, :hide_followers_count
@@ -51,6 +53,7 @@ class UserSettings
     setting :follow, default: true
     setting :reblog, default: false
     setting :favourite, default: false
+    setting :reaction, default: false
     setting :mention, default: true
     setting :quote, default: true
     setting :follow_request, default: true

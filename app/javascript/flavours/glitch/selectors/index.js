@@ -3,6 +3,8 @@ import { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
 import { me } from '../initial_state';
 
+import { applySharlayanStatusReactions, sharlayanStatusInputSelectors } from '../sharlayan/selectors/status_reactions';
+
 import { getFilters } from './filters';
 
 export { makeGetAccount } from "./accounts";
@@ -15,6 +17,7 @@ const getStatusInputSelectors = [
   (state, { id }) => state.getIn(['accounts', state.getIn(['statuses', state.getIn(['statuses', id, 'reblog']), 'account'])]),
   getFilters,
   (_, { contextType }) => ['detailed', 'bookmarks', 'favourites', 'search'].includes(contextType),
+  ...sharlayanStatusInputSelectors,
 ];
 
 function getStatusResultFunction(
@@ -23,7 +26,8 @@ function getStatusResultFunction(
   accountBase,
   accountReblog,
   filters,
-  warnInsteadOfHide
+  warnInsteadOfHide,
+  ...sharlayanReactionArgs
 ) {
   if (!statusBase) {
     return {
@@ -78,6 +82,8 @@ function getStatusResultFunction(
       map.set('account', accountBase);
       map.set('matched_filters', filtered ? filtered.toJS() : false);
       map.set('matched_media_filters', mediaFiltered ? mediaFiltered.toJS() : false);
+
+      applySharlayanStatusReactions(map, statusBase, statusReblog, ...sharlayanReactionArgs);
     }),
     loadingState: statusBase.get('isLoading') ? 'loading' : 'complete'
   };

@@ -1,6 +1,7 @@
 // @ts-check
 
 import { getLocale } from '../locales';
+import { handleSharlayanStreamingEvent } from '../sharlayan/compose/streaming';
 import { connectStream } from '../stream';
 
 import {
@@ -97,6 +98,8 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
       },
 
       onReceive(data) {
+        if (handleSharlayanStreamingEvent({ data, dispatch })) return;
+
         switch (data.event) {
         case 'update':
           // @ts-expect-error

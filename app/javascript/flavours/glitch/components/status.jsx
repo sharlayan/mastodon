@@ -19,7 +19,7 @@ import Card from '../features/status/components/card';
 import Bundle from '../features/ui/components/bundle';
 import { MediaGallery, Video, Audio } from '../features/ui/util/async-components';
 import { SensitiveMediaContext } from '../features/ui/util/sensitive_media_context';
-import { displayMedia } from '../initial_state';
+import { displayMedia, me, visibleReactions, reactionsEnabled } from '../initial_state';
 
 import { injectIntl } from './intl';
 import AttachmentList from './attachment_list';
@@ -27,6 +27,7 @@ import { StatusHeader } from './status/header'
 import { getHashtagBarForStatus } from './hashtag_bar';
 import { MentionsPlaceholder } from './mentions_placeholder';
 import StatusActionBar from './status_action_bar';
+import { StatusReactions } from './status_reactions';
 import StatusContent from './status_content';
 import StatusIcons from './status_icons';
 import StatusPrepend from './status_prepend';
@@ -94,6 +95,8 @@ class Status extends ImmutablePureComponent {
     onClick: PropTypes.func,
     onReply: PropTypes.func,
     onFavourite: PropTypes.func,
+    onReactionAdd: PropTypes.func,
+    onReactionRemove: PropTypes.func,
     onReblog: PropTypes.func,
     onQuote: PropTypes.func,
     onBookmark: PropTypes.func,
@@ -779,6 +782,17 @@ class Status extends ImmutablePureComponent {
 
             {/* This is a glitch-soc addition to have a placeholder */}
             {!expanded && <MentionsPlaceholder status={status} />}
+
+            {(showActions && !isQuotedPost) &&
+              <StatusReactions
+                statusId={status.get('id')}
+                reactions={status.get('reactions')}
+                numVisible={visibleReactions}
+                addReaction={this.props.onReactionAdd}
+                removeReaction={this.props.onReactionRemove}
+                canReact={!!me && reactionsEnabled}
+              />
+            }
 
             {(showActions && !isQuotedPost) &&
               <StatusActionBar

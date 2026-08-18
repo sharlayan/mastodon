@@ -3,6 +3,8 @@
 class InitialStateSerializer < ActiveModel::Serializer
   include RoutingHelper
 
+  prepend Sharlayan::InitialStateSerializerExtensions
+
   attributes :meta, :compose, :accounts,
              :media_attachments, :settings,
              :max_feed_hashtags, :poll_limits,

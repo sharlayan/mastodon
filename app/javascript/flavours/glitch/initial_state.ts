@@ -5,6 +5,10 @@ type InitialStateLanguage = [code: string, name: string, localName: string];
 
 interface InitialStateMeta {
   access_token: string;
+  visible_reactions?: number;
+  reactions_enabled?: boolean;
+  reaction_local_emoji_only?: boolean;
+  reaction_custom_emoji_size?: boolean;
   advanced_layout?: boolean;
   auto_play_gif: boolean;
   activity_api_enabled: boolean;
@@ -95,6 +99,7 @@ export interface InitialState {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   local_settings: any;
   max_feed_hashtags: number;
+  max_reactions?: number;
   poll_limits: PollLimits;
 }
 
@@ -174,6 +179,13 @@ export const statusPageUrl = getMeta('status_page_url');
 export const sso_redirect = getMeta('sso_redirect');
 export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const wrapstodon = getMeta('wrapstodon');
+export const maxReactions = initialState?.max_reactions ?? 1;
+export const visibleReactions = getMeta('visible_reactions') ?? 6;
+export const reactionsEnabled = getMeta('reactions_enabled') !== false;
+export const reactionLocalEmojiOnly =
+  getMeta('reaction_local_emoji_only') === true;
+export const reactionCustomEmojiSize =
+  getMeta('reaction_custom_emoji_size') === true;
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

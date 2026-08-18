@@ -1,0 +1,6 @@
+---
+ko:
+  reactions:
+    errors:
+      limit_reached: 리액션 갯수 제한에 도달했습니다
+      unrecognized_emoji: 인식 되지 않은 에모지입니다

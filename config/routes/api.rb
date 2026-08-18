@@ -391,3 +391,5 @@ namespace :api, format: false do
     resources :push_subscriptions, only: [:create, :destroy, :update]
   end
 end
+
+draw(:sharlayan_api)

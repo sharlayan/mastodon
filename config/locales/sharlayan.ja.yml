@@ -1,0 +1,6 @@
+---
+ja:
+  reactions:
+    errors:
+      limit_reached: リアクションの種類が上限に達しました
+      unrecognized_emoji: は絵文字として認識されていません

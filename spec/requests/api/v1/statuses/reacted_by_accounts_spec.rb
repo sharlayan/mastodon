@@ -1,0 +1,106 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe 'API V1 Statuses Reacted by Accounts' do
+  let(:user) { Fabricate(:user) }
+  let(:scopes) { 'read:accounts' }
+  let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: scopes) }
+  let(:headers) { { 'Authorization' => "Bearer #{token.token}" } }
+  let(:alice) { Fabricate(:account) }
+  let(:bob) { Fabricate(:account) }
+
+  context 'with an oauth token' do
+    subject do
+      get "/api/v1/statuses/#{status.id}/reacted_by", headers: headers, params: { limit: 2 }
+    end
+
+    describe 'GET /api/v1/statuses/:status_id/reacted_by' do
+      let(:status) { Fabricate(:status, account: user.account) }
+
+      before do
+        Fabricate(:status_reaction, account: alice, status: status, name: '👍', custom_emoji: nil)
+        Fabricate(:status_reaction, account: bob, status: status, name: '❤', custom_emoji: nil)
+      end
+
+      it 'returns reactions and accounts who reacted to the status' do
+        subject
+
+        expect(response)
+          .to have_http_status(200)
+          .and include_pagination_headers(
+            prev: api_v1_status_reacted_by_index_url(limit: 2, since_id: StatusReaction.last.id),
+            next: api_v1_status_reacted_by_index_url(limit: 2, max_id: StatusReaction.first.id)
+          )
+        expect(response.content_type)
+          .to start_with('application/json')
+
+        expect(response.parsed_body)
+          .to contain_exactly(
+            include(name: '👍', account: include(id: alice.id.to_s)),
+            include(name: '❤', account: include(id: bob.id.to_s))
+          )
+      end
+
+      it 'does not return blocked users' do
+        user.account.block!(bob)
+
+        subject
+
+        expect(response.parsed_body)
+          .to contain_exactly(
+            include(name: '👍', account: include(id: alice.id.to_s))
+          )
+      end
+
+      it 'does not return muted users' do
+        user.account.mute!(bob)
+
+        subject
+
+        expect(response.parsed_body)
+          .to contain_exactly(
+            include(name: '👍', account: include(id: alice.id.to_s))
+          )
+      end
+    end
+  end
+
+  context 'without an oauth token' do
+    subject do
+      get "/api/v1/statuses/#{status.id}/reacted_by", params: { limit: 2 }
+    end
+
+    context 'with a private status' do
+      let(:status) { Fabricate(:status, account: user.account, visibility: :private) }
+
+      before do
+        Fabricate(:status_reaction, status: status, custom_emoji: nil)
+      end
+
+      it 'returns http unauthorized' do
+        subject
+
+        expect(response).to have_http_status(404)
+        expect(response.content_type)
+          .to start_with('application/json')
+      end
+    end
+
+    context 'with a public status' do
+      let(:status) { Fabricate(:status, account: user.account, visibility: :public) }
+
+      before do
+        Fabricate(:status_reaction, status: status, custom_emoji: nil)
+      end
+
+      it 'returns http success' do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(response.content_type)
+          .to start_with('application/json')
+      end
+    end
+  end
+end

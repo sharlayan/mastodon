@@ -28,6 +28,8 @@ class ActivityPub::Activity
     private
 
     def klass_for(json)
+      json['type'] = 'EmojiReact' if json['type'].eql?('Like') && json['content'].present?
+
       case json['type']
       when 'Create'
         ActivityPub::Activity::Create
@@ -39,6 +41,8 @@ class ActivityPub::Activity
         ActivityPub::Activity::Follow
       when 'Like'
         ActivityPub::Activity::Like
+      when 'EmojiReact'
+        ActivityPub::Activity::EmojiReact
       when 'Block'
         ActivityPub::Activity::Block
       when 'Update'
@@ -188,5 +192,32 @@ class ActivityPub::Activity
   def reject_payload!
     Rails.logger.info("Rejected #{@json['type']} activity #{@json['id']} from #{@account.uri}#{@options[:relayed_through_actor] && "via #{@options[:relayed_through_actor].uri}"}")
     nil
+  end
+
+  def process_emoji_tags(name, tags)
+    tag = as_array(tags).find { |item| item['type'] == 'Emoji' }
+    return if tag.nil?
+
+    custom_emoji_parser = ActivityPub::Parser::CustomEmojiParser.new(tag)
+    return if custom_emoji_parser.shortcode.blank? || custom_emoji_parser.image_remote_url.blank? || !name.eql?(custom_emoji_parser.shortcode)
+
+    emoji = CustomEmoji.find_by(shortcode: custom_emoji_parser.shortcode, domain: @account.domain)
+    return emoji unless emoji.nil? ||
+                        custom_emoji_parser.image_remote_url != emoji.image_remote_url ||
+                        (!custom_emoji_parser.sensitive.nil? && custom_emoji_parser.sensitive != emoji.is_sensitive?) ||
+                        (custom_emoji_parser.updated_at && custom_emoji_parser.updated_at >= emoji.updated_at)
+
+    begin
+      emoji ||= CustomEmoji.new(domain: @account.domain,
+                                shortcode: custom_emoji_parser.shortcode,
+                                uri: custom_emoji_parser.uri)
+      emoji.image_remote_url = custom_emoji_parser.image_remote_url
+      emoji.is_sensitive = custom_emoji_parser.sensitive unless custom_emoji_parser.sensitive.nil?
+      emoji.save
+    rescue Seahorse::Client::NetworkingError => e
+      Rails.logger.warn "Error fetching emoji: #{e}"
+      return
+    end
+    emoji
   end
 end

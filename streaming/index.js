@@ -17,6 +17,7 @@ import { AuthenticationError, RequestError, extractStatusAndMessage as extractEr
 import { logger, httpLogger, initializeLogLevel, attachWebsocketHttpLogger, createWebsocketLogger } from './logging.js';
 import { setupMetrics } from './metrics.js';
 import * as Redis from './redis.js';
+import { filterReactionPayload } from './reaction_account_filter.js';
 import { isTruthy, normalizeHashtag, firstParam } from './utils.js';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -696,6 +697,13 @@ const startServer = async () => {
       // Only send local-only statuses to logged-in users
       if ((event === 'update' || event === 'status.update') && payload.local_only && !(req.accountId && allowLocalOnly)) {
         log.debug(`Message ${payload.id} filtered because it was local-only`);
+        return;
+      }
+
+      if (event === 'status.reaction' && req.accountId) {
+        filterReactionPayload(pgPool, req.accountId, payload)
+          .then((filteredPayload) => transmit(event, filteredPayload))
+          .catch((err) => log.error(err));
         return;
       }
 

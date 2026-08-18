@@ -288,6 +288,11 @@ class EmojiPickerDropdown extends PureComponent {
     onSkinTone: PropTypes.func.isRequired,
     skinTone: PropTypes.number.isRequired,
     disabled: PropTypes.bool,
+    inverted: PropTypes.bool,
+  };
+
+  static defaultProps = {
+    inverted: true,
   };
 
   state = {
@@ -335,7 +340,7 @@ class EmojiPickerDropdown extends PureComponent {
   };
 
   render() {
-    const { intl, onPickEmoji, onSkinTone, skinTone, frequentlyUsedEmojis, disabled } = this.props;
+    const { intl, onPickEmoji, onSkinTone, skinTone, frequentlyUsedEmojis, disabled, inverted } = this.props;
     const title = intl.formatMessage(messages.emoji);
     const { active, loading, target } = this.state;
 
@@ -349,7 +354,7 @@ class EmojiPickerDropdown extends PureComponent {
           onClick={this.onToggle}
           disabled={disabled}
           id="emoji"
-          inverted
+          inverted={inverted}
         />
 
         <Popover

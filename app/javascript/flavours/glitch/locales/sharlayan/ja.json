@@ -1,0 +1,8 @@
+{
+  "notification.reaction": "{name}さんがあなたの投稿にリアクションしました",
+  "notification.reaction_with_emoji": "{name}さんがあなたの投稿に{emoji}でリアクションしました",
+  "notifications.column_settings.reaction": "リアクション:",
+  "notifications.filter.reactions": "リアクション",
+  "reactions.unknown_emoji": "不明",
+  "status.react": "リアクション"
+}

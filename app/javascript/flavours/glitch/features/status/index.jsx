@@ -32,6 +32,8 @@ import {
 } from '../../actions/compose';
 import {
   toggleFavourite,
+  addReaction,
+  removeReaction,
   bookmark,
   unbookmark,
   toggleReblog,
@@ -458,6 +460,19 @@ class Status extends ImmutablePureComponent {
     this.handleFavouriteClick(this.props.status);
   };
 
+  handleReactionAdd = (statusId, name, url) => {
+    const { dispatch } = this.props;
+    const { signedIn } = this.props.identity;
+
+    if (signedIn) {
+      dispatch(addReaction(statusId, name, url));
+    }
+  };
+
+  handleReactionRemove = (statusId, name) => {
+    this.props.dispatch(removeReaction(statusId, name));
+  };
+
   handleHotkeyBoost = () => {
     this.handleReblogClick(this.props.status);
   };
@@ -651,6 +666,8 @@ class Status extends ImmutablePureComponent {
                   showMedia={this.state.showMedia}
                   onToggleMediaVisibility={this.handleToggleMediaVisibility}
                   pictureInPicture={pictureInPicture}
+                  onReactionAdd={this.handleReactionAdd}
+                  onReactionRemove={this.handleReactionRemove}
                   ancestors={this.props.ancestorsIds.length}
                   multiColumn={multiColumn}
                 />
@@ -660,6 +677,7 @@ class Status extends ImmutablePureComponent {
                   status={status}
                   onReply={this.handleReplyClick}
                   onFavourite={this.handleFavouriteClick}
+                  onReactionAdd={this.handleReactionAdd}
                   onReblog={this.handleReblogClick}
                   onBookmark={this.handleBookmarkClick}
                   onDelete={this.handleDeleteClick}

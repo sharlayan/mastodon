@@ -46,6 +46,7 @@ class Status < ApplicationRecord
   include Status::ThreadingConcern
   include Status::Visibility
   include Status::InteractionPolicyConcern
+  include Sharlayan::Status::Reactions
 
   CACHEABLE_ASSOCIATIONS = [
     :application,

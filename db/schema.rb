@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_12_154114) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_143704) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -452,6 +452,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_154114) do
     t.string "image_remote_url"
     t.integer "image_storage_schema_version"
     t.datetime "image_updated_at", precision: nil
+    t.boolean "is_sensitive", default: false, null: false
     t.string "shortcode", default: "", null: false
     t.datetime "updated_at", precision: nil, null: false
     t.string "uri"
@@ -1217,10 +1218,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_154114) do
     t.index ["status_id"], name: "index_status_pins_on_status_id"
   end
 
+  create_table "status_reactions", id: :bigint, default: -> { "timestamp_id('status_reactions'::text)" }, force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "custom_emoji_id"
+    t.string "name", default: "", null: false
+    t.bigint "status_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "status_id", "name"], name: "index_status_reactions_on_account_id_and_status_id", unique: true
+    t.index ["account_id"], name: "index_status_reactions_on_account_id"
+    t.index ["custom_emoji_id"], name: "index_status_reactions_on_custom_emoji_id"
+    t.index ["status_id"], name: "index_status_reactions_on_status_id"
+  end
+
   create_table "status_stats", force: :cascade do |t|
     t.datetime "created_at", precision: nil, null: false
     t.bigint "favourites_count", default: 0, null: false
     t.bigint "quotes_count", default: 0, null: false
+    t.bigint "reactions_count", default: 0, null: false
     t.bigint "reblogs_count", default: 0, null: false
     t.bigint "replies_count", default: 0, null: false
     t.bigint "status_id", null: false
@@ -1258,6 +1273,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_154114) do
     t.bigint "ordered_media_attachment_ids", array: true
     t.bigint "poll_id"
     t.integer "quote_approval_policy", default: 0, null: false
+    t.string "reaction_acceptance"
     t.bigint "reblog_of_id"
     t.boolean "reply", default: false, null: false
     t.boolean "sensitive", default: false, null: false
@@ -1615,6 +1631,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_12_154114) do
   add_foreign_key "status_edits", "statuses", on_delete: :cascade
   add_foreign_key "status_pins", "accounts", name: "fk_d4cb435b62", on_delete: :cascade
   add_foreign_key "status_pins", "statuses", on_delete: :cascade
+  add_foreign_key "status_reactions", "accounts", on_delete: :cascade
+  add_foreign_key "status_reactions", "custom_emojis", on_delete: :cascade
+  add_foreign_key "status_reactions", "statuses", on_delete: :cascade
   add_foreign_key "status_stats", "statuses", on_delete: :cascade
   add_foreign_key "status_trends", "accounts", on_delete: :cascade
   add_foreign_key "status_trends", "statuses", on_delete: :cascade

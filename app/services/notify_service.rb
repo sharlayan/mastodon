@@ -113,6 +113,7 @@ class NotifyService < BaseService
       blocked ||= domain_blocking?
       blocked ||= @recipient.blocking?(@sender)
       blocked ||= @recipient.muting_notifications?(@sender)
+      blocked ||= @notification.type == :reaction && @recipient.muting?(@sender)
       blocked ||= conversation_muted?
       blocked ||= blocked_mention? if message?
 

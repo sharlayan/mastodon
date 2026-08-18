@@ -11,6 +11,8 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
       undo_follow
     when 'Like'
       undo_like
+    when 'EmojiReact'
+      undo_emoji_react
     when 'Block'
       undo_block
     when nil
@@ -103,7 +105,14 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
   def undo_like
     status = status_from_uri(target_uri)
 
-    return if status.nil? || !status.account.local?
+    return if status.nil?
+
+    if @object['content'].present? || @object['_misskey_reaction'].present?
+      undo_emoji_react
+      return
+    end
+
+    return unless status.account.local?
 
     if @account.favourited?(status)
       favourite = status.favourites.where(account: @account).first
@@ -111,6 +120,33 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
     else
       delete_later!(object_uri)
     end
+  end
+
+  def undo_emoji_react
+    name = @object['content'] || @object['_misskey_reaction']
+    return if name.nil?
+
+    status = status_from_uri(target_uri)
+
+    return if status.nil?
+
+    custom_emoji = nil
+
+    if /^:.*:$/.match?(name)
+      name.delete! ':'
+      custom_emoji = process_emoji_tags(name, @object['tag'])
+
+      return if custom_emoji.nil?
+    end
+
+    if @account.reacted?(status, name, custom_emoji)
+      reaction = status.status_reactions.where(account: @account, name: name, custom_emoji: custom_emoji).first
+      reaction&.destroy
+    else
+      delete_later!(object_uri)
+    end
+
+    BroadcastStatusUpdateWorker.perform_async(status.id)
   end
 
   def undo_block

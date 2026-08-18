@@ -1,6 +1,7 @@
 import type {
   ApiAccountRelationshipSeveranceEventJSON,
   ApiAccountWarningJSON,
+  ApiReactionEmojiJSON,
   ApiAnnualReportEventJSON,
   BaseNotificationGroupJSON,
   ApiNotificationGroupJSON,
@@ -39,6 +40,9 @@ interface BaseNotification<
 
 export type NotificationGroupFavourite =
   BaseNotificationWithStatus<'favourite'>;
+export interface NotificationGroupReaction extends BaseNotificationWithStatus<'reaction'> {
+  reaction?: ApiReactionEmojiJSON;
+}
 export type NotificationGroupReblog = BaseNotificationWithStatus<'reblog'>;
 export type NotificationGroupStatus = BaseNotificationWithStatus<'status'>;
 export type NotificationGroupMention = BaseNotificationWithStatus<'mention'>;
@@ -100,6 +104,7 @@ export interface NotificationGroupCollectionUpdate extends BaseNotification<'col
 
 export type NotificationGroup =
   | NotificationGroupFavourite
+  | NotificationGroupReaction
   | NotificationGroupReblog
   | NotificationGroupStatus
   | NotificationGroupMention
@@ -154,6 +159,7 @@ export function createNotificationGroupFromJSON(
 
   switch (group.type) {
     case 'favourite':
+    case 'reaction':
     case 'reblog':
     case 'status':
     case 'mention':
@@ -228,6 +234,7 @@ export function createNotificationGroupFromNotificationJSON(
 
   switch (notification.type) {
     case 'favourite':
+    case 'reaction':
     case 'reblog':
     case 'status':
     case 'mention':
@@ -239,6 +246,7 @@ export function createNotificationGroupFromNotificationJSON(
         ...group,
         type: notification.type,
         statusId: notification.status?.id,
+        reaction: notification.reaction,
       };
     case 'admin.report':
       return {

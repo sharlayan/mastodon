@@ -18,6 +18,8 @@ import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity
 import { PERMISSION_MANAGE_USERS, PERMISSION_MANAGE_FEDERATION } from 'flavours/glitch/permissions';
 import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend_links';
 
+import { SharlayanStatusReactionButton } from 'flavours/glitch/sharlayan/status_action_bar';
+import { reactionsEnabled } from 'flavours/glitch/initial_state';
 import { IconButton } from '../../../components/icon_button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { me, quickBoosting } from '../../../initial_state';
@@ -72,6 +74,7 @@ class ActionBar extends PureComponent {
     onReply: PropTypes.func.isRequired,
     onReblog: PropTypes.func.isRequired,
     onFavourite: PropTypes.func.isRequired,
+    onReactionAdd: PropTypes.func,
     onBookmark: PropTypes.func.isRequired,
     onDelete: PropTypes.func.isRequired,
     onRevokeQuote: PropTypes.func,
@@ -283,6 +286,7 @@ class ActionBar extends PureComponent {
           <BoostButton statusId={status.get('id')} />
         </div>
         <div className='detailed-status__button'><IconButton className='star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StarIcon : StarBorderIcon} onClick={this.handleFavouriteClick} /></div>
+        <SharlayanStatusReactionButton enabled={reactionsEnabled} status={status} canReact={signedIn} onReactionAdd={this.props.onReactionAdd} wrapperClassName='detailed-status__button' dropdownClassName='detailed-status__action-bar-dropdown' inverted />
         <div className='detailed-status__button'><IconButton className='bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? BookmarkIcon : BookmarkBorderIcon} onClick={this.handleBookmarkClick} /></div>
 
         <div className='detailed-status__action-bar-dropdown'>

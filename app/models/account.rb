@@ -107,6 +107,8 @@ class Account < ApplicationRecord
   include Account::StatusesSearch
   include Account::Suspensions
   include Account::AttributionDomains
+  include Sharlayan::Account::Associations
+  include Sharlayan::Account::Interactions
   include DomainMaterializable
   include DomainNormalizable
   include Paginable

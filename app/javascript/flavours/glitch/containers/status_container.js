@@ -13,6 +13,8 @@ import {
 import {
   toggleReblog,
   toggleFavourite,
+  addReaction,
+  removeReaction,
   bookmark,
   unbookmark,
   pin,
@@ -101,6 +103,14 @@ const mapDispatchToProps = (dispatch, { contextType }) => ({
 
   onFavourite (status, e) {
     dispatch(toggleFavourite(status.get('id'), e.shiftKey));
+  },
+
+  onReactionAdd (statusId, name, url) {
+    dispatch(addReaction(statusId, name, url));
+  },
+
+  onReactionRemove (statusId, name) {
+    dispatch(removeReaction(statusId, name));
   },
 
   onPin (status) {

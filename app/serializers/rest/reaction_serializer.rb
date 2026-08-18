@@ -1,31 +1,22 @@
 # frozen_string_literal: true
 
 class REST::ReactionSerializer < ActiveModel::Serializer
-  include RoutingHelper
-
-  attributes :name, :count
+  include Sharlayan::REST::Reaction::EmojiAttributes
 
   attribute :me, if: :current_user?
-  attribute :url, if: :custom_emoji?
-  attribute :static_url, if: :custom_emoji?
+  attribute :local_counterpart, if: :custom_emoji?
 
-  def count
-    object.respond_to?(:count) ? object.count : 0
-  end
+  has_many :users, serializer: REST::AccountSerializer
 
   def current_user?
-    !current_user.nil?
+    respond_to?(:current_user) && !current_user.nil?
   end
 
-  def custom_emoji?
-    object.custom_emoji.present?
+  def local_counterpart
+    object.custom_emoji.local_counterpart.present?
   end
 
-  def url
-    full_asset_url(object.custom_emoji.image.url)
-  end
-
-  def static_url
-    full_asset_url(object.custom_emoji.image.url(:static))
+  def users
+    object.respond_to?(:users) ? object.users : []
   end
 end

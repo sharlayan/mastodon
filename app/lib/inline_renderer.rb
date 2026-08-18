@@ -19,7 +19,7 @@ class InlineRenderer
     when :announcement
       serializer = REST::AnnouncementSerializer
     when :reaction
-      serializer = REST::ReactionSerializer
+      serializer = REST::AnnouncementReactionSerializer
     else
       return
     end

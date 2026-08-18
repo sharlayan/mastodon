@@ -22,6 +22,7 @@ class Notification < ApplicationRecord
   include Notification::Groups
   include Paginable
   include Redisable
+  prepend Sharlayan::NotificationExtensions
 
   LEGACY_TYPE_CLASS_MAP = {
     'Mention' => :mention,
@@ -31,7 +32,7 @@ class Notification < ApplicationRecord
     'Favourite' => :favourite,
     'Poll' => :poll,
     'Quote' => :quote,
-  }.freeze
+  }.merge(Sharlayan::NotificationExtensions::LEGACY_TYPE_CLASS_MAP).freeze
 
   # Please update app/javascript/mastodon/api_types/notifications.ts if you change this
   PROPERTIES = {
@@ -103,7 +104,7 @@ class Notification < ApplicationRecord
       filterable: false,
       baseline: false,
     }.freeze,
-  }.freeze
+  }.merge(Sharlayan::NotificationExtensions::PROPERTIES).freeze
 
   TYPES = PROPERTIES.keys.freeze
 
@@ -117,7 +118,7 @@ class Notification < ApplicationRecord
     update: :status,
     quoted_update: :status,
     'admin.report': [report: :target_account],
-  }.freeze
+  }.merge(Sharlayan::NotificationExtensions::TARGET_STATUS_INCLUDES_BY_TYPE).freeze
 
   belongs_to :account, optional: true
   belongs_to :from_account, class_name: 'Account', optional: true
@@ -216,6 +217,8 @@ class Notification < ApplicationRecord
           notification.status.reblog = cached_status
         when :favourite
           notification.favourite.status = cached_status
+        when :reaction
+          notification.reaction.status = cached_status
         when :mention
           notification.mention.status = cached_status
         when :poll

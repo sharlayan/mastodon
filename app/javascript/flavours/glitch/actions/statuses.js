@@ -6,7 +6,7 @@ import api from '../api';
 
 import { showAlert } from './alerts';
 import { ensureComposeIsVisible, setComposeToStatus } from './compose';
-import { importFetchedStatus, importFetchedAccount } from './importer';
+import { importFetchedStatus, importFetchedAccount, importFetchedStatusReactions } from './importer';
 import { fetchContext } from './statuses_typed';
 import { deleteFromTimelines } from './timelines';
 
@@ -208,7 +208,15 @@ export function deleteStatusFail(id, error) {
 }
 
 export const updateStatus = (status, { bogusQuotePolicy }) => dispatch =>
-  dispatch(importFetchedStatus(status, { bogusQuotePolicy }));
+  dispatch(importFetchedStatus(status, { bogusQuotePolicy, preserveReactions: true }));
+
+export const updateStatusReaction = status => (dispatch, getState) => {
+  if (!getState().getIn(['statuses', status.id])) {
+    return;
+  }
+
+  dispatch(importFetchedStatusReactions(status));
+};
 
 export function muteStatus(id) {
   return (dispatch) => {

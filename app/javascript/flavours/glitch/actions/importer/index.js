@@ -8,12 +8,16 @@ import { fetchAccountsForCollectionPreview } from '@/flavours/glitch/reducers/sl
 
 export const STATUS_IMPORT   = 'STATUS_IMPORT';
 export const STATUSES_IMPORT = 'STATUSES_IMPORT';
+export const STATUS_REACTIONS_IMPORT = 'STATUS_REACTIONS_IMPORT';
 export const FILTERS_IMPORT  = 'FILTERS_IMPORT';
 
 function pushUnique(array, object) {
-  if (array.every(element => element.id !== object.id)) {
-    array.push(object);
+  if (array.some(element => element.id === object.id)) {
+    return false;
   }
+
+  array.push(object);
+  return true;
 }
 
 export function importStatus(status) {
@@ -22,6 +26,10 @@ export function importStatus(status) {
 
 export function importStatuses(statuses) {
   return { type: STATUSES_IMPORT, statuses };
+}
+
+export function importStatusReactions(status) {
+  return { type: STATUS_REACTIONS_IMPORT, status };
 }
 
 export function importFilters(filters) {
@@ -36,7 +44,9 @@ export function importFetchedAccounts(accounts) {
   const normalAccounts = [];
 
   function processAccount(account) {
-    pushUnique(normalAccounts, account);
+    if (!account || !pushUnique(normalAccounts, account)) {
+      return;
+    }
 
     if (account.moved) {
       processAccount(account.moved);
@@ -56,6 +66,10 @@ export function importFetchedStatus(status, options = {}) {
   return importFetchedStatuses([status], options);
 }
 
+export function importFetchedStatusReactions(status) {
+  return importStatusReactions(status);
+}
+
 export function importFetchedStatuses(statuses, options = {}) {
   return (dispatch, getState) => {
     const accounts = [];
@@ -65,6 +79,10 @@ export function importFetchedStatuses(statuses, options = {}) {
     const collections = [];
 
     function processStatus(status) {
+      if (!status || normalStatuses.some(normalStatus => normalStatus.id === status.id)) {
+        return;
+      }
+
       pushUnique(normalStatuses, normalizeStatus(status, getState().getIn(['statuses', status.id]), { ...options, settings: getState().get('local_settings') }));
       pushUnique(accounts, status.account);
 
@@ -82,6 +100,13 @@ export function importFetchedStatuses(statuses, options = {}) {
 
       if (status.poll?.id) {
         pushUnique(polls, createPollFromServerJSON(status.poll, getState().polls[status.poll.id]));
+      }
+
+      if (status.reactions && Array.isArray(status.reactions)) {
+        status.reactions
+          .flatMap(reaction => reaction.users || [])
+          .filter(user => user)
+          .forEach(user => pushUnique(accounts, user));
       }
 
       if (status.tagged_collections.length) {

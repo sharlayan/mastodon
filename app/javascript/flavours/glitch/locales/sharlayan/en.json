@@ -1,0 +1,8 @@
+{
+  "notification.reaction": "{name} reacted to your post",
+  "notification.reaction_with_emoji": "{name} reacted with {emoji} to your post",
+  "notifications.column_settings.reaction": "Reactions:",
+  "notifications.filter.reactions": "Reactions",
+  "reactions.unknown_emoji": "Unknown",
+  "status.react": "React"
+}

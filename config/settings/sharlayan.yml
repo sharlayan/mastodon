@@ -1,0 +1,4 @@
+defaults:
+  visible_reactions: 6
+  reaction_local_emoji_only: false
+  reactions_enabled: true
