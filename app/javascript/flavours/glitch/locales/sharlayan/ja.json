@@ -641,6 +641,7 @@
   "status.add_to_clip": "クリップに追加",
   "status.mfm_fold_expand": "MFM投稿を展開して表示",
   "status.react": "リアクション",
+  "status.reactions": "リアクション",
   "status.remove_from_antenna": "このアンテナから削除",
   "status.remove_from_antenna_confirm": "「{name}」からこの投稿を削除しますか？",
   "status.remove_from_antenna_confirm_fallback": "このアンテナからこの投稿を削除しますか？"

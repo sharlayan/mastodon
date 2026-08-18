@@ -23,11 +23,17 @@ class Api::V1::Statuses::ReactedByAccountsController < Api::V1::Statuses::BaseCo
   end
 
   def default_reactions
-    StatusReaction
+    scope = StatusReaction
       .where(status_id: @status.id)
       .joins(:account)
       .merge(Account.without_suspended)
       .includes(:custom_emoji, account: [:account_stat, :user])
+
+    return scope if params[:name].blank?
+
+    name, domain = params[:name].to_s.split('@', 2)
+    custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
+    scope.where(name: name, custom_emoji: custom_emoji)
   end
 
   def insert_pagination_headers
