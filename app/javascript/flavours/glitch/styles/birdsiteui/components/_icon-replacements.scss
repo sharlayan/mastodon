@@ -234,18 +234,18 @@ html .icon-button .icon-repeat {
   // Preferences icon
   .column-link .icon-cog {
     --size-icon: 22px;
-    @include icons.icon-swap(sliders, $color: var(--color-light-text));
+    @include icons.icon-swap(settings, $color: var(--color-light-text));
   }
 
   // Settings icon
   .column-header__button .icon-sliders {
     --size-icon: 20px;
-    @include icons.icon-swap(sliders, $color: var(--color-dim));
+    @include icons.icon-swap(column-settings, $color: var(--color-dim));
   }
 
   .column-header__button.active .icon-sliders {
     // Use contrast icon
-    @include icons.icon-swap(sliders, $color: var(--color-light-text));
+    @include icons.icon-swap(column-settings, $color: var(--color-light-text));
 
     // Disable rotate
     transform: none;
