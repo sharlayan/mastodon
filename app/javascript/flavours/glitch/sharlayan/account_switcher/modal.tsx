@@ -449,13 +449,13 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
         <h3>{intl.formatMessage(messages.title)}</h3>
         <div className='account-switcher-modal__header-actions'>
           <IconButton
-            icon=''
+            icon='settings'
             iconComponent={SettingsIcon}
             onClick={handleToggleSettings}
             title={intl.formatMessage(messages.settings)}
           />
           <IconButton
-            icon=''
+            icon='close'
             iconComponent={CloseIcon}
             onClick={onClose}
             title={intl.formatMessage(messages.close)}
