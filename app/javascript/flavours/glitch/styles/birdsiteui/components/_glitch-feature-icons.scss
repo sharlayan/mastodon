@@ -248,16 +248,8 @@
     @include icons.icon-swap(link, $color: currentcolor);
   }
 
-  .account-switcher-modal__header-actions
-    .icon-button:first-child
-    .icon-undefined {
+  .account-switcher-modal__header-actions .icon-settings {
     @include icons.icon-swap(gear, $color: currentcolor);
-  }
-
-  .account-switcher-modal__header-actions
-    .icon-button:last-child
-    .icon-undefined {
-    @include icons.icon-swap(close, $color: currentcolor);
   }
 
   .account-switcher-modal__remove-button .icon-person-remove {
