@@ -108,7 +108,7 @@
     "mfm-js": "0.26.0",
     "path-complete-extname": "1.0.0",
     "perfect-freehand": "1.2.3",
-    "postcss-preset-env": "11.3.2",
+    "postcss-preset-env": "11.4.0",
     "prop-types": "15.8.1",
     "punycode": "2.3.1",
     "react": "19.2.8",
