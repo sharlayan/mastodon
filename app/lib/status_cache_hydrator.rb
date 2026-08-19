@@ -55,9 +55,11 @@ class StatusCacheHydrator
   end
 
   def fill_status_payload(payload, status, account, nested: false, fresh: true)
+    reactions = serialized_reactions(status, account)
+
     payload[:favourited] = Favourite.exists?(account_id: account.id, status_id: status.id)
-    payload[:reacted]    = account.reacted?(status)
-    payload[:reactions]  = serialized_reactions(account.id)
+    payload[:reacted]    = reactions.any? { |reaction| reaction[:me] || reaction['me'] }
+    payload[:reactions]  = reactions
     payload[:reblogged]  = Status.exists?(account_id: account.id, reblog_of_id: status.id)
     payload[:muted]      = ConversationMute.exists?(account_id: account.id, conversation_id: status.conversation_id)
     payload[:bookmarked] = Bookmark.exists?(account_id: account.id, status_id: status.id)
@@ -146,17 +148,51 @@ class StatusCacheHydrator
     ).as_json
   end
 
-  def serialized_reactions(account_id)
-    reactions = @status.reactions(account_id)
+  def serialized_reactions(status, account)
+    excluded_account_ids = account.excluded_from_timeline_account_ids
+    return personalized_cached_reactions(status, account) if excluded_account_ids.empty?
+
+    reactions = status.reactions(account.id)
     ActiveModelSerializers::SerializableResource.new(
       reactions,
       each_serializer: REST::ReactionSerializer,
-      scope: account_id, # terrible
+      scope: account.id,
       scope_name: :current_user
     ).as_json
   rescue => e
-    Rails.logger.error("Failed to serialize reactions for status #{@status.id}: #{e.message}")
+    Rails.logger.error("Failed to serialize reactions for status #{status.id}: #{e.message}")
     []
+  end
+
+  def personalized_cached_reactions(status, account)
+    cached_reactions = Rails.cache.fetch(StatusReaction.summary_cache_key(status.id), expires_in: 5.minutes) do
+      ActiveModelSerializers::SerializableResource.new(
+        status.reactions,
+        each_serializer: REST::ReactionSerializer
+      ).as_json
+    end
+
+    cached_reactions.deep_dup.tap do |reactions|
+      hydrate_reaction_accounts(reactions, account)
+
+      reactions.each do |reaction|
+        account_ids = reaction[:account_ids] || reaction['account_ids'] || []
+        reaction[:me] = account_ids.include?(account.id.to_s)
+      end
+    end
+  end
+
+  def hydrate_reaction_accounts(reactions, account)
+    user_payloads = reactions.flat_map { |reaction| reaction[:users] || reaction['users'] || [] }
+    accounts_by_id = Account.where(id: user_payloads.filter_map { |user| user[:id] || user['id'] }).index_by { |reaction_account| reaction_account.id.to_s }
+
+    user_payloads.each do |user|
+      reaction_account = accounts_by_id[(user[:id] || user['id']).to_s]
+      next if reaction_account.nil?
+
+      feature_approval = user[:feature_approval] || user['feature_approval']
+      feature_approval[:current_user] = reaction_account.feature_policy_for_account(account) if feature_approval
+    end
   end
 
   def payload_application
