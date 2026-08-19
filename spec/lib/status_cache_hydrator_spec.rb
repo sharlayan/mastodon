@@ -64,6 +64,53 @@ RSpec.describe StatusCacheHydrator do
         end
       end
 
+      context 'when handling reactions' do
+        let(:reacting_account) { Fabricate(:account) }
+
+        before do
+          Fabricate(:status_reaction, status: status, account: reacting_account, name: "\u2764")
+        end
+
+        it 'renders the same attributes as a full render' do
+          expect(subject).to eql(compare_to_hash)
+        end
+
+        context 'when the viewer reacted' do
+          let(:reacting_account) { account }
+
+          it 'renders the same attributes as a full render' do
+            expect(subject).to eql(compare_to_hash)
+            expect(subject[:reacted]).to be true
+            expect(subject[:reactions].first[:me]).to be true
+          end
+        end
+
+        context 'when the viewer excludes a reacting account' do
+          before do
+            account.block!(reacting_account)
+          end
+
+          it 'renders the same attributes as a full render' do
+            expect(subject).to eql(compare_to_hash)
+            expect(subject[:reactions]).to be_empty
+          end
+        end
+      end
+
+      context 'when handling reactions on a reblog' do
+        let(:original_status) { Fabricate(:status) }
+        let(:status) { Fabricate(:status, reblog: original_status) }
+
+        before do
+          Fabricate(:status_reaction, status: original_status, name: "\u2764")
+        end
+
+        it 'renders the same attributes as a full render' do
+          expect(subject).to eql(compare_to_hash)
+          expect(subject[:reblog][:reactions]).to be_present
+        end
+      end
+
       context 'when handling an unapproved quote' do
         let(:quoted_status) { Fabricate(:status) }
 
@@ -374,6 +421,25 @@ RSpec.describe StatusCacheHydrator do
       end
 
       it_behaves_like 'shared behavior'
+    end
+
+    context 'when hydrating the same reaction summary for multiple accounts' do
+      let(:other_account) { Fabricate(:account) }
+
+      before do
+        Fabricate(:status_reaction, status: status, account: account, name: "\u2764")
+        Rails.cache.write("fan-out/#{status.id}", InlineRenderer.render(status, nil, :status))
+        Rails.cache.delete(StatusReaction.summary_cache_key(status.id))
+      end
+
+      it 'serializes the shared reaction summary once' do
+        allow(status).to receive(:reactions).and_call_original
+
+        described_class.new(status).hydrate(account)
+        described_class.new(status).hydrate(other_account)
+
+        expect(status).to have_received(:reactions).once
+      end
     end
   end
 end

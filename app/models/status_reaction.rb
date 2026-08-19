@@ -36,6 +36,7 @@ class StatusReaction < ApplicationRecord
   after_create :increment_cache_counters
   after_destroy :decrement_cache_counters
   after_destroy :invalidate_cleanup_info
+  after_commit :expire_summary_cache, on: %i(create destroy)
 
   USERS_DISPLAY_LIMIT = 11
 
@@ -58,7 +59,15 @@ class StatusReaction < ApplicationRecord
 
   attr_writer :preloaded_users
 
+  def self.summary_cache_key(status_id)
+    "status-reactions/#{status_id}"
+  end
+
   private
+
+  def expire_summary_cache
+    Rails.cache.delete(self.class.summary_cache_key(status_id))
+  end
 
   def set_custom_emoji
     self.custom_emoji = CustomEmoji.find_by(disabled: false, shortcode: name, domain: custom_emoji.domain) if name.present? && custom_emoji.present?
