@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# `rp_hidden` is only serialized for the owner reading the management timeline,
-# which is the single context where hidden statuses are returned at all.
 module Sharlayan::REST::Status::RoleplayHidden
   extend ActiveSupport::Concern
 

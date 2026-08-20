@@ -20,8 +20,6 @@ module Sharlayan::Status::RoleplayHidden
 
     has_one :rp_hidden_status, inverse_of: :status, dependent: :delete
 
-    # Additive default scope: it is combined with the core `recent.kept` scope
-    # instead of replacing it, so the core model stays untouched.
     default_scope { RoleplayModeHelper.roleplay_mode? ? not_rp_hidden : all }
 
     scope :not_rp_hidden, -> { where('NOT EXISTS (SELECT 1 FROM rp_hidden_statuses WHERE rp_hidden_statuses.status_id = statuses.id)') }
