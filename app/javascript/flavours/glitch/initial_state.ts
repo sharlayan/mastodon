@@ -13,7 +13,11 @@ export type {
   ApiReactionMuteJSON,
 } from './sharlayan/initial_state';
 
-type InitialStateLanguage = [code: string, name: string, localName: string];
+export type InitialStateLanguage = [
+  code: string,
+  name: string,
+  localName: string,
+];
 
 interface InitialStateMeta extends SharlayanInitialStateMeta {
   access_token: string;
