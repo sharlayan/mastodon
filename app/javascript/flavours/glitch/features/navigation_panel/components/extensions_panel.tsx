@@ -9,6 +9,7 @@ import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
 import NoteStackAddIcon from '@/material-icons/400-24px/note_stack_add.svg?react';
 import DraftIcon from '@/material-icons/400-24px/save.svg?react';
+import VisibilityOffIcon from '@/material-icons/400-24px/visibility_off.svg?react';
 import { ColumnLink } from 'flavours/glitch/features/ui/components/column_link';
 import {
   circlesEnabled,
@@ -16,6 +17,10 @@ import {
   pagesEnabled,
 } from 'flavours/glitch/initial_state';
 import { SharlayanCollapsiblePanel } from 'flavours/glitch/sharlayan/registry/navigation/collapsible_panel';
+import {
+  adminTimelineOwnerViewer,
+  softHideDeletion,
+} from 'flavours/glitch/sharlayan/roleplay';
 import { useAppSelector } from 'flavours/glitch/store';
 
 const messages = defineMessages({
@@ -40,6 +45,7 @@ const messages = defineMessages({
   circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   reactions: { id: 'navigation_bar.reactions', defaultMessage: 'Reactions' },
   pages: { id: 'navigation_bar.pages', defaultMessage: 'Pages' },
+  rpHidden: { id: 'navigation_bar.rp_hidden', defaultMessage: 'Deleted posts' },
 });
 
 export const ExtensionsPanel: React.FC = () => {
@@ -64,6 +70,19 @@ export const ExtensionsPanel: React.FC = () => {
       text={intl.formatMessage(messages.drafts)}
     />,
   );
+
+  if (softHideDeletion && adminTimelineOwnerViewer) {
+    children.push(
+      <ColumnLink
+        key='rp-hidden'
+        transparent
+        to='/rp_hidden'
+        icon='visibility-off'
+        iconComponent={VisibilityOffIcon}
+        text={intl.formatMessage(messages.rpHidden)}
+      />,
+    );
+  }
 
   if (!useMyArchive) {
     children.push(

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class StatusesController < ApplicationController
+  prepend Sharlayan::StatusesRoleplayView
+
   include WebAppControllerConcern
   include SignatureAuthentication
   include Authorization
