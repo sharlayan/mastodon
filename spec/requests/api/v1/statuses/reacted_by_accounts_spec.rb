@@ -72,6 +72,12 @@ RSpec.describe 'API V1 Statuses Reacted by Accounts' do
             include(name: '👍', account: include(id: alice.id.to_s))
           )
       end
+
+      it 'does not fall back to a unicode reaction for an unknown remote emoji' do
+        get "/api/v1/statuses/#{status.id}/reacted_by", headers: headers, params: { name: '👍@invalid.example' }
+
+        expect(response.parsed_body).to be_empty
+      end
     end
   end
 

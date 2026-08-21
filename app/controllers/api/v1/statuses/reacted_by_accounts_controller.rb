@@ -33,6 +33,8 @@ class Api::V1::Statuses::ReactedByAccountsController < Api::V1::Statuses::BaseCo
 
     name, domain = params[:name].to_s.split('@', 2)
     custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
+    return scope.none if domain.present? && custom_emoji.nil?
+
     scope.where(name: name, custom_emoji: custom_emoji)
   end
 

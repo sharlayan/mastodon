@@ -48,6 +48,28 @@ RSpec.describe 'AccountSwitches' do
 
         expect(response.parsed_body[:children].first[:session_authorized]).to be true
       end
+
+      it 'does not rewrite fresh device metadata on every read' do
+        subject
+        device = AccountSwitchDevice.find_by!(account: child)
+
+        expect { get '/api/v1/account_switches', headers: read_headers }
+          .to_not(change { device.reload.updated_at })
+      end
+
+      it 'bounds untrusted devices retained for an account' do
+        10.times do |index|
+          child.account_switch_devices.create!(
+            token_digest: "old-#{index}",
+            first_seen_at: index.days.ago,
+            last_seen_at: index.days.ago
+          )
+        end
+
+        subject
+
+        expect(child.account_switch_devices.where(trusted_at: nil).count).to eq(10)
+      end
     end
 
     context 'without authentication' do

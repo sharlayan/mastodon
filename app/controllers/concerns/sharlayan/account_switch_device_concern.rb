@@ -6,6 +6,8 @@ module Sharlayan::AccountSwitchDeviceConcern
   DEVICE_COOKIE = :account_switch_device
   LEGACY_COOKIE = :account_switch_legacy_session
   ROLLOUT_CUTOFF = Time.utc(2026, 8, 17, 16, 37)
+  METADATA_REFRESH_INTERVAL = 15.minutes
+  MAX_UNTRUSTED_DEVICES_PER_ACCOUNT = 10
 
   private
 
@@ -31,16 +33,30 @@ module Sharlayan::AccountSwitchDeviceConcern
   def find_or_record_account_switch_device(account, trust: false)
     now = Time.current
     device = AccountSwitchDevice.find_or_initialize_by(account:, token_digest: account_switch_device_digest)
+    prune_untrusted_account_switch_devices(account, except: device) if device.new_record?
+    user_agent = request.user_agent.to_s.first(1_024)
+    session_activation = current_session
+    refresh_metadata = device.new_record? || device.last_seen_at.before?(METADATA_REFRESH_INTERVAL.ago) || device.last_seen_ip.to_s != request.remote_ip.to_s || device.user_agent != user_agent || device.session_activation_id != session_activation&.id
+
     device.first_seen_at ||= now
     device.first_seen_ip ||= request.remote_ip
-    device.last_seen_at = now
-    device.last_seen_ip = request.remote_ip
-    device.user_agent = request.user_agent.to_s.first(1_024)
-    device.session_activation = current_session if current_session
+    if refresh_metadata
+      device.last_seen_at = now
+      device.last_seen_ip = request.remote_ip
+      device.user_agent = user_agent
+      device.session_activation = session_activation if session_activation
+    end
     device.trusted_at ||= now if trust
     device.revoked_at = nil if trust
-    device.save!
+    device.save! if device.changed?
     device
+  end
+
+  def prune_untrusted_account_switch_devices(account, except:)
+    excess = account.account_switch_devices.where(trusted_at: nil).where.not(id: except.id).count - MAX_UNTRUSTED_DEVICES_PER_ACCOUNT + 1
+    return unless excess.positive?
+
+    account.account_switch_devices.where(trusted_at: nil).where.not(id: except.id).order(last_seen_at: :asc).limit(excess).destroy_all
   end
 
   def trust_account_switch_device(account)
