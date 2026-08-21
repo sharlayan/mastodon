@@ -19,7 +19,20 @@ module Sharlayan
       end
 
       def role_rate_limit(name)
-        authenticated_user&.role&.rate_limit_for(name) || UserRole::RATE_LIMITS.fetch(name)[:default]
+        role_rate_limits.fetch(name)
+      end
+
+      def role_rate_limits
+        return @role_rate_limits if defined?(@role_rate_limits)
+
+        defaults = UserRole::RATE_LIMITS.transform_values { |config| config[:default] }
+        user_id = authenticated_user_id
+        return @role_rate_limits = defaults unless user_id
+
+        @role_rate_limits = Rails.cache.fetch("rack-attack/role-rate-limits/#{user_id}", expires_in: 1.minute) do
+          user = User.includes(:role).find_by(id: user_id)
+          user ? UserRole::RATE_LIMITS.keys.index_with { |name| user.role.rate_limit_for(name) } : defaults
+        end
       end
 
       def authenticated_user
