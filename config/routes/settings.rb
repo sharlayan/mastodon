@@ -78,4 +78,11 @@ namespace :settings do
   resources :sessions, only: [:destroy]
   resources :featured_tags, only: [:index, :create, :destroy]
   resources :login_activities, only: [:index]
+  resources :account_switch_device_approvals, path: 'preferences/linked_accounts', only: [:index] do
+    member do
+      post :approve
+      post :deny
+    end
+  end
+  delete 'preferences/linked_accounts/devices/:id', to: 'account_switch_device_approvals#destroy_device', as: :account_switch_device
 end

@@ -6,7 +6,7 @@ RSpec.describe Form::AdminSettings do
   it 'registers Sharlayan settings with the required storage types' do
     expect(described_class::KEYS).to include(:theme_color, :background_color, :background_opacity, :local_status_page_access, :norss, :reactions_enabled, :drive_allowed_extensions, :roleplay_forced_skin, :profile_fields_limit, :remote_media_attachments_limit)
     expect(described_class::INTEGER_KEYS).to include(:avatar_decorations_max_count, :background_opacity, :drive_quota, :drive_max_file_size, :status_character_limit, :profile_fields_limit, :remote_media_attachments_limit)
-    expect(described_class::BOOLEAN_KEYS).to include(:background_on_settings_pages, :norss, :reactions_enabled, :pages_enabled, :pages_drive_only, :drive_enabled)
+    expect(described_class::BOOLEAN_KEYS).to include(:background_on_settings_pages, :norss, :reactions_enabled, :pages_enabled, :pages_drive_only, :drive_enabled, :server_stored_account_switching_enabled)
   end
 
   it 'validates optional server background presentation settings' do

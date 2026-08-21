@@ -5,17 +5,22 @@ import { defineMessages, useIntl } from 'react-intl';
 import classNames from 'classnames';
 
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
+import LinkIcon from '@/material-icons/400-24px/link.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
 import CheckIcon from '@/material-icons/400-24px/person_shield.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
+import VpnKeyIcon from '@/material-icons/400-24px/vpn_key.svg?react';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { Toggle } from 'flavours/glitch/components/form_fields';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
-import { me } from 'flavours/glitch/initial_state';
+import {
+  me,
+  serverStoredAccountSwitchingEnabled,
+} from 'flavours/glitch/initial_state';
 import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 import {
@@ -100,6 +105,28 @@ const messages = defineMessages({
     id: 'account_switcher.revoke_inbound_confirm',
     defaultMessage: 'Revoke access from {name} (@{acct})?',
   },
+  authorizeSession: {
+    id: 'account_switcher.authorize_session',
+    defaultMessage:
+      'Sign in to the {name} account or approve this session from an existing device',
+  },
+  approvalPending: {
+    id: 'account_switcher.approval_pending',
+    defaultMessage: '{name}\nWaiting for approval from an existing session',
+  },
+  checkApproval: {
+    id: 'account_switcher.check_approval',
+    defaultMessage: 'Check approval',
+  },
+  signInToAuthorize: {
+    id: 'account_switcher.sign_in_to_authorize',
+    defaultMessage: 'Sign in instead',
+  },
+  serverStoredDisabled: {
+    id: 'account_switcher.server_stored_disabled',
+    defaultMessage:
+      'The server does not allow adding accounts in the team-account format. You cannot add an account, but you can still switch accounts.',
+  },
 });
 
 export interface LinkedNotifPrefs {
@@ -151,6 +178,15 @@ const getAccountDisplayName = (
   return fallback;
 };
 
+const ServerLinkedAccountBadge: React.FC = () => (
+  <span
+    className='account-switcher-modal__linked-account-badge'
+    aria-hidden='true'
+  >
+    <Icon id='link' icon={LinkIcon} />
+  </span>
+);
+
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
 const OAUTH_TIMEOUT = 120000;
@@ -176,6 +212,9 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const [addingAccount, setAddingAccount] = useState(false);
+  const [checkingAccountId, setCheckingAccountId] = useState<string | null>(
+    null,
+  );
   const [showSettings, setShowSettings] = useState(false);
 
   const items = useAppSelector((state) => state.accountSwitches.get('items'));
@@ -197,10 +236,8 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   );
 
   useEffect(() => {
-    if (!loaded) {
-      void dispatch(fetchAccountSwitches());
-    }
-  }, [dispatch, loaded]);
+    void dispatch(fetchAccountSwitches());
+  }, [dispatch]);
 
   useEffect(() => {
     if (rootAccountId) {
@@ -208,109 +245,116 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
     }
   }, [rootAccountId]);
 
-  const handleAddAccount = useCallback(async () => {
-    if (addingAccount) return;
-    setAddingAccount(true);
+  const handleAddAccount = useCallback(
+    async (reauthenticateAccountId?: string) => {
+      if (addingAccount) return;
+      setAddingAccount(true);
 
-    try {
-      const response = await fetch('/multi_accounts/entry', {
-        headers: {
-          Accept: 'application/json',
-          'X-CSRF-Token':
-            document.querySelector<HTMLMetaElement>('meta[name=csrf-token]')
-              ?.content ?? '',
-        },
-      });
+      try {
+        const entryUrl = reauthenticateAccountId
+          ? `/multi_accounts/entry?reauthenticate_account_id=${encodeURIComponent(reauthenticateAccountId)}`
+          : '/multi_accounts/entry';
+        const response = await fetch(entryUrl, {
+          headers: {
+            Accept: 'application/json',
+            'X-CSRF-Token':
+              document.querySelector<HTMLMetaElement>('meta[name=csrf-token]')
+                ?.content ?? '',
+          },
+        });
 
-      if (!response.ok) throw new Error('Failed to fetch authorization entry');
+        if (!response.ok)
+          throw new Error('Failed to fetch authorization entry');
 
-      const data = (await response.json()) as {
-        authorize_url: string;
-        state: string;
-        nonce: string;
-      };
-
-      const popup = openOAuthPopup(data.authorize_url);
-      if (!popup) {
-        setAddingAccount(false);
-        return;
-      }
-
-      let messageReceived = false;
-      let bc: BroadcastChannel | undefined;
-
-      const handleMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-
-        const messageData = event.data as {
-          type?: string;
-          state?: string;
-          success?: boolean;
+        const data = (await response.json()) as {
+          authorize_url: string;
+          state: string;
+          nonce: string;
         };
 
-        if (messageData.type !== 'multi_account_callback') return;
-        if (messageData.state !== data.state) return;
-
-        messageReceived = true;
-        window.removeEventListener('message', handleMessage);
-        if (bc) {
-          bc.close();
-          bc = undefined;
-        }
-
-        if (messageData.success) {
-          void dispatch(fetchAccountSwitches()).then(() => {
-            setAddingAccount(false);
-          });
-        } else {
+        const popup = openOAuthPopup(data.authorize_url);
+        if (!popup) {
           setAddingAccount(false);
+          return;
         }
-      };
 
-      window.addEventListener('message', handleMessage);
+        let messageReceived = false;
+        let bc: BroadcastChannel | undefined;
 
-      if (typeof BroadcastChannel !== 'undefined') {
-        bc = new BroadcastChannel('multi_account_auth');
-        bc.onmessage = (event: MessageEvent) => {
-          const syntheticEvent = Object.assign(
-            Object.create(Object.getPrototypeOf(event) as object),
-            event,
-            { origin: window.location.origin },
-          ) as MessageEvent;
-          handleMessage(syntheticEvent);
-        };
-      }
+        const handleMessage = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
 
-      const cleanup = () => {
-        window.removeEventListener('message', handleMessage);
-        if (bc) {
-          bc.close();
-          bc = undefined;
-        }
-      };
+          const messageData = event.data as {
+            type?: string;
+            state?: string;
+            success?: boolean;
+          };
 
-      setTimeout(() => {
-        if (!messageReceived) {
-          cleanup();
-          setAddingAccount(false);
-        }
-      }, OAUTH_TIMEOUT);
+          if (messageData.type !== 'multi_account_callback') return;
+          if (messageData.state !== data.state) return;
 
-      const checkPopup = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkPopup);
-          setTimeout(() => {
-            if (!messageReceived) {
-              cleanup();
+          messageReceived = true;
+          window.removeEventListener('message', handleMessage);
+          if (bc) {
+            bc.close();
+            bc = undefined;
+          }
+
+          if (messageData.success) {
+            void dispatch(fetchAccountSwitches()).then(() => {
               setAddingAccount(false);
-            }
-          }, 1000);
+            });
+          } else {
+            setAddingAccount(false);
+          }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        if (typeof BroadcastChannel !== 'undefined') {
+          bc = new BroadcastChannel('multi_account_auth');
+          bc.onmessage = (event: MessageEvent) => {
+            const syntheticEvent = Object.assign(
+              Object.create(Object.getPrototypeOf(event) as object),
+              event,
+              { origin: window.location.origin },
+            ) as MessageEvent;
+            handleMessage(syntheticEvent);
+          };
         }
-      }, 500);
-    } catch {
-      setAddingAccount(false);
-    }
-  }, [addingAccount, dispatch]);
+
+        const cleanup = () => {
+          window.removeEventListener('message', handleMessage);
+          if (bc) {
+            bc.close();
+            bc = undefined;
+          }
+        };
+
+        setTimeout(() => {
+          if (!messageReceived) {
+            cleanup();
+            setAddingAccount(false);
+          }
+        }, OAUTH_TIMEOUT);
+
+        const checkPopup = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkPopup);
+            setTimeout(() => {
+              if (!messageReceived) {
+                cleanup();
+                setAddingAccount(false);
+              }
+            }, 1000);
+          }
+        }, 500);
+      } catch {
+        setAddingAccount(false);
+      }
+    },
+    [addingAccount, dispatch],
+  );
 
   const handleRemoveAccount = useCallback(
     (id: string, name: string, acct: string) => {
@@ -363,6 +407,8 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           id: string;
           target_account_id: string;
           created_at: string;
+          session_authorized: boolean;
+          session_approval_pending: boolean;
         }[];
       }
     | undefined;
@@ -371,6 +417,27 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   const handleAddAccountClick = useCallback(() => {
     void handleAddAccount();
   }, [handleAddAccount]);
+
+  const handleReauthenticateAccount = useCallback(
+    (accountId: string) => {
+      void handleAddAccount(accountId);
+    },
+    [handleAddAccount],
+  );
+
+  const handleCheckApproval = useCallback(
+    (accountId: string) => {
+      if (checkingAccountId) return;
+
+      setCheckingAccountId(accountId);
+      void dispatch(fetchAccountSwitches())
+        .unwrap()
+        .finally(() => {
+          setCheckingAccountId(null);
+        });
+    },
+    [checkingAccountId, dispatch],
+  );
 
   const handleToggleSettings = useCallback(() => {
     setShowSettings((value) => !value);
@@ -382,13 +449,13 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
         <h3>{intl.formatMessage(messages.title)}</h3>
         <div className='account-switcher-modal__header-actions'>
           <IconButton
-            icon=''
+            icon='settings'
             iconComponent={SettingsIcon}
             onClick={handleToggleSettings}
             title={intl.formatMessage(messages.settings)}
           />
           <IconButton
-            icon=''
+            icon='close'
             iconComponent={CloseIcon}
             onClick={onClose}
             title={intl.formatMessage(messages.close)}
@@ -397,6 +464,9 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
       </div>
 
       <div className='account-switcher-modal__content'>
+        {!serverStoredAccountSwitchingEnabled && (
+          <p>{intl.formatMessage(messages.serverStoredDisabled)}</p>
+        )}
         {showSettings ? (
           <div className='account-switcher-modal__linked-settings'>
             <h4>{intl.formatMessage(messages.linkedBy)}</h4>
@@ -452,6 +522,11 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
                 onSwitch={handleSwitchAccount}
                 onRemove={handleRemoveAccount}
                 canRemove={parentAccountId === null}
+                sessionAuthorized={auth.session_authorized}
+                sessionApprovalPending={auth.session_approval_pending}
+                checkingApproval={checkingAccountId === auth.target_account_id}
+                onAuthorize={handleReauthenticateAccount}
+                onCheckApproval={handleCheckApproval}
               />
             ))}
           </>
@@ -463,7 +538,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           <button
             className='account-switcher-modal__add-button'
             onClick={handleAddAccountClick}
-            disabled={addingAccount}
+            disabled={addingAccount || !serverStoredAccountSwitchingEnabled}
             type='button'
           >
             <Icon id='person-add' icon={PersonAddIcon} />
@@ -787,6 +862,7 @@ const CurrentAccountItem: React.FC<{
       <div className='account-switcher-modal__item__row'>
         <div className='account-switcher-modal__item__avatar'>
           <Avatar account={account} size={36} />
+          {!isMain && <ServerLinkedAccountBadge />}
         </div>
         <div className='account-switcher-modal__item__info'>
           <span className='account-switcher-modal__parent-label'>
@@ -860,7 +936,24 @@ const SwitchableAccountItem: React.FC<{
   onSwitch: (accountId: string, name: string) => void;
   onRemove: (authId: string, name: string, acct: string) => void;
   canRemove: boolean;
-}> = ({ authId, accountId, rootAccountId, onSwitch, onRemove, canRemove }) => {
+  sessionAuthorized: boolean;
+  sessionApprovalPending: boolean;
+  checkingApproval: boolean;
+  onAuthorize: (accountId: string) => void;
+  onCheckApproval: (accountId: string) => void;
+}> = ({
+  authId,
+  accountId,
+  rootAccountId,
+  onSwitch,
+  onRemove,
+  canRemove,
+  sessionAuthorized,
+  sessionApprovalPending,
+  checkingApproval,
+  onAuthorize,
+  onCheckApproval,
+}) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
@@ -960,6 +1053,14 @@ const SwitchableAccountItem: React.FC<{
     [authId, displayName, acctHandle, onRemove],
   );
 
+  const handleAuthorize = useCallback(() => {
+    onAuthorize(accountId);
+  }, [accountId, onAuthorize]);
+
+  const handleCheckApproval = useCallback(() => {
+    onCheckApproval(accountId);
+  }, [accountId, onCheckApproval]);
+
   if (!account) return null;
 
   return (
@@ -967,77 +1068,114 @@ const SwitchableAccountItem: React.FC<{
       className={classNames(
         'account-switcher-modal__item',
         'account-switcher-modal__item--switchable',
-        { 'account-switcher-modal__item--notif-open': showNotifSettings },
+        {
+          'account-switcher-modal__item--notif-open': showNotifSettings,
+          'account-switcher-modal__item--authorization-required':
+            !sessionAuthorized,
+        },
       )}
     >
-      <div
-        className='account-switcher-modal__item__row'
-        onClick={handleSwitch}
-        onKeyDown={handleKeyDown}
-        role='button'
-        tabIndex={0}
-        title={intl.formatMessage(messages.switchTo, { name: displayName })}
-      >
-        <div className='account-switcher-modal__item__avatar'>
-          <Avatar account={account} size={36} />
-          {unreadCount > 0 && (
-            <span className='account-switcher-modal__unread-badge'>
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </div>
-        <div className='account-switcher-modal__item__info'>
-          <DisplayName account={account} />
-        </div>
-        <div className='account-switcher-modal__item__actions'>
-          <button
-            className={classNames('account-switcher-modal__notif-button', {
-              active: inAppEnabled || pushEnabled,
-              open: showNotifSettings,
-            })}
-            onClick={handleToggleNotifSettings}
-            type='button'
-            title={intl.formatMessage(messages.notifications)}
-            aria-expanded={showNotifSettings}
-          >
-            <Icon id='notifications' icon={NotificationsIcon} />
-          </button>
-
-          {canRemove && (
-            <button
-              className='account-switcher-modal__remove-button'
-              onClick={handleRemove}
-              type='button'
-              title={intl.formatMessage(messages.removeAccount)}
-            >
-              <Icon id='person-remove' icon={PersonRemoveIcon} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {showNotifSettings && (
-        /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
+      <div inert={!sessionAuthorized}>
         <div
-          onClick={handleNotifPanelClick}
-          onKeyDown={handleNotifPanelKeyDown}
+          className='account-switcher-modal__item__row'
+          onClick={handleSwitch}
+          onKeyDown={handleKeyDown}
+          role='button'
+          tabIndex={0}
+          title={intl.formatMessage(messages.switchTo, { name: displayName })}
         >
-          <div
-            className='account-switcher-modal__notif-settings'
-            role='group'
-            aria-label={intl.formatMessage(messages.notifications)}
-          >
-            <label className='account-switcher-modal__notif-label'>
-              <Toggle checked={inAppEnabled} onChange={handleInAppChange} />
-              <span>{intl.formatMessage(messages.receiveNotifications)}</span>
-            </label>
-            <label className='account-switcher-modal__notif-label'>
-              <Toggle checked={pushEnabled} onChange={handlePushChange} />
-              <span>
-                {intl.formatMessage(messages.receivePushNotifications)}
+          <div className='account-switcher-modal__item__avatar'>
+            <Avatar account={account} size={36} />
+            <ServerLinkedAccountBadge />
+            {unreadCount > 0 && (
+              <span className='account-switcher-modal__unread-badge'>
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
-            </label>
+            )}
           </div>
+          <div className='account-switcher-modal__item__info'>
+            <DisplayName account={account} />
+          </div>
+          <div className='account-switcher-modal__item__actions'>
+            <button
+              className={classNames('account-switcher-modal__notif-button', {
+                active: inAppEnabled || pushEnabled,
+                open: showNotifSettings,
+              })}
+              onClick={handleToggleNotifSettings}
+              type='button'
+              title={intl.formatMessage(messages.notifications)}
+              aria-expanded={showNotifSettings}
+            >
+              <Icon id='notifications' icon={NotificationsIcon} />
+            </button>
+
+            {canRemove && (
+              <button
+                className='account-switcher-modal__remove-button'
+                onClick={handleRemove}
+                type='button'
+                title={intl.formatMessage(messages.removeAccount)}
+              >
+                <Icon id='person-remove' icon={PersonRemoveIcon} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {showNotifSettings && (
+          /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
+          <div
+            onClick={handleNotifPanelClick}
+            onKeyDown={handleNotifPanelKeyDown}
+          >
+            <div
+              className='account-switcher-modal__notif-settings'
+              role='group'
+              aria-label={intl.formatMessage(messages.notifications)}
+            >
+              <label className='account-switcher-modal__notif-label'>
+                <Toggle checked={inAppEnabled} onChange={handleInAppChange} />
+                <span>{intl.formatMessage(messages.receiveNotifications)}</span>
+              </label>
+              <label className='account-switcher-modal__notif-label'>
+                <Toggle checked={pushEnabled} onChange={handlePushChange} />
+                <span>
+                  {intl.formatMessage(messages.receivePushNotifications)}
+                </span>
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
+      {!sessionAuthorized && (
+        <div className='account-switcher-modal__authorization-overlay'>
+          <Icon id='vpn-key' icon={VpnKeyIcon} />
+          <span>
+            {sessionApprovalPending
+              ? intl.formatMessage(messages.approvalPending, {
+                  name: displayName,
+                })
+              : intl.formatMessage(messages.authorizeSession, {
+                  name: displayName,
+                })}
+          </span>
+          <span className='account-switcher-modal__authorization-actions'>
+            <button onClick={handleAuthorize} type='button'>
+              {intl.formatMessage(messages.signInToAuthorize)}
+            </button>
+            {sessionApprovalPending && (
+              <button
+                disabled={checkingApproval}
+                onClick={handleCheckApproval}
+                type='button'
+              >
+                {checkingApproval
+                  ? '…'
+                  : intl.formatMessage(messages.checkApproval)}
+              </button>
+            )}
+          </span>
         </div>
       )}
     </div>

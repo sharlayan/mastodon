@@ -34,5 +34,8 @@ module Sharlayan::Account::Associations
 
     has_many :account_switch_authorizations, inverse_of: :account, dependent: :destroy
     has_many :switchable_accounts, through: :account_switch_authorizations, source: :target_account
+    has_many :account_switch_devices, dependent: :destroy
+    has_many :account_switch_device_approvals, dependent: :destroy
+    has_many :incoming_account_switch_device_approvals, class_name: 'AccountSwitchDeviceApproval', foreign_key: :target_account_id, inverse_of: :target_account, dependent: :destroy
   end
 end

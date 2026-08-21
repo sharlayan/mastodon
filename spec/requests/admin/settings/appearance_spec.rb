@@ -56,6 +56,7 @@ RSpec.describe 'Admin Settings Appearance' do
 
         expect(response).to have_http_status(200)
         expect(response.parsed_body.at_css('input[name="form_admin_settings[roleplay_disable_local_timeline]"]')).to be_present
+        expect(response.parsed_body.at_css('input[name="form_admin_settings[roleplay_hide_public_timelines_from_admins]"]')).to be_present
       end
     end
   end

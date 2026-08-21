@@ -116,11 +116,9 @@ export const ColumnsArea = forwardRef<
   );
   const visibleColumns = columns.filter((column) => {
     const columnId = column.get('id');
-
     if (!localTimelineEnabled && columnId === 'COMMUNITY') return false;
     if (!federatedTimelineEnabled && ['PUBLIC', 'REMOTE'].includes(columnId))
       return false;
-
     return true;
   });
   const isModalOpen = useAppSelector(

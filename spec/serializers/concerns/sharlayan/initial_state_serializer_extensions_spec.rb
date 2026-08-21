@@ -43,7 +43,8 @@ RSpec.describe InitialStateSerializer do
       custom_emoji_mutes: [],
       reaction_mutes: [],
       inline_compose_tabs: [],
-      user_theme: '{}'
+      user_theme: '{}',
+      server_stored_account_switching_enabled: true
     )
   end
 

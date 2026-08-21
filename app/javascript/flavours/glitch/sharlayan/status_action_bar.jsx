@@ -29,8 +29,6 @@ export const sharlayanAddToClipMenuItem = (intl, { enabled, statusId, dispatch }
   };
 };
 
-// Hidden posts are only ever serialized for the owner, so this returns
-// 'purge' for them and offers the owner-only delete on other people's posts.
 export const sharlayanRoleplayStatusAction = ({
   status,
   writtenByMe,

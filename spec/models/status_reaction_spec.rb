@@ -120,6 +120,27 @@ RSpec.describe StatusReaction do
     end
   end
 
+  describe 'summary cache' do
+    let(:cache_key) { described_class.summary_cache_key(status.id) }
+
+    it 'expires the cached summary on create' do
+      Rails.cache.write(cache_key, [{ name: '👍' }])
+
+      described_class.create!(account: account, status: status, name: '👍')
+
+      expect(Rails.cache.exist?(cache_key)).to be false
+    end
+
+    it 'expires the cached summary on destroy' do
+      reaction = described_class.create!(account: account, status: status, name: '👍')
+      Rails.cache.write(cache_key, [{ name: '👍' }])
+
+      reaction.destroy!
+
+      expect(Rails.cache.exist?(cache_key)).to be false
+    end
+  end
+
   describe 'reblog handling' do
     let(:original) { Fabricate(:status) }
     let(:reblog)   { Fabricate(:status, reblog: original) }

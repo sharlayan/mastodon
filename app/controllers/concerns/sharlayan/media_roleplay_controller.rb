@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-# Hidden statuses are invisible to the default `Status` scope, so the media
-# route resolves them explicitly and serves the file itself: the blob has been
-# moved to private permissions and is no longer reachable through the CDN.
 module Sharlayan::MediaRoleplayController
   include RoleplayModeHelper
 

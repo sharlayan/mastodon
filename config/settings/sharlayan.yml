@@ -6,6 +6,7 @@ defaults:
   background_on_settings_pages: false
   force_local_only: false
   roleplay_disable_local_timeline: false
+  roleplay_hide_public_timelines_from_admins: false
   soft_hide_deletion: false
   local_account_statuses_access: 'public'
   local_status_page_access: 'public'
@@ -44,6 +45,7 @@ defaults:
   federation_request_statistics_enabled: true
   federation_instance_edges_enabled: false
   online_status_enabled: false
+  server_stored_account_switching_enabled: true
   drive_enabled: false
   drive_quota: 500
   drive_max_file_size: 20

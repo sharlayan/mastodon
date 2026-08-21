@@ -9,8 +9,6 @@ module Sharlayan::StatusRoleplayPolicy
     prepend PublicMethods
   end
 
-  # Hidden statuses are kept for auditing only: the owner can read them back,
-  # but nobody may interact with them again.
   module PublicMethods
     def quote?
       roleplay_interaction_allowed? && super
@@ -32,8 +30,6 @@ module Sharlayan::StatusRoleplayPolicy
       super || roleplay_owner_soft_hide_deletion?
     end
 
-    # `StatusPolicy` aliases `unreblog?` to `destroy?`, and the alias resolves to
-    # this module: the owner deletion above must not widen undoing boosts.
     def unreblog?
       owned?
     end

@@ -4,8 +4,6 @@ module Sharlayan
   module SoftHide
     module_function
 
-    # Deleting a status hides it instead of destroying it only while community
-    # mode runs and the admin setting is on.
     def enabled?
       RoleplayModeHelper.roleplay_mode? && Setting.soft_hide_deletion
     end

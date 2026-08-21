@@ -75,6 +75,7 @@ const messages = defineMessages({
   removeFromAntenna: { id: 'status.remove_from_antenna', defaultMessage: 'Remove from this antenna' },
   removeFromAntennaConfirm: { id: 'status.remove_from_antenna_confirm', defaultMessage: 'Remove this post from {name}?' },
   removeFromAntennaConfirmFallback: { id: 'status.remove_from_antenna_confirm_fallback', defaultMessage: 'Remove this post from this antenna?' },
+  reactions: { id: 'status.reactions', defaultMessage: 'Reactions' },
 });
 
 const mapStateToProps = (state, { status, contextType }) => {
@@ -240,6 +241,17 @@ class StatusActionBar extends ImmutablePureComponent {
     navigator.clipboard.writeText(url);
   };
 
+  handleOpenReactions = () => {
+    const { status } = this.props;
+    this.props.dispatch(openModal({
+      modalType: 'STATUS_REACTIONS',
+      modalProps: {
+        statusId: status.get('id'),
+        reactions: status.get('reactions'),
+      },
+    }));
+  };
+
   handleHideClick = () => {
     this.props.onFilter();
   };
@@ -285,6 +297,10 @@ class StatusActionBar extends ImmutablePureComponent {
     }
 
     menu.push({ text: intl.formatMessage(messages.copy), action: this.handleCopy });
+
+    if (status.get('reactions_count') > 0) {
+      menu.push({ text: intl.formatMessage(messages.reactions), action: this.handleOpenReactions });
+    }
 
     if (publicStatus && 'share' in navigator) {
       menu.push({ text: intl.formatMessage(messages.share), action: this.handleShareClick });

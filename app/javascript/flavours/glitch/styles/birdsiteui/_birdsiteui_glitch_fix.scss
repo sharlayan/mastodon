@@ -136,7 +136,7 @@ html {
   }
 
   .column-link .icon-cogs {
-    @include icons.icon-glyph(settings);
+    @include icons.icon-glyph(app-settings);
   }
 
   .column-link .icon-puzzle-piece {
@@ -188,7 +188,7 @@ html {
   }
 
   .column-link.active .icon-cogs {
-    @include icons.icon-glyph(settings, fill);
+    @include icons.icon-glyph(app-settings, fill);
   }
 
   .column-link.active .icon-puzzle-piece {
@@ -256,6 +256,14 @@ html {
       min-width: 300px;
       max-width: 360px;
     }
+  }
+
+  .conversation-thread {
+    border-inline: 0;
+  }
+
+  &.conversation-detail-active .columns-area--mobile {
+    padding-bottom: 0;
   }
 
   .column-link > span::before {

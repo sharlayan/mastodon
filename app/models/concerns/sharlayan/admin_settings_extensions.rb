@@ -10,6 +10,7 @@ module Sharlayan::AdminSettingsExtensions
     background_on_settings_pages
     force_local_only
     roleplay_disable_local_timeline
+    roleplay_hide_public_timelines_from_admins
     norss
     soft_hide_deletion
     local_account_statuses_access
@@ -45,6 +46,7 @@ module Sharlayan::AdminSettingsExtensions
     misskey_compat_signin_flow_allowed_origins
     misskey_compat_expose_follow_graph
     online_status_enabled
+    server_stored_account_switching_enabled
     drive_enabled
     drive_quota
     drive_max_file_size
@@ -71,6 +73,7 @@ module Sharlayan::AdminSettingsExtensions
     background_on_settings_pages
     force_local_only
     roleplay_disable_local_timeline
+    roleplay_hide_public_timelines_from_admins
     norss
     soft_hide_deletion
     reaction_local_emoji_only
@@ -101,6 +104,7 @@ module Sharlayan::AdminSettingsExtensions
     misskey_compat_signin_flow_enabled
     misskey_compat_expose_follow_graph
     online_status_enabled
+    server_stored_account_switching_enabled
     drive_enabled
     user_themes_enabled
   ).freeze

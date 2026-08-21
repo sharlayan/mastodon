@@ -40,8 +40,6 @@ import {
   boardAnnouncementsEnabled,
   localLiveFeedAccess,
   me,
-  federatedTimelineEnabled,
-  localTimelineEnabled,
   remoteLiveFeedAccess,
   trendsEnabled,
 } from 'flavours/glitch/initial_state';
@@ -229,10 +227,7 @@ export const useSharlayanPrimaryNavigation = (
       />
     );
   }
-  if (
-    federatedTimelineEnabled &&
-    canViewFeed(signedIn, permissions, remoteLiveFeedAccess)
-  ) {
+  if (canViewFeed(signedIn, permissions, remoteLiveFeedAccess)) {
     renderers.federated = (id) => (
       <ColumnLink
         transparent
@@ -244,10 +239,7 @@ export const useSharlayanPrimaryNavigation = (
       />
     );
   }
-  if (
-    localTimelineEnabled &&
-    canViewFeed(signedIn, permissions, localLiveFeedAccess)
-  ) {
+  if (canViewFeed(signedIn, permissions, localLiveFeedAccess)) {
     renderers.local = (id) => (
       <ColumnLink
         transparent

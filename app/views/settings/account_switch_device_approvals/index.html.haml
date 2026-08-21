@@ -1,0 +1,92 @@
+- content_for :page_title do
+  = t('account_switch_devices.title')
+
+%p= t('account_switch_devices.description')
+
+%h2= t('account_switch_devices.linked_accounts')
+%p.muted-hint= t('account_switch_devices.linked_accounts_description')
+
+- if @linked_account_devices.empty?
+  .muted-hint.center-text
+    = t('account_switch_devices.no_linked_accounts')
+- else
+  .table-wrapper
+    %table.table.inline-table
+      %thead
+        %tr
+          %th= t('account_switch_devices.account')
+          %th= t('sessions.ip')
+          %th= t('sessions.activity')
+      %tbody
+        - @linked_account_devices.each do |device|
+          %tr
+            %td
+              %strong= device.account.pretty_acct
+              %br/
+              %span{ title: device.user_agent }= account_switch_device_label(device.user_agent)
+            %td
+              %samp= masked_account_switch_ip(device.last_seen_ip)
+            %td
+              %time.time-ago{ datetime: device.last_seen_at.iso8601, title: l(device.last_seen_at) }= l(device.last_seen_at)
+
+%hr.spacer/
+%h2= t('account_switch_devices.linking_accounts')
+%p.muted-hint= t('account_switch_devices.linking_accounts_description')
+
+- if @linking_accounts.empty?
+  .muted-hint.center-text
+    = t('account_switch_devices.no_linking_accounts')
+- else
+  .table-wrapper
+    %table.table.inline-table
+      %thead
+        %tr
+          %th= t('account_switch_devices.account')
+          %th= t('account_switch_devices.linked_at')
+      %tbody
+        - @linking_accounts.each do |authorization|
+          %tr
+            %td
+              %strong= authorization.account.pretty_acct
+            %td
+              %time.time-ago{ datetime: authorization.created_at.iso8601, title: l(authorization.created_at) }= l(authorization.created_at)
+
+- if @current_device.trusted?
+  %h2= t('account_switch_devices.pending_requests')
+  - if @approvals.empty?
+    .muted-hint.center-text
+      = t('account_switch_devices.empty')
+  - else
+    .announcements-list
+      - @approvals.each do |approval|
+        .announcements-list__item
+          %strong.announcements-list__item__title= account_switch_device_label(approval.account_switch_device.user_agent)
+          .announcements-list__item__action-bar
+            .announcements-list__item__meta
+              = t('account_switch_devices.request_details', account: approval.account.pretty_acct, ip: masked_account_switch_ip(approval.request_ip), time: l(approval.created_at))
+            .announcements-list__item__actions
+              = table_link_to 'check', t('account_switch_devices.approve'), approve_settings_account_switch_device_approval_path(approval), method: :post
+              = table_link_to 'close', t('account_switch_devices.deny'), deny_settings_account_switch_device_approval_path(approval), method: :post
+
+  %hr.spacer/
+  %h2= t('account_switch_devices.trusted_sessions')
+  - if @trusted_devices.empty?
+    .muted-hint.center-text
+      = t('account_switch_devices.no_trusted_sessions')
+  - else
+    .announcements-list
+      - @trusted_devices.each do |device|
+        .announcements-list__item
+          %strong.announcements-list__item__title
+            = account_switch_device_label(device.user_agent)
+            - if device.id == @current_device.id
+              %span.information-badge= t('sessions.current_session')
+          .announcements-list__item__action-bar
+            .announcements-list__item__meta
+              = t('account_switch_devices.session_details', ip: masked_account_switch_ip(device.last_seen_ip), time: l(device.last_seen_at))
+            - if device.id != @current_device.id
+              .announcements-list__item__actions
+                = table_link_to 'close', t('account_switch_devices.revoke'), settings_account_switch_device_path(device), method: :delete, data: { confirm: t('account_switch_devices.revoke_confirm') }
+- else
+  .flash-message.alert
+    = t('account_switch_devices.untrusted')

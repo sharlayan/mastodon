@@ -33,6 +33,8 @@ RSpec.describe 'Log Out' do
       before do
         Fabricate(:account_switch_authorization, account: user.account, target_account: linked_user.account)
         post switch_account_path, params: { switch_to: linked_user.account.id }
+        AccountSwitchDevice.find_by!(account: linked_user.account).update!(trusted_at: Time.current)
+        post switch_account_path, params: { switch_to: linked_user.account.id }
       end
 
       it 'returns to the main account instead of logging out' do

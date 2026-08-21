@@ -210,6 +210,28 @@
   position: relative;
 }
 
+.account-switcher-modal__linked-account-badge {
+  position: absolute;
+  inset-inline-end: -5px;
+  bottom: -5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 2px solid var(--color-bg-primary);
+  border-radius: 50%;
+  background: var(--color-bg-brand-base);
+  color: var(--color-text-on-brand-base);
+  pointer-events: none;
+
+  .icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .account__header.inactive .account__header__image,
 .account__header.inactive .account__avatar {
   filter: grayscale(100%);

@@ -5,8 +5,37 @@ en:
     disable_first: Disable OC_ROLEPLAY_OPTION and restart before running this command.
     restart: Restart the application processes to load the restored settings.
   account_switcher:
+    server_stored_disabled: The server does not allow adding accounts in the team-account format. You cannot add an account, but you can still switch accounts.
+    device_approval_required: Sign in to the linked account again on this device, or approve this request from that account on an already authorized device.
     switch_failed: Account not found.
     switch_unauthorized: You are not authorized to switch to this account.
+  account_switch_devices:
+    account: Account
+    approve: Approve
+    approved: The new session was approved for this account.
+    current_device_revoke: You cannot revoke the session you are currently using.
+    denied: The request was denied.
+    deny: Deny
+    description: Manage linked accounts available in this browser and review requests from newly signed-in sessions. Authorization applies only to each listed account.
+    empty: There are no pending requests.
+    linked_accounts: Linked accounts
+    linked_accounts_description: Linked accounts authorized for switching in this browser session.
+    linked_at: Linked
+    linking_accounts: Accounts linking to this account
+    linking_accounts_description: Accounts that have added this account to their account switcher.
+    no_linked_accounts: There are no linked accounts authorized for this session.
+    no_linking_accounts: No accounts have linked this account.
+    no_trusted_sessions: There are no authorized sessions.
+    pending_requests: Pending session requests
+    request_details: "Requested by @%{account} from %{ip} at %{time}"
+    revoke: Revoke
+    revoke_confirm: Revoke account switching from this session?
+    revoked: The session authorization was revoked.
+    session_details: "Last used from %{ip} at %{time}"
+    self_approval: Approve this request from a different authorized session.
+    title: Linked account sessions
+    trusted_sessions: Authorized sessions
+    untrusted: This session is not yet authorized for this account. Sign in to this account again from the account switcher first.
   accounts:
     refetch_local_error: Cannot refresh a local account
   datetime:
@@ -429,6 +458,9 @@ en:
           recently active, or offline, shown as a dot on their avatar. When disabled,
           no online status is collected or shown to anyone, regardless of user settings.
         title: Online Status
+      server_stored_account_switching:
+        enabled: Allow server-stored account switching
+        enabled_hint: Allow users to add local accounts whose links are stored in the server database. When disabled, existing linked accounts can still be switched and managed, but new links cannot be added.
       pages:
         drive_only: Only allow Drive files on pages
         drive_only_hint: Require page images and Booklet covers to come from Drive. Existing non-Drive media stays readable but must be removed or replaced before editing the page.
@@ -562,6 +594,11 @@ en:
       add_account: Add account
       authorization_complete: Authorization complete. You may close this window.
       completing_authorization: Completing authorization...
+      reauthenticate_account: Reauthenticate account
+      reauthentication_account_mismatch: Sign in to the linked account being reauthenticated.
+      reauthentication_hint: Sign in again to authorize this session for the linked account.
+      reauthentication_success_close_message: Account reauthenticated. You may close this window.
+      reauthentication_success_message: Account reauthenticated successfully. Closing window...
       same_account: Cannot add the same account you are currently logged in as.
       sign_in_hint: Sign in to the account you want to add.
       success_close_message: Account added. You may close this window.

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# Media of soft-hidden statuses is moved out of public serving, so the owner
-# reads it back through the authenticated `/media/:id` route instead.
 module Sharlayan::REST::MediaAttachmentRoleplay
   def url
     return super if object.not_processed?

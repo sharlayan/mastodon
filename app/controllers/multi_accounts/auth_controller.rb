@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class MultiAccounts::AuthController < ApplicationController
+  include Sharlayan::AccountSwitchDeviceConcern
+
   skip_before_action :require_functional!
 
   layout 'auth'
@@ -85,6 +87,9 @@ class MultiAccounts::AuthController < ApplicationController
       return
     end
 
+    @reauthenticate_account_id = @state_data[:reauthenticate_account_id]
+    @reauthentication = @reauthenticate_account_id.present?
+
     bound_session_id = @state_data[:session_id]
     if bound_session_id.present? && bound_session_id != session.id&.public_id
       render plain: I18n.t('devise.failure.timeout'), status: 400
@@ -115,17 +120,32 @@ class MultiAccounts::AuthController < ApplicationController
       source_account = root_account
     end
 
-    if target_account.id == source_account.id
+    if @reauthentication
+      unless target_account.id.to_s == @reauthenticate_account_id.to_s && AccountSwitchAuthorization.exists?(account: source_account, target_account: target_account)
+        flash.now[:alert] = I18n.t('multi_accounts.auth.reauthentication_account_mismatch')
+        @user = User.new
+        render :new
+        return
+      end
+    elsif target_account.id == source_account.id
       flash.now[:alert] = I18n.t('multi_accounts.auth.same_account')
       @user = User.new
       render :new
       return
     end
 
-    AccountSwitchAuthorization.find_or_create_by!(
-      account: source_account,
-      target_account: target_account
-    )
+    unless @reauthentication
+      unless Setting.server_stored_account_switching_enabled
+        render plain: I18n.t('account_switcher.server_stored_disabled'), status: 403
+        return
+      end
+
+      AccountSwitchAuthorization.find_or_create_by!(
+        account: source_account,
+        target_account: target_account
+      )
+    end
+    trust_account_switch_device(target_account)
 
     MultiAccounts::StateStore.consume!(@state, @state_data[:nonce])
 

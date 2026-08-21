@@ -15,6 +15,17 @@ export const LinkedNotificationsPoller: React.FC = () => {
   const loaded = useAppSelector(
     (state) => state.accountSwitches.get('loaded') as boolean,
   );
+  const hasAuthorizedLinkedAccounts = useAppSelector((state) =>
+    (
+      state.accountSwitches.get('items') as
+        | {
+            some(
+              predicate: (item: { get(key: string): unknown }) => boolean,
+            ): boolean;
+          }
+        | undefined
+    )?.some((item) => item.get('session_authorized') === true),
+  );
 
   useEffect(() => {
     if (!loaded) {
@@ -23,20 +34,25 @@ export const LinkedNotificationsPoller: React.FC = () => {
   }, [dispatch, loaded]);
 
   const poll = useCallback(async () => {
-    if (!me || pollingRef.current) return;
+    if (!me || !hasAuthorizedLinkedAccounts || pollingRef.current) return;
 
     pollingRef.current = true;
     try {
+      const switches = await dispatch(fetchAccountSwitches()).unwrap();
+      if (!switches.children.some((item) => item.session_authorized)) {
+        dispatch(setLinkedUnreadCounts({}));
+        return;
+      }
       const counts = await apiGetLinkedUnreadCounts();
       dispatch(setLinkedUnreadCounts(counts));
     } catch {
     } finally {
       pollingRef.current = false;
     }
-  }, [dispatch]);
+  }, [dispatch, hasAuthorizedLinkedAccounts]);
 
   useEffect(() => {
-    if (!me) return;
+    if (!me || !loaded || !hasAuthorizedLinkedAccounts) return;
 
     const initialTimer = setTimeout(() => void poll(), 3_000);
     const intervalId = setInterval(() => void poll(), POLL_INTERVAL_MS);
@@ -45,7 +61,7 @@ export const LinkedNotificationsPoller: React.FC = () => {
       clearTimeout(initialTimer);
       clearInterval(intervalId);
     };
-  }, [poll]);
+  }, [hasAuthorizedLinkedAccounts, loaded, poll]);
 
   return null;
 };

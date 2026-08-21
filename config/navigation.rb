@@ -23,6 +23,7 @@ SimpleNavigation::Configuration.run do |navigation|
       s.item :notifications, safe_join([material_symbol('mail'), t('settings.notifications')]), settings_preferences_notifications_path
       s.item :other, safe_join([material_symbol('tune'), t('preferences.other')]), settings_preferences_other_path
       s.item :custom_css, safe_join([material_symbol('code'), t('settings.custom_css')]), settings_preferences_custom_css_path
+      s.item :linked_accounts, safe_join([material_symbol('devices'), t('account_switch_devices.title')]), settings_account_switch_device_approvals_path
     end
 
     n.item :relationships, safe_join([material_symbol('groups'), t('settings.relationships')]), relationships_path, if: -> { current_user.functional? && !self_destruct } do |s|

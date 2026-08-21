@@ -43,6 +43,10 @@ export const sharlayanModalComponents = {
     ),
   CONVERSATION_PARTICIPANTS: () =>
     Promise.resolve({ default: ConversationParticipantsModal }),
+  STATUS_REACTIONS: () =>
+    import('flavours/glitch/features/ui/components/status_reactions_modal').then(
+      (module) => ({ default: module.StatusReactionsModal }),
+    ),
   ACCOUNT_SWITCHER: () =>
     import('@/flavours/glitch/sharlayan/account_switcher/modal').then((module) => ({
       default: module.AccountSwitcherModal,

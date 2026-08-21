@@ -3,11 +3,6 @@
 class HideStatusService < BaseService
   include Redisable
 
-  # Soft-hide a status: the row and its media survive, but the status leaves
-  # every feed, index and public read path. Only the owner can read it back.
-  # @param   [Status] status
-  # @param   [Hash] options
-  # @option  [Integer] :hidden_by_account_id
   def call(status, **options)
     raise Mastodon::NotPermittedError unless Sharlayan::SoftHide.enabled?
 

@@ -68,7 +68,6 @@ export const InlineComposeShell = () => {
     if (localTimelineEnabled) {
       base.push({ to: '/public/local', label: intl.formatMessage(messages.local), icon: 'users', iconComponent: PeopleIcon });
     }
-
     if (federatedTimelineEnabled) {
       base.push({ to: '/public', label: intl.formatMessage(messages.federated), icon: 'globe', iconComponent: PublicIcon });
     }
@@ -90,7 +89,7 @@ export const InlineComposeShell = () => {
     () => tabs.some((tab) => matchPath(location.pathname, { path: tab.to, exact: true }))
       || !!matchPath(location.pathname, { path: '/lists/:id', exact: true })
       || !!matchPath(location.pathname, { path: '/antennas/:id', exact: true })
-      || !!matchPath(location.pathname, { path: ['/conversations', '/timelines/direct'], exact: true }),
+      || !!matchPath(location.pathname, { path: '/timelines/direct', exact: true }),
     [tabs, location.pathname],
   );
 

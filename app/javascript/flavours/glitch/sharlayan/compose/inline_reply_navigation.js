@@ -68,19 +68,20 @@ export const handleReplyForInlineCompose = (dispatch, getState) => {
   return true;
 };
 
-export const handleDirectForInlineCompose = (dispatch, getState) => {
-  const options = {
+export const handleDirectForInlineCompose = (dispatch, getState, options = {}) => {
+  const { force = false, navigateToConversation = false } = options;
+  const composeOptions = {
     enabled: getState().getIn(['local_settings', 'inline_compose_timelines'], false),
     layout: layoutFromWindow(),
   };
 
-  if (!shouldOpenInlineComposeDirectModal(options)) {
+  if (!force && !shouldOpenInlineComposeDirectModal(composeOptions)) {
     return false;
   }
 
   dispatch(openModal({
     modalType: 'INLINE_COMPOSE',
-    modalProps: { title: 'direct' },
+    modalProps: { title: 'direct', navigateToConversation },
   }));
   return true;
 };

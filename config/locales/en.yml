@@ -998,7 +998,7 @@ en:
         misskey_flavour: Misskey flavour
         misskey_flavour_preamble: Configure Misskey-inspired features and client compatibility.
         timeline_control: Timeline control
-        timeline_control_preamble: Control public timelines for this OC roleplay server. The federated timeline is always disabled in OC roleplay mode.
+        timeline_control_preamble: Control public timeline access for this OC roleplay server.
       default_noindex:
         desc_html: Affects all users who have not changed this setting themselves
         title: Opt users out of search engine indexing by default
@@ -1026,8 +1026,11 @@ en:
           public: Everyone
       timeline_control:
         disable_local_timeline:
-          hint: Hide the local timeline and return no posts from its API. This is enabled by default in OC roleplay mode.
+          hint: Hide the local timeline and return no posts from its API regardless of permissions.
           title: Disable local timeline
+        hide_from_admins:
+          hint: Hide both local and federated timelines from Owners and Admins with the view_feeds permission as well.
+          title: Hide from Owners and Admins too
       landing_page:
         hints:
           about_html: A page with the description, contact information, rules and other information regarding this server.

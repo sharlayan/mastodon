@@ -6,6 +6,12 @@
   .privacy-dropdown__option .icon,
   .status__info__icons .icon,
   .drawer__header .icon,
+  .account-switcher-modal__header-actions .icon,
+  .account-switcher-modal__add-button .icon,
+  .account-switcher-modal__linked-account-badge .icon,
+  .account-switcher-modal__item__actions .icon,
+  .account-switcher-modal__remove-button .icon,
+  .account-switcher-modal__authorization-overlay .icon,
   .navigation-panel__list-panel__header .icon-button .icon,
   .column-header__button .icon,
   .column-header__back-button .icon {
@@ -16,6 +22,12 @@
   .privacy-dropdown__option .icon > path,
   .status__info__icons .icon > path,
   .drawer__header .icon > path,
+  .account-switcher-modal__header-actions .icon > path,
+  .account-switcher-modal__add-button .icon > path,
+  .account-switcher-modal__linked-account-badge .icon > path,
+  .account-switcher-modal__item__actions .icon > path,
+  .account-switcher-modal__remove-button .icon > path,
+  .account-switcher-modal__authorization-overlay .icon > path,
   .navigation-panel__list-panel__header .icon-button .icon > path,
   .column-header__button .icon > path,
   .column-header__back-button .icon > path {
@@ -192,12 +204,24 @@
     @include icons.icon-swap(menu, $color: var(--color-light-text));
   }
 
+  .drawer__header .icon-home {
+    @include icons.icon-swap(home, $color: var(--color-light-text));
+  }
+
+  .drawer__header .icon-bell {
+    @include icons.icon-swap(bell, $color: var(--color-light-text));
+  }
+
   .drawer__header .icon-users {
     @include icons.icon-swap(community, $color: var(--color-light-text));
   }
 
+  .drawer__header .icon-globe {
+    @include icons.icon-swap(globe, $color: var(--color-light-text));
+  }
+
   .drawer__header .icon-cogs {
-    @include icons.icon-swap(sliders, $color: var(--color-light-text));
+    @include icons.icon-swap(app-settings, $color: var(--color-light-text));
   }
 
   .drawer__header .icon-sign-out {
@@ -206,6 +230,34 @@
 
   .navigation-bar__switch-account .icon {
     @include icons.icon-swap(switch-account, $color: var(--color-dim));
+  }
+
+  .account-switcher-modal__item__actions .icon-notifications {
+    @include icons.icon-swap(bell, $color: currentcolor);
+  }
+
+  .account-switcher-modal__item__actions .icon-check {
+    @include icons.icon-swap(account-current, $color: currentcolor);
+  }
+
+  .account-switcher-modal__add-button .icon-person-add {
+    @include icons.icon-swap(user-plus, $color: currentcolor);
+  }
+
+  .account-switcher-modal__linked-account-badge .icon-link {
+    @include icons.icon-swap(link, $color: currentcolor);
+  }
+
+  .account-switcher-modal__header-actions .icon-settings {
+    @include icons.icon-swap(gear, $color: currentcolor);
+  }
+
+  .account-switcher-modal__remove-button .icon-person-remove {
+    @include icons.icon-swap(account-remove, $color: currentcolor);
+  }
+
+  .account-switcher-modal__authorization-overlay .icon-vpn-key {
+    @include icons.icon-swap(key, $color: currentcolor);
   }
 
   .column-header__back-button .icon-chevron-left {
@@ -292,11 +344,11 @@
 
 .local-settings__navigation__item {
   .icon-cogs {
-    @include icons.icon-swap(sliders, $color: var(--color-light-text));
+    @include icons.icon-swap(app-settings, $color: var(--color-light-text));
   }
 
   .icon-sliders {
-    @include icons.icon-swap(sliders, $color: var(--color-light-text));
+    @include icons.icon-swap(settings, $color: var(--color-light-text));
   }
 
   .icon-pencil {
@@ -354,4 +406,14 @@
   @include icons.icon-glyph(up);
 
   background-image: none;
+}
+
+html body.layout-multiple-columns {
+  --color-deck-bg: #10171e;
+
+  .column-header {
+    &__collapsible:not(.collapsed) {
+      border-top: 1px solid var(--color-border);
+    }
+  }
 }

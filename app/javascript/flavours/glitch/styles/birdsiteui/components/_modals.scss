@@ -1,6 +1,16 @@
+@use '../variables/icon-mixin' as icons;
+
 // Modals
 .layout-single-column,
 .layout-multiple-columns {
+  .modal-root :is(.icon-close, .icon-times) {
+    @include icons.icon(close, $color: currentcolor);
+
+    > path {
+      display: none;
+    }
+  }
+
   // Modal overlay
   .modal-root__overlay {
     // It's inlined so we have to use !important

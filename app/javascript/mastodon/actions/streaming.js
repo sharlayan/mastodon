@@ -132,6 +132,14 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
           case 'linked_notification': {
             // @ts-expect-error
             const linked = JSON.parse(data.payload);
+            const linkedAccounts = /** @type {{ some: (predicate: (item: { get: (key: string) => unknown }) => boolean) => boolean } | undefined} */ (getState().accountSwitches?.get('items'));
+            const linkedAccountAuthorized = linkedAccounts?.some(
+              item => String(item.get('target_account_id')) === String(linked.linked_account_id) && item.get('session_authorized') === true,
+            ) ?? false;
+
+            if (!linkedAccountAuthorized) {
+              break;
+            }
 
             if (String(linked.linked_account_id) !== String(me)) {
               dispatch(incrementLinkedUnreadCount(String(linked.linked_account_id)));

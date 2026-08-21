@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-# Prepended to `Api::V1::StatusesController` so that `DELETE /api/v1/statuses/:id`
-# hides instead of deletes while community mode runs with soft-hide enabled.
-# Already hidden statuses reachable by the owner take the purge path instead.
 module Sharlayan::Api::StatusesRoleplayDeletion
   def destroy
     return super unless roleplay_soft_hide_deletion?
@@ -10,8 +7,6 @@ module Sharlayan::Api::StatusesRoleplayDeletion
     @status = roleplay_deletion_scope.find(params[:id])
     authorize @status, :destroy?
 
-    # JSON is generated before the status leaves the public read paths, in order
-    # to have the proper URL for media attachments.
     json = render_to_body json: @status, serializer: REST::StatusSerializer, source_requested: true
 
     if @status.rp_hidden?
