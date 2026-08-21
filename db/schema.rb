@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_18_013704) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_22_072000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1976,11 +1976,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_013704) do
   end
 
   create_table "user_roles", force: :cascade do |t|
+    t.integer "api_delete_rate_limit"
+    t.integer "api_media_rate_limit"
+    t.integer "api_paging_rate_limit"
+    t.integer "api_rate_limit"
+    t.integer "api_token_rate_limit"
     t.integer "collection_limit", default: 10, null: false
     t.string "color", default: "", null: false
     t.datetime "created_at", null: false
     t.integer "daily_page_limit", default: 20, null: false
     t.integer "drive_quota"
+    t.integer "drive_upload_rate_limit"
     t.bigint "extra_permissions", default: 0, null: false
     t.boolean "highlighted", default: false, null: false
     t.string "name", default: "", null: false

@@ -161,8 +161,14 @@ en:
           other: We have to make sure you're at least %{count} to use %{domain}. We won't store this.
         role: The role controls which permissions the user has.
       user_role:
+        api_delete_rate_limit: Maximum status delete and unreblog requests per 30 minutes. Leave blank to use %{default_value}.
+        api_media_rate_limit: Maximum media uploads per 30 minutes. Leave blank to use %{default_value}.
+        api_paging_rate_limit: Maximum paginated requests per 15 minutes. Leave blank to use %{default_value}.
+        api_rate_limit: Maximum authenticated API requests per user per 5 minutes. Leave blank to use %{default_value}.
+        api_token_rate_limit: Maximum authenticated API requests per access token per 5 minutes. Leave blank to use %{default_value}.
         collection_limit: Limits the number of Collections that a single user with this role can create. Please note that when you decrease this number, users who are already at this limit will not lose any Collections. But they will not be able to create additional ones.
         daily_page_limit: Limits the number of Pages that a user with this role can create per day.
+        drive_upload_rate_limit: Maximum Drive uploads per 30 minutes. Leave blank to use %{default_value}.
         page_limit: Limits the number of Pages that a single user with this role can own. Lowering this value does not delete existing Pages, but prevents creating more until the account is below the limit.
         color: Color to be used for the role throughout the UI, as RGB in hex format
         highlighted: This makes the role publicly visible
@@ -396,8 +402,14 @@ en:
         role: Role
         time_zone: Time zone
       user_role:
+        api_delete_rate_limit: Status deletion limit (30 minutes)
+        api_media_rate_limit: Media upload limit (30 minutes)
+        api_paging_rate_limit: Paging request limit (15 minutes)
+        api_rate_limit: Authenticated API limit (5 minutes)
+        api_token_rate_limit: Per-token API limit (5 minutes)
         collection_limit: Maximum number of Collections per user
         daily_page_limit: Maximum Pages created per day
+        drive_upload_rate_limit: Drive upload limit (30 minutes)
         page_limit: Maximum number of Pages per user
         color: Badge color
         highlighted: Display role as badge on user profiles

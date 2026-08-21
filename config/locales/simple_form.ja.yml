@@ -150,7 +150,13 @@ ja:
         chosen_languages: いずれかを選択すると、選択した言語の投稿のみが公開タイムラインに表示されます。この設定はホームタイムラインとリストには影響しません。
         role: そのロールは、ユーザーが持つ権限を制御します。
       user_role:
+        api_delete_rate_limit: 30分あたりの投稿削除およびブースト解除リクエストの上限です。空欄の場合はデフォルト値%{default_value}を使用します。
+        api_media_rate_limit: 30分あたりのメディアアップロード上限です。空欄の場合はデフォルト値%{default_value}を使用します。
+        api_paging_rate_limit: 15分あたりのページングリクエスト上限です。空欄の場合はデフォルト値%{default_value}を使用します。
+        api_rate_limit: ユーザーごとの5分あたりの認証済みAPIリクエスト上限です。空欄の場合はデフォルト値%{default_value}を使用します。
+        api_token_rate_limit: アクセストークンごとの5分あたりの認証済みAPIリクエスト上限です。空欄の場合はデフォルト値%{default_value}を使用します。
         daily_page_limit: このロールのユーザーが1日に作成できるページ数を制限します。
+        drive_upload_rate_limit: 30分あたりのDriveアップロード上限です。空欄の場合はデフォルト値%{default_value}を使用します。
         page_limit: このロールのユーザーが所有できるページ数を制限します。この数を減らしても既存のページは削除されませんが、上限未満になるまで新しいページを作成できません。
         color: UI 全体でロールの表示に使用される色（16進数RGB形式）
         highlighted: これによりロールが公開されます。
@@ -366,7 +372,13 @@ ja:
         role: ロール
         time_zone: タイムゾーン
       user_role:
+        api_delete_rate_limit: 投稿削除上限（30分）
+        api_media_rate_limit: メディアアップロード上限（30分）
+        api_paging_rate_limit: ページング上限（15分）
+        api_rate_limit: 認証済みAPI上限（5分）
+        api_token_rate_limit: トークン別API上限（5分）
         daily_page_limit: 1日あたりのページ作成数上限
+        drive_upload_rate_limit: Driveアップロード上限（30分）
         page_limit: ユーザーあたりのページ数上限
         color: バッジの色
         highlighted: プロフィールにロールのバッジを表示する

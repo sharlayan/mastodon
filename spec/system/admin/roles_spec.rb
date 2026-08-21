@@ -61,6 +61,8 @@ RSpec.describe 'Admin::Roles' do
       visit edit_admin_role_path(role)
       expect(page)
         .to have_title(I18n.t('admin.roles.edit', name: 'Baz'))
+      expect(page).to have_field('user_role_api_rate_limit', disabled: true)
+      expect(page).to have_field('user_role_extra_permissions_as_keys_bypass_rate_limit', disabled: true)
 
       # Update role attribute
       fill_in 'user_role_position', with: '5' # Lower than user
@@ -87,6 +89,19 @@ RSpec.describe 'Admin::Roles' do
       check 'user_role_require_2fa' # Require 2FA for everyone
       expect { click_on submit_button }
         .to(change { role.reload.require_2fa }.to(true))
+    end
+  end
+
+  context 'when user has the owner role' do
+    before { sign_in Fabricate(:owner_user) }
+
+    it 'allows API rate limit and bypass controls' do
+      role = Fabricate(:user_role, position: 0)
+
+      visit edit_admin_role_path(role)
+
+      expect(page).to have_field('user_role_api_rate_limit', disabled: false)
+      expect(page).to have_field('user_role_extra_permissions_as_keys_bypass_rate_limit', disabled: false)
     end
   end
 end

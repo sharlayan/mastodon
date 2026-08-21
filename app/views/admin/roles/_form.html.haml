@@ -54,6 +54,15 @@
 
 %hr.spacer/
 
+- UserRole::RATE_LIMITS.each_value do |config|
+  .fields-group
+    = form.input config[:attribute],
+                 input_html: { min: 1, placeholder: config[:default], disabled: !can_manage_rate_limits? },
+                 hint: t("simple_form.hints.user_role.#{config[:attribute]}", default_value: config[:default]),
+                 wrapper: :with_label
+
+%hr.spacer/
+
 - unless current_user.role == form.object
 
   .field-group

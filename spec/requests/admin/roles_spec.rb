@@ -126,6 +126,13 @@ RSpec.describe 'Admin Roles' do
         expect(response.parsed_body.title)
           .to match(I18n.t('admin.roles.edit', name: 'Bar'))
       end
+
+      it 'does not update API rate limits or bypass through direct parameters' do
+        put admin_role_path(role), params: { user_role: { position: 2, api_rate_limit: 1500, extra_permissions_as_keys: %w(bypass_rate_limit) } }
+
+        expect(role.reload).to have_attributes(api_rate_limit: nil, extra_permissions: 0)
+        expect(response.parsed_body.title).to match(I18n.t('admin.roles.edit', name: 'Bar'))
+      end
     end
   end
 
@@ -147,6 +154,16 @@ RSpec.describe 'Admin Roles' do
         end.to change(UserRole, :count).by(1)
 
         expect(UserRole.order(:id).last).to have_attributes(page_limit: 250, daily_page_limit: 15)
+      end
+
+      it 'creates a role with API rate limit overrides' do
+        sign_in Fabricate(:user, role: Fabricate(:user_role, permissions: UserRole::FLAGS[:administrator], position: 50))
+
+        expect do
+          post admin_roles_path, params: { user_role: { name: 'API role', position: 0, api_rate_limit: 1500, api_token_rate_limit: '' } }
+        end.to change(UserRole, :count).by(1)
+
+        expect(UserRole.order(:id).last).to have_attributes(api_rate_limit: 1500, api_token_rate_limit: nil)
       end
 
       it 'gracefully handles invalid nested params' do
