@@ -7,6 +7,39 @@ RSpec.describe 'Statuses' do
     let(:account) { Fabricate(:account) }
     let(:status)  { Fabricate(:status, account: account) }
 
+    context 'when a status is soft-hidden' do
+      let(:owner) { Fabricate(:user, role: UserRole.find_by(name: 'Owner')) }
+
+      around do |example|
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+      end
+
+      before do
+        Setting.soft_hide_deletion = true
+        RpHiddenStatus.create!(status: status)
+      end
+
+      after do
+        Setting.soft_hide_deletion = false
+      end
+
+      it 'renders the web status page for the signed-in owner' do
+        sign_in owner
+
+        get short_account_status_path(account_username: account.username, id: status.id)
+
+        expect(response).to have_http_status(200)
+      end
+
+      it 'does not render the web status page for another user' do
+        sign_in Fabricate(:user)
+
+        get short_account_status_path(account_username: account.username, id: status.id)
+
+        expect(response).to have_http_status(404)
+      end
+    end
+
     context 'when signed out' do
       context 'when account is permanently suspended' do
         before do

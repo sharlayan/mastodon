@@ -58,6 +58,42 @@ RSpec.describe '/api/v1/statuses' do
           .to start_with('application/json')
       end
 
+      context 'when a status is soft-hidden' do
+        around do |example|
+          ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+        end
+
+        before do
+          Setting.soft_hide_deletion = true
+          RpHiddenStatus.create!(status: status)
+        end
+
+        after do
+          Setting.soft_hide_deletion = false
+        end
+
+        it 'returns the hidden status and audit marker to the owner' do
+          user.update!(role: UserRole.find_by(name: 'Owner'))
+
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body).to include(id: status.id.to_s, rp_hidden: true)
+        end
+
+        it 'does not return the hidden status to a non-owner' do
+          subject
+
+          expect(response).to have_http_status(404)
+        end
+
+        it 'does not return the hidden status without authentication' do
+          get "/api/v1/statuses/#{status.id}"
+
+          expect(response).to have_http_status(404)
+        end
+      end
+
       context 'when local status page access is disabled' do
         before do
           Setting.local_status_page_access = 'disabled'

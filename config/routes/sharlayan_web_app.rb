@@ -14,6 +14,7 @@
   /pages/(*any)
   /reaction_mutes
   /reactions
+  /rp_hidden
   /scheduled
   /timelines/scheduled
 ).each { |path| get path, to: 'home#index' }

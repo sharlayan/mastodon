@@ -8,6 +8,7 @@ import {
   federatedTimelineEnabled,
   localTimelineEnabled,
 } from 'flavours/glitch/initial_state';
+import { adminTimelineOwnerViewer, softHideDeletion } from 'flavours/glitch/sharlayan/roleplay';
 
 const alwaysEnabled = () => true;
 
@@ -49,6 +50,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'antenna-timeline', path: '/timelines/antenna/:id', featureGate: () => antennaEnabled, lazyComponent: AntennaTimeline },
   { key: 'antennas', path: '/antennas', featureGate: () => antennaEnabled, lazyComponent: () => import('../../../features/antennas') },
   { key: 'reactions', path: '/reactions', featureGate: alwaysEnabled, lazyComponent: ReactedStatuses },
+  { key: 'rp-hidden', path: '/rp_hidden', exact: true, featureGate: () => softHideDeletion && adminTimelineOwnerViewer, lazyComponent: () => import('../../../features/rp_hidden_timeline').then(({ RpHiddenTimeline }) => ({ default: RpHiddenTimeline })) },
   { key: 'scheduled', path: ['/scheduled', '/timelines/scheduled'], featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/scheduled_timeline') },
   { key: 'drafts', path: '/drafts', exact: true, featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/status_drafts') },
   { key: 'board-announcements', path: '/board_announcements', featureGate: alwaysEnabled, lazyComponent: BoardAnnouncements },
