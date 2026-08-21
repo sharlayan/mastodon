@@ -4,20 +4,26 @@
 #
 # Table name: user_roles
 #
-#  id                :bigint(8)        not null, primary key
-#  collection_limit  :integer          default(10), not null
-#  color             :string           default(""), not null
-#  daily_page_limit  :integer          default(20), not null
-#  drive_quota       :integer
-#  extra_permissions :bigint(8)        default(0), not null
-#  highlighted       :boolean          default(FALSE), not null
-#  name              :string           default(""), not null
-#  page_limit        :integer          default(500), not null
-#  permissions       :bigint(8)        default(0), not null
-#  position          :integer          default(0), not null
-#  require_2fa       :boolean          default(FALSE), not null
-#  created_at        :datetime         not null
-#  updated_at        :datetime         not null
+#  id                      :bigint(8)        not null, primary key
+#  api_delete_rate_limit   :integer
+#  api_media_rate_limit    :integer
+#  api_paging_rate_limit   :integer
+#  api_rate_limit          :integer
+#  api_token_rate_limit    :integer
+#  collection_limit        :integer          default(10), not null
+#  color                   :string           default(""), not null
+#  daily_page_limit        :integer          default(20), not null
+#  drive_quota             :integer
+#  drive_upload_rate_limit :integer
+#  extra_permissions       :bigint(8)        default(0), not null
+#  highlighted             :boolean          default(FALSE), not null
+#  name                    :string           default(""), not null
+#  page_limit              :integer          default(500), not null
+#  permissions             :bigint(8)        default(0), not null
+#  position                :integer          default(0), not null
+#  require_2fa             :boolean          default(FALSE), not null
+#  created_at              :datetime         not null
+#  updated_at              :datetime         not null
 #
 
 class UserRole < ApplicationRecord

@@ -10,14 +10,29 @@ RSpec.describe 'Misskey-compat Drive endpoints', :attachment_processing do
   before do
     Setting.misskey_compat_enabled = true
     Setting.drive_enabled = true
+    Setting.rate_limit_bypass_enabled = false
   end
 
   after do
     Setting.misskey_compat_enabled = false
     Setting.drive_enabled = false
+    Setting.rate_limit_bypass_enabled = false
   end
 
   describe 'POST /api/drive/files/create' do
+    it 'enforces the upload limit for a bypass role when server bypass is disabled' do
+      user.role.update!(extra_permissions: UserRole::EXTRA_FLAGS[:bypass_rate_limit])
+      Setting.rate_limit_bypass_enabled = false
+      limiter = instance_double(RateLimiter)
+      allow(RateLimiter).to receive(:new).with(account, family: :drive_uploads).and_return(limiter)
+      allow(limiter).to receive(:record!).and_raise(Mastodon::RateLimitExceededError)
+
+      post '/api/drive/files/create', params: { i: token, file: fixture_file_upload('attachment.jpg', 'image/jpeg') }
+
+      expect(response).to have_http_status(429)
+      expect(response.parsed_body.dig(:error, :code)).to eq('RATE_LIMIT_EXCEEDED')
+    end
+
     it 'stores a persistent Drive file whenever the server Drive feature is enabled' do
       expect do
         post '/api/drive/files/create', params: { i: token, file: fixture_file_upload('attachment.jpg', 'image/jpeg'), comment: 'Alt text' }

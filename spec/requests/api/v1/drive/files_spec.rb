@@ -7,6 +7,7 @@ RSpec.describe 'Drive files API' do
 
   before do
     Setting.drive_enabled = true
+    Setting.rate_limit_bypass_enabled = false
   end
 
   describe 'GET /api/v1/drive/files' do
@@ -125,6 +126,29 @@ RSpec.describe 'Drive files API' do
   end
 
   describe 'POST /api/v1/drive/files', :attachment_processing do
+    it 'enforces the upload limit for a bypass role when server bypass is disabled' do
+      user.role.update!(extra_permissions: UserRole::EXTRA_FLAGS[:bypass_rate_limit])
+      Setting.rate_limit_bypass_enabled = false
+      limiter = instance_double(RateLimiter)
+      allow(RateLimiter).to receive(:new).with(user.account, family: :drive_uploads).and_return(limiter)
+      allow(limiter).to receive(:record!).and_raise(Mastodon::RateLimitExceededError)
+
+      post_drive_file
+
+      expect(response).to have_http_status(429)
+    end
+
+    it 'bypasses the upload limiter for a bypass role when server bypass is enabled' do
+      user.role.update!(extra_permissions: UserRole::EXTRA_FLAGS[:bypass_rate_limit])
+      Setting.rate_limit_bypass_enabled = true
+      allow(RateLimiter).to receive(:new).and_call_original
+
+      post_drive_file
+
+      expect(response).to have_http_status(200)
+      expect(RateLimiter).to_not have_received(:new)
+    end
+
     it 'returns the existing file for a duplicate upload' do
       post_drive_file
       first_id = response.parsed_body[:id]
