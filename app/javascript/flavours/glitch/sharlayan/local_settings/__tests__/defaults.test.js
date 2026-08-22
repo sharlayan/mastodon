@@ -17,6 +17,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.get('inline_compose_timelines')).toBe(roleplayMode);
     expect(state.get('inline_compose_expand_on_click')).toBe(false);
     expect(state.get('disable_inline_compose_reply_modal')).toBe(false);
+    expect(state.get('disable_mobile_reply_modal')).toBe(true);
     expect(state.get('floating_compose_button')).toBe(false);
     expect(state.get('use_publish_toot')).toBe(false);
     expect(state.get('deck_unpinned_column_width')).toBe(350);

@@ -1,5 +1,6 @@
 import {
   shouldExitDetailedForInlineCompose,
+  shouldNavigateToComposePage,
   shouldOpenInlineComposeDirectModal,
   shouldOpenInlineComposeReplyModal,
 } from '../inline_reply_navigation';
@@ -79,6 +80,37 @@ describe('inline compose reply navigation', () => {
       layout: 'single-column',
       pathname: '/home',
     })).toBe(false);
+  });
+
+  it.each([
+    '/home',
+    '/@alice/123',
+  ])('navigates to the compose page when the popup is disabled on mobile: %s', (pathname) => {
+    expect(shouldNavigateToComposePage({
+      disableMobilePopup: true,
+      enabled: true,
+      layout: 'mobile',
+      pathname,
+    })).toBe(true);
+  });
+
+  it('keeps the inline compose box when the popup is disabled on desktop single-column layout', () => {
+    expect(shouldNavigateToComposePage({
+      disableMobilePopup: true,
+      enabled: true,
+      layout: 'single-column',
+      pathname: '/home',
+    })).toBe(false);
+  });
+
+  it('allows using the reply popup on mobile independently of the desktop setting', () => {
+    expect(shouldOpenInlineComposeReplyModal({
+      disableMobilePopup: false,
+      disablePopup: true,
+      enabled: true,
+      layout: 'mobile',
+      pathname: '/home',
+    })).toBe(true);
   });
 
   it('does not use the popup on feeds without an active single-column inline compose box', () => {
