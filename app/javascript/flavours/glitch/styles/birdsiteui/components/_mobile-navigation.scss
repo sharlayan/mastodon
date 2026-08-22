@@ -25,6 +25,14 @@
     background-size: 22px auto;
   }
 
+  .ui__navigation-bar__item .icon-bars {
+    @include icons.icon(menu, $size: 22px);
+
+    > path {
+      display: none;
+    }
+  }
+
   .ui__navigation-bar__item--floating-compose .icon {
     @include icons.icon(pen-nib, $size: 24px);
 
