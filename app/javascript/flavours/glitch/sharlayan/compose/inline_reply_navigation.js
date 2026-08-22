@@ -18,8 +18,21 @@ export const shouldExitDetailedForInlineCompose = ({
 
 export const shouldOpenInlineComposeReplyModal = ({
   disablePopup,
+  disableMobilePopup,
+  layout,
   ...options
-}) => isSingleColumnInlineComposeRoute(options) && !disablePopup;
+}) => isSingleColumnInlineComposeRoute({ ...options, layout }) && !(
+  layout === 'mobile' ? disableMobilePopup : disablePopup
+);
+
+export const shouldNavigateToComposePage = ({
+  disableMobilePopup,
+  layout,
+  ...options
+}) => disableMobilePopup && layout === 'mobile' && isSingleColumnInlineComposeRoute({
+  ...options,
+  layout,
+});
 
 export const shouldOpenInlineComposeDirectModal = ({ enabled, layout }) =>
   enabled && layout !== 'multi-column';
@@ -37,10 +50,16 @@ const scrollToTopAfterNavigation = () => {
 export const handleReplyForInlineCompose = (dispatch, getState) => {
   const options = {
     disablePopup: getState().getIn(['local_settings', 'disable_inline_compose_reply_modal'], false),
+    disableMobilePopup: getState().getIn(['local_settings', 'disable_mobile_reply_modal'], true),
     enabled: getState().getIn(['local_settings', 'inline_compose_timelines'], false),
     layout: layoutFromWindow(),
     pathname: browserHistory.location.pathname,
   };
+
+  if (shouldNavigateToComposePage(options)) {
+    browserHistory.push('/publish', { focusTarget: false });
+    return true;
+  }
 
   if (shouldOpenInlineComposeReplyModal(options)) {
     dispatch(openModal({

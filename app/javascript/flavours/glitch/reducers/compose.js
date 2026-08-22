@@ -674,6 +674,7 @@ export const composeReducer = (state = initialState, action) => {
   case COMPOSE_MENTION:
     return state.withMutations(map => {
       map.update('text', text => [text.trim(), `@${action.account.get('acct')} `].filter((str) => str.length !== 0).join(' '));
+      map.setIn(['advanced_options', 'threaded_mode'], false);
       map.set('focusDate', new Date());
       map.set('caretPosition', null);
       map.set('idempotencyKey', uuid());
@@ -681,6 +682,7 @@ export const composeReducer = (state = initialState, action) => {
   case COMPOSE_DIRECT:
     return state.withMutations(map => {
       map.update('text', text => [text.trim(), `@${action.account.get('acct')} `].filter((str) => str.length !== 0).join(' '));
+      map.setIn(['advanced_options', 'threaded_mode'], false);
       map.set('privacy', 'direct');
       map.set('focusDate', new Date());
       map.set('caretPosition', null);

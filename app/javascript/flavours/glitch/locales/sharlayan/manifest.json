@@ -564,6 +564,8 @@
   "settings.compose_reply_behavior",
   "settings.disable_inline_compose_reply_modal",
   "settings.disable_inline_compose_reply_modal.hint",
+  "settings.disable_mobile_reply_modal",
+  "settings.disable_mobile_reply_modal.hint",
   "settings.floating_compose_button",
   "settings.fullwidth_view",
   "settings.fullwidth_view_hint",
