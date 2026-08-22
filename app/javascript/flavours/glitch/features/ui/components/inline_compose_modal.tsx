@@ -33,85 +33,101 @@ export const InlineComposeModal = forwardRef<
   InlineComposeModalRef,
   {
     onClose: () => void;
-    title?: 'reply' | 'direct';
+    title?: 'compose' | 'reply' | 'direct';
     navigateToConversation?: boolean;
+    discardOnClose?: boolean;
   }
->(({ onClose, title = 'reply', navigateToConversation = false }, ref) => {
-  const dispatch = useAppDispatch();
-  const history = useHistory();
-  const intl = useIntl();
-  const submitted = useRef(false);
-
-  useEffect(() => {
-    dispatch(mountCompose());
-    return () => {
-      dispatch(unmountCompose());
-    };
-  }, [dispatch]);
-
-  useImperativeHandle(
+>(
+  (
+    {
+      onClose,
+      title = 'reply',
+      navigateToConversation = false,
+      discardOnClose = true,
+    },
     ref,
-    () => ({
-      onModalClose: () => {
-        if (!submitted.current) {
-          dispatch(discardCompose());
+  ) => {
+    const dispatch = useAppDispatch();
+    const history = useHistory();
+    const intl = useIntl();
+    const submitted = useRef(false);
+
+    useEffect(() => {
+      dispatch(mountCompose());
+      return () => {
+        dispatch(unmountCompose());
+      };
+    }, [dispatch]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        onModalClose: () => {
+          if (!submitted.current && discardOnClose) {
+            dispatch(discardCompose());
+          }
+        },
+      }),
+      [discardOnClose, dispatch],
+    );
+
+    const handleSubmitSuccess = useCallback(
+      (status: { id?: string }) => {
+        submitted.current = true;
+        onClose();
+
+        if (navigateToConversation && status.id) {
+          void apiRequest<{ id: string | null }>(
+            'GET',
+            `v1/conversations/with_status/${status.id}`,
+          )
+            .then(({ id }) => {
+              if (id) {
+                history.push(`/conversations/${id}`);
+              }
+            })
+            .catch(() => undefined);
         }
       },
-    }),
-    [dispatch],
-  );
+      [history, navigateToConversation, onClose],
+    );
 
-  const handleSubmitSuccess = useCallback(
-    (status: { id?: string }) => {
-      submitted.current = true;
-      onClose();
+    return (
+      <div className='modal-root__modal inline-compose-modal'>
+        <div className='inline-compose-modal__header'>
+          <h1>
+            {title === 'direct' ? (
+              <FormattedMessage
+                id='account.menu.direct'
+                defaultMessage='Privately mention'
+              />
+            ) : title === 'compose' ? (
+              <FormattedMessage
+                id='tabs_bar.publish'
+                defaultMessage='New Post'
+              />
+            ) : (
+              <FormattedMessage id='status.reply' defaultMessage='Reply' />
+            )}
+          </h1>
+          <IconButton
+            title={intl.formatMessage(messages.close)}
+            icon='close'
+            iconComponent={CloseIcon}
+            onClick={onClose}
+          />
+        </div>
 
-      if (navigateToConversation && status.id) {
-        void apiRequest<{ id: string | null }>(
-          'GET',
-          `v1/conversations/with_status/${status.id}`,
-        )
-          .then(({ id }) => {
-            if (id) {
-              history.push(`/conversations/${id}`);
-            }
-          })
-          .catch(() => undefined);
-      }
-    },
-    [history, navigateToConversation, onClose],
-  );
-
-  return (
-    <div className='modal-root__modal inline-compose-modal'>
-      <div className='inline-compose-modal__header'>
-        <h1>
-          {title === 'direct' ? (
-            <FormattedMessage
-              id='account.menu.direct'
-              defaultMessage='Privately mention'
-            />
-          ) : (
-            <FormattedMessage id='status.reply' defaultMessage='Reply' />
-          )}
-        </h1>
-        <IconButton
-          title={intl.formatMessage(messages.close)}
-          icon='close'
-          iconComponent={CloseIcon}
-          onClick={onClose}
-        />
+        <div className='inline-compose-modal__body'>
+          <ComposeFormContainer
+            isInline
+            withoutNavigation
+            onSubmitSuccess={handleSubmitSuccess}
+          />
+        </div>
       </div>
-
-      <div className='inline-compose-modal__body'>
-        <ComposeFormContainer
-          isInline
-          withoutNavigation
-          onSubmitSuccess={handleSubmitSuccess}
-        />
-      </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 InlineComposeModal.displayName = 'InlineComposeModal';

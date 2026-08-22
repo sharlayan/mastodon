@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 
 import { discardCompose } from 'flavours/glitch/actions/compose';
-import { browserHistory } from 'flavours/glitch/components/router';
+import { openModal } from 'flavours/glitch/actions/modal';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import type { BaseConfirmationModalProps } from './confirmation_modal';
@@ -36,12 +36,22 @@ export const ConfirmResumeDraftModal: React.FC<BaseConfirmationModalProps> = ({
 
   const onConfirm = useCallback(() => {
     dispatch(discardCompose());
-    browserHistory.push('/publish', { focusTarget: false });
+    dispatch(
+      openModal({
+        modalType: 'INLINE_COMPOSE',
+        modalProps: { title: 'compose', discardOnClose: false },
+      }),
+    );
   }, [dispatch]);
 
   const onCancel = useCallback(() => {
-    browserHistory.push('/publish', { focusTarget: false });
-  }, []);
+    dispatch(
+      openModal({
+        modalType: 'INLINE_COMPOSE',
+        modalProps: { title: 'compose', discardOnClose: false },
+      }),
+    );
+  }, [dispatch]);
 
   return (
     <ConfirmationModal
