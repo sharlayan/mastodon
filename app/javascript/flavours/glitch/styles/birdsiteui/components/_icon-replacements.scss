@@ -431,7 +431,6 @@ html .icon-button .icon-repeat {
     mask-repeat: no-repeat;
   }
 
-  .column-link .icon.icon-.column-link__icon,
   .icon-ellipsis-v {
     @include icons.icon-swap(more-vertical, $color: var(--color-light-text));
     -webkit-mask-position: center;

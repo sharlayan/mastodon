@@ -232,7 +232,7 @@ export const NavigationBar: React.FC = () => {
           aria-label={intl.formatMessage(messages.menu)}
           type='button'
         >
-          <Icon id='' icon={MenuIcon} />
+          <Icon id='bars' icon={MenuIcon} />
         </button>
       </div>
     </div>
