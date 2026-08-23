@@ -9,7 +9,6 @@ import {
   HouseIcon,
   MagnifyingGlassIcon,
   BellIcon,
-  BellRingingIcon,
   ChatCircleIcon,
   BookmarkSimpleIcon,
   BankIcon,
@@ -19,8 +18,9 @@ import { useIdentity } from '@/flavours/glitch/identity_context';
 import { openNewComposer } from '@/flavours/glitch/reducers/slices/composer';
 import { selectUnreadNotificationGroupsCount } from '@/flavours/glitch/selectors/notifications';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
+import FediIcon from '@/images/icons/icon_fediverse.svg?react';
 
-import { NavigationAccountCard } from './account_card';
+import { NavigationAccountCardAndMenu } from './account_card_and_menu';
 import { NavigationFooterLinks } from './footer_links';
 import { NavigationHeader } from './header';
 import { NavigationLink } from './navigation_link';
@@ -85,52 +85,68 @@ export const RedesignNavigationPanel: React.FC<{ siteName?: string }> = ({
                 defaultMessage='Explore'
               />
             </NavigationLink>
-            <NavigationLink
-              to='/notifications'
-              iconComponent={
-                notificationsCount > 0 ? BellRingingIcon : BellIcon
-              }
-              badgeCount={notificationsCount}
-            >
+            <NavigationLink to='/public/local' iconComponent={FediIcon}>
               <FormattedMessage
-                id='tabs_bar.notifications'
-                defaultMessage='Notifications'
+                id='tabs_bar.fediverse_feeds'
+                defaultMessage='Fediverse Feeds'
               />
             </NavigationLink>
-            <NavigationLink to='/conversations' iconComponent={ChatCircleIcon}>
-              <FormattedMessage
-                id='tabs_bar.messages'
-                defaultMessage='Messages'
-                description='Message refers to a direct message. For languages where this is confusing, "chat" or "direct message" can be used.'
-              />
-            </NavigationLink>
-            {useMyArchive ? (
-              <NavigationLink
-                to='/favourites'
-                iconComponent={BankIcon}
-                activePaths={[
-                  '/favourites',
-                  '/bookmarks',
-                  '/reactions',
-                  '/clips',
-                ]}
-              >
-                <FormattedMessage
-                  id='navigation_bar.my_archive'
-                  defaultMessage='My archive'
-                />
-              </NavigationLink>
-            ) : (
-              <NavigationLink
-                to='/bookmarks'
-                iconComponent={BookmarkSimpleIcon}
-              >
-                <FormattedMessage id='tabs_bar.saved' defaultMessage='Saved' />
-              </NavigationLink>
-            )}
           </ul>
           <footer className={classes.footer}>
-            <NavigationAccountCard />
+            <ul className={classes.footerNav}>
+              <NavigationLink
+                stacked
+                to='/notifications'
+                iconComponent={BellIcon}
+                badgeCount={notificationsCount}
+              >
+                <FormattedMessage
+                  id='tabs_bar.notifications'
+                  defaultMessage='Notifications'
+                />
+              </NavigationLink>
+              <NavigationLink
+                stacked
+                to='/conversations'
+                iconComponent={ChatCircleIcon}
+              >
+                <FormattedMessage
+                  id='tabs_bar.messages'
+                  defaultMessage='Messages'
+                  description='Message refers to a direct message. For languages where this is confusing, "chat" or "direct message" can be used.'
+                />
+              </NavigationLink>
+              {useMyArchive ? (
+                <NavigationLink
+                  stacked
+                  to='/favourites'
+                  iconComponent={BankIcon}
+                  activePaths={[
+                    '/favourites',
+                    '/bookmarks',
+                    '/reactions',
+                    '/clips',
+                  ]}
+                >
+                  <FormattedMessage
+                    id='navigation_bar.my_archive'
+                    defaultMessage='My archive'
+                  />
+                </NavigationLink>
+              ) : (
+                <NavigationLink
+                  stacked
+                  to='/bookmarks'
+                  iconComponent={BookmarkSimpleIcon}
+                >
+                  <FormattedMessage
+                    id='tabs_bar.saved'
+                    defaultMessage='Saved'
+                  />
+                </NavigationLink>
+              )}
+            </ul>
+            <NavigationAccountCardAndMenu />
             <NavigationFooterLinks siteName={siteName} />
           </footer>
         </>
