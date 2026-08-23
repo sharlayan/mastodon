@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_22_072000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_24_035500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1816,6 +1816,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_072000) do
     t.index ["status_id"], name: "index_status_reactions_on_status_id"
   end
 
+  create_table "status_read_receipts", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "read_at", null: false
+    t.bigint "status_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_status_read_receipts_on_account_id"
+    t.index ["status_id", "account_id"], name: "index_status_read_receipts_on_status_id_and_account_id", unique: true
+    t.index ["status_id"], name: "index_status_read_receipts_on_status_id"
+  end
+
   create_table "status_stats", force: :cascade do |t|
     t.datetime "created_at", precision: nil, null: false
     t.bigint "favourites_count", default: 0, null: false
@@ -2298,6 +2309,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_22_072000) do
   add_foreign_key "status_reactions", "accounts", on_delete: :cascade
   add_foreign_key "status_reactions", "custom_emojis", on_delete: :cascade
   add_foreign_key "status_reactions", "statuses", on_delete: :cascade
+  add_foreign_key "status_read_receipts", "accounts", on_delete: :cascade
+  add_foreign_key "status_read_receipts", "statuses", on_delete: :cascade
   add_foreign_key "status_stats", "statuses", on_delete: :cascade
   add_foreign_key "status_trends", "accounts", on_delete: :cascade
   add_foreign_key "status_trends", "statuses", on_delete: :cascade

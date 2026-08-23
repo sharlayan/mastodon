@@ -201,6 +201,8 @@
   "direct_composer.upload": "画像を追加",
   "direct_conversation.load_older": "以前のメッセージを読み込む",
   "direct_conversation.loading_recent": "最近のメッセージを読み込んでいます…",
+  "direct_conversation.read": "既読",
+  "direct_conversation.read_by_count": "{count}人が既読",
   "direct_conversation.reply_to_message": "このメッセージに返信",
   "direct_conversation.title_double": "{name1}さん、{name2}さん",
   "direct_conversation.title_more": "{name1}さん、{name2}さん 他{count}人",

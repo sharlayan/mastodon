@@ -113,6 +113,10 @@ export interface ApiStatusJSON {
   muted?: boolean;
   bookmarked?: boolean;
   pinned?: boolean;
+  read_receipts?: {
+    account_id: string;
+    read_at: string;
+  }[];
 
   filtered?: ApiFilterResultJSON[];
   content?: string;

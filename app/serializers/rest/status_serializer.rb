@@ -11,6 +11,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
              :uri, :url, :replies_count, :reblogs_count,
              :favourites_count, :quotes_count, :edited_at, :repliable
   attribute :reaction_acceptance
+  attribute :read_receipts, if: :read_receipts_loaded?
 
   attribute :favourited, if: :current_user?
   attribute :reblogged, if: :current_user?
@@ -57,6 +58,16 @@ class REST::StatusSerializer < ActiveModel::Serializer
 
   def in_reply_to_account_id
     object.in_reply_to_account_id&.to_s
+  end
+
+  def read_receipts
+    object.status_read_receipts.map do |receipt|
+      { account_id: receipt.account_id.to_s, read_at: receipt.read_at.iso8601(3) }
+    end
+  end
+
+  def read_receipts_loaded?
+    object.direct_visibility? && object.association(:status_read_receipts).loaded?
   end
 
   def current_user?

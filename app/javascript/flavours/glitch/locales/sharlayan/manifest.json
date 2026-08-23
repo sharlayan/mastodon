@@ -201,6 +201,8 @@
   "direct_composer.upload",
   "direct_conversation.load_older",
   "direct_conversation.loading_recent",
+  "direct_conversation.read",
+  "direct_conversation.read_by_count",
   "direct_conversation.reply_to_message",
   "direct_conversation.title_double",
   "direct_conversation.title_more",

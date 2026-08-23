@@ -201,6 +201,8 @@
   "direct_composer.upload": "Add image",
   "direct_conversation.load_older": "Load older messages",
   "direct_conversation.loading_recent": "Loading recent messages…",
+  "direct_conversation.read": "Read",
+  "direct_conversation.read_by_count": "Read by {count}",
   "direct_conversation.reply_to_message": "Reply to this message",
   "direct_conversation.title_double": "Conversation with {name1} and {name2}",
   "direct_conversation.title_more": "Conversation with {name1}, {name2} and {count, plural, one {# other} other {# others}}",

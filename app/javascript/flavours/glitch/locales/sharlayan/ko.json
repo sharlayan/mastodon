@@ -201,6 +201,8 @@
   "direct_composer.upload": "이미지 첨부",
   "direct_conversation.load_older": "이전 메시지 불러오기",
   "direct_conversation.loading_recent": "최근 대화를 불러오는 중…",
+  "direct_conversation.read": "읽음",
+  "direct_conversation.read_by_count": "{count}명 읽음",
   "direct_conversation.reply_to_message": "이 메시지에 답글",
   "direct_conversation.title_double": "{name1}님, {name2}님",
   "direct_conversation.title_more": "{name1}님, {name2}님 (외 {count}명)",

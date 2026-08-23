@@ -128,14 +128,21 @@ module Sharlayan::ConversationsControllerExtension
   end
 
   def mark_group_unread(unread)
-    ids = preserve_group? ? preserved_group_members(@conversation).map(&:id) : AccountConversation.where(account: current_account, participant_account_ids: @conversation.participant_account_ids).pluck(:id)
-    AccountConversation.where(id: ids).update_all(unread: unread)
+    members = group_members
+    AccountConversation.where(id: members.map(&:id)).update_all(unread: unread)
+    MarkStatusesReadService.new.call(current_account, members.flat_map(&:status_ids)) unless unread
     @conversation.reload
     render json: @conversation, serializer: REST::ConversationSerializer
   end
 
+  def group_members
+    return preserved_group_members(@conversation) if preserve_group?
+
+    AccountConversation.where(account: current_account, participant_account_ids: @conversation.participant_account_ids).to_a
+  end
+
   def paginated_grouped_statuses
-    Status.where(id: grouped_status_ids).includes(:media_attachments, :status_stat, :tags, active_mentions: :account, account: [:account_stat, user: :role]).to_a_paginated_by_id(statuses_limit, params_slice(:max_id, :since_id, :min_id))
+    Status.where(id: grouped_status_ids).includes(:media_attachments, :status_read_receipts, :status_stat, :tags, active_mentions: :account, account: [:account_stat, user: :role]).to_a_paginated_by_id(statuses_limit, params_slice(:max_id, :since_id, :min_id))
   end
 
   def grouped_status_ids

@@ -4,6 +4,7 @@ import { timelineDelete } from 'flavours/glitch/actions/timelines_typed';
 import { createAccountFromStreamingReactionJSON } from 'flavours/glitch/models/account';
 
 import { STATUS_IMPORT, STATUS_REACTIONS_IMPORT, STATUSES_IMPORT } from '../actions/importer';
+import { CONVERSATION_READ_RECEIPTS_UPDATE } from '../actions/conversations';
 import { normalizeStatusTranslation } from '../actions/importer/normalizer';
 import {
   FAVOURITE_REQUEST,
@@ -171,6 +172,18 @@ export default function statuses(state = initialState, action) {
     return importStatuses(state, action.statuses);
   case STATUS_REACTIONS_IMPORT:
     return importStatusReactions(state, action.status);
+  case CONVERSATION_READ_RECEIPTS_UPDATE:
+    return state.withMutations(mutable => {
+      action.receipt.status_ids.forEach(statusId => {
+        if (!mutable.has(statusId)) return;
+
+        const receipts = mutable.getIn([statusId, 'read_receipts'], fromJS([]));
+        const nextReceipt = fromJS({ account_id: action.receipt.account_id, read_at: action.receipt.read_at });
+        const index = receipts.findIndex(receipt => receipt.get('account_id') === action.receipt.account_id);
+
+        mutable.setIn([statusId, 'read_receipts'], index === -1 ? receipts.push(nextReceipt) : receipts.set(index, nextReceipt));
+      });
+    });
   case FAVOURITE_REQUEST:
     return state.setIn([action.status.get('id'), 'favourited'], true);
   case FAVOURITE_FAIL:

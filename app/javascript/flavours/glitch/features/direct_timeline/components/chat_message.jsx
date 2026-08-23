@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { useCallback, useMemo, useState } from 'react';
 
-import { defineMessages, useIntl } from 'react-intl';
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
@@ -248,6 +248,7 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
   const reactions = status.get('reactions');
   const hasReactions = reactions && reactions.some(reaction => reaction.get('count') > 0);
   const canReact = signedIn && reactionsEnabled;
+  const readReceipts = status.get('read_receipts');
 
   const fullTime = intl.formatDate(status.get('created_at'), {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -521,6 +522,15 @@ export const ChatMessage = ({ conversationId, statusId, prevStatusId, nextStatus
           <span className='chat-message__time'>
             <RelativeTimestamp timestamp={status.get('created_at')} />
           </span>
+          {isOwnMessage && readReceipts && !readReceipts.isEmpty() && (
+            <span className='chat-message__read-receipt'>
+              {readReceipts.size === 1 ? (
+                <FormattedMessage id='direct_conversation.read' defaultMessage='Read' />
+              ) : (
+                <FormattedMessage id='direct_conversation.read_by_count' defaultMessage='Read by {count}' values={{ count: readReceipts.size }} />
+              )}
+            </span>
+          )}
         </div>
       )}
     </AnimateEmojiProvider>
