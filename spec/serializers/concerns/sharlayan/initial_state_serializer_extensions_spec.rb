@@ -32,7 +32,6 @@ RSpec.describe InitialStateSerializer do
 
     expect(meta).to include(
       visible_reactions: 6,
-      federation_universe_enabled: Sharlayan::FederationEdgeAggregator.enabled?,
       reactions_enabled: Setting.reactions_enabled,
       mfm_fold_mode: 'sensitive',
       ignore_others_pages_view: false,
@@ -131,7 +130,7 @@ RSpec.describe InitialStateSerializer do
       user_theme_catalog: Setting.user_theme_catalog,
       user_theme_defaults: Setting.user_theme_defaults
     )
-    expect(meta).to_not include(:custom_emoji_mutes, :reaction_mutes, :federation_universe_enabled)
+    expect(meta).to_not include(:custom_emoji_mutes, :reaction_mutes)
   end
 
   it 'exposes the reaction limit as a top-level attribute' do

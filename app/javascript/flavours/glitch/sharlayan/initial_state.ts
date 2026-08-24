@@ -21,7 +21,6 @@ export interface InlineComposeTab {
 export interface SharlayanInitialStateMeta {
   max_reactions: number;
   force_local_only: boolean;
-  federation_universe_enabled?: boolean;
   circles_enabled: boolean;
   clips_enabled: boolean;
   pages_enabled: boolean;
@@ -94,7 +93,6 @@ export const readSharlayanInitialState = (
     localAccountStatusesAccess: getMeta('local_account_statuses_access'),
     localStatusPageAccess: getMeta('local_status_page_access'),
     forceLocalOnly: getMeta('force_local_only') === true,
-    federationUniverseEnabled: getMeta('federation_universe_enabled') === true,
     roleplayMode,
     collectionsEnabled: !roleplayMode,
     circlesEnabled: getMeta('circles_enabled') === true,

@@ -48,7 +48,6 @@ module Sharlayan::InitialStateSerializerExtensions
 
   def signed_in_meta
     {
-      federation_universe_enabled: Sharlayan::FederationEdgeAggregator.enabled?,
       visible_reactions: object_account_user.setting_visible_reactions,
       show_instance_info: object_account_user.settings.as_json.fetch(:'web.show_instance_info', false),
       custom_emoji_size: object_account_user.settings_custom_emoji_size,
