@@ -47,7 +47,9 @@ const hidePeek = <T,>(list: T[]) => {
 };
 
 const renderAccounts = (accountIds: string[]) =>
-  hidePeek<string>(accountIds).map((id) => <Account key={id} id={id} />);
+  hidePeek<string>(accountIds).map((id) => (
+    <Account key={id} id={id} reference='search' />
+  ));
 
 const renderHashtags = (hashtags: HashtagType[]) =>
   hidePeek<HashtagType>(hashtags).map((hashtag) => (
