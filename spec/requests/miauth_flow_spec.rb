@@ -69,6 +69,31 @@ RSpec.describe 'MiAuth web flow' do
       expect(token.misskey_access_grant.permissions).to eq(['read:account'])
     end
 
+    it 'extends an active token from its latest authenticated request' do
+      token = MisskeyCompat::MiAuth.issue_token(user, permission: 'read:account')
+
+      travel_to 29.days.from_now do
+        post '/api/i', params: { i: token.token }, as: :json
+
+        expect(response).to have_http_status(200)
+        token.reload
+        expect(token.created_at + token.expires_in.seconds).to be_within(1.second).of(MisskeyCompat::MiAuth::TOKEN_TTL.from_now)
+        expect(token.last_used_at).to be_within(1.second).of(Time.current)
+      end
+    end
+
+    it 'does not restore a token that has already expired' do
+      token = MisskeyCompat::MiAuth.issue_token(user, permission: 'read:account')
+
+      travel_to(MisskeyCompat::MiAuth::TOKEN_TTL.from_now + 1.second) do
+        post '/api/i', params: { i: token.token }, as: :json
+
+        expect(response).to have_http_status(401)
+        expect(token.reload.expires_in).to eq(MisskeyCompat::MiAuth::TOKEN_TTL.to_i)
+        expect(token.last_used_at).to be_nil
+      end
+    end
+
     it 'drops unknown permissions instead of promoting them' do
       token = MisskeyCompat::MiAuth.issue_token(user, permission: 'write:unknown')
 
