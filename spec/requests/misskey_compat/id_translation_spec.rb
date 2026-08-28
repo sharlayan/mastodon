@@ -40,8 +40,8 @@ RSpec.describe 'Misskey-compat ID translation' do
   end
 
   describe 'timeline pagination with an encoded untilId cursor' do
-    let!(:older)  { Fabricate(:status, account: account, text: 'older') }
-    let!(:newer)  { Fabricate(:status, account: account, text: 'newer') }
+    let!(:older) { Fabricate(:status, account: account, text: 'older') }
+    let!(:newer) { Fabricate(:status, account: account, text: 'newer') }
 
     it 'returns only notes older than the decoded cursor' do
       until_id = MisskeyCompat::MiId.encode(newer.id)

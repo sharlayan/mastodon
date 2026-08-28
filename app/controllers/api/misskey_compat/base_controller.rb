@@ -80,13 +80,12 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     @current_token
   end
 
-  # rubocop:disable Naming/MemoizedInstanceVariableName
+  # rubocop:disable-next Naming/MemoizedInstanceVariableName
   def current_user
     return @misskey_current_user if defined?(@misskey_current_user)
 
     @misskey_current_user = current_token ? User.find_by(id: current_token.resource_owner_id) : nil
   end
-  # rubocop:enable Naming/MemoizedInstanceVariableName
 
   def current_account
     current_user&.account

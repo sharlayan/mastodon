@@ -11,11 +11,11 @@ class CreateAvatarDecorations < ActiveRecord::Migration[8.1]
       t.integer  :image_file_size
       t.datetime :image_updated_at
 
-      t.string   :image_remote_url
-      t.string   :host
-      t.string   :remote_id
+      t.string :image_remote_url
+      t.string :host
+      t.string :remote_id
 
-      t.boolean  :approved, null: false, default: false
+      t.boolean :approved, null: false, default: false
 
       t.timestamps null: false
     end
