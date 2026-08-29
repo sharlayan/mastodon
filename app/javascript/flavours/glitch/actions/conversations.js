@@ -22,6 +22,7 @@ export const CONVERSATIONS_FETCH_FAIL    = 'CONVERSATIONS_FETCH_FAIL';
 export const CONVERSATIONS_UPDATE        = 'CONVERSATIONS_UPDATE';
 
 export const CONVERSATIONS_READ = 'CONVERSATIONS_READ';
+export const CONVERSATION_READ_RECEIPTS_UPDATE = 'CONVERSATION_READ_RECEIPTS_UPDATE';
 
 export const CONVERSATIONS_DELETE_REQUEST = 'CONVERSATIONS_DELETE_REQUEST';
 export const CONVERSATIONS_DELETE_SUCCESS = 'CONVERSATIONS_DELETE_SUCCESS';
@@ -43,6 +44,11 @@ export const markConversationRead = (conversationId, preserveGroup = false) => (
 
   api().post(`/api/v1/conversations/${conversationId}/read`, null, { params: { preserve_group: preserveGroup || undefined } });
 };
+
+export const updateConversationReadReceipts = receipt => ({
+  type: CONVERSATION_READ_RECEIPTS_UPDATE,
+  receipt,
+});
 
 export const expandConversationStatuses = (conversationId, { maxId, preserveGroup = false } = {}) =>
   expandGroupedConversationStatuses(expandTimeline, conversationId, { maxId, preserveGroup });

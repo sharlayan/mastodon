@@ -202,6 +202,34 @@ RSpec.describe 'API V1 Conversations' do
       expect(response).to have_http_status(200)
       expect(response.headers['Link']&.to_s).to include("/api/v1/conversations/#{conversation.id}/statuses")
     end
+
+    it 'returns local read receipts with direct-message statuses' do
+      status = conversation.last_status
+      StatusReadReceipt.create!(status: status, account: user.account, read_at: Time.current)
+
+      get "/api/v1/conversations/#{conversation.id}/statuses", headers: headers
+
+      serialized_status = response.parsed_body.find { |item| item[:id] == status.id.to_s }
+      expect(serialized_status[:read_receipts]).to contain_exactly(include(account_id: user.account.id.to_s))
+    end
+  end
+
+  describe 'POST /api/v1/conversations/:id/read', :inline_jobs do
+    let(:write_token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write:conversations') }
+    let(:write_headers) { { 'Authorization' => "Bearer #{write_token.token}" } }
+    let!(:status) { PostStatusService.new.call(other.account, text: 'Read me @alice', visibility: 'direct') }
+    let(:conversation) { AccountConversation.find_by!(account: user.account, conversation_id: status.conversation_id) }
+
+    before do
+      AccountConversation.add_status(user.account, status)
+    end
+
+    it 'records a status receipt when a local recipient reads the conversation' do
+      post "/api/v1/conversations/#{conversation.id}/read", headers: write_headers
+
+      expect(response).to have_http_status(200)
+      expect(StatusReadReceipt.find_by(status: status, account: user.account)).to be_present
+    end
   end
 
   describe 'GET /api/v1/conversations/with_account/:account_id', :inline_jobs do

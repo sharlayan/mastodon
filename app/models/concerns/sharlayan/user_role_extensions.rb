@@ -4,6 +4,15 @@ module Sharlayan::UserRoleExtensions
   extend ActiveSupport::Concern
   include Redisable
 
+  RATE_LIMITS = {
+    api: { attribute: :api_rate_limit, default: 1_500 },
+    api_token: { attribute: :api_token_rate_limit, default: 1_500 },
+    api_paging: { attribute: :api_paging_rate_limit, default: 1_000 },
+    api_media: { attribute: :api_media_rate_limit, default: 100 },
+    api_delete: { attribute: :api_delete_rate_limit, default: 60 },
+    drive_upload: { attribute: :drive_upload_rate_limit, default: 100 },
+  }.freeze
+
   EXTRA_FLAGS = {
     bypass_rate_limit: (1 << 0),
     view_admin_timeline: (1 << 1),
@@ -34,9 +43,14 @@ module Sharlayan::UserRoleExtensions
 
   included do
     validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+    RATE_LIMITS.each_value do |config|
+      validates config[:attribute], numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+    end
 
     validate :validate_extra_permissions_elevation
     validate :validate_sharlayan_own_role_edition
+    validate :validate_rate_limit_management
+    validate :validate_rate_limit_hierarchy
 
     before_save :capture_admin_timeline_stream_accounts, if: :admin_timeline_authorization_will_change?
     before_destroy :capture_admin_timeline_stream_accounts
@@ -78,6 +92,11 @@ module Sharlayan::UserRoleExtensions
     raw_computed_extra_permissions & ~self.class.unavailable_extra_flags_mask
   end
 
+  def rate_limit_for(name)
+    config = RATE_LIMITS.fetch(name)
+    self[config[:attribute]] || config[:default]
+  end
+
   private
 
   def raw_computed_extra_permissions
@@ -110,7 +129,55 @@ module Sharlayan::UserRoleExtensions
   end
 
   def validate_extra_permissions_elevation
-    errors.add(:extra_permissions_as_keys, :elevated) if defined?(@current_account) && @current_account.user_role.computed_extra_permissions & extra_permissions != extra_permissions
+    return unless defined?(@current_account)
+
+    permitted = @current_account.user_role.computed_extra_permissions
+    permitted |= EXTRA_FLAGS[:bypass_rate_limit] if current_account_rate_limit_manager?
+    errors.add(:extra_permissions_as_keys, :elevated) if permitted & extra_permissions != extra_permissions
+  end
+
+  def validate_rate_limit_management
+    return unless defined?(@current_account) && !current_account_rate_limit_manager?
+
+    errors.add(:extra_permissions_as_keys, :restricted) if bypass_rate_limit_permission_changed?
+    RATE_LIMITS.each_value do |config|
+      errors.add(config[:attribute], :restricted) if will_save_change_to_attribute?(config[:attribute])
+    end
+  end
+
+  def validate_rate_limit_hierarchy
+    return if position.blank? || rate_limit_bypassed_role?
+
+    roles = self.class.where.not(id: id).reject { |role| rate_limit_bypassed_role?(role) }
+
+    RATE_LIMITS.each do |name, config|
+      value = self[config[:attribute]] || config[:default]
+      lower_maximum = roles.select { |role| role.position < position }.filter_map { |role| role.rate_limit_for(name) }.max
+      upper_minimum = roles.select { |role| role.position > position }.filter_map { |role| role.rate_limit_for(name) }.min
+
+      errors.add(config[:attribute], :lower_than_subordinate) if lower_maximum && value < lower_maximum
+      errors.add(config[:attribute], :higher_than_superior) if upper_minimum && value > upper_minimum
+    end
+  end
+
+  def bypass_rate_limit_permission_changed?
+    return false unless will_save_change_to_extra_permissions?
+
+    previous, current = extra_permissions_change_to_be_saved
+    flag = EXTRA_FLAGS[:bypass_rate_limit]
+    (previous & flag) != (current & flag)
+  end
+
+  def current_account_rate_limit_manager?
+    role = @current_account.user_role
+    role.administrator? || (!role.everyone? && role.position == self.class.assignable.maximum(:position))
+  end
+
+  def rate_limit_bypassed_role?(role = self)
+    flag = EXTRA_FLAGS[:bypass_rate_limit]
+    everyone_permissions = everyone? ? extra_permissions : self.class.where(id: self.class::EVERYONE_ROLE_ID).pick(:extra_permissions).to_i
+
+    role.administrator? || role.extra_permissions.anybits?(flag) || everyone_permissions.anybits?(flag)
   end
 
   def admin_timeline_authorization_will_change?

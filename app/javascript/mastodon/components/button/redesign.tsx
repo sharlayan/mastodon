@@ -16,8 +16,8 @@ export const buttonClasses = classes;
 
 interface ButtonPropsBase<As extends 'a' | 'button'> {
   size?: 'lg' | 'md' | 'sm' | 'xs';
-  variant?: 'solid' | 'ghost';
-  color?: 'accent' | 'neutral' | 'tonal' | 'destructive';
+  variant?: 'solid' | 'tonal' | 'ghost';
+  color?: 'accent' | 'neutral' | 'destructive';
   onClick?: React.MouseEventHandler<
     As extends 'button' ? HTMLButtonElement : HTMLAnchorElement
   >;
@@ -32,12 +32,12 @@ type ButtonAnchorProps = { as: 'a' } & ButtonPropsBase<'a'> &
 type ButtonLinkProps = { as: 'link' } & ButtonPropsBase<'a'> &
   Omit<LinkProps, 'children'>;
 
-type ButtonProps = ButtonButtonProps | ButtonAnchorProps | ButtonLinkProps;
+type BaseButtonProps = ButtonButtonProps | ButtonAnchorProps | ButtonLinkProps;
 
-const BaseButton: React.FC<ButtonProps> = ({
+const BaseButton: React.FC<BaseButtonProps> = ({
   size = 'md',
-  variant = 'solid',
-  color = 'tonal',
+  variant = 'tonal',
+  color = 'neutral',
   as: asComp = 'button',
   children,
   className,
@@ -91,12 +91,17 @@ const BaseButton: React.FC<ButtonProps> = ({
   );
 };
 
-export const Button: React.FC<
-  ButtonProps & {
-    leadingIcon?: IconProp;
-    trailingIcon?: IconProp;
-  }
-> = ({ children, leadingIcon, trailingIcon, ...props }) => (
+type ButtonProps = BaseButtonProps & {
+  leadingIcon?: IconProp;
+  trailingIcon?: IconProp;
+};
+
+export const Button: React.FC<ButtonProps> = ({
+  children,
+  leadingIcon,
+  trailingIcon,
+  ...props
+}) => (
   <BaseButton {...props}>
     {leadingIcon && !props.loading && (
       <Icon id='leading' icon={leadingIcon} className={classes.icon} />
@@ -109,7 +114,7 @@ export const Button: React.FC<
   </BaseButton>
 );
 
-export const IconButton: React.FC<ButtonProps & { icon: IconProp }> = ({
+export const IconButton: React.FC<BaseButtonProps & { icon: IconProp }> = ({
   icon,
   className,
   children,
@@ -131,5 +136,19 @@ const LoadingIcon: React.FC = () => (
     strokeWidth={1}
     className={classes.loading}
     role='none'
+  />
+);
+
+export const ToggleButton: React.FC<ButtonProps & { active?: boolean }> = ({
+  active,
+  className,
+  ...props
+}) => (
+  <Button
+    aria-pressed={active}
+    {...props}
+    // Toggle buttons always have neutral until pressed.
+    color='neutral'
+    className={classNames(className, classes.toggle)}
   />
 );

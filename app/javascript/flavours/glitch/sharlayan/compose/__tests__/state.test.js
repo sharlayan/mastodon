@@ -1,6 +1,10 @@
 import { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 
 import {
+  COMPOSE_DIRECT,
+  COMPOSE_MENTION,
+} from '@/flavours/glitch/actions/compose';
+import {
   changeComposeCircle,
   toggleComposeClip,
 } from '@/flavours/glitch/actions/compose_typed';
@@ -99,6 +103,18 @@ describe('Sharlayan compose state', () => {
     expect(state.get('clip_ids')).toEqual(ImmutableList());
     expect(state.get('scheduled_at')).toBeNull();
     expect(state.getIn(['advanced_options', 'threaded_mode'])).toBe(false);
+  });
+
+  it.each([COMPOSE_MENTION, COMPOSE_DIRECT])('leaves threaded mode when starting a mention with %s', (type) => {
+    const state = composeReducer(undefined, { type: '@@INIT' })
+      .setIn(['advanced_options', 'threaded_mode'], true);
+
+    const nextState = composeReducer(state, {
+      type,
+      account: ImmutableMap({ acct: 'alice' }),
+    });
+
+    expect(nextState.getIn(['advanced_options', 'threaded_mode'])).toBe(false);
   });
 
   it('only clears scheduling metadata on a regular compose reset', () => {

@@ -5,6 +5,7 @@ module MisskeyCompat::MiAuth
   APP_NAME = 'Misskey (MiAuth)'
   TOKEN_SCOPE = 'misskey'
   TOKEN_TTL = 30.days
+  TOKEN_REFRESH_INTERVAL = 1.day
   UNSAFE_CALLBACK_SCHEMES = %w(http javascript file data mailto tel vbscript).freeze
   SUPPORTED_PERMISSIONS = %w(
     read:account write:account
@@ -86,5 +87,13 @@ module MisskeyCompat::MiAuth
       token.create_misskey_access_grant!(permissions: normalized_permissions)
       token
     end
+  end
+
+  def refresh_token_expiry!(token, request, clock: Time)
+    now = clock.now.utc
+    return if token.last_used_at.present? && token.last_used_at >= now - TOKEN_REFRESH_INTERVAL
+
+    expires_in = [(now + TOKEN_TTL - token.created_at).ceil, token.expires_in.to_i].max
+    token.update_columns(expires_in: expires_in, last_used_at: now, last_used_ip: request.remote_ip)
   end
 end

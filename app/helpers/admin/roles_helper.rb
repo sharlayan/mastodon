@@ -25,7 +25,17 @@ module Admin
     end
 
     def disable_extra_permissions?(permissions)
-      permissions.filter { |privilege| role_extra_flag_value(privilege).zero? }
+      permissions.filter do |privilege|
+        if privilege == :bypass_rate_limit
+          !can_manage_rate_limits?
+        else
+          role_extra_flag_value(privilege).zero?
+        end
+      end
+    end
+
+    def can_manage_rate_limits?
+      @can_manage_rate_limits ||= current_user.role.administrator? || (!current_user.role.everyone? && current_user.role.position == UserRole.assignable.maximum(:position))
     end
 
     private

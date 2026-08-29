@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
-import { matchPath, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 
 import classNames from 'classnames';
 
@@ -23,6 +23,8 @@ import ComposeFormContainer from 'flavours/glitch/features/compose/containers/co
 import { me, antennaEnabled, federatedTimelineEnabled, inlineComposeTabs, localTimelineEnabled } from 'flavours/glitch/initial_state';
 import { getOrderedLists } from 'flavours/glitch/selectors/lists';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
+
+import { isInlineComposeFeedRoute } from './inline_compose_routes';
 
 const messages = defineMessages({
   home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
@@ -86,10 +88,7 @@ export const InlineComposeShell = () => {
   }, [intl, savedTabList, lists, antennas]);
 
   const isFeedRoute = useMemo(
-    () => tabs.some((tab) => matchPath(location.pathname, { path: tab.to, exact: true }))
-      || !!matchPath(location.pathname, { path: '/lists/:id', exact: true })
-      || !!matchPath(location.pathname, { path: '/antennas/:id', exact: true })
-      || !!matchPath(location.pathname, { path: '/timelines/direct', exact: true }),
+    () => isInlineComposeFeedRoute(location.pathname, tabs.map((tab) => tab.to)),
     [tabs, location.pathname],
   );
 

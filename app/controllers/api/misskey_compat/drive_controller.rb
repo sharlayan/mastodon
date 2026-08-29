@@ -127,7 +127,7 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   private
 
   def enforce_upload_rate_limit!
-    return if current_user.can_extra?(:bypass_rate_limit)
+    return if Setting.rate_limit_bypass_enabled && current_user.can_extra?(:bypass_rate_limit)
 
     rate_limited?(:drive_uploads)
   end

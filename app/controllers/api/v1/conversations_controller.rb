@@ -7,9 +7,8 @@ class Api::V1::ConversationsController < Api::BaseController
   before_action -> { doorkeeper_authorize! :write, :'write:conversations' }, only: [:read, :unread, :destroy]
   before_action :require_user!
   before_action :set_conversation, except: :index
-  # rubocop:disable Rails/LexicallyScopedActionFilter
+  # rubocop:disable-next Rails/LexicallyScopedActionFilter
   after_action :insert_pagination_headers, only: [:index, :statuses]
-  # rubocop:enable Rails/LexicallyScopedActionFilter
 
   prepend Sharlayan::ConversationsControllerExtension
 

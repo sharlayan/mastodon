@@ -3,12 +3,15 @@ import {
   circlesEnabled,
   clipsEnabled,
   driveEnabled,
-  federationUniverseEnabled,
   pagesEnabled,
   federatedTimelineEnabled,
   localTimelineEnabled,
 } from 'flavours/glitch/initial_state';
-import { adminTimelineEnabled } from 'flavours/glitch/sharlayan/roleplay';
+import {
+  adminTimelineEnabled,
+  adminTimelineOwnerViewer,
+  softHideDeletion,
+} from 'flavours/glitch/sharlayan/roleplay';
 
 const alwaysEnabled = () => true;
 
@@ -53,6 +56,7 @@ export const sharlayanRouteDescriptors = [
   { key: 'antenna-timeline', path: '/timelines/antenna/:id', featureGate: () => antennaEnabled, lazyComponent: AntennaTimeline },
   { key: 'antennas', path: '/antennas', featureGate: () => antennaEnabled, lazyComponent: () => import('../../../features/antennas') },
   { key: 'reactions', path: '/reactions', featureGate: alwaysEnabled, lazyComponent: ReactedStatuses },
+  { key: 'rp-hidden', path: '/rp_hidden', exact: true, featureGate: () => softHideDeletion && adminTimelineOwnerViewer, lazyComponent: () => import('../../../features/rp_hidden_timeline').then(({ RpHiddenTimeline }) => ({ default: RpHiddenTimeline })) },
   { key: 'scheduled', path: ['/scheduled', '/timelines/scheduled'], featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/scheduled_timeline') },
   { key: 'drafts', path: '/drafts', exact: true, featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/status_drafts') },
   { key: 'board-announcements', path: '/board_announcements', featureGate: alwaysEnabled, lazyComponent: BoardAnnouncements },
@@ -60,7 +64,6 @@ export const sharlayanRouteDescriptors = [
   { key: 'account-page', path: ['/@:acct/pages/:name', '/accounts/:id/pages/:name'], featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/account_pages/show') },
   { key: 'account-pages', path: ['/@:acct/pages', '/accounts/:id/pages'], exact: true, featureGate: () => pagesEnabled, lazyComponent: () => import('../../../features/account_pages') },
   { key: 'domain-mutes', path: '/domain_mutes', featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/domain_mutes') },
-  { key: 'federation-universe', path: '/federation/universe', featureGate: () => federationUniverseEnabled, lazyComponent: () => import('../../../features/federation_universe').then(({ FederationUniverse }) => ({ default: FederationUniverse })) },
   { key: 'custom-emoji-mutes', path: '/custom_emoji_mutes', featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/custom_emoji_mutes') },
   { key: 'reaction-mutes', path: '/reaction_mutes', featureGate: alwaysEnabled, lazyComponent: () => import('../../../features/reaction_mutes') },
   { key: 'clips', path: '/clips', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips') },

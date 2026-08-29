@@ -93,6 +93,11 @@
     height: 40px;
   }
 
+  &__read-receipt {
+    color: var(--color-text-tertiary);
+    font-size: 11px;
+  }
+
   &__content {
     display: flex;
     flex-direction: column;

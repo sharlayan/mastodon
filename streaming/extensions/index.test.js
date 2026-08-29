@@ -50,6 +50,9 @@ test('OAuth token query loads community permissions only behind the management t
   assert.match(ACCESS_TOKEN_QUERY, /CURRENT_TIMESTAMP AT TIME ZONE 'UTC'/);
   assert.match(ACCESS_TOKEN_QUERY, /users\.disabled IS FALSE/);
   assert.match(ACCESS_TOKEN_QUERY, /accounts\.suspended_at IS NULL/);
+  assert.match(ACCESS_TOKEN_QUERY, /user_roles everyone_role ON everyone_role\.id = -99/);
+  assert.match(ACCESS_TOKEN_QUERY, /user_roles\.permissions, 0\) \| COALESCE\(everyone_role\.permissions, 0\)/);
+  assert.match(ACCESS_TOKEN_QUERY, /WHEN COALESCE\(user_roles\.permissions, 0\) & 1 = 1\s+THEN -1/);
   if (isAdminTimelineEnabled()) {
     assert.match(ACCESS_TOKEN_QUERY, /extra_permissions/);
     assert.match(ACCESS_TOKEN_QUERY, /WHEN COALESCE\(user_roles\.permissions, 0\) & 1 = 1\s+THEN 7/);

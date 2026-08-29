@@ -20,7 +20,7 @@ class FeedInsertWorker
         @antenna  = Antenna.find(id)
         @follower = @antenna.account
       when :direct
-        @account  = Account.find(id)
+        @account = Account.find(id)
       end
     end
 

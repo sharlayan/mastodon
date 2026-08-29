@@ -33,10 +33,22 @@ export const useConfirmDraftBeforePublish = () => {
 
   return useCallback<React.MouseEventHandler>(
     (event) => {
-      if (isMobileLayout && hasDraft) {
-        event.preventDefault();
+      if (!isMobileLayout) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (hasDraft) {
         dispatch(
           openModal({ modalType: 'CONFIRM_RESUME_DRAFT', modalProps: {} }),
+        );
+      } else {
+        dispatch(
+          openModal({
+            modalType: 'INLINE_COMPOSE',
+            modalProps: { title: 'compose', discardOnClose: false },
+          }),
         );
       }
     },

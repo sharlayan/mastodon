@@ -14,7 +14,7 @@ import { IconButton } from '@/mastodon/components/button/redesign';
 import { CircularProgress } from '@/mastodon/components/circular_progress';
 import {
   Menu,
-  MenuButton,
+  MenuTrigger,
   MenuList,
   MenuItem,
 } from '@/mastodon/components/menu';
@@ -71,10 +71,10 @@ export const ComposeRedesignButton: React.FC = () => {
 
   return (
     <Menu>
-      <MenuButton
+      <MenuTrigger
         as={IconButton}
         icon={PenNibIcon}
-        color='neutral'
+        variant='solid'
         className={classes.button}
         size='lg'
       >
@@ -82,7 +82,7 @@ export const ComposeRedesignButton: React.FC = () => {
           id='compose.new'
           defaultMessage='Write a new post or messsage'
         />
-      </MenuButton>
+      </MenuTrigger>
 
       <MenuList maxWidth={180} placement='top-end'>
         <MenuItem name='post' onClick={handleComposerOpen} icon={NewspaperIcon}>

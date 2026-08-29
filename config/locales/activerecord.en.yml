@@ -70,10 +70,20 @@ en:
               elevated: cannot be higher than your current role
         user_role:
           attributes:
+            api_delete_rate_limit: &rate_limit_hierarchy_errors
+              higher_than_superior: cannot be higher than the limit of a superior role
+              lower_than_subordinate: cannot be lower than the limit of a subordinate role
+              restricted: can only be changed by the owner or an administrator
+            api_media_rate_limit: *rate_limit_hierarchy_errors
+            api_paging_rate_limit: *rate_limit_hierarchy_errors
+            api_rate_limit: *rate_limit_hierarchy_errors
+            api_token_rate_limit: *rate_limit_hierarchy_errors
+            drive_upload_rate_limit: *rate_limit_hierarchy_errors
             permissions_as_keys:
               dangerous: include permissions that are not safe for the base role
               elevated: cannot include permissions your current role does not possess
               own_role: cannot be changed with your current role
+              restricted: API rate limit bypass can only be changed by the owner or an administrator
             position:
               elevated: cannot be higher than your current role
               own_role: cannot be changed with your current role

@@ -109,6 +109,10 @@ export function normalizeStatus(status, normalOldStatus, { settings, bogusQuoteP
   }
 
   if (normalOldStatus) {
+    if (normalStatus.read_receipts === undefined) {
+      normalStatus.read_receipts = normalOldStatus.get('read_receipts')?.toJS();
+    }
+
     normalStatus.quote_approval ||= normalOldStatus.get('quote_approval');
 
     if (preserveReactions) {

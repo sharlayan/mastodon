@@ -76,16 +76,16 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     @current_token = token ? Doorkeeper::AccessToken.by_token(token.to_s) : nil
     @current_token = nil unless @current_token&.accessible?
     @current_token = nil if @current_token && MisskeyCompat::MiAuth.legacy_token?(@current_token)
+    MisskeyCompat::MiAuth.refresh_token_expiry!(@current_token, request) if @current_token&.misskey_access_grant
     @current_token
   end
 
-  # rubocop:disable Naming/MemoizedInstanceVariableName
+  # rubocop:disable-next Naming/MemoizedInstanceVariableName
   def current_user
     return @misskey_current_user if defined?(@misskey_current_user)
 
     @misskey_current_user = current_token ? User.find_by(id: current_token.resource_owner_id) : nil
   end
-  # rubocop:enable Naming/MemoizedInstanceVariableName
 
   def current_account
     current_user&.account

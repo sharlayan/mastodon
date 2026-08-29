@@ -70,10 +70,20 @@ ja:
               elevated: 現在と同じロールには変更できません
         user_role:
           attributes:
+            api_delete_rate_limit: &rate_limit_hierarchy_errors
+              higher_than_superior: 上位ロールの制限より高く設定することはできません
+              lower_than_subordinate: 下位ロールの制限より低く設定することはできません
+              restricted: オーナーまたはadministratorロールのみ変更できます
+            api_media_rate_limit: *rate_limit_hierarchy_errors
+            api_paging_rate_limit: *rate_limit_hierarchy_errors
+            api_rate_limit: *rate_limit_hierarchy_errors
+            api_token_rate_limit: *rate_limit_hierarchy_errors
+            drive_upload_rate_limit: *rate_limit_hierarchy_errors
             permissions_as_keys:
               dangerous: 基本ロールにとって安全でない権限を含みます
               elevated: 現在のロールが所有していない権限は含めることはできません
               own_role: 現在と同じロールには変更できません
+              restricted: APIレート制限のバイパスはオーナーまたはadministratorロールのみ変更できます
             position:
               elevated: 現在と同じロールには変更できません
               own_role: 現在と同じロールには変更できません

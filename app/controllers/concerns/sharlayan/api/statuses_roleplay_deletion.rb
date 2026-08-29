@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 module Sharlayan::Api::StatusesRoleplayDeletion
+  def show
+    return super unless roleplay_owner_deletion? && @status.rp_hidden?
+
+    @status = preload_collection([@status], Status).first
+    render json: @status, serializer: REST::StatusSerializer, rp_admin: true
+  end
+
   def destroy
     return super unless roleplay_soft_hide_deletion?
 
@@ -20,6 +27,15 @@ module Sharlayan::Api::StatusesRoleplayDeletion
 
   private
 
+  def set_status
+    return super unless roleplay_owner_deletion?
+
+    @status = Status.with_rp_hidden.find(params[:id])
+    authorize @status, :show?
+  rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
+    not_found
+  end
+
   def roleplay_soft_hide_deletion?
     Sharlayan::SoftHide.enabled?
   end
@@ -30,6 +46,7 @@ module Sharlayan::Api::StatusesRoleplayDeletion
 
   def roleplay_owner_deletion?
     return false unless roleplay_soft_hide_deletion?
+    return false unless current_user
 
     role = current_user.role
     !role.everyone? && role.position == UserRole.assignable.maximum(:position)

@@ -60,7 +60,7 @@ export const StatusReactionsModal: React.FC<{
   const [hasMore, setHasMore] = useState(false);
 
   const loadMore = useCallback(async () => {
-    if (!selectedName) return;
+    if (!selectedName || loading) return;
 
     setLoading(true);
     try {
@@ -70,15 +70,14 @@ export const StatusReactionsModal: React.FC<{
         items.at(-1)?.id,
       );
       dispatch(importFetchedAccounts(page.map((item) => item.account)));
-      const nextItems = [...items, ...page];
-      setItems(nextItems);
+      setItems((currentItems) => [...currentItems, ...page]);
       setHasMore(page.length === STATUS_REACTION_ACCOUNTS_PAGE_SIZE);
     } catch (error) {
       dispatch(showAlertForError(error));
     } finally {
       setLoading(false);
     }
-  }, [dispatch, items, selectedName, statusId]);
+  }, [dispatch, items, loading, selectedName, statusId]);
 
   const handleLoadMore = useCallback(() => {
     void loadMore();

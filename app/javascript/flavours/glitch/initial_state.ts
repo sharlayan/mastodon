@@ -62,6 +62,7 @@ interface InitialStateMeta extends SharlayanInitialStateMeta {
   local_topic_feed_access: 'public' | 'authenticated';
   remote_topic_feed_access: 'public' | 'authenticated' | 'disabled';
   title: string;
+  custom_app_icon: string | null;
   show_trends: boolean;
   landing_page: 'about' | 'trends' | 'local_feed';
   use_blurhash: boolean;
@@ -214,6 +215,7 @@ export const remoteLiveFeedAccess = getMeta('remote_live_feed_access');
 export const localTopicFeedAccess = getMeta('local_topic_feed_access');
 export const remoteTopicFeedAccess = getMeta('remote_topic_feed_access');
 export const title = getMeta('title');
+export const customAppIcon = getMeta('custom_app_icon');
 export const landingPage = getMeta('landing_page');
 export const useBlurhash = getMeta('use_blurhash');
 export const usePendingItems = getMeta('use_pending_items');
@@ -235,7 +237,6 @@ export const {
   localAccountStatusesAccess,
   localStatusPageAccess,
   forceLocalOnly,
-  federationUniverseEnabled,
   roleplayMode,
   collectionsEnabled,
   circlesEnabled,
