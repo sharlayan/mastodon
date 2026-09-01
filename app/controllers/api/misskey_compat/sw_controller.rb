@@ -26,9 +26,10 @@ class Api::MisskeyCompat::SwController < Api::MisskeyCompat::BaseController
 
   def unregister
     endpoint = params[:endpoint].to_s
-    return render_error('endpoint required', 'INVALID_PARAM', 400) if endpoint.blank?
+    subscriptions = Web::PushSubscription.where(user_id: current_user.id)
+    subscriptions = endpoint.present? ? subscriptions.where(endpoint: endpoint) : subscriptions.where(access_token_id: current_token.id)
 
-    Web::PushSubscription.where(user_id: current_user.id, endpoint: endpoint).destroy_all
+    subscriptions.destroy_all
     head 204
   end
 
