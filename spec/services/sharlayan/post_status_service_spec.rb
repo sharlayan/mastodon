@@ -86,11 +86,25 @@ RSpec.describe PostStatusService do
     it 'creates the status when circles are enabled' do
       Setting.circles_enabled = true
 
-      status = subject.call(account, text: 'circle post', visibility: :circle, circle_id: circle.id)
+      status = subject.call(account, text: 'circle post', visibility: :private, circle_id: circle.id)
 
       expect(status)
         .to be_persisted
         .and have_attributes(visibility: 'limited', limited_scope: 'personal')
+    end
+
+    it 'uses the selected circle regardless of the requested visibility' do
+      follower = Fabricate(:account)
+      follower.follow!(account)
+      circle.circle_accounts.create!(account: follower)
+      Setting.circles_enabled = true
+
+      status = subject.call(account, text: 'circle post', visibility: :public, circle_id: circle.id)
+
+      expect(status)
+        .to be_persisted
+        .and have_attributes(visibility: 'limited', limited_scope: 'circle')
+      expect(circle.statuses).to include(status)
     end
 
     it 'persists circle and clip membership atomically with the status' do

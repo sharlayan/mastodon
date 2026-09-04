@@ -232,6 +232,43 @@ RSpec.describe '/api/v1/statuses' do
         end
       end
 
+      context 'with a selected circle' do
+        let(:circle) { Circle.create!(account: user.account, title: 'Friends') }
+        let(:params) { { status: 'Hello circle', visibility: 'private', circle_id: circle.id } }
+
+        before do
+          Setting.circles_enabled = true
+        end
+
+        after do
+          Setting.circles_enabled = false
+        end
+
+        it 'creates a circle status through the API' do
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(Status.last).to have_attributes(visibility: 'limited', limited_scope: 'personal')
+          expect(circle.statuses).to include(Status.last)
+        end
+
+        it 'overrides a public visibility with the selected circle' do
+          post '/api/v1/statuses', headers: headers, params: params.merge(visibility: 'public')
+
+          expect(response).to have_http_status(200)
+          expect(Status.last).to have_attributes(visibility: 'limited', limited_scope: 'personal')
+          expect(circle.statuses).to include(Status.last)
+        end
+
+        it 'accepts the legacy circle visibility' do
+          post '/api/v1/statuses', headers: headers, params: params.merge(visibility: 'circle')
+
+          expect(response).to have_http_status(200)
+          expect(Status.last).to have_attributes(visibility: 'limited', limited_scope: 'personal')
+          expect(circle.statuses).to include(Status.last)
+        end
+      end
+
       context 'without reaction acceptance and the user has a default' do
         let(:user) { Fabricate(:user, settings: { default_reaction_acceptance: 'likeOnlyForRemote' }) }
 

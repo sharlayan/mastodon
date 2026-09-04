@@ -193,6 +193,25 @@ RSpec.describe Account::Search do
       end
     end
 
+    context 'when limiting search to followers' do
+      it 'returns matching accounts that follow the searching account' do
+        match = Fabricate(:account, display_name: 'Circle Follower')
+        match.follow!(account)
+
+        results = Account.advanced_search_for('Circle', account, limit: 10, followers: true)
+
+        expect(results).to eq [match]
+      end
+
+      it 'does not return matching accounts that do not follow the searching account' do
+        Fabricate(:account, display_name: 'Circle Stranger')
+
+        results = Account.advanced_search_for('Circle', account, limit: 10, followers: true)
+
+        expect(results).to eq []
+      end
+    end
+
     it 'does not return suspended users' do
       Fabricate(
         :account,

@@ -34,7 +34,7 @@ module Sharlayan::PostStatus
     private
 
     def prepare_circle(visibility)
-      return [nil, visibility, nil] unless visibility&.to_sym == :circle
+      return [nil, visibility, nil] if @options[:circle_id].blank? && visibility&.to_sym != :circle
 
       raise ActiveRecord::RecordNotFound unless Setting.circles_enabled
 

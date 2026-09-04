@@ -1,6 +1,6 @@
 export const getSharlayanComposeSubmission = ({ getState, effectiveStatusId, overridePrivacy }) => {
   const circleId = !overridePrivacy && effectiveStatusId === null ? getState().getIn(['compose', 'circle_id']) : null;
-  const visibility = circleId ? 'circle' : (overridePrivacy || getState().getIn(['compose', 'privacy']));
+  const visibility = circleId ? 'private' : (overridePrivacy || getState().getIn(['compose', 'privacy']));
   const rawPoll = getState().getIn(['compose', 'poll'], null);
   const options = rawPoll?.get('options');
   const poll = rawPoll ? {

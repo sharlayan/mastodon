@@ -7,8 +7,11 @@ import { useParams, Link } from 'react-router-dom';
 import { Helmet } from '@unhead/react/helmet';
 
 import GroupIcon from '@/material-icons/400-24px/group.svg?react';
-import SquigglyArrow from '@/svg-icons/squiggly_arrow.svg?react';
-import { fetchRelationships } from 'flavours/glitch/actions/accounts';
+import {
+  expandFollowers,
+  fetchFollowers,
+  fetchRelationships,
+} from 'flavours/glitch/actions/accounts';
 import { showAlertForError } from 'flavours/glitch/actions/alerts';
 import { fetchCircle } from 'flavours/glitch/actions/circles';
 import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
@@ -28,6 +31,8 @@ import { DisplayName } from 'flavours/glitch/components/display_name';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import { ShortNumber } from 'flavours/glitch/components/short_number';
 import { useSearchAccounts } from 'flavours/glitch/hooks/useSearchAccounts';
+import { me } from 'flavours/glitch/initial_state';
+import { selectUserListWithoutMe } from 'flavours/glitch/selectors/user_lists';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 export const messages = defineMessages({
@@ -41,10 +46,12 @@ export const messages = defineMessages({
   },
   add: { id: 'circles.add_member', defaultMessage: 'Add' },
   remove: { id: 'circles.remove_member', defaultMessage: 'Remove' },
+  members: { id: 'circles.members', defaultMessage: 'Members' },
+  addMembers: { id: 'circles.add_members', defaultMessage: 'Add members' },
   back: { id: 'column_back_button.label', defaultMessage: 'Back' },
 });
 
-type Mode = 'remove' | 'add';
+type Tab = 'members' | 'add';
 
 const AccountItem: React.FC<{
   accountId: string;
@@ -135,16 +142,21 @@ const CircleMembers: React.FC<{
   const intl = useIntl();
 
   const [searching, setSearching] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
   const [accountIds, setAccountIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(!!id);
-  const [mode, setMode] = useState<Mode>('remove');
+  const [tab, setTab] = useState<Tab>('members');
+  const followerList = useAppSelector((state) =>
+    selectUserListWithoutMe(state, 'followers', me),
+  );
 
   const {
     accounts: accountsFromSearch,
     isLoading: loadingSearchResults,
     searchAccounts: handleSearch,
+    resetAccounts: resetSearchAccounts,
   } = useSearchAccounts({
-    resetOnInputClear: false,
+    followersOnly: true,
     onSettled: (value) => {
       if (value.trim().length === 0) {
         setSearching(false);
@@ -154,6 +166,7 @@ const CircleMembers: React.FC<{
     },
   });
   const accountIdsFromSearch = accountsFromSearch.map((item) => item.id);
+  const followerIds = followerList?.items ?? [];
 
   useEffect(() => {
     if (id) {
@@ -172,35 +185,59 @@ const CircleMembers: React.FC<{
     }
   }, [dispatch, id]);
 
+  useEffect(() => {
+    if (me && !followerList) {
+      dispatch(fetchFollowers(me));
+    }
+  }, [dispatch, followerList]);
+
+  const handleSelectMembers = useCallback(() => {
+    setTab('members');
+    setSearchActive(false);
+    setSearching(false);
+    resetSearchAccounts();
+  }, [resetSearchAccounts]);
+
+  const handleSelectAdd = useCallback(() => {
+    setTab('add');
+  }, []);
+
   const handleSearchClick = useCallback(() => {
-    setMode('add');
-  }, [setMode]);
+    setSearchActive(true);
+  }, []);
 
   const handleDismissSearchClick = useCallback(() => {
-    setMode('remove');
+    setSearchActive(false);
     setSearching(false);
-  }, [setMode]);
+    resetSearchAccounts();
+    handleSearch('');
+  }, [handleSearch, resetSearchAccounts]);
 
-  const handleAccountToggle = useCallback(
-    (accountId: string) => {
-      const partOfCircle = accountIds.includes(accountId);
+  const handleLoadMore = useCallback(() => {
+    if (me) {
+      dispatch(expandFollowers(me));
+    }
+  }, [dispatch]);
 
-      if (partOfCircle) {
-        setAccountIds(accountIds.filter((account) => account !== accountId));
-      } else {
-        setAccountIds([accountId, ...accountIds]);
-      }
-    },
-    [accountIds, setAccountIds],
-  );
+  const handleAccountToggle = useCallback((accountId: string) => {
+    setAccountIds((currentAccountIds) =>
+      currentAccountIds.includes(accountId)
+        ? currentAccountIds.filter((account) => account !== accountId)
+        : [accountId, ...currentAccountIds],
+    );
+  }, []);
 
-  let displayedAccountIds: string[];
-
-  if (mode === 'add' && searching) {
-    displayedAccountIds = accountIdsFromSearch;
-  } else {
-    displayedAccountIds = accountIds;
-  }
+  const displayedAccountIds =
+    tab === 'members'
+      ? accountIds
+      : searching
+        ? accountIdsFromSearch
+        : followerIds;
+  const isLoading =
+    loading ||
+    (tab === 'add' &&
+      (loadingSearchResults ||
+        (!searching && (followerList?.isLoading ?? true))));
 
   return (
     <Column
@@ -215,21 +252,45 @@ const CircleMembers: React.FC<{
         showBackButton
       />
 
-      <ColumnSearchHeader
-        placeholder={intl.formatMessage(messages.placeholder)}
-        onBack={handleDismissSearchClick}
-        onSubmit={handleSearch}
-        onActivate={handleSearchClick}
-        active={mode === 'add'}
-      />
+      <div className='account__section-headline' role='tablist'>
+        <button
+          type='button'
+          role='tab'
+          aria-selected={tab === 'members'}
+          className={tab === 'members' ? 'active' : undefined}
+          onClick={handleSelectMembers}
+        >
+          <FormattedMessage {...messages.members} />
+        </button>
+        <button
+          type='button'
+          role='tab'
+          aria-selected={tab === 'add'}
+          className={tab === 'add' ? 'active' : undefined}
+          onClick={handleSelectAdd}
+        >
+          <FormattedMessage {...messages.addMembers} />
+        </button>
+      </div>
+
+      {tab === 'add' && (
+        <ColumnSearchHeader
+          placeholder={intl.formatMessage(messages.placeholder)}
+          onBack={handleDismissSearchClick}
+          onSubmit={handleSearch}
+          onActivate={handleSearchClick}
+          active={searchActive}
+        />
+      )}
 
       <ScrollableList
-        scrollKey='circle_members'
+        scrollKey={`circle_members_${tab}`}
         trackScroll={!multiColumn}
         bindToDocument={!multiColumn}
-        isLoading={loading || loadingSearchResults}
-        showLoading={loading && displayedAccountIds.length === 0}
-        hasMore={false}
+        isLoading={isLoading}
+        showLoading={isLoading && displayedAccountIds.length === 0}
+        hasMore={tab === 'add' && !searching && followerList?.hasMore}
+        onLoadMore={handleLoadMore}
         footer={
           <>
             {displayedAccountIds.length > 0 && <div className='spacer' />}
@@ -242,26 +303,22 @@ const CircleMembers: React.FC<{
           </>
         }
         emptyMessage={
-          mode === 'remove' ? (
-            <>
-              <span>
-                <FormattedMessage
-                  id='circles.no_members_yet'
-                  defaultMessage='No members yet.'
-                />
-                <br />
-                <FormattedMessage
-                  id='circles.find_users_to_add'
-                  defaultMessage='Find people who follow you to add'
-                />
-              </span>
-
-              <SquigglyArrow className='empty-column-indicator__arrow' />
-            </>
-          ) : (
+          tab === 'members' ? (
+            <FormattedMessage
+              id='circles.no_members_yet'
+              defaultMessage='No members yet.'
+              tagName='span'
+            />
+          ) : searching ? (
             <FormattedMessage
               id='circles.no_results_found'
               defaultMessage='No results found.'
+              tagName='span'
+            />
+          ) : (
+            <FormattedMessage
+              id='circles.no_followers'
+              defaultMessage='No followers available to add.'
               tagName='span'
             />
           )
@@ -272,10 +329,7 @@ const CircleMembers: React.FC<{
             key={accountId}
             accountId={accountId}
             circleId={id}
-            partOfCircle={
-              displayedAccountIds === accountIds ||
-              accountIds.includes(accountId)
-            }
+            partOfCircle={accountIds.includes(accountId)}
             onToggle={handleAccountToggle}
           />
         ))}
