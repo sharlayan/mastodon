@@ -16,7 +16,7 @@ import { openModal } from 'flavours/glitch/actions/modal';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { useColumnWidthContext } from 'flavours/glitch/features/ui/util/column_width_context';
-import { ButtonInTabsBar } from 'flavours/glitch/features/ui/util/columns_context';
+import { RenderIntoTabsBarPortal } from 'flavours/glitch/features/ui/util/columns_context';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { useAppDispatch } from 'flavours/glitch/store';
 
@@ -397,6 +397,6 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   if (placeholder) {
     return component;
   } else {
-    return <ButtonInTabsBar>{component}</ButtonInTabsBar>;
+    return <RenderIntoTabsBarPortal>{component}</RenderIntoTabsBarPortal>;
   }
 };

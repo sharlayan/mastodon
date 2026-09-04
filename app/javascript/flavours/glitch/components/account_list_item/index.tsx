@@ -34,6 +34,7 @@ import classes from './styles.module.scss';
 export interface RenderButtonOptions {
   accountId: string | undefined;
   relationship: Relationship | null | undefined;
+  reference?: string;
 }
 
 type Stat = 'followers' | 'following' | 'posts' | 'joined' | 'last-active';
@@ -47,6 +48,7 @@ interface Props {
   withBorder?: boolean;
   badge?: ReactNode;
   renderButton?: (options: RenderButtonOptions) => React.ReactNode;
+  reference?: string;
 }
 
 const DEFAULT_STATS: Stat[] = ['followers', 'posts', 'last-active'];
@@ -67,6 +69,7 @@ export const AccountListItem: React.FC<Props> = ({
   withBorder = true,
   badge: badgeProp,
   renderButton = defaultRenderButton,
+  reference,
 }) => {
   const intl = useIntl();
   const account = useAccount(accountId);
@@ -94,13 +97,14 @@ export const AccountListItem: React.FC<Props> = ({
         icon={<Avatar account={account} size={40} />}
         sideContent={
           <span className={classes.button}>
-            {renderButton({ accountId, relationship })}
+            {renderButton({ accountId, relationship, reference })}
           </span>
         }
       >
         <ListItemLink
-          to={`/@${account.acct}`}
+          to={{ pathname: `/@${account.acct}`, state: { reference } }}
           data-hover-card-account={accountId}
+          data-hover-card-reference={reference}
           subtitle={<span className={classes.handle}>{handle}</span>}
         >
           <DisplayNameSimple
@@ -212,8 +216,8 @@ export const AccountListItem: React.FC<Props> = ({
   );
 };
 
-const defaultRenderButton = ({ accountId }: RenderButtonOptions) => (
-  <AccountListItemFollowButton accountId={accountId} />
+const defaultRenderButton = ({ accountId, reference }: RenderButtonOptions) => (
+  <AccountListItemFollowButton accountId={accountId} reference={reference} />
 );
 
 export const AccountListItemFollowButton: React.FC<{

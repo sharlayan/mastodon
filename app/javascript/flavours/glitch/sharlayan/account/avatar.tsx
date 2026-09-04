@@ -75,7 +75,6 @@ export function useSharlayanAvatarExtras({
 
   const showOthersOnlineStatus = useAppSelector(
     (state) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       state.local_settings.getIn(
         ['show_others_online_status'],
         false,

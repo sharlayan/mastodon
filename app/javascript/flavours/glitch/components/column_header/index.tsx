@@ -3,12 +3,14 @@ import { useCallback } from 'react';
 import { FormattedMessage } from 'react-intl';
 
 import classNames from 'classnames';
+import { useLocation } from 'react-router';
 
 import { ArrowLeftIcon, ListIcon } from '@phosphor-icons/react';
 
 import { openNavigation } from '@/flavours/glitch/actions/navigation';
 import { getColumnSkipLinkId } from '@/flavours/glitch/features/ui/components/skip_links';
 import { useBreakpoint } from '@/flavours/glitch/features/ui/hooks/useBreakpoint';
+import { RenderIntoTabsBarPortal } from '@/flavours/glitch/features/ui/util/columns_context';
 import { useAppDispatch } from '@/flavours/glitch/store';
 import { hasReactChildren } from '@/flavours/glitch/utils/has_react_children';
 
@@ -16,13 +18,19 @@ import type { IconButtonProps } from '../button/redesign';
 import { Button, IconButton } from '../button/redesign';
 import { useColumn, useColumnIndexContext } from '../column/context';
 import { NavigationFocusTarget } from '../navigation_focus_target';
+import type { LocationState } from '../router';
 import { useAppHistory } from '../router';
 
 import classes from './styles.module.scss';
 
+export { ColumnSettingsMenu } from './column_settings_menu';
+
 export interface ColumnHeaderProps {
   title: string;
-  withBackButton?: boolean;
+  // Set to auto to display the back button based on
+  // the `fromMastodon` location state
+  withBackButton?: boolean | 'auto';
+  withUnreadMarker?: boolean;
   extraButtons?: React.ReactNode;
   className?: string;
 }
@@ -30,29 +38,49 @@ export interface ColumnHeaderProps {
 export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   title,
   withBackButton,
+  withUnreadMarker,
   extraButtons,
   className,
   ...props
 }: ColumnHeaderProps) => {
   const { scrollTop } = useColumn();
   const columnIndex = useColumnIndexContext();
+  const location = useLocation<LocationState>();
+  const hasBackButton =
+    withBackButton === true ||
+    (withBackButton === 'auto' && location.state?.fromMastodon);
 
   return (
-    <header {...props} className={classNames(className, classes.root)}>
-      {withBackButton ? <BackButton /> : <MobileMenuButton />}
-      <NavigationFocusTarget className={classes.title}>
-        <button
-          type='button'
-          onClick={scrollTop}
-          id={getColumnSkipLinkId(columnIndex)}
-        >
-          {title}
-        </button>
-      </NavigationFocusTarget>
-      {hasReactChildren(extraButtons) && (
-        <div className={classes.rightButtons}>{extraButtons}</div>
-      )}
-    </header>
+    <RenderIntoTabsBarPortal>
+      <header
+        {...props}
+        className={classNames(className, classes.root)}
+        data-has-unread={withUnreadMarker}
+      >
+        {hasBackButton ? <BackButton /> : <MobileMenuButton />}
+        <NavigationFocusTarget className={classes.title}>
+          <button
+            type='button'
+            onClick={scrollTop}
+            id={getColumnSkipLinkId(columnIndex)}
+          >
+            {title}
+            {withUnreadMarker && (
+              <span className='sr-only'>
+                {' '}
+                <FormattedMessage
+                  id='column.has_unread_content'
+                  defaultMessage='(has unread content)'
+                />
+              </span>
+            )}
+          </button>
+        </NavigationFocusTarget>
+        {hasReactChildren(extraButtons) && (
+          <div className={classes.rightButtons}>{extraButtons}</div>
+        )}
+      </header>
+    </RenderIntoTabsBarPortal>
   );
 };
 

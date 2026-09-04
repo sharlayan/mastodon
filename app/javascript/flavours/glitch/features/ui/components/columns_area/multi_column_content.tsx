@@ -86,10 +86,8 @@ export const MultiColumnContent: React.FC<{
   });
   const dispatch = useAppDispatch();
   const unpinnedColumnWidth = normalizeColumnWidth(
-    useAppSelector(
-      (state) =>
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-        state.local_settings.get('deck_unpinned_column_width') as unknown,
+    useAppSelector((state) =>
+      state.local_settings.get('deck_unpinned_column_width'),
     ),
   );
   const saveUnpinnedColumnWidth = useCallback(

@@ -63,7 +63,6 @@ export const Pages: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { signedIn } = useIdentity();
   const pageSettings = useAppSelector(
     (state) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       state.local_settings.get('pages') as ImmutableMap<string, boolean>,
   );
   const showWritingStatistics = pageSettings.get('show_activity', true);

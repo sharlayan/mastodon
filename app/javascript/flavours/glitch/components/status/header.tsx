@@ -116,7 +116,7 @@ const StatusDisplayName: FC<{
   const AccountComponent = friendAccount ? AvatarOverlay : Avatar;
   const hideAccountHandle = useAppSelector(
     (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
+      state.local_settings.get(
         'hide_timeline_account_handle',
         false,
       ) as boolean,
@@ -135,6 +135,7 @@ const StatusDisplayName: FC<{
         ),
       }}
       className='status__display-name'
+      reference='status'
     >
       <div className='status__avatar'>
         <AccountComponent

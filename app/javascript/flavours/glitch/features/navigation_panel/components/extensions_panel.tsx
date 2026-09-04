@@ -1,7 +1,5 @@
 import { useIntl, defineMessages } from 'react-intl';
 
-import type { Map as ImmutableMap } from 'immutable';
-
 import CalendarTodayIcon from '@/material-icons/400-24px/calendar_today.svg?react';
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import ExtensionIcon from '@/material-icons/400-24px/extension.svg?react';
@@ -51,11 +49,7 @@ const messages = defineMessages({
 export const ExtensionsPanel: React.FC = () => {
   const intl = useIntl();
   const useMyArchive = useAppSelector(
-    (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
-        'use_my_archive',
-        false,
-      ) as boolean,
+    (state) => state.local_settings.get('use_my_archive', false) as boolean,
   );
 
   const children = [];

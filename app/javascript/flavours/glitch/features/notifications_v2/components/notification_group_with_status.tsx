@@ -70,18 +70,14 @@ export const NotificationGroupWithStatus: React.FC<{
   );
 
   const collapseEnabled = useAppSelector(
-    (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).getIn([
-        'collapsed',
-        'enabled',
-      ]) as boolean,
+    (state) => state.local_settings.getIn(['collapsed', 'enabled']) as boolean,
   );
   const autoCollapseSettings = useAppSelector(
     (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).getIn([
-        'collapsed',
-        'auto',
-      ]) as ImmutableMap<string, unknown>,
+      state.local_settings.getIn(['collapsed', 'auto']) as ImmutableMap<
+        string,
+        unknown
+      >,
   );
   const [wasUnreadOnMount] = useState(unread);
   const [manuallyCollapsed, setCollapsed] = useState<boolean | null>(null);

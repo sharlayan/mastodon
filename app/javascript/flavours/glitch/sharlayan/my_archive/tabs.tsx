@@ -2,18 +2,12 @@ import { FormattedMessage } from 'react-intl';
 
 import { NavLink } from 'react-router-dom';
 
-import type { Map as ImmutableMap } from 'immutable';
-
 import { clipsEnabled } from 'flavours/glitch/initial_state';
 import { useAppSelector } from 'flavours/glitch/store';
 
 export const MyArchiveTabs: React.FC = () => {
   const enabled = useAppSelector(
-    (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
-        'use_my_archive',
-        false,
-      ) as boolean,
+    (state) => state.local_settings.get('use_my_archive', false) as boolean,
   );
 
   if (!enabled) {

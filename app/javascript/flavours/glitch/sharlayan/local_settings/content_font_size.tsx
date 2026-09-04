@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
 
-import type { Map as ImmutableMap } from 'immutable';
-
 import { initialState } from 'flavours/glitch/initial_state';
 import { useAppSelector } from 'flavours/glitch/store';
 
@@ -38,7 +36,7 @@ export const applyStoredContentFontSize = () => {
 export const ContentFontSize: React.FC = () => {
   const contentFontSize = useAppSelector(
     (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
+      state.local_settings.get(
         'content_font_size',
         DEFAULT_CONTENT_FONT_SIZE,
       ) as string,

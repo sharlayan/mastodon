@@ -5,7 +5,7 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
-import type { List as ImmutableList, Map as ImmutableMap } from 'immutable';
+import type { List as ImmutableList } from 'immutable';
 
 import { fetchClips } from '@/flavours/glitch/actions/clips';
 import { openModal } from '@/flavours/glitch/actions/modal';
@@ -32,11 +32,7 @@ export const ClipButton: FC<ClipButtonProps> = ({ disabled = false }) => {
     (state) => (state.compose.get('clip_ids') as ImmutableList<string>).size,
   );
   const showClipChoice = useAppSelector(
-    (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
-        'show_clip_choice',
-        true,
-      ) as boolean,
+    (state) => state.local_settings.get('show_clip_choice', true) as boolean,
   );
 
   useEffect(() => {

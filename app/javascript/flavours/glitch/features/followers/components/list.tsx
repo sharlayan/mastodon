@@ -70,6 +70,7 @@ export const AccountList: FC<AccountListProps> = ({
           bioCharLimit={SHARLAYAN_FOLLOW_LIST_BIO_CHAR_LIMIT}
           withFollowedMessage={showBio}
           badge={withoutFollowsYouBadge ? false : null}
+          reference='profile'
         />
       )) ?? [];
 
@@ -82,6 +83,7 @@ export const AccountList: FC<AccountListProps> = ({
           bioCharLimit={SHARLAYAN_FOLLOW_LIST_BIO_CHAR_LIMIT}
           withFollowedMessage={showBio}
           badge={withoutFollowsYouBadge ? false : null}
+          reference='profile'
         />,
       );
     }

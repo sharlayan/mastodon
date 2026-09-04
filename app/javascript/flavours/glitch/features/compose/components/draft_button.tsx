@@ -66,11 +66,7 @@ export const DraftButton: FC<DraftButtonProps> = ({
   const [showList, setShowList] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const visible = useAppSelector(
-    (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
-        'show_draft_button',
-        false,
-      ) as boolean,
+    (state) => state.local_settings.get('show_draft_button', false) as boolean,
   );
   const drafts = useAppSelector(
     (state) =>

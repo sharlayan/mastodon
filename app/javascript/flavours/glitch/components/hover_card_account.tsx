@@ -26,10 +26,9 @@ import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 
 export const HoverCardAccount = forwardRef<
   HTMLDivElement,
-  { accountId?: string }
->(({ accountId }, ref) => {
+  { accountId?: string; reference?: string }
+>(({ accountId, reference }, ref) => {
   const { setContainerElement, tooltip } = useSharlayanEmojiInfoTooltip();
-
   const dispatch = useAppDispatch();
 
   const account = useAppSelector((state) =>
@@ -181,7 +180,10 @@ export const HoverCardAccount = forwardRef<
                 )}
               </div>
 
-              <FollowButton accountId={accountId} />
+              <FollowButton
+                accountId={accountId}
+                reference={reference ?? 'hover_card'}
+              />
             </>
           )}
         </div>

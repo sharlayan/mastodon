@@ -80,7 +80,6 @@ const NotificationsLink = () => {
   const count = useAppSelector(selectUnreadNotificationGroupsCount);
   const showCount = useAppSelector(
     (state) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       state.local_settings.getIn(['notifications', 'tab_badge']) as boolean,
   );
   const intl = useIntl();
@@ -155,24 +154,18 @@ export const useSharlayanPrimaryNavigation = (
   const account = useAccount(me);
   const navOrder = useAppSelector(
     (state) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       state.local_settings.getIn(['navigation_panel', 'order']) as
         | ImmutableList<string>
         | undefined,
   );
   const navHidden = useAppSelector(
     (state) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       state.local_settings.getIn(['navigation_panel', 'hidden']) as
         | ImmutableMap<string, boolean>
         | undefined,
   );
   const useMyArchive = useAppSelector(
-    (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
-        'use_my_archive',
-        false,
-      ) as boolean,
+    (state) => state.local_settings.get('use_my_archive', false) as boolean,
   );
   const isMyArchiveActive = useCallback(
     (_match: unknown, location: { pathname: string }) =>

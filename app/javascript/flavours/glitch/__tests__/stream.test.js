@@ -31,7 +31,9 @@ vi.mock('flavours/glitch/initial_state', () => ({
   me: '1',
 }));
 
-const getState = () => ImmutableMap({ meta: ImmutableMap({ streaming_api_base_url: 'wss://streaming.test' }) });
+const getState = () => ({
+  meta: ImmutableMap({ streaming_api_base_url: 'wss://streaming.test' }),
+});
 
 const connect = async (onReceive = () => undefined) => {
   const { connectStream } = await import('flavours/glitch/stream');

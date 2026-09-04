@@ -2,8 +2,6 @@ import { useCallback, useEffect } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
-import type { Map as ImmutableMap } from 'immutable';
-
 import {
   PenNibIcon,
   HouseIcon,
@@ -73,9 +71,10 @@ function useFollowedHashtags() {
   return { followedHashtags: tags };
 }
 
-export const RedesignNavigationPanel: React.FC<{ siteName?: string }> = ({
-  siteName,
-}) => {
+export const RedesignNavigationPanel: React.FC<{
+  siteName?: string;
+  mode?: 'static' | 'slide-out';
+}> = ({ siteName, mode = 'static' }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const { signedIn } = useIdentity();
@@ -83,11 +82,7 @@ export const RedesignNavigationPanel: React.FC<{ siteName?: string }> = ({
     selectUnreadNotificationGroupsCount,
   );
   const useMyArchive = useAppSelector(
-    (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
-        'use_my_archive',
-        false,
-      ) as boolean,
+    (state) => state.local_settings.get('use_my_archive', false) as boolean,
   );
 
   const openComposer = useCallback(() => {
@@ -111,6 +106,7 @@ export const RedesignNavigationPanel: React.FC<{ siteName?: string }> = ({
   return (
     <nav
       className={classes.root}
+      data-mode={mode}
       aria-label={intl.formatMessage(messages.main)}
     >
       {topSensor}
