@@ -59,7 +59,7 @@
     "@dnd-kit/utilities": "3.2.2",
     "@floating-ui/react-dom": "2.1.9",
     "@formatjs/intl-pluralrules": "6.3.13",
-    "@formatjs/unplugin": "1.2.4",
+    "@formatjs/unplugin": "1.2.8",
     "@fortawesome/fontawesome-free": "7.2.0",
     "@gamestdio/websocket": "0.3.2",
     "@github/webauthn-json": "2.1.1",
