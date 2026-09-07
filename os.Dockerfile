@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.27
 ARG os_version=3.7.0
 FROM opensearchproject/opensearch:${os_version}
 ARG os_version
