@@ -60,7 +60,7 @@
     "@floating-ui/react-dom": "2.1.9",
     "@formatjs/intl-pluralrules": "6.3.13",
     "@formatjs/unplugin": "1.2.4",
-    "@fortawesome/fontawesome-free": "7.2.0",
+    "@fortawesome/fontawesome-free": "7.3.1",
     "@gamestdio/websocket": "0.3.2",
     "@github/webauthn-json": "2.1.1",
     "@optimize-lodash/rollup-plugin": "6.0.0",
