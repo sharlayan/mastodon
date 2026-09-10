@@ -39,11 +39,11 @@ const messages = defineMessages({
 export function useStatusHandlers({
   status,
   contextType,
-  onClick,
+  onOpen,
 }: {
   status?: ExpandedStatusShape;
   contextType?: StatusContextType;
-  onClick?: () => void;
+  onOpen?: () => void;
 }) {
   const matchedFilters = useAppSelector((state) =>
     selectStatusFilters(state, { contextType, statusId: status?.id }),
@@ -95,10 +95,10 @@ export function useStatusHandlers({
   // Navigation handlers
   const history = useHistory();
 
-  const onOpen = useCallback(
+  const onOpenCallback = useCallback(
     (newTab = false) => {
-      if (onClick || !status) {
-        onClick?.();
+      if (onOpen || !status) {
+        onOpen?.();
         return;
       }
 
@@ -112,7 +112,7 @@ export function useStatusHandlers({
         history.push(path, { focusTarget: FOCUS_TARGET.POST });
       }
     },
-    [history, onClick, status],
+    [history, onOpen, status],
   );
 
   const onOpenClick: React.MouseEventHandler = useCallback(
@@ -120,27 +120,15 @@ export function useStatusHandlers({
       event.preventDefault();
 
       if (event.button === 0 && !(event.ctrlKey || event.metaKey)) {
-        onOpen();
+        onOpenCallback();
       } else if (
         event.button === 1 ||
         (event.button === 0 && (event.ctrlKey || event.metaKey))
       ) {
-        onOpen(true);
+        onOpenCallback(true);
       }
     },
-    [onOpen],
-  );
-
-  const onHeaderClick: React.MouseEventHandler = useCallback(
-    (event) => {
-      // Only handle clicks on the empty space above the content
-      if (event.target !== event.currentTarget && event.detail >= 1) {
-        return;
-      }
-
-      onOpenClick(event);
-    },
-    [onOpenClick],
+    [onOpenCallback],
   );
 
   const acct = status?.account.acct;
@@ -190,9 +178,10 @@ export function useStatusHandlers({
       onOpenClick,
       onExpandedToggle,
       onFilterToggle,
-      onHeaderClick,
       onMention,
-      onOpen,
+      onOpen: () => {
+        onOpenCallback();
+      },
       onOpenMedia,
       onOpenProfile,
       onToggleHidden,
@@ -206,9 +195,8 @@ export function useStatusHandlers({
       handlerFactory,
       onExpandedToggle,
       onFilterToggle,
-      onHeaderClick,
       onMention,
-      onOpen,
+      onOpenCallback,
       onOpenClick,
       onOpenMedia,
       onOpenProfile,

@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 
-import type { StatusTranslation } from '@/flavours/glitch/models/status';
-import { statusFactoryImmutable } from '@/testing/factories';
+import type {
+  StatusShape,
+  StatusTranslation,
+} from '@/flavours/glitch/models/status';
+import { statusFactoryState } from '@/testing/factories';
 
 import { StatusContent } from './content';
 
@@ -20,10 +23,22 @@ const onTranslateFn = fn().mockName('onTranslate');
 const meta = {
   title: 'Components/Status/StatusContent',
   render(args) {
+    const status = statusFactoryState() as unknown as StatusShape;
+    if (args.translatedTo) {
+      status.translation = {
+        contentHtml: `${args.text}<p><em>(in ${args.translatedTo})</em></p>`,
+        provider: 'Test Translation API',
+        spoiler_text: '',
+        spoilerHtml: '',
+        language: args.translatedTo,
+        detected_source_language: 'en',
+      } satisfies StatusTranslation;
+    }
+
     return (
       <div style={{ width: 'min(600px, 80vw)' }}>
         <StatusContent
-          statusId='1'
+          status={status}
           collapsible={args.collapsible}
           onClick={args.clickable ? onClickFn : undefined}
           onTranslate={args.translatable ? onTranslateFn : undefined}
@@ -55,24 +70,6 @@ const meta = {
           },
         },
       },
-    },
-    stateFn(args: StatusContentProps) {
-      let status = statusFactoryImmutable();
-      if (args.translatedTo) {
-        status = status.set('translation', {
-          contentHtml: `${args.text}<p><em>(in ${args.translatedTo})</em></p>`,
-          provider: 'Test Translation API',
-          spoiler_text: '',
-          spoilerHtml: '',
-          language: args.translatedTo,
-          detected_source_language: 'en',
-        } satisfies StatusTranslation);
-      }
-      return {
-        statuses: {
-          '1': status,
-        },
-      };
     },
   },
 } satisfies Meta<StatusContentProps>;

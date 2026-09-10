@@ -3,11 +3,11 @@ import { defineMessages } from 'react-intl';
 import axios from 'axios';
 import { throttle } from 'lodash';
 
-import api from 'flavours/glitch/api';
-import { browserHistory } from 'flavours/glitch/components/router';
-import { countableText } from 'flavours/glitch/features/compose/util/counter';
-import { forceLocalOnly } from 'flavours/glitch/initial_state';
-import { tagHistory } from 'flavours/glitch/settings';
+import api from '@/flavours/glitch/api';
+import { browserHistory } from '@/flavours/glitch/components/router';
+import { countableText } from '@/flavours/glitch/features/compose/util/counter';
+import { forceLocalOnly } from '@/flavours/glitch/initial_state';
+import { tagHistory } from '@/flavours/glitch/settings';
 import { emojiMartSearch } from '@/flavours/glitch/features/emoji/picker';
 import { createDriveFileAttachment } from '@/flavours/glitch/sharlayan/compose/drive_attachment';
 import { createFetchComposeEmojiSuggestions } from '@/flavours/glitch/sharlayan/compose/emoji_suggestions';
@@ -28,6 +28,7 @@ import { openModal } from './modal';
 import { deleteStatusDraft } from './status_drafts';
 import { updateTimeline } from './timelines';
 import { insertStatusIntoAccountTimelines } from './timelines_typed';
+import { isRedesignEnabled } from '../utils/environment';
 
 /** @type {AbortController | undefined} */
 let fetchComposeSuggestionsAccountsController;
@@ -108,7 +109,7 @@ const messages = defineMessages({
 });
 
 export const ensureComposeIsVisible = (getState) => {
-  if (!getState().getIn(['compose', 'mounted'])) {
+  if (!getState().getIn(['compose', 'mounted']) && !isRedesignEnabled()) {
     browserHistory.push('/publish', { focusTarget: false });
   }
 };

@@ -1596,6 +1596,7 @@ hu:
       content: Sajnáljuk, valami hiba történt a mi oldalunkon.
       title: Az oldal nem megfelelő
     '503': Az oldalt átmeneti kiszolgálóprobléma miatt nem lehet kiszolgálni.
+    go_home: Ugrás a kezdőlapra
     noscript_html: A Mastodon webalkalmazás használatához engedélyezned kell a JavaScriptet. A másik megoldás, hogy kipróbálsz egy platformodnak megfelelő <a href="%{apps_path}">alkalmazást</a>.
   existing_username_validator:
     not_found: ezzel a névvel nem találtunk helyi felhasználót
@@ -1970,8 +1971,8 @@ hu:
       invalid_choice: A kiválasztott szavazási lehetőség nem létezik
       over_character_limit: egyik sem lehet %{max} karakternél hosszabb
       self_vote: Nem szavazhatsz a saját szavazásodon
-      too_few_options: több, mint egy opciónak kell lennie
-      too_many_options: nem lehet több, mint %{max} opció
+      too_few_options: több, mint egy elemnek kell lennie
+      too_many_options: nem lehet több, mint %{max} elem
     vote: Szavazás
   posting_defaults:
     explanation: Ezek a beállítások lesznek alapértelmezésként használva, amikor új bejegyzéseket hoz létre, de a szerkesztő segítségével bejegyzésenként szerkeszthetők.

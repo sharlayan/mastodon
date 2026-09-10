@@ -1,5 +1,3 @@
-import { useCallback } from 'react';
-
 import classNames from 'classnames';
 
 import { ComposeRedesignButton } from '@/flavours/glitch/features/compose/redesign/trigger';
@@ -11,25 +9,9 @@ import { Header } from 'flavours/glitch/features/custom_homepage/components/head
 import { SharlayanColumnsAreaExtensions } from 'flavours/glitch/sharlayan/registry/ui';
 
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { useColumnsContext } from '../../util/columns_context';
 
 import { MultiColumnContent } from './multi_column_content';
 import classes from './redesign.module.scss';
-
-const TabsBarPortal: React.FC<React.ComponentProps<'div'>> = (props) => {
-  const { setTabsBarElement } = useColumnsContext();
-
-  const setRef = useCallback(
-    (element: HTMLDivElement | null) => {
-      if (element) {
-        setTabsBarElement(element);
-      }
-    },
-    [setTabsBarElement],
-  );
-
-  return <div {...props} ref={setRef} />;
-};
 
 export const ColumnsAreaRedesign: React.FC<{
   pageBlogView?: boolean;
@@ -57,8 +39,6 @@ export const ColumnsAreaRedesign: React.FC<{
         <div className={classes.main}>
           <Header />
 
-          <TabsBarPortal className={classes.columnHeader} />
-
           <div className={classes.content}>{children}</div>
 
           <Footer />
@@ -76,11 +56,9 @@ export const ColumnsAreaRedesign: React.FC<{
         {isMobile ? <RedesignMobileNavigation /> : <ComposeRedesignButton />}
 
         <main className={classes.main}>
-          <TabsBarPortal className={classes.columnHeader} />
-
           <SharlayanColumnsAreaExtensions />
 
-          <div className={classes.content}>{children}</div>
+          {children}
         </main>
       </div>
     );

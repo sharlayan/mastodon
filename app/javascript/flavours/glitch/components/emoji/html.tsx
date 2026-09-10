@@ -34,7 +34,7 @@ export const EmojiHTML = <
   onAttribute,
   allowedTags,
   extraArgs,
-  ref,
+  children,
   ...props
 }: PolymorphicProps<EmojiHTMLProps<Arg>, As>) => {
   const contents = useMemo(
@@ -51,8 +51,10 @@ export const EmojiHTML = <
 
   return (
     <CustomEmojiProvider emojis={extraEmojis}>
-      <AnimateEmojiProvider {...props} ref={ref}>
+      <AnimateEmojiProvider {...props}>
         {contents}
+
+        {children}
       </AnimateEmojiProvider>
     </CustomEmojiProvider>
   );
