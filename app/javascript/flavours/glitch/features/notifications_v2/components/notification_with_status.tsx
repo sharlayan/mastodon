@@ -149,7 +149,7 @@ export const NotificationWithStatus: React.FC<{
           avatarSize={40}
           unfocusable
           collapsed={autoCollapseEnabled && collapsed}
-          onClick={openAsConversation ? handleOpen : undefined}
+          onOpen={openAsConversation ? handleOpen : undefined}
         />
       </div>
     </Hotkeys>
