@@ -438,7 +438,7 @@ GEM
     marcel (1.2.1)
     mario-redis-lock (1.2.1)
       redis (>= 3.0.5)
-    markly (0.16.0)
+    markly (0.19.0)
     matrix (0.4.3)
     memory_profiler (1.1.0)
     mime-types (3.7.0)
