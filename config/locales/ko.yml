@@ -72,6 +72,10 @@ ko:
       disable_sign_in_token_auth: 이메일 토큰 인증 비활성화
       disable_two_factor_authentication: 2단계 인증을 비활성화
       disabled: 동결됨
+      discoverable:
+        disabled: 작성자가 검색 노출에 동의하지 않았습니다
+        enabled: 작성자가 검색 노출에 동의했습니다
+        title: 검색 노출
       display_name: 표시되는 이름
       domain: 도메인
       edit: 수정
@@ -81,6 +85,12 @@ ko:
       enable_sign_in_token_auth: 이메일 토큰 인증 활성화
       enabled: 활성
       enabled_msg: "%{username}의 동결을 성공적으로 해제 했습니다."
+      follow_recommendations:
+        allowed: 허용됨
+        suppress: 팔로우 추천에서 제외
+        suppressed: 제외됨
+        title: 팔로우 추천
+        unsuppress: 팔로우 추천에 복원
       followers: 팔로워
       follows: 팔로우
       header: 헤더
@@ -164,6 +174,12 @@ ko:
       suspension_irreversible: 이 계정의 데이터는 복구할 수 없도록 삭제되었습니다. 계정을 정지 해제함으로서 계정을 다시 사용 가능하게 할 수 있지만 이전에 삭제한 어떤 데이터도 복구되지 않습니다.
       suspension_reversible_hint_html: 계정이 정지되었습니다, 그리고 %{date}에 데이터가 완전히 삭제될 것입니다. 그 때까지는 어떤 안 좋은 효과 없이 계정이 복구 될 수 있습니다. 만약 지금 당장 계정의 모든 데이터를 삭제하고 싶다면, 아래에서 행할 수 있습니다.
       title: 계정
+      trends:
+        allow: 허용
+        allowed: 허용됨
+        disallow: 비허용
+        disallowed: 비허용됨
+        title: 유행하는 게시물
       unblock_email: 이메일 차단 해제하기
       unblocked_email_msg: "%{username}의 이메일 주소를 성공적으로 차단 해제했습니다"
       unconfirmed_email: 확인되지 않은 이메일 주소
@@ -1579,6 +1595,7 @@ ko:
       content: 죄송합니다, 뭔가 잘못 되었습니다.
       title: 이 페이지는 잘못되었습니다
     '503': 이 페이지는 임시적인 서버 문제로 인해 제공 될 수 없습니다.
+    go_home: 홈으로 이동
     noscript_html: 마스토돈을 사용하기 위해서는 자바스크립트를 켜 주십시오. 아니면 <a href="%{apps_path}">네이티브 앱</a> 중 하나를 사용할 수 있습니다.
   existing_username_validator:
     not_found: 해당 사용자명에 대한 로컬 유저를 찾을 수 없습니다
@@ -1669,6 +1686,7 @@ ko:
       incompatible_type: 호환되지 않는 가져오기 유형을 선택함
       invalid_csv_file: '올바르지 않은 CSV 파일입니다. 오류: %{error}'
       invalid_json_file: '올바르지 않은 JSON 파일입니다. 오류: %{error}'
+      no_data: 이 파일에는 선택한 가져오기 유형과 일치하는 데이터가 없습니다
       over_rows_processing_limit: "%{count}개 이상의 열을 포함합니다"
       status_not_found_warning: 일부 항목이 이 서버에 아직 알려지지 않은 게시물을 참조합니다. 해당 게시물은 가져오기 과정에서 완전히 복원되지 않을 수 있습니다.
       too_large: 파일이 너무 큼
