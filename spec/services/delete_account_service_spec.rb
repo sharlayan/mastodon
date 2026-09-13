@@ -90,6 +90,56 @@ RSpec.describe DeleteAccountService do
     end
   end
 
+  describe 'custom collection purge' do
+    let(:account) { Fabricate(:user).account }
+    let(:other_account) { Fabricate(:account) }
+    let!(:antenna) { Fabricate(:antenna, account: account) }
+    let!(:circle) { Circle.create!(account: account, title: 'Friends') }
+    let!(:clip) { Fabricate(:clip, account: account) }
+    let!(:liked_clip) { Fabricate(:clip, account: other_account) }
+    let!(:clip_favourite) { account.clip_favourites.create!(clip: liked_clip) }
+    let!(:clip_favourite_by_other_account) { other_account.clip_favourites.create!(clip: clip) }
+    let(:feed_status) { Fabricate(:status, account: other_account) }
+    let(:feed_key) { FeedManager.instance.key(:antenna, antenna.id) }
+
+    before do
+      FeedManager.instance.push_to_antenna(antenna, feed_status)
+    end
+
+    it 'removes owned collections, clip favourites, and antenna feeds' do
+      expect(redis.exists?(feed_key)).to be true
+
+      described_class.new.call(account, reserve_username: true, reserve_email: true, skip_side_effects: true)
+
+      expect(Antenna).to_not exist(antenna.id)
+      expect(Circle).to_not exist(circle.id)
+      expect(Clip).to_not exist(clip.id)
+      expect(Clip).to exist(liked_clip.id)
+      expect(ClipFavourite).to_not exist(clip_favourite.id)
+      expect(ClipFavourite).to_not exist(clip_favourite_by_other_account.id)
+      expect(redis.exists?(feed_key)).to be false
+    end
+  end
+
+  describe 'MFM profile purge' do
+    let(:account) { Fabricate(:user).account }
+
+    before do
+      account.update!(note: '$[tada hello]')
+    end
+
+    it 'clears MFM profile data through the existing profile purge' do
+      expect(account).to be_mfm
+
+      described_class.new.call(account, reserve_username: true, reserve_email: true, skip_side_effects: true)
+
+      expect(account.reload).to be_unavailable
+      expect(account.note).to be_empty
+      expect(account.fields).to be_empty
+      expect(account).to_not be_mfm
+    end
+  end
+
   describe '#call on local account', :inline_jobs do
     before do
       stub_request(:post, remote_alice.inbox_url).to_return(status: 201)
