@@ -343,8 +343,24 @@ const startServer = async () => {
   redisSubscribeClient.on("message", onRedisMessage);
 
   /**
+   * @typedef SubscriptionPayload
+   * @property {boolean} [local_only]
+   * @property {string} id
+   * @property {{ id: string, username: string, acct: string }} account
+   * @property {string} language
+   * @property {Array<{ id: string }>} mentions
+   * @property {unknown} [filtered]
+   * @property {string} spoiler_text
+   * @property {string} content
+   * @property {{ options: Array<{ title: string }> }} [poll]
+   * @property {Array<{ description: string }>} media_attachments
+   * @property {string} type
+   * @property {{ userId?: string | number } & Record<string, unknown>} body
+   */
+
+  /**
    * @callback SubscriptionListener
-   * @param {{ event?: string, payload?: any }} json of the message
+   * @param {{ event?: string, payload?: string | SubscriptionPayload }} json of the message
    * @returns {void}
    */
 
@@ -770,8 +786,20 @@ const startServer = async () => {
 
       const { event, payload } = message;
 
+      if (event === 'linked_notification') {
+        const linkedPayload = /** @type {{ linked_account_id?: string } | null} */ (typeof payload === 'string' ? parseJSON(payload, req) : payload);
+        if (!linkedPayload?.linked_account_id) return;
+
+        linkedNotificationAuthorized(req.accessTokenId, linkedPayload.linked_account_id)
+          .then((authorized) => {
+            if (authorized) transmit(event, payload);
+          })
+          .catch((err) => log.error(err));
+        return;
+      }
+
       // Only send local-only statuses to logged-in users
-      if ((event === 'update' || event === 'status.update') && payload.local_only && !(req.accountId && allowLocalOnly)) {
+      if (typeof payload !== 'string' && (event === 'update' || event === 'status.update') && payload.local_only && !(req.accountId && allowLocalOnly)) {
         log.debug(`Message ${payload.id} filtered because it was local-only`);
         return;
       }
@@ -779,18 +807,6 @@ const startServer = async () => {
       if (event === 'status.reaction' && req.accountId) {
         filterReactionPayload(pgPool, req.accountId, payload)
           .then((filteredPayload) => transmit(event, filteredPayload))
-          .catch((err) => log.error(err));
-        return;
-      }
-
-      if (event === 'linked_notification') {
-        const linkedPayload = typeof payload === 'string' ? parseJSON(payload, req) : payload;
-        if (!linkedPayload?.linked_account_id) return;
-
-        linkedNotificationAuthorized(req.accessTokenId, linkedPayload.linked_account_id)
-          .then((authorized) => {
-            if (authorized) transmit(event, payload);
-          })
           .catch((err) => log.error(err));
         return;
       }
@@ -809,6 +825,8 @@ const startServer = async () => {
         transmit(event, payload);
         return;
       }
+
+      if (typeof payload === 'string') return;
 
       // The rest of the logic from here on in this function is to handle
       // filtering of statuses:
@@ -834,7 +852,6 @@ const startServer = async () => {
       }
 
       // Filter based on domain blocks, blocks, mutes, or custom filters:
-      // @ts-expect-error
       const targetAccountIds = [payload.account.id].concat(payload.mentions.map(item => item.id));
 
       // TODO: Move this logic out of the message handling loop
@@ -946,7 +963,6 @@ const startServer = async () => {
           if (req.cachedFilters) {
             const status = payload;
             // TODO: Calculate searchableContent in Ruby on Rails:
-            // @ts-expect-error
             const searchableContent = ([status.spoiler_text || '', status.content].concat((status.poll && status.poll.options) ? status.poll.options.map(option => option.title) : [])).concat(status.media_attachments.map(att => att.description)).join('\n\n').replace(/<br\s*\/?>/g, '\n').replace(/<\/p><p>/g, '\n\n');
             const searchableTextContent = JSDOM.fragment(searchableContent).textContent;
 
