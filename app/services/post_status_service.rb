@@ -56,10 +56,11 @@ class PostStatusService < BaseService
     @quoted_status = @options[:quoted_status]
 
     load_media!
-    preprocess_attributes!
+    preprocess_scheduled_at!
 
     with_idempotency do
       validate_media!
+      preprocess_attributes!
 
       if scheduled?
         schedule_status!
@@ -113,6 +114,11 @@ class PostStatusService < BaseService
     @options = @sharlayan_pipeline.options
     @visibility = :unlisted if @visibility&.to_sym == :public && @account.silenced?
     @visibility   = :private if @quoted_status&.private_visibility? && %i(public unlisted).include?(@visibility&.to_sym)
+  rescue ArgumentError
+    raise ActiveRecord::RecordInvalid
+  end
+
+  def preprocess_scheduled_at!
     @scheduled_at = @options[:scheduled_at]&.to_datetime
     @scheduled_at = nil if scheduled_in_the_past?
   rescue ArgumentError

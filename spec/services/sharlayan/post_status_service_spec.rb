@@ -107,6 +107,28 @@ RSpec.describe PostStatusService do
       expect(circle.statuses).to include(status)
     end
 
+    it 'returns the existing status when the selected circle has been deleted' do
+      Setting.circles_enabled = true
+      options = { text: 'circle post', visibility: :private, circle_id: circle.id, idempotency: 'deleted-circle' }
+      status = described_class.new.call(account, **options)
+
+      circle.destroy!
+
+      expect(described_class.new.call(account, **options)).to eq(status)
+      expect(account.statuses.where(text: 'circle post').count).to eq(1)
+    end
+
+    it 'returns the existing status when circles have been disabled' do
+      Setting.circles_enabled = true
+      options = { text: 'circle post', visibility: :private, circle_id: circle.id, idempotency: 'disabled-circles' }
+      status = described_class.new.call(account, **options)
+
+      Setting.circles_enabled = false
+
+      expect(described_class.new.call(account, **options)).to eq(status)
+      expect(account.statuses.where(text: 'circle post').count).to eq(1)
+    end
+
     it 'persists circle and clip membership atomically with the status' do
       clip = Clip.create!(account: account, title: 'Posts')
       Setting.circles_enabled = true
