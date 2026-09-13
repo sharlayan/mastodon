@@ -67,7 +67,7 @@
     "@phosphor-icons/react": "2.1.10",
     "@react-spring/web": "10.1.2",
     "@reduxjs/toolkit": "2.12.0",
-    "@rolldown/plugin-babel": "0.2.3",
+    "@rolldown/plugin-babel": "0.2.4",
     "@unhead/react": "3.4.0",
     "@use-gesture/react": "10.3.1",
     "@vitejs/plugin-legacy": "8.2.3",
@@ -109,7 +109,7 @@
     "mfm-js": "0.26.0",
     "path-complete-extname": "1.0.0",
     "perfect-freehand": "1.2.3",
-    "postcss-preset-env": "11.5.1",
+    "postcss-preset-env": "11.5.2",
     "prop-types": "15.8.1",
     "punycode": "2.3.1",
     "react": "19.2.8",
@@ -175,10 +175,10 @@
     "@types/redux-immutable": "4.0.6",
     "@types/requestidlecallback": "0.3.7",
     "@typescript/native": "npm:typescript@7.0.2",
-    "@vitest/browser": "4.1.10",
-    "@vitest/browser-playwright": "4.1.10",
-    "@vitest/coverage-v8": "4.1.10",
-    "@vitest/ui": "4.1.10",
+    "@vitest/browser": "4.1.11",
+    "@vitest/browser-playwright": "4.1.11",
+    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/ui": "4.1.9",
     "chromatic": "18.0.0",
     "eslint": "9.39.5",
     "eslint-import-resolver-typescript": "4.4.5",
@@ -204,7 +204,7 @@
     "type-fest": "5.7.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-eslint": "8.66.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   },
   "peerDependenciesMeta": {
     "react": {

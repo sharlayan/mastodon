@@ -213,6 +213,7 @@ class Form::Import
       errors.add(:data, I18n.t('imports.errors.incompatible_type'))
       return
     end
+    return errors.add(:data, I18n.t('imports.errors.no_data')) if json_data.empty?
 
     errors.add(:data, I18n.t('imports.errors.over_rows_processing_limit', count: ROWS_PROCESSING_LIMIT)) if json_data.count > ROWS_PROCESSING_LIMIT
   end

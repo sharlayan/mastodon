@@ -175,6 +175,7 @@ export const selectStatusInteractions = createAppSelector(
       Partial<typeof conditionals> & { allowed: boolean }
     > = {
       bookmark: addAllowed({ isLoggedIn }),
+      copy: addAllowed({}),
       delete: addAllowed({ isMine }),
       edit: addAllowed({ isMine }),
       editQuotePolicy: addAllowed({ isMine, isPublic }),
