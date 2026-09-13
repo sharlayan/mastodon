@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseController
+  include Api::AntennaFeatureConcern
+
   requires_write_scope :create, :update, :destroy, :remove_note
   requires_misskey_permission 'read:account', :index, :show, :notes
   requires_misskey_permission 'write:account', :create, :update, :destroy, :remove_note
