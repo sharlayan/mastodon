@@ -39,18 +39,20 @@ const ClipTimeline: React.FC<{
   const id = params?.id ?? routeId;
   const pinned = !!columnId;
   const clip = useAppSelector((state) => state.clips.get(id));
+  const nextUri = useAppSelector(
+    (state) => state.timelines.getIn([`clip:${id}`, 'next']) as string | null,
+  );
 
   useEffect(() => {
     void dispatch(fetchClip({ id }));
     void dispatch(expandClipTimeline(id));
   }, [dispatch, id]);
 
-  const handleLoadMore = useCallback(
-    (maxId: string) => {
-      void dispatch(expandClipTimeline(id, { maxId }));
-    },
-    [dispatch, id],
-  );
+  const handleLoadMore = useCallback(() => {
+    if (nextUri) {
+      void dispatch(expandClipTimeline(id, { nextUri }));
+    }
+  }, [dispatch, id, nextUri]);
 
   const handleDeleteClick = useCallback(() => {
     void dispatch(deleteClip({ id })).then(() => {

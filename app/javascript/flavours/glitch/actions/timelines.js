@@ -104,33 +104,34 @@ const parseTags = (tags = {}, mode) => {
 export function expandTimeline(timelineId, path, params = {}) {
   return async (dispatch, getState) => {
     const timeline = getState().getIn(['timelines', timelineId], ImmutableMap());
-    const isLoadingMore = !!params.max_id;
+    const { nextUri, skipSinceId, trackNext, ...requestParams } = params;
+    const isLoadingMore = !!requestParams.max_id || !!nextUri;
 
     if (timeline.get('isLoading')) {
       return;
     }
 
-    if (!params.max_id && !params.pinned && (timeline.get('items', ImmutableList()).size + timeline.get('pendingItems', ImmutableList()).size) > 0) {
+    if (!skipSinceId && !requestParams.max_id && !requestParams.pinned && (timeline.get('items', ImmutableList()).size + timeline.get('pendingItems', ImmutableList()).size) > 0) {
       const a = timeline.getIn(['pendingItems', 0]);
       const b = timeline.getIn(['items', 0]);
 
       if (a && b && compareId(a, b) > 0) {
-        params.since_id = a;
+        requestParams.since_id = a;
       } else {
-        params.since_id = b || a;
+        requestParams.since_id = b || a;
       }
     }
 
-    const isLoadingRecent = !!params.since_id;
+    const isLoadingRecent = !!requestParams.since_id;
 
     dispatch(expandTimelineRequest(timelineId, isLoadingMore));
 
     try {
-      const response = await api().get(path, { params });
+      const response = await api().get(nextUri || path, { params: requestParams });
       const next = getLinks(response).refs.find(link => link.rel === 'next');
 
       dispatch(importFetchedStatuses(response.data));
-      dispatch(expandTimelineSuccess(timelineId, response.data, next ? next.uri : null, response.status === 206, isLoadingRecent, isLoadingMore, isLoadingRecent && preferPendingItems));
+      dispatch(expandTimelineSuccess(timelineId, response.data, next ? next.uri : null, response.status === 206, isLoadingRecent, isLoadingMore, isLoadingRecent && preferPendingItems, trackNext));
 
       if (timelineId === 'home' && !isLoadingMore && !isLoadingRecent) {
         const now = new Date();
@@ -172,7 +173,7 @@ export const expandAccountTimeline         = (accountId, { maxId, withReplies, t
 export const expandAccountFeaturedTimeline = (accountId, { tagged } = {}) => expandTimeline(`account:${accountId}:pinned`, `/api/v1/accounts/${accountId}/statuses`, { pinned: true, tagged });
 export const expandAccountMediaTimeline    = (accountId, { maxId, withReplies } = {}) => expandTimeline(`account:${accountId}:media${withReplies ? ':with_replies' : ''}`, `/api/v1/accounts/${accountId}/statuses`, { max_id: maxId, only_media: true, limit: 40, exclude_replies: !withReplies });
 export const expandListTimeline            = (id, { maxId } = {}) => expandTimeline(`list:${id}`, `/api/v1/timelines/list/${id}`, { max_id: maxId });
-export const expandClipTimeline            = (id, { maxId } = {}) => expandTimeline(`clip:${id}`, `/api/v1/clips/${id}/statuses`, { max_id: maxId });
+export const expandClipTimeline            = (id, { nextUri } = {}) => expandTimeline(`clip:${id}`, `/api/v1/clips/${id}/statuses`, { nextUri, skipSinceId: true, trackNext: true });
 export const expandAntennaTimeline         = (id, { maxId } = {}) => expandTimeline(`antenna:${id}`, `/api/v1/timelines/antenna/${id}`, { max_id: maxId });
 export const expandLinkTimeline            = (url, { maxId } = {}) => expandTimeline(`link:${url}`, `/api/v1/timelines/link`, { url, max_id: maxId });
 export const expandHashtagTimeline         = (hashtag, { maxId, tags, local } = {}) => {
@@ -199,7 +200,7 @@ export function expandTimelineRequest(timeline, isLoadingMore) {
   };
 }
 
-export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadingRecent, isLoadingMore, usePendingItems) {
+export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadingRecent, isLoadingMore, usePendingItems, trackNext) {
   return {
     type: TIMELINE_EXPAND_SUCCESS,
     timeline,
@@ -208,6 +209,7 @@ export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadi
     partial,
     isLoadingRecent,
     usePendingItems,
+    trackNext,
     skipLoading: !isLoadingMore,
   };
 }

@@ -37,6 +37,7 @@ const initialTimeline = ImmutableMap({
   top: true,
   isLoading: false,
   hasMore: true,
+  next: null,
   /** @type {ImmutableList<string>} */
   pendingItems: ImmutableList(),
   /** @type {ImmutableList<string>} */
@@ -44,7 +45,7 @@ const initialTimeline = ImmutableMap({
 });
 
 
-const expandNormalizedTimeline = (state, timeline, statuses, next, isPartial, isLoadingRecent, usePendingItems) => {
+const expandNormalizedTimeline = (state, timeline, statuses, next, isPartial, isLoadingRecent, usePendingItems, trackNext) => {
   // This method is pretty tricky because:
   // - existing items in the timeline might be out of order
   // - the existing timeline may have gaps, most often explicitly noted with a `null` item
@@ -57,6 +58,11 @@ const expandNormalizedTimeline = (state, timeline, statuses, next, isPartial, is
     mMap.set('isPartial', isPartial);
 
     if (!next && !isLoadingRecent) mMap.set('hasMore', false);
+
+    if (trackNext && !isLoadingRecent) {
+      mMap.set('next', next);
+      mMap.set('hasMore', !!next);
+    }
 
     if (isTimelineKeyPinned(timeline)) {
       mMap.set('items', statuses.map(status => status.get('id')));
@@ -217,7 +223,7 @@ export default function timelines(state = initialState, action) {
   case TIMELINE_EXPAND_FAIL:
     return state.update(action.timeline, initialTimeline, map => map.set('isLoading', false));
   case TIMELINE_EXPAND_SUCCESS:
-    return expandNormalizedTimeline(state, action.timeline, fromJS(action.statuses), action.next, action.partial, action.isLoadingRecent, action.usePendingItems);
+    return expandNormalizedTimeline(state, action.timeline, fromJS(action.statuses), action.next, action.partial, action.isLoadingRecent, action.usePendingItems, action.trackNext);
   case TIMELINE_UPDATE:
     return updateTimeline(state, action.timeline, action.status.id, action.usePendingItems, action.filtered);
   case TIMELINE_CLEAR:
