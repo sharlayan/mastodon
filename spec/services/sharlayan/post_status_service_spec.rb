@@ -58,19 +58,68 @@ RSpec.describe PostStatusService do
     expect(status).to be_sensitive
   end
 
-  it 'stores MFM attributes only while MFM is enabled' do
-    account = Fabricate(:account)
-    Setting.mfm_enabled = true
+  describe 'MFM composition' do
+    let(:account) { Fabricate(:account) }
 
-    status = subject.call(account, text: '$[x2 test]', content_type: 'text/x-mfm')
+    around do |example|
+      mfm_enabled = Setting.mfm_enabled
+      mfm_allow_composition = Setting.mfm_allow_composition
+      example.run
+    ensure
+      Setting.mfm_enabled = mfm_enabled
+      Setting.mfm_allow_composition = mfm_allow_composition
+    end
 
-    expect(status).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 test]')
+    context 'when composition is disabled' do
+      before do
+        Setting.mfm_enabled = true
+        Setting.mfm_allow_composition = false
+      end
 
-    Setting.mfm_enabled = false
+      it 'downgrades an explicit MFM content type' do
+        status = subject.call(account, text: '$[x2 disabled]', content_type: 'text/x-mfm')
 
-    status = subject.call(account, text: '$[x2 disabled]', content_type: 'text/x-mfm')
+        expect(status).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+      end
 
-    expect(status).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+      it 'does not classify detected MFM syntax as MFM' do
+        status = subject.call(account, text: '$[x2 disabled]', content_type: 'text/plain')
+
+        expect(status).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+      end
+    end
+
+    context 'when MFM is disabled' do
+      before do
+        Setting.mfm_enabled = false
+        Setting.mfm_allow_composition = true
+      end
+
+      it 'continues to downgrade an explicit MFM content type' do
+        status = subject.call(account, text: '$[x2 disabled]', content_type: 'text/x-mfm')
+
+        expect(status).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+      end
+    end
+
+    context 'when composition is enabled' do
+      before do
+        Setting.mfm_enabled = true
+        Setting.mfm_allow_composition = true
+      end
+
+      it 'keeps explicit MFM content' do
+        status = subject.call(account, text: '$[x2 enabled]', content_type: 'text/x-mfm')
+
+        expect(status).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 enabled]')
+      end
+
+      it 'classifies detected MFM syntax as MFM' do
+        status = subject.call(account, text: '$[x2 enabled]', content_type: 'text/plain')
+
+        expect(status).to have_attributes(content_type: 'text/plain', mfm: true, mfm_text: '$[x2 enabled]')
+      end
+    end
   end
 
   context 'when posting to a circle' do

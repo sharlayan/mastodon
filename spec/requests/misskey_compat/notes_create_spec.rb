@@ -10,6 +10,37 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
+  describe 'MFM composition' do
+    around do |example|
+      mfm_enabled = Setting.mfm_enabled
+      mfm_allow_composition = Setting.mfm_allow_composition
+      example.run
+    ensure
+      Setting.mfm_enabled = mfm_enabled
+      Setting.mfm_allow_composition = mfm_allow_composition
+    end
+
+    it 'uses the Markdown fallback when composition is disabled' do
+      Setting.mfm_enabled = true
+      Setting.mfm_allow_composition = false
+
+      post '/api/notes/create', params: { i: token, text: '$[x2 fallback]' }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last).to have_attributes(content_type: 'text/markdown', mfm: false, mfm_text: nil, text: 'fallback')
+    end
+
+    it 'posts MFM when composition is enabled' do
+      Setting.mfm_enabled = true
+      Setting.mfm_allow_composition = true
+
+      post '/api/notes/create', params: { i: token, text: '$[x2 enabled]' }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 enabled]')
+    end
+  end
+
   describe 'POST /api/notes/create with specified visibility' do
     let(:recipient) { Fabricate(:account, username: 'bob') }
 
