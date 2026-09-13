@@ -23,4 +23,46 @@ RSpec.describe 'Clips' do
       expect(queries.any? { |sql| sql.include?('FROM "accounts"') && sql.include?('FOR UPDATE') }).to be(true)
     end
   end
+
+  describe 'GET /api/v1/clips/:id' do
+    subject { get "/api/v1/clips/#{clip.id}", headers: headers }
+
+    let(:clip) { Fabricate(:clip, public: public) }
+    let(:public) { true }
+
+    context 'without authentication' do
+      let(:headers) { {} }
+
+      it 'returns a public clip' do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to include('id' => clip.id.to_s)
+      end
+
+      context 'when the clip is private' do
+        let(:public) { false }
+
+        it 'returns http not found' do
+          subject
+
+          expect(response).to have_http_status(404)
+        end
+      end
+    end
+
+    context 'with a token missing the read lists scope' do
+      let(:scopes) { 'read:accounts' }
+
+      it_behaves_like 'forbidden for wrong scope', 'read:accounts'
+    end
+  end
+
+  describe 'GET /api/v1/clips' do
+    it 'requires authentication' do
+      get '/api/v1/clips'
+
+      expect(response).to have_http_status(401)
+    end
+  end
 end

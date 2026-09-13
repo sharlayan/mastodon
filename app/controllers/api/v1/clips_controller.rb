@@ -2,7 +2,8 @@
 
 class Api::V1::ClipsController < Api::BaseController
   before_action :require_feature_enabled!
-  before_action -> { doorkeeper_authorize! :read, :'read:lists' }, only: [:index, :show]
+  before_action -> { doorkeeper_authorize! :read, :'read:lists' }, only: :index
+  before_action -> { authorize_if_got_token! :read, :'read:lists' }, only: :show
   before_action -> { doorkeeper_authorize! :write, :'write:lists' }, except: [:index, :show]
 
   before_action :require_user!, except: [:show]
