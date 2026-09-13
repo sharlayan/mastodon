@@ -3,6 +3,7 @@ import { fromJS } from 'immutable';
 let isSharlayanMfmStatus;
 let renderSharlayanMfmContent;
 let sharlayanStatusContentState;
+let getSharlayanMfmSourceText;
 
 beforeAll(async () => {
   Object.defineProperty(window, 'matchMedia', {
@@ -14,7 +15,7 @@ beforeAll(async () => {
     })),
   });
 
-  ({ isSharlayanMfmStatus, renderSharlayanMfmContent, sharlayanStatusContentState } =
+  ({ getSharlayanMfmSourceText, isSharlayanMfmStatus, renderSharlayanMfmContent, sharlayanStatusContentState } =
     await import('../status_content'));
 }, 30_000);
 
@@ -85,5 +86,33 @@ describe('Sharlayan status content helpers', () => {
     });
 
     expect(element.props.children.type).not.toBe('details');
+  });
+
+  it('uses translated content while a translation is active and restores the exact MFM source when it is removed', () => {
+    const originalMfmText = '$[fg #123456 Original MFM source]';
+    const content = '<p>Translated<br>content</p>';
+    const status = fromJS({
+      mfm: true,
+      mfm_text: originalMfmText,
+      translation: { contentHtml: content },
+    });
+
+    expect(getSharlayanMfmSourceText(status, content)).toBe('Translated\ncontent\n');
+    expect(getSharlayanMfmSourceText(status.delete('translation'), content)).toBe(originalMfmText);
+
+    const options = {
+      content,
+      language: 'en',
+      mfmEnabled: true,
+      localMfmEnabled: true,
+    };
+    expect(renderSharlayanMfmContent(status, options).props.children.props.text).toBe('Translated\ncontent\n');
+    expect(renderSharlayanMfmContent(status.delete('translation'), options).props.children.props.text).toBe(originalMfmText);
+  });
+
+  it('extracts MFM text from the active content when no source is stored', () => {
+    const status = fromJS({ mfm: true });
+
+    expect(getSharlayanMfmSourceText(status, '<p>First<br>second</p>')).toBe('First\nsecond\n');
   });
 });
