@@ -281,7 +281,7 @@ const startServer = async () => {
   });
 
   /**
-   * @type {Object.<string, Array.<function(Object<string, unknown>): void>>}
+   * @type {Record<string, Array<(json: Record<string, unknown>) => void>>}
    */
   const subs = {};
 
@@ -301,7 +301,7 @@ const startServer = async () => {
 
   /**
    * @param {string[]} channels
-   * @returns {function(): void}
+   * @returns {() => void}
    */
   const subscriptionHeartbeat = channels => {
     const interval = 6 * 60;
@@ -344,8 +344,8 @@ const startServer = async () => {
 
   /**
    * @callback SubscriptionListener
-   * @param {ReturnType<parseJSON>} json of the message
-   * @returns void
+   * @param {{ event?: string, payload?: any }} json of the message
+   * @returns {void}
    */
 
   /**
@@ -555,7 +555,7 @@ const startServer = async () => {
 
   /**
    * @typedef SystemMessageHandlers
-   * @property {function(): void} onKill
+   * @property {() => void} onKill
    */
 
   /**
@@ -619,7 +619,7 @@ const startServer = async () => {
   /**
    * @param {Request} req
    * @param {http.ServerResponse} res
-   * @param {function(Error=): void} next
+   * @param {(error?: Error) => void} next
    */
   const authenticationMiddleware = (req, res, next) => {
     if (req.method === 'OPTIONS') {
@@ -649,7 +649,7 @@ const startServer = async () => {
    * @param {Error} err
    * @param {Request} req
    * @param {http.ServerResponse} res
-   * @param {function(Error=): void} next
+   * @param {(error?: Error) => void} next
    */
   const errorMiddleware = (err, req, res, next) => {
     req.log.error({ err }, err.toString());
@@ -726,8 +726,8 @@ const startServer = async () => {
    * @param {string[]} channelIds
    * @param {Request} req
    * @param {import('pino').Logger} log
-   * @param {function(string, string): void} output
-   * @param {undefined | function(string[], SubscriptionListener): void} attachCloseHandler
+   * @param {(event: string, payload: string) => void} output
+   * @param {undefined | ((channelIds: string[], listener: SubscriptionListener) => void)} attachCloseHandler
    * @param {'websocket' | 'eventsource'} destinationType
    * @param {Object} options
    * @param {boolean} options.needsFiltering
@@ -806,7 +806,6 @@ const startServer = async () => {
       // The channels that need filtering are determined in the function
       // `channelNameToIds` defined below:
       if (!needsFiltering || (event !== 'update' && event !== 'status.update')) {
-        // @ts-expect-error
         transmit(event, payload);
         return;
       }
@@ -823,9 +822,7 @@ const startServer = async () => {
       const accountDomain = extensions.preparePayload(req, payload);
 
       // Filter based on language:
-      // @ts-expect-error
       if (Array.isArray(req.chosenLanguages) && req.chosenLanguages.indexOf(payload.language) === -1) {
-        // @ts-expect-error
         log.debug(`Message ${payload.id} filtered by language (${payload.language})`);
         return;
       }
@@ -857,16 +854,13 @@ const startServer = async () => {
                         SELECT 1
                         FROM mutes
                         WHERE account_id = $1
-                          AND target_account_id IN (${placeholders(targetAccountIds, 2)})`, [req.accountId, payload.
-                          // @ts-expect-error
-                          account.id].concat(targetAccountIds)),
+                          AND target_account_id IN (${placeholders(targetAccountIds, 2)})`, [req.accountId, payload.account.id].concat(targetAccountIds)),
         ];
 
         if (accountDomain) {
           queries.push(accountDomain.query(client));
         }
 
-        // @ts-expect-error
         if (!payload.filtered && !req.cachedFilters) {
           // @ts-expect-error
           queries.push(client.query('SELECT filter.id AS id, filter.phrase AS title, filter.context AS context, filter.expires_at AS expires_at, filter.action AS filter_action, keyword.keyword AS keyword, keyword.whole_word AS whole_word FROM custom_filter_keywords keyword JOIN custom_filters filter ON keyword.custom_filter_id = filter.id WHERE filter.account_id = $1 AND (filter.expires_at IS NULL OR filter.expires_at > NOW())', [req.accountId]));
@@ -1018,7 +1012,7 @@ const startServer = async () => {
   /**
    * @param {Request} req
    * @param {http.ServerResponse} res
-   * @returns {function(string, string): void}
+   * @returns {(event: string, payload: string) => void}
    */
   const streamToHttp = (req, res) => {
     const channelName = channelNameFromPath(req);
@@ -1060,8 +1054,8 @@ const startServer = async () => {
 
   /**
    * @param {Request} req
-   * @param {function(): void} [closeHandler]
-   * @returns {function(string[], SubscriptionListener): void}
+   * @param {() => void} [closeHandler]
+   * @returns {(channelIds: string[], listener: SubscriptionListener) => void}
    */
 
   const streamHttpEnd = (req, closeHandler = undefined) => (ids, listener) => {
@@ -1080,7 +1074,7 @@ const startServer = async () => {
    * @param {http.IncomingMessage} req
    * @param {import('ws').WebSocket} ws
    * @param {string[]} streamName
-   * @returns {function(string, string): void}
+   * @returns {(event: string, payload: string) => void}
    */
   const streamToWs = (req, ws, streamName) => (event, payload) => {
     if (ws.readyState !== ws.OPEN) {
@@ -1151,6 +1145,7 @@ const startServer = async () => {
    * @property {string} [list]
    * @property {string} [antenna]
    * @property {string} [only_media]
+   * @property {string} [allow_local_only]
    */
 
   /**
@@ -1308,7 +1303,7 @@ const startServer = async () => {
    * @property {import('ws').WebSocket & { isAlive: boolean}} websocket
    * @property {Request} request
    * @property {import('pino').Logger} logger
-   * @property {Object.<string, { channelName: string, listener: SubscriptionListener, stopHeartbeat: function(): void }>} subscriptions
+   * @property {Record<string, { channelName: string, listener: SubscriptionListener, stopHeartbeat: () => void }>} subscriptions
    */
 
   /**
@@ -1579,7 +1574,7 @@ const startServer = async () => {
 
 /**
  * @param {http.Server} server
- * @param {function(string): void} [onSuccess]
+ * @param {(address: string | import('node:net').AddressInfo) => void} [onSuccess]
  */
 const attachServerWithConfig = (server, onSuccess) => {
   if (process.env.SOCKET) {
