@@ -72,6 +72,13 @@ RSpec.describe 'Misskey-compat security hardening' do
       expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(account.id))
     end
 
+    it 'accepts a case-insensitive bearer scheme with repeated whitespace' do
+      post '/api/i', headers: { 'Authorization' => "bEaReR   #{token}" }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(account.id))
+    end
+
     it 'reports an invalid bearer token as an authentication failure' do
       post '/api/i', headers: { 'Authorization' => 'Bearer invalid' }, as: :json
 

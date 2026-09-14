@@ -81,8 +81,8 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   end
 
   def bearer_token
-    authorization = request.authorization.to_s
-    authorization.delete_prefix('Bearer ').presence if authorization.start_with?('Bearer ')
+    scheme, token = request.authorization.to_s.split(/\s+/, 2)
+    token.presence if scheme&.casecmp?('Bearer')
   end
 
   # rubocop:disable-next Naming/MemoizedInstanceVariableName
