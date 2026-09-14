@@ -72,12 +72,17 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   def current_token
     return @current_token if defined?(@current_token)
 
-    token = params[:i].presence
+    token = bearer_token || params[:i].presence
     @current_token = token ? Doorkeeper::AccessToken.by_token(token.to_s) : nil
     @current_token = nil unless @current_token&.accessible?
     @current_token = nil if @current_token && MisskeyCompat::MiAuth.legacy_token?(@current_token)
     MisskeyCompat::MiAuth.refresh_token_expiry!(@current_token, request) if @current_token&.misskey_access_grant
     @current_token
+  end
+
+  def bearer_token
+    authorization = request.authorization.to_s
+    authorization.delete_prefix('Bearer ').presence if authorization.start_with?('Bearer ')
   end
 
   # rubocop:disable-next Naming/MemoizedInstanceVariableName
@@ -93,7 +98,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   def require_user!
     if current_user.nil?
-      code = params[:i].present? ? 'AUTHENTICATION_FAILED' : 'CREDENTIAL_REQUIRED'
+      code = bearer_token.present? || params[:i].present? ? 'AUTHENTICATION_FAILED' : 'CREDENTIAL_REQUIRED'
       render_error('Authentication required', code, 401)
     elsif !current_user.functional?
       render_error('Account is not available', 'AUTHENTICATION_FAILED', 403)

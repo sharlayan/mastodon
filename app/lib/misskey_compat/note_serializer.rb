@@ -49,7 +49,7 @@ class MisskeyCompat::NoteSerializer
       renote: embed_relations ? embedded_note(quoted_status(status)) : nil,
       isHidden: false,
       mentions: mentions.map { |m| MisskeyCompat::MiId.encode(m.account_id) },
-      visibleUserIds: [],
+      visibleUserIds: visible_user_ids(status, mentions),
       fileIds: media.map { |m| MisskeyCompat::MiId.encode(m.drive_file_id || m.id) },
       files: media.map { |m| MisskeyCompat::DriveFileSerializer.serialize(m, sensitive: status.sensitive?) },
       tags: status.tags.map(&:name),
@@ -104,6 +104,14 @@ class MisskeyCompat::NoteSerializer
     else
       status.mentions.includes(:account).to_a
     end
+  end
+
+  def visible_user_ids(status, mentions)
+    return [] unless %w(direct limited).include?(status.visibility)
+
+    mentions.filter_map do |mention|
+      MisskeyCompat::MiId.encode(mention.account_id) unless mention.account_id == status.account_id
+    end.uniq
   end
 
   def text_for(status, mentions)

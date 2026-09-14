@@ -219,10 +219,14 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def statuses_filter_params
+    with_replies = ActiveModel::Type::Boolean.new.cast(params[:withReplies])
+    with_files = ActiveModel::Type::Boolean.new.cast(params[:withFiles])
+    raise ArgumentError, 'withReplies and withFiles cannot both be true' if with_replies && with_files
+
     {
-      exclude_replies: !ActiveModel::Type::Boolean.new.cast(params[:includeReplies]),
+      exclude_replies: !with_replies,
       exclude_reblogs: !ActiveModel::Type::Boolean.new.cast(params.fetch(:withRenotes, true)),
-      only_media: ActiveModel::Type::Boolean.new.cast(params[:withFiles]),
+      only_media: with_files,
     }
   end
 end

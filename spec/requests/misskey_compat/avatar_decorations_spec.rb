@@ -4,15 +4,26 @@ require 'rails_helper'
 
 RSpec.describe 'Misskey-compat avatar decorations endpoint', :attachment_processing do
   before do
+    Setting.misskey_compat_enabled = true
     Setting.avatar_decorations_enabled = true
     Setting.avatar_decorations_federation_enabled = true
     Setting.avatar_decorations_local_only_view = false
   end
 
   after do
+    Setting.misskey_compat_enabled = false
     Setting.avatar_decorations_enabled = false
     Setting.avatar_decorations_federation_enabled = false
     Setting.avatar_decorations_local_only_view = false
+  end
+
+  it 'is unavailable when Misskey compatibility is disabled' do
+    Setting.misskey_compat_enabled = false
+
+    post '/api/get-avatar-decorations', as: :json
+
+    expect(response).to have_http_status(404)
+    expect(response.parsed_body.dig(:error, :code)).to eq('ENDPOINT_DISABLED')
   end
 
   it 'returns only approved local decorations with MiId role restrictions' do

@@ -65,6 +65,20 @@ RSpec.describe 'Misskey-compat security hardening' do
   end
 
   describe 'OAuth token enforcement' do
+    it 'accepts a bearer token like Misskey' do
+      post '/api/i', headers: { 'Authorization' => "Bearer #{token}" }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(account.id))
+    end
+
+    it 'reports an invalid bearer token as an authentication failure' do
+      post '/api/i', headers: { 'Authorization' => 'Bearer invalid' }, as: :json
+
+      expect(response).to have_http_status(401)
+      expect(response.parsed_body.dig(:error, :code)).to eq('AUTHENTICATION_FAILED')
+    end
+
     it 'rejects an expired token' do
       expired = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write', created_at: 2.days.ago, expires_in: 1.hour).token
 

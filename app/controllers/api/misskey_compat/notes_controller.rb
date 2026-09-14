@@ -63,7 +63,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def children
-    scope = Status.where(in_reply_to_id: @note.id)
+    scope = Status.where(in_reply_to_id: @note.id).or(Status.where(reblog_of_id: @note.id).where.not(text: [nil, '']))
     render_visible_notes paginate_notes(scope)
   end
 
@@ -147,7 +147,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     reaction = params[:reaction].to_s
     render_error('reaction required', 'INVALID_PARAM', 400) and return if reaction.blank?
 
-    result = ReactService.new.call(current_account, @note, normalize_reaction(reaction))
+    normalized = normalize_reaction(reaction)
+    return render_error('You have already reacted to that note', 'ALREADY_REACTED', 400) if reaction_exists?(normalized)
+
+    result = ReactService.new.call(current_account, @note, normalized)
     render_error('Reaction could not be registered', 'REACTION_FAILED', 400) and return unless result.is_a?(StatusReaction) && result.persisted?
 
     head 204
@@ -155,7 +158,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def reactions_delete
     existing = @note.status_reactions.where(account: current_account).first
-    UnreactService.new.call(current_account, @note, reaction_key(existing)) if existing
+    return render_error('You have not reacted to that note', 'NOT_REACTED', 400) if existing.nil?
+
+    UnreactService.new.call(current_account, @note, reaction_key(existing))
     head 204
   end
 
@@ -469,7 +474,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       thread: reply_status,
       local_only: ActiveModel::Type::Boolean.new.cast(params[:localOnly]),
       quoted_status: quoted,
-      poll: poll_options,
+      poll: post_poll_options,
       scheduled_at: scheduled_at_option,
       reaction_acceptance: reaction_acceptance_option,
     }.compact
@@ -528,9 +533,27 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
     {
       options: Array(poll[:choices]),
-      expires_in: poll[:expiredAfter].presence || 86_400,
+      expires_in: poll[:expiredAfter].presence,
       multiple: ActiveModel::Type::Boolean.new.cast(poll[:multiple]),
-    }
+    }.compact
+  end
+
+  def post_poll_options
+    options = poll_options
+    return if options.nil?
+
+    options[:expires_in] = if params.dig(:poll, :expiredAfter).present?
+                             params.dig(:poll, :expiredAfter).to_i / 1000.0
+                           elsif params.dig(:poll, :expiresAt).present?
+                             (Time.at(params.dig(:poll, :expiresAt).to_i / 1000.0).utc - Time.current).ceil
+                           end
+    options.compact
+  end
+
+  def reaction_exists?(reaction)
+    name, domain = reaction.to_s.split('@')
+    custom_emoji = CustomEmoji.find_by(shortcode: name, domain: domain)
+    @note.status_reactions.exists?(account: current_account, name: name, custom_emoji: custom_emoji)
   end
 
   def mastodon_visibility(visibility)

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
+  include Redisable
+
   requires_write_scope :create, :update, :destroy, :move_bulk, :upload_from_url
   requires_misskey_permission 'read:drive', :attached_notes, :index, :show, :find, :find_by_hash, :check_existence
   requires_misskey_permission 'write:drive', :create, :update, :destroy, :move_bulk, :upload_from_url
@@ -71,13 +73,16 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     attributes[:sensitive] = ActiveModel::Type::Boolean.new.cast(params[:isSensitive]) if params.key?(:isSensitive)
     file.display_name = params[:name] if params.key?(:name)
     file.update!(attributes)
+    MisskeyCompat::Streaming.broadcast_drive_file(redis, current_account, file, 'fileUpdated')
     render json: MisskeyCompat::DriveFileSerializer.serialize(file)
   end
 
   def destroy
     file = find_file!
+    file_id = file.id
     return render_error('File is attached', 'ATTACHED', 422) unless file.destroy
 
+    MisskeyCompat::Streaming.broadcast_drive_file(redis, current_account, file_id, 'fileDeleted')
     head 204
   end
 
@@ -109,6 +114,10 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     return render_error('No such file', 'NO_SUCH_FILE', 404) unless files.size == ids.size
 
     DriveFile.where(id: files.map(&:id)).update_all(folder_id: folder_id, updated_at: Time.current)
+    files.each do |file|
+      file.folder_id = folder_id
+      MisskeyCompat::Streaming.broadcast_drive_file(redis, current_account, file, 'fileUpdated')
+    end
     head 204
   end
 
@@ -158,7 +167,10 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   def file_scope
     scope = current_account.drive_files.includes(:custom_name)
     scope = params[:folderId].present? ? scope.where(folder_id: params[:folderId]) : scope.where(folder_id: nil)
-    scope = scope.where(file_content_type: params[:type]) if params[:type].present?
+    if params[:type].present?
+      type = params[:type].to_s
+      scope = type.end_with?('/*') ? scope.where('file_content_type LIKE ?', "#{type.delete_suffix('*')}%") : scope.where(file_content_type: type)
+    end
     apply_compat_date_range(scope)
   end
 

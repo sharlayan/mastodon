@@ -66,4 +66,22 @@ RSpec.describe 'Misskey-compat account endpoints' do
       expect(response.parsed_body).to eq([])
     end
   end
+
+  describe 'POST /api/users/notes' do
+    it 'uses the Misskey withReplies parameter' do
+      parent = Fabricate(:status)
+      reply = Fabricate(:status, account: target, thread: parent)
+
+      post '/api/users/notes', params: { i: read_token, userId: MisskeyCompat::MiId.encode(target.id), withReplies: true }, as: :json
+
+      expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(reply.id))
+    end
+
+    it 'rejects combining withReplies and withFiles' do
+      post '/api/users/notes', params: { i: read_token, userId: MisskeyCompat::MiId.encode(target.id), withReplies: true, withFiles: true }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+    end
+  end
 end
