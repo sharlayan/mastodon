@@ -21,7 +21,7 @@ import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity
 import { withBreakpoint } from 'flavours/glitch/features/ui/hooks/useBreakpoint';
 
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
-import { expandHomeTimeline } from '../../actions/timelines';
+import { expandHomeTimeline, jumpToHomeTimeline } from '../../actions/timelines';
 import StatusListContainer from '../ui/containers/status_list_container';
 
 import { ColumnSettings } from './components/column_settings';
@@ -32,6 +32,7 @@ import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 import { ColumnHeader } from '@/flavours/glitch/components/column_header';
 import { HomeColumnSettings } from './components/column_settings_redesign';
 import { MultiColumnMenuItems } from '@/flavours/glitch/components/column_header/multicolumn_settings';
+import { HomeTimelineTimeMachineButton } from './components/time_machine';
 
 const messages = defineMessages({
   title: { id: 'column.home', defaultMessage: 'Home' },
@@ -81,7 +82,13 @@ class HomeTimeline extends PureComponent {
   };
 
   handleLoadMore = maxId => {
-    this.props.dispatch(expandHomeTimeline({ maxId }));
+    this.props.dispatch(expandHomeTimeline({ maxId, timeMachine: this.timeMachineActive }));
+  };
+
+  handleTimeMachineSelect = timestamp => {
+    this.timeMachineActive = true;
+    this._stopPolling();
+    this.props.dispatch(jumpToHomeTimeline(timestamp));
   };
 
   componentDidMount () {
@@ -99,6 +106,11 @@ class HomeTimeline extends PureComponent {
 
   _checkIfReloadNeeded (wasPartial, isPartial) {
     const { dispatch } = this.props;
+
+    if (this.timeMachineActive) {
+      this._stopPolling();
+      return;
+    }
 
     if (wasPartial === isPartial) {
       return;
@@ -155,16 +167,19 @@ class HomeTimeline extends PureComponent {
             title={intl.formatMessage(messages.following)}
             withUnreadMarker={hasUnread}
             extraButtons={
-              <HomeColumnSettings>
-                {multiColumn &&
-                  <MultiColumnMenuItems
-                    withDivider
-                    onPin={this.handlePin}
-                    onMove={this.handleMove}
-                    pinned={pinned}
-                  />
-                }
-              </HomeColumnSettings>
+              <>
+                <HomeTimelineTimeMachineButton onSelect={this.handleTimeMachineSelect} />
+                <HomeColumnSettings>
+                  {multiColumn &&
+                    <MultiColumnMenuItems
+                      withDivider
+                      onPin={this.handlePin}
+                      onMove={this.handleMove}
+                      pinned={pinned}
+                    />
+                  }
+                </HomeColumnSettings>
+              </>
             }
           />
         ) : (
@@ -181,7 +196,7 @@ class HomeTimeline extends PureComponent {
             appendContent={hasAnnouncements && showAnnouncements && <Announcements />}
             scrollTopOnClick
           >
-            <ColumnSettings />
+            <ColumnSettings onTimeMachineSelect={this.handleTimeMachineSelect} />
           </LegacyColumnHeader>
         )}
 

@@ -4,7 +4,12 @@ import api, { getLinks } from 'flavours/glitch/api';
 
 import timelinesReducer from '../reducers/timelines';
 
-import { expandClipTimeline } from './timelines';
+import {
+  expandClipTimeline,
+  homeTimelineMaxIdAt,
+  jumpToHomeTimeline,
+  updateTimeline,
+} from './timelines';
 import { parseTimelineKey, timelineKey } from './timelines_typed';
 
 vi.mock('flavours/glitch/api', () => ({
@@ -88,6 +93,106 @@ describe('expandClipTimeline', () => {
     });
     expect(state.getIn(['clip:clip-id', 'next'])).toBeNull();
     expect(state.getIn(['clip:clip-id', 'hasMore'])).toBe(false);
+  });
+});
+
+describe('homeTimelineMaxIdAt', () => {
+  test('returns the first snowflake ID at the selected second', () => {
+    expect(homeTimelineMaxIdAt(new Date('2026-09-14T12:34:56.789Z'))).toBe(
+      '117269416902656000',
+    );
+  });
+
+  test('keeps the time-machine mode through the request and response, then clears it', () => {
+    const requestedState = timelinesReducer(initialState, {
+      type: 'TIMELINE_EXPAND_REQUEST',
+      timeline: 'home',
+      timeMachine: true,
+    });
+    const loadedState = timelinesReducer(requestedState, {
+      type: 'TIMELINE_EXPAND_SUCCESS',
+      timeline: 'home',
+      statuses: [{ id: 'historical-status' }],
+      next: null,
+      partial: false,
+      isLoadingRecent: false,
+      usePendingItems: false,
+      timeMachine: true,
+    });
+    const clearedState = timelinesReducer(loadedState, {
+      type: 'TIMELINE_CLEAR',
+      timeline: 'home',
+    });
+
+    expect(requestedState.getIn(['home', 'isTimeMachine'])).toBe(true);
+    expect(loadedState.getIn(['home', 'isTimeMachine'])).toBe(true);
+    expect(clearedState.getIn(['home', 'isTimeMachine'])).toBe(false);
+  });
+
+  test('does not insert streaming updates while the time machine is active', () => {
+    const timeMachineState = timelinesReducer(initialState, {
+      type: 'TIMELINE_EXPAND_REQUEST',
+      timeline: 'home',
+      timeMachine: true,
+    });
+    const reducerState = timelinesReducer(timeMachineState, {
+      type: 'TIMELINE_UPDATE',
+      timeline: 'home',
+      status: { id: 'new-status' },
+      usePendingItems: false,
+      filtered: false,
+    });
+    const dispatch = vi.fn();
+    const getState = () => ({
+      getIn: (path: string[]) => timeMachineState.getIn(path.slice(1)),
+    });
+
+    updateTimeline('home', { id: 'new-status' })(dispatch, getState);
+
+    expect(reducerState).toBe(timeMachineState);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  test('clears the current timeline before requesting the selected time', async () => {
+    const actions: unknown[] = [];
+    type TimelineThunk = (
+      dispatch: (action: unknown) => unknown,
+      getState: () => typeof initialState,
+    ) => unknown;
+    const dispatch = (action: unknown): unknown => {
+      actions.push(action);
+
+      if (typeof action === 'function') {
+        return (action as TimelineThunk)(dispatch, () => initialState);
+      }
+
+      return action;
+    };
+
+    await jumpToHomeTimeline(new Date('2026-09-14T12:34:56.789Z'))(dispatch);
+
+    const actionIndex = (type: string) =>
+      actions.findIndex(
+        (action) =>
+          typeof action === 'object' &&
+          action !== null &&
+          'type' in action &&
+          action.type === type,
+      );
+    const clearIndex = actionIndex('TIMELINE_CLEAR');
+    const requestIndex = actionIndex('TIMELINE_EXPAND_REQUEST');
+
+    expect(clearIndex).toBeGreaterThanOrEqual(0);
+    expect(requestIndex).toBeGreaterThan(clearIndex);
+    expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
+      params: { max_id: '117269416902656000' },
+    });
+    expect(actions).toContainEqual(
+      expect.objectContaining({
+        type: 'TIMELINE_EXPAND_REQUEST',
+        timeMachine: true,
+      }),
+    );
   });
 });
 

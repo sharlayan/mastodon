@@ -43,6 +43,10 @@ export const loadPending = timeline => ({
 
 export function updateTimeline(timeline, status, { accept = undefined, bogusQuotePolicy = false } = {}) {
   return (dispatch, getState) => {
+    if (getState().getIn(['timelines', timeline, 'isTimeMachine'])) {
+      return;
+    }
+
     if (typeof accept === 'function' && !accept(status)) {
       return;
     }
@@ -104,7 +108,7 @@ const parseTags = (tags = {}, mode) => {
 export function expandTimeline(timelineId, path, params = {}) {
   return async (dispatch, getState) => {
     const timeline = getState().getIn(['timelines', timelineId], ImmutableMap());
-    const { nextUri, skipSinceId, trackNext, ...requestParams } = params;
+    const { nextUri, skipSinceId, trackNext, timeMachine, ...requestParams } = params;
     const isLoadingMore = !!requestParams.max_id || !!nextUri;
 
     if (timeline.get('isLoading')) {
@@ -124,14 +128,14 @@ export function expandTimeline(timelineId, path, params = {}) {
 
     const isLoadingRecent = !!requestParams.since_id;
 
-    dispatch(expandTimelineRequest(timelineId, isLoadingMore));
+    dispatch(expandTimelineRequest(timelineId, isLoadingMore, timeMachine));
 
     try {
       const response = await api().get(nextUri || path, { params: requestParams });
       const next = getLinks(response).refs.find(link => link.rel === 'next');
 
       dispatch(importFetchedStatuses(response.data));
-      dispatch(expandTimelineSuccess(timelineId, response.data, next ? next.uri : null, response.status === 206, isLoadingRecent, isLoadingMore, isLoadingRecent && preferPendingItems, trackNext));
+      dispatch(expandTimelineSuccess(timelineId, response.data, next ? next.uri : null, response.status === 206, isLoadingRecent, isLoadingMore, isLoadingRecent && preferPendingItems, trackNext, timeMachine));
 
       if (timelineId === 'home' && !isLoadingMore && !isLoadingRecent) {
         const now = new Date();
@@ -165,7 +169,7 @@ export function fillTimelineGaps(timelineId, path, params = {}) {
   };
 }
 
-export const expandHomeTimeline            = ({ maxId } = {}) => expandTimeline('home', '/api/v1/timelines/home', { max_id: maxId });
+export const expandHomeTimeline            = ({ maxId, timeMachine } = {}) => expandTimeline('home', '/api/v1/timelines/home', { max_id: maxId, timeMachine });
 export const expandPublicTimeline          = ({ maxId, onlyMedia, onlyRemote, allowLocalOnly } = {}) => expandTimeline(`public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { remote: !!onlyRemote, allow_local_only: !!allowLocalOnly, max_id: maxId, only_media: !!onlyMedia });
 export const expandCommunityTimeline       = ({ maxId, onlyMedia } = {}) => expandTimeline(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, max_id: maxId, only_media: !!onlyMedia });
 export const expandDirectTimeline          = ({ maxId } = {}) => expandTimeline('direct', '/api/v1/timelines/direct', { max_id: maxId });
@@ -192,15 +196,23 @@ export const fillCommunityTimelineGaps = ({ onlyMedia } = {}) => fillTimelineGap
 export const fillListTimelineGaps      = (id) => fillTimelineGaps(`list:${id}`, `/api/v1/timelines/list/${id}`, {});
 export const fillAntennaTimelineGaps   = (id) => fillTimelineGaps(`antenna:${id}`, `/api/v1/timelines/antenna/${id}`, {});
 
-export function expandTimelineRequest(timeline, isLoadingMore) {
+export const homeTimelineMaxIdAt = (timestamp) => (BigInt(Math.floor(timestamp.getTime() / 1000) * 1000) << 16n).toString();
+
+export const jumpToHomeTimeline = (timestamp) => (dispatch) => {
+  dispatch(clearTimeline('home'));
+  return dispatch(expandHomeTimeline({ maxId: homeTimelineMaxIdAt(timestamp), timeMachine: true }));
+};
+
+export function expandTimelineRequest(timeline, isLoadingMore, timeMachine) {
   return {
     type: TIMELINE_EXPAND_REQUEST,
     timeline,
+    timeMachine,
     skipLoading: !isLoadingMore,
   };
 }
 
-export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadingRecent, isLoadingMore, usePendingItems, trackNext) {
+export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadingRecent, isLoadingMore, usePendingItems, trackNext, timeMachine) {
   return {
     type: TIMELINE_EXPAND_SUCCESS,
     timeline,
@@ -210,6 +222,7 @@ export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadi
     isLoadingRecent,
     usePendingItems,
     trackNext,
+    timeMachine,
     skipLoading: !isLoadingMore,
   };
 }
