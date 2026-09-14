@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 class HomeFeed < Feed
+  attr_reader :pagination_max_id
+
   def initialize(account)
     @account = account
     super(:home, account.id)
   end
 
   def get(limit, max_id = nil, since_id = nil, min_id = nil)
+    @pagination_max_id = nil
     limit    = limit.to_i
     max_id   = max_id.to_i if max_id.present?
     since_id = since_id.to_i if since_id.present?
@@ -94,12 +97,13 @@ class HomeFeed < Feed
       preceding_statuses = FeedManager.instance.filter_home_statuses(preceding_statuses, @account, tag_following_ids.to_set)
     end
 
-    statuses = scope
+    candidates = scope
       .includes(:tags)
       .to_a_paginated_by_id(fetch_limit, min_id: min_id, max_id: max_id, since_id: since_id)
 
-    statuses = FeedManager.instance.filter_home_statuses(statuses, @account, tag_following_ids.to_set)
+    statuses = FeedManager.instance.filter_home_statuses(candidates, @account, tag_following_ids.to_set)
     statuses = aggregate_database_reblogs(statuses, preceding_statuses).first(limit) if aggregate_reblogs
+    @pagination_max_id = candidates.last.id if min_id.blank? && since_id.blank? && statuses.size < limit && candidates.size >= fetch_limit
 
     statuses.sort_by { |status| -status.id }
   end

@@ -110,6 +110,15 @@ RSpec.describe HomeFeed do
         expect(FeedManager.instance).to have_received(:build_crutches).once
       end
 
+      it 'preserves the raw database cursor when a full candidate page is filtered out' do
+        allow(account).to receive(:user).and_return(nil)
+        allow(FeedManager.instance).to receive(:filter_home_statuses).and_return([])
+        redis.del(FeedManager.instance.key(:home, account.id))
+
+        expect(subject.get(2)).to be_empty
+        expect(subject.pagination_max_id).to eq 14
+      end
+
       it 'with since_id present' do
         results = subject.get(5, nil, 3, nil)
         expect(results.map(&:id)).to eq [15, 14, 12, 10]
