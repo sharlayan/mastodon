@@ -6,8 +6,11 @@ import timelinesReducer from '../reducers/timelines';
 
 import {
   expandClipTimeline,
+  expandHomeTimeline,
+  expandHomeTimelineIfCurrent,
   homeTimelineMaxIdAt,
   jumpToHomeTimeline,
+  returnToHomeTimelinePresent,
   updateTimeline,
 } from './timelines';
 import { parseTimelineKey, timelineKey } from './timelines_typed';
@@ -37,7 +40,14 @@ const dispatchTimeline = async (
     return dispatchedAction;
   });
 
-  await action(dispatch, () => state);
+  await action(
+    dispatch,
+    () =>
+      ({
+        getIn: (path: string[], defaultValue?: unknown) =>
+          state.getIn(path.slice(1), defaultValue),
+      }) as never,
+  );
 
   return { dispatch, state };
 };
@@ -97,6 +107,14 @@ describe('expandClipTimeline', () => {
 });
 
 describe('homeTimelineMaxIdAt', () => {
+  beforeEach(() => {
+    apiGet.mockReset();
+    apiGet.mockResolvedValue(response);
+    vi.mocked(api).mockReturnValue({ get: apiGet } as never);
+    vi.mocked(getLinks).mockReset();
+    vi.mocked(getLinks).mockReturnValue({ refs: [] } as never);
+  });
+
   test('returns the first snowflake ID at the selected second', () => {
     expect(homeTimelineMaxIdAt(new Date('2026-09-14T12:34:56.789Z'))).toBe(
       '117269416902656000',
@@ -153,6 +171,36 @@ describe('homeTimelineMaxIdAt', () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
+  test('does not refresh the current home timeline while the time machine is active', () => {
+    const timeMachineState = timelinesReducer(initialState, {
+      type: 'TIMELINE_EXPAND_REQUEST',
+      timeline: 'home',
+      timeMachine: true,
+    });
+    const dispatch = vi.fn();
+
+    expandHomeTimelineIfCurrent()(dispatch, () => ({
+      getIn: (path: string[]) => timeMachineState.getIn(path.slice(1)),
+    }));
+
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  test('tracks the next link for an empty time-machine page', async () => {
+    const nextUri =
+      'https://example.test/api/v1/timelines/home?max_id=older-candidate';
+    vi.mocked(getLinks).mockReturnValue({
+      refs: [{ rel: 'next', uri: nextUri }],
+    } as never);
+
+    const { state } = await dispatchTimeline(
+      expandHomeTimeline({ maxId: '200', timeMachine: true }),
+    );
+
+    expect(state.getIn(['home', 'next'])).toBe(nextUri);
+    expect(state.getIn(['home', 'hasMore'])).toBe(true);
+  });
+
   test('clears the current timeline before requesting the selected time', async () => {
     const actions: unknown[] = [];
     type TimelineThunk = (
@@ -193,6 +241,96 @@ describe('homeTimelineMaxIdAt', () => {
         timeMachine: true,
       }),
     );
+  });
+
+  test('discards an older time-machine response after another jump', async () => {
+    interface ApiResponse {
+      data: { id: string }[];
+      status: number;
+    }
+    const pendingResponses: ((response: ApiResponse) => void)[] = [];
+    apiGet.mockImplementation(
+      () =>
+        new Promise<ApiResponse>((resolve) => {
+          pendingResponses.push(resolve);
+        }),
+    );
+
+    let state: typeof initialState = initialState;
+    type TimelineThunk = (
+      dispatch: (action: unknown) => unknown,
+      getState: () => typeof initialState,
+    ) => unknown;
+    const dispatch = (action: unknown): unknown => {
+      if (typeof action === 'function') {
+        return (action as TimelineThunk)(
+          dispatch,
+          () =>
+            ({
+              getIn: (path: string[], defaultValue?: unknown) =>
+                state.getIn(path.slice(1), defaultValue),
+            }) as never,
+        );
+      }
+
+      state = timelinesReducer(state, action as UnknownAction);
+      return action;
+    };
+
+    const firstJump = jumpToHomeTimeline(new Date('2026-09-14T12:00:00Z'))(
+      dispatch,
+    ) as Promise<unknown>;
+    const secondJump = jumpToHomeTimeline(new Date('2026-09-14T11:00:00Z'))(
+      dispatch,
+    ) as Promise<unknown>;
+
+    const activeRequestId = state.getIn(['home', 'requestId']);
+
+    pendingResponses[0]?.({ data: [], status: 200 });
+    await firstJump;
+    expect(state.getIn(['home', 'requestId'])).toBe(activeRequestId);
+    expect(state.getIn(['home', 'isLoading'])).toBe(true);
+
+    pendingResponses[1]?.({ data: [], status: 200 });
+    await secondJump;
+    expect(state.getIn(['home', 'requestId'])).toBeNull();
+    expect(state.getIn(['home', 'isLoading'])).toBe(false);
+  });
+
+  test('keeps updates blocked until returning to the present succeeds', async () => {
+    let state: typeof initialState = timelinesReducer(initialState, {
+      type: 'TIMELINE_EXPAND_REQUEST',
+      timeline: 'home',
+      timeMachine: true,
+    });
+    type TimelineThunk = (
+      dispatch: (action: unknown) => unknown,
+      getState: () => typeof initialState,
+    ) => unknown;
+    const dispatch = (action: unknown): unknown => {
+      if (typeof action === 'function') {
+        return (action as TimelineThunk)(
+          dispatch,
+          () =>
+            ({
+              getIn: (path: string[], defaultValue?: unknown) =>
+                state.getIn(path.slice(1), defaultValue),
+            }) as never,
+        );
+      }
+
+      state = timelinesReducer(state, action as UnknownAction);
+      return action;
+    };
+
+    const request = returnToHomeTimelinePresent()(dispatch) as Promise<unknown>;
+
+    expect(state.getIn(['home', 'isTimeMachine'])).toBe(true);
+    await request;
+    expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
+      params: {},
+    });
+    expect(state.getIn(['home', 'isTimeMachine'])).toBe(false);
   });
 });
 

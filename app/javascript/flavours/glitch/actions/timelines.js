@@ -36,6 +36,8 @@ export const TIMELINE_NON_STATUS_MARKERS = [
   TIMELINE_PINNED_VIEW_ALL,
 ];
 
+let nextTimelineRequestId = 0;
+
 export const loadPending = timeline => ({
   type: TIMELINE_LOAD_PENDING,
   timeline,
@@ -93,9 +95,9 @@ export function deleteFromTimelines(id) {
   };
 }
 
-export function clearTimeline(timeline) {
+export function clearTimeline(timeline, { keepTimeMachine = false } = {}) {
   return (dispatch) => {
-    dispatch({ type: TIMELINE_CLEAR, timeline });
+    dispatch({ type: TIMELINE_CLEAR, timeline, keepTimeMachine });
   };
 }
 
@@ -115,6 +117,8 @@ export function expandTimeline(timelineId, path, params = {}) {
       return;
     }
 
+    const requestId = ++nextTimelineRequestId;
+
     if (!skipSinceId && !requestParams.max_id && !requestParams.pinned && (timeline.get('items', ImmutableList()).size + timeline.get('pendingItems', ImmutableList()).size) > 0) {
       const a = timeline.getIn(['pendingItems', 0]);
       const b = timeline.getIn(['items', 0]);
@@ -128,14 +132,18 @@ export function expandTimeline(timelineId, path, params = {}) {
 
     const isLoadingRecent = !!requestParams.since_id;
 
-    dispatch(expandTimelineRequest(timelineId, isLoadingMore, timeMachine));
+    dispatch(expandTimelineRequest(timelineId, isLoadingMore, timeMachine, requestId));
 
     try {
       const response = await api().get(nextUri || path, { params: requestParams });
       const next = getLinks(response).refs.find(link => link.rel === 'next');
 
+      if (getState().getIn(['timelines', timelineId, 'requestId']) !== requestId) {
+        return;
+      }
+
       dispatch(importFetchedStatuses(response.data));
-      dispatch(expandTimelineSuccess(timelineId, response.data, next ? next.uri : null, response.status === 206, isLoadingRecent, isLoadingMore, isLoadingRecent && preferPendingItems, trackNext, timeMachine));
+      dispatch(expandTimelineSuccess(timelineId, response.data, next ? next.uri : null, response.status === 206, isLoadingRecent, isLoadingMore, isLoadingRecent && preferPendingItems, trackNext, timeMachine, requestId));
 
       if (timelineId === 'home' && !isLoadingMore && !isLoadingRecent) {
         const now = new Date();
@@ -150,7 +158,7 @@ export function expandTimeline(timelineId, path, params = {}) {
         dispatch(submitMarkers());
       }
     } catch(error) {
-      dispatch(expandTimelineFail(timelineId, error, isLoadingMore));
+      dispatch(expandTimelineFail(timelineId, error, isLoadingMore, requestId));
     }
   };
 }
@@ -169,7 +177,7 @@ export function fillTimelineGaps(timelineId, path, params = {}) {
   };
 }
 
-export const expandHomeTimeline            = ({ maxId, timeMachine } = {}) => expandTimeline('home', '/api/v1/timelines/home', { max_id: maxId, timeMachine });
+export const expandHomeTimeline            = ({ maxId, nextUri, timeMachine } = {}) => expandTimeline('home', '/api/v1/timelines/home', { max_id: maxId, nextUri, timeMachine, trackNext: timeMachine });
 export const expandPublicTimeline          = ({ maxId, onlyMedia, onlyRemote, allowLocalOnly } = {}) => expandTimeline(`public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { remote: !!onlyRemote, allow_local_only: !!allowLocalOnly, max_id: maxId, only_media: !!onlyMedia });
 export const expandCommunityTimeline       = ({ maxId, onlyMedia } = {}) => expandTimeline(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, max_id: maxId, only_media: !!onlyMedia });
 export const expandDirectTimeline          = ({ maxId } = {}) => expandTimeline('direct', '/api/v1/timelines/direct', { max_id: maxId });
@@ -203,16 +211,30 @@ export const jumpToHomeTimeline = (timestamp) => (dispatch) => {
   return dispatch(expandHomeTimeline({ maxId: homeTimelineMaxIdAt(timestamp), timeMachine: true }));
 };
 
-export function expandTimelineRequest(timeline, isLoadingMore, timeMachine) {
+export const returnToHomeTimelinePresent = () => (dispatch) => {
+  dispatch(clearTimeline('home', { keepTimeMachine: true }));
+  return dispatch(expandHomeTimeline({ timeMachine: false }));
+};
+
+export const expandHomeTimelineIfCurrent = () => (dispatch, getState) => {
+  if (getState().getIn(['timelines', 'home', 'isTimeMachine'])) {
+    return Promise.resolve();
+  }
+
+  return dispatch(expandHomeTimeline());
+};
+
+export function expandTimelineRequest(timeline, isLoadingMore, timeMachine, requestId) {
   return {
     type: TIMELINE_EXPAND_REQUEST,
     timeline,
     timeMachine,
+    requestId,
     skipLoading: !isLoadingMore,
   };
 }
 
-export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadingRecent, isLoadingMore, usePendingItems, trackNext, timeMachine) {
+export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadingRecent, isLoadingMore, usePendingItems, trackNext, timeMachine, requestId) {
   return {
     type: TIMELINE_EXPAND_SUCCESS,
     timeline,
@@ -223,15 +245,17 @@ export function expandTimelineSuccess(timeline, statuses, next, partial, isLoadi
     usePendingItems,
     trackNext,
     timeMachine,
+    requestId,
     skipLoading: !isLoadingMore,
   };
 }
 
-export function expandTimelineFail(timeline, error, isLoadingMore) {
+export function expandTimelineFail(timeline, error, isLoadingMore, requestId) {
   return {
     type: TIMELINE_EXPAND_FAIL,
     timeline,
     error,
+    requestId,
     skipLoading: !isLoadingMore,
     skipNotFound: timeline.startsWith('account:'),
   };

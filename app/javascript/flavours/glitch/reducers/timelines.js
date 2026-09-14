@@ -37,6 +37,7 @@ const initialTimeline = ImmutableMap({
   top: true,
   isLoading: false,
   isTimeMachine: false,
+  requestId: null,
   hasMore: true,
   next: null,
   /** @type {ImmutableList<string>} */
@@ -56,6 +57,7 @@ const expandNormalizedTimeline = (state, timeline, statuses, next, isPartial, is
 
   return state.update(timeline, initialTimeline, map => map.withMutations(mMap => {
     mMap.set('isLoading', false);
+    mMap.set('requestId', null);
     mMap.set('isPartial', isPartial);
     if (timeMachine !== undefined) mMap.set('isTimeMachine', timeMachine);
 
@@ -223,17 +225,20 @@ export default function timelines(state = initialState, action) {
   case TIMELINE_EXPAND_REQUEST:
     return state.update(action.timeline, initialTimeline, map => map.withMutations(mMap => {
       mMap.set('isLoading', true);
-      if (action.timeMachine !== undefined) mMap.set('isTimeMachine', action.timeMachine);
+      mMap.set('requestId', action.requestId);
+      if (action.timeMachine === true) mMap.set('isTimeMachine', true);
     }));
   case TIMELINE_EXPAND_FAIL:
-    return state.update(action.timeline, initialTimeline, map => map.set('isLoading', false));
+    if (action.requestId !== undefined && state.getIn([action.timeline, 'requestId']) !== action.requestId) return state;
+    return state.update(action.timeline, initialTimeline, map => map.set('isLoading', false).set('requestId', null));
   case TIMELINE_EXPAND_SUCCESS:
+    if (action.requestId !== undefined && state.getIn([action.timeline, 'requestId']) !== action.requestId) return state;
     return expandNormalizedTimeline(state, action.timeline, fromJS(action.statuses), action.next, action.partial, action.isLoadingRecent, action.usePendingItems, action.trackNext, action.timeMachine);
   case TIMELINE_UPDATE:
     if (state.getIn([action.timeline, 'isTimeMachine'])) return state;
     return updateTimeline(state, action.timeline, action.status.id, action.usePendingItems, action.filtered);
   case TIMELINE_CLEAR:
-    return clearTimeline(state, action.timeline);
+    return action.keepTimeMachine ? clearTimeline(state, action.timeline).setIn([action.timeline, 'isTimeMachine'], true) : clearTimeline(state, action.timeline);
   case TIMELINE_SCROLL_TOP:
     return updateTop(state, action.timeline, action.top);
   case TIMELINE_CONNECT:

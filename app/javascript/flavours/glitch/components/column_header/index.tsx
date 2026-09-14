@@ -32,6 +32,7 @@ export interface ColumnHeaderProps {
   withUnreadMarker?: boolean;
   extraButtons?: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }
 
 export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
@@ -40,6 +41,7 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   withUnreadMarker,
   extraButtons,
   className,
+  onClick,
   ...props
 }: ColumnHeaderProps) => {
   const { scrollTop } = useColumn();
@@ -48,6 +50,10 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   const hasBackButton =
     withBackButton === true ||
     (withBackButton === 'auto' && location.state?.fromMastodon);
+  const handleTitleClick = useCallback(() => {
+    onClick?.();
+    scrollTop();
+  }, [onClick, scrollTop]);
 
   return (
     <header {...props} className={classNames(className, classes.root)}>
@@ -56,7 +62,7 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
         <NavigationFocusTarget className={classes.title}>
           <button
             type='button'
-            onClick={scrollTop}
+            onClick={handleTitleClick}
             id={getColumnSkipLinkId(columnIndex)}
           >
             {title}

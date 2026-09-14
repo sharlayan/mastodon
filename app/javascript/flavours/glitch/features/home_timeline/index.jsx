@@ -21,7 +21,7 @@ import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity
 import { withBreakpoint } from 'flavours/glitch/features/ui/hooks/useBreakpoint';
 
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
-import { expandHomeTimeline, jumpToHomeTimeline } from '../../actions/timelines';
+import { expandHomeTimeline, jumpToHomeTimeline, returnToHomeTimelinePresent } from '../../actions/timelines';
 import StatusListContainer from '../ui/containers/status_list_container';
 
 import { ColumnSettings } from './components/column_settings';
@@ -47,6 +47,8 @@ const mapStateToProps = state => ({
   hasAnnouncements: !state.getIn(['announcements', 'items']).isEmpty(),
   unreadAnnouncements: state.getIn(['announcements', 'items']).count(item => !item.get('read')),
   showAnnouncements: state.getIn(['announcements', 'show']),
+  isTimeMachine: state.getIn(['timelines', 'home', 'isTimeMachine']),
+  nextUri: state.getIn(['timelines', 'home', 'next']),
   regex: state.getIn(['settings', 'home', 'regex', 'body']),
 });
 
@@ -62,6 +64,8 @@ class HomeTimeline extends PureComponent {
     hasAnnouncements: PropTypes.bool,
     unreadAnnouncements: PropTypes.number,
     showAnnouncements: PropTypes.bool,
+    isTimeMachine: PropTypes.bool,
+    nextUri: PropTypes.string,
     matchesBreakpoint: PropTypes.bool,
     regex: PropTypes.string,
   };
@@ -82,13 +86,20 @@ class HomeTimeline extends PureComponent {
   };
 
   handleLoadMore = maxId => {
-    this.props.dispatch(expandHomeTimeline({ maxId, timeMachine: this.timeMachineActive }));
+    const { dispatch, isTimeMachine, nextUri } = this.props;
+    dispatch(expandHomeTimeline({ maxId: isTimeMachine ? undefined : maxId, nextUri: isTimeMachine ? nextUri : undefined, timeMachine: isTimeMachine }));
   };
 
   handleTimeMachineSelect = timestamp => {
-    this.timeMachineActive = true;
     this._stopPolling();
     this.props.dispatch(jumpToHomeTimeline(timestamp));
+  };
+
+  handleHeaderClick = () => {
+    if (this.props.isTimeMachine) {
+      this._stopPolling();
+      this.props.dispatch(returnToHomeTimelinePresent());
+    }
   };
 
   componentDidMount () {
@@ -107,7 +118,7 @@ class HomeTimeline extends PureComponent {
   _checkIfReloadNeeded (wasPartial, isPartial) {
     const { dispatch } = this.props;
 
-    if (this.timeMachineActive) {
+    if (this.props.isTimeMachine) {
       this._stopPolling();
       return;
     }
@@ -166,6 +177,7 @@ class HomeTimeline extends PureComponent {
           <ColumnHeader
             title={intl.formatMessage(messages.following)}
             withUnreadMarker={hasUnread}
+            onClick={this.handleHeaderClick}
             extraButtons={
               <>
                 <HomeTimelineTimeMachineButton onSelect={this.handleTimeMachineSelect} />
@@ -195,6 +207,7 @@ class HomeTimeline extends PureComponent {
             extraButton={announcementsButton}
             appendContent={hasAnnouncements && showAnnouncements && <Announcements />}
             scrollTopOnClick
+            onClick={this.handleHeaderClick}
           >
             <ColumnSettings onTimeMachineSelect={this.handleTimeMachineSelect} />
           </LegacyColumnHeader>
