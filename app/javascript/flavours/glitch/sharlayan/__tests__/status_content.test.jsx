@@ -115,4 +115,15 @@ describe('Sharlayan status content helpers', () => {
 
     expect(getSharlayanMfmSourceText(status, '<p>First<br>second</p>')).toBe('First\nsecond\n');
   });
+
+  it('keeps the original MFM source while a translation is loading', () => {
+    const originalMfmText = '$[fg #123456 Original MFM source]';
+    const status = fromJS({
+      mfm: true,
+      mfm_text: originalMfmText,
+      translation: { isLoading: true },
+    });
+
+    expect(getSharlayanMfmSourceText(status, '<p>Rendered original text</p>')).toBe(originalMfmText);
+  });
 });

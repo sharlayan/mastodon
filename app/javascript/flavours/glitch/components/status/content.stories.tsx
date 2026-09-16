@@ -32,6 +32,7 @@ const meta = {
         spoilerHtml: '',
         language: args.translatedTo,
         detected_source_language: 'en',
+        isLoading: false,
       } satisfies StatusTranslation;
     }
 

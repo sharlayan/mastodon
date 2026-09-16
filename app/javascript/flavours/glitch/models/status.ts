@@ -160,4 +160,6 @@ export type FilterResult = Omit<ApiFilterResultJSON, 'filter'> & {
   filter: string;
 };
 
-export type StatusTranslation = Omit<ApiStatusTranslationJSON, 'poll'>;
+export type StatusTranslation = Omit<ApiStatusTranslationJSON, 'poll'> & {
+  isLoading: boolean;
+};

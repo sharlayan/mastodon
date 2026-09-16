@@ -26,7 +26,9 @@ export const isSharlayanMfmStatus = (status, { mfmEnabled, localMfmEnabled }) =>
   status.get('mfm') && mfmEnabled !== false && localMfmEnabled !== false;
 
 export const getSharlayanMfmSourceText = (status, content) => {
-  if (status.get('translation')) {
+  const translation = status.get('translation');
+
+  if (translation && !translation.get('isLoading')) {
     return extractPlainTextFromHtml(content);
   }
 

@@ -176,6 +176,7 @@ class HomeTimeline extends PureComponent {
         {isRedesignEnabled() ? (
           <ColumnHeader
             title={intl.formatMessage(messages.following)}
+            withBackButton={multiColumn && !pinned && 'auto'}
             withUnreadMarker={hasUnread}
             onClick={this.handleHeaderClick}
             extraButtons={
