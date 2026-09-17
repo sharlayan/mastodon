@@ -7,6 +7,65 @@ RSpec.describe HomeFeed do
 
   let(:account) { Fabricate(:account) }
 
+  describe '#get' do
+    before do
+      Fabricate(:status, account: account, id: 1)
+      Fabricate(:status, account: account, id: 2, reblog: Fabricate(:status))
+      Fabricate(:status, account: account, id: 3, visibility: :direct)
+      Fabricate(:status, account: account, id: 4)
+      Fabricate(:status, account: account, id: 10)
+    end
+
+    context 'when feed is generated' do
+      before do
+        redis.zadd(
+          FeedManager.instance.key(:home, account.id),
+          [[4, 4], [3, 3], [2, 2], [1, 1]]
+        )
+      end
+
+      it 'gets statuses with ids in the range from redis according to the given parameters' do
+        expect(described_class.new(account).get(3).map(&:id)).to eq [4, 3, 2]
+        expect(described_class.new(account, { exclude_direct: true }).get(3).map(&:id)).to eq [4, 2, 1]
+        expect(described_class.new(account, { exclude_reblogs: true }).get(3).map(&:id)).to eq [4, 3, 1]
+        expect(described_class.new(account, { exclude_direct: true, exclude_reblogs: true }).get(3).map(&:id)).to eq [4, 1]
+
+        expect(described_class.new(account).get(2, nil, nil, 0).map(&:id)).to eq [2, 1]
+        expect(described_class.new(account, { exclude_direct: true }).get(2, nil, nil, 0).map(&:id)).to eq [2, 1]
+        expect(described_class.new(account, { exclude_direct: true }).get(2, nil, nil, 1).map(&:id)).to eq [4, 2]
+        expect(described_class.new(account, { exclude_reblogs: true }).get(2, nil, nil, 0).map(&:id)).to eq [3, 1]
+        expect(described_class.new(account, { exclude_direct: true, exclude_reblogs: true }).get(2, nil, nil, 0).map(&:id)).to eq [4, 1]
+      end
+    end
+
+    context 'when statuses are loaded from the database' do
+      before do
+        Fabricate(:status, account: account, id: 5, in_reply_to_id: 10, in_reply_to_account_id: account.id)
+        Fabricate(:quote, status: Status.find(4), quoted_status: Status.find(10), state: :accepted)
+        redis.del(FeedManager.instance.key(:home, account.id))
+      end
+
+      it 'applies the requested filters' do
+        expect(described_class.new(account, { exclude_direct: true }).get(10).map(&:id)).to_not include(3)
+        expect(described_class.new(account, { exclude_reblogs: true }).get(10).map(&:id)).to_not include(2)
+        expect(described_class.new(account, { exclude_quotes: true }).get(10).map(&:id)).to_not include(4)
+        expect(described_class.new(account, { exclude_replies: true }).get(10).map(&:id)).to_not include(5)
+      end
+    end
+
+    context 'when feed is being generated' do
+      before do
+        redis.hset("account:#{account.id}:regeneration", { 'status' => 'running' })
+      end
+
+      it 'returns statuses from the database' do
+        results = subject.get(3)
+
+        expect(results.map(&:id)).to eq [10, 4, 3]
+      end
+    end
+  end
+
   describe '#regenerating?' do
     context 'when an old-style string key is still in use' do
       it 'upgrades the key to a hash' do

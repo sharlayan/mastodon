@@ -3,7 +3,6 @@ import classNames from 'classnames';
 import { ComposeRedesignButton } from '@/flavours/glitch/features/compose/redesign/trigger';
 import { RedesignNavigationPanel } from '@/flavours/glitch/features/navigation_panel/redesign';
 import { RedesignMobileNavigation } from '@/flavours/glitch/features/navigation_panel/redesign/mobile_nav';
-import { useAppSelector } from '@/flavours/glitch/store';
 import { Footer } from 'flavours/glitch/features/custom_homepage/components/footer';
 import { SharlayanColumnsAreaExtensions } from 'flavours/glitch/sharlayan/registry/ui';
 
@@ -11,6 +10,7 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 import { MultiColumnContent } from './multi_column_content';
 import classes from './redesign.module.scss';
+import multiColClasses from './redesign_multicol.module.scss';
 
 export const ColumnsAreaRedesign: React.FC<{
   pageBlogView?: boolean;
@@ -19,9 +19,6 @@ export const ColumnsAreaRedesign: React.FC<{
   children: React.ReactElement | React.ReactElement[];
   ref?: React.Ref<HTMLDivElement>;
 }> = ({ children, minimalShell, pageBlogView, singleColumn, ref }) => {
-  const isModalOpen = useAppSelector(
-    (state) => !state.modal.get('stack').isEmpty(),
-  );
   const isMobile = useBreakpoint('openable');
 
   if (pageBlogView) {
@@ -34,7 +31,7 @@ export const ColumnsAreaRedesign: React.FC<{
 
   if (minimalShell) {
     return (
-      <div className={classNames(classes.root, classes.rootMinimal)}>
+      <div ref={ref} className={classNames(classes.root, classes.rootMinimal)}>
         {isMobile && <RedesignMobileNavigation />}
         <div className={classes.main}>
           <div>{children}</div>
@@ -47,7 +44,7 @@ export const ColumnsAreaRedesign: React.FC<{
 
   if (singleColumn) {
     return (
-      <div className={classes.root}>
+      <div ref={ref} className={classes.root}>
         <div className={classes.navigationWrapper}>
           <RedesignNavigationPanel />
         </div>
@@ -63,11 +60,11 @@ export const ColumnsAreaRedesign: React.FC<{
   }
 
   return (
-    <main
-      className={classNames('columns-area', { unscrollable: isModalOpen })}
-      ref={ref}
-      tabIndex={isModalOpen ? undefined : 0}
-    >
+    <main ref={ref} className={multiColClasses.root}>
+      <div className={multiColClasses.navigationWrapper}>
+        <RedesignNavigationPanel />
+      </div>
+      <ComposeRedesignButton />
       <MultiColumnContent>{children}</MultiColumnContent>
     </main>
   );

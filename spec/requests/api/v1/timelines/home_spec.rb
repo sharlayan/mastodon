@@ -63,6 +63,21 @@ RSpec.describe 'Home', :inline_jobs do
             .to start_with('application/json')
         end
       end
+
+      context 'with server-side filters' do
+        let(:params) { { limit: 1, exclude_direct: true, exclude_reblogs: true, exclude_quotes: true, exclude_replies: true } }
+
+        it 'retains the filters in pagination links' do
+          subject
+
+          expect(response.headers['Link']).to include(
+            'exclude_direct=true',
+            'exclude_reblogs=true',
+            'exclude_quotes=true',
+            'exclude_replies=true'
+          )
+        end
+      end
     end
 
     context 'when the timeline is regenerating' do

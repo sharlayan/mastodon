@@ -3,9 +3,9 @@
 class HomeFeed < Feed
   attr_reader :pagination_max_id
 
-  def initialize(account)
+  def initialize(account, options = {})
     @account = account
-    super(:home, account.id)
+    super(:home, account.id, options)
   end
 
   def get(limit, max_id = nil, since_id = nil, min_id = nil)
@@ -83,6 +83,8 @@ class HomeFeed < Feed
       scope = scope.or(Status.where(visibility: :public).where(tag_exists.exists))
     end
 
+    scope = apply_requested_filters(scope)
+
     aggregate_reblogs = @account.user&.aggregates_reblogs?
     fetch_limit       = aggregate_reblogs && min_id.blank? ? limit + FeedManager::REBLOG_FALLOFF : limit
 
@@ -109,6 +111,14 @@ class HomeFeed < Feed
   end
 
   private
+
+  def apply_requested_filters(scope)
+    scope = scope.where.not(visibility: :direct) if @options[:exclude_direct]
+    scope = scope.where(reblog_of_id: nil) if @options[:exclude_reblogs]
+    scope = scope.where.missing(:quote) if @options[:exclude_quotes]
+    scope = scope.where(in_reply_to_id: nil).or(scope.where(in_reply_to_id: @account.id)) if @options[:exclude_replies]
+    scope
+  end
 
   def merge_forward_results(redis_statuses, database_statuses, limit)
     (redis_statuses + database_statuses)

@@ -13,6 +13,7 @@ const alwaysEnabled = () => true;
 
 export const PublicTimeline = () => import('../../../features/public_timeline');
 export const CommunityTimeline = () => import('../../../features/community_timeline');
+export const Firehose = () => import('../../../features/firehose');
 export const ConversationThread = () => import('../../../features/direct_timeline/conversation');
 export const AntennaTimeline = () => import('../../../features/antenna_timeline');
 export const ReactedStatuses = () => import('../../../features/reacted_statuses');
@@ -28,8 +29,9 @@ export const sharlayanColumnComponents = {
 };
 
 export const sharlayanRouteDescriptors = [
-  { key: 'public', path: ['/public', '/timelines/public'], exact: true, featureGate: () => federatedTimelineEnabled, lazyComponent: PublicTimeline },
-  { key: 'community', path: ['/public/local', '/timelines/public/local'], exact: true, featureGate: () => localTimelineEnabled, lazyComponent: CommunityTimeline },
+  { key: 'public', path: '/public', exact: true, featureGate: () => federatedTimelineEnabled, lazyComponent: Firehose, componentParams: { feedType: 'public' } },
+  { key: 'community', path: '/public/local', exact: true, featureGate: () => localTimelineEnabled, lazyComponent: Firehose, componentParams: { feedType: 'community' } },
+  { key: 'remote', path: '/public/remote', exact: true, featureGate: () => federatedTimelineEnabled, lazyComponent: Firehose, componentParams: { feedType: 'public:remote' } },
   { key: 'conversation', path: '/conversations/:conversationId', featureGate: alwaysEnabled, lazyComponent: ConversationThread },
   { key: 'clip-new', path: '/clips/new', featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/new') },
   { key: 'clip-favourites', path: '/clips/favourites', exact: true, featureGate: () => clipsEnabled, lazyComponent: () => import('../../../features/clips/favourites') },

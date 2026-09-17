@@ -63,4 +63,32 @@ describe('Sharlayan route registry', () => {
       expect.arrayContaining(['public', 'community', 'pages', 'account-pages']),
     );
   });
+
+  it('registers Firehose routes with their feed types', () => {
+    const firehoseRoutes = sharlayanRouteDescriptors
+      .filter(({ key }) => ['public', 'community', 'remote'].includes(key))
+      .map(({ key, path, componentParams }) => ({
+        key,
+        path,
+        componentParams,
+      }));
+
+    expect(firehoseRoutes).toEqual([
+      {
+        key: 'public',
+        path: '/public',
+        componentParams: { feedType: 'public' },
+      },
+      {
+        key: 'community',
+        path: '/public/local',
+        componentParams: { feedType: 'community' },
+      },
+      {
+        key: 'remote',
+        path: '/public/remote',
+        componentParams: { feedType: 'public:remote' },
+      },
+    ]);
+  });
 });

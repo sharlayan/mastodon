@@ -4,6 +4,7 @@ import type { List, Record } from 'immutable';
 
 import { ColumnIndexContext } from '@/flavours/glitch/components/column/context';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
+import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
 import {
   federatedTimelineEnabled,
@@ -108,6 +109,10 @@ export const MultiColumnContent: React.FC<{
         const customized = params?.width != null;
         const uuid = column.get('uuid');
         const id = column.get('id');
+
+        if (isRedesignEnabled() && id === 'COMPOSE') {
+          return null;
+        }
 
         return (
           <ColumnIndexContext.Provider value={index} key={uuid}>
