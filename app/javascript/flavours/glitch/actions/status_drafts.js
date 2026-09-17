@@ -29,7 +29,7 @@ const composePayload = (state) => {
     in_reply_to_id: compose.get('in_reply_to'),
     media_ids: compose.get('media_attachments').map(media => media.get('id')).toArray(),
     sensitive: compose.get('sensitive'),
-    visibility: compose.get('circle_id') ? 'circle' : compose.get('privacy'),
+    visibility: compose.get('circle_id') ? 'private' : compose.get('privacy'),
     circle_id: compose.get('circle_id'),
     clip_ids: compose.get('clip_ids').toArray(),
     poll: poll ? {

@@ -1,7 +1,5 @@
 import { useEffect } from 'react';
 
-import type { Map as ImmutableMap } from 'immutable';
-
 import { initialState } from 'flavours/glitch/initial_state';
 import { useAppSelector } from 'flavours/glitch/store';
 
@@ -37,10 +35,7 @@ export const applyStoredSensitiveEmojiDisplay = () => {
 export const SensitiveEmojiDisplay = () => {
   const value = useAppSelector(
     (state) =>
-      (state.local_settings as ImmutableMap<string, unknown>).get(
-        'sensitive_emoji_display',
-        'show',
-      ) as string,
+      state.local_settings.get('sensitive_emoji_display', 'show') as string,
   );
 
   useEffect(() => {

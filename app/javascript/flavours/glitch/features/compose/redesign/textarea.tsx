@@ -1,8 +1,11 @@
-import { useCallback, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
+
+import type { TextareaAutosizeProps } from 'react-textarea-autosize';
 
 import {
   changeCompose,
@@ -16,9 +19,10 @@ import { useAutosuggestFloatingMenu } from '@/flavours/glitch/components/autosug
 import { AutosuggestMenu } from '@/flavours/glitch/components/autosuggest/list';
 import { TextArea } from '@/flavours/glitch/components/form_fields';
 import { normalizeKey } from '@/flavours/glitch/components/hotkeys/utils';
+import { useScrollSensor } from '@/flavours/glitch/hooks/useScrollSensor';
 import {
+  clearComposerFocusRequest,
   COMPOSER_TEXTAREA_ID,
-  focusComposerTextarea,
 } from '@/flavours/glitch/reducers/slices/composer';
 import {
   createAppSelector,
@@ -43,7 +47,7 @@ const messages = defineMessages({
 });
 
 type ComposeTextareaProps = Omit<
-  React.ComponentPropsWithoutRef<'textarea'>,
+  TextareaAutosizeProps,
   | 'placeholder'
   | 'onFocus'
   | 'onBlur'
@@ -66,6 +70,7 @@ export const ComposeTextarea: React.FC<ComposeTextareaProps> = ({
   onSubmit,
   className,
   disabled,
+  children,
   ...props
 }) => {
   const intl = useIntl();
@@ -88,7 +93,6 @@ export const ComposeTextarea: React.FC<ComposeTextareaProps> = ({
       dispatch(
         selectComposeSuggestion(tokenStart, token, suggestion, ['text']),
       );
-      focusComposerTextarea(true);
     },
     [dispatch],
   );
@@ -100,16 +104,39 @@ export const ComposeTextarea: React.FC<ComposeTextareaProps> = ({
   const suggestions = useAppSelector(selectSuggestions);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { onTextChange, focus, mirror, sourceProps, suggestProps } =
-    useAutosuggestFloatingMenu({
-      suggestions,
-      text,
-      className: classes.textareaMirror,
-      sourceRef: textAreaRef,
-      onSelect: onSuggestion,
-      onFetch: onSuggestionFetch,
-      onClear: onSuggestionClear,
-    });
+  // Applies a focus/selection requested from elsewhere (e.g. reply, mention) once this textarea exists,
+  // which also covers it not being mounted yet when the request was made (it's lazy-loaded).
+  const pendingFocus = useAppSelector((state) => state.composer.pendingFocus);
+  useEffect(() => {
+    if (!pendingFocus) {
+      return;
+    }
+
+    const { selection } = pendingFocus;
+    if (selection) {
+      textAreaRef.current?.setSelectionRange(selection.start, selection.end);
+    }
+    textAreaRef.current?.focus({ preventScroll: true });
+    dispatch(clearComposerFocusRequest());
+  }, [pendingFocus, dispatch]);
+
+  const {
+    onTextChange,
+    focus,
+    mirror,
+    sourceProps: fullSourceProps,
+    suggestProps,
+  } = useAutosuggestFloatingMenu({
+    suggestions,
+    text,
+    className: classes.textareaMirror,
+    sourceRef: textAreaRef,
+    onSelect: onSuggestion,
+    onFetch: onSuggestionFetch,
+    onClear: onSuggestionClear,
+  });
+
+  const { onScroll, ...sourceProps } = fullSourceProps;
 
   // Update the composer text and trigger suggestions.
   const onChange: React.ChangeEventHandler<HTMLTextAreaElement> = useCallback(
@@ -156,13 +183,23 @@ export const ComposeTextarea: React.FC<ComposeTextareaProps> = ({
     [dispatch],
   );
 
+  const { sensor, isInViewport } = useScrollSensor({
+    placement: 'bottom',
+    tolerance: 10,
+  });
+
   return (
-    <div className={classes.textareaWrapper}>
+    <div
+      className={classes.textareaWrapper}
+      data-scroll-down={!isInViewport}
+      onScrollCapture={onScroll} // Requires capture so it fires before TextArea.
+    >
       <TextArea
         {...props}
         dir='auto'
         id={COMPOSER_TEXTAREA_ID}
         className={classNames(className, classes.textarea)}
+        autoSize
         ref={textAreaRef}
         value={text}
         lang={lang}
@@ -182,6 +219,10 @@ export const ComposeTextarea: React.FC<ComposeTextareaProps> = ({
       {mirror}
 
       <AutosuggestMenu {...suggestProps} maxWidth={280} />
+
+      {children}
+
+      {sensor}
     </div>
   );
 };

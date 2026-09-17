@@ -9,7 +9,7 @@ import { connect } from 'react-redux';
 
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import { Column } from '@/flavours/glitch/components/column';
-import { ColumnHeader } from '@/flavours/glitch/components/column/header';
+import { ColumnHeader as LegacyColumnHeader } from '@/flavours/glitch/components/column/header';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { DismissableBanner } from 'flavours/glitch/components/dismissable_banner';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
@@ -23,10 +23,15 @@ import { expandCommunityTimeline } from '../../actions/timelines';
 import StatusListContainer from '../ui/containers/status_list_container';
 
 import ColumnSettingsContainer from './containers/column_settings_container';
+import { ColumnHeader, ColumnSettingsMenu } from '@/flavours/glitch/components/column_header';
+import { FeedColumnSettings } from '../public_timeline/components/feed_column_settings';
+import { MultiColumnMenuItems } from '@/flavours/glitch/components/column_header/multicolumn_settings';
+import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 
 const messages = defineMessages({
   title: { id: 'column.community', defaultMessage: 'Local timeline' },
   titleRoleplay: { id: 'navigation_bar.roleplay_public_timeline', defaultMessage: 'Public timeline' },
+  title_redesign: { id: 'column.this_server', defaultMessage: 'This Server' },
 });
 
 const mapStateToProps = (state, { columnId }) => {
@@ -121,7 +126,13 @@ class CommunityTimeline extends PureComponent {
     const { intl, hasUnread, columnId, multiColumn, onlyMedia } = this.props;
     const { signedIn, permissions } = this.props.identity;
     const pinned = !!columnId;
-    const title = intl.formatMessage(roleplayMode ? messages.titleRoleplay : messages.title);
+    const title = intl.formatMessage(
+      roleplayMode
+        ? messages.titleRoleplay
+        : isRedesignEnabled()
+          ? messages.title_redesign
+          : messages.title,
+    );
 
     const emptyMessage = canViewFeed(signedIn, permissions, localLiveFeedAccess) ? (
       <FormattedMessage
@@ -137,19 +148,41 @@ class CommunityTimeline extends PureComponent {
 
     return (
       <Column bindToDocument={!multiColumn} label={title}>
-        <ColumnHeader
-          icon='users'
-          iconComponent={PeopleIcon}
-          active={hasUnread}
-          title={title}
-          onPin={this.handlePin}
-          onMove={this.handleMove}
-          pinned={pinned}
-          multiColumn={multiColumn}
-          scrollTopOnClick
-        >
-          <ColumnSettingsContainer columnId={columnId} />
-        </ColumnHeader>
+        {isRedesignEnabled() ? (
+          <ColumnHeader
+            title={title}
+            withUnreadMarker={hasUnread}
+            extraButtons={
+              <ColumnSettingsMenu
+                labelPrefix={title}
+              >
+                <FeedColumnSettings localOnly columnId={columnId} />
+                {multiColumn && (
+                  <MultiColumnMenuItems
+                    withDivider
+                    pinned={pinned}
+                    onPin={this.handlePin}
+                    onMove={this.handleMove}
+                  />
+                )}
+              </ColumnSettingsMenu>
+            }
+          />
+        ) : (
+          <LegacyColumnHeader
+            icon='users'
+            iconComponent={PeopleIcon}
+            active={hasUnread}
+            title={title}
+            onPin={this.handlePin}
+            onMove={this.handleMove}
+            pinned={pinned}
+            multiColumn={multiColumn}
+            scrollTopOnClick
+          >
+            <ColumnSettingsContainer columnId={columnId} />
+          </LegacyColumnHeader>
+        )}
 
         <StatusListContainer
           prepend={<DismissableBanner id='community_timeline'><FormattedMessage id='dismissable_banner.community_timeline' defaultMessage='These are the most recent public posts from people whose accounts are hosted by {domain}.' values={{ domain }} /></DismissableBanner>}

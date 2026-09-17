@@ -248,6 +248,16 @@ html {
       &:hover {
         border: 1px solid var(--color-accent-dark);
       }
+
+      &.circle-button {
+        max-width: min(180px, 50vw);
+      }
+
+      &.circle-button.active {
+        background: transparent;
+        border-color: var(--color-accent-dark);
+        color: var(--color-accent);
+      }
     }
   }
 

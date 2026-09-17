@@ -10,8 +10,12 @@ class DeleteAccountService < BaseService
     account_pins
     active_relationships
     aliases
+    antennas
     block_relationships
     blocked_by_relationships
+    circles
+    clip_favourites
+    clips
     collections
     conversation_mutes
     conversations
@@ -30,6 +34,7 @@ class DeleteAccountService < BaseService
     scheduled_statuses
     status_pins
     tag_follows
+    generated_annual_reports
   ).freeze
 
   # The following associations have no important side-effects
@@ -55,6 +60,7 @@ class DeleteAccountService < BaseService
     scheduled_statuses
     status_pins
     tag_follows
+    generated_annual_reports
   ).freeze
 
   ASSOCIATIONS_ON_DESTROY = %w(

@@ -220,6 +220,52 @@ RSpec.describe '/api/v1/statuses' do
         end
       end
 
+      context 'with MFM content' do
+        around do |example|
+          mfm_enabled = Setting.mfm_enabled
+          mfm_allow_composition = Setting.mfm_allow_composition
+          example.run
+        ensure
+          Setting.mfm_enabled = mfm_enabled
+          Setting.mfm_allow_composition = mfm_allow_composition
+        end
+
+        context 'when composition is disabled' do
+          before do
+            Setting.mfm_enabled = true
+            Setting.mfm_allow_composition = false
+          end
+
+          it 'downgrades an explicit MFM content type' do
+            post '/api/v1/statuses', headers: headers, params: { status: '$[x2 disabled]', content_type: 'text/x-mfm' }
+
+            expect(response).to have_http_status(200)
+            expect(Status.last).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+          end
+
+          it 'does not render detected MFM syntax' do
+            post '/api/v1/statuses', headers: headers, params: { status: '$[x2 disabled]' }
+
+            expect(response).to have_http_status(200)
+            expect(Status.last).to have_attributes(content_type: 'text/plain', mfm: false, mfm_text: nil)
+          end
+        end
+
+        context 'when composition is enabled' do
+          before do
+            Setting.mfm_enabled = true
+            Setting.mfm_allow_composition = true
+          end
+
+          it 'accepts explicit MFM content' do
+            post '/api/v1/statuses', headers: headers, params: { status: '$[x2 enabled]', content_type: 'text/x-mfm' }
+
+            expect(response).to have_http_status(200)
+            expect(Status.last).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 enabled]')
+          end
+        end
+      end
+
       context 'with reaction acceptance' do
         let(:params) { { status: 'Hello world', reaction_acceptance: 'nonSensitiveOnly' } }
 
@@ -229,6 +275,43 @@ RSpec.describe '/api/v1/statuses' do
           expect(response).to have_http_status(200)
           expect(response.parsed_body[:reaction_acceptance]).to eq('nonSensitiveOnly')
           expect(Status.last.reaction_acceptance).to eq('nonSensitiveOnly')
+        end
+      end
+
+      context 'with a selected circle' do
+        let(:circle) { Circle.create!(account: user.account, title: 'Friends') }
+        let(:params) { { status: 'Hello circle', visibility: 'private', circle_id: circle.id } }
+
+        before do
+          Setting.circles_enabled = true
+        end
+
+        after do
+          Setting.circles_enabled = false
+        end
+
+        it 'creates a circle status through the API' do
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(Status.last).to have_attributes(visibility: 'limited', limited_scope: 'personal')
+          expect(circle.statuses).to include(Status.last)
+        end
+
+        it 'overrides a public visibility with the selected circle' do
+          post '/api/v1/statuses', headers: headers, params: params.merge(visibility: 'public')
+
+          expect(response).to have_http_status(200)
+          expect(Status.last).to have_attributes(visibility: 'limited', limited_scope: 'personal')
+          expect(circle.statuses).to include(Status.last)
+        end
+
+        it 'accepts the legacy circle visibility' do
+          post '/api/v1/statuses', headers: headers, params: params.merge(visibility: 'circle')
+
+          expect(response).to have_http_status(200)
+          expect(Status.last).to have_attributes(visibility: 'limited', limited_scope: 'personal')
+          expect(circle.statuses).to include(Status.last)
         end
       end
 

@@ -53,6 +53,22 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(response.parsed_body).to be(false)
     end
 
+    it 'supports Misskey wildcard MIME filters' do
+      rpc_post 'drive/files', type: 'image/*'
+
+      expect(response.parsed_body.pluck(:id)).to include(mi_id(file.id))
+    end
+
+    it 'broadcasts compatibility file mutations to the Drive stream' do
+      allow(MisskeyCompat::Streaming).to receive(:broadcast_drive_file)
+
+      rpc_post 'drive/files/update', fileId: mi_id(file.id), name: 'Updated'
+      expect(MisskeyCompat::Streaming).to have_received(:broadcast_drive_file).with(instance_of(Redis), account, file, 'fileUpdated')
+
+      rpc_post 'drive/files/delete', fileId: mi_id(file.id)
+      expect(MisskeyCompat::Streaming).to have_received(:broadcast_drive_file).with(instance_of(Redis), account, file.id, 'fileDeleted')
+    end
+
     it 'paginates name and hash searches at 20 files per page' do
       matching_files = Array.new(21) do
         insert_drive_file.tap do |matching_file|
@@ -149,6 +165,15 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
   end
 
   describe 'folder RPC' do
+    it 'broadcasts compatibility folder mutations to the Drive stream' do
+      allow(MisskeyCompat::Streaming).to receive(:broadcast_drive_folder)
+
+      rpc_post 'drive/folders/create', name: 'Streamed', parentId: nil
+      folder = account.drive_folders.find(MisskeyCompat::MiId.decode(response.parsed_body[:id]))
+
+      expect(MisskeyCompat::Streaming).to have_received(:broadcast_drive_folder).with(instance_of(Redis), account, folder, 'folderCreated')
+    end
+
     it 'creates, lists, shows, updates, finds, and deletes folders' do
       rpc_post 'drive/folders/create', name: 'Parent', parentId: nil
       parent_id = response.parsed_body[:id]

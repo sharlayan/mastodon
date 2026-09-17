@@ -20,6 +20,15 @@ class PostStatusService < BaseService
     end
   end
 
+  class IdempotencyError < StandardError
+    attr_reader :status
+
+    def initialize(status)
+      super()
+      @status = status
+    end
+  end
+
   # Post a text status update, fetch and notify remote users mentioned
   # @param [Account] account Account from which to post
   # @param [Hash] options
@@ -46,6 +55,9 @@ class PostStatusService < BaseService
     @in_reply_to = @options[:thread]
     @quoted_status = @options[:quoted_status]
 
+    load_media!
+    preprocess_scheduled_at!
+
     with_idempotency do
       validate_media!
       preprocess_attributes!
@@ -63,7 +75,7 @@ class PostStatusService < BaseService
     end
 
     @status
-  rescue Antispam::SilentlyDrop => e
+  rescue Antispam::SilentlyDrop, IdempotencyError => e
     e.status
   end
 
@@ -102,6 +114,11 @@ class PostStatusService < BaseService
     @options = @sharlayan_pipeline.options
     @visibility = :unlisted if @visibility&.to_sym == :public && @account.silenced?
     @visibility   = :private if @quoted_status&.private_visibility? && %i(public unlisted).include?(@visibility&.to_sym)
+  rescue ArgumentError
+    raise ActiveRecord::RecordInvalid
+  end
+
+  def preprocess_scheduled_at!
     @scheduled_at = @options[:scheduled_at]&.to_datetime
     @scheduled_at = nil if scheduled_in_the_past?
   rescue ArgumentError
@@ -212,20 +229,23 @@ class PostStatusService < BaseService
   end
 
   def validate_media!
-    if @options[:media_ids].blank? || !@options[:media_ids].is_a?(Enumerable)
-      @media = []
-      return
-    end
+    return if @options[:media_ids].blank? || !@options[:media_ids].is_a?(Enumerable)
 
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.too_many') if @options[:media_ids].size > Status::MEDIA_ATTACHMENTS_LIMIT
-
-    @media = @account.media_attachments.where(status_id: nil).where(id: @options[:media_ids].take(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i))
 
     not_found_ids = @options[:media_ids].map(&:to_i) - @media.map(&:id)
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.not_found', ids: not_found_ids.join(', ')) if not_found_ids.any?
 
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.images_and_video') if @media.size > 1 && @media.find(&:audio_or_video?)
     raise Mastodon::ValidationError, I18n.t('media_attachments.validations.not_ready') if @media.any?(&:not_processed?)
+  end
+
+  def load_media!
+    @media = if @options[:media_ids].blank? || !@options[:media_ids].is_a?(Enumerable)
+               []
+             else
+               @account.media_attachments.where(status_id: nil).where(id: @options[:media_ids].take(Status::MEDIA_ATTACHMENTS_LIMIT).map(&:to_i))
+             end
   end
 
   def process_mentions_service
@@ -264,7 +284,7 @@ class PostStatusService < BaseService
     return yield unless idempotency_given?
 
     with_redis_lock("idempotency:lock:status:#{@account.id}:#{@options[:idempotency]}") do
-      return idempotency_duplicate if idempotency_duplicate?
+      raise IdempotencyError, idempotency_duplicate if idempotency_duplicate?
 
       yield
 

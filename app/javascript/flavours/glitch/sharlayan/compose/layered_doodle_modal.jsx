@@ -350,8 +350,8 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     this.setState({ activeLayerId: layer.id, layers: [background, layer] }, this.updateLayerPresentation);
   };
 
-  addLayer = name => {
-    const layerName = name ?? this.props.intl.formatMessage(messages.layerName, { number: this.state.layers.filter(layer => !layer.background).length + 1 });
+  addLayer = () => {
+    const layerName = this.props.intl.formatMessage(messages.layerName, { number: this.state.layers.filter(layer => !layer.background).length + 1 });
     const layer = this.makeLayer(layerName);
     this.setState(state => ({ activeLayerId: layer.id, layers: [...state.layers, layer] }), this.updateLayerPresentation);
   };
@@ -483,6 +483,12 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     this.updateSketcherSettings();
   };
 
+  setDrawMode = () => this.setMode('draw');
+
+  setEraseMode = () => this.setMode('erase');
+
+  setFillMode = () => this.setMode('fill');
+
   setTexture = event => {
     this.setState({ texture: event.target.value }, this.updateSketcherSettings);
   };
@@ -523,14 +529,22 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     this.setState({ activeLayerId: id }, this.updateLayerPresentation);
   };
 
+  selectLayerFromEvent = event => this.selectLayer(event.currentTarget.dataset.layerId);
+
   toggleLayer = id => {
     this.setState(state => ({ layers: state.layers.map(layer => layer.id === id ? { ...layer, visible: !layer.visible } : layer) }), this.updateLayerPresentation);
   };
+
+  toggleLayerFromEvent = event => this.toggleLayer(event.currentTarget.dataset.layerId);
 
   setLayerOpacity = (id, event) => {
     const opacity = Number(event.target.value);
     this.setState(state => ({ layers: state.layers.map(layer => layer.id === id ? { ...layer, opacity } : layer) }), this.updateLayerPresentation);
   };
+
+  setLayerOpacityFromEvent = event => this.setLayerOpacity(event.currentTarget.dataset.layerId, event);
+
+  moveLayerFromEvent = event => this.moveLayer(Number(event.currentTarget.dataset.direction));
 
   removeLayer = () => {
     const layer = this.activeLayer();
@@ -630,9 +644,9 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
       <div className='modal-root__modal doodle-modal doodle-modal--layered doodle-editor'>
         <header className='doodle-editor__header'>
           <div className='doodle-editor__toolbar' role='toolbar' aria-label={intl.formatMessage(messages.drawingTools)}>
-            <button type='button' className={classNames('doodle-editor__tool', { active: this.mode === 'draw' })} aria-pressed={this.mode === 'draw'} onClick={() => this.setMode('draw')} title={intl.formatMessage(messages.draw)}><EditIcon /><span>{intl.formatMessage(messages.draw)}</span></button>
-            <button type='button' className={classNames('doodle-editor__tool', { active: this.mode === 'erase' })} aria-pressed={this.mode === 'erase'} onClick={() => this.setMode('erase')} title={intl.formatMessage(messages.erase)}><DeleteIcon /><span>{intl.formatMessage(messages.erase)}</span></button>
-            <button type='button' className={classNames('doodle-editor__tool', { active: this.mode === 'fill' })} aria-pressed={this.mode === 'fill'} onClick={() => this.setMode('fill')} title={intl.formatMessage(messages.fill)}><ColorsIcon /><span>{intl.formatMessage(messages.fill)}</span></button>
+            <button type='button' className={classNames('doodle-editor__tool', { active: this.mode === 'draw' })} aria-pressed={this.mode === 'draw'} onClick={this.setDrawMode} title={intl.formatMessage(messages.draw)}><EditIcon /><span>{intl.formatMessage(messages.draw)}</span></button>
+            <button type='button' className={classNames('doodle-editor__tool', { active: this.mode === 'erase' })} aria-pressed={this.mode === 'erase'} onClick={this.setEraseMode} title={intl.formatMessage(messages.erase)}><DeleteIcon /><span>{intl.formatMessage(messages.erase)}</span></button>
+            <button type='button' className={classNames('doodle-editor__tool', { active: this.mode === 'fill' })} aria-pressed={this.mode === 'fill'} onClick={this.setFillMode} title={intl.formatMessage(messages.fill)}><ColorsIcon /><span>{intl.formatMessage(messages.fill)}</span></button>
             <span className='doodle-editor__toolbar-separator' />
             <button type='button' className='doodle-editor__tool doodle-editor__tool--icon' onClick={this.undo} title={intl.formatMessage(messages.undo)} aria-label={intl.formatMessage(messages.undo)}><UndoIcon /></button>
             <button type='button' className='doodle-editor__tool doodle-editor__tool--icon' onClick={this.redo} title={intl.formatMessage(messages.redo)} aria-label={intl.formatMessage(messages.redo)}><RedoIcon /></button>
@@ -654,20 +668,22 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
 
           <aside className='doodle-editor__inspector'>
             <section className='doodle-editor__panel doodle-layer-controls'>
-              <div className='doodle-editor__panel-title'><span>{intl.formatMessage(messages.layers)}</span><button type='button' onClick={() => this.addLayer()} title={intl.formatMessage(messages.addLayer)} aria-label={intl.formatMessage(messages.addLayer)}>+</button></div>
+              <div className='doodle-editor__panel-title'><span>{intl.formatMessage(messages.layers)}</span><button type='button' onClick={this.addLayer} title={intl.formatMessage(messages.addLayer)} aria-label={intl.formatMessage(messages.addLayer)}>+</button></div>
               <div className='doodle-layer-list'>
-                {layers.slice().reverse().map(layer => <div className={classNames('doodle-layer-row', { active: layer.id === activeLayerId })} key={layer.id}>
-                  <button type='button' className='doodle-layer-row__visibility' onClick={() => this.toggleLayer(layer.id)} aria-label={intl.formatMessage(layer.visible ? messages.hideLayer : messages.showLayer, { name: layer.name })} title={intl.formatMessage(layer.visible ? messages.hideLayer : messages.showLayer, { name: layer.name })}>{layer.visible ? '●' : '○'}</button>
-                  <button type='button' className='doodle-layer-row__name' onClick={() => this.selectLayer(layer.id)}><span className={classNames('doodle-layer-row__thumbnail', { background: layer.background })} style={layer.background ? { background: layer.color } : undefined} />{layer.name}</button>
-                  <span className='doodle-layer-row__opacity'>{layer.opacity}%</span>
-                </div>)}
+                {layers.slice().reverse().map(layer => (
+                  <div className={classNames('doodle-layer-row', { active: layer.id === activeLayerId })} key={layer.id}>
+                    <button type='button' className='doodle-layer-row__visibility' data-layer-id={layer.id} onClick={this.toggleLayerFromEvent} aria-label={intl.formatMessage(layer.visible ? messages.hideLayer : messages.showLayer, { name: layer.name })} title={intl.formatMessage(layer.visible ? messages.hideLayer : messages.showLayer, { name: layer.name })}>{layer.visible ? '●' : '○'}</button>
+                    <button type='button' className='doodle-layer-row__name' data-layer-id={layer.id} onClick={this.selectLayerFromEvent}><span className={classNames('doodle-layer-row__thumbnail', { background: layer.background })} style={layer.background ? { background: layer.color } : undefined} />{layer.name}</button>
+                    <span className='doodle-layer-row__opacity'>{layer.opacity}%</span>
+                  </div>
+                ))}
               </div>
               <div className='doodle-layer-controls__buttons'>
-                <button type='button' disabled={!activeLayer || activeLayer.background || activeLayerIndex === layers.length - 1} onClick={() => this.moveLayer(1)} title={intl.formatMessage(messages.moveLayerUp)}>↑</button>
-                <button type='button' disabled={!activeLayer || activeLayer.background || activeLayerIndex <= 1} onClick={() => this.moveLayer(-1)} title={intl.formatMessage(messages.moveLayerDown)}>↓</button>
+                <button type='button' data-direction='1' disabled={!activeLayer || activeLayer.background || activeLayerIndex === layers.length - 1} onClick={this.moveLayerFromEvent} title={intl.formatMessage(messages.moveLayerUp)}>↑</button>
+                <button type='button' data-direction='-1' disabled={!activeLayer || activeLayer.background || activeLayerIndex <= 1} onClick={this.moveLayerFromEvent} title={intl.formatMessage(messages.moveLayerDown)}>↓</button>
                 <button type='button' disabled={!activeLayer || activeLayer.background} onClick={this.removeLayer} title={intl.formatMessage(messages.deleteLayer)}>{intl.formatMessage(messages.deleteLayer)}</button>
               </div>
-              {activeLayer && <label className='doodle-editor__opacity'>{intl.formatMessage(messages.opacity)} <input aria-label={intl.formatMessage(messages.opacityLabel, { name: activeLayer.name })} type='range' min='0' max='100' value={activeLayer.opacity} onChange={event => this.setLayerOpacity(activeLayer.id, event)} /><output>{activeLayer.opacity}%</output></label>}
+              {activeLayer && <label className='doodle-editor__opacity'>{intl.formatMessage(messages.opacity)} <input data-layer-id={activeLayer.id} aria-label={intl.formatMessage(messages.opacityLabel, { name: activeLayer.name })} type='range' min='0' max='100' value={activeLayer.opacity} onChange={this.setLayerOpacityFromEvent} /><output>{activeLayer.opacity}%</output></label>}
             </section>
 
             <section className='doodle-editor__panel'>

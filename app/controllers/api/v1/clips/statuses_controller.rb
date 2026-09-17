@@ -4,7 +4,7 @@ class Api::V1::Clips::StatusesController < Api::BaseController
   include Api::ClipNotesRateLimit
 
   before_action :require_feature_enabled!
-  before_action -> { doorkeeper_authorize! :read, :'read:lists' }, only: [:index]
+  before_action -> { authorize_if_got_token! :read, :'read:lists' }, only: :index
   before_action -> { doorkeeper_authorize! :write, :'write:lists' }, except: [:index]
 
   before_action :require_user!, except: [:index]

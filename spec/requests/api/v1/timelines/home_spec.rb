@@ -67,7 +67,7 @@ RSpec.describe 'Home', :inline_jobs do
 
     context 'when the timeline is regenerating' do
       let(:async_refresh) { AsyncRefresh.create("account:#{user.account_id}:regeneration") }
-      let(:timeline) { instance_double(HomeFeed, regenerating?: true, get: [], async_refresh:) }
+      let(:timeline) { instance_double(HomeFeed, regenerating?: true, get: [], async_refresh:, pagination_max_id: nil) }
 
       before do
         allow(HomeFeed).to receive(:new).and_return(timeline)
@@ -80,6 +80,35 @@ RSpec.describe 'Home', :inline_jobs do
         expect(response.headers['Mastodon-Async-Refresh']).to eq "id=\"#{async_refresh.id}\", retry=5"
         expect(response.content_type)
           .to start_with('application/json')
+      end
+    end
+
+    context 'when a database candidate page is filtered out' do
+      let(:params) { { limit: 2 } }
+      let(:muted) { Fabricate(:account) }
+      let(:visible) { Fabricate(:account) }
+
+      before do
+        user.settings['aggregate_reblogs'] = false
+        user.save!
+        user.account.follow!(muted)
+        user.account.follow!(visible)
+        user.account.mute!(muted)
+        Fabricate(:status, account: visible, id: 101)
+        Fabricate(:status, account: muted, id: 102)
+        Fabricate(:status, account: muted, id: 103)
+        redis.del(FeedManager.instance.key(:home, user.account.id))
+      end
+
+      it 'returns a next link that advances past the filtered candidates' do
+        subject
+
+        expect(response.parsed_body).to be_empty
+        expect(response.headers['Link']).to include('max_id=102', 'rel="next"')
+
+        get '/api/v1/timelines/home', headers: headers, params: { limit: 2, max_id: 102 }
+
+        expect(response.parsed_body.pluck(:id)).to contain_exactly('101')
       end
     end
 

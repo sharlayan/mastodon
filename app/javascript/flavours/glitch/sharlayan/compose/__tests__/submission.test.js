@@ -5,14 +5,14 @@ import { getSharlayanComposeSubmission } from '../submission';
 const getState = (compose) => () => ImmutableMap({ compose }).set('compose', compose);
 
 describe('Sharlayan compose submission', () => {
-  it('uses circle visibility and prevents automatic quotes for new circle posts', () => {
+  it('uses private visibility and prevents automatic quotes for new circle posts', () => {
     const submission = getSharlayanComposeSubmission({
       getState: getState(ImmutableMap({ circle_id: 'circle-id', clip_ids: ImmutableList(['clip-id']), quote_policy: 'public', reaction_acceptance: 'nonSensitiveOnly', scheduled_at: '2026-07-18T01:00:00Z' })),
       effectiveStatusId: null,
       overridePrivacy: null,
     });
 
-    expect(submission).toMatchObject({ circleId: 'circle-id', visibility: 'circle', clipIds: ['clip-id'], quoteApprovalPolicy: 'nobody', reactionAcceptance: 'nonSensitiveOnly', scheduledAt: '2026-07-18T01:00:00Z' });
+    expect(submission).toMatchObject({ circleId: 'circle-id', visibility: 'private', clipIds: ['clip-id'], quoteApprovalPolicy: 'nobody', reactionAcceptance: 'nonSensitiveOnly', scheduledAt: '2026-07-18T01:00:00Z' });
   });
 
   it('normalizes poll options without changing their poll settings', () => {

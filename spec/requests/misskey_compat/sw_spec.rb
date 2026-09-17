@@ -76,11 +76,17 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
   end
 
   describe 'POST /api/sw/unregister' do
-    it 'requires the endpoint' do
-      post '/api/sw/unregister', params: { i: token.token }, as: :json
+    it 'removes the subscription for the current session without an endpoint' do
+      other_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write')
+      other_endpoint = 'https://ntfy.example/upOTHER?up=1'
 
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+      post '/api/sw/register', params: register_params, as: :json
+      post '/api/sw/register', params: register_params(endpoint: other_endpoint, i: other_token.token), as: :json
+
+      expect { post '/api/sw/unregister', params: { i: token.token }, as: :json }
+        .to change { Web::PushSubscription.where(access_token_id: token.id).count }.from(1).to(0)
+        .and(not_change { Web::PushSubscription.where(access_token_id: other_token.id).count })
+      expect(response).to have_http_status(204)
     end
 
     it 'removes the subscription' do
@@ -93,6 +99,12 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
 
     it 'succeeds when the subscription is already gone' do
       post '/api/sw/unregister', params: { i: token.token, endpoint: endpoint }, as: :json
+
+      expect(response).to have_http_status(204)
+    end
+
+    it 'succeeds when the current session has no subscription' do
+      post '/api/sw/unregister', params: { i: token.token }, as: :json
 
       expect(response).to have_http_status(204)
     end

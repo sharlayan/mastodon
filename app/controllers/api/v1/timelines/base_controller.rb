@@ -1,12 +1,16 @@
 # frozen_string_literal: true
 
 class Api::V1::Timelines::BaseController < Api::BaseController
-  after_action :insert_pagination_headers, unless: -> { @statuses.empty? }
+  after_action :insert_pagination_headers, if: :pagination_available?
 
   private
 
   def pagination_collection
     @statuses
+  end
+
+  def pagination_available?
+    @statuses.present?
   end
 
   def next_path_params

@@ -12,7 +12,6 @@ export const SHARLAYAN_FOLLOW_LIST_BIO_CHAR_LIMIT = 100;
 export function useSharlayanFollowListBio(): boolean {
   return useAppSelector(
     (state) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       state.local_settings.getIn(['show_follow_list_bio'], true) as boolean,
   );
 }

@@ -31,4 +31,16 @@ RSpec.describe 'Misskey-compat notes/children endpoint' do
     expect(returned_ids).to contain_exactly(nested_reply.id.to_s)
     expect(returned_ids).to_not include(deeply_nested_reply.id.to_s)
   end
+
+  it 'includes non-pure renotes but leaves pure renotes to notes/renotes' do
+    root = Fabricate(:status)
+    pure_renote = Fabricate(:status, reblog: root, text: '')
+    quote_renote = Fabricate(:status, reblog: root, text: 'commentary')
+
+    post '/api/notes/children', params: { i: token, noteId: MisskeyCompat::MiId.encode(root.id) }, as: :json
+
+    returned_ids = response.parsed_body.pluck(:id)
+    expect(returned_ids).to include(MisskeyCompat::MiId.encode(quote_renote.id))
+    expect(returned_ids).to_not include(MisskeyCompat::MiId.encode(pure_renote.id))
+  end
 end

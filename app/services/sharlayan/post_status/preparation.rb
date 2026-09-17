@@ -14,8 +14,8 @@ module Sharlayan::PostStatus
 
     def call(media:, content_type:, sensitive:, visibility:)
       ActiveRecord::Associations::Preloader.new(records: media, associations: :drive_file).call
-      content_type = 'text/plain' if content_type == 'text/x-mfm' && !Setting.mfm_enabled
-      mfm = Setting.mfm_enabled && (content_type == 'text/x-mfm' || MfmDetector.contains_mfm?(@text))
+      content_type = 'text/plain' if content_type == 'text/x-mfm' && !mfm_composition_allowed?
+      mfm = mfm_composition_allowed? && (content_type == 'text/x-mfm' || MfmDetector.contains_mfm?(@text))
       circle, visibility, limited_scope = prepare_circle(visibility)
       quoted_status, implicit_quote = prepare_quote
 
@@ -33,8 +33,12 @@ module Sharlayan::PostStatus
 
     private
 
+    def mfm_composition_allowed?
+      Setting.mfm_enabled && Setting.mfm_allow_composition
+    end
+
     def prepare_circle(visibility)
-      return [nil, visibility, nil] unless visibility&.to_sym == :circle
+      return [nil, visibility, nil] if @options[:circle_id].blank? && visibility&.to_sym != :circle
 
       raise ActiveRecord::RecordNotFound unless Setting.circles_enabled
 

@@ -25,6 +25,16 @@ export const sharlayanStatusContentState = (state) => ({
 export const isSharlayanMfmStatus = (status, { mfmEnabled, localMfmEnabled }) =>
   status.get('mfm') && mfmEnabled !== false && localMfmEnabled !== false;
 
+export const getSharlayanMfmSourceText = (status, content) => {
+  const translation = status.get('translation');
+
+  if (translation && !translation.get('isLoading')) {
+    return extractPlainTextFromHtml(content);
+  }
+
+  return status.get('mfm_text') ?? extractPlainTextFromHtml(content);
+};
+
 export const renderSharlayanMfmContent = (status, { content, language, mfmEnabled, localMfmEnabled, localMfmAnimations, localMfmFoldMode }) => {
   if (!isSharlayanMfmStatus(status, { mfmEnabled, localMfmEnabled })) {
     return null;
@@ -33,7 +43,7 @@ export const renderSharlayanMfmContent = (status, { content, language, mfmEnable
   const mfmAnimationsEnabled = localMfmAnimations !== false;
   const mfmFoldMode = localMfmFoldMode ?? 'sensitive';
 
-  const mfmSourceText = status.get('mfm_text') || extractPlainTextFromHtml(content);
+  const mfmSourceText = getSharlayanMfmSourceText(status, content);
   const hasMfmFn = hasAnyMfmFn(mfmSourceText);
   const shouldFoldMfm = (
     (mfmFoldMode === 'all' && hasMfmFn) ||

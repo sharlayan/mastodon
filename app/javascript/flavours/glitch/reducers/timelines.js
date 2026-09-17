@@ -36,7 +36,10 @@ const initialTimeline = ImmutableMap({
   online: false,
   top: true,
   isLoading: false,
+  isTimeMachine: false,
+  requestId: null,
   hasMore: true,
+  next: null,
   /** @type {ImmutableList<string>} */
   pendingItems: ImmutableList(),
   /** @type {ImmutableList<string>} */
@@ -44,7 +47,7 @@ const initialTimeline = ImmutableMap({
 });
 
 
-const expandNormalizedTimeline = (state, timeline, statuses, next, isPartial, isLoadingRecent, usePendingItems) => {
+const expandNormalizedTimeline = (state, timeline, statuses, next, isPartial, isLoadingRecent, usePendingItems, trackNext, timeMachine) => {
   // This method is pretty tricky because:
   // - existing items in the timeline might be out of order
   // - the existing timeline may have gaps, most often explicitly noted with a `null` item
@@ -54,9 +57,16 @@ const expandNormalizedTimeline = (state, timeline, statuses, next, isPartial, is
 
   return state.update(timeline, initialTimeline, map => map.withMutations(mMap => {
     mMap.set('isLoading', false);
+    mMap.set('requestId', null);
     mMap.set('isPartial', isPartial);
+    if (timeMachine !== undefined) mMap.set('isTimeMachine', timeMachine);
 
     if (!next && !isLoadingRecent) mMap.set('hasMore', false);
+
+    if (trackNext && !isLoadingRecent) {
+      mMap.set('next', next);
+      mMap.set('hasMore', !!next);
+    }
 
     if (isTimelineKeyPinned(timeline)) {
       mMap.set('items', statuses.map(status => status.get('id')));
@@ -213,15 +223,22 @@ export default function timelines(state = initialState, action) {
     return state.update(action.timeline, initialTimeline, map =>
       map.update('items', list => map.get('pendingItems').concat(list.take(40))).set('pendingItems', ImmutableList()).set('unread', 0));
   case TIMELINE_EXPAND_REQUEST:
-    return state.update(action.timeline, initialTimeline, map => map.set('isLoading', true));
+    return state.update(action.timeline, initialTimeline, map => map.withMutations(mMap => {
+      mMap.set('isLoading', true);
+      mMap.set('requestId', action.requestId);
+      if (action.timeMachine === true) mMap.set('isTimeMachine', true);
+    }));
   case TIMELINE_EXPAND_FAIL:
-    return state.update(action.timeline, initialTimeline, map => map.set('isLoading', false));
+    if (action.requestId !== undefined && state.getIn([action.timeline, 'requestId']) !== action.requestId) return state;
+    return state.update(action.timeline, initialTimeline, map => map.set('isLoading', false).set('requestId', null));
   case TIMELINE_EXPAND_SUCCESS:
-    return expandNormalizedTimeline(state, action.timeline, fromJS(action.statuses), action.next, action.partial, action.isLoadingRecent, action.usePendingItems);
+    if (action.requestId !== undefined && state.getIn([action.timeline, 'requestId']) !== action.requestId) return state;
+    return expandNormalizedTimeline(state, action.timeline, fromJS(action.statuses), action.next, action.partial, action.isLoadingRecent, action.usePendingItems, action.trackNext, action.timeMachine);
   case TIMELINE_UPDATE:
+    if (state.getIn([action.timeline, 'isTimeMachine'])) return state;
     return updateTimeline(state, action.timeline, action.status.id, action.usePendingItems, action.filtered);
   case TIMELINE_CLEAR:
-    return clearTimeline(state, action.timeline);
+    return action.keepTimeMachine ? clearTimeline(state, action.timeline).setIn([action.timeline, 'isTimeMachine'], true) : clearTimeline(state, action.timeline);
   case TIMELINE_SCROLL_TOP:
     return updateTop(state, action.timeline, action.top);
   case TIMELINE_CONNECT:

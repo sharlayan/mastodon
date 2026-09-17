@@ -25,7 +25,7 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
     return render_next(user.two_factor_enabled? ? 'password' : 'captcha') if password.nil?
     return render_invalid_param('#/properties/password/type', 'must be string') unless password.is_a?(String)
 
-    correct_password = user.external_or_valid_password?(password)
+    correct_password = user.encrypted_password.present? && user.valid_password?(password)
 
     unless user.two_factor_enabled?
       return correct_password ? render_finished(user) : signin_error(403, INCORRECT_PASSWORD_ID)

@@ -5,7 +5,7 @@ import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
-import { LockSimpleOpenIcon, PepperIcon } from '@phosphor-icons/react';
+import { FlagIcon, LockSimpleOpenIcon } from '@phosphor-icons/react';
 
 import {
   changeComposeSpoilerness,
@@ -14,11 +14,10 @@ import {
 } from '@/mastodon/actions/compose';
 import { ToggleButton } from '@/mastodon/components/button/redesign';
 import { TextInputField } from '@/mastodon/components/form_fields/redesign';
-import { Icon } from '@/mastodon/components/icon';
-import { useScrollSensor } from '@/mastodon/hooks/useScrollSensor';
+import { Icon, useIconWeight } from '@/mastodon/components/icon';
 import {
-  focusComposerTextarea,
   getComposerTextarea,
+  requestComposerFocus,
   submitComposer,
 } from '@/mastodon/reducers/slices/composer';
 import { useAppDispatch, useAppSelector } from '@/mastodon/store';
@@ -53,12 +52,9 @@ interface RedesignComposeFormProps {
   redirectOnSuccess?: boolean;
 }
 
-export const RedesignComposeForm: React.FC<RedesignComposeFormProps> = ({
-  autoFocus,
-  className,
-  noMinimize,
-  redirectOnSuccess,
-}) => {
+export const RedesignComposeForm: React.FC<
+  RedesignComposeFormProps & React.ComponentPropsWithRef<'form'>
+> = ({ autoFocus, className, noMinimize, redirectOnSuccess, ...props }) => {
   const type = useAppSelector(selectComposeType);
   const { sensitive, sensitiveText } = useAppSelector(selectComposeSensitive);
 
@@ -68,19 +64,19 @@ export const RedesignComposeForm: React.FC<RedesignComposeFormProps> = ({
   const intl = useIntl();
   const titleId = useId();
 
-  const { sensor, isInViewport } = useScrollSensor({
-    placement: 'bottom',
-    tolerance: 10,
-  });
+  const sensitiveIcon = useIconWeight(FlagIcon, sensitive && 'fill');
 
   return (
     <form
+      {...props}
       role='dialog'
       onSubmit={onSubmit}
       aria-labelledby={titleId}
       className={classNames(className, classes.root)}
     >
-      {type === 'message' && <div className={classes.background} />}
+      {(type === 'message' || type === 'replyPrivate') && (
+        <div className={classes.background} />
+      )}
 
       <ComposeFormHeader id={titleId} noMinimize={noMinimize} />
 
@@ -95,7 +91,7 @@ export const RedesignComposeForm: React.FC<RedesignComposeFormProps> = ({
           size='sm'
           active={sensitive}
           onClick={onSensitiveChange}
-          leadingIcon={PepperIcon}
+          leadingIcon={sensitiveIcon}
         >
           <FormattedMessage id='compose.sensitive' defaultMessage='Sensitive' />
         </ToggleButton>
@@ -107,6 +103,7 @@ export const RedesignComposeForm: React.FC<RedesignComposeFormProps> = ({
           <FormattedMessage
             id='compose.message.notice'
             defaultMessage='Messages are not end-to-end encrypted'
+            description='Message refers to a direct message. For languages where this is confusing, "chat" or "direct message" can be used.'
           />
         </p>
       )}
@@ -121,17 +118,13 @@ export const RedesignComposeForm: React.FC<RedesignComposeFormProps> = ({
         />
       )}
 
-      <div data-scroll-down={!isInViewport} className={classes.editorWrapper}>
-        <ComposeTextarea
-          // eslint-disable-next-line jsx-a11y/no-autofocus
-          autoFocus={autoFocus}
-          onSubmit={onSubmit}
-        />
-
+      <ComposeTextarea
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus={autoFocus}
+        onSubmit={onSubmit}
+      >
         <ComposeAttachments className={classes.attachments} />
-
-        {sensor}
-      </div>
+      </ComposeTextarea>
 
       <ComposeHints />
 
@@ -152,9 +145,9 @@ function useComposeHandlers(redirectOnSuccess?: boolean) {
   const isSensitive = useAppSelector((state) => !!state.compose.get('spoiler'));
   useEffect(() => {
     if (!isSensitive) {
-      focusComposerTextarea();
+      dispatch(requestComposerFocus());
     }
-  }, [isSensitive]);
+  }, [isSensitive, dispatch]);
 
   const onSensitiveChange = useCallback(() => {
     dispatch(changeComposeSpoilerness());

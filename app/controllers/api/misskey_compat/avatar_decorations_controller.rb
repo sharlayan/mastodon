@@ -1,17 +1,13 @@
 # frozen_string_literal: true
 
-class Api::MisskeyCompat::AvatarDecorationsController < ApplicationController
+class Api::MisskeyCompat::AvatarDecorationsController < Api::MisskeyCompat::BaseController
   include RoutingHelper
-
-  RequesterIdentity = Struct.new(:id)
-
-  skip_before_action :verify_authenticity_token, raise: false
 
   def index
     return render json: [] unless Setting.avatar_decorations_enabled &&
                                   Setting.avatar_decorations_federation_enabled &&
                                   !Setting.avatar_decorations_local_only_view
-    return if rate_limited_by_ip?
+    return if rate_limited?(:misskey_users_show)
 
     decorations = AvatarDecoration.local.approved
 
@@ -24,15 +20,5 @@ class Api::MisskeyCompat::AvatarDecorationsController < ApplicationController
         roleIdsThatCanBeUsedThisDecoration: d.required_role_id ? [MisskeyCompat::MiId.encode(d.required_role_id)] : [],
       }
     }
-  end
-
-  private
-
-  def rate_limited_by_ip?
-    RateLimiter.new(RequesterIdentity.new(request.remote_ip), family: :misskey_users_show).record!
-    false
-  rescue Mastodon::RateLimitExceededError
-    render json: { error: I18n.t('errors.429') }, status: 429
-    true
   end
 end

@@ -44,7 +44,15 @@ class Api::V1::Timelines::HomeController < Api::V1::Timelines::BaseController
   end
 
   def account_home_feed
-    HomeFeed.new(current_account)
+    @account_home_feed ||= HomeFeed.new(current_account)
+  end
+
+  def pagination_available?
+    super || account_home_feed.pagination_max_id.present?
+  end
+
+  def pagination_max_id
+    account_home_feed.pagination_max_id || super
   end
 
   def next_path
@@ -52,6 +60,8 @@ class Api::V1::Timelines::HomeController < Api::V1::Timelines::BaseController
   end
 
   def prev_path
+    return if @statuses.empty?
+
     api_v1_timelines_home_url prev_path_params
   end
 end

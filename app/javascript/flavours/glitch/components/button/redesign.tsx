@@ -6,6 +6,8 @@ import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 import type { LinkProps } from 'react-router-dom';
 
+import { CaretDownIcon } from '@phosphor-icons/react';
+
 import { CircularProgress } from '../circular_progress';
 import type { IconProp } from '../icon';
 import { Icon } from '../icon';
@@ -22,6 +24,16 @@ interface ButtonPropsBase<As extends 'a' | 'button'> {
     As extends 'button' ? HTMLButtonElement : HTMLAnchorElement
   >;
   loading?: boolean;
+  /**
+   * Prevents visual highlight on the button when `aria-expanded`
+   * or `aria-pressed` are used.
+   */
+  noActiveHighlight?: boolean;
+  /**
+   * Adds a negative margin to a button to align the text
+   * with the starting edge of its parent.
+   */
+  clipPadding?: boolean;
   children: ReactNode;
 }
 
@@ -43,6 +55,8 @@ const BaseButton: React.FC<BaseButtonProps> = ({
   className,
   onClick,
   loading,
+  clipPadding,
+  noActiveHighlight,
   'aria-disabled': ariaDisabled,
   'aria-live': ariaLive,
   ...props
@@ -77,6 +91,8 @@ const BaseButton: React.FC<BaseButtonProps> = ({
         classes[size],
         classes[color],
         classes[variant],
+        clipPadding && classes.clipPadding,
+        noActiveHighlight && classes.noActiveHighlight,
       )}
       onClick={handleClick}
       // Disabled buttons can't have focus, so we don't really
@@ -107,14 +123,18 @@ export const Button: React.FC<ButtonProps> = ({
       <Icon id='leading' icon={leadingIcon} className={classes.icon} />
     )}
     {props.loading && <LoadingIcon />}
-    <span className={classes.content}>{children}</span>
+    {children}
     {trailingIcon && (
       <Icon id='trailing' icon={trailingIcon} className={classes.icon} />
     )}
   </BaseButton>
 );
 
-export const IconButton: React.FC<BaseButtonProps & { icon: IconProp }> = ({
+export type IconButtonProps = BaseButtonProps & {
+  icon: IconProp;
+};
+
+export const IconButton: React.FC<IconButtonProps> = ({
   icon,
   className,
   children,
@@ -128,6 +148,17 @@ export const IconButton: React.FC<BaseButtonProps & { icon: IconProp }> = ({
     )}
     <span className='sr-only'>{children}</span>
   </BaseButton>
+);
+
+export const CaretIcon = (
+  props: React.SVGProps<SVGSVGElement> & { title?: string },
+) => (
+  <CaretDownIcon
+    {...props}
+    className={classNames(props.className, classes.iconCustom)}
+    weight='fill'
+    size={12}
+  />
 );
 
 const LoadingIcon: React.FC = () => (
@@ -145,6 +176,18 @@ export const ToggleButton: React.FC<ButtonProps & { active?: boolean }> = ({
   ...props
 }) => (
   <Button
+    aria-pressed={active}
+    {...props}
+    // Toggle buttons always have neutral until pressed.
+    color='neutral'
+    className={classNames(className, classes.toggle)}
+  />
+);
+
+export const ToggleIconButton: React.FC<
+  IconButtonProps & { active?: boolean }
+> = ({ active, className, ...props }) => (
+  <IconButton
     aria-pressed={active}
     {...props}
     // Toggle buttons always have neutral until pressed.

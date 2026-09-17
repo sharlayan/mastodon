@@ -156,6 +156,15 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
       expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
     end
 
+    it 'rejects an account without a local password' do
+      user.update_column(:encrypted_password, '')
+
+      post '/api/signin-flow', params: { username: username, password: password }, headers: origin_headers, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
+    end
+
     it 'treats a suspended account as an unknown user' do
       user.account.suspend!
 

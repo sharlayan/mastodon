@@ -65,8 +65,8 @@ RSpec.describe PostStatusService do
 
     it 'returns existing status when used twice with idempotency key' do
       account = Fabricate(:account)
-      status1 = subject.call(account, text: 'test', idempotency: 'meepmeep', scheduled_at: future)
-      status2 = subject.call(account, text: 'test', idempotency: 'meepmeep', scheduled_at: future)
+      status1 = described_class.new.call(account, text: 'test', idempotency: 'meepmeep', scheduled_at: future)
+      status2 = described_class.new.call(account, text: 'test', idempotency: 'meepmeep', scheduled_at: future)
       expect(status2.id).to eq status1.id
     end
 
@@ -349,8 +349,19 @@ RSpec.describe PostStatusService do
 
   it 'returns existing status when used twice with idempotency key' do
     account = Fabricate(:account)
-    status1 = subject.call(account, text: 'test', idempotency: 'meepmeep')
-    status2 = subject.call(account, text: 'test', idempotency: 'meepmeep')
+    status1 = described_class.new.call(account, text: 'test', idempotency: 'meepmeep')
+    status2 = described_class.new.call(account, text: 'test', idempotency: 'meepmeep')
+    expect(status2.id).to eq status1.id
+  end
+
+  it 'returns existing status when used twice with idempotency key and media' do
+    account = Fabricate(:account)
+    media = Fabricate(:media_attachment, account: account)
+    options = { text: 'test', idempotency: 'meepmeep', media_ids: [media.id.to_s] }
+
+    status1 = described_class.new.call(account, **options)
+    status2 = described_class.new.call(account, **options)
+
     expect(status2.id).to eq status1.id
   end
 

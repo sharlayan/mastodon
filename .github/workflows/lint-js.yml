@@ -50,4 +50,4 @@ jobs:
         run: yarn workspaces foreach --all --parallel run lint:js --max-warnings 0
 
       - name: Typecheck
-        run: yarn typecheck
+        run: yarn typecheck && yarn typecheck:streaming

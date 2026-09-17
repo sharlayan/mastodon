@@ -54,10 +54,10 @@ export const NotificationWithStatus: React.FC<{
   const [wasUnreadOnMount] = useState(unread);
   const autoCollapseEnabled = useAppSelector((state) =>
     shouldAutoCollapseNotification(
-      (state.local_settings as ImmutableMap<string, unknown>).getIn([
-        'collapsed',
-        'auto',
-      ]) as ImmutableMap<string, unknown>,
+      state.local_settings.getIn(['collapsed', 'auto']) as ImmutableMap<
+        string,
+        unknown
+      >,
       wasUnreadOnMount,
     ),
   );
@@ -149,7 +149,7 @@ export const NotificationWithStatus: React.FC<{
           avatarSize={40}
           unfocusable
           collapsed={autoCollapseEnabled && collapsed}
-          onClick={openAsConversation ? handleOpen : undefined}
+          onOpen={openAsConversation ? handleOpen : undefined}
         />
       </div>
     </Hotkeys>

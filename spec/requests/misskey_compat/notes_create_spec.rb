@@ -10,6 +10,37 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
+  describe 'MFM composition' do
+    around do |example|
+      mfm_enabled = Setting.mfm_enabled
+      mfm_allow_composition = Setting.mfm_allow_composition
+      example.run
+    ensure
+      Setting.mfm_enabled = mfm_enabled
+      Setting.mfm_allow_composition = mfm_allow_composition
+    end
+
+    it 'uses the Markdown fallback when composition is disabled' do
+      Setting.mfm_enabled = true
+      Setting.mfm_allow_composition = false
+
+      post '/api/notes/create', params: { i: token, text: '$[x2 fallback]' }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last).to have_attributes(content_type: 'text/markdown', mfm: false, mfm_text: nil, text: 'fallback')
+    end
+
+    it 'posts MFM when composition is enabled' do
+      Setting.mfm_enabled = true
+      Setting.mfm_allow_composition = true
+
+      post '/api/notes/create', params: { i: token, text: '$[x2 enabled]' }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last).to have_attributes(content_type: 'text/x-mfm', mfm: true, mfm_text: '$[x2 enabled]')
+    end
+  end
+
   describe 'POST /api/notes/create with specified visibility' do
     let(:recipient) { Fabricate(:account, username: 'bob') }
 
@@ -25,6 +56,7 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
       mention = status.mentions.find_by(account_id: recipient.id)
       expect(mention).to be_present
       expect(mention.silent).to be(false)
+      expect(response.parsed_body.dig(:createdNote, :visibleUserIds)).to contain_exactly(MisskeyCompat::MiId.encode(recipient.id))
     end
 
     it 'does not duplicate a recipient already mentioned in the text' do
@@ -45,6 +77,37 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
       status = account.statuses.last
       expect(status.visibility).to eq('public')
       expect(status.text).to eq('public post')
+    end
+  end
+
+  describe 'reaction errors' do
+    let(:note) { Fabricate(:status) }
+
+    it 'rejects duplicate creation and deletion without an existing reaction' do
+      post '/api/notes/reactions/create', params: { i: token, noteId: MisskeyCompat::MiId.encode(note.id), reaction: '👍' }, as: :json
+      expect(response).to have_http_status(204)
+
+      post '/api/notes/reactions/create', params: { i: token, noteId: MisskeyCompat::MiId.encode(note.id), reaction: '👍' }, as: :json
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('ALREADY_REACTED')
+
+      post '/api/notes/reactions/delete', params: { i: token, noteId: MisskeyCompat::MiId.encode(note.id) }, as: :json
+      expect(response).to have_http_status(204)
+
+      post '/api/notes/reactions/delete', params: { i: token, noteId: MisskeyCompat::MiId.encode(note.id) }, as: :json
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NOT_REACTED')
+    end
+  end
+
+  describe 'poll expiration' do
+    it 'uses the Misskey absolute expiresAt value' do
+      expires_at = 2.hours.from_now.change(usec: 0)
+
+      post '/api/notes/create', params: { i: token, text: 'poll', poll: { choices: %w(One Two), multiple: false, expiresAt: expires_at.to_i * 1000 } }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last.poll.expires_at).to be_within(1.second).of(expires_at)
     end
   end
 

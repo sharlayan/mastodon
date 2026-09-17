@@ -1,33 +1,15 @@
-import { useCallback } from 'react';
-
 import classNames from 'classnames';
 
-import { CollapsibleNavigationPanel } from '@/mastodon/features/navigation_panel';
+import { ComposeRedesignButton } from '@/mastodon/features/compose/redesign/trigger';
 import { RedesignNavigationPanel } from '@/mastodon/features/navigation_panel/redesign';
+import { RedesignMobileNavigation } from '@/mastodon/features/navigation_panel/redesign/mobile_nav';
 import { useAppSelector } from '@/mastodon/store';
 import { Footer } from 'mastodon/features/custom_homepage/components/footer';
-import { Header } from 'mastodon/features/custom_homepage/components/header';
 
 import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { useColumnsContext } from '../../util/columns_context';
 
 import { MultiColumnContent } from './multi_column_content';
 import classes from './redesign.module.scss';
-
-const TabsBarPortal = () => {
-  const { setTabsBarElement } = useColumnsContext();
-
-  const setRef = useCallback(
-    (element: HTMLDivElement | null) => {
-      if (element) {
-        setTabsBarElement(element);
-      }
-    },
-    [setTabsBarElement],
-  );
-
-  return <div id='tabs-bar__portal' ref={setRef} />;
-};
 
 export const ColumnsAreaRedesign: React.FC<{
   singleColumn?: boolean;
@@ -38,19 +20,14 @@ export const ColumnsAreaRedesign: React.FC<{
   const isModalOpen = useAppSelector(
     (state) => !state.modal.get('stack').isEmpty(),
   );
-  const renderLegacyNavForMobile = useBreakpoint('openable');
+  const isMobile = useBreakpoint('openable');
 
   if (minimalShell) {
     return (
-      <div className={classes.root}>
+      <div className={classNames(classes.root, classes.rootMinimal)}>
+        {isMobile && <RedesignMobileNavigation />}
         <div className={classes.main}>
-          <Header />
-
-          <div className='tabs-bar__wrapper'>
-            <TabsBarPortal />
-          </div>
-
-          <div className='columns-area columns-area--mobile'>{children}</div>
+          <div>{children}</div>
 
           <Footer />
         </div>
@@ -64,16 +41,9 @@ export const ColumnsAreaRedesign: React.FC<{
         <div className={classes.navigationWrapper}>
           <RedesignNavigationPanel />
         </div>
+        {isMobile ? <RedesignMobileNavigation /> : <ComposeRedesignButton />}
 
-        <main className={classes.main}>
-          <div className='tabs-bar__wrapper'>
-            <TabsBarPortal />
-          </div>
-
-          <div className='columns-area columns-area--mobile'>{children}</div>
-
-          {renderLegacyNavForMobile && <CollapsibleNavigationPanel />}
-        </main>
+        <main className={classes.main}>{children}</main>
       </div>
     );
   }

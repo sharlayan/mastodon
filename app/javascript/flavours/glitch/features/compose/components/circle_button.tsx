@@ -87,7 +87,9 @@ export const CircleButton: FC<CircleButtonProps> = ({ disabled = false }) => {
         type='button'
         title={intl.formatMessage(messages.circle)}
         disabled={disabled}
-        className={classNames('dropdown-button', { active: !!circleId })}
+        className={classNames('dropdown-button', 'circle-button', {
+          active: !!circleId,
+        })}
       >
         <Icon id='group' icon={GroupIcon} />
         <span className='dropdown-button__label'>{label}</span>

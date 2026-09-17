@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseController
+  include Redisable
+
   requires_write_scope :create, :update, :destroy
   requires_misskey_permission 'read:drive', :index, :show, :find
   requires_misskey_permission 'write:drive', :create, :update, :destroy
@@ -21,6 +23,7 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
 
   def create
     folder = current_account.drive_folders.create!(name: params[:name], parent_id: validated_parent_id)
+    MisskeyCompat::Streaming.broadcast_drive_folder(redis, current_account, folder, 'folderCreated')
     render json: MisskeyCompat::DriveFolderSerializer.serialize(folder)
   end
 
@@ -30,11 +33,15 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
     attributes[:name] = params[:name] if params.key?(:name)
     attributes[:parent_id] = validated_parent_id if params.key?(:parentId)
     folder.update!(attributes)
+    MisskeyCompat::Streaming.broadcast_drive_folder(redis, current_account, folder, 'folderUpdated')
     render json: MisskeyCompat::DriveFolderSerializer.serialize(folder)
   end
 
   def destroy
-    find_folder!.destroy!
+    folder = find_folder!
+    folder_id = folder.id
+    folder.destroy!
+    MisskeyCompat::Streaming.broadcast_drive_folder(redis, current_account, folder_id, 'folderDeleted')
     head 204
   end
 

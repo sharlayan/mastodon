@@ -73,7 +73,6 @@ import {
   Blocks,
   DomainBlocks,
   Mutes,
-  PinnedStatuses,
   Directory,
   OnboardingProfile,
   OnboardingFollows,
@@ -220,7 +219,6 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/favourites' component={FavouritedStatuses} content={children} />
 
             <WrappedRoute path='/bookmarks' component={BookmarkedStatuses} content={children} />
-            <WrappedRoute path='/pinned' component={PinnedStatuses} content={children} />
 
             <WrappedRoute path='/start/profile' exact component={OnboardingProfile} content={children} />
             <WrappedRoute path={['/start', '/start/follows']} exact component={OnboardingFollows} content={children} />
@@ -269,11 +267,6 @@ class SwitchingColumnsArea extends PureComponent {
     );
   }
 }
-
-const LazyRedesignComposeButton = lazy(
-  () => import('@/mastodon/features/compose/redesign/trigger')
-    .then(({ ComposeRedesignButton }) => ({ default: ComposeRedesignButton }))
-);
 
 class UI extends PureComponent {
   static propTypes = {
@@ -585,10 +578,6 @@ class UI extends PureComponent {
     this.props.history.push('/favourites');
   };
 
-  handleHotkeyGoToPinned = () => {
-    this.props.history.push('/pinned');
-  };
-
   handleHotkeyGoToProfile = () => {
     this.props.history.push(`/@${this.props.username}`);
   };
@@ -629,7 +618,6 @@ class UI extends PureComponent {
       goToDirect: this.handleHotkeyGoToDirect,
       goToStart: this.handleHotkeyGoToStart,
       goToFavourites: this.handleHotkeyGoToFavourites,
-      goToPinned: this.handleHotkeyGoToPinned,
       goToProfile: this.handleHotkeyGoToProfile,
       goToBlocked: this.handleHotkeyGoToBlocked,
       goToMuted: this.handleHotkeyGoToMuted,
@@ -660,7 +648,7 @@ class UI extends PureComponent {
             {children}
           </SwitchingColumnsArea>
 
-          {!minimalShell && <NavigationBar />}
+          {!minimalShell && !isRedesignEnabled() && <NavigationBar />}
           {layout !== 'mobile' && <PictureInPicture />}
           <AlertsController />
           {!disableHoverCards && <HoverCardController />}
@@ -668,12 +656,6 @@ class UI extends PureComponent {
           <LoadingBarContainer className='loading-bar' />
           <ModalContainer />
           <UploadArea active={draggingOver} onClose={this.closeUploadModal} />
-
-          {isRedesignEnabled() && (
-            <Suspense>
-              <LazyRedesignComposeButton />
-            </Suspense>
-          )}
         </div>
       </Hotkeys>
     );

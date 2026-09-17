@@ -16,12 +16,14 @@ export function useSearchAccounts({
   resetOnInputClear = true,
   withRelationships = false,
   withDefaultFollows = false,
+  followersOnly = false,
 }: {
   onSettled?: (value: string) => void;
   filterResults?: (account: ApiAccountJSON) => boolean;
   resetOnInputClear?: boolean;
   withRelationships?: boolean;
   withDefaultFollows?: boolean;
+  followersOnly?: boolean;
 } = {}) {
   const dispatch = useAppDispatch();
 
@@ -58,7 +60,8 @@ export function useSearchAccounts({
             signal: searchRequestRef.current.signal,
             params: {
               q: value,
-              resolve: true,
+              resolve: !followersOnly,
+              followers: followersOnly,
             },
           },
         );

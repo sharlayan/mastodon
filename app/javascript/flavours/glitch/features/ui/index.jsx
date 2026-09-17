@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { lazy, PureComponent, Suspense } from 'react';
+import { PureComponent } from 'react';
 
 import { defineMessages, FormattedMessage } from 'react-intl';
 
@@ -77,7 +77,6 @@ import {
   Blocks,
   DomainBlocks,
   Mutes,
-  PinnedStatuses,
   Directory,
   OnboardingProfile,
   OnboardingFollows,
@@ -229,7 +228,6 @@ class SwitchingColumnsArea extends PureComponent {
             <WrappedRoute path='/favourites' component={FavouritedStatuses} content={children} />
 
             <WrappedRoute path='/bookmarks' component={BookmarkedStatuses} content={children} />
-            <WrappedRoute path='/pinned' component={PinnedStatuses} content={children} />
 
             <WrappedRoute path='/start/profile' exact component={OnboardingProfile} content={children} />
             <WrappedRoute path={['/start', '/start/follows']} exact component={OnboardingFollows} content={children} />
@@ -278,11 +276,6 @@ class SwitchingColumnsArea extends PureComponent {
     );
   }
 }
-
-const LazyRedesignComposeButton = lazy(
-  () => import('@/flavours/glitch/features/compose/redesign/trigger')
-    .then(({ ComposeRedesignButton }) => ({ default: ComposeRedesignButton }))
-);
 
 class UI extends PureComponent {
   static propTypes = {
@@ -636,10 +629,6 @@ class UI extends PureComponent {
     this.props.history.push('/favourites');
   };
 
-  handleHotkeyGoToPinned = () => {
-    this.props.history.push('/pinned');
-  };
-
   handleHotkeyGoToProfile = () => {
     this.props.history.push(`/@${this.props.username}`);
   };
@@ -687,7 +676,6 @@ class UI extends PureComponent {
       goToDirect: this.handleHotkeyGoToDirect,
       goToStart: this.handleHotkeyGoToStart,
       goToFavourites: this.handleHotkeyGoToFavourites,
-      goToPinned: this.handleHotkeyGoToPinned,
       goToProfile: this.handleHotkeyGoToProfile,
       goToBlocked: this.handleHotkeyGoToBlocked,
       goToMuted: this.handleHotkeyGoToMuted,
@@ -735,7 +723,7 @@ class UI extends PureComponent {
             {children}
           </SwitchingColumnsArea>
 
-          {!suppressStandardShell && <NavigationBar />}
+          {!suppressStandardShell && !isRedesignEnabled() && <NavigationBar />}
           {!pageBlogView && layout !== 'mobile' && <PictureInPicture />}
           <AlertsController />
           {!pageBlogView && !disableHoverCards && <HoverCardController />}
@@ -743,12 +731,6 @@ class UI extends PureComponent {
           <LoadingBarContainer className='loading-bar' />
           <ModalContainer />
           {!pageBlogView && <UploadArea active={draggingOver} onClose={this.closeUploadModal} />}
-
-          {!pageBlogView && isRedesignEnabled() && (
-            <Suspense>
-              <LazyRedesignComposeButton />
-            </Suspense>
-          )}
         </div>
       </Hotkeys>
     );

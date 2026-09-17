@@ -46,11 +46,10 @@ class AccountSearchService < BaseService
     private
 
     def must_clauses
-      if @account && @options[:following]
-        [core_query, only_following_query]
-      else
-        [core_query]
-      end
+      clauses = [core_query]
+      clauses << only_following_query if @account && @options[:following]
+      clauses << only_followers_query if @account && @options[:followers]
+      clauses
     end
 
     def must_not_clauses
@@ -58,7 +57,7 @@ class AccountSearchService < BaseService
     end
 
     def should_clauses
-      if @account && !@options[:following]
+      if @account && !@options[:following] && !@options[:followers]
         [boost_following_query]
       else
         []
@@ -70,6 +69,14 @@ class AccountSearchService < BaseService
       {
         terms: {
           id: following_ids,
+        },
+      }
+    end
+
+    def only_followers_query
+      {
+        terms: {
+          id: follower_ids,
         },
       }
     end
@@ -97,6 +104,10 @@ class AccountSearchService < BaseService
 
     def following_ids
       @following_ids ||= @account.active_relationships.pluck(:target_account_id) + [@account.id]
+    end
+
+    def follower_ids
+      @follower_ids ||= @account.passive_relationships.pluck(:account_id)
     end
   end
 
@@ -217,6 +228,7 @@ class AccountSearchService < BaseService
             end
 
     match = nil if !match.nil? && !account.nil? && options[:following] && !account.following?(match)
+    match = nil if !match.nil? && !account.nil? && options[:followers] && !account.followed_by?(match)
 
     @exact_match = match
   end
@@ -240,7 +252,7 @@ class AccountSearchService < BaseService
   end
 
   def advanced_search_results
-    Account.advanced_search_for(terms_for_query, account, limit: limit_for_non_exact_results, following: options[:following], offset: offset)
+    Account.advanced_search_for(terms_for_query, account, limit: limit_for_non_exact_results, following: options[:following], followers: options[:followers], offset: offset)
   end
 
   def simple_search_results
@@ -250,9 +262,9 @@ class AccountSearchService < BaseService
   def from_elasticsearch
     query_builder = begin
       if options[:use_searchable_text]
-        FullQueryBuilder.new(terms_for_query, account, options.slice(:following))
+        FullQueryBuilder.new(terms_for_query, account, options.slice(:following, :followers))
       else
-        AutocompleteQueryBuilder.new(terms_for_query, account, options.slice(:following))
+        AutocompleteQueryBuilder.new(terms_for_query, account, options.slice(:following, :followers))
       end
     end
 

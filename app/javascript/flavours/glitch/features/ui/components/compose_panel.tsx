@@ -22,7 +22,6 @@ export const ComposePanel: React.FC = () => {
   const { signedIn } = useIdentity();
   const inlineCompose = useAppSelector(
     (state) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
       state.local_settings.get('inline_compose_timelines', false) as boolean,
   );
   const hideComposer = useAppSelector((state) => {
