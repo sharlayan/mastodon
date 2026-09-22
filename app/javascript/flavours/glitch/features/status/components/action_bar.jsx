@@ -19,11 +19,11 @@ import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity
 import { PERMISSION_MANAGE_USERS, PERMISSION_MANAGE_FEDERATION } from 'flavours/glitch/permissions';
 import { accountAdminLink, statusAdminLink } from 'flavours/glitch/utils/backend_links';
 
-import { IconButton } from '../../../components/icon_button';
+import { IconButton } from '@/flavours/glitch/components/icon_button';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { SharlayanStatusReactionButton, sharlayanAddToClipMenuItem, sharlayanRoleplayStatusAction, sharlayanRoleplayStatusMenuItem } from 'flavours/glitch/sharlayan/status_action_bar';
-import { me, quickBoosting, reactionsEnabled, clipsEnabled } from '../../../initial_state';
-import { BoostButton } from '@/flavours/glitch/components/status/boost_button';
+import { me, quickBoosting, reactionsEnabled, clipsEnabled } from '@/flavours/glitch/initial_state';
+import { BoostButton } from '@/flavours/glitch/components/status/legacy/boost_button';
 import { quoteItemState } from '@/flavours/glitch/components/status/boost_button_utils';
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
 import { selectStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';

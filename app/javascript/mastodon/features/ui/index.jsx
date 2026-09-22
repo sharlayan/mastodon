@@ -92,7 +92,7 @@ import { CustomHomepage } from 'mastodon/features/custom_homepage';
 
 // Dummy import, to make sure that <Status /> ends up in the application bundle.
 // Without this it ends up in ~8 very commonly used bundles.
-import '../../components/status';
+import '../../components/status/legacy/status';
 import { getNavigationSkipLinkId, SkipLinks } from './components/skip_links';
 
 const messages = defineMessages({
@@ -649,6 +649,7 @@ class UI extends PureComponent {
         <div className={classNames('ui', { 'is-composing': isComposing })} ref={this.setRef}>
           {!minimalShell && (
             <SkipLinks
+              // TODO: Remove these props & related methods when isRedesignEnabled() flag is removed
               multiColumn={layout === 'multi-column'}
               onFocusGettingStartedColumn={this.handleHotkeyGoToStart}
             />

@@ -7,7 +7,6 @@ import type { Merge } from 'type-fest';
 import { selectExpandedStatus } from '@/mastodon/selectors/statuses';
 import { createAppSelector, useAppSelector } from '@/mastodon/store';
 
-import { computeHashtagBarForStatus } from '../hashtag_bar';
 import { Hotkeys } from '../hotkeys';
 import { Poll } from '../poll';
 
@@ -15,15 +14,16 @@ import { StatusActionBar } from './action_bar';
 import { StatusAttachments } from './attachments';
 import { StatusContent } from './content';
 import { StatusHashtagBar } from './hashtag_bar';
+import { StatusRedesignHeader } from './header';
 import type { StatusHandlers } from './hooks';
 import {
   StatusContext,
   useStatusHandlers,
   useTextForScreenReader,
 } from './hooks';
+import { computeHashtagBarForStatus } from './legacy/hashtag_bar';
 import { StatusMeta } from './meta';
 import { StatusPrepend } from './prepend';
-import { StatusRedesignHeader } from './redesign/header';
 import classes from './styles.module.scss';
 import { TranslateButton } from './translate';
 import type { StatusContainerProps, StatusContextType } from './types';
@@ -76,6 +76,7 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
   showThread,
   headerContents,
   variant = contextToVariant(contextType),
+  nextId,
 }) => {
   // Select data from store
   const { status, parent } = useAppSelector((state) =>
@@ -95,6 +96,10 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
     [status],
   );
   const contentWrapperId = useId();
+
+  const isNextReplyingToMe = useAppSelector(
+    (state) => state.statuses.getIn([nextId, 'in_reply_to_id']) === statusId,
+  );
 
   // Handlers
   const {
@@ -147,10 +152,15 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
           variant === 'page' && classes.variantPage,
           isQuotedPost && classes.isQuote,
           status.visibility === 'direct' && classes.isMessage,
+          variant === 'thread' &&
+            isNextReplyingToMe &&
+            !showThread &&
+            classes.connectNextReply,
         )}
         data-featured={featured ? 'true' : null}
         aria-label={screenReaderText}
         data-nosnippet={status.account.noindex || undefined}
+        data-connect-next={nextId ? isNextReplyingToMe : undefined}
       >
         {!skipPrepend && (
           <StatusPrepend
@@ -210,17 +220,16 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
 
         {(variant === 'page' || (showActions && !isQuotedPost)) && (
           <footer className={classes.footer}>
-            {variant === 'page' && (
-              <StatusMeta status={status} className={classes.meta} />
-            )}
-
             {showActions && !isQuotedPost && (
               <StatusActionBar
                 statusId={status.id}
                 withDismiss={withDismiss}
                 withCounters={withCounters}
+                onlyInteractions={variant === 'page'}
               />
             )}
+
+            {variant === 'page' && <StatusMeta status={status} />}
           </footer>
         )}
       </StatusHotkeys>

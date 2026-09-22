@@ -1,0 +1,931 @@
+import PropTypes from 'prop-types';
+
+import { defineMessages, FormattedMessage } from 'react-intl';
+
+import classNames from 'classnames';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+import { ImmutablePureComponent } from 'react-immutable-pure-component';
+
+import { Hotkeys } from '@/flavours/glitch/components/hotkeys';
+import { PictureInPicturePlaceholder } from './picture_in_picture_placeholder';
+import { identityContextPropShape, withIdentity } from '@/flavours/glitch/identity_context';
+import { withOptionalRouter, WithOptionalRouterPropTypes } from 'flavours/glitch/utils/react_router';
+
+import { autoUnfoldCW } from 'flavours/glitch/utils/content_warning';
+
+import Card from '@/flavours/glitch/features/status/components/card';
+// We use the component (and not the container) since we do not want
+// to use the progress bar to show download progress
+import Bundle from '@/flavours/glitch/features/ui/components/bundle';
+import { MediaGallery, Video, Audio } from '@/flavours/glitch/features/ui/util/async-components';
+import { SensitiveMediaContext } from '@/flavours/glitch/features/ui/util/sensitive_media_context';
+import { displayMedia, visibleReactions, disableHoverCards, reactionsEnabled } from '@/flavours/glitch/initial_state';
+import { CollectionPreviewCard } from '@/flavours/glitch/features/collections/components/collection_preview_card';
+import { compareUrls } from '@/flavours/glitch/utils/compare_urls';
+import AttachmentList from '@/flavours/glitch/components/attachment_list';
+import { FOCUS_TARGET } from '@/flavours/glitch/components/navigation_focus_target';
+
+import { injectIntl } from '../../intl';
+import { ContentWarning } from './content_warning';
+import { StatusHeader } from './header'
+import { getHashtagBarForStatus } from './hashtag_bar';
+import { MentionsPlaceholder } from './mentions_placeholder';
+import StatusActionBar from './action_bar';
+import StatusContent from './content';
+import StatusIcons from './icons';
+import StatusPrepend from './prepend';
+import { StatusReactions } from '@/flavours/glitch/components/status_reactions';
+import { COLLAPSE_BUTTON_CHARACTER_THRESHOLD, isLengthyStatus, parseCharacterLimit } from '@/flavours/glitch/sharlayan/post_collapsing';
+import InstanceBadge, { isLocalInstanceDomain } from '@/flavours/glitch/components/instance_badge';
+
+const domParser = new DOMParser();
+
+const messages = defineMessages({
+  quote_noun: { id: 'status.quote_noun', defaultMessage: 'Quote', description: 'Quote as a noun' },
+  contains_quote: { id: 'status.contains_quote', defaultMessage: 'Contains quote' },
+  quote_cancel: { id: 'status.quote.cancel', defaultMessage: 'Cancel quote' },
+});
+
+export const textForScreenReader = ({intl, status, rebloggedByText = false, isQuote = false, expanded = false}) => {
+  const displayName = status.getIn(['account', 'display_name']);
+
+  const spoilerText = status.getIn(['translation', 'spoiler_text']) || status.get('spoiler_text');
+  const contentHtml = status.getIn(['translation', 'contentHtml']) || status.get('contentHtml');
+  const contentText = domParser.parseFromString(contentHtml, 'text/html').documentElement.textContent;
+
+  const values = [
+    isQuote ? intl.formatMessage(messages.quote_noun) : undefined,
+    displayName.length === 0 ? status.getIn(['account', 'acct']).split('@')[0] : displayName,
+    spoilerText && !expanded ? spoilerText : contentText,
+    !!status.get('quote') ? intl.formatMessage(messages.contains_quote) : undefined,
+    intl.formatDate(status.get('created_at'), { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
+    status.getIn(['account', 'acct']),
+    rebloggedByText,
+  ].filter(val => !!val);
+
+  return values.join(', ');
+};
+
+export const defaultMediaVisibility = (status, settings) => {
+  if (!status) {
+    return undefined;
+  }
+
+  if (status.get('reblog', null) !== null && typeof status.get('reblog') === 'object') {
+    status = status.get('reblog');
+  }
+
+  if (settings.getIn(['media', 'reveal_behind_cw']) && !!status.get('spoiler_text')) {
+    return true;
+  }
+
+  return !status.get('matched_media_filters') && (displayMedia !== 'hide_all' && !status.get('sensitive') || displayMedia === 'show_all');
+};
+
+class Status extends ImmutablePureComponent {
+
+  static contextType = SensitiveMediaContext;
+
+  static propTypes = {
+    identity: identityContextPropShape,
+    containerId: PropTypes.string,
+    id: PropTypes.string,
+    status: ImmutablePropTypes.map,
+    account: ImmutablePropTypes.record,
+    children: PropTypes.node,
+    previousId: PropTypes.string,
+    nextInReplyToId: PropTypes.string,
+    rootId: PropTypes.string,
+    onClick: PropTypes.func,
+    onReply: PropTypes.func,
+    onFavourite: PropTypes.func,
+    onReactionAdd: PropTypes.func,
+    onReactionRemove: PropTypes.func,
+    onReblog: PropTypes.func,
+    onQuote: PropTypes.func,
+    onBookmark: PropTypes.func,
+    onDelete: PropTypes.func,
+    onDirect: PropTypes.func,
+    onMention: PropTypes.func,
+    onPin: PropTypes.func,
+    onOpenMedia: PropTypes.func,
+    onOpenVideo: PropTypes.func,
+    onBlock: PropTypes.func,
+    onAddFilter: PropTypes.func,
+    onEmbed: PropTypes.func,
+    onHeightChange: PropTypes.func,
+    onToggleHidden: PropTypes.func,
+    onToggleCollapsed: PropTypes.func,
+    onTranslate: PropTypes.func,
+    onInteractionModal: PropTypes.func,
+    muted: PropTypes.bool,
+    collapsed: PropTypes.bool,
+    collapseButtonCharacterLimit: PropTypes.number,
+    hidden: PropTypes.bool,
+    unread: PropTypes.bool,
+    featured: PropTypes.bool,
+    showActions: PropTypes.bool,
+    prepend: PropTypes.string,
+    withDismiss: PropTypes.bool,
+    isQuotedPost: PropTypes.bool,
+    shouldHighlightOnMount: PropTypes.bool,
+    getScrollPosition: PropTypes.func,
+    updateScrollBottom: PropTypes.func,
+    expanded: PropTypes.bool,
+    intl: PropTypes.object.isRequired,
+    cacheMediaWidth: PropTypes.func,
+    cachedMediaWidth: PropTypes.number,
+    scrollKey: PropTypes.string,
+    skipPrepend: PropTypes.bool,
+    avatarSize: PropTypes.number,
+    deployPictureInPicture: PropTypes.func,
+    unfocusable: PropTypes.bool,
+    headerRenderFn: PropTypes.func,
+    settings: ImmutablePropTypes.map.isRequired,
+    mfmEnabled: PropTypes.bool,
+    pictureInPicture: ImmutablePropTypes.contains({
+      inUse: PropTypes.bool,
+      available: PropTypes.bool,
+    }),
+    contextType: PropTypes.string,
+    ...WithOptionalRouterPropTypes,
+  };
+
+  state = {
+    isExpanded: undefined,
+    showMedia: defaultMediaVisibility(this.props.status, this.props.settings) && !(this.context?.hideMediaByDefault),
+    revealBehindCW: undefined,
+    showCard: false,
+    showDespiteFilter: undefined,
+    isCollapsed: this.props.settings.getIn(['collapsed', 'enabled']) && (this.props.collapsed ?? false),
+    autoCollapsed: false,
+  };
+
+  // Avoid checking props that are functions (and whose equality will always
+  // evaluate to false. See react-immutable-pure-component for usage.
+  updateOnProps = [
+    'status',
+    'account',
+    'settings',
+    'prepend',
+    'muted',
+    'notification',
+    'hidden',
+    'collapsed',
+    'collapseButtonCharacterLimit',
+    'expanded',
+    'unread',
+    'pictureInPicture',
+    'headerRenderFn',
+    'previousId',
+    'nextInReplyToId',
+    'rootId',
+  ];
+
+  updateOnStates = [
+    'isExpanded',
+    'showMedia',
+    'showDespiteFilter',
+    'isCollapsed',
+  ];
+
+  static getDerivedStateFromProps(nextProps, prevState) {
+    let update = {};
+    let updated = false;
+
+    if (nextProps.collapsed !== prevState.collapsedProp) {
+      update.collapsedProp = nextProps.collapsed;
+      if (nextProps.collapsed !== undefined) {
+        update.isCollapsed =
+          nextProps.settings.getIn(['collapsed', 'enabled']) &&
+          nextProps.collapsed;
+      }
+      updated = true;
+    }
+
+    // Make sure the state mirrors props we track…
+    if (nextProps.expanded !== prevState.expandedProp) {
+      update.expandedProp = nextProps.expanded;
+      updated = true;
+    }
+    if (nextProps.status?.get('hidden') !== prevState.statusPropHidden) {
+      update.statusPropHidden = nextProps.status?.get('hidden');
+      updated = true;
+    }
+
+    if (!nextProps.settings.getIn(['collapsed', 'enabled']) && prevState.isCollapsed) {
+      update.isCollapsed = false;
+      updated = true;
+    }
+
+    if (nextProps.settings.getIn(['content_warnings', 'shared_state']) &&
+      nextProps.status?.get('spoiler_text')?.length && nextProps.status?.get('hidden') === false &&
+      prevState.statusPropHidden !== false && prevState.isCollapsed
+    ) {
+      update.isCollapsed = false;
+      updated = true;
+    }
+
+    // The “expanded” prop is used to one-off change the local state.
+    // It's used in the thread view when unfolding/re-folding all CWs at once.
+    if (nextProps.expanded !== prevState.expandedProp &&
+      nextProps.expanded !== undefined
+    ) {
+      update.isExpanded = nextProps.expanded;
+      if (nextProps.expanded) update.isCollapsed = false;
+      updated = true;
+    }
+
+    if (prevState.isExpanded === undefined && update.isExpanded === undefined) {
+      update.isExpanded = autoUnfoldCW(nextProps.settings, nextProps.status);
+      updated = true;
+    }
+
+    if (nextProps.settings.getIn(['media', 'reveal_behind_cw']) !== prevState.revealBehindCW) {
+      update.revealBehindCW = nextProps.settings.getIn(['media', 'reveal_behind_cw']);
+      if (update.revealBehindCW) {
+        update.showMedia = defaultMediaVisibility(nextProps.status, nextProps.settings);
+      }
+      updated = true;
+    }
+
+    return updated ? update : null;
+  }
+
+  componentDidMount () {
+    const { node } = this;
+
+    // Prevent a crash when node is undefined. Not completely sure why this
+    // happens, might be because status === null.
+    if (node === undefined) return;
+
+    const { status, settings, muted, prepend, isQuotedPost } = this.props;
+    const autoCollapseSettings = settings.getIn(['collapsed', 'auto']);
+
+    if (settings.getIn(['collapsed', 'enabled']) && !(settings.getIn(['content_warnings', 'shared_state']) && status.get('spoiler_text').length && !status.get('hidden')) && !isQuotedPost) {
+      const autoCollapseCharacterLimit = autoCollapseSettings.get('character_limit');
+      let autoCollapseHeight = Number.parseInt(autoCollapseSettings.get('height'), 10) || 400;
+      if (parseCharacterLimit(autoCollapseCharacterLimit) === null && status.get('media_attachments').size && !muted) autoCollapseHeight += 210;
+
+      if (autoCollapseSettings.get('all') ||
+        (autoCollapseSettings.get('notifications') && muted) ||
+        (autoCollapseSettings.get('lengthy') && isLengthyStatus(status, autoCollapseCharacterLimit, node.clientHeight, autoCollapseHeight)) ||
+        (autoCollapseSettings.get('reblogs') && prepend === 'reblogged_by') ||
+        (autoCollapseSettings.get('replies') && status.get('in_reply_to_id', null) !== null) ||
+        (autoCollapseSettings.get('media') && !status.get('spoiler_text').length && status.get('media_attachments').size > 0) ||
+        (autoCollapseSettings.get('quotes') && !!status.get('quote'))
+      ) {
+        this.setCollapsed(true);
+        this.setState({ autoCollapsed: true });
+      }
+    }
+
+    // Hack to fix timeline jumps when a preview card is fetched
+    this.setState({
+      showCard: !this.props.muted && !this.props.hidden && this.props.status && this.props.status.get('card') && this.props.settings.get('inline_preview_cards'),
+    });
+  }
+
+  //  Hack to fix timeline jumps on second rendering when auto-collapsing
+  //  or on subsequent rendering when a preview card has been fetched
+  getSnapshotBeforeUpdate() {
+    if (!this.props.getScrollPosition) return null;
+
+    const { muted, hidden, status, settings } = this.props;
+    const { autoCollapsed } = this.state;
+
+    const doShowCard = !muted && !hidden && status && status.get('card') && settings.get('inline_preview_cards');
+    if (autoCollapsed || (doShowCard && !this.state.showCard)) {
+      if (doShowCard) this.setState({ showCard: true });
+      if (autoCollapsed) this.setState({ autoCollapsed: false });
+      return this.props.getScrollPosition();
+    } else {
+      return null;
+    }
+  }
+
+  componentDidUpdate(prevProps, _prevState, snapshot) {
+    if (snapshot !== null && this.props.updateScrollBottom && this.node.offsetTop < snapshot.top) {
+      this.props.updateScrollBottom(snapshot.height - snapshot.top);
+    }
+
+    // This will potentially cause a wasteful redraw, but in most cases `Status` components are used
+    // with a `key` directly depending on their `id`, preventing re-use of the component across
+    // different IDs.
+    // But just in case this does change, reset the state on status change.
+
+    if (this.props.status?.get('id') !== prevProps.status?.get('id')) {
+      this.setState({
+        showMedia: defaultMediaVisibility(this.props.status, this.props.settings) && !(this.context?.hideMediaByDefault),
+        showDespiteFilter: undefined,
+      });
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.node && this.props.getScrollPosition) {
+      const position = this.props.getScrollPosition();
+      if (position !== null && this.node.offsetTop < position.top) {
+        requestAnimationFrame(() => {
+          this.props.updateScrollBottom(position.height - position.top);
+        });
+      }
+    }
+  }
+
+  setCollapsed = (value) => {
+    if (this.props.settings.getIn(['collapsed', 'enabled'])) {
+      if (value) this.setExpansion(false);
+      this.setState({ isCollapsed: value });
+    } else {
+      this.setState({ isCollapsed: false });
+    }
+  };
+
+  setExpansion = (value) => {
+    if (this.props.settings.getIn(['content_warnings', 'shared_state']) && this.props.status.get('hidden') === value) {
+      this.props.onToggleHidden(this.props.status);
+    }
+
+    this.setState({ isExpanded: value });
+    if (value) this.setCollapsed(false);
+  };
+
+  handleToggleMediaVisibility = () => {
+    this.setState({ showMedia: !this.state.showMedia });
+  };
+
+  handleClick = e => {
+    e.preventDefault();
+
+    if (e?.button === 0 && !(e?.ctrlKey || e?.metaKey)) {
+      if (this.state.isCollapsed) {
+        this.setCollapsed(false);
+      } else if (e?.shiftKey) {
+        this.setCollapsed(true);
+      } else {
+        this._openStatus();
+      }
+    } else if (e?.button === 1 || (e?.button === 0 && (e?.ctrlKey || e?.metaKey))) {
+      this._openStatus(true);
+    }
+  };
+
+  handleHeaderClick = e => {
+    // Only handle clicks on the empty space above the content
+    if (e.target !== e.currentTarget && e.detail >= 1) {
+      return;
+    }
+
+    this.handleClick(e);
+  };
+
+  handleExpandedToggle = () => {
+    if (this.props.settings.getIn(['content_warnings', 'shared_state'])) {
+      this.props.onToggleHidden(this.props.status);
+    } else if (this.props.status.get('spoiler_text')) {
+      this.setExpansion(!this.state.isExpanded);
+    }
+  };
+
+  handleOpenVideo = (options) => {
+    const { status } = this.props;
+    const lang = status.getIn(['translation', 'language']) || status.get('language');
+    this.props.onOpenVideo(status.get('id'), status.getIn(['media_attachments', 0]), lang, options);
+  };
+
+  handleOpenMedia = (media, index) => {
+    const { status } = this.props;
+    const lang = status.getIn(['translation', 'language']) || status.get('language');
+    this.props.onOpenMedia(status.get('id'), media, index, lang);
+  };
+
+  handleHotkeyOpenMedia = e => {
+    const { status, onOpenMedia, onOpenVideo } = this.props;
+    const statusId = status.get('id');
+
+    e.preventDefault();
+
+    if (status.get('media_attachments').size > 0) {
+      const lang = status.getIn(['translation', 'language']) || status.get('language');
+      if (status.getIn(['media_attachments', 0, 'type']) === 'video') {
+        onOpenVideo(statusId, status.getIn(['media_attachments', 0]), lang, { startTime: 0 });
+      } else {
+        onOpenMedia(statusId, status.get('media_attachments'), 0, lang);
+      }
+    }
+  };
+
+  handleDeployPictureInPicture = (type, mediaProps) => {
+    const { deployPictureInPicture, status } = this.props;
+
+    deployPictureInPicture(status, type, mediaProps);
+  };
+
+  handleHotkeyReply = e => {
+    e.preventDefault();
+    if (this.props.status.get('repliable') === false) return;
+    this.props.onReply(this.props.status);
+  };
+
+  handleHotkeyFavourite = (e) => {
+    this.props.onFavourite(this.props.status, e);
+  };
+
+  handleHotkeyBoost = e => {
+    this.props.onReblog(this.props.status, e);
+  };
+
+  handleHotkeyBookmark = e => {
+    this.props.onBookmark(this.props.status, e);
+  };
+
+  handleHotkeyQuote = () => {
+    this.props.onQuote(this._properStatus());
+  };
+
+  handleHotkeyMention = e => {
+    e.preventDefault();
+    this.props.onMention(this.props.status.get('account'));
+  };
+
+  handleHotkeyOpen = () => {
+    this._openStatus();
+  };
+
+  _openStatus = (newTab = false) => {
+    if (this.props.onOpen) {
+      this.props.onOpen();
+      return;
+    }
+
+    const { history } = this.props;
+    const status = this.props.status;
+
+    if (!history) {
+      return;
+    }
+
+    const path = `/@${status.getIn(['account', 'acct'])}/${status.get('id')}`;
+
+    if (newTab) {
+      window.open(path, '_blank', 'noopener');
+    } else {
+      if (history.location.pathname.replace('/deck/', '/') === path) {
+        history.replace(path, {focusTarget: FOCUS_TARGET.POST});
+      } else {
+        history.push(path, {focusTarget: FOCUS_TARGET.POST});
+      }
+    }
+  };
+
+  handleHotkeyOpenProfile = () => {
+    this._openProfile();
+  };
+
+  _openProfile = () => {
+    const { history } = this.props;
+    const status = this.props.status;
+
+    if (!history) {
+      return;
+    }
+
+    history.push(`/@${status.getIn(['account', 'acct'])}`);
+  };
+
+  handleHotkeyCollapse = () => {
+    if (!this.props.settings.getIn(['collapsed', 'enabled'])) return;
+    this.setCollapsed(!this.state.isCollapsed);
+  };
+
+  handleHotkeyToggleSensitive = () => {
+    this.handleToggleMediaVisibility();
+  };
+
+  handleUnfilterClick = e => {
+    this.setState({ showDespiteFilter: false });
+    e.preventDefault();
+  };
+
+  handleFilterClick = () => {
+    this.setState({ showDespiteFilter: true });
+  };
+
+  handleRef = c => {
+    this.node = c;
+  };
+
+  handleCollapsedToggle = isCollapsed => {
+    this.props.onToggleCollapsed(this.props.status, isCollapsed);
+  };
+
+  handleTranslate = () => {
+    this.props.onTranslate(this.props.status);
+  };
+
+  renderLoadingMediaGallery () {
+    return <div className='media-gallery' style={{ height: '110px' }} />;
+  }
+
+  renderLoadingVideoPlayer () {
+    return <div className='video-player' style={{ height: '110px' }} />;
+  }
+
+  renderLoadingAudioPlayer () {
+    return <div className='audio-player' style={{ height: '110px' }} />;
+  }
+
+  render () {
+    const {
+      intl,
+      hidden,
+      featured,
+      unfocusable,
+      unread,
+      showActions = true,
+      isQuotedPost = false,
+      contextType,
+      collapseButtonCharacterLimit = COLLAPSE_BUTTON_CHARACTER_THRESHOLD,
+      pictureInPicture,
+      previousId,
+      nextInReplyToId,
+      rootId,
+      skipPrepend,
+      avatarSize = 46,
+      children,
+    } = this.props;
+
+    // glitch-soc-specific
+    const {
+      status,
+      account,
+      identity,
+      settings,
+      muted,
+      onOpenVideo,
+      onOpenMedia,
+      notification,
+      history,
+      ...other
+    } = this.props;
+    let attachments = null;
+
+    let media = [];
+    let mediaIcons = [];
+
+    if (status === null) {
+      return null;
+    }
+
+    const isExpanded = settings.getIn(['content_warnings', 'shared_state']) ? !status.get('hidden') : this.state.isExpanded;
+    const expanded = isExpanded || status.get('spoiler_text').length === 0;
+
+    const handlers = {
+      reply: this.handleHotkeyReply,
+      favourite: this.handleHotkeyFavourite,
+      boost: this.handleHotkeyBoost,
+      quote: this.handleHotkeyQuote,
+      mention: this.handleHotkeyMention,
+      open: this.handleHotkeyOpen,
+      openProfile: this.handleHotkeyOpenProfile,
+      toggleHidden: this.handleExpandedToggle,
+      bookmark: this.handleHotkeyBookmark,
+      toggleSensitive: this.handleHotkeyToggleSensitive,
+      openMedia: this.handleHotkeyOpenMedia,
+      onTranslate: this.handleTranslate,
+      toggleCollapse: this.handleHotkeyCollapse,
+    };
+
+    let prepend, rebloggedByText;
+
+    const connectUp = previousId && previousId === status.get('in_reply_to_id');
+    const connectToRoot = rootId && rootId === status.get('in_reply_to_id');
+    const connectReply = nextInReplyToId && nextInReplyToId === status.get('id');
+    const matchedFilters = status.get('matched_filters');
+    const instanceInfo = status.get('instance_metadata');
+    const collapseEnabled = settings.getIn(['collapsed', 'enabled']);
+    const showActionBar = settings.getIn(['collapsed', 'show_action_bar']);
+    const { isCollapsed } = this.state;
+
+    if (hidden) {
+      return (
+        <Hotkeys handlers={handlers} focusable={!unfocusable}>
+          <div ref={this.handleRef} className='status focusable' tabIndex={unfocusable ? null : 0}>
+            <span>{status.getIn(['account', 'display_name']) || status.getIn(['account', 'username'])}</span>
+            {status.get('spoiler_text').length > 0 && (<span>{status.get('spoiler_text')}</span>)}
+            {expanded && <span>{status.get('content')}</span>}
+          </div>
+        </Hotkeys>
+      );
+    }
+
+    if (this.state.showDespiteFilter === undefined ? matchedFilters : this.state.showDespiteFilter) {
+      const minHandlers = this.props.muted ? {} : {
+        moveUp: this.handleHotkeyMoveUp,
+        moveDown: this.handleHotkeyMoveDown,
+      };
+
+      return (
+        <Hotkeys handlers={minHandlers} focusable={!unfocusable}>
+          <div className='status__wrapper status__wrapper--filtered focusable' tabIndex={unfocusable ? null : 0} ref={this.handleRef}>
+            <FormattedMessage id='status.filtered' defaultMessage='Filtered' />: {matchedFilters.join(', ')}.
+            {' '}
+            <button className='status__wrapper--filtered__button' onClick={this.handleUnfilterClick}>
+              <FormattedMessage id='status.show_filter_reason' defaultMessage='Show anyway' />
+            </button>
+          </div>
+        </Hotkeys>
+      );
+    }
+
+    //  This handles our media attachments.
+    //  If a media file is of unknwon type or if the status is muted
+    //  (notification), we show a list of links instead of embedded media.
+
+    attachments = status.get('media_attachments');
+
+    if (pictureInPicture.get('inUse')) {
+      media.push(<PictureInPicturePlaceholder />);
+      mediaIcons.push('video-camera');
+    } else if (attachments.size > 0) {
+      const language = status.getIn(['translation', 'language']) || status.get('language');
+
+      if (muted || attachments.some(item => item.get('type') === 'unknown')) {
+        media.push(
+          <AttachmentList
+            compact
+            media={status.get('media_attachments')}
+            collapsed={isCollapsed}
+          />,
+        );
+      } else if (['image', 'gifv', 'unknown'].includes(status.getIn(['media_attachments', 0, 'type'])) || status.get('media_attachments').size > 1) {
+        media.push(
+          <Bundle fetchComponent={MediaGallery} loading={this.renderLoadingMediaGallery} key='gallery'>
+            {Component => (
+              <Component
+                media={attachments}
+                lang={language}
+                sensitive={status.get('sensitive')}
+                letterbox={settings.getIn(['media', 'letterbox'])}
+                fullwidth={!rootId && settings.getIn(['media', 'fullwidth'])}
+                disableGifvAutoplay={settings.getIn(['media', 'no_autoplay_gifv'])}
+                hidden={isCollapsed || !expanded}
+                onOpenMedia={this.handleOpenMedia}
+                cacheWidth={this.props.cacheMediaWidth}
+                defaultWidth={this.props.cachedMediaWidth}
+                visible={this.state.showMedia}
+                onToggleVisibility={this.handleToggleMediaVisibility}
+                matchedFilters={status.get('matched_media_filters')}
+              />
+            )}
+          </Bundle>,
+        );
+        mediaIcons.push('picture-o');
+      } else if (attachments.getIn([0, 'type']) === 'audio') {
+        const attachment = status.getIn(['media_attachments', 0]);
+        const description = attachment.getIn(['translation', 'description']) || attachment.get('description');
+
+        media.push(
+          <Bundle fetchComponent={Audio} loading={this.renderLoadingAudioPlayer} key='audio'>
+            {Component => (
+              <Component
+                src={attachment.get('url')}
+                alt={description}
+                lang={language}
+                poster={attachment.get('preview_url') || status.getIn(['account', 'avatar_static'])}
+                backgroundColor={attachment.getIn(['meta', 'colors', 'background'])}
+                foregroundColor={attachment.getIn(['meta', 'colors', 'foreground'])}
+                accentColor={attachment.getIn(['meta', 'colors', 'accent'])}
+                duration={attachment.getIn(['meta', 'original', 'duration'], 0)}
+                deployPictureInPicture={pictureInPicture.get('available') ? this.handleDeployPictureInPicture : undefined}
+                sensitive={status.get('sensitive')}
+                blurhash={attachment.get('blurhash')}
+                visible={this.state.showMedia}
+                onToggleVisibility={this.handleToggleMediaVisibility}
+                matchedFilters={status.get('matched_media_filters')}
+              />
+            )}
+          </Bundle>,
+        );
+        mediaIcons.push('music');
+      } else if (attachments.getIn([0, 'type']) === 'video') {
+        const attachment = status.getIn(['media_attachments', 0]);
+        const description = attachment.getIn(['translation', 'description']) || attachment.get('description');
+
+        media.push(
+          <Bundle fetchComponent={Video} loading={this.renderLoadingVideoPlayer} key='video'>
+            {Component => (<Component
+              preview={attachment.get('preview_url')}
+              frameRate={attachment.getIn(['meta', 'original', 'frame_rate'])}
+              aspectRatio={`${attachment.getIn(['meta', 'original', 'width'])} / ${attachment.getIn(['meta', 'original', 'height'])}`}
+              blurhash={attachment.get('blurhash')}
+              src={attachment.get('url')}
+              alt={description}
+              lang={language}
+              inline
+              sensitive={status.get('sensitive')}
+              letterbox={settings.getIn(['media', 'letterbox'])}
+              fullwidth={!rootId && settings.getIn(['media', 'fullwidth'])}
+              preventPlayback={isCollapsed || !expanded}
+              onOpenVideo={this.handleOpenVideo}
+              deployPictureInPicture={pictureInPicture.get('available') ? this.handleDeployPictureInPicture : undefined}
+              visible={this.state.showMedia}
+              onToggleVisibility={this.handleToggleMediaVisibility}
+              matchedFilters={status.get('matched_media_filters')}
+            />)}
+          </Bundle>,
+        );
+        mediaIcons.push('video-camera');
+      }
+    } else if (status.get('card') && settings.get('inline_preview_cards') && !this.props.muted && !status.get('quote')) {
+      const cardUrl = status.getIn(['card', 'url']);
+
+      const taggedCollection = (
+        status.get('tagged_collections')
+      ).find((item) => compareUrls(item.get('url'), cardUrl));
+      if (taggedCollection) {
+        media.push(<CollectionPreviewCard collection={taggedCollection.toJS()} headingLevel='h2' />);
+      } else {
+        media.push(
+          <Card
+            key={`${status.get('id')}-${status.get('edited_at')}`}
+            card={status.get('card')}
+            sensitive={status.get('sensitive')}
+          />,
+        );
+      }
+      mediaIcons.push('link');
+    } else if (status.get('tagged_collections').size && !status.get('quote') && settings.get('inline_preview_cards') && !this.props.muted) {
+      const firstLinkedCollection = status.get('tagged_collections').first();
+      if (firstLinkedCollection) {
+        media = (
+          <CollectionPreviewCard collection={firstLinkedCollection.toJS()} headingLevel='h2' />
+        );
+      }
+    }
+
+    if (status.get('poll')) {
+      mediaIcons.push('tasks');
+    }
+
+    //  Here we prepare extra data-* attributes for CSS selectors.
+    //  Users can use those for theming, hiding avatars etc via UserStyle
+    const selectorAttribs = {
+      'data-status-by': `@${status.getIn(['account', 'acct'])}`,
+    };
+
+    const statusDomain = (instanceInfo && instanceInfo.get('domain')) || status.getIn(['account', 'acct']).split('@')[1];
+
+    if (statusDomain) {
+      selectorAttribs['data-domain'] = statusDomain;
+    }
+
+    if (this.props.prepend && account) {
+      const notifKind = {
+        favourite: 'favourited',
+        reaction: 'reacted',
+        reblog: 'boosted',
+        reblogged_by: 'boosted',
+        status: 'posted',
+      }[this.props.prepend];
+
+      selectorAttribs[`data-${notifKind}-by`] = `@${account.get('acct')}`;
+
+      prepend = (
+        <StatusPrepend
+          type={this.props.prepend}
+          account={account}
+          notificationId={this.props.notificationId}
+        />
+      );
+    }
+
+    if (this.props.prepend === 'reblog') {
+      rebloggedByText = intl.formatMessage({ id: 'status.reblogged_by', defaultMessage: '{name} boosted' }, { name: account.get('acct') });
+    }
+
+    const {statusContentProps, hashtagBar} = getHashtagBarForStatus(status);
+
+    const statusIcons = (
+      <StatusIcons
+        status={status}
+        mediaIcons={mediaIcons}
+        settings={settings.get('status_icons')}
+        collapsible={(contextType === 'notifications' || !muted) && collapseEnabled}
+        collapseButtonCharacterLimit={contextType === 'notifications' ? null : collapseButtonCharacterLimit}
+        collapsed={isCollapsed}
+        setCollapsed={this.setCollapsed}
+      />
+    );
+
+    const header = this.props.headerRenderFn
+      ? this.props.headerRenderFn({ statusId: status.get('id'), status, account, avatarSize, messages, onHeaderClick: this.handleHeaderClick, featured, mediaIcons, settings: settings.get('status_icons'), collapseEnabled, collapseButtonCharacterLimit: contextType === 'notifications' ? null : collapseButtonCharacterLimit, collapsed: isCollapsed, setCollapsed: this.setCollapsed })
+      : (
+        <StatusHeader
+          statusId={status.get('id')}
+          account={account}
+          avatarSize={avatarSize}
+          onHeaderClick={this.handleHeaderClick}
+          contentBeforeDate={statusIcons}
+        />
+      );
+
+    return (
+      <Hotkeys handlers={handlers} focusable={!unfocusable}>
+        <div
+          className={classNames('status__wrapper', 'focusable', `status__wrapper-${status.get('visibility')}`, { 'status__wrapper-reply': !!status.get('in_reply_to_id'), 'status__wrapper--in-thread': !!rootId, unread, collapsed: isCollapsed })}
+          {...selectorAttribs}
+          tabIndex={unfocusable ? null : 0}
+          data-featured={featured ? 'true' : null}
+          aria-label={textForScreenReader({intl, status, rebloggedByText, isQuote: isQuotedPost, expanded: !status.get('hidden')})}
+          ref={this.handleRef}
+          data-nosnippet={status.getIn(['account', 'noindex'], true) || undefined}
+        >
+          {!skipPrepend && prepend}
+
+          <div
+            className={
+              classNames('status', `status-${status.get('visibility')}`,
+              {
+                'status-reply': !!status.get('in_reply_to_id'),
+                'status--in-thread': !!rootId,
+                'status--first-in-thread': previousId && (!connectUp || connectToRoot),
+                muted: this.props.muted,
+                'status--is-quote': isQuotedPost,
+                'status--has-quote': !!status.get('quote'),
+                'status--highlighted-entry': this.props.shouldHighlightOnMount,
+              })
+            }
+            data-id={status.get('id')}
+          >
+            {(connectReply || connectUp || connectToRoot) && <div className={classNames('status__line', { 'status__line--full': connectReply, 'status__line--first': !status.get('in_reply_to_id') && !connectToRoot })} />}
+
+            {(contextType === 'notifications' || !muted || !isCollapsed) && header}
+
+            {status.get('rp_hidden') && (
+              <div className='status__rp-hidden-badge'>
+                <FormattedMessage id='status.rp_hidden' defaultMessage='Deleted' />
+              </div>
+            )}
+
+            {!isCollapsed && settings.get('show_instance_info') && instanceInfo && (settings.get('show_instance_info_local') || !isLocalInstanceDomain(instanceInfo.get('domain'))) && (
+              <InstanceBadge instanceInfo={instanceInfo.toJS()} compact />
+            )}
+
+            <ContentWarning statusId={status.get('id')} expanded={expanded} onClick={this.handleExpandedToggle} icons={mediaIcons} />
+
+            {expanded && (
+              <div className='status__content__wrapper'>
+                <StatusContent
+                  status={status}
+                  onClick={this.handleClick}
+                  onTranslate={this.handleTranslate}
+                  collapsible={!collapseEnabled}
+                  media={media}
+                  onCollapsedToggle={this.handleCollapsedToggle}
+                  collapsed={isCollapsed}
+                  mfmEnabled={this.props.mfmEnabled}
+                  {...statusContentProps}
+                />
+
+                {media}
+                {hashtagBar}
+
+                {children}
+              </div>
+            )}
+
+            {/* This is a glitch-soc addition to have a placeholder */}
+            {!expanded && <MentionsPlaceholder status={status} />}
+
+            {(showActions && !isQuotedPost) && (!isCollapsed || !(muted || !showActionBar)) &&
+              <StatusReactions
+                statusId={status.get('id')}
+                reactions={status.get('reactions')}
+                numVisible={visibleReactions}
+                addReaction={this.props.onReactionAdd}
+                removeReaction={this.props.onReactionRemove}
+                canReact={this.props.identity.signedIn && reactionsEnabled}
+              />
+            }
+
+            {(showActions && !isQuotedPost) && (!isCollapsed || !(muted || !showActionBar)) &&
+              <StatusActionBar
+                status={status}
+                account={status.get('account')}
+                showReplyCount={settings.get('show_reply_count')}
+                onFilter={matchedFilters ? this.handleFilterClick : null}
+                {...other}
+              />
+            }
+          </div>
+        </div>
+      </Hotkeys>
+    );
+  }
+
+}
+
+export default withOptionalRouter(injectIntl(withIdentity(Status)));

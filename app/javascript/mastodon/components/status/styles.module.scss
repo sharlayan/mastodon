@@ -1,30 +1,33 @@
 @use '@/styles/mastodon/mixins';
 
 .root {
-  --col-gap: var(--space-xs);
+  --col-gap: var(--space-2);
   --avatar-size: 40px;
+  --first-col-width: calc(var(--avatar-size) + var(--col-gap));
   --content-col: 2;
 
   display: grid;
-  grid-template-columns: calc(var(--avatar-size) + var(--col-gap)) auto;
-  grid-template-rows: minmax(calc(var(--avatar-size) + var(--col-gap)), auto);
+  grid-template-columns: var(--first-col-width) minmax(
+      calc(100% - var(--first-col-width)),
+      1fr
+    );
   grid-auto-rows: auto;
-  row-gap: var(--space-xs);
-  padding: var(--space-md);
+  row-gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.variantPage {
+  padding: var(--space-2) var(--space-4);
 }
 
 .variantThread {
   --avatar-size: 32px;
 
-  padding: var(--space-xs) 0;
-}
-
-.variantPage {
   padding: 0;
 }
 
 .isQuote {
-  padding: var(--space-sm);
+  padding: var(--space-3);
 }
 
 .isMessage {
@@ -67,13 +70,25 @@
   grid-column: var(--content-col);
 }
 
+.connectNextReply {
+  &::after {
+    content: '';
+    grid-column: 1;
+    grid-row: 2 / span 2;
+    border-inline-start: var(--bw-thick) solid var(--color-border-primary);
+    width: calc(var(--avatar-size) / 2 - 1px);
+    margin-inline-end: var(--col-gap);
+    justify-self: end;
+  }
+}
+
 .translate {
   display: flex;
   align-items: center;
 }
 
 .translateInfo {
-  @include mixins.type-label-md;
+  @include mixins.type-meta;
 
   color: var(--color-text-secondary);
   margin-inline-start: auto;
@@ -95,7 +110,7 @@
 .content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
+  gap: var(--space-2);
   position: relative;
 }
 
@@ -103,7 +118,7 @@
   --fade-time: 100ms;
 
   overflow: clip;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-2);
 
   &::after {
     content: '';
@@ -113,7 +128,7 @@
       var(--color-bg-highlight) 1px,
       transparent 0
     );
-    background-size: var(--space-xs) var(--space-xs);
+    background-size: var(--space-2) var(--space-2);
     background-repeat: repeat;
 
     // See: https://css-tricks.com/snippets/css/toggle-visibility-when-hiding-elements/
@@ -170,7 +185,7 @@
 }
 
 .contentImage {
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-4);
   position: relative;
   background-size: cover;
   background-position: center;
@@ -190,12 +205,12 @@
 .hashtagsWrapper,
 .hashtags {
   display: flex;
-  gap: var(--space-2xs);
+  gap: var(--space-1);
   flex-wrap: nowrap;
 }
 
 .hashtagsWrapper {
-  padding: var(--space-2xs) 0;
+  padding: var(--space-1) 0;
 }
 
 .hashtags {
@@ -216,7 +231,24 @@
 .meta {
   @include mixins.type-micro;
 
+  display: flex;
+  gap: var(--space-1);
   color: var(--color-text-secondary);
+  padding-block-start: var(--space-2);
+  margin-block-start: var(--space-2);
+  border-block-start: var(--border-default);
+  margin-inline: calc(-1 * var(--space-4));
+  padding-inline: var(--space-4);
+
+  a {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover,
+    &:hover * {
+      text-decoration: underline;
+    }
+  }
 }
 
 .actions {

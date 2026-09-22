@@ -3,6 +3,8 @@ import { useCallback, useMemo } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
+import classNames from 'classnames';
+
 import {
   ArrowsClockwiseIcon,
   BookmarkSimpleIcon,
@@ -70,16 +72,17 @@ import {
   MenuList,
   MenuTrigger,
 } from '../menu';
-import { RemoveQuoteHint } from '../status_action_bar/remove_quote_hint';
 
 import { boostItemState, quoteItemState } from './boost_button_utils';
 import { useStatusContext } from './hooks';
+import { RemoveQuoteHint } from './legacy/action_bar/remove_quote_hint';
 import classes from './styles.module.scss';
 
 interface StatusActionBarProps {
   statusId: string;
   withDismiss?: boolean;
   withCounters?: boolean;
+  onlyInteractions?: boolean;
 }
 
 const messages = defineMessages({
@@ -153,6 +156,7 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
   statusId,
   withDismiss,
   withCounters,
+  onlyInteractions,
 }) => {
   const status = useStatus(statusId);
   const quotedAccountId = useAppSelector(
@@ -214,8 +218,8 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
   const shouldShowQuoteRemovalHint =
     isQuotingMe && contextType === 'notifications';
 
-  return (
-    <div className={classes.actions}>
+  const interactionButtons = (
+    <>
       <Button
         size='sm'
         clipPadding
@@ -238,10 +242,20 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
         title={favouriteTitle}
         leadingIcon={favouriteIcon}
         onClick={handleFavouriteClick}
-        className={classes.actionsButtonGap}
+        className={classNames(!onlyInteractions && classes.actionsButtonGap)}
       >
         {withCounters && status.favourites_count}
       </ToggleButton>
+    </>
+  );
+
+  if (onlyInteractions) {
+    return <div className={classes.actions}>{interactionButtons}</div>;
+  }
+
+  return (
+    <div className={classes.actions}>
+      {interactionButtons}
 
       {isPublic && (
         <IconButton

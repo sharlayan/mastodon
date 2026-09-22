@@ -1,149 +1,119 @@
-import type { FC, HTMLAttributes, MouseEventHandler, ReactNode } from 'react';
+import { useId } from 'react';
 
-import { defineMessage, useIntl } from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 
 import classNames from 'classnames';
+import { Link } from 'react-router-dom';
 
-import type { Map as ImmutableMap } from 'immutable';
-
-import type {
-  Account,
-  AccountShapeFull,
-} from '@/flavours/glitch/models/account';
-import type { Status, StatusShape } from '@/flavours/glitch/models/status';
-import { selectAccountStatus } from '@/flavours/glitch/selectors/statuses';
-import { useAppSelector } from '@/flavours/glitch/store';
+import type { AccountStatusShape } from '@/flavours/glitch/models/status';
 
 import { Avatar } from '../avatar';
-import { AvatarOverlay } from '../avatar_overlay';
-import type { DisplayNameProps } from '../display_name';
-import { LinkedDisplayName } from '../display_name';
+import { DisplayName } from '../display_name';
+import { useAccountHandle } from '../display_name/default';
 import { RelativeTimestamp } from '../relative_timestamp';
+import { Skeleton } from '../skeleton';
 
-export interface StatusHeaderProps {
-  statusId: string;
-  status?: Status;
-  account?: Account | AccountShapeFull;
-  avatarSize?: number;
-  contentBeforeDate?: ReactNode;
-  contentAfterDate?: ReactNode;
-  wrapperProps?: HTMLAttributes<HTMLDivElement>;
-  displayNameProps?: DisplayNameProps;
-  onHeaderClick?: MouseEventHandler<HTMLDivElement>;
+import classes from './header.module.scss';
+import { statusLink } from './utils';
+
+interface StatusRedesignHeaderProps {
+  status: Pick<
+    AccountStatusShape,
+    'id' | 'account' | 'created_at' | 'visibility' | 'mentions'
+  >;
+  children?: React.ReactNode;
   className?: string;
-  featured?: boolean;
-  mediaIcons?: string[];
-  settings?: ImmutableMap<string, unknown>;
-  collapseEnabled?: boolean;
-  collapseButtonCharacterLimit?: number | null;
-  collapsed?: boolean;
-  setCollapsed?: (value: boolean) => void;
 }
 
-export type StatusHeaderRenderFn = (args: StatusHeaderProps) => ReactNode;
-
-export const StatusHeader: FC<StatusHeaderProps> = ({
-  statusId,
-  account,
+export const StatusRedesignHeader: React.FC<StatusRedesignHeaderProps> = ({
+  status,
+  children,
   className,
-  avatarSize = 48,
-  wrapperProps,
-  contentBeforeDate,
-  contentAfterDate,
-  onHeaderClick,
 }) => {
-  const status = useAppSelector((state) =>
-    selectAccountStatus(state, statusId),
-  );
-  if (!status) {
-    return null;
-  }
-  const statusAccount = status.account;
+  const account = status.account;
+  const handle = useAccountHandle(account);
 
-  return (
-    /* eslint-disable jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */
-    <header
-      onClick={onHeaderClick}
-      onAuxClick={onHeaderClick}
-      {...wrapperProps}
-      className={classNames('status__info', className)}
-      /* eslint-enable jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */
+  const handleId = useId();
+  const accountLinkProps = {
+    to: {
+      pathname: `/@${account.acct}`,
+      state: { reference: 'status' },
+    },
+    title: `@${account.acct}`,
+    'data-id': account.id,
+    'data-hover-card-account': account.id,
+    'data-hover-card-reference': 'status',
+  };
+
+  let displayName = (
+    <Link
+      {...accountLinkProps}
+      className={classes.headerNameLink}
+      aria-describedby={handleId}
     >
-      <StatusDisplayName
-        statusAccount={statusAccount}
-        friendAccount={account}
-        avatarSize={avatarSize}
-        status={status}
+      <DisplayName account={account} variant='noDomain' />
+    </Link>
+  );
+  if (status.visibility === 'private') {
+    displayName = (
+      <FormattedMessage
+        id='status.header.to_followers'
+        defaultMessage='{author} to Followers {count, plural, =0 {} one {+ # other} other {+ # others}}'
+        description='Count is # of other people mentioned in the post'
+        tagName='span'
+        values={{ author: displayName, count: status.mentions.length }}
       />
-
-      {contentBeforeDate}
-      {contentAfterDate}
-    </header>
-  );
-};
-
-const editMessage = defineMessage({
-  id: 'status.edited',
-  defaultMessage: 'Edited {date}',
-});
-
-const StatusEditedAt: FC<{ editedAt: string }> = ({ editedAt }) => {
-  const intl = useIntl();
-  return (
-    <abbr
-      title={intl.formatMessage(editMessage, {
-        date: intl.formatDate(editedAt, {
-          year: 'numeric',
-          month: 'short',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      })}
-    >
-      {' '}
-      *
-    </abbr>
-  );
-};
-
-const StatusDisplayName: FC<{
-  statusAccount?: AccountShapeFull;
-  friendAccount?: Account | AccountShapeFull;
-  avatarSize: number;
-  status: Pick<StatusShape, 'created_at' | 'edited_at'>;
-}> = ({ statusAccount, friendAccount, avatarSize, status }) => {
-  const AccountComponent = friendAccount ? AvatarOverlay : Avatar;
-  const hideAccountHandle = useAppSelector(
-    (state) =>
-      state.local_settings.get(
-        'hide_timeline_account_handle',
-        false,
-      ) as boolean,
-  );
+    );
+  } else if (status.visibility === 'direct') {
+    displayName = (
+      <FormattedMessage
+        id='status.header.message_to_me'
+        defaultMessage='{author} to You {count, plural, =0 {} one {+ # other} other {+ # others}}'
+        description='DisplayName is the author, count is # of other people mentioned in the post'
+        tagName='span'
+        values={{ author: displayName, count: status.mentions.length - 1 }}
+      />
+    );
+  }
 
   return (
-    <LinkedDisplayName
-      displayProps={{
-        account: statusAccount,
-        variant: hideAccountHandle ? 'noDomain' : 'default',
-        children: (
-          <span className='status__display-name__created-time'>
+    <header className={classNames(className, classes.header)}>
+      <Link
+        {...accountLinkProps}
+        role='presentation'
+        tabIndex={-1}
+        className={classes.headerAvatar}
+      >
+        <Avatar account={account} size={null} />
+      </Link>
+
+      <div>
+        <p className={classes.headerName}>
+          {displayName}
+          &bull;
+          <Link
+            to={{
+              pathname: statusLink(status),
+              state: { reference: 'status' },
+            }}
+          >
             <RelativeTimestamp timestamp={status.created_at} />
-            {status.edited_at && <StatusEditedAt editedAt={status.edited_at} />}
-          </span>
-        ),
-      }}
-      className='status__display-name'
-      reference='status'
-    >
-      <div className='status__avatar'>
-        <AccountComponent
-          account={statusAccount}
-          friend={friendAccount}
-          size={avatarSize}
-        />
+          </Link>
+        </p>
+
+        <p className={classes.headerHandle}>
+          <Link
+            {...accountLinkProps}
+            role='presentation'
+            tabIndex={-1}
+            id={handleId}
+          >
+            {handle ?? <Skeleton width='7ch' />}
+          </Link>
+        </p>
       </div>
-    </LinkedDisplayName>
+
+      {children}
+    </header>
   );
 };

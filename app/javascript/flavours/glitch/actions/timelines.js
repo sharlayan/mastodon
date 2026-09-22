@@ -8,6 +8,7 @@ import { toServerSideType } from 'flavours/glitch/utils/filters';
 import { importFetchedStatus, importFetchedStatuses } from './importer';
 import { submitMarkers } from './markers';
 import { timelineDelete } from './timelines_typed';
+import { isRedesignEnabled } from '../utils/environment';
 
 export { disconnectTimeline } from './timelines_typed';
 
@@ -177,7 +178,7 @@ export function fillTimelineGaps(timelineId, path, params = {}) {
   };
 }
 
-export const expandHomeTimeline            = ({ maxId, nextUri, timeMachine } = {}) => expandTimeline('home', '/api/v1/timelines/home', { max_id: maxId, nextUri, timeMachine, trackNext: timeMachine });
+export const expandHomeTimeline            = ({ maxId, nextUri, timeMachine } = {}) => expandTimeline('home', '/api/v1/timelines/home', { max_id: maxId, nextUri, timeMachine, trackNext: timeMachine, ...(isRedesignEnabled() ? { exclude_direct: true } : {}) });
 export const expandPublicTimeline          = ({ maxId, onlyMedia, onlyRemote, allowLocalOnly } = {}) => expandTimeline(`public${onlyRemote ? ':remote' : (allowLocalOnly ? ':allow_local_only' : '')}${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { remote: !!onlyRemote, allow_local_only: !!allowLocalOnly, max_id: maxId, only_media: !!onlyMedia });
 export const expandCommunityTimeline       = ({ maxId, onlyMedia } = {}) => expandTimeline(`community${onlyMedia ? ':media' : ''}`, '/api/v1/timelines/public', { local: true, max_id: maxId, only_media: !!onlyMedia });
 export const expandDirectTimeline          = ({ maxId } = {}) => expandTimeline('direct', '/api/v1/timelines/direct', { max_id: maxId });

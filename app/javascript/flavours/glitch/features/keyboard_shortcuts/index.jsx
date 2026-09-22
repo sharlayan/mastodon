@@ -4,8 +4,9 @@ import { defineMessages, FormattedMessage } from 'react-intl';
 
 import { Helmet } from '@unhead/react/helmet';
 
-import ImmutablePureComponent from 'react-immutable-pure-component';
 import { connect } from 'react-redux';
+
+import { ImmutablePureComponent } from 'react-immutable-pure-component';
 
 import InfoIcon from '@/material-icons/400-24px/info.svg?react';
 import { Column } from '@/flavours/glitch/components/column';
