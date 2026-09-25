@@ -17,7 +17,7 @@ import { updateStatus } from './statuses';
 import {
   updateTimeline,
   deleteFromTimelines,
-  expandHomeTimelineIfCurrent,
+  expandHomeTimeline,
   connectTimeline,
   disconnectTimeline,
   fillHomeTimelineGaps,
@@ -164,7 +164,7 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
  * @param {Dispatch} dispatch
  */
 async function refreshHomeTimelineAndNotification(dispatch) {
-  await dispatch(expandHomeTimelineIfCurrent());
+  await dispatch(expandHomeTimeline());
 
   // TODO: polling for merged notifications
   try {
