@@ -4,12 +4,21 @@ import api, { getLinks } from 'flavours/glitch/api';
 
 import timelinesReducer from '../reducers/timelines';
 
-import { expandClipTimeline } from './timelines';
+import {
+  expandClipTimeline,
+  expandHomeTimeline,
+  fillHomeTimelineGaps,
+} from './timelines';
 import { parseTimelineKey, timelineKey } from './timelines_typed';
 
 vi.mock('flavours/glitch/api', () => ({
   default: vi.fn(),
   getLinks: vi.fn(),
+}));
+
+vi.mock('./importer', () => ({
+  importFetchedStatus: vi.fn(() => ({ type: 'TEST_IMPORT_STATUS' })),
+  importFetchedStatuses: vi.fn(() => ({ type: 'TEST_IMPORT_STATUSES' })),
 }));
 
 const apiGet = vi.fn();
@@ -19,27 +28,29 @@ const response = { data: [], status: 200 };
 const initialState = timelinesReducer(undefined, { type: '@@INIT' });
 
 const dispatchTimeline = async (
-  action: ReturnType<typeof expandClipTimeline>,
+  action:
+    | ReturnType<typeof expandClipTimeline>
+    | ReturnType<typeof fillHomeTimelineGaps>,
   initialTimelineState = initialState,
 ) => {
   let state = initialTimelineState;
 
   const dispatch = vi.fn((dispatchedAction: unknown) => {
-    if (typeof dispatchedAction !== 'function') {
-      state = timelinesReducer(state, dispatchedAction as UnknownAction);
+    if (typeof dispatchedAction === 'function') {
+      return (dispatchedAction as typeof action)(dispatch, getState);
     }
 
+    state = timelinesReducer(state, dispatchedAction as UnknownAction);
     return dispatchedAction;
   });
 
-  await action(
-    dispatch,
-    () =>
-      ({
-        getIn: (path: string[], defaultValue?: unknown) =>
-          state.getIn(path.slice(1), defaultValue),
-      }) as never,
-  );
+  const getState = () =>
+    ({
+      getIn: (path: string[], defaultValue?: unknown) =>
+        state.getIn(path.slice(1), defaultValue),
+    }) as never;
+
+  await action(dispatch, getState);
 
   return { dispatch, state };
 };
@@ -95,6 +106,79 @@ describe('expandClipTimeline', () => {
     });
     expect(state.getIn(['clip:clip-id', 'next'])).toBeNull();
     expect(state.getIn(['clip:clip-id', 'hasMore'])).toBe(false);
+  });
+});
+
+describe('fillHomeTimelineGaps', () => {
+  beforeEach(() => {
+    apiGet.mockReset();
+    apiGet.mockResolvedValue(response);
+    vi.mocked(api).mockReturnValue({ get: apiGet } as never);
+    vi.mocked(getLinks).mockReturnValue({ refs: [] } as never);
+  });
+
+  test('requests the actual gap boundary with max_id', async () => {
+    const stateWithStatuses = timelinesReducer(initialState, {
+      type: 'TIMELINE_EXPAND_SUCCESS',
+      timeline: 'home',
+      statuses: [{ id: '40' }, { id: '30' }, { id: '10' }],
+      next: null,
+      partial: false,
+      isLoadingRecent: false,
+      usePendingItems: false,
+    });
+    const stateWithGap = timelinesReducer(stateWithStatuses, {
+      type: 'TIMELINE_INSERT',
+      timeline: 'home',
+      key: null,
+      index: 2,
+    });
+
+    await dispatchTimeline(fillHomeTimelineGaps(), stateWithGap);
+
+    expect(apiGet).toHaveBeenCalledTimes(1);
+    expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
+      params: { max_id: '30' },
+    });
+  });
+
+  test('loads the latest page and clears a leading gap when the old status overlaps', async () => {
+    const stateWithStatus = timelinesReducer(initialState, {
+      type: 'TIMELINE_EXPAND_SUCCESS',
+      timeline: 'home',
+      statuses: [{ id: '10' }],
+      next: null,
+      partial: false,
+      isLoadingRecent: false,
+      usePendingItems: false,
+    });
+    const reconnectedState = timelinesReducer(stateWithStatus, {
+      type: 'TIMELINE_CONNECT',
+      timeline: 'home',
+      usePendingItems: false,
+    });
+
+    expect(reconnectedState.getIn(['home', 'items', 0])).toBeNull();
+
+    apiGet.mockResolvedValue({ data: [{ id: '10' }], status: 200 });
+
+    const { state } = await dispatchTimeline(
+      fillHomeTimelineGaps(),
+      reconnectedState,
+    );
+    expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
+      params: {},
+    });
+    expect(state.getIn(['home', 'items', 0])).toBe('10');
+
+    apiGet.mockClear();
+    await dispatchTimeline(
+      expandHomeTimeline({ maxId: null }),
+      reconnectedState,
+    );
+    expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
+      params: { max_id: null },
+    });
   });
 });
 

@@ -7,7 +7,7 @@ import { toServerSideType } from 'flavours/glitch/utils/filters';
 
 import { importFetchedStatus, importFetchedStatuses } from './importer';
 import { submitMarkers } from './markers';
-import { timelineDelete } from './timelines_typed';
+import { isNonStatusId, timelineDelete } from './timelines_typed';
 import { isRedesignEnabled } from '../utils/environment';
 
 export { disconnectTimeline } from './timelines_typed';
@@ -164,12 +164,20 @@ export function fillTimelineGaps(timelineId, path, params = {}) {
   return async (dispatch, getState) => {
     const timeline = getState().getIn(['timelines', timelineId], ImmutableMap());
     const items = timeline.get('items');
-    const nullIndexes = items.map((statusId, index) => statusId === null ? index : null);
-    const gaps = nullIndexes.map(index => index > 0 ? items.get(index - 1) : null);
+    const gaps = items
+      .map((statusId, index) => statusId === TIMELINE_GAP ? index : null)
+      .filter(index => index !== null);
 
     // Only expand at most two gaps to avoid doing too many requests
-    for (const maxId of gaps.take(2)) {
-      await dispatch(expandTimeline(timelineId, path, { ...params, maxId }));
+    for (const index of gaps.take(2)) {
+      if (index === 0) {
+        await dispatch(expandTimeline(timelineId, path, { ...params, skipSinceId: true }));
+      } else {
+        const maxId = items.take(index).findLast(id => !isNonStatusId(id));
+        if (maxId) {
+          await dispatch(expandTimeline(timelineId, path, { ...params, max_id: maxId }));
+        }
+      }
     }
   };
 }

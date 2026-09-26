@@ -1,14 +1,25 @@
 import { useCallback } from 'react';
 import type { FC } from 'react';
 
+import { FormattedMessage } from 'react-intl';
+
 import type { Map, List } from 'immutable';
 
+import { XIcon } from '@phosphor-icons/react';
+
+import { hideAnnouncements } from '@/flavours/glitch/actions/announcements';
+import { IconButton } from '@/flavours/glitch/components/button/redesign';
 import type { RenderSlideFn } from '@/flavours/glitch/components/carousel';
 import { Carousel } from '@/flavours/glitch/components/carousel';
 import { CustomEmojiProvider } from '@/flavours/glitch/components/emoji/context';
 import { useCustomEmojis } from '@/flavours/glitch/hooks/useCustomEmojis';
-import { glitchMascots, mascot } from '@/flavours/glitch/initial_state';
-import { createAppSelector, useAppSelector } from '@/flavours/glitch/store';
+import { glitchMascots } from '@/flavours/glitch/initial_state';
+import {
+  createAppSelector,
+  useAppDispatch,
+  useAppSelector,
+} from '@/flavours/glitch/store';
+import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 import elephantUIPlane from '@/images/elephant_ui_plane.svg';
 
 import type { IAnnouncement } from './announcement';
@@ -23,8 +34,13 @@ const announcementSelector = createAppSelector(
 );
 
 export const Announcements: FC = () => {
+  const dispatch = useAppDispatch();
   const announcements = useAppSelector(announcementSelector);
   const emojis = useCustomEmojis();
+
+  const closeAnnouncements = useCallback(() => {
+    dispatch(hideAnnouncements());
+  }, [dispatch]);
 
   const renderSlide: RenderSlideFn<{
     id: string;
@@ -50,8 +66,20 @@ export const Announcements: FC = () => {
         className='announcements__mastodon'
         alt=''
         draggable='false'
-        src={encodeURI(glitchMascots[3] ?? mascot ?? elephantUIPlane)}
+        src={encodeURI(glitchMascots[3] ?? elephantUIPlane)}
       />
+
+      {isRedesignEnabled() && (
+        <IconButton
+          icon={XIcon}
+          onClick={closeAnnouncements}
+          size='sm'
+          variant='ghost'
+          className='announcements__close-button'
+        >
+          <FormattedMessage id='lightbox.close' defaultMessage='Close' />
+        </IconButton>
+      )}
 
       <CustomEmojiProvider emojis={emojis}>
         <Carousel

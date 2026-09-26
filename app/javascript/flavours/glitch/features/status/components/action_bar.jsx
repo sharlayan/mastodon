@@ -6,14 +6,8 @@ import { defineMessages } from 'react-intl';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import { connect } from 'react-redux';
 
-import BookmarkIcon from '@/material-icons/400-24px/bookmark-fill.svg?react';
-import BookmarkBorderIcon from '@/material-icons/400-24px/bookmark.svg?react';
 import AttachFileIcon from '@/material-icons/400-24px/attach_file.svg?react';
 import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
-import ReplyIcon from '@/material-icons/400-24px/reply.svg?react';
-import ReplyAllIcon from '@/material-icons/400-24px/reply_all.svg?react';
-import StarIcon from '@/material-icons/400-24px/star-fill.svg?react';
-import StarBorderIcon from '@/material-icons/400-24px/star.svg?react';
 import { injectIntl } from '@/flavours/glitch/components/intl';
 import { identityContextPropShape, withIdentity } from 'flavours/glitch/identity_context';
 import { PERMISSION_MANAGE_USERS, PERMISSION_MANAGE_FEDERATION } from 'flavours/glitch/permissions';
@@ -28,8 +22,17 @@ import { quoteItemState } from '@/flavours/glitch/components/status/boost_button
 import { selectStatusConditions } from '@/flavours/glitch/selectors/statuses';
 import { selectStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
 import { openModal } from '@/flavours/glitch/actions/modal';
+import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
+import {
+  StatusBookmarkActiveIcon,
+  StatusBookmarkIcon,
+  StatusLikeActiveIcon,
+  StatusLikeIcon,
+  StatusReplyAllIcon,
+  StatusReplyIcon,
+} from '@/flavours/glitch/components/status/icons';
 
-const messages = defineMessages({
+const baseMessages = defineMessages({
   delete: { id: 'status.delete', defaultMessage: 'Delete' },
   redraft: { id: 'status.redraft', defaultMessage: 'Delete & re-draft' },
   edit: { id: 'status.edit', defaultMessage: 'Edit' },
@@ -59,6 +62,15 @@ const messages = defineMessages({
   quotePolicyChange: { id: 'status.quote_policy_change', defaultMessage: 'Change who can quote' },
   reactions: { id: 'status.reactions', defaultMessage: 'Reactions' },
 });
+
+const redesignMessages = defineMessages({
+  favourite: { id: 'status.like', defaultMessage: 'Like' },
+  removeFavourite: { id: 'status.unlike', defaultMessage: 'Unlike' },
+  bookmark: { id: 'status.save', defaultMessage: 'Save' },
+  removeBookmark: { id: 'status.remove_from_saved', defaultMessage: 'Remove from Saved' },
+});
+
+const messages = isRedesignEnabled() ? {...baseMessages, ...redesignMessages} : baseMessages;
 
 const mapStateToProps = (state, { status }) => {
   const quotedStatusId = status.getIn(['quote', 'quoted_status']);
@@ -306,10 +318,10 @@ class ActionBar extends PureComponent {
 
     if (status.get('in_reply_to_id', null) === null) {
       replyIcon = 'reply';
-      replyIconComponent = ReplyIcon;
+      replyIconComponent = StatusReplyIcon;
     } else {
       replyIcon = 'reply-all';
-      replyIconComponent = ReplyAllIcon;
+      replyIconComponent = StatusReplyAllIcon;
     }
 
     const bookmarkTitle = intl.formatMessage(status.get('bookmarked') ? messages.removeBookmark : messages.bookmark);
@@ -317,9 +329,9 @@ class ActionBar extends PureComponent {
     const quoteExposed = this.props.statusActionBarHidden.get('quote') !== true;
     const quoteItem = quoteItemState(statusQuoteState);
     const configurableActions = {
-      favourite: <div className='detailed-status__button' key='favourite'><IconButton className='star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StarIcon : StarBorderIcon} onClick={this.handleFavouriteClick} /></div>,
+      favourite: <div className='detailed-status__button' key='favourite'><IconButton className='star-icon' animate active={status.get('favourited')} title={favouriteTitle} icon='star' iconComponent={status.get('favourited') ? StatusLikeActiveIcon : StatusLikeIcon} onClick={this.handleFavouriteClick} /></div>,
       reaction: reactionsEnabled ? <SharlayanStatusReactionButton key='reaction' enabled status={status} canReact={signedIn} onReactionAdd={this.props.onReactionAdd} wrapperClassName='detailed-status__button' buttonClassName='add-reaction-icon' /> : null,
-      bookmark: <div className='detailed-status__button' key='bookmark'><IconButton className='bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? BookmarkIcon : BookmarkBorderIcon} onClick={this.handleBookmarkClick} /></div>,
+      bookmark: <div className='detailed-status__button' key='bookmark'><IconButton className='bookmark-icon' disabled={!signedIn} active={status.get('bookmarked')} title={bookmarkTitle} icon='bookmark' iconComponent={status.get('bookmarked') ? StatusBookmarkActiveIcon : StatusBookmarkIcon} onClick={this.handleBookmarkClick} /></div>,
       clip: signedIn && clipsEnabled ? <div className='detailed-status__button' key='clip'><IconButton title={intl.formatMessage({ id: 'status.add_to_clip', defaultMessage: 'Add to clip' })} icon='paperclip' iconComponent={AttachFileIcon} onClick={() => this.props.dispatch(openModal({ modalType: 'CLIP_ADD', modalProps: { statusId: status.get('id') } }))} /></div> : null,
       quote: signedIn ? <div className='detailed-status__button' key='quote'><IconButton disabled={quoteItem.disabled} title={intl.formatMessage(quoteItem.meta ?? quoteItem.title)} icon='quote-right' iconComponent={quoteItem.iconComponent} onClick={quoteItem.disabled ? undefined : this.handleQuoteClick} /></div> : null,
     };
@@ -333,7 +345,7 @@ class ActionBar extends PureComponent {
         {this.props.statusActionBarOrder.map(key => this.props.statusActionBarHidden.get(key) === true ? null : configurableActions[key])}
 
         <div className='detailed-status__action-bar-dropdown'>
-          <Dropdown icon='ellipsis-h' iconComponent={MoreHorizIcon} items={menu} direction='left' title={intl.formatMessage(messages.more)} />
+          <Dropdown icon='ellipsis-h' iconComponent={MoreHorizIcon} status={status} items={menu} direction='left' title={intl.formatMessage(messages.more)} />
         </div>
       </div>
     );

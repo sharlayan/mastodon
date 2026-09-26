@@ -52,6 +52,8 @@ import {
 } from 'flavours/glitch/selectors/settings';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
+import { Announcements } from '../announcements';
+import { useHasAnnouncements } from '../announcements/hooks';
 import {
   FilteredNotificationsBanner,
   FilteredNotificationsIconButton,
@@ -220,9 +222,14 @@ export const Notifications: React.FC<{
     );
   }, [notifications, isLoading, hasMore, lastReadId, handleLoadGap]);
 
+  const { shouldShowAnnouncements } = useHasAnnouncements({
+    fetch: isRedesignEnabled(),
+  });
+
   const prepend = (
     <>
       {needsNotificationPermission && <NotificationsPermissionBanner />}
+      {isRedesignEnabled() && shouldShowAnnouncements && <Announcements />}
       <FilteredNotificationsBanner />
     </>
   );
