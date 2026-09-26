@@ -19,7 +19,18 @@ class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
   end
 
   def create
-    MuteService.new.call(current_account, @target, notifications: ActiveModel::Type::Boolean.new.cast(params.fetch(:notifications, true)))
+    expires_at = params[:expiresAt]
+    return render_invalid_param('#/expiresAt', 'must be an integer or null') unless expires_at.nil? || expires_at.is_a?(Integer)
+
+    duration = 0
+    unless expires_at.nil? || expires_at.zero?
+      duration_ms = expires_at - (Time.now.utc.to_f * 1000).floor
+      return head 204 if duration_ms <= 0
+
+      duration = (duration_ms + 999) / 1000
+    end
+
+    MuteService.new.call(current_account, @target, notifications: ActiveModel::Type::Boolean.new.cast(params.fetch(:notifications, true)), duration: duration)
     head 204
   end
 
@@ -56,7 +67,7 @@ class Api::MisskeyCompat::MutesController < Api::MisskeyCompat::BaseController
     {
       id: MisskeyCompat::MiId.encode(mute.id),
       createdAt: mute.created_at.iso8601,
-      expiresAt: nil,
+      expiresAt: mute.expires_at&.utc&.iso8601(3),
       muteeId: MisskeyCompat::MiId.encode(mute.target_account_id),
       mutee: MisskeyCompat::UserSerializer.serialize(mute.target_account, detailed: true, viewer: current_account, relationships: relationships),
     }

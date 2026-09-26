@@ -4,11 +4,11 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   include Redisable
 
   requires_write_scope :create, :update, :destroy, :move_bulk, :upload_from_url
-  requires_misskey_permission 'read:drive', :attached_notes, :index, :show, :find, :find_by_hash, :check_existence
+  requires_misskey_permission 'read:drive', :overview, :stream, :attached_notes, :index, :show, :find, :find_by_hash, :check_existence
   requires_misskey_permission 'write:drive', :create, :update, :destroy, :move_bulk, :upload_from_url
 
   before_action :require_user!, except: :unavailable
-  before_action :require_drive_enabled!, only: [:index, :show, :update, :destroy, :find, :find_by_hash, :check_existence, :move_bulk, :upload_from_url]
+  before_action :require_drive_enabled!, only: [:overview, :stream, :index, :show, :update, :destroy, :find, :find_by_hash, :check_existence, :move_bulk, :upload_from_url]
   before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
   before_action :enforce_search_rate_limit!, only: [:find, :find_by_hash]
 
@@ -30,6 +30,18 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
 
   def unavailable
     render_error('Drive is not available on this server', 'UNAVAILABLE', 400)
+  end
+
+  def overview
+    render json: {
+      capacity: current_account.drive_quota_bytes,
+      usage: current_account.drive_files.sum(:file_file_size).to_i,
+    }
+  end
+
+  def stream
+    files = apply_file_range(file_scope(include_all_folders: true)).reorder(id: forward_pagination? ? :asc : :desc).limit(pagination_limit(default: 10, max: LIMIT)).to_a
+    render json: files.map { |file| MisskeyCompat::DriveFileSerializer.serialize(file) }
   end
 
   def attached_notes
@@ -150,7 +162,8 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   end
 
   def paginated_search(scope)
-    apply_file_range(scope).reorder(id: :desc).limit(pagination_limit(default: SEARCH_LIMIT, max: SEARCH_LIMIT)).to_a
+    direction = forward_pagination? ? :asc : :desc
+    apply_file_range(scope).reorder(id: direction).limit(pagination_limit(default: SEARCH_LIMIT, max: SEARCH_LIMIT)).to_a
   end
 
   def drive_quota_full?
@@ -168,14 +181,14 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     raise MisskeyCompat::DriveFileResolver::NoSuchFileError
   end
 
-  def file_scope
+  def file_scope(include_all_folders: false)
     scope = current_account.drive_files.includes(:custom_name)
-    scope = params[:folderId].present? ? scope.where(folder_id: params[:folderId]) : scope.where(folder_id: nil)
+    scope = params[:folderId].present? ? scope.where(folder_id: params[:folderId]) : scope.where(folder_id: nil) unless include_all_folders
     if params[:type].present?
       type = params[:type].to_s
       scope = type.end_with?('/*') ? scope.where('file_content_type LIKE ?', "#{type.delete_suffix('*')}%") : scope.where(file_content_type: type)
     end
-    apply_compat_date_range(scope)
+    apply_compat_pagination_dates(scope)
   end
 
   def apply_file_range(scope)
@@ -186,12 +199,13 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
 
   def apply_file_sort(scope)
     case params[:sort]
+    when '+createdAt' then scope.reorder(id: :desc)
     when '-createdAt' then scope.reorder(id: :asc)
     when '+name' then scope.reorder(file_file_name: :desc, id: :desc)
     when '-name' then scope.reorder(file_file_name: :asc, id: :desc)
     when '+size' then scope.reorder(file_file_size: :desc, id: :desc)
     when '-size' then scope.reorder(file_file_size: :asc, id: :desc)
-    else scope.reorder(id: :desc)
+    else scope.reorder(id: forward_pagination? ? :asc : :desc)
     end
   end
 
@@ -224,10 +238,11 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
                  end
     raise MisskeyCompat::DriveFileResolver::NoSuchFileError if drive_file.nil? && media.nil?
 
-    scope = apply_compat_date_range(Status.where(id: status_ids))
+    scope = Status.where(id: status_ids)
+    scope = apply_compat_pagination_dates(scope)
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('statuses.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
-    scope.order(id: :desc).limit(pagination_limit(default: 10, max: LIMIT)).to_a.select { |status| StatusPolicy.new(current_account, status).show? }
+    scope.order(id: forward_pagination? ? :asc : :desc).limit(pagination_limit(default: 10, max: LIMIT)).to_a.select { |status| StatusPolicy.new(current_account, status).show? }
   end
 
   def create_persistent_drive_file

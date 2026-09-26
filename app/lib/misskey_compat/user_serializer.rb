@@ -90,8 +90,11 @@ class MisskeyCompat::UserSerializer
   def me_fields(user)
     account = user.account
     ff_visibility = account.hide_collections? ? 'followers' : 'public'
+    is_admin = user.role.can?(:administrator)
 
     {
+      isAdmin: is_admin,
+      isModerator: is_admin || user.role.can?(*UserRole::Flags::CATEGORIES[:moderation]),
       alwaysMarkNsfw: user.settings['default_sensitive'] || false,
       carefulBot: false,
       autoAcceptFollowed: user.settings['auto_accept_followed'] || false,

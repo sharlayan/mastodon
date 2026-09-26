@@ -10,6 +10,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   CONVERSATION_OFFSET_LIMIT = 1_000
   SCHEDULED_OFFSET_LIMIT = 1_000
+  TIMELINE_SCAN_LIMIT = 1_000
+  TIMELINE_BATCH_SIZE = 100
+  RELATED_NOTE_SCAN_LIMIT = 1_000
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
@@ -43,19 +46,25 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
 
   def timeline
-    render_notes HomeFeed.new(current_account).get(timeline_pagination_limit, timeline_until_id, timeline_since_id, timeline_min_id)
+    render_notes filtered_timeline([HomeFeed.new(current_account)], timeline_pagination_limit)
   end
 
   def local_timeline
-    render_notes public_feed(local: true).get(timeline_pagination_limit, timeline_until_id, timeline_since_id, timeline_min_id)
+    return if invalid_timeline_file_replies?(:local)
+
+    render_notes filtered_timeline([public_feed(local: true, only_media: timeline_with_files?)], timeline_pagination_limit, filter_replies: true)
   end
 
   def hybrid_timeline
-    render_notes public_feed(allow_local_only: true).get(timeline_pagination_limit, timeline_until_id, timeline_since_id, timeline_min_id)
+    return if invalid_timeline_file_replies?(:hybrid)
+    return render_notes([]) unless hybrid_timeline_available?
+
+    feeds = [HomeFeed.new(current_account), public_feed(local: true, only_media: timeline_with_files?)]
+    render_notes filtered_timeline(feeds, timeline_pagination_limit, filter_replies: true)
   end
 
   def global_timeline
-    render_notes public_feed.get(timeline_pagination_limit, timeline_until_id, timeline_since_id, timeline_min_id)
+    render_notes filtered_timeline([public_feed(only_media: timeline_with_files?)], timeline_pagination_limit)
   end
 
   def show
@@ -66,8 +75,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def children
-    scope = Status.where(in_reply_to_id: @note.id).or(Status.where(reblog_of_id: @note.id).where.not(text: [nil, '']))
-    render_visible_notes paginate_notes(scope)
+    contentful = Status.where.not(text: [nil, ''])
+      .or(Status.where.not(poll_id: nil))
+      .or(Status.where(id: MediaAttachment.where.not(status_id: nil).select(:status_id)))
+    renotes = Status.where(reblog_of_id: @note.id).or(Status.where(id: accepted_quote_status_ids))
+    scope = Status.where(in_reply_to_id: @note.id).or(Status.where(id: renotes.where(id: contentful.select(:id)).select(:id)))
+    render_related_notes scope
   end
 
   def replies
@@ -88,13 +101,16 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def renotes
-    scope = Status.where(reblog_of_id: @note.id).where(text: [nil, ''])
-    render_visible_notes paginate_notes(scope)
+    scope = Status.where(reblog_of_id: @note.id).or(Status.where(id: accepted_quote_status_ids))
+    render_related_notes scope
   end
 
   def unrenote
-    Status.where(account_id: current_account.id, reblog_of_id: @note.id).find_each do |reblog|
-      RemoveStatusService.new.call(reblog)
+    quote_status_ids = Quote.where(account_id: current_account.id, quoted_status_id: @note.id, state: %i(accepted pending)).select(:status_id)
+    scope = Status.where(account_id: current_account.id, reblog_of_id: @note.id)
+      .or(Status.where(account_id: current_account.id, id: quote_status_ids))
+    scope.reorder(nil).find_each do |status|
+      RemoveStatusService.new.call(status)
     end
     head 204
   end
@@ -400,6 +416,42 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def accepted_quote_status_ids
+    Quote.accepted.where(quoted_status_id: @note.id).select(:status_id)
+  end
+
+  def render_related_notes(scope)
+    upper_id = until_id || snowflake_id_at(params[:untilDate])
+    lower_id = since_id || snowflake_id_at(params[:sinceDate])
+    forward = lower_id.present? && upper_id.blank?
+    scope = scope.where(id: ...(upper_id.to_i)) if upper_id.present?
+    scope = scope.where('statuses.id > ?', lower_id.to_i) if lower_id.present?
+    limit = pagination_limit(default: 10, max: 100)
+    batch_size = [limit * 2, 100].min
+    statuses = []
+    cursor = nil
+    scanned = 0
+
+    while statuses.size < limit && scanned < RELATED_NOTE_SCAN_LIMIT
+      batch = scope
+      batch = forward ? batch.where('statuses.id > ?', cursor) : batch.where(id: ...cursor) if cursor
+      page = batch.reorder(id: forward ? :asc : :desc).limit([batch_size, RELATED_NOTE_SCAN_LIMIT - scanned].min).to_a
+      break if page.empty?
+
+      ActiveRecord::Associations::Preloader.new(records: page, associations: [:account, :mentions]).call
+      page.each do |status|
+        statuses << status if StatusPolicy.new(current_account, status).show?
+        break if statuses.size >= limit
+      end
+
+      scanned += page.size
+      cursor = page.last.id
+      break if page.size < batch_size
+    end
+
+    render_notes statuses
+  end
 
   def paginate_notes(scope)
     scope = scope.where(id: ...(until_id.to_i)) if until_id.present?
@@ -775,7 +827,91 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def timeline_pagination_limit
-    pagination_limit(max: 100)
+    pagination_limit(default: 10, max: 100)
+  end
+
+  def timeline_with_files?
+    ActiveModel::Type::Boolean.new.cast(params[:withFiles])
+  end
+
+  def timeline_with_renotes?
+    !params.key?(:withRenotes) || ActiveModel::Type::Boolean.new.cast(params[:withRenotes])
+  end
+
+  def timeline_with_replies?
+    ActiveModel::Type::Boolean.new.cast(params[:withReplies])
+  end
+
+  def invalid_timeline_file_replies?(kind)
+    return false unless timeline_with_files? && timeline_with_replies?
+
+    id = kind == :local ? 'dd9c8400-1cb5-4eef-8a31-200c5f933793' : 'dfaa3eb7-8002-4cb7-bcc4-1095df46656f'
+    render_error('Specifying both withReplies and withFiles is not supported', 'BOTH_WITH_REPLIES_AND_WITH_FILES', 400, id: id)
+    true
+  end
+
+  def hybrid_timeline_available?
+    return false if RoleplayModeHelper.roleplay_public_timelines_hidden_from_admins? || RoleplayModeHelper.roleplay_local_timeline_disabled?
+
+    case Setting.local_live_feed_access
+    when 'public', 'authenticated'
+      true
+    when 'disabled'
+      current_user.can?(:view_feeds)
+    else
+      false
+    end
+  end
+
+  def filtered_timeline(feeds, limit, filter_replies: false)
+    forward = timeline_min_id.present?
+    states = feeds.map { |feed| { feed: feed, buffer: [], cursor: forward ? timeline_min_id : timeline_until_id, pages: 0, exhausted: false } }
+    seen = Set.new
+    results = []
+
+    while results.size < limit
+      states.each { |state| fill_timeline_buffer(state, forward) if state[:buffer].empty? && !state[:exhausted] }
+      available = states.reject { |state| state[:buffer].empty? }
+      break if available.empty?
+
+      state = available.public_send(forward ? :min_by : :max_by) { |item| item[:buffer].first.id }
+      status = state[:buffer].shift
+      next unless seen.add?(status.id)
+      next if timeline_with_files? && status.ordered_media_attachments.empty?
+      next if !timeline_with_renotes? && pure_timeline_renote?(status)
+      next if filter_replies && !timeline_with_replies? && status.in_reply_to_account_id.present? && status.in_reply_to_account_id != status.account_id
+
+      results << status
+    end
+
+    results
+  end
+
+  def fill_timeline_buffer(state, forward)
+    while state[:buffer].empty? && state[:pages] < TIMELINE_SCAN_LIMIT / TIMELINE_BATCH_SIZE
+      max_id = forward ? timeline_until_id : state[:cursor]
+      min_id = forward ? state[:cursor] : nil
+      page = state[:feed].get(TIMELINE_BATCH_SIZE, max_id, timeline_since_id, min_id).to_a
+      state[:pages] += 1
+
+      if page.any?
+        ActiveRecord::Associations::Preloader.new(records: page, associations: :media_attachments).call if timeline_with_files? || !timeline_with_renotes?
+        state[:buffer] = page.sort_by(&:id)
+        state[:buffer].reverse! unless forward
+        pagination_max_id = state[:feed].pagination_max_id if state[:feed].respond_to?(:pagination_max_id)
+        state[:cursor] = forward ? page.max_by(&:id).id : (pagination_max_id || page.min_by(&:id).id)
+      elsif !forward && state[:feed].respond_to?(:pagination_max_id) && state[:feed].pagination_max_id && state[:feed].pagination_max_id != state[:cursor]
+        state[:cursor] = state[:feed].pagination_max_id
+      else
+        state[:exhausted] = true
+      end
+    end
+
+    state[:exhausted] = true if state[:pages] >= TIMELINE_SCAN_LIMIT / TIMELINE_BATCH_SIZE && state[:buffer].empty?
+  end
+
+  def pure_timeline_renote?(status)
+    status.reblog? && status.text.blank? && status.spoiler_text.blank? && status.ordered_media_attachments.empty?
   end
 
   def timeline_until_id

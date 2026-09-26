@@ -59,6 +59,21 @@ RSpec.describe Antenna do
       expect(antenna.matches?(status_with(text: 'nothing here'))).to be false
     end
 
+    it 'filters replies only when the antenna disables them' do
+      parent = Fabricate(:status, account: author, text: 'original', visibility: :public)
+      reply = Fabricate(:status, account: author, text: 'hello reply', thread: parent, visibility: :public)
+      antenna = Fabricate(:antenna, account: account, any_keywords: false, keywords: %w(hello))
+
+      expect(antenna.with_replies).to be(true)
+      expect(described_class.matching(reply)).to include(antenna)
+
+      antenna.update!(with_replies: false)
+
+      expect(antenna.matches?(reply)).to be(false)
+      expect(described_class.matching(reply)).to_not include(antenna)
+      expect(antenna.matches?(status_with(text: 'hello note'))).to be(true)
+    end
+
     it 'does not match keywords against a mention domain' do
       mentioned_account = Fabricate(:account, domain: 'sharlayan.in')
       status = status_with(text: '@mentioned@sharlayan.in hello')

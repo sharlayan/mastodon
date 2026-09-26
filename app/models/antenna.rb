@@ -18,6 +18,7 @@
 #  keywords         :jsonb            not null
 #  title            :string           default(""), not null
 #  with_media_only  :boolean          default(FALSE), not null
+#  with_replies     :boolean          default(TRUE), not null
 #  created_at       :datetime         not null
 #  updated_at       :datetime         not null
 #  account_id       :bigint(8)        not null
@@ -105,6 +106,7 @@ class Antenna < ApplicationRecord
   def matches?(status, domain: nil, tag_ids: nil, text: nil)
     return false if status.nil?
     return false unless configured?
+    return false if !with_replies? && status.reply?
 
     target  = status.reblog? ? status.reblog : status
     account = target.account

@@ -11,6 +11,7 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
 
   before_action :require_user!
   before_action :set_antenna!, only: [:show, :update, :destroy, :notes, :remove_note]
+  before_action :validate_supported_params!, only: [:create, :update]
 
   def index
     render json: current_account.antennas.order(id: :desc).map { |antenna| serialize(antenna) }
@@ -67,10 +68,29 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
     params[:name].to_s
   end
 
+  def validate_supported_params!
+    return render_invalid_param('#/properties/src', 'unsupported source') if params.key?(:src) && !%w(all users users_blacklist).include?(params[:src])
+
+    return render_invalid_param('#/properties/userListId', 'unsupported user list') if params[:userListId].present?
+
+    %i(caseSensitive localOnly excludeBots excludeNotesInSensitiveChannel).each do |key|
+      return render_invalid_param("#/properties/#{key}", 'unsupported option') if truthy(params[key])
+    end
+
+    %i(keywords excludeKeywords).each do |key|
+      next unless params.key?(key)
+
+      groups = params[key]
+      return render_invalid_param("#/properties/#{key}", 'must be an array of string arrays') unless groups.is_a?(Array) && groups.all? { |group| group.is_a?(Array) && group.all?(String) }
+      return render_invalid_param("#/properties/#{key}", 'AND keyword groups are unsupported') if groups.any? { |group| group.compact_blank.size > 1 }
+    end
+  end
+
   def apply_params!(antenna)
     antenna.keywords = flatten_keywords(params[:keywords]) if params.key?(:keywords)
     antenna.exclude_keywords = flatten_keywords(params[:excludeKeywords]) if params.key?(:excludeKeywords)
     antenna.with_media_only = truthy(params[:withFile]) if params.key?(:withFile)
+    antenna.with_replies = truthy(params[:withReplies]) if params.key?(:withReplies)
     antenna.any_keywords = antenna.keywords.empty?
 
     return unless params.key?(:src)
@@ -134,7 +154,7 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
       caseSensitive: false,
       localOnly: false,
       excludeBots: false,
-      withReplies: false,
+      withReplies: antenna.with_replies,
       withFile: antenna.with_media_only,
       excludeNotesInSensitiveChannel: false,
       isActive: antenna.available,
@@ -187,7 +207,6 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
   end
 
   def nest_keywords(keywords)
-    list = Array(keywords).flatten.compact_blank
-    list.empty? ? [] : [list]
+    Array(keywords).flatten.compact_blank.map { |keyword| Array.wrap(keyword) }
   end
 end

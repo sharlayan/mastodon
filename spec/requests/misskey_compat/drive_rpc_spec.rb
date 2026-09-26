@@ -17,6 +17,34 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
     Setting.drive_enabled = false
   end
 
+  it 'reports Drive capacity and original file usage in bytes' do
+    file = insert_drive_file
+    file.update_column(:storage_file_size, 345)
+
+    rpc_post 'drive'
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body).to eq('capacity' => account.drive_quota_bytes, 'usage' => 1)
+  end
+
+  it 'streams owned files across folders with type and cursor filters' do
+    first = insert_drive_file
+    folder = account.drive_folders.create!(name: 'Nested')
+    second = insert_drive_file.tap { |file| file.update!(folder: folder) }
+    third = insert_drive_file
+    third.update_column(:file_content_type, 'text/plain')
+    Fabricate(:account).drive_files.create!(file: attachment_fixture('avatar.gif'))
+
+    rpc_post 'drive/stream', type: 'image/*', limit: 1
+    expect(response.parsed_body.pluck(:id)).to eq([mi_id(second.id)])
+
+    rpc_post 'drive/stream', type: 'image/*', untilId: mi_id(second.id)
+    expect(response.parsed_body.pluck(:id)).to eq([mi_id(first.id)])
+
+    rpc_post 'drive/stream', type: 'image/*', sinceId: mi_id(first.id)
+    expect(response.parsed_body.pluck(:id)).to eq([mi_id(second.id)])
+  end
+
   describe 'file RPC' do
     let!(:file) { DriveFile.create!(account: account, file: attachment_fixture('attachment.jpg')).tap { |item| item.update!(md5: '0123456789abcdef') } }
 
@@ -125,6 +153,26 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(first_page.size).to eq(30)
       expect(second_page.size).to eq(11)
       expect(first_page & second_page).to be_empty
+    end
+
+    it 'returns the nearest newer files and folders for since cursors' do
+      files = Array.new(4) { insert_drive_file }
+      folders = Array.new(4) { |index| account.drive_folders.create!(name: "Folder #{index}") }
+      base_time = Time.zone.local(2026, 1, 1)
+      files.each_with_index { |item, index| item.update_column(:created_at, base_time + index.hours) }
+      folders.each_with_index { |item, index| item.update_column(:created_at, base_time + index.hours) }
+
+      rpc_post 'drive/files', sinceId: mi_id(files.first.id), limit: 2
+      expect(response.parsed_body.pluck(:id)).to eq(files[1..2].map { |item| mi_id(item.id) })
+
+      rpc_post 'drive/files', sinceId: mi_id(files.first.id), untilDate: (base_time - 1.hour).to_i * 1000, limit: 2
+      expect(response.parsed_body.pluck(:id)).to eq(files[1..2].map { |item| mi_id(item.id) })
+
+      rpc_post 'drive/files', sinceId: mi_id(files.first.id), limit: 2, sort: '+createdAt'
+      expect(response.parsed_body.pluck(:id)).to eq(files.last(2).reverse.map { |item| mi_id(item.id) })
+
+      rpc_post 'drive/folders', sinceDate: (base_time + 1.hour).to_i * 1000, limit: 2
+      expect(response.parsed_body.pluck(:id)).to eq(folders[2..3].map { |item| mi_id(item.id) })
     end
 
     it 'returns every visible note attached through Drive pointers' do
@@ -266,10 +314,12 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
   it 'requires the native Drive feature for resource RPC' do
     Setting.drive_enabled = false
 
-    rpc_post 'drive/files'
+    %w(drive drive/stream drive/files).each do |endpoint|
+      rpc_post endpoint
 
-    expect(response).to have_http_status(400)
-    expect(response.parsed_body.dig(:error, :code)).to eq('UNAVAILABLE')
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('UNAVAILABLE')
+    end
   end
 
   it 'requires write scope for Drive mutations' do
@@ -305,8 +355,10 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       drive/folders/find
       drive/folders/show
       drive/folders/update
+      drive/stream
     )
     expect(drive_endpoints).to match_array(expected)
+    expect(response.parsed_body).to include('drive')
   end
 
   it 'advertises only the legacy upload endpoint while the native Drive feature is disabled' do
@@ -320,6 +372,9 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
     expect(response).to have_http_status(200)
 
     post '/api/endpoint', params: { endpoint: 'drive/files/show' }, as: :json
+    expect(response).to have_http_status(404)
+
+    post '/api/endpoint', params: { endpoint: 'drive' }, as: :json
     expect(response).to have_http_status(404)
   end
 

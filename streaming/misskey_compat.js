@@ -7,8 +7,10 @@ const MAX_CHANNEL_SUBSCRIPTIONS = 50;
 const MAX_NOTE_SUBSCRIPTIONS = 100;
 const MAX_CHANNEL_ID_LENGTH = 128;
 const MAX_CHANNEL_NAME_LENGTH = 64;
+const MAX_RECENT_HYBRID_NOTES = 200;
 const MAX_DATABASE_ID = 9223372036854775807n;
 const REACTION_NOTE_UPDATE_TYPES = new Set(['reacted', 'unreacted']);
+const TIMELINE_CHANNELS = new Set(['homeTimeline', 'localTimeline', 'hybridTimeline', 'globalTimeline']);
 
 const MI_ID_TIME2000 = 946684800000;
 
@@ -67,30 +69,53 @@ const canReadDrive = (request, grantPermissions) => (Array.isArray(grantPermissi
 
 const isSelfChannel = (channel) => channel === 'drive';
 
+const isPureRenote = (note) => note.renoteId != null && note.text == null && note.cw == null && note.replyId == null && note.poll == null && !note.fileIds?.length;
+
+const allowsTimelineNote = (channel, params, request, options, sourceChannel, note) => {
+  if (!TIMELINE_CHANNELS.has(channel)) return true;
+
+  if (params.withFiles === true && !note.fileIds?.length) return false;
+  if (params.withRenotes === false && isPureRenote(note)) return false;
+
+  if (channel === 'globalTimeline') {
+    if (note.localOnly === true) return false;
+    if (note.user?.host == null ? options?.filterLocal : options?.filterRemote) return false;
+  }
+
+  if ((channel === 'localTimeline' || (channel === 'hybridTimeline' && sourceChannel === 'timeline:public:local')) && params.withReplies !== true && note.replyId != null) {
+    const authorId = decodeDatabaseId(note.userId);
+    const parentAuthorId = decodeDatabaseId(note.reply?.userId);
+    if (authorId !== request.accountId && parentAuthorId !== request.accountId && (!parentAuthorId || parentAuthorId !== authorId)) return false;
+  }
+
+  return true;
+};
+
 /**
  * @param {string} channel
  * @param {Object} params
  * @param {Object} request
  * @param {Function} channelNameToIds
- * @returns {Promise<string[]>}
+ * @returns {Promise<{channelIds: string[], options?: Object}>}
  */
 const resolveChannel = (channel, params, request, channelNameToIds) => {
   switch (channel) {
   case 'homeTimeline':
-    return Promise.resolve([`timeline:${request.accountId}`]);
+    return Promise.resolve({ channelIds: [`timeline:${request.accountId}`] });
   case 'localTimeline':
+    return channelNameToIds(request, 'public:local', {}).then((r) => ({ channelIds: r.options?.filterLocal ? [] : r.channelIds }));
   case 'hybridTimeline':
-    return channelNameToIds(request, 'public:local', {}).then((r) => r.channelIds);
+    return channelNameToIds(request, 'public:local', {}).then((r) => ({ channelIds: r.channelIds.length > 0 && !r.options?.filterLocal ? [`timeline:${request.accountId}`, ...r.channelIds] : [] }));
   case 'globalTimeline':
-    return channelNameToIds(request, 'public', {}).then((r) => r.channelIds);
+    return channelNameToIds(request, 'public', {}).then((r) => ({ channelIds: r.options?.filterLocal && r.options?.filterRemote ? [] : r.channelIds, options: r.options }));
   case 'userList':
-    return channelNameToIds(request, 'list', { list: decodeMiId(params.listId) }).then((r) => r.channelIds);
+    return channelNameToIds(request, 'list', { list: decodeMiId(params.listId) });
   case 'antenna':
-    return channelNameToIds(request, 'antenna', { antenna: decodeMiId(params.antennaId) }).then((r) => r.channelIds);
+    return channelNameToIds(request, 'antenna', { antenna: decodeMiId(params.antennaId) });
   case 'hashtag':
-    return channelNameToIds(request, 'hashtag', { tag: extractTag(params) }).then((r) => r.channelIds);
+    return channelNameToIds(request, 'hashtag', { tag: extractTag(params) });
   case 'drive':
-    return Promise.resolve([`drive:${request.accountId}`]);
+    return Promise.resolve({ channelIds: [`drive:${request.accountId}`] });
   default:
     return Promise.reject(new Error(`Unsupported misskey channel: ${channel}`));
   }
@@ -234,25 +259,39 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       if (!authorized || channels.get(id) !== reservation) return undefined;
 
       return resolveChannel(channel, params, session.request, channelNameToIds);
-    }).then((channelIds) => {
-      if (!channelIds || channels.get(id) !== reservation) return;
+    }).then((resolution) => {
+      if (!resolution || channels.get(id) !== reservation) return;
+
+      const { channelIds, options } = resolution;
+      if (channelIds.length === 0) return;
 
       const misskeyChannelIds = channelIds.map((c) => MISSKEY_PREFIX + c);
+      const recentNotes = channel === 'hybridTimeline' ? new Set() : null;
 
-      const listener = isSelfChannel(channel)
-        ? (json) => {
-          if (!json || json.event !== 'drive') return;
-          send(session, 'channel', { id, type: json.payload.type, body: json.payload.body });
-        }
-        : (json) => {
-          if (!json || json.event !== 'note') return;
-          send(session, 'channel', { id, type: 'note', body: json.payload });
-        };
+      const listeners = misskeyChannelIds.map((channelId, index) => {
+        const sourceChannel = channelIds[index];
+        const listener = isSelfChannel(channel)
+          ? (json) => {
+            if (!json || json.event !== 'drive') return;
+            send(session, 'channel', { id, type: json.payload.type, body: json.payload.body });
+          }
+          : (json) => {
+            if (!json || json.event !== 'note') return;
+            if (!allowsTimelineNote(channel, params, session.request, options, sourceChannel, json.payload)) return;
+            if (recentNotes) {
+              if (recentNotes.has(json.payload.id)) return;
+              recentNotes.add(json.payload.id);
+              if (recentNotes.size > MAX_RECENT_HYBRID_NOTES) recentNotes.delete(recentNotes.values().next().value);
+            }
+            send(session, 'channel', { id, type: 'note', body: json.payload });
+          };
 
-      misskeyChannelIds.forEach((c) => subscribe(c, listener));
+        subscribe(channelId, listener);
+        return listener;
+      });
       const stopHeartbeat = subscriptionHeartbeat(misskeyChannelIds);
 
-      channels.set(id, { channelIds: misskeyChannelIds, listener, stopHeartbeat });
+      channels.set(id, { channelIds: misskeyChannelIds, listeners, stopHeartbeat });
     }).catch((err) => {
       logger.error({ err }, 'misskey compat channel connect failed');
     }).finally(() => {
@@ -268,7 +307,7 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       return;
     }
 
-    sub.channelIds.forEach((c) => unsubscribe(c, sub.listener));
+    sub.channelIds.forEach((c, index) => unsubscribe(c, sub.listeners?.[index] || sub.listener));
     sub.stopHeartbeat();
     channels.delete(id);
   };

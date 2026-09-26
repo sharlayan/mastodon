@@ -51,7 +51,7 @@ RSpec.describe 'Misskey-compat timeline position restoration' do
 
       expect(response).to have_http_status(200)
       ids = response.parsed_body.pluck('id').map { |id| MisskeyCompat::MiId.decode(id).to_i }
-      expect(ids).to contain_exactly(immediately_after.id, nearby.id)
+      expect(ids).to eq([immediately_after.id, nearby.id])
       expect(ids).to not_include(center.id, newest.id)
     end
   end

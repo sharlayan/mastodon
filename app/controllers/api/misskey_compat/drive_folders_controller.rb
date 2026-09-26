@@ -13,7 +13,7 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
   LIMIT = 100
 
   def index
-    folders = folder_scope(:folderId).order(id: :desc).limit(pagination_limit(default: 10, max: LIMIT))
+    folders = folder_scope(:folderId).order(id: forward_pagination? ? :asc : :desc).limit(pagination_limit(default: 10, max: LIMIT))
     render json: folders.map { |folder| MisskeyCompat::DriveFolderSerializer.serialize(folder) }
   end
 
@@ -70,7 +70,7 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
   def folder_scope(parent_key)
     scope = current_account.drive_folders.includes(:parent)
     scope = params[parent_key].present? ? scope.where(parent_id: params[parent_key]) : scope.where(parent_id: nil)
-    scope = apply_compat_date_range(scope)
+    scope = apply_compat_pagination_dates(scope)
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('drive_folders.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     scope

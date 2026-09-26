@@ -36,6 +36,7 @@ RSpec.describe MisskeyCompat::NoteSerializer do
       serialized = described_class.serialize(status)
 
       expect(serialized[:reactions]).to eq({ '👍' => 1 })
+      expect(serialized[:reactionCount]).to eq(1)
       expect(serialized[:reactionEmojis]).to eq({})
     end
 
@@ -70,5 +71,25 @@ RSpec.describe MisskeyCompat::NoteSerializer do
 
       expect(serialized[:emojis]['thonk']).to be_present
     end
+  end
+
+  it 'includes required reaction fields on a pure renote' do
+    original = Fabricate(:status)
+    renote = Fabricate(:status, reblog: original, text: '', reaction_acceptance: 'likeOnly')
+
+    serialized = described_class.serialize(renote)
+
+    expect(serialized).to include(reactionAcceptance: 'likeOnly', reactions: {}, reactionCount: 0)
+  end
+
+  it 'counts accepted quotes as renotes without exposing a pending quote relationship' do
+    root = Fabricate(:status)
+    Fabricate(:status, reblog: root)
+    accepted = Fabricate(:quote, quoted_status: root, status: Fabricate(:status, text: 'accepted'), state: :accepted)
+    pending = Fabricate(:quote, quoted_status: root, status: Fabricate(:status, text: 'pending'), state: :pending)
+
+    expect(described_class.serialize(root)[:renoteCount]).to eq(2)
+    expect(described_class.serialize(accepted.status)[:renoteId]).to eq(MisskeyCompat::MiId.encode(root.id))
+    expect(described_class.serialize(pending.status)[:renoteId]).to be_nil
   end
 end

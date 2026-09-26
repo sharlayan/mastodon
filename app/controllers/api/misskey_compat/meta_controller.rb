@@ -80,7 +80,7 @@ class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
   def advertised_endpoint_names
     self.class.compat_endpoint_names.reject do |name|
       name == 'signin-flow' ||
-        name == 'drive' ||
+        (name == 'drive' && !Setting.drive_enabled) ||
         (DRIVE_ENDPOINT_NAMES.include?(name) && !Setting.drive_enabled) ||
         (name.start_with?('drive/') && !Setting.drive_enabled && name != 'drive/files/create') ||
         ((name.start_with?('pages/') || PAGE_ENDPOINT_NAMES.include?(name)) && !Setting.pages_enabled)

@@ -28,6 +28,29 @@ RSpec.describe 'Misskey-compat i endpoints' do
 
       expect(response).to have_http_status(401)
     end
+
+    it 'reports the own moderator and administrator role accurately' do
+      user.update!(role: Fabricate(:user_role, permissions: UserRole::FLAGS[:manage_reports]))
+
+      post '/api/i', params: { i: token }, as: :json
+      expect(response.parsed_body).to include(isAdmin: false, isModerator: true)
+
+      user.update!(role: Fabricate(:user_role, permissions: UserRole::FLAGS[:administrator]))
+
+      post '/api/i', params: { i: token }, as: :json
+      expect(response.parsed_body).to include(isAdmin: true, isModerator: true)
+
+      post '/api/i/update', params: { i: token, name: 'Admin' }, as: :json
+      expect(response.parsed_body).to include(isAdmin: true, isModerator: true)
+    end
+
+    it 'keeps another administrator’s role hidden in their user profile' do
+      administrator = Fabricate(:user, role: Fabricate(:user_role, permissions: UserRole::FLAGS[:administrator]))
+
+      post '/api/users/show', params: { i: token, userId: MisskeyCompat::MiId.encode(administrator.account_id) }, as: :json
+
+      expect(response.parsed_body).to include(isAdmin: false, isModerator: false)
+    end
   end
 
   describe 'POST /api/i/update' do
@@ -68,6 +91,29 @@ RSpec.describe 'Misskey-compat i endpoints' do
 
       expect(response).to have_http_status(200)
       expect(account.reload.display_name).to eq('Keep Me')
+    end
+
+    it 'sets profile images by ID, preserves omitted images, and removes explicitly nulled images' do
+      image = Fabricate(:media_attachment, account: account)
+      image_id = MisskeyCompat::MiId.encode(image.id)
+
+      update(avatarId: image_id, bannerId: image_id)
+      expect(response).to have_http_status(200)
+      expect(account.reload.avatar_file_name).to be_present
+      expect(account.header_file_name).to be_present
+
+      update(name: 'Keep Images')
+      expect(response).to have_http_status(200)
+      expect(account.reload.avatar_file_name).to be_present
+      expect(account.header_file_name).to be_present
+
+      update(avatarId: nil)
+      expect(response).to have_http_status(200)
+      expect(account.reload.avatar_file_name).to be_nil
+      expect(account.header_file_name).to be_present
+
+      update(bannerId: nil)
+      expect(account.reload.header_file_name).to be_nil
     end
 
     it 'maps isBot to the Service actor type and isLocked to locked' do

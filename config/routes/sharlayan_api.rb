@@ -258,7 +258,8 @@ namespace :api, format: false do
 
     post 'drive/files/create', to: 'drive#create'
     post 'drive/files/attached-notes', to: 'drive#attached_notes'
-    post 'drive', to: 'drive#unavailable'
+    post 'drive', to: 'drive#overview'
+    post 'drive/stream', to: 'drive#stream'
     post 'drive/files', to: 'drive#index'
     post 'drive/files/show', to: 'drive#show'
     post 'drive/files/update', to: 'drive#update'

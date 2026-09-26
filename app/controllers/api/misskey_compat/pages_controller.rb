@@ -51,8 +51,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
     account = Account.find_by(id: params[:userId])
     return render json: [] if account.nil? || page_hidden_from_search_engine?(account)
 
-    visibility = current_account ? %w(public authenticated) : %w(public)
-    pages = apply_page_range(Page.available_accounts.where(account: account, visibility: visibility)).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    pages = apply_page_range(Page.publicly_accessible.where(account: account)).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
     render json: serialize_many(pages, include_content: false)
   end
 
@@ -211,18 +210,17 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   end
 
   def apply_page_range(scope)
-    scope = apply_compat_date_range(scope)
+    scope = apply_compat_pagination_dates(scope)
     scope = scope.where(pages: { id: ...(params[:untilId].to_i) }) if params[:untilId].present?
     scope = scope.where('pages.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
-    scope.order('pages.id DESC')
+    scope.order(pages: { id: forward_pagination? ? :asc : :desc })
   end
 
   def apply_like_range(scope)
-    scope = scope.where(page_likes: { created_at: ...(compat_time(params[:untilDate])) }) if params[:untilDate].present?
-    scope = scope.where(page_likes: { created_at: (compat_time(params[:sinceDate])).. }) if params[:sinceDate].present?
+    scope = apply_compat_pagination_dates(scope)
     scope = scope.where(page_likes: { id: ...(params[:untilId].to_i) }) if params[:untilId].present?
     scope = scope.where('page_likes.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
-    scope.order('page_likes.id DESC')
+    scope.order(page_likes: { id: forward_pagination? ? :asc : :desc })
   end
 
   def serialize(page, include_content: true)

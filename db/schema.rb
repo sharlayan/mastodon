@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_000700) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_27_000800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -401,6 +401,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_000700) do
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.boolean "with_media_only", default: false, null: false
+    t.boolean "with_replies", default: true, null: false
     t.index ["account_id"], name: "index_antennas_on_account_id"
   end
 
