@@ -73,7 +73,11 @@ module MisskeyCompat::MiAuth
     values.map { |value| value.to_s.strip }.compact_blank.uniq & SUPPORTED_PERMISSIONS
   end
 
-  def issue_token(user, permission: nil, name: nil, callback: nil, permissions: nil)
+  def issue_native_token(user)
+    issue_token(user, name: 'Misskey web sign-in', permissions: SUPPORTED_PERMISSIONS, native_user_token: true)
+  end
+
+  def issue_token(user, permission: nil, name: nil, callback: nil, permissions: nil, native_user_token: false)
     normalized_permissions = normalize_permissions(permissions || permission)
 
     Doorkeeper::AccessToken.transaction do
@@ -84,7 +88,7 @@ module MisskeyCompat::MiAuth
         expires_in: TOKEN_TTL.to_i,
         use_refresh_token: false
       )
-      token.create_misskey_access_grant!(permissions: normalized_permissions)
+      token.create_misskey_access_grant!(permissions: normalized_permissions, native_user_token: native_user_token)
       token
     end
   end

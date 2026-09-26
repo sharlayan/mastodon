@@ -53,6 +53,21 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(response.parsed_body).to be(false)
     end
 
+    it 'rejects duplicate and oversized bulk moves without moving files' do
+      folder = account.drive_folders.create!(name: 'Destination')
+
+      rpc_post 'drive/files/move-bulk', fileIds: [mi_id(file.id), mi_id(file.id)], folderId: mi_id(folder.id)
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+      expect(file.reload.folder_id).to be_nil
+
+      file_ids = Array.new(101) { |offset| mi_id(file.id + offset) }
+      rpc_post 'drive/files/move-bulk', fileIds: file_ids, folderId: mi_id(folder.id)
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+      expect(file.reload.folder_id).to be_nil
+    end
+
     it 'supports Misskey wildcard MIME filters' do
       rpc_post 'drive/files', type: 'image/*'
 
@@ -211,6 +226,31 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
 
       expect(response.parsed_body.dig(:parent, :id)).to eq(mi_id(parent.id))
       expect(response.parsed_body.dig(:parent, :parent, :id)).to eq(mi_id(grandparent.id))
+    end
+
+    it 'rejects deletion of a folder with a child folder without moving it' do
+      folder = account.drive_folders.create!(name: 'Parent')
+      child = account.drive_folders.create!(name: 'Child', parent: folder)
+
+      rpc_post 'drive/folders/delete', folderId: mi_id(folder.id)
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('HAS_CHILD_FILES_OR_FOLDERS')
+      expect(folder.reload).to be_persisted
+      expect(child.reload.parent_id).to eq(folder.id)
+    end
+
+    it 'rejects deletion of a folder with a file without moving it' do
+      folder = account.drive_folders.create!(name: 'Pictures')
+      file = insert_drive_file
+      file.update!(folder: folder)
+
+      rpc_post 'drive/folders/delete', folderId: mi_id(folder.id)
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('HAS_CHILD_FILES_OR_FOLDERS')
+      expect(folder.reload).to be_persisted
+      expect(file.reload.folder_id).to eq(folder.id)
     end
 
     it 'rejects another account parent folder' do

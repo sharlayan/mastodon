@@ -40,7 +40,16 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
   def destroy
     folder = find_folder!
     folder_id = folder.id
-    folder.destroy!
+    deleted = folder.with_lock do
+      if folder.children.exists? || folder.drive_files.exists?
+        false
+      else
+        folder.destroy!
+        true
+      end
+    end
+    return render_error('This folder has child files or folders', 'HAS_CHILD_FILES_OR_FOLDERS', 400, id: 'b0fc8a17-963c-405d-bfbc-859a487295e1') unless deleted
+
     MisskeyCompat::Streaming.broadcast_drive_folder(redis, current_account, folder_id, 'folderDeleted')
     head 204
   end

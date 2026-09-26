@@ -4,6 +4,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   include Api::AccountRateLimit
 
   class NoSuchReplyTargetError < StandardError; end
+  class CannotReplyToSpecifiedVisibilityNoteError < StandardError; end
+
+  SPECIFIED_REPLY_VISIBILITY_ERROR = 'Cannot reply to a specified note with broader visibility'
 
   CONVERSATION_OFFSET_LIMIT = 1_000
   SCHEDULED_OFFSET_LIMIT = 1_000
@@ -165,7 +168,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def create
-    status = if renote_id.present? && params[:text].blank?
+    return render_invalid_param('#/properties/poll', 'poll expiration is required') if params[:poll].present? && params.dig(:poll, :expiredAfter).blank? && params.dig(:poll, :expiresAt).blank?
+
+    status = if renote_id.present? && pure_renote_request?
                reaction_acceptance_option if params.key?(:reactionAcceptance)
                ReblogService.new.call(current_account, quoted_status)
              else
@@ -179,6 +184,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     render json: { createdNote: serialize(status) }
   rescue NoSuchReplyTargetError
     render_error('No such reply target', 'NO_SUCH_REPLY_TARGET', 404)
+  rescue CannotReplyToSpecifiedVisibilityNoteError
+    render_error(SPECIFIED_REPLY_VISIBILITY_ERROR, 'CANNOT_REPLY_TO_SPECIFIED_VISIBILITY_NOTE_WITH_EXTENDED_VISIBILITY', 400, id: 'ed940410-535c-4d5e-bfa3-af798671e93c')
   rescue ActiveRecord::RecordNotFound
     render_error('No such note', 'NO_SUCH_NOTE', 404)
   rescue Mastodon::NotPermittedError
@@ -443,6 +450,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     params[:renoteId].presence
   end
 
+  def pure_renote_request?
+    params[:text].blank? && params[:cw].nil? && params[:fileIds].blank? && params[:poll].nil? && params[:replyId].blank?
+  end
+
   def reply_status
     return @reply_status if defined?(@reply_status)
 
@@ -465,13 +476,14 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def post_options
     quoted = quoted_status
+    reply = reply_status
 
     {
       text: composed_text(status_text),
       content_type: composed_content_type,
       spoiler_text: params[:cw].presence,
-      visibility: mastodon_visibility(params[:visibility]),
-      thread: reply_status,
+      visibility: reply_visibility(reply),
+      thread: reply,
       local_only: ActiveModel::Type::Boolean.new.cast(params[:localOnly]),
       quoted_status: quoted,
       poll: post_poll_options,
@@ -558,6 +570,18 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def mastodon_visibility(visibility)
     { 'public' => 'public', 'home' => 'unlisted', 'followers' => 'private', 'specified' => 'direct' }.fetch(visibility.to_s, 'public')
+  end
+
+  def reply_visibility(reply)
+    visibility = mastodon_visibility(params[:visibility])
+    return visibility if reply.nil?
+
+    raise CannotReplyToSpecifiedVisibilityNoteError if (reply.direct_visibility? || reply.limited_visibility?) && visibility != 'direct'
+
+    return 'private' if reply.private_visibility? && %w(public unlisted).include?(visibility)
+    return 'unlisted' if reply.unlisted_visibility? && visibility == 'public'
+
+    visibility
   end
 
   def status_text

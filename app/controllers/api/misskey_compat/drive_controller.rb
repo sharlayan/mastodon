@@ -106,8 +106,12 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   end
 
   def move_bulk
-    ids = Array(params[:fileIds]).map(&:to_s).uniq.first(BULK_LIMIT)
-    return render_invalid_param('#/properties/fileIds', 'fileIds required') if ids.empty?
+    ids = params[:fileIds]
+    return render_invalid_param('#/properties/fileIds', 'must be an array') unless ids.is_a?(Array)
+    return render_invalid_param('#/properties/fileIds', 'must contain at least one item') if ids.empty?
+    return render_invalid_param('#/properties/fileIds', "must contain at most #{BULK_LIMIT} items") if ids.size > BULK_LIMIT
+    return render_invalid_param('#/properties/fileIds', 'must contain unique items') unless ids.uniq.size == ids.size
+    return render_invalid_param('#/properties/fileIds', 'items must be strings') unless ids.all?(String)
 
     folder_id = validated_folder_id
     files = current_account.drive_files.where(id: ids).to_a

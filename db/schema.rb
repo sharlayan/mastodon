@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_24_035500) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_27_000700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1251,6 +1251,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_035500) do
   create_table "misskey_access_grants", id: :bigint, default: -> { "timestamp_id('misskey_access_grants'::text)" }, force: :cascade do |t|
     t.bigint "access_token_id", null: false
     t.datetime "created_at", null: false
+    t.boolean "native_user_token", default: false, null: false
     t.string "permissions", default: [], null: false, array: true
     t.datetime "updated_at", null: false
     t.index ["access_token_id"], name: "index_misskey_access_grants_on_access_token_id", unique: true
@@ -1269,6 +1270,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_035500) do
   end
 
   create_table "misskey_registry_items", id: :bigint, default: -> { "timestamp_id('misskey_registry_items'::text)" }, force: :cascade do |t|
+    t.bigint "access_token_id"
     t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.string "domain"
@@ -1276,6 +1278,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_24_035500) do
     t.string "scope", default: [], null: false, array: true
     t.datetime "updated_at", null: false
     t.jsonb "value"
+    t.index ["account_id", "access_token_id", "scope"], name: "index_misskey_registry_items_on_account_token_scope"
     t.index ["account_id", "domain", "scope"], name: "idx_on_account_id_domain_scope_aaf77e84e7"
   end
 

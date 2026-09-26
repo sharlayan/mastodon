@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Misskey-compat i/registry endpoints' do
   let(:user)    { Fabricate(:user) }
   let(:account) { user.account }
-  let(:token)   { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write').token }
+  let(:token)   { MisskeyCompat::MiAuth.issue_native_token(user).token }
 
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
@@ -117,6 +117,58 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
     end
   end
 
+  describe 'app token realms' do
+    let(:first_token) { MisskeyCompat::MiAuth.issue_token(user, name: 'First app', permission: 'read:account,write:account') }
+    let(:second_token) { MisskeyCompat::MiAuth.issue_token(user, name: 'Second app', permission: 'read:account,write:account') }
+
+    it 'prevents one app from reading or overwriting another app or the native domain' do
+      set_item('shared', 'native')
+      post '/api/i/registry/set', params: { i: first_token.token, scope: %w(client base), domain: 'chosen', key: 'shared', value: 'first' }, as: :json
+      expect(response).to have_http_status(204)
+
+      post '/api/i/registry/get', params: { i: second_token.token, scope: %w(client base), domain: first_token.id.to_s, key: 'shared' }, as: :json
+      expect(response).to have_http_status(404)
+
+      post '/api/i/registry/remove', params: { i: second_token.token, scope: %w(client base), domain: first_token.id.to_s, key: 'shared' }, as: :json
+      expect(response).to have_http_status(404)
+
+      post '/api/i/registry/set', params: { i: second_token.token, scope: %w(client base), domain: first_token.id.to_s, key: 'shared', value: 'second' }, as: :json
+      expect(response).to have_http_status(204)
+
+      post '/api/i/registry/get', params: { i: first_token.token, scope: %w(client base), domain: second_token.id.to_s, key: 'shared' }, as: :json
+      expect(response.parsed_body).to eq('first')
+
+      post '/api/i/registry/get', params: { i: token, scope: %w(client base), key: 'shared' }, as: :json
+      expect(response.parsed_body).to eq('native')
+
+      expect(account.misskey_registry_items.where(key: 'shared').pluck(:access_token_id, :domain, :value)).to contain_exactly(
+        [nil, nil, 'native'],
+        [first_token.id, first_token.id.to_s, 'first'],
+        [second_token.id, second_token.id.to_s, 'second']
+      )
+    end
+
+    it 'does not expose a legacy arbitrary domain that matches an app token id' do
+      account.misskey_registry_items.create!(domain: first_token.id.to_s, scope: %w(client base), key: 'legacy', value: 'old')
+
+      post '/api/i/registry/get', params: { i: first_token.token, scope: %w(client base), domain: first_token.id.to_s, key: 'legacy' }, as: :json
+      expect(response).to have_http_status(404)
+
+      post '/api/i/registry/set', params: { i: first_token.token, scope: %w(client base), key: 'legacy', value: 'new' }, as: :json
+      expect(response).to have_http_status(204)
+      expect(account.misskey_registry_items.where(domain: first_token.id.to_s, key: 'legacy').pluck(:access_token_id, :value)).to contain_exactly(
+        [nil, 'old'], [first_token.id, 'new']
+      )
+    end
+
+    it 'lets a native token inspect an app token domain' do
+      post '/api/i/registry/set', params: { i: first_token.token, scope: %w(client base), key: 'appSetting', value: true }, as: :json
+
+      post '/api/i/registry/get', params: { i: token, scope: %w(client base), domain: first_token.id.to_s, key: 'appSetting' }, as: :json
+      expect(response.parsed_body).to be(true)
+    end
+  end
+
   describe 'scopes-with-domain' do
     it 'lists every stored (domain, scopes) pair' do
       set_item('lang', 'ja', scope: %w(client base))
@@ -131,6 +183,17 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
 
       expect(null_entry['scopes']).to contain_exactly(%w(client base), %w(deck))
       expect(flare_entry['scopes']).to eq([%w(client base)])
+    end
+
+    it 'denies MiAuth and ordinary OAuth app tokens even when they have account-read permission' do
+      app_token = MisskeyCompat::MiAuth.issue_token(user, name: 'Misskey web sign-in', permissions: MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
+      oauth_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read write')
+
+      [app_token.token, oauth_token.token].each do |credential|
+        post '/api/i/registry/scopes-with-domain', params: { i: credential }, as: :json
+        expect(response).to have_http_status(403)
+        expect(response.parsed_body.dig('error', 'code')).to eq('ACCESS_DENIED')
+      end
     end
   end
 
