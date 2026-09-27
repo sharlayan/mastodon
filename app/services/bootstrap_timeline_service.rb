@@ -13,7 +13,7 @@ class BootstrapTimelineService < BaseService
   def autofollow_inviter!
     return unless @source_account&.user&.invite&.autofollow?
 
-    FollowService.new.call(@source_account, @source_account.user.invite.user.account)
+    FollowService.new.call(@source_account, @source_account.user.invite.user.account, bypass_review: true)
   end
 
   def notify_staff!

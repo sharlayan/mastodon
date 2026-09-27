@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_000800) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -264,6 +264,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_000800) do
     t.text "private_key"
     t.integer "protocol", default: 0, null: false
     t.text "public_key", default: "", null: false
+    t.datetime "remote_actor_published_at"
+    t.bigint "remote_outbox_total_items"
     t.datetime "requested_deletion_at"
     t.datetime "requested_review_at", precision: nil
     t.datetime "reviewed_at", precision: nil

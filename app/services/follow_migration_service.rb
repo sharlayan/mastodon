@@ -14,7 +14,7 @@ class FollowMigrationService < FollowService
     notify           = @original_follow&.notify?
     languages        = @original_follow&.languages
 
-    super(source_account, target_account, reblogs: reblogs, notify: notify, languages: languages, bypass_locked: bypass_locked, bypass_limit: true)
+    super(source_account, target_account, reblogs: reblogs, notify: notify, languages: languages, bypass_locked: bypass_locked, bypass_limit: true, bypass_review: true)
   end
 
   private

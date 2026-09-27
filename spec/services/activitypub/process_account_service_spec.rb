@@ -152,6 +152,68 @@ RSpec.describe ActivityPub::ProcessAccountService do
     end
   end
 
+  context 'with remote actor activity metadata' do
+    let(:outbox_url) { 'https://foo.test/outbox' }
+    let(:published_at) { '2026-09-25T12:00:00Z' }
+    let(:payload) do
+      {
+        id: 'https://foo.test/actor',
+        type: 'Person',
+        inbox: 'https://foo.test/inbox',
+        preferredUsername: 'alice',
+        published: published_at,
+        outbox: outbox_url,
+      }.deep_stringify_keys
+    end
+
+    before { stub_webfinger! }
+
+    it 'stores a known published time and an observed empty outbox' do
+      stub_request(:get, outbox_url).to_return(body: { type: 'OrderedCollection', totalItems: 0 }.to_json, headers: { 'Content-Type': 'application/activity+json' })
+
+      account = subject.call(payload)
+
+      expect(account.reload).to have_attributes(
+        remote_actor_published_at: Time.iso8601(published_at),
+        remote_outbox_total_items: 0
+      )
+    end
+
+    it 'keeps missing published time and outbox count unknown' do
+      account = subject.call(payload.except('published', 'outbox'))
+
+      expect(account.reload).to have_attributes(
+        remote_actor_published_at: nil,
+        remote_outbox_total_items: nil
+      )
+    end
+
+    it 'does not treat a fractional outbox count as an observed zero' do
+      stub_request(:get, outbox_url).to_return(body: { type: 'OrderedCollection', totalItems: 0.5 }.to_json, headers: { 'Content-Type': 'application/activity+json' })
+
+      account = subject.call(payload)
+
+      expect(account.reload.remote_outbox_total_items).to be_nil
+    end
+
+    it 'clears missing metadata on a full refresh without changing existing account counters' do
+      stub_request(:get, outbox_url).to_return(
+        { body: { type: 'OrderedCollection', totalItems: 3 }.to_json, headers: { 'Content-Type': 'application/activity+json' } },
+        { body: { type: 'OrderedCollection' }.to_json, headers: { 'Content-Type': 'application/activity+json' } }
+      )
+
+      account = subject.call(payload)
+      subject.call(payload.except('published'), account: account)
+
+      expect(account.reload).to have_attributes(
+        created_at: Time.iso8601(published_at),
+        statuses_count: 3,
+        remote_actor_published_at: nil,
+        remote_outbox_total_items: nil
+      )
+    end
+  end
+
   context 'with a single keypair' do
     let(:public_key) { 'foo' }
 

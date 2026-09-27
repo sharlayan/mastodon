@@ -169,15 +169,24 @@ RSpec.describe BulkImportRowService do
         context 'when the target account is neither followed nor requested' do
           it_behaves_like 'row import success and list addition'
 
-          it 'follows the target account before adding it to the list' do
+          it 'requests to follow the target account before adding it to the list' do
             expect { subject.call(import_row) }
-              .to change { account.following?(target_account) }.from(false).to(true)
+              .to change { account.requested?(target_account) }.from(false).to(true)
           end
 
           it 'preserves the Misskey withReplies membership setting' do
             subject.call(import_row)
 
             expect(ListAccount.find_by!(list: account.owned_lists.find_by!(title: list_name), account: target_account)).to be_with_replies
+          end
+        end
+
+        context 'when an older account imports a new list member' do
+          let(:account) { Fabricate(:account, created_at: 8.days.ago) }
+
+          it 'follows the target account before adding it to the list' do
+            expect { subject.call(import_row) }
+              .to change { account.following?(target_account) }.from(false).to(true)
           end
         end
 

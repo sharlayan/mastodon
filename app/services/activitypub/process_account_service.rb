@@ -227,6 +227,7 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.uri                     = @uri
     @account.actor_type              = actor_type
     @account.created_at              = @json['published'] if @json['published'].present?
+    @account.remote_actor_published_at = @json['published']
     @account.feature_approval_policy = feature_approval_policy
   end
 
@@ -287,7 +288,9 @@ class ActivityPub::ProcessAccountService < BaseService
     rescue Mastodon::UnexpectedResponseError, *Mastodon::HTTP_CONNECTION_ERRORS
       RedownloadHeaderWorker.perform_in(rand(PROCESSING_DELAY), @account.id)
     end
-    @account.statuses_count    = outbox_total_items    if outbox_total_items.present?
+    outbox_count = outbox_total_items
+    @account.remote_outbox_total_items = outbox_count.is_a?(Integer) && outbox_count >= 0 ? outbox_count : nil
+    @account.statuses_count = outbox_count if outbox_count.present?
     @account.following_count   = following_total_items if following_total_items.present?
     @account.followers_count   = followers_total_items if followers_total_items.present?
     @account.hide_collections  = following_private? || followers_private?

@@ -3,6 +3,8 @@
 module Sharlayan::Account::Interactions
   extend ActiveSupport::Concern
 
+  FOLLOW_REVIEW_AGE = 1.week.freeze
+
   included do
     has_many :domain_mutes, class_name: 'AccountDomainMute', dependent: :destroy
   end
@@ -24,6 +26,14 @@ module Sharlayan::Account::Interactions
 
   def auto_accept_follow_from?(other_account)
     local? && !other_account.silenced? && user&.setting_auto_accept_followed && following?(other_account)
+  end
+
+  def requires_follow_review?
+    created = local? ? created_at : remote_actor_published_at
+    return false if created.nil? || created <= FOLLOW_REVIEW_AGE.ago || created > Time.current
+    return false if remote? && remote_outbox_total_items != 0
+
+    !statuses.exists?
   end
 
   def reacted?(status, name = nil, custom_emoji = nil)
