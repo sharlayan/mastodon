@@ -862,7 +862,7 @@
   "firehose.remote": "다른 서버",
   "follow_request.authorize": "승인",
   "follow_request.reject": "거부",
-  "follow_requests.unlocked_explanation": "사용자님의 계정이 잠금 상태는 아니지만, {domain} 관리자는 사용자님이 직접 이 계정들의 팔로우 요청을 검토하기를 원하실 수 있다고 판단했습니다.",
+  "follow_requests.unlocked_explanation": "계정이 팔로우 승인제로 설정되어 있지 않아도 {domain}에서는 일부 팔로우 요청에 직접 승인이 필요합니다.",
   "follow_suggestions.curated_suggestion": "스태프의 추천",
   "follow_suggestions.dismiss": "다시 보지 않기",
   "follow_suggestions.featured_longer": "{domain} 팀이 손수 고름",

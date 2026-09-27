@@ -65,7 +65,7 @@ class FollowRequests extends ImmutablePureComponent {
       <div className='follow_requests-unlocked_explanation'>
         <FormattedMessage
           id='follow_requests.unlocked_explanation'
-          defaultMessage='Even though your account is not locked, the {domain} staff thought you might want to review follow requests from these accounts manually.'
+          defaultMessage='On {domain}, some follow requests need your approval even when your account is not locked.'
           values={{ domain: domain }}
         />
       </div>
