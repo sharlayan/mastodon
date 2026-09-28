@@ -6,6 +6,7 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
   requires_misskey_permission 'write:account', :set, :remove
 
   before_action :require_user!
+  before_action :require_native_user_token!, only: :scopes_with_domain
   before_action :enforce_registry_rate_limit!
 
   SCOPE_PATTERN = /\A[a-zA-Z0-9_]+\z/
@@ -45,7 +46,7 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
     current_account.with_lock do
       item = find_item
 
-      item ||= current_account.misskey_registry_items.new(domain: effective_domain, scope: registry_scope, key: key)
+      item ||= current_account.misskey_registry_items.new(**registry_realm, scope: registry_scope, key: key)
       item.update!(value: registry_body['value'])
     end
 
@@ -70,9 +71,11 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
   end
 
   def scopes_with_domain
-    grouped_scopes = current_account.misskey_registry_items.pluck(:domain, :scope).group_by(&:first)
+    grouped_scopes = current_account.misskey_registry_items.pluck(:access_token_id, :domain, :scope).group_by do |token_id, domain, _scope|
+      token_id ? token_id.to_s : domain
+    end
     result = grouped_scopes.map do |domain, entries|
-      { domain: domain, scopes: entries.map(&:second).uniq }
+      { domain: domain, scopes: entries.map(&:last).uniq }
     end
 
     render json: result
@@ -81,7 +84,36 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
   private
 
   def scoped_items
-    current_account.misskey_registry_items.where(domain: effective_domain, scope: registry_scope)
+    current_account.misskey_registry_items.where(**registry_realm, scope: registry_scope)
+  end
+
+  def registry_realm
+    return @registry_realm if defined?(@registry_realm)
+
+    @registry_realm = if native_user_token?
+                        native_registry_realm(effective_domain)
+                      else
+                        { access_token_id: current_token.id, domain: current_token.id.to_s }
+                      end
+  end
+
+  def native_registry_realm(domain)
+    token_id = domain.to_i if domain&.match?(/\A[1-9][0-9]*\z/)
+    if token_id&.between?(1, 9_223_372_036_854_775_807) && Doorkeeper::AccessToken.exists?(id: token_id, resource_owner_id: current_user.id)
+      { access_token_id: token_id, domain: domain }
+    else
+      { access_token_id: nil, domain: domain }
+    end
+  end
+
+  def native_user_token?
+    current_misskey_grant&.native_user_token? && current_token.scopes.exists?(MisskeyCompat::MiAuth::TOKEN_SCOPE)
+  end
+
+  def require_native_user_token!
+    return if native_user_token?
+
+    render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e')
   end
 
   def find_item

@@ -7,17 +7,18 @@ import timelinesReducer from '../reducers/timelines';
 import {
   expandClipTimeline,
   expandHomeTimeline,
-  expandHomeTimelineIfCurrent,
-  homeTimelineMaxIdAt,
-  jumpToHomeTimeline,
-  returnToHomeTimelinePresent,
-  updateTimeline,
+  fillHomeTimelineGaps,
 } from './timelines';
 import { parseTimelineKey, timelineKey } from './timelines_typed';
 
 vi.mock('flavours/glitch/api', () => ({
   default: vi.fn(),
   getLinks: vi.fn(),
+}));
+
+vi.mock('./importer', () => ({
+  importFetchedStatus: vi.fn(() => ({ type: 'TEST_IMPORT_STATUS' })),
+  importFetchedStatuses: vi.fn(() => ({ type: 'TEST_IMPORT_STATUSES' })),
 }));
 
 const apiGet = vi.fn();
@@ -27,27 +28,29 @@ const response = { data: [], status: 200 };
 const initialState = timelinesReducer(undefined, { type: '@@INIT' });
 
 const dispatchTimeline = async (
-  action: ReturnType<typeof expandClipTimeline>,
+  action:
+    | ReturnType<typeof expandClipTimeline>
+    | ReturnType<typeof fillHomeTimelineGaps>,
   initialTimelineState = initialState,
 ) => {
   let state = initialTimelineState;
 
   const dispatch = vi.fn((dispatchedAction: unknown) => {
-    if (typeof dispatchedAction !== 'function') {
-      state = timelinesReducer(state, dispatchedAction as UnknownAction);
+    if (typeof dispatchedAction === 'function') {
+      return (dispatchedAction as typeof action)(dispatch, getState);
     }
 
+    state = timelinesReducer(state, dispatchedAction as UnknownAction);
     return dispatchedAction;
   });
 
-  await action(
-    dispatch,
-    () =>
-      ({
-        getIn: (path: string[], defaultValue?: unknown) =>
-          state.getIn(path.slice(1), defaultValue),
-      }) as never,
-  );
+  const getState = () =>
+    ({
+      getIn: (path: string[], defaultValue?: unknown) =>
+        state.getIn(path.slice(1), defaultValue),
+    }) as never;
+
+  await action(dispatch, getState);
 
   return { dispatch, state };
 };
@@ -106,231 +109,76 @@ describe('expandClipTimeline', () => {
   });
 });
 
-describe('homeTimelineMaxIdAt', () => {
+describe('fillHomeTimelineGaps', () => {
   beforeEach(() => {
     apiGet.mockReset();
     apiGet.mockResolvedValue(response);
     vi.mocked(api).mockReturnValue({ get: apiGet } as never);
-    vi.mocked(getLinks).mockReset();
     vi.mocked(getLinks).mockReturnValue({ refs: [] } as never);
   });
 
-  test('returns the first snowflake ID at the selected second', () => {
-    expect(homeTimelineMaxIdAt(new Date('2026-09-14T12:34:56.789Z'))).toBe(
-      '117269416902656000',
-    );
-  });
-
-  test('keeps the time-machine mode through the request and response, then clears it', () => {
-    const requestedState = timelinesReducer(initialState, {
-      type: 'TIMELINE_EXPAND_REQUEST',
-      timeline: 'home',
-      timeMachine: true,
-    });
-    const loadedState = timelinesReducer(requestedState, {
+  test('requests the actual gap boundary with max_id', async () => {
+    const stateWithStatuses = timelinesReducer(initialState, {
       type: 'TIMELINE_EXPAND_SUCCESS',
       timeline: 'home',
-      statuses: [{ id: 'historical-status' }],
+      statuses: [{ id: '40' }, { id: '30' }, { id: '10' }],
       next: null,
       partial: false,
       isLoadingRecent: false,
       usePendingItems: false,
-      timeMachine: true,
     });
-    const clearedState = timelinesReducer(loadedState, {
-      type: 'TIMELINE_CLEAR',
+    const stateWithGap = timelinesReducer(stateWithStatuses, {
+      type: 'TIMELINE_INSERT',
       timeline: 'home',
+      key: null,
+      index: 2,
     });
 
-    expect(requestedState.getIn(['home', 'isTimeMachine'])).toBe(true);
-    expect(loadedState.getIn(['home', 'isTimeMachine'])).toBe(true);
-    expect(clearedState.getIn(['home', 'isTimeMachine'])).toBe(false);
+    await dispatchTimeline(fillHomeTimelineGaps(), stateWithGap);
+
+    expect(apiGet).toHaveBeenCalledTimes(1);
+    expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
+      params: { max_id: '30' },
+    });
   });
 
-  test('does not insert streaming updates while the time machine is active', () => {
-    const timeMachineState = timelinesReducer(initialState, {
-      type: 'TIMELINE_EXPAND_REQUEST',
+  test('loads the latest page and clears a leading gap when the old status overlaps', async () => {
+    const stateWithStatus = timelinesReducer(initialState, {
+      type: 'TIMELINE_EXPAND_SUCCESS',
       timeline: 'home',
-      timeMachine: true,
-    });
-    const reducerState = timelinesReducer(timeMachineState, {
-      type: 'TIMELINE_UPDATE',
-      timeline: 'home',
-      status: { id: 'new-status' },
+      statuses: [{ id: '10' }],
+      next: null,
+      partial: false,
+      isLoadingRecent: false,
       usePendingItems: false,
-      filtered: false,
     });
-    const dispatch = vi.fn();
-    const getState = () => ({
-      getIn: (path: string[]) => timeMachineState.getIn(path.slice(1)),
-    });
-
-    updateTimeline('home', { id: 'new-status' })(dispatch, getState);
-
-    expect(reducerState).toBe(timeMachineState);
-    expect(dispatch).not.toHaveBeenCalled();
-  });
-
-  test('does not refresh the current home timeline while the time machine is active', () => {
-    const timeMachineState = timelinesReducer(initialState, {
-      type: 'TIMELINE_EXPAND_REQUEST',
+    const reconnectedState = timelinesReducer(stateWithStatus, {
+      type: 'TIMELINE_CONNECT',
       timeline: 'home',
-      timeMachine: true,
+      usePendingItems: false,
     });
-    const dispatch = vi.fn();
 
-    expandHomeTimelineIfCurrent()(dispatch, () => ({
-      getIn: (path: string[]) => timeMachineState.getIn(path.slice(1)),
-    }));
+    expect(reconnectedState.getIn(['home', 'items', 0])).toBeNull();
 
-    expect(dispatch).not.toHaveBeenCalled();
-  });
-
-  test('tracks the next link for an empty time-machine page', async () => {
-    const nextUri =
-      'https://example.test/api/v1/timelines/home?max_id=older-candidate';
-    vi.mocked(getLinks).mockReturnValue({
-      refs: [{ rel: 'next', uri: nextUri }],
-    } as never);
+    apiGet.mockResolvedValue({ data: [{ id: '10' }], status: 200 });
 
     const { state } = await dispatchTimeline(
-      expandHomeTimeline({ maxId: '200', timeMachine: true }),
+      fillHomeTimelineGaps(),
+      reconnectedState,
     );
-
-    expect(state.getIn(['home', 'next'])).toBe(nextUri);
-    expect(state.getIn(['home', 'hasMore'])).toBe(true);
-  });
-
-  test('clears the current timeline before requesting the selected time', async () => {
-    const actions: unknown[] = [];
-    type TimelineThunk = (
-      dispatch: (action: unknown) => unknown,
-      getState: () => typeof initialState,
-    ) => unknown;
-    const dispatch = (action: unknown): unknown => {
-      actions.push(action);
-
-      if (typeof action === 'function') {
-        return (action as TimelineThunk)(dispatch, () => initialState);
-      }
-
-      return action;
-    };
-
-    await jumpToHomeTimeline(new Date('2026-09-14T12:34:56.789Z'))(dispatch);
-
-    const actionIndex = (type: string) =>
-      actions.findIndex(
-        (action) =>
-          typeof action === 'object' &&
-          action !== null &&
-          'type' in action &&
-          action.type === type,
-      );
-    const clearIndex = actionIndex('TIMELINE_CLEAR');
-    const requestIndex = actionIndex('TIMELINE_EXPAND_REQUEST');
-
-    expect(clearIndex).toBeGreaterThanOrEqual(0);
-    expect(requestIndex).toBeGreaterThan(clearIndex);
-    expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
-      params: { max_id: '117269416902656000' },
-    });
-    expect(actions).toContainEqual(
-      expect.objectContaining({
-        type: 'TIMELINE_EXPAND_REQUEST',
-        timeMachine: true,
-      }),
-    );
-  });
-
-  test('discards an older time-machine response after another jump', async () => {
-    interface ApiResponse {
-      data: { id: string }[];
-      status: number;
-    }
-    const pendingResponses: ((response: ApiResponse) => void)[] = [];
-    apiGet.mockImplementation(
-      () =>
-        new Promise<ApiResponse>((resolve) => {
-          pendingResponses.push(resolve);
-        }),
-    );
-
-    let state: typeof initialState = initialState;
-    type TimelineThunk = (
-      dispatch: (action: unknown) => unknown,
-      getState: () => typeof initialState,
-    ) => unknown;
-    const dispatch = (action: unknown): unknown => {
-      if (typeof action === 'function') {
-        return (action as TimelineThunk)(
-          dispatch,
-          () =>
-            ({
-              getIn: (path: string[], defaultValue?: unknown) =>
-                state.getIn(path.slice(1), defaultValue),
-            }) as never,
-        );
-      }
-
-      state = timelinesReducer(state, action as UnknownAction);
-      return action;
-    };
-
-    const firstJump = jumpToHomeTimeline(new Date('2026-09-14T12:00:00Z'))(
-      dispatch,
-    ) as Promise<unknown>;
-    const secondJump = jumpToHomeTimeline(new Date('2026-09-14T11:00:00Z'))(
-      dispatch,
-    ) as Promise<unknown>;
-
-    const activeRequestId = state.getIn(['home', 'requestId']);
-
-    pendingResponses[0]?.({ data: [], status: 200 });
-    await firstJump;
-    expect(state.getIn(['home', 'requestId'])).toBe(activeRequestId);
-    expect(state.getIn(['home', 'isLoading'])).toBe(true);
-
-    pendingResponses[1]?.({ data: [], status: 200 });
-    await secondJump;
-    expect(state.getIn(['home', 'requestId'])).toBeNull();
-    expect(state.getIn(['home', 'isLoading'])).toBe(false);
-  });
-
-  test('keeps updates blocked until returning to the present succeeds', async () => {
-    let state: typeof initialState = timelinesReducer(initialState, {
-      type: 'TIMELINE_EXPAND_REQUEST',
-      timeline: 'home',
-      timeMachine: true,
-    });
-    type TimelineThunk = (
-      dispatch: (action: unknown) => unknown,
-      getState: () => typeof initialState,
-    ) => unknown;
-    const dispatch = (action: unknown): unknown => {
-      if (typeof action === 'function') {
-        return (action as TimelineThunk)(
-          dispatch,
-          () =>
-            ({
-              getIn: (path: string[], defaultValue?: unknown) =>
-                state.getIn(path.slice(1), defaultValue),
-            }) as never,
-        );
-      }
-
-      state = timelinesReducer(state, action as UnknownAction);
-      return action;
-    };
-
-    const request = returnToHomeTimelinePresent()(dispatch) as Promise<unknown>;
-
-    expect(state.getIn(['home', 'isTimeMachine'])).toBe(true);
-    await request;
     expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
       params: {},
     });
-    expect(state.getIn(['home', 'isTimeMachine'])).toBe(false);
+    expect(state.getIn(['home', 'items', 0])).toBe('10');
+
+    apiGet.mockClear();
+    await dispatchTimeline(
+      expandHomeTimeline({ maxId: null }),
+      reconnectedState,
+    );
+    expect(apiGet).toHaveBeenCalledWith('/api/v1/timelines/home', {
+      params: { max_id: null },
+    });
   });
 });
 

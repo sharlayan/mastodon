@@ -1,10 +1,14 @@
 import type {
+  CommunityTimeline as CommunityTimelineLoader,
+  PublicTimeline as PublicTimelineLoader,
   sharlayanColumnComponents as ColumnComponents,
   sharlayanRouteDescriptors as RouteDescriptors,
 } from '.';
 
 let sharlayanRouteDescriptors: typeof RouteDescriptors;
 let sharlayanColumnComponents: typeof ColumnComponents;
+let CommunityTimeline: typeof CommunityTimelineLoader;
+let PublicTimeline: typeof PublicTimelineLoader;
 
 beforeAll(async () => {
   Object.defineProperty(window, 'matchMedia', {
@@ -16,8 +20,12 @@ beforeAll(async () => {
     })),
   });
 
-  ({ sharlayanColumnComponents, sharlayanRouteDescriptors } =
-    await import('.'));
+  ({
+    sharlayanColumnComponents,
+    sharlayanRouteDescriptors,
+    CommunityTimeline,
+    PublicTimeline,
+  } = await import('.'));
 });
 
 describe('Sharlayan route registry', () => {
@@ -71,5 +79,39 @@ describe('Sharlayan route registry', () => {
     expect(exactRoutes).toEqual(
       expect.arrayContaining(['public', 'community', 'pages', 'account-pages']),
     );
+  });
+
+  it('opens the original public timelines', () => {
+    expect(
+      sharlayanRouteDescriptors.find(({ key }) => key === 'public'),
+    ).toMatchObject({
+      path: '/public',
+      lazyComponent: PublicTimeline,
+    });
+
+    expect(
+      sharlayanRouteDescriptors.find(({ key }) => key === 'community'),
+    ).toMatchObject({
+      path: '/public/local',
+      lazyComponent: CommunityTimeline,
+    });
+  });
+
+  it('registers the remote Firehose route with its feed type', () => {
+    const firehoseRoutes = sharlayanRouteDescriptors
+      .filter(({ key }) => key === 'remote')
+      .map(({ key, path, componentParams }) => ({
+        key,
+        path,
+        componentParams,
+      }));
+
+    expect(firehoseRoutes).toEqual([
+      {
+        key: 'remote',
+        path: '/public/remote',
+        componentParams: { feedType: 'public:remote' },
+      },
+    ]);
   });
 });

@@ -44,7 +44,7 @@ class MisskeyRegistryItem < ApplicationRecord
     account_items = account.misskey_registry_items
     errors.add(:base, 'registry item limit exceeded') if new_record? && account_items.count >= MAX_ITEMS
 
-    scope_items = account_items.where(domain: domain, scope: scope).where.not(id: id)
+    scope_items = account_items.where(access_token_id: access_token_id, domain: domain, scope: scope).where.not(id: id)
     errors.add(:base, 'registry scope item limit exceeded') if new_record? && scope_items.count >= MAX_SCOPE_ITEMS
     validate_byte_quota(scope_items, MAX_SCOPE_BYTES, 'registry scope storage limit exceeded')
     validate_byte_quota(account_items.where.not(id: id), MAX_ACCOUNT_BYTES, 'registry account storage limit exceeded')

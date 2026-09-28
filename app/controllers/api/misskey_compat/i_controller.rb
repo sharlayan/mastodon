@@ -100,6 +100,8 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     header = drive_file(params[:bannerId]) if params.key?(:bannerId)
     attrs[:avatar] = avatar.file if avatar
     attrs[:header] = header.file if header
+    attrs[:avatar] = nil if params.key?(:avatarId) && params[:avatarId].nil?
+    attrs[:header] = nil if params.key?(:bannerId) && params[:bannerId].nil?
 
     UpdateAccountService.new.call(current_account, attrs, raise_error: true) if attrs.present?
   end

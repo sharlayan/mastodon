@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe FollowService do
   subject { described_class.new }
 
-  let(:sender) { Fabricate(:account, username: 'alice') }
+  let(:sender) { Fabricate(:account, username: 'alice', created_at: 8.days.ago) }
 
   context 'when local account' do
     describe 'locked account' do
@@ -65,6 +65,43 @@ RSpec.describe FollowService do
 
       it 'creates a follow request with reblogs' do
         expect(FollowRequest.find_by(account: sender, target_account: bob, show_reblogs: true)).to_not be_nil
+      end
+    end
+
+    describe 'unlocked account, from a new account without posts' do
+      let(:sender) { Fabricate(:account, username: 'alice') }
+      let(:bob) { Fabricate(:account, username: 'bob') }
+
+      it 'keeps a follow request pending' do
+        expect(subject.call(sender, bob)).to be_a(FollowRequest)
+        expect(sender.following?(bob)).to be false
+        expect(sender.requested?(bob)).to be true
+      end
+
+      it 'allows a direct follow after the sender posts' do
+        Fabricate(:status, account: sender, visibility: :direct)
+
+        expect(subject.call(sender, bob)).to be_a(Follow)
+        expect(sender.following?(bob)).to be true
+      end
+    end
+
+    describe 'locked account with auto-accept enabled, from a new account without posts' do
+      let(:sender) { Fabricate(:account, username: 'alice') }
+      let(:bob_user) { Fabricate(:user, account_attributes: { locked: true, username: 'bob' }) }
+      let(:bob) { bob_user.account }
+
+      before do
+        bob_user.settings['auto_accept_followed'] = true
+        bob_user.save!
+        bob.follow!(sender)
+      end
+
+      it 'keeps a follow request pending' do
+        subject.call(sender, bob)
+
+        expect(sender.following?(bob)).to be false
+        expect(sender.requested?(bob)).to be true
       end
     end
 

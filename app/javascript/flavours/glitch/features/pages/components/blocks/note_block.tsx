@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { fetchStatus } from 'flavours/glitch/actions/statuses';
 import type { ApiPageNoteBlock } from 'flavours/glitch/api_types/pages';
-import StatusContainer from 'flavours/glitch/containers/status_container';
+import StatusContainer from 'flavours/glitch/components/status/legacy/container';
 import { useStatus } from 'flavours/glitch/hooks/useStatus';
 import { useVisibility } from 'flavours/glitch/hooks/useVisibility';
 import { useAppDispatch } from 'flavours/glitch/store';

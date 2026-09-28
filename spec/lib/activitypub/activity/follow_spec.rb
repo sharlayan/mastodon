@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe ActivityPub::Activity::Follow do
-  let(:sender)    { Fabricate(:account) }
+  let(:sender)    { Fabricate(:account, created_at: 8.days.ago) }
   let(:recipient) { Fabricate(:account) }
 
   let(:json) do
@@ -32,6 +32,76 @@ RSpec.describe ActivityPub::Activity::Follow do
 
         it 'does not create a follow request' do
           expect(sender.requested?(recipient)).to be false
+        end
+      end
+
+      context 'when a new remote account has no outbox items' do
+        let(:sender) { Fabricate(:remote_account, remote_actor_published_at: 1.day.ago, remote_outbox_total_items: 0) }
+
+        it 'keeps a follow request pending' do
+          subject.perform
+
+          expect(sender.following?(recipient)).to be false
+          expect(sender.requested?(recipient)).to be true
+        end
+      end
+
+      context 'when a new remote account has no published date' do
+        let(:sender) { Fabricate(:remote_account, remote_outbox_total_items: 0) }
+
+        it 'accepts the follow' do
+          subject.perform
+
+          expect(sender.following?(recipient)).to be true
+        end
+      end
+
+      context 'when a new remote account has no outbox count' do
+        let(:sender) { Fabricate(:remote_account, remote_actor_published_at: 1.day.ago) }
+
+        it 'accepts the follow' do
+          subject.perform
+
+          expect(sender.following?(recipient)).to be true
+        end
+      end
+
+      context 'when a new remote account has outbox items' do
+        let(:sender) { Fabricate(:remote_account, remote_actor_published_at: 1.day.ago, remote_outbox_total_items: 1) }
+
+        it 'accepts the follow' do
+          subject.perform
+
+          expect(sender.following?(recipient)).to be true
+        end
+      end
+
+      context 'when an older remote account has no outbox items' do
+        let(:sender) { Fabricate(:remote_account, remote_actor_published_at: 8.days.ago, remote_outbox_total_items: 0) }
+
+        it 'accepts the follow' do
+          subject.perform
+
+          expect(sender.following?(recipient)).to be true
+        end
+      end
+
+      context 'when a new remote account has auto-accept from a locked recipient' do
+        let(:sender) { Fabricate(:remote_account, remote_actor_published_at: 1.day.ago, remote_outbox_total_items: 0) }
+        let(:recipient_user) { Fabricate(:user, account_attributes: { locked: true }) }
+        let(:recipient) { recipient_user.account }
+
+        before do
+          recipient_user.settings['auto_accept_followed'] = true
+          recipient_user.save!
+          recipient.follow!(sender)
+        end
+
+        it 'keeps a follow request pending' do
+          subject.perform
+
+          expect(sender.following?(recipient)).to be false
+          expect(sender.requested?(recipient)).to be true
         end
       end
 

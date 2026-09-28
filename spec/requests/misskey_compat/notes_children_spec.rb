@@ -43,4 +43,47 @@ RSpec.describe 'Misskey-compat notes/children endpoint' do
     expect(returned_ids).to include(MisskeyCompat::MiId.encode(quote_renote.id))
     expect(returned_ids).to_not include(MisskeyCompat::MiId.encode(pure_renote.id))
   end
+
+  it 'includes visible accepted content quotes once and fills the page past hidden quotes' do
+    root = Fabricate(:status)
+    accepted = Fabricate(:quote, quoted_status: root, status: Fabricate(:status, text: 'quoted'), state: :accepted)
+    Fabricate(:quote, quoted_status: root, status: Fabricate(:status, text: 'pending'), state: :pending)
+    Fabricate(:quote, quoted_status: root, status: Fabricate(:status, text: 'private', visibility: :private), state: :accepted)
+    write_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write').token
+    post '/api/notes/create', params: { i: write_token, renoteId: MisskeyCompat::MiId.encode(root.id), cw: 'CW' }, as: :json
+    cw_only_id = response.parsed_body.dig(:createdNote, :id)
+    reply = Fabricate(:status, account: user.account, text: 'reply and quote', in_reply_to_id: root.id, in_reply_to_account_id: root.account_id)
+    Fabricate(:quote, quoted_status: root, status: reply, state: :accepted)
+
+    post '/api/notes/children', params: { i: token, noteId: MisskeyCompat::MiId.encode(root.id), limit: 2 }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.pluck(:id)).to eq([MisskeyCompat::MiId.encode(reply.id), MisskeyCompat::MiId.encode(accepted.status_id)])
+    expect(response.parsed_body.pluck(:id)).to_not include(cw_only_id)
+  end
+
+  it 'includes textless poll and media quotes once while excluding pure renotes' do
+    root = Fabricate(:status)
+    pure_renote = Fabricate(:status, reblog: root, text: '')
+
+    poll_quote = Fabricate(:status, text: 'temporary')
+    Fabricate(:quote, quoted_status: root, status: poll_quote, state: :accepted)
+    poll = Fabricate(:poll, account: poll_quote.account, status: poll_quote)
+    poll_quote.update!(text: '', poll_id: poll.id)
+
+    media_quote = Fabricate(:status, text: 'temporary')
+    Fabricate(:quote, quoted_status: root, status: media_quote, state: :accepted)
+    2.times { Fabricate(:media_attachment, account: media_quote.account, status: media_quote) }
+    media_quote.update!(text: '')
+
+    reply_quote = Fabricate(:status, text: 'reply and quote', thread: root)
+    Fabricate(:quote, quoted_status: root, status: reply_quote, state: :accepted)
+
+    post '/api/notes/children', params: { i: token, noteId: MisskeyCompat::MiId.encode(root.id) }, as: :json
+
+    expect(response).to have_http_status(200)
+    returned_ids = response.parsed_body.pluck(:id)
+    expect(returned_ids).to match_array([poll_quote, media_quote, reply_quote].map { |status| MisskeyCompat::MiId.encode(status.id) })
+    expect(returned_ids).to_not include(MisskeyCompat::MiId.encode(pure_renote.id))
+  end
 end

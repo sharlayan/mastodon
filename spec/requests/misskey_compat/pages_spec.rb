@@ -74,9 +74,10 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response.parsed_body.first).to include(content: [], attachedFiles: [])
     end
 
-    it 'hides authenticated pages from anonymous users and shows them to signed-in users' do
+    it 'lists only public pages even for signed-in users while preserving authenticated page show' do
       post '/api/users/pages', params: { i: read_token, userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
-      expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(authenticated_page.id))
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to contain_exactly(MisskeyCompat::MiId.encode(published_page.id))
 
       post '/api/pages/show', params: { pageId: MisskeyCompat::MiId.encode(authenticated_page.id) }, as: :json
       expect(response).to have_http_status(404)
@@ -203,6 +204,19 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(newer_page.id))
       expect(response.parsed_body.pluck(:id)).to_not include(MisskeyCompat::MiId.encode(published_page.id))
+    end
+
+    it 'returns the nearest newer pages for since cursors' do
+      newer_pages = Array.new(3) { Fabricate(:page, account: account) }
+
+      post '/api/users/pages', params: { userId: MisskeyCompat::MiId.encode(account.id), sinceId: MisskeyCompat::MiId.encode(published_page.id), limit: 2 }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq(newer_pages.first(2).map { |page| MisskeyCompat::MiId.encode(page.id) })
+
+      post '/api/i/pages', params: { i: read_token, sinceId: MisskeyCompat::MiId.encode(published_page.id), limit: 2 }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq([draft_page, password_page].map { |page| MisskeyCompat::MiId.encode(page.id) })
+
+      post '/api/i/pages', params: { i: read_token, sinceId: MisskeyCompat::MiId.encode(published_page.id), untilDate: 1, limit: 2 }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq([draft_page, password_page].map { |page| MisskeyCompat::MiId.encode(page.id) })
     end
 
     it 'hides pages owned by a suspended account' do
@@ -406,6 +420,14 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       post '/api/pages/unlike', params: { i: write_token, pageId: MisskeyCompat::MiId.encode(other_page.id) }, as: :json
       expect(response).to have_http_status(204)
       expect(account.page_likes).to be_empty
+    end
+
+    it 'returns the nearest newer likes for a since cursor' do
+      likes = Array.new(4) { PageLike.create!(account: account, page: Fabricate(:page)) }
+
+      post '/api/i/page-likes', params: { i: read_token, sinceId: MisskeyCompat::MiId.encode(likes.first.id), limit: 2 }, as: :json
+
+      expect(response.parsed_body.pluck(:id)).to eq(likes[1..2].map { |like| MisskeyCompat::MiId.encode(like.id) })
     end
 
     it 'rejects liking an owned page' do

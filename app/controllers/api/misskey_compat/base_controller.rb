@@ -149,6 +149,21 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     limit.clamp(1, max)
   end
 
+  def forward_pagination?
+    return params[:untilId].blank? if params[:sinceId].present?
+    return false if params[:untilId].present?
+
+    params[:sinceDate].present? && params[:untilDate].blank?
+  end
+
+  def apply_compat_pagination_dates(scope)
+    return scope if params[:sinceId].present? || params[:untilId].present?
+
+    scope = scope.where(created_at: ...compat_time(params[:untilDate])) if params[:untilDate].present?
+    scope = scope.where("#{scope.klass.table_name}.created_at > ?", compat_time(params[:sinceDate])) if params[:sinceDate].present?
+    scope
+  end
+
   def apply_compat_date_range(scope)
     scope = scope.where(created_at: ...(compat_time(params[:untilDate]))) if params[:untilDate].present?
     scope = scope.where(created_at: (compat_time(params[:sinceDate]))..) if params[:sinceDate].present?

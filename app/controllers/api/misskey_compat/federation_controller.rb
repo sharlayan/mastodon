@@ -132,9 +132,10 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
   end
 
   def paginate_by_id(scope)
+    scope = apply_compat_pagination_dates(scope)
     scope = scope.where(id: ...params[:untilId].to_i) if params[:untilId].present?
     scope = scope.where('id > ?', params[:sinceId].to_i) if params[:sinceId].present?
-    scope.order(id: :desc).limit(pagination_limit(default: 10, max: 100))
+    scope.order(id: forward_pagination? ? :asc : :desc).limit(pagination_limit(default: 10, max: 100))
   end
 
   def filtered_instances

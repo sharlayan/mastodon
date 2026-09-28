@@ -67,6 +67,7 @@ RSpec.describe 'MiAuth web flow' do
       expect(token.scopes.to_s).to eq(MisskeyCompat::MiAuth::TOKEN_SCOPE)
       expect(token.expires_in).to eq(MisskeyCompat::MiAuth::TOKEN_TTL.to_i)
       expect(token.misskey_access_grant.permissions).to eq(['read:account'])
+      expect(token.misskey_access_grant.native_user_token?).to be false
     end
 
     it 'extends an active token from its latest authenticated request' do

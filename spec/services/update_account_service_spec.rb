@@ -42,14 +42,18 @@ RSpec.describe UpdateAccountService do
     let(:alice)   { Fabricate(:account) }
     let(:bob)     { Fabricate(:account) }
     let(:eve)     { Fabricate(:account) }
+    let(:newcomer) { Fabricate(:account) }
 
     before do
+      alice.update_column(:created_at, 8.days.ago)
+      eve.update_column(:created_at, 8.days.ago)
       bob.touch(:silenced_at)
       account.mute!(eve)
 
       FollowService.new.call(alice, account)
       FollowService.new.call(bob, account)
       FollowService.new.call(eve, account)
+      FollowService.new.call(newcomer, account)
     end
 
     it 'auto accepts pending follow requests from appropriate accounts' do
@@ -63,6 +67,9 @@ RSpec.describe UpdateAccountService do
 
       expect(eve).to be_following(account)
       expect(eve).to_not be_requested(account)
+
+      expect(newcomer).to_not be_following(account)
+      expect(newcomer).to be_requested(account)
     end
   end
 

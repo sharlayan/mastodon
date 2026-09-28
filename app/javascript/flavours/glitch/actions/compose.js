@@ -1,6 +1,6 @@
 import { defineMessages } from 'react-intl';
 
-import axios from 'axios';
+import { isCancel } from 'axios';
 import { throttle } from 'lodash';
 
 import api from '@/flavours/glitch/api';
@@ -22,6 +22,7 @@ import { getSharlayanComposeSubmission } from '@/flavours/glitch/sharlayan/compo
 import { recoverHashtags } from 'flavours/glitch/utils/hashtag';
 
 import { showAlert, showAlertForError } from './alerts';
+import { isStandaloneComposePath } from './compose_path';
 import { emojiUse } from './emojis';
 import { importFetchedAccounts, importFetchedStatus } from './importer';
 import { openModal } from './modal';
@@ -320,9 +321,7 @@ export function submitCompose(successCallback, overridePrivacy) {
     }).then(function (response) {
       const isScheduled = response.data && response.data.scheduled_at;
 
-      if ((browserHistory.location.pathname === '/publish' || browserHistory.location.pathname === '/statuses/new')
-          && window.history.state
-          && !getState().getIn(['compose', 'advanced_options', 'threaded_mode'])) {
+      if (isStandaloneComposePath(browserHistory.location.pathname) && window.history.state && !getState().getIn(['compose', 'advanced_options', 'threaded_mode'])) {
         browserHistory.goBack();
       }
 
@@ -641,7 +640,7 @@ const fetchComposeSuggestionsAccounts = throttle((dispatch, token) => {
     dispatch(importFetchedAccounts(response.data));
     dispatch(readyComposeSuggestionsAccounts(token, response.data));
   }).catch(error => {
-    if (!axios.isCancel(error)) {
+    if (!isCancel(error)) {
       dispatch(showAlertForError(error));
     }
   }).finally(() => {
@@ -681,7 +680,7 @@ const fetchComposeSuggestionsTags = throttle((dispatch, token) => {
   }).then(({ data }) => {
     dispatch(readyComposeSuggestionsTags(token, data.hashtags));
   }).catch(error => {
-    if (!axios.isCancel(error)) {
+    if (!isCancel(error)) {
       dispatch(showAlertForError(error));
     }
   }).finally(() => {

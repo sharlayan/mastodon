@@ -246,6 +246,8 @@ RSpec.describe '/api/v1/accounts' do
       context 'with unlocked account' do
         let(:locked) { false }
 
+        before { user.account.update_column(:created_at, 8.days.ago) }
+
         it 'creates a following relation between user and target user', :aggregate_failures do
           subject
 
@@ -263,6 +265,19 @@ RSpec.describe '/api/v1/accounts' do
         end
 
         it_behaves_like 'forbidden for wrong scope', 'read:accounts'
+      end
+
+      context 'with unlocked account and a new inactive follower' do
+        let(:locked) { false }
+
+        it 'returns the pending follow request relationship', :aggregate_failures do
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body).to include(following: false, requested: true)
+          expect(user.account).to be_requested(other_account)
+          expect(user.account).to_not be_following(other_account)
+        end
       end
 
       context 'with locked account' do

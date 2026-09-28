@@ -15,9 +15,9 @@ import { useAccountHandle } from 'flavours/glitch/components/display_name/defaul
 import { ComboboxField } from 'flavours/glitch/components/form_fields';
 import { useComboboxItemProps } from 'flavours/glitch/components/form_fields/combobox_field';
 import {
-  ListItemContent,
-  ListItemWrapper,
-} from 'flavours/glitch/components/list_item';
+  LockupContent,
+  LockupWrapper,
+} from 'flavours/glitch/components/lockup';
 import { useAccount } from 'flavours/glitch/hooks/useAccount';
 import { useSearchAccounts } from 'flavours/glitch/hooks/useSearchAccounts';
 import { domain } from 'flavours/glitch/initial_state';
@@ -36,11 +36,11 @@ const SuggestedAccountItem: React.FC<{ id: string }> = ({ id }) => {
 
   return (
     <li {...comboboxItemProps} className={classes.suggestion}>
-      <ListItemWrapper icon={<Avatar account={account} size={40} />}>
-        <ListItemContent subtitle={handle}>
+      <LockupWrapper icon={<Avatar account={account} size={40} />}>
+        <LockupContent subtitle={handle}>
           <DisplayName account={account} variant='simple' />
-        </ListItemContent>
-      </ListItemWrapper>
+        </LockupContent>
+      </LockupWrapper>
     </li>
   );
 };
@@ -95,11 +95,11 @@ const SelectedAccount: React.FC<{
 
   return (
     <div className={classes.selected}>
-      <ListItemWrapper icon={<Avatar account={account} size={40} />}>
-        <ListItemContent subtitle={handle}>
+      <LockupWrapper icon={<Avatar account={account} size={40} />}>
+        <LockupContent subtitle={handle}>
           <DisplayName account={account} variant='simple' />
-        </ListItemContent>
-      </ListItemWrapper>
+        </LockupContent>
+      </LockupWrapper>
       {conversationId ? (
         <Button compact onClick={handleOpen}>
           <FormattedMessage

@@ -11,25 +11,32 @@ import {
   ChatCircleDotsIcon,
   BookmarkSimpleIcon,
   BankIcon,
+  PlusIcon,
 } from '@phosphor-icons/react';
 
 import { fetchLists } from '@/flavours/glitch/actions/lists';
 import { closeNavigation } from '@/flavours/glitch/actions/navigation';
 import { fetchFollowedHashtags } from '@/flavours/glitch/actions/tags_typed';
+import { Callout } from '@/flavours/glitch/components/callout/redesign';
 import { FOCUS_TARGET } from '@/flavours/glitch/components/navigation_focus_target';
 import { useScrollSensor } from '@/flavours/glitch/hooks/useScrollSensor';
 import { useIdentity } from '@/flavours/glitch/identity_context';
+import { disabledAccountId } from '@/flavours/glitch/initial_state';
+import { transientSingleColumn } from '@/flavours/glitch/is_mobile';
 import { openNewComposer } from '@/flavours/glitch/reducers/slices/composer';
 import { getOrderedLists } from '@/flavours/glitch/selectors/lists';
 import { selectUnreadNotificationGroupsCount } from '@/flavours/glitch/selectors/notifications';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
+import { invokeVirtualIosKeyboard } from '@/flavours/glitch/utils/invoke_virtual_ios_keyboard';
 import FediIcon from '@/images/icons/icon_fediverse.svg?react';
+
+import { useHasAnnouncements } from '../../announcements/hooks';
 
 import { NavigationAccountCardAndMenu } from './account_card_and_menu';
 import { NavigationFooterLinks } from './footer_links';
 import { NavigationHeader } from './header';
 import { ListSection } from './list_section';
-import { LoggedOutInfo } from './logged_out_info';
+import { DisabledAccountBanner, LoggedOutInfo } from './logged_out_info';
 import { NavigationLink } from './navigation_link';
 import classes from './styles.module.scss';
 
@@ -72,6 +79,22 @@ function useFollowedHashtags() {
   return { followedHashtags: tags };
 }
 
+export function useNotificationsCount() {
+  const unreadNotificationsCount = useAppSelector(
+    selectUnreadNotificationGroupsCount,
+  );
+  const { unreadAnnouncementCount } = useHasAnnouncements();
+
+  return unreadNotificationsCount + unreadAnnouncementCount;
+}
+
+const isFediverseFeedsLinkActive = (
+  match: unknown,
+  { pathname }: { pathname: string },
+) => {
+  return !!match || pathname.startsWith('/public');
+};
+
 const MAX_HASHTAG_COUNT = 5;
 
 export const RedesignNavigationPanel: React.FC<{
@@ -81,13 +104,12 @@ export const RedesignNavigationPanel: React.FC<{
    * menu items are hidden and the design is tweaked slightly
    */
   mode?: 'static' | 'slide-out';
-}> = ({ siteName, mode = 'static' }) => {
+  multiColumn?: boolean;
+}> = ({ siteName, mode = 'static', multiColumn }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const { signedIn } = useIdentity();
-  const notificationsCount = useAppSelector(
-    selectUnreadNotificationGroupsCount,
-  );
+  const notificationsCount = useNotificationsCount();
   const useMyArchive = useAppSelector(
     (state) => state.local_settings.get('use_my_archive', false) as boolean,
   );
@@ -121,6 +143,7 @@ export const RedesignNavigationPanel: React.FC<{
       <NavigationHeader siteName={siteName} isStuck={!isScrolledToTop} />
       {signedIn && (
         <>
+          {transientSingleColumn && <TransientSingleColumnCallout />}
           <ul className={classes.list}>
             <NavigationLink
               withSpaceAfter
@@ -142,6 +165,7 @@ export const RedesignNavigationPanel: React.FC<{
                 state: { focusTarget: FOCUS_TARGET.SEARCH },
               }}
               iconComponent={MagnifyingGlassIcon}
+              onClick={invokeVirtualIosKeyboard}
             >
               <FormattedMessage
                 id='tabs_bar.explore'
@@ -152,6 +176,7 @@ export const RedesignNavigationPanel: React.FC<{
               withSpaceAfter
               to='/public/local'
               iconComponent={FediIcon}
+              isActive={isFediverseFeedsLinkActive}
             >
               <FormattedMessage
                 id='tabs_bar.fediverse_feeds'
@@ -166,22 +191,17 @@ export const RedesignNavigationPanel: React.FC<{
                   defaultMessage='Custom Feeds'
                 />
               }
-              action={{
-                label: (
-                  <FormattedMessage
-                    id='tabs_bar.create_custom_feed'
-                    defaultMessage='Create'
-                  />
-                ),
-                link: '/lists/new',
-              }}
-              emptyMessage={
-                <FormattedMessage
-                  id='tabs_bar.custom_feeds_empty'
-                  defaultMessage='You have no custom feeds yet.'
-                />
-              }
             >
+              <NavigationLink
+                key='new'
+                to='/lists/new'
+                iconComponent={PlusIcon}
+              >
+                <FormattedMessage
+                  id='tabs_bar.create_custom_feed'
+                  defaultMessage='Create Feed'
+                />
+              </NavigationLink>
               {customFeeds.map((feed) => (
                 <NavigationLink
                   key={feed.id}
@@ -278,17 +298,39 @@ export const RedesignNavigationPanel: React.FC<{
                 <NavigationAccountCardAndMenu />
               </>
             )}
-            <NavigationFooterLinks siteName={siteName} />
+            <NavigationFooterLinks
+              multiColumn={multiColumn}
+              siteName={siteName}
+            />
           </footer>
         </>
       )}
       {!signedIn && (
         <footer className={classes.footer} data-stuck={!isScrolledToBottom}>
-          <LoggedOutInfo />
-          <NavigationFooterLinks siteName={siteName} />
+          {disabledAccountId ? <DisabledAccountBanner /> : <LoggedOutInfo />}
+          <NavigationFooterLinks
+            multiColumn={multiColumn}
+            siteName={siteName}
+          />
         </footer>
       )}
       {bottomSensor}
     </nav>
   );
 };
+
+const TransientSingleColumnCallout: React.FC = () => (
+  <Callout className={classes.callout}>
+    <FormattedMessage
+      id='navigation_bar.opened_in_single_column_layout'
+      defaultMessage='Posts, profiles, and other pages are opened in the single-column layout by default.'
+    />
+    <br />
+    <a href={`/deck${location.pathname}`}>
+      <FormattedMessage
+        id='navigation_bar.advanced_interface'
+        defaultMessage='Open in advanced web interface'
+      />
+    </a>
+  </Callout>
+);

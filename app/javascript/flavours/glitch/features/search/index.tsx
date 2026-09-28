@@ -2,6 +2,8 @@ import { useCallback, useEffect } from 'react';
 
 import { useIntl, defineMessages, FormattedMessage } from 'react-intl';
 
+import classNames from 'classnames';
+
 import { Helmet } from '@unhead/react/helmet';
 
 import { Column } from '@/flavours/glitch/components/column';
@@ -19,7 +21,7 @@ import { Account } from 'flavours/glitch/components/account';
 import { CompatibilityHashtag as Hashtag } from 'flavours/glitch/components/hashtag';
 import { Icon } from 'flavours/glitch/components/icon';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
-import { StatusQuoteManager } from 'flavours/glitch/components/status_quoted';
+import { Status } from 'flavours/glitch/components/status';
 import { Search } from 'flavours/glitch/features/compose/components/search';
 import { useSearchParam } from 'flavours/glitch/hooks/useSearchParam';
 import type { Hashtag as HashtagType } from 'flavours/glitch/models/tags';
@@ -27,6 +29,7 @@ import { collectionsEnabled } from 'flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { CollectionListItem } from '../collections/components/collection_list_item';
+import exploreRedesignClasses from '../explore/redesign.module.scss';
 
 import { SearchSection } from './components/search_section';
 
@@ -60,7 +63,7 @@ const renderHashtags = (hashtags: HashtagType[]) =>
 
 const renderStatuses = (statusIds: string[]) =>
   hidePeek<string>(statusIds).map((id) => (
-    <StatusQuoteManager contextType='search' key={id} id={id} />
+    <Status contextType='search' key={id} id={id} />
   ));
 
 type SearchType = 'all' | ApiSearchType;
@@ -218,7 +221,7 @@ export const SearchResults: React.FC<{ multiColumn: boolean }> = ({
                   onClickMore={handleSelectStatuses}
                 >
                   {results.statuses.slice(0, INITIAL_DISPLAY).map((id) => (
-                    <StatusQuoteManager contextType='search' key={id} id={id} />
+                    <Status contextType='search' key={id} id={id} />
                   ))}
                 </SearchSection>
               )}
@@ -241,7 +244,12 @@ export const SearchResults: React.FC<{ multiColumn: boolean }> = ({
 
   const extraStickyHeaderContent = (
     <>
-      <div className='explore__search-header'>
+      <div
+        className={classNames(
+          'explore__search-header',
+          isRedesignEnabled() && exploreRedesignClasses.searchHeader,
+        )}
+      >
         <Search singleColumn initialValue={trimmedValue} key={trimmedValue} />
       </div>
 

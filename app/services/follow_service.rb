@@ -19,7 +19,7 @@ class FollowService < BaseService
   def call(source_account, target_account, options = {})
     @source_account = source_account
     @target_account = target_account
-    @options        = { bypass_locked: false, bypass_limit: false, with_rate_limit: false }.merge(options)
+    @options        = { bypass_locked: false, bypass_limit: false, bypass_review: false, with_rate_limit: false }.merge(options)
 
     raise ActiveRecord::RecordNotFound if following_not_possible?
     raise Mastodon::NotPermittedError  if following_not_allowed?
@@ -30,6 +30,8 @@ class FollowService < BaseService
       return change_follow_request_options!
     end
 
+    @force_follow_request = !@options[:bypass_review] && @target_account.local? && @source_account.requires_follow_review?
+
     ActivityTracker.increment('activity:interactions')
     FeatureUsageTracker.for(:follow).increment(@options[:ref])
 
@@ -38,7 +40,7 @@ class FollowService < BaseService
     # and the feeds are being merged
     mark_home_feed_as_partial! if @source_account.not_following_anyone?
 
-    if (@target_account.locked? && !@options[:bypass_locked]) || @source_account.silenced? || @target_account.activitypub?
+    if (@target_account.locked? && !@options[:bypass_locked]) || @source_account.silenced? || @target_account.activitypub? || @force_follow_request
       request_follow!
     elsif @target_account.local?
       direct_follow!
@@ -71,7 +73,7 @@ class FollowService < BaseService
     follow_request = @source_account.request_follow!(@target_account, **follow_options.merge(rate_limit: @options[:with_rate_limit], bypass_limit: @options[:bypass_limit]))
 
     if @target_account.local?
-      if @target_account.auto_accept_follow_from?(@source_account)
+      if !@force_follow_request && @target_account.auto_accept_follow_from?(@source_account)
         AuthorizeFollowService.new.call(@source_account, @target_account)
         LocalNotificationWorker.perform_async(@target_account.id, ::Follow.find_by(account: @source_account, target_account: @target_account).id, 'Follow', 'follow')
       else

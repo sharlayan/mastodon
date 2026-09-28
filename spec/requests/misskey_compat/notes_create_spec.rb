@@ -111,6 +111,45 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
     end
   end
 
+  describe 'POST /api/notes/create with renoteId' do
+    let(:quoted) { Fabricate(:status, account: Fabricate(:account, username: 'quoted')) }
+    let(:renote_id) { MisskeyCompat::MiId.encode(quoted.id) }
+
+    it 'keeps a content warning in a quote with no text' do
+      post '/api/notes/create', params: { i: token, renoteId: renote_id, cw: 'Spoiler' }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last).to have_attributes(reblog_of_id: nil, spoiler_text: 'Spoiler')
+      expect(account.statuses.last.quote.quoted_status).to eq(quoted)
+    end
+
+    it 'keeps an attached file in a quote with no text' do
+      media = Fabricate(:media_attachment, account: account)
+
+      post '/api/notes/create', params: { i: token, renoteId: renote_id, fileIds: [MisskeyCompat::MiId.encode(media.id)] }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last.quote.quoted_status).to eq(quoted)
+      expect(media.reload.status).to eq(account.statuses.last)
+    end
+
+    it 'keeps a poll in a quote with no text' do
+      post '/api/notes/create', params: { i: token, renoteId: renote_id, poll: { choices: %w(One Two), multiple: false, expiredAfter: 3_600_000 } }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last.quote.quoted_status).to eq(quoted)
+      expect(account.statuses.last.poll.options).to eq(%w(One Two))
+    end
+
+    it 'rejects an indefinite poll instead of dropping it from a renote' do
+      post '/api/notes/create', params: { i: token, renoteId: renote_id, poll: { choices: %w(One Two) } }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+      expect(account.statuses).to be_empty
+    end
+  end
+
   describe 'POST /api/notes/create with replyId' do
     let(:parent) { Fabricate(:status, account: Fabricate(:account, username: 'bob')) }
 
@@ -159,6 +198,36 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
 
       expect(response).to have_http_status(404)
       expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_REPLY_TARGET')
+    end
+
+    it 'limits a public reply to a home note to home visibility' do
+      parent.update!(visibility: :unlisted)
+
+      post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(parent.id), visibility: 'public' }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last.visibility).to eq('unlisted')
+      expect(response.parsed_body.dig(:createdNote, :visibility)).to eq('home')
+    end
+
+    it 'limits a home reply to a followers note to followers visibility' do
+      private_parent = Fabricate(:status, account: account, visibility: :private)
+
+      post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(private_parent.id), visibility: 'home' }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(account.statuses.last.visibility).to eq('private')
+      expect(response.parsed_body.dig(:createdNote, :visibility)).to eq('followers')
+    end
+
+    it 'rejects a broader visibility when replying to a specified note' do
+      specified_parent = Fabricate(:status, account: account, visibility: :direct)
+
+      post '/api/notes/create', params: { i: token, text: 'a reply', replyId: MisskeyCompat::MiId.encode(specified_parent.id), visibility: 'public' }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('CANNOT_REPLY_TO_SPECIFIED_VISIBILITY_NOTE_WITH_EXTENDED_VISIBILITY')
+      expect(account.statuses.count).to eq(1)
     end
   end
 

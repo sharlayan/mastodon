@@ -39,9 +39,10 @@ class MisskeyCompat::NoteSerializer
       localOnly: status.local_only?,
       reactionAcceptance: status.reaction_acceptance,
       reactions: reactions,
+      reactionCount: reactions.values.sum,
       reactionEmojis: reaction_emojis,
       myReaction: my_reaction,
-      renoteCount: status.reblogs_count,
+      renoteCount: status.reblogs_count + status.quotes_count,
       repliesCount: status.replies_count,
       replyId: MisskeyCompat::MiId.encode(status.in_reply_to_id),
       reply: embed_relations ? embedded_note(status.thread) : nil,
@@ -77,16 +78,21 @@ class MisskeyCompat::NoteSerializer
       visibility: VISIBILITY_MAP.fetch(status.visibility, 'public'),
       renoteId: MisskeyCompat::MiId.encode(status.reblog_of_id),
       renote: embed_relations ? serialize(status.reblog, embed_relations: false, context: @context) : nil,
+      reactionAcceptance: status.reaction_acceptance,
       reactions: {},
+      reactionCount: 0,
       reactionEmojis: {},
-      renoteCount: status.reblogs_count,
+      renoteCount: status.reblogs_count + status.quotes_count,
       repliesCount: status.replies_count,
       emojis: {},
     }
   end
 
   def quoted_status(status)
-    status.quote&.quoted_status
+    return status.reblog if status.reblog?
+
+    quote = status.quote
+    quote.quoted_status if quote&.accepted?
   end
 
   def embedded_note(status)
@@ -146,7 +152,8 @@ class MisskeyCompat::NoteSerializer
   def quoted_id(status)
     return MisskeyCompat::MiId.encode(status.reblog_of_id) if status.reblog?
 
-    MisskeyCompat::MiId.encode(status.quote&.quoted_status_id)
+    quote = status.quote
+    MisskeyCompat::MiId.encode(quote.quoted_status_id) if quote&.accepted?
   end
 
   def reactions_for(status, reaction_emojis, emojis)

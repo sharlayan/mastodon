@@ -68,6 +68,22 @@ RSpec.describe 'Misskey-compat federation' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.first).to include(username: 'alice', host: 'remote.example')
     end
+
+    it 'returns the nearest newer users with sinceId and sinceDate' do
+      base_time = Time.zone.local(2026, 1, 1)
+      accounts = Array.new(4) do |index|
+        Fabricate(:account, domain: 'remote.example', username: "remote#{index}", created_at: base_time + index.hours)
+      end
+
+      post '/api/federation/users', params: { i: token, host: 'remote.example', sinceId: MisskeyCompat::MiId.encode(accounts.first.id), limit: 2 }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq(accounts[1..2].map { |account| MisskeyCompat::MiId.encode(account.id) })
+
+      post '/api/federation/users', params: { i: token, host: 'remote.example', sinceId: MisskeyCompat::MiId.encode(accounts.first.id), untilDate: 1, limit: 2 }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq(accounts[1..2].map { |account| MisskeyCompat::MiId.encode(account.id) })
+
+      post '/api/federation/users', params: { i: token, host: 'remote.example', sinceDate: (base_time + 1.hour).to_i * 1000, limit: 2 }, as: :json
+      expect(response.parsed_body.pluck(:id)).to eq(accounts[2..3].map { |account| MisskeyCompat::MiId.encode(account.id) })
+    end
   end
 
   describe 'federation/following and followers' do
@@ -87,6 +103,17 @@ RSpec.describe 'Misskey-compat federation' do
 
         post '/api/federation/followers', params: { i: token, host: 'remote.example' }, as: :json
         expect(response.parsed_body).to be_empty
+      end
+
+      it 'returns the nearest newer follow relationships' do
+        follows = Array.new(4) do |index|
+          remote = Fabricate(:account, domain: 'remote.example', username: "follower#{index}")
+          Fabricate(:follow, account: remote, target_account: local)
+        end
+
+        post '/api/federation/following', params: { i: token, host: 'remote.example', sinceId: MisskeyCompat::MiId.encode(follows.first.id), limit: 2 }, as: :json
+
+        expect(response.parsed_body.pluck(:id)).to eq(follows[1..2].map { |follow| MisskeyCompat::MiId.encode(follow.id) })
       end
     end
 

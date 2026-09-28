@@ -8,8 +8,6 @@ import { useAppSelector, useAppDispatch } from 'flavours/glitch/store';
 import { changeSetting } from '../../../actions/settings';
 import SettingToggle from '../../notifications/components/setting_toggle';
 
-import { HomeTimelineTimeMachine } from './time_machine';
-
 const messages = defineMessages({
   filter_regex: {
     id: 'home.column_settings.filter_regex',
@@ -18,9 +16,7 @@ const messages = defineMessages({
   settings: { id: 'home.settings', defaultMessage: 'Column settings' },
 });
 
-export const ColumnSettings: React.FC<{
-  onTimeMachineSelect: (timestamp: Date) => void;
-}> = ({ onTimeMachineSelect }) => {
+export const ColumnSettings: React.FC = () => {
   const settings = useAppSelector((state) => state.settings.get('home'));
 
   const intl = useIntl();
@@ -109,8 +105,6 @@ export const ColumnSettings: React.FC<{
           />
         </div>
       </section>
-
-      <HomeTimelineTimeMachine onSelect={onTimeMachineSelect} />
     </div>
   );
 };

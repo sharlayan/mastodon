@@ -13,7 +13,7 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
   LIMIT = 100
 
   def index
-    folders = folder_scope(:folderId).order(id: :desc).limit(pagination_limit(default: 10, max: LIMIT))
+    folders = folder_scope(:folderId).order(id: forward_pagination? ? :asc : :desc).limit(pagination_limit(default: 10, max: LIMIT))
     render json: folders.map { |folder| MisskeyCompat::DriveFolderSerializer.serialize(folder) }
   end
 
@@ -40,7 +40,16 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
   def destroy
     folder = find_folder!
     folder_id = folder.id
-    folder.destroy!
+    deleted = folder.with_lock do
+      if folder.children.exists? || folder.drive_files.exists?
+        false
+      else
+        folder.destroy!
+        true
+      end
+    end
+    return render_error('This folder has child files or folders', 'HAS_CHILD_FILES_OR_FOLDERS', 400, id: 'b0fc8a17-963c-405d-bfbc-859a487295e1') unless deleted
+
     MisskeyCompat::Streaming.broadcast_drive_folder(redis, current_account, folder_id, 'folderDeleted')
     head 204
   end
@@ -61,7 +70,7 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
   def folder_scope(parent_key)
     scope = current_account.drive_folders.includes(:parent)
     scope = params[parent_key].present? ? scope.where(parent_id: params[parent_key]) : scope.where(parent_id: nil)
-    scope = apply_compat_date_range(scope)
+    scope = apply_compat_pagination_dates(scope)
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('drive_folders.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     scope

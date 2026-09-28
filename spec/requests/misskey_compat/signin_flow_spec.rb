@@ -133,6 +133,7 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
       expect(token&.resource_owner_id).to eq(user.id)
       expect(token.scopes.to_s).to eq(MisskeyCompat::MiAuth::TOKEN_SCOPE)
       expect(token.misskey_access_grant.permissions).to match_array(MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
+      expect(token.misskey_access_grant.native_user_token?).to be true
     end
 
     it 'is case-insensitive on the username and tolerates a leading @' do

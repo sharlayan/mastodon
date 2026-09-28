@@ -96,4 +96,26 @@ RSpec.describe 'Follow requests' do
       expect(response.parsed_body[:followed_by]).to be false
     end
   end
+
+  context 'when the recipient is unlocked' do
+    let(:user) { Fabricate(:user, account_attributes: { locked: false }) }
+    let(:follower) { Fabricate(:account) }
+
+    before do
+      FollowService.new.call(follower, user.account)
+    end
+
+    it 'lists and authorizes a new account follow request' do
+      get '/api/v1/follow_requests', headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to include(follower.id.to_s)
+
+      post "/api/v1/follow_requests/#{follower.id}/authorize", headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(follower).to be_following(user.account)
+      expect(follower).to_not be_requested(user.account)
+    end
+  end
 end

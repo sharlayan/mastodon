@@ -21,6 +21,48 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
       )
     end
 
+    it 'returns existing accounts in userIds order and skips missing or deleted accounts' do
+      remote = Fabricate(:account, username: 'ghost', domain: 'remote.example')
+      deleted = Fabricate(:account, requested_deletion_at: Time.now.utc)
+      ids = [remote.id, deleted.id, account.id, 0].map { |id| MisskeyCompat::MiId.encode(id) }
+
+      post '/api/users/show', params: { userIds: ids }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq([ids.first, ids.third])
+      expect(response.parsed_body).to all(include(:avatarDecorations))
+    end
+
+    it 'returns an empty array for empty userIds' do
+      post '/api/users/show', params: { userIds: [] }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq([])
+    end
+
+    it 'rejects non-string userIds' do
+      post '/api/users/show', params: { userIds: [account.id] }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+    end
+
+    it 'rejects userIds that is not an array' do
+      post '/api/users/show', params: { userIds: MisskeyCompat::MiId.encode(account.id) }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+    end
+
+    it 'rejects duplicate userIds' do
+      id = MisskeyCompat::MiId.encode(account.id)
+
+      post '/api/users/show', params: { userIds: [id, id] }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+    end
+
     it 'finds a local account by username when no host is given' do
       post '/api/users/show', params: { username: account.username }, as: :json
 
