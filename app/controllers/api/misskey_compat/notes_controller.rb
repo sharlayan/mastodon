@@ -75,11 +75,16 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def children
-    contentful = Status.where.not(text: [nil, ''])
-      .or(Status.where.not(poll_id: nil))
-      .or(Status.where(id: MediaAttachment.where.not(status_id: nil).select(:status_id)))
-    renotes = Status.where(reblog_of_id: @note.id).or(Status.where(id: accepted_quote_status_ids))
-    scope = Status.where(in_reply_to_id: @note.id).or(Status.where(id: renotes.where(id: contentful.select(:id)).select(:id)))
+    statuses = Status.arel_table
+    attachments = MediaAttachment.arel_table
+    contentful = statuses[:text].not_eq('').or(statuses[:poll_id].not_eq(nil)).or(attachments[:id].not_eq(nil))
+    replies = Status.where(in_reply_to_id: @note.id).reorder(nil).select(:id)
+    reblogs = Status.where(reblog_of_id: @note.id).left_joins(:media_attachments).where(contentful).reorder(nil).select(:id)
+    quotes = Status.joins(:quote).left_joins(:media_attachments).merge(Quote.accepted.where(quoted_status_id: @note.id)).where(contentful).reorder(nil).select(:id)
+    candidate_ids = [replies, reblogs, quotes].map(&:arel).reduce { |union, query| Arel::Nodes::Union.new(union, query) }
+    candidates = Arel::Table.new('candidate_statuses')
+    join = statuses.join(Arel::Nodes::As.new(candidate_ids, candidates)).on(statuses[:id].eq(candidates[:id])).join_sources
+    scope = Status.joins(join)
     render_related_notes scope
   end
 
