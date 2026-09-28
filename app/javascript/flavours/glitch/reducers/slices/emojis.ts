@@ -10,7 +10,7 @@ import { createAsyncThunk } from '@/flavours/glitch/store/typed_functions';
 interface EmojisState {
   custom: Record<
     string,
-    Pick<ApiCustomEmojiJSON, 'url' | 'static_url' | 'is_sensitive'>
+    Pick<ApiCustomEmojiJSON, 'url' | 'static_url' | 'is_sensitive' | 'aliases'>
   >;
   customCategories: Record<string, string[]>; // { name: shortcodes[] }
   customLoaded: boolean;
@@ -43,11 +43,19 @@ const emojisSlice = createSlice({
         }
 
         for (const emoji of action.payload) {
-          const { shortcode, category, url, static_url, is_sensitive } = emoji;
+          const {
+            shortcode,
+            category,
+            url,
+            static_url,
+            is_sensitive,
+            aliases,
+          } = emoji;
           state.custom[shortcode] = {
             url,
             static_url,
             is_sensitive,
+            aliases,
           };
 
           if (category) {
