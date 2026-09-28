@@ -52,6 +52,11 @@ html {
     width: calc(100% - var(--avatar-width));
   }
 
+  .status--in-thread > .status__content__wrapper > .status__quote {
+    margin-inline-start: 0;
+    width: 100%;
+  }
+
   [class*='_comp_number_fields__item'] button {
     font-size: inherit;
     font-weight: inherit;

@@ -185,9 +185,6 @@ class Status extends ImmutablePureComponent {
     let updated = false;
 
     if (props.params.statusId && state.statusId !== props.params.statusId) {
-      if (props.identity?.signedIn || localStatusPageAccess === 'public') {
-        props.dispatch(fetchStatus(props.params.statusId, { forceFetch: true }));
-      }
       update.threadExpanded = undefined;
       update.statusId = props.params.statusId;
       updated = true;
@@ -561,7 +558,7 @@ class Status extends ImmutablePureComponent {
       }
     }
 
-    if (params.statusId && prevProps.params.statusId !== params.statusId) {
+    if (params.statusId && prevProps.params.statusId !== params.statusId && !this._shouldBlockLoad()) {
       this.props.dispatch(fetchStatus(params.statusId, { forceFetch: true }));
     }
 
