@@ -1,4 +1,5 @@
 import type {
+  CommunityTimeline as CommunityTimelineLoader,
   PublicTimeline as PublicTimelineLoader,
   sharlayanColumnComponents as ColumnComponents,
   sharlayanRouteDescriptors as RouteDescriptors,
@@ -6,6 +7,7 @@ import type {
 
 let sharlayanRouteDescriptors: typeof RouteDescriptors;
 let sharlayanColumnComponents: typeof ColumnComponents;
+let CommunityTimeline: typeof CommunityTimelineLoader;
 let PublicTimeline: typeof PublicTimelineLoader;
 
 beforeAll(async () => {
@@ -18,8 +20,12 @@ beforeAll(async () => {
     })),
   });
 
-  ({ sharlayanColumnComponents, sharlayanRouteDescriptors, PublicTimeline } =
-    await import('.'));
+  ({
+    sharlayanColumnComponents,
+    sharlayanRouteDescriptors,
+    CommunityTimeline,
+    PublicTimeline,
+  } = await import('.'));
 });
 
 describe('Sharlayan route registry', () => {
@@ -66,18 +72,25 @@ describe('Sharlayan route registry', () => {
     );
   });
 
-  it('opens the federated timeline at /public', () => {
+  it('opens the original public timelines', () => {
     expect(
       sharlayanRouteDescriptors.find(({ key }) => key === 'public'),
     ).toMatchObject({
       path: '/public',
       lazyComponent: PublicTimeline,
     });
+
+    expect(
+      sharlayanRouteDescriptors.find(({ key }) => key === 'community'),
+    ).toMatchObject({
+      path: '/public/local',
+      lazyComponent: CommunityTimeline,
+    });
   });
 
-  it('registers the remaining Firehose routes with their feed types', () => {
+  it('registers the remote Firehose route with its feed type', () => {
     const firehoseRoutes = sharlayanRouteDescriptors
-      .filter(({ key }) => ['community', 'remote'].includes(key))
+      .filter(({ key }) => key === 'remote')
       .map(({ key, path, componentParams }) => ({
         key,
         path,
@@ -85,11 +98,6 @@ describe('Sharlayan route registry', () => {
       }));
 
     expect(firehoseRoutes).toEqual([
-      {
-        key: 'community',
-        path: '/public/local',
-        componentParams: { feedType: 'community' },
-      },
       {
         key: 'remote',
         path: '/public/remote',
