@@ -34,7 +34,6 @@ export interface ColumnHeaderProps {
   extraButtons?: React.ReactNode;
   extraStickyContent?: React.ReactNode;
   className?: string;
-  onClick?: () => void;
 }
 
 export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
@@ -44,7 +43,6 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   extraButtons,
   extraStickyContent,
   className,
-  onClick,
   ...props
 }: ColumnHeaderProps) => {
   const { scrollTop } = useColumn();
@@ -53,11 +51,27 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
   const hasBackButton =
     withBackButton === true ||
     (withBackButton === 'auto' && location.state?.fromMastodon);
-  const handleTitleClick = useCallback(() => {
-    onClick?.();
-    scrollTop();
-  }, [onClick, scrollTop]);
   const hasExtraStickyContent = hasReactChildren(extraStickyContent);
+
+  const handleHeaderClick = useCallback<React.MouseEventHandler>(
+    (e) => {
+      // Only scroll to top when clicking outside
+      // of the leftButton/rightButtons containers
+      if (
+        e.target instanceof Element &&
+        !e.target.matches(`
+          .${classes.leftButton},
+          .${classes.leftButton} *,
+          .${classes.rightButtons},
+          .${classes.rightButtons} *,
+          .${classes.title} button,
+          .${classes.title} button *`)
+      ) {
+        scrollTop();
+      }
+    },
+    [scrollTop],
+  );
 
   return (
     <header
@@ -68,12 +82,19 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
         hasExtraStickyContent && classes.withStickyContent,
       )}
     >
-      <div className={classes.layout} data-has-unread={withUnreadMarker}>
+      {/* eslint-disable-next-line
+          jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+        */}
+      <div
+        className={classes.layout}
+        data-has-unread={withUnreadMarker}
+        onClick={handleHeaderClick}
+      >
         {hasBackButton ? <BackButton /> : <MobileMenuButton />}
         <NavigationFocusTarget className={classes.title}>
           <button
             type='button'
-            onClick={handleTitleClick}
+            onClick={scrollTop}
             id={getColumnSkipLinkId(columnIndex)}
           >
             {title}

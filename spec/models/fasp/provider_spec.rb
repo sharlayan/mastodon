@@ -5,81 +5,28 @@ require 'rails_helper'
 RSpec.describe Fasp::Provider do
   include ProviderRequestHelper
 
-  describe '#capabilities' do
-    subject { described_class.new(confirmed: true, capabilities:) }
+  describe '#enabled_capabilities' do
+    subject(:provider) { Fabricate(:fasp_provider, fasp_capabilities:) }
 
-    let(:capabilities) do
+    let(:fasp_capabilities) do
       [
-        { 'id' => 'one', 'enabled' => false },
-        { 'id' => 'two' },
+        Fabricate.build(:fasp_capability, name: 'one', enabled: false),
+        Fabricate.build(:fasp_capability, name: 'two', enabled: true),
       ]
     end
 
-    it 'returns an array of `Fasp::Capability` objects' do
-      expect(subject.capabilities).to all(be_a(Fasp::Capability))
-    end
-  end
-
-  describe '#capabilities_attributes=' do
-    subject { described_class.new(confirmed: true) }
-
-    let(:capabilities_params) do
-      {
-        '0' => { 'id' => 'one', 'enabled' => '1' },
-        '1' => { 'id' => 'two', 'enabled' => '0' },
-        '2' => { 'id' => 'three' },
-      }
-    end
-
-    it 'sets capabilities from nested form style hash' do
-      subject.capabilities_attributes = capabilities_params
-
-      expect(subject).to be_capability('one')
-      expect(subject).to be_capability('two')
-      expect(subject).to be_capability('three')
-      expect(subject).to be_capability_enabled('one')
-      expect(subject).to_not be_capability_enabled('two')
-      expect(subject).to_not be_capability_enabled('three')
-    end
-  end
-
-  describe '#capability?' do
-    subject { described_class.new(confirmed:, capabilities:) }
-
-    let(:capabilities) do
-      [
-        { 'id' => 'one', 'enabled' => false },
-        { 'id' => 'two', 'enabled' => true },
-      ]
-    end
-
-    context 'when the provider is not confirmed' do
-      let(:confirmed) { false }
-
-      it 'always returns false' do
-        expect(subject.capability?('one')).to be false
-        expect(subject.capability?('two')).to be false
-      end
-    end
-
-    context 'when the provider is confirmed' do
-      let(:confirmed) { true }
-
-      it 'returns true for available and false for missing capabilities' do
-        expect(subject.capability?('one')).to be true
-        expect(subject.capability?('two')).to be true
-        expect(subject.capability?('three')).to be false
-      end
+    it 'returns capability names rather than database IDs' do
+      expect(provider.enabled_capabilities).to contain_exactly('two')
     end
   end
 
   describe '#capability_enabled?' do
-    subject { described_class.new(confirmed:, capabilities:) }
+    subject { Fabricate(:fasp_provider, confirmed:, fasp_capabilities:) }
 
-    let(:capabilities) do
+    let(:fasp_capabilities) do
       [
-        { 'id' => 'one', 'enabled' => false },
-        { 'id' => 'two', 'enabled' => true },
+        Fabricate.build(:fasp_capability, name: 'one', enabled: false),
+        Fabricate.build(:fasp_capability, name: 'two', enabled: true),
       ]
     end
 
@@ -190,6 +137,7 @@ RSpec.describe Fasp::Provider do
         expect(subject.sign_in_url).to eq 'https://myprov.example.com/sign_in'
         expect(subject).to be_confirmed
         expect(subject).to be_persisted
+        expect(subject.fasp_capabilities).to be_present
       end
     end
 
@@ -203,6 +151,21 @@ RSpec.describe Fasp::Provider do
         expect(subject.sign_in_url).to eq 'https://myprov.example.com/sign_in'
         expect(subject).to_not be_confirmed
         expect(subject).to be_persisted
+      end
+    end
+
+    context 'when a capability version has changed' do
+      let!(:stale_capability) do
+        Fabricate(:fasp_capability, fasp_provider: subject, name: 'debug', version: '0.0', enabled: true)
+      end
+
+      it 'replaces the stale version with the advertised version' do
+        subject.update_info!
+
+        expect(subject.fasp_capabilities.pluck(:name, :version, :enabled))
+          .to contain_exactly(['debug', '0.1', false])
+        expect { stale_capability.reload }
+          .to raise_error(ActiveRecord::RecordNotFound)
       end
     end
   end
