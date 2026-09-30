@@ -52,8 +52,25 @@ html {
     width: calc(100% - var(--avatar-width));
   }
 
+  .status--in-thread > .status__content__wrapper > .media-gallery,
+  .status--in-thread > .status__content__wrapper > .audio-player,
+  .status--in-thread > .status__content__wrapper > div > .video-player,
+  .status--in-thread > .status__content__wrapper > .status-card,
+  .status--in-thread
+    > .status__content__wrapper
+    > .status-card
+    + .more-from-author,
   .status--in-thread > .status__content__wrapper > .status__quote {
+    margin-left: 0;
     margin-inline-start: 0;
+  }
+
+  .status--in-thread > .status__content__wrapper > .status-card,
+  .status--in-thread
+    > .status__content__wrapper
+    > .status-card
+    + .more-from-author,
+  .status--in-thread > .status__content__wrapper > .status__quote {
     width: 100%;
   }
 
