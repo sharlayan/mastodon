@@ -20,17 +20,6 @@ RSpec.describe 'FASP Management', feature: :fasp do
                             path: '/capabilities/callback/0/activation')
     end
 
-    before do
-      # We currently err on the side of caution and prefer to send
-      # a "disable capability" call too often over risking to miss
-      # one. So the following call _can_ happen here, and if it does
-      # that is fine, but it has no bearing on the behavior that is
-      # being tested.
-      stub_provider_request(provider,
-                            method: :delete,
-                            path: '/capabilities/data_sharing/0/activation')
-    end
-
     it 'allows enabling and disabling of capabilities' do
       visit admin_fasp_providers_path
 

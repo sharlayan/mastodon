@@ -8,7 +8,8 @@ import { configureStore } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
 
 import type { Preview } from '@storybook/react-vite';
-import { initialize, mswLoader } from 'msw-storybook-addon';
+import { mswLoader } from 'msw-storybook-addon/csf3';
+import { setupWorker } from 'msw/browser';
 import { action } from 'storybook/actions';
 
 import {
@@ -27,14 +28,14 @@ import { modes } from './modes';
 import '../app/javascript/styles/application.scss';
 import './styles.css';
 
-// Disabling locales in Storybook as it's breaking with Vite 8.
-// const localeFiles = import.meta.glob('@/mastodon/locales/*.json', {
-//   query: { as: 'json' },
-// });
+const loadMsw = mswLoader(async () => {
+  const worker = setupWorker();
 
-// Initialize MSW
-initialize({
-  onUnhandledRequest: unhandledRequestHandler,
+  await worker.start({
+    onUnhandledRequest: unhandledRequestHandler,
+  });
+
+  return worker;
 });
 
 const preview: Preview = {
@@ -215,10 +216,16 @@ const preview: Preview = {
     },
   ],
   loaders: [
-    mswLoader,
-    importCustomEmojiData,
-    importLegacyShortcodes,
-    ({ globals: { locale } }) => importEmojiData(locale),
+    async (context) => {
+      await loadMsw(context);
+      await Promise.all([
+        importCustomEmojiData(),
+        importLegacyShortcodes(),
+        importEmojiData(context.globals.locale),
+      ]);
+
+      return {};
+    },
   ],
   parameters: {
     layout: 'centered',

@@ -3,6 +3,7 @@ import type { FC, ReactNode } from 'react';
 
 import { AccountListItem } from '@/flavours/glitch/components/account_list_item';
 import { Column } from '@/flavours/glitch/components/column';
+import { ColumnHeader } from '@/flavours/glitch/components/column_header';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { MentionSearch } from '@/flavours/glitch/components/mention_search';
 import ScrollableList from '@/flavours/glitch/components/scrollable_list';
@@ -14,6 +15,7 @@ import {
   SHARLAYAN_FOLLOW_LIST_BIO_CHAR_LIMIT,
   useSharlayanFollowListBio,
 } from '@/flavours/glitch/sharlayan/account/list_item';
+import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 
 import { ProfileColumnHeader } from '../../account/components/profile_column_header';
 
@@ -29,6 +31,7 @@ interface AccountListProps {
   accountId?: string | null;
   append?: ReactNode;
   emptyMessage: ReactNode;
+  title: ReactNode;
   header?: ReactNode;
   footer?: ReactNode;
   list?: AccountList | null;
@@ -42,6 +45,7 @@ export const AccountList: FC<AccountListProps> = ({
   accountId,
   append,
   emptyMessage,
+  title,
   header,
   footer,
   list,
@@ -115,7 +119,11 @@ export const AccountList: FC<AccountListProps> = ({
 
   return (
     <Column>
-      <ProfileColumnHeader multiColumn={multiColumn} />
+      {isRedesignEnabled() ? (
+        <ColumnHeader withBackButton title={title} />
+      ) : (
+        <ProfileColumnHeader multiColumn={multiColumn} />
+      )}
 
       <ScrollableList
         scrollKey={scrollKey}

@@ -367,7 +367,7 @@ class UI extends PureComponent {
     if (!this.props.isUploadEnabled || shouldIgnoreSharlayanDropTarget(e.target)) {
       return;
     }
-    if (this.dataTransferIsText(e.dataTransfer)) return false;
+    if (this.dataTransferIsText(e.dataTransfer)) return;
 
     e.preventDefault();
     e.stopPropagation();
@@ -378,7 +378,7 @@ class UI extends PureComponent {
       // do nothing
     }
 
-    return false;
+    return;
   };
 
   handleDrop = (e) => {
