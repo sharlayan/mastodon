@@ -86,7 +86,6 @@ class MisskeyCompat::UserSerializer
       isBlocked: relationships.blocked_by[account.id] || false,
       isMuted: relationships.muting[account.id].present?,
       isRenoteMuted: following.present? && following[:reblogs] == false,
-      memo: relationships.account_note[account.id]&.fetch(:comment),
     }
   end
 

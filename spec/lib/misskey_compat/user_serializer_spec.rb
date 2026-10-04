@@ -27,7 +27,8 @@ RSpec.describe MisskeyCompat::UserSerializer do
     Fabricate(:status_pin, account: remote, status: older, created_at: 1.day.ago)
     Fabricate(:status_pin, account: remote, status: newer)
     accounts = [remote, local]
-    expected = accounts.map { |account| described_class.serialize(account, detailed: true, viewer: viewer) }
+    relationships = AccountRelationshipsPresenter.new(accounts, viewer.id)
+    expected = accounts.map { |account| described_class.serialize(account, detailed: true, viewer: viewer, relationships: relationships) }
 
     collection = MisskeyCompat::UserCollectionContext.for(accounts, viewer: viewer)
     actual = accounts.map { |account| described_class.serialize(account, detailed: true, viewer: viewer, relationships: collection.relationships, collection: collection) }

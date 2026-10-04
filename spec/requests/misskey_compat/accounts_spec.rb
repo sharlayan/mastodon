@@ -12,6 +12,22 @@ RSpec.describe 'Misskey-compat account endpoints' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
+  it 'keeps memo values null in directory and detailed search results' do
+    target.update!(discoverable: true)
+    target.account_stat.save!
+    Fabricate(:account_note, account: account, target_account: target, comment: 'profile memo')
+
+    post '/api/users', params: { i: read_token }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('memo' => nil)
+
+    post '/api/users/search-by-username-and-host', params: { i: read_token, username: target.username, detail: true }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('memo' => nil)
+  end
+
   def create_mentioned_pointer_note(actor, index)
     mentioned = Fabricate(:account)
     status = Fabricate(:status, account: actor, text: "@#{mentioned.username} audit #{index}")

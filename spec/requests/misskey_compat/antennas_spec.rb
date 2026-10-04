@@ -120,6 +120,27 @@ RSpec.describe 'Misskey-compat antennas' do
       expect(by_id.fetch(MisskeyCompat::MiId.encode(included_antenna.id))).to include('src' => 'users', 'users' => [included.acct], 'hasUnreadNote' => true)
       expect(by_id.fetch(MisskeyCompat::MiId.encode(excluded_antenna.id))).to include('src' => 'users_blacklist', 'users' => [excluded.acct], 'hasUnreadNote' => false)
     end
+
+    it 'keeps reversed users arrays consistent with the single-antenna response' do
+      lower_account = Fabricate(:account)
+      higher_account = Fabricate(:account)
+      included_antenna = Fabricate(:antenna, account: user.account, any_accounts: false)
+      excluded_antenna = Fabricate(:antenna, account: user.account, any_accounts: true, exclude_accounts: [higher_account.id.to_s, '0', higher_account.id.to_s, lower_account.id.to_s])
+      AntennaAccount.create!(antenna: included_antenna, account: higher_account)
+      AntennaAccount.create!(antenna: included_antenna, account: lower_account)
+
+      post '/api/antennas/list', params: { i: read_token }, as: :json
+
+      expect(response).to have_http_status(200)
+      list_users = response.parsed_body.index_by { |item| item['id'] }
+      [included_antenna, excluded_antenna].each do |item|
+        post '/api/antennas/show', params: { i: read_token, antennaId: MisskeyCompat::MiId.encode(item.id) }, as: :json
+
+        expect(response).to have_http_status(200)
+        expect(list_users.fetch(MisskeyCompat::MiId.encode(item.id)).fetch('users')).to eq(response.parsed_body.fetch('users'))
+      end
+      expect(list_users.fetch(MisskeyCompat::MiId.encode(excluded_antenna.id)).fetch('users')).to contain_exactly(lower_account.acct, higher_account.acct)
+    end
   end
 
   describe 'feature availability' do

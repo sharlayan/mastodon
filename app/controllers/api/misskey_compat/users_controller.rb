@@ -25,7 +25,9 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
 
   def serialize_account(account, collection: nil)
     me_user = current_user if current_user && current_user.account_id == account.id
-    MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account, me_user: me_user, relationships: collection&.relationships, collection:).merge(avatarDecorations: federated_avatar_decorations(account))
+    data = MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account, me_user: me_user, relationships: collection&.relationships, collection:)
+    data[:memo] = collection.relationships.account_note[account.id]&.fetch(:comment) if collection&.relationships && current_account.id != account.id
+    data.merge(avatarDecorations: federated_avatar_decorations(account))
   end
 
   def federated_avatar_decorations(account)

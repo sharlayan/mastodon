@@ -200,7 +200,10 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
   end
 
   def accts_for(account_ids, accounts: nil)
-    return account_ids.uniq.filter_map { |account_id| accounts[account_id]&.acct } if accounts
+    if accounts
+      ids = account_ids.to_set
+      return accounts.values.filter_map { |account| account.acct if ids.include?(account.id) }
+    end
 
     Account.where(id: account_ids).map(&:acct)
   end
