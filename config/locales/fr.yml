@@ -620,17 +620,23 @@ fr:
         title: Importer des blocages de domaine
       no_file: Aucun fichier sélectionné
     fasp:
+      capabilities:
+        activation_msg: Capacité activée avec succès.
+        deactivation_msg: Capacité désactivée avec succès.
+        disable: Désactiver
+        enable: Activer
       debug:
         callbacks:
           created_at: Créé à
           delete: Supprimer
           ip: Adresse IP
           request_body: Corps de la demande
-          title: Déboguer les rappels
+          title: Rappels de débogage
       providers:
-        active: Activé
+        active: Actif
         base_url: URL de base
         callback: Rappel
+        capabilities: Capacités
         delete: Supprimer
         edit: Modifier un fournisseur
         finish_registration: Terminer l'inscription
@@ -643,8 +649,6 @@ fr:
           description: Vous avez reçu une souscription d'un FSAF. Rejetez-la si vous ne l'avez pas initiée. Si c'est bien votre intention, comparez le nom et l'empreinte de la clé avant de confirmer la souscription.
           reject: Rejeter
           title: Confirmer la souscription au FSAF
-        save: Enregistrer
-        select_capabilities: Sélectionnez les Capacités
         sign_in: Se connecter
         status: État
         title: Fournisseurs de Services Auxiliaire du Fedivers
@@ -983,10 +987,8 @@ fr:
       discovery:
         follow_recommendations: Suivre les recommandations
         preamble: Il est essentiel de donner de la visibilité à des contenus intéressants pour attirer des utilisateur⋅rice⋅s néophytes qui ne connaissent peut-être personne sur Mastodon. Contrôlez le fonctionnement des différentes fonctionnalités de découverte sur votre serveur.
-        privacy: Vie privée
         profile_directory: Annuaire des profils
         public_timelines: Fils publics
-        publish_statistics: Publier les statistiques
         title: Découverte
         trends: Tendances
         wrapstodon: Wrapstodon
@@ -1516,7 +1518,6 @@ fr:
   deletes:
     challenge_not_passed: Les renseignements que vous avez entrés n'étaient pas exacts
     confirm_password: Entrez votre mot de passe actuel pour vérifier votre identité
-    confirm_username: Entrez votre identifiant pour confirmer la procédure
     proceed: Supprimer le compte
     success_msg: Votre compte a été supprimé avec succès
     warning:
@@ -2122,7 +2123,6 @@ fr:
     appearance: Apparence
     authorized_apps: Applications autorisées
     back: Retour vers Mastodon
-    delete: Suppression du compte
     development: Développement
     edit_profile: Modifier le profil
     export: Exportation

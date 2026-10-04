@@ -158,7 +158,9 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
             isNextReplyingToMe &&
             !showThread &&
             classes.connectNextReply,
+          !unfocusable && 'focusable',
         )}
+        tabIndex={unfocusable ? undefined : -1}
         data-featured={featured ? 'true' : null}
         aria-label={screenReaderText}
         data-nosnippet={status.account.noindex || undefined}
@@ -188,7 +190,8 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
         <div
           className={classNames(
             classes.contentWrapper,
-            isHidden && classes.isFiltered,
+            isHidden && classes.hasContentWarning,
+            !showDespiteFilter && isFiltered && classes.isFiltered,
           )}
           id={contentWrapperId}
           inert={isHidden}

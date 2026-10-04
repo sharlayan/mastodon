@@ -100,60 +100,6 @@
                 wrapper: :with_label,
                 sharlayan_only: true
 
-  %h2= t('admin.settings.discovery.privacy')
-
-  .fields-group
-    = f.input :noindex,
-              as: :boolean,
-              disabled: roleplay_locked,
-              hint: t('admin.settings.default_noindex.desc_html'),
-              label: t('admin.settings.default_noindex.title'),
-              wrapper: :with_label
-
-  .fields-group
-    = f.input :norss,
-              as: :boolean,
-              disabled: roleplay_locked,
-              hint: t('admin.settings.default_norss.desc_html'),
-              label: t('admin.settings.default_norss.title'),
-              wrapper: :with_label
-
-  .fields-group
-    = f.input :allow_referrer_origin,
-              as: :boolean,
-              disabled: roleplay_locked,
-              hint: t('admin.settings.allow_referrer_origin.desc'),
-              label: t('admin.settings.allow_referrer_origin.title'),
-              wrapper: :with_label
-
-  %h2= t('admin.settings.discovery.publish_statistics')
-
-  .fields-group
-    = f.input :activity_api_enabled,
-              as: :boolean,
-              disabled: roleplay_locked,
-              wrapper: :with_label,
-              recommended: :recommended
-
-  .fields-group
-    = f.input :peers_api_enabled,
-              as: :boolean,
-              disabled: roleplay_locked,
-              wrapper: :with_label,
-              recommended: :recommended
-
-  %h2= t('admin.settings.security.federation_authentication')
-
-  .fields-group
-    = f.input :authorized_fetch,
-              as: :boolean,
-              disabled: authorized_fetch_overridden? || roleplay_locked,
-              hint: authorized_fetch_hint_text,
-              label: t('admin.settings.security.authorized_fetch'),
-              recommended: authorized_fetch_recommended_value,
-              warning_hint: authorized_fetch_warning_hint_text,
-              wrapper: :with_label
-
   %h2= t('admin.settings.discovery.follow_recommendations')
 
   .fields-group

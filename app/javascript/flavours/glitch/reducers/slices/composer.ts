@@ -175,7 +175,7 @@ type ComposeNewPayload = (
 ) & { force?: boolean };
 
 export const openNewComposer = createAppThunk(
-  (payload: ComposeNewPayload, { dispatch, getState }) => {
+  (payload: ComposeNewPayload | undefined = {}, { dispatch, getState }) => {
     // Always show the composer if it is closed or minimized.
     dispatch(composerSlice.actions.showComposer());
 
@@ -314,6 +314,15 @@ export const submitComposer = createAppThunk(
           modalProps: {},
         }),
       );
+    } else if (!!compose.get('spoiler') && !compose.get('spoiler_text')) {
+      dispatch(
+        openModal({
+          modalType: 'COMPOSER_ADD_CONTENT_WARNING',
+          modalProps: {
+            redirectOnSuccess,
+          },
+        }),
+      );
     } else {
       dispatch(
         submitCompose((status: ApiStatusJSON) => {
@@ -321,8 +330,7 @@ export const submitComposer = createAppThunk(
             window.location.assign(status.url);
           }
 
-          // Hide composer on successful publish
-          dispatch(composerSlice.actions.hideComposer());
+          dispatch(resetComposer());
         }),
       );
     }
