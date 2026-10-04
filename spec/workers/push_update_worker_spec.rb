@@ -37,6 +37,15 @@ RSpec.describe PushUpdateWorker do
           )
       end
 
+      it 'does not load the recipient account without a Misskey subscription' do
+        allow(redis).to receive(:exists?).with("subscribed:misskey:timeline:#{account.id}").and_return(false)
+        allow(Account).to receive(:find_by).and_call_original
+
+        worker.perform(account.id, status.id)
+
+        expect(Account).to_not have_received(:find_by).with(id: account.id)
+      end
+
       def redis_key
         "timeline:#{account.id}"
       end

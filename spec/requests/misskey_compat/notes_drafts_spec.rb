@@ -14,6 +14,16 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
     post "/api/#{endpoint}", params: params.merge(i: token), as: :json
   end
 
+  def uncached_select_queries(&block)
+    queries = []
+    callback = lambda do |_name, _started, _finished, _unique_id, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached] && payload[:sql].match?(/\ASELECT/i)
+    end
+
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+    queries
+  end
+
   it 'advertises all server draft endpoints for Misskey clients' do
     expect(Api::MisskeyCompat::MetaController.compat_endpoint_names).to include(
       'notes/drafts/list',
@@ -109,6 +119,31 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
 
     expect(response).to have_http_status(200)
     expect(response.parsed_body.size).to eq(StatusDraft::LIST_LIMIT)
+  end
+
+  it 'serializes distinct draft references with one reaction aggregate query' do
+    references = Array.new(2) do |index|
+      mentioned = Fabricate(:account, domain: "audit#{index}.example")
+      status = Fabricate(:status, account: account, text: "@#{mentioned.username}@#{mentioned.domain} audit #{index}")
+      Fabricate(:mention, status: status, account: mentioned)
+      Fabricate(:status_reaction, status: status, name: '👍', custom_emoji: nil)
+      Fabricate(:status_draft, account: account, data: {
+        'status' => 'Saved draft',
+        'visibility' => 'public',
+        'in_reply_to_id' => status.id.to_s,
+      })
+      [status, mentioned]
+    end
+    queries = uncached_select_queries { rpc_post 'notes/drafts/list' }
+
+    replies = response.parsed_body.pluck(:reply)
+    expect(response).to have_http_status(200)
+    expect(replies.pluck(:id)).to match_array(references.map { |status, _mentioned| MisskeyCompat::MiId.encode(status.id) })
+    references.each do |status, mentioned|
+      reply = replies.find { |item| item[:id] == MisskeyCompat::MiId.encode(status.id) }
+      expect(reply).to include(text: status.text, mentions: [MisskeyCompat::MiId.encode(mentioned.id)], reactions: { '👍' => 1 })
+    end
+    expect(queries.count { |sql| sql.include?('FROM "status_reactions"') }).to eq(1)
   end
 
   it 'isolates drafts and attached media by account', :aggregate_failures do

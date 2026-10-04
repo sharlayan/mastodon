@@ -8,8 +8,10 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
       ids = params[:userIds]
       return render_invalid_param('#/userIds', 'must be an array of unique strings') unless ids.is_a?(Array) && ids.all?(String) && ids.uniq.size == ids.size
 
-      accounts = Account.without_requested_deletion.where(id: ids).index_by { |account| account.id.to_s }
-      return render json: ids.filter_map { |id| serialize_account(accounts[id]) if accounts.key?(id) }
+      accounts = Account.without_requested_deletion.where(id: ids).to_a
+      collection = MisskeyCompat::UserCollectionContext.for(accounts, viewer: current_account)
+      accounts_by_id = accounts.index_by { |account| account.id.to_s }
+      return render json: ids.filter_map { |id| serialize_account(accounts_by_id[id], collection:) if accounts_by_id.key?(id) }
     end
 
     @account = find_account
@@ -21,9 +23,9 @@ class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
 
   private
 
-  def serialize_account(account)
+  def serialize_account(account, collection: nil)
     me_user = current_user if current_user && current_user.account_id == account.id
-    MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account, me_user: me_user).merge(avatarDecorations: federated_avatar_decorations(account))
+    MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account, me_user: me_user, relationships: collection&.relationships, collection:).merge(avatarDecorations: federated_avatar_decorations(account))
   end
 
   def federated_avatar_decorations(account)

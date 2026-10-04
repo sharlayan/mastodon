@@ -12,9 +12,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     scope = apply_user_origin(Account.discoverable.without_suspended)
     scope = scope.where(domain: normalized_hostname) if normalized_hostname
     accounts = apply_user_sort(scope).limit(pagination_limit).offset(params[:offset].to_i).to_a
-    relationships = account_relationships(accounts)
-
-    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer: current_account, relationships: relationships) }
+    render json: serialize_detailed_accounts(accounts, viewer: current_account)
   end
 
   def notes
@@ -22,7 +20,6 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     filter = AccountStatusesFilter.new(account, current_account, statuses_filter_params)
     scope = apply_compat_date_range(filter.results)
     statuses = scope.to_a_paginated_by_id(pagination_limit, max_id: params[:untilId].presence, since_id: params[:sinceId].presence).to_a
-    Status.preload_cacheable_associations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
@@ -43,7 +40,8 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
       resolve: false
     )
 
-    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: ActiveModel::Type::Boolean.new.cast(params[:detail])) }
+    detailed = ActiveModel::Type::Boolean.new.cast(params[:detail])
+    render json: detailed ? serialize_detailed_accounts(accounts) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
   end
 
   def search_by_username_and_host
@@ -55,9 +53,8 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     scope = scope.where('lower(accounts.username) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(username.downcase)}%") if username.present?
     scope = apply_host_filter(scope, host) if params.key?(:host)
     accounts = scope.limit(pagination_limit).to_a
-    relationships = account_relationships(accounts)
-
-    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: ActiveModel::Type::Boolean.new.cast(params[:detail]), viewer: current_account, relationships: relationships) }
+    detailed = ActiveModel::Type::Boolean.new.cast(params[:detail])
+    render json: detailed ? serialize_detailed_accounts(accounts, viewer: current_account) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
   end
 
   def update_memo
@@ -116,7 +113,6 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     reactions = scope.limit(pagination_limit).select { |reaction| reaction.status && StatusPolicy.new(current_account, reaction.status).show? }
 
     statuses = reactions.map(&:status)
-    Status.preload_cacheable_associations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
     render json: reactions.map { |reaction| serialize_reaction(reaction, account, context) }
@@ -137,7 +133,6 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('statuses.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     statuses = scope.limit(pagination_limit).to_a
-    Status.preload_cacheable_associations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
@@ -155,7 +150,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
 
   def pinned_users
     accounts = Account.local.discoverable.without_requested_deletion.order('account_stats.followers_count DESC').limit(pagination_limit)
-    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true) }
+    render json: serialize_detailed_accounts(accounts)
   end
 
   private
@@ -164,8 +159,9 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     Account.without_suspended.not_excluded_by_account(current_account).select(:id)
   end
 
-  def account_relationships(accounts)
-    AccountRelationshipsPresenter.new(accounts, current_account.id) if current_account
+  def serialize_detailed_accounts(accounts, viewer: nil)
+    collection = MisskeyCompat::UserCollectionContext.for(accounts, viewer:)
+    accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true, viewer:, relationships: collection.relationships, collection:) }
   end
 
   def serialize_reaction(reaction, account, context)

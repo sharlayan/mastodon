@@ -9,7 +9,9 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
   before_action :set_list!, only: [:show, :update, :destroy, :push, :pull, :timeline, :memberships, :update_membership]
 
   def index
-    render json: current_account.owned_lists.order(id: :desc).map { |list| serialize(list) }
+    lists = current_account.owned_lists.order(id: :desc).to_a
+    members = ListAccount.joins(:account).where(list_id: lists.map(&:id)).pluck(:list_id, :account_id).group_by(&:first)
+    render json: lists.map { |list| serialize(list, account_ids: members.fetch(list.id, []).map(&:last)) }
   end
 
   def show
@@ -51,7 +53,6 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
 
   def timeline
     statuses = ListFeed.new(@list).get(pagination_limit, params[:untilId].presence, params[:sinceId].presence).to_a
-    Status.preload_cacheable_associations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
   end
@@ -87,13 +88,13 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
     render_error('No such list', 'NO_SUCH_LIST', 404)
   end
 
-  def serialize(list)
+  def serialize(list, account_ids: nil)
     {
       id: MisskeyCompat::MiId.encode(list.id),
       createdAt: list.created_at.iso8601,
       name: list.title,
       isPublic: false,
-      userIds: list.accounts.pluck(:id).map { |id| MisskeyCompat::MiId.encode(id) },
+      userIds: (account_ids || list.accounts.pluck(:id)).map { |id| MisskeyCompat::MiId.encode(id) },
     }
   end
 end

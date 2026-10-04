@@ -1,14 +1,15 @@
 # frozen_string_literal: true
 
 class MisskeyCompat::StatusDraftSerializer
-  def self.serialize(draft, current_account:, statuses_by_id: nil)
-    new(draft, current_account: current_account, statuses_by_id: statuses_by_id).serialize
+  def self.serialize(draft, current_account:, statuses_by_id: nil, context: nil)
+    new(draft, current_account: current_account, statuses_by_id: statuses_by_id, context: context).serialize
   end
 
-  def initialize(draft, current_account:, statuses_by_id: nil)
+  def initialize(draft, current_account:, statuses_by_id: nil, context: nil)
     @draft = draft
     @current_account = current_account
     @statuses_by_id = statuses_by_id
+    @context = context || MisskeyCompat::SerializationContext.new(current_account: current_account)
     @data = draft.data || {}
   end
 
@@ -21,7 +22,7 @@ class MisskeyCompat::StatusDraftSerializer
       text: @data['status'],
       cw: @data['spoiler_text'].presence,
       userId: MisskeyCompat::MiId.encode(@current_account.id),
-      user: MisskeyCompat::UserSerializer.serialize(@current_account),
+      user: @context.user(@current_account),
       replyId: encoded_id(@data['in_reply_to_id']),
       renoteId: encoded_id(@data['quoted_status_id']),
       reply: serialized_status(@data['in_reply_to_id']),
@@ -50,7 +51,7 @@ class MisskeyCompat::StatusDraftSerializer
     status = @statuses_by_id ? @statuses_by_id[value.to_i] : Status.find_by(id: value)
     return if status.nil? || !StatusPolicy.new(@current_account, status).show?
 
-    MisskeyCompat::NoteSerializer.serialize(status, current_account: @current_account)
+    MisskeyCompat::NoteSerializer.serialize(status, context: @context)
   end
 
   def misskey_visibility

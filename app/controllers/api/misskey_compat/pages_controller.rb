@@ -7,6 +7,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
 
   ALLOWED_BLOCK_KEYS = %w(id type text title children fileId noUpscale note detailed url size).freeze
   AUTHENTICATED_ACTIONS = %i(featured index likes create update destroy like unlike).freeze
+  PAGE_ASSOCIATIONS = [:account, { eye_catching_media_attachment: { drive_file: :custom_name } }].freeze
 
   requires_write_scope :create, :update, :destroy, :like, :unlike
   requires_misskey_permission 'read:pages', :featured, :index
@@ -32,18 +33,18 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   end
 
   def featured
-    pages = Page.featured.includes(:account, :eye_catching_media_attachment).limit(Page::LIST_LIMIT)
+    pages = Page.featured.includes(*PAGE_ASSOCIATIONS).limit(Page::LIST_LIMIT)
     render json: serialize_many(pages, include_content: false)
   end
 
   def index
-    pages = apply_page_range(current_account.pages).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    pages = apply_page_range(current_account.pages).includes(*PAGE_ASSOCIATIONS).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
     render json: serialize_many(pages, include_content: false)
   end
 
   def likes
     visible_pages = current_account.page_likes.joins(page: :account).where(pages: { visibility: %w(public authenticated) }).merge(Account.without_suspended)
-    likes = apply_like_range(visible_pages).includes(page: [:account, :eye_catching_media_attachment]).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    likes = apply_like_range(visible_pages).includes(page: PAGE_ASSOCIATIONS).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
     render json: likes.map { |like| { id: MisskeyCompat::MiId.encode(like.id), page: serialize(like.page, include_content: false) } }
   end
 
@@ -51,7 +52,7 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
     account = Account.find_by(id: params[:userId])
     return render json: [] if account.nil? || page_hidden_from_search_engine?(account)
 
-    pages = apply_page_range(Page.publicly_accessible.where(account: account)).includes(:account, :eye_catching_media_attachment).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
+    pages = apply_page_range(Page.publicly_accessible.where(account: account)).includes(*PAGE_ASSOCIATIONS).limit(pagination_limit(default: Page::LIST_LIMIT, max: Page::MAX_LIST_LIMIT))
     render json: serialize_many(pages, include_content: false)
   end
 
@@ -120,11 +121,11 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
 
   def find_shown_page
     if params[:pageId].present?
-      Page.available_accounts.includes(:account, :eye_catching_media_attachment).find_by(id: params[:pageId])
+      Page.available_accounts.includes(*PAGE_ASSOCIATIONS).find_by(id: params[:pageId])
     elsif params[:name].present? && params[:username].present?
       account = Account.where(domain: nil).where('LOWER(username) = ?', params[:username].to_s.downcase).first
       visibility = current_account ? %w(public authenticated) : %w(public)
-      account&.pages&.where(visibility: visibility)&.includes(:account, :eye_catching_media_attachment)&.find_by(name: params[:name]) unless account&.unavailable?
+      account&.pages&.where(visibility: visibility)&.includes(*PAGE_ASSOCIATIONS)&.find_by(name: params[:name]) unless account&.unavailable?
     end
   end
 

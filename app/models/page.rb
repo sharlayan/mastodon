@@ -167,10 +167,14 @@ class Page < ApplicationRecord
   end
 
   def renderable_attached_media
-    ids = attached_media_ids(renderable_content)
+    ids = renderable_attached_media_ids
     return MediaAttachment.none if ids.empty?
 
     account.media_attachments.where(id: ids)
+  end
+
+  def renderable_attached_media_ids
+    attached_media_ids(renderable_content)
   end
 
   def self.limit_for(account)

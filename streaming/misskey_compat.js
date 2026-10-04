@@ -194,6 +194,7 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
       const channel = `${MISSKEY_PREFIX}note:${noteId}`;
 
+      let subscription;
       const listener = (json) => {
         if (!json || json.event !== 'noteUpdated') return;
 
@@ -205,7 +206,7 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
 
         loadExcludedReactionAccountIds(session.request.accountId, [reactionAccountId])
           .then((excludedAccountIds) => {
-            if (excludedAccountIds.length === 0) send(session, 'noteUpdated', json.payload);
+            if (notes.get(noteId) === subscription && excludedAccountIds.length === 0) send(session, 'noteUpdated', json.payload);
           })
           .catch((err) => logger.error({ err }, 'misskey compat reaction filter failed'));
       };
@@ -213,7 +214,8 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       subscribe(channel, listener);
       const stopHeartbeat = subscriptionHeartbeat([channel]);
 
-      notes.set(noteId, { channel, listener, stopHeartbeat });
+      subscription = { channel, listener, stopHeartbeat };
+      notes.set(noteId, subscription);
     }).catch((err) => {
       logger.error({ err }, 'misskey compat note subscribe failed');
     }).finally(() => {

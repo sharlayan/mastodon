@@ -4,6 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'Misskey-compat antennas' do
   let(:user) { Fabricate(:user) }
+  let(:read_token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token }
   let(:write_token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write').token }
   let(:antenna) { Fabricate(:antenna, account: user.account) }
   let(:status) { Fabricate(:status) }
@@ -99,6 +100,25 @@ RSpec.describe 'Misskey-compat antennas' do
       expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
       expect(antenna.reload.attributes).to eq(original)
       expect(antenna.antenna_accounts.count).to eq(0)
+    end
+  end
+
+  describe 'POST /api/antennas/list' do
+    it 'preserves users, source, and unread state across the collection' do
+      user.update!(last_sign_in_at: Time.now.utc)
+      included = Fabricate(:account)
+      excluded = Fabricate(:account)
+      included_antenna = Fabricate(:antenna, account: user.account, any_accounts: false)
+      excluded_antenna = Fabricate(:antenna, account: user.account, any_accounts: true, exclude_accounts: [excluded.id.to_s])
+      AntennaAccount.create!(antenna: included_antenna, account: included)
+      FeedManager.instance.push_to_antenna(included_antenna, Fabricate(:status))
+
+      post '/api/antennas/list', params: { i: read_token }, as: :json
+
+      expect(response).to have_http_status(200)
+      by_id = response.parsed_body.index_by { |item| item['id'] }
+      expect(by_id.fetch(MisskeyCompat::MiId.encode(included_antenna.id))).to include('src' => 'users', 'users' => [included.acct], 'hasUnreadNote' => true)
+      expect(by_id.fetch(MisskeyCompat::MiId.encode(excluded_antenna.id))).to include('src' => 'users_blacklist', 'users' => [excluded.acct], 'hasUnreadNote' => false)
     end
   end
 

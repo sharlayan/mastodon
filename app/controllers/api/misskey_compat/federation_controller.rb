@@ -69,8 +69,9 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
     host = host_param
     return render_invalid_param('#/properties/host', 'must be a non-empty string') if host.blank?
 
-    accounts = paginate_by_id(Account.where(domain: host).includes(:account_stat))
-    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true) }
+    accounts = paginate_by_id(Account.where(domain: host).includes(:account_stat)).to_a
+    collection = MisskeyCompat::UserCollectionContext.for(accounts)
+    render json: accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account, detailed: true, collection:) }
   end
 
   def followers

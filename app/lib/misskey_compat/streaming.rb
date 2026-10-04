@@ -4,11 +4,12 @@ module MisskeyCompat
   module Streaming
     module_function
 
-    def broadcast_note(redis, timeline_key, status, current_account: nil)
+    def broadcast_note(redis, timeline_key, status, current_account: nil, current_account_id: nil)
       return unless Setting.misskey_compat_enabled
       return if status.nil?
       return unless redis.exists?("subscribed:misskey:#{timeline_key}")
 
+      current_account ||= Account.find_by(id: current_account_id) if current_account_id
       note = MisskeyCompat::NoteSerializer.serialize(status, current_account: current_account)
       redis.publish("misskey:#{timeline_key}", JSON.generate({ event: 'note', payload: note }))
     rescue => e
@@ -36,21 +37,26 @@ module MisskeyCompat
     end
 
     def broadcast_drive_file(redis, account, drive_file, type)
-      body = type == 'fileDeleted' ? MisskeyCompat::MiId.encode(drive_id(drive_file)) : MisskeyCompat::DriveFileSerializer.serialize(drive_file)
-      broadcast_drive(redis, account, type, body)
+      broadcast_drive(redis, account, type) do
+        type == 'fileDeleted' ? MisskeyCompat::MiId.encode(drive_id(drive_file)) : MisskeyCompat::DriveFileSerializer.serialize(drive_file)
+      end
     end
 
     def broadcast_drive_folder(redis, account, drive_folder, type)
-      body = type == 'folderDeleted' ? MisskeyCompat::MiId.encode(drive_id(drive_folder)) : MisskeyCompat::DriveFolderSerializer.serialize(drive_folder)
-      broadcast_drive(redis, account, type, body)
+      broadcast_drive(redis, account, type) do
+        type == 'folderDeleted' ? MisskeyCompat::MiId.encode(drive_id(drive_folder)) : MisskeyCompat::DriveFolderSerializer.serialize(drive_folder)
+      end
     end
 
-    def broadcast_drive(redis, account, type, body)
+    def broadcast_drive(redis, account, type, body = nil)
       return unless Setting.misskey_compat_enabled
-      return if account.nil? || body.nil?
+      return if account.nil?
 
       channel = "misskey:drive:#{account.id}"
       return unless redis.exists?("subscribed:#{channel}")
+
+      body = yield if block_given?
+      return if body.nil?
 
       redis.publish(channel, JSON.generate({ event: 'drive', payload: { type: type, body: body } }))
     rescue => e

@@ -3,16 +3,17 @@
 class MisskeyCompat::UserSerializer
   include RoutingHelper
 
-  def self.serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil)
-    new.serialize(account, detailed: detailed, viewer: viewer, me_user: me_user, context: context, relationships: relationships)
+  def self.serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil, collection: nil)
+    new.serialize(account, detailed: detailed, viewer: viewer, me_user: me_user, context: context, relationships: relationships, collection: collection)
   end
 
   def self.avatar_decorations_for(account)
     new.avatar_decorations_for(account)
   end
 
-  def serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil)
+  def serialize(account, detailed: false, viewer: nil, me_user: nil, context: nil, relationships: nil, collection: nil)
     @context = context
+    @collection = collection
     data = {
       id: MisskeyCompat::MiId.encode(account.id),
       name: account.display_name.presence || account.username,
@@ -40,7 +41,8 @@ class MisskeyCompat::UserSerializer
   end
 
   def avatar_decorations_for(account)
-    AvatarDecoration.visible_configs_for(account).map do |config, decoration|
+    configs = @collection ? @collection.avatar_decoration_configs_for(account) : AvatarDecoration.visible_configs_for(account)
+    configs.map do |config, decoration|
       {
         id: MisskeyCompat::MiId.encode(decoration.id),
         url: full_asset_url(decoration.image_url),
@@ -84,6 +86,7 @@ class MisskeyCompat::UserSerializer
       isBlocked: relationships.blocked_by[account.id] || false,
       isMuted: relationships.muting[account.id].present?,
       isRenoteMuted: following.present? && following[:reblogs] == false,
+      memo: relationships.account_note[account.id]&.fetch(:comment),
     }
   end
 
@@ -164,10 +167,11 @@ class MisskeyCompat::UserSerializer
   end
 
   def pinned_notes_for(account, viewer)
+    return @collection.pinned_notes_for(account) if @collection
+
     statuses = account.pinned_statuses.where(visibility: [:public, :unlisted]).to_a
     return [[], []] if statuses.empty?
 
-    Status.preload_cacheable_associations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: viewer)
 
     [
@@ -177,6 +181,8 @@ class MisskeyCompat::UserSerializer
   end
 
   def pinned_page_for(account, viewer)
+    return @collection.pinned_page_for(account) if @collection
+
     return [nil, nil] unless Setting.pages_enabled
 
     page = account.pages.find_by(is_main: true)
@@ -230,7 +236,9 @@ class MisskeyCompat::UserSerializer
     domain = account.domain
     return nil if domain.blank?
 
-    if @context
+    if @collection
+      @collection.instance_info(domain) { build_instance_info(domain) }
+    elsif @context
       @context.instance_info(domain) { build_instance_info(domain) }
     else
       build_instance_info(domain)

@@ -100,8 +100,6 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     limit = pagination_limit(default: 10, max: 100)
     statuses = @note.ancestors(limit + offset, current_account).reverse
     statuses = statuses.drop(offset).first(limit)
-    Status.preload_cacheable_associations(statuses)
-    preload_relations(statuses)
     render json: serialize_collection(statuses)
   end
 
@@ -237,7 +235,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     offset = [params[:offset].to_i, 0].max
     return render_invalid_param('#/properties/offset', "must be less than or equal to #{SCHEDULED_OFFSET_LIMIT}") if offset > SCHEDULED_OFFSET_LIMIT
 
-    scope = current_account.scheduled_statuses.includes(:media_attachments).order(id: :desc)
+    scope = current_account.scheduled_statuses.includes(media_attachments: { drive_file: :custom_name }).order(id: :desc)
     scheduled = scope.limit(pagination_limit).offset(offset).to_a
 
     render json: scheduled.map { |scheduled_status| serialize_scheduled(scheduled_status) }
@@ -252,7 +250,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def drafts_list
-    scope = current_account.status_drafts.within_data_limit.includes(:media_attachments).order(id: :desc)
+    scope = current_account.status_drafts.within_data_limit.includes(media_attachments: { drive_file: :custom_name }).order(id: :desc)
     scope = scope.where(id: ...(until_id.to_i)) if until_id.present?
     scope = scope.where('status_drafts.id > ?', since_id.to_i) if since_id.present?
     scope = scope.where(created_at: ...(Time.zone.at(params[:untilDate].to_i / 1000.0))) if params[:untilDate].present?
@@ -260,8 +258,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     scope = scope.none if ActiveModel::Type::Boolean.new.cast(params[:scheduled])
     drafts = scope.limit(pagination_limit(default: StatusDraft::LIST_LIMIT, max: StatusDraft::LIST_LIMIT)).to_a
     statuses_by_id = draft_reference_statuses(drafts)
+    context = MisskeyCompat::SerializationContext.for(statuses_by_id.values, current_account: current_account)
 
-    render json: drafts.map { |draft| serialize_draft(draft, statuses_by_id: statuses_by_id) }
+    render json: drafts.map { |draft| serialize_draft(draft, statuses_by_id: statuses_by_id, context: context) }
   end
 
   def drafts_count
@@ -379,8 +378,6 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     favourites = favourites.limit(pagination_limit).to_a
 
     statuses = favourites.map(&:status)
-    Status.preload_cacheable_associations(statuses)
-    preload_relations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
     render json: favourites.map { |fav|
@@ -466,8 +463,6 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def render_visible_notes(scope)
     statuses = scope.to_a.select { |status| StatusPolicy.new(current_account, status).show? }
-    Status.preload_cacheable_associations(statuses)
-    preload_relations(statuses)
     render json: serialize_collection(statuses)
   end
 
@@ -706,15 +701,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     }
   end
 
-  def serialize_draft(draft, statuses_by_id: nil)
-    MisskeyCompat::StatusDraftSerializer.serialize(draft, current_account: current_account, statuses_by_id: statuses_by_id)
+  def serialize_draft(draft, statuses_by_id: nil, context: nil)
+    MisskeyCompat::StatusDraftSerializer.serialize(draft, current_account: current_account, statuses_by_id: statuses_by_id, context: context)
   end
 
   def draft_reference_statuses(drafts)
     ids = drafts.flat_map { |draft| [draft.data['in_reply_to_id'], draft.data['quoted_status_id']] }.compact.uniq
     statuses = Status.where(id: ids).to_a
-    Status.preload_cacheable_associations(statuses)
-    ActiveRecord::Associations::Preloader.new(records: statuses, associations: :mentions).call
     statuses.index_by(&:id)
   end
 
@@ -811,16 +804,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def render_notes(statuses)
     statuses = statuses.to_a
-    Status.preload_cacheable_associations(statuses)
-    preload_relations(statuses)
     render json: serialize_collection(statuses)
-  end
-
-  def preload_relations(statuses)
-    ActiveRecord::Associations::Preloader.new(records: statuses, associations: [:thread, { quote: :quoted_status }, { mentions: :account }]).call
-
-    related = statuses.filter_map(&:thread) + statuses.filter_map { |status| status.quote&.quoted_status }
-    Status.preload_cacheable_associations(related) if related.any?
   end
 
   def until_id

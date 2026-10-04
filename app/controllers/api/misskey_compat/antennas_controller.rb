@@ -14,7 +14,9 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
   before_action :validate_supported_params!, only: [:create, :update]
 
   def index
-    render json: current_account.antennas.order(id: :desc).map { |antenna| serialize(antenna) }
+    antennas = current_account.antennas.order(id: :desc).to_a
+    context = collection_context(antennas)
+    render json: antennas.map { |antenna| serialize(antenna, context:) }
   end
 
   def show
@@ -44,7 +46,6 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
 
   def notes
     statuses = AntennaFeed.new(@antenna).get(pagination_limit, params[:untilId].presence, params[:sinceId].presence).to_a
-    Status.preload_cacheable_associations(statuses)
     mark_read!(@antenna, statuses.first&.id) if params[:untilId].blank?
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }
@@ -139,8 +140,8 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
     ActiveModel::Type::Boolean.new.cast(value) || false
   end
 
-  def serialize(antenna)
-    src, users = derive_src_and_users(antenna)
+  def serialize(antenna, context: nil)
+    src, users = derive_src_and_users(antenna, context:)
 
     {
       id: MisskeyCompat::MiId.encode(antenna.id),
@@ -158,7 +159,7 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
       withFile: antenna.with_media_only,
       excludeNotesInSensitiveChannel: false,
       isActive: antenna.available,
-      hasUnreadNote: unread?(antenna),
+      hasUnreadNote: context ? context[:unread][antenna.id] : unread?(antenna),
       notify: false,
     }
   end
@@ -186,20 +187,51 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
     "antenna:#{antenna.id}:read"
   end
 
-  def derive_src_and_users(antenna)
-    include_ids = antenna.antenna_accounts.includes_only.pluck(:account_id)
+  def derive_src_and_users(antenna, context: nil)
+    include_ids = context ? context[:include_ids][antenna.id] : antenna.antenna_accounts.includes_only.pluck(:account_id)
 
     if !antenna.any_accounts? && include_ids.present?
-      ['users', accts_for(include_ids)]
+      ['users', accts_for(include_ids, accounts: context&.fetch(:accounts))]
     elsif antenna.exclude_accounts.present?
-      ['users_blacklist', accts_for(antenna.exclude_accounts.map(&:to_i))]
+      ['users_blacklist', accts_for(antenna.exclude_accounts.map(&:to_i), accounts: context&.fetch(:accounts))]
     else
       ['all', []]
     end
   end
 
-  def accts_for(account_ids)
+  def accts_for(account_ids, accounts: nil)
+    return account_ids.uniq.filter_map { |account_id| accounts[account_id]&.acct } if accounts
+
     Account.where(id: account_ids).map(&:acct)
+  end
+
+  def collection_context(antennas)
+    antenna_ids = antennas.map(&:id)
+    include_ids = AntennaAccount.includes_only.where(antenna_id: antenna_ids).pluck(:antenna_id, :account_id).each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |(antenna_id, account_id), result|
+      result[antenna_id] << account_id
+    end
+    account_ids = include_ids.values.flatten + antennas.flat_map { |antenna| antenna.exclude_accounts.map(&:to_i) }
+
+    {
+      include_ids:,
+      accounts: Account.where(id: account_ids.uniq).index_by(&:id),
+      unread: unread_map(antennas),
+    }
+  end
+
+  def unread_map(antennas)
+    return {} if antennas.empty?
+
+    values = redis.pipelined do |pipeline|
+      antennas.each do |antenna|
+        pipeline.zrevrange(FeedManager.instance.key(:antenna, antenna.id), 0, 0)
+        pipeline.get(read_key(antenna))
+      end
+    end
+
+    antennas.each_with_index.to_h do |antenna, index|
+      [antenna.id, values[index * 2].first.to_i > values[(index * 2) + 1].to_i]
+    end
   end
 
   def flatten_keywords(value)

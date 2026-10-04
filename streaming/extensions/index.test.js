@@ -135,7 +135,7 @@ test('Misskey cleanup removes channel and note subscriptions', () => {
   assert.equal(session.misskeyNotes.size, 0);
 });
 
-const createReactionStreamingFixture = (excludedAccountIds) => {
+const createReactionStreamingFixture = (excludedAccountIds, loadExcludedReactionAccountIds = async () => excludedAccountIds) => {
   let listener;
   const sent = [];
   const compat = createMisskeyCompat({
@@ -144,7 +144,7 @@ const createReactionStreamingFixture = (excludedAccountIds) => {
     subscriptionHeartbeat: () => () => {},
     channelNameToIds: async () => ({ channelIds: [] }),
     authorizeStatusAccess: async () => true,
-    loadExcludedReactionAccountIds: async () => excludedAccountIds,
+    loadExcludedReactionAccountIds,
     loadGrantPermissions: async () => undefined,
     isEnabled: async () => true,
     logger: { error: () => {}, warn: () => {} },
@@ -191,6 +191,35 @@ test('Misskey noteUpdated drops reactions from muted or blocked accounts', async
   await new Promise((resolve) => setImmediate(resolve));
 
   assert.deepEqual(fixture.sent, []);
+});
+
+test('Misskey note reaction filters ignore pending events after unsubscribe, resubscribe, or close', async () => {
+  const teardowns = [
+    (fixture) => fixture.compat.handleMessage(fixture.session, { type: 'unsubNote', body: { id: '0000000000000009' } }),
+    async (fixture) => {
+      fixture.compat.handleMessage(fixture.session, { type: 'unsubNote', body: { id: '0000000000000009' } });
+      fixture.compat.handleMessage(fixture.session, { type: 'subNote', body: { id: '0000000000000009' } });
+      await new Promise((resolve) => setImmediate(resolve));
+    },
+    (fixture) => fixture.compat.cleanup(fixture.session),
+  ];
+
+  for (const teardown of teardowns) {
+    let resolveExcluded;
+    const fixture = createReactionStreamingFixture([], () => new Promise((resolve) => { resolveExcluded = resolve; }));
+    fixture.compat.handleMessage(fixture.session, { type: 'subNote', body: { id: '0000000000000009' } });
+    await new Promise((resolve) => setImmediate(resolve));
+    fixture.listener()({
+      event: 'noteUpdated',
+      payload: { id: '0000000000000009', type: 'reacted', body: { reaction: '👍', userId: '0000000000000008' } },
+    });
+
+    await teardown(fixture);
+    resolveExcluded([]);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.deepEqual(fixture.sent, []);
+  }
 });
 
 test('Misskey note subscription limit reserves slots before asynchronous authorization', async () => {
@@ -465,10 +494,44 @@ test('Tokens with neither a read scope nor a MiAuth grant are rejected', async (
   assert.equal(warnings.length, 2);
 });
 
-test('Misskey enabled lookup failures remain disabled', async () => {
+test('Misskey enabled lookup caches concurrent and failed checks, then refreshes after its TTL', async () => {
+  const errors = [];
+  let queries = 0;
+  let release;
+  let now = 20_000;
+  let fail = true;
+  const wait = new Promise((resolve) => { release = resolve; });
+  const enabled = createEnabledCheck(
+    { query: async () => {
+      queries += 1;
+      await wait;
+      if (fail) throw new Error('database unavailable');
+      return { rows: [{ value: "--- true\n" }] };
+    } },
+    { error: (...args) => errors.push(args) },
+    () => now
+  );
+
+  const checks = [enabled(), enabled(), enabled()];
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(queries, 1);
+  release();
+  assert.deepEqual(await Promise.all(checks), [false, false, false]);
+  assert.equal(await enabled(), false);
+  assert.equal(queries, 1);
+  assert.equal(errors.length, 1);
+
+  now += 15_000;
+  fail = false;
+  assert.equal(await enabled(), true);
+  assert.equal(await enabled(), true);
+  assert.equal(queries, 2);
+});
+
+test('Misskey enabled lookup fails closed when its query throws synchronously', async () => {
   const errors = [];
   const enabled = createEnabledCheck(
-    { query: async () => { throw new Error('database unavailable'); } },
+    { query: () => { throw new Error('database unavailable'); } },
     { error: (...args) => errors.push(args) },
     () => 20_000
   );

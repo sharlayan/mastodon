@@ -107,6 +107,30 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
     end
   end
 
+  describe 'batch lookup' do
+    let(:viewer) { Fabricate(:user) }
+    let(:token) { Fabricate(:accessible_access_token, resource_owner_id: viewer.id, scopes: 'read').token }
+
+    it 'preserves memos while loading them once for the requested accounts' do
+      first = Fabricate(:account)
+      second = Fabricate(:account)
+      Fabricate(:account_note, account: viewer.account, target_account: first, comment: 'first memo')
+      Fabricate(:account_note, account: viewer.account, target_account: second, comment: 'second memo')
+      ids = [MisskeyCompat::MiId.encode(second.id), MisskeyCompat::MiId.encode(first.id)]
+      queries = []
+      callback = ->(_name, _started, _finished, _id, payload) { queries << payload[:sql] unless payload[:cached] }
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        post '/api/users/show', params: { i: token, userIds: ids }, as: :json
+      end
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq(ids)
+      expect(response.parsed_body.pluck(:memo)).to eq(['second memo', 'first memo'])
+      expect(queries.grep(/FROM "account_notes"/)).to have_attributes(size: 1)
+    end
+  end
+
   describe 'avatarDecorations' do
     let(:decoration) { Fabricate(:avatar_decoration) }
 

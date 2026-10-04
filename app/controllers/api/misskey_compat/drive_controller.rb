@@ -46,7 +46,6 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
 
   def attached_notes
     statuses = attached_statuses
-    Status.preload_cacheable_associations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
     render json: statuses.map { |note| MisskeyCompat::NoteSerializer.serialize(note, context: context) }
@@ -108,7 +107,7 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   def find_by_hash
     return render_invalid_param('#/properties/md5', 'md5 required') if params[:md5].blank?
 
-    render json: paginated_search(current_account.drive_files.where(md5: params[:md5].to_s)).map { |file| MisskeyCompat::DriveFileSerializer.serialize(file) }
+    render json: paginated_search(current_account.drive_files.includes(:custom_name).where(md5: params[:md5].to_s)).map { |file| MisskeyCompat::DriveFileSerializer.serialize(file) }
   end
 
   def check_existence
