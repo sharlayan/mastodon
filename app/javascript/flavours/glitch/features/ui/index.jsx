@@ -38,7 +38,9 @@ import { collectionsEnabled } from 'flavours/glitch/sharlayan/roleplay';
 import { renderSharlayanRoutes } from 'flavours/glitch/sharlayan/registry/routes/render';
 import { SharlayanUiExtensions, shouldIgnoreSharlayanDropTarget } from 'flavours/glitch/sharlayan/registry/ui';
 
-import BundleColumnError from './components/bundle_column_error';
+import { openNewComposer } from '@/flavours/glitch/reducers/slices/composer';
+
+import { BundleColumnError } from './components/bundle_column_error';
 import { NavigationBar } from './components/navigation_bar';
 import { UploadArea } from './components/upload_area';
 import { HashtagMenuController } from './components/hashtag_menu_controller';
@@ -91,7 +93,7 @@ import {
   Quotes,
 } from './util/async-components';
 import { ColumnsContextProvider } from './util/columns_context';
-import { focusColumn, getFocusedItemIndex, focusItemSibling, focusFirstItem, getFocusedColumnIndex } from './util/focusUtils';
+import { focusColumn, getFocusedItemIndex, focusItemSibling, focusFirstItem, getFocusedColumnIndex, focusFirstVisibleItemInColumn } from './util/focusUtils';
 import { WrappedSwitch, WrappedRoute } from './util/react_router_helpers';
 import { CustomHomepage } from 'flavours/glitch/features/custom_homepage';
 
@@ -294,7 +296,7 @@ class SwitchingColumnsArea extends PureComponent {
   }
 }
 
-class UI extends PureComponent {
+export class UI extends PureComponent {
   static propTypes = {
     identity: identityContextPropShape,
     dispatch: PropTypes.func.isRequired,
@@ -529,12 +531,27 @@ class UI extends PureComponent {
   handleHotkeyNew = e => {
     e.preventDefault();
 
+    if (isRedesignEnabled()) {
+      this.props.dispatch(openNewComposer());
+      return;
+    }
+
     const element = this.node.querySelector('.autosuggest-textarea__textarea');
 
     if (element) {
       element.focus();
     }
   };
+
+  handleHotkeyNewMessage = (e) => {
+    if (!isRedesignEnabled()) {
+      return false;
+    }
+
+    e.preventDefault();
+    this.props.dispatch(openNewComposer({ type: 'message' }));
+    return true;
+  }
 
   handleHotkeySearch = e => {
     e.preventDefault();
@@ -547,6 +564,10 @@ class UI extends PureComponent {
   };
 
   handleHotkeyForceNew = e => {
+    if (isRedesignEnabled()) {
+      this.props.dispatch(openNewComposer({ force: true }));
+      return;
+    }
     this.handleHotkeyNew(e);
     this.props.dispatch(resetCompose());
   };
@@ -571,7 +592,9 @@ class UI extends PureComponent {
   handleMoveUp = () => {
     const currentItemIndex = getFocusedItemIndex();
     if (currentItemIndex === -1) {
-      return focusColumn(getFocusedColumnIndex());
+      return isRedesignEnabled()
+        ? focusFirstVisibleItemInColumn(getFocusedColumnIndex())
+        : focusColumn(getFocusedColumnIndex());
     } else {
       return focusItemSibling(currentItemIndex, -1);
     }
@@ -580,7 +603,9 @@ class UI extends PureComponent {
   handleMoveDown = () => {
     const currentItemIndex = getFocusedItemIndex();
     if (currentItemIndex === -1) {
-      return focusColumn(getFocusedColumnIndex());
+      return isRedesignEnabled()
+        ? focusFirstVisibleItemInColumn(getFocusedColumnIndex())
+        : focusColumn(getFocusedColumnIndex());
     } else {
       return focusItemSibling(currentItemIndex, 1);
     }
@@ -678,6 +703,7 @@ class UI extends PureComponent {
       new: this.handleHotkeyNew,
       search: this.handleHotkeySearch,
       forceNew: this.handleHotkeyForceNew,
+      newMessage: this.handleHotkeyNewMessage,
       toggleComposeSpoilers: this.handleHotkeyToggleComposeSpoilers,
       focusColumn: this.handleHotkeyFocusColumn,
       focusLoadMore: this.handleHotkeyLoadMore,

@@ -12,6 +12,45 @@ RSpec.describe 'Misskey-compat account endpoints' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
+  it 'keeps memo values null in directory and detailed search results' do
+    target.update!(discoverable: true)
+    target.account_stat.save!
+    Fabricate(:account_note, account: account, target_account: target, comment: 'profile memo')
+
+    post '/api/users', params: { i: read_token }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('memo' => nil)
+
+    post '/api/users/search-by-username-and-host', params: { i: read_token, username: target.username, detail: true }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('memo' => nil)
+  end
+
+  def create_mentioned_pointer_note(actor, index)
+    mentioned = Fabricate(:account)
+    status = Fabricate(:status, account: actor, text: "@#{mentioned.username} audit #{index}")
+    Fabricate(:mention, status: status, account: mentioned)
+    file = DriveFile.create!(account: actor, file: attachment_fixture('attachment.jpg'))
+    file.build_pointer(actor).tap do |pointer|
+      pointer.status = status
+      pointer.save!
+    end
+  end
+
+  def notes_collection_queries(actor)
+    queries = []
+    callback = lambda do |_name, _started, _finished, _unique_id, payload|
+      queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached] && payload[:sql].match?(/\ASELECT/i)
+    end
+
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+      post '/api/users/notes', params: { i: read_token, userId: MisskeyCompat::MiId.encode(actor.id), limit: 10 }, as: :json
+    end
+    queries
+  end
+
   describe 'POST /api/users/update-memo' do
     it 'requires authentication' do
       post '/api/users/update-memo', params: { userId: target.id, memo: 'private note' }, as: :json
@@ -82,6 +121,19 @@ RSpec.describe 'Misskey-compat account endpoints' do
 
       expect(response).to have_http_status(400)
       expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+    end
+
+    it 'preloads mentions and Drive pointer files for the note collection', :attachment_processing do
+      actor = Fabricate(:account)
+      Array.new(10) { |index| create_mentioned_pointer_note(actor, index) }
+      queries = notes_collection_queries(actor)
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to be_an(Array)
+      expect(response.parsed_body.size).to eq(10)
+      expect(queries.count { |sql| sql.include?('FROM "mentions"') }).to eq(2)
+      expect(queries.count { |sql| sql.include?('FROM "drive_files"') }).to eq(1)
+      expect(queries.count { |sql| sql.include?('FROM "drive_file_names"') }).to eq(1)
     end
   end
 end

@@ -18,7 +18,28 @@ RSpec.describe Form::AdminSettings do
     end
   end
 
+  describe '#authorized_fetch' do
+    it 'shows the forced roleplay setting as all' do
+      ClimateControl.modify OC_ROLEPLAY_OPTION: 'true' do
+        Setting.authorized_fetch = false
+
+        expect(described_class.new.authorized_fetch).to eq('all')
+      end
+    end
+
+    it 'shows an environment override over the forced roleplay setting' do
+      ClimateControl.modify OC_ROLEPLAY_OPTION: 'true', AUTHORIZED_FETCH: 'actors' do
+        expect(described_class.new.authorized_fetch).to eq('actors')
+      end
+    end
+  end
+
   describe '#save' do
+    it 'saves the authorized fetch mode without boolean typecasting' do
+      expect { described_class.new(authorized_fetch: 'actors').save }
+        .to change(Setting, :authorized_fetch).to('actors')
+    end
+
     it 'saves the RSS default setting as a boolean' do
       ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
         Setting.norss = false

@@ -3,20 +3,30 @@ import { excludedReactionAccountIds } from '../reaction_account_filter.js';
 
 const createEnabledCheck = (pgPool, logger, now = Date.now) => {
   let setting = { value: false, checkedAt: 0 };
+  let refresh;
 
   return async () => {
     const checkedAt = now();
     if (checkedAt - setting.checkedAt < 15000) return setting.value;
+    if (refresh) return refresh;
 
-    try {
-      const result = await pgPool.query("SELECT value FROM settings WHERE var = 'misskey_compat_enabled' LIMIT 1");
-      const enabled = result.rows.length > 0 && result.rows[0].value === "--- true\n";
-      setting = { value: enabled, checkedAt };
-      return enabled;
-    } catch (err) {
-      logger.error({ err }, 'Failed to read misskey_compat_enabled setting');
-      return false;
-    }
+    refresh = Promise.resolve()
+      .then(() => pgPool.query("SELECT value FROM settings WHERE var = 'misskey_compat_enabled' LIMIT 1"))
+      .then((result) => {
+        const enabled = result.rows.length > 0 && result.rows[0].value === "--- true\n";
+        setting = { value: enabled, checkedAt: now() };
+        return enabled;
+      })
+      .catch((err) => {
+        logger.error({ err }, 'Failed to read misskey_compat_enabled setting');
+        setting = { value: false, checkedAt: now() };
+        return false;
+      })
+      .finally(() => {
+        refresh = undefined;
+      });
+
+    return refresh;
   };
 };
 

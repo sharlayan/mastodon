@@ -66,31 +66,27 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
   end
 
   def filtered_notifications(scope, include_types, exclude_types, direction, limit)
-    results = []
-    cursor = nil
-
-    loop do
-      batch_scope = scope
-      batch_scope = batch_scope.where("notifications.id #{direction == :asc ? '>' : '<'} ?", cursor) if cursor
-      batch = batch_scope.includes(:from_account).order(id: direction).limit(100).to_a
-      break if batch.empty?
-
-      batch.each do |notification|
-        value = serialize(notification)
-        next if value.nil?
-        next if include_types && !include_types.include?(value[:type])
-        next if include_types.nil? && exclude_types&.include?(value[:type])
-
-        results << value
-        break if results.size == limit
-      end
-
-      break if results.size == limit || batch.size < 100
-
-      cursor = batch.last.id
+    notifications = filter_types(scope, include_types, exclude_types).joins(:from_account).includes(:from_account).order(id: direction).limit(limit).to_a
+    notifications.group_by(&:type).each do |type, records|
+      associations = Notification::TARGET_STATUS_INCLUDES_BY_TYPE[type]
+      ActiveRecord::Associations::Preloader.new(records: records, associations: associations).call if associations
     end
 
-    results
+    statuses = notifications.filter_map { |notification| note_status(notification, notification.target_status) }
+    context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
+    notifications.filter_map { |notification| serialize(notification, context: context) }
+  end
+
+  def filter_types(scope, include_types, exclude_types)
+    types = include_types || (NOTIFICATION_TYPES - Array(exclude_types))
+    db_types = TYPE_MAP.filter_map { |type, name| type if types.include?(name) || (type == :mention && types.include?('reply')) }
+    scope = scope.where(type: db_types)
+    return scope if types.include?('mention') == types.include?('reply')
+
+    reply_mention = Mention.joins(:status).where(Mention.arel_table[:id].eq(Notification.arel_table[:activity_id])).where.not(statuses: { in_reply_to_id: nil }).arel.exists
+    mentions = scope.where(type: :mention)
+    mentions = types.include?('reply') ? mentions.where(reply_mention) : mentions.where.not(reply_mention)
+    scope.where.not(type: :mention).or(mentions)
   end
 
   def advance_notification_marker!
@@ -103,7 +99,7 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
     nil
   end
 
-  def serialize(notification)
+  def serialize(notification, context:)
     status = notification.target_status
     type = notification_type(notification, status)
     return nil if type.nil? || notification.from_account.nil?
@@ -113,11 +109,11 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
       createdAt: notification.created_at.iso8601,
       type: type,
       userId: MisskeyCompat::MiId.encode(notification.from_account.id),
-      user: MisskeyCompat::UserSerializer.serialize(notification.from_account),
+      user: context.user(notification.from_account),
     }
 
     note = note_status(notification, status)
-    data[:note] = MisskeyCompat::NoteSerializer.serialize(note, current_account: current_account) if note
+    data[:note] = MisskeyCompat::NoteSerializer.serialize(note, context: context) if note
     data[:reaction] = reaction_for(notification)
     data.compact
   end

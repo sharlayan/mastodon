@@ -64,7 +64,6 @@ export const FollowMessageModal: FC<BaseConfirmationModalProps> = ({
         aria-labelledby={titleId}
         placeholder={intl.formatMessage(messages.placeholder)}
         counterMax={MAX_LENGTH}
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- This is a modal, it's fine.
         autoFocus
       />
     </ConfirmationModal>

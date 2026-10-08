@@ -42,13 +42,52 @@ class MisskeyCompat::SerializationContext
   end
 
   def prime(statuses)
-    expanded = expand(statuses)
+    expanded = prepare(statuses)
     prime_reactions(expanded)
     prime_own_votes(expanded)
     self
   end
 
   private
+
+  def prepare(statuses)
+    roots = statuses.compact.uniq(&:object_id)
+    return [] if roots.empty?
+
+    Status.preload_cacheable_associations(roots)
+    preload_root_associations(roots)
+
+    root_objects = {}.compare_by_identity
+    roots.each { |root| root_objects[root] = true }
+    related = expand(roots).reject { |status| root_objects.key?(status) }
+    return roots if related.empty?
+
+    Status.preload_cacheable_associations(related)
+    preload_related_associations(related)
+    roots + related
+  end
+
+  def preload_root_associations(statuses)
+    ActiveRecord::Associations::Preloader.new(
+      records: statuses,
+      associations: [
+        :thread,
+        { quote: :quoted_status },
+        { mentions: :account },
+        { media_attachments: { drive_file: :custom_name } },
+      ]
+    ).call
+  end
+
+  def preload_related_associations(statuses)
+    ActiveRecord::Associations::Preloader.new(
+      records: statuses,
+      associations: [
+        { mentions: :account },
+        { media_attachments: { drive_file: :custom_name } },
+      ]
+    ).call
+  end
 
   def expand(statuses)
     related = []
@@ -64,7 +103,7 @@ class MisskeyCompat::SerializationContext
       related << quoted if quoted
     end
 
-    related.uniq(&:id)
+    related.uniq(&:object_id)
   end
 
   def prime_reactions(statuses)

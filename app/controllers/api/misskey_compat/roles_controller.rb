@@ -36,7 +36,6 @@ class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
     scope = Status.where(account_id: account_ids, visibility: [:public, :unlisted], reblog_of_id: nil)
       .not_excluded_by_account(current_account)
     statuses = scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id).to_a
-    Status.preload_cacheable_associations(statuses)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize(status, context: context) }

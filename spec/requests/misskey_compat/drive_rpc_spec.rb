@@ -81,6 +81,25 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(response.parsed_body).to be(false)
     end
 
+    it 'preloads custom names for hash lookup results' do
+      matching_files = Array.new(2) do
+        insert_drive_file.tap do |matching_file|
+          matching_file.update!(md5: 'named-hash')
+          DriveFileName.create!(drive_file: matching_file, name: "Name #{matching_file.id}")
+        end
+      end
+      queries = []
+      callback = ->(_name, _started, _finished, _id, payload) { queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached] }
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        rpc_post 'drive/files/find-by-hash', md5: 'named-hash'
+      end
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:name)).to match_array(matching_files.map { |item| "Name #{item.id}" })
+      expect(queries.count { |sql| sql.include?('FROM "drive_file_names"') }).to eq(1)
+    end
+
     it 'rejects duplicate and oversized bulk moves without moving files' do
       folder = account.drive_folders.create!(name: 'Destination')
 

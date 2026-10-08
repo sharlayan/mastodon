@@ -37,6 +37,31 @@ RSpec.describe 'Misskey-compat Pages endpoints' do
       )
     end
 
+    it 'preloads Drive pointer files for featured page images', :attachment_processing do
+      2.times do
+        file = DriveFile.create!(account: account, file: attachment_fixture('attachment.jpg'))
+        DriveFileName.create!(drive_file: file, name: 'Featured image')
+        pointer = file.build_pointer(account)
+        pointer.save!
+        Fabricate(:page, account: account, eye_catching_media_attachment: pointer, likes_count: 1)
+      end
+      queries = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached] && payload[:sql].match?(/\ASELECT/i)
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        post '/api/pages/featured', params: { i: read_token }, as: :json
+      end
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq(3)
+      expect(response.parsed_body.filter_map { |page| page[:eyeCatchingImage] }).to all(include(name: 'Featured image'))
+      expect(response.parsed_body.count { |page| page[:eyeCatchingImage] }).to eq(2)
+      expect(queries.count { |sql| sql.include?('FROM "drive_files"') }).to be <= 1
+      expect(queries.count { |sql| sql.include?('FROM "drive_file_names"') }).to be <= 1
+    end
+
     it 'requires authentication for featured pages' do
       post '/api/pages/featured', params: {}, as: :json
 

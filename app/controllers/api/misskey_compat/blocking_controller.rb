@@ -10,8 +10,8 @@ class Api::MisskeyCompat::BlockingController < Api::MisskeyCompat::BaseControlle
 
   def index
     blocks = paginated_blocks.to_a
-    relationships = AccountRelationshipsPresenter.new(blocks.map(&:target_account), current_account.id)
-    render json: blocks.map { |block| serialize(block, relationships) }
+    collection = MisskeyCompat::UserCollectionContext.for(blocks.map(&:target_account), viewer: current_account)
+    render json: blocks.map { |block| serialize(block, collection) }
   end
 
   def create
@@ -26,12 +26,12 @@ class Api::MisskeyCompat::BlockingController < Api::MisskeyCompat::BaseControlle
 
   private
 
-  def serialize(block, relationships)
+  def serialize(block, collection)
     {
       id: MisskeyCompat::MiId.encode(block.id),
       createdAt: block.created_at.iso8601,
       blockeeId: MisskeyCompat::MiId.encode(block.target_account_id),
-      blockee: MisskeyCompat::UserSerializer.serialize(block.target_account, detailed: true, viewer: current_account, relationships: relationships),
+      blockee: MisskeyCompat::UserSerializer.serialize(block.target_account, detailed: true, viewer: current_account, relationships: collection.relationships, collection:),
     }
   end
 

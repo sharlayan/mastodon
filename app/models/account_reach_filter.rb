@@ -102,7 +102,7 @@ class AccountReachFilter < ApplicationRecord
     bloom_filters << BloomFit.new(capacity: BLOOM_FILTER_TARGET_CAPACITIES.first, false_positive_rate: TARGET_FALSE_POSITIVE_RATE) if bloom_filters.empty?
 
     next_filter_class = bloom_filters.size
-    target_rate = if next_filter_class == BLOOM_FILTER_TARGET_CAPACITIES.size
+    target_rate = if next_filter_class >= BLOOM_FILTER_TARGET_CAPACITIES.size
                     TARGET_SATURATION_FALSE_POSITIVE_RATE
                   else
                     TARGET_FALSE_POSITIVE_RATE
@@ -121,7 +121,7 @@ class AccountReachFilter < ApplicationRecord
         bloom_filters << BloomFit.new(capacity: BLOOM_FILTER_TARGET_CAPACITIES[next_filter_class], false_positive_rate: TARGET_FALSE_POSITIVE_RATE)
 
         next_filter_class = bloom_filters.size
-        target_rate = if next_filter_class == BLOOM_FILTER_TARGET_CAPACITIES.size
+        target_rate = if next_filter_class >= BLOOM_FILTER_TARGET_CAPACITIES.size
                         TARGET_SATURATION_FALSE_POSITIVE_RATE
                       else
                         TARGET_FALSE_POSITIVE_RATE

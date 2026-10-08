@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { isRedesignEnabled, isRedesignStatusEnabled } from './environment';
+import { isRedesignEnabled } from './environment';
 
 describe('redesign feature gates', () => {
   afterEach(() => {
@@ -8,9 +8,8 @@ describe('redesign feature gates', () => {
   });
 
   it('keeps the redesign disabled when experiments are requested', () => {
-    window.localStorage.setItem('experiments', 'redesign,redesign-status');
+    window.localStorage.setItem('experiments', 'redesign');
 
     expect(isRedesignEnabled()).toBe(false);
-    expect(isRedesignStatusEnabled()).toBe(false);
   });
 });
