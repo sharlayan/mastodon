@@ -598,6 +598,7 @@
   "compose.reply.title.new": "새 답글",
   "compose.reply_private.title.edit": "개인 답글 수정",
   "compose.reply_private.title.new": "새 개인 답글",
+  "compose.save": "저장",
   "compose.saved.body": "게시물이 저장되었습니다.",
   "compose.sensitive": "민감함",
   "compose.sensitive.label": "민감한 콘텐츠",

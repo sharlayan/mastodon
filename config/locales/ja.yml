@@ -15,6 +15,14 @@ ja:
     hosted_on: Mastodon hosted on %{domain}
     title: このサーバーについて
   accounts:
+    api_errors:
+      2fa_required: アカウントを使用するには二要素認証を設定する必要があります
+      account_deleted: アカウントは削除されました
+      account_suspended: アカウントは停止されました
+      login_disabled: アカウントは現在無効になっています
+      memorial: アカウントは追悼アカウントに変更されました
+      pending_approval: アカウントは現在モデレーターの承認を待っています
+      pending_confirmation: アカウントのメールアドレスが確認されていません
     errors:
       cannot_be_added_to_collections: このアカウントはコレクションに追加できません。
     followers:
@@ -69,6 +77,7 @@ ja:
       demote: 降格
       destroyed_msg: "%{username}さんのデータは完全に削除されるよう登録されました"
       disable: 無効化
+      disable_sign_in_token: セキュリティコードの確認を一時的に無効化
       disable_sign_in_token_auth: メールトークン認証を無効化
       disable_two_factor_authentication: 二要素認証を無効にする
       disabled: 無効
@@ -82,6 +91,7 @@ ja:
       email: メールアドレス
       email_status: メールアドレスの状態
       enable: 有効化
+      enable_sign_in_token: セキュリティコードの確認を有効化
       enable_sign_in_token_auth: メールトークン認証を有効化
       enabled: 有効
       enabled_msg: "%{username}の無効化を解除しました"
@@ -899,6 +909,13 @@ ja:
         disabled: 誰にも許可しない
         users: ログイン済みローカルユーザーのみ許可
       external:
+        directory: サーバーディレクトリ
+        opt_in_server_directory:
+          description: https://joinmastodon.org/servers などのサーバーディレクトリにこのサーバーが掲載されることを許可します。
+          title: サーバーディレクトリに掲載する
+        opt_in_server_recommendation:
+          description: Mastodon公式アプリなどのアプリケーションで、新規登録時にこのサーバーが推奨されることを許可します。
+          title: 新規登録時のおすすめサーバーに掲載する
         preamble: 他のサービスと共有するサーバー情報の範囲と、外部からのサーバーの見つけやすさを設定します。
         privacy: プライバシー
         publish_statistics: 統計情報を公開する
@@ -2040,6 +2057,14 @@ ja:
       further_actions_html: このログインに心当たりがない場合は、ただちに%{action}してください。
       subject: 二要素認証に失敗しました
       title: 二要素認証に失敗した記録があります
+    sign_in_token:
+      change_password: パスワードを変更
+      details: 'ログイン試行の詳細は以下のとおりです:'
+      explanation: '長期間使用されていなかったアカウントへのログイン試行を検出しました。ご自身によるものであれば、ログインの確認画面に以下のセキュリティコードを入力してください:'
+      further_actions: '心当たりがない場合は、パスワードを変更し、アカウントの二要素認証を有効にしてください。以下のページで設定できます:'
+      further_actions_html: 心当たりがない場合は、すぐに%{action}し、アカウントを安全に保つために二要素認証を有効にすることをお勧めします。
+      subject: ログイン試行を確認してください
+      title: ログイン試行
     suspicious_sign_in:
       change_password: パスワードを変更
       details: 'ログインの詳細は以下のとおりです:'
@@ -2128,8 +2153,12 @@ ja:
       title: ようこそ、%{name}さん！
   users:
     follow_limit_reached: あなたは現在 %{limit}人以上フォローできません
+    generic_access_help_html: アカウントにアクセスできない場合は、%{email}にお問い合わせください
     go_to_sso_account_settings: 外部サービスアカウントの設定はこちらで行ってください
+    inactive_sign_in_confirmation: 前回のログインから時間が経過しているため、ご本人であることを確認するセキュリティコードをメールアドレスに送信します。
+    inactive_sign_in_title: セキュリティコードを確認してください
     invalid_otp_token: 二要素認証コードが間違っています
+    invalid_sign_in_token: セキュリティコードが間違っています
     otp_lost_help_html: どちらも使用できない場合、%{email}に連絡を取ると解決できるかもしれません
     rate_limited: 認証に失敗した回数が多すぎます。時間をおいてからログインしてください。
     seamless_external_login: あなたは外部サービスを介してログインしているため、パスワードとメールアドレスの設定は利用できません。

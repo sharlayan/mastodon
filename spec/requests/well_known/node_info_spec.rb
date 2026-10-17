@@ -112,4 +112,27 @@ RSpec.describe 'The well-known node-info endpoints' do
         )
     end
   end
+
+  %w(2.0 2.1).each do |version|
+    describe "The /nodeinfo/#{version} endpoint containing opt in metadata" do
+      before do
+        Setting.opt_in_server_directory = 'true'
+      end
+
+      let(:expected_metadata) do
+        {
+          nodeName: Setting.site_title,
+          nodeDescription: Setting.site_short_description,
+          optInServerDirectory: 'true',
+          optInServerRecommendation: false,
+        }
+      end
+
+      it 'returns server directory opt in data' do
+        get "/nodeinfo/#{version}"
+
+        expect(response.parsed_body[:metadata].symbolize_keys).to include(expected_metadata)
+      end
+    end
+  end
 end

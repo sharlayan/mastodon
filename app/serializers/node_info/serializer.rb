@@ -47,6 +47,8 @@ class NodeInfo::Serializer < ActiveModel::Serializer
         name: 'mastodon',
         version: Mastodon::Version.to_s,
       },
+      optInServerDirectory: Setting.opt_in_server_directory,
+      optInServerRecommendation: Setting.opt_in_server_recommendation,
     }
 
     meta[:avatarDecorations] = true if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled

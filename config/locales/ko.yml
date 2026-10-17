@@ -13,6 +13,14 @@ ko:
     hosted_on: "%{domain}에서 호스팅 되는 마스토돈"
     title: 정보
   accounts:
+    api_errors:
+      2fa_required: 2단계 인증을 설정해야 계정을 사용할 수 있습니다
+      account_deleted: 계정이 삭제되었습니다
+      account_suspended: 계정이 정지되었습니다
+      login_disabled: 현재 계정이 비활성화되어 있습니다
+      memorial: 계정이 추모 계정으로 전환되었습니다
+      pending_approval: 현재 계정이 중재자의 승인을 기다리고 있습니다
+      pending_confirmation: 계정의 이메일 주소가 확인되지 않았습니다
     errors:
       cannot_be_added_to_collections: 이 계정은 컬렉션에 추가할 수 없습니다.
     followers:
@@ -71,6 +79,7 @@ ko:
       demote: 강등
       destroyed_msg: "%{username}의 데이터는 곧 삭제되도록 대기열에 들어갔습니다"
       disable: 동결
+      disable_sign_in_token: 보안 코드 확인 일시 비활성화
       disable_sign_in_token_auth: 이메일 토큰 인증 비활성화
       disable_two_factor_authentication: 2단계 인증을 비활성화
       disabled: 동결됨
@@ -84,6 +93,7 @@ ko:
       email: 이메일
       email_status: 이메일 상태
       enable: 동결 해제
+      enable_sign_in_token: 보안 코드 확인 활성화
       enable_sign_in_token_auth: 이메일 토큰 인증 활성화
       enabled: 활성
       enabled_msg: "%{username}의 동결을 성공적으로 해제 했습니다."
@@ -1013,6 +1023,13 @@ ko:
         disabled: 아무에게도 안 함
         users: 로그인 한 사용자에게
       external:
+        directory: 서버 디렉터리
+        opt_in_server_directory:
+          description: https://joinmastodon.org/servers 등의 서버 디렉터리에 이 서버가 표시되도록 허용합니다.
+          title: 서버 디렉터리에 이 서버 표시
+        opt_in_server_recommendation:
+          description: 마스토돈 공식 앱 등의 애플리케이션에서 회원 가입 시 이 서버를 추천하도록 허용합니다.
+          title: 가입 시 이 서버 추천
         preamble: 다른 서비스와 공유할 서버 정보의 범위와 외부에서 서버를 발견할 수 있는 정도를 제어합니다.
         privacy: 개인정보
         publish_statistics: 통계 발행
@@ -2279,6 +2296,14 @@ ko:
       further_actions_html: 만약 당신이 한 게 아니었다면 유출의 가능성이 있으니 가능한 빨리 %{action} 하시기 바랍니다.
       subject: 2차 인증 실패
       title: 2차 인증에 실패했습니다
+    sign_in_token:
+      change_password: 암호 변경
+      details: '로그인 시도에 대한 상세 정보입니다:'
+      explanation: '오랫동안 사용하지 않은 계정에 대한 로그인 시도를 감지했습니다. 직접 로그인하셨다면 로그인 확인 화면에 아래 보안 코드를 입력하세요:'
+      further_actions: '직접 로그인한 것이 아니라면 암호를 변경하고 계정에 2단계 인증을 활성화하세요. 다음 주소에서 설정할 수 있습니다:'
+      further_actions_html: 직접 로그인한 것이 아니라면 지금 바로 %{action}과 2단계 인증을 활성화하여 계정을 안전하게 보호하시길 권해드립니다.
+      subject: 로그인 시도를 확인해 주세요
+      title: 로그인 시도
     suspicious_sign_in:
       change_password: 암호 변경
       details: '로그인에 대한 상세 정보입니다:'
@@ -2367,8 +2392,12 @@ ko:
       title: 환영합니다 %{name} 님!
   users:
     follow_limit_reached: 당신은 %{limit}명의 사람을 넘어서 팔로우 할 수 없습니다
+    generic_access_help_html: 계정에 접근하는 데 문제가 있나요? %{email}로 연락하여 도움을 요청할 수 있습니다
     go_to_sso_account_settings: ID 공급자의 계정 설정으로 이동
+    inactive_sign_in_confirmation: 오랜만에 로그인하셨으므로 본인 확인을 위해 이메일 주소로 보안 코드를 보내드립니다.
+    inactive_sign_in_title: 보안 코드를 확인해 주세요
     invalid_otp_token: 2단계 인증 코드가 올바르지 않습니다
+    invalid_sign_in_token: 보안 코드가 올바르지 않습니다
     otp_lost_help_html: 만약 양쪽 모두를 잃어버렸다면 %{email}을 통해 복구할 수 있습니다
     rate_limited: 너무 많은 인증 시도가 있었습니다, 잠시 후에 시도하세요.
     seamless_external_login: 외부 서비스를 이용해 로그인했으므로 이메일과 암호는 설정할 수 없습니다.

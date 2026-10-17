@@ -28,7 +28,7 @@ import { modes } from './modes';
 import '../app/javascript/styles/application.scss';
 import './styles.css';
 
-const loadMsw = mswLoader(async () => {
+const startMsw = mswLoader(async () => {
   const worker = setupWorker();
 
   await worker.start({
@@ -215,15 +215,14 @@ const preview: Preview = {
     },
   ],
   loaders: [
+    // Storybook runs loaders concurrently, so wait for msw to be ready
     async (context) => {
-      await loadMsw(context);
+      await startMsw(context);
       await Promise.all([
         importCustomEmojiData(),
         importLegacyShortcodes(),
         importEmojiData(context.globals.locale),
       ]);
-
-      return {};
     },
   ],
   parameters: {

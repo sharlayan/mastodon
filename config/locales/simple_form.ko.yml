@@ -279,6 +279,7 @@ ko:
         setting_use_pending_items: 느린 모드
         severity: 심각도
         sign_in_token_attempt: 보안 코드
+        sign_in_token_resend: 보안 코드 다시 보내기
         title: 제목
         type: 불러오기 종류
         username: 사용자명
