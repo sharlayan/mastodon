@@ -19,6 +19,7 @@ import {
   stringToEmojiState,
   tokenizeText,
 } from '@/flavours/glitch/features/emoji/render';
+import { useToggle } from '@/flavours/glitch/hooks/useToggle';
 import { customEmojiSize } from '@/flavours/glitch/initial_state';
 import {
   useIsCustomEmojiMuted,
@@ -63,6 +64,7 @@ export const Emoji: FC<EmojiProps> = ({
       : undefined;
   const isMuted = useIsCustomEmojiMuted(customShortcode, customDomain);
   const muteHidden = useCustomEmojiMuteHidden();
+  const [error, { onTrue: handleError }] = useToggle();
 
   const fallback = showFallback ? code : null;
 
@@ -112,11 +114,12 @@ export const Emoji: FC<EmojiProps> = ({
     const classes = `emojione custom-emoji${state.data.is_sensitive ? ' sensitive-custom-emoji' : ''}${customEmojiSize ? ' horizontal-origin-custom-emoji' : ''}`;
     return (
       <img
-        src={animate ? state.data.url : state.data.static_url}
+        src={animate && !error ? state.data.url : state.data.static_url}
         alt={shortcode}
         title={shortcode}
         className={classes}
         loading='lazy'
+        onError={handleError}
       />
     );
   }

@@ -31,6 +31,11 @@
 
   // Background tokens
   --color-bg-primary: #15202b;
+  --color-bg-desktop: color-mix(
+    in srgb,
+    var(--color-bg-primary),
+    var(--color-black) 30%
+  );
   --overlay-strength-secondary: 8%;
   --color-bg-secondary-base: #192734;
   --color-bg-secondary: rgb(255 255 255 / 5%);

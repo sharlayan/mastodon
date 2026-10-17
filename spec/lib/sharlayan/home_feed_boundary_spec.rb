@@ -28,8 +28,35 @@ RSpec.describe Sharlayan::HomeFeedBoundary do
   context 'when the account itself reblogged the status' do
     let!(:reblog) { Fabricate(:status, account: account, reblog: original) }
 
+    before do
+      account.user.settings['display_own_boosts'] = true
+      account.user.save!
+    end
+
     it 'returns the id of the reblog' do
       expect(subject).to eq reblog.id
+    end
+  end
+
+  context 'when an older own reblog is hidden by the user preference' do
+    let!(:hidden) { Fabricate(:status, account: account, reblog: original) }
+    let!(:shown) { Fabricate(:status, account: bob, reblog: original) }
+
+    before do
+      account.user.settings['display_own_boosts'] = false
+      account.user.save!
+    end
+
+    it 'uses the visible followed reblog as the pagination boundary' do
+      expect(subject).to eq shown.id
+    end
+
+    context 'when the own reblog is still present in the cached feed' do
+      before { redis.zadd(FeedManager.instance.key(:home, account.id), hidden.id, hidden.id) }
+
+      it 'preserves the cached own reblog boundary using its exact member id' do
+        expect(subject).to eq hidden.id
+      end
     end
   end
 

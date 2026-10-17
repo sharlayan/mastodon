@@ -9,6 +9,9 @@ RSpec.describe HomeFeed do
 
   describe '#get' do
     before do
+      account.user.settings['display_own_boosts'] = true
+      account.user.save!
+
       Fabricate(:status, account: account, id: 1)
       Fabricate(:status, account: account, id: 2, reblog: Fabricate(:status))
       Fabricate(:status, account: account, id: 3, visibility: :direct)

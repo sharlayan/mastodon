@@ -34,7 +34,8 @@ import exploreRedesignClasses from '../explore/redesign.module.scss';
 import { SearchSection } from './components/search_section';
 
 const messages = defineMessages({
-  title: { id: 'search_results.title', defaultMessage: 'Search for "{q}"' },
+  searchFor: { id: 'search_results.title', defaultMessage: 'Search for "{q}"' },
+  search: { id: 'navigation_bar.search', defaultMessage: 'Search' },
 });
 
 const INITIAL_PAGE_LIMIT = 10;
@@ -295,7 +296,9 @@ export const SearchResults: React.FC<{ multiColumn: boolean }> = ({
     </>
   );
 
-  const pageTitle = intl.formatMessage(messages.title, { q });
+  const pageTitle = q
+    ? intl.formatMessage(messages.searchFor, { q })
+    : intl.formatMessage(messages.search);
 
   return (
     <Column bindToDocument={!multiColumn} label={pageTitle}>
@@ -315,7 +318,14 @@ export const SearchResults: React.FC<{ multiColumn: boolean }> = ({
         />
       )}
 
-      <div className='explore__search-results' data-nosnippet>
+      <div
+        className={
+          isRedesignEnabled()
+            ? 'scrollable scrollable--flex'
+            : 'explore__search-results'
+        }
+        data-nosnippet
+      >
         <ScrollableList
           scrollKey='search-results'
           isLoading={isLoading}

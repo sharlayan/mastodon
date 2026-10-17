@@ -83,7 +83,7 @@ class HomeFeed < Feed
       scope = scope.or(Status.where(visibility: :public).where(tag_exists.exists))
     end
 
-    scope = apply_requested_filters(scope)
+    scope = apply_own_status_filters(apply_requested_filters(scope))
 
     aggregate_reblogs = @account.user&.aggregates_reblogs?
     fetch_limit       = aggregate_reblogs && min_id.blank? ? limit + FeedManager::REBLOG_FALLOFF : limit
@@ -111,6 +111,15 @@ class HomeFeed < Feed
   end
 
   private
+
+  def apply_own_status_filters(scope)
+    user = @account.user
+    return scope unless user
+
+    scope = scope.where.not(account_id: @account.id).or(scope.where.not(reblog_of_id: nil)) unless user.setting_display_own_posts
+    scope = scope.where.not(account_id: @account.id).or(scope.where(reblog_of_id: nil)) unless user.setting_display_own_boosts
+    scope
+  end
 
   def apply_requested_filters(scope)
     scope = scope.where.not(visibility: :direct) if @options[:exclude_direct]

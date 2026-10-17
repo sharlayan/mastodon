@@ -30,7 +30,6 @@ import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 
 import { initBlockModal } from '@/flavours/glitch/actions/blocks';
 import {
-  replyCompose,
   mentionCompose,
   directCompose,
 } from '@/flavours/glitch/actions/compose';
@@ -69,7 +68,7 @@ import { attachFullscreenListener, detachFullscreenListener, isFullscreen } from
 import ActionBar from './components/action_bar';
 import { DetailedStatus } from './components/detailed_status';
 import { RefreshController } from './components/refresh_controller';
-import { quoteComposeById } from '@/flavours/glitch/actions/compose_typed';
+import { quoteComposeById, replyComposeById } from '@/flavours/glitch/actions/compose_typed';
 import { FOCUS_TARGET, NavigationFocusTarget } from '@/flavours/glitch/components/navigation_focus_target';
 import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
 
@@ -131,7 +130,7 @@ const titleFromStatus = (intl, status) => {
   return text ? `${user}: "${truncate(text, 30)}"` : intl.formatMessage(messages.statusTitleWithAttachments, { user, attachmentCount });
 };
 
-class Status extends ImmutablePureComponent {
+export class Status extends ImmutablePureComponent {
   static propTypes = {
     identity: identityContextPropShape,
     params: PropTypes.object.isRequired,
@@ -253,17 +252,13 @@ class Status extends ImmutablePureComponent {
   };
 
   handleReplyClick = (status) => {
-    const { askReplyConfirmation, dispatch } = this.props;
+    const { dispatch } = this.props;
     const { signedIn } = this.props.identity;
 
     if (status.get('repliable') === false) return;
 
     if (signedIn) {
-      if (askReplyConfirmation) {
-        dispatch(openModal({ modalType: 'CONFIRM_REPLY', modalProps: { status } }));
-      } else {
-        dispatch(replyCompose(status));
-      }
+      dispatch(replyComposeById({ statusId: status.get('id') }));
     } else {
       dispatch(openModal({
         modalType: 'INTERACTION',

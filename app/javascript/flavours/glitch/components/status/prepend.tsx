@@ -78,8 +78,10 @@ const StatusPrependReblog: React.FC<{ reblogId: string }> = ({ reblogId }) => {
             ),
           }}
         />
-        &nbsp;&bull;
-        <RelativeTimestamp timestamp={status.created_at} />
+        <RelativeTimestamp
+          className={classes.time}
+          timestamp={status.created_at}
+        />
       </span>
     </div>
   );

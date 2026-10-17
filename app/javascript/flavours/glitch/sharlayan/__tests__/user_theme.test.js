@@ -95,10 +95,22 @@ describe('user theme variables', () => {
     document.documentElement.dataset.colorScheme = 'light';
     applyUserTheme(config, []);
     expect(document.documentElement.style.getPropertyValue('--color-bg-primary')).toBe('#ffffff');
+    expect(document.documentElement.style.getPropertyValue('--color-bg-desktop')).toBe('color-mix(in srgb, var(--color-bg-primary), var(--color-grey-950) 4%)');
 
     document.documentElement.dataset.colorScheme = 'dark';
     applyUserTheme(config, []);
     expect(document.documentElement.style.getPropertyValue('--color-bg-primary')).toBe('#000000');
+    expect(document.documentElement.style.getPropertyValue('--color-bg-desktop')).toBe('color-mix(in srgb, var(--color-bg-primary), var(--color-black) 30%)');
+  });
+
+  test('restores the skin desktop background when the primary override is cleared', () => {
+    applyUserTheme({ dark: { variables: { '--color-bg-primary': '#001122' } } }, []);
+    expect(document.documentElement.style.getPropertyValue('--color-bg-desktop')).not.toBe('');
+
+    applyUserTheme({ dark: { variables: { '--color-text-primary': '#ffffff' } } }, []);
+
+    expect(document.documentElement.style.getPropertyValue('--color-bg-desktop')).toBe('');
+    expect(document.documentElement.style.getPropertyValue('--color-text-primary')).toBe('#ffffff');
   });
 
   test('uses server defaults until the user overrides them', () => {
@@ -116,11 +128,12 @@ describe('user theme variables', () => {
   });
 
   test('removes stored overrides when the server disables user themes', () => {
-    document.documentElement.style.setProperty('--color-bg-primary', '#001122');
+    applyUserTheme({ dark: { variables: { '--color-bg-primary': '#001122' } } }, []);
 
     applyUserTheme({}, [], false);
 
     expect(document.documentElement.style.getPropertyValue('--color-bg-primary')).toBe('');
+    expect(document.documentElement.style.getPropertyValue('--color-bg-desktop')).toBe('');
   });
 
   test('exports selected server theme values as portable overrides', () => {

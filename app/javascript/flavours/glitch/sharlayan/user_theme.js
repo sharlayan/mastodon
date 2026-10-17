@@ -221,6 +221,7 @@ export const portableUserThemeConfig = (config, catalog) => Object.fromEntries(S
 export const applyUserTheme = (config, catalog, enabled = true) => {
   const root = document.documentElement;
   USER_THEME_VARIABLES.forEach(variable => root.style.removeProperty(variable));
+  root.style.removeProperty('--color-bg-desktop');
   if (!enabled) return;
 
   const scheme = root.dataset.colorScheme === 'light' ? 'light' : 'dark';
@@ -231,6 +232,15 @@ export const applyUserTheme = (config, catalog, enabled = true) => {
   Object.entries(variables).forEach(([name, value]) => {
     if (VARIABLE_SET.has(name)) root.style.setProperty(name, value);
   });
+
+  if (variables['--color-bg-primary']) {
+    root.style.setProperty(
+      '--color-bg-desktop',
+      scheme === 'light'
+        ? 'color-mix(in srgb, var(--color-bg-primary), var(--color-grey-950) 4%)'
+        : 'color-mix(in srgb, var(--color-bg-primary), var(--color-black) 30%)',
+    );
+  }
 };
 
 let colorSchemeObserver;

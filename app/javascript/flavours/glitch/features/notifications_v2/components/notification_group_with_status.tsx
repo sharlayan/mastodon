@@ -5,8 +5,8 @@ import classNames from 'classnames';
 
 import type { Map as ImmutableMap } from 'immutable';
 
+import { replyComposeById } from '@/flavours/glitch/actions/compose_typed';
 import { LinkedDisplayName } from '@/flavours/glitch/components/display_name';
-import { replyComposeById } from 'flavours/glitch/actions/compose';
 import { navigateToStatus } from 'flavours/glitch/actions/statuses';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { AvatarGroup } from 'flavours/glitch/components/avatar_group';
@@ -107,7 +107,7 @@ export const NotificationGroupWithStatus: React.FC<{
       },
 
       reply: () => {
-        dispatch(replyComposeById(statusId));
+        dispatch(replyComposeById({ statusId }));
       },
       toggleCollapse: () => {
         if (collapseEnabled) setCollapsed(!collapsed);
