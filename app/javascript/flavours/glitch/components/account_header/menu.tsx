@@ -439,7 +439,6 @@ function getMenuItems({
           relationship.notifying
             ? messages.disableNotifications
             : messages.enableNotifications,
-          { name: account.username },
         ),
         action: () => {
           dispatch(

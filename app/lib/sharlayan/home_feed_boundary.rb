@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Sharlayan::HomeFeedBoundary
+  include Redisable
+
   CANDIDATE_LIMIT = 20
 
   def self.resolve(account, status_id)
@@ -33,6 +35,13 @@ class Sharlayan::HomeFeedBoundary
       .reorder(id: :asc)
       .limit(CANDIDATE_LIMIT)
       .to_a
+      .reject { |reblog| hidden_own_reblog?(reblog) }
+  end
+
+  def hidden_own_reblog?(reblog)
+    reblog.account_id == @account.id &&
+      !@account.user&.setting_display_own_boosts &&
+      redis.zscore(FeedManager.instance.key(:home, @account.id), reblog.id).nil?
   end
 
   def followed_tag_ids

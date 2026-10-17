@@ -247,6 +247,8 @@ ja:
         setting_display_media_default: 標準
         setting_display_media_hide_all: 非表示
         setting_display_media_show_all: 表示
+        setting_display_own_boosts: メインフィードに自分のブーストを表示する
+        setting_display_own_posts: メインフィードに自分の投稿を表示する
         setting_emoji_style: 絵文字スタイル
         setting_expand_spoilers: 閲覧注意としてマークされた投稿を常に展開する
         setting_hide_network: 繋がりを隠す

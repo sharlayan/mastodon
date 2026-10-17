@@ -69,6 +69,14 @@ module User::HasSettings
     settings['web.favourite_modal']
   end
 
+  def setting_display_own_boosts
+    settings['display_own_boosts']
+  end
+
+  def setting_display_own_posts
+    settings['display_own_posts']
+  end
+
   def setting_reduce_motion
     settings['web.reduce_motion']
   end

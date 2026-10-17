@@ -314,7 +314,39 @@ RSpec.describe FeedManager do
     end
   end
 
+  describe '#populate_home' do
+    let(:account) { Fabricate(:account) }
+    let(:followed) { Fabricate(:account) }
+    let!(:own_post) { Fabricate(:status, account: account) }
+    let!(:own_boost) { Fabricate(:status, account: account, reblog: Fabricate(:status)) }
+    let!(:followed_post) { Fabricate(:status, account: followed) }
+
+    before { account.follow!(followed) }
+
+    [true, false].product([true, false]).each do |display_posts, display_boosts|
+      context "when own posts are #{display_posts} and own boosts are #{display_boosts}" do
+        before do
+          account.user.settings['display_own_posts'] = display_posts
+          account.user.settings['display_own_boosts'] = display_boosts
+          account.user.save!
+        end
+
+        it 'applies both preferences independently when rebuilding the feed' do
+          expected_ids = [followed_post.id]
+          expected_ids << own_post.id if display_posts
+          expected_ids << own_boost.id if display_boosts
+
+          subject.populate_home(account)
+
+          expect(redis.zrange(subject.key(:home, account.id), 0, -1).map(&:to_i)).to match_array(expected_ids)
+        end
+      end
+    end
+  end
+
   describe '#push_to_home' do
+    let(:alice) { Fabricate(:account, username: 'alice') }
+
     it 'trims timelines if they will have more than FeedManager::MAX_ITEMS' do
       account = Fabricate(:account)
       status = Fabricate(:status)
@@ -324,6 +356,55 @@ RSpec.describe FeedManager do
       subject.push_to_home(account, status)
 
       expect(redis.zcard("feed:home:#{account.id}")).to eq described_class::MAX_ITEMS
+    end
+
+    it 'does not save a status to home when user has display_own_posts disabled' do
+      user = Fabricate(:user)
+      post = Fabricate(:status, account: user.account)
+      user.settings['display_own_posts'] = false
+
+      # post will be ignored
+      expect(subject.push_to_home(user.account, post)).to be false
+    end
+
+    it 'does not save replies to home when user has display_own_posts disabled' do
+      user = Fabricate(:user)
+      user.settings['display_own_posts'] = false
+      status = Fabricate(:status, text: 'Hello world', account: alice)
+      reply  = Fabricate(:status, text: 'Nay', thread: status, account: user.account)
+
+      # post will be ignored
+      expect(subject.push_to_home(user.account, reply)).to be false
+    end
+
+    it 'does not save a status to home when user has display_own_boosts on standard setting (disabled)' do
+      user = Fabricate(:user)
+      status = Fabricate(:status, text: 'Hello world', account: alice)
+      reblog = Fabricate(:status, reblog: status, account: user.account)
+
+      # post will be ignored
+      expect(subject.push_to_home(user.account, reblog)).to be false
+    end
+
+    it 'saves a status to home when user has display_own_boosts enabled' do
+      user = Fabricate(:user)
+      user.settings['display_own_boosts'] = true
+      status = Fabricate(:status, text: 'Hello world', account: alice)
+      reblog = Fabricate(:status, reblog: status, account: user.account)
+
+      # post will be added
+      expect(subject.push_to_home(user.account, reblog)).to be true
+    end
+
+    it 'saves replies on a boosted post to home when user has display_own_boosts disabled' do
+      user = Fabricate(:user)
+      user.settings['display_own_boosts'] = false
+      status = Fabricate(:status, text: 'Hello world', account: alice)
+      reblog = Fabricate(:status, reblog: status, account: user.account)
+      reply  = Fabricate(:status, text: 'Nay', thread: reblog, account: user.account)
+
+      # post will be added
+      expect(subject.push_to_home(user.account, reply)).to be true
     end
 
     context 'with reblogs' do
