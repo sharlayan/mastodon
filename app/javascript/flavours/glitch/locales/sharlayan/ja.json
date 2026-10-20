@@ -43,6 +43,8 @@
   "account_edit.decorations.edit_label": "デコレーションを編集",
   "account_edit.decorations.placeholder": "アバターにデコレーティブなオーバーレイを追加します。",
   "account_edit.decorations.title": "アイコンデコレーション",
+  "account_edit.image_edit.drive_copy_hint": "別のコピーを保存するため、ドライブの元ファイルを変更・削除しても維持されます。",
+  "account_edit.image_edit.from_drive": "ドライブの画像を使用",
   "account_edit.save": "保存",
   "antennas.accounts": "アカウント",
   "antennas.add": "追加",

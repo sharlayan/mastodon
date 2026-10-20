@@ -43,6 +43,8 @@
   "account_edit.decorations.edit_label": "장식 편집",
   "account_edit.decorations.placeholder": "아바타에 장식 오버레이를 추가합니다.",
   "account_edit.decorations.title": "아바타 장식",
+  "account_edit.image_edit.drive_copy_hint": "별도 복사본을 저장하므로 드라이브 원본을 변경하거나 삭제해도 유지됩니다.",
+  "account_edit.image_edit.from_drive": "드라이브에서 이미지 사용",
   "account_edit.save": "저장",
   "antennas.accounts": "계정",
   "antennas.add": "추가",

@@ -56,6 +56,8 @@ export type ApiProfileUpdateParams = Partial<
     | 'is_cat'
   >
 > & {
+  avatar_drive_file_id?: string;
+  header_drive_file_id?: string;
   attribution_domains?: string[];
   fields_attributes?: Pick<ApiAccountFieldJSON, 'name' | 'value'>[];
   avatar_decorations?: ApiProfileDecorationConfigJSON[];

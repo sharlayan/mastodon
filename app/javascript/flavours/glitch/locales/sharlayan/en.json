@@ -43,6 +43,8 @@
   "account_edit.decorations.edit_label": "Edit decorations",
   "account_edit.decorations.placeholder": "Add decorative overlays to your avatar.",
   "account_edit.decorations.title": "Profile decorations",
+  "account_edit.image_edit.drive_copy_hint": "Saves a separate copy that stays if the Drive file is changed or deleted.",
+  "account_edit.image_edit.from_drive": "Use image from Drive",
   "account_edit.save": "Save",
   "antennas.accounts": "Accounts",
   "antennas.add": "Add",

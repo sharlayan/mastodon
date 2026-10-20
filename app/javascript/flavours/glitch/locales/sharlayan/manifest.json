@@ -43,6 +43,8 @@
   "account_edit.decorations.edit_label",
   "account_edit.decorations.placeholder",
   "account_edit.decorations.title",
+  "account_edit.image_edit.drive_copy_hint",
+  "account_edit.image_edit.from_drive",
   "account_edit.save",
   "antennas.accounts",
   "antennas.add",

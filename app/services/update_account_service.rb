@@ -6,9 +6,11 @@ class UpdateAccountService < BaseService
   MAX_DECORATIONS = 16
 
   def call(account, params, raise_error: false)
+    drive_images  = []
     was_locked    = account.locked
     update_method = raise_error ? :update! : :update
 
+    params = process_drive_images(account, params, drive_images)
     params = process_avatar_decorations(account, params) if params.key?(:avatar_decorations)
 
     account.send(update_method, params).tap do |ret|
@@ -19,12 +21,45 @@ class UpdateAccountService < BaseService
       process_hashtags(account)
       process_attribution_domains(account)
     end
+  rescue ActiveRecord::RecordInvalid
+    raise if raise_error
+
+    false
   rescue Mastodon::DimensionsValidationError, Mastodon::StreamValidationError => e
     account.errors.add(:avatar, e.message)
+    raise ActiveRecord::RecordInvalid, account if raise_error
+
     false
+  ensure
+    drive_images.each(&:close!)
   end
 
   private
+
+  def process_drive_images(account, params, drive_images)
+    params = params.dup
+
+    %i(avatar header).each do |attachment|
+      id = params.delete(:"#{attachment}_drive_file_id")
+      next if id.blank?
+
+      raise ActiveRecord::RecordNotFound unless Setting.drive_enabled && account.local?
+
+      drive_file = account.drive_files.find(id)
+      drive_file.with_lock do
+        unless Account::Avatar::AVATAR_IMAGE_MIME_TYPES.include?(drive_file.file_content_type)
+          account.errors.add(attachment, :invalid)
+          raise ActiveRecord::RecordInvalid, account
+        end
+
+        image = Paperclip.io_adapters.for(drive_file.file)
+        drive_images << image
+        params[attachment] = image
+      end
+    end
+
+    params
+  end
 
   def process_avatar_decorations(account, params)
     return params unless account.local?
