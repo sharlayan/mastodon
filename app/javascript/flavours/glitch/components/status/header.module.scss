@@ -64,3 +64,21 @@ a.nameLink {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.indicators {
+  @include mixins.type-meta;
+
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  &:empty {
+    display: none;
+  }
+
+  > svg,
+  .mediaIcon {
+    width: 1em;
+    height: 1em;
+  }
+}

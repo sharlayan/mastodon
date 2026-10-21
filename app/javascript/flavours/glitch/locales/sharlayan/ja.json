@@ -499,6 +499,7 @@
   "pages.visibility.authenticated": "ログイン済みユーザーのみ",
   "pages.visibility.public": "公開",
   "pages.wide_view": "ワイド表示",
+  "privacy.circle.short": "サークル",
   "reaction_mutes.add": "追加",
   "reaction_mutes.hint": "ここに登録したアカウントとサーバーからの絵文字リアクションを受け取りません。アカウントのハンドル（@ユーザー@サーバー）またはサーバードメインを入力してください。",
   "reaction_mutes.target_placeholder": "アカウント（@ユーザー@サーバー）またはサーバー（example.com）",

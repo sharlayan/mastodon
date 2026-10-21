@@ -9,13 +9,28 @@ import {
   ImageSquareIcon,
   ChartBarHorizontalIcon,
   WarningCircleIcon,
+  CloudIcon,
+  PaintBrushIcon,
+  GlobeIcon,
+  EyeSlashIcon,
+  LockIcon,
+  EnvelopeIcon,
 } from '@phosphor-icons/react';
 
 import { addPoll, uploadCompose } from '@/flavours/glitch/actions/compose';
+import { openModal } from '@/flavours/glitch/actions/modal';
 import {
   Button,
   IconButton,
 } from '@/flavours/glitch/components/button/redesign';
+import {
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuTrigger,
+} from '@/flavours/glitch/components/menu';
+import { driveEnabled } from '@/flavours/glitch/initial_state';
+import { submitComposer } from '@/flavours/glitch/reducers/slices/composer';
 import {
   createAppSelector,
   useAppDispatch,
@@ -29,6 +44,8 @@ import {
   selectComposeCharsCount,
   selectComposeHasAttachments,
   selectComposeType,
+  selectComposeCanSubmit,
+  selectComposeSideArm,
 } from './selectors';
 import classes from './styles.module.scss';
 
@@ -45,6 +62,13 @@ export const ComposeFooter: React.FC<{ onEmojiPick: OnEmojiPick }> = ({
     (state) => !!state.compose.get('is_submitting'),
   );
   const isEditing = useAppSelector((state) => !!state.compose.get('id'));
+  const scheduledAt = useAppSelector(
+    (state) => state.compose.get('scheduled_at') as string | null,
+  );
+  const usePublishToot = useAppSelector(
+    (state) => !!state.local_settings.get('use_publish_toot'),
+  );
+  const canSubmit = useAppSelector(selectComposeCanSubmit);
 
   const dispatch = useAppDispatch();
   const handlePoll = useCallback(() => {
@@ -59,6 +83,21 @@ export const ComposeFooter: React.FC<{ onEmojiPick: OnEmojiPick }> = ({
   } else if (type === 'message' || type === 'replyPrivate') {
     publishText = (
       <FormattedMessage id='compose.message.publish' defaultMessage='Send' />
+    );
+  } else if (scheduledAt) {
+    publishText = (
+      <FormattedMessage
+        id='compose_form.schedule_submit'
+        defaultMessage='Schedule'
+      />
+    );
+  } else if (type === 'reply') {
+    publishText = (
+      <FormattedMessage id='compose_form.reply' defaultMessage='Reply' />
+    );
+  } else if (usePublishToot) {
+    publishText = (
+      <FormattedMessage id='compose_form.publish_toot' defaultMessage='뿌우' />
     );
   }
 
@@ -95,16 +134,71 @@ export const ComposeFooter: React.FC<{ onEmojiPick: OnEmojiPick }> = ({
           />
         </span>
 
+        <ComposeSideArmButton disabled={!canSubmit} />
+
         <Button
           variant='solid'
           color='accent'
           type='submit'
+          disabled={!canSubmit}
           loading={isSubmitting}
         >
           {publishText}
         </Button>
       </div>
     </footer>
+  );
+};
+
+const sideArmOptions = {
+  public: {
+    icon: GlobeIcon,
+    label: (
+      <FormattedMessage id='privacy.public.short' defaultMessage='Public' />
+    ),
+  },
+  unlisted: {
+    icon: EyeSlashIcon,
+    label: (
+      <FormattedMessage
+        id='privacy.unlisted.short'
+        defaultMessage='Quiet public'
+      />
+    ),
+  },
+  private: {
+    icon: LockIcon,
+    label: (
+      <FormattedMessage id='privacy.private.short' defaultMessage='Followers' />
+    ),
+  },
+  direct: {
+    icon: EnvelopeIcon,
+    label: (
+      <FormattedMessage
+        id='privacy.direct.short'
+        defaultMessage='Specific people'
+      />
+    ),
+  },
+};
+
+export const ComposeSideArmButton: React.FC<{ disabled?: boolean }> = ({
+  disabled,
+}) => {
+  const privacy = useAppSelector(selectComposeSideArm);
+  const dispatch = useAppDispatch();
+  const onClick = useCallback(() => {
+    dispatch(submitComposer({ overridePrivacy: privacy }));
+  }, [dispatch, privacy]);
+
+  if (!privacy) return null;
+
+  const { icon, label } = sideArmOptions[privacy];
+  return (
+    <IconButton icon={icon} disabled={disabled} onClick={onClick}>
+      {label}
+    </IconButton>
   );
 };
 
@@ -151,7 +245,7 @@ const selectUpload = createAppSelector(
   },
 );
 
-const ComposeUploadButton: React.FC<{ disabled?: boolean }> = ({
+export const ComposeUploadButton: React.FC<{ disabled?: boolean }> = ({
   disabled: disabledProp,
 }) => {
   const { accepted, disabled, loading, resetFileKey } =
@@ -163,6 +257,17 @@ const ComposeUploadButton: React.FC<{ disabled?: boolean }> = ({
   }, []);
 
   const dispatch = useAppDispatch();
+  const handleDrive = useCallback(() => {
+    dispatch(openModal({ modalType: 'DRIVE', modalProps: {} }));
+  }, [dispatch]);
+  const handleDoodle = useCallback(() => {
+    dispatch(
+      openModal({
+        modalType: 'DOODLE',
+        modalProps: { noEsc: true, noClose: true },
+      }),
+    );
+  }, [dispatch]);
   const handleChange: React.ChangeEventHandler<HTMLInputElement> = useCallback(
     (event) => {
       const files = event.target.files;
@@ -175,25 +280,49 @@ const ComposeUploadButton: React.FC<{ disabled?: boolean }> = ({
 
   return (
     <>
-      <IconButton
-        size='sm'
-        icon={ImageSquareIcon}
-        disabled={disabled || disabledProp}
-        loading={loading}
-        onClick={handleClick}
-      >
-        <FormattedMessage
-          id='upload_button.label'
-          defaultMessage='Add images, a video or an audio file'
-        />
-      </IconButton>
+      <Menu>
+        <MenuTrigger
+          as={IconButton}
+          size='sm'
+          icon={ImageSquareIcon}
+          disabled={disabled || disabledProp || loading}
+          loading={loading}
+        >
+          <FormattedMessage
+            id='upload_button.label'
+            defaultMessage='Add images, a video or an audio file'
+          />
+        </MenuTrigger>
+        <MenuList placement='top-start' maxWidth={280}>
+          <MenuItem icon={ImageSquareIcon} onClick={handleClick}>
+            <FormattedMessage
+              id='upload_button.label'
+              defaultMessage='Add images, a video or an audio file'
+            />
+          </MenuItem>
+          <MenuItem icon={PaintBrushIcon} onClick={handleDoodle}>
+            <FormattedMessage
+              id='compose.attach.doodle'
+              defaultMessage='Draw something'
+            />
+          </MenuItem>
+          {driveEnabled && (
+            <MenuItem icon={CloudIcon} onClick={handleDrive}>
+              <FormattedMessage
+                id='compose.attach.drive'
+                defaultMessage='Attach from drive'
+              />
+            </MenuItem>
+          )}
+        </MenuList>
+      </Menu>
       <input
         hidden
         ref={ref}
         type='file'
         multiple
         accept={accepted}
-        disabled={disabled}
+        disabled={disabled || disabledProp || loading}
         key={resetFileKey}
         onChange={handleChange}
       />

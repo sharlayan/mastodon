@@ -109,10 +109,18 @@ const composerSlice = createSlice({
           COMPOSE_MENTION,
           COMPOSE_DIRECT,
           COMPOSE_SET_STATUS,
+          'COMPOSE_SET_DRAFT',
+          'COMPOSE_SET_SCHEDULED',
           REDRAFT,
         ].includes(action.type),
-      (state) => {
+      (state, action) => {
         state.displayState = 'showing';
+        if (
+          action.type === 'COMPOSE_SET_DRAFT' ||
+          action.type === 'COMPOSE_SET_SCHEDULED'
+        ) {
+          state.pendingFocus = { selection: null };
+        }
       },
     );
   },
@@ -148,14 +156,27 @@ export const selectComposerIsChanged = createAppSelector(
         'media_attachments',
       ) as unknown as Immutable.List<unknown>,
     (state) => Number(state.compose.get('pending_media_attachments')),
+    (state) =>
+      !!state.compose.get('id') ||
+      !!state.compose.get('draft_id') ||
+      !!state.compose.get('scheduled_at'),
   ],
-  (text, spoilerText, hasPoll, hasQuote, attachments, pendingAttachmentsNum) =>
+  (
+    text,
+    spoilerText,
+    hasPoll,
+    hasQuote,
+    attachments,
+    pendingAttachmentsNum,
+    hasSavedSource,
+  ) =>
     text.trim().length > 0 ||
     spoilerText.trim().length > 0 ||
     hasPoll ||
     hasQuote ||
     attachments.size > 0 ||
-    pendingAttachmentsNum > 0,
+    pendingAttachmentsNum > 0 ||
+    hasSavedSource,
 );
 
 interface ComposeNewPost {
@@ -255,7 +276,10 @@ export const selectIsMinimized = createAppSelector(
 
 export const submitComposer = createAppThunk(
   (
-    { redirectOnSuccess }: { redirectOnSuccess?: boolean },
+    {
+      redirectOnSuccess,
+      overridePrivacy,
+    }: { redirectOnSuccess?: boolean; overridePrivacy?: StatusVisibility },
     { getState, dispatch },
   ) => {
     const textareaValue = getComposerTextarea()?.value;
@@ -266,7 +290,14 @@ export const submitComposer = createAppThunk(
       dispatch(changeCompose(textareaValue));
     }
 
-    const { compose, meta, statuses, server, settings } = getState();
+    const { compose, meta, statuses, server, settings, local_settings } =
+      getState();
+    if (
+      compose.get('is_submitting') ||
+      compose.get('is_uploading') ||
+      compose.get('is_changing_upload')
+    )
+      return;
 
     if (!selectComposerIsChanged(getState())) {
       dispatch(composerSlice.actions.addError('empty'));
@@ -275,18 +306,25 @@ export const submitComposer = createAppThunk(
 
     const maxChars =
       server.server.item?.configuration.statuses.max_characters ?? 500;
-    let text = compose.get('text') as string;
+    let text = countableText(compose.get('text') as string);
     const spoilerText = compose.get('spoiler_text');
-    if (compose.get('spoiler') && typeof spoilerText === 'string') {
+    const alwaysShowSpoiler = !!local_settings.get(
+      'always_show_spoilers_field',
+    );
+    if (
+      (compose.get('spoiler') || alwaysShowSpoiler) &&
+      typeof spoilerText === 'string'
+    ) {
       text += spoilerText;
     }
-    const textLength = length(countableText(text));
+    const textLength = length(text);
     if (textLength > maxChars) {
       dispatch(composerSlice.actions.addError('too-long'));
       return;
     }
 
-    const privacy = compose.get('privacy') as StatusVisibility;
+    const privacy =
+      overridePrivacy ?? (compose.get('privacy') as StatusVisibility);
     const missingAltText = (
       compose.get('media_attachments') as unknown as Immutable.List<
         Immutable.Map<string, string>
@@ -303,6 +341,22 @@ export const submitComposer = createAppThunk(
       privacy === 'private' &&
       statuses.getIn([quotedStatusId, 'account']) !== me &&
       !settings.getIn(['dismissed_banners', PRIVATE_QUOTE_MODAL_ID]);
+    const onSubmitSuccess = (
+      status: ApiStatusJSON & { scheduled_at?: string },
+    ) => {
+      if (redirectOnSuccess && !status.scheduled_at) {
+        window.location.assign(status.url);
+      }
+      if (
+        !status.scheduled_at &&
+        getState().compose.getIn(['advanced_options', 'threaded_mode'])
+      ) {
+        dispatch(composerSlice.actions.clearErrors());
+        dispatch(requestComposerFocus());
+      } else {
+        dispatch(resetComposer());
+      }
+    };
 
     if (
       !!meta.get('missing_alt_text_modal') &&
@@ -312,35 +366,32 @@ export const submitComposer = createAppThunk(
       dispatch(
         openModal({
           modalType: 'CONFIRM_MISSING_ALT_TEXT',
-          modalProps: {},
+          modalProps: { onSubmitSuccess, overridePrivacy },
         }),
       );
     } else if (quoteToPrivate) {
       dispatch(
         openModal({
           modalType: 'CONFIRM_PRIVATE_QUOTE_NOTIFY',
-          modalProps: {},
+          modalProps: { onSubmitSuccess, overridePrivacy },
         }),
       );
-    } else if (!!compose.get('spoiler') && !compose.get('spoiler_text')) {
+    } else if (
+      !!compose.get('spoiler') &&
+      !alwaysShowSpoiler &&
+      !compose.get('spoiler_text')
+    ) {
       dispatch(
         openModal({
           modalType: 'COMPOSER_ADD_CONTENT_WARNING',
           modalProps: {
             redirectOnSuccess,
+            overridePrivacy,
           },
         }),
       );
     } else {
-      dispatch(
-        submitCompose((status: ApiStatusJSON) => {
-          if (redirectOnSuccess) {
-            window.location.assign(status.url);
-          }
-
-          dispatch(resetComposer());
-        }),
-      );
+      dispatch(submitCompose(onSubmitSuccess, overridePrivacy));
     }
   },
 );

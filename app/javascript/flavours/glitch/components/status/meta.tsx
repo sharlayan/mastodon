@@ -29,8 +29,13 @@ export const StatusMeta: React.FC<{
     }
   }, [created_at]);
   const visibility = useMemo(
-    () => statusVisibilityText(status.visibility),
-    [status.visibility],
+    () =>
+      status.limited_scope === 'circle' ? (
+        <FormattedMessage id='privacy.circle.short' defaultMessage='Circle' />
+      ) : (
+        statusVisibilityText(status.visibility)
+      ),
+    [status.visibility, status.limited_scope],
   );
 
   if (!createdAt) {
@@ -113,6 +118,14 @@ export const StatusMeta: React.FC<{
         </li>
         {applicationDisplay && <li>{applicationDisplay}</li>}
         <li>{visibility}</li>
+        {status.local_only && (
+          <li>
+            <FormattedMessage
+              id='federation.local_only.short'
+              defaultMessage='Local-only'
+            />
+          </li>
+        )}
       </ul>
     </div>
   );
@@ -120,6 +133,13 @@ export const StatusMeta: React.FC<{
 
 function statusVisibilityText(visibility: StatusVisibility) {
   switch (visibility) {
+    case 'unlisted':
+      return (
+        <FormattedMessage
+          id='privacy.unlisted.short'
+          defaultMessage='Quiet public'
+        />
+      );
     case 'private':
       return (
         <FormattedMessage

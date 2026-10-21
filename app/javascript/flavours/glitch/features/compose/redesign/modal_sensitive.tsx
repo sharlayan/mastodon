@@ -4,6 +4,7 @@ import { FormattedMessage } from 'react-intl';
 
 import { changeComposeSpoilerness } from '@/flavours/glitch/actions/compose';
 import { closeModal } from '@/flavours/glitch/actions/modal';
+import type { StatusVisibility } from '@/flavours/glitch/api_types/statuses';
 import { Button } from '@/flavours/glitch/components/button/redesign';
 import {
   ModalShell,
@@ -16,9 +17,10 @@ import {
 } from '@/flavours/glitch/reducers/slices/composer';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
-const ComposerModalSensitive: React.FC<{ redirectOnSuccess?: boolean }> = ({
-  redirectOnSuccess,
-}) => {
+const ComposerModalSensitive: React.FC<{
+  redirectOnSuccess?: boolean;
+  overridePrivacy?: StatusVisibility;
+}> = ({ redirectOnSuccess, overridePrivacy }) => {
   const dispatch = useAppDispatch();
   const onCancel = useCallback(() => {
     dispatch(requestComposerFocus());
@@ -31,14 +33,14 @@ const ComposerModalSensitive: React.FC<{ redirectOnSuccess?: boolean }> = ({
   }, [dispatch]);
   const onContinue = useCallback(() => {
     dispatch(changeComposeSpoilerness());
-    dispatch(submitComposer({ redirectOnSuccess }));
+    dispatch(submitComposer({ redirectOnSuccess, overridePrivacy }));
     dispatch(
       closeModal({
         modalType: 'COMPOSER_ADD_CONTENT_WARNING',
         ignoreFocus: false,
       }),
     );
-  }, [dispatch, redirectOnSuccess]);
+  }, [dispatch, redirectOnSuccess, overridePrivacy]);
 
   return (
     <ModalShell>

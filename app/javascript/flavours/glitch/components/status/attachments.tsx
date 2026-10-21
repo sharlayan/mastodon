@@ -46,7 +46,8 @@ import mainClasses from './styles.module.scss';
 
 export const StatusAttachments: React.FC<{
   statusId: string;
-}> = ({ statusId }) => {
+  collapsed?: boolean;
+}> = ({ statusId, collapsed = false }) => {
   const status = useExpandedStatus(statusId);
 
   if (!status) {
@@ -58,6 +59,7 @@ export const StatusAttachments: React.FC<{
     return (
       <MediaAttachments
         statusId={statusId}
+        collapsed={collapsed}
         accountId={status.account.id}
         statusHidden={status.hidden && !!status.spoiler_text}
         sensitive={status.sensitive}
@@ -106,6 +108,7 @@ type TMediaGallery = React.ComponentClass<
     standalone?: boolean;
     visible?: boolean;
     autoplay?: boolean;
+    disableGifvAutoplay?: boolean;
     matchedFilters?: (string | null | undefined)[];
     cacheWidth?: () => void;
     defaultWidth?: number;
@@ -121,6 +124,7 @@ const Video = lazy(() => import('@/flavours/glitch/features/video'));
 
 const MediaAttachments: React.FC<{
   statusId: string;
+  collapsed: boolean;
   accountId: string;
   statusHidden: boolean;
   sensitive: boolean;
@@ -130,6 +134,7 @@ const MediaAttachments: React.FC<{
   defaultPosterUrl: string;
 }> = ({
   statusId,
+  collapsed,
   accountId,
   statusHidden,
   sensitive,
@@ -156,6 +161,19 @@ const MediaAttachments: React.FC<{
   );
 
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const noAutoplayGifv = useAppSelector(
+    (state) =>
+      state.local_settings.getIn(['media', 'no_autoplay_gifv']) === true,
+  );
+  useEffect(() => {
+    if (collapsed) {
+      wrapperRef.current
+        ?.querySelectorAll<HTMLMediaElement>('video, audio')
+        .forEach((media) => {
+          media.pause();
+        });
+    }
+  }, [collapsed]);
   const [showMedia, setShowMedia] = useState(
     () =>
       mediaFilters.length === 0 &&
@@ -277,7 +295,7 @@ const MediaAttachments: React.FC<{
           deployPictureInPicture={handleDeployPictureInPicture}
           blurhash={attachment.blurhash}
           onToggleVisibility={handleToggleMediaVisibility}
-          visible={showMedia}
+          visible={showMedia && !collapsed}
         />
       </MediaAttachmentWrapper>
     );
@@ -298,7 +316,7 @@ const MediaAttachments: React.FC<{
           onOpenVideo={handleOpenVideo}
           deployPictureInPicture={handleDeployPictureInPicture}
           onToggleVisibility={handleToggleMediaVisibility}
-          visible={showMedia}
+          visible={showMedia && !collapsed}
         />
       </MediaAttachmentWrapper>
     );
@@ -312,7 +330,8 @@ const MediaAttachments: React.FC<{
         height={110}
         onOpenMedia={handleOpenMedia}
         onToggleVisibility={handleToggleMediaVisibility}
-        visible={showMedia}
+        visible={showMedia && !collapsed}
+        disableGifvAutoplay={collapsed || noAutoplayGifv}
       />
     </MediaAttachmentWrapper>
   );

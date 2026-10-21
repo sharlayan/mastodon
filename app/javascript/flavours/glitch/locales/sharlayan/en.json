@@ -499,6 +499,7 @@
   "pages.visibility.authenticated": "Signed-in users only",
   "pages.visibility.public": "Public",
   "pages.wide_view": "Wide view",
+  "privacy.circle.short": "Circle",
   "reaction_mutes.add": "Add",
   "reaction_mutes.hint": "You will not receive emoji reactions from the accounts and servers listed here. Enter an account handle (@user@server) or a whole server domain.",
   "reaction_mutes.target_placeholder": "Account (@user@server) or server (example.com)",

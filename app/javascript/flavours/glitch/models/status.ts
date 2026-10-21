@@ -22,6 +22,7 @@ import type {
   ApiMentionJSON,
   ApiPreviewCardAuthorJSON,
   ApiPreviewCardJSON,
+  ApiStatusJSON,
   ApiStatusTranslationJSON,
   ApiTagJSON,
   StatusVisibility,
@@ -34,7 +35,18 @@ export type { StatusVisibility } from '@/flavours/glitch/api_types/statuses';
 // Temporary until we type it correctly
 export type Status = Immutable.Map<string, unknown>;
 
-export interface StatusShape {
+export interface StatusShape extends Pick<
+  ApiStatusJSON,
+  | 'local_only'
+  | 'limited_scope'
+  | 'content_type'
+  | 'mfm'
+  | 'mfm_text'
+  | 'rp_hidden'
+  | 'reactions'
+  | 'reactions_count'
+  | 'instance_metadata'
+> {
   id: string;
   account: string;
   created_at: string;

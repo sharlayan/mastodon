@@ -499,6 +499,7 @@
   "pages.visibility.authenticated": "로그인한 사용자만",
   "pages.visibility.public": "공개",
   "pages.wide_view": "넓게 보기",
+  "privacy.circle.short": "서클",
   "reaction_mutes.add": "추가",
   "reaction_mutes.hint": "여기 등록한 계정과 서버에서 오는 에모지 리액션을 받지 않습니다. 계정 핸들(@사용자@서버) 또는 서버 도메인을 입력하세요.",
   "reaction_mutes.target_placeholder": "계정(@사용자@서버) 또는 서버(example.com)",

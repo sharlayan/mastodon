@@ -25,6 +25,7 @@ import {
   useAppSelector,
 } from '@/flavours/glitch/store/typed_functions';
 
+import { ComposeCustomSettings } from './custom_settings';
 import {
   selectComposePrivacy,
   selectComposeQuotePolicy,
@@ -70,6 +71,9 @@ const ComposeSettingsInnerMenu: React.FC = () => {
 
   // Sensitive content
   const { sensitive, mediaSensitive } = useAppSelector(selectComposeSensitive);
+  const alwaysShowSpoiler = useAppSelector(
+    (state) => !!state.local_settings.get('always_show_spoilers_field'),
+  );
 
   const onSensitiveChange = useCallback(() => {
     dispatch(changeComposeSpoilerness());
@@ -154,6 +158,7 @@ const ComposeSettingsInnerMenu: React.FC = () => {
           name='content_warning'
           value='on'
           checked={sensitive}
+          disabled={alwaysShowSpoiler}
           onChange={onSensitiveChange}
           keepMenuOpenOnClick
           icon={WarningIcon}
@@ -178,6 +183,7 @@ const ComposeSettingsInnerMenu: React.FC = () => {
           />
         </MenuItemCheckbox>
       </MenuItemGroup>
+      <ComposeCustomSettings />
     </>
   );
 };

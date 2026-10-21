@@ -20,6 +20,26 @@ export interface ApiStatusApplicationJSON {
   website: string;
 }
 
+export interface ApiStatusReactionJSON {
+  name: string;
+  count: number;
+  me?: boolean;
+  url?: string;
+  static_url?: string;
+  domain?: string;
+  is_sensitive?: boolean;
+  users?: ApiAccountJSON[];
+}
+
+export interface ApiStatusInstanceMetadataJSON {
+  domain: string;
+  software?: string;
+  version?: string;
+  theme_color?: string;
+  favicon_url?: string;
+  instance_name?: string;
+}
+
 export interface ApiTagJSON {
   name: string;
   url: string;
@@ -129,6 +149,12 @@ export interface ApiStatusJSON {
   // glitch-soc additions
   local_only?: boolean;
   content_type?: string;
+  mfm?: boolean;
+  mfm_text?: string;
+  rp_hidden?: boolean;
+  reactions?: ApiStatusReactionJSON[];
+  reactions_count?: number;
+  instance_metadata?: ApiStatusInstanceMetadataJSON;
 }
 
 export interface ApiContextJSON {

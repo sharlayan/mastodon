@@ -9,6 +9,7 @@ import Status from './legacy/status';
 
 export type StatusContextType =
   | 'account'
+  | `antenna:${string}`
   | 'bookmarks'
   | 'composer'
   | 'detailed'

@@ -20,6 +20,18 @@
       transparent
     );
   }
+
+  &.postCollapsed {
+    max-height: 1lh;
+    cursor: pointer;
+    mask-image: linear-gradient(to bottom, black, transparent);
+  }
+}
+
+.contentBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .contentText {

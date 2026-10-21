@@ -18,6 +18,7 @@ import { Poll } from '../poll';
 
 import { StatusActionBar } from './action_bar';
 import { StatusAttachments } from './attachments';
+import { usePostCollapse } from './collapse';
 import { StatusContent } from './content';
 import { StatusHashtagBar } from './hashtag_bar';
 import { StatusRedesignHeader } from './header';
@@ -30,6 +31,7 @@ import {
 import { computeHashtagBarForStatus } from './legacy/hashtag_bar';
 import { StatusMeta } from './meta';
 import { StatusPrepend } from './prepend';
+import { StatusRedesignReactions } from './reactions';
 import classes from './styles.module.scss';
 import { TranslateButton } from './translate';
 import type { StatusContainerProps, StatusContextType } from './types';
@@ -77,6 +79,8 @@ const selectStatusReblog = createAppSelector(
 export const StatusRedesign: React.FC<StatusRedesignProps> = ({
   id,
   muted,
+  unread,
+  collapsed,
   skipPrepend,
   unfocusable,
   contextType,
@@ -99,6 +103,14 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
     selectStatusReblog(state, { statusId: id, contextType }),
   );
   const statusId = status?.id;
+  const postCollapse = usePostCollapse({
+    status: status ?? undefined,
+    contextType,
+    unread,
+    boosted: !!parent,
+    disabled: !!isQuotedPost || variant === 'page',
+    collapsed,
+  });
 
   // Display
   const screenReaderText = useTextForScreenReader({
@@ -149,7 +161,7 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
     muted,
     unfocusable,
     'data-id': id,
-    handlers: hotkeyHandlers,
+    handlers: { ...hotkeyHandlers, toggleCollapse: postCollapse.onToggle },
   };
 
   const isHidden =
@@ -201,7 +213,14 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
           />
         )}
 
-        <StatusRedesignHeader status={status} className={classes.header}>
+        <StatusRedesignHeader
+          status={status}
+          className={classes.header}
+          collapsed={postCollapse.isCollapsed}
+          onCollapsedChange={
+            postCollapse.enabled ? postCollapse.onCollapsedChange : undefined
+          }
+        >
           {headerContents}
         </StatusRedesignHeader>
 
@@ -230,6 +249,11 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
             onTranslate={onTranslate}
             collapsible={variant !== 'page'}
             className={classNames(variant === 'page' && classes.content)}
+            postCollapsed={postCollapse.isCollapsed}
+            onTogglePostCollapse={
+              postCollapse.enabled ? postCollapse.onToggle : undefined
+            }
+            onMeasureContent={postCollapse.onMeasure}
           >
             {!!status.poll && (
               <Poll
@@ -237,10 +261,14 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
                 statusUrl={status.uri}
                 accountId={status.account.id}
                 lang={status.translation?.language ?? status.language}
+                collapsed={postCollapse.isCollapsed}
               />
             )}
 
-            <StatusAttachments statusId={status.id} />
+            <StatusAttachments
+              statusId={status.id}
+              collapsed={postCollapse.isCollapsed}
+            />
 
             {children}
           </StatusContent>
@@ -249,22 +277,26 @@ export const StatusRedesign: React.FC<StatusRedesignProps> = ({
             hashtags={hashtagsInBar}
             accountId={status.account.id}
           />
+          {!isQuotedPost && !postCollapse.isCollapsed && (
+            <StatusRedesignReactions statusId={status.id} />
+          )}
         </div>
 
-        {(variant === 'page' || (showActions && !isQuotedPost)) && (
-          <footer className={classes.footer}>
-            {showActions && !isQuotedPost && (
-              <StatusActionBar
-                statusId={status.id}
-                withDismiss={withDismiss}
-                withCounters={withCounters}
-                onlyResponses={variant === 'page'}
-              />
-            )}
+        {(variant === 'page' || (showActions && !isQuotedPost)) &&
+          (!postCollapse.isCollapsed || postCollapse.showActionBar) && (
+            <footer className={classes.footer}>
+              {showActions && !isQuotedPost && (
+                <StatusActionBar
+                  statusId={status.id}
+                  withDismiss={withDismiss}
+                  withCounters={withCounters}
+                  onlyResponses={variant === 'page'}
+                />
+              )}
 
-            {variant === 'page' && <StatusMeta status={status} />}
-          </footer>
-        )}
+              {variant === 'page' && <StatusMeta status={status} />}
+            </footer>
+          )}
       </StatusHotkeys>
     </StatusContext.Provider>
   );

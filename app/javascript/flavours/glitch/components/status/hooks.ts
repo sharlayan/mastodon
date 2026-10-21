@@ -4,12 +4,16 @@ import { defineMessages, useIntl } from 'react-intl';
 
 import { useHistory } from 'react-router';
 
+import { fromJS } from 'immutable';
+import type { Map as ImmutableMap } from 'immutable';
+
 import {
   followAccount,
   muteAccount,
   unblockAccount,
   unmuteAccount,
 } from '@/flavours/glitch/actions/accounts';
+import { removeStatusFromAntenna } from '@/flavours/glitch/actions/antennas';
 import { initBlockModal } from '@/flavours/glitch/actions/blocks';
 import {
   mentionComposeById,
@@ -23,7 +27,10 @@ import {
 import type { StatusInteractionIntent } from '@/flavours/glitch/actions/interactions_typed';
 import { statusInteraction } from '@/flavours/glitch/actions/interactions_typed';
 import { openModal } from '@/flavours/glitch/actions/modal';
-import { toggleStatusSpoilers } from '@/flavours/glitch/actions/statuses';
+import {
+  deleteStatus,
+  toggleStatusSpoilers,
+} from '@/flavours/glitch/actions/statuses';
 import { useRelationship } from '@/flavours/glitch/hooks/useRelationship';
 import {
   useExpandedStatus,
@@ -31,7 +38,11 @@ import {
 } from '@/flavours/glitch/hooks/useStatus';
 import { useToggle } from '@/flavours/glitch/hooks/useToggle';
 import { useIdentity } from '@/flavours/glitch/identity_context';
-import { quickBoosting } from '@/flavours/glitch/initial_state';
+import {
+  clipsEnabled,
+  deleteModal,
+  quickBoosting,
+} from '@/flavours/glitch/initial_state';
 import type { MenuItem as DropdownItem } from '@/flavours/glitch/models/dropdown_menu';
 import type { Relationship } from '@/flavours/glitch/models/relationship';
 import type {
@@ -52,6 +63,10 @@ import {
   selectStatusConditions,
   selectStatusInteractionsAllowed,
 } from '@/flavours/glitch/selectors/statuses';
+import {
+  sharlayanRoleplayStatusAction,
+  sharlayanRoleplayStatusMenuItem,
+} from '@/flavours/glitch/sharlayan/status_action_bar';
 import { useAppSelector, useAppDispatch } from '@/flavours/glitch/store';
 import type { AppDispatch } from '@/flavours/glitch/store';
 import { isRedesignEnabled } from '@/flavours/glitch/utils/environment';
@@ -543,6 +558,20 @@ const menuMessages = defineMessages({
     defaultMessage: 'Open moderation interface for {domain}',
   },
   copy: { id: 'status.copy', defaultMessage: 'Copy link to post' },
+  reactions: { id: 'status.reactions', defaultMessage: 'Reactions' },
+  addToClip: { id: 'status.add_to_clip', defaultMessage: 'Add to clip' },
+  removeFromAntenna: {
+    id: 'status.remove_from_antenna',
+    defaultMessage: 'Remove from this antenna',
+  },
+  removeFromAntennaConfirm: {
+    id: 'status.remove_from_antenna_confirm',
+    defaultMessage: 'Remove this post from {name}?',
+  },
+  removeFromAntennaConfirmFallback: {
+    id: 'status.remove_from_antenna_confirm_fallback',
+    defaultMessage: 'Remove this post from this antenna?',
+  },
   blockDomain: {
     id: 'account.block_domain',
     defaultMessage: 'Block domain {domain}',
@@ -582,6 +611,17 @@ export function useStatusMenuActions({
   const relationship = useRelationship(account.id);
   const intl = useIntl();
   const dispatch = useAppDispatch();
+  const { id: containerId } = useStatusContext();
+  const antennaId = contextType?.startsWith('antenna:')
+    ? contextType.slice('antenna:'.length)
+    : undefined;
+  const antennaTitle = useAppSelector((state) =>
+    antennaId
+      ? ((state.antennas as ImmutableMap<string, ImmutableMap<string, unknown>>)
+          .get(antennaId)
+          ?.get('title') as string | undefined)
+      : undefined,
+  );
 
   const conditions = useAppSelector((state) =>
     selectStatusConditions(state, status.id),
@@ -607,6 +647,8 @@ export function useStatusMenuActions({
         relationship,
         contextType,
         dispatch,
+        containerId,
+        antennaTitle,
       }),
     [
       status,
@@ -619,6 +661,8 @@ export function useStatusMenuActions({
       relationship,
       contextType,
       dispatch,
+      containerId,
+      antennaTitle,
     ],
   );
 }
@@ -634,6 +678,8 @@ interface MenuItemsParams {
   relationship?: Relationship | null;
   contextType?: StatusContextType;
   dispatch: AppDispatch;
+  containerId?: string | null;
+  antennaTitle?: string;
 }
 
 function getMenuItems({
@@ -647,6 +693,8 @@ function getMenuItems({
   relationship,
   contextType,
   dispatch,
+  containerId,
+  antennaTitle,
 }: MenuItemsParams) {
   const menu: DropdownItem[] = [];
 
@@ -674,6 +722,22 @@ function getMenuItems({
     action: onStatusInteraction('copy'),
   });
 
+  if (
+    status.reactions_count ||
+    status.reactions?.some((reaction) => reaction.count > 0)
+  ) {
+    menu.push({
+      text: intl.formatMessage(menuMessages.reactions),
+      action: () =>
+        dispatch(
+          openModal({
+            modalType: 'STATUS_REACTIONS',
+            modalProps: { statusId, reactions: fromJS(status.reactions ?? []) },
+          }),
+        ),
+    });
+  }
+
   if (isPublic && 'share' in navigator) {
     menu.push({
       text: intl.formatMessage(menuMessages.share),
@@ -696,6 +760,16 @@ function getMenuItems({
     return menu;
   }
 
+  if (clipsEnabled) {
+    menu.push({
+      text: intl.formatMessage(menuMessages.addToClip),
+      action: () =>
+        dispatch(
+          openModal({ modalType: 'CLIP_ADD', modalProps: { statusId } }),
+        ),
+    });
+  }
+
   if (quickBoosting) {
     menu.push(null);
     const quoteItem = quoteItemState(conditions);
@@ -710,6 +784,34 @@ function getMenuItems({
   }
 
   menu.push(null);
+
+  if (contextType?.startsWith('antenna:')) {
+    const antennaId = contextType.slice('antenna:'.length);
+    menu.push({
+      text: intl.formatMessage(menuMessages.removeFromAntenna),
+      action: () =>
+        dispatch(
+          openModal({
+            modalType: 'CONFIRM',
+            modalProps: {
+              title: antennaTitle
+                ? intl.formatMessage(menuMessages.removeFromAntennaConfirm, {
+                    name: antennaTitle,
+                  })
+                : intl.formatMessage(
+                    menuMessages.removeFromAntennaConfirmFallback,
+                  ),
+              confirm: intl.formatMessage(menuMessages.removeFromAntenna),
+              onConfirm: () =>
+                dispatch(
+                  removeStatusFromAntenna(antennaId, containerId ?? statusId),
+                ),
+            },
+          }),
+        ),
+    });
+    menu.push(null);
+  }
 
   if (interactions.pin) {
     menu.push({
@@ -739,7 +841,39 @@ function getMenuItems({
     menu.push(null);
   }
 
-  if (interactions.edit && interactions.delete && interactions.redraft) {
+  const roleplayAction = sharlayanRoleplayStatusAction({
+    status: fromJS({ rp_hidden: status.rp_hidden }),
+    writtenByMe: isMine,
+    isRemote: !isLocal,
+  });
+  const roleplayMenuItem = sharlayanRoleplayStatusMenuItem(
+    intl,
+    roleplayAction,
+    () => {
+      const purge = !!status.rp_hidden;
+      if (!deleteModal && !purge) {
+        void dispatch(deleteStatus(statusId));
+      } else {
+        dispatch(
+          openModal({
+            modalType: 'CONFIRM_DELETE_STATUS',
+            modalProps: { statusId, withRedraft: false, purge },
+          }),
+        );
+      }
+    },
+  );
+
+  if (roleplayMenuItem) {
+    menu.push(roleplayMenuItem);
+  }
+
+  if (
+    roleplayAction !== 'purge' &&
+    interactions.edit &&
+    interactions.delete &&
+    interactions.redraft
+  ) {
     menu.push({
       text: intl.formatMessage(menuMessages.edit),
       action: onStatusInteraction('edit'),

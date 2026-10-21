@@ -51,7 +51,7 @@ export const ColumnsAreaRedesign: React.FC<{
         {isMobile ? <RedesignMobileNavigation /> : <ComposeRedesignButton />}
 
         <main className={classes.main}>
-          <SharlayanColumnsAreaExtensions />
+          <SharlayanColumnsAreaExtensions redesign />
 
           {children}
         </main>

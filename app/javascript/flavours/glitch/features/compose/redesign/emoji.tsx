@@ -1,22 +1,48 @@
 import type React from 'react';
-import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
+import type { List as ImmutableList, Map as ImmutableMap } from 'immutable';
+
 import { SmileyIcon } from '@phosphor-icons/react';
 import type { EmojiData, EmojiSkin } from 'emoji-mart';
 
 import { emojiUse } from '@/flavours/glitch/actions/emojis';
+import {
+  addFavoriteEmoji,
+  removeFavoriteEmoji,
+} from '@/flavours/glitch/actions/favorite_emojis';
 import { changeSetting } from '@/flavours/glitch/actions/settings';
 import { IconButton } from '@/flavours/glitch/components/button/redesign';
+import type { IconButtonProps } from '@/flavours/glitch/components/button/redesign';
 import { CircularProgress } from '@/flavours/glitch/components/circular_progress';
 import { MenuCard } from '@/flavours/glitch/components/menu/card';
 import type { PopoverChildProps } from '@/flavours/glitch/components/popover';
 import { Popover } from '@/flavours/glitch/components/popover';
+import { useMergedRefs } from '@/flavours/glitch/hooks/useMergedRefs';
 import { useToggle } from '@/flavours/glitch/hooks/useToggle';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
+import {
+  emojiPickerFavoriteProps,
+  emojiPickerFavoritesCategoryLabel,
+  shouldIgnoreEmojiDropdownClose,
+} from '@/sharlayan/emoji_picker/favorites';
+import {
+  computeEmojiPickerStyle,
+  EmojiPickerSizeObserver,
+  loadEmojiPickerSize,
+} from '@/sharlayan/emoji_picker/picker_size';
 
 import { PER_LINE, selectFrequentlyUsedEmoji } from './selectors';
 import classes from './styles.module.scss';
@@ -42,30 +68,44 @@ const messages = defineMessages({
   flags: { id: 'emoji_button.flags', defaultMessage: 'Flags' },
 });
 
-export const ComposeEmojiButton: React.FC<{ onPick: OnEmojiPick }> = ({
-  onPick,
-}) => {
+export const ComposeEmojiButton: React.FC<{
+  onPick: OnEmojiPick;
+  label?: React.ReactNode;
+  icon?: IconButtonProps['icon'];
+  disabled?: boolean;
+  variant?: IconButtonProps['variant'];
+}> = ({ onPick, label, icon = SmileyIcon, disabled, variant }) => {
   const [open, { onToggle, onFalse }] = useToggle();
   const [target, setTarget] = useState<HTMLButtonElement | null>(null);
+  const handleClose = useCallback(
+    (event?: Event) => {
+      if (!shouldIgnoreEmojiDropdownClose(event)) onFalse();
+    },
+    [onFalse],
+  );
 
   return (
     <>
       <IconButton
         size='sm'
-        icon={SmileyIcon}
+        icon={icon}
+        disabled={disabled}
+        variant={variant}
         ref={setTarget}
         onClick={onToggle}
         aria-expanded={open}
       >
-        <FormattedMessage
-          id='emoji_button.label'
-          defaultMessage='Insert emoji'
-        />
+        {label ?? (
+          <FormattedMessage
+            id='emoji_button.label'
+            defaultMessage='Insert emoji'
+          />
+        )}
       </IconButton>
 
       <Popover
         isOpen={open}
-        onClose={onFalse}
+        onClose={handleClose}
         reference={target}
         placement='top-start'
         offset={4}
@@ -102,12 +142,30 @@ const ComposeEmojiDropdown: React.FC<
     onPick: OnEmojiPick;
     className?: string;
   } & PopoverChildProps
-> = ({ onPick, onClose, className, ...props }) => {
+> = ({ onPick, onClose, className, style, ...props }) => {
   const intl = useIntl();
   const skinTone = useAppSelector(
     (state) => state.settings.get('skinTone') as EmojiSkin | undefined,
   );
   const frequentlyUsedEmojis = useAppSelector(selectFrequentlyUsedEmoji);
+  const favoriteEmojis = useAppSelector(
+    (state) =>
+      state.favorite_emojis as ImmutableList<ImmutableMap<string, unknown>>,
+  );
+  const [pickerSize, setPickerSize] = useState(
+    () => loadEmojiPickerSize() as { width: number; height: number } | null,
+  );
+  const [pickerElement, setPickerElement] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const pickerRef = useMergedRefs<HTMLDivElement>(props.ref, setPickerElement);
+  useEffect(() => {
+    const observer = new EmojiPickerSizeObserver(setPickerSize);
+    observer.observe(pickerElement);
+    return () => {
+      observer.dispose();
+    };
+  }, [pickerElement]);
   const i18n = useMemo(
     () => ({
       search: intl.formatMessage(messages.emoji_search),
@@ -123,12 +181,25 @@ const ComposeEmojiDropdown: React.FC<
         symbols: intl.formatMessage(messages.symbols),
         flags: intl.formatMessage(messages.flags),
         custom: intl.formatMessage(messages.custom),
+        favorites: emojiPickerFavoritesCategoryLabel(intl) as string,
       },
     }),
     [intl],
   );
 
   const dispatch = useAppDispatch();
+  const onAddFavorite = useCallback(
+    (name: string, emojiType: string) => {
+      dispatch(addFavoriteEmoji(name, emojiType));
+    },
+    [dispatch],
+  );
+  const onRemoveFavorite = useCallback(
+    (name: string, emojiType: string, position: number) => {
+      dispatch(removeFavoriteEmoji(name, emojiType, position));
+    },
+    [dispatch],
+  );
   const handleEmojiPick = useCallback(
     (rawEmoji: EmojiData, event: React.MouseEvent<HTMLInputElement>) => {
       const emoji = {
@@ -165,8 +236,11 @@ const ComposeEmojiDropdown: React.FC<
   return (
     <MenuCard
       {...props}
+      ref={pickerRef}
+      style={computeEmojiPickerStyle(style, pickerSize) as React.CSSProperties}
       className={classNames(
         'dropdown-animation',
+        'emoji-picker-dropdown__menu',
         classes.emojiRoot,
         className,
         open && 'selecting',
@@ -199,6 +273,11 @@ const ComposeEmojiDropdown: React.FC<
           notFound={NotFound as unknown as () => React.Component}
           autoFocus
           emojiTooltip
+          {...emojiPickerFavoriteProps(intl, {
+            favoriteEmojis,
+            onAddFavorite,
+            onRemoveFavorite,
+          })}
         />
 
         <div className='emoji-picker-dropdown__modifiers'>
