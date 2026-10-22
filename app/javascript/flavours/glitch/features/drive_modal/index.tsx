@@ -1,4 +1,4 @@
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { FormattedMessage, useIntl, defineMessages } from 'react-intl';
 
@@ -27,6 +27,15 @@ export const DriveModal: React.FC<{
   const dispatch = useAppDispatch();
   const drive = useDrive();
   const [selecting, setSelecting] = useState(false);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const handleSelectFile = useCallback(
     (file: ApiDriveFileJSON) => {
@@ -37,9 +46,11 @@ export const DriveModal: React.FC<{
       if (onSelectFile) {
         setSelecting(true);
         Promise.resolve(onSelectFile(file))
-          .then(onClose)
+          .then(() => {
+            if (mountedRef.current) onClose();
+          })
           .catch(() => {
-            setSelecting(false);
+            if (mountedRef.current) setSelecting(false);
           });
         return;
       }

@@ -12,6 +12,7 @@ class UpdateAccountService < BaseService
 
     params = process_drive_images(account, params, drive_images)
     params = process_avatar_decorations(account, params) if params.key?(:avatar_decorations)
+    assign_profile_images(account, params)
 
     account.send(update_method, params).tap do |ret|
       next unless ret
@@ -52,13 +53,40 @@ class UpdateAccountService < BaseService
           raise ActiveRecord::RecordInvalid, account
         end
 
-        image = Paperclip.io_adapters.for(drive_file.file)
-        drive_images << image
-        params[attachment] = image
+        params[attachment] = copy_drive_image(account, attachment, drive_file, drive_images)
       end
     end
 
     params
+  end
+
+  def copy_drive_image(account, attachment, drive_file, drive_images)
+    image = Tempfile.new(['profile-drive-image', File.extname(drive_file.file_file_name)])
+    drive_images << image
+
+    copied = drive_file.file.copy_to_local_file(:original, image.path)
+
+    if copied == false || File.empty?(image.path)
+      account.errors.add(attachment, :invalid)
+      raise ActiveRecord::RecordInvalid, account
+    end
+
+    image.open.binmode
+    image
+  rescue Errno::ENOENT
+    account.errors.add(attachment, :invalid)
+    raise ActiveRecord::RecordInvalid, account
+  end
+
+  def assign_profile_images(account, params)
+    %i(avatar header).each do |attachment|
+      next unless params.key?(attachment)
+
+      account.public_send(:"#{attachment}=", params.delete(attachment))
+    rescue Mastodon::DimensionsValidationError, Mastodon::StreamValidationError => e
+      account.errors.add(attachment, :invalid, message: e.message)
+      raise ActiveRecord::RecordInvalid, account
+    end
   end
 
   def process_avatar_decorations(account, params)

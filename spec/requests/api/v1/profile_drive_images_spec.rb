@@ -114,6 +114,39 @@ RSpec.describe 'Profile images from Drive' do
         end
       end
 
+      context 'when the stored original is unavailable' do
+        before do
+          File.unlink(drive_file.file.path)
+        end
+
+        it 'returns a validation error without changing the profile' do
+          params[:display_name] = 'Changed'
+
+          expect { update_profile }.to not_change { account.reload.display_name }
+            .and not_change { account.reload.avatar_file_name }
+            .and(not_change { account.reload.header_file_name })
+
+          expect(response).to have_http_status(422)
+          expect(response.parsed_body[:details]).to include(avatar: contain_exactly(include(error: 'ERR_INVALID')))
+          expect(ActivityPub::UpdateDistributionWorker).to_not have_enqueued_sidekiq_job(account.id)
+        end
+      end
+
+      context 'with an empty stored original' do
+        before do
+          File.truncate(drive_file.file.path, 0)
+        end
+
+        it 'rejects the empty copy before changing the profile' do
+          update_profile
+
+          expect(response).to have_http_status(422)
+          expect(response.parsed_body[:details]).to include(avatar: contain_exactly(include(error: 'ERR_INVALID')))
+          expect(account.reload.avatar).to_not exist
+          expect(account.header).to_not exist
+        end
+      end
+
       context 'when image dimension validation fails', :attachment_processing do
         before do
           drive_file
@@ -127,6 +160,18 @@ RSpec.describe 'Profile images from Drive' do
           expect(account.reload.avatar).to_not exist
           expect(account.header).to_not exist
           expect(ActivityPub::UpdateDistributionWorker).to_not have_enqueued_sidekiq_job(account.id)
+        end
+
+        context 'when only a header is selected' do
+          let(:params) { { header_drive_file_id: drive_file.id.to_s } }
+
+          it 'identifies the header as the invalid image' do
+            update_profile
+
+            expect(response).to have_http_status(422)
+            expect(response.parsed_body[:details]).to include(header: contain_exactly(include(error: 'ERR_INVALID')))
+            expect(response.parsed_body[:details]).to_not have_key(:avatar)
+          end
         end
       end
 
