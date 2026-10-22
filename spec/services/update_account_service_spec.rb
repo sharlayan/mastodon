@@ -5,6 +5,78 @@ require 'rails_helper'
 RSpec.describe UpdateAccountService do
   subject { described_class.new }
 
+  describe 'copying profile images from Drive' do
+    let(:account) { Fabricate(:user).account }
+    let(:drive_file) { account.drive_files.create!(file: attachment_fixture('attachment.jpg')) }
+    let(:params) { { header_drive_file_id: drive_file.id.to_s, display_name: 'Changed' } }
+    let(:copy_paths) { [] }
+
+    before do
+      Setting.drive_enabled = true
+      allow(account.drive_files).to receive(:find).with(drive_file.id.to_s).and_return(drive_file)
+    end
+
+    context 'when the storage backend reports a failed download' do
+      before do
+        allow(drive_file.file).to receive(:copy_to_local_file) do |_, destination|
+          copy_paths << destination
+          File.write(destination, 'incomplete download')
+          false
+        end
+      end
+
+      it 'rejects the selection and removes the temporary copy' do
+        expect { expect(subject.call(account, params)).to be(false) }
+          .to not_change { Account.find(account.id).display_name }
+          .and(not_change { Account.find(account.id).header_file_name })
+
+        expect(account.errors.of_kind?(:header, :invalid)).to be(true)
+        expect(File).to_not exist(copy_paths.fetch(0))
+        expect(drive_file.reload.file).to exist
+      end
+
+      it 'raises a validation error when requested' do
+        expect { subject.call(account, params, raise_error: true) }
+          .to raise_error(ActiveRecord::RecordInvalid)
+
+        expect(File).to_not exist(copy_paths.fetch(0))
+      end
+    end
+
+    context 'when copying the original raises an error' do
+      before do
+        allow(drive_file.file).to receive(:copy_to_local_file) do |_, destination|
+          copy_paths << destination
+          raise IOError, 'Download interrupted'
+        end
+      end
+
+      it 'removes the temporary copy before propagating the error' do
+        expect { subject.call(account, params) }.to raise_error(IOError, 'Download interrupted')
+
+        expect(File).to_not exist(copy_paths.fetch(0))
+      end
+    end
+
+    context 'when the storage backend replaces the destination file' do
+      before do
+        allow(drive_file.file).to receive(:copy_to_local_file) do |_, destination|
+          copy_paths << destination
+          File.binwrite("#{destination}.download", File.binread(drive_file.file.path))
+          File.rename("#{destination}.download", destination)
+          true
+        end
+      end
+
+      it 'saves the downloaded bytes and removes the temporary copy' do
+        expect(subject.call(account, params, raise_error: true)).to be(true)
+
+        expect(File.binread(account.reload.header.path)).to eq(File.binread(drive_file.file.path))
+        expect(File).to_not exist(copy_paths.fetch(0))
+      end
+    end
+  end
+
   describe 'updating avatar decorations' do
     let(:account) { Fabricate(:user).account }
 

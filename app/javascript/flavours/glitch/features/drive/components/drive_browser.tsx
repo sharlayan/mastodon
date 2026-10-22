@@ -325,24 +325,24 @@ export const DriveBrowser: React.FC<{
           }
         />
       ) : (
-        <>
-          <div className='drive__grid'>
-            {visibleFiles.map((file) => (
-              <FileCard
-                key={file.id}
-                file={file}
-                manageable={managing}
-                draggable={managing && !orphanedOnly}
-                onSelect={onSelectFile}
-                onDelete={deleteFile}
-                onRename={renameFile}
-                onTransferToPosts={transferFileToPosts}
-              />
-            ))}
-          </div>
+        <div className='drive__grid'>
+          {visibleFiles.map((file) => (
+            <FileCard
+              key={file.id}
+              file={file}
+              manageable={managing}
+              draggable={managing && !orphanedOnly}
+              onSelect={onSelectFile}
+              onDelete={deleteFile}
+              onRename={renameFile}
+              onTransferToPosts={transferFileToPosts}
+            />
+          ))}
+        </div>
+      )}
 
-          {hasMore && <LoadMore onClick={loadMore} loading={loadingMore} />}
-        </>
+      {!loading && hasMore && (
+        <LoadMore onClick={loadMore} loading={loadingMore} />
       )}
     </div>
   );

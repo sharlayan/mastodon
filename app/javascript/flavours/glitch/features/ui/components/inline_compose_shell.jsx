@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
@@ -18,6 +19,7 @@ import { mountCompose, unmountCompose } from 'flavours/glitch/actions/compose';
 import { apiRequestPut } from 'flavours/glitch/api';
 import { fetchLists } from 'flavours/glitch/actions/lists_typed';
 import { Icon } from 'flavours/glitch/components/icon';
+import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { TabList, TabLink } from 'flavours/glitch/components/tab_list';
 import ComposeFormContainer from 'flavours/glitch/features/compose/containers/compose_form_container';
 import { me, antennaEnabled, federatedTimelineEnabled, inlineComposeTabs, localTimelineEnabled } from 'flavours/glitch/initial_state';
@@ -25,6 +27,7 @@ import { getOrderedLists } from 'flavours/glitch/selectors/lists';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { isInlineComposeFeedRoute } from './inline_compose_routes';
+import classes from './inline_compose_shell.module.scss';
 
 const messages = defineMessages({
   home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
@@ -36,7 +39,9 @@ const messages = defineMessages({
   antennas: { id: 'inline_compose.antennas', defaultMessage: 'Antennas' },
 });
 
-export const InlineComposeShell = () => {
+const RedesignComposeForm = lazy(() => import('flavours/glitch/features/compose/redesign').then(({ RedesignComposeForm }) => ({ default: RedesignComposeForm })));
+
+export const InlineComposeShell = ({ redesign = false }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const location = useLocation();
@@ -55,6 +60,7 @@ export const InlineComposeShell = () => {
       || compose.get('media_attachments').size > 0;
   });
   const isSubmitting = useAppSelector((state) => state.getIn(['compose', 'is_submitting']));
+  const composerDisplayState = useAppSelector((state) => state.composer.displayState);
   const lists = useAppSelector((state) => getOrderedLists(state));
   const antennas = useAppSelector((state) => state.get('antennas'));
 
@@ -109,7 +115,7 @@ export const InlineComposeShell = () => {
   }, [expandOnClick, hasComposeContents, isSubmitting]);
 
   useEffect(() => {
-    if (!active) {
+    if (!active || redesign) {
       return undefined;
     }
 
@@ -120,7 +126,7 @@ export const InlineComposeShell = () => {
       dispatch(unmountCompose());
       document.documentElement.classList.remove('inline-compose-mode');
     };
-  }, [dispatch, active]);
+  }, [dispatch, active, redesign]);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -268,14 +274,24 @@ export const InlineComposeShell = () => {
         </div>
       </div>
 
-      <div
-        className={classNames('inline-compose-form', { 'inline-compose-form--collapsed': expandOnClick && !composeExpanded })}
-        onClick={() => setComposeExpanded(true)}
-        onBlurCapture={handleComposeBlur}
-        onFocusCapture={() => setComposeExpanded(true)}
-      >
-        <ComposeFormContainer isInline withoutNavigation />
-      </div>
+      {(!redesign || composerDisplayState === 'hidden') && (
+        <div
+          className={classNames('inline-compose-form', { 'inline-compose-form--collapsed': expandOnClick && !composeExpanded })}
+          onClick={() => setComposeExpanded(true)}
+          onBlurCapture={handleComposeBlur}
+          onFocusCapture={() => setComposeExpanded(true)}
+        >
+          {redesign ? (
+            <Suspense fallback={<LoadingIndicator />}>
+              <RedesignComposeForm headless className={classNames(expandOnClick && !composeExpanded && classes.collapsed)} />
+            </Suspense>
+          ) : <ComposeFormContainer isInline withoutNavigation />}
+        </div>
+      )}
     </div>
   );
+};
+
+InlineComposeShell.propTypes = {
+  redesign: PropTypes.bool,
 };

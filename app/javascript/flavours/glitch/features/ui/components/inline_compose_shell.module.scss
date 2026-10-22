@@ -1,0 +1,9 @@
+.collapsed {
+  > :not(:has(textarea)) {
+    display: none;
+  }
+
+  textarea {
+    min-height: 48px;
+  }
+}

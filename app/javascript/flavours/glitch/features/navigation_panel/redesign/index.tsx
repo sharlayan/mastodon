@@ -6,13 +6,8 @@ import type { Map as ImmutableMap } from 'immutable';
 
 import {
   PenNibIcon,
-  HouseIcon,
   MagnifyingGlassIcon,
   RssSimpleIcon,
-  BellIcon,
-  ChatCircleDotsIcon,
-  BookmarkSimpleIcon,
-  BankIcon,
   PlusIcon,
   InfoIcon,
 } from '@phosphor-icons/react';
@@ -28,18 +23,20 @@ import { useScrollSensor } from '@/flavours/glitch/hooks/useScrollSensor';
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import {
   disabledAccountId,
-  localLiveFeedAccess,
-  remoteLiveFeedAccess,
   trendsEnabled,
 } from '@/flavours/glitch/initial_state';
 import { transientSingleColumn } from '@/flavours/glitch/is_mobile';
-import { canViewFeed } from '@/flavours/glitch/permissions';
 import { openNewComposer } from '@/flavours/glitch/reducers/slices/composer';
 import { getOrderedLists } from '@/flavours/glitch/selectors/lists';
 import { selectUnreadNotificationGroupsCount } from '@/flavours/glitch/selectors/notifications';
+import {
+  SharlayanRedesignAntennas,
+  SharlayanRedesignExtensions,
+  SharlayanRedesignPrimaryNavigation,
+} from '@/flavours/glitch/sharlayan/registry/navigation/redesign';
+import { roleplayMode } from '@/flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 import { invokeVirtualIosKeyboard } from '@/flavours/glitch/utils/invoke_virtual_ios_keyboard';
-import FediIcon from '@/images/icons/icon_fediverse.svg?react';
 
 import { useHasAnnouncements } from '../../announcements/hooks';
 
@@ -82,7 +79,7 @@ function useFollowedHashtags() {
   const { tags, stale } = useAppSelector((state) => state.followedTags);
 
   useEffect(() => {
-    if (stale && signedIn) {
+    if (stale && signedIn && !roleplayMode) {
       void dispatch(fetchFollowedHashtags());
     }
   }, [dispatch, stale, signedIn]);
@@ -126,13 +123,6 @@ export function useNotificationsCount() {
   );
 }
 
-const isFediverseFeedsLinkActive = (
-  match: unknown,
-  { pathname }: { pathname: string },
-) => {
-  return !!match || pathname.startsWith('/public');
-};
-
 const MAX_HASHTAG_COUNT = 5;
 
 export const RedesignNavigationPanel: React.FC<{
@@ -148,9 +138,6 @@ export const RedesignNavigationPanel: React.FC<{
   const dispatch = useAppDispatch();
   const { signedIn } = useIdentity();
   const notificationsCount = useNotificationsCount();
-  const useMyArchive = useAppSelector(
-    (state) => state.local_settings.get('use_my_archive', false) as boolean,
-  );
 
   const openComposer = useCallback(() => {
     dispatch(closeNavigation());
@@ -198,11 +185,12 @@ export const RedesignNavigationPanel: React.FC<{
                 />
               </Button>
             </li>
-            <NavigationLink to='/home' iconComponent={HouseIcon}>
-              <FormattedMessage id='tabs_bar.home' defaultMessage='Home' />
-            </NavigationLink>
-            <ExploreLink />
-            <PublicFeedsLink />
+            <SharlayanRedesignPrimaryNavigation
+              showHidden={mode === 'slide-out'}
+              notificationsCount={notificationsCount}
+            />
+            {!trendsEnabled && <ExploreLink />}
+            <SharlayanRedesignExtensions />
             <ListSection
               id='custom-feeds'
               title={
@@ -233,7 +221,9 @@ export const RedesignNavigationPanel: React.FC<{
               ))}
             </ListSection>
 
-            {followedHashtags.length > 0 && (
+            <SharlayanRedesignAntennas />
+
+            {!roleplayMode && followedHashtags.length > 0 && (
               <ListSection
                 id='followed-hashtags'
                 title={
@@ -260,64 +250,7 @@ export const RedesignNavigationPanel: React.FC<{
             )}
           </ul>
           <footer className={classes.footer} data-stuck={!isScrolledToBottom}>
-            {mode !== 'slide-out' && (
-              <>
-                <ul className={classes.footerNav}>
-                  <NavigationLink
-                    stacked
-                    to='/notifications'
-                    iconComponent={BellIcon}
-                    badgeCount={notificationsCount}
-                  >
-                    <FormattedMessage
-                      id='tabs_bar.notifications'
-                      defaultMessage='Notifications'
-                    />
-                  </NavigationLink>
-                  <NavigationLink
-                    stacked
-                    to='/conversations'
-                    iconComponent={ChatCircleDotsIcon}
-                  >
-                    <FormattedMessage
-                      id='tabs_bar.messages'
-                      defaultMessage='Messages'
-                      description='Message refers to a direct message. For languages where this is confusing, "chat" or "direct message" can be used.'
-                    />
-                  </NavigationLink>
-                  {useMyArchive ? (
-                    <NavigationLink
-                      stacked
-                      to='/favourites'
-                      iconComponent={BankIcon}
-                      activePaths={[
-                        '/favourites',
-                        '/bookmarks',
-                        '/reactions',
-                        '/clips',
-                      ]}
-                    >
-                      <FormattedMessage
-                        id='navigation_bar.my_archive'
-                        defaultMessage='My archive'
-                      />
-                    </NavigationLink>
-                  ) : (
-                    <NavigationLink
-                      stacked
-                      to='/bookmarks'
-                      iconComponent={BookmarkSimpleIcon}
-                    >
-                      <FormattedMessage
-                        id='tabs_bar.saved'
-                        defaultMessage='Saved'
-                      />
-                    </NavigationLink>
-                  )}
-                </ul>
-                <NavigationAccountCardAndMenu />
-              </>
-            )}
+            {mode !== 'slide-out' && <NavigationAccountCardAndMenu />}
             <NavigationFooterLinks multiColumn={multiColumn} />
           </footer>
         </>
@@ -331,8 +264,11 @@ export const RedesignNavigationPanel: React.FC<{
                 defaultMessage='About'
               />
             </NavigationLink>
-            <ExploreLink />
-            <PublicFeedsLink />
+            <SharlayanRedesignPrimaryNavigation
+              showHidden={mode === 'slide-out'}
+              notificationsCount={0}
+            />
+            {!trendsEnabled && <ExploreLink />}
           </ul>
           <footer className={classes.footer} data-stuck={!isScrolledToBottom}>
             {disabledAccountId ? <DisabledAccountBanner /> : <LoggedOutInfo />}
@@ -382,47 +318,6 @@ export function handleSearchLinkClick() {
   // focused synchronously.
   invokeVirtualIosKeyboard();
 }
-
-const PublicFeedsLink: React.FC = () => {
-  const { signedIn, permissions } = useIdentity();
-
-  const canViewLocalFeed = canViewFeed(
-    signedIn,
-    permissions,
-    localLiveFeedAccess,
-  );
-  const canViewRemoteFeed = canViewFeed(
-    signedIn,
-    permissions,
-    remoteLiveFeedAccess,
-  );
-
-  if (!canViewLocalFeed && !canViewRemoteFeed) {
-    return null;
-  }
-
-  const canViewOnlyOneFeed = canViewLocalFeed !== canViewRemoteFeed;
-
-  return (
-    <NavigationLink
-      to={canViewLocalFeed ? '/public/local' : '/public/remote'}
-      iconComponent={FediIcon}
-      isActive={isFediverseFeedsLinkActive}
-    >
-      {canViewOnlyOneFeed ? (
-        <FormattedMessage
-          id='tabs_bar.public_feed'
-          defaultMessage='Public Feed'
-        />
-      ) : (
-        <FormattedMessage
-          id='tabs_bar.public_feeds'
-          defaultMessage='Public Feeds'
-        />
-      )}
-    </NavigationLink>
-  );
-};
 
 const TransientSingleColumnCallout: React.FC = () => (
   <Callout className={classes.callout}>

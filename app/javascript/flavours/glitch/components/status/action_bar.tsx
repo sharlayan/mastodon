@@ -1,16 +1,23 @@
-import { useCallback } from 'react';
+import { Fragment, useCallback } from 'react';
 
 import { FormattedMessage } from 'react-intl';
 
-import classNames from 'classnames';
+import type { Map as ImmutableMap } from 'immutable';
 
-import { DotsThreeIcon, ShareFatIcon } from '@phosphor-icons/react';
+import {
+  DotsThreeIcon,
+  PaperclipIcon,
+  ShareFatIcon,
+} from '@phosphor-icons/react';
 
 import { statusInteraction } from '@/flavours/glitch/actions/interactions';
+import { openModal } from '@/flavours/glitch/actions/modal';
 import { fetchStatus } from '@/flavours/glitch/actions/statuses';
+import { selectStatusActionBarOrder } from '@/flavours/glitch/features/status_action_bar/items';
 import { useCurrentAccountId } from '@/flavours/glitch/hooks/useAccountId';
 import { useAccountStatus } from '@/flavours/glitch/hooks/useStatus';
-import { quickBoosting } from '@/flavours/glitch/initial_state';
+import { useIdentity } from '@/flavours/glitch/identity_context';
+import { clipsEnabled, quickBoosting } from '@/flavours/glitch/initial_state';
 import type { AccountStatusShape } from '@/flavours/glitch/models/status';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 
@@ -34,6 +41,7 @@ import {
   useStatusMenuActions,
 } from './hooks';
 import { RemoveQuoteHint } from './legacy/action_bar/remove_quote_hint';
+import { StatusReactionPicker } from './reactions';
 import classes from './styles.module.scss';
 
 interface StatusActionBarProps {
@@ -56,11 +64,22 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
       state.statuses.getIn([status?.quote?.quoted_status, 'account']) ?? null,
   );
   const currentAccountId = useCurrentAccountId();
+  const { signedIn } = useIdentity();
+  const actionOrder = useAppSelector(selectStatusActionBarOrder) as string[];
+  const hiddenActions = useAppSelector(
+    (state) =>
+      state.local_settings.getIn(['status_action_bar', 'hidden']) as
+        | ImmutableMap<string, boolean>
+        | undefined,
+  );
   const { contextType } = useStatusContext();
   const statusUrl = status?.url ?? status?.uri;
 
   // Actions
   const dispatch = useAppDispatch();
+  const handleClip = useCallback(() => {
+    dispatch(openModal({ modalType: 'CLIP_ADD', modalProps: { statusId } }));
+  }, [dispatch, statusId]);
   const handleShareClick = useCallback(() => {
     if (!statusUrl) {
       return;
@@ -78,7 +97,8 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
     }
   }, [contextType, dispatch, statusId, statusUrl]);
 
-  const { reply, like, bookmark } = useStatusIcons(statusId);
+  const { reply, like, bookmark, quote } = useStatusIcons(statusId);
+  const quoteExposed = hiddenActions?.get('quote') !== true;
 
   if (!status) {
     return null;
@@ -91,6 +111,58 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
   const shouldShowQuoteRemovalHint =
     isQuotingMe && contextType === 'notifications';
 
+  const configurableActions: Record<string, React.ReactNode> = {
+    favourite: (
+      <ToggleButton
+        size='sm'
+        variant='ghost'
+        active={like.active}
+        tooltip={{ type: 'label', text: like.title }}
+        leadingIcon={like.icon}
+        onClick={like.action}
+      >
+        {withCounters && like.counter}
+      </ToggleButton>
+    ),
+    reaction: <StatusReactionPicker statusId={statusId} />,
+    bookmark: !onlyResponses && (
+      <ToggleIconButton
+        size='sm'
+        variant='ghost'
+        active={bookmark.active}
+        icon={bookmark.icon}
+        onClick={bookmark.action}
+        disabled={!signedIn}
+      >
+        {bookmark.title}
+      </ToggleIconButton>
+    ),
+    clip: signedIn && clipsEnabled && (
+      <IconButton
+        size='sm'
+        variant='ghost'
+        icon={PaperclipIcon}
+        onClick={handleClip}
+      >
+        <FormattedMessage
+          id='status.add_to_clip'
+          defaultMessage='Add to clip'
+        />
+      </IconButton>
+    ),
+    quote: signedIn && (
+      <IconButton
+        size='sm'
+        variant='ghost'
+        icon={quote.icon}
+        disabled={quote.disabled}
+        onClick={quote.action}
+      >
+        {quote.title}
+      </IconButton>
+    ),
+  };
+
   const responseButtons = (
     <>
       <Button
@@ -99,26 +171,21 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
         variant='ghost'
         leadingIcon={reply.icon}
         onClick={reply.action}
+        disabled={!status.repliable}
         tooltip={{ type: 'label', text: reply.title }}
       >
         {withCounters && reply.counter}
       </Button>
 
-      <StatusReblogButton statusId={statusId}>
+      <StatusReblogButton statusId={statusId} standalone={quoteExposed}>
         {withCounters && status.reblogs_count}
       </StatusReblogButton>
 
-      <ToggleButton
-        size='sm'
-        variant='ghost'
-        active={like.active}
-        tooltip={{ type: 'label', text: like.title }}
-        leadingIcon={like.icon}
-        onClick={like.action}
-        className={classNames(!onlyResponses && classes.actionsButtonGap)}
-      >
-        {withCounters && like.counter}
-      </ToggleButton>
+      {actionOrder.map((key) =>
+        hiddenActions?.get(key) === true ? null : (
+          <Fragment key={key}>{configurableActions[key]}</Fragment>
+        ),
+      )}
     </>
   );
 
@@ -130,6 +197,8 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
     <div className={classes.actions}>
       {responseButtons}
 
+      <span className={classes.actionsButtonGap} />
+
       {isPublic && (
         <IconButton
           size='sm'
@@ -140,16 +209,6 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
           <FormattedMessage id='status.share' defaultMessage='Share' />
         </IconButton>
       )}
-
-      <ToggleIconButton
-        size='sm'
-        variant='ghost'
-        active={bookmark.active}
-        icon={bookmark.icon}
-        onClick={bookmark.action}
-      >
-        {bookmark.title}
-      </ToggleIconButton>
 
       <RemoveQuoteHint
         className='status__action-bar__button-wrapper'
@@ -169,11 +228,12 @@ export const StatusActionBar: React.FC<StatusActionBarProps> = ({
 
 const StatusReblogButton: React.FC<{
   statusId: string;
+  standalone?: boolean;
   children: React.ReactNode;
-}> = ({ statusId, children }) => {
+}> = ({ statusId, standalone, children }) => {
   const { boost, quote } = useStatusIcons(statusId);
 
-  if (quickBoosting) {
+  if (quickBoosting || standalone) {
     return (
       <ToggleButton
         size='sm'

@@ -24,6 +24,7 @@ import {
   clearComposerErrors,
   clearComposerFocusRequest,
   COMPOSER_TEXTAREA_ID,
+  submitComposer,
 } from '@/flavours/glitch/reducers/slices/composer';
 import {
   createAppSelector,
@@ -31,7 +32,11 @@ import {
   useAppSelector,
 } from '@/flavours/glitch/store';
 
-import { selectComposeType, selectSuggestions } from './selectors';
+import {
+  selectComposeType,
+  selectComposeSideArm,
+  selectSuggestions,
+} from './selectors';
 import classes from './styles.module.scss';
 
 const messages = defineMessages({
@@ -78,6 +83,7 @@ export const ComposeTextarea: React.FC<ComposeTextareaProps> = ({
 
   // Selectors
   const type = useAppSelector(selectComposeType);
+  const sideArm = useAppSelector(selectComposeSideArm);
   const { text, lang, isSubmitting } = useAppSelector(selectComposeTextState);
   const dispatch = useAppDispatch();
 
@@ -154,7 +160,13 @@ export const ComposeTextarea: React.FC<ComposeTextareaProps> = ({
       (event) => {
         const key = normalizeKey(event.key);
 
-        if (key === 'escape') {
+        if (key === 'enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          dispatch(submitComposer({}));
+        } else if (key === 'enter' && event.altKey) {
+          event.preventDefault();
+          dispatch(submitComposer({ overridePrivacy: sideArm }));
+        } else if (key === 'escape') {
           event.preventDefault();
           // Dismiss the suggestions if we're displaying any.
           if (suggestions.length > 0) {
@@ -167,7 +179,7 @@ export const ComposeTextarea: React.FC<ComposeTextareaProps> = ({
           focus(event);
         }
       },
-      [onSuggestionClear, suggestions.length, focus],
+      [dispatch, onSuggestionClear, suggestions.length, focus, sideArm],
     );
 
   const onPasteOrDrop = useCallback(

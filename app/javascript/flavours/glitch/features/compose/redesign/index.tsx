@@ -13,6 +13,7 @@ import {
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 
 import { ComposeAttachments } from './attachments';
+import { ComposeCustomControls, ComposeMfmHint } from './custom_controls';
 import type { OnEmojiPick } from './emoji';
 import { ComposeFooter } from './footer';
 import { ComposeFormHeader } from './header';
@@ -45,6 +46,9 @@ export const RedesignComposeForm: React.FC<
   ...props
 }) => {
   const type = useAppSelector(selectComposeType);
+  const hideLanguage = useAppSelector(
+    (state) => !!state.local_settings.get('hide_compose_language'),
+  );
 
   const { onEmojiPick, onSubmit } = useComposeHandlers(redirectOnSuccess);
 
@@ -71,10 +75,12 @@ export const RedesignComposeForm: React.FC<
       <div className={classes.toolbar}>
         <ComposeVisibility className={classes.flexGrowWrap} />
 
-        <LanguageButton />
+        {!hideLanguage && <LanguageButton />}
 
         <ComposeSettingsMenu />
       </div>
+
+      <ComposeCustomControls />
 
       <ComposeTextarea
         autoFocus={autoFocus}
@@ -90,6 +96,8 @@ export const RedesignComposeForm: React.FC<
       </ComposeTextarea>
 
       <ComposeHints />
+
+      <ComposeMfmHint />
 
       <ComposeFooter onEmojiPick={onEmojiPick} />
     </form>

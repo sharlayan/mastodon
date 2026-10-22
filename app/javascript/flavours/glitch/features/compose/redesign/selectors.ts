@@ -6,9 +6,37 @@ import { immutableListToSuggestions } from '@/flavours/glitch/components/autosug
 import type { StatusVisibility } from '@/flavours/glitch/models/status';
 import type { ComposeType } from '@/flavours/glitch/reducers/slices/composer';
 import { createAppSelector } from '@/flavours/glitch/store';
+import { privacyPreference } from '@/flavours/glitch/utils/privacy_preference';
 import { DAY, MINUTE } from '@/flavours/glitch/utils/time';
 
 import { countableText } from '../util/counter';
+
+export const selectComposeSideArm = createAppSelector(
+  [
+    (state) => !!state.compose.get('id'),
+    (state) =>
+      state.local_settings.get('side_arm') as StatusVisibility | 'none',
+    (state) => state.local_settings.get('side_arm_reply_mode') as string,
+    (state) => {
+      const replyId = state.compose.get('in_reply_to') as string | null;
+      return replyId
+        ? (state.statuses.getIn([replyId, 'visibility']) as
+            | StatusVisibility
+            | undefined)
+        : undefined;
+    },
+  ],
+  (isEditing, base, mode, reply): StatusVisibility | undefined => {
+    if (isEditing) return undefined;
+    const privacy =
+      reply && mode === 'copy'
+        ? reply
+        : reply && mode === 'restrict' && base !== 'none'
+          ? (privacyPreference(reply, base) as StatusVisibility)
+          : base;
+    return privacy === 'none' ? undefined : privacy;
+  },
+);
 
 export const selectComposePrivacy = createAppSelector(
   [
@@ -59,7 +87,8 @@ export const selectComposeCharsCount = createAppSelector(
     (state) => state.server.server.item?.configuration.statuses.max_characters,
     (state) => state.compose.get('text') as string,
     (state) =>
-      state.compose.get('spoiler')
+      state.compose.get('spoiler') ||
+      state.local_settings.get('always_show_spoilers_field')
         ? (state.compose.get('spoiler_text') as string)
         : '',
   ],
@@ -115,12 +144,12 @@ export const selectComposeCanSubmit = createAppSelector(
     isUploading,
     isChangingUpload,
     { hasAttachments, hasPoll, quotedStatusId },
-    { text, max },
+    { text, current, max },
   ) =>
     !isSubmitting &&
     !isUploading &&
     !isChangingUpload &&
-    text.trim().length <= max &&
+    current <= max &&
     (hasAttachments || hasPoll || quotedStatusId || text.trim().length > 0),
 );
 
@@ -152,7 +181,9 @@ export const selectComposeMentions = createAppSelector(
 
 export const selectComposeSensitive = createAppSelector(
   [
-    (state) => !!state.compose.get('spoiler'),
+    (state) =>
+      !!state.compose.get('spoiler') ||
+      !!state.local_settings.get('always_show_spoilers_field'),
     (state) => state.compose.get('spoiler_text'),
     (state) => !!state.compose.get('sensitive'),
   ],

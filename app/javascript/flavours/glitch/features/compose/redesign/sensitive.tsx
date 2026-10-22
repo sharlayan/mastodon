@@ -5,10 +5,13 @@ import { defineMessages, useIntl } from 'react-intl';
 import { changeComposeSpoilerText } from '@/flavours/glitch/actions/compose';
 import { TextInputField } from '@/flavours/glitch/components/form_fields';
 import { normalizeKey } from '@/flavours/glitch/components/hotkeys/utils';
-import { requestComposerFocus } from '@/flavours/glitch/reducers/slices/composer';
+import {
+  requestComposerFocus,
+  submitComposer,
+} from '@/flavours/glitch/reducers/slices/composer';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
 
-import { selectComposeSensitive } from './selectors';
+import { selectComposeSensitive, selectComposeSideArm } from './selectors';
 import classes from './styles.module.scss';
 
 const messages = defineMessages({
@@ -22,15 +25,15 @@ export const ComposeSensitiveField: React.FC<
   React.ComponentPropsWithRef<'input'>
 > = (props) => {
   const { sensitive, sensitiveText } = useAppSelector(selectComposeSensitive);
+  const sideArm = useAppSelector(selectComposeSideArm);
 
   const intl = useIntl();
   const dispatch = useAppDispatch();
-  const isSensitive = useAppSelector((state) => !!state.compose.get('spoiler'));
   useEffect(() => {
-    if (!isSensitive) {
+    if (!sensitive) {
       dispatch(requestComposerFocus());
     }
-  }, [isSensitive, dispatch]);
+  }, [sensitive, dispatch]);
 
   const onChange: React.ChangeEventHandler<HTMLInputElement> = useCallback(
     (event) => {
@@ -43,12 +46,18 @@ export const ComposeSensitiveField: React.FC<
       const key = normalizeKey(event.key);
       if (key === 'enter') {
         event.preventDefault();
-        dispatch(requestComposerFocus());
+        if (event.ctrlKey || event.metaKey) {
+          dispatch(submitComposer({}));
+        } else if (event.altKey) {
+          dispatch(submitComposer({ overridePrivacy: sideArm }));
+        } else {
+          dispatch(requestComposerFocus());
+        }
         return false;
       }
       return;
     },
-    [dispatch],
+    [dispatch, sideArm],
   );
   if (!sensitive) {
     return null;

@@ -5,6 +5,7 @@ import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 import { submitCompose } from '@/flavours/glitch/actions/compose';
 import { PRIVATE_QUOTE_MODAL_ID } from '@/flavours/glitch/actions/compose_typed';
 import { changeSetting } from '@/flavours/glitch/actions/settings';
+import type { StatusVisibility } from '@/flavours/glitch/api_types/statuses';
 import { CheckBox } from '@/flavours/glitch/components/check_box';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
@@ -37,10 +38,11 @@ export const PrivateQuoteNotify = forwardRef<
   HTMLDivElement,
   BaseConfirmationModalProps & {
     onSubmitSuccess?: (status: unknown) => void;
+    overridePrivacy?: StatusVisibility;
   }
 >(
   (
-    { onClose, onSubmitSuccess },
+    { onClose, onSubmitSuccess, overridePrivacy },
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _ref,
   ) => {
@@ -53,13 +55,13 @@ export const PrivateQuoteNotify = forwardRef<
 
     const dispatch = useAppDispatch();
     const handleConfirm = useCallback(() => {
-      dispatch(submitCompose(onSubmitSuccess));
+      dispatch(submitCompose(onSubmitSuccess, overridePrivacy));
       if (dismiss) {
         dispatch(
           changeSetting(['dismissed_banners', PRIVATE_QUOTE_MODAL_ID], true),
         );
       }
-    }, [dismiss, dispatch, onSubmitSuccess]);
+    }, [dismiss, dispatch, onSubmitSuccess, overridePrivacy]);
 
     return (
       <ConfirmationModal

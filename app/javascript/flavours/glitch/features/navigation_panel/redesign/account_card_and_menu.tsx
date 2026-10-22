@@ -39,11 +39,16 @@ import {
 } from '@/flavours/glitch/components/menu';
 import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { useIdentity } from '@/flavours/glitch/identity_context';
-import { source_url, version } from '@/flavours/glitch/initial_state';
+import {
+  collectionsEnabled,
+  source_url,
+  version,
+} from '@/flavours/glitch/initial_state';
 import {
   canManageReports,
   canViewAdminDashboard,
 } from '@/flavours/glitch/permissions';
+import { SharlayanRedesignAccountMenuItems } from '@/flavours/glitch/sharlayan/registry/navigation/redesign';
 import { useAppDispatch } from '@/flavours/glitch/store';
 
 import classes from './account_card_and_menu.module.scss';
@@ -124,15 +129,17 @@ export const AccountMenuItems: React.FC<{
 
       <MenuItemDivider />
 
-      <MenuItemLink
-        to={`${accountBasePath}/collections`}
-        icon={CirclesFourIcon}
-      >
-        <FormattedMessage
-          id='navigation_bar.collections'
-          defaultMessage='Collections'
-        />
-      </MenuItemLink>
+      {collectionsEnabled && (
+        <MenuItemLink
+          to={`${accountBasePath}/collections`}
+          icon={CirclesFourIcon}
+        >
+          <FormattedMessage
+            id='navigation_bar.collections'
+            defaultMessage='Collections'
+          />
+        </MenuItemLink>
+      )}
 
       <MenuItemLink to='/favourites' icon={HeartIcon}>
         <FormattedMessage
@@ -165,6 +172,10 @@ export const AccountMenuItems: React.FC<{
           defaultMessage='Blocked accounts'
         />
       </MenuItemLink>
+
+      <MenuItemDivider />
+
+      <SharlayanRedesignAccountMenuItems />
 
       {(isManager || isAdmin) && (
         <>
