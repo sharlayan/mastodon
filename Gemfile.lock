@@ -604,7 +604,7 @@ GEM
     pastel (0.8.0)
       tty-color (~> 0.5)
     pg (1.6.3)
-    pghero (4.0.1)
+    pghero (4.1.0)
       activerecord (>= 7.2)
     playwright-ruby-client (1.63.0)
       base64
@@ -906,7 +906,7 @@ GEM
     unicode-display_width (3.3.0)
       unicode-emoji (~> 4.3)
     unicode-emoji (4.3.0)
-    uri (1.1.1)
+    uri (1.1.2)
     useragent (0.16.11)
     validate_url (1.0.15)
       activemodel (>= 3.0.0)
