@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-ARG es_version=8.19.15
+ARG es_version=8.19.23
 FROM docker.elastic.co/elasticsearch/elasticsearch:${es_version}
 ARG es_version
 
