@@ -85,7 +85,7 @@ zh-CN:
         invalid_client: 由于应用信息未知、未提交认证信息或使用了不支持的认证方式，认证失败
         invalid_code_challenge_method:
           one: code_challenge_method 必须是 %{challenge_methods}。
-          other: code_challenge_method 必须是 %{challenge_methods} 的其中之一。
+          other: code_challenge_method 必须是 %{challenge_methods}。
           zero: 授权服务器不支持 PKCE，因为没有被接受的 code_challenge_method 值。
         invalid_grant: 授权方式无效、过期或已被撤销、与授权请求中的回调地址不一致，或使用了其他应用的回调地址
         invalid_redirect_uri: 登录回调地址无效。

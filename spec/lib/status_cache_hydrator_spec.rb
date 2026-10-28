@@ -52,6 +52,23 @@ RSpec.describe StatusCacheHydrator do
         end
       end
 
+      context 'when the viewer has interacted with their own status' do
+        let(:status) { Fabricate(:status, account: account, conversation: Fabricate(:conversation)) }
+
+        before do
+          Fabricate(:favourite, status: status, account: account)
+          Fabricate(:status, reblog: status, account: account)
+          Fabricate(:bookmark, status: status, account: account)
+          Fabricate(:status_pin, status: status, account: account)
+          ConversationMute.create!(conversation: status.conversation, account: account)
+        end
+
+        it 'renders all viewer flags like a full render' do
+          expect(subject).to eql(compare_to_hash)
+          expect(subject).to include(favourited: true, reblogged: true, bookmarked: true, pinned: true, muted: true)
+        end
+      end
+
       context 'when handling a filtered status' do
         let(:status) { Fabricate(:status, text: 'this toot is about that banned word') }
 
