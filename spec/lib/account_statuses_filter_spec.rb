@@ -207,6 +207,18 @@ RSpec.describe AccountStatusesFilter do
           expect(results_ids).to include(private_status.id)
         end
 
+        context 'when rejecting direct messages' do
+          let(:params) { { exclude_direct: true } }
+
+          it 'keeps the mentioned private status and excludes direct messages' do
+            direct_status = status_with_mention!(:direct, current_account)
+            unrelated_private_status = status_with_mention!(:private)
+
+            expect(results_ids).to include(private_status.id)
+            expect(results_ids).to_not include(direct_status.id, unrelated_private_status.id)
+          end
+        end
+
         it_behaves_like 'filter params'
       end
 
