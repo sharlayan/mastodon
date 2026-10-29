@@ -52,6 +52,14 @@ ja:
     captcha_confirmation:
       hint_html: あと一歩です！アカウントを承認するには、このサーバーでCAPTCHAを解いていただく必要があります。アカウントの確定に関してご質問やサポートが必要な場合は、<a href="/about/more">サーバー管理者にご連絡ください</a>。
       title: ユーザー認証
+  flavours:
+    glitch-classic:
+      description: 既存のglitch機能を維持し、サーバーやブラウザーの新インターフェース設定にかかわらず旧インターフェースを使用します。
+      name: Glitch Legacy
   generic:
     edit: 編集
     use_this: これを使う
+  skins:
+    glitch-classic:
+      birdsiteui: BirdSiteUI
+      default: デフォルト

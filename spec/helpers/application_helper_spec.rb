@@ -41,6 +41,18 @@ RSpec.describe ApplicationHelper do
           .to include('admin')
       end
     end
+
+    context 'when using the legacy glitch flavour' do
+      before do
+        allow(helper).to receive_messages(current_flavour: 'glitch-classic', current_skin: 'birdsiteui', page_blog_view_skin: nil)
+        helper.extend(Module.new { def current_account = nil })
+      end
+
+      it 'keeps the common glitch styling classes and separate flavour identity' do
+        expect(helper.body_classes.split).to include('flavour-glitch', 'skin-birdsiteui')
+        expect(helper.html_attributes[:'data-user-flavour']).to eq('glitch-classic')
+      end
+    end
   end
 
   describe 'locale_direction' do

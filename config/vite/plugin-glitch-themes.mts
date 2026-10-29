@@ -11,6 +11,7 @@ import { loadEnv } from 'vite';
 
 interface Flavour {
   pack_directory: string;
+  glitch_only_compatible?: boolean | string;
 }
 
 const MANDATORY_SKINS: readonly string[] = [
@@ -73,15 +74,19 @@ export function GlitchThemes(): Plugin {
       for (const flavourFile of glitchFlavourFiles) {
         const flavourName = path.basename(path.dirname(flavourFile));
 
-        if (glitchOnly && flavourName !== 'glitch') {
-          continue;
-        }
-
         const flavourString = await fs.readFile(flavourFile, 'utf8');
         const flavourDef = yaml.load(flavourString, {
           filename: 'theme.yml',
           schema: yaml.FAILSAFE_SCHEMA,
         }) as Flavour;
+
+        if (
+          glitchOnly &&
+          flavourName !== 'glitch' &&
+          !isTruthy(String(flavourDef.glitch_only_compatible ?? ''))
+        ) {
+          continue;
+        }
 
         const flavourEntrypoints = glob.sync(
           `${flavourDef.pack_directory}/*.{ts,tsx,js,jsx}`,
