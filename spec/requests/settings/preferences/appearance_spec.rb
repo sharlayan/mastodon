@@ -23,6 +23,35 @@ RSpec.describe 'Settings Preferences Appearance' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.at_css('select#theme')).to be_nil
     end
+
+    it 'offers both skins for the legacy glitch flavour' do
+      get settings_preferences_appearance_path
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.css('select#theme option').pluck('value'))
+        .to include('glitch-classic/default', 'glitch-classic/birdsiteui')
+    end
+  end
+
+  describe 'selecting the legacy glitch flavour' do
+    let(:user) { Fabricate(:user) }
+
+    before { sign_in user }
+
+    it 'persists the flavour, skin, and supported color scheme' do
+      put settings_preferences_appearance_path(theme: 'glitch-classic/birdsiteui', user: { settings_attributes: { 'web.color_scheme': 'light' } })
+
+      user.reload
+
+      expect(user.setting_flavour).to eq('glitch-classic')
+      expect(user.setting_skin).to eq('birdsiteui')
+      expect(user.setting_color_scheme).to eq('light')
+
+      get settings_preferences_appearance_path
+
+      expect(response.parsed_body.at_css('select#theme option[selected]')['value']).to eq('glitch-classic/birdsiteui')
+      expect(response.parsed_body.at_css('html')['data-user-flavour']).to eq('glitch-classic')
+    end
   end
 
   describe 'PUT /settings/preferences/appearance' do

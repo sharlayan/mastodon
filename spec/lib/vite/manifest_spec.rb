@@ -46,6 +46,33 @@ RSpec.describe Vite::Manifest do
       expect(entry[:integrity]).to eq('abc-10')
     end
 
+    context 'when CSS entrypoints share an output file' do
+      before do
+        data = JSON.load_file(manifest_path)
+        stylesheet = {
+          'name' => 'skins/glitch-classic/default',
+          'names' => ['skins/glitch/default.css', 'skins/glitch-classic/default.css'],
+          'file' => 'assets/default-shared.css',
+          'isEntry' => true,
+        }
+        data['skins/glitch/default/common.scss'] = stylesheet
+        data['skins/glitch-classic/default/common.scss'] = stylesheet
+
+        allow(JSON).to receive(:load_file).and_call_original
+        allow(JSON).to receive(:load_file).with(manifest_path).and_return(data)
+      end
+
+      it 'resolves both virtual aliases to the shared stylesheet' do
+        glitch = subject.fetch!('skins/glitch/default', type: :virtual)
+        classic = subject.fetch!('skins/glitch-classic/default', type: :virtual)
+
+        expect(glitch[:file]).to eq('assets/default-shared.css')
+        expect(classic).to eq(glitch)
+        expect(subject.fetch!('skins/glitch/default/common.scss')).to eq(glitch)
+        expect(subject.fetch!('skins/glitch-classic/default/common.scss')).to eq(classic)
+      end
+    end
+
     context 'when assets have dependencies' do
       let(:entry) { subject.fetch('entrypoints/application.ts') }
 

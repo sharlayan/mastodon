@@ -107,6 +107,9 @@ module Vite
         import_ids, stylesheet_ids = resolve_relations(json, raw)
 
         @virtual[raw['name']] = key
+        Array(raw['names']).grep(/\.css\z/).each do |name|
+          @virtual[name.delete_suffix('.css')] ||= key
+        end
         @entries[key] = Entrypoint.new(
           raw['file'],
           raw['integrity'],

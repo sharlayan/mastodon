@@ -33,6 +33,7 @@ const legacyTests: TestProjectInlineConfiguration = {
   test: {
     name: 'legacy-tests',
     environment: 'jsdom',
+    execArgv: ['--no-experimental-webstorage'],
     include: [
       ...configDefaults.include,
       '**/__tests__/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',

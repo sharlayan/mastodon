@@ -23,7 +23,8 @@ class Themes
       dir = pathname.dirname
       name = dir.basename.to_s
 
-      next if GLITCH_ONLY && name != 'glitch'
+      glitch_compatible = name == 'glitch' || ActiveModel::Type::Boolean.new.cast(data['glitch_only_compatible'])
+      next if GLITCH_ONLY && !glitch_compatible
 
       locales = []
       screenshots = []

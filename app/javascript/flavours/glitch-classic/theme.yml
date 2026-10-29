@@ -1,0 +1,17 @@
+pack_directory: app/javascript/flavours/glitch/entrypoints
+glitch_only_compatible: true
+signed_in_preload:
+  - flavours/glitch/async/compose.js
+  - flavours/glitch/async/home_timeline.js
+  - flavours/glitch/async/notifications.js
+locales: ../glitch/locales
+screenshot: flavours/glitch/images/glitch-preview.png
+skin_color_schemes:
+  default:
+    - auto
+    - light
+    - dark
+  birdsiteui:
+    - auto
+    - light
+    - dark

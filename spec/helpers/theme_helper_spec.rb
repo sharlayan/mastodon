@@ -144,6 +144,14 @@ RSpec.describe ThemeHelper do
           it { is_expected.to eq(['glitch', 'default']) }
         end
       end
+
+      context 'when the user selects the legacy glitch flavour' do
+        before do
+          current_user.settings.update(flavour: 'glitch-classic', skin: 'birdsiteui')
+        end
+
+        it { is_expected.to eq(['glitch-classic', 'birdsiteui']) }
+      end
     end
 
     context 'when roleplay mode forces an installed skin' do
