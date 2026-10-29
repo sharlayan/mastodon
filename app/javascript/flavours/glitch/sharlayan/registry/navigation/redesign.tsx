@@ -19,6 +19,7 @@ import {
   HouseIcon,
   MegaphoneIcon,
   RssSimpleIcon,
+  ShieldCheckIcon,
   SmileyIcon,
   StackIcon,
   TrendUpIcon,
@@ -53,6 +54,7 @@ import type { MenuItem } from '@/flavours/glitch/models/dropdown_menu';
 import { canViewFeed } from '@/flavours/glitch/permissions';
 import {
   adminTimelineOwnerViewer,
+  canUseAdminTimeline,
   softHideDeletion,
 } from '@/flavours/glitch/sharlayan/roleplay';
 import { useAppDispatch, useAppSelector } from '@/flavours/glitch/store';
@@ -67,7 +69,7 @@ export const SharlayanRedesignPrimaryNavigation: React.FC<{
   notificationsCount: number;
 }> = ({ showHidden = false, notificationsCount }) => {
   const intl = useIntl();
-  const { signedIn, permissions, accountId } = useIdentity();
+  const { signedIn, permissions, extraPermissions, accountId } = useIdentity();
   const account = useAccount(accountId);
   const dispatch = useAppDispatch();
   const mobile = useBreakpoint('openable');
@@ -154,6 +156,12 @@ export const SharlayanRedesignPrimaryNavigation: React.FC<{
         to: '/board_announcements',
         icon: MegaphoneIcon,
         badgeCount: announcementsCount,
+      };
+    }
+    if (canUseAdminTimeline(permissions, extraPermissions)) {
+      links.admin_timeline = {
+        to: '/timelines/admin',
+        icon: ShieldCheckIcon,
       };
     }
   }

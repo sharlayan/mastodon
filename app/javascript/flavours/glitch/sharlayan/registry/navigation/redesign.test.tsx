@@ -9,6 +9,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { fetchAntennas } from '@/flavours/glitch/actions/antennas';
 import { fetchBoardAnnouncementsUnreadCount } from '@/flavours/glitch/actions/board_announcements';
+import {
+  EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE,
+  EXTRA_PERMISSION_VIEW_FOLLOWERS_ADMIN_TIMELINE,
+  PERMISSION_ADMINISTRATOR,
+  PERMISSION_VIEW_DASHBOARD,
+} from '@/flavours/glitch/permissions';
 
 import {
   SharlayanRedesignAccountMenuItems,
@@ -22,6 +28,7 @@ const context = vi.hoisted(() => ({
   mobile: false,
   signedIn: true,
   permissions: 0,
+  extraPermissions: 0,
   flags: {
     antennaEnabled: true,
     boardAnnouncementsEnabled: true,
@@ -37,6 +44,7 @@ const context = vi.hoisted(() => ({
     trendsEnabled: true,
   },
   roleplay: {
+    adminTimelineEnabled: false,
     adminTimelineOwnerViewer: false,
     softHideDeletion: true,
   },
@@ -53,7 +61,22 @@ let state: {
 };
 
 vi.mock('@/flavours/glitch/initial_state', () => context.flags);
-vi.mock('@/flavours/glitch/sharlayan/roleplay', () => context.roleplay);
+vi.mock('@/flavours/glitch/sharlayan/roleplay', async () => {
+  const { canViewAdminTimeline } =
+    await import('@/flavours/glitch/permissions');
+
+  return {
+    get adminTimelineOwnerViewer() {
+      return context.roleplay.adminTimelineOwnerViewer;
+    },
+    get softHideDeletion() {
+      return context.roleplay.softHideDeletion;
+    },
+    canUseAdminTimeline: (permissions: number, extraPermissions: number) =>
+      context.roleplay.adminTimelineEnabled &&
+      canViewAdminTimeline(permissions, extraPermissions),
+  };
+});
 vi.mock('@/flavours/glitch/store', () => ({
   useAppDispatch: () => context.dispatch,
   useAppSelector: (selector: (value: typeof state) => unknown) =>
@@ -63,6 +86,7 @@ vi.mock('@/flavours/glitch/identity_context', () => ({
   useIdentity: () => ({
     signedIn: context.signedIn,
     permissions: context.permissions,
+    extraPermissions: context.extraPermissions,
     accountId: context.signedIn ? '1' : undefined,
   }),
 }));
@@ -141,6 +165,8 @@ describe('Sharlayan redesign navigation', () => {
     context.mobile = false;
     context.signedIn = true;
     context.permissions = 0;
+    context.extraPermissions = 0;
+    context.roleplay.adminTimelineEnabled = false;
     context.roleplay.adminTimelineOwnerViewer = false;
     Object.assign(context.flags, {
       antennaEnabled: true,
@@ -203,6 +229,88 @@ describe('Sharlayan redesign navigation', () => {
 
     expect(paths()).toEqual(['/explore', '/public/local']);
     expect(fetchBoardAnnouncementsUnreadCount).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [PERMISSION_ADMINISTRATOR, 0],
+    [0, EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE],
+    [0, EXTRA_PERMISSION_VIEW_FOLLOWERS_ADMIN_TIMELINE],
+  ])(
+    'shows the management timeline for authorized permissions %i and extra permissions %i',
+    (permissions, extraPermissions) => {
+      context.permissions = permissions;
+      context.extraPermissions = extraPermissions;
+      context.roleplay.adminTimelineEnabled = true;
+      renderNavigation(
+        <SharlayanRedesignPrimaryNavigation notificationsCount={0} />,
+      );
+
+      expect(
+        screen
+          .getByRole('link', { name: 'Management timeline' })
+          .getAttribute('href'),
+      ).toBe('/timelines/admin');
+    },
+  );
+
+  it.each([
+    {
+      signedIn: false,
+      enabled: true,
+      permissions: 0,
+      extraPermissions: EXTRA_PERMISSION_VIEW_ADMIN_TIMELINE,
+    },
+    {
+      signedIn: true,
+      enabled: false,
+      permissions: PERMISSION_ADMINISTRATOR,
+      extraPermissions: 0,
+    },
+    { signedIn: true, enabled: true, permissions: 0, extraPermissions: 0 },
+    {
+      signedIn: true,
+      enabled: true,
+      permissions: PERMISSION_VIEW_DASHBOARD,
+      extraPermissions: 0,
+    },
+  ])(
+    'keeps the management timeline gated with signedIn=$signedIn, enabled=$enabled, permissions=$permissions, extraPermissions=$extraPermissions',
+    ({ signedIn, enabled, permissions, extraPermissions }) => {
+      context.signedIn = signedIn;
+      context.permissions = permissions;
+      context.extraPermissions = extraPermissions;
+      context.roleplay.adminTimelineEnabled = enabled;
+      renderNavigation(
+        <SharlayanRedesignPrimaryNavigation
+          notificationsCount={0}
+          showHidden
+        />,
+      );
+
+      expect(paths()).not.toContain('/timelines/admin');
+    },
+  );
+
+  it('preserves management timeline ordering and the saved hidden choice', () => {
+    context.extraPermissions = EXTRA_PERMISSION_VIEW_FOLLOWERS_ADMIN_TIMELINE;
+    context.roleplay.adminTimelineEnabled = true;
+    state.local_settings = fromJS({
+      navigation_panel: {
+        order: ['admin_timeline', 'home'],
+        hidden: { admin_timeline: true },
+      },
+    });
+    renderNavigation(
+      <SharlayanRedesignPrimaryNavigation notificationsCount={0} />,
+    );
+
+    expect(paths()).not.toContain('/timelines/admin');
+    cleanup();
+    renderNavigation(
+      <SharlayanRedesignPrimaryNavigation notificationsCount={0} showHidden />,
+    );
+
+    expect(paths()[0]).toBe('/timelines/admin');
   });
 
   it('uses My archive and preserves extension feature and role gates', () => {
