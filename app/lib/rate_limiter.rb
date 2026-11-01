@@ -115,6 +115,16 @@ class RateLimiter
       period: 5.minutes.freeze,
     }.freeze,
 
+    chat_searches: {
+      limit: 60,
+      period: 5.minutes.freeze,
+    }.freeze,
+
+    chat_writes: {
+      limit: 120,
+      period: 5.minutes.freeze,
+    }.freeze,
+
     misskey_hashtags: {
       limit: 120,
       period: 5.minutes.freeze,

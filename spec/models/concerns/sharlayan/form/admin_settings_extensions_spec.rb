@@ -4,9 +4,25 @@ require 'rails_helper'
 
 RSpec.describe Form::AdminSettings do
   it 'registers Sharlayan settings with the required storage types' do
-    expect(described_class::KEYS).to include(:theme_color, :background_color, :background_opacity, :local_status_page_access, :norss, :reactions_enabled, :drive_allowed_extensions, :roleplay_forced_skin, :profile_fields_limit, :remote_media_attachments_limit)
-    expect(described_class::INTEGER_KEYS).to include(:avatar_decorations_max_count, :background_opacity, :drive_quota, :drive_max_file_size, :status_character_limit, :profile_fields_limit, :remote_media_attachments_limit)
-    expect(described_class::BOOLEAN_KEYS).to include(:background_on_settings_pages, :norss, :reactions_enabled, :pages_enabled, :pages_drive_only, :drive_enabled, :server_stored_account_switching_enabled)
+expect(described_class::KEYS).to include(
+      :theme_color, :background_color, :background_opacity, :local_status_page_access, :norss, :reactions_enabled,
+      :drive_allowed_extensions, :roleplay_forced_skin, :profile_fields_limit, :remote_media_attachments_limit,
+      :chat_enabled, :chat_soft_delete_enabled, :chat_delete_window_hours, :chat_max_group_members, :chat_max_attachments
+    )
+    expect(described_class::INTEGER_KEYS).to include(
+      :avatar_decorations_max_count, :background_opacity, :drive_quota, :drive_max_file_size, :status_character_limit,
+      :profile_fields_limit, :remote_media_attachments_limit, :chat_delete_window_hours, :chat_max_group_members,
+      :chat_max_attachments
+    )
+    expect(described_class::BOOLEAN_KEYS).to include(
+      :background_on_settings_pages, :norss, :reactions_enabled, :pages_enabled, :pages_drive_only, :drive_enabled,
+      :server_stored_account_switching_enabled, :chat_enabled, :chat_soft_delete_enabled
+    )
+  end
+
+  it 'validates chat operating limits' do
+    expect(described_class.new(chat_max_group_members: '50', chat_max_attachments: '4', chat_delete_window_hours: '24')).to be_valid
+    expect(described_class.new(chat_max_group_members: '1', chat_max_attachments: '5', chat_delete_window_hours: '-1')).to_not be_valid
   end
 
   it 'validates optional server background presentation settings' do

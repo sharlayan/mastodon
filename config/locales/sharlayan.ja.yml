@@ -1,5 +1,8 @@
 ---
 ja:
+  chat:
+    errors:
+      media_in_use: チャットメッセージに添付されたメディアは投稿に使用できません。
   roleplay_reset:
     apply_hint: ロールプレイ強制設定を削除するには、--apply を付けてもう一度実行してください。
     disable_first: このコマンドを実行する前に OC_ROLEPLAY_OPTION を無効にして再起動してください。
@@ -220,6 +223,25 @@ ja:
       size: サイズ
       status: 状態
       title: ドライブファイル
+    chat:
+      all: すべて
+      attachments: 添付
+      conversation: 'チャット #%{id}'
+      deleted_message: 削除されたメッセージ
+      hidden_message: 送信者が非表示
+      destroy: 会話を削除
+      destroy_confirm: この会話とすべてのメッセージを完全に削除しますか？
+      direct: ダイレクト
+      filter: フィルター
+      group: グループ
+      inspect: 確認
+      last_activity: 最終アクティビティ
+      message: メッセージ
+      participants: 参加者
+      sender: 送信者
+      sent_at: 送信日時
+      title: チャット会話
+      type: 種類
     instances:
       content_policies:
         policies:
@@ -249,9 +271,12 @@ ja:
     roles:
       extra_categories:
         api: API
+        moderation: モデレーション
       extra_privileges:
         bypass_rate_limit: APIレート制限のバイパス
         bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
+        view_admin_timeline: 管理タイムラインの閲覧
+        view_admin_timeline_description: OCロールプレイモードで、ローカル利用者間のチャットと管理タイムラインのコンテンツをモデレーションのため閲覧できます
       privileges:
         invite_bypass_approval_description: これらの利用者が招待した人が、モデレーターの承認を経ずに登録できるようにします
     settings:
@@ -338,6 +363,19 @@ ja:
         enabled: クリップ機能を有効にする
         enabled_hint: ユーザーがクリップを作成し、投稿を名前付きのコレクションにまとめられるようにします。無効にすると既存のクリップは保持されますが、アクセスできなくなります。
         title: クリップ
+      chat:
+        delete_window_hours: メッセージを削除できる時間
+        delete_window_hours_hint: この時間内は送信者が全員からメッセージを削除できます。経過後の削除は送信者本人からのみ非表示にします。最初から全員から削除できなくするには0を設定してください。
+        enabled: ネイティブチャットを有効にする
+        enabled_hint: ローカルアカウントが投稿とは独立したリアルタイムチャットを利用できるようにします。無効にしても既存データは保持されます。
+        max_attachments: メッセージあたりの添付上限
+        max_attachments_hint: 1つのチャットメッセージに添付できるメディアを0～4件に制限します。
+        max_group_members: グループの最大人数
+        max_group_members_hint: オーナーを含むグループチャットの人数を2～200人に制限します。
+        soft_delete_enabled: 削除されたチャットをすべて保持する
+        soft_delete_enabled_hint: 他の参加者からメッセージを削除しません。削除操作は送信者本人からのみ非表示にし、参加者と権限を持つ管理者のために保持します。
+        soft_delete_roleplay_hint: OCロールプレイモードでは、権限を持つオーナーがローカルチャットを監査できるよう常に有効になります。
+        title: チャット
       community_mode:
         soft_hide_deletion: 削除された投稿をオーナーのために保存する
         soft_hide_deletion_hint: 投稿を削除するとき、実際には破棄せず非表示にします。非表示になった投稿と添付メディアはすべてのタイムライン・検索インデックス・公開ページから消え、オーナーだけが管理タイムラインで閲覧できます。非表示の投稿をもう一度削除すると、復元できないように完全に削除されます。
@@ -466,6 +504,7 @@ ja:
     errors:
       limit: カスタム絵文字ミュートの上限数に達しています
   exports:
+    chat: チャット
     clips: クリップ
     json: JSON
     pages: ページ

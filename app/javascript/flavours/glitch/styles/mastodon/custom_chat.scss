@@ -1,0 +1,544 @@
+@use 'variables' as *;
+
+.chat-native {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--color-bg-primary);
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  &__conversation-tools {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border-primary);
+
+    button {
+      padding: 6px 10px;
+      color: var(--color-text-secondary);
+      font-size: 13px;
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+
+      &:hover,
+      &:focus-visible {
+        color: var(--color-text-primary);
+        background: var(--color-bg-tertiary);
+      }
+    }
+  }
+
+  &__tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    flex: 0 0 auto;
+    border-bottom: 1px solid var(--color-border-primary);
+
+    button {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-width: 0;
+      min-height: 60px;
+      padding: 8px 4px;
+      color: var(--color-text-secondary);
+      font-size: 11px;
+      line-height: 1.2;
+      background: transparent;
+      border: 0;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+
+      > .icon {
+        width: 20px;
+        height: 20px;
+      }
+
+      > span {
+        position: absolute;
+        top: 5px;
+        inset-inline-start: calc(50% + 7px);
+        min-width: 16px;
+        box-sizing: border-box;
+        padding: 2px 4px;
+        color: var(--color-text-on-brand-base);
+        font-size: 10px;
+        line-height: 12px;
+        text-align: center;
+        background: var(--color-bg-brand-base);
+        border-radius: 8px;
+      }
+
+      &:hover,
+      &:focus-visible {
+        color: var(--color-text-primary);
+        background: var(--color-bg-secondary);
+      }
+
+      &.active {
+        color: var(--color-text-brand);
+        border-bottom-color: var(--color-border-brand);
+      }
+    }
+  }
+
+  &__new,
+  &__composer,
+  &__invite,
+  &__group-edit {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--color-border-primary);
+
+    input,
+    textarea {
+      flex: 1 1 auto;
+      min-width: 0;
+      box-sizing: border-box;
+      padding: 10px 12px;
+      color: var(--color-text-primary);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border-primary);
+      border-radius: 10px;
+
+      &::placeholder {
+        color: var(--color-text-tertiary);
+      }
+
+      &:focus {
+        outline: 2px solid var(--color-border-primary);
+        outline-offset: 1px;
+      }
+    }
+
+    h3 {
+      align-self: center;
+      margin: 0;
+      color: var(--color-text-primary);
+      font-size: 14px;
+    }
+  }
+
+  &__new {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+
+    h3 {
+      align-self: auto;
+    }
+
+    &--compact {
+      flex-direction: row;
+    }
+  }
+
+  &__form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+
+    input {
+      width: 0;
+    }
+  }
+
+  &__group-edit {
+    flex-direction: column;
+
+    textarea {
+      min-height: 64px;
+      resize: vertical;
+    }
+  }
+
+  &__conversations {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+
+    button {
+      position: relative;
+      display: grid;
+      width: 100%;
+      gap: 4px;
+      padding: 14px 16px;
+      color: var(--color-text-primary);
+      text-align: start;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border-primary);
+      border-radius: 12px;
+      cursor: pointer;
+
+      &:hover,
+      &:focus-visible {
+        background: var(--color-bg-tertiary);
+      }
+
+      span {
+        overflow: hidden;
+        color: var(--color-text-secondary);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      i {
+        position: absolute;
+        inset-inline-end: 14px;
+        top: 18px;
+        width: 8px;
+        height: 8px;
+        background: var(--color-accent-primary);
+        border-radius: 50%;
+      }
+    }
+  }
+
+  &__account-results,
+  &__search-results {
+    display: grid;
+    gap: 4px;
+    padding: 0 12px 12px;
+
+    button {
+      display: flex;
+      width: 100%;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      color: var(--color-text-primary);
+      text-align: start;
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border-primary);
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    span {
+      color: var(--color-text-secondary);
+    }
+  }
+
+  &__messages {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 240px;
+    padding: 16px 12px;
+    background: var(--color-bg-primary);
+  }
+
+  &__message {
+    align-self: flex-start;
+    max-width: min(82%, 560px);
+    padding: 10px 12px;
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 4px 14px 14px;
+
+    strong {
+      color: var(--color-text-secondary);
+      font-size: 12px;
+    }
+
+    p {
+      margin: 4px 0;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    time {
+      color: var(--color-text-tertiary);
+      font-size: 11px;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+      max-height: 280px;
+      margin: 8px 0;
+      border-radius: 10px;
+    }
+
+    &--mine {
+      align-self: flex-end;
+      background: var(--color-bg-brand-softest);
+      border-color: var(--color-border-primary);
+      border-radius: 14px 4px 14px 14px;
+    }
+  }
+
+  &__actions,
+  &__reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+
+    button,
+    span {
+      padding: 3px 6px;
+      color: var(--color-text-secondary);
+      font-size: 12px;
+      background: var(--color-bg-tertiary);
+      border: 0;
+      border-radius: 10px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+  }
+
+  &__compose-mode {
+    display: flex;
+    flex: 1 0 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+
+    div,
+    span {
+      display: block;
+      min-width: 0;
+    }
+
+    span {
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    button {
+      color: var(--color-text-secondary);
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+    }
+  }
+
+  &__selected-accounts {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__account-card {
+    display: flex;
+    flex: 1 1 220px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 9px 10px 9px 12px;
+    color: var(--color-text-primary);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 10px;
+
+    > span {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+
+      strong,
+      small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      small {
+        color: var(--color-text-secondary);
+        font-size: 12px;
+      }
+    }
+
+    button {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      color: var(--color-text-secondary);
+      font-size: 20px;
+      line-height: 28px;
+      background: transparent;
+      border: 0;
+      border-radius: 50%;
+      cursor: pointer;
+
+      &:hover,
+      &:focus-visible {
+        color: var(--color-text-primary);
+        background: var(--color-bg-secondary);
+      }
+    }
+  }
+
+  &__media-preview {
+    display: flex;
+    flex: 1 0 100%;
+    gap: 8px;
+    overflow-x: auto;
+
+    > div {
+      position: relative;
+      flex: 0 0 96px;
+    }
+
+    img {
+      display: block;
+      width: 96px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    button {
+      width: 100%;
+      padding: 3px;
+      color: var(--color-text-secondary);
+      font-size: 11px;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+    }
+  }
+
+  &__invitations {
+    margin: 12px;
+    padding: 14px 16px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 12px;
+
+    h3 {
+      margin: 0 0 10px;
+      color: var(--color-text-primary);
+      font-size: 15px;
+    }
+
+    > div,
+    > label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      color: var(--color-text-primary);
+    }
+
+    select {
+      margin-inline-start: auto;
+      padding: 6px;
+      color: var(--color-text-primary);
+      background: var(--color-bg-primary);
+      border: 1px solid var(--color-border-primary);
+      border-radius: 6px;
+    }
+  }
+
+  &__composer {
+    position: sticky;
+    bottom: 0;
+    flex-wrap: wrap;
+    margin-top: auto;
+    background: var(--color-bg-secondary);
+    border-top: 1px solid var(--color-border-primary);
+    border-bottom: 0;
+
+    textarea {
+      min-height: 42px;
+      resize: vertical;
+    }
+  }
+
+  &__error {
+    padding: 12px;
+    color: var(--color-text-error);
+  }
+
+  &__empty {
+    padding: 32px 16px;
+    color: var(--color-text-tertiary);
+    text-align: center;
+  }
+}
+
+.chat-native-settings {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+
+  h3 {
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 15px;
+  }
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-primary);
+  }
+
+  select {
+    min-width: 0;
+    margin-inline-start: auto;
+    padding: 6px;
+    color: var(--color-text-primary);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 6px;
+  }
+}
+
+@media screen and (max-width: $no-gap-breakpoint) {
+  .chat-native {
+    &__messages {
+      min-height: 180px;
+    }
+
+    &__message {
+      max-width: 88%;
+    }
+
+    &__form-row {
+      align-items: stretch;
+      flex-direction: column;
+
+      input {
+        width: 100%;
+      }
+    }
+
+    &__new--compact {
+      flex-direction: row;
+    }
+  }
+}

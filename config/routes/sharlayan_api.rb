@@ -55,6 +55,38 @@ namespace :api, format: false do
       end
     end
 
+    namespace :chat do
+      resource :settings, only: [:show, :update], controller: :settings
+      resources :conversations, only: [:index, :show, :create, :update, :destroy] do
+        member do
+          post :read
+          delete :leave
+          post :mute
+          post :unmute
+          post :archive
+          post :unarchive
+        end
+
+        resources :messages, only: [:index, :create]
+        resources :invitations, only: :create
+      end
+
+      resources :messages, only: [:show, :update, :destroy] do
+        collection do
+          get :search
+        end
+      end
+      post 'messages/:message_id/reactions', to: 'reactions#create'
+      delete 'messages/:message_id/reactions/:reaction', to: 'reactions#destroy', constraints: { reaction: %r{[^/]+} }
+
+      resources :invitations, only: [:index, :destroy] do
+        member do
+          post :accept
+          post :reject
+        end
+      end
+    end
+
     namespace :drive do
       resources :files, only: [:index, :show, :create, :update, :destroy] do
         member do

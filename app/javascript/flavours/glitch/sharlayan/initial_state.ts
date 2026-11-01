@@ -27,6 +27,7 @@ export interface SharlayanInitialStateMeta {
   pages_drive_only: boolean;
   antenna_enabled: boolean;
   drive_enabled: boolean;
+  chat_enabled: boolean;
   board_announcements_enabled: boolean;
   avatar_decorations_enabled: boolean;
   avatar_decorations_federation_enabled: boolean;
@@ -101,6 +102,7 @@ export const readSharlayanInitialState = (
     pagesDriveOnly: getMeta('pages_drive_only') === true,
     antennaEnabled: getMeta('antenna_enabled') === true,
     driveEnabled: getMeta('drive_enabled') === true,
+    chatEnabled: getMeta('chat_enabled') === true,
     boardAnnouncementsEnabled: getMeta('board_announcements_enabled') === true,
     visibleReactions: getMeta('visible_reactions'),
     showInstanceInfo: getMeta('show_instance_info'),

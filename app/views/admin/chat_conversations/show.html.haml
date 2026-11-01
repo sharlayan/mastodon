@@ -1,0 +1,35 @@
+- content_for :page_title do
+  = @conversation.title.presence || t('admin.chat.conversation', id: @conversation.id)
+
+%p.hint
+  = t('admin.chat.participants')
+  - @conversation.accounts.each do |account|
+    = admin_account_link_to account
+
+= link_to t('admin.chat.destroy'), admin_chat_conversation_path(@conversation), data: { confirm: t('admin.chat.destroy_confirm'), method: :delete }, class: 'button button--destructive'
+
+%hr.spacer
+
+.table-wrapper
+  %table.table
+    %thead
+      %tr
+        %th= t('admin.chat.sender')
+        %th= t('admin.chat.message')
+        %th= t('admin.chat.attachments')
+        %th= t('admin.chat.sent_at')
+    %tbody
+      - @messages.each do |message|
+        %tr
+          %td= admin_account_link_to message.account
+          %td
+            - if message.deleted?
+              = t('admin.chat.deleted_message')
+            - else
+              = message.text
+              - if message.hidden?
+                %span.hint= t('admin.chat.hidden_message')
+          %td= message.media_attachments.size
+          %td= l(message.created_at)
+
+= paginate @messages

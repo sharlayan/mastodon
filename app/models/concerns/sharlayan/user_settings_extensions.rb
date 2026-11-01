@@ -27,6 +27,9 @@ module Sharlayan::UserSettingsExtensions
       settings.setting :drive_default_folder_id, default: nil
       settings.setting :drive_upload_original_image, default: true
       settings.setting :inline_compose_tabs, default: '[]'
+      settings.setting :chat_policy, default: 'everyone', in: %w(everyone followers following mutuals nobody)
+      settings.setting :chat_allow_group_invites, default: true
+      settings.setting :chat_notifications, default: true
       settings.setting_inverse_alias :enable_rss, :norss
     end
 

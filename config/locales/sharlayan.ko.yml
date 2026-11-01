@@ -1,5 +1,8 @@
 ---
 ko:
+  chat:
+    errors:
+      media_in_use: 채팅 메시지에 첨부된 미디어는 게시물에 사용할 수 없습니다.
   roleplay_reset:
     apply_hint: 자캐 커뮤니티 강제 설정을 제거하려면 --apply와 함께 다시 실행하세요.
     disable_first: 이 명령을 실행하기 전에 OC_ROLEPLAY_OPTION을 끄고 재시작하세요.
@@ -221,6 +224,25 @@ ko:
       size: 크기
       status: 상태
       title: 드라이브 파일
+    chat:
+      all: 전체
+      attachments: 첨부
+      conversation: '채팅 #%{id}'
+      deleted_message: 삭제된 메시지
+      hidden_message: 발신자가 숨김
+      destroy: 대화 삭제
+      destroy_confirm: 이 대화와 모든 메시지를 영구적으로 삭제할까요?
+      direct: 1:1
+      filter: 필터
+      group: 그룹
+      inspect: 살펴보기
+      last_activity: 최근 활동
+      message: 메시지
+      participants: 참가자
+      sender: 보낸 사람
+      sent_at: 보낸 시각
+      title: 채팅 대화
+      type: 유형
     instances:
       content_policies:
         policies:
@@ -251,10 +273,13 @@ ko:
     roles:
       extra_categories:
         api: API
+        moderation: 관리
       extra_privileges:
         bypass_rate_limit: API 제한 우회
         bypass_rate_limit_description: 서버 설정에서 API 제한 우회가 활성화된 경우, 이 권한을 가진 사용자는 API
           요청 제한을 받지 않습니다
+        view_admin_timeline: 관리 타임라인 열람
+        view_admin_timeline_description: 자캐 커뮤니티 모드에서 로컬 사용자간 채팅과 관리 타임라인 콘텐츠를 열람할 수 있습니다
       privileges:
         invite_bypass_approval_description: 이 사용자들이 초대한 사람들이 관리자 승인을 거치지 않도록 허용합니다
     settings:
@@ -346,6 +371,19 @@ ko:
         enabled_hint: 사용자가 클립을 만들고 게시물을 이름 붙인 컬렉션으로 모을 수 있도록 합니다. 비활성화하면 기존 클립은 유지되지만
           접근할 수 없습니다.
         title: 클립
+      chat:
+        delete_window_hours: 메시지 삭제 가능 시간
+        delete_window_hours_hint: 이 시간 동안에는 발신자가 모두에게서 메시지를 삭제할 수 있습니다. 이후 삭제 요청은 발신자에게서만 숨깁니다. 처음부터 모두에게서 삭제하지 못하게 하려면 0으로 설정하세요.
+        enabled: 네이티브 채팅 활성화
+        enabled_hint: 로컬 계정이 게시물과 분리된 실시간 채팅을 사용할 수 있도록 합니다. 비활성화해도 기존 채팅 데이터는 보존됩니다.
+        max_attachments: 메시지당 최대 첨부 수
+        max_attachments_hint: 채팅 메시지 하나에 첨부할 수 있는 미디어 수를 0~4개로 제한합니다.
+        max_group_members: 그룹 최대 인원
+        max_group_members_hint: 소유자를 포함한 그룹 채팅 인원을 2~200명으로 제한합니다.
+        soft_delete_enabled: 모든 삭제 채팅 보존
+        soft_delete_enabled_hint: 다른 참가자에게서 메시지를 삭제하지 않습니다. 삭제 요청은 발신자에게서만 숨기고 참가자와 권한 있는 관리자의 열람을 위해 보존합니다.
+        soft_delete_roleplay_hint: 자캐 커뮤니티 모드에서는 권한 있는 Owner가 로컬 채팅을 감사할 수 있도록 항상 활성화됩니다.
+        title: 채팅
       community_mode:
         soft_hide_deletion: 삭제된 게시물을 소유자에게만 보존
         soft_hide_deletion_hint: 게시물을 삭제할 때 실제로 파기하지 않고 숨깁니다. 숨겨진 게시물과 첨부 미디어는 모든 피드와
@@ -486,6 +524,7 @@ ko:
     errors:
       limit: 커스텀 에모지 뮤트 최대 개수를 초과합니다
   exports:
+    chat: 채팅
     clips: 클립
     json: JSON
     pages: 페이지

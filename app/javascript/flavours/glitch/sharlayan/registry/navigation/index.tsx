@@ -13,6 +13,7 @@ import CampaignActiveIcon from '@/material-icons/400-24px/campaign-fill.svg?reac
 import CampaignIcon from '@/material-icons/400-24px/campaign.svg?react';
 import CollectionsActiveIcon from '@/material-icons/400-24px/category-fill.svg?react';
 import CollectionsIcon from '@/material-icons/400-24px/category.svg?react';
+import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
 import PeopleIcon from '@/material-icons/400-24px/group.svg?react';
 import HomeActiveIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
@@ -37,6 +38,7 @@ import { useIdentity } from 'flavours/glitch/identity_context';
 import {
   antennaEnabled,
   boardAnnouncementsEnabled,
+  chatEnabled,
   collectionsEnabled,
   localLiveFeedAccess,
   me,
@@ -62,6 +64,7 @@ const messages = defineMessages({
     defaultMessage: 'Federated',
   },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
+  chat: { id: 'chat.title', defaultMessage: 'Chat' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   myArchive: { id: 'navigation_bar.my_archive', defaultMessage: 'My archive' },
@@ -296,6 +299,18 @@ export const useSharlayanPrimaryNavigation = (
         id={id}
       />
     );
+    if (chatEnabled) {
+      renderers.chat = (id) => (
+        <ColumnLink
+          transparent
+          to='/chat'
+          icon='chat'
+          iconComponent={ChatIcon}
+          text={intl.formatMessage(messages.chat)}
+          id={id}
+        />
+      );
+    }
     if (boardAnnouncementsEnabled) {
       renderers.board_announcements = () => <BoardAnnouncementsLink />;
     }

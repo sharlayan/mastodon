@@ -83,7 +83,38 @@ class Export
     JSON.generate(data_collection)
   end
 
+  def to_chat_json
+    conversations = ChatConversation.for_account(account).includes(:accounts, messages: [:account, :media_attachments, { reactions: :account }])
+    JSON.generate(chat_conversations: conversations.map { |conversation| chat_conversation_data(conversation) })
+  end
+
   private
+
+  def chat_conversation_data(conversation)
+    {
+      id: conversation.id.to_s,
+      type: conversation.conversation_type,
+      title: conversation.title,
+      description: conversation.description,
+      archived_at: conversation.archived_at,
+      participants: conversation.accounts.map { |participant| acct(participant) },
+      messages: conversation.messages.visible_to(account).reorder(id: :asc).map { |message| chat_message_data(message) },
+    }
+  end
+
+  def chat_message_data(message)
+    {
+      id: message.id.to_s,
+      sender: acct(message.account),
+      text: message.deleted? ? nil : message.text,
+      reply_to_id: message.reply_to_id&.to_s,
+      created_at: message.created_at,
+      edited_at: message.edited_at,
+      deleted_at: message.deleted_at,
+      attachments: message.media_attachments.map { |attachment| attachment.file.url(:original) },
+      reactions: message.reactions.map { |reaction| { reaction: reaction.reaction, account: acct(reaction.account) } },
+    }
+  end
 
   def to_csv(accounts)
     CSV.generate do |csv|

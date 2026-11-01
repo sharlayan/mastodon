@@ -604,6 +604,87 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.index ["reference_account_id"], name: "index_canonical_email_blocks_on_reference_account_id"
   end
 
+  create_table "chat_conversations", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.integer "conversation_type", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "direct_key"
+    t.bigint "last_message_id"
+    t.bigint "owner_account_id"
+    t.string "title"
+    t.datetime "updated_at", null: false
+    t.index ["archived_at"], name: "index_chat_conversations_on_archived_at"
+    t.index ["direct_key"], name: "index_chat_conversations_on_direct_key", unique: true, where: "(direct_key IS NOT NULL)"
+    t.index ["last_message_id"], name: "index_chat_conversations_on_last_message_id"
+    t.index ["owner_account_id"], name: "index_chat_conversations_on_owner_account_id"
+  end
+
+  create_table "chat_invitations", force: :cascade do |t|
+    t.bigint "chat_conversation_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "invitee_account_id", null: false
+    t.bigint "inviter_account_id", null: false
+    t.integer "state", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["chat_conversation_id", "invitee_account_id"], name: "index_pending_chat_invitations", unique: true, where: "(state = 0)"
+    t.index ["chat_conversation_id"], name: "index_chat_invitations_on_chat_conversation_id"
+    t.index ["invitee_account_id"], name: "index_chat_invitations_on_invitee_account_id"
+    t.index ["inviter_account_id"], name: "index_chat_invitations_on_inviter_account_id"
+  end
+
+  create_table "chat_memberships", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "chat_conversation_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "last_read_message_id"
+    t.boolean "muted", default: false, null: false
+    t.integer "role", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "chat_conversation_id"], name: "index_chat_memberships_on_account_and_conversation"
+    t.index ["account_id"], name: "index_chat_memberships_on_account_id"
+    t.index ["chat_conversation_id", "account_id"], name: "index_chat_memberships_on_conversation_and_account", unique: true
+    t.index ["chat_conversation_id"], name: "index_chat_memberships_on_chat_conversation_id"
+  end
+
+  create_table "chat_message_media_attachments", force: :cascade do |t|
+    t.bigint "chat_message_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "media_attachment_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chat_message_id"], name: "index_chat_message_media_attachments_on_chat_message_id"
+    t.index ["media_attachment_id"], name: "index_chat_message_media_attachments_on_media_attachment_id", unique: true
+  end
+
+  create_table "chat_message_reactions", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "chat_message_id", null: false
+    t.datetime "created_at", null: false
+    t.string "reaction", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_chat_message_reactions_on_account_id"
+    t.index ["chat_message_id", "account_id", "reaction"], name: "index_chat_message_reactions_on_message_account_reaction", unique: true
+    t.index ["chat_message_id"], name: "index_chat_message_reactions_on_chat_message_id"
+  end
+
+  create_table "chat_messages", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "chat_conversation_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.datetime "hidden_at"
+    t.datetime "edited_at"
+    t.bigint "reply_to_id"
+    t.text "text"
+    t.datetime "updated_at", null: false
+    t.string "uri"
+    t.index ["account_id"], name: "index_chat_messages_on_account_id"
+    t.index ["chat_conversation_id"], name: "index_chat_messages_on_chat_conversation_id"
+    t.index ["reply_to_id"], name: "index_chat_messages_on_reply_to_id"
+    t.index ["text"], name: "index_visible_chat_messages_on_text_trigram", opclass: :gin_trgm_ops, where: "(deleted_at IS NULL)", using: :gin
+    t.index ["uri"], name: "index_chat_messages_on_uri", unique: true, where: "(uri IS NOT NULL)"
+  end
+
   create_table "circle_accounts", id: :bigint, default: -> { "timestamp_id('circle_accounts'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "circle_id", null: false
@@ -2201,6 +2282,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
   add_foreign_key "bulk_import_rows", "bulk_imports", on_delete: :cascade
   add_foreign_key "bulk_imports", "accounts", on_delete: :cascade
   add_foreign_key "canonical_email_blocks", "accounts", column: "reference_account_id", on_delete: :cascade
+  add_foreign_key "chat_conversations", "accounts", column: "owner_account_id", on_delete: :nullify
+  add_foreign_key "chat_conversations", "chat_messages", column: "last_message_id", on_delete: :nullify
+  add_foreign_key "chat_invitations", "accounts", column: "invitee_account_id", on_delete: :cascade
+  add_foreign_key "chat_invitations", "accounts", column: "inviter_account_id", on_delete: :cascade
+  add_foreign_key "chat_invitations", "chat_conversations", on_delete: :cascade
+  add_foreign_key "chat_memberships", "accounts", on_delete: :cascade
+  add_foreign_key "chat_memberships", "chat_conversations", on_delete: :cascade
+  add_foreign_key "chat_memberships", "chat_messages", column: "last_read_message_id", on_delete: :nullify
+  add_foreign_key "chat_message_media_attachments", "chat_messages", on_delete: :cascade
+  add_foreign_key "chat_message_media_attachments", "media_attachments", on_delete: :cascade
+  add_foreign_key "chat_message_reactions", "accounts", on_delete: :cascade
+  add_foreign_key "chat_message_reactions", "chat_messages", on_delete: :cascade
+  add_foreign_key "chat_messages", "accounts", on_delete: :cascade
+  add_foreign_key "chat_messages", "chat_conversations", on_delete: :cascade
+  add_foreign_key "chat_messages", "chat_messages", column: "reply_to_id", on_delete: :nullify
   add_foreign_key "circle_accounts", "accounts", on_delete: :cascade
   add_foreign_key "circle_accounts", "circles", on_delete: :cascade
   add_foreign_key "circle_accounts", "follows", on_delete: :cascade

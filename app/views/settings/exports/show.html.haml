@@ -54,6 +54,11 @@
           %th= t('exports.pages')
           %td= number_with_delimiter current_account.pages.count
           %td= table_link_to 'download', t('page_backups.title'), settings_page_backup_path
+      - if Setting.chat_enabled
+        %tr
+          %th= t('exports.chat')
+          %td= number_with_delimiter @export_summary.total_chat_conversations
+          %td= table_link_to 'download', t('exports.json'), settings_exports_chat_index_path(format: :json)
 
 %hr.spacer/
 

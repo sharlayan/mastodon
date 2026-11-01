@@ -24,6 +24,9 @@ module Sharlayan::Account::Associations
         has_many :avatar_decoration_mutes
         has_many :reaction_mutes, dependent: :destroy
         has_many :custom_emoji_mutes, dependent: :destroy
+        has_many :chat_memberships, dependent: :destroy
+        has_many :chat_messages, dependent: :destroy
+        has_many :chat_message_reactions, dependent: :destroy
       end
 
       with_options foreign_key: :target_account_id, inverse_of: :target_account do
@@ -33,6 +36,7 @@ module Sharlayan::Account::Associations
     end
 
     has_many :account_switch_authorizations, inverse_of: :account, dependent: :destroy
+    has_many :owned_chat_conversations, class_name: 'ChatConversation', foreign_key: :owner_account_id, inverse_of: :owner_account, dependent: :nullify
     has_many :switchable_accounts, through: :account_switch_authorizations, source: :target_account
     has_many :account_switch_devices, dependent: :destroy
     has_many :account_switch_device_approvals, dependent: :destroy

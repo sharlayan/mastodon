@@ -13,6 +13,7 @@ module Sharlayan
     end
 
     def prepare!(media:, content_type:, sensitive:, visibility:)
+      ensure_media_not_attached_to_chat!(media)
       @prepared = Sharlayan::PostStatus::Preparation.new(
         account: @account,
         options: @options,
@@ -68,6 +69,15 @@ module Sharlayan
       ActivityPub::DistributionWorker.perform_async(status.id) unless status.local_only? || status.limited_personal?
       yield
       ActivityPub::QuoteRequestWorker.perform_async(status.quote.id) if status.quote&.quoted_status.present? && !status.quote.quoted_status.local? && !status.quote.legacy?
+    end
+
+    private
+
+    def ensure_media_not_attached_to_chat!(media)
+      return if media.blank?
+      return unless ChatMessageMediaAttachment.exists?(media_attachment_id: media.map(&:id))
+
+      raise Mastodon::ValidationError, I18n.t('chat.errors.media_in_use')
     end
   end
 end

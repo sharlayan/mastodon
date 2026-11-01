@@ -48,6 +48,54 @@ RSpec.describe Export do
     end
   end
 
+  describe '#to_chat_json' do
+    let(:other_account) { Fabricate(:account) }
+    let(:hidden_account) { Fabricate(:account) }
+
+    it 'exports only conversations the account belongs to with messages and reactions' do
+      conversation = ChatConversation.create!(conversation_type: :direct, direct_key: [account.id, other_account.id].sort.join(':'))
+      conversation.memberships.create!([{ account: account }, { account: other_account }])
+      message = conversation.messages.create!(account: other_account, text: 'hello')
+      message.reactions.create!(account: account, reaction: '👍')
+      hidden_conversation = ChatConversation.create!(conversation_type: :direct, direct_key: [other_account.id, hidden_account.id].sort.join(':'))
+      hidden_conversation.memberships.create!([{ account: other_account }, { account: hidden_account }])
+      hidden_conversation.messages.create!(account: hidden_account, text: 'private')
+
+      exported = JSON.parse(subject.to_chat_json)
+
+      expect(exported['chat_conversations'].pluck('id')).to contain_exactly(conversation.id.to_s)
+      expect(exported.dig('chat_conversations', 0, 'participants')).to contain_exactly(account.local_username_and_domain, other_account.local_username_and_domain)
+      expect(exported.dig('chat_conversations', 0, 'messages', 0)).to include(
+        'id' => message.id.to_s,
+        'sender' => other_account.local_username_and_domain,
+        'text' => 'hello',
+        'reactions' => [{ 'reaction' => '👍', 'account' => account.local_username_and_domain }]
+      )
+    end
+
+    it 'does not export the text of deleted messages' do
+      conversation = ChatConversation.create!(conversation_type: :direct, direct_key: [account.id, other_account.id].sort.join(':'))
+      conversation.memberships.create!([{ account: account }, { account: other_account }])
+      conversation.messages.create!(account: account, text: nil, deleted_at: Time.current)
+
+      exported = JSON.parse(subject.to_chat_json)
+
+      expect(exported.dig('chat_conversations', 0, 'messages', 0, 'text')).to be_nil
+      expect(exported.dig('chat_conversations', 0, 'messages', 0, 'deleted_at')).to be_present
+    end
+
+    it 'does not export messages the sender hid from themselves' do
+      conversation = ChatConversation.create!(conversation_type: :direct, direct_key: [account.id, other_account.id].sort.join(':'))
+      conversation.memberships.create!([{ account: account }, { account: other_account }])
+      conversation.messages.create!(account: account, text: 'hidden', hidden_at: Time.current)
+      visible_message = conversation.messages.create!(account: other_account, text: 'visible')
+
+      exported = JSON.parse(subject.to_chat_json)
+
+      expect(exported.dig('chat_conversations', 0, 'messages').pluck('id')).to contain_exactly(visible_message.id.to_s)
+    end
+  end
+
   describe '#to_blocked_accounts_csv' do
     before { target_accounts.each { |target_account| account.block!(target_account) } }
 

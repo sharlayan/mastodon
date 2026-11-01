@@ -51,6 +51,11 @@ module Sharlayan::AdminSettingsExtensions
     drive_quota
     drive_max_file_size
     drive_allowed_extensions
+    chat_enabled
+    chat_soft_delete_enabled
+    chat_delete_window_hours
+    chat_max_group_members
+    chat_max_attachments
     status_character_limit
     profile_fields_limit
     remote_media_attachments_limit
@@ -67,6 +72,9 @@ module Sharlayan::AdminSettingsExtensions
     status_character_limit
     profile_fields_limit
     remote_media_attachments_limit
+    chat_delete_window_hours
+    chat_max_group_members
+    chat_max_attachments
   ).freeze
 
   BOOLEAN_KEYS = %i(
@@ -106,6 +114,8 @@ module Sharlayan::AdminSettingsExtensions
     online_status_enabled
     server_stored_account_switching_enabled
     drive_enabled
+    chat_enabled
+    chat_soft_delete_enabled
     user_themes_enabled
   ).freeze
 
@@ -114,6 +124,9 @@ module Sharlayan::AdminSettingsExtensions
     validates :local_status_page_access, inclusion: { in: Form::AdminSettings::FEED_ACCESS_MODES }, if: -> { defined?(@local_status_page_access) }
     validates :drive_quota, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@drive_quota) }
     validates :drive_max_file_size, numericality: { only_integer: true, greater_than: 0 }, if: -> { defined?(@drive_max_file_size) }
+    validates :chat_max_group_members, numericality: { only_integer: true, in: 2..200 }, if: -> { defined?(@chat_max_group_members) }
+    validates :chat_max_attachments, numericality: { only_integer: true, in: 0..4 }, if: -> { defined?(@chat_max_attachments) }
+    validates :chat_delete_window_hours, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, if: -> { defined?(@chat_delete_window_hours) }
     validates :status_character_limit, numericality: { only_integer: true, greater_than_or_equal_to: Sharlayan::SettingExtensions::MIN_STATUS_CHARACTER_LIMIT }, if: -> { defined?(@status_character_limit) }
     validates :profile_fields_limit, numericality: { only_integer: true, in: 0..ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS }, if: -> { defined?(@profile_fields_limit) }
     validates :remote_media_attachments_limit, numericality: { only_integer: true, in: Status::MEDIA_ATTACHMENTS_LIMIT..16 }, if: -> { defined?(@remote_media_attachments_limit) }

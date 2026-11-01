@@ -1,5 +1,8 @@
 ---
 en:
+  chat:
+    errors:
+      media_in_use: Media attached to a chat message cannot be used in a post.
   roleplay_reset:
     apply_hint: Run again with --apply to remove the roleplay overrides.
     disable_first: Disable OC_ROLEPLAY_OPTION and restart before running this command.
@@ -235,6 +238,25 @@ en:
       size: Size
       status: Status
       title: Drive files
+    chat:
+      all: All
+      attachments: Attachments
+      conversation: 'Chat #%{id}'
+      deleted_message: Deleted message
+      hidden_message: Hidden by sender
+      destroy: Delete conversation
+      destroy_confirm: Permanently delete this conversation and all of its messages?
+      direct: Direct
+      filter: Filter
+      group: Group
+      inspect: Inspect
+      last_activity: Last activity
+      message: Message
+      participants: Participants
+      sender: Sender
+      sent_at: Sent at
+      title: Chat conversations
+      type: Type
     instances:
       content_policies:
         policies:
@@ -266,10 +288,13 @@ en:
     roles:
       extra_categories:
         api: API
+        moderation: Moderation
       extra_privileges:
         bypass_rate_limit: Bypass API rate limits
         bypass_rate_limit_description: When API rate limit bypass is enabled in server
           settings, users with this permission are not subject to API rate limits
+        view_admin_timeline: View the management timeline
+        view_admin_timeline_description: In OC roleplay mode, allows access to local user conversations and other management-timeline content for moderation
       privileges:
         invite_bypass_approval_description: Allows people invited to the server by
           these users to bypass moderation approval
@@ -371,6 +396,19 @@ en:
         enabled_hint: Allow users to create clips and collect posts into named collections.
           When disabled, existing clips are kept but cannot be accessed.
         title: Clips
+      chat:
+        delete_window_hours: Message deletion window (hours)
+        delete_window_hours_hint: Senders may delete a message for everyone during this period. After it expires, deleting only hides the message from the sender. Set to 0 to disable deletion for everyone immediately.
+        enabled: Enable native chat
+        enabled_hint: Allow local accounts to use the separate real-time chat system. Existing chat data is retained while disabled.
+        max_attachments: Maximum attachments per message
+        max_attachments_hint: Allow between 0 and 4 media attachments on one chat message.
+        max_group_members: Maximum members per group
+        max_group_members_hint: Limit group chats to between 2 and 200 members, including the owner.
+        soft_delete_enabled: Preserve all deleted chat messages
+        soft_delete_enabled_hint: Never delete messages for other participants. A deletion only hides the message from its sender while retaining it for participants and authorized moderation.
+        soft_delete_roleplay_hint: Always enabled in OC roleplay mode so authorized owners can audit local chat messages.
+        title: Chat
       community_mode:
         soft_hide_deletion: Keep deleted posts for the owner
         soft_hide_deletion_hint: When a post is deleted, hide it instead of destroying
@@ -534,6 +572,7 @@ en:
     errors:
       limit: You have reached the maximum number of custom emoji mutes
   exports:
+    chat: Chat
     clips: Clips
     json: JSON
     pages: Pages
