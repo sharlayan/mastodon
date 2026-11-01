@@ -117,6 +117,22 @@ module Sharlayan
           }
         end
 
+        def reject_invite(owner, invitee, room)
+          {
+            '@context' => CONTEXT,
+            'id' => "#{room.is_a?(Hash) ? room['id'] : room}#reject/#{invitee.id}",
+            'type' => 'Reject',
+            'actor' => actor_uri(invitee),
+            'published' => Time.now.utc.iso8601,
+            'object' => {
+              'type' => 'Invite',
+              'actor' => actor_uri(owner),
+              'target' => actor_uri(invitee),
+              'object' => room,
+            },
+          }
+        end
+
         def cancel(invitation)
           conversation = invitation.chat_conversation
           {

@@ -2,6 +2,10 @@
 
 class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
   def perform
+    if Sharlayan::ChatFederation::Incoming.chat_reaction?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_reaction(@json, @account)
+    end
+
     return if DomainBlock.reject_favourite?(@account.domain)
 
     original_status = status_from_uri(object_uri)

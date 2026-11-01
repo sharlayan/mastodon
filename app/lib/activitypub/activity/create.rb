@@ -7,6 +7,10 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   PROCESSING_DELAY = (30.seconds)..(10.minutes)
 
   def perform
+    if Sharlayan::ChatFederation::Incoming.chat_create?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_create(@json, @account, **@options)
+    end
+
     @account.schedule_refresh_if_stale!
 
     dereference_object!

@@ -2,6 +2,10 @@
 
 class ActivityPub::Activity::Undo < ActivityPub::Activity
   def perform
+    if Sharlayan::ChatFederation::Incoming.chat_undo_reaction?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_undo_reaction(@json, @account)
+    end
+
     case @object['type']
     when 'Announce'
       undo_announce

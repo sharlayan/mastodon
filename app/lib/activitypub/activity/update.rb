@@ -5,6 +5,12 @@ class ActivityPub::Activity::Update < ActivityPub::Activity
   OBJECT_AGE_THRESHOLD = 1.day
 
   def perform
+    if Sharlayan::ChatFederation::Incoming.chat_update?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_update(@json, @account, **@options)
+    elsif Sharlayan::ChatFederation::Incoming.chat_room?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_room_update(@json, @account)
+    end
+
     @account.schedule_refresh_if_stale!
 
     dereference_object!

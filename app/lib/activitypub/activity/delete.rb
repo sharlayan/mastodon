@@ -2,6 +2,10 @@
 
 class ActivityPub::Activity::Delete < ActivityPub::Activity
   def perform
+    if Sharlayan::ChatFederation::Incoming.chat_delete?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_delete(@json, @account)
+    end
+
     return delete_person if @account.uri == object_uri
     return delete_feature_authorization! unless feature_authorization_from_object.nil?
 

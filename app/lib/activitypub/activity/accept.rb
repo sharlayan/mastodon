@@ -2,6 +2,10 @@
 
 class ActivityPub::Activity::Accept < ActivityPub::Activity
   def perform
+    if Sharlayan::ChatFederation::Incoming.chat_invite?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_accept(@json, @account)
+    end
+
     return accept_follow_for_relay if relay_follow?
     return accept_follow!(follow_request_from_object) unless follow_request_from_object.nil?
     return accept_quote!(quote_request_from_object) unless quote_request_from_object.nil?
