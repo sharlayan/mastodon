@@ -179,14 +179,14 @@ module Sharlayan
           return 'skip: no local invitee' if invitee.nil?
 
           begin
-            conversation = service.receive_invite(
+            invitation = service.receive_invite(
               invitee,
               account,
               room_uri: room_uri,
               title: room['name'],
               description: room['summary']
             )
-            broadcast_invitation(conversation, invitee)
+            broadcast_invitation(invitation.chat_conversation, invitee)
             'ok: chat invitation received'
           rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
             Rails.logger.info("Rejected chat invitation from #{account.uri}: #{e.message}")
@@ -348,7 +348,7 @@ module Sharlayan
           invitation = conversation.invitations.pending.find_by(invitee_account: invitee)
           return if invitation.nil?
 
-          payload = REST::ChatInvitationSerializer.new(invitation, current_account: invitee).as_json
+          payload = ::REST::ChatInvitationSerializer.new(invitation, current_account: invitee).as_json
           RedisConnection.with do |redis|
             redis.publish("timeline:#{invitee.id}", JSON.generate(event: 'chat.invitation', payload: JSON.generate(payload)))
           end

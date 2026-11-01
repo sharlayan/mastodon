@@ -1,0 +1,34 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      "misskey": "https://misskey-hub.net/ns#",
+      "_misskey_talk": "misskey:_misskey_talk",
+      "_misskey_content": "misskey:_misskey_content",
+      "_misskey_reaction": "misskey:_misskey_reaction"
+    }
+  ],
+  "id": "https://remote.test/chat/messages/1/activity",
+  "type": "Create",
+  "actor": "https://remote.test/users/bob",
+  "published": "2026-11-02T00:00:00Z",
+  "to": [
+    "__LOCAL__"
+  ],
+  "object": {
+    "id": "https://remote.test/chat/messages/1",
+    "type": "Note",
+    "attributedTo": "https://remote.test/users/bob",
+    "content": "hello",
+    "_misskey_content": "hello",
+    "source": {
+      "content": "hello",
+      "mediaType": "text/x.misskeymarkdown"
+    },
+    "to": [
+      "__LOCAL__"
+    ],
+    "published": "2026-11-02T00:00:00Z",
+    "_misskey_talk": true
+  }
+}

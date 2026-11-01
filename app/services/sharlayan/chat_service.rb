@@ -150,7 +150,7 @@ class Sharlayan::ChatService
       invitation.update!(state: :accepted)
     end
     if conversation.owner_account.remote?
-      deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.accept(invitation))
+      deliver_to_account(account, Sharlayan::ChatFederation::Payload.accept(invitation), conversation.owner_account)
     else
       broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
     end
@@ -161,9 +161,10 @@ class Sharlayan::ChatService
     raise Forbidden unless invitation.invitee_account_id == account.id && invitation.pending?
 
     invitation.update!(state: :rejected)
-    return unless invitation.chat_conversation.owner_account&.remote?
+    owner = invitation.chat_conversation.owner_account
+    return unless owner&.remote?
 
-    deliver_to_conversation(invitation.invitee_account, invitation.chat_conversation, Sharlayan::ChatFederation::Payload.reject(invitation))
+    deliver_to_account(invitation.invitee_account, Sharlayan::ChatFederation::Payload.reject(invitation), owner)
   end
 
   def cancel_invitation(account, invitation)
