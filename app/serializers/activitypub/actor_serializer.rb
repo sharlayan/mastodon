@@ -9,7 +9,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   context_extensions :manually_approves_followers, :featured, :also_known_as,
                      :moved_to, :property_value, :discoverable, :suspended,
                      :memorial, :indexable, :attribution_domains, :profile_settings,
-                     :misskey_followed_message, :avatar_decorations, :is_cat
+                     :misskey_followed_message, :avatar_decorations, :is_cat, :misskey_chat
 
   context_extensions :interaction_policies
 
@@ -37,6 +37,8 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   attribute :misskey_followed_message, key: :_misskey_followedMessage, if: :followed_message?
   attribute :misskey_avatar_decorations, key: :_misskey_avatarDecorations, if: :avatar_decorations_enabled?
   attribute :is_cat, key: :isCat, if: :cat?
+  attribute :misskey_can_chat, key: :_misskey_canChat, if: :chat_enabled?
+  attribute :misskey_chat_scope, key: :_misskey_chatScope, if: :chat_enabled?
 
   class EndpointsSerializer < ActivityPub::Serializer
     include RoutingHelper
@@ -162,6 +164,27 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   def followed_message?
     !object.unavailable? && object.followed_message.present?
+  end
+
+  def chat_enabled?
+    Setting.chat_enabled && !object.unavailable?
+  end
+
+  def misskey_can_chat
+    true
+  end
+
+  def misskey_chat_scope
+    case object.user&.settings&.[](:chat_policy)
+    when 'everyone', 'followers', 'following', 'mutual', 'none'
+      object.user.settings[:chat_policy]
+    when 'mutuals'
+      'mutual'
+    when 'nobody'
+      'none'
+    else
+      'mutual'
+    end
   end
 
   def avatar_decorations_enabled?

@@ -39,6 +39,14 @@ module ContextHelper
     misskey_followed_message: { 'misskey' => 'https://misskey-hub.net/ns#', '_misskey_followedMessage' => 'misskey:_misskey_followedMessage' },
     avatar_decorations: { 'misskey' => 'https://misskey-hub.net/ns#', '_misskey_avatarDecorations' => 'misskey:_misskey_avatarDecorations' },
     is_cat: { 'misskey' => 'https://misskey-hub.net/ns#', 'isCat' => 'misskey:isCat' },
+    misskey_chat: {
+      'misskey' => 'https://misskey-hub.net/ns#',
+      '_misskey_talk' => 'misskey:_misskey_talk',
+      '_misskey_content' => 'misskey:_misskey_content',
+      '_misskey_reaction' => 'misskey:_misskey_reaction',
+      '_misskey_canChat' => 'misskey:_misskey_canChat',
+      '_misskey_chatScope' => 'misskey:_misskey_chatScope',
+    },
     limited_scope: { 'kmyblue' => 'http://kmy.blue/ns#', 'limitedScope' => 'kmyblue:limitedScope' },
     quote_requests: { 'QuoteRequest' => 'https://w3id.org/fep/044f#QuoteRequest' },
     quotes: {
