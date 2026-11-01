@@ -49,11 +49,11 @@ RSpec.describe 'API V1 Chat' do
   end
 
   it 'updates personal chat policy settings' do
-    patch '/api/v1/chat/settings', params: { policy: 'nobody', allow_group_invites: false, notifications: false }, headers: headers
+    patch '/api/v1/chat/settings', params: { policy: 'none', allow_group_invites: false, notifications: false }, headers: headers
 
     expect(response).to have_http_status(200)
-    expect(response.parsed_body).to include(policy: 'nobody', allow_group_invites: false, notifications: false)
-    expect(user.reload.settings[:chat_policy]).to eq('nobody')
+    expect(response.parsed_body).to include(policy: 'none', allow_group_invites: false, notifications: false)
+    expect(user.reload.settings[:chat_policy]).to eq('none')
   end
 
   describe 'direct chat' do
@@ -76,7 +76,7 @@ RSpec.describe 'API V1 Chat' do
     end
 
     it 'enforces the recipient direct chat policy for new conversations' do
-      other.settings[:chat_policy] = 'nobody'
+      other.settings[:chat_policy] = 'none'
       other.save!
 
       post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [other.account.id] }, headers: headers
@@ -425,4 +425,64 @@ RSpec.describe 'API V1 Chat' do
 
     expect(response).to have_http_status(400)
   end
+
+  describe 'remote chat support' do
+    let!(:remote) do
+      Fabricate(:account,
+                domain: 'remote.test',
+                uri: 'https://remote.test/users/remote',
+                inbox_url: 'https://remote.test/users/remote/inbox',
+                can_chat: true,
+                chat_scope: 'everyone')
+    end
+
+    before do
+      Setting.chat_federation_enabled = true
+    end
+
+    after do
+      Setting.chat_federation_enabled = false
+    end
+
+    it 'creates a direct conversation with a remote account' do
+      post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [remote.id] }, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:accounts].pluck(:id)).to include(remote.id.to_s)
+      expect(response.parsed_body[:remote]).to be(true)
+    end
+
+    it 'accepts mutual and none policy values and normalizes legacy values' do
+      patch '/api/v1/chat/settings', params: { policy: 'mutual' }, headers: headers
+      expect(response).to have_http_status(200)
+      expect(user.reload.settings[:chat_policy]).to eq('mutual')
+
+      patch '/api/v1/chat/settings', params: { policy: 'nobody' }, headers: headers
+      expect(response).to have_http_status(200)
+      expect(user.reload.settings[:chat_policy]).to eq('none')
+    end
+
+    it 'invites a remote account and federates the invitation' do
+      conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, account_ids: [], title: 'Remote group')
+
+      expect do
+        post "/api/v1/chat/conversations/#{conversation.id}/invitations", params: { account_id: remote.id }, headers: headers
+      end.to change(ActivityPub::DeliveryWorker.jobs, :size).by(1)
+
+      expect(response).to have_http_status(200)
+      expect(conversation.invitations.pending.find_by(invitee_account: remote)).to be_present
+    end
+
+    it 'rejects an attachment over the one-image limit' do
+      conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :direct, account_ids: [other.account.id])
+      first = Fabricate(:media_attachment, account: user.account, status: nil)
+      second = Fabricate(:media_attachment, account: user.account, status: nil)
+
+      post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { media_ids: [first.id, second.id] }, headers: headers
+
+      expect(response).to have_http_status(422)
+      expect(conversation.messages).to be_empty
+    end
+  end
+
 end

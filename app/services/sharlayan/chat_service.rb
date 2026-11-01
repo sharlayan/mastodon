@@ -16,6 +16,7 @@ class Sharlayan::ChatService
 
     participants = Account.where(id: requested_ids).to_a
     raise Error, 'One or more chat participants were not found' unless participants.size == requested_ids.size
+    raise Error, 'Chat federation is disabled' if participants.any?(&:remote?) && !Setting.chat_federation_enabled
 
     type.to_s == 'direct' ? create_direct(account, participants) : create_group(account, participants, title, description)
   end
@@ -113,6 +114,7 @@ class Sharlayan::ChatService
     raise Forbidden unless conversation.chat_group? && membership.owner?
 
     ensure_conversation_writable!(conversation)
+    raise Error, 'Chat federation is disabled' if invitee.remote? && !Setting.chat_federation_enabled
     raise Error, 'Account is already a member' if conversation.memberships.exists?(account: invitee)
     raise Forbidden if blocked_in_either_direction?(account, invitee)
     raise Forbidden unless !invitee.local? || invitee.user&.settings&.[](:chat_allow_group_invites)
@@ -127,7 +129,7 @@ class Sharlayan::ChatService
     if invitee.local?
       broadcast_to(invitee, 'chat.invitation', invitation, REST::ChatInvitationSerializer)
     else
-      deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.invite(conversation, invitee))
+      deliver_to_account(account, Sharlayan::ChatFederation::Payload.invite(conversation, invitee), invitee)
     end
     invitation
   end
@@ -506,7 +508,7 @@ class Sharlayan::ChatService
     end
 
     conversation.invitations.pending.where(invitee_account: invitees.select(&:remote?)).find_each do |invitation|
-      deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.invite(conversation, invitation.invitee_account))
+      deliver_to_account(account, Sharlayan::ChatFederation::Payload.invite(conversation, invitation.invitee_account), invitation.invitee_account)
     end
     conversation
   end
@@ -568,7 +570,7 @@ class Sharlayan::ChatService
       when 'everyone' then true
       when 'followers' then recipient.followed_by?(sender)
       when 'following' then recipient.following?(sender)
-      when 'mutuals' then recipient.following?(sender) && recipient.followed_by?(sender)
+      when 'mutual', 'mutuals' then recipient.following?(sender) && recipient.followed_by?(sender)
       else false
       end
     else

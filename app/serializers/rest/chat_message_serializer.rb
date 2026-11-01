@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::ChatMessageSerializer < ActiveModel::Serializer
-  attributes :id, :conversation_id, :content, :created_at, :edited_at, :deleted_at, :reply_to_id
+  attributes :id, :conversation_id, :content, :created_at, :edited_at, :deleted_at, :reply_to_id, :remote
 
   belongs_to :account, serializer: REST::AccountSerializer
   has_many :reactions, serializer: REST::ChatMessageReactionSerializer
@@ -21,5 +21,9 @@ class REST::ChatMessageSerializer < ActiveModel::Serializer
 
   def reply_to_id
     object.reply_to_id&.to_s
+  end
+
+  def remote
+    object.remote?
   end
 end

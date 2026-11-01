@@ -24,7 +24,9 @@ class ChatConversation < ApplicationRecord
   end
 
   def remote?
-    owner_account&.remote? == true
+    owner_account&.remote? == true ||
+      accounts.any?(&:remote?) ||
+      invitations.pending.joins(:invitee_account).merge(Account.remote).exists?
   end
 
   def local?

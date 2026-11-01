@@ -260,7 +260,7 @@ module Sharlayan
             'mediaType' => attachment.file_content_type,
             'url' => attachment.file&.url,
             'name' => attachment.description,
-            'sensitive' => attachment.sensitive?,
+            'sensitive' => false,
           }
         end
 

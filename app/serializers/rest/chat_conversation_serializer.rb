@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::ChatConversationSerializer < ActiveModel::Serializer
-  attributes :id, :type, :title, :description, :unread, :muted, :archived, :current_role, :created_at, :updated_at
+  attributes :id, :type, :title, :description, :unread, :muted, :archived, :current_role, :created_at, :updated_at, :remote, :owner_account_id
 
   has_many :accounts, serializer: REST::AccountSerializer
   has_one :visible_last_message, key: :last_message, serializer: REST::ChatMessageSerializer
@@ -12,6 +12,14 @@ class REST::ChatConversationSerializer < ActiveModel::Serializer
 
   def type
     object.conversation_type
+  end
+
+  def remote
+    object.remote?
+  end
+
+  def owner_account_id
+    object.owner_account_id&.to_s
   end
 
   def unread
