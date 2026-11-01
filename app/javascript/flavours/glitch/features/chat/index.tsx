@@ -18,6 +18,7 @@ import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Icon } from 'flavours/glitch/components/icon';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
+import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { me } from 'flavours/glitch/initial_state';
 
@@ -76,11 +77,17 @@ interface ChatInvitation {
 }
 
 interface ChatSettings {
-  policy: 'everyone' | 'followers' | 'following' | 'mutuals' | 'nobody';
+  policy: 'everyone' | 'followers' | 'following' | 'mutual' | 'none';
   allow_group_invites: boolean;
   notifications: boolean;
   max_group_members: number;
   max_attachments: number;
+  federation_enabled: boolean;
+}
+
+interface PickedEmoji {
+  native?: string;
+  colons?: string;
 }
 
 type ChatHomeTab = 'home' | 'invitations' | 'joiningRooms' | 'ownedRooms';
@@ -111,6 +118,26 @@ const messages = defineMessages({
   },
   tabOwnedRooms: { id: 'chat.owned_rooms', defaultMessage: 'Your rooms' },
 });
+
+export const isRemoteAccount = (account: ChatAccount) =>
+  account.acct.includes('@');
+
+export const reactionFromEmoji = (emoji: PickedEmoji) =>
+  emoji.native ?? emoji.colons ?? null;
+
+const ChatEmojiPicker: React.FC<{
+  messageId: string;
+  onPick: (messageId: string, emoji: PickedEmoji) => void;
+}> = ({ messageId, onPick }) => {
+  const handlePick = useCallback(
+    (emoji: PickedEmoji) => {
+      onPick(messageId, emoji);
+    },
+    [messageId, onPick],
+  );
+
+  return <EmojiPickerDropdown onPickEmoji={handlePick} />;
+};
 
 const conversationName = (conversation: ChatConversation) => {
   if (conversation.title) return conversation.title;
@@ -193,7 +220,7 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           params: {
             q: query.trim(),
             type: 'accounts',
-            resolve: false,
+            resolve: true,
             limit: 8,
           },
         },
@@ -266,9 +293,12 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   useEffect(
     () =>
       subscribeChatStream(({ event, payload }) => {
-        const value = payload as Partial<ChatMessage> & {
-          conversation_id?: string;
-        };
+        const value = payload as Partial<ChatMessage> &
+          Partial<ChatReaction> & {
+            conversation_id?: string;
+            message_id?: string;
+            account_id?: string;
+          };
         if (
           event === 'chat.message' &&
           value.conversation_id === conversationId
@@ -279,6 +309,75 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               : [...current, value as ChatMessage],
           );
           void loadConversations();
+        } else if (
+          event === 'chat.message_update' &&
+          value.conversation_id === conversationId
+        ) {
+          setMessagesList((current) =>
+            current.map((item) =>
+              item.id === value.id ? (value as ChatMessage) : item,
+            ),
+          );
+          void loadConversations();
+        } else if (
+          event === 'chat.message_delete' &&
+          value.conversation_id === conversationId
+        ) {
+          setMessagesList((current) =>
+            current.map((item) =>
+              item.id === value.id
+                ? { ...item, deleted_at: new Date().toISOString() }
+                : item,
+            ),
+          );
+          void loadConversations();
+        } else if (
+          event === 'chat.reaction' &&
+          value.message_id
+        ) {
+          setMessagesList((current) =>
+            current.map((item) =>
+              item.id === value.message_id
+                ? {
+                    ...item,
+                    reactions: [
+                      ...item.reactions.filter(
+                        (existing) =>
+                          existing.account.id !==
+                            (value as unknown as ChatReaction).account.id ||
+                          existing.reaction !==
+                            (value as unknown as ChatReaction).reaction,
+                      ),
+                      value as unknown as ChatReaction,
+                    ],
+                  }
+                : item,
+            ),
+          );
+        } else if (
+          event === 'chat.reaction_delete' &&
+          value.message_id
+        ) {
+          const deleted = value as unknown as {
+            message_id: string;
+            account_id: string;
+            reaction: string;
+          };
+
+          setMessagesList((current) =>
+            current.map((item) =>
+              item.id === deleted.message_id
+                ? {
+                    ...item,
+                    reactions: item.reactions.filter(
+                      (existing) =>
+                        existing.account.id !== deleted.account_id ||
+                        existing.reaction !== deleted.reaction,
+                    ),
+                  }
+                : item,
+            ),
+          );
         } else if (
           event !== 'chat.notification' &&
           event !== 'chat.read' &&
@@ -603,19 +702,74 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setText(message.content ?? '');
       } else if (action === 'delete') {
         void api().delete(`/api/v1/chat/messages/${id}`);
-      } else if (action === 'react') {
-        const mine = message.reactions.some(
-          (reaction) =>
-            reaction.account.id === me && reaction.reaction === '👍',
-        );
-        const path = `/api/v1/chat/messages/${id}/reactions${mine ? '/%F0%9F%91%8D' : ''}`;
-        const request = mine
-          ? api().delete(path)
-          : api().post(path, { reaction: '👍' });
-        void request;
       }
     },
     [messagesList],
+  );
+
+  const handleEmojiPick = useCallback(
+    (messageId: string, emoji: PickedEmoji) => {
+      const reaction = reactionFromEmoji(emoji);
+
+      if (!reaction) return;
+
+      void api()
+        .post<ChatReaction>(`/api/v1/chat/messages/${messageId}/reactions`, {
+        reaction,
+      })
+        .then((response) => {
+          setMessagesList((current) =>
+            current.map((item) =>
+              item.id === messageId
+                ? {
+                    ...item,
+                    reactions: [
+                      ...item.reactions.filter(
+                        (existing) =>
+                          existing.account.id !== response.data.account.id ||
+                          existing.reaction !== response.data.reaction,
+                      ),
+                      response.data,
+                    ],
+                  }
+                : item,
+            ),
+          );
+        });
+    },
+    [],
+  );
+
+  const handleReactionClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      const messageId = event.currentTarget.dataset.messageId;
+      const reaction = event.currentTarget.dataset.reaction;
+      const accountId = event.currentTarget.dataset.accountId;
+
+      if (!messageId || !reaction || accountId !== me) return;
+
+      void api()
+        .delete(
+          `/api/v1/chat/messages/${messageId}/reactions/${encodeURIComponent(reaction)}`,
+        )
+        .then(() => {
+          setMessagesList((current) =>
+            current.map((item) =>
+              item.id === messageId
+                ? {
+                    ...item,
+                    reactions: item.reactions.filter(
+                      (existing) =>
+                        existing.account.id !== me ||
+                        existing.reaction !== reaction,
+                    ),
+                  }
+                : item,
+            ),
+          );
+        });
+    },
+    [],
   );
 
   const handleRemoveMedia = useCallback(
@@ -813,13 +967,13 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     defaultMessage: 'People I follow',
                   })}
                 </option>
-                <option value='mutuals'>
+                <option value='mutual'>
                   {intl.formatMessage({
                     id: 'chat.policy.mutuals',
                     defaultMessage: 'Mutual follows',
                   })}
                 </option>
-                <option value='nobody'>
+                <option value='none'>
                   {intl.formatMessage({
                     id: 'chat.policy.nobody',
                     defaultMessage: 'Nobody',
@@ -921,6 +1075,36 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 )}
               </div>
             )}
+            {conversation?.type === 'group' && (
+              <section className='chat-native__members'>
+                <h4>
+                  <FormattedMessage
+                    id='chat.members'
+                    defaultMessage='Members ({count})'
+                    values={{ count: conversation.accounts.length }}
+                  />
+                </h4>
+                <div className='chat-native__members-list'>
+                  {conversation.accounts.map((account) => (
+                    <span
+                      className='chat-native__member'
+                      key={account.id}
+                      title={`@${account.acct}`}
+                    >
+                      {account.display_name || account.acct}
+                      {isRemoteAccount(account) && (
+                        <small className='chat-native__remote-badge'>
+                          <FormattedMessage
+                            id='chat.remote'
+                            defaultMessage='Remote'
+                          />
+                        </small>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
             <div className='chat-native__messages'>
               {messagesList.map((message) => (
                 <article
@@ -956,17 +1140,34 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   {message.reactions.length > 0 && (
                     <div className='chat-native__reactions'>
                       {message.reactions.map((reaction) => (
-                        <span
+                        <button
                           key={`${reaction.account.id}-${reaction.reaction}`}
+                          type='button'
+                          className={
+                            reaction.account.id === me ? 'mine' : undefined
+                          }
+                          data-message-id={message.id}
+                          data-reaction={reaction.reaction}
+                          data-account-id={reaction.account.id}
+                          onClick={handleReactionClick}
+                          title={reaction.account.acct}
                         >
                           {reaction.reaction}
-                        </span>
+                        </button>
                       ))}
                     </div>
                   )}
                   <time dateTime={message.created_at}>
                     {new Date(message.created_at).toLocaleString()}
                   </time>
+                  {message.edited_at && !message.deleted_at && (
+                    <span className='chat-native__edited'>
+                      <FormattedMessage
+                        id='chat.message_edited'
+                        defaultMessage='Edited'
+                      />
+                    </span>
+                  )}
                   {!message.deleted_at && (
                     <div className='chat-native__actions'>
                       <button
@@ -980,14 +1181,12 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           defaultMessage='Reply'
                         />
                       </button>
-                      <button
-                        type='button'
-                        data-message-id={message.id}
-                        data-action='react'
-                        onClick={handleMessageAction}
-                      >
-                        👍
-                      </button>
+                      <span className='chat-native__react-picker'>
+                        <ChatEmojiPicker
+                          messageId={message.id}
+                          onPick={handleEmojiPick}
+                        />
+                      </span>
                       {message.account.id === me && (
                         <>
                           <button
@@ -1184,7 +1383,6 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 {intl.formatMessage(messages.attach)}
                 <input
                   type='file'
-                  multiple
                   hidden
                   onChange={handleMediaChange}
                   accept='image/*,video/*,audio/*'
