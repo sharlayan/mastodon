@@ -32,7 +32,7 @@ RSpec.describe 'ActivityPub chat Create' do
   end
 
   it 'drops a policy-denied 1:1 message with 200' do
-    alice.user.settings[:chat_policy] = 'nobody'
+    alice.user.settings[:chat_policy] = 'none'
     alice.user.save!
 
     expect do

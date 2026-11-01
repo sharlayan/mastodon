@@ -85,7 +85,7 @@ RSpec.describe Sharlayan::ChatService do
     end
 
     it 'rejects a direct message when the local recipient policy denies it' do
-      local_account.user.settings[:chat_policy] = 'nobody'
+      local_account.user.settings[:chat_policy] = 'none'
       local_account.user.save!
 
       expect do
