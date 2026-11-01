@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -292,6 +292,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.string "uri"
     t.string "url"
     t.string "username", default: "", null: false
+    t.string "chat_scope"
+    t.boolean "can_chat"
     t.index "(((setweight(to_tsvector('simple'::regconfig, (display_name)::text), 'A'::\"char\") || setweight(to_tsvector('simple'::regconfig, (username)::text), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, (COALESCE(domain, ''::character varying))::text), 'C'::\"char\")))", name: "search_index", using: :gin
     t.index "lower((username)::text), COALESCE(lower((domain)::text), ''::text)", name: "index_accounts_on_username_and_domain_lower", unique: true
     t.index ["domain", "id"], name: "index_accounts_on_domain_and_id"
@@ -614,10 +616,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.bigint "owner_account_id"
     t.string "title"
     t.datetime "updated_at", null: false
+    t.string "uri"
     t.index ["archived_at"], name: "index_chat_conversations_on_archived_at"
     t.index ["direct_key"], name: "index_chat_conversations_on_direct_key", unique: true, where: "(direct_key IS NOT NULL)"
     t.index ["last_message_id"], name: "index_chat_conversations_on_last_message_id"
     t.index ["owner_account_id"], name: "index_chat_conversations_on_owner_account_id"
+    t.index ["uri"], name: "index_chat_conversations_on_uri", unique: true, where: "(uri IS NOT NULL)"
   end
 
   create_table "chat_invitations", force: :cascade do |t|
@@ -627,6 +631,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.bigint "inviter_account_id", null: false
     t.integer "state", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.string "uri"
     t.index ["chat_conversation_id", "invitee_account_id"], name: "index_pending_chat_invitations", unique: true, where: "(state = 0)"
     t.index ["chat_conversation_id"], name: "index_chat_invitations_on_chat_conversation_id"
     t.index ["invitee_account_id"], name: "index_chat_invitations_on_invitee_account_id"

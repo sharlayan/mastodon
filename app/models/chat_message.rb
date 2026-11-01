@@ -28,6 +28,10 @@ class ChatMessage < ApplicationRecord
     hidden_at.present?
   end
 
+  def remote?
+    account.remote?
+  end
+
   private
 
   def content_present

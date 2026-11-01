@@ -52,6 +52,7 @@ module Sharlayan::AdminSettingsExtensions
     drive_max_file_size
     drive_allowed_extensions
     chat_enabled
+    chat_federation_enabled
     chat_soft_delete_enabled
     chat_delete_window_hours
     chat_max_group_members
@@ -115,6 +116,7 @@ module Sharlayan::AdminSettingsExtensions
     server_stored_account_switching_enabled
     drive_enabled
     chat_enabled
+    chat_federation_enabled
     chat_soft_delete_enabled
     user_themes_enabled
   ).freeze

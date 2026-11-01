@@ -38,10 +38,7 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
   end
 
   def destroy
-    membership = @conversation.memberships.find_by!(account: current_account)
-    raise Sharlayan::ChatService::Forbidden unless @conversation.chat_group? && membership.owner?
-
-    @conversation.destroy!
+    chat_service.destroy_conversation(current_account, @conversation)
     render_empty
   end
 

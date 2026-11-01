@@ -22,4 +22,12 @@ class ChatConversation < ApplicationRecord
   def archived?
     archived_at.present?
   end
+
+  def remote?
+    owner_account&.remote? == true
+  end
+
+  def local?
+    !remote?
+  end
 end

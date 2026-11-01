@@ -262,7 +262,22 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.attribution_domains     = as_array(@json['attributionDomains'] || []).take(Account::ATTRIBUTION_DOMAINS_HARD_LIMIT).grep(String)
     @account.followed_message        = (@json['_misskey_followedMessage'] || @json['followedMessage'] || '')[0...256].presence
     @account.is_cat                  = Setting.cat_enabled && Setting.cat_federation_enabled && (@json['isCat'] || false)
+    @account.can_chat                = @json['_misskey_canChat'] != false
+    @account.chat_scope              = normalize_chat_scope(@json['_misskey_chatScope'])
     process_avatar_decorations! if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
+  end
+
+  def normalize_chat_scope(value)
+    case value
+    when 'everyone', 'followers', 'following', 'mutual', 'none'
+      value
+    when 'mutuals'
+      'mutual'
+    when 'nobody'
+      'none'
+    else
+      'mutual'
+    end
   end
 
   def set_fetchable_key!
