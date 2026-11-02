@@ -318,6 +318,157 @@ describe('Chat live updates', () => {
     expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
   });
 
+  it.each(['initial', 'reload'])(
+    'retains a deletion received before the %s GET completes',
+    async (request) => {
+      const snapshot = {
+        ...message(),
+        media_attachments: [attachment],
+        reactions: [reaction],
+      };
+      const pending = deferred<{ data: (typeof snapshot)[] }>();
+      if (request === 'initial') {
+        api.get.mockImplementation((url: string) =>
+          url.includes('/A/messages') ? pending.promise : getResponse(url),
+        );
+      }
+      mountChat();
+      await screen.findByText('Room A');
+      if (request === 'reload') {
+        await screen.findByText('Private message A');
+        api.get.mockImplementation((url: string) =>
+          url.includes('/A/messages') ? pending.promise : getResponse(url),
+        );
+        act(() => {
+          emitChatStreamEvent({
+            event: 'chat.conversation_update',
+            payload: { conversation_id: 'A' },
+          });
+        });
+      }
+      act(() => {
+        emitChatStreamEvent({
+          event: 'chat.message_delete',
+          payload: { id: 'message-A', conversation_id: 'A' },
+        });
+      });
+      await act(async () => {
+        pending.resolve({ data: [snapshot] });
+        await pending.promise;
+      });
+      expect(screen.queryByText('Private message A')).toBeNull();
+      expect(screen.queryByAltText('Private attachment A')).toBeNull();
+      expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+      expect(screen.getByText('This message was deleted.')).toBeTruthy();
+    },
+  );
+
+  it.each(['send', 'edit'])(
+    'retains a deletion received before the %s response completes',
+    async (operation) => {
+      const id = operation === 'edit' ? 'message-A' : 'sent-A';
+      const snapshot = {
+        ...message(),
+        id,
+        content: 'Delayed content',
+        media_attachments: [attachment],
+        reactions: [reaction],
+      };
+      const pending = deferred<{ data: typeof snapshot }>();
+      mountChat();
+      await screen.findByText('Private message A');
+      if (operation === 'edit') {
+        fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+        api.patch.mockReturnValueOnce(pending.promise);
+      } else {
+        api.post.mockReturnValueOnce(pending.promise);
+      }
+      fireEvent.change(composer(), { target: { value: 'Delayed content' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      act(() => {
+        emitChatStreamEvent({
+          event: 'chat.message_delete',
+          payload: { id, conversation_id: 'A' },
+        });
+      });
+      await act(async () => {
+        pending.resolve({ data: snapshot });
+        await pending.promise;
+      });
+      expect(screen.queryByText('Delayed content')).toBeNull();
+      expect(screen.queryByAltText('Private attachment A')).toBeNull();
+      expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+      expect(screen.getByText('This message was deleted.')).toBeTruthy();
+    },
+  );
+
+  it.each(['chat.message', 'chat.message_update'])(
+    'retains a deletion before a stale %s stream snapshot',
+    async (event) => {
+      if (event === 'chat.message') {
+        api.get.mockImplementation((url: string) =>
+          url.includes('/A/messages')
+            ? Promise.resolve({ data: [] })
+            : getResponse(url),
+        );
+      }
+      mountChat();
+      await screen.findByText('Room A');
+      if (event === 'chat.message_update')
+        await screen.findByText('Private message A');
+      act(() => {
+        emitChatStreamEvent({
+          event: 'chat.message_delete',
+          payload: { id: 'message-A', conversation_id: 'A' },
+        });
+        emitChatStreamEvent({
+          event,
+          payload: {
+            ...message(),
+            media_attachments: [attachment],
+            reactions: [reaction],
+          },
+        });
+      });
+      expect(screen.queryByText('Private message A')).toBeNull();
+      expect(screen.queryByAltText('Private attachment A')).toBeNull();
+      expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+      expect(screen.getByText('This message was deleted.')).toBeTruthy();
+    },
+  );
+
+  it('retains a server tombstone when a stale stream update arrives', async () => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({
+            data: [
+              {
+                ...message(),
+                content: null,
+                deleted_at: '2026-11-02T00:02:00Z',
+              },
+            ],
+          })
+        : getResponse(url),
+    );
+    mountChat();
+    await screen.findByText('This message was deleted.');
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message_update',
+        payload: {
+          ...message(),
+          media_attachments: [attachment],
+          reactions: [reaction],
+        },
+      });
+    });
+    expect(screen.queryByText('Private message A')).toBeNull();
+    expect(screen.queryByAltText('Private attachment A')).toBeNull();
+    expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+    expect(screen.getByText('This message was deleted.')).toBeTruthy();
+  });
+
   it('does not restore a reaction when its local request finishes after deletion', async () => {
     const pending = deferred<{ data: typeof reaction }>();
     mountChat();
