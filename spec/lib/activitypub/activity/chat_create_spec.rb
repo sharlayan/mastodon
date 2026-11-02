@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe ActivityPub::Activity::Create, type: :model do
+RSpec.describe 'Incoming ActivityPub chat messages', type: :model do
   let(:local) { Fabricate(:user, account_attributes: { username: 'alice' }) }
   let(:alice) { local.account }
   let(:bob) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/users/bob/inbox') }
@@ -22,6 +22,16 @@ RSpec.describe ActivityPub::Activity::Create, type: :model do
         'to' => [ActivityPub::TagManager.instance.uri_for(alice)],
       },
     }
+  end
+
+  before do
+    Setting.chat_enabled = true
+    Setting.chat_federation_enabled = true
+  end
+
+  after do
+    Setting.chat_enabled = false
+    Setting.chat_federation_enabled = false
   end
 
   it 'creates a chat message instead of a status' do

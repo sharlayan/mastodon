@@ -53,12 +53,14 @@ module Sharlayan
         end
 
         def handle_create(json, account, **options)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           object = json['object']
           return 'skip: not a chat note' unless chat_create?(json)
           return 'skip: actor mismatch' unless authored_by?(object, account)
 
           uri = object['id']
-          return 'skip: deleted before create' if service.tombstone?(uri)
+          return 'skip: deleted before create' if service.tombstone?(uri, account)
 
           text = text_of(object)
           attachment = attachment_of(object)
@@ -93,13 +95,15 @@ module Sharlayan
           'skip: chat policy'
         end
 
-        def handle_update(json, account, **options)
+        def handle_update(json, account, **)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           object = json['object']
           return 'skip: not a chat note' unless chat_update?(json)
           return 'skip: actor mismatch' unless authored_by?(object, account)
 
           message = ChatMessage.find_by(uri: object['id'])
-          return handle_create(json, account, **options) if message.nil?
+          return handle_create(json, account, **) if message.nil?
 
           text = text_of(object)
           return 'skip: empty chat message' if text.blank?
@@ -112,6 +116,8 @@ module Sharlayan
         end
 
         def handle_delete(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           object = json['object']
           uri = uri_of(object)
           return false if uri.blank?
@@ -129,7 +135,7 @@ module Sharlayan
 
           return false unless chat_message_uri?(uri)
 
-          service.remember_tombstone(uri)
+          service.remember_tombstone(uri, account)
           'ok: chat message tombstone stored'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
           Rails.logger.info("Dropped incoming chat delete from #{account.uri}: #{e.message}")
@@ -137,6 +143,8 @@ module Sharlayan
         end
 
         def handle_reaction(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           message = ChatMessage.find_by(uri: uri_of(json['object']))
           return false if message.nil?
 
@@ -151,6 +159,8 @@ module Sharlayan
         end
 
         def handle_undo_reaction(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           object = json['object']
           return false unless chat_undo_reaction?(json)
 
@@ -168,11 +178,13 @@ module Sharlayan
         end
 
         def handle_invite(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           return false unless chat_invite_activity?(json)
 
           room = json['object']
           room_uri = uri_of(room)
-          return 'skip: invalid chat room' if room_uri.blank?
+          return 'skip: invalid chat room' unless chat_room?(json) && authored_by?(room, account)
           return 'skip: invalid target' unless uri_of(json['target']) == local_target_uri?(json, account)
 
           invitee = local_account_for_target(json)
@@ -195,7 +207,26 @@ module Sharlayan
           end
         end
 
+        def handle_undo_invite(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return false unless chat_invite?(json)
+
+          invitation = json['object']
+          return 'skip: actor mismatch' unless uri_of(invitation['actor']) == account.uri
+
+          invitee = local_account_for_target(invitation)
+          return 'skip: no local invitee' if invitee.nil?
+
+          service.receive_cancel(account, room_uri: uri_of(invitation['object']), invitee: invitee)
+          'ok: chat invitation cancelled'
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+          Rails.logger.info("Dropped chat Undo Invite from #{account.uri}: #{e.message}")
+          'skip: chat invitation cancellation'
+        end
+
         def handle_accept(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           return false unless chat_invite?(json)
 
           room_uri = uri_of(json['object']['object'])
@@ -209,6 +240,8 @@ module Sharlayan
         end
 
         def handle_reject(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           return false unless chat_invite?(json)
 
           room_uri = uri_of(json['object']['object'])
@@ -219,6 +252,8 @@ module Sharlayan
         end
 
         def handle_add(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           return false unless chat_add?(json)
 
           service.receive_add(account, room_uri: uri_of(json['target']), account_uri: uri_of(json['object']))
@@ -229,6 +264,8 @@ module Sharlayan
         end
 
         def handle_remove(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           return false unless chat_add?(json)
 
           service.receive_remove(account, room_uri: uri_of(json['target']), account_uri: uri_of(json['object']))
@@ -239,6 +276,8 @@ module Sharlayan
         end
 
         def handle_room_update(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
           return false unless chat_room?(json)
 
           object = json['object']
@@ -317,7 +356,7 @@ module Sharlayan
           nil
         end
 
-        def local_recipient_for(json, object, delivered_to_account_id)
+        def local_recipient_for(_json, object, delivered_to_account_id)
           if delivered_to_account_id.present?
             account = ::Account.local.find_by(id: delivered_to_account_id)
             return account if account.present?
