@@ -343,6 +343,8 @@ class Sharlayan::ChatService
     raise Forbidden unless actor.id == account.id || conversation.owner_account_id == actor.id
 
     conversation.memberships.find_by(account: account)&.destroy!
+    # The removed account no longer receives broadcasts to the room's members.
+    broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
     relay_departure(conversation, account)
   end

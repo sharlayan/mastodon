@@ -295,6 +295,17 @@ RSpec.describe Sharlayan::ChatService do
         .to_not change(ActivityPub::DeliveryWorker.jobs, :size)
     end
 
+    it 'tells a local member that the remote owner removed them' do
+      conversation = service.receive_invite(local_account, remote_account, room_uri: 'https://remote.test/chat/rooms/kick', title: 'Room').chat_conversation
+      service.accept_invitation(local_account, conversation.invitations.find_by!(invitee_account: local_account))
+      allow(service).to receive(:broadcast_to)
+
+      service.receive_remove(remote_account, room_uri: conversation.uri, account_uri: ActivityPub::TagManager.instance.uri_for(local_account))
+
+      expect(conversation.reload.accounts).to_not include(local_account)
+      expect(service).to have_received(:broadcast_to).with(local_account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s })
+    end
+
     it 'does not let a remote owner re-add a local account that left' do
       conversation = service.receive_invite(local_account, remote_account, room_uri: 'https://remote.test/chat/rooms/readd', title: 'Room').chat_conversation
       service.accept_invitation(local_account, conversation.invitations.find_by!(invitee_account: local_account))
