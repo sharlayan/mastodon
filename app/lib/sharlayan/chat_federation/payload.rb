@@ -34,7 +34,7 @@ module Sharlayan
             'actor' => actor_uri(message.account),
             'published' => Time.now.utc.iso8601,
             'to' => recipients(message),
-            'object' => note(message).merge('updated' => (message.edited_at || Time.now).utc.iso8601),
+            'object' => note(message).merge('updated' => (message.edited_at || Time.current).utc.iso8601),
           }
         end
 
@@ -219,7 +219,7 @@ module Sharlayan
             'id' => room_uri(conversation),
             'type' => 'Group',
             'name' => conversation.title,
-            'summary' => conversation.description.presence,
+            'summary' => conversation.description.to_s,
             'attributedTo' => actor_uri(conversation.owner_account),
           }
         end

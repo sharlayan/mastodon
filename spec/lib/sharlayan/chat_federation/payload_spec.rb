@@ -47,6 +47,11 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     expect(described_class.room(conversation)).to include('type' => 'Group', 'name' => 'Room', 'summary' => 'desc')
   end
 
+  it 'sends an empty summary when the room description is cleared' do
+    conversation.update!(description: '')
+    expect(described_class.room(conversation)).to include('summary' => '')
+  end
+
   it 'makes relative media paths absolute' do
     file = double(url: '/system/media/test.png')
     attachment = double(file: file, file_content_type: 'image/png', description: 'image', sensitive: false)

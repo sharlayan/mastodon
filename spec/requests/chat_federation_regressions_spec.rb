@@ -180,6 +180,20 @@ RSpec.describe 'Chat federation regressions' do
 
       expect(response).to have_http_status(404)
     end
+
+    it 'denies a hidden message attachment to the member who hid it' do
+      hidden_media = Fabricate(:media_attachment, account: owner)
+      conversation = service.create_conversation(owner, type: :direct, account_ids: [invitee.id])
+      message = service.create_message(owner, conversation, text: 'photo', media_ids: [hidden_media.id])
+      Setting.chat_soft_delete_enabled = true
+      service.delete_message(owner, message)
+      sign_in owner.user
+
+      get "/media_proxy/#{hidden_media.id}/original"
+
+      expect(message.reload).to be_hidden
+      expect(response).to have_http_status(404)
+    end
   end
 
   it 'announces a joining local member to existing remote room members' do
