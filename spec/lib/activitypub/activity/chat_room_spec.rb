@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'ActivityPub chat room activities' do
+RSpec.describe ActivityPub::Activity::Invite, type: :model do
   let(:alice) { Fabricate(:user).account }
   let(:bob) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/users/bob/inbox') }
   let(:carol) { Fabricate(:account, domain: 'other.test', uri: 'https://other.test/users/carol', inbox_url: 'https://other.test/users/carol/inbox') }

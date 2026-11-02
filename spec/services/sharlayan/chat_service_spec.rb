@@ -3,24 +3,6 @@
 require 'rails_helper'
 
 RSpec.describe Sharlayan::ChatService do
-  describe '#mark_read' do
-    it 'broadcasts only when the read pointer advances' do
-      account = Fabricate(:user).account
-      other_account = Fabricate(:user).account
-      conversation = described_class.new.create_conversation(account, type: :direct, account_ids: [other_account.id])
-      message = described_class.new.create_message(other_account, conversation, text: 'hello')
-      service = described_class.new
-      allow(service).to receive(:broadcast_to)
-
-      service.mark_read(account, conversation, message_id: message.id)
-      service.mark_read(account, conversation, message_id: message.id)
-
-      expect(service).to have_received(:broadcast_to).once
-    end
-  end
-end
-
-RSpec.describe Sharlayan::ChatService do
   let(:service) { described_class.new }
   let(:local_account) { Fabricate(:user).account }
   let(:remote_account) do
@@ -44,6 +26,22 @@ RSpec.describe Sharlayan::ChatService do
     Setting.chat_soft_delete_enabled = false
   end
 
+  describe '#mark_read' do
+    it 'broadcasts only when the read pointer advances' do
+      account = Fabricate(:user).account
+      other_account = Fabricate(:user).account
+      conversation = described_class.new.create_conversation(account, type: :direct, account_ids: [other_account.id])
+      message = described_class.new.create_message(other_account, conversation, text: 'hello')
+      service = described_class.new
+      allow(service).to receive(:broadcast_to)
+
+      service.mark_read(account, conversation, message_id: message.id)
+      service.mark_read(account, conversation, message_id: message.id)
+
+      expect(service).to have_received(:broadcast_to).once
+    end
+  end
+
   describe 'remote conversations' do
     it 'creates a direct conversation with a remote account' do
       conversation = service.create_conversation(local_account, type: 'direct', account_ids: [remote_account.id])
@@ -65,7 +63,7 @@ RSpec.describe Sharlayan::ChatService do
       message = service.create_message(local_account, conversation, text: 'hi')
       Setting.chat_soft_delete_enabled = true
 
-      expect { service.delete_message(local_account, message) }.not_to change(ActivityPub::DeliveryWorker.jobs, :size)
+      expect { service.delete_message(local_account, message) }.to_not change(ActivityPub::DeliveryWorker.jobs, :size)
       expect(message.reload.hidden_at).to be_present
       expect(message.reload.deleted_at).to be_nil
     end
@@ -91,6 +89,15 @@ RSpec.describe Sharlayan::ChatService do
       expect do
         service.receive_direct_message(local_account, remote_account, uri: 'https://remote.test/chat/messages/1', text: 'hi')
       end.to raise_error(Sharlayan::ChatService::Forbidden)
+    end
+
+    it 'federates deletion of a local room that has remote members' do
+      conversation = service.create_conversation(local_account, type: :group, account_ids: [remote_account.id], title: 'Local room')
+      conversation.memberships.create!(account: remote_account)
+
+      expect { service.destroy_conversation(local_account, conversation) }
+        .to change(ActivityPub::DeliveryWorker.jobs, :size).by(1)
+      expect(ChatConversation.find_by(id: conversation.id)).to be_nil
     end
   end
 end

@@ -38,11 +38,20 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     undo = described_class.undo_reaction(message, remote, '👍')
 
     expect(react['type']).to eq('EmojiReact')
+    expect(react['id']).to start_with("#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}/chat/reactions/")
     expect(react['object']).to eq(described_class.message_uri(message))
     expect(undo['object']).to include('id' => react['id'], 'type' => 'EmojiReact')
   end
 
   it 'builds a Group object' do
     expect(described_class.room(conversation)).to include('type' => 'Group', 'name' => 'Room', 'summary' => 'desc')
+  end
+
+  it 'makes relative media paths absolute' do
+    file = double(url: '/system/media/test.png')
+    attachment = double(file: file, file_content_type: 'image/png', description: 'image', sensitive: false)
+
+    expect(described_class.send(:document, attachment)['url'])
+      .to eq("#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}/system/media/test.png")
   end
 end

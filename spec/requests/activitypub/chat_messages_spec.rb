@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'ActivityPub chat messages' do
+RSpec.describe ActivityPub::ChatMessagesController, type: :request do
   let(:owner) { Fabricate(:user).account }
   let(:member) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/member', inbox_url: 'https://remote.test/users/member/inbox') }
   let(:stranger) { Fabricate(:account, domain: 'other.test', uri: 'https://other.test/users/stranger', inbox_url: 'https://other.test/users/stranger/inbox') }

@@ -30,6 +30,6 @@ class ChatConversation < ApplicationRecord
   end
 
   def local?
-    !remote?
+    owner_account.nil? || owner_account.local?
   end
 end

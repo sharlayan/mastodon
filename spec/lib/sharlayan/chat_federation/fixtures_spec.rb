@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Sharlayan chat federation fixtures' do
+RSpec.describe Sharlayan::ChatFederation::Incoming, type: :model do
   let(:alice) { Fabricate(:user).account }
   let(:bob) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/users/bob/inbox', can_chat: true, chat_scope: 'everyone') }
   let(:carol) { Fabricate(:account, domain: 'other.test', uri: 'https://other.test/users/carol', inbox_url: 'https://other.test/users/carol/inbox') }
@@ -95,7 +95,7 @@ RSpec.describe 'Sharlayan chat federation fixtures' do
     expect(conversation.reload.title).to eq('Updated room')
 
     perform(fixture('remove'))
-    expect(conversation.accounts).not_to include(carol)
+    expect(conversation.accounts).to_not include(carol)
 
     perform(fixture('delete_room'))
     expect(ChatConversation.find_by(id: conversation.id)).to be_nil

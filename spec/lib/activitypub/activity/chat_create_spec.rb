@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'ActivityPub chat Create' do
+RSpec.describe ActivityPub::Activity::Create, type: :model do
   let(:local) { Fabricate(:user, account_attributes: { username: 'alice' }) }
   let(:alice) { local.account }
   let(:bob) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/users/bob/inbox') }
@@ -31,13 +31,21 @@ RSpec.describe 'ActivityPub chat Create' do
     expect(Status.count).to eq(0)
   end
 
+  it 'finds the local recipient from the numeric AP inbox URI' do
+    payload['object']['to'] = [ActivityPub::TagManager.instance.uri_for_account_id(alice.id)]
+
+    expect do
+      ActivityPub::Activity.factory(payload, bob).perform
+    end.to change(ChatMessage, :count).by(1)
+  end
+
   it 'drops a policy-denied 1:1 message with 200' do
     alice.user.settings[:chat_policy] = 'none'
     alice.user.save!
 
     expect do
       ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
-    end.not_to change(ChatMessage, :count)
+    end.to_not change(ChatMessage, :count)
   end
 
   it 'does not resurrect a deleted message' do

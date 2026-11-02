@@ -57,7 +57,7 @@ module Sharlayan
         def reaction(message, account, reaction)
           {
             '@context' => CONTEXT,
-            'id' => reaction_id(message, account, reaction),
+            'id' => reaction_uri(message, account, reaction),
             'type' => 'EmojiReact',
             'actor' => actor_uri(account),
             'object' => message_uri(message),
@@ -97,7 +97,7 @@ module Sharlayan
           conversation = invitation.chat_conversation
           {
             '@context' => CONTEXT,
-            'id' => "#{room_uri(conversation)}#accept/#{invitation.invitee_account_id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#accept/#{invitation.invitee_account_id}",
             'type' => 'Accept',
             'actor' => actor_uri(invitation.invitee_account),
             'published' => Time.now.utc.iso8601,
@@ -109,7 +109,7 @@ module Sharlayan
           conversation = invitation.chat_conversation
           {
             '@context' => CONTEXT,
-            'id' => "#{room_uri(conversation)}#reject/#{invitation.invitee_account_id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#reject/#{invitation.invitee_account_id}",
             'type' => 'Reject',
             'actor' => actor_uri(invitation.invitee_account),
             'published' => Time.now.utc.iso8601,
@@ -118,9 +118,10 @@ module Sharlayan
         end
 
         def reject_invite(owner, invitee, room)
+          room_uri = room.is_a?(Hash) ? room['id'] : room
           {
             '@context' => CONTEXT,
-            'id' => "#{room.is_a?(Hash) ? room['id'] : room}#reject/#{invitee.id}",
+            'id' => "#{base_url}/chat/rooms/#{room_uri.to_s.split('/').last}#reject/#{invitee.id}",
             'type' => 'Reject',
             'actor' => actor_uri(invitee),
             'published' => Time.now.utc.iso8601,
@@ -137,7 +138,7 @@ module Sharlayan
           conversation = invitation.chat_conversation
           {
             '@context' => CONTEXT,
-            'id' => "#{room_uri(conversation)}#cancel/#{invitation.invitee_account_id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#cancel/#{invitation.invitee_account_id}",
             'type' => 'Undo',
             'actor' => actor_uri(invitation.inviter_account),
             'published' => Time.now.utc.iso8601,
@@ -148,7 +149,7 @@ module Sharlayan
         def add(conversation, account)
           {
             '@context' => CONTEXT,
-            'id' => "#{room_uri(conversation)}#add/#{account.id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#add/#{account.id}",
             'type' => 'Add',
             'actor' => actor_uri(conversation.owner_account),
             'target' => room_uri(conversation),
@@ -160,7 +161,7 @@ module Sharlayan
         def remove(conversation, account)
           {
             '@context' => CONTEXT,
-            'id' => "#{room_uri(conversation)}#remove/#{account.id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#remove/#{account.id}",
             'type' => 'Remove',
             'actor' => actor_uri(account),
             'target' => room_uri(conversation),
@@ -241,8 +242,8 @@ module Sharlayan
 
         private
 
-        def reaction_id(message, account, reaction)
-          "#{message_uri(message)}#reaction/#{account.id}/#{ERB::Util.url_encode(reaction)}"
+        def reaction_uri(message, account, reaction)
+          "#{base_url}/chat/reactions/#{message.id}/#{account.id}/#{ERB::Util.url_encode(reaction)}"
         end
 
         def invite_object(conversation, invitation)
@@ -255,17 +256,20 @@ module Sharlayan
         end
 
         def document(attachment)
+          url = attachment.file&.url
+          url = "#{base_url}#{url}" if url&.start_with?('/')
+
           {
             'type' => 'Document',
             'mediaType' => attachment.file_content_type,
-            'url' => attachment.file&.url,
+            'url' => url,
             'name' => attachment.description,
             'sensitive' => false,
           }
         end
 
         def base_url
-          "https://#{Rails.configuration.x.local_domain}"
+          "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}"
         end
       end
     end

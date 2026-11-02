@@ -409,8 +409,7 @@ class Sharlayan::ChatService
       account: actor,
       remote_url: url.to_s,
       file_content_type: document['mediaType'].presence || 'image/jpeg',
-      description: document['name'],
-      sensitive: document['sensitive'] == true
+      description: document['name']
     )
     message.chat_message_media_attachments.create!(media_attachment: attachment)
   rescue StandardError => e
@@ -452,11 +451,15 @@ class Sharlayan::ChatService
   end
 
   def local_message_uri(message)
-    "https://#{Rails.configuration.x.local_domain}/chat/messages/#{message.id}"
+    "#{local_base_url}/chat/messages/#{message.id}"
   end
 
   def local_room_uri(conversation)
-    "https://#{Rails.configuration.x.local_domain}/chat/rooms/#{conversation.id}"
+    "#{local_base_url}/chat/rooms/#{conversation.id}"
+  end
+
+  def local_base_url
+    "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}"
   end
 
   def hide_instead_of_delete?(message)

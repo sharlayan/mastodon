@@ -330,7 +330,8 @@ module Sharlayan
           values = object['to']
           values = [values] unless values.is_a?(Array)
           values.filter_map do |value|
-            ::Account.find_by(uri: uri_of(value))
+            uri = uri_of(value)
+            ActivityPub::TagManager.instance.uri_to_resource(uri, ::Account)
           end
         end
 
