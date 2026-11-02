@@ -269,7 +269,7 @@ module Sharlayan
         end
 
         def base_url
-          "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}"
+          "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.web_domain}"
         end
       end
     end

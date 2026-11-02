@@ -11,9 +11,19 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
   def index
     conversations = ChatConversation.for_account(current_account)
       .includes(:accounts, :memberships, last_message: [:account, reactions: :account])
-      .order(last_message_id: :desc, id: :desc)
+      .order(Arel.sql('chat_conversations.last_message_id DESC NULLS LAST, chat_conversations.id DESC'))
       .limit(limit_param(LIMIT, 40))
-    conversations = conversations.where(id: ...params[:max_id]) if params[:max_id].present?
+    if params[:max_id].present?
+      cursor = ChatConversation.for_account(current_account).find(params[:max_id])
+      conversations = if cursor.last_message_id.nil?
+                        conversations.where(last_message_id: nil).where(id: ...cursor.id)
+                      else
+                        conversations.where(
+                          'chat_conversations.last_message_id < :message_id OR (chat_conversations.last_message_id = :message_id AND chat_conversations.id < :id) OR chat_conversations.last_message_id IS NULL',
+                          message_id: cursor.last_message_id, id: cursor.id
+                        )
+                      end
+    end
     render json: conversations, each_serializer: REST::ChatConversationSerializer, current_account: current_account
   end
 

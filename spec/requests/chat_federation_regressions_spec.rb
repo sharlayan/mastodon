@@ -218,9 +218,23 @@ RSpec.describe 'Chat federation regressions' do
   describe 'incoming roster' do
     let(:conversation) { service.receive_invite(owner, remote, room_uri: remote_room_uri, title: 'Remote room').chat_conversation }
 
-    it 'resolves canonical local actor URIs for Add' do
+    it 'resolves canonical local actor URIs for an already accepted member' do
+      invitation = service.receive_invite(invitee, remote, room_uri: conversation.uri, title: 'Remote room')
+      service.accept_invitation(invitee, invitation)
       perform('type' => 'Add', 'actor' => remote.uri, 'target' => conversation.uri, 'object' => ActivityPub::TagManager.instance.uri_for(invitee))
       expect(conversation.accounts).to include(invitee)
+    end
+
+    it 'does not allow Add to enroll a local user without their consent' do
+      perform('type' => 'Add', 'actor' => remote.uri, 'target' => conversation.uri, 'object' => ActivityPub::TagManager.instance.uri_for(invitee))
+      expect(conversation.accounts).to_not include(invitee)
+    end
+
+    it 'does not allow Add to accept a pending local invitation' do
+      invitation = service.receive_invite(invitee, remote, room_uri: conversation.uri, title: 'Remote room')
+      perform('type' => 'Add', 'actor' => remote.uri, 'target' => conversation.uri, 'object' => ActivityPub::TagManager.instance.uri_for(invitee))
+      expect(conversation.accounts).to_not include(invitee)
+      expect(invitation.reload).to be_pending
     end
 
     it 'fetches unknown actors for Add' do

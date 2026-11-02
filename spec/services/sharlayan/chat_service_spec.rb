@@ -18,12 +18,129 @@ RSpec.describe Sharlayan::ChatService do
     Setting.chat_enabled = true
     Setting.chat_federation_enabled = true
     Setting.chat_soft_delete_enabled = false
+    Setting.chat_max_group_members = 50
   end
 
   after do
     Setting.chat_enabled = false
     Setting.chat_federation_enabled = false
     Setting.chat_soft_delete_enabled = false
+    Setting.chat_max_group_members = 50
+  end
+
+  describe 'invitation lifecycle' do
+    let(:conversation) { service.create_conversation(local_account, type: :group, title: 'Room') }
+
+    %w(rejected cancelled accepted).each do |state|
+      it "allows a new invitation after a previous #{state} invitation" do
+        invitation = service.invite(local_account, conversation, remote_account)
+        invitation.update!(state: state)
+        new_invitation = service.invite(local_account, conversation, remote_account)
+
+        expect(new_invitation).to be_pending
+        expect(new_invitation.id).to_not eq(invitation.id)
+      end
+    end
+
+    it 'rejects remote acceptance after the owner archives the room' do
+      invitation = service.invite(local_account, conversation, remote_account)
+      service.archive(local_account, conversation, archived: true)
+
+      expect { service.receive_accept(remote_account, room_uri: conversation.uri) }.to raise_error(described_class::Error)
+      expect(invitation.reload).to be_pending
+      expect(conversation.accounts).to_not include(remote_account)
+    end
+
+    it 'rejects remote acceptance after the owner blocks the invitee' do
+      service.invite(local_account, conversation, remote_account)
+      local_account.block!(remote_account)
+
+      expect { service.receive_accept(remote_account, room_uri: conversation.uri) }.to raise_error(described_class::Forbidden)
+      expect(conversation.accounts).to_not include(remote_account)
+    end
+
+    it 'rejects remote acceptance when the group is already full' do
+      service.invite(local_account, conversation, remote_account)
+      Setting.chat_max_group_members = 1
+
+      expect { service.receive_accept(remote_account, room_uri: conversation.uri) }.to raise_error(described_class::Error)
+      expect(conversation.accounts).to_not include(remote_account)
+    end
+  end
+
+  describe 'remote message lifecycle' do
+    let(:conversation) do
+      service.create_conversation(local_account, type: :group, title: 'Room').tap do |room|
+        room.memberships.create!(account: remote_account)
+      end
+    end
+
+    it 'rejects remote messages to archived groups' do
+      service.archive(local_account, conversation, archived: true)
+      expect do
+        service.receive_group_message(remote_account, room_uri: conversation.uri, uri: 'https://remote.test/chat/messages/archived', text: 'blocked')
+      end.to raise_error(described_class::Error)
+      expect(conversation.messages).to be_empty
+    end
+
+    it 'rejects remote edits and reactions in archived groups' do
+      message = service.receive_group_message(remote_account, room_uri: conversation.uri, uri: 'https://remote.test/chat/messages/edit', text: 'original')
+      local_message = service.create_message(local_account, conversation, text: 'local')
+      service.archive(local_account, conversation, archived: true)
+
+      expect { service.update_remote_message(remote_account, message.reload, text: 'edited', edited_at: Time.current) }.to raise_error(described_class::Error)
+      expect { service.react_remote(remote_account, local_message, '👍') }.to raise_error(described_class::Error)
+      expect(message.reload.text).to eq('original')
+      expect(local_message.reactions).to be_empty
+    end
+
+    it 'does not let a delayed remote edit replace newer content' do
+      message = service.receive_group_message(remote_account, room_uri: conversation.uri, uri: 'https://remote.test/chat/messages/ordered', text: 'original')
+      latest = Time.current.change(usec: 0)
+      service.update_remote_message(remote_account, message, text: 'newer', edited_at: latest)
+      service.update_remote_message(remote_account, message, text: 'older', edited_at: latest - 1.minute)
+
+      expect(message.reload).to have_attributes(text: 'newer', edited_at: latest)
+    end
+
+    it 'rejects remote edits and reactions after a direct participant blocks the actor' do
+      conversation = service.create_conversation(local_account, type: :direct, account_ids: [remote_account.id])
+      remote_message = service.receive_direct_message(local_account, remote_account, uri: 'https://remote.test/chat/messages/blocked', text: 'original')
+      local_message = service.create_message(local_account, conversation, text: 'local')
+      local_account.block!(remote_account)
+
+      expect { service.update_remote_message(remote_account, remote_message, text: 'blocked', edited_at: Time.current) }.to raise_error(described_class::Forbidden)
+      expect { service.react_remote(remote_account, local_message, '👍') }.to raise_error(described_class::Forbidden)
+      expect(remote_message.reload.text).to eq('original')
+      expect(local_message.reactions).to be_empty
+    end
+  end
+
+  describe 'media ownership' do
+    let(:conversation) { service.create_conversation(local_account, type: :direct, account_ids: [remote_account.id]) }
+
+    %i(scheduled_status status_draft page).each do |usage|
+      it "rejects an attachment already referenced by a #{usage}" do
+        media = Fabricate(:media_attachment, account: local_account)
+        if usage == :page
+          Fabricate(:page, account: local_account, eye_catching_media_attachment: media)
+        else
+          media.update!(usage => Fabricate(usage, account: local_account))
+        end
+
+        expect { service.create_message(local_account, conversation, text: 'private', media_ids: [media.id]) }.to raise_error(described_class::Error)
+        expect(conversation.messages).to be_empty
+      end
+    end
+  end
+
+  it 'stores local message and room URIs using the web domain' do
+    allow(Rails.configuration.x).to receive(:web_domain).and_return('social.example.com')
+    conversation = service.create_conversation(local_account, type: :group, title: 'Room')
+    message = service.create_message(local_account, conversation, text: 'hello')
+
+    expect(conversation.uri).to eq("https://social.example.com/chat/rooms/#{conversation.id}")
+    expect(message.uri).to eq("https://social.example.com/chat/messages/#{message.id}")
   end
 
   describe '#mark_read' do

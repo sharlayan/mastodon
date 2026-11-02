@@ -7,7 +7,7 @@ class ChatInvitation < ApplicationRecord
   belongs_to :inviter_account, class_name: 'Account'
   belongs_to :invitee_account, class_name: 'Account'
 
-  validates :invitee_account_id, uniqueness: { scope: :chat_conversation_id }, if: :pending?
+  validates :invitee_account_id, uniqueness: { scope: :chat_conversation_id, conditions: -> { pending } }, if: :pending?
   validate :group_conversation
   validate :different_accounts
 

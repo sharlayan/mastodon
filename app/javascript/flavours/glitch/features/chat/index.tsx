@@ -17,6 +17,7 @@ import { Button } from 'flavours/glitch/components/button';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Icon } from 'flavours/glitch/components/icon';
+import { LoadMore } from 'flavours/glitch/components/load_more';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import { useIdentity } from 'flavours/glitch/identity_context';
@@ -48,6 +49,8 @@ interface ChatMessage {
   reactions: ChatReaction[];
   media_attachments: ChatMedia[];
 }
+
+type MessageUpdate = (messages: ChatMessage[]) => ChatMessage[];
 
 interface ChatMedia {
   id: string;
@@ -164,6 +167,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const { signedIn } = useIdentity();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [nextConversationId, setNextConversationId] = useState<string | null>(
+    null,
+  );
+  const [olderMessageId, setOlderMessageId] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<ChatHomeTab>('home');
   const [messagesList, setMessagesList] = useState<ChatMessage[]>([]);
   const [directAccountQuery, setDirectAccountQuery] = useState('');
@@ -213,6 +221,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     };
   }, []);
 
+  const pendingMessageUpdates = useRef(new Set<MessageUpdate[]>());
+  const latestMessageRequest = useRef(0);
+  const conversationPages = useRef(1);
+  const updateMessages = useCallback((update: MessageUpdate) => {
+    pendingMessageUpdates.current.forEach((updates) => updates.push(update));
+    setMessagesList(update);
+  }, []);
+
   const conversation = useMemo(
     () => conversations.find((item) => item.id === conversationId),
     [conversationId, conversations],
@@ -258,11 +274,55 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   const loadConversations = useCallback(async () => {
-    const response = await api().get<ChatConversation[]>(
-      '/api/v1/chat/conversations',
-    );
-    setConversations(response.data);
-  }, []);
+    const loaded: ChatConversation[] = [];
+    let cursor: string | null = null;
+    for (let page = 0; page < conversationPages.current; page++) {
+      const { data }: { data: ChatConversation[] } = await api().get<
+        ChatConversation[]
+      >(
+        '/api/v1/chat/conversations',
+        cursor ? { params: { max_id: cursor } } : undefined,
+      );
+      loaded.push(...data);
+      cursor = data.length === 20 ? (data.at(-1)?.id ?? null) : null;
+      if (!cursor) break;
+    }
+    setNextConversationId(cursor);
+    if (conversationId && !loaded.some((item) => item.id === conversationId)) {
+      const selected = await api().get<ChatConversation>(
+        `/api/v1/chat/conversations/${conversationId}`,
+      );
+      loaded.push(selected.data);
+    }
+    setConversations(loaded);
+  }, [conversationId]);
+
+  const loadMoreConversations = useCallback(() => {
+    if (!nextConversationId || loadingMore) return;
+    setLoadingMore(true);
+    void api()
+      .get<ChatConversation[]>('/api/v1/chat/conversations', {
+        params: { max_id: nextConversationId },
+      })
+      .then(({ data }) => {
+        conversationPages.current += 1;
+        setConversations((current) => [
+          ...current,
+          ...data.filter(
+            (item) => !current.some((existing) => existing.id === item.id),
+          ),
+        ]);
+        setNextConversationId(
+          data.length === 20 ? (data.at(-1)?.id ?? null) : null,
+        );
+      })
+      .catch(() => {
+        setError('load');
+      })
+      .finally(() => {
+        setLoadingMore(false);
+      });
+  }, [loadingMore, nextConversationId]);
 
   const loadInvitations = useCallback(async () => {
     const response = await api().get<ChatInvitation[]>(
@@ -273,10 +333,30 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const loadMessages = useCallback(async () => {
     if (!conversationId) return;
-    const response = await api().get<ChatMessage[]>(
-      `/api/v1/chat/conversations/${conversationId}/messages`,
+    // Replay mutations received after this request started so a delayed
+    // snapshot cannot erase new messages, edits or reactions.
+    const updates: MessageUpdate[] = [];
+    pendingMessageUpdates.current.add(updates);
+    const requestId = ++latestMessageRequest.current;
+    const response = await api()
+      .get<ChatMessage[]>(
+        `/api/v1/chat/conversations/${conversationId}/messages`,
+      )
+      .catch((error: unknown) => {
+        pendingMessageUpdates.current.delete(updates);
+        throw error;
+      });
+    pendingMessageUpdates.current.delete(updates);
+    if (requestId !== latestMessageRequest.current) return;
+    setOlderMessageId(
+      response.data.length === 40 ? (response.data[0]?.id ?? null) : null,
     );
-    setMessagesList(response.data.map(applyTombstone));
+    setMessagesList(
+      updates.reduce(
+        (items, update) => update(items),
+        response.data.map(applyTombstone),
+      ),
+    );
     await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
     setConversations((current) =>
       current.map((item) =>
@@ -285,44 +365,64 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     );
   }, [applyTombstone, conversationId]);
 
+  const loadOlderMessages = useCallback(() => {
+    if (!olderMessageId || !conversationId || loadingMore) return;
+    setLoadingMore(true);
+    const updates: MessageUpdate[] = [];
+    pendingMessageUpdates.current.add(updates);
+    void api()
+      .get<ChatMessage[]>(
+        `/api/v1/chat/conversations/${conversationId}/messages`,
+        { params: { max_id: olderMessageId } },
+      )
+      .then(({ data }) => {
+        pendingMessageUpdates.current.delete(updates);
+        const older = updates.reduce(
+          (items, update) => update(items),
+          data.map(applyTombstone),
+        );
+        updateMessages((current) => [
+          ...older.filter(
+            (item) => !current.some((existing) => existing.id === item.id),
+          ),
+          ...current,
+        ]);
+        setOlderMessageId(data.length === 40 ? (data[0]?.id ?? null) : null);
+      })
+      .catch(() => {
+        setError('load');
+      })
+      .finally(() => {
+        pendingMessageUpdates.current.delete(updates);
+        setLoadingMore(false);
+      });
+  }, [
+    applyTombstone,
+    conversationId,
+    loadingMore,
+    olderMessageId,
+    updateMessages,
+  ]);
+
   useEffect(() => {
     Promise.all([
-      api().get<ChatConversation[]>('/api/v1/chat/conversations'),
-      api().get<ChatInvitation[]>('/api/v1/chat/invitations'),
+      Promise.resolve().then(loadConversations),
+      Promise.resolve().then(loadInvitations),
       api().get<ChatSettings>('/api/v1/chat/settings'),
     ])
-      .then(([conversationResponse, invitationResponse, settingsResponse]) => {
-        setConversations(conversationResponse.data);
-        setInvitations(invitationResponse.data);
+      .then(([, , settingsResponse]) => {
         setChatSettings(settingsResponse.data);
       })
       .catch(() => {
         setError('load');
       });
-  }, []);
+  }, [loadConversations, loadInvitations]);
 
   useEffect(() => {
-    if (!conversationId) return;
-
-    api()
-      .get<ChatMessage[]>(
-        `/api/v1/chat/conversations/${conversationId}/messages`,
-      )
-      .then((response) => {
-        setMessagesList(response.data.map(applyTombstone));
-        return api().post(`/api/v1/chat/conversations/${conversationId}/read`);
-      })
-      .then(() => {
-        setConversations((current) =>
-          current.map((item) =>
-            item.id === conversationId ? { ...item, unread: false } : item,
-          ),
-        );
-      })
-      .catch(() => {
-        setError('load');
-      });
-  }, [applyTombstone, conversationId]);
+    void loadMessages().catch(() => {
+      setError('load');
+    });
+  }, [loadMessages]);
 
   useEffect(
     () =>
@@ -338,7 +438,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           value.conversation_id === conversationId
         ) {
           const message = applyTombstone(value as ChatMessage);
-          setMessagesList((current) =>
+          updateMessages((current) =>
             current.some((item) => item.id === value.id)
               ? current
               : [...current, message],
@@ -349,7 +449,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           value.conversation_id === conversationId
         ) {
           const message = applyTombstone(value as ChatMessage);
-          setMessagesList((current) =>
+          updateMessages((current) =>
             current.map((item) => (item.id === value.id ? message : item)),
           );
           void loadConversations();
@@ -359,7 +459,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         ) {
           if (!value.id) return;
           deletedMessages.current.set(value.id, new Date().toISOString());
-          setMessagesList((current) =>
+          updateMessages((current) =>
             current.map((item) =>
               item.id === value.id ? applyTombstone(item) : item,
             ),
@@ -369,7 +469,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (!value.message_id || !value.account?.id || !value.reaction)
             return;
           const reaction = value as ChatReaction;
-          setMessagesList((current) =>
+          updateMessages((current) =>
             current.map((item) =>
               item.id === reaction.message_id && !item.deleted_at
                 ? {
@@ -393,7 +493,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             reaction: string;
           };
 
-          setMessagesList((current) =>
+          updateMessages((current) =>
             current.map((item) =>
               item.id === deleted.message_id
                 ? {
@@ -427,6 +527,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       loadConversations,
       loadInvitations,
       loadMessages,
+      updateMessages,
     ],
   );
 
@@ -471,7 +572,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             },
           );
       const message = applyTombstone(response.data);
-      setMessagesList((current) =>
+      updateMessages((current) =>
         current.some((item) => item.id === message.id)
           ? current.map((item) => (item.id === message.id ? message : item))
           : [...current, message],
@@ -485,7 +586,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     } finally {
       setLoading(false);
     }
-  }, [applyTombstone, conversationId, editingId, media, replyToId, text]);
+  }, [
+    applyTombstone,
+    conversationId,
+    editingId,
+    media,
+    replyToId,
+    text,
+    updateMessages,
+  ]);
 
   const handleComposerSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
@@ -757,7 +866,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           reaction,
         })
         .then((response) => {
-          setMessagesList((current) =>
+          updateMessages((current) =>
             current.map((item) =>
               item.id === messageId && !item.deleted_at
                 ? {
@@ -776,7 +885,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
         });
     },
-    [],
+    [updateMessages],
   );
 
   const handleReactionClick = useCallback(
@@ -792,7 +901,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           `/api/v1/chat/messages/${messageId}/reactions/${encodeURIComponent(reaction)}`,
         )
         .then(() => {
-          setMessagesList((current) =>
+          updateMessages((current) =>
             current.map((item) =>
               item.id === messageId
                 ? {
@@ -808,7 +917,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
         });
     },
-    [],
+    [updateMessages],
   );
 
   const handleRemoveMedia = useCallback(
@@ -1143,6 +1252,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   ))}
                 </div>
               </section>
+            )}
+            {olderMessageId && (
+              <LoadMore onClick={loadOlderMessages} loading={loadingMore} />
             )}
             <div className='chat-native__messages'>
               {messagesList.map((message) => (
@@ -1713,6 +1825,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     {item.unread && <i aria-label='Unread' />}
                   </button>
                 ))}
+                {nextConversationId && (
+                  <LoadMore
+                    onClick={loadMoreConversations}
+                    loading={loadingMore}
+                  />
+                )}
                 {visibleConversations.length === 0 && (
                   <div className='chat-native__empty'>
                     {activeTab === 'home' ? (

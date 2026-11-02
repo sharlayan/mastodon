@@ -271,6 +271,13 @@ class Sharlayan::ChatService
     raise Error, 'Invitation not found' if invitation.nil?
 
     conversation.with_lock do
+      invitation.lock!
+      raise Forbidden unless invitation.pending?
+
+      ensure_conversation_writable!(conversation)
+      raise Forbidden if blocked_in_either_direction?(invitation.inviter_account, actor)
+
+      ensure_group_capacity!(conversation)
       conversation.memberships.find_or_create_by!(account: actor)
       invitation.update!(state: :accepted)
     end
@@ -304,6 +311,7 @@ class Sharlayan::ChatService
     account = ActivityPub::TagManager.instance.uri_to_resource(account_uri, Account)
     account ||= ActivityPub::FetchRemoteAccountService.new.call(account_uri) unless ActivityPub::TagManager.instance.local_uri?(account_uri)
     raise Error, 'Unknown account' if account.nil?
+    raise Forbidden if account.local? && !conversation.memberships.exists?(account: account)
 
     conversation.memberships.find_or_create_by!(account: account)
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
@@ -344,7 +352,16 @@ class Sharlayan::ChatService
     raise Forbidden unless message.account_id == actor.id
     raise Error, 'Deleted messages cannot be edited' if message.deleted?
 
-    message.update!(text: text.to_s.strip.presence, edited_at: edited_at || Time.current)
+    membership!(actor, message.chat_conversation)
+    ensure_conversation_writable!(message.chat_conversation)
+    ensure_direct_participants_not_blocked!(actor, message.chat_conversation)
+
+    message.with_lock do
+      raise Error, 'Deleted messages cannot be edited' if message.deleted?
+      return message if edited_at && message.edited_at && edited_at <= message.edited_at
+
+      message.update!(text: text.to_s.strip.presence, edited_at: edited_at || Time.current)
+    end
     broadcast(message.chat_conversation, 'chat.message_update', message, REST::ChatMessageSerializer)
     message
   end
@@ -363,6 +380,8 @@ class Sharlayan::ChatService
 
   def react_remote(actor, message, reaction)
     membership!(actor, message.chat_conversation)
+    ensure_conversation_writable!(message.chat_conversation)
+    ensure_direct_participants_not_blocked!(actor, message.chat_conversation)
     raise Error, 'Deleted messages cannot receive reactions' if message.deleted?
     raise Forbidden if message.account_id == actor.id
 
@@ -396,6 +415,9 @@ class Sharlayan::ChatService
     existing = ChatMessage.find_by(uri: uri)
     return existing if existing
     raise Forbidden unless conversation.memberships.exists?(account: actor)
+
+    ensure_conversation_writable!(conversation)
+    ensure_direct_participants_not_blocked!(actor, conversation)
 
     message = nil
     conversation.with_lock do
@@ -481,7 +503,7 @@ class Sharlayan::ChatService
   end
 
   def local_base_url
-    "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}"
+    "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.web_domain}"
   end
 
   def hide_instead_of_delete?(message)
@@ -580,7 +602,7 @@ class Sharlayan::ChatService
     normalized_ids = ids.map(&:to_s).uniq
     raise Error, "A chat message can contain up to #{Setting.chat_max_attachments} attachments" if normalized_ids.size > Setting.chat_max_attachments
 
-    attachments = MediaAttachment.where(id: normalized_ids, account: account, status_id: nil).to_a
+    attachments = MediaAttachment.unattached.where(id: normalized_ids, account: account).to_a
     raise Error, 'One or more media attachments were not found' unless attachments.size == normalized_ids.size
     raise Error, 'One or more media attachments are already in use' if ChatMessageMediaAttachment.exists?(media_attachment_id: normalized_ids)
 

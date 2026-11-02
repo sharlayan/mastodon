@@ -15,6 +15,17 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     ChatMessage.create!(chat_conversation: conversation, account: owner, text: '<b>hi</b>')
   end
 
+  it 'uses the web domain for object, activity and relative attachment URLs' do
+    allow(Rails.configuration.x).to receive(:web_domain).and_return('social.example.com')
+    file = double(url: '/system/media/test.png')
+    attachment = double(file: file, file_content_type: 'image/png', description: 'image')
+
+    expect(described_class.note(message)['id']).to eq("https://social.example.com/chat/messages/#{message.id}")
+    expect(described_class.room(conversation)['id']).to eq("https://social.example.com/chat/rooms/#{conversation.id}")
+    expect(described_class.reaction(message, remote, '👍')['id']).to start_with('https://social.example.com/chat/reactions/')
+    expect(described_class.send(:document, attachment)['url']).to eq('https://social.example.com/system/media/test.png')
+  end
+
   it 'builds a canonical chat note' do
     note = described_class.note(message)
 

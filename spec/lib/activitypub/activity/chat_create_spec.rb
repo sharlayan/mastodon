@@ -41,6 +41,39 @@ RSpec.describe 'Incoming ActivityPub chat messages', type: :model do
     expect(Status.count).to eq(0)
   end
 
+  %w(Create Update).each do |type|
+    it "handles a dereferenced chat #{type} without creating a status" do
+      object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams')
+      stub_request(:get, object['id']).to_return(body: object.to_json, headers: { 'Content-Type' => 'application/activity+json' })
+
+      ActivityPub::Activity.factory(payload.merge('type' => type, 'object' => object['id']), bob, delivered_to_account_id: alice.id).perform
+
+      expect(ChatMessage.find_by(uri: object['id'])).to be_present
+      expect(Status.where(uri: object['id'])).to be_empty
+    end
+
+    it "drops a dereferenced chat #{type} when federation is disabled" do
+      Setting.chat_federation_enabled = false
+      object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams')
+      stub_request(:get, object['id']).to_return(body: object.to_json, headers: { 'Content-Type' => 'application/activity+json' })
+
+      ActivityPub::Activity.factory(payload.merge('type' => type, 'object' => object['id']), bob, delivered_to_account_id: alice.id).perform
+
+      expect(ChatMessage.where(uri: object['id'])).to be_empty
+      expect(Status.where(uri: object['id'])).to be_empty
+    end
+  end
+
+  it 'does not allow a suspended actor to create a new message through Update' do
+    bob.suspend!
+    json = payload.merge('@context' => 'https://www.w3.org/ns/activitystreams', 'type' => 'Update')
+
+    ActivityPub::ProcessActivityService.new.call(json.to_json, bob, delivered_to_account_id: alice.id)
+
+    expect(ChatMessage.where(uri: payload['object']['id'])).to be_empty
+    expect(Status.where(uri: payload['object']['id'])).to be_empty
+  end
+
   it 'finds the local recipient from the numeric AP inbox URI' do
     payload['object']['to'] = [ActivityPub::TagManager.instance.uri_for_account_id(alice.id)]
 

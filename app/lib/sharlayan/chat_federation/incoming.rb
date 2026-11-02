@@ -57,6 +57,7 @@ module Sharlayan
 
           object = json['object']
           return 'skip: not a chat note' unless chat_create?(json)
+          return 'skip: suspended actor' if account.suspended?
           return 'skip: actor mismatch' unless authored_by?(object, account)
 
           uri = object['id']

@@ -56,6 +56,20 @@ RSpec.describe 'API V1 Chat' do
     expect(user.reload.settings[:chat_policy]).to eq('none')
   end
 
+  it 'paginates conversations in last-message order instead of creation order' do
+    service = Sharlayan::ChatService.new
+    older_room = service.create_conversation(user.account, type: :group, title: 'Older room')
+    newer_room = service.create_conversation(user.account, type: :group, title: 'Newer room')
+    service.create_message(user.account, newer_room, text: 'earlier')
+    service.create_message(user.account, older_room, text: 'latest')
+
+    get '/api/v1/chat/conversations', params: { limit: 1 }, headers: headers
+    expect(response.parsed_body.pluck(:id)).to eq([older_room.id.to_s])
+
+    get '/api/v1/chat/conversations', params: { limit: 1, max_id: older_room.id }, headers: headers
+    expect(response.parsed_body.pluck(:id)).to eq([newer_room.id.to_s])
+  end
+
   describe 'direct chat' do
     it 'creates one conversation per local account pair' do
       post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [other.account.id] }, headers: headers
@@ -484,5 +498,4 @@ RSpec.describe 'API V1 Chat' do
       expect(conversation.messages).to be_empty
     end
   end
-
 end

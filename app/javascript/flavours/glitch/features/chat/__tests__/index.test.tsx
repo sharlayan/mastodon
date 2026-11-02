@@ -154,6 +154,10 @@ const composer = () =>
 const getResponse = (url: string): Promise<{ data: unknown }> => {
   if (url === '/api/v1/chat/conversations')
     return Promise.resolve({ data: [conversation('A'), conversation('B')] });
+  if (/^\/api\/v1\/chat\/conversations\/[^/]+$/.test(url))
+    return Promise.resolve({
+      data: conversation(url.split('/').at(-1) ?? 'A'),
+    });
   if (url === '/api/v1/chat/invitations') return Promise.resolve({ data: [] });
   if (url === '/api/v1/chat/settings')
     return Promise.resolve({ data: settings });
@@ -284,7 +288,148 @@ describe('Chat conversation isolation', () => {
   );
 });
 
+describe('Chat pagination', () => {
+  it('loads the selected conversation even when it is outside the first list page', async () => {
+    mountChat('/chat/C');
+    expect(await screen.findByText('Room C')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Mute' })).toBeTruthy();
+  });
+
+  it('loads older messages without removing the current messages', async () => {
+    const recent = Array.from({ length: 40 }, (_, index) => ({
+      ...message(),
+      id: String(index + 10),
+      content: `Recent ${index}`,
+    }));
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/A/messages')) {
+          return Promise.resolve({
+            data:
+              options?.params?.max_id === '10'
+                ? [{ ...message(), id: '9', content: 'Older message' }]
+                : recent,
+          });
+        }
+        return getResponse(url);
+      },
+    );
+    mountChat();
+    await screen.findByText('Recent 39');
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    expect(await screen.findByText('Older message')).toBeTruthy();
+    expect(screen.getByText('Recent 39')).toBeTruthy();
+  });
+
+  it.each(['chat.message_update', 'chat.reaction'])(
+    'preserves %s received while an older message page is loading',
+    async (event) => {
+      const older = { ...message(), id: '9', content: 'Old content' };
+      const pending = deferred<{ data: (typeof older)[] }>();
+      const recent = Array.from({ length: 40 }, (_, index) => ({
+        ...message(),
+        id: String(index + 10),
+        content: `Recent ${index}`,
+      }));
+      api.get.mockImplementation(
+        (url: string, options?: { params?: { max_id?: string } }) => {
+          if (url.endsWith('/A/messages'))
+            return options?.params?.max_id
+              ? pending.promise
+              : Promise.resolve({ data: recent });
+          return getResponse(url);
+        },
+      );
+      mountChat();
+      await screen.findByText('Recent 39');
+      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+      act(() => {
+        emitChatStreamEvent({
+          event,
+          payload:
+            event === 'chat.reaction'
+              ? { ...reaction, message_id: '9' }
+              : { ...older, content: 'Edited history' },
+        });
+      });
+      await act(async () => {
+        pending.resolve({ data: [older] });
+        await pending.promise;
+      });
+      if (event === 'chat.reaction')
+        expect(screen.getByRole('button', { name: '🎉' })).toBeTruthy();
+      else expect(screen.getByText('Edited history')).toBeTruthy();
+    },
+  );
+
+  it('loads conversations beyond the first page', async () => {
+    const firstPage = Array.from({ length: 20 }, (_, index) =>
+      conversation(String(30 - index)),
+    );
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url === '/api/v1/chat/conversations') {
+          return Promise.resolve({
+            data:
+              options?.params?.max_id === '11'
+                ? [conversation('10')]
+                : firstPage,
+          });
+        }
+        return getResponse(url);
+      },
+    );
+    mountChat('/chat');
+    await screen.findByText('Room 30');
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    expect(await screen.findByText('Room 10')).toBeTruthy();
+    expect(screen.getByText('Room 30')).toBeTruthy();
+    await act(async () => {
+      emitChatStreamEvent({ event: 'chat.message', payload: message() });
+      await Promise.resolve();
+    });
+    expect(screen.getByText('Room 10')).toBeTruthy();
+  });
+});
+
 describe('Chat live updates', () => {
+  it.each(['chat.message', 'chat.message_update', 'chat.reaction'])(
+    'preserves %s received while the initial message snapshot is pending',
+    async (event) => {
+      const pending = deferred<{ data: ReturnType<typeof message>[] }>();
+      api.get.mockImplementation((url: string) =>
+        url.includes('/A/messages') ? pending.promise : getResponse(url),
+      );
+      mountChat();
+      await screen.findByText('Room A');
+      act(() => {
+        emitChatStreamEvent({
+          event,
+          payload:
+            event === 'chat.reaction'
+              ? reaction
+              : {
+                  ...message(),
+                  id: event === 'chat.message' ? 'new-A' : 'message-A',
+                  content: 'Live content',
+                },
+        });
+      });
+      await act(async () => {
+        pending.resolve({ data: [message()] });
+        await pending.promise;
+      });
+      if (event === 'chat.reaction') {
+        expect(screen.getByRole('button', { name: '🎉' })).toBeTruthy();
+      } else {
+        expect(screen.getByText('Live content')).toBeTruthy();
+        if (event === 'chat.message')
+          expect(screen.getByText('Private message A')).toBeTruthy();
+        else expect(screen.queryByText('Private message A')).toBeNull();
+      }
+    },
+  );
+
   it('removes private attachments and reactions when a message is deleted', async () => {
     api.get.mockImplementation((url: string) =>
       url.includes('/A/messages')

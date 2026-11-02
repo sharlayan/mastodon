@@ -15,6 +15,13 @@ class ActivityPub::Activity::Update < ActivityPub::Activity
 
     dereference_object!
 
+    resolved_json = @json.merge('object' => @object)
+    if Sharlayan::ChatFederation::Incoming.chat_update?(resolved_json)
+      return Sharlayan::ChatFederation::Incoming.handle_update(resolved_json, @account, **@options)
+    elsif Sharlayan::ChatFederation::Incoming.chat_room?(resolved_json)
+      return Sharlayan::ChatFederation::Incoming.handle_room_update(resolved_json, @account)
+    end
+
     if equals_or_includes_any?(@object['type'], %w(Application Group Organization Person Service))
       update_account
     elsif supported_object_type? || converted_object_type?
