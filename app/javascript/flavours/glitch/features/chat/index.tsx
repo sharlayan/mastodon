@@ -149,6 +149,16 @@ const conversationName = (conversation: ChatConversation) => {
 };
 
 export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
+  const { conversationId } = useParams<{ conversationId?: string }>();
+
+  // Each visit owns its messages, composer and pending async completions, even
+  // when the router reuses Chat across room and home navigation.
+  return (
+    <ChatSession key={conversationId ?? 'home'} multiColumn={multiColumn} />
+  );
+};
+
+const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
   const history = useHistory();
   const { conversationId } = useParams<{ conversationId?: string }>();
@@ -235,6 +245,13 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       '/api/v1/chat/conversations',
     );
     setConversations(response.data);
+  }, []);
+
+  const loadInvitations = useCallback(async () => {
+    const response = await api().get<ChatInvitation[]>(
+      '/api/v1/chat/invitations',
+    );
+    setInvitations(response.data);
   }, []);
 
   const loadMessages = useCallback(async () => {
@@ -326,38 +343,39 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setMessagesList((current) =>
             current.map((item) =>
               item.id === value.id
-                ? { ...item, deleted_at: new Date().toISOString() }
+                ? {
+                    ...item,
+                    content: null,
+                    deleted_at: new Date().toISOString(),
+                    media_attachments: [],
+                    reactions: [],
+                  }
                 : item,
             ),
           );
           void loadConversations();
-        } else if (
-          event === 'chat.reaction' &&
-          value.message_id
-        ) {
+        } else if (event === 'chat.reaction') {
+          if (!value.message_id || !value.account?.id || !value.reaction)
+            return;
+          const reaction = value as ChatReaction;
           setMessagesList((current) =>
             current.map((item) =>
-              item.id === value.message_id
+              item.id === reaction.message_id && !item.deleted_at
                 ? {
                     ...item,
                     reactions: [
                       ...item.reactions.filter(
                         (existing) =>
-                          existing.account.id !==
-                            (value as unknown as ChatReaction).account.id ||
-                          existing.reaction !==
-                            (value as unknown as ChatReaction).reaction,
+                          existing.account.id !== reaction.account.id ||
+                          existing.reaction !== reaction.reaction,
                       ),
-                      value as unknown as ChatReaction,
+                      reaction,
                     ],
                   }
                 : item,
             ),
           );
-        } else if (
-          event === 'chat.reaction_delete' &&
-          value.message_id
-        ) {
+        } else if (event === 'chat.reaction_delete' && value.message_id) {
           const deleted = value as unknown as {
             message_id: string;
             account_id: string;
@@ -378,6 +396,11 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 : item,
             ),
           );
+        } else if (event === 'chat.invitation') {
+          void loadInvitations().catch(() => {
+            setError('load');
+          });
+          void loadConversations();
         } else if (
           event !== 'chat.notification' &&
           event !== 'chat.read' &&
@@ -387,7 +410,7 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (value.conversation_id === conversationId) void loadMessages();
         }
       }),
-    [conversationId, loadConversations, loadMessages],
+    [conversationId, loadConversations, loadInvitations, loadMessages],
   );
 
   const createDirect = useCallback(async () => {
@@ -715,12 +738,12 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
       void api()
         .post<ChatReaction>(`/api/v1/chat/messages/${messageId}/reactions`, {
-        reaction,
-      })
+          reaction,
+        })
         .then((response) => {
           setMessagesList((current) =>
             current.map((item) =>
-              item.id === messageId
+              item.id === messageId && !item.deleted_at
                 ? {
                     ...item,
                     reactions: [
