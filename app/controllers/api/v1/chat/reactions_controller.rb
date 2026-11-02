@@ -18,6 +18,8 @@ class Api::V1::Chat::ReactionsController < Api::V1::Chat::BaseController
   private
 
   def set_message
-    @message = ChatMessage.find(params[:message_id])
+    @message = ChatMessage.visible_to(current_account).joins(chat_conversation: :memberships)
+      .where(chat_memberships: { account_id: current_account.id })
+      .find(params[:message_id])
   end
 end

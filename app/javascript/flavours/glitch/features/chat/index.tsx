@@ -35,6 +35,10 @@ interface ChatReaction {
   message_id: string;
   reaction: string;
   account: ChatAccount;
+  url?: string;
+  static_url?: string;
+  domain?: string | null;
+  is_sensitive?: boolean;
 }
 
 interface ChatMessage {
@@ -54,8 +58,8 @@ type MessageUpdate = (messages: ChatMessage[]) => ChatMessage[];
 
 interface ChatMedia {
   id: string;
-  url: string;
-  preview_url: string;
+  url: string | null;
+  preview_url: string | null;
   type: string;
   description: string | null;
 }
@@ -151,6 +155,20 @@ const conversationName = (conversation: ChatConversation) => {
     .join(', ');
 };
 
+const waitForMedia = async (media: ChatMedia): Promise<ChatMedia> => {
+  if (media.url) return media;
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const response = await api().get<ChatMedia>(`/api/v1/media/${media.id}`);
+    if (response.data.url) return response.data;
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 1000);
+    });
+  }
+
+  throw new Error('Media processing timed out');
+};
+
 export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { conversationId } = useParams<{ conversationId?: string }>();
 
@@ -204,6 +222,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const deletedMessages = useRef(new Map<string, string>());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const searchRequestRef = useRef(0);
+  const searchTimeoutRef = useRef<number | null>(null);
 
   const applyTombstone = useCallback((message: ChatMessage): ChatMessage => {
     if (message.deleted_at && !deletedMessages.current.has(message.id)) {
@@ -252,23 +273,40 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [activeTab, conversations]);
 
   const searchAccounts = useCallback(
-    async (query: string, setter: (accounts: ChatAccount[]) => void) => {
-      if (query.trim().length < 2) {
+    (query: string, setter: (accounts: ChatAccount[]) => void) => {
+      const normalized = query.trim();
+      const requestId = searchRequestRef.current + 1;
+      searchRequestRef.current = requestId;
+
+      if (searchTimeoutRef.current !== null) {
+        window.clearTimeout(searchTimeoutRef.current);
+      }
+
+      if (normalized.length < 2) {
         setter([]);
         return;
       }
-      const response = await api().get<{ accounts: ChatAccount[] }>(
-        '/api/v2/search',
-        {
-          params: {
-            q: query.trim(),
-            type: 'accounts',
-            resolve: true,
-            limit: 8,
-          },
-        },
-      );
-      setter(response.data.accounts.filter((account) => account.id !== me));
+
+      searchTimeoutRef.current = window.setTimeout(() => {
+        void api()
+          .get<{ accounts: ChatAccount[] }>('/api/v2/search', {
+            params: {
+              q: normalized,
+              type: 'accounts',
+              resolve: true,
+              limit: 8,
+            },
+          })
+          .then((response) => {
+            if (requestId !== searchRequestRef.current) return;
+            setter(
+              response.data.accounts.filter((account) => account.id !== me),
+            );
+          })
+          .catch(() => {
+            if (requestId === searchRequestRef.current) setter([]);
+          });
+      }, 250);
     },
     [],
   );
@@ -475,6 +513,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             ),
           );
           void loadConversations();
+        } else if (
+          event === 'chat.message_hide' &&
+          value.conversation_id === conversationId
+        ) {
+          if (!value.id) return;
+          deletedMessages.current.set(value.id, new Date().toISOString());
+          updateMessages((current) =>
+            current.filter((item) => item.id !== value.id),
+          );
+          void loadConversations();
         } else if (event === 'chat.reaction') {
           if (!value.message_id || !value.account?.id || !value.reaction)
             return;
@@ -527,18 +575,25 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             ),
           );
           if (value.conversation_id === conversationId) history.push('/chat');
+        } else if (event === 'chat.read' && value.conversation_id) {
+          setConversations((current) =>
+            current.map((item) =>
+              item.id === value.conversation_id
+                ? { ...item, unread: false }
+                : item,
+            ),
+          );
         } else if (event === 'chat.invitation') {
           void loadInvitations().catch(() => {
             setError('load');
           });
           void loadConversations();
-        } else if (
-          event !== 'chat.notification' &&
-          event !== 'chat.read' &&
-          event.startsWith('chat.')
-        ) {
+        } else if (event !== 'chat.notification' && event.startsWith('chat.')) {
           void loadConversations();
-          if (value.conversation_id === conversationId) void loadMessages();
+          if (value.conversation_id === conversationId)
+            void loadMessages().catch(() => {
+              setError('load');
+            });
         }
       }),
     [
@@ -551,6 +606,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       updateMessages,
     ],
   );
+
+  useEffect(() => {
+    const end = messagesEndRef.current;
+    const parent = end?.parentElement;
+    if (!end || !parent) return;
+    if (
+      typeof end.scrollIntoView === 'function' &&
+      parent.scrollHeight - parent.scrollTop - parent.clientHeight < 240
+    ) {
+      end.scrollIntoView({ block: 'end' });
+    }
+  }, [messagesList.length]);
 
   const createDirect = useCallback(async () => {
     if (!directAccount) return;
@@ -649,7 +716,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setAccountResults([]);
         return;
       }
-      void searchAccounts(value, setAccountResults);
+      searchAccounts(value, setAccountResults);
     },
     [searchAccounts],
   );
@@ -705,7 +772,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleGroupAccountQueryChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setGroupAccountQuery(event.target.value);
-      void searchAccounts(event.target.value, setGroupAccountResults);
+      searchAccounts(event.target.value, setGroupAccountResults);
     },
     [searchAccounts],
   );
@@ -740,7 +807,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (event: ChangeEvent<HTMLInputElement>) => {
       setInviteAccount(null);
       setInviteAccountQuery(event.target.value);
-      void searchAccounts(event.target.value, setInviteAccountResults);
+      searchAccounts(event.target.value, setInviteAccountResults);
     },
     [searchAccounts],
   );
@@ -779,6 +846,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         })
         .then((response) => {
           setSearchResults(response.data);
+        })
+        .catch(() => {
+          setError('search');
         });
     },
     [searchQuery],
@@ -839,7 +909,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           const body = new FormData();
           body.append('file', file);
           const response = await api().post<ChatMedia>('/api/v2/media', body);
-          return response.data;
+          return waitForMedia(response.data);
         }),
       )
         .then((uploaded) => {
@@ -868,12 +938,26 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       } else if (action === 'edit') {
         setEditingId(id);
         setReplyToId(null);
+        setMedia([]);
         setText(message.content ?? '');
       } else if (action === 'delete') {
-        void api().delete(`/api/v1/chat/messages/${id}`);
+        void api()
+          .delete(`/api/v1/chat/messages/${id}`)
+          .then(() => {
+            deletedMessages.current.set(id, new Date().toISOString());
+            updateMessages((current) =>
+              current.map((item) =>
+                item.id === id ? applyTombstone(item) : item,
+              ),
+            );
+            void loadConversations();
+          })
+          .catch(() => {
+            setError('delete');
+          });
       }
     },
-    [messagesList],
+    [applyTombstone, loadConversations, messagesList, updateMessages],
   );
 
   const handleEmojiPick = useCallback(
@@ -904,6 +988,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 : item,
             ),
           );
+        })
+        .catch(() => {
+          setError('reaction');
         });
     },
     [updateMessages],
@@ -936,6 +1023,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 : item,
             ),
           );
+        })
+        .catch(() => {
+          setError('reaction');
         });
     },
     [updateMessages],
@@ -965,6 +1055,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         .then(() => {
           setInvitations((current) => current.filter((item) => item.id !== id));
           return loadConversations();
+        })
+        .catch(() => {
+          setError('invite');
         });
     },
     [loadConversations],
@@ -981,6 +1074,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         .then(() => {
           setInviteAccount(null);
           setInviteAccountQuery('');
+        })
+        .catch(() => {
+          setError('invite');
         });
     },
     [conversationId, inviteAccount],
@@ -1023,6 +1119,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         })
         .then((response) => {
           setChatSettings(response.data);
+        })
+        .catch(() => {
+          setError('settings');
         });
     },
     [],
@@ -1032,12 +1131,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (event: ChangeEvent<HTMLInputElement>) => {
       const key = event.target.dataset.setting;
       if (!key) return;
+      if (
+        key === 'notifications' &&
+        event.target.checked &&
+        'Notification' in window &&
+        Notification.permission === 'default'
+      ) {
+        void Notification.requestPermission();
+      }
       void api()
         .patch<ChatSettings>('/api/v1/chat/settings', {
           [key]: event.target.checked,
         })
         .then((response) => {
           setChatSettings(response.data);
+        })
+        .catch(() => {
+          setError('settings');
         });
     },
     [],
@@ -1051,11 +1161,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (action === 'mute' || action === 'unmute') {
         void api()
           .post(`/api/v1/chat/conversations/${conversationId}/${action}`)
-          .then(() => loadConversations());
+          .then(() => loadConversations())
+          .catch(() => {
+            setError('update');
+          });
       } else if (action === 'archive' || action === 'unarchive') {
         void api()
           .post(`/api/v1/chat/conversations/${conversationId}/${action}`)
-          .then(() => loadConversations());
+          .then(() => loadConversations())
+          .catch(() => {
+            setError('update');
+          });
       } else if (action === 'leave') {
         void api()
           .delete(`/api/v1/chat/conversations/${conversationId}/leave`)
@@ -1297,17 +1413,35 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     )}
                   </p>
                   {message.media_attachments.map((attachment) => (
-                    <a
+                    <div
                       key={attachment.id}
-                      href={attachment.url}
-                      target='_blank'
-                      rel='noopener noreferrer'
+                      className='chat-native__attachment'
                     >
-                      <img
-                        src={attachment.preview_url}
-                        alt={attachment.description ?? ''}
-                      />
-                    </a>
+                      {attachment.type === 'audio' && attachment.url ? (
+                        <audio controls src={attachment.url} />
+                      ) : (attachment.type === 'video' ||
+                          attachment.type === 'gifv') &&
+                        attachment.url ? (
+                        <video
+                          controls
+                          src={attachment.url}
+                          poster={attachment.preview_url ?? undefined}
+                        />
+                      ) : attachment.url ? (
+                        <a
+                          href={attachment.url}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                        >
+                          <img
+                            src={attachment.preview_url ?? attachment.url}
+                            alt={attachment.description ?? ''}
+                          />
+                        </a>
+                      ) : (
+                        <span>{attachment.description ?? attachment.type}</span>
+                      )}
+                    </div>
                   ))}
                   {message.reactions.length > 0 && (
                     <div className='chat-native__reactions'>
@@ -1324,7 +1458,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           onClick={handleReactionClick}
                           title={reaction.account.acct}
                         >
-                          {reaction.reaction}
+                          {reaction.url ? (
+                            <img
+                              className='emoji'
+                              src={reaction.static_url ?? reaction.url}
+                              alt={reaction.reaction}
+                            />
+                          ) : (
+                            reaction.reaction
+                          )}
                         </button>
                       ))}
                     </div>
@@ -1340,7 +1482,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       />
                     </span>
                   )}
-                  {!message.deleted_at && (
+                  {!message.deleted_at && !conversation?.archived && (
                     <div className='chat-native__actions'>
                       <button
                         type='button'
@@ -1389,6 +1531,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   )}
                 </article>
               ))}
+              <div ref={messagesEndRef} />
             </div>
             {conversation?.type === 'group' &&
               conversation.current_role === 'owner' && (
@@ -1550,6 +1693,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 onChange={handleTextChange}
                 placeholder={intl.formatMessage(messages.placeholder)}
                 maxLength={4096}
+                disabled={loading}
               />
               <label className='button'>
                 {intl.formatMessage(messages.attach)}
@@ -1558,16 +1702,33 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   hidden
                   onChange={handleMediaChange}
                   accept='image/*,video/*,audio/*'
+                  disabled={
+                    loading ||
+                    Boolean(editingId) ||
+                    Boolean(conversation?.archived)
+                  }
                 />
               </label>
               {media.length > 0 && (
                 <div className='chat-native__media-preview'>
                   {media.map((attachment) => (
                     <div key={attachment.id}>
-                      <img
-                        src={attachment.preview_url}
-                        alt={attachment.description ?? ''}
-                      />
+                      {attachment.type === 'audio' && attachment.url ? (
+                        <audio controls src={attachment.url} />
+                      ) : (attachment.type === 'video' ||
+                          attachment.type === 'gifv') &&
+                        attachment.url ? (
+                        <video
+                          controls
+                          src={attachment.url}
+                          poster={attachment.preview_url ?? undefined}
+                        />
+                      ) : (
+                        <img
+                          src={attachment.preview_url ?? attachment.url ?? ''}
+                          alt={attachment.description ?? ''}
+                        />
+                      )}
                       <button
                         type='button'
                         data-media-id={attachment.id}
@@ -1587,6 +1748,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 disabled={
                   conversation?.archived ||
                   loading ||
+                  media.some((item) => !item.url) ||
                   (!text.trim() && media.length === 0)
                 }
               >

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class ActivityPub::ChatRoomsController < ActivityPub::BaseController
+  before_action :require_chat_readable!
   before_action :require_account_signature!
 
   def show
@@ -21,8 +22,13 @@ class ActivityPub::ChatRoomsController < ActivityPub::BaseController
     false
   end
 
+  def require_chat_readable!
+    head 404 unless Setting.chat_enabled && Setting.chat_federation_enabled
+  end
+
   def visible_to_signed_account?(conversation)
     account = signed_request_account
+    return false if account.nil? || account.suspended? || account.unavailable?
 
     conversation.owner_account_id == account.id ||
       conversation.memberships.exists?(account: account) ||

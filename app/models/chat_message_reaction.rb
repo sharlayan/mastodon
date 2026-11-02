@@ -15,7 +15,7 @@ class ChatMessageReaction < ApplicationRecord
     return if StatusReactionValidator::SUPPORTED_EMOJIS.include?(reaction)
 
     shortcode = reaction&.match(/\A:([a-zA-Z0-9_+-]+):\z/)&.captures&.first
-    return if shortcode && CustomEmoji.exists?(shortcode: shortcode, domain: nil, disabled: false)
+    return if shortcode && (account&.remote? || CustomEmoji.exists?(shortcode: shortcode, domain: nil, disabled: false))
 
     errors.add(:reaction, :invalid)
   end

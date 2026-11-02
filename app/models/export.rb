@@ -84,13 +84,23 @@ class Export
   end
 
   def to_chat_json
-    conversations = ChatConversation.for_account(account).includes(:accounts, messages: [:account, :media_attachments, { reactions: :account }])
-    JSON.generate(chat_conversations: conversations.map { |conversation| chat_conversation_data(conversation) })
+    conversations = ChatConversation.for_account(account).includes(:accounts)
+    messages = ChatMessage.visible_to(account)
+      .where(chat_conversation_id: conversations.select(:id))
+      .includes(:account, :media_attachments, reactions: :account)
+      .order(id: :asc)
+      .group_by(&:chat_conversation_id)
+
+    JSON.generate(
+      chat_conversations: conversations.map do |conversation|
+        chat_conversation_data(conversation, messages.fetch(conversation.id, []))
+      end
+    )
   end
 
   private
 
-  def chat_conversation_data(conversation)
+  def chat_conversation_data(conversation, messages)
     {
       id: conversation.id.to_s,
       type: conversation.conversation_type,
@@ -98,7 +108,7 @@ class Export
       description: conversation.description,
       archived_at: conversation.archived_at,
       participants: conversation.accounts.map { |participant| acct(participant) },
-      messages: conversation.messages.visible_to(account).reorder(id: :asc).map { |message| chat_message_data(message) },
+      messages: messages.map { |message| chat_message_data(message) },
     }
   end
 
@@ -111,7 +121,7 @@ class Export
       created_at: message.created_at,
       edited_at: message.edited_at,
       deleted_at: message.deleted_at,
-      attachments: message.media_attachments.map { |attachment| attachment.file.url(:original) },
+      attachments: message.media_attachments.map { |attachment| Rails.application.routes.url_helpers.media_proxy_url(attachment.id, :original) },
       reactions: message.reactions.map { |reaction| { reaction: reaction.reaction, account: acct(reaction.account) } },
     }
   end

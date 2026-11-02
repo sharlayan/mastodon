@@ -51,6 +51,10 @@ module Sharlayan::MediaAttachmentExtensions
     drive_file_id.present?
   end
 
+  def chat_attachment?
+    chat_message_media_attachments.exists?
+  end
+
   private
 
   def lock_drive_file

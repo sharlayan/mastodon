@@ -17,6 +17,8 @@ class ChatMessage < ApplicationRecord
   validate :sender_is_member, on: :create
   validate :reply_belongs_to_conversation
 
+  before_destroy :destroy_chat_media_attachments
+
   scope :visible, -> { where(deleted_at: nil) }
   scope :visible_to, ->(account) { where.not(account_id: account.id).or(where(hidden_at: nil)) }
 
@@ -48,5 +50,13 @@ class ChatMessage < ApplicationRecord
     return if reply_to.nil? || reply_to.chat_conversation_id == chat_conversation_id
 
     errors.add(:reply_to, :invalid)
+  end
+
+  def destroy_chat_media_attachments
+    media_attachments.to_a.each do |media|
+      next if media.status_id.present? || media.scheduled_status_id.present? || media.status_draft_id.present? || MediaAttachment.referenced_by_page.exists?(id: media.id)
+
+      media.destroy!
+    end
   end
 end

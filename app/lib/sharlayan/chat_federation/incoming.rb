@@ -3,6 +3,8 @@
 module Sharlayan
   module ChatFederation
     class Incoming
+      extend Redisable
+
       class << self
         def chat_create?(json)
           object = json['object']
@@ -60,8 +62,9 @@ module Sharlayan
           return 'skip: suspended actor' if account.suspended?
           return 'skip: actor mismatch' unless authored_by?(object, account)
 
-          uri = object['id']
-          return 'skip: deleted before create' if service.tombstone?(uri, account)
+          uri = uri_of(object)
+          return 'skip: invalid chat message id' if uri.blank?
+          return 'skip: deleted before create' if deleted_before_create?(uri, account)
 
           text = text_of(object)
           attachments = attachments_of(object)
@@ -91,7 +94,7 @@ module Sharlayan
             )
           end
           'ok: chat message created'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped incoming chat message from #{account.uri}: #{e.message}")
           'skip: chat policy'
         end
@@ -111,7 +114,7 @@ module Sharlayan
 
           service.update_remote_message(account, message, text: text, edited_at: time_of(object['updated']) || Time.current)
           'ok: chat message updated'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped incoming chat update from #{account.uri}: #{e.message}")
           'skip: chat update'
         end
@@ -125,6 +128,7 @@ module Sharlayan
 
           if room_uri?(uri)
             service.receive_room_delete(account, room_uri: uri)
+            service.remember_room_tombstone(uri, account)
             return 'ok: chat room deleted'
           end
 
@@ -138,7 +142,7 @@ module Sharlayan
 
           service.remember_tombstone(uri, account)
           'ok: chat message tombstone stored'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped incoming chat delete from #{account.uri}: #{e.message}")
           'skip: chat delete'
         end
@@ -154,7 +158,7 @@ module Sharlayan
 
           service.react_remote(account, message, reaction.to_s)
           'ok: chat reaction'
-        rescue ActiveRecord::RecordInvalid, Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique, Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
           Rails.logger.info("Dropped incoming chat reaction from #{account.uri}: #{e.message}")
           'skip: chat reaction'
         end
@@ -173,7 +177,7 @@ module Sharlayan
 
           service.unreact_remote(account, message, reaction.to_s)
           'ok: chat reaction undone'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped incoming chat reaction undo from #{account.uri}: #{e.message}")
           'skip: chat reaction undo'
         end
@@ -186,6 +190,7 @@ module Sharlayan
           room = json['object']
           room_uri = uri_of(room)
           return 'skip: invalid chat room' unless chat_room?(json) && authored_by?(room, account)
+          return 'skip: deleted before invite' if service.room_tombstoned?(room_uri, account)
           return 'skip: invalid target' unless uri_of(json['target']) == local_target_uri?(json, account)
 
           invitee = local_account_for_target(json)
@@ -201,7 +206,7 @@ module Sharlayan
             )
             broadcast_invitation(invitation.chat_conversation, invitee)
             'ok: chat invitation received'
-          rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+          rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
             Rails.logger.info("Rejected chat invitation from #{account.uri}: #{e.message}")
             reject_invite(account, invitee, room)
             'ok: chat invitation rejected'
@@ -220,7 +225,7 @@ module Sharlayan
 
           service.receive_cancel(account, room_uri: uri_of(invitation['object']), invitee: invitee)
           'ok: chat invitation cancelled'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat Undo Invite from #{account.uri}: #{e.message}")
           'skip: chat invitation cancellation'
         end
@@ -235,7 +240,7 @@ module Sharlayan
 
           service.receive_accept(account, room_uri: room_uri)
           'ok: chat invitation accepted'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat accept from #{account.uri}: #{e.message}")
           'skip: chat accept'
         end
@@ -259,7 +264,7 @@ module Sharlayan
 
           service.receive_add(account, room_uri: uri_of(json['target']), account_uri: uri_of(json['object']))
           'ok: chat room member added'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat Add from #{account.uri}: #{e.message}")
           'skip: chat add'
         end
@@ -271,7 +276,7 @@ module Sharlayan
 
           service.receive_remove(account, room_uri: uri_of(json['target']), account_uri: uri_of(json['object']))
           'ok: chat room member removed'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat Remove from #{account.uri}: #{e.message}")
           'skip: chat remove'
         end
@@ -284,7 +289,7 @@ module Sharlayan
           object = json['object']
           service.receive_room_update(account, room_uri: uri_of(object), title: object['name'], description: object['summary'])
           'ok: chat room updated'
-        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat room update from #{account.uri}: #{e.message}")
           'skip: chat room update'
         end
@@ -301,17 +306,17 @@ module Sharlayan
 
         def uri_of(value)
           return value if value.is_a?(String)
-          return value['id'] if value.is_a?(Hash)
+          return value['id'] if value.is_a?(Hash) && value['id'].is_a?(String)
 
           nil
         end
 
         def chat_message_uri?(uri)
-          uri.include?('/chat/messages/')
+          uri.is_a?(String) && uri.include?('/chat/messages/')
         end
 
         def room_uri?(uri)
-          uri.present? && uri.include?('/chat/rooms/')
+          uri.is_a?(String) && uri.include?('/chat/rooms/')
         end
 
         def room_uri_of(object)
@@ -328,10 +333,16 @@ module Sharlayan
         end
 
         def same_host?(first, second)
-          first.present? && second.present? &&
+          first.is_a?(String) && second.is_a?(String) && first.present? && second.present? &&
             Addressable::URI.parse(first).host == Addressable::URI.parse(second).host
         rescue Addressable::URI::InvalidURIError
           false
+        end
+
+        def deleted_before_create?(uri, account)
+          service.tombstone?(uri, account) ||
+            redis.exists?("delete_upon_arrival:#{account.id}:#{uri}") ||
+            Tombstone.exists?(uri: uri)
         end
 
         def text_of(object)
@@ -381,6 +392,8 @@ module Sharlayan
           target = uri_of(json['target'])
           account = ActivityPub::TagManager.instance.uri_to_resource(target, ::Account)
           account if account&.local?
+        rescue Addressable::URI::InvalidURIError
+          nil
         end
 
         def broadcast_invitation(conversation, invitee)

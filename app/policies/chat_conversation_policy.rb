@@ -10,7 +10,7 @@ class ChatConversationPolicy < ApplicationPolicy
   end
 
   def destroy?
-    role.can?(:manage_users)
+    role.can?(:manage_users) && local_conversation?
   end
 
   private
@@ -20,6 +20,6 @@ class ChatConversationPolicy < ApplicationPolicy
   end
 
   def local_conversation?
-    record.accounts.all?(&:local?)
+    record.local?
   end
 end

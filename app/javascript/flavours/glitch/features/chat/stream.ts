@@ -30,6 +30,7 @@ export const showChatDesktopNotification = (payload: unknown) => {
 
   const message = payload as Partial<ChatNotificationPayload>;
   if (!message.conversation_id || !message.account) return;
+  if (window.location.pathname === `/chat/${message.conversation_id}`) return;
 
   const name = message.account.display_name || message.account.acct;
   const notification = new Notification(`${name} · Chat`, {

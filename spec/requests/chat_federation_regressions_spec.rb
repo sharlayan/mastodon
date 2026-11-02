@@ -263,7 +263,7 @@ RSpec.describe 'Chat federation regressions' do
     it 'cancels an invitation when its authenticated owner undoes it' do
       invitation
       perform(undo)
-      expect(invitation.reload).to be_cancelled
+      expect(ChatInvitation).to_not exist(invitation.id)
     end
 
     it 'does not let another actor cancel an invitation' do

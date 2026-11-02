@@ -29,7 +29,7 @@ module Sharlayan
         def update(message)
           {
             '@context' => CONTEXT,
-            'id' => "#{message_uri(message)}#update/#{message.edited_at&.to_i}",
+            'id' => "#{message_uri(message)}#update/#{message.edited_at&.to_i}-#{SecureRandom.hex(6)}",
             'type' => 'Update',
             'actor' => actor_uri(message.account),
             'published' => Time.now.utc.iso8601,
@@ -84,7 +84,7 @@ module Sharlayan
         def invite(conversation, invitee)
           {
             '@context' => CONTEXT,
-            'id' => "#{room_uri(conversation)}#invite/#{invitee.id}",
+            'id' => "#{room_uri(conversation)}#invite/#{invitee.id}/#{SecureRandom.hex(6)}",
             'type' => 'Invite',
             'actor' => actor_uri(conversation.owner_account),
             'target' => actor_uri(invitee),
@@ -97,7 +97,7 @@ module Sharlayan
           conversation = invitation.chat_conversation
           {
             '@context' => CONTEXT,
-            'id' => "#{base_url}/chat/rooms/#{conversation.id}#accept/#{invitation.invitee_account_id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#accept/#{invitation.invitee_account_id}/#{SecureRandom.hex(6)}",
             'type' => 'Accept',
             'actor' => actor_uri(invitation.invitee_account),
             'published' => Time.now.utc.iso8601,
@@ -109,7 +109,7 @@ module Sharlayan
           conversation = invitation.chat_conversation
           {
             '@context' => CONTEXT,
-            'id' => "#{base_url}/chat/rooms/#{conversation.id}#reject/#{invitation.invitee_account_id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#reject/#{invitation.invitee_account_id}/#{SecureRandom.hex(6)}",
             'type' => 'Reject',
             'actor' => actor_uri(invitation.invitee_account),
             'published' => Time.now.utc.iso8601,
@@ -138,7 +138,7 @@ module Sharlayan
           conversation = invitation.chat_conversation
           {
             '@context' => CONTEXT,
-            'id' => "#{base_url}/chat/rooms/#{conversation.id}#cancel/#{invitation.invitee_account_id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#cancel/#{invitation.invitee_account_id}/#{SecureRandom.hex(6)}",
             'type' => 'Undo',
             'actor' => actor_uri(invitation.inviter_account),
             'published' => Time.now.utc.iso8601,
@@ -149,7 +149,7 @@ module Sharlayan
         def add(conversation, account)
           {
             '@context' => CONTEXT,
-            'id' => "#{base_url}/chat/rooms/#{conversation.id}#add/#{account.id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#add/#{account.id}/#{SecureRandom.hex(6)}",
             'type' => 'Add',
             'actor' => actor_uri(conversation.owner_account),
             'target' => room_uri(conversation),
@@ -161,7 +161,7 @@ module Sharlayan
         def remove(conversation, account, actor: account)
           {
             '@context' => CONTEXT,
-            'id' => "#{base_url}/chat/rooms/#{conversation.id}#remove/#{account.id}",
+            'id' => "#{base_url}/chat/rooms/#{conversation.id}#remove/#{account.id}/#{SecureRandom.hex(6)}",
             'type' => 'Remove',
             'actor' => actor_uri(actor),
             'target' => room_uri(conversation),
@@ -173,7 +173,7 @@ module Sharlayan
         def update_room(conversation)
           {
             '@context' => CONTEXT,
-            'id' => "#{room_uri(conversation)}#update/#{Time.now.to_i}",
+            'id' => "#{room_uri(conversation)}#update/#{Time.now.to_i}/#{SecureRandom.hex(6)}",
             'type' => 'Update',
             'actor' => actor_uri(conversation.owner_account),
             'published' => Time.now.utc.iso8601,
@@ -210,6 +210,7 @@ module Sharlayan
             '_misskey_talk' => true,
           }
           result['@context'] = room_uri(message.chat_conversation) if message.chat_conversation.chat_group?
+          result['inReplyTo'] = message_uri(message.reply_to) if message.reply_to.present?
           result['attachment'] = message.media_attachments.sort_by(&:id).map { |attachment| document(attachment) } if message.media_attachments.any?
           result
         end
@@ -256,8 +257,8 @@ module Sharlayan
         end
 
         def document(attachment)
-          url = attachment.file&.url
-          url = "#{base_url}#{url}" if url&.start_with?('/')
+          token = Sharlayan::ChatFederation::MediaToken.generate(attachment)
+          url = "#{base_url}/media_proxy/#{attachment.id}/original?token=#{ERB::Util.url_encode(token)}"
 
           {
             'type' => 'Document',

@@ -42,7 +42,11 @@ class REST::ChatConversationSerializer < ActiveModel::Serializer
   def visible_last_message
     return if current_membership.nil?
 
-    @visible_last_message ||= object.messages.visible_to(instance_options[:current_account]).first
+    @visible_last_message ||= begin
+      candidate = object.last_message
+      candidate = nil if candidate && candidate.account_id == instance_options[:current_account]&.id && candidate.hidden?
+      candidate || object.messages.visible_to(instance_options[:current_account]).first
+    end
   end
 
   def current_membership

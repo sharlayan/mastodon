@@ -191,7 +191,7 @@ RSpec.describe 'API V1 Chat' do
 
       post "/api/v1/chat/messages/#{message.id}/reactions", params: { reaction: '👍' }, headers: headers
 
-      expect(response).to have_http_status(403)
+      expect(response).to have_http_status(404)
       expect(message.reactions).to be_empty
     end
 
@@ -304,9 +304,10 @@ RSpec.describe 'API V1 Chat' do
       delete "/api/v1/chat/messages/#{first_message.id}", headers: headers
       post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { media_ids: [media.id] }, headers: headers
 
-      expect(response).to have_http_status(200)
+      expect(response).to have_http_status(422)
       expect(first_message.reload.media_attachments).to be_empty
       expect(first_message.reactions).to be_empty
+      expect(MediaAttachment.exists?(media.id)).to be(false)
     end
 
     it 'hides messages only from the sender after the deletion window expires' do

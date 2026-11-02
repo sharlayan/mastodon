@@ -27,7 +27,7 @@ shipping a change to chat ActivityPub handling.
 - [ ] Alice deletes the group; Bob's mirror room disappears.
 - [ ] Bob sends a 1:1 message while Alice's policy is `none`; no message appears and no error is shown to Bob.
 - [ ] Bob invites Alice to a remote group while group invites are disabled; the invitation is rejected.
-- [ ] Fetching `/chat/messages/:id` and `/chat/rooms/:id` with a signed request succeeds for members and returns 404 for non-members.
+- [ ] Fetching `/chat/messages/:id` and `/chat/rooms/:id` with a signed request succeeds for members and returns 404 for non-members. Pending invitees may fetch the room metadata, but not messages or media.
 - [ ] Fetching a deleted chat message returns an ActivityStreams `Tombstone`.
 
 ## Signed object check

@@ -10,6 +10,8 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import { createMemoryHistory } from 'history';
 
@@ -20,7 +22,12 @@ import type * as InitialState from 'flavours/glitch/initial_state';
 import { Chat } from '../index';
 import { emitChatStreamEvent } from '../stream';
 
-const api = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn() }));
+const api = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  patch: vi.fn(),
+  delete: vi.fn(),
+}));
 vi.mock('flavours/glitch/api', () => ({ default: () => api }));
 vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
   ...(await importOriginal<typeof InitialState>()),
@@ -171,6 +178,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   api.get.mockImplementation(getResponse);
   api.post.mockResolvedValue({ data: attachment });
+  api.delete.mockResolvedValue({ data: {} });
 });
 afterEach(cleanup);
 
@@ -743,5 +751,99 @@ describe('Chat live updates', () => {
     });
 
     expect(history.location.pathname).toBe('/chat');
+  });
+});
+
+describe('Chat review additions', () => {
+  it('applies a local tombstone after deleting a message', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('This message was deleted.')).toBeTruthy();
+    });
+    expect(api.delete).toHaveBeenCalledWith('/api/v1/chat/messages/message-A');
+  });
+
+  it('renders local custom emoji reactions as images', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.reaction',
+        payload: {
+          ...reaction,
+          reaction: ':blobcat:',
+          url: '/emoji/blobcat.png',
+          static_url: '/emoji/blobcat.png',
+        },
+      });
+    });
+
+    const button = screen.getByRole('button', { name: ':blobcat:' });
+    expect(within(button).getByRole('img', { name: ':blobcat:' })).toBeTruthy();
+  });
+
+  it('polls processing media until it is ready', async () => {
+    const pendingMedia = {
+      id: 'media-processing',
+      url: null as string | null,
+      preview_url: null as string | null,
+      type: 'video',
+      description: null,
+    };
+    const readyMedia = {
+      ...pendingMedia,
+      url: '/media-ready.mp4',
+      preview_url: '/media-ready.png',
+    };
+    api.post.mockImplementation((url: string) => {
+      if (url === '/api/v2/media')
+        return Promise.resolve({ data: pendingMedia });
+      return Promise.resolve({ data: attachment });
+    });
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/media/media-processing')
+        return Promise.resolve({ data: readyMedia });
+      return getResponse(url);
+    });
+
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+    upload(container);
+
+    await waitFor(() => {
+      expect(container.querySelector('video')?.getAttribute('src')).toBe(
+        '/media-ready.mp4',
+      );
+    });
+  });
+
+  it('does not expose message actions in an archived room', async () => {
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({
+          data: [{ ...conversation('A'), archived: true }],
+        });
+      if (url.endsWith('/messages'))
+        return Promise.resolve({ data: [message('A')] });
+      if (url === '/api/v1/chat/invitations')
+        return Promise.resolve({ data: [] });
+      if (url === '/api/v1/chat/settings')
+        return Promise.resolve({ data: settings });
+      return getResponse(url);
+    });
+
+    mountChat();
+    await screen.findByText('Private message A');
+
+    expect(screen.queryByRole('button', { name: 'Reply' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled,
+    ).toBe(true);
   });
 });

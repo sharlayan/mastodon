@@ -38,6 +38,11 @@ class MediaProxyController < ApplicationController
 
   def set_media_attachment
     @media_attachment = MediaAttachment.attached.find(params[:id])
+    if @media_attachment.chat_attachment? && Sharlayan::ChatFederation::MediaToken.valid?(params[:token], @media_attachment)
+      head 404 unless Setting.chat_enabled && Setting.chat_federation_enabled
+      return
+    end
+
     authorize @media_attachment, :download?
   end
 

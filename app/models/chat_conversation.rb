@@ -18,6 +18,7 @@ class ChatConversation < ApplicationRecord
   validates :description, length: { maximum: 2048 }, allow_blank: true
 
   scope :for_account, ->(account) { joins(:memberships).where(chat_memberships: { account_id: account.id }) }
+  scope :local_only, -> { where(owner_account_id: nil).or(where(owner_account_id: Account.local.select(:id))) }
 
   def archived?
     archived_at.present?
@@ -31,5 +32,11 @@ class ChatConversation < ApplicationRecord
 
   def local?
     owner_account.nil? || owner_account.local?
+  end
+
+  def destroy_if_unused!
+    return if accounts.local.exists? || invitations.pending.exists?
+
+    destroy!
   end
 end

@@ -28,7 +28,7 @@ class Api::V1::MediaController < Api::BaseController
   def destroy
     @media_attachment = current_account.media_attachments.find(params[:id])
 
-    return render json: in_usage_error, status: 422 unless @media_attachment.status_id.nil?
+    return render json: in_usage_error, status: 422 unless @media_attachment.status_id.nil? && !@media_attachment.chat_attachment?
 
     @media_attachment.destroy
     render_empty
