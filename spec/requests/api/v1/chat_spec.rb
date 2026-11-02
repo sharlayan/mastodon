@@ -487,6 +487,19 @@ RSpec.describe 'API V1 Chat' do
       expect(user.reload.settings[:chat_policy]).to eq('none')
     end
 
+    it 'redistributes the actor when the chat policy changes' do
+      expect { patch '/api/v1/chat/settings', params: { policy: 'none' }, headers: headers }
+        .to change(ActivityPub::UpdateDistributionWorker.jobs, :size).by(1)
+    end
+
+    it 'does not redistribute the actor when the chat policy stays the same' do
+      user.settings[:chat_policy] = 'none'
+      user.save!
+
+      expect { patch '/api/v1/chat/settings', params: { policy: 'none', notifications: false }, headers: headers }
+        .to_not change(ActivityPub::UpdateDistributionWorker.jobs, :size)
+    end
+
     it 'invites a remote account and federates the invitation' do
       conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, account_ids: [], title: 'Remote group')
 

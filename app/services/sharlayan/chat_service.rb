@@ -121,7 +121,7 @@ class Sharlayan::ChatService
     raise Error, 'Chat federation is disabled' if invitee.remote? && !Setting.chat_federation_enabled
     raise Error, 'Account is already a member' if conversation.memberships.exists?(account: invitee)
     raise Forbidden if blocked_in_either_direction?(account, invitee)
-    raise Forbidden unless !invitee.local? || invitee.user&.settings&.[](:chat_allow_group_invites)
+    raise Forbidden unless accepts_group_invites?(invitee)
 
     invitation = conversation.with_lock do
       existing_invitation = conversation.invitations.pending.find_by(invitee_account: invitee)
@@ -206,6 +206,7 @@ class Sharlayan::ChatService
 
     conversation.update!(archived_at: archived ? Time.current : nil)
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
+    deliver_room_state(account, conversation, Sharlayan::ChatFederation::Payload.update_room(conversation))
     conversation
   end
 
@@ -216,7 +217,7 @@ class Sharlayan::ChatService
     ensure_conversation_writable!(conversation)
     conversation.update!(attributes)
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
-    deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.update_room(conversation))
+    deliver_room_state(account, conversation, Sharlayan::ChatFederation::Payload.update_room(conversation))
     conversation
   end
 
@@ -224,7 +225,7 @@ class Sharlayan::ChatService
     membership = membership!(account, conversation)
     raise Forbidden unless conversation.chat_group? && membership.owner?
 
-    deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation)) if conversation.local?
+    deliver_room_state(account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation)) if conversation.local?
     destroy_and_announce(conversation)
   end
 
@@ -234,7 +235,7 @@ class Sharlayan::ChatService
     federate &&= account.local?
 
     account.owned_chat_conversations.find_each do |conversation|
-      deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation)) if federate && conversation.chat_group?
+      deliver_room_state(account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation)) if federate && conversation.chat_group?
       destroy_and_announce(conversation)
     end
     account.chat_memberships.includes(:chat_conversation).find_each { |membership| purge_membership(membership, federate: federate) }
@@ -246,11 +247,11 @@ class Sharlayan::ChatService
   def destroy_conversation_as_admin(conversation)
     return destroy_and_announce(conversation) unless conversation.chat_group? && conversation.local? && conversation.owner_account.present?
 
-    deliver_to_conversation(conversation.owner_account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation))
+    deliver_room_state(conversation.owner_account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation))
     destroy_and_announce(conversation)
   end
 
-  def receive_direct_message(recipient, actor, uri:, text:, created_at: nil, attachments: [])
+  def receive_direct_message(recipient, actor, uri:, text:, created_at: nil, attachments: [], reply_to_uri: nil)
     key = [recipient.id, actor.id].sort.join(':')
 
     ChatConversation.transaction do
@@ -264,16 +265,16 @@ class Sharlayan::ChatService
         conversation = create_remote_direct(recipient, actor, key)
       end
 
-      create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, attachments: attachments)
+      create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, attachments: attachments, reply_to_uri: reply_to_uri)
     end
   end
 
-  def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, attachments: [])
+  def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, attachments: [], reply_to_uri: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     raise Error, 'Unknown chat room' if conversation.nil?
     raise Forbidden unless conversation.memberships.exists?(account: actor)
 
-    create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, attachments: attachments)
+    create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, attachments: attachments, reply_to_uri: reply_to_uri)
   end
 
   def receive_invite(invitee, actor, room_uri:, title:, description: nil)
@@ -328,6 +329,17 @@ class Sharlayan::ChatService
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
     deliver_roster_after_join(conversation, actor)
     conversation
+  end
+
+  # The invitee's server joined the room before sending Accept, so it has to hear when
+  # the owner's server cannot honor it. A redelivered Accept from a member is not a refusal.
+  def refuse_accept(actor, room_uri:)
+    conversation = ChatConversation.find_by(uri: room_uri)
+    return if conversation.nil? || !conversation.owner_account&.local?
+    return if conversation.memberships.exists?(account: actor)
+
+    conversation.invitations.pending.find_by(invitee_account: actor)&.update!(state: :rejected)
+    deliver_to_account(conversation.owner_account, Sharlayan::ChatFederation::Payload.remove(conversation, actor, actor: conversation.owner_account), actor)
   end
 
   def receive_reject(actor, room_uri:)
@@ -394,12 +406,14 @@ class Sharlayan::ChatService
     relay_departure(conversation, account)
   end
 
-  def receive_room_update(actor, room_uri:, title:, description: nil)
+  def receive_room_update(actor, room_uri:, title:, description: nil, archived: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     raise Error, 'Unknown chat room' if conversation.nil?
     raise Forbidden unless conversation.owner_account_id == actor.id
 
-    conversation.update!(title: title.presence || conversation.title, description: description)
+    conversation.assign_attributes(title: title.presence || conversation.title, description: description)
+    conversation.archived_at = archived ? (conversation.archived_at || Time.current) : nil if [true, false].include?(archived)
+    conversation.save!
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
     conversation
   end
@@ -486,7 +500,7 @@ class Sharlayan::ChatService
 
   private
 
-  def create_remote_message(conversation, actor, uri:, text:, created_at:, attachments:)
+  def create_remote_message(conversation, actor, uri:, text:, created_at:, attachments:, reply_to_uri: nil)
     return nil if tombstone?(uri, actor)
 
     existing = ChatMessage.find_by(uri: uri)
@@ -496,11 +510,15 @@ class Sharlayan::ChatService
     ensure_conversation_writable!(conversation)
     ensure_direct_participants_not_blocked!(actor, conversation)
 
+    reply_to = conversation.messages.find_by(uri: reply_to_uri) if reply_to_uri.present?
+
     message = nil
+    media = []
     conversation.with_lock do
       message = conversation.messages.build(
         account: actor,
         uri: uri,
+        reply_to: reply_to,
         text: text.to_s.strip.presence,
         created_at: created_at || Time.current
       )
@@ -510,6 +528,7 @@ class Sharlayan::ChatService
       media.each { |attachment| message.chat_message_media_attachments.create!(media_attachment: attachment) }
       conversation.update!(last_message: message)
     end
+    download_incoming_media(actor, media)
     broadcast(conversation, 'chat.message', message, REST::ChatMessageSerializer)
     notify_members(conversation, message)
     message
@@ -521,12 +540,33 @@ class Sharlayan::ChatService
     url = url['href'] || url['url'] if url.is_a?(Hash)
     return unless http_url?(url)
 
+    content_type = document['mediaType'].presence || 'image/jpeg'
+
     MediaAttachment.create!(
       account: actor,
       remote_url: url.to_s,
-      file_content_type: document['mediaType'].presence || 'image/jpeg',
+      file_content_type: content_type,
+      type: declared_media_type(content_type),
       description: document['name']
     )
+  end
+
+  # Clients pick the player from the type before the file is here. Downloading replaces it.
+  def declared_media_type(content_type)
+    return :video if MediaAttachment::VIDEO_MIME_TYPES.include?(content_type)
+    return :audio if MediaAttachment::AUDIO_MIME_TYPES.include?(content_type)
+    return :image if MediaAttachment::IMAGE_MIME_TYPES.include?(content_type)
+
+    :unknown
+  end
+
+  # The caller may hold a transaction, and the worker gives up on a record it cannot find yet.
+  def download_incoming_media(actor, media)
+    return if media.empty? || DomainBlock.reject_media?(actor.domain)
+
+    ActiveRecord.after_all_transactions_commit do
+      media.each { |attachment| RedownloadMediaWorker.perform_async(attachment.id) }
+    end
   end
 
   def destroy_chat_media(media_attachments)
@@ -604,6 +644,13 @@ class Sharlayan::ChatService
     return unless Setting.chat_federation_enabled
 
     Sharlayan::ChatFederation::Delivery.call(actor: actor, conversation: conversation, payload: payload, except_account_id: actor.id)
+  end
+
+  # Invitees have not joined, but what they would be joining has changed.
+  def deliver_room_state(actor, conversation, payload)
+    return unless Setting.chat_federation_enabled
+
+    Sharlayan::ChatFederation::Delivery.call(actor: actor, conversation: conversation, payload: payload, except_account_id: actor.id, include_pending_invitees: true)
   end
 
   def deliver_to_account(actor, payload, account)
@@ -686,7 +733,7 @@ class Sharlayan::ChatService
     invitees = participants.reject { |participant| participant.id == account.id }
     raise Error, 'The group has too many members' if invitees.size + 1 > Setting.chat_max_group_members
     raise Forbidden if invitees.any? { |participant| blocked_in_either_direction?(account, participant) }
-    raise Forbidden unless invitees.all? { |participant| !participant.local? || participant.user&.settings&.[](:chat_allow_group_invites) }
+    raise Forbidden unless invitees.all? { |participant| accepts_group_invites?(participant) }
 
     conversation = ChatConversation.transaction do
       record = ChatConversation.create!(conversation_type: :group, owner_account: account, title: title, description: description)
@@ -755,6 +802,10 @@ class Sharlayan::ChatService
     raise Error, 'One or more media attachments are still being processed' if attachments.any?(&:not_processed?)
 
     attachments
+  end
+
+  def accepts_group_invites?(account)
+    account.local? ? account.user&.settings&.[](:chat_allow_group_invites) : account.can_chat
   end
 
   def direct_chat_allowed?(sender, recipient)

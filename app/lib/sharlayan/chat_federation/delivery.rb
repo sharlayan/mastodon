@@ -4,10 +4,12 @@ module Sharlayan
   module ChatFederation
     class Delivery
       class << self
-        def call(actor:, conversation:, payload:, except_account_id: nil)
+        def call(actor:, conversation:, payload:, except_account_id: nil, include_pending_invitees: false)
           seen = Set.new
+          audience = ::Account.remote.where(id: conversation.memberships.select(:account_id))
+          audience = audience.or(::Account.remote.where(id: conversation.invitations.pending.select(:invitee_account_id))) if include_pending_invitees
 
-          conversation.accounts.remote.where.not(id: except_account_id).find_each do |account|
+          audience.where.not(id: except_account_id).find_each do |account|
             inbox = account.inbox_url
             next if inbox.blank? || seen.include?(inbox)
 

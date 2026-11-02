@@ -37,8 +37,8 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   attribute :misskey_followed_message, key: :_misskey_followedMessage, if: :followed_message?
   attribute :misskey_avatar_decorations, key: :_misskey_avatarDecorations, if: :avatar_decorations_enabled?
   attribute :is_cat, key: :isCat, if: :cat?
-  attribute :misskey_can_chat, key: :_misskey_canChat, if: :chat_enabled?
-  attribute :misskey_chat_scope, key: :_misskey_chatScope, if: :chat_enabled?
+  attribute :misskey_can_chat, key: :_misskey_canChat, unless: :unavailable?
+  attribute :misskey_chat_scope, key: :_misskey_chatScope, if: :chat_federated?
 
   class EndpointsSerializer < ActivityPub::Serializer
     include RoutingHelper
@@ -166,20 +166,23 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
     !object.unavailable? && object.followed_message.present?
   end
 
-  def chat_enabled?
-    Setting.chat_enabled && !object.unavailable?
+  def unavailable?
+    object.unavailable?
   end
 
+  def chat_federated?
+    misskey_can_chat && !unavailable?
+  end
+
+  # Stated even when false: Misskey-family servers assume chat when the field is missing.
   def misskey_can_chat
-    true
+    Setting.chat_enabled && Setting.chat_federation_enabled
   end
 
   def misskey_chat_scope
     case object.user&.settings&.[](:chat_policy)
     when 'everyone', 'followers', 'following', 'mutual', 'none'
       object.user.settings[:chat_policy]
-    when 'mutuals'
-      'mutual'
     when 'nobody'
       'none'
     else

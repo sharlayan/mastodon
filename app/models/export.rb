@@ -121,9 +121,13 @@ class Export
       created_at: message.created_at,
       edited_at: message.edited_at,
       deleted_at: message.deleted_at,
-      attachments: message.media_attachments.map { |attachment| Rails.application.routes.url_helpers.media_proxy_url(attachment.id, :original) },
+      attachments: message.media_attachments.map { |attachment| chat_attachment_url(attachment) },
       reactions: message.reactions.map { |reaction| { reaction: reaction.reaction, account: acct(reaction.account) } },
     }
+  end
+
+  def chat_attachment_url(attachment)
+    Rails.application.routes.url_helpers.media_proxy_url(attachment.id, :original, **ActionMailer::Base.default_url_options)
   end
 
   def to_csv(accounts)

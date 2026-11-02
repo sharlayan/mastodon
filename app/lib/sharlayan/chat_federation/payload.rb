@@ -10,6 +10,8 @@ module Sharlayan
           '_misskey_talk' => 'misskey:_misskey_talk',
           '_misskey_content' => 'misskey:_misskey_content',
           '_misskey_reaction' => 'misskey:_misskey_reaction',
+          'sharlayan' => 'https://git.drk.st/sharlayan/mastodon#',
+          '_sharlayan_archived' => 'sharlayan:_sharlayan_archived',
         },
       ].freeze
 
@@ -222,6 +224,7 @@ module Sharlayan
             'name' => conversation.title,
             'summary' => conversation.description.to_s,
             'attributedTo' => actor_uri(conversation.owner_account),
+            '_sharlayan_archived' => conversation.archived?,
           }
         end
 

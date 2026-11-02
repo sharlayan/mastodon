@@ -23,8 +23,10 @@ class REST::ChatConversationSerializer < ActiveModel::Serializer
   end
 
   def unread
-    membership = object.memberships.find { |item| item.account_id == instance_options[:current_account]&.id }
-    visible_last_message.present? && visible_last_message.id != membership&.last_read_message_id
+    return false if visible_last_message.nil?
+
+    last_read_id = current_membership&.last_read_message_id
+    last_read_id.nil? || visible_last_message.id > last_read_id
   end
 
   def current_role

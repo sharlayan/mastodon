@@ -13,6 +13,8 @@ class Api::V1::Chat::SettingsController < Api::V1::Chat::BaseController
   end
 
   def update
+    previous_policy = current_user.settings[:chat_policy]
+
     if params.key?(:policy)
       policy = LEGACY_POLICIES.fetch(params[:policy].to_s, params[:policy].to_s)
       raise Mastodon::InvalidParameterError, 'Invalid chat policy' unless POLICIES.include?(policy)
@@ -22,6 +24,8 @@ class Api::V1::Chat::SettingsController < Api::V1::Chat::BaseController
     current_user.settings[:chat_allow_group_invites] = boolean_param(:allow_group_invites) if params.key?(:allow_group_invites)
     current_user.settings[:chat_notifications] = boolean_param(:notifications) if params.key?(:notifications)
     current_user.save!
+    # Remote servers enforce the policy from their cached copy of the actor.
+    ActivityPub::UpdateDistributionWorker.perform_in(ActivityPub::UpdateDistributionWorker::DEBOUNCE_DELAY, current_account.id) if current_user.settings[:chat_policy] != previous_policy
     render json: settings_payload
   end
 

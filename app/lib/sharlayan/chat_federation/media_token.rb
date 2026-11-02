@@ -4,7 +4,9 @@ module Sharlayan
   module ChatFederation
     class MediaToken
       PURPOSE = :chat_media
-      TTL = 24.hours
+      # Long enough for delivery retries, for receivers that link to the file instead of
+      # caching it, and for refetching after a receiver's cache is vacuumed.
+      TTL = 1.year
 
       class << self
         def generate(media_attachment)

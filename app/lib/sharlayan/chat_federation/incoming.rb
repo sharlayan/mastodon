@@ -81,7 +81,8 @@ module Sharlayan
               uri: uri,
               text: text,
               created_at: time_of(object['published']),
-              attachments: attachments
+              attachments: attachments,
+              reply_to_uri: uri_of(object['inReplyTo'])
             )
           else
             service.receive_direct_message(
@@ -90,7 +91,8 @@ module Sharlayan
               uri: uri,
               text: text,
               created_at: time_of(object['published']),
-              attachments: attachments
+              attachments: attachments,
+              reply_to_uri: uri_of(object['inReplyTo'])
             )
           end
           'ok: chat message created'
@@ -242,6 +244,7 @@ module Sharlayan
           'ok: chat invitation accepted'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat accept from #{account.uri}: #{e.message}")
+          service.refuse_accept(account, room_uri: room_uri)
           'skip: chat accept'
         end
 
@@ -287,7 +290,7 @@ module Sharlayan
           return false unless chat_room?(json)
 
           object = json['object']
-          service.receive_room_update(account, room_uri: uri_of(object), title: object['name'], description: object['summary'])
+          service.receive_room_update(account, room_uri: uri_of(object), title: object['name'], description: object['summary'], archived: object['_sharlayan_archived'])
           'ok: chat room updated'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat room update from #{account.uri}: #{e.message}")
