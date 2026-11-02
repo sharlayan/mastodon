@@ -7,8 +7,8 @@ class ActivityPub::ChatMessagesController < ActivityPub::BaseController
     response.headers['Cache-Control'] = 'private, no-store'
 
     message = ChatMessage.find_by(id: params[:id])
-    return head :not_found if message.nil?
-    return head :not_found unless visible_to_signed_account?(message)
+    return head 404 if message.nil?
+    return head 404 unless visible_to_signed_account?(message)
 
     if message.deleted?
       render_ap(
@@ -34,8 +34,7 @@ class ActivityPub::ChatMessagesController < ActivityPub::BaseController
   end
 
   def render_ap(object)
-    context = object.delete('@context')
-    object['@context'] = [Sharlayan::ChatFederation::Payload::CONTEXT, context].compact
-    render json: object
+    object['@context'] = (Sharlayan::ChatFederation::Payload::CONTEXT + Array(object['@context'])).uniq
+    render json: object, content_type: 'application/activity+json'
   end
 end

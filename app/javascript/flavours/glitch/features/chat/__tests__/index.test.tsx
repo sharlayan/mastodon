@@ -696,3 +696,52 @@ describe('Chat live updates', () => {
     expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
   });
 });
+
+describe('Chat live updates', () => {
+  it('marks a message from someone else read when it arrives in the open room', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    api.post.mockClear();
+
+    await act(async () => {
+      emitChatStreamEvent({
+        event: 'chat.message',
+        payload: { ...message('A'), id: 'incoming', account: remote },
+      });
+      await Promise.resolve();
+    });
+
+    expect(api.post).toHaveBeenCalledWith('/api/v1/chat/conversations/A/read', {
+      message_id: 'incoming',
+    });
+  });
+
+  it('does not mark the sender own message read again', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    api.post.mockClear();
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message',
+        payload: { ...message('A'), id: 'own' },
+      });
+    });
+
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it('leaves a room that was deleted while it was open', async () => {
+    const { history } = mountChat();
+    await screen.findByText('Private message A');
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_delete',
+        payload: { conversation_id: 'A' },
+      });
+    });
+
+    expect(history.location.pathname).toBe('/chat');
+  });
+});

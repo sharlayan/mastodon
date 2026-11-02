@@ -91,7 +91,7 @@ RSpec.describe 'Chat federation regressions' do
   end
 
   it 'accepts incoming attachment-only messages and persists their media' do
-    message = service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/92', text: nil, attachment: document)
+    message = service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/92', text: nil, attachments: [document])
 
     expect(message).to be_persisted
     expect(message.media_attachments.first.remote_url).to eq(document['url'])
@@ -111,7 +111,7 @@ RSpec.describe 'Chat federation regressions' do
   it 'rolls back media created before an invalid incoming message is validated' do
     expect do
       expect do
-        service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/invalid', text: 'a' * 4_097, attachment: document)
+        service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/invalid', text: 'a' * 4_097, attachments: [document])
       end.to raise_error(ActiveRecord::RecordInvalid)
     end.to_not change(MediaAttachment, :count)
     expect(ChatMessage.where(uri: 'https://remote.test/chat/messages/invalid')).to be_empty
@@ -122,14 +122,14 @@ RSpec.describe 'Chat federation regressions' do
 
     expect do
       expect do
-        service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/93', text: 'photo', attachment: document)
+        service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/93', text: 'photo', attachments: [document])
       end.to raise_error(ActiveRecord::RecordInvalid)
     end.to_not change(ChatMessage, :count)
     expect(MediaAttachment.where(remote_url: document['url'])).to be_empty
   end
 
   describe 'private media proxy' do
-    let(:message) { service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/94', text: 'photo', attachment: document) }
+    let(:message) { service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/94', text: 'photo', attachments: [document]) }
     let(:media) { message.media_attachments.first }
 
     before { stub_request(:get, document['url']).to_return(request_fixture('avatar.txt')) }
@@ -157,7 +157,7 @@ RSpec.describe 'Chat federation regressions' do
       service.invite(owner, room, remote)
       service.receive_accept(remote, room_uri: room.uri)
       service.accept_invitation(invitee, service.invite(owner, room, invitee))
-      group_message = service.receive_group_message(remote, room_uri: room.uri, uri: 'https://remote.test/chat/messages/former', text: 'photo', attachment: document)
+      group_message = service.receive_group_message(remote, room_uri: room.uri, uri: 'https://remote.test/chat/messages/former', text: 'photo', attachments: [document])
       group_media = group_message.media_attachments.first
       service.leave(invitee, room)
       sign_in invitee.user
@@ -173,7 +173,7 @@ RSpec.describe 'Chat federation regressions' do
       service.invite(owner, room, remote)
       service.receive_accept(remote, room_uri: room.uri)
       service.invite(owner, room, invitee)
-      group_message = service.receive_group_message(remote, room_uri: room.uri, uri: 'https://remote.test/chat/messages/pending', text: 'photo', attachment: document)
+      group_message = service.receive_group_message(remote, room_uri: room.uri, uri: 'https://remote.test/chat/messages/pending', text: 'photo', attachments: [document])
       sign_in invitee.user
 
       get "/media_proxy/#{group_message.media_attachments.first.id}/original"

@@ -40,6 +40,13 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     expect(described_class.note(message)['@context']).to eq(described_class.room_uri(conversation))
   end
 
+  it 'serializes every attachment of a note' do
+    media = Array.new(2) { Fabricate(:media_attachment, account: owner) }
+    media.each { |attachment| message.chat_message_media_attachments.create!(media_attachment: attachment) }
+
+    expect(described_class.note(message.reload)['attachment'].size).to eq(2)
+  end
+
   it 'builds a Delete Tombstone' do
     expect(described_class.delete(message)['object']).to include('type' => 'Tombstone', 'formerType' => 'Note')
   end

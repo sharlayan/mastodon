@@ -158,12 +158,12 @@ module Sharlayan
           }
         end
 
-        def remove(conversation, account)
+        def remove(conversation, account, actor: account)
           {
             '@context' => CONTEXT,
             'id' => "#{base_url}/chat/rooms/#{conversation.id}#remove/#{account.id}",
             'type' => 'Remove',
-            'actor' => actor_uri(account),
+            'actor' => actor_uri(actor),
             'target' => room_uri(conversation),
             'object' => actor_uri(account),
             'published' => Time.now.utc.iso8601,
@@ -210,7 +210,7 @@ module Sharlayan
             '_misskey_talk' => true,
           }
           result['@context'] = room_uri(message.chat_conversation) if message.chat_conversation.chat_group?
-          result['attachment'] = [document(message.media_attachments.first)] if message.media_attachments.any?
+          result['attachment'] = message.media_attachments.sort_by(&:id).map { |attachment| document(attachment) } if message.media_attachments.any?
           result
         end
 

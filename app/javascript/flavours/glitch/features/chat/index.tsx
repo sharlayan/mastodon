@@ -443,7 +443,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               ? current
               : [...current, message],
           );
-          void loadConversations();
+          // The sender's own messages are already read on the server.
+          if (value.id && value.account?.id !== me) {
+            void api()
+              .post(`/api/v1/chat/conversations/${conversationId}/read`, {
+                message_id: value.id,
+              })
+              .catch(() => undefined)
+              .then(() => loadConversations());
+          } else {
+            void loadConversations();
+          }
         } else if (
           event === 'chat.message_update' &&
           value.conversation_id === conversationId
@@ -507,6 +517,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 : item,
             ),
           );
+        } else if (event === 'chat.conversation_delete') {
+          setConversations((current) =>
+            current.filter((item) => item.id !== value.conversation_id),
+          );
+          setInvitations((current) =>
+            current.filter(
+              (item) => item.conversation.id !== value.conversation_id,
+            ),
+          );
+          if (value.conversation_id === conversationId) history.push('/chat');
         } else if (event === 'chat.invitation') {
           void loadInvitations().catch(() => {
             setError('load');
@@ -524,6 +544,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [
       applyTombstone,
       conversationId,
+      history,
       loadConversations,
       loadInvitations,
       loadMessages,

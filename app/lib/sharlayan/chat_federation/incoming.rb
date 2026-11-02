@@ -64,8 +64,8 @@ module Sharlayan
           return 'skip: deleted before create' if service.tombstone?(uri, account)
 
           text = text_of(object)
-          attachment = attachment_of(object)
-          return 'skip: empty chat message' if text.blank? && attachment.nil?
+          attachments = attachments_of(object)
+          return 'skip: empty chat message' if text.blank? && attachments.empty?
 
           local_recipient = local_recipient_for(json, object, options[:delivered_to_account_id])
           return 'skip: no local recipient' if local_recipient.nil?
@@ -78,7 +78,7 @@ module Sharlayan
               uri: uri,
               text: text,
               created_at: time_of(object['published']),
-              attachment: attachment
+              attachments: attachments
             )
           else
             service.receive_direct_message(
@@ -87,7 +87,7 @@ module Sharlayan
               uri: uri,
               text: text,
               created_at: time_of(object['published']),
-              attachment: attachment
+              attachments: attachments
             )
           end
           'ok: chat message created'
@@ -343,10 +343,8 @@ module Sharlayan
           CGI.unescapeHTML(ActionView::Base.full_sanitizer.sanitize(object['content'].to_s))
         end
 
-        def attachment_of(object)
-          attachment = object['attachment']
-          attachment = attachment.first if attachment.is_a?(Array)
-          attachment.is_a?(Hash) ? attachment : nil
+        def attachments_of(object)
+          Array.wrap(object['attachment']).grep(Hash).first(Setting.chat_max_attachments)
         end
 
         def time_of(value)

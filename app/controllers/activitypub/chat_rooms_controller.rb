@@ -7,12 +7,12 @@ class ActivityPub::ChatRoomsController < ActivityPub::BaseController
     response.headers['Cache-Control'] = 'private, no-store'
 
     conversation = ChatConversation.find_by(id: params[:id])
-    return head :not_found if conversation.nil?
-    return head :not_found unless visible_to_signed_account?(conversation)
+    return head 404 if conversation.nil?
+    return head 404 unless visible_to_signed_account?(conversation)
 
     object = Sharlayan::ChatFederation::Payload.room(conversation)
     object['@context'] = Sharlayan::ChatFederation::Payload::CONTEXT
-    render json: object
+    render json: object, content_type: 'application/activity+json'
   end
 
   private

@@ -5,7 +5,7 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
 
   before_action :authorize_chat_read!, only: [:index, :show]
   before_action :authorize_chat_write!, except: [:index, :show]
-  before_action :enforce_chat_write_rate_limit!, except: [:index, :show]
+  before_action :enforce_chat_write_rate_limit!, except: [:index, :show, :read]
   before_action :set_conversation, only: [:show, :update, :destroy, :read, :leave, :mute, :unmute, :archive, :unarchive]
 
   def index

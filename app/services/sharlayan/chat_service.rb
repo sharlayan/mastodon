@@ -217,29 +217,45 @@ class Sharlayan::ChatService
     raise Forbidden unless conversation.chat_group? && membership.owner?
 
     deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation)) if conversation.local?
-    conversation.destroy!
+    destroy_and_announce(conversation)
   end
 
-  def receive_direct_message(recipient, actor, uri:, text:, created_at: nil, attachment: nil)
-    raise Forbidden unless direct_chat_allowed?(actor, recipient)
+  # Removes every trace of an account's chat activity. DeleteAccountService keeps
+  # the account record by default, so `dependent: :destroy` alone is not enough.
+  def purge_account(account, federate: true)
+    federate &&= account.local?
 
+    account.owned_chat_conversations.find_each do |conversation|
+      deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation)) if federate && conversation.chat_group?
+      destroy_and_announce(conversation)
+    end
+    account.chat_memberships.includes(:chat_conversation).find_each { |membership| purge_membership(membership, federate: federate) }
+    account.chat_message_reactions.in_batches.delete_all
+    purge_messages(account)
+    ChatInvitation.where(invitee_account: account).or(ChatInvitation.where(inviter_account: account)).in_batches.delete_all
+  end
+
+  def receive_direct_message(recipient, actor, uri:, text:, created_at: nil, attachments: [])
     key = [recipient.id, actor.id].sort.join(':')
     conversation = ChatConversation.find_by(direct_key: key)
-    conversation ||= ChatConversation.transaction do
-      ChatConversation.create!(conversation_type: :direct, direct_key: key).tap do |record|
-        record.memberships.create!([{ account: recipient }, { account: actor }])
-      end
+
+    # As with local chats, the policy only gates starting a conversation: it must not
+    # drop replies to a chat the recipient started. create_remote_message checks blocks.
+    if conversation.nil?
+      raise Forbidden unless direct_chat_allowed?(actor, recipient)
+
+      conversation = create_remote_direct(recipient, actor, key)
     end
 
-    create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, attachment: attachment)
+    create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, attachments: attachments)
   end
 
-  def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, attachment: nil)
+  def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, attachments: [])
     conversation = ChatConversation.find_by(uri: room_uri)
     raise Error, 'Unknown chat room' if conversation.nil?
     raise Forbidden unless conversation.memberships.exists?(account: actor)
 
-    create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, attachment: attachment)
+    create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, attachments: attachments)
   end
 
   def receive_invite(invitee, actor, room_uri:, title:, description: nil)
@@ -257,7 +273,7 @@ class Sharlayan::ChatService
       record.title = title.presence || actor.username
       record.description = description
     end
-    conversation.memberships.find_or_create_by!(account: actor) if conversation.owner_account_id == actor.id
+    conversation.memberships.create_with(role: :owner).find_or_create_by!(account: actor) if conversation.owner_account_id == actor.id
 
     conversation.invitations.pending.find_by(invitee_account: invitee) ||
       conversation.invitations.create!(inviter_account: actor, invitee_account: invitee)
@@ -328,6 +344,7 @@ class Sharlayan::ChatService
 
     conversation.memberships.find_by(account: account)&.destroy!
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
+    relay_departure(conversation, account)
   end
 
   def receive_room_update(actor, room_uri:, title:, description: nil)
@@ -345,7 +362,7 @@ class Sharlayan::ChatService
     return if conversation.nil?
     raise Forbidden unless conversation.owner_account_id == actor.id
 
-    conversation.destroy!
+    destroy_and_announce(conversation)
   end
 
   def update_remote_message(actor, message, text:, edited_at:)
@@ -393,6 +410,7 @@ class Sharlayan::ChatService
 
   def unreact_remote(actor, message, reaction)
     membership!(actor, message.chat_conversation)
+    ensure_conversation_writable!(message.chat_conversation)
     message.reactions.find_by(account: actor, reaction: reaction)&.destroy!
     broadcast(message.chat_conversation, 'chat.reaction_delete', { message_id: message.id.to_s, account_id: actor.id.to_s, reaction: reaction })
   end
@@ -409,7 +427,7 @@ class Sharlayan::ChatService
 
   private
 
-  def create_remote_message(conversation, actor, uri:, text:, created_at:, attachment:)
+  def create_remote_message(conversation, actor, uri:, text:, created_at:, attachments:)
     return nil if tombstone?(uri, actor)
 
     existing = ChatMessage.find_by(uri: uri)
@@ -427,10 +445,10 @@ class Sharlayan::ChatService
         text: text.to_s.strip.presence,
         created_at: created_at || Time.current
       )
-      media = incoming_media(actor, attachment) if attachment.present?
-      message.pending_media_attachments = [media].compact
+      media = attachments.filter_map { |attachment| incoming_media(actor, attachment) }
+      message.pending_media_attachments = media
       message.save!
-      message.chat_message_media_attachments.create!(media_attachment: media) if media
+      media.each { |attachment| message.chat_message_media_attachments.create!(media_attachment: attachment) }
       conversation.update!(last_message: message)
     end
     broadcast(conversation, 'chat.message', message, REST::ChatMessageSerializer)
@@ -442,7 +460,7 @@ class Sharlayan::ChatService
     url = document['url']
     url = url.first if url.is_a?(Array)
     url = url['href'] || url['url'] if url.is_a?(Hash)
-    return if url.blank?
+    return unless http_url?(url)
 
     MediaAttachment.create!(
       account: actor,
@@ -450,6 +468,48 @@ class Sharlayan::ChatService
       file_content_type: document['mediaType'].presence || 'image/jpeg',
       description: document['name']
     )
+  end
+
+  def destroy_and_announce(conversation)
+    local_accounts = Account.local.where(id: conversation.memberships.select(:account_id))
+      .or(Account.local.where(id: conversation.invitations.pending.select(:invitee_account_id))).to_a
+    conversation_id = conversation.id.to_s
+
+    conversation.destroy!
+    local_accounts.each { |account| broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation_id }) }
+  end
+
+  def purge_membership(membership, federate:)
+    conversation = membership.chat_conversation
+    account_id = membership.account_id
+
+    if conversation.chat_group?
+      deliver_to_conversation(membership.account, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, membership.account)) if federate
+      membership.destroy!
+      broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account_id.to_s })
+    else
+      # Removing one side of a direct chat removes the conversation with it.
+      destroy_and_announce(conversation)
+    end
+  end
+
+  def purge_messages(account)
+    conversation_ids = account.chat_messages.distinct.pluck(:chat_conversation_id)
+    account.chat_messages.in_batches.destroy_all
+
+    # The foreign key nullifies the pointer, which would misplace the room in the list.
+    ChatConversation.where(id: conversation_ids, last_message_id: nil).find_each do |conversation|
+      conversation.update!(last_message: conversation.messages.first)
+    end
+  end
+
+  # A member's own server only reaches the people it knows about, so the owner's
+  # server tells the rest of the room, as it does when a member joins.
+  def relay_departure(conversation, account)
+    owner = conversation.owner_account
+    return unless owner&.local? && account.remote?
+
+    deliver_to_conversation(owner, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, account, actor: owner))
   end
 
   def deliver_roster_after_join(conversation, joined_account)
@@ -490,6 +550,12 @@ class Sharlayan::ChatService
     first_uri = Addressable::URI.parse(first)
     second_uri = Addressable::URI.parse(second)
     first_uri.host.present? && %w(http https).include?(first_uri.scheme) && first_uri.origin == second_uri.origin
+  rescue Addressable::URI::InvalidURIError
+    false
+  end
+
+  def http_url?(url)
+    %w(http https).include?(Addressable::URI.parse(url.to_s).scheme)
   rescue Addressable::URI::InvalidURIError
     false
   end
@@ -595,7 +661,7 @@ class Sharlayan::ChatService
   end
 
   def blocked_in_either_direction?(first_account, second_account)
-    first_account.blocking?(second_account) || second_account.blocking?(first_account)
+    first_account.blocking_or_domain_blocking?(second_account) || second_account.blocking_or_domain_blocking?(first_account)
   end
 
   def media_attachments(account, ids)
@@ -605,6 +671,7 @@ class Sharlayan::ChatService
     attachments = MediaAttachment.unattached.where(id: normalized_ids, account: account).to_a
     raise Error, 'One or more media attachments were not found' unless attachments.size == normalized_ids.size
     raise Error, 'One or more media attachments are already in use' if ChatMessageMediaAttachment.exists?(media_attachment_id: normalized_ids)
+    raise Error, 'One or more media attachments are still being processed' if attachments.any?(&:not_processed?)
 
     attachments
   end

@@ -14,6 +14,11 @@ module Sharlayan::DeleteAccountServiceExtensions
     super
   end
 
+  def purge_other_associations!
+    Sharlayan::ChatService.new.purge_account(@account, federate: !skip_activitypub?)
+    super
+  end
+
   def purge_pages!
     @account.page_likes.in_batches.delete_all
     @account.pages.in_batches.destroy_all

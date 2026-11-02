@@ -70,6 +70,16 @@ RSpec.describe 'API V1 Chat' do
     expect(response.parsed_body.pluck(:id)).to eq([newer_room.id.to_s])
   end
 
+  it 'does not count read markers against the chat write rate limit' do
+    conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, title: 'Group')
+    allow(RateLimiter).to receive(:new).and_call_original
+
+    post "/api/v1/chat/conversations/#{conversation.id}/read", headers: headers
+
+    expect(response).to have_http_status(200)
+    expect(RateLimiter).to_not have_received(:new).with(user.account, family: :chat_writes)
+  end
+
   describe 'direct chat' do
     it 'creates one conversation per local account pair' do
       post '/api/v1/chat/conversations', params: { type: 'direct', account_ids: [other.account.id] }, headers: headers

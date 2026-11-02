@@ -14,7 +14,7 @@ class ChatMessage < ApplicationRecord
   validates :text, length: { maximum: 4096 }, allow_nil: true
   validates :uri, uniqueness: true, allow_nil: true
   validate :content_present
-  validate :sender_is_member
+  validate :sender_is_member, on: :create
   validate :reply_belongs_to_conversation
 
   scope :visible, -> { where(deleted_at: nil) }
