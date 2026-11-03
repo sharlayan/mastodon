@@ -3,20 +3,26 @@ import type { ChangeEvent, MouseEvent, SyntheticEvent } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
-import { useHistory, useParams } from 'react-router-dom';
+import classNames from 'classnames';
+import { Link, useHistory, useParams } from 'react-router-dom';
 
 import { Helmet } from '@unhead/react/helmet';
 
+import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
+import CheckIcon from '@/material-icons/400-24px/check.svg?react';
+import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import GroupIcon from '@/material-icons/400-24px/group.svg?react';
 import GroupsIcon from '@/material-icons/400-24px/groups.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
+import SearchIcon from '@/material-icons/400-24px/search.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
 import api from 'flavours/glitch/api';
 import { Button } from 'flavours/glitch/components/button';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Icon } from 'flavours/glitch/components/icon';
+import { IconButton } from 'flavours/glitch/components/icon_button';
 import { LoadMore } from 'flavours/glitch/components/load_more';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
@@ -101,6 +107,8 @@ type ChatHomeTab = 'home' | 'invitations' | 'joiningRooms' | 'ownedRooms';
 
 const messages = defineMessages({
   heading: { id: 'chat.title', defaultMessage: 'Chat' },
+  newChat: { id: 'chat.new_chat', defaultMessage: 'New chat' },
+  search: { id: 'chat.search', defaultMessage: 'Search messages' },
   newDirect: { id: 'chat.new_direct', defaultMessage: 'Start a direct chat' },
   open: { id: 'chat.open', defaultMessage: 'Open chat' },
   send: { id: 'chat.send', defaultMessage: 'Send' },
@@ -182,6 +190,56 @@ const waitForMedia = async (media: ChatMedia): Promise<ChatMedia> => {
   throw new Error('Media processing timed out');
 };
 
+const InvitationRow: React.FC<{
+  invitation: ChatInvitation;
+  onAnswer: (id: string, action: 'accept' | 'reject') => void;
+}> = ({ invitation, onAnswer }) => {
+  const intl = useIntl();
+  const handleAccept = useCallback(() => {
+    onAnswer(invitation.id, 'accept');
+  }, [invitation.id, onAnswer]);
+  const handleReject = useCallback(() => {
+    onAnswer(invitation.id, 'reject');
+  }, [invitation.id, onAnswer]);
+
+  return (
+    <div className='chat-native__invitation'>
+      <div>
+        <strong>{conversationName(invitation.conversation)}</strong>
+        <span>
+          <FormattedMessage
+            id='chat.invited_by'
+            defaultMessage='Invited by {name}'
+            values={{
+              name: invitation.inviter.display_name || invitation.inviter.acct,
+            }}
+          />
+        </span>
+      </div>
+      <div className='account__relationship'>
+        <IconButton
+          title={intl.formatMessage({
+            id: 'chat.accept',
+            defaultMessage: 'Accept',
+          })}
+          icon='check'
+          iconComponent={CheckIcon}
+          onClick={handleAccept}
+        />
+        <IconButton
+          title={intl.formatMessage({
+            id: 'chat.reject',
+            defaultMessage: 'Reject',
+          })}
+          icon='times'
+          iconComponent={CloseIcon}
+          onClick={handleReject}
+        />
+      </div>
+    </div>
+  );
+};
+
 const FOLLOW_NEWEST_DISTANCE = 240;
 
 const scrollToNewest = (end: HTMLElement | null) => {
@@ -203,7 +261,9 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
   const history = useHistory();
-  const { conversationId } = useParams<{ conversationId?: string }>();
+  const { conversationId: routeId } = useParams<{ conversationId?: string }>();
+  const creating = routeId === 'new';
+  const conversationId = creating ? undefined : routeId;
   const { signedIn } = useIdentity();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [nextConversationId, setNextConversationId] = useState<string | null>(
@@ -242,6 +302,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   // Tied to the room, so settings opened in one room stay closed in the next.
   const [groupSettingsConversationId, setGroupSettingsConversationId] =
     useState<string | null>(null);
+  const [newChatMode, setNewChatMode] = useState<'direct' | 'group'>('direct');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
   const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
@@ -1013,6 +1076,24 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setInviteAccountQuery('');
   }, []);
 
+  const handleSearchToggle = useCallback(() => {
+    setSearchOpen((open) => !open);
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchedQuery(null);
+  }, []);
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
+
+  const handleNewChatMode = useCallback(
+    (event: SyntheticEvent<HTMLButtonElement>) => {
+      setNewChatMode(event.currentTarget.dataset.mode as 'direct' | 'group');
+    },
+    [],
+  );
+
   const handleSearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(event.target.value);
@@ -1253,11 +1334,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     if (editingId) finishEditing();
   }, [editingId, finishEditing]);
 
-  const handleInvitationAction = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      const id = event.currentTarget.dataset.invitationId;
-      const action = event.currentTarget.dataset.action;
-      if (!id || !action) return;
+  const answerInvitation = useCallback(
+    (id: string, action: 'accept' | 'reject') => {
       setError(null);
       void api()
         .post(`/api/v1/chat/invitations/${id}/${action}`)
@@ -1492,14 +1570,42 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         icon='chat'
         iconComponent={ChatIcon}
         title={
-          conversation
-            ? conversationName(conversation)
-            : intl.formatMessage(messages.heading)
+          creating
+            ? intl.formatMessage(messages.newChat)
+            : conversation
+              ? conversationName(conversation)
+              : intl.formatMessage(messages.heading)
         }
         multiColumn={multiColumn}
-        showBackButton={Boolean(conversationId)}
+        showBackButton={Boolean(conversationId) || creating}
+        extraButton={
+          !conversationId && !creating ? (
+            <>
+              <button
+                type='button'
+                className={classNames('column-header__button', {
+                  active: searchOpen,
+                })}
+                title={intl.formatMessage(messages.search)}
+                aria-label={intl.formatMessage(messages.search)}
+                aria-expanded={searchOpen}
+                onClick={handleSearchToggle}
+              >
+                <Icon id='search' icon={SearchIcon} />
+              </button>
+              <Link
+                to='/chat/new'
+                className='column-header__button'
+                title={intl.formatMessage(messages.newChat)}
+                aria-label={intl.formatMessage(messages.newChat)}
+              >
+                <Icon id='plus' icon={AddIcon} />
+              </Link>
+            </>
+          ) : undefined
+        }
       >
-        {!conversationId && chatSettings && (
+        {!conversationId && !creating && chatSettings && (
           <div className='chat-native-settings'>
             <h3>{intl.formatMessage(messages.settings)}</h3>
             <label>
@@ -1973,22 +2079,29 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     />
                   ) : (
                     <div>
-                      <FormattedMessage
-                        id='chat.replying_to'
-                        defaultMessage='Replying to {account}'
-                        values={{
-                          account:
-                            replyTarget?.account.display_name ??
-                            replyTarget?.account.acct ??
-                            '',
-                        }}
-                      />
+                      {replyTarget ? (
+                        <FormattedMessage
+                          id='chat.replying_to'
+                          defaultMessage='Replying to {account}'
+                          values={{
+                            account:
+                              replyTarget.account.display_name ||
+                              replyTarget.account.acct,
+                          }}
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id='chat.replying'
+                          defaultMessage='Replying to message'
+                        />
+                      )}
                       <span>
-                        {replyTarget?.content ??
-                          intl.formatMessage({
-                            id: 'chat.message_deleted',
-                            defaultMessage: 'This message was deleted.',
-                          })}
+                        {replyTarget && !replyTarget.deleted_at
+                          ? replyTarget.content
+                          : intl.formatMessage({
+                              id: 'chat.message_deleted',
+                              defaultMessage: 'This message was deleted.',
+                            })}
                       </span>
                     </div>
                   )}
@@ -2078,43 +2191,32 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             {/* After the composer, so scrolling here shows the newest message above it. */}
             <div className='chat-native__end' ref={messagesEndRef} />
           </>
-        ) : (
-          <>
-            <nav
-              className='chat-native__tabs'
-              aria-label={intl.formatMessage(messages.heading)}
-            >
-              {(
-                [
-                  ['home', HomeIcon, messages.tabHome],
-                  ['invitations', GroupIcon, messages.tabInvitations],
-                  ['joiningRooms', GroupsIcon, messages.tabJoiningRooms],
-                  ['ownedRooms', SettingsIcon, messages.tabOwnedRooms],
-                ] as const
-              ).map(([tab, icon, tabMessage]) => (
-                <button
-                  key={tab}
-                  type='button'
-                  data-tab={tab}
-                  className={activeTab === tab ? 'active' : undefined}
-                  aria-current={activeTab === tab ? 'page' : undefined}
-                  onClick={handleTabChange}
-                >
-                  <Icon id={tab} icon={icon} />
-                  {intl.formatMessage(tabMessage)}
-                  {tab === 'invitations' && invitations.length > 0 && (
-                    <span>{invitations.length}</span>
-                  )}
-                </button>
-              ))}
-            </nav>
-            {activeTab === 'home' && (
+        ) : creating ? (
+          <section id='chat-new-panel' className='chat-native__new-panel'>
+            <div className='chat-native__new-modes'>
+              <button
+                type='button'
+                data-mode='direct'
+                aria-pressed={newChatMode === 'direct'}
+                onClick={handleNewChatMode}
+              >
+                {intl.formatMessage(messages.newDirect)}
+              </button>
+              <button
+                type='button'
+                data-mode='group'
+                aria-pressed={newChatMode === 'group'}
+                onClick={handleNewChatMode}
+              >
+                {intl.formatMessage(messages.newGroup)}
+              </button>
+            </div>
+            {newChatMode === 'direct' ? (
               <>
                 <form
                   className='chat-native__new'
                   onSubmit={handleDirectSubmit}
                 >
-                  <h3>{intl.formatMessage(messages.newDirect)}</h3>
                   <div className='chat-native__form-row'>
                     <input
                       value={directAccountQuery}
@@ -2163,8 +2265,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     ))}
                   </div>
                 )}
+              </>
+            ) : (
+              <>
                 <form className='chat-native__new' onSubmit={handleGroupSubmit}>
-                  <h3>{intl.formatMessage(messages.newGroup)}</h3>
                   <div className='chat-native__form-row'>
                     <input
                       value={groupTitle}
@@ -2231,40 +2335,45 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 )}
               </>
             )}
+          </section>
+        ) : (
+          <>
+            <nav
+              className='chat-native__tabs'
+              aria-label={intl.formatMessage(messages.heading)}
+            >
+              {(
+                [
+                  ['home', HomeIcon, messages.tabHome],
+                  ['invitations', GroupIcon, messages.tabInvitations],
+                  ['joiningRooms', GroupsIcon, messages.tabJoiningRooms],
+                  ['ownedRooms', SettingsIcon, messages.tabOwnedRooms],
+                ] as const
+              ).map(([tab, icon, tabMessage]) => (
+                <button
+                  key={tab}
+                  type='button'
+                  data-tab={tab}
+                  className={activeTab === tab ? 'active' : undefined}
+                  aria-current={activeTab === tab ? 'page' : undefined}
+                  onClick={handleTabChange}
+                >
+                  <Icon id={tab} icon={icon} />
+                  {intl.formatMessage(tabMessage)}
+                  {tab === 'invitations' && invitations.length > 0 && (
+                    <span>{invitations.length}</span>
+                  )}
+                </button>
+              ))}
+            </nav>
             {activeTab === 'invitations' && invitations.length > 0 && (
               <section className='chat-native__invitations'>
-                <h3>
-                  <FormattedMessage
-                    id='chat.invitations'
-                    defaultMessage='Invitations'
-                  />
-                </h3>
                 {invitations.map((invitation) => (
-                  <div key={invitation.id}>
-                    <span>{conversationName(invitation.conversation)}</span>
-                    <button
-                      type='button'
-                      data-invitation-id={invitation.id}
-                      data-action='accept'
-                      onClick={handleInvitationAction}
-                    >
-                      <FormattedMessage
-                        id='chat.accept'
-                        defaultMessage='Accept'
-                      />
-                    </button>
-                    <button
-                      type='button'
-                      data-invitation-id={invitation.id}
-                      data-action='reject'
-                      onClick={handleInvitationAction}
-                    >
-                      <FormattedMessage
-                        id='chat.reject'
-                        defaultMessage='Reject'
-                      />
-                    </button>
-                  </div>
+                  <InvitationRow
+                    key={invitation.id}
+                    invitation={invitation}
+                    onAnswer={answerInvitation}
+                  />
                 ))}
               </section>
             )}
@@ -2276,27 +2385,25 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 />
               </div>
             )}
-            {activeTab === 'home' && (
+            {searchOpen && (
               <>
-                <form
-                  className='chat-native__new chat-native__new--compact'
-                  onSubmit={handleSearchSubmit}
-                >
-                  <input
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    placeholder={intl.formatMessage({
-                      id: 'chat.search',
-                      defaultMessage: 'Search messages',
-                    })}
-                  />
-                  <Button type='submit' disabled={!searchQuery.trim()}>
-                    <FormattedMessage
-                      id='chat.search_action'
-                      defaultMessage='Search'
+                <div className='chat-native__toolbar'>
+                  <form
+                    className='chat-native__search'
+                    role='search'
+                    onSubmit={handleSearchSubmit}
+                  >
+                    <Icon id='search' icon={SearchIcon} />
+                    <input
+                      ref={searchInputRef}
+                      type='search'
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      placeholder={intl.formatMessage(messages.search)}
+                      aria-label={intl.formatMessage(messages.search)}
                     />
-                  </Button>
-                </form>
+                  </form>
+                </div>
                 {searchedQuery && searchResults.length === 0 && (
                   <div className='chat-native__empty'>
                     <FormattedMessage
@@ -2330,6 +2437,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   <button
                     key={item.id}
                     type='button'
+                    className={item.unread ? 'unread' : undefined}
                     data-conversation-id={item.id}
                     onClick={handleOpenConversation}
                   >

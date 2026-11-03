@@ -36,9 +36,10 @@ vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
 // The surrounding column controls and global emoji picker require the app store;
 // keep chat's forms, message rendering, router and stream subscriptions real.
 vi.mock('flavours/glitch/components/column/header', () => ({
-  ColumnHeader: ({ title, children }: ColumnHeaderProps) => (
+  ColumnHeader: ({ title, extraButton, children }: ColumnHeaderProps) => (
     <header>
       {title}
+      {extraButton}
       {children}
     </header>
   ),
@@ -1420,9 +1421,12 @@ describe('Chat screen lifecycle', () => {
     );
 
     mountChat('/chat');
-    const search = await screen.findByPlaceholderText('Search messages');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Search messages' }),
+    );
+    const search = screen.getByPlaceholderText('Search messages');
     fireEvent.change(search, { target: { value: 'nothing' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.submit(search.closest('form') as HTMLFormElement);
 
     expect(await screen.findByText('No messages found.')).toBeTruthy();
   });
@@ -1706,6 +1710,225 @@ describe('Chat scrolling', () => {
       grow();
 
       expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('Chat reply indicator', () => {
+  const fromRemote = (displayName: string) => ({
+    ...message(),
+    id: 'theirs',
+    content: 'Message to answer',
+    account: { ...remote, display_name: displayName },
+  });
+  const mountReply = (displayName = 'Bob') => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({ data: [fromRemote(displayName)] })
+        : getResponse(url),
+    );
+    return mountChat();
+  };
+  const replyTo = async (displayName: string) => {
+    mountReply(displayName);
+    await screen.findByText('Message to answer');
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }));
+  };
+
+  it('names the person being answered', async () => {
+    await replyTo('Bob');
+
+    expect(screen.getByText('Replying to Bob')).toBeTruthy();
+  });
+
+  it('falls back to the handle when the person has no display name', async () => {
+    await replyTo('');
+
+    expect(screen.getByText('Replying to bob@remote.test')).toBeTruthy();
+  });
+
+  it('says so when the message being answered is deleted', async () => {
+    const { container } = mountReply();
+    await screen.findByText('Message to answer');
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }));
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message_delete',
+        payload: { id: 'theirs', conversation_id: 'A' },
+      });
+    });
+
+    const indicator = container.querySelector(
+      '.chat-native__compose-mode',
+    ) as HTMLElement;
+    await within(indicator).findByText('This message was deleted.');
+    expect(within(indicator).getByText('Replying to Bob')).toBeTruthy();
+  });
+});
+
+describe('Chat home', () => {
+  const home = async () => {
+    const view = mountChat('/chat');
+    await screen.findByRole('button', { name: 'Search messages' });
+    return view;
+  };
+
+  it('shows only the tabs and conversations until something is opened', async () => {
+    const { container } = await home();
+
+    expect(screen.queryByPlaceholderText('Search messages')).toBeNull();
+    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
+    expect(screen.queryByPlaceholderText('Search for an account')).toBeNull();
+    expect(container.querySelector('.chat-native__new')).toBeNull();
+    expect(container.querySelector('.chat-native__conversations')).toBeTruthy();
+  });
+
+  it('opens new chats on their own screen from the column header', async () => {
+    const { history } = await home();
+
+    fireEvent.click(screen.getByRole('link', { name: 'New chat' }));
+
+    expect(history.location.pathname).toBe('/chat/new');
+    expect(
+      await screen.findByPlaceholderText('Search for an account'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Open chat' })).toBeTruthy();
+    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'New chat' })).toBeNull();
+    expect(api.get).not.toHaveBeenCalledWith(
+      '/api/v1/chat/conversations/new',
+      expect.anything(),
+    );
+    expect(api.get).not.toHaveBeenCalledWith('/api/v1/chat/conversations/new');
+  });
+
+  it('switches the new chat screen to creating a group, one form at a time', async () => {
+    mountChat('/chat/new');
+    const group = await screen.findByRole('button', { name: 'Create a group' });
+
+    fireEvent.click(group);
+
+    expect(screen.getByPlaceholderText('Group name')).toBeTruthy();
+    expect(
+      screen.getAllByPlaceholderText('Search for an account'),
+    ).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Open chat' })).toBeNull();
+    expect(group.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('opens message search from the header and closes it again', async () => {
+    await home();
+    const toggle = screen.getByRole('button', { name: 'Search messages' });
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    const search = screen.getByPlaceholderText('Search messages');
+    expect(document.activeElement).toBe(search);
+
+    fireEvent.click(toggle);
+    expect(screen.queryByPlaceholderText('Search messages')).toBeNull();
+  });
+
+  it('searches with the Enter key and clears results when closed', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/messages/search'
+        ? Promise.resolve({ data: [{ ...message(), content: 'Found it' }] })
+        : getResponse(url),
+    );
+    await home();
+    const toggle = screen.getByRole('button', { name: 'Search messages' });
+    fireEvent.click(toggle);
+    const search = screen.getByPlaceholderText('Search messages');
+    fireEvent.change(search, { target: { value: 'found' } });
+    fireEvent.submit(search.closest('form') as HTMLFormElement);
+    expect(await screen.findByText('Found it')).toBeTruthy();
+
+    fireEvent.click(toggle);
+    expect(screen.queryByText('Found it')).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(
+      screen.getByPlaceholderText<HTMLInputElement>('Search messages').value,
+    ).toBe('');
+  });
+
+  it('sets unread conversations apart from read ones', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations'
+        ? Promise.resolve({
+            data: [
+              { ...conversation('A'), unread: true },
+              { ...conversation('B'), unread: false },
+            ],
+          })
+        : getResponse(url),
+    );
+    const { container } = mountChat('/chat');
+    await waitFor(() => {
+      expect(
+        container.querySelectorAll('.chat-native__conversations button'),
+      ).toHaveLength(2);
+    });
+
+    const [unread, read] = container.querySelectorAll(
+      '.chat-native__conversations button',
+    );
+    expect(unread?.classList.contains('unread')).toBe(true);
+    expect(read?.classList.contains('unread')).toBe(false);
+  });
+});
+
+describe('Chat invitations', () => {
+  const invitation = {
+    id: 'inv-1',
+    state: 'pending',
+    conversation: { ...conversation('C'), type: 'group', title: 'Book club' },
+    inviter: remote,
+  };
+  const openInvitations = async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/invitations'
+        ? Promise.resolve({ data: [invitation] })
+        : getResponse(url),
+    );
+    mountChat('/chat');
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Invitations\s*1/ }),
+    );
+    await screen.findByText('Book club');
+  };
+
+  it('shows the room and who invited, with icon actions like follow requests', async () => {
+    await openInvitations();
+
+    expect(screen.getByText('Invited by Bob')).toBeTruthy();
+    const accept = screen.getByRole('button', { name: 'Accept' });
+    const reject = screen.getByRole('button', { name: 'Reject' });
+    expect(accept.classList.contains('icon-button')).toBe(true);
+    expect(reject.classList.contains('icon-button')).toBe(true);
+    expect(accept.querySelector('svg')).toBeTruthy();
+    expect(accept.textContent.trim()).toBe('');
+    expect(screen.queryByRole('heading', { name: 'Invitations' })).toBeNull();
+  });
+
+  it.each([
+    ['Accept', 'accept'],
+    ['Reject', 'reject'],
+  ])('%s answers the invitation and removes it', async (name, action) => {
+    api.post.mockResolvedValue({ data: {} });
+    await openInvitations();
+
+    fireEvent.click(screen.getByRole('button', { name }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        `/api/v1/chat/invitations/inv-1/${action}`,
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Book club')).toBeNull();
     });
   });
 });
