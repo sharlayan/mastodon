@@ -50,6 +50,8 @@
 #  private_key                   :text
 #  protocol                      :integer          default("ostatus"), not null
 #  public_key                    :text             default(""), not null
+#  remote_actor_published_at     :datetime
+#  remote_outbox_total_items     :bigint(8)
 #  requested_deletion_at         :datetime
 #  requested_review_at           :datetime
 #  reviewed_at                   :datetime
