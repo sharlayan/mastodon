@@ -2,7 +2,7 @@
 
 class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   READ_ACTIONS = %i(history user_timeline room_timeline show search owned_rooms joining_rooms room_members show_room invitations_inbox invitations_outbox).freeze
-  WRITE_ACTIONS = %i(read_all create_to_user create_to_room update destroy react unreact create_room update_room destroy_room mute_room leave_room join_room create_invitation ignore_invitation reject_invitation cancel_invitation).freeze
+  WRITE_ACTIONS = %i(read_all create_to_user create_to_room update destroy react unreact create_room update_room destroy_room mute_room leave_room kick_member join_room create_invitation ignore_invitation reject_invitation cancel_invitation).freeze
   BOOLEAN_VALUES = [true, false].freeze
   NULLABLE_SEARCH_IDS = %i(userId roomId).freeze
   CREATE_MESSAGE_ACTIONS = %w(create_to_user create_to_room).freeze
@@ -14,7 +14,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     destroy: %i(messageId), react: %i(messageId reaction), unreact: %i(messageId reaction),
     search: %i(query), create_room: %i(name), room_members: %i(roomId), show_room: %i(roomId),
     update_room: %i(roomId), destroy_room: %i(roomId), mute_room: %i(roomId mute),
-    leave_room: %i(roomId), join_room: %i(roomId), invitations_outbox: %i(roomId),
+    leave_room: %i(roomId), kick_member: %i(roomId userId), join_room: %i(roomId), invitations_outbox: %i(roomId),
     create_invitation: %i(roomId userId), ignore_invitation: %i(roomId),
     reject_invitation: %i(roomId), cancel_invitation: %i(invitationId)
   }.freeze
@@ -189,6 +189,17 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
 
   def join_room
     chat_service.accept_invitation(current_account, received_invitation!)
+    head 204
+  end
+
+  def kick_member
+    room = accessible_conversations.chat_group.find_by(id: params[:roomId], owner_account: current_account)
+    return render_error('No such room', 'NO_SUCH_ROOM', 400) if room.nil?
+
+    member = room.memberships.where.not(account_id: current_account.id).find_by(account_id: params[:userId])
+    return render_error('No such member', 'NO_SUCH_MEMBER', 400) if member.nil?
+
+    chat_service.kick(current_account, room, member.account)
     head 204
   end
 

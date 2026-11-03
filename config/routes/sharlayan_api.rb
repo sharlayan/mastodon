@@ -61,6 +61,7 @@ namespace :api, format: false do
         member do
           post :read
           delete :leave
+          delete 'members/:account_id', action: :kick
           post :mute
           post :unmute
           post :archive
@@ -434,6 +435,7 @@ namespace :api, format: false do
     post 'chat/rooms/delete', to: 'chat#destroy_room'
     post 'chat/rooms/mute', to: 'chat#mute_room'
     post 'chat/rooms/leave', to: 'chat#leave_room'
+    post 'chat/rooms/kick', to: 'chat#kick_member'
     post 'chat/rooms/join', to: 'chat#join_room'
     post 'chat/rooms/invitations/inbox', to: 'chat#invitations_inbox'
     post 'chat/rooms/invitations/outbox', to: 'chat#invitations_outbox'

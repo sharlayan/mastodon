@@ -182,6 +182,107 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+describe('Chat owner member removal', () => {
+  let room = { ...conversation('A'), type: 'group', current_role: 'owner' };
+  const confirmRemoval = vi.fn<(message?: string) => boolean>();
+
+  beforeEach(() => {
+    room = { ...conversation('A'), type: 'group', current_role: 'owner' };
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: [room] });
+      if (url === '/api/v1/chat/conversations/A')
+        return Promise.resolve({ data: room });
+      return getResponse(url);
+    });
+    confirmRemoval.mockReturnValue(true);
+    vi.spyOn(window, 'confirm').mockImplementation(confirmRemoval);
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('confirms removing another member and updates the roster after success', async () => {
+    api.delete.mockResolvedValue({ data: { ...room, accounts: [account] } });
+    mountChat();
+    const button = await screen.findByRole('button', {
+      name: 'Remove Bob from group',
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Remove Alice from group' }),
+    ).toBeNull();
+
+    fireEvent.click(button);
+
+    expect(confirmRemoval).toHaveBeenCalledWith(
+      'Remove Bob from this group? They will need another invitation to rejoin.',
+    );
+    await waitFor(() => {
+      expect(api.delete).toHaveBeenCalledWith(
+        '/api/v1/chat/conversations/A/members/remote',
+      );
+    });
+    await screen.findByText('Members (1)');
+    expect(
+      screen.queryByRole('button', { name: 'Remove Bob from group' }),
+    ).toBeNull();
+    expect(screen.getByText('Private message A')).toBeTruthy();
+  });
+
+  it('does not remove the member when confirmation is cancelled', async () => {
+    confirmRemoval.mockReturnValue(false);
+    mountChat();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Remove Bob from group' }),
+    );
+
+    expect(api.delete).not.toHaveBeenCalled();
+    expect(screen.getByText('Members (2)')).toBeTruthy();
+  });
+
+  it('retains the member and reports a failed removal', async () => {
+    api.delete.mockRejectedValue(new Error('Forbidden'));
+    mountChat();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Remove Bob from group' }),
+    );
+
+    await screen.findByText('The chat request could not be completed.');
+    expect(screen.getByText('Members (2)')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Remove Bob from group' }),
+    ).toBeTruthy();
+  });
+
+  it.each(['member', 'direct'])(
+    'does not expose removal to a %s conversation viewer',
+    async (kind) => {
+      if (kind === 'member') room.current_role = 'member';
+      else room.type = 'direct';
+      mountChat();
+      await screen.findByText('Private message A');
+
+      expect(
+        screen.queryByRole('button', { name: /Remove .* from group/ }),
+      ).toBeNull();
+    },
+  );
+
+  it('allows the owner to remove a member while the group is archived', async () => {
+    room.archived = true;
+    api.delete.mockResolvedValue({ data: { ...room, accounts: [account] } });
+    mountChat();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Remove Bob from group' }),
+    );
+
+    await waitFor(() => {
+      expect(api.delete).toHaveBeenCalledWith(
+        '/api/v1/chat/conversations/A/members/remote',
+      );
+    });
+  });
+});
+
 describe('Chat conversation isolation', () => {
   it.each(['edit', 'reply', 'draft'])(
     'clears %s state and media when navigating A → home → B',

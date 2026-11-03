@@ -6,7 +6,7 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
   before_action :authorize_chat_read!, only: [:index, :show]
   before_action :authorize_chat_write!, except: [:index, :show]
   before_action :enforce_chat_write_rate_limit!, except: [:index, :show, :read]
-  before_action :set_conversation, only: [:show, :update, :destroy, :read, :leave, :mute, :unmute, :archive, :unarchive]
+  before_action :set_conversation, only: [:show, :update, :destroy, :read, :leave, :kick, :mute, :unmute, :archive, :unarchive]
 
   def index
     conversations = ChatConversation.for_account(current_account)
@@ -65,6 +65,11 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
   def mute
     chat_service.mute(current_account, @conversation, muted: true)
     render_empty
+  end
+
+  def kick
+    chat_service.kick(current_account, @conversation, Account.find(params[:account_id]))
+    render json: @conversation.reload, serializer: REST::ChatConversationSerializer, current_account: current_account
   end
 
   def unmute

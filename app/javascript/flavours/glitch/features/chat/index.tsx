@@ -212,6 +212,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     ChatAccount[]
   >([]);
   const [inviteAccount, setInviteAccount] = useState<ChatAccount | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [groupEdit, setGroupEdit] = useState<{
     conversationId: string;
     title: string;
@@ -1202,6 +1203,52 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [conversation, conversationId, history, loadConversations],
   );
 
+  const handleRemoveMember = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      if (
+        conversation?.type !== 'group' ||
+        conversation.current_role !== 'owner' ||
+        removingMemberId
+      )
+        return;
+      const member = conversation.accounts.find(
+        (account) => account.id === event.currentTarget.dataset.accountId,
+      );
+      if (!member || member.id === me) return;
+      if (
+        !window.confirm(
+          intl.formatMessage(
+            {
+              id: 'chat.remove_member_confirm',
+              defaultMessage:
+                'Remove {name} from this group? They will need another invitation to rejoin.',
+            },
+            { name: member.display_name || member.acct },
+          ),
+        )
+      )
+        return;
+
+      setRemovingMemberId(member.id);
+      void api()
+        .delete<ChatConversation>(
+          `/api/v1/chat/conversations/${conversation.id}/members/${member.id}`,
+        )
+        .then(({ data }) => {
+          setConversations((current) =>
+            current.map((item) => (item.id === data.id ? data : item)),
+          );
+        })
+        .catch(() => {
+          setError('remove_member');
+        })
+        .finally(() => {
+          setRemovingMemberId(null);
+        });
+    },
+    [conversation, intl, removingMemberId],
+  );
+
   const handleOpenConversation = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const id = event.currentTarget.dataset.conversationId;
@@ -1396,6 +1443,27 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           />
                         </small>
                       )}
+                      {conversation.current_role === 'owner' &&
+                        account.id !== me && (
+                          <button
+                            type='button'
+                            data-account-id={account.id}
+                            onClick={handleRemoveMember}
+                            disabled={removingMemberId !== null}
+                            aria-label={intl.formatMessage(
+                              {
+                                id: 'chat.remove_member_label',
+                                defaultMessage: 'Remove {name} from group',
+                              },
+                              { name: account.display_name || account.acct },
+                            )}
+                          >
+                            <FormattedMessage
+                              id='chat.remove_member'
+                              defaultMessage='Remove'
+                            />
+                          </button>
+                        )}
                     </span>
                   ))}
                 </div>

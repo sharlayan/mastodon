@@ -210,6 +210,27 @@ class Sharlayan::ChatService
     membership
   end
 
+  def kick(account, conversation, target)
+    recipients = conversation.with_lock do
+      membership = membership!(account, conversation)
+      raise Forbidden unless conversation.chat_group? && membership.owner? && conversation.owner_account_id == account.id
+      raise Forbidden if target.id == account.id
+
+      target_membership = conversation.memberships.find_by!(account: target)
+      raise Forbidden if target_membership.owner?
+
+      remote_accounts = conversation.accounts.remote.to_a
+      target_membership.destroy!
+      remote_accounts
+    end
+
+    payload = Sharlayan::ChatFederation::Payload.remove(conversation, target, actor: account)
+    recipients.uniq(&:inbox_url).each { |recipient| deliver_to_account(account, payload, recipient) }
+    broadcast_to(target, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if target.local?
+    broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: target.id.to_s })
+    conversation
+  end
+
   def archive(account, conversation, archived:)
     membership = membership!(account, conversation)
     raise Forbidden unless conversation.chat_group? && membership.owner?
