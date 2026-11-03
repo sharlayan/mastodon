@@ -323,11 +323,8 @@ module Sharlayan
         end
 
         def room_uri_of(object)
-          context = object['@context']
-          context = context.find { |value| value.is_a?(String) && value.include?('/chat/rooms/') } if context.is_a?(Array)
-          return context if context.is_a?(String) && room_uri?(context)
-
-          nil
+          # CherryPick names the room in _misskey_chatRoom and context, and this server in @context.
+          [object['_misskey_chatRoom'], object['context'], *Array.wrap(object['@context'])].find { |value| room_uri?(value) }
         end
 
         def authored_by?(object, account)

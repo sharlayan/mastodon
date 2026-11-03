@@ -5,7 +5,8 @@
       "misskey": "https://misskey-hub.net/ns#",
       "_misskey_talk": "misskey:_misskey_talk",
       "_misskey_content": "misskey:_misskey_content",
-      "_misskey_reaction": "misskey:_misskey_reaction"
+      "_misskey_reaction": "misskey:_misskey_reaction",
+      "_misskey_chatRoom": "misskey:_misskey_chatRoom"
     }
   ],
   "id": "https://remote.test/chat/messages/group-1/activity",
@@ -32,6 +33,7 @@
     ],
     "published": "2026-11-02T00:00:00Z",
     "_misskey_talk": true,
-    "@context": "__ROOM__"
+    "context": "__ROOM__",
+    "_misskey_chatRoom": "__ROOM__"
   }
 }

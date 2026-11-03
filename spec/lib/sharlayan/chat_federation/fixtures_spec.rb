@@ -62,6 +62,29 @@ RSpec.describe Sharlayan::ChatFederation::Incoming, type: :model do
     expect(conversation.messages.find_by(uri: 'https://remote.test/chat/messages/group-1')).to be_present
   end
 
+  it 'accepts a group Create that names the room only in @context, as this server sends it' do
+    conversation = service.create_conversation(alice, type: :group, account_ids: [], title: 'Local room')
+    conversation.memberships.create!(account: bob)
+    room = Sharlayan::ChatFederation::Payload.room_uri(conversation)
+    json = fixture('create_group', room: room)
+    json['object'] = json['object'].except('context', '_misskey_chatRoom').merge('@context' => room)
+
+    perform(json, bob, delivered_to_account_id: alice.id)
+
+    expect(conversation.messages.find_by(uri: 'https://remote.test/chat/messages/group-1')).to be_present
+  end
+
+  it 'does not open a direct conversation for a group message' do
+    conversation = service.create_conversation(alice, type: :group, account_ids: [], title: 'Local room')
+    conversation.memberships.create!(account: bob)
+    conversation.update!(archived_at: Time.current)
+
+    expect { perform(fixture('create_group', room: Sharlayan::ChatFederation::Payload.room_uri(conversation)), bob, delivered_to_account_id: alice.id) }
+      .to_not(change { ChatConversation.where(conversation_type: :direct).count })
+
+    expect(ChatMessage.find_by(uri: 'https://remote.test/chat/messages/group-1')).to be_nil
+  end
+
   it 'accepts the Invite fixture and creates a mirror room' do
     perform(fixture('invite'))
 
