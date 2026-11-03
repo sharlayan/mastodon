@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class ChatMessageReaction < ApplicationRecord
+  CUSTOM_EMOJI_RE = /\A:([a-zA-Z0-9_+-]+):\z/
+
   belongs_to :chat_message, inverse_of: :reactions
   belongs_to :account
 
@@ -9,12 +11,23 @@ class ChatMessageReaction < ApplicationRecord
   validate :recognized_reaction
   validate :message_reaction_limit, on: :create
 
+  def self.shortcode_of(reaction)
+    reaction&.match(CUSTOM_EMOJI_RE)&.captures&.first
+  end
+
+  # A shortcode only means something on the reactor's server, so a remote
+  # reaction must never resolve to a local emoji that happens to share its name.
+  def custom_emoji
+    shortcode = self.class.shortcode_of(reaction)
+    shortcode && CustomEmoji.find_by(shortcode: shortcode, domain: account&.domain, disabled: false)
+  end
+
   private
 
   def recognized_reaction
     return if StatusReactionValidator::SUPPORTED_EMOJIS.include?(reaction)
 
-    shortcode = reaction&.match(/\A:([a-zA-Z0-9_+-]+):\z/)&.captures&.first
+    shortcode = self.class.shortcode_of(reaction)
     return if shortcode && (account&.remote? || CustomEmoji.exists?(shortcode: shortcode, domain: nil, disabled: false))
 
     errors.add(:reaction, :invalid)

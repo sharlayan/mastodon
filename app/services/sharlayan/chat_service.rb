@@ -465,6 +465,10 @@ class Sharlayan::ChatService
     raise Error, 'Deleted messages cannot receive reactions' if message.deleted?
     raise Forbidden if message.account_id == actor.id
 
+    # Imported only after the checks above, so a stranger cannot make this server fetch images.
+    shortcode = ChatMessageReaction.shortcode_of(reaction)
+    yield shortcode if shortcode && block_given?
+
     record = message.reactions.find_or_create_by!(account: actor, reaction: reaction)
     broadcast(message.chat_conversation, 'chat.reaction', REST::ChatMessageReactionSerializer.new(record).as_json)
   rescue ActiveRecord::RecordInvalid

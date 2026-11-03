@@ -19,6 +19,8 @@ shipping a change to chat ActivityPub handling.
 - [ ] Bob deletes a message; Alice sees the deleted-message placeholder.
 - [ ] Alice reacts with a unicode emoji from the full picker; Bob sees the reaction.
 - [ ] Alice removes the reaction; Bob sees it disappear.
+- [ ] Alice reacts with a custom emoji; Bob sees Alice's image, even if Bob's server has a different emoji with the same name.
+- [ ] Alice removes the custom emoji reaction; Bob sees it disappear.
 - [ ] Alice creates a group, invites Bob, and Bob accepts.
 - [ ] Both sides see each other in the member list with a remote badge.
 - [ ] Alice adds a third remote member. Existing members receive the roster update.

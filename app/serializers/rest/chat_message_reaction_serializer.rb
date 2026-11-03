@@ -36,7 +36,6 @@ class REST::ChatMessageReactionSerializer < ActiveModel::Serializer
   def custom_emoji
     return @custom_emoji if defined?(@custom_emoji)
 
-    shortcode = object.reaction&.match(/\A:([a-zA-Z0-9_+-]+):\z/)&.captures&.first
-    @custom_emoji = shortcode && CustomEmoji.find_by(shortcode: shortcode, domain: nil, disabled: false)
+    @custom_emoji = object.custom_emoji
   end
 end

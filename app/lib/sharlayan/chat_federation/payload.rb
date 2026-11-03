@@ -6,6 +6,8 @@ module Sharlayan
       CONTEXT = [
         'https://www.w3.org/ns/activitystreams',
         {
+          'toot' => 'http://joinmastodon.org/ns#',
+          'Emoji' => 'toot:Emoji',
           'misskey' => 'https://misskey-hub.net/ns#',
           '_misskey_talk' => 'misskey:_misskey_talk',
           '_misskey_content' => 'misskey:_misskey_content',
@@ -66,7 +68,7 @@ module Sharlayan
             '_misskey_reaction' => reaction,
             'published' => Time.now.utc.iso8601,
             'to' => recipients(message),
-          }
+          }.merge(reaction_tag(account, reaction))
         end
 
         def undo_reaction(message, account, reaction)
@@ -244,6 +246,14 @@ module Sharlayan
         end
 
         private
+
+        def reaction_tag(account, reaction)
+          shortcode = ChatMessageReaction.shortcode_of(reaction)
+          emoji = shortcode && CustomEmoji.find_by(shortcode: shortcode, domain: account.domain, disabled: false, local_only: false)
+          return {} if emoji.nil?
+
+          { 'tag' => [ActivityPub::EmojiSerializer.new(emoji).serializable_hash.as_json] }
+        end
 
         def reaction_uri(message, account, reaction)
           "#{base_url}/chat/reactions/#{message.id}/#{account.id}/#{ERB::Util.url_encode(reaction)}"

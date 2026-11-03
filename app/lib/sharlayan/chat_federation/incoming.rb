@@ -149,7 +149,7 @@ module Sharlayan
           'skip: chat delete'
         end
 
-        def handle_reaction(json, account)
+        def handle_reaction(json, account, &emoji_importer)
           return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
 
           message = ChatMessage.find_by(uri: uri_of(json['object']))
@@ -158,7 +158,7 @@ module Sharlayan
           reaction = json['_misskey_reaction'] || json['content']
           return 'skip: empty reaction' if reaction.blank?
 
-          service.react_remote(account, message, reaction.to_s)
+          service.react_remote(account, message, reaction.to_s, &emoji_importer)
           'ok: chat reaction'
         rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique, Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
           Rails.logger.info("Dropped incoming chat reaction from #{account.uri}: #{e.message}")
