@@ -1688,7 +1688,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.index ["target_account_id"], name: "index_reports_on_target_account_id"
   end
 
-  create_table "rp_hidden_statuses", force: :cascade do |t|
+  create_table "rp_hidden_statuses", id: :bigint, default: -> { "timestamp_id('rp_hidden_statuses'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "hidden_by_account_id"
     t.boolean "media_moved", default: false, null: false
