@@ -213,7 +213,7 @@ RSpec.describe 'Chat federation gaps' do
 
     def room_update(archived)
       object = { 'id' => mirror.uri, 'type' => 'Group', 'name' => 'Mirror', 'attributedTo' => remote.uri }
-      object['_sharlayan_archived'] = archived unless archived.nil?
+      object['_misskey_chatArchived'] = archived unless archived.nil?
       { 'type' => 'Update', 'actor' => remote.uri, 'object' => object }
     end
 
@@ -225,7 +225,7 @@ RSpec.describe 'Chat federation gaps' do
       service.archive(owner, room, archived: true)
 
       [member, remote].each do |account|
-        expect(delivered_to(account).find { |payload| payload['type'] == 'Update' }.dig('object', '_sharlayan_archived')).to be(true)
+        expect(delivered_to(account).find { |payload| payload['type'] == 'Update' }.dig('object', '_misskey_chatArchived')).to be(true)
       end
     end
 
@@ -236,7 +236,7 @@ RSpec.describe 'Chat federation gaps' do
 
       service.archive(owner, room, archived: false)
 
-      expect(delivered_to(remote).find { |payload| payload['type'] == 'Update' }.dig('object', '_sharlayan_archived')).to be(false)
+      expect(delivered_to(remote).find { |payload| payload['type'] == 'Update' }.dig('object', '_misskey_chatArchived')).to be(false)
     end
 
     it 'applies the archived state from the room owner' do

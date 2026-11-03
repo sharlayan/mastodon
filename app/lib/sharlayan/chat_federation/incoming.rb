@@ -290,7 +290,7 @@ module Sharlayan
           return false unless chat_room?(json)
 
           object = json['object']
-          service.receive_room_update(account, room_uri: uri_of(object), title: object['name'], description: object['summary'], archived: object['_sharlayan_archived'])
+          service.receive_room_update(account, room_uri: uri_of(object), title: object['name'], description: object['summary'], archived: object['_misskey_chatArchived'])
           'ok: chat room updated'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat room update from #{account.uri}: #{e.message}")
