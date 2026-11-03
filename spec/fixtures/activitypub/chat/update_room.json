@@ -17,6 +17,8 @@
     "type": "Group",
     "name": "Updated room",
     "summary": "updated desc",
-    "attributedTo": "https://remote.test/users/bob"
+    "attributedTo": "https://remote.test/users/bob",
+    "updated": "2026-11-02T00:10:00.000Z",
+    "_misskey_chatArchived": false
   }
 }

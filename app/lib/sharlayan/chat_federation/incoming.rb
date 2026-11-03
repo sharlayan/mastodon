@@ -4,6 +4,11 @@ module Sharlayan
   module ChatFederation
     class Incoming
       extend Redisable
+      extend JsonLdHelper
+
+      ROOM_URI = %r{/chat/rooms/[a-zA-Z0-9]+\z}
+      MESSAGE_URI = %r{/chat/messages/[a-zA-Z0-9_-]+\z}
+      REACTION_TYPES = %w(EmojiReact Like).freeze
 
       class << self
         def chat_create?(json)
@@ -14,28 +19,32 @@ module Sharlayan
             object['id'].present?
         end
 
+        # A message from a server that omits the marker is still known by the URI it was stored under.
         def chat_update?(json)
-          chat_create?(json) || (json['object'].is_a?(Hash) &&
-            equals_type?(json['object']['type'], 'Note') &&
-            json['object']['_misskey_talk'] == true)
+          object = json['object']
+          return false unless object.is_a?(Hash) && equals_type?(object['type'], 'Note')
+
+          object['_misskey_talk'] == true || (uri_of(object).present? && ChatMessage.exists?(uri: uri_of(object)))
         end
 
         def chat_delete?(json)
-          object = json['object']
-          uri = uri_of(object)
-          uri.present? && (chat_message_uri?(uri) || room_uri?(uri) || ChatMessage.exists?(uri: uri))
+          uri = uri_of(json['object'])
+          uri.present? && (room_uri?(uri) || chat_message?(uri))
         end
 
         def chat_reaction?(json)
-          uri = uri_of(json['object'])
-          return false if uri.blank?
-
-          chat_message_uri?(uri) || ChatMessage.exists?(uri: uri)
+          chat_message?(uri_of(json['object']))
         end
 
         def chat_undo_reaction?(json)
           object = json['object']
-          object.is_a?(Hash) && equals_type?(object['type'], 'EmojiReact') && chat_reaction?(object)
+          object.is_a?(Hash) && REACTION_TYPES.any? { |type| equals_type?(object['type'], type) } && chat_reaction?(object)
+        end
+
+        # A room owner relays a member's message by reference. It is never a boost.
+        def chat_announce?(json)
+          object = json['object']
+          room_uri_of(json).present? || (object.is_a?(Hash) && object['_misskey_talk'] == true) || chat_message?(uri_of(object))
         end
 
         def chat_invite?(json)
@@ -72,37 +81,64 @@ module Sharlayan
           attachments = attachments_of(object)
           return 'skip: empty chat message' if text.blank? && attachments.empty?
 
-          local_recipient = local_recipient_for(json, object, options[:delivered_to_account_id])
-          return 'skip: no local recipient' if local_recipient.nil?
-
           room_uri = room_uri_of(object)
           if room_uri.present?
-            service.receive_group_message(
-              account,
-              room_uri: room_uri,
-              uri: uri,
-              text: text,
-              created_at: time_of(object['published']),
-              edited_at: time_of(object['updated']),
-              attachments: attachments,
-              reply_to_uri: uri_of(object['inReplyTo'])
-            )
+            # Room membership decides who sees this, whatever the sender's roster put in `to`.
+            service.receive_group_message(account, room_uri: room_uri, uri: uri, **message_attributes(object, text, attachments))
           else
-            service.receive_direct_message(
-              local_recipient,
-              account,
-              uri: uri,
-              text: text,
-              created_at: time_of(object['published']),
-              edited_at: time_of(object['updated']),
-              attachments: attachments,
-              reply_to_uri: uri_of(object['inReplyTo'])
-            )
+            local_recipient = local_recipient_for(object, options[:delivered_to_account_id])
+            return 'skip: no local recipient' if local_recipient.nil?
+
+            service.receive_direct_message(local_recipient, account, uri: uri, **message_attributes(object, text, attachments))
           end
           'ok: chat message created'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped incoming chat message from #{account.uri}: #{e.message}")
           'skip: chat policy'
+        end
+
+        def handle_announce(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
+          uri = uri_of(json['object'])
+          room_uri = room_uri_of(json)
+          return 'skip: not a relayed chat message' if uri.blank? || room_uri.blank?
+
+          conversation = ChatConversation.find_by(uri: room_uri)
+          if conversation.nil?
+            raise DependencyNotReadyError, 'Waiting for chat room' if same_host?(room_uri, account.uri)
+
+            return 'skip: unknown chat room'
+          end
+          return 'skip: not the room owner' unless conversation.owner_account_id == account.id
+          return 'ok: chat message already received' if ChatMessage.exists?(uri: uri)
+          return 'skip: local chat message' if ActivityPub::TagManager.instance.local_uri?(uri)
+
+          signer = conversation.accounts.local.first
+          if signer.nil?
+            raise DependencyNotReadyError, 'Waiting for chat membership' if conversation.invitations.pending.joins(:invitee_account).merge(::Account.local).exists?
+
+            return 'skip: no local member'
+          end
+
+          note = fetch_relayed_note(uri, signer)
+          return 'skip: chat message deleted' if note == :deleted
+          return 'skip: invalid chat message' unless note && chat_create?('object' => note) && room_uri_of(note) == room_uri
+
+          author = service.resolve_account(uri_of(note['attributedTo']))
+          raise DependencyNotReadyError, 'Waiting for chat message author' if author.nil?
+          return 'skip: invalid chat message author' unless author.remote? && !author.suspended? && authored_by?(note, author)
+          return 'skip: deleted before create' if deleted_before_create?(uri, author)
+
+          text = text_of(note)
+          attachments = attachments_of(note)
+          return 'skip: empty chat message' if text.blank? && attachments.empty?
+
+          service.receive_group_message(author, room_uri: room_uri, uri: uri, **message_attributes(note, text, attachments))
+          'ok: relayed chat message created'
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+          Rails.logger.info("Dropped relayed chat message from #{account.uri}: #{e.message}")
+          'skip: relayed chat message'
         end
 
         def handle_update(json, account, **)
@@ -203,20 +239,21 @@ module Sharlayan
           room_uri = uri_of(room)
           return 'skip: invalid chat room' unless chat_room?(json) && authored_by?(room, account)
           return 'skip: deleted before invite' if service.room_tombstoned?(room_uri, account)
-          return 'skip: invalid target' unless uri_of(json['target']) == local_target_uri?(json, account)
 
           invitee = local_account_for_target(json)
           return 'skip: no local invitee' if invitee.nil?
+          return 'skip: cancelled before invite' if service.invite_cancelled?(room_uri, account, invitee, time_of(json['published']))
 
           begin
-            invitation = service.receive_invite(
+            service.receive_invite(
               invitee,
               account,
               room_uri: room_uri,
               title: room['name'],
-              description: room['summary']
+              description: room['summary'],
+              archived: room['_misskey_chatArchived'],
+              updated: time_of(room['updated'])
             )
-            broadcast_invitation(invitation.chat_conversation, invitee)
             'ok: chat invitation received'
           rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
             Rails.logger.info("Rejected chat invitation from #{account.uri}: #{e.message}")
@@ -235,7 +272,7 @@ module Sharlayan
           invitee = local_account_for_target(invitation)
           return 'skip: no local invitee' if invitee.nil?
 
-          service.receive_cancel(account, room_uri: uri_of(invitation['object']), invitee: invitee)
+          service.receive_cancel(account, room_uri: uri_of(invitation['object']), invitee: invitee, published: time_of(json['published']))
           'ok: chat invitation cancelled'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat Undo Invite from #{account.uri}: #{e.message}")
@@ -300,7 +337,7 @@ module Sharlayan
           return false unless chat_room?(json)
 
           object = json['object']
-          service.receive_room_update(account, room_uri: uri_of(object), title: object['name'], description: object['summary'], archived: object['_misskey_chatArchived'])
+          service.receive_room_update(account, room_uri: uri_of(object), title: object['name'], description: object['summary'], archived: object['_misskey_chatArchived'], updated: time_of(object['updated']))
           'ok: chat room updated'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat room update from #{account.uri}: #{e.message}")
@@ -334,16 +371,44 @@ module Sharlayan
         end
 
         def chat_message_uri?(uri)
-          uri.is_a?(String) && uri.include?('/chat/messages/')
+          uri.is_a?(String) && MESSAGE_URI.match?(uri)
+        end
+
+        # The path is only a hint for a message that has not arrived. It can also be a status.
+        def chat_message?(uri)
+          return false if uri.blank?
+
+          ChatMessage.exists?(uri: uri) || (chat_message_uri?(uri) && !::Status.exists?(uri: uri))
         end
 
         def room_uri?(uri)
-          uri.is_a?(String) && uri.include?('/chat/rooms/')
+          uri.is_a?(String) && ROOM_URI.match?(uri)
         end
 
         def room_uri_of(object)
           # Keep accepting the legacy room @context used by older Mastodon chat senders.
           [object['_misskey_chatRoom'], object['context'], *Array.wrap(object['@context'])].find { |value| room_uri?(value) }
+        end
+
+        def message_attributes(object, text, attachments)
+          {
+            text: text,
+            created_at: time_of(object['published']),
+            edited_at: time_of(object['updated']),
+            attachments: attachments,
+            reply_to_uri: uri_of(object['inReplyTo']),
+          }
+        end
+
+        # A 404 can mean the author's server has not heard about the signing member yet.
+        def fetch_relayed_note(uri, signer)
+          note = fetch_resource(uri, on_behalf_of: signer, raise_on_error: :all)
+          equals_type?(note&.fetch('type', nil), 'Tombstone') ? :deleted : note
+        rescue Mastodon::UnexpectedResponseError => e
+          return :deleted if e.response.code == 410
+          raise DependencyNotReadyError, 'Waiting for chat message' if e.response.code == 404
+
+          raise
         end
 
         def authored_by?(object, account)
@@ -385,7 +450,7 @@ module Sharlayan
           nil
         end
 
-        def local_recipient_for(_json, object, delivered_to_account_id)
+        def local_recipient_for(object, delivered_to_account_id)
           if delivered_to_account_id.present?
             account = ::Account.local.find_by(id: delivered_to_account_id)
             return account if account.present?
@@ -395,34 +460,20 @@ module Sharlayan
         end
 
         def recipients(object)
-          values = object['to']
-          values = [values] unless values.is_a?(Array)
-          values.filter_map do |value|
-            uri = uri_of(value)
-            ActivityPub::TagManager.instance.uri_to_resource(uri, ::Account)
-          end
-        end
-
-        def local_target_uri?(json, _account)
-          local_account_for_target(json)&.then { |account| ActivityPub::TagManager.instance.uri_for(account) }
+          [*object['to'], *object['cc']].filter_map { |value| account_for(uri_of(value)) }
         end
 
         def local_account_for_target(json)
-          target = uri_of(json['target'])
-          account = ActivityPub::TagManager.instance.uri_to_resource(target, ::Account)
+          account = account_for(uri_of(json['target']))
           account if account&.local?
-        rescue Addressable::URI::InvalidURIError
-          nil
         end
 
-        def broadcast_invitation(conversation, invitee)
-          invitation = conversation.invitations.pending.find_by(invitee_account: invitee)
-          return if invitation.nil?
+        def account_for(uri)
+          return if uri.blank?
 
-          payload = ::REST::ChatInvitationSerializer.new(invitation, current_account: invitee).as_json
-          RedisConnection.with do |redis|
-            redis.publish("timeline:#{invitee.id}", JSON.generate(event: 'chat.invitation', payload: JSON.generate(payload)))
-          end
+          ActivityPub::TagManager.instance.uri_to_resource(uri, ::Account)
+        rescue Addressable::URI::InvalidURIError
+          nil
         end
 
         def reject_invite(account, invitee, room)

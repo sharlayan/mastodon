@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_02_000200) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_03_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -614,6 +614,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_000200) do
     t.string "direct_key"
     t.bigint "last_message_id"
     t.bigint "owner_account_id"
+    t.datetime "state_updated_at"
     t.string "title"
     t.datetime "updated_at", null: false
     t.string "uri"

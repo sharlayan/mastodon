@@ -12,9 +12,7 @@
   "type": "Delete",
   "actor": "https://remote.test/users/bob",
   "published": "2026-11-02T00:03:00Z",
-  "to": [
-    "__LOCAL__"
-  ],
+  "to": ["__LOCAL__"],
   "object": {
     "id": "https://remote.test/chat/messages/1",
     "type": "Tombstone",

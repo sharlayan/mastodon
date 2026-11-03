@@ -12,9 +12,7 @@
   "type": "Update",
   "actor": "https://remote.test/users/bob",
   "published": "2026-11-02T00:02:00Z",
-  "to": [
-    "__LOCAL__"
-  ],
+  "to": ["__LOCAL__"],
   "object": {
     "id": "https://remote.test/chat/messages/1",
     "type": "Note",
@@ -25,9 +23,7 @@
       "content": "edited",
       "mediaType": "text/x.misskeymarkdown"
     },
-    "to": [
-      "__LOCAL__"
-    ],
+    "to": ["__LOCAL__"],
     "published": "2026-11-02T00:00:00Z",
     "_misskey_talk": true,
     "updated": "2026-11-02T00:02:00Z"

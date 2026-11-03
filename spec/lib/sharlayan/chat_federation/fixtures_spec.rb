@@ -107,6 +107,22 @@ RSpec.describe 'Chat federation fixtures', type: :model do
     expect(rejected.invitations.find_by(invitee_account: bob)).to be_rejected
   end
 
+  it 'stores the relayed message from the Announce fixture without creating a reblog' do
+    invitation = service.receive_invite(alice, bob, room_uri: 'https://remote.test/chat/rooms/g2', title: 'Remote room')
+    service.accept_invitation(alice, invitation)
+    conversation = ChatConversation.find_by!(uri: 'https://remote.test/chat/rooms/g2')
+    conversation.memberships.create!(account: carol)
+    note = {
+      'id' => 'https://other.test/chat/messages/relayed', 'type' => 'Note', 'attributedTo' => carol.uri,
+      '_misskey_talk' => true, '_misskey_content' => 'relayed', '_misskey_chatRoom' => conversation.uri,
+      '@context' => Sharlayan::ChatFederation::Payload::CONTEXT
+    }
+    stub_request(:get, note['id']).to_return(body: note.to_json, headers: { 'Content-Type' => 'application/activity+json' })
+
+    expect { perform(fixture('announce')) }.to change(ChatMessage, :count).by(1).and(not_change(Status, :count))
+    expect(ChatMessage.find_by!(uri: note['id'])).to have_attributes(account: carol, text: 'relayed')
+  end
+
   it 'accepts the room Add, Update, and Delete fixtures' do
     invitation = service.receive_invite(alice, bob, room_uri: 'https://remote.test/chat/rooms/g2', title: 'Remote room')
     conversation = invitation.chat_conversation

@@ -53,7 +53,11 @@ module Sharlayan::MediaAttachmentExtensions
 
   # Chat media cannot be attached to a status, so timelines never pay for this query.
   def chat_attachment?
-    status_id.nil? && chat_message_media_attachments.exists?
+    status_id.nil? && chat_message_media_attachments.any?
+  end
+
+  def removable_with_chat_message?
+    status_id.nil? && scheduled_status_id.nil? && status_draft_id.nil? && !self.class.referenced_by_page.exists?(id: id)
   end
 
   private

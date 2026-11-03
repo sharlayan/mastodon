@@ -7,8 +7,8 @@ class ActivityPub::ChatRoomsController < ActivityPub::BaseController
   def show
     response.headers['Cache-Control'] = 'private, no-store'
 
-    conversation = ChatConversation.find_by(id: params[:id])
-    return head 404 if conversation.nil?
+    conversation = ChatConversation.chat_group.find_by(id: params[:id])
+    return head 404 if conversation.nil? || !conversation.local?
     return head 404 unless visible_to_signed_account?(conversation)
 
     object = Sharlayan::ChatFederation::Payload.room(conversation)

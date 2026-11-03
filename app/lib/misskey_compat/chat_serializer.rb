@@ -60,7 +60,7 @@ class MisskeyCompat::ChatSerializer
       ownerId: mid(conversation.owner_account_id),
       owner: user(conversation.owner_account),
       isMuted: membership&.muted? || false,
-      invitationExists: conversation.invitations.pending.exists?(invitee_account: @viewer),
+      invitationExists: conversation.invitations.any? { |invitation| invitation.pending? && invitation.invitee_account_id == @viewer.id },
       isArchived: conversation.archived?,
     }
   end
@@ -112,7 +112,7 @@ class MisskeyCompat::ChatSerializer
   end
 
   def reactions(message)
-    message.reactions.includes(:account).map do |reaction|
+    message.reactions.map do |reaction|
       shortcode = ChatMessageReaction.shortcode_of(reaction.reaction)
       key = shortcode ? ":#{shortcode}@#{reaction.account.domain.presence || '.'}:" : reaction.reaction
       { user: user(reaction.account), reaction: key }

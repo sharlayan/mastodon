@@ -42,6 +42,24 @@ module Sharlayan
           }
         end
 
+        # Sent by the owner of a room so a member the author's server did not know about yet still
+        # hears about the message. Receivers fetch the object from its author and verify it there.
+        def announce_message(message)
+          conversation = message.chat_conversation
+          room = room_uri(conversation)
+          {
+            '@context' => CONTEXT,
+            'id' => "#{room}#relay/#{ERB::Util.url_encode(message_uri(message))}",
+            'type' => 'Announce',
+            'actor' => actor_uri(conversation.owner_account),
+            'object' => message_uri(message),
+            'context' => room,
+            '_misskey_chatRoom' => room,
+            'published' => Time.now.utc.iso8601,
+            'to' => conversation.accounts.where.not(id: conversation.owner_account_id).map { |account| actor_uri(account) },
+          }
+        end
+
         def delete(message)
           {
             '@context' => CONTEXT,
@@ -231,6 +249,7 @@ module Sharlayan
             'summary' => conversation.description.to_s,
             'attributedTo' => actor_uri(conversation.owner_account),
             '_misskey_chatArchived' => conversation.archived?,
+            'updated' => (conversation.state_updated_at || conversation.updated_at).utc.iso8601(3),
           }
         end
 

@@ -13,6 +13,9 @@ class ChatConversationCleanupWorker
     return unless conversation.remote?
     return if conversation.accounts.local.exists?
 
-    conversation.destroy!
+    newest_invitation = conversation.invitations.pending.maximum(:created_at)
+    return self.class.perform_at(newest_invitation + CLEANUP_DELAY, conversation_id) if newest_invitation && newest_invitation > CLEANUP_DELAY.ago
+
+    Sharlayan::ChatService.new.remove_abandoned_conversation(conversation)
   end
 end

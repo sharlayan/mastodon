@@ -180,7 +180,7 @@ RSpec.describe 'Chat federation reaction ordering' do
     expect(message.reactions.reload.pluck(:account_id)).to contain_exactly(actor.id, other.id)
   end
 
-  it 'rolls back a reaction if actor capacity is consumed during emoji import' do
+  it 'does not store a reaction if actor capacity is consumed during emoji import' do
     stub_const('Sharlayan::ChatFederation::ReactionState::MAX_ACTOR_ACTIVE_IDS', 1)
     other_message = service.create_message(owner, conversation, text: 'other')
     competing_state = Sharlayan::ChatFederation::ReactionState.new(actor, other_message, '👍')
@@ -189,7 +189,7 @@ RSpec.describe 'Chat federation reaction ordering' do
       service.react_remote(actor, message, ':wave:', activity_id: 'https://remote.test/chat-reactions/loser') do
         competing_state.add('https://remote.test/chat-reactions/winner')
       end
-    end.to raise_error(Sharlayan::ChatService::Error)
+    end.to_not raise_error
 
     expect(message.reactions.reload).to be_empty
   end

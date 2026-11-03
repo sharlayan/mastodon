@@ -39,14 +39,14 @@ RSpec.describe Sharlayan::ChatService do
     expect(message.reload).to have_attributes(text: 'retain me', deleted_at: nil, hidden_at: be_present)
   end
 
-  it 'rejects remote Add to an archived room' do
+  # An owner cannot accept new members into an archived room, so this is an Add the archive overtook.
+  it 'records a remote Add that an archive overtook' do
     conversation = service.create_conversation(local_account, type: :group, title: 'Room')
     service.archive(local_account, conversation, archived: true)
 
-    expect do
-      service.receive_add(local_account, room_uri: conversation.uri, account_uri: other_remote.uri)
-    end.to raise_error(described_class::Error)
-    expect(conversation.memberships.exists?(account: other_remote)).to be(false)
+    service.receive_add(local_account, room_uri: conversation.uri, account_uri: other_remote.uri)
+
+    expect(conversation.memberships.exists?(account: other_remote)).to be(true)
   end
 
   it 'enforces group capacity for remote Add' do
@@ -71,8 +71,10 @@ RSpec.describe Sharlayan::ChatService do
   it 'cleans up an ignored remote-only room' do
     invitation = service.receive_invite(local_account, remote_account, room_uri: 'https://remote.test/chat/rooms/ignored', title: 'Room')
 
-    expect do
-      ChatConversationCleanupWorker.new.perform(invitation.chat_conversation_id)
-    end.to change(ChatConversation, :count).by(-1)
+    travel_to((ChatConversationCleanupWorker::CLEANUP_DELAY + 1.day).from_now) do
+      expect do
+        ChatConversationCleanupWorker.new.perform(invitation.chat_conversation_id)
+      end.to change(ChatConversation, :count).by(-1)
+    end
   end
 end

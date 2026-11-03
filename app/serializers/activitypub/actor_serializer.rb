@@ -180,14 +180,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   end
 
   def misskey_chat_scope
-    case object.user&.settings&.[](:chat_policy)
-    when 'everyone', 'followers', 'following', 'mutual', 'none'
-      object.user.settings[:chat_policy]
-    when 'nobody'
-      'none'
-    else
-      'mutual'
-    end
+    Sharlayan::ChatFederation::ChatScope.normalize(object.user&.settings&.[](:chat_policy))
   end
 
   def avatar_decorations_enabled?

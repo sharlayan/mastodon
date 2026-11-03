@@ -48,7 +48,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     host = params[:host].to_s.strip.delete_prefix('@').presence
     return render json: [] if username.blank? && host.blank?
 
-    scope = Account.without_suspended
+    scope = Account.without_unapproved.without_suspended.without_instance_actor
     scope = scope.where('lower(accounts.username) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(username.downcase)}%") if username.present?
     scope = apply_host_filter(scope, host) if params.key?(:host)
     accounts = scope.limit(pagination_limit).to_a

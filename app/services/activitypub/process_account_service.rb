@@ -263,19 +263,8 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.followed_message        = (@json['_misskey_followedMessage'] || @json['followedMessage'] || '')[0...256].presence
     @account.is_cat                  = Setting.cat_enabled && Setting.cat_federation_enabled && (@json['isCat'] || false)
     @account.can_chat                = @json['_misskey_canChat'] == true
-    @account.chat_scope              = normalize_chat_scope(@json['_misskey_chatScope'])
+    @account.chat_scope              = Sharlayan::ChatFederation::ChatScope.normalize(@json['_misskey_chatScope'])
     process_avatar_decorations! if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
-  end
-
-  def normalize_chat_scope(value)
-    case value
-    when 'everyone', 'followers', 'following', 'mutual', 'none'
-      value
-    when 'nobody'
-      'none'
-    else
-      'mutual'
-    end
   end
 
   def set_fetchable_key!

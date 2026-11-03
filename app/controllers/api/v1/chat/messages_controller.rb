@@ -12,7 +12,7 @@ class Api::V1::Chat::MessagesController < Api::V1::Chat::BaseController
   before_action :enforce_search_rate_limit!, only: :search
 
   def index
-    messages = @conversation.messages.visible_to(current_account).includes(:account, :media_attachments, reactions: :account).limit(limit_param(LIMIT, 80))
+    messages = @conversation.messages.visible_to(current_account).includes(:account, reactions: :account, media_attachments: :chat_message_media_attachments).limit(limit_param(LIMIT, 80))
     messages = messages.where(id: ...params[:max_id]) if params[:max_id].present?
     render json: messages.reverse, each_serializer: REST::ChatMessageSerializer, current_account: current_account
   end
@@ -30,7 +30,7 @@ class Api::V1::Chat::MessagesController < Api::V1::Chat::BaseController
       .joins(chat_conversation: :memberships)
       .where(chat_memberships: { account_id: current_account.id })
       .where('chat_messages.text ILIKE ?', "%#{ActiveRecord::Base.sanitize_sql_like(query)}%")
-      .includes(:account, :media_attachments, reactions: :account)
+      .includes(:account, reactions: :account, media_attachments: :chat_message_media_attachments)
       .distinct
       .order(id: :desc)
       .limit(limit_param(LIMIT, 80))

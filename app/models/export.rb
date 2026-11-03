@@ -84,21 +84,22 @@ class Export
   end
 
   def to_chat_json
-    conversations = ChatConversation.for_account(account).includes(:accounts)
-    messages = ChatMessage.visible_to(account)
-      .where(chat_conversation_id: conversations.select(:id))
-      .includes(:account, :media_attachments, reactions: :account)
-      .order(id: :asc)
-      .group_by(&:chat_conversation_id)
+    # Serialized per batch so a long history does not keep every record in memory at once.
+    conversations = ChatConversation.for_account(account).includes(:accounts).map do |conversation|
+      chat_conversation_data(conversation, chat_messages_for_export(conversation))
+    end
 
-    JSON.generate(
-      chat_conversations: conversations.map do |conversation|
-        chat_conversation_data(conversation, messages.fetch(conversation.id, []))
-      end
-    )
+    JSON.generate(chat_conversations: conversations)
   end
 
   private
+
+  def chat_messages_for_export(conversation)
+    ChatMessage.visible_to(account)
+      .where(chat_conversation_id: conversation.id)
+      .includes(:account, :media_attachments, reactions: :account)
+      .find_each
+  end
 
   def chat_conversation_data(conversation, messages)
     {

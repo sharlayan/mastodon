@@ -15,7 +15,5 @@
   "content": "🎉",
   "_misskey_reaction": "🎉",
   "published": "2026-11-02T00:04:00Z",
-  "to": [
-    "__LOCAL__"
-  ]
+  "to": ["__LOCAL__"]
 }

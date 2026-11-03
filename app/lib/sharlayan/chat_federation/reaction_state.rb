@@ -66,7 +66,7 @@ module Sharlayan
         if activity_id.nil?
           members = redis.zrange(@active_key, 0, -1).map { |digest| actor_member(digest) }
           redis.multi do |transaction|
-            transaction.zrem(@actor_active_key, *members) if members.any?
+            transaction.zrem(@actor_active_key, members) if members.any?
             transaction.del(@active_key)
           end
           return true

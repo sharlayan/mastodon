@@ -13,10 +13,7 @@
   "type": "Create",
   "actor": "https://remote.test/users/bob",
   "published": "2026-11-02T00:00:00Z",
-  "to": [
-    "__LOCAL__",
-    "__CAROL__"
-  ],
+  "to": ["__LOCAL__", "__CAROL__"],
   "object": {
     "id": "https://remote.test/chat/messages/group-1",
     "type": "Note",
@@ -27,10 +24,7 @@
       "content": "hello group",
       "mediaType": "text/x.misskeymarkdown"
     },
-    "to": [
-      "__LOCAL__",
-      "__CAROL__"
-    ],
+    "to": ["__LOCAL__", "__CAROL__"],
     "published": "2026-11-02T00:00:00Z",
     "_misskey_talk": true,
     "context": "__ROOM__",

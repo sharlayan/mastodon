@@ -8,7 +8,7 @@ class MediaProxyController < ApplicationController
 
   skip_before_action :require_functional!
 
-  before_action :authenticate_user!, if: -> { limited_federation_mode? && params[:chat_token].blank? }
+  before_action :authenticate_user!, if: -> { limited_federation_mode? && params[:chat_token].blank? && !federated_chat_request? }
   before_action :set_media_attachment
 
   rescue_from ActiveRecord::RecordInvalid, Mastodon::NotPermittedError, Mastodon::UnexpectedResponseError, with: :not_found
@@ -35,6 +35,14 @@ class MediaProxyController < ApplicationController
   end
 
   private
+
+  # Allowlisted servers have no session here, so they present the token from the message.
+  def federated_chat_request?
+    return false if params[:token].blank?
+
+    media_attachment = MediaAttachment.find_by(id: params[:id])
+    media_attachment.present? && media_attachment.chat_attachment? && Sharlayan::ChatFederation::MediaToken.valid?(params[:token], media_attachment)
+  end
 
   def set_media_attachment
     @media_attachment = MediaAttachment.attached.find(params[:id])

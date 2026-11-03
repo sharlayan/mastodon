@@ -175,11 +175,7 @@ class MisskeyCompat::UserSerializer
     return 'none' unless can_chat?(account)
 
     policy = account.local? ? account.user&.settings&.[](:chat_policy) : account.chat_scope.presence || 'mutual'
-    case policy
-    when 'everyone', 'followers', 'following', 'mutual' then policy
-    when 'mutuals' then 'mutual'
-    else 'none'
-    end
+    Sharlayan::ChatFederation::ChatScope.normalize(policy, default: 'none')
   end
 
   def pinned_notes_for(account, viewer)

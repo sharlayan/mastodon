@@ -33,6 +33,7 @@ module Sharlayan::RoleplayForcedSettings
     peers_api_enabled: false,
     authorized_fetch: true,
     chat_soft_delete_enabled: true,
+    chat_federation_enabled: false,
     trends: false,
   }.freeze
 

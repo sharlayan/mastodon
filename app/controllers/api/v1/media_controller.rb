@@ -41,7 +41,7 @@ class Api::V1::MediaController < Api::BaseController
   end
 
   def set_media_attachment
-    @media_attachment = current_account.media_attachments.where(status_id: nil).find(params[:id])
+    @media_attachment = current_account.media_attachments.where(status_id: nil).where.not(id: ChatMessageMediaAttachment.select(:media_attachment_id)).find(params[:id])
   end
 
   def check_processing

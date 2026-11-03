@@ -8,7 +8,8 @@ class ActivityPub::ChatMessagesController < ActivityPub::BaseController
     response.headers['Cache-Control'] = 'private, no-store'
 
     message = ChatMessage.find_by(id: params[:id])
-    return head 404 if message.nil?
+    # A remote member's message is only ever served by its author's server.
+    return head 404 if message.nil? || !message.account.local?
     return head 404 unless visible_to_signed_account?(message)
 
     if message.deleted?

@@ -2,7 +2,6 @@
 
 class Api::V1::Chat::BaseController < Api::BaseController
   before_action :require_chat_enabled!
-  before_action :require_user!
 
   rescue_from Sharlayan::ChatService::Error, with: :render_chat_error
   rescue_from Sharlayan::ChatService::Forbidden, with: :render_chat_forbidden
@@ -13,12 +12,15 @@ class Api::V1::Chat::BaseController < Api::BaseController
     @chat_service ||= Sharlayan::ChatService.new
   end
 
+  # Tokens are checked first so that a missing or expired one gets a 401 clients can act on.
   def authorize_chat_read!
     doorkeeper_authorize! :read, :'read:statuses'
+    require_user! unless performed?
   end
 
   def authorize_chat_write!
     doorkeeper_authorize! :write, :'write:statuses'
+    require_user! unless performed?
   end
 
   def enforce_chat_write_rate_limit!

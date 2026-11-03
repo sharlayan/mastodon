@@ -12,9 +12,7 @@
   "type": "Undo",
   "actor": "https://remote.test/users/bob",
   "published": "2026-11-02T00:05:00Z",
-  "to": [
-    "__LOCAL__"
-  ],
+  "to": ["__LOCAL__"],
   "object": {
     "@context": [
       "https://www.w3.org/ns/activitystreams",
@@ -32,8 +30,6 @@
     "content": "🎉",
     "_misskey_reaction": "🎉",
     "published": "2026-11-02T00:04:00Z",
-    "to": [
-      "__LOCAL__"
-    ]
+    "to": ["__LOCAL__"]
   }
 }

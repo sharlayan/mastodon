@@ -331,7 +331,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def preload_messages(messages)
-    messages.includes(:account, :media_attachments, :chat_conversation, reactions: :account)
+    messages.includes(:account, chat_conversation: [:owner_account, :invitations, :memberships, :accounts], reactions: :account, media_attachments: :chat_message_media_attachments)
   end
 
   def render_messages(messages)

@@ -11,13 +11,16 @@ class ChatMessage < ApplicationRecord
   has_many :chat_message_media_attachments, dependent: :destroy
   has_many :media_attachments, through: :chat_message_media_attachments
 
-  validates :text, length: { maximum: 4096 }, allow_nil: true
+  MAX_TEXT_LENGTH = 4096
+
+  validates :text, length: { maximum: MAX_TEXT_LENGTH }, allow_nil: true
   validates :uri, uniqueness: true, allow_nil: true
   validate :content_present
   validate :sender_is_member, on: :create
   validate :reply_belongs_to_conversation
 
-  before_destroy :destroy_chat_media_attachments
+  # Must run before `dependent: :destroy` removes the join rows it reads.
+  before_destroy :destroy_chat_media_attachments, prepend: true
 
   scope :visible, -> { where(deleted_at: nil) }
   scope :visible_to, ->(account) { where.not(account_id: account.id).or(where(hidden_at: nil)) }
@@ -54,9 +57,7 @@ class ChatMessage < ApplicationRecord
 
   def destroy_chat_media_attachments
     media_attachments.to_a.each do |media|
-      next if media.status_id.present? || media.scheduled_status_id.present? || media.status_draft_id.present? || MediaAttachment.referenced_by_page.exists?(id: media.id)
-
-      media.destroy!
+      media.destroy! if media.removable_with_chat_message?
     end
   end
 end
