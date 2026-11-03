@@ -1009,3 +1009,446 @@ describe('Chat review additions', () => {
     ).toBe(true);
   });
 });
+
+describe('Chat screen lifecycle', () => {
+  const groupRoom = {
+    ...conversation('A'),
+    type: 'group',
+    current_role: 'member',
+  };
+  const roomResponse = (room: typeof groupRoom) => (url: string) => {
+    if (url === '/api/v1/chat/conversations')
+      return Promise.resolve({ data: [room] });
+    if (url === '/api/v1/chat/conversations/A')
+      return Promise.resolve({ data: room });
+    return getResponse(url);
+  };
+  const setVisibility = (state: DocumentVisibilityState) => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: state,
+    });
+  };
+
+  afterEach(() => {
+    setVisibility('visible');
+    vi.restoreAllMocks();
+  });
+
+  it('does not pull the user back when leaving finishes after they moved on', async () => {
+    api.get.mockImplementation(roomResponse(groupRoom));
+    const leaving = deferred<{ data: unknown }>();
+    api.delete.mockReturnValue(leaving.promise);
+
+    const { history, unmount } = mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.click(screen.getByRole('button', { name: 'Leave group' }));
+    unmount();
+    history.push('/home');
+
+    await act(async () => {
+      leaving.resolve({ data: {} });
+      await Promise.resolve();
+    });
+
+    expect(history.location.pathname).toBe('/home');
+  });
+
+  it('shows an error when leaving fails', async () => {
+    api.get.mockImplementation(roomResponse(groupRoom));
+    api.delete.mockRejectedValue(new Error('rate limited'));
+
+    const { history } = mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.click(screen.getByRole('button', { name: 'Leave group' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(history.location.pathname).toBe('/chat/A');
+  });
+
+  it('asks before deleting a group for everyone', async () => {
+    const room = { ...groupRoom, current_role: 'owner' };
+    api.get.mockImplementation(roomResponse(room));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete group' }));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(api.delete).not.toHaveBeenCalled();
+  });
+
+  it('keeps the edit open and reports the failure when saving an edit fails', async () => {
+    api.patch.mockRejectedValue(new Error('offline'));
+
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(composer(), { target: { value: 'Edited text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByText('Editing message')).toBeTruthy();
+    expect(composer().value).toBe('Edited text');
+  });
+
+  it('clears an old error when the next action starts', async () => {
+    api.patch.mockRejectedValueOnce(new Error('offline'));
+    api.patch.mockResolvedValue({
+      data: { ...message(), content: 'Edited text' },
+    });
+
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(composer(), { target: { value: 'Edited text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await screen.findByRole('alert');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+  });
+
+  it('restores the unsent draft after cancelling an edit', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.change(composer(), { target: { value: 'My draft' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(composer().value).toBe('Private message A');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(composer().value).toBe('My draft');
+  });
+
+  it('keeps typed text when cancelling a reply', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.click(screen.getByRole('button', { name: 'Reply' }));
+    fireEvent.change(composer(), { target: { value: 'My reply' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText(/Replying to/)).toBeNull();
+    expect(composer().value).toBe('My reply');
+  });
+
+  it('leaves edit mode when the room is archived, without the stale edit returning later', async () => {
+    const live = { ...conversation('A') };
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: [{ ...live }] });
+      return getResponse(url);
+    });
+
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.change(composer(), { target: { value: 'My draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByText('Editing message')).toBeTruthy();
+
+    live.archived = true;
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_update',
+        payload: { id: 'A' },
+      });
+    });
+    await screen.findByText('This group is archived.');
+
+    await waitFor(() => {
+      expect(screen.queryByText('Editing message')).toBeNull();
+    });
+    expect(composer().disabled).toBe(true);
+    expect(composer().value).toBe('My draft');
+
+    live.archived = false;
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_update',
+        payload: { id: 'A' },
+      });
+    });
+    await waitFor(() => {
+      expect(composer().disabled).toBe(false);
+    });
+    expect(screen.queryByText('Editing message')).toBeNull();
+    expect(composer().value).toBe('My draft');
+  });
+
+  it('leaves edit mode when the message being edited is deleted elsewhere', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.change(composer(), { target: { value: 'My draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message_delete',
+        payload: { id: 'message-A', conversation_id: 'A' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Editing message')).toBeNull();
+    });
+    expect(composer().value).toBe('My draft');
+  });
+
+  it('shows new room details after a saved edit instead of the old form values', async () => {
+    const live = { ...groupRoom, current_role: 'owner', title: 'Old name' };
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: [{ ...live }] });
+      return getResponse(url);
+    });
+    api.patch.mockImplementation(() => {
+      live.title = 'Saved name';
+      return Promise.resolve({ data: { ...live } });
+    });
+
+    mountChat();
+    const title =
+      await screen.findByPlaceholderText<HTMLInputElement>('Group name');
+    await waitFor(() => {
+      expect(title.value).toBe('Old name');
+    });
+    fireEvent.change(title, { target: { value: 'Saved name' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save group details' }));
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalled();
+    });
+
+    live.title = 'Renamed elsewhere';
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_update',
+        payload: { id: 'A' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(title.value).toBe('Renamed elsewhere');
+    });
+  });
+
+  it('does not repeat a reaction the user already made', async () => {
+    const received = {
+      ...message(),
+      account: remote,
+      reactions: [{ ...reaction, account }],
+    };
+    api.get.mockImplementation((url: string) =>
+      url.endsWith('/messages')
+        ? Promise.resolve({ data: [received] })
+        : getResponse(url),
+    );
+
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }));
+
+    expect(api.post).not.toHaveBeenCalledWith(
+      '/api/v1/chat/messages/message-A/reactions',
+      expect.anything(),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('does not mark a message as read while the tab is in the background', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    api.post.mockClear();
+    setVisibility('hidden');
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message',
+        payload: {
+          ...message(),
+          id: 'message-new',
+          content: 'Arrived in background',
+          account: remote,
+        },
+      });
+    });
+    await screen.findByText('Arrived in background');
+
+    expect(api.post).not.toHaveBeenCalledWith(
+      '/api/v1/chat/conversations/A/read',
+      expect.anything(),
+    );
+  });
+
+  it('marks the room as read when the user comes back to the tab', async () => {
+    const unreadRoom = { ...conversation('A'), unread: true };
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations'
+        ? Promise.resolve({ data: [unreadRoom] })
+        : getResponse(url),
+    );
+    setVisibility('hidden');
+
+    mountChat();
+    await screen.findByText('Private message A');
+    expect(api.post).not.toHaveBeenCalledWith(
+      '/api/v1/chat/conversations/A/read',
+    );
+
+    setVisibility('visible');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/v1/chat/conversations/A/read',
+      );
+    });
+  });
+
+  it('ignores a conversation list response that arrives out of order', async () => {
+    const older = deferred<{ data: unknown }>();
+    let requests = 0;
+    api.get.mockImplementation((url: string) => {
+      if (url !== '/api/v1/chat/conversations') return getResponse(url);
+      requests += 1;
+      if (requests === 2) return older.promise;
+      return Promise.resolve({
+        data: [{ ...conversation('A'), title: `Version ${requests}` }],
+      });
+    });
+
+    mountChat();
+    await screen.findByText('Version 1');
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_update',
+        payload: { id: 'A' },
+      });
+      emitChatStreamEvent({
+        event: 'chat.conversation_update',
+        payload: { id: 'A' },
+      });
+    });
+    await screen.findByText('Version 3');
+
+    await act(async () => {
+      older.resolve({
+        data: [{ ...conversation('A'), title: 'Old version' }],
+      });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText('Old version')).toBeNull();
+    expect(screen.getByText('Version 3')).toBeTruthy();
+  });
+
+  it('explains that a room is gone and keeps the composer away from it', async () => {
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: [] });
+      if (url === '/api/v1/chat/conversations/A')
+        return Promise.reject(
+          Object.assign(new Error('Not found'), {
+            response: { status: 404 },
+          }),
+        );
+      if (url.endsWith('/messages'))
+        return Promise.reject(
+          Object.assign(new Error('Not found'), {
+            response: { status: 404 },
+          }),
+        );
+      return getResponse(url);
+    });
+
+    mountChat();
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText('Write a message')).toBeNull();
+    });
+  });
+
+  it('counts code points when limiting message length, like the server', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+
+    fireEvent.change(composer(), { target: { value: '🍒'.repeat(4096) } });
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled,
+    ).toBe(false);
+
+    fireEvent.change(composer(), { target: { value: '🍒'.repeat(4097) } });
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled,
+    ).toBe(true);
+    expect(screen.getByText('This message is too long.')).toBeTruthy();
+  });
+
+  it('tells the user when too many files are selected', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/settings'
+        ? Promise.resolve({ data: { ...settings, max_attachments: 0 } })
+        : getResponse(url),
+    );
+
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+    upload(container);
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(api.post).not.toHaveBeenCalledWith(
+      '/api/v2/media',
+      expect.anything(),
+    );
+  });
+
+  it('says so when a search finds nothing', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/messages/search'
+        ? Promise.resolve({ data: [] })
+        : getResponse(url),
+    );
+
+    mountChat('/chat');
+    const search = await screen.findByPlaceholderText('Search messages');
+    fireEvent.change(search, { target: { value: 'nothing' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    expect(await screen.findByText('No messages found.')).toBeTruthy();
+  });
+
+  it('calls rooms groups in every room tab', async () => {
+    mountChat('/chat');
+
+    expect(
+      await screen.findByRole('button', { name: 'Joined groups' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Your groups' })).toBeTruthy();
+  });
+
+  it('labels the unread marker through translations', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations'
+        ? Promise.resolve({
+            data: [{ ...conversation('A'), unread: true }],
+          })
+        : getResponse(url),
+    );
+
+    const { container } = mountChat('/chat');
+    await screen.findByText('Room A');
+
+    expect(
+      container
+        .querySelector('.chat-native__conversations i')
+        ?.getAttribute('aria-label'),
+    ).toBe('Unread messages');
+  });
+});

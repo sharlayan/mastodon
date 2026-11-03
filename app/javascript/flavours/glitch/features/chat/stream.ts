@@ -24,16 +24,27 @@ export const emitChatStreamEvent = (event: ChatStreamEvent) => {
   });
 };
 
-export const showChatDesktopNotification = (payload: unknown) => {
+export const showChatDesktopNotification = (
+  payload: unknown,
+  title = 'Chat',
+) => {
   if (!('Notification' in window) || Notification.permission !== 'granted')
     return;
 
   const message = payload as Partial<ChatNotificationPayload>;
   if (!message.conversation_id || !message.account) return;
-  if (window.location.pathname === `/chat/${message.conversation_id}`) return;
+
+  // The advanced layout serves the same screen under /deck. A background tab
+  // is not on screen, even when it is showing this conversation.
+  const path = window.location.pathname.replace(/^\/deck(?=\/)/, '');
+  if (
+    path === `/chat/${message.conversation_id}` &&
+    document.visibilityState !== 'hidden'
+  )
+    return;
 
   const name = message.account.display_name || message.account.acct;
-  const notification = new Notification(`${name} · Chat`, {
+  const notification = new Notification(`${name} · ${title}`, {
     body: message.content ?? '',
     icon: message.account.avatar,
     tag: `chat-${message.conversation_id}`,

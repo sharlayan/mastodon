@@ -112,7 +112,7 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
           if (data.event.startsWith('chat.')) {
             const payload = typeof data.payload === 'string' ? JSON.parse(data.payload) : data.payload;
             emitChatStreamEvent({ event: data.event, payload });
-            if (data.event === 'chat.notification') showChatDesktopNotification(payload);
+            if (data.event === 'chat.notification') showChatDesktopNotification(payload, messages['chat.title']);
             return;
           }
 

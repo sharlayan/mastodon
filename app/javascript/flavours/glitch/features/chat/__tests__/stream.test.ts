@@ -47,10 +47,11 @@ describe('Chat desktop notifications', () => {
       }
     }
     vi.stubGlobal('Notification', NotificationMock);
+    vi.stubGlobal('document', { visibilityState: 'visible' });
     vi.stubGlobal('window', {
       Notification: NotificationMock,
       focus: vi.fn(),
-      location: { assign: vi.fn() },
+      location: { assign: vi.fn(), pathname: '/home' },
     });
 
     showChatDesktopNotification(payload);
@@ -64,5 +65,53 @@ describe('Chat desktop notifications', () => {
       'click',
       expect.any(Function),
     );
+  });
+
+  describe('while the conversation is on screen', () => {
+    const setUp = (pathname: string, visibilityState: string) => {
+      const constructor = vi.fn();
+      class NotificationMock {
+        static permission = 'granted';
+
+        addEventListener = vi.fn();
+        close = vi.fn();
+
+        constructor(...args: unknown[]) {
+          constructor(...args);
+        }
+      }
+      vi.stubGlobal('Notification', NotificationMock);
+      vi.stubGlobal('document', { visibilityState });
+      vi.stubGlobal('window', {
+        Notification: NotificationMock,
+        focus: vi.fn(),
+        location: { assign: vi.fn(), pathname },
+      });
+      return constructor;
+    };
+
+    it('stays quiet in the visible conversation', () => {
+      const constructor = setUp('/chat/20', 'visible');
+
+      showChatDesktopNotification(payload);
+
+      expect(constructor).not.toHaveBeenCalled();
+    });
+
+    it('stays quiet in the visible conversation in the advanced layout', () => {
+      const constructor = setUp('/deck/chat/20', 'visible');
+
+      showChatDesktopNotification(payload);
+
+      expect(constructor).not.toHaveBeenCalled();
+    });
+
+    it('notifies when that conversation is in a background tab', () => {
+      const constructor = setUp('/chat/20', 'hidden');
+
+      showChatDesktopNotification(payload);
+
+      expect(constructor).toHaveBeenCalled();
+    });
   });
 });

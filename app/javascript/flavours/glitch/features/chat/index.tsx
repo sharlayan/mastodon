@@ -121,10 +121,23 @@ const messages = defineMessages({
   tabInvitations: { id: 'chat.invitations', defaultMessage: 'Invitations' },
   tabJoiningRooms: {
     id: 'chat.joining_rooms',
-    defaultMessage: 'Joined rooms',
+    defaultMessage: 'Joined groups',
   },
-  tabOwnedRooms: { id: 'chat.owned_rooms', defaultMessage: 'Your rooms' },
+  tabOwnedRooms: { id: 'chat.owned_rooms', defaultMessage: 'Your groups' },
+  unread: { id: 'chat.unread', defaultMessage: 'Unread messages' },
+  deleteGroupConfirm: {
+    id: 'chat.delete_group_confirm',
+    defaultMessage:
+      'Delete this group for everyone in it? This cannot be undone.',
+  },
 });
+
+// Matches ChatMessage::MAX_TEXT_LENGTH, which counts code points after trimming.
+const MAX_MESSAGE_LENGTH = 4096;
+
+const isVisible = () => document.visibilityState !== 'hidden';
+const isNotFound = (error: unknown) =>
+  (error as { response?: { status?: number } }).response?.status === 404;
 
 export const isRemoteAccount = (account: ChatAccount) =>
   account.acct.includes('@');
@@ -220,8 +233,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
+  const [conversationMissing, setConversationMissing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isMounted = useRef(true);
+  // What was in the composer before an edit took it over.
+  const [draftBeforeEdit, setDraftBeforeEdit] = useState<{
+    text: string;
+    media: ChatMedia[];
+  } | null>(null);
   const deletedMessages = useRef(new Map<string, string>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const searchRequestRef = useRef(0);
@@ -246,6 +267,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const pendingMessageUpdates = useRef(new Set<MessageUpdate[]>());
   const latestMessageRequest = useRef(0);
   const conversationPages = useRef(1);
+  const latestConversationRequest = useRef(0);
   const updateMessages = useCallback((update: MessageUpdate) => {
     pendingMessageUpdates.current.forEach((updates) => updates.push(update));
     setMessagesList(update);
@@ -312,7 +334,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // A request can finish after the user moved on to something else.
+  const navigateIfActive = useCallback(
+    (path: string) => {
+      if (isMounted.current) history.push(path);
+    },
+    [history],
+  );
+
   const loadConversations = useCallback(async () => {
+    const requestId = ++latestConversationRequest.current;
     const loaded: ChatConversation[] = [];
     let cursor: string | null = null;
     for (let page = 0; page < conversationPages.current; page++) {
@@ -326,15 +364,31 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       cursor = data.length === 20 ? (data.at(-1)?.id ?? null) : null;
       if (!cursor) break;
     }
-    setNextConversationId(cursor);
+    let missing = false;
     if (conversationId && !loaded.some((item) => item.id === conversationId)) {
-      const selected = await api().get<ChatConversation>(
-        `/api/v1/chat/conversations/${conversationId}`,
-      );
-      loaded.push(selected.data);
+      try {
+        const selected = await api().get<ChatConversation>(
+          `/api/v1/chat/conversations/${conversationId}`,
+        );
+        loaded.push(selected.data);
+      } catch (loadError) {
+        if (!isNotFound(loadError)) throw loadError;
+        missing = true;
+      }
     }
+    // Events can start requests faster than they finish, in any order.
+    if (requestId !== latestConversationRequest.current) return;
+    setNextConversationId(cursor);
+    setConversationMissing(missing);
+    if (missing) setError('load');
     setConversations(loaded);
   }, [conversationId]);
+
+  const refreshConversations = useCallback(() => {
+    loadConversations().catch(() => {
+      setError('load');
+    });
+  }, [loadConversations]);
 
   const loadMoreConversations = useCallback(() => {
     if (!nextConversationId || loadingMore) return;
@@ -396,6 +450,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         response.data.map(applyTombstone),
       ),
     );
+    // Read state is caught up when the user comes back to this tab.
+    if (!isVisible()) return;
     await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
     setConversations((current) =>
       current.map((item) =>
@@ -463,6 +519,30 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     });
   }, [loadMessages]);
 
+  const hasUnread = Boolean(conversation?.unread);
+  useEffect(() => {
+    if (!conversationId || !hasUnread) return;
+
+    const markRead = () => {
+      if (!isVisible()) return;
+      void api()
+        .post(`/api/v1/chat/conversations/${conversationId}/read`)
+        .then(() => {
+          setConversations((current) =>
+            current.map((item) =>
+              item.id === conversationId ? { ...item, unread: false } : item,
+            ),
+          );
+        })
+        .catch(() => undefined);
+    };
+
+    document.addEventListener('visibilitychange', markRead);
+    return () => {
+      document.removeEventListener('visibilitychange', markRead);
+    };
+  }, [conversationId, hasUnread]);
+
   useEffect(
     () =>
       subscribeChatStream(({ event, payload }) => {
@@ -482,16 +562,19 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               ? current
               : [...current, message],
           );
-          // The sender's own messages are already read on the server.
-          if (value.id && value.account?.id !== me) {
+          // The sender's own messages are already read on the server, and a
+          // background tab must not read messages on the user's behalf.
+          if (value.id && value.account?.id !== me && isVisible()) {
             void api()
               .post(`/api/v1/chat/conversations/${conversationId}/read`, {
                 message_id: value.id,
               })
               .catch(() => undefined)
-              .then(() => loadConversations());
+              .then(() => {
+                refreshConversations();
+              });
           } else {
-            void loadConversations();
+            refreshConversations();
           }
         } else if (
           event === 'chat.message_update' &&
@@ -501,7 +584,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           updateMessages((current) =>
             current.map((item) => (item.id === value.id ? message : item)),
           );
-          void loadConversations();
+          refreshConversations();
         } else if (
           event === 'chat.message_delete' &&
           value.conversation_id === conversationId
@@ -513,7 +596,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               item.id === value.id ? applyTombstone(item) : item,
             ),
           );
-          void loadConversations();
+          refreshConversations();
         } else if (
           event === 'chat.message_hide' &&
           value.conversation_id === conversationId
@@ -523,7 +606,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           updateMessages((current) =>
             current.filter((item) => item.id !== value.id),
           );
-          void loadConversations();
+          refreshConversations();
         } else if (event === 'chat.reaction') {
           if (!value.message_id || !value.account?.id || !value.reaction)
             return;
@@ -588,9 +671,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           void loadInvitations().catch(() => {
             setError('load');
           });
-          void loadConversations();
+          refreshConversations();
         } else if (event !== 'chat.notification' && event.startsWith('chat.')) {
-          void loadConversations();
+          refreshConversations();
           if (value.conversation_id === conversationId)
             void loadMessages().catch(() => {
               setError('load');
@@ -601,12 +684,27 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       applyTombstone,
       conversationId,
       history,
-      loadConversations,
       loadInvitations,
       loadMessages,
+      refreshConversations,
       updateMessages,
     ],
   );
+
+  const finishEditing = useCallback(() => {
+    setEditingId(null);
+    setText(draftBeforeEdit?.text ?? '');
+    setMedia(draftBeforeEdit?.media ?? []);
+    setDraftBeforeEdit(null);
+  }, [draftBeforeEdit]);
+
+  // What the composer was working on can go away while it is on screen.
+  const isArchived = Boolean(conversation?.archived);
+  const editingTargetDeleted = messagesList.some(
+    (message) => message.id === editingId && message.deleted_at,
+  );
+  if (editingId && (isArchived || editingTargetDeleted)) finishEditing();
+  if (replyToId && isArchived) setReplyToId(null);
 
   useEffect(() => {
     const end = messagesEndRef.current;
@@ -633,7 +731,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         },
       );
       await loadConversations();
-      history.push(`/chat/${response.data.id}`);
+      navigateIfActive(`/chat/${response.data.id}`);
       setDirectAccount(null);
       setDirectAccountQuery('');
     } catch {
@@ -641,8 +739,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     } finally {
       setLoading(false);
     }
-  }, [directAccount, history, loadConversations]);
+  }, [directAccount, loadConversations, navigateIfActive]);
 
+  const isTooLong = Array.from(text.trim()).length > MAX_MESSAGE_LENGTH;
   const hasSendableContent =
     Boolean(text.trim()) ||
     media.length > 0 ||
@@ -654,7 +753,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     );
 
   const send = useCallback(async () => {
-    if (!conversationId || !hasSendableContent) return;
+    if (!conversationId || !hasSendableContent || isTooLong) return;
     setLoading(true);
     setError(null);
     try {
@@ -676,10 +775,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ? current.map((item) => (item.id === message.id ? message : item))
           : [...current, message],
       );
-      setText('');
-      setMedia([]);
+      if (editingId) {
+        finishEditing();
+      } else {
+        setText('');
+        setMedia([]);
+      }
       setReplyToId(null);
-      setEditingId(null);
     } catch {
       setError('send');
     } finally {
@@ -689,7 +791,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     applyTombstone,
     conversationId,
     editingId,
+    finishEditing,
     hasSendableContent,
+    isTooLong,
     media,
     replyToId,
     text,
@@ -851,13 +955,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleSearchSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault();
-      if (!searchQuery.trim()) return;
+      const query = searchQuery.trim();
+      if (!query) return;
+      setError(null);
       void api()
         .get<ChatMessage[]>('/api/v1/chat/messages/search', {
-          params: { q: searchQuery.trim(), limit: 40 },
+          params: { q: query, limit: 40 },
         })
         .then((response) => {
           setSearchResults(response.data);
+          setSearchedQuery(query);
         })
         .catch(() => {
           setError('search');
@@ -877,6 +984,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const createGroup = useCallback(async () => {
     if (!groupTitle.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const response = await api().post<ChatConversation>(
         '/api/v1/chat/conversations',
@@ -887,7 +995,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         },
       );
       await loadConversations();
-      history.push(`/chat/${response.data.id}`);
+      navigateIfActive(`/chat/${response.data.id}`);
       setGroupTitle('');
       setGroupAccountQuery('');
       setGroupAccounts([]);
@@ -896,7 +1004,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     } finally {
       setLoading(false);
     }
-  }, [groupAccounts, groupTitle, history, loadConversations]);
+  }, [groupAccounts, groupTitle, loadConversations, navigateIfActive]);
 
   const handleGroupSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
@@ -909,12 +1017,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleMediaChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files ?? []);
-      if (
-        !chatSettings ||
-        files.length + media.length > chatSettings.max_attachments
-      )
-        return;
       event.target.value = '';
+      if (!chatSettings) return;
+      if (files.length + media.length > chatSettings.max_attachments) {
+        setError('upload');
+        return;
+      }
+      setError(null);
       setLoading(true);
       void Promise.all(
         files.map(async (file) => {
@@ -943,11 +1052,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const action = event.currentTarget.dataset.action;
       const message = messagesList.find((item) => item.id === id);
       if (!id || !message || !action) return;
+      setError(null);
 
       if (action === 'reply') {
+        if (editingId) finishEditing();
         setReplyToId(id);
-        setEditingId(null);
       } else if (action === 'edit') {
+        setDraftBeforeEdit((current) => current ?? { text, media });
         setEditingId(id);
         setReplyToId(null);
         setMedia([]);
@@ -962,14 +1073,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 item.id === id ? applyTombstone(item) : item,
               ),
             );
-            void loadConversations();
+            refreshConversations();
           })
           .catch(() => {
             setError('delete');
           });
       }
     },
-    [applyTombstone, loadConversations, messagesList, updateMessages],
+    [
+      applyTombstone,
+      editingId,
+      finishEditing,
+      media,
+      messagesList,
+      refreshConversations,
+      text,
+      updateMessages,
+    ],
   );
 
   const handleEmojiPick = useCallback(
@@ -977,6 +1097,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const reaction = reactionFromEmoji(emoji);
 
       if (!reaction) return;
+      const alreadyReacted = messagesList
+        .find((item) => item.id === messageId)
+        ?.reactions.some(
+          (existing) =>
+            existing.account.id === me && existing.reaction === reaction,
+        );
+      if (alreadyReacted) return;
+      setError(null);
 
       void api()
         .post<ChatReaction>(`/api/v1/chat/messages/${messageId}/reactions`, {
@@ -1005,7 +1133,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setError('reaction');
         });
     },
-    [updateMessages],
+    [messagesList, updateMessages],
   );
 
   const handleReactionClick = useCallback(
@@ -1015,6 +1143,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const accountId = event.currentTarget.dataset.accountId;
 
       if (!messageId || !reaction || accountId !== me) return;
+      setError(null);
 
       void api()
         .delete(
@@ -1053,15 +1182,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleCancelComposeMode = useCallback(() => {
     setReplyToId(null);
-    setEditingId(null);
-    setText('');
-  }, []);
+    if (editingId) finishEditing();
+  }, [editingId, finishEditing]);
 
   const handleInvitationAction = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const id = event.currentTarget.dataset.invitationId;
       const action = event.currentTarget.dataset.action;
       if (!id || !action) return;
+      setError(null);
       void api()
         .post(`/api/v1/chat/invitations/${id}/${action}`)
         .then(() => {
@@ -1079,6 +1208,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (event: SyntheticEvent<HTMLFormElement>) => {
       event.preventDefault();
       if (!conversationId || !inviteAccount) return;
+      setError(null);
       void api()
         .post(`/api/v1/chat/conversations/${conversationId}/invitations`, {
           account_id: inviteAccount.id,
@@ -1107,6 +1237,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ? groupEdit.description
           : (conversation.description ?? '');
       if (!title.trim()) return;
+      setError(null);
       void api()
         .patch<ChatConversation>(
           `/api/v1/chat/conversations/${conversationId}`,
@@ -1115,7 +1246,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             description: description.trim(),
           },
         )
-        .then(() => loadConversations())
+        .then(() => {
+          // Saved values now come from the room, so later renames show up here.
+          setGroupEdit(null);
+          return loadConversations();
+        })
         .catch(() => {
           setError('update');
         });
@@ -1125,6 +1260,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handlePolicyChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
+      setError(null);
       void api()
         .patch<ChatSettings>('/api/v1/chat/settings', {
           policy: event.target.value,
@@ -1151,6 +1287,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       ) {
         void Notification.requestPermission();
       }
+      setError(null);
       void api()
         .patch<ChatSettings>('/api/v1/chat/settings', {
           [key]: event.target.checked,
@@ -1170,6 +1307,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!conversationId || !conversation) return;
       const action = event.currentTarget.dataset.action;
       if (!action) return;
+      if (
+        action === 'destroy' &&
+        !window.confirm(intl.formatMessage(messages.deleteGroupConfirm))
+      )
+        return;
+      setError(null);
       if (action === 'mute' || action === 'unmute') {
         void api()
           .post(`/api/v1/chat/conversations/${conversationId}/${action}`)
@@ -1188,19 +1331,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         void api()
           .delete(`/api/v1/chat/conversations/${conversationId}/leave`)
           .then(() => {
-            history.push('/chat');
-            return loadConversations();
+            navigateIfActive('/chat');
+          })
+          .catch(() => {
+            setError('update');
           });
       } else if (action === 'destroy') {
         void api()
           .delete(`/api/v1/chat/conversations/${conversationId}`)
           .then(() => {
-            history.push('/chat');
-            return loadConversations();
+            navigateIfActive('/chat');
+          })
+          .catch(() => {
+            setError('update');
           });
       }
     },
-    [conversation, conversationId, history, loadConversations],
+    [conversation, conversationId, intl, loadConversations, navigateIfActive],
   );
 
   const handleRemoveMember = useCallback(
@@ -1229,6 +1376,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       )
         return;
 
+      setError(null);
       setRemovingMemberId(member.id);
       void api()
         .delete<ChatConversation>(
@@ -1353,7 +1501,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       </ColumnHeader>
 
       <div className='scrollable chat-native'>
-        {conversationId ? (
+        {conversationId && conversationMissing ? null : conversationId ? (
           <>
             {conversation && (
               <div className='chat-native__conversation-tools'>
@@ -1630,6 +1778,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       onChange={handleGroupEditTitleChange}
                       placeholder={intl.formatMessage(messages.groupTitle)}
                       maxLength={256}
+                      disabled={conversation.archived}
                     />
                     <textarea
                       value={
@@ -1643,6 +1792,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         defaultMessage: 'Group description',
                       })}
                       maxLength={2048}
+                      disabled={conversation.archived}
                     />
                     <Button
                       type='submit'
@@ -1669,6 +1819,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       value={inviteAccountQuery}
                       onChange={handleInviteAccountQueryChange}
                       placeholder={intl.formatMessage(messages.accountSearch)}
+                      disabled={conversation.archived}
                     />
                     <Button
                       type='submit'
@@ -1773,9 +1924,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 value={text}
                 onChange={handleTextChange}
                 placeholder={intl.formatMessage(messages.placeholder)}
-                maxLength={4096}
-                disabled={loading}
+                disabled={loading || isArchived}
               />
+              {isTooLong && (
+                <div className='chat-native__error'>
+                  <FormattedMessage
+                    id='chat.message_too_long'
+                    defaultMessage='This message is too long.'
+                  />
+                </div>
+              )}
               <label className='button'>
                 {intl.formatMessage(messages.attach)}
                 <input
@@ -1830,7 +1988,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   conversation?.archived ||
                   loading ||
                   media.some((item) => !item.url) ||
-                  !hasSendableContent
+                  !hasSendableContent ||
+                  isTooLong
                 }
               >
                 {intl.formatMessage(messages.send)}
@@ -2056,6 +2215,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     />
                   </Button>
                 </form>
+                {searchedQuery && searchResults.length === 0 && (
+                  <div className='chat-native__empty'>
+                    <FormattedMessage
+                      id='chat.search_no_results'
+                      defaultMessage='No messages found.'
+                    />
+                  </div>
+                )}
                 {searchResults.length > 0 && (
                   <div className='chat-native__search-results'>
                     {searchResults.map((result) => (
@@ -2086,7 +2253,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   >
                     <strong>{conversationName(item)}</strong>
                     <span>{item.last_message?.content}</span>
-                    {item.unread && <i aria-label='Unread' />}
+                    {item.unread && (
+                      <i aria-label={intl.formatMessage(messages.unread)} />
+                    )}
                   </button>
                 ))}
                 {nextConversationId && (
@@ -2105,7 +2274,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     ) : (
                       <FormattedMessage
                         id='chat.no_rooms'
-                        defaultMessage='There are no chat rooms here.'
+                        defaultMessage='There are no groups here.'
                       />
                     )}
                   </div>
@@ -2115,7 +2284,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           </>
         )}
         {error && (
-          <div className='chat-native__error'>
+          <div className='chat-native__error' role='alert'>
             <FormattedMessage
               id='chat.error'
               defaultMessage='The chat request could not be completed.'
