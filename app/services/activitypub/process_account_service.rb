@@ -403,6 +403,7 @@ class ActivityPub::ProcessAccountService < BaseService
       end
 
       key_id = value
+      next if non_matching_uri_hosts?(@account.uri, key_id)
 
       # Key is fetched without ID validation because of a GoToSocial bug
       value = fetch_resource_without_id_validation(key_id)
@@ -411,7 +412,7 @@ class ActivityPub::ProcessAccountService < BaseService
       # Special handling for GoToSocial which returns the whole actor for the key ID
       value = first_of_value(value['publicKey']) if value.is_a?(Hash) && value.key?('publicKey')
 
-      next unless value['owner'] == @account.uri
+      next unless value.present? && value['owner'] == @account.uri
 
       key = value['publicKeyPem']
       next if key.nil?
@@ -437,10 +438,11 @@ class ActivityPub::ProcessAccountService < BaseService
       end
 
       key_id = value
+      next if non_matching_uri_hosts?(@account.uri, key_id)
 
-      value = fetch_resource(key_id, true)
+      value = fetch_resource(key_id)
 
-      next unless value['type'] == 'Multikey' && value['controller'] == @account.uri
+      next unless value.present? && value['type'] == 'Multikey' && value['controller'] == @account.uri
 
       key_type, key = key_from_multikey(value['publicKeyMultibase'])
       next if key_type.nil? || key.nil?

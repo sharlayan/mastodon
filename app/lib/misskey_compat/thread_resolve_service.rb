@@ -27,7 +27,7 @@ class MisskeyCompat::ThreadResolveService
   end
 
   def resolve_parent(status, on_behalf_of)
-    json = fetch_resource(status.uri, true, on_behalf_of)
+    json = fetch_resource(status.uri, on_behalf_of: on_behalf_of)
     return if json.blank?
 
     parent_uri = value_or_id(json['inReplyTo'])
