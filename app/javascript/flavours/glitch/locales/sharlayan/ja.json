@@ -103,6 +103,7 @@
   "chat.invite": "招待",
   "chat.joining_rooms": "参加中のグループ",
   "chat.leave_group": "グループから退出",
+  "chat.leave_group_confirm": "このグループから退出しますか？再度参加するには新しい招待が必要です。",
   "chat.members": "メンバー ({count})",
   "chat.message_deleted": "このメッセージは削除されました。",
   "chat.message_edited": "編集済み",

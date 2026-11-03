@@ -7,10 +7,18 @@ describe('chat federation helpers', () => {
         id: '1',
         acct: 'bob@remote.test',
         display_name: 'Bob',
+        avatar: '',
+        avatar_static: '',
       }),
     ).toBe(true);
     expect(
-      isRemoteAccount({ id: '2', acct: 'alice', display_name: 'Alice' }),
+      isRemoteAccount({
+        id: '2',
+        acct: 'alice',
+        display_name: 'Alice',
+        avatar: '',
+        avatar_static: '',
+      }),
     ).toBe(false);
   });
 

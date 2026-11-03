@@ -7,21 +7,30 @@ import classNames from 'classnames';
 import { Link, useHistory, useParams } from 'react-router-dom';
 
 import { Helmet } from '@unhead/react/helmet';
+import Textarea from 'react-textarea-autosize';
 
 import PhotoLibraryIcon from '@/material-icons/400-20px/photo_library.svg?react';
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
 import CheckIcon from '@/material-icons/400-24px/check.svg?react';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
+import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
+import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import GroupIcon from '@/material-icons/400-24px/group.svg?react';
 import GroupsIcon from '@/material-icons/400-24px/groups.svg?react';
 import HomeIcon from '@/material-icons/400-24px/home.svg?react';
+import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
+import ReplyIcon from '@/material-icons/400-24px/reply.svg?react';
 import SearchIcon from '@/material-icons/400-24px/search.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
+import { openModal } from 'flavours/glitch/actions/modal';
 import api from 'flavours/glitch/api';
+import { Avatar } from 'flavours/glitch/components/avatar';
 import { Button } from 'flavours/glitch/components/button';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
+import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
+import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import { LoadMore } from 'flavours/glitch/components/load_more';
@@ -29,6 +38,8 @@ import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_i
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { me } from 'flavours/glitch/initial_state';
+import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
+import { useAppDispatch } from 'flavours/glitch/store';
 
 import { subscribeChatStream } from './stream';
 
@@ -36,6 +47,8 @@ interface ChatAccount {
   id: string;
   acct: string;
   display_name: string;
+  avatar: string;
+  avatar_static: string;
 }
 
 interface ChatReaction {
@@ -108,6 +121,7 @@ type ChatHomeTab = 'home' | 'invitations' | 'joiningRooms' | 'ownedRooms';
 
 const messages = defineMessages({
   heading: { id: 'chat.title', defaultMessage: 'Chat' },
+  more: { id: 'status.more', defaultMessage: 'More' },
   newChat: { id: 'chat.new_chat', defaultMessage: 'New chat' },
   search: { id: 'chat.search', defaultMessage: 'Search messages' },
   newDirect: { id: 'chat.new_direct', defaultMessage: 'Start a direct chat' },
@@ -126,6 +140,9 @@ const messages = defineMessages({
   create: { id: 'chat.create', defaultMessage: 'Create' },
   settings: { id: 'chat.settings', defaultMessage: 'Chat settings' },
   attach: { id: 'chat.attach', defaultMessage: 'Attach media' },
+  reply: { id: 'chat.reply', defaultMessage: 'Reply' },
+  edit: { id: 'chat.edit', defaultMessage: 'Edit' },
+  delete: { id: 'chat.delete', defaultMessage: 'Delete' },
   tabHome: { id: 'chat.home', defaultMessage: 'Home' },
   tabInvitations: { id: 'chat.invitations', defaultMessage: 'Invitations' },
   tabJoiningRooms: {
@@ -241,6 +258,33 @@ const InvitationRow: React.FC<{
   );
 };
 
+type MessageAction = 'reply' | 'edit' | 'delete';
+
+const MessageActionButton: React.FC<{
+  messageId: string;
+  action: MessageAction;
+  title: string;
+  icon: IconProp;
+  onAction: (id: string, action: MessageAction) => void;
+}> = ({ messageId, action, title, icon, onAction }) => {
+  const handleClick = useCallback(() => {
+    onAction(messageId, action);
+  }, [action, messageId, onAction]);
+
+  return (
+    <IconButton
+      title={title}
+      icon={action}
+      iconComponent={icon}
+      onClick={handleClick}
+    />
+  );
+};
+
+// Consecutive messages from one person show their picture and name only once.
+const startsRun = (list: ChatMessage[], index: number) =>
+  list[index - 1]?.account.id !== list[index]?.account.id;
+
 const FOLLOW_NEWEST_DISTANCE = 240;
 
 const scrollToNewest = (end: HTMLElement | null) => {
@@ -262,7 +306,11 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
   const history = useHistory();
-  const { conversationId: routeId } = useParams<{ conversationId?: string }>();
+  const dispatch = useAppDispatch();
+  const { conversationId: routeId, view: roomView } = useParams<{
+    conversationId?: string;
+    view?: string;
+  }>();
   const creating = routeId === 'new';
   const conversationId = creating ? undefined : routeId;
   const { signedIn } = useIdentity();
@@ -300,9 +348,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     title: string;
     description: string;
   } | null>(null);
-  // Tied to the room, so settings opened in one room stay closed in the next.
-  const [groupSettingsConversationId, setGroupSettingsConversationId] =
-    useState<string | null>(null);
   const [newChatMode, setNewChatMode] = useState<'direct' | 'group'>('direct');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -795,8 +840,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     if (!newestMessageId || newestMessageConversationId !== conversationId)
       return;
 
-    const openingRoom = scrolledConversationIdRef.current !== conversationId;
-    scrolledConversationIdRef.current = conversationId;
+    const screenKey = `${conversationId}:${roomView ?? ''}`;
+    const openingRoom = scrolledConversationIdRef.current !== screenKey;
+    scrolledConversationIdRef.current = screenKey;
     if (openingRoom) followingNewestRef.current = true;
 
     if (followingNewestRef.current || newestMessageIsMine) {
@@ -807,6 +853,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     newestMessageConversationId,
     newestMessageId,
     newestMessageIsMine,
+    roomView,
   ]);
 
   // Images and reactions add height after the scroll above, and no scroll event
@@ -839,17 +886,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       window.removeEventListener('scroll', trackPosition, { capture: true });
       observer?.disconnect();
     };
-  }, [conversationId, conversationMissing]);
+  }, [conversationId, conversationMissing, roomView]);
 
   const isGroupOwner =
     conversation?.type === 'group' && conversation.current_role === 'owner';
-  const groupSettingsOpen =
-    Boolean(conversationId) && groupSettingsConversationId === conversationId;
-  const handleGroupSettingsToggle = useCallback(() => {
-    setGroupSettingsConversationId((current) =>
-      current === conversationId ? null : (conversationId ?? null),
-    );
-  }, [conversationId]);
+  const isManagingRoom =
+    (roomView === 'members' && conversation?.type === 'group') ||
+    (roomView === 'settings' && isGroupOwner);
 
   const createDirect = useCallback(async () => {
     if (!directAccount) return;
@@ -1202,11 +1245,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   const handleMessageAction = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      const id = event.currentTarget.dataset.messageId;
-      const action = event.currentTarget.dataset.action;
+    (id: string, action: MessageAction) => {
       const message = messagesList.find((item) => item.id === id);
-      if (!id || !message || !action) return;
+      if (!message) return;
       setError(null);
 
       if (action === 'reply') {
@@ -1218,7 +1259,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setReplyToId(null);
         setMedia([]);
         setText(message.content ?? '');
-      } else if (action === 'delete') {
+      } else {
         void api()
           .delete(`/api/v1/chat/messages/${id}`)
           .then(() => {
@@ -1454,101 +1495,213 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
-  const handleConversationAction = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      if (!conversationId || !conversation) return;
-      const action = event.currentTarget.dataset.action;
-      if (!action) return;
-      if (
-        action === 'destroy' &&
-        !window.confirm(intl.formatMessage(messages.deleteGroupConfirm))
-      )
-        return;
+  const postRoomAction = useCallback(
+    (action: 'mute' | 'unmute' | 'archive' | 'unarchive') => {
+      if (!conversationId) return;
       setError(null);
-      if (action === 'mute' || action === 'unmute') {
-        void api()
-          .post(`/api/v1/chat/conversations/${conversationId}/${action}`)
-          .then(() => loadConversations())
-          .catch(() => {
-            setError('update');
-          });
-      } else if (action === 'archive' || action === 'unarchive') {
-        void api()
-          .post(`/api/v1/chat/conversations/${conversationId}/${action}`)
-          .then(() => loadConversations())
-          .catch(() => {
-            setError('update');
-          });
-      } else if (action === 'leave') {
-        void api()
-          .delete(`/api/v1/chat/conversations/${conversationId}/leave`)
-          .then(() => {
-            navigateIfActive('/chat');
-          })
-          .catch(() => {
-            setError('update');
-          });
-      } else if (action === 'destroy') {
-        void api()
-          .delete(`/api/v1/chat/conversations/${conversationId}`)
-          .then(() => {
-            navigateIfActive('/chat');
-          })
-          .catch(() => {
-            setError('update');
-          });
-      }
+      void api()
+        .post(`/api/v1/chat/conversations/${conversationId}/${action}`)
+        .then(() => loadConversations())
+        .catch(() => {
+          setError('update');
+        });
     },
-    [conversation, conversationId, intl, loadConversations, navigateIfActive],
+    [conversationId, loadConversations],
   );
 
-  const handleRemoveMember = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
+  const confirmThenLeave = useCallback(
+    (path: string, title: string, message: string) => {
+      dispatch(
+        openModal({
+          modalType: 'CONFIRM',
+          modalProps: {
+            title,
+            message,
+            confirm: title,
+            onConfirm: () => {
+              setError(null);
+              void api()
+                .delete(path)
+                .then(() => {
+                  navigateIfActive('/chat');
+                })
+                .catch(() => {
+                  setError('update');
+                });
+            },
+          },
+        }),
+      );
+    },
+    [dispatch, navigateIfActive],
+  );
+
+  const removeMember = useCallback(
+    (member: ChatAccount) => {
       if (
         conversation?.type !== 'group' ||
         conversation.current_role !== 'owner' ||
-        removingMemberId
-      )
-        return;
-      const member = conversation.accounts.find(
-        (account) => account.id === event.currentTarget.dataset.accountId,
-      );
-      if (!member || member.id === me) return;
-      if (
-        !window.confirm(
-          intl.formatMessage(
-            {
-              id: 'chat.remove_member_confirm',
-              defaultMessage:
-                'Remove {name} from this group? They will need another invitation to rejoin.',
-            },
-            { name: member.display_name || member.acct },
-          ),
-        )
+        removingMemberId ||
+        member.id === me
       )
         return;
 
-      setError(null);
-      setRemovingMemberId(member.id);
-      void api()
-        .delete<ChatConversation>(
-          `/api/v1/chat/conversations/${conversation.id}/members/${member.id}`,
-        )
-        .then(({ data }) => {
-          setConversations((current) =>
-            current.map((item) => (item.id === data.id ? data : item)),
-          );
-        })
-        .catch(() => {
-          setError('remove_member');
-        })
-        .finally(() => {
-          setRemovingMemberId(null);
-        });
+      dispatch(
+        openModal({
+          modalType: 'CONFIRM',
+          modalProps: {
+            title: intl.formatMessage(
+              {
+                id: 'chat.remove_member_label',
+                defaultMessage: 'Remove {name} from group',
+              },
+              { name: member.display_name || member.acct },
+            ),
+            message: intl.formatMessage(
+              {
+                id: 'chat.remove_member_confirm',
+                defaultMessage:
+                  'Remove {name} from this group? They will need another invitation to rejoin.',
+              },
+              { name: member.display_name || member.acct },
+            ),
+            confirm: intl.formatMessage({
+              id: 'chat.remove_member',
+              defaultMessage: 'Remove',
+            }),
+            onConfirm: () => {
+              setError(null);
+              setRemovingMemberId(member.id);
+              void api()
+                .delete<ChatConversation>(
+                  `/api/v1/chat/conversations/${conversation.id}/members/${member.id}`,
+                )
+                .then(({ data }) => {
+                  setConversations((current) =>
+                    current.map((item) => (item.id === data.id ? data : item)),
+                  );
+                })
+                .catch(() => {
+                  setError('remove_member');
+                })
+                .finally(() => {
+                  setRemovingMemberId(null);
+                });
+            },
+          },
+        }),
+      );
     },
-    [conversation, intl, removingMemberId],
+    [conversation, dispatch, intl, removingMemberId],
   );
 
+  const memberMenu = useCallback(
+    (member: ChatAccount): MenuItem[] => [
+      {
+        text: intl.formatMessage(
+          {
+            id: 'chat.remove_member_label',
+            defaultMessage: 'Remove {name} from group',
+          },
+          { name: member.display_name || member.acct },
+        ),
+        dangerous: true,
+        action: () => {
+          removeMember(member);
+        },
+      },
+    ],
+    [intl, removeMember],
+  );
+
+  const roomMenu = useMemo((): MenuItem[] => {
+    if (!conversation) return [];
+    const isGroup = conversation.type === 'group';
+    const isOwner = isGroup && conversation.current_role === 'owner';
+    const path = `/chat/${conversation.id}`;
+    const endGroupTitle = isOwner
+      ? intl.formatMessage({
+          id: 'chat.delete_group',
+          defaultMessage: 'Delete group',
+        })
+      : intl.formatMessage({
+          id: 'chat.leave_group',
+          defaultMessage: 'Leave group',
+        });
+
+    return [
+      {
+        text: conversation.muted
+          ? intl.formatMessage({ id: 'chat.unmute', defaultMessage: 'Unmute' })
+          : intl.formatMessage({ id: 'chat.mute', defaultMessage: 'Mute' }),
+        action: () => {
+          postRoomAction(conversation.muted ? 'unmute' : 'mute');
+        },
+      },
+      ...(isGroup
+        ? [
+            {
+              text: intl.formatMessage(
+                { id: 'chat.members', defaultMessage: 'Members ({count})' },
+                { count: conversation.accounts.length },
+              ),
+              to: `${path}/members`,
+            },
+          ]
+        : []),
+      ...(isOwner
+        ? [
+            {
+              text: intl.formatMessage({
+                id: 'chat.group_settings',
+                defaultMessage: 'Group settings',
+              }),
+              to: `${path}/settings`,
+            },
+            {
+              text: conversation.archived
+                ? intl.formatMessage({
+                    id: 'chat.unarchive',
+                    defaultMessage: 'Reopen',
+                  })
+                : intl.formatMessage({
+                    id: 'chat.archive',
+                    defaultMessage: 'Archive',
+                  }),
+              action: () => {
+                postRoomAction(conversation.archived ? 'unarchive' : 'archive');
+              },
+            },
+          ]
+        : []),
+      ...(isGroup
+        ? [
+            null,
+            {
+              text: endGroupTitle,
+              dangerous: true,
+              action: () => {
+                confirmThenLeave(
+                  isOwner
+                    ? `/api/v1/chat/conversations/${conversation.id}`
+                    : `/api/v1/chat/conversations/${conversation.id}/leave`,
+                  endGroupTitle,
+                  intl.formatMessage(
+                    isOwner
+                      ? messages.deleteGroupConfirm
+                      : {
+                          id: 'chat.leave_group_confirm',
+                          defaultMessage:
+                            'Leave this group? You will need another invitation to rejoin.',
+                        },
+                  ),
+                );
+              },
+            },
+          ]
+        : []),
+    ];
+  }, [confirmThenLeave, conversation, intl, postRoomAction]);
   const handleOpenConversation = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const id = event.currentTarget.dataset.conversationId;
@@ -1578,9 +1731,19 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         title={
           creating
             ? intl.formatMessage(messages.newChat)
-            : conversation
-              ? conversationName(conversation)
-              : intl.formatMessage(messages.heading)
+            : roomView === 'members' && conversation?.type === 'group'
+              ? intl.formatMessage(
+                  { id: 'chat.members', defaultMessage: 'Members ({count})' },
+                  { count: conversation.accounts.length },
+                )
+              : roomView === 'settings' && isGroupOwner
+                ? intl.formatMessage({
+                    id: 'chat.group_settings',
+                    defaultMessage: 'Group settings',
+                  })
+                : conversation
+                  ? conversationName(conversation)
+                  : intl.formatMessage(messages.heading)
         }
         multiColumn={multiColumn}
         showBackButton={Boolean(conversationId) || creating}
@@ -1608,6 +1771,21 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 <Icon id='plus' icon={AddIcon} />
               </Link>
             </>
+          ) : conversation && !isManagingRoom ? (
+            <Dropdown
+              scrollKey='chat-room'
+              items={roomMenu}
+              title={intl.formatMessage(messages.more)}
+            >
+              <button
+                type='button'
+                className='column-header__button'
+                title={intl.formatMessage(messages.more)}
+                aria-label={intl.formatMessage(messages.more)}
+              >
+                <Icon id='ellipsis-h' icon={MoreHorizIcon} />
+              </button>
+            </Dropdown>
           ) : undefined
         }
       >
@@ -1682,527 +1860,442 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
       <div className='scrollable chat-native'>
         {conversationId && conversationMissing ? null : conversationId ? (
-          <>
-            {conversation && (
-              <div className='chat-native__conversation-tools'>
-                <button
-                  type='button'
-                  data-action={conversation.muted ? 'unmute' : 'mute'}
-                  onClick={handleConversationAction}
-                >
-                  {conversation.muted ? (
-                    <FormattedMessage
-                      id='chat.unmute'
-                      defaultMessage='Unmute'
-                    />
-                  ) : (
-                    <FormattedMessage id='chat.mute' defaultMessage='Mute' />
-                  )}
-                </button>
-                {isGroupOwner && (
-                  <button
-                    type='button'
-                    aria-expanded={groupSettingsOpen}
-                    aria-controls='chat-group-settings'
-                    onClick={handleGroupSettingsToggle}
+          roomView === 'members' && conversation?.type === 'group' ? (
+            <section className='chat-native__members'>
+              {isGroupOwner && (
+                <>
+                  <form
+                    className='chat-native__invite'
+                    onSubmit={handleInviteSubmit}
                   >
-                    <FormattedMessage
-                      id='chat.group_settings'
-                      defaultMessage='Group settings'
+                    <input
+                      value={inviteAccountQuery}
+                      onChange={handleInviteAccountQueryChange}
+                      placeholder={intl.formatMessage(messages.accountSearch)}
+                      disabled={conversation.archived}
                     />
-                  </button>
-                )}
-                {conversation.type === 'group' &&
-                  conversation.current_role === 'owner' && (
-                    <button
-                      type='button'
-                      data-action={
-                        conversation.archived ? 'unarchive' : 'archive'
-                      }
-                      onClick={handleConversationAction}
+                    <Button
+                      type='submit'
+                      disabled={conversation.archived || !inviteAccount}
                     >
-                      {conversation.archived ? (
-                        <FormattedMessage
-                          id='chat.unarchive'
-                          defaultMessage='Reopen'
-                        />
-                      ) : (
-                        <FormattedMessage
-                          id='chat.archive'
-                          defaultMessage='Archive'
-                        />
-                      )}
-                    </button>
-                  )}
-                {conversation.type === 'group' && (
-                  <button
-                    type='button'
-                    data-action={
-                      conversation.current_role === 'owner'
-                        ? 'destroy'
-                        : 'leave'
-                    }
-                    onClick={handleConversationAction}
-                  >
-                    {conversation.current_role === 'owner' ? (
                       <FormattedMessage
-                        id='chat.delete_group'
-                        defaultMessage='Delete group'
+                        id='chat.invite'
+                        defaultMessage='Invite'
                       />
-                    ) : (
-                      <FormattedMessage
-                        id='chat.leave_group'
-                        defaultMessage='Leave group'
-                      />
-                    )}
-                  </button>
-                )}
-              </div>
-            )}
-            {conversation?.type === 'group' && (
-              <section className='chat-native__members'>
-                <h4>
-                  <FormattedMessage
-                    id='chat.members'
-                    defaultMessage='Members ({count})'
-                    values={{ count: conversation.accounts.length }}
-                  />
-                </h4>
-                <div className='chat-native__members-list'>
-                  {conversation.accounts.map((account) => (
-                    <span
-                      className='chat-native__member'
-                      key={account.id}
-                      title={`@${account.acct}`}
-                    >
-                      {account.display_name || account.acct}
-                      {isRemoteAccount(account) && (
-                        <small className='chat-native__remote-badge'>
-                          <FormattedMessage
-                            id='chat.remote'
-                            defaultMessage='Remote'
-                          />
-                        </small>
-                      )}
-                      {conversation.current_role === 'owner' &&
-                        account.id !== me && (
+                    </Button>
+                    {inviteAccount && (
+                      <div className='chat-native__selected-accounts'>
+                        <div className='chat-native__account-card'>
+                          <span>
+                            <strong>
+                              {inviteAccount.display_name || inviteAccount.acct}
+                            </strong>
+                            <small>@{inviteAccount.acct}</small>
+                          </span>
                           <button
                             type='button'
-                            data-account-id={account.id}
-                            onClick={handleRemoveMember}
-                            disabled={removingMemberId !== null}
-                            aria-label={intl.formatMessage(
-                              {
-                                id: 'chat.remove_member_label',
-                                defaultMessage: 'Remove {name} from group',
-                              },
-                              { name: account.display_name || account.acct },
-                            )}
+                            onClick={handleRemoveInviteAccount}
+                            aria-label={intl.formatMessage({
+                              id: 'chat.remove_account',
+                              defaultMessage: 'Remove selected account',
+                            })}
                           >
-                            <FormattedMessage
-                              id='chat.remove_member'
-                              defaultMessage='Remove'
-                            />
+                            ×
                           </button>
-                        )}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
-            {isGroupOwner && groupSettingsOpen && (
-              <section
-                id='chat-group-settings'
-                className='chat-native__group-settings'
-              >
-                <form
-                  className='chat-native__group-edit'
-                  onSubmit={handleGroupEditSubmit}
-                >
-                  <input
-                    value={
-                      groupEdit?.conversationId === conversation.id
-                        ? groupEdit.title
-                        : (conversation.title ?? '')
-                    }
-                    onChange={handleGroupEditTitleChange}
-                    placeholder={intl.formatMessage(messages.groupTitle)}
-                    maxLength={256}
-                    disabled={conversation.archived}
-                  />
-                  <textarea
-                    value={
-                      groupEdit?.conversationId === conversation.id
-                        ? groupEdit.description
-                        : (conversation.description ?? '')
-                    }
-                    onChange={handleGroupEditDescriptionChange}
-                    placeholder={intl.formatMessage({
-                      id: 'chat.group_description',
-                      defaultMessage: 'Group description',
-                    })}
-                    maxLength={2048}
-                    disabled={conversation.archived}
-                  />
-                  <Button
-                    type='submit'
-                    disabled={
-                      conversation.archived ||
-                      !(
-                        groupEdit?.conversationId === conversation.id
-                          ? groupEdit.title
-                          : (conversation.title ?? '')
-                      ).trim()
-                    }
-                  >
-                    <FormattedMessage
-                      id='chat.save_group'
-                      defaultMessage='Save group details'
-                    />
-                  </Button>
-                </form>
-                <form
-                  className='chat-native__invite'
-                  onSubmit={handleInviteSubmit}
-                >
-                  <input
-                    value={inviteAccountQuery}
-                    onChange={handleInviteAccountQueryChange}
-                    placeholder={intl.formatMessage(messages.accountSearch)}
-                    disabled={conversation.archived}
-                  />
-                  <Button
-                    type='submit'
-                    disabled={conversation.archived || !inviteAccount}
-                  >
-                    <FormattedMessage
-                      id='chat.invite'
-                      defaultMessage='Invite'
-                    />
-                  </Button>
-                  {inviteAccount && (
-                    <div className='chat-native__selected-accounts'>
-                      <div className='chat-native__account-card'>
-                        <span>
-                          <strong>
-                            {inviteAccount.display_name || inviteAccount.acct}
-                          </strong>
-                          <small>@{inviteAccount.acct}</small>
-                        </span>
-                        <button
-                          type='button'
-                          onClick={handleRemoveInviteAccount}
-                          aria-label={intl.formatMessage({
-                            id: 'chat.remove_account',
-                            defaultMessage: 'Remove selected account',
-                          })}
-                        >
-                          ×
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </form>
-                {inviteAccountResults.length > 0 && (
-                  <div className='chat-native__account-results'>
-                    {inviteAccountResults.map((account) => (
-                      <button
-                        key={account.id}
-                        type='button'
-                        data-account-id={account.id}
-                        onClick={handleInviteAccountResult}
-                      >
-                        <strong>{account.display_name || account.acct}</strong>
-                        <span>@{account.acct}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
-            {olderMessageId && (
-              <LoadMore onClick={loadOlderMessages} loading={loadingMore} />
-            )}
-            <div className='chat-native__messages' ref={messagesListRef}>
-              {messagesList.map((message) => (
-                <article
-                  className={`chat-native__message ${message.account.id === me ? 'chat-native__message--mine' : ''}`}
-                  key={message.id}
-                >
-                  <strong>
-                    {message.account.display_name || message.account.acct}
-                  </strong>
-                  <p>
-                    {message.deleted_at ? (
-                      <FormattedMessage
-                        id='chat.message_deleted'
-                        defaultMessage='This message was deleted.'
-                      />
-                    ) : (
-                      message.content
                     )}
-                  </p>
-                  {message.media_attachments.map((attachment) => (
-                    <div
-                      key={attachment.id}
-                      className='chat-native__attachment'
-                    >
-                      {attachment.type === 'audio' && attachment.url ? (
-                        <audio controls src={attachment.url} />
-                      ) : (attachment.type === 'video' ||
-                          attachment.type === 'gifv') &&
-                        attachment.url ? (
-                        <video
-                          controls
-                          src={attachment.url}
-                          poster={attachment.preview_url ?? undefined}
-                        />
-                      ) : attachment.url ? (
-                        <a
-                          href={attachment.url}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                        >
-                          <img
-                            src={attachment.preview_url ?? attachment.url}
-                            alt={attachment.description ?? ''}
-                          />
-                        </a>
-                      ) : (
-                        <span>{attachment.description ?? attachment.type}</span>
-                      )}
-                    </div>
-                  ))}
-                  {message.reactions.length > 0 && (
-                    <div className='chat-native__reactions'>
-                      {message.reactions.map((reaction) => (
+                  </form>
+                  {inviteAccountResults.length > 0 && (
+                    <div className='chat-native__account-results'>
+                      {inviteAccountResults.map((account) => (
                         <button
-                          key={`${reaction.account.id}-${reaction.reaction}`}
+                          key={account.id}
                           type='button'
-                          className={
-                            reaction.account.id === me ? 'mine' : undefined
-                          }
-                          data-message-id={message.id}
-                          data-reaction={reaction.reaction}
-                          data-account-id={reaction.account.id}
-                          onClick={handleReactionClick}
-                          title={reaction.account.acct}
+                          data-account-id={account.id}
+                          onClick={handleInviteAccountResult}
                         >
-                          {reaction.url ? (
-                            <img
-                              className='emoji'
-                              src={reaction.static_url ?? reaction.url}
-                              alt={reaction.reaction}
-                            />
-                          ) : (
-                            reaction.reaction
-                          )}
+                          <strong>
+                            {account.display_name || account.acct}
+                          </strong>
+                          <span>@{account.acct}</span>
                         </button>
                       ))}
                     </div>
                   )}
-                  <time dateTime={message.created_at}>
-                    {new Date(message.created_at).toLocaleString()}
-                  </time>
-                  {message.edited_at && !message.deleted_at && (
-                    <span className='chat-native__edited'>
+                </>
+              )}
+              {conversation.accounts.map((account) => (
+                <div className='chat-native__member' key={account.id}>
+                  <Avatar account={account} size={36} withLink />
+                  <div>
+                    <strong>{account.display_name || account.acct}</strong>
+                    <span>@{account.acct}</span>
+                  </div>
+                  {isRemoteAccount(account) && (
+                    <small className='chat-native__remote-badge'>
                       <FormattedMessage
-                        id='chat.message_edited'
-                        defaultMessage='Edited'
+                        id='chat.remote'
+                        defaultMessage='Remote'
                       />
-                    </span>
+                    </small>
                   )}
-                  {!message.deleted_at && !conversation?.archived && (
-                    <div className='chat-native__actions'>
-                      <button
-                        type='button'
-                        data-message-id={message.id}
-                        data-action='reply'
-                        onClick={handleMessageAction}
-                      >
-                        <FormattedMessage
-                          id='chat.reply'
-                          defaultMessage='Reply'
-                        />
-                      </button>
-                      {message.account.id !== me && (
-                        <span className='chat-native__react-picker'>
-                          <ChatEmojiPicker
-                            messageId={message.id}
-                            onPick={handleEmojiPick}
-                          />
-                        </span>
-                      )}
-                      {message.account.id === me && (
-                        <>
-                          <button
-                            type='button'
-                            data-message-id={message.id}
-                            data-action='edit'
-                            onClick={handleMessageAction}
-                          >
-                            <FormattedMessage
-                              id='chat.edit'
-                              defaultMessage='Edit'
-                            />
-                          </button>
-                          <button
-                            type='button'
-                            data-message-id={message.id}
-                            data-action='delete'
-                            onClick={handleMessageAction}
-                          >
-                            <FormattedMessage
-                              id='chat.delete'
-                              defaultMessage='Delete'
-                            />
-                          </button>
-                        </>
-                      )}
-                    </div>
+                  {isGroupOwner && account.id !== me && (
+                    <Dropdown
+                      scrollKey='chat-members'
+                      icon='ellipsis-h'
+                      iconComponent={MoreHorizIcon}
+                      title={intl.formatMessage(messages.more)}
+                      disabled={removingMemberId !== null}
+                      items={memberMenu(account)}
+                    />
                   )}
-                </article>
+                </div>
               ))}
-            </div>
-            {conversation?.archived && (
-              <div className='chat-native__error'>
-                <FormattedMessage
-                  id='chat.archived'
-                  defaultMessage='This group is archived.'
-                />
-              </div>
-            )}
-            <form
-              className='chat-native__composer'
-              onSubmit={handleComposerSubmit}
-            >
-              {(replyToId ?? editingId) && (
-                <div className='chat-native__compose-mode'>
-                  {editingId ? (
-                    <FormattedMessage
-                      id='chat.editing'
-                      defaultMessage='Editing message'
-                    />
-                  ) : (
-                    <div>
-                      {replyTarget ? (
-                        <FormattedMessage
-                          id='chat.replying_to'
-                          defaultMessage='Replying to {account}'
-                          values={{
-                            account:
-                              replyTarget.account.display_name ||
-                              replyTarget.account.acct,
-                          }}
-                        />
-                      ) : (
-                        <FormattedMessage
-                          id='chat.replying'
-                          defaultMessage='Replying to message'
-                        />
-                      )}
-                      <span>
-                        {replyTarget && !replyTarget.deleted_at
-                          ? replyTarget.content
-                          : intl.formatMessage({
-                              id: 'chat.message_deleted',
-                              defaultMessage: 'This message was deleted.',
-                            })}
-                      </span>
-                    </div>
-                  )}
-                  <button type='button' onClick={handleCancelComposeMode}>
-                    <FormattedMessage
-                      id='chat.cancel'
-                      defaultMessage='Cancel'
-                    />
-                  </button>
-                </div>
-              )}
-              {media.length > 0 && (
-                <div className='chat-native__media-preview'>
-                  {media.map((attachment) => (
-                    <div key={attachment.id}>
-                      {attachment.type === 'audio' && attachment.url ? (
-                        <audio controls src={attachment.url} />
-                      ) : (attachment.type === 'video' ||
-                          attachment.type === 'gifv') &&
-                        attachment.url ? (
-                        <video
-                          controls
-                          src={attachment.url}
-                          poster={attachment.preview_url ?? undefined}
-                        />
-                      ) : (
-                        <img
-                          src={attachment.preview_url ?? attachment.url ?? ''}
-                          alt={attachment.description ?? ''}
-                        />
-                      )}
-                      <button
-                        type='button'
-                        data-media-id={attachment.id}
-                        onClick={handleRemoveMedia}
-                      >
-                        <FormattedMessage
-                          id='chat.remove_attachment'
-                          defaultMessage='Remove attachment'
-                        />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className='chat-native__compose-field'>
-                <IconButton
-                  title={intl.formatMessage(messages.attach)}
-                  icon='photo'
-                  iconComponent={PhotoLibraryIcon}
-                  onClick={handleAttachClick}
-                  disabled={
-                    loading ||
-                    Boolean(editingId) ||
-                    Boolean(conversation?.archived)
-                  }
-                />
+            </section>
+          ) : roomView === 'settings' && isGroupOwner ? (
+            <section className='chat-native__group-settings'>
+              <form
+                className='chat-native__group-edit'
+                onSubmit={handleGroupEditSubmit}
+              >
                 <input
-                  ref={fileInputRef}
-                  type='file'
-                  hidden
-                  onChange={handleMediaChange}
-                  accept='image/*,video/*,audio/*'
+                  value={
+                    groupEdit?.conversationId === conversation.id
+                      ? groupEdit.title
+                      : (conversation.title ?? '')
+                  }
+                  onChange={handleGroupEditTitleChange}
+                  placeholder={intl.formatMessage(messages.groupTitle)}
+                  maxLength={256}
+                  disabled={conversation.archived}
                 />
                 <textarea
-                  value={text}
-                  onChange={handleTextChange}
-                  placeholder={intl.formatMessage(messages.placeholder)}
-                  disabled={loading || isArchived}
+                  value={
+                    groupEdit?.conversationId === conversation.id
+                      ? groupEdit.description
+                      : (conversation.description ?? '')
+                  }
+                  onChange={handleGroupEditDescriptionChange}
+                  placeholder={intl.formatMessage({
+                    id: 'chat.group_description',
+                    defaultMessage: 'Group description',
+                  })}
+                  maxLength={2048}
+                  disabled={conversation.archived}
                 />
+                <Button
+                  type='submit'
+                  disabled={
+                    conversation.archived ||
+                    !(
+                      groupEdit?.conversationId === conversation.id
+                        ? groupEdit.title
+                        : (conversation.title ?? '')
+                    ).trim()
+                  }
+                >
+                  <FormattedMessage
+                    id='chat.save_group'
+                    defaultMessage='Save group details'
+                  />
+                </Button>
+              </form>
+            </section>
+          ) : (
+            <>
+              {olderMessageId && (
+                <LoadMore onClick={loadOlderMessages} loading={loadingMore} />
+              )}
+              <div className='chat-native__messages' ref={messagesListRef}>
+                {messagesList.map((message, index) => (
+                  <article
+                    className={`chat-native__message ${message.account.id === me ? 'chat-native__message--mine' : ''}`}
+                    key={message.id}
+                  >
+                    {message.account.id !== me &&
+                      (startsRun(messagesList, index) ? (
+                        <Avatar account={message.account} size={36} withLink />
+                      ) : (
+                        <span className='chat-native__avatar-space' />
+                      ))}
+                    <div className='chat-native__message-content'>
+                      {message.account.id !== me &&
+                        startsRun(messagesList, index) && (
+                          <strong>
+                            {message.account.display_name ||
+                              message.account.acct}
+                          </strong>
+                        )}
+                      <div className='chat-native__bubble'>
+                        <p>
+                          {message.deleted_at ? (
+                            <FormattedMessage
+                              id='chat.message_deleted'
+                              defaultMessage='This message was deleted.'
+                            />
+                          ) : (
+                            message.content
+                          )}
+                        </p>
+                        {message.media_attachments.map((attachment) => (
+                          <div
+                            key={attachment.id}
+                            className='chat-native__attachment'
+                          >
+                            {attachment.type === 'audio' && attachment.url ? (
+                              <audio controls src={attachment.url} />
+                            ) : (attachment.type === 'video' ||
+                                attachment.type === 'gifv') &&
+                              attachment.url ? (
+                              <video
+                                controls
+                                src={attachment.url}
+                                poster={attachment.preview_url ?? undefined}
+                              />
+                            ) : attachment.url ? (
+                              <a
+                                href={attachment.url}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                              >
+                                <img
+                                  src={attachment.preview_url ?? attachment.url}
+                                  alt={attachment.description ?? ''}
+                                />
+                              </a>
+                            ) : (
+                              <span>
+                                {attachment.description ?? attachment.type}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {message.reactions.length > 0 && (
+                        <div className='chat-native__reactions'>
+                          {message.reactions.map((reaction) => (
+                            <button
+                              key={`${reaction.account.id}-${reaction.reaction}`}
+                              type='button'
+                              className={
+                                reaction.account.id === me ? 'mine' : undefined
+                              }
+                              data-message-id={message.id}
+                              data-reaction={reaction.reaction}
+                              data-account-id={reaction.account.id}
+                              onClick={handleReactionClick}
+                              title={reaction.account.acct}
+                            >
+                              {reaction.url ? (
+                                <img
+                                  className='emoji'
+                                  src={reaction.static_url ?? reaction.url}
+                                  alt={reaction.reaction}
+                                />
+                              ) : (
+                                reaction.reaction
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className='chat-native__message-footer'>
+                        <time dateTime={message.created_at}>
+                          {new Date(message.created_at).toLocaleString()}
+                        </time>
+                        {message.edited_at && !message.deleted_at && (
+                          <span className='chat-native__edited'>
+                            <FormattedMessage
+                              id='chat.message_edited'
+                              defaultMessage='Edited'
+                            />
+                          </span>
+                        )}
+                        {!message.deleted_at && !conversation?.archived && (
+                          <div className='chat-native__actions'>
+                            <MessageActionButton
+                              messageId={message.id}
+                              action='reply'
+                              title={intl.formatMessage(messages.reply)}
+                              icon={ReplyIcon}
+                              onAction={handleMessageAction}
+                            />
+                            {message.account.id !== me && (
+                              <span className='chat-native__react-picker'>
+                                <ChatEmojiPicker
+                                  messageId={message.id}
+                                  onPick={handleEmojiPick}
+                                />
+                              </span>
+                            )}
+                            {message.account.id === me && (
+                              <>
+                                <MessageActionButton
+                                  messageId={message.id}
+                                  action='edit'
+                                  title={intl.formatMessage(messages.edit)}
+                                  icon={EditIcon}
+                                  onAction={handleMessageAction}
+                                />
+                                <MessageActionButton
+                                  messageId={message.id}
+                                  action='delete'
+                                  title={intl.formatMessage(messages.delete)}
+                                  icon={DeleteIcon}
+                                  onAction={handleMessageAction}
+                                />
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
               </div>
-              {isTooLong && (
+              {conversation?.archived && (
                 <div className='chat-native__error'>
                   <FormattedMessage
-                    id='chat.message_too_long'
-                    defaultMessage='This message is too long.'
+                    id='chat.archived'
+                    defaultMessage='This group is archived.'
                   />
                 </div>
               )}
-              <Button
-                type='submit'
-                disabled={
-                  conversation?.archived ||
-                  loading ||
-                  media.some((item) => !item.url) ||
-                  !hasSendableContent ||
-                  isTooLong
-                }
+              <form
+                className='chat-native__composer'
+                onSubmit={handleComposerSubmit}
               >
-                {intl.formatMessage(messages.send)}
-              </Button>
-            </form>
-            {/* After the composer, so scrolling here shows the newest message above it. */}
-            <div className='chat-native__end' ref={messagesEndRef} />
-          </>
+                {(replyToId ?? editingId) && (
+                  <div className='chat-native__compose-mode'>
+                    {editingId ? (
+                      <FormattedMessage
+                        id='chat.editing'
+                        defaultMessage='Editing message'
+                      />
+                    ) : (
+                      <div>
+                        {replyTarget ? (
+                          <FormattedMessage
+                            id='chat.replying_to'
+                            defaultMessage='Replying to {account}'
+                            values={{
+                              account:
+                                replyTarget.account.display_name ||
+                                replyTarget.account.acct,
+                            }}
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id='chat.replying'
+                            defaultMessage='Replying to message'
+                          />
+                        )}
+                        <span>
+                          {replyTarget && !replyTarget.deleted_at
+                            ? replyTarget.content
+                            : intl.formatMessage({
+                                id: 'chat.message_deleted',
+                                defaultMessage: 'This message was deleted.',
+                              })}
+                        </span>
+                      </div>
+                    )}
+                    <button type='button' onClick={handleCancelComposeMode}>
+                      <FormattedMessage
+                        id='chat.cancel'
+                        defaultMessage='Cancel'
+                      />
+                    </button>
+                  </div>
+                )}
+                {media.length > 0 && (
+                  <div className='chat-native__media-preview'>
+                    {media.map((attachment) => (
+                      <div key={attachment.id}>
+                        {attachment.type === 'audio' && attachment.url ? (
+                          <audio controls src={attachment.url} />
+                        ) : (attachment.type === 'video' ||
+                            attachment.type === 'gifv') &&
+                          attachment.url ? (
+                          <video
+                            controls
+                            src={attachment.url}
+                            poster={attachment.preview_url ?? undefined}
+                          />
+                        ) : (
+                          <img
+                            src={attachment.preview_url ?? attachment.url ?? ''}
+                            alt={attachment.description ?? ''}
+                          />
+                        )}
+                        <button
+                          type='button'
+                          data-media-id={attachment.id}
+                          onClick={handleRemoveMedia}
+                        >
+                          <FormattedMessage
+                            id='chat.remove_attachment'
+                            defaultMessage='Remove attachment'
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className='chat-native__compose-field'>
+                  <IconButton
+                    title={intl.formatMessage(messages.attach)}
+                    icon='photo'
+                    iconComponent={PhotoLibraryIcon}
+                    onClick={handleAttachClick}
+                    disabled={
+                      loading ||
+                      Boolean(editingId) ||
+                      Boolean(conversation?.archived)
+                    }
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type='file'
+                    hidden
+                    onChange={handleMediaChange}
+                    accept='image/*,video/*,audio/*'
+                  />
+                  <Textarea
+                    minRows={1}
+                    maxRows={6}
+                    value={text}
+                    onChange={handleTextChange}
+                    placeholder={intl.formatMessage(messages.placeholder)}
+                    disabled={loading || isArchived}
+                  />
+                </div>
+                {isTooLong && (
+                  <div className='chat-native__error'>
+                    <FormattedMessage
+                      id='chat.message_too_long'
+                      defaultMessage='This message is too long.'
+                    />
+                  </div>
+                )}
+                <Button
+                  type='submit'
+                  disabled={
+                    conversation?.archived ||
+                    loading ||
+                    media.some((item) => !item.url) ||
+                    !hasSendableContent ||
+                    isTooLong
+                  }
+                >
+                  {intl.formatMessage(messages.send)}
+                </Button>
+              </form>
+              {/* After the composer, so scrolling here shows the newest message above it. */}
+              <div className='chat-native__end' ref={messagesEndRef} />
+            </>
+          )
         ) : creating ? (
           <section id='chat-new-panel' className='chat-native__new-panel'>
             <div className='chat-native__new-modes'>

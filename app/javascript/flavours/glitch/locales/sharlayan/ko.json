@@ -103,6 +103,7 @@
   "chat.invite": "초대",
   "chat.joining_rooms": "참가 중인 그룹",
   "chat.leave_group": "그룹 나가기",
+  "chat.leave_group_confirm": "이 그룹에서 나가시겠습니까? 다시 참여하려면 새 초대가 필요합니다.",
   "chat.members": "멤버 ({count})",
   "chat.message_deleted": "삭제된 메시지입니다.",
   "chat.message_edited": "편집됨",

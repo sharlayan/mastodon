@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 
 import { IntlProvider } from 'react-intl';
 
+import type * as ReactRouterDom from 'react-router-dom';
 import { Route, Router } from 'react-router-dom';
 
 import {
@@ -18,6 +19,7 @@ import { createMemoryHistory } from 'history';
 import type { ColumnHeaderProps } from 'flavours/glitch/components/column/header';
 import { IdentityContext } from 'flavours/glitch/identity_context';
 import type * as InitialState from 'flavours/glitch/initial_state';
+import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 
 import { Chat } from '../index';
 import { emitChatStreamEvent } from '../stream';
@@ -35,6 +37,45 @@ vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
 }));
 // The surrounding column controls and global emoji picker require the app store;
 // keep chat's forms, message rendering, router and stream subscriptions real.
+const dispatch = vi.hoisted(() => vi.fn());
+vi.mock('flavours/glitch/store', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useAppDispatch: () => dispatch,
+}));
+vi.mock('flavours/glitch/components/dropdown_menu', async () => {
+  const { Link } =
+    await vi.importActual<typeof ReactRouterDom>('react-router-dom');
+  return {
+    Dropdown: ({ items }: { items: MenuItem[] }) => (
+      <div>
+        {items.map((item) => {
+          if (!item) return null;
+          if ('to' in item)
+            return (
+              <Link key={item.text} to={item.to}>
+                {item.text}
+              </Link>
+            );
+          if (!('action' in item)) return null;
+          const handleClick = item.action as () => void;
+          return (
+            <button
+              key={item.text}
+              type='button'
+              data-dangerous={item.dangerous ? 'true' : undefined}
+              onClick={handleClick}
+            >
+              {item.text}
+            </button>
+          );
+        })}
+      </div>
+    ),
+  };
+});
+vi.mock('flavours/glitch/components/avatar', () => ({
+  Avatar: () => <div className='account__avatar' />,
+}));
 vi.mock('flavours/glitch/components/column/header', () => ({
   ColumnHeader: ({ title, extraButton, children }: ColumnHeaderProps) => (
     <header>
@@ -132,7 +173,7 @@ const mountChat = (path = '/chat/A') => {
         }}
       >
         <Router history={history}>
-          <Route path='/chat/:conversationId?'>
+          <Route path='/chat/:conversationId?/:view?'>
             <Chat />
           </Route>
         </Router>
@@ -140,6 +181,24 @@ const mountChat = (path = '/chat/A') => {
     </IntlProvider>,
   );
   return { ...view, history };
+};
+const lastConfirmation = () => {
+  const action = dispatch.mock.lastCall?.[0] as
+    | {
+        payload: {
+          modalType: string;
+          modalProps: { message: string; onConfirm: () => void };
+        };
+      }
+    | undefined;
+  expect(action?.payload.modalType).toBe('CONFIRM');
+  return action?.payload.modalProps;
+};
+const confirmModal = async () => {
+  await act(async () => {
+    lastConfirmation()?.onConfirm();
+    await Promise.resolve();
+  });
 };
 const navigate = (
   history: ReturnType<typeof createMemoryHistory>,
@@ -185,9 +244,10 @@ afterEach(cleanup);
 
 describe('Chat owner member removal', () => {
   let room = { ...conversation('A'), type: 'group', current_role: 'owner' };
-  const confirmRemoval = vi.fn<(message?: string) => boolean>();
+  const membersPage = '/chat/A/members';
 
   beforeEach(() => {
+    dispatch.mockClear();
     room = { ...conversation('A'), type: 'group', current_role: 'owner' };
     api.get.mockImplementation((url: string) => {
       if (url === '/api/v1/chat/conversations')
@@ -196,27 +256,37 @@ describe('Chat owner member removal', () => {
         return Promise.resolve({ data: room });
       return getResponse(url);
     });
-    confirmRemoval.mockReturnValue(true);
-    vi.spyOn(window, 'confirm').mockImplementation(confirmRemoval);
   });
 
   afterEach(() => vi.restoreAllMocks());
 
+  it('does not show removal anywhere in the conversation', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+
+    expect(
+      screen.queryByRole('button', { name: /Remove .* from group/ }),
+    ).toBeNull();
+  });
+
   it('confirms removing another member and updates the roster after success', async () => {
     api.delete.mockResolvedValue({ data: { ...room, accounts: [account] } });
-    mountChat();
+    mountChat(membersPage);
     const button = await screen.findByRole('button', {
       name: 'Remove Bob from group',
     });
+    expect(button.getAttribute('data-dangerous')).toBe('true');
     expect(
       screen.queryByRole('button', { name: 'Remove Alice from group' }),
     ).toBeNull();
 
     fireEvent.click(button);
 
-    expect(confirmRemoval).toHaveBeenCalledWith(
+    expect(lastConfirmation()?.message).toBe(
       'Remove Bob from this group? They will need another invitation to rejoin.',
     );
+    expect(api.delete).not.toHaveBeenCalled();
+    await confirmModal();
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith(
         '/api/v1/chat/conversations/A/members/remote',
@@ -226,12 +296,10 @@ describe('Chat owner member removal', () => {
     expect(
       screen.queryByRole('button', { name: 'Remove Bob from group' }),
     ).toBeNull();
-    expect(screen.getByText('Private message A')).toBeTruthy();
   });
 
-  it('does not remove the member when confirmation is cancelled', async () => {
-    confirmRemoval.mockReturnValue(false);
-    mountChat();
+  it('does not remove the member until the removal is confirmed', async () => {
+    mountChat(membersPage);
     fireEvent.click(
       await screen.findByRole('button', { name: 'Remove Bob from group' }),
     );
@@ -242,10 +310,11 @@ describe('Chat owner member removal', () => {
 
   it('retains the member and reports a failed removal', async () => {
     api.delete.mockRejectedValue(new Error('Forbidden'));
-    mountChat();
+    mountChat(membersPage);
     fireEvent.click(
       await screen.findByRole('button', { name: 'Remove Bob from group' }),
     );
+    await confirmModal();
 
     await screen.findByText('The chat request could not be completed.');
     expect(screen.getByText('Members (2)')).toBeTruthy();
@@ -254,27 +323,36 @@ describe('Chat owner member removal', () => {
     ).toBeTruthy();
   });
 
-  it.each(['member', 'direct'])(
-    'does not expose removal to a %s conversation viewer',
-    async (kind) => {
-      if (kind === 'member') room.current_role = 'member';
-      else room.type = 'direct';
-      mountChat();
-      await screen.findByText('Private message A');
+  it('shows other members the roster without removal', async () => {
+    room.current_role = 'member';
+    mountChat(membersPage);
+    await screen.findByText('Members (2)');
+    await screen.findByText('Bob');
 
-      expect(
-        screen.queryByRole('button', { name: /Remove .* from group/ }),
-      ).toBeNull();
-    },
-  );
+    expect(
+      screen.queryByRole('button', { name: /Remove .* from group/ }),
+    ).toBeNull();
+    expect(screen.queryByPlaceholderText('Search for an account')).toBeNull();
+  });
+
+  it('has no members screen for direct chats', async () => {
+    room.type = 'direct';
+    mountChat(membersPage);
+    await screen.findByText('Private message A');
+
+    expect(
+      screen.queryByRole('button', { name: /Remove .* from group/ }),
+    ).toBeNull();
+  });
 
   it('allows the owner to remove a member while the group is archived', async () => {
     room.archived = true;
     api.delete.mockResolvedValue({ data: { ...room, accounts: [account] } });
-    mountChat();
+    mountChat(membersPage);
     fireEvent.click(
       await screen.findByRole('button', { name: 'Remove Bob from group' }),
     );
+    await confirmModal();
 
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith(
@@ -1044,6 +1122,7 @@ describe('Chat screen lifecycle', () => {
     const { history, unmount } = mountChat();
     await screen.findByText('Private message A');
     fireEvent.click(screen.getByRole('button', { name: 'Leave group' }));
+    await confirmModal();
     unmount();
     history.push('/home');
 
@@ -1062,6 +1141,7 @@ describe('Chat screen lifecycle', () => {
     const { history } = mountChat();
     await screen.findByText('Private message A');
     fireEvent.click(screen.getByRole('button', { name: 'Leave group' }));
+    await confirmModal();
 
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(history.location.pathname).toBe('/chat/A');
@@ -1070,14 +1150,17 @@ describe('Chat screen lifecycle', () => {
   it('asks before deleting a group for everyone', async () => {
     const room = { ...groupRoom, current_role: 'owner' };
     api.get.mockImplementation(roomResponse(room));
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    api.delete.mockResolvedValue({ data: {} });
 
     mountChat();
     await screen.findByText('Private message A');
     fireEvent.click(screen.getByRole('button', { name: 'Delete group' }));
 
-    expect(confirm).toHaveBeenCalled();
+    expect(lastConfirmation()?.message).toContain('Delete this group');
     expect(api.delete).not.toHaveBeenCalled();
+
+    await confirmModal();
+    expect(api.delete).toHaveBeenCalledWith('/api/v1/chat/conversations/A');
   });
 
   it('keeps the edit open and reports the failure when saving an edit fails', async () => {
@@ -1214,7 +1297,7 @@ describe('Chat screen lifecycle', () => {
 
     mountChat();
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Group settings' }),
+      await screen.findByRole('link', { name: 'Group settings' }),
     );
     const title =
       await screen.findByPlaceholderText<HTMLInputElement>('Group name');
@@ -1461,93 +1544,120 @@ describe('Chat screen lifecycle', () => {
 });
 
 describe('Chat room layout', () => {
-  const ownerRoom = (id = 'A') => ({
+  const room = (id = 'A', role = 'owner', type = 'group') => ({
     ...conversation(id),
-    type: 'group',
-    current_role: 'owner',
+    type,
+    current_role: role,
   });
-  const ownerResponse = (url: string) => {
-    if (url === '/api/v1/chat/conversations')
-      return Promise.resolve({ data: [ownerRoom('A'), ownerRoom('B')] });
-    const room = /\/conversations\/([AB])$/.exec(url)?.[1];
-    if (room) return Promise.resolve({ data: ownerRoom(room) });
-    return getResponse(url);
-  };
-
-  it('keeps group settings behind a button until the owner opens them', async () => {
-    api.get.mockImplementation(ownerResponse);
-
-    mountChat();
-    await screen.findByText('Private message A');
-    const toggle = await screen.findByRole('button', {
-      name: 'Group settings',
-    });
-
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Invite' })).toBeNull();
-
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByPlaceholderText('Group name')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Invite' })).toBeTruthy();
-
-    fireEvent.click(toggle);
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
-  });
-
-  it('does not offer group settings to other members', async () => {
-    const memberRoom = { ...ownerRoom(), current_role: 'member' };
+  const respondWith = (current: ReturnType<typeof room>) => {
     api.get.mockImplementation((url: string) => {
       if (url === '/api/v1/chat/conversations')
-        return Promise.resolve({ data: [memberRoom] });
-      if (url.endsWith('/conversations/A'))
-        return Promise.resolve({ data: memberRoom });
+        return Promise.resolve({ data: [current] });
+      if (url === '/api/v1/chat/conversations/A')
+        return Promise.resolve({ data: current });
       return getResponse(url);
     });
+  };
 
-    mountChat();
-    await screen.findByRole('button', { name: 'Leave group' });
-
-    expect(screen.queryByRole('button', { name: 'Group settings' })).toBeNull();
+  beforeEach(() => {
+    dispatch.mockClear();
   });
 
-  it('closes group settings when moving to another room', async () => {
-    api.get.mockImplementation(ownerResponse);
-
-    const { history } = mountChat();
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Group settings' }),
-    );
-    expect(screen.getByPlaceholderText('Group name')).toBeTruthy();
-
-    navigate(history, '/chat/B');
-    await screen.findByText('Private message B');
-
-    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
-  });
-
-  it('leaves nothing between the messages and the composer', async () => {
-    api.get.mockImplementation(ownerResponse);
-
+  it('keeps only the conversation and composer on the room screen', async () => {
+    respondWith(room());
     const { container } = mountChat();
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Group settings' }),
-    );
+    await screen.findByText('Private message A');
 
+    expect(screen.queryByText('Bob')).toBeNull();
+    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
+    expect(screen.queryByPlaceholderText('Search for an account')).toBeNull();
     expect(
       container
         .querySelector('.chat-native__composer')
         ?.previousElementSibling?.classList.contains('chat-native__messages'),
     ).toBe(true);
+  });
+
+  it('gives owners management in the header menu, marking deletion dangerous', async () => {
+    respondWith(room());
+    mountChat();
+    await screen.findByText('Private message A');
+
+    expect(screen.getByRole('button', { name: 'Mute' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Members (2)' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Group settings' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Archive' })).toBeTruthy();
     expect(
-      container
-        .querySelector('.chat-native__group-settings')
-        ?.compareDocumentPosition(
-          container.querySelector('.chat-native__messages') as Element,
-        ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      screen
+        .getByRole('button', { name: 'Delete group' })
+        .getAttribute('data-dangerous'),
+    ).toBe('true');
+  });
+
+  it('gives other members only what applies to them', async () => {
+    respondWith(room('A', 'member'));
+    mountChat();
+    await screen.findByText('Private message A');
+
+    expect(screen.getByRole('link', { name: 'Members (2)' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Group settings' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
+    expect(
+      screen
+        .getByRole('button', { name: 'Leave group' })
+        .getAttribute('data-dangerous'),
+    ).toBe('true');
+  });
+
+  it('offers only muting in a direct chat', async () => {
+    respondWith(room('A', 'member', 'direct'));
+    mountChat();
+    await screen.findByText('Private message A');
+
+    expect(screen.getByRole('button', { name: 'Mute' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Members/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Leave group' })).toBeNull();
+  });
+
+  it('opens group settings on their own screen and returns to the messages', async () => {
+    respondWith(room());
+    const { history } = mountChat();
+    fireEvent.click(
+      await screen.findByRole('link', { name: 'Group settings' }),
+    );
+
+    expect(history.location.pathname).toBe('/chat/A/settings');
+    expect(await screen.findByPlaceholderText('Group name')).toBeTruthy();
+    expect(screen.queryByText('Private message A')).toBeNull();
+    expect(screen.queryByPlaceholderText('Write a message')).toBeNull();
+
+    act(() => {
+      history.goBack();
+    });
+    expect(await screen.findByText('Private message A')).toBeTruthy();
+  });
+
+  it('keeps inviting with the members, not in the conversation', async () => {
+    respondWith(room());
+    const { history } = mountChat();
+    fireEvent.click(await screen.findByRole('link', { name: 'Members (2)' }));
+
+    expect(history.location.pathname).toBe('/chat/A/members');
+    expect(
+      await screen.findByPlaceholderText('Search for an account'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Invite' })).toBeTruthy();
+    expect(screen.getByText('Bob')).toBeTruthy();
+    expect(screen.getByText('@bob@remote.test')).toBeTruthy();
+    expect(screen.queryByPlaceholderText('Write a message')).toBeNull();
+  });
+
+  it('does not open group settings for someone who is not the owner', async () => {
+    respondWith(room('A', 'member'));
+    mountChat('/chat/A/settings');
+    await screen.findByText('Private message A');
+
+    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
   });
 });
 
@@ -1959,5 +2069,125 @@ describe('Chat composer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Attach media' }));
 
     expect(open).toHaveBeenCalled();
+  });
+});
+
+describe('Chat message actions', () => {
+  const theirs = {
+    ...message(),
+    id: 'theirs',
+    content: 'Their message',
+    account: remote,
+  };
+  const mine = { ...message(), id: 'mine', content: 'My message' };
+  const mountMessages = async () => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({ data: [theirs, mine] })
+        : getResponse(url),
+    );
+    const view = mountChat();
+    await screen.findByText('My message');
+    return view;
+  };
+
+  it('shows actions as icon buttons outside the bubble', async () => {
+    const { container } = await mountMessages();
+
+    const bubbles = container.querySelectorAll('.chat-native__bubble');
+    expect(bubbles).toHaveLength(2);
+    ['Reply', 'Edit', 'Delete'].forEach((name) => {
+      screen.getAllByRole('button', { name }).forEach((button) => {
+        expect(button.classList.contains('icon-button')).toBe(true);
+        expect(button.querySelector('svg')).toBeTruthy();
+        expect(button.textContent.trim()).toBe('');
+        bubbles.forEach((bubble) => {
+          expect(bubble.contains(button)).toBe(false);
+        });
+      });
+    });
+    expect(
+      screen.getByText('My message').closest('.chat-native__bubble'),
+    ).toBeTruthy();
+    expect(container.querySelector('.chat-native__bubble time')).toBeNull();
+  });
+
+  it('offers editing and deleting only on my own messages', async () => {
+    await mountMessages();
+
+    expect(screen.getAllByRole('button', { name: 'Reply' })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
+  });
+
+  it('runs each action from its icon', async () => {
+    api.delete.mockResolvedValue({ data: {} });
+    await mountMessages();
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Reply' })[0] as HTMLElement,
+    );
+    expect(screen.getByText('Replying to Bob')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(composer().value).toBe('My message');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => {
+      expect(api.delete).toHaveBeenCalledWith('/api/v1/chat/messages/mine');
+    });
+  });
+});
+
+describe('Chat message authors', () => {
+  const pictured = {
+    ...remote,
+    avatar: 'https://remote.test/bob.png',
+    avatar_static: 'https://remote.test/bob-static.png',
+  };
+  const from = (id: string, author: typeof account) => ({
+    ...message(),
+    id,
+    content: `Message ${id}`,
+    account: author,
+  });
+  const mountRun = async () => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({
+            data: [
+              from('1', pictured),
+              from('2', pictured),
+              from('3', account),
+              from('4', pictured),
+            ],
+          })
+        : getResponse(url),
+    );
+    const view = mountChat();
+    await screen.findByText('Message 4');
+    return view;
+  };
+  const rowOf = (text: string) =>
+    screen.getByText(text).closest('.chat-native__message') as HTMLElement;
+
+  it("shows the other person's picture and name at the start of a run", async () => {
+    await mountRun();
+
+    expect(rowOf('Message 1').querySelector('.account__avatar')).toBeTruthy();
+    expect(within(rowOf('Message 1')).getByText('Bob')).toBeTruthy();
+    expect(rowOf('Message 2').querySelector('.account__avatar')).toBeNull();
+    expect(within(rowOf('Message 2')).queryByText('Bob')).toBeNull();
+    expect(
+      rowOf('Message 2').querySelector('.chat-native__avatar-space'),
+    ).toBeTruthy();
+    expect(rowOf('Message 4').querySelector('.account__avatar')).toBeTruthy();
+  });
+
+  it('leaves my own picture and name off my messages', async () => {
+    await mountRun();
+
+    expect(rowOf('Message 3').querySelector('.account__avatar')).toBeNull();
+    expect(within(rowOf('Message 3')).queryByText('Alice')).toBeNull();
   });
 });

@@ -103,6 +103,7 @@
   "chat.invite",
   "chat.joining_rooms",
   "chat.leave_group",
+  "chat.leave_group_confirm",
   "chat.members",
   "chat.message_deleted",
   "chat.message_edited",

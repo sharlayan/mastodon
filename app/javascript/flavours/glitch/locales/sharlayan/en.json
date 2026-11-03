@@ -103,6 +103,7 @@
   "chat.invite": "Invite",
   "chat.joining_rooms": "Joined groups",
   "chat.leave_group": "Leave group",
+  "chat.leave_group_confirm": "Leave this group? You will need another invitation to rejoin.",
   "chat.members": "Members ({count})",
   "chat.message_deleted": "This message was deleted.",
   "chat.message_edited": "Edited",
