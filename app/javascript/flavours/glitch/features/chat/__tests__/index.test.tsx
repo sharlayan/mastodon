@@ -1212,6 +1212,9 @@ describe('Chat screen lifecycle', () => {
     });
 
     mountChat();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Group settings' }),
+    );
     const title =
       await screen.findByPlaceholderText<HTMLInputElement>('Group name');
     await waitFor(() => {
@@ -1450,5 +1453,259 @@ describe('Chat screen lifecycle', () => {
         .querySelector('.chat-native__conversations i')
         ?.getAttribute('aria-label'),
     ).toBe('Unread messages');
+  });
+});
+
+describe('Chat room layout', () => {
+  const ownerRoom = (id = 'A') => ({
+    ...conversation(id),
+    type: 'group',
+    current_role: 'owner',
+  });
+  const ownerResponse = (url: string) => {
+    if (url === '/api/v1/chat/conversations')
+      return Promise.resolve({ data: [ownerRoom('A'), ownerRoom('B')] });
+    const room = /\/conversations\/([AB])$/.exec(url)?.[1];
+    if (room) return Promise.resolve({ data: ownerRoom(room) });
+    return getResponse(url);
+  };
+
+  it('keeps group settings behind a button until the owner opens them', async () => {
+    api.get.mockImplementation(ownerResponse);
+
+    mountChat();
+    await screen.findByText('Private message A');
+    const toggle = await screen.findByRole('button', {
+      name: 'Group settings',
+    });
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Invite' })).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByPlaceholderText('Group name')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Invite' })).toBeTruthy();
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
+  });
+
+  it('does not offer group settings to other members', async () => {
+    const memberRoom = { ...ownerRoom(), current_role: 'member' };
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: [memberRoom] });
+      if (url.endsWith('/conversations/A'))
+        return Promise.resolve({ data: memberRoom });
+      return getResponse(url);
+    });
+
+    mountChat();
+    await screen.findByRole('button', { name: 'Leave group' });
+
+    expect(screen.queryByRole('button', { name: 'Group settings' })).toBeNull();
+  });
+
+  it('closes group settings when moving to another room', async () => {
+    api.get.mockImplementation(ownerResponse);
+
+    const { history } = mountChat();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Group settings' }),
+    );
+    expect(screen.getByPlaceholderText('Group name')).toBeTruthy();
+
+    navigate(history, '/chat/B');
+    await screen.findByText('Private message B');
+
+    expect(screen.queryByPlaceholderText('Group name')).toBeNull();
+  });
+
+  it('leaves nothing between the messages and the composer', async () => {
+    api.get.mockImplementation(ownerResponse);
+
+    const { container } = mountChat();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Group settings' }),
+    );
+
+    expect(
+      container
+        .querySelector('.chat-native__composer')
+        ?.previousElementSibling?.classList.contains('chat-native__messages'),
+    ).toBe(true);
+    expect(
+      container
+        .querySelector('.chat-native__group-settings')
+        ?.compareDocumentPosition(
+          container.querySelector('.chat-native__messages') as Element,
+        ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+});
+
+describe('Chat scrolling', () => {
+  const scrollIntoView = vi.fn();
+  // The window stands in for whichever element scrolls in the current layout.
+  const scrollTo = (distanceFromBottom: number) => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      bottom: window.innerHeight + distanceFromBottom,
+    } as DOMRect);
+    fireEvent.scroll(window);
+  };
+  const liveMessage = (from: typeof account) => {
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message',
+        payload: {
+          ...message(),
+          id: 'live',
+          content: 'Live message',
+          account: from,
+        },
+      });
+    });
+  };
+  const openRoom = async () => {
+    const view = mountChat();
+    await screen.findByText('Private message A');
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    });
+    return view;
+  };
+
+  beforeEach(() => {
+    scrollIntoView.mockClear();
+    Element.prototype.scrollIntoView = scrollIntoView;
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('opens a room at its newest message, clear of the composer', async () => {
+    const { container } = await openRoom();
+
+    const target = scrollIntoView.mock.instances[0] as Element;
+    const composerForm = container.querySelector(
+      '.chat-native__composer',
+    ) as Element;
+    expect(composerForm.compareDocumentPosition(target)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('leaves someone reading older messages where they are', async () => {
+    await openRoom();
+    scrollTo(3000);
+    scrollIntoView.mockClear();
+
+    liveMessage(remote);
+    await screen.findByText('Live message');
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('follows new messages when already at the bottom', async () => {
+    await openRoom();
+    scrollTo(100);
+    scrollIntoView.mockClear();
+
+    liveMessage(remote);
+    await screen.findByText('Live message');
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows my own new message even when scrolled up', async () => {
+    await openRoom();
+    scrollTo(3000);
+    scrollIntoView.mockClear();
+
+    liveMessage(account);
+    await screen.findByText('Live message');
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays in place when loading older messages', async () => {
+    const recent = Array.from({ length: 40 }, (_, index) => ({
+      ...message(),
+      id: String(index + 10),
+      content: `Recent ${index}`,
+    }));
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/A/messages')) {
+          return Promise.resolve({
+            data:
+              options?.params?.max_id === '10'
+                ? [{ ...message(), id: '9', content: 'Older message' }]
+                : recent,
+          });
+        }
+        return getResponse(url);
+      },
+    );
+    mountChat();
+    await screen.findByText('Recent 39');
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    });
+    scrollIntoView.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Older message');
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  describe('when the messages grow after they are shown', () => {
+    let grow: () => void;
+
+    beforeEach(() => {
+      grow = () => {
+        throw new Error('The messages are not being observed');
+      };
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: () => void) {
+            grow = callback;
+          }
+          observe() {
+            return undefined;
+          }
+          disconnect() {
+            return undefined;
+          }
+        },
+      );
+    });
+
+    it('keeps the newest message in view, as when an image finishes loading', async () => {
+      await openRoom();
+      scrollIntoView.mockClear();
+
+      grow();
+
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not pull someone reading older messages down', async () => {
+      await openRoom();
+      scrollTo(3000);
+      scrollIntoView.mockClear();
+
+      grow();
+
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
   });
 });

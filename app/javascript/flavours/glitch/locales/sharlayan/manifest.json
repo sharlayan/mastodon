@@ -95,6 +95,7 @@
   "chat.editing",
   "chat.error",
   "chat.group_description",
+  "chat.group_settings",
   "chat.group_title",
   "chat.home",
   "chat.invitations",

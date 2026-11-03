@@ -182,6 +182,14 @@ const waitForMedia = async (media: ChatMedia): Promise<ChatMedia> => {
   throw new Error('Media processing timed out');
 };
 
+const FOLLOW_NEWEST_DISTANCE = 240;
+
+const scrollToNewest = (end: HTMLElement | null) => {
+  if (typeof end?.scrollIntoView === 'function') {
+    end.scrollIntoView({ block: 'end' });
+  }
+};
+
 export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { conversationId } = useParams<{ conversationId?: string }>();
 
@@ -231,6 +239,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     title: string;
     description: string;
   } | null>(null);
+  // Tied to the room, so settings opened in one room stay closed in the next.
+  const [groupSettingsConversationId, setGroupSettingsConversationId] =
+    useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
   const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
@@ -245,6 +256,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   } | null>(null);
   const deletedMessages = useRef(new Map<string, string>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrolledConversationIdRef = useRef<string | undefined>(undefined);
+  const messagesListRef = useRef<HTMLDivElement>(null);
+  const followingNewestRef = useRef(true);
   const searchRequestRef = useRef(0);
   const searchTimeoutRef = useRef<number | null>(null);
 
@@ -706,17 +720,71 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   if (editingId && (isArchived || editingTargetDeleted)) finishEditing();
   if (replyToId && isArchived) setReplyToId(null);
 
+  const newestMessage = messagesList.at(-1);
+  const newestMessageId = newestMessage?.id;
+  const newestMessageConversationId = newestMessage?.conversation_id;
+  const newestMessageIsMine = newestMessage?.account.id === me;
+
+  // Keyed on the newest message, so loading older ones leaves the view alone.
+  useEffect(() => {
+    if (!newestMessageId || newestMessageConversationId !== conversationId)
+      return;
+
+    const openingRoom = scrolledConversationIdRef.current !== conversationId;
+    scrolledConversationIdRef.current = conversationId;
+    if (openingRoom) followingNewestRef.current = true;
+
+    if (followingNewestRef.current || newestMessageIsMine) {
+      scrollToNewest(messagesEndRef.current);
+    }
+  }, [
+    conversationId,
+    newestMessageConversationId,
+    newestMessageId,
+    newestMessageIsMine,
+  ]);
+
+  // Images and reactions add height after the scroll above, and no scroll event
+  // says so. Scroll position is read from the window because which element
+  // scrolls depends on the layout.
   useEffect(() => {
     const end = messagesEndRef.current;
-    const parent = end?.parentElement;
-    if (!end || !parent) return;
-    if (
-      typeof end.scrollIntoView === 'function' &&
-      parent.scrollHeight - parent.scrollTop - parent.clientHeight < 240
-    ) {
-      end.scrollIntoView({ block: 'end' });
-    }
-  }, [messagesList.length]);
+    const list = messagesListRef.current;
+    if (!end || !list) return;
+
+    const trackPosition = () => {
+      followingNewestRef.current =
+        end.getBoundingClientRect().bottom - window.innerHeight <
+        FOLLOW_NEWEST_DISTANCE;
+    };
+    window.addEventListener('scroll', trackPosition, {
+      capture: true,
+      passive: true,
+    });
+
+    const observer =
+      typeof ResizeObserver === 'function'
+        ? new ResizeObserver(() => {
+            if (followingNewestRef.current) scrollToNewest(end);
+          })
+        : null;
+    observer?.observe(list);
+
+    return () => {
+      window.removeEventListener('scroll', trackPosition, { capture: true });
+      observer?.disconnect();
+    };
+  }, [conversationId, conversationMissing]);
+
+  const isGroupOwner =
+    conversation?.type === 'group' && conversation.current_role === 'owner';
+  const groupSettingsOpen =
+    Boolean(conversationId) && groupSettingsConversationId === conversationId;
+  const handleGroupSettingsToggle = useCallback(() => {
+    setGroupSettingsConversationId((current) =>
+      current === conversationId ? null : (conversationId ?? null),
+    );
+  }, [conversationId]);
 
   const createDirect = useCallback(async () => {
     if (!directAccount) return;
@@ -1519,6 +1587,19 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     <FormattedMessage id='chat.mute' defaultMessage='Mute' />
                   )}
                 </button>
+                {isGroupOwner && (
+                  <button
+                    type='button'
+                    aria-expanded={groupSettingsOpen}
+                    aria-controls='chat-group-settings'
+                    onClick={handleGroupSettingsToggle}
+                  >
+                    <FormattedMessage
+                      id='chat.group_settings'
+                      defaultMessage='Group settings'
+                    />
+                  </button>
+                )}
                 {conversation.type === 'group' &&
                   conversation.current_role === 'owner' && (
                     <button
@@ -1617,10 +1698,120 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 </div>
               </section>
             )}
+            {isGroupOwner && groupSettingsOpen && (
+              <section
+                id='chat-group-settings'
+                className='chat-native__group-settings'
+              >
+                <form
+                  className='chat-native__group-edit'
+                  onSubmit={handleGroupEditSubmit}
+                >
+                  <input
+                    value={
+                      groupEdit?.conversationId === conversation.id
+                        ? groupEdit.title
+                        : (conversation.title ?? '')
+                    }
+                    onChange={handleGroupEditTitleChange}
+                    placeholder={intl.formatMessage(messages.groupTitle)}
+                    maxLength={256}
+                    disabled={conversation.archived}
+                  />
+                  <textarea
+                    value={
+                      groupEdit?.conversationId === conversation.id
+                        ? groupEdit.description
+                        : (conversation.description ?? '')
+                    }
+                    onChange={handleGroupEditDescriptionChange}
+                    placeholder={intl.formatMessage({
+                      id: 'chat.group_description',
+                      defaultMessage: 'Group description',
+                    })}
+                    maxLength={2048}
+                    disabled={conversation.archived}
+                  />
+                  <Button
+                    type='submit'
+                    disabled={
+                      conversation.archived ||
+                      !(
+                        groupEdit?.conversationId === conversation.id
+                          ? groupEdit.title
+                          : (conversation.title ?? '')
+                      ).trim()
+                    }
+                  >
+                    <FormattedMessage
+                      id='chat.save_group'
+                      defaultMessage='Save group details'
+                    />
+                  </Button>
+                </form>
+                <form
+                  className='chat-native__invite'
+                  onSubmit={handleInviteSubmit}
+                >
+                  <input
+                    value={inviteAccountQuery}
+                    onChange={handleInviteAccountQueryChange}
+                    placeholder={intl.formatMessage(messages.accountSearch)}
+                    disabled={conversation.archived}
+                  />
+                  <Button
+                    type='submit'
+                    disabled={conversation.archived || !inviteAccount}
+                  >
+                    <FormattedMessage
+                      id='chat.invite'
+                      defaultMessage='Invite'
+                    />
+                  </Button>
+                  {inviteAccount && (
+                    <div className='chat-native__selected-accounts'>
+                      <div className='chat-native__account-card'>
+                        <span>
+                          <strong>
+                            {inviteAccount.display_name || inviteAccount.acct}
+                          </strong>
+                          <small>@{inviteAccount.acct}</small>
+                        </span>
+                        <button
+                          type='button'
+                          onClick={handleRemoveInviteAccount}
+                          aria-label={intl.formatMessage({
+                            id: 'chat.remove_account',
+                            defaultMessage: 'Remove selected account',
+                          })}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </form>
+                {inviteAccountResults.length > 0 && (
+                  <div className='chat-native__account-results'>
+                    {inviteAccountResults.map((account) => (
+                      <button
+                        key={account.id}
+                        type='button'
+                        data-account-id={account.id}
+                        onClick={handleInviteAccountResult}
+                      >
+                        <strong>{account.display_name || account.acct}</strong>
+                        <span>@{account.acct}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
             {olderMessageId && (
               <LoadMore onClick={loadOlderMessages} loading={loadingMore} />
             )}
-            <div className='chat-native__messages'>
+            <div className='chat-native__messages' ref={messagesListRef}>
               {messagesList.map((message) => (
                 <article
                   className={`chat-native__message ${message.account.id === me ? 'chat-native__message--mine' : ''}`}
@@ -1760,118 +1951,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   )}
                 </article>
               ))}
-              <div ref={messagesEndRef} />
             </div>
-            {conversation?.type === 'group' &&
-              conversation.current_role === 'owner' && (
-                <>
-                  <form
-                    className='chat-native__group-edit'
-                    onSubmit={handleGroupEditSubmit}
-                  >
-                    <input
-                      value={
-                        groupEdit?.conversationId === conversation.id
-                          ? groupEdit.title
-                          : (conversation.title ?? '')
-                      }
-                      onChange={handleGroupEditTitleChange}
-                      placeholder={intl.formatMessage(messages.groupTitle)}
-                      maxLength={256}
-                      disabled={conversation.archived}
-                    />
-                    <textarea
-                      value={
-                        groupEdit?.conversationId === conversation.id
-                          ? groupEdit.description
-                          : (conversation.description ?? '')
-                      }
-                      onChange={handleGroupEditDescriptionChange}
-                      placeholder={intl.formatMessage({
-                        id: 'chat.group_description',
-                        defaultMessage: 'Group description',
-                      })}
-                      maxLength={2048}
-                      disabled={conversation.archived}
-                    />
-                    <Button
-                      type='submit'
-                      disabled={
-                        conversation.archived ||
-                        !(
-                          groupEdit?.conversationId === conversation.id
-                            ? groupEdit.title
-                            : (conversation.title ?? '')
-                        ).trim()
-                      }
-                    >
-                      <FormattedMessage
-                        id='chat.save_group'
-                        defaultMessage='Save group details'
-                      />
-                    </Button>
-                  </form>
-                  <form
-                    className='chat-native__invite'
-                    onSubmit={handleInviteSubmit}
-                  >
-                    <input
-                      value={inviteAccountQuery}
-                      onChange={handleInviteAccountQueryChange}
-                      placeholder={intl.formatMessage(messages.accountSearch)}
-                      disabled={conversation.archived}
-                    />
-                    <Button
-                      type='submit'
-                      disabled={conversation.archived || !inviteAccount}
-                    >
-                      <FormattedMessage
-                        id='chat.invite'
-                        defaultMessage='Invite'
-                      />
-                    </Button>
-                    {inviteAccount && (
-                      <div className='chat-native__selected-accounts'>
-                        <div className='chat-native__account-card'>
-                          <span>
-                            <strong>
-                              {inviteAccount.display_name || inviteAccount.acct}
-                            </strong>
-                            <small>@{inviteAccount.acct}</small>
-                          </span>
-                          <button
-                            type='button'
-                            onClick={handleRemoveInviteAccount}
-                            aria-label={intl.formatMessage({
-                              id: 'chat.remove_account',
-                              defaultMessage: 'Remove selected account',
-                            })}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </form>
-                  {inviteAccountResults.length > 0 && (
-                    <div className='chat-native__account-results'>
-                      {inviteAccountResults.map((account) => (
-                        <button
-                          key={account.id}
-                          type='button'
-                          data-account-id={account.id}
-                          onClick={handleInviteAccountResult}
-                        >
-                          <strong>
-                            {account.display_name || account.acct}
-                          </strong>
-                          <span>@{account.acct}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
             {conversation?.archived && (
               <div className='chat-native__error'>
                 <FormattedMessage
@@ -1995,6 +2075,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 {intl.formatMessage(messages.send)}
               </Button>
             </form>
+            {/* After the composer, so scrolling here shows the newest message above it. */}
+            <div className='chat-native__end' ref={messagesEndRef} />
           </>
         ) : (
           <>

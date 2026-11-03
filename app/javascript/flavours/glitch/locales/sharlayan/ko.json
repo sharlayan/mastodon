@@ -95,6 +95,7 @@
   "chat.editing": "메시지 편집 중",
   "chat.error": "채팅 요청을 완료하지 못했습니다.",
   "chat.group_description": "그룹 설명",
+  "chat.group_settings": "그룹 설정",
   "chat.group_title": "그룹 이름",
   "chat.home": "홈",
   "chat.invitations": "초대",

@@ -95,6 +95,7 @@
   "chat.editing": "メッセージを編集中",
   "chat.error": "チャットのリクエストを完了できませんでした。",
   "chat.group_description": "グループの説明",
+  "chat.group_settings": "グループ設定",
   "chat.group_title": "グループ名",
   "chat.home": "ホーム",
   "chat.invitations": "招待",

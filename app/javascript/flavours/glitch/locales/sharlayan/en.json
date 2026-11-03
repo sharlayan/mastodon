@@ -95,6 +95,7 @@
   "chat.editing": "Editing message",
   "chat.error": "The chat request could not be completed.",
   "chat.group_description": "Group description",
+  "chat.group_settings": "Group settings",
   "chat.group_title": "Group name",
   "chat.home": "Home",
   "chat.invitations": "Invitations",
