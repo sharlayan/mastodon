@@ -642,8 +642,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     }
   }, [directAccount, history, loadConversations]);
 
+  const hasSendableContent =
+    Boolean(text.trim()) ||
+    media.length > 0 ||
+    messagesList.some(
+      (message) =>
+        message.id === editingId &&
+        !message.deleted_at &&
+        message.media_attachments.length > 0,
+    );
+
   const send = useCallback(async () => {
-    if (!conversationId || (!text.trim() && media.length === 0)) return;
+    if (!conversationId || !hasSendableContent) return;
     setLoading(true);
     setError(null);
     try {
@@ -678,6 +688,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     applyTombstone,
     conversationId,
     editingId,
+    hasSendableContent,
     media,
     replyToId,
     text,
@@ -1751,7 +1762,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   conversation?.archived ||
                   loading ||
                   media.some((item) => !item.url) ||
-                  (!text.trim() && media.length === 0)
+                  !hasSendableContent
                 }
               >
                 {intl.formatMessage(messages.send)}

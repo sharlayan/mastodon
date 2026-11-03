@@ -780,6 +780,54 @@ describe('Chat review additions', () => {
     expect(api.delete).toHaveBeenCalledWith('/api/v1/chat/messages/message-A');
   });
 
+  it('clears an attachment caption while keeping the existing image', async () => {
+    const original = { ...message(), media_attachments: [attachment] };
+    api.get.mockImplementation((url: string) =>
+      url.endsWith('/messages')
+        ? Promise.resolve({ data: [original] })
+        : getResponse(url),
+    );
+    api.patch.mockResolvedValue({
+      data: { ...original, content: '', edited_at: '2026-11-03T00:00:00Z' },
+    });
+
+    mountChat();
+    await screen.findByAltText('Private attachment A');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(composer(), { target: { value: '' } });
+
+    const send = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Send',
+    });
+    expect(send.disabled).toBe(false);
+    fireEvent.click(send);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Editing message')).toBeNull();
+    });
+    expect(api.patch).toHaveBeenCalledWith('/api/v1/chat/messages/message-A', {
+      text: '',
+    });
+    expect(screen.queryByText('Private message A')).toBeNull();
+    expect(screen.getByAltText('Private attachment A')).toBeTruthy();
+    expect(send.disabled).toBe(true);
+  });
+
+  it('keeps empty text-only edits disabled', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(composer(), { target: { value: '   ' } });
+
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled,
+    ).toBe(true);
+    const form = composer().closest('form');
+    if (!form) throw new Error('Missing composer form');
+    fireEvent.submit(form);
+    expect(api.patch).not.toHaveBeenCalled();
+  });
+
   it('renders local custom emoji reactions as images', async () => {
     mountChat();
     await screen.findByText('Private message A');
