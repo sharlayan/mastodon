@@ -1932,3 +1932,32 @@ describe('Chat invitations', () => {
     });
   });
 });
+
+describe('Chat composer', () => {
+  it('keeps only Send beside the field, with attaching inside the field', async () => {
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+
+    const field = container.querySelector('.chat-native__compose-field');
+    const attach = screen.getByRole('button', { name: 'Attach media' });
+    expect(field?.contains(attach)).toBe(true);
+    expect(field?.contains(composer())).toBe(true);
+    expect(attach.classList.contains('icon-button')).toBe(true);
+    expect(attach.textContent.trim()).toBe('');
+    expect(field?.contains(screen.getByRole('button', { name: 'Send' }))).toBe(
+      false,
+    );
+  });
+
+  it('opens the file picker from the attach icon', async () => {
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+    const input =
+      container.querySelector<HTMLInputElement>('input[type="file"]');
+    const open = vi.spyOn(input as HTMLInputElement, 'click');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Attach media' }));
+
+    expect(open).toHaveBeenCalled();
+  });
+});

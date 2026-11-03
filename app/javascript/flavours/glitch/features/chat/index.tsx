@@ -8,6 +8,7 @@ import { Link, useHistory, useParams } from 'react-router-dom';
 
 import { Helmet } from '@unhead/react/helmet';
 
+import PhotoLibraryIcon from '@/material-icons/400-20px/photo_library.svg?react';
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
 import CheckIcon from '@/material-icons/400-24px/check.svg?react';
@@ -321,6 +322,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrolledConversationIdRef = useRef<string | undefined>(undefined);
   const messagesListRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const followingNewestRef = useRef(true);
   const searchRequestRef = useRef(0);
   const searchTimeoutRef = useRef<number | null>(null);
@@ -1074,6 +1076,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleRemoveInviteAccount = useCallback(() => {
     setInviteAccount(null);
     setInviteAccountQuery('');
+  }, []);
+
+  const handleAttachClick = useCallback(() => {
+    fileInputRef.current?.click();
   }, []);
 
   const handleSearchToggle = useCallback(() => {
@@ -2113,34 +2119,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   </button>
                 </div>
               )}
-              <textarea
-                value={text}
-                onChange={handleTextChange}
-                placeholder={intl.formatMessage(messages.placeholder)}
-                disabled={loading || isArchived}
-              />
-              {isTooLong && (
-                <div className='chat-native__error'>
-                  <FormattedMessage
-                    id='chat.message_too_long'
-                    defaultMessage='This message is too long.'
-                  />
-                </div>
-              )}
-              <label className='button'>
-                {intl.formatMessage(messages.attach)}
-                <input
-                  type='file'
-                  hidden
-                  onChange={handleMediaChange}
-                  accept='image/*,video/*,audio/*'
-                  disabled={
-                    loading ||
-                    Boolean(editingId) ||
-                    Boolean(conversation?.archived)
-                  }
-                />
-              </label>
               {media.length > 0 && (
                 <div className='chat-native__media-preview'>
                   {media.map((attachment) => (
@@ -2173,6 +2151,40 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       </button>
                     </div>
                   ))}
+                </div>
+              )}
+              <div className='chat-native__compose-field'>
+                <IconButton
+                  title={intl.formatMessage(messages.attach)}
+                  icon='photo'
+                  iconComponent={PhotoLibraryIcon}
+                  onClick={handleAttachClick}
+                  disabled={
+                    loading ||
+                    Boolean(editingId) ||
+                    Boolean(conversation?.archived)
+                  }
+                />
+                <input
+                  ref={fileInputRef}
+                  type='file'
+                  hidden
+                  onChange={handleMediaChange}
+                  accept='image/*,video/*,audio/*'
+                />
+                <textarea
+                  value={text}
+                  onChange={handleTextChange}
+                  placeholder={intl.formatMessage(messages.placeholder)}
+                  disabled={loading || isArchived}
+                />
+              </div>
+              {isTooLong && (
+                <div className='chat-native__error'>
+                  <FormattedMessage
+                    id='chat.message_too_long'
+                    defaultMessage='This message is too long.'
+                  />
                 </div>
               )}
               <Button
