@@ -6,18 +6,24 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { ChangeEvent, MouseEvent, SyntheticEvent } from 'react';
+import type {
+  ChangeEvent,
+  KeyboardEvent,
+  MouseEvent,
+  SyntheticEvent,
+} from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 
 import { Helmet } from '@unhead/react/helmet';
 import Textarea from 'react-textarea-autosize';
 
 import PhotoLibraryIcon from '@/material-icons/400-20px/photo_library.svg?react';
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
+import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
 import CheckIcon from '@/material-icons/400-24px/check.svg?react';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
@@ -30,6 +36,7 @@ import MoreHorizIcon from '@/material-icons/400-24px/more_horiz.svg?react';
 import ReplyIcon from '@/material-icons/400-24px/reply.svg?react';
 import SearchIcon from '@/material-icons/400-24px/search.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
+import { showAlert } from 'flavours/glitch/actions/alerts';
 import { openModal } from 'flavours/glitch/actions/modal';
 import api from 'flavours/glitch/api';
 import { Avatar } from 'flavours/glitch/components/avatar';
@@ -134,6 +141,22 @@ const messages = defineMessages({
   newDirect: { id: 'chat.new_direct', defaultMessage: 'Start a direct chat' },
   open: { id: 'chat.open', defaultMessage: 'Open chat' },
   send: { id: 'chat.send', defaultMessage: 'Send' },
+  newMessages: {
+    id: 'chat.new_messages',
+    defaultMessage: 'New messages',
+  },
+  jumpToNewest: {
+    id: 'chat.jump_to_newest',
+    defaultMessage: 'Jump to newest message',
+  },
+  inviteSent: {
+    id: 'chat.invite_sent',
+    defaultMessage: 'Invitation sent to {account}.',
+  },
+  groupSaved: {
+    id: 'chat.group_saved',
+    defaultMessage: 'Group settings saved.',
+  },
   placeholder: {
     id: 'chat.message_placeholder',
     defaultMessage: 'Write a message',
@@ -267,6 +290,40 @@ const InvitationRow: React.FC<{
 
 type MessageAction = 'reply' | 'edit' | 'delete';
 
+const ReplyQuote: React.FC<{
+  messageId: string;
+  target?: ChatMessage;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
+}> = ({ messageId, target, onClick }) => (
+  <button
+    type='button'
+    className='chat-native__reply-quote'
+    data-message-id={messageId}
+    onClick={onClick}
+  >
+    {target ? (
+      <>
+        <strong>{target.account.display_name || target.account.acct}</strong>
+        <span>
+          {target.deleted_at ? (
+            <FormattedMessage
+              id='chat.message_deleted'
+              defaultMessage='This message was deleted.'
+            />
+          ) : (
+            target.content
+          )}
+        </span>
+      </>
+    ) : (
+      <FormattedMessage
+        id='chat.replying'
+        defaultMessage='Replying to message'
+      />
+    )}
+  </button>
+);
+
 const MessageActionButton: React.FC<{
   messageId: string;
   action: MessageAction;
@@ -319,6 +376,12 @@ const endsRun = (list: ChatMessage[], index: number) =>
   index === list.length - 1 || startsRun(list, index + 1);
 
 const FOLLOW_NEWEST_DISTANCE = 240;
+const HIGHLIGHT_DURATION_MS = 3000;
+
+// On-screen keyboards keep Enter for new lines and send with the button.
+const usesTouchKeyboard = () =>
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(pointer: coarse)').matches;
 
 const scrollToNewest = (end: HTMLElement | null) => {
   if (typeof end?.scrollIntoView === 'function') {
@@ -339,6 +402,10 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation<{ chatMessageId?: string } | undefined>();
+  const [jumpTargetId, setJumpTargetId] = useState<string | null>(
+    location.state?.chatMessageId ?? null,
+  );
   const dispatch = useAppDispatch();
   const { conversationId: routeId, view: roomView } = useParams<{
     conversationId?: string;
@@ -358,6 +425,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [directAccountQuery, setDirectAccountQuery] = useState('');
   const [directAccount, setDirectAccount] = useState<ChatAccount | null>(null);
   const [accountResults, setAccountResults] = useState<ChatAccount[]>([]);
+  const [accountSearchEmpty, setAccountSearchEmpty] = useState(false);
+  const [awayFromNewest, setAwayFromNewest] = useState(false);
+  const [hasUnseenMessages, setHasUnseenMessages] = useState(false);
   const [groupTitle, setGroupTitle] = useState('');
   const [groupAccountQuery, setGroupAccountQuery] = useState('');
   const [groupAccountResults, setGroupAccountResults] = useState<ChatAccount[]>(
@@ -402,6 +472,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const scrolledConversationIdRef = useRef<string | undefined>(undefined);
   const messagesListRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
   const followingNewestRef = useRef(true);
   const searchRequestRef = useRef(0);
   const searchTimeoutRef = useRef<number | null>(null);
@@ -435,6 +506,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     () => conversations.find((item) => item.id === conversationId),
     [conversationId, conversations],
   );
+  const messagesById = useMemo(
+    () => new Map(messagesList.map((item) => [item.id, item])),
+    [messagesList],
+  );
   const replyTarget = useMemo(
     () => messagesList.find((item) => item.id === replyToId),
     [messagesList, replyToId],
@@ -458,6 +533,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const normalized = query.trim();
       const requestId = searchRequestRef.current + 1;
       searchRequestRef.current = requestId;
+      setAccountSearchEmpty(false);
 
       if (searchTimeoutRef.current !== null) {
         window.clearTimeout(searchTimeoutRef.current);
@@ -480,9 +556,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           })
           .then((response) => {
             if (requestId !== searchRequestRef.current) return;
-            setter(
-              response.data.accounts.filter((account) => account.id !== me),
+            const accounts = response.data.accounts.filter(
+              (account) => account.id !== me,
             );
+            setter(accounts);
+            setAccountSearchEmpty(accounts.length === 0);
           })
           .catch(() => {
             if (requestId === searchRequestRef.current) setter([]);
@@ -721,6 +799,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               ? current
               : [...current, message],
           );
+          if (!followingNewestRef.current && value.account?.id !== me) {
+            setHasUnseenMessages(true);
+          }
           // The sender's own messages are already read on the server, and a
           // background tab must not read messages on the user's behalf.
           if (value.id && value.account?.id !== me && isVisible()) {
@@ -900,9 +981,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     if (!end || !list) return;
 
     const trackPosition = () => {
-      followingNewestRef.current =
+      const following =
         end.getBoundingClientRect().bottom - window.innerHeight <
         FOLLOW_NEWEST_DISTANCE;
+      followingNewestRef.current = following;
+      setAwayFromNewest(!following);
+      if (following) setHasUnseenMessages(false);
     };
     window.addEventListener('scroll', trackPosition, {
       capture: true,
@@ -916,12 +1000,73 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           })
         : null;
     observer?.observe(list);
+    // Reply and edit bars make the sticky composer cover the newest message.
+    if (composerRef.current) observer?.observe(composerRef.current);
 
     return () => {
       window.removeEventListener('scroll', trackPosition, { capture: true });
       observer?.disconnect();
     };
   }, [conversationId, conversationMissing, roomView]);
+
+  const jumpTargetLoaded = Boolean(
+    jumpTargetId && messagesById.has(jumpTargetId),
+  );
+
+  useEffect(() => {
+    if (!jumpTargetId || !jumpTargetLoaded) return;
+    followingNewestRef.current = false;
+    const target = document.getElementById(`chat-message-${jumpTargetId}`);
+    if (typeof target?.scrollIntoView === 'function') {
+      target.scrollIntoView({ block: 'center' });
+    }
+    const timeout = window.setTimeout(() => {
+      setJumpTargetId(null);
+    }, HIGHLIGHT_DURATION_MS);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [jumpTargetId, jumpTargetLoaded]);
+
+  // Keeps paging back until the message turns up or the history runs out.
+  useEffect(() => {
+    if (
+      !jumpTargetId ||
+      jumpTargetLoaded ||
+      newestMessageConversationId !== conversationId ||
+      error
+    )
+      return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetches a page; the state only tracks that request.
+    loadOlderMessages();
+  }, [
+    conversationId,
+    error,
+    jumpTargetId,
+    jumpTargetLoaded,
+    loadOlderMessages,
+    newestMessageConversationId,
+  ]);
+
+  const handleJumpToNewest = useCallback(() => {
+    followingNewestRef.current = true;
+    setAwayFromNewest(false);
+    setHasUnseenMessages(false);
+    scrollToNewest(messagesEndRef.current);
+  }, []);
+
+  const handleReplyQuoteClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      setJumpTargetId(event.currentTarget.dataset.messageId ?? null);
+    },
+    [],
+  );
+
+  const handleBack = useCallback(() => {
+    history.push(
+      roomView && conversationId ? `/chat/${conversationId}` : '/chat',
+    );
+  }, [conversationId, history, roomView]);
 
   const isGroupOwner =
     conversation?.type === 'group' && conversation.current_role === 'owner';
@@ -1013,6 +1158,28 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleComposerSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      void send();
+    },
+    [send],
+  );
+
+  const handleComposerKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Enter also confirms Korean and Japanese input, which must not send.
+      if (
+        event.key !== 'Enter' ||
+        event.nativeEvent.isComposing ||
+        // Safari ends composition before this event, leaving only this code.
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        event.keyCode === 229
+      )
+        return;
+      const sends =
+        event.ctrlKey ||
+        event.metaKey ||
+        (!event.shiftKey && !event.altKey && !usesTouchKeyboard());
+      if (!sends) return;
       event.preventDefault();
       void send();
     },
@@ -1208,8 +1375,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleSearchResult = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
-      const id = event.currentTarget.dataset.conversationId;
-      if (id) history.push(`/chat/${id}`);
+      const { conversationId: id, messageId } = event.currentTarget.dataset;
+      if (id) history.push(`/chat/${id}`, { chatMessageId: messageId });
     },
     [history],
   );
@@ -1442,6 +1609,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           account_id: inviteAccount.id,
         })
         .then(() => {
+          dispatch(
+            showAlert({
+              message: messages.inviteSent,
+              values: {
+                account: inviteAccount.display_name || inviteAccount.acct,
+              },
+            }),
+          );
           setInviteAccount(null);
           setInviteAccountQuery('');
         })
@@ -1449,7 +1624,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setError('invite');
         });
     },
-    [conversationId, inviteAccount],
+    [conversationId, dispatch, inviteAccount],
   );
 
   const handleGroupEditSubmit = useCallback(
@@ -1475,6 +1650,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           },
         )
         .then(() => {
+          dispatch(showAlert({ message: messages.groupSaved }));
           // Saved values now come from the room, so later renames show up here.
           setGroupEdit(null);
           return loadConversations();
@@ -1483,7 +1659,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setError('update');
         });
     },
-    [conversation, conversationId, groupEdit, loadConversations],
+    [conversation, conversationId, dispatch, groupEdit, loadConversations],
   );
 
   const handlePolicyChange = useCallback(
@@ -1782,6 +1958,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         }
         multiColumn={multiColumn}
         showBackButton={Boolean(conversationId) || creating}
+        onBack={conversationId || creating ? handleBack : undefined}
         extraButton={
           !conversationId && !creating ? (
             <>
@@ -1941,6 +2118,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       </div>
                     )}
                   </form>
+                  {inviteAccountQuery.trim().length >= 2 &&
+                    accountSearchEmpty && (
+                      <div className='chat-native__empty'>
+                        <FormattedMessage
+                          id='chat.account_search_no_results'
+                          defaultMessage='No accounts found.'
+                        />
+                      </div>
+                    )}
                   {inviteAccountResults.length > 0 && (
                     <div className='chat-native__account-results'>
                       {inviteAccountResults.map((account) => (
@@ -2056,7 +2242,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       </div>
                     )}
                     <article
+                      id={`chat-message-${message.id}`}
                       className={classNames('chat-native__message', {
+                        'chat-native__message--highlighted':
+                          message.id === jumpTargetId,
                         'chat-native__message--mine': message.account.id === me,
                         'chat-native__message--continued': !startsRun(
                           messagesList,
@@ -2086,6 +2275,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           {/* Focus is how touch screens reveal this message's actions. */}
                           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
                           <div className='chat-native__bubble' tabIndex={0}>
+                            {message.reply_to_id && !message.deleted_at && (
+                              <ReplyQuote
+                                messageId={message.reply_to_id}
+                                target={messagesById.get(message.reply_to_id)}
+                                onClick={handleReplyQuoteClick}
+                              />
+                            )}
                             <p>
                               {message.deleted_at ? (
                                 <FormattedMessage
@@ -2229,18 +2425,39 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   </Fragment>
                 ))}
               </div>
-              {conversation?.archived && (
-                <div className='chat-native__error'>
-                  <FormattedMessage
-                    id='chat.archived'
-                    defaultMessage='This group is archived.'
-                  />
-                </div>
-              )}
               <form
                 className='chat-native__composer'
+                ref={composerRef}
                 onSubmit={handleComposerSubmit}
               >
+                {awayFromNewest && (
+                  <button
+                    type='button'
+                    className={classNames('chat-native__jump', {
+                      'chat-native__jump--unseen': hasUnseenMessages,
+                    })}
+                    aria-label={intl.formatMessage(
+                      hasUnseenMessages
+                        ? messages.newMessages
+                        : messages.jumpToNewest,
+                    )}
+                    title={intl.formatMessage(messages.jumpToNewest)}
+                    onClick={handleJumpToNewest}
+                  >
+                    <Icon id='arrow-down' icon={ArrowDownwardIcon} />
+                    {hasUnseenMessages && (
+                      <span>{intl.formatMessage(messages.newMessages)}</span>
+                    )}
+                  </button>
+                )}
+                {conversation?.archived && (
+                  <div className='chat-native__notice'>
+                    <FormattedMessage
+                      id='chat.archived'
+                      defaultMessage='This group is archived.'
+                    />
+                  </div>
+                )}
                 {(replyToId ?? editingId) && (
                   <div className='chat-native__compose-mode'>
                     {editingId ? (
@@ -2342,6 +2559,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     maxRows={6}
                     value={text}
                     onChange={handleTextChange}
+                    onKeyDown={handleComposerKeyDown}
                     placeholder={intl.formatMessage(messages.placeholder)}
                     disabled={loading || isArchived}
                   />
@@ -2350,7 +2568,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   <div className='chat-native__error'>
                     <FormattedMessage
                       id='chat.message_too_long'
-                      defaultMessage='This message is too long.'
+                      defaultMessage='This message is too long ({count}/{max} characters).'
+                      values={{
+                        count: Array.from(text.trim()).length,
+                        max: MAX_MESSAGE_LENGTH,
+                      }}
                     />
                   </div>
                 )}
@@ -2430,6 +2652,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     </div>
                   )}
                 </form>
+                {directAccountQuery.trim().length >= 2 &&
+                  accountSearchEmpty && (
+                    <div className='chat-native__empty'>
+                      <FormattedMessage
+                        id='chat.account_search_no_results'
+                        defaultMessage='No accounts found.'
+                      />
+                    </div>
+                  )}
                 {accountResults.length > 0 && (
                   <div className='chat-native__account-results'>
                     {accountResults.map((account) => (
@@ -2498,6 +2729,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     </div>
                   )}
                 </form>
+                {groupAccountQuery.trim().length >= 2 && accountSearchEmpty && (
+                  <div className='chat-native__empty'>
+                    <FormattedMessage
+                      id='chat.account_search_no_results'
+                      defaultMessage='No accounts found.'
+                    />
+                  </div>
+                )}
                 {groupAccountResults.length > 0 && (
                   <div className='chat-native__account-results'>
                     {groupAccountResults.map((account) => (
@@ -2599,6 +2838,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         key={result.id}
                         type='button'
                         data-conversation-id={result.conversation_id}
+                        data-message-id={result.id}
                         onClick={handleSearchResult}
                       >
                         <strong>

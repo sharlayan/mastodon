@@ -77,9 +77,19 @@ vi.mock('flavours/glitch/components/avatar', () => ({
   Avatar: () => <div className='account__avatar' />,
 }));
 vi.mock('flavours/glitch/components/column/header', () => ({
-  ColumnHeader: ({ title, extraButton, children }: ColumnHeaderProps) => (
+  ColumnHeader: ({
+    title,
+    extraButton,
+    children,
+    onBack,
+  }: ColumnHeaderProps) => (
     <header>
       {title}
+      {onBack && (
+        <button type='button' onClick={onBack}>
+          Back
+        </button>
+      )}
       {extraButton}
       {children}
     </header>
@@ -1475,7 +1485,7 @@ describe('Chat screen lifecycle', () => {
     expect(
       screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled,
     ).toBe(true);
-    expect(screen.getByText('This message is too long.')).toBeTruthy();
+    expect(screen.getByText(/This message is too long/)).toBeTruthy();
   });
 
   it('tells the user when too many files are selected', async () => {
@@ -2312,5 +2322,304 @@ describe('Chat message runs', () => {
     expect(
       container.querySelector('.chat-native__bubble')?.getAttribute('tabindex'),
     ).toBe('0');
+  });
+});
+
+describe('Chat back button', () => {
+  it.each([
+    ['/chat/A', '/chat'],
+    ['/chat/new', '/chat'],
+    ['/chat/A/members', '/chat/A'],
+    ['/chat/A/settings', '/chat/A'],
+  ])('goes from %s up to %s', async (from, to) => {
+    const { history } = mountChat(from);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+
+    expect(history.location.pathname).toBe(to);
+  });
+});
+
+describe('Chat sending with the keyboard', () => {
+  const typeAndPress = async (init: KeyboardEventInit) => {
+    mountChat();
+    await screen.findByText('Private message A');
+    fireEvent.change(composer(), { target: { value: 'Typed' } });
+    fireEvent.keyDown(composer(), { key: 'Enter', ...init });
+  };
+  const sentMessages = () =>
+    api.post.mock.calls.filter(([url]) => String(url).endsWith('/messages'));
+
+  beforeEach(() => {
+    api.post.mockResolvedValue({ data: { ...message(), id: 'sent' } });
+  });
+
+  it('sends on Enter', async () => {
+    await typeAndPress({});
+    await waitFor(() => {
+      expect(sentMessages()).toHaveLength(1);
+    });
+  });
+
+  it('keeps Shift+Enter for a new line', async () => {
+    await typeAndPress({ shiftKey: true });
+    expect(sentMessages()).toHaveLength(0);
+  });
+
+  it('does not send when Enter confirms Korean input', async () => {
+    await typeAndPress({ isComposing: true });
+    expect(sentMessages()).toHaveLength(0);
+  });
+
+  it('keeps Enter for a new line on touch keyboards', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    await typeAndPress({});
+    expect(sentMessages()).toHaveLength(0);
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('Chat reply quote', () => {
+  const original = {
+    ...message(),
+    id: 'original',
+    content: 'The question',
+    account: { ...remote, display_name: 'Bob' },
+  };
+  const answer = {
+    ...message(),
+    id: 'answer',
+    content: 'The answer',
+    reply_to_id: 'original',
+  };
+  const mountWith = async (list: unknown[]) => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({ data: list })
+        : getResponse(url),
+    );
+    const view = mountChat();
+    await screen.findByText('The answer');
+    return view;
+  };
+
+  it('shows who and what a sent reply answers', async () => {
+    const { container } = await mountWith([original, answer]);
+
+    const quote = container.querySelector('.chat-native__reply-quote');
+    expect(quote?.textContent).toContain('Bob');
+    expect(quote?.textContent).toContain('The question');
+  });
+
+  it('still marks a reply whose original is not loaded', async () => {
+    const { container } = await mountWith([answer]);
+
+    expect(
+      container.querySelector('.chat-native__reply-quote')?.textContent,
+    ).toContain('Replying to message');
+  });
+
+  it('highlights the original when the quote is clicked', async () => {
+    const { container } = await mountWith([original, answer]);
+
+    fireEvent.click(
+      container.querySelector('.chat-native__reply-quote') as Element,
+    );
+
+    expect(
+      container.querySelector('#chat-message-original')?.classList,
+    ).toContain('chat-native__message--highlighted');
+  });
+});
+
+describe('Chat search results', () => {
+  it('opens the room at the message, loading older pages to reach it', async () => {
+    const page = (from: number) =>
+      Array.from({ length: 40 }, (_, index) => ({
+        ...message(),
+        id: String(from + index),
+        content: `Message ${from + index}`,
+      }));
+    api.get.mockImplementation(
+      (url: string, config?: { params?: { max_id?: string } }) => {
+        if (!url.includes('/A/messages')) return getResponse(url);
+        return Promise.resolve({
+          data: config?.params?.max_id ? page(100) : page(200),
+        });
+      },
+    );
+    const history = createMemoryHistory({
+      initialEntries: [
+        { pathname: '/chat/A', state: { chatMessageId: '105' } },
+      ],
+    });
+    const { container } = render(
+      <IntlProvider locale='en'>
+        <IdentityContext.Provider
+          value={{
+            signedIn: true,
+            permissions: 0,
+            accountId: 'me',
+            disabledAccountId: undefined,
+          }}
+        >
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat />
+            </Route>
+          </Router>
+        </IdentityContext.Provider>
+      </IntlProvider>,
+    );
+
+    await screen.findByText('Message 105');
+
+    expect(container.querySelector('#chat-message-105')?.classList).toContain(
+      'chat-native__message--highlighted',
+    );
+  });
+});
+
+describe('Chat jump to newest', () => {
+  const scrollAway = () => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      bottom: window.innerHeight + 5000,
+    } as DOMRect);
+    fireEvent.scroll(window);
+  };
+  const receive = () => {
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message',
+        payload: {
+          ...message(),
+          id: 'live',
+          content: 'Live message',
+          account: remote,
+        },
+      });
+    });
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('offers a way back only after scrolling away', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    expect(
+      screen.queryByRole('button', { name: 'Jump to newest message' }),
+    ).toBeNull();
+
+    scrollAway();
+
+    expect(
+      screen.getByRole('button', { name: 'Jump to newest message' }),
+    ).toBeTruthy();
+  });
+
+  it('says so when a message arrives while reading older ones', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    scrollAway();
+
+    receive();
+
+    expect(screen.getByText('New messages')).toBeTruthy();
+  });
+
+  it('clears the notice after jumping back', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    scrollAway();
+    receive();
+
+    fireEvent.click(screen.getByRole('button', { name: 'New messages' }));
+
+    expect(screen.queryByText('New messages')).toBeNull();
+  });
+});
+
+describe('Chat account search', () => {
+  it('says when no account matched', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v2/search'
+        ? Promise.resolve({ data: { accounts: [] } })
+        : getResponse(url),
+    );
+    mountChat('/chat/new');
+    const input = await screen.findByPlaceholderText(/search/i);
+
+    fireEvent.change(input, { target: { value: 'nobody' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    expect(screen.getByText('No accounts found.')).toBeTruthy();
+    vi.useRealTimers();
+  });
+});
+
+describe('Chat confirmations', () => {
+  const alertMessages = () =>
+    dispatch.mock.calls.map(
+      ([action]) =>
+        (action as { payload?: { message?: { id?: string } } }).payload?.message
+          ?.id,
+    );
+  const ownedGroup = {
+    ...conversation('A'),
+    type: 'group',
+    current_role: 'owner',
+  };
+  const mountGroup = (path: string) => {
+    dispatch.mockClear();
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations/A')
+        return Promise.resolve({ data: ownedGroup });
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: [ownedGroup], headers: {} });
+      if (url === '/api/v2/search')
+        return Promise.resolve({ data: { accounts: [remote] } });
+      return getResponse(url);
+    });
+    return mountChat(path);
+  };
+
+  it('confirms saved group settings', async () => {
+    api.patch.mockResolvedValue({ data: ownedGroup });
+    const { container } = mountGroup('/chat/A/settings');
+    await waitFor(() => {
+      expect(container.querySelector('.chat-native__group-edit')).toBeTruthy();
+    });
+
+    fireEvent.submit(
+      container.querySelector('.chat-native__group-edit') as Element,
+    );
+
+    await waitFor(() => {
+      expect(alertMessages()).toContain('chat.group_saved');
+    });
+  });
+
+  it('shows an archived group as a notice in the composer, not an error', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations'
+        ? Promise.resolve({
+            data: [{ ...conversation('A'), type: 'group', archived: true }],
+            headers: {},
+          })
+        : getResponse(url),
+    );
+    const { container } = mountChat();
+
+    const notice = await screen.findByText('This group is archived.');
+
+    expect(notice.closest('.chat-native__notice')).toBeTruthy();
+    expect(
+      container.querySelector('.chat-native__composer')?.contains(notice),
+    ).toBe(true);
   });
 });

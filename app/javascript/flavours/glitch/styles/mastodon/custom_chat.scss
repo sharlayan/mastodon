@@ -350,7 +350,9 @@
   }
 
   &__remote-badge {
+    flex: none;
     padding: 0 4px;
+    white-space: nowrap;
     color: var(--color-text-secondary);
     font-size: 9px;
     text-transform: uppercase;
@@ -416,6 +418,11 @@
       }
     }
 
+    &--highlighted .chat-native__bubble {
+      outline: 2px solid var(--color-border-brand);
+      outline-offset: 1px;
+    }
+
     &--mine#{&}--continued .chat-native__bubble {
       border-radius: 14px 4px 4px 14px;
     }
@@ -458,6 +465,64 @@
       line-height: 1.45;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+    }
+  }
+
+  &__reply-quote {
+    display: block;
+    width: 100%;
+    margin-block-end: 4px;
+    padding: 2px 0 2px 8px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: start;
+    background: transparent;
+    border: 0;
+    border-inline-start: 2px solid var(--color-border-brand);
+    cursor: pointer;
+
+    strong {
+      display: block;
+      font-weight: 500;
+    }
+
+    span {
+      display: -webkit-box;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+  }
+
+  &__jump {
+    position: absolute;
+    z-index: 1;
+    inset-block-end: calc(100% + 8px);
+    inset-inline-end: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 36px;
+    padding: 6px 8px;
+    color: var(--color-text-primary);
+    font-size: 13px;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: 18px;
+    cursor: pointer;
+
+    .icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    &--unseen {
+      padding-inline-end: 12px;
+      color: var(--color-text-on-brand-base);
+      background: var(--color-bg-brand-base);
+      border-color: transparent;
     }
   }
 
@@ -550,6 +615,14 @@
       &::before {
         inset-inline: 100% auto;
       }
+    }
+  }
+
+  // Fingers need more than the 24px a mouse pointer is fine with.
+  @media (hover: none) {
+    &__actions .icon-button,
+    &__actions .chat-native__react-picker button {
+      padding: 8px;
     }
   }
 
@@ -776,10 +849,17 @@
       height: 44px;
     }
 
-    > .chat-native__error {
+    > .chat-native__error,
+    > .chat-native__notice {
       flex: 1 0 100%;
       order: -1;
     }
+  }
+
+  &__notice {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    text-align: center;
   }
 
   &__compose-field {
