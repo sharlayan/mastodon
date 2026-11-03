@@ -2191,3 +2191,126 @@ describe('Chat message authors', () => {
     expect(within(rowOf('Message 3')).queryByText('Alice')).toBeNull();
   });
 });
+
+describe('Chat home loading', () => {
+  it('does not claim there is no history before the list has loaded', async () => {
+    const pending = deferred<{ data: ReturnType<typeof conversation>[] }>();
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations' ? pending.promise : getResponse(url),
+    );
+    mountChat('/chat');
+    await screen.findByRole('button', { name: 'Search messages' });
+
+    expect(screen.queryByText('You have no chat history yet.')).toBeNull();
+
+    await act(async () => {
+      pending.resolve({ data: [] });
+      await pending.promise;
+    });
+    expect(
+      await screen.findByText('You have no chat history yet.'),
+    ).toBeTruthy();
+  });
+});
+
+describe('Chat message runs', () => {
+  const at = (id: string, time: string, author: typeof account = remote) => ({
+    ...message(),
+    id,
+    content: `Message ${id}`,
+    created_at: time,
+    account: author,
+  });
+  const mountMessages = async (list: ReturnType<typeof at>[]) => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({ data: list })
+        : getResponse(url),
+    );
+    const view = mountChat();
+    await screen.findByText(`Message ${list.at(-1)?.id}`);
+    return view;
+  };
+  const rowOf = (text: string) =>
+    screen.getByText(text).closest('.chat-native__message') as HTMLElement;
+
+  it('joins messages sent in a row and shows the time once, at the end', async () => {
+    await mountMessages([
+      at('1', '2026-11-04T01:00:00Z'),
+      at('2', '2026-11-04T01:01:00Z'),
+      at('3', '2026-11-04T01:02:00Z'),
+    ]);
+
+    expect(rowOf('Message 1').classList).not.toContain(
+      'chat-native__message--continued',
+    );
+    expect(rowOf('Message 2').classList).toContain(
+      'chat-native__message--continued',
+    );
+    expect(rowOf('Message 3').classList).toContain(
+      'chat-native__message--continued',
+    );
+    expect(rowOf('Message 1').querySelector('time')).toBeNull();
+    expect(rowOf('Message 2').querySelector('time')).toBeNull();
+    expect(rowOf('Message 3').querySelector('time')).toBeTruthy();
+  });
+
+  it('joins messages up to 17 minutes apart, matching CherryPick', async () => {
+    await mountMessages([
+      at('1', '2026-11-04T01:00:00Z'),
+      at('2', '2026-11-04T01:17:00Z'),
+      at('3', '2026-11-04T01:34:01Z'),
+    ]);
+
+    expect(rowOf('Message 2').classList).toContain(
+      'chat-native__message--continued',
+    );
+    expect(rowOf('Message 3').classList).not.toContain(
+      'chat-native__message--continued',
+    );
+  });
+
+  it('starts a new run after a long pause or another person', async () => {
+    await mountMessages([
+      at('1', '2026-11-04T01:00:00Z'),
+      at('2', '2026-11-04T01:30:00Z'),
+      at('3', '2026-11-04T01:31:00Z', account),
+    ]);
+
+    expect(rowOf('Message 1').querySelector('time')).toBeTruthy();
+    expect(rowOf('Message 2').classList).not.toContain(
+      'chat-native__message--continued',
+    );
+    expect(rowOf('Message 2').querySelector('.account__avatar')).toBeTruthy();
+    expect(rowOf('Message 3').classList).not.toContain(
+      'chat-native__message--continued',
+    );
+  });
+
+  it('shows the date once per day, not on every message', async () => {
+    const { container } = await mountMessages([
+      at('1', '2026-11-03T12:00:00Z'),
+      at('2', '2026-11-03T12:01:00Z'),
+      at('3', '2026-11-05T12:00:00Z'),
+    ]);
+
+    expect(container.querySelectorAll('.chat-native__date')).toHaveLength(2);
+    expect(rowOf('Message 3').querySelector('time')?.textContent).not.toMatch(
+      /2026/,
+    );
+  });
+
+  it('keeps actions in a toolbar that the bubble can reveal without a mouse', async () => {
+    const { container } = await mountMessages([
+      at('1', '2026-11-04T01:00:00Z'),
+    ]);
+
+    const toolbar = container.querySelector('.chat-native__actions');
+    expect(
+      toolbar?.contains(screen.getByRole('button', { name: 'Reply' })),
+    ).toBe(true);
+    expect(
+      container.querySelector('.chat-native__bubble')?.getAttribute('tabindex'),
+    ).toBe('0');
+  });
+});

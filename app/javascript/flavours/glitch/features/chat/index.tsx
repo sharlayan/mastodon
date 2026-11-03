@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type { ChangeEvent, MouseEvent, SyntheticEvent } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
@@ -281,9 +288,35 @@ const MessageActionButton: React.FC<{
   );
 };
 
-// Consecutive messages from one person show their picture and name only once.
-const startsRun = (list: ChatMessage[], index: number) =>
-  list[index - 1]?.account.id !== list[index]?.account.id;
+// Messages one person sends in quick succession read as a single thought, so
+// they share one picture, name, and time. Matches CherryPick's
+// CHAT_MESSAGE_GROUPING_INTERVAL, which includes exactly this gap.
+const RUN_GAP_MS = 17 * 60 * 1000;
+
+const startsDay = (list: ChatMessage[], index: number) => {
+  const current = list[index];
+  const previous = list[index - 1];
+  if (!current || !previous) return true;
+  return (
+    new Date(previous.created_at).toDateString() !==
+    new Date(current.created_at).toDateString()
+  );
+};
+
+const startsRun = (list: ChatMessage[], index: number) => {
+  const current = list[index];
+  const previous = list[index - 1];
+  if (!current || !previous) return true;
+  return (
+    previous.account.id !== current.account.id ||
+    Date.parse(current.created_at) - Date.parse(previous.created_at) >
+      RUN_GAP_MS ||
+    startsDay(list, index)
+  );
+};
+
+const endsRun = (list: ChatMessage[], index: number) =>
+  index === list.length - 1 || startsRun(list, index + 1);
 
 const FOLLOW_NEWEST_DISTANCE = 240;
 
@@ -355,6 +388,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
   const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
   const [conversationMissing, setConversationMissing] = useState(false);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMounted = useRef(true);
@@ -506,6 +540,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setConversationMissing(missing);
     if (missing) setError('load');
     setConversations(loaded);
+    setConversationsLoaded(true);
   }, [conversationId]);
 
   const refreshConversations = useCallback(() => {
@@ -2009,149 +2044,189 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               )}
               <div className='chat-native__messages' ref={messagesListRef}>
                 {messagesList.map((message, index) => (
-                  <article
-                    className={`chat-native__message ${message.account.id === me ? 'chat-native__message--mine' : ''}`}
-                    key={message.id}
-                  >
-                    {message.account.id !== me &&
-                      (startsRun(messagesList, index) ? (
-                        <Avatar account={message.account} size={36} withLink />
-                      ) : (
-                        <span className='chat-native__avatar-space' />
-                      ))}
-                    <div className='chat-native__message-content'>
-                      {message.account.id !== me &&
-                        startsRun(messagesList, index) && (
-                          <strong>
-                            {message.account.display_name ||
-                              message.account.acct}
-                          </strong>
-                        )}
-                      <div className='chat-native__bubble'>
-                        <p>
-                          {message.deleted_at ? (
-                            <FormattedMessage
-                              id='chat.message_deleted'
-                              defaultMessage='This message was deleted.'
-                            />
-                          ) : (
-                            message.content
-                          )}
-                        </p>
-                        {message.media_attachments.map((attachment) => (
-                          <div
-                            key={attachment.id}
-                            className='chat-native__attachment'
-                          >
-                            {attachment.type === 'audio' && attachment.url ? (
-                              <audio controls src={attachment.url} />
-                            ) : (attachment.type === 'video' ||
-                                attachment.type === 'gifv') &&
-                              attachment.url ? (
-                              <video
-                                controls
-                                src={attachment.url}
-                                poster={attachment.preview_url ?? undefined}
-                              />
-                            ) : attachment.url ? (
-                              <a
-                                href={attachment.url}
-                                target='_blank'
-                                rel='noopener noreferrer'
-                              >
-                                <img
-                                  src={attachment.preview_url ?? attachment.url}
-                                  alt={attachment.description ?? ''}
-                                />
-                              </a>
-                            ) : (
-                              <span>
-                                {attachment.description ?? attachment.type}
-                              </span>
-                            )}
-                          </div>
-                        ))}
+                  <Fragment key={message.id}>
+                    {startsDay(messagesList, index) && (
+                      <div className='chat-native__date' role='separator'>
+                        {intl.formatDate(message.created_at, {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          weekday: 'long',
+                        })}
                       </div>
-                      {message.reactions.length > 0 && (
-                        <div className='chat-native__reactions'>
-                          {message.reactions.map((reaction) => (
-                            <button
-                              key={`${reaction.account.id}-${reaction.reaction}`}
-                              type='button'
-                              className={
-                                reaction.account.id === me ? 'mine' : undefined
-                              }
-                              data-message-id={message.id}
-                              data-reaction={reaction.reaction}
-                              data-account-id={reaction.account.id}
-                              onClick={handleReactionClick}
-                              title={reaction.account.acct}
-                            >
-                              {reaction.url ? (
-                                <img
-                                  className='emoji'
-                                  src={reaction.static_url ?? reaction.url}
-                                  alt={reaction.reaction}
+                    )}
+                    <article
+                      className={classNames('chat-native__message', {
+                        'chat-native__message--mine': message.account.id === me,
+                        'chat-native__message--continued': !startsRun(
+                          messagesList,
+                          index,
+                        ),
+                      })}
+                    >
+                      {message.account.id !== me &&
+                        (startsRun(messagesList, index) ? (
+                          <Avatar
+                            account={message.account}
+                            size={36}
+                            withLink
+                          />
+                        ) : (
+                          <span className='chat-native__avatar-space' />
+                        ))}
+                      <div className='chat-native__message-content'>
+                        {message.account.id !== me &&
+                          startsRun(messagesList, index) && (
+                            <strong>
+                              {message.account.display_name ||
+                                message.account.acct}
+                            </strong>
+                          )}
+                        <div className='chat-native__bubble-wrap'>
+                          {/* Focus is how touch screens reveal this message's actions. */}
+                          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                          <div className='chat-native__bubble' tabIndex={0}>
+                            <p>
+                              {message.deleted_at ? (
+                                <FormattedMessage
+                                  id='chat.message_deleted'
+                                  defaultMessage='This message was deleted.'
                                 />
                               ) : (
-                                reaction.reaction
+                                message.content
                               )}
-                            </button>
-                          ))}
+                            </p>
+                            {message.media_attachments.map((attachment) => (
+                              <div
+                                key={attachment.id}
+                                className='chat-native__attachment'
+                              >
+                                {attachment.type === 'audio' &&
+                                attachment.url ? (
+                                  <audio controls src={attachment.url} />
+                                ) : (attachment.type === 'video' ||
+                                    attachment.type === 'gifv') &&
+                                  attachment.url ? (
+                                  <video
+                                    controls
+                                    src={attachment.url}
+                                    poster={attachment.preview_url ?? undefined}
+                                  />
+                                ) : attachment.url ? (
+                                  <a
+                                    href={attachment.url}
+                                    target='_blank'
+                                    rel='noopener noreferrer'
+                                  >
+                                    <img
+                                      src={
+                                        attachment.preview_url ?? attachment.url
+                                      }
+                                      alt={attachment.description ?? ''}
+                                    />
+                                  </a>
+                                ) : (
+                                  <span>
+                                    {attachment.description ?? attachment.type}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {!message.deleted_at && !conversation?.archived && (
+                            <div className='chat-native__actions'>
+                              <MessageActionButton
+                                messageId={message.id}
+                                action='reply'
+                                title={intl.formatMessage(messages.reply)}
+                                icon={ReplyIcon}
+                                onAction={handleMessageAction}
+                              />
+                              {message.account.id !== me && (
+                                <span className='chat-native__react-picker'>
+                                  <ChatEmojiPicker
+                                    messageId={message.id}
+                                    onPick={handleEmojiPick}
+                                  />
+                                </span>
+                              )}
+                              {message.account.id === me && (
+                                <>
+                                  <MessageActionButton
+                                    messageId={message.id}
+                                    action='edit'
+                                    title={intl.formatMessage(messages.edit)}
+                                    icon={EditIcon}
+                                    onAction={handleMessageAction}
+                                  />
+                                  <MessageActionButton
+                                    messageId={message.id}
+                                    action='delete'
+                                    title={intl.formatMessage(messages.delete)}
+                                    icon={DeleteIcon}
+                                    onAction={handleMessageAction}
+                                  />
+                                </>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      <div className='chat-native__message-footer'>
-                        <time dateTime={message.created_at}>
-                          {new Date(message.created_at).toLocaleString()}
-                        </time>
-                        {message.edited_at && !message.deleted_at && (
-                          <span className='chat-native__edited'>
-                            <FormattedMessage
-                              id='chat.message_edited'
-                              defaultMessage='Edited'
-                            />
-                          </span>
-                        )}
-                        {!message.deleted_at && !conversation?.archived && (
-                          <div className='chat-native__actions'>
-                            <MessageActionButton
-                              messageId={message.id}
-                              action='reply'
-                              title={intl.formatMessage(messages.reply)}
-                              icon={ReplyIcon}
-                              onAction={handleMessageAction}
-                            />
-                            {message.account.id !== me && (
-                              <span className='chat-native__react-picker'>
-                                <ChatEmojiPicker
-                                  messageId={message.id}
-                                  onPick={handleEmojiPick}
-                                />
-                              </span>
-                            )}
-                            {message.account.id === me && (
-                              <>
-                                <MessageActionButton
-                                  messageId={message.id}
-                                  action='edit'
-                                  title={intl.formatMessage(messages.edit)}
-                                  icon={EditIcon}
-                                  onAction={handleMessageAction}
-                                />
-                                <MessageActionButton
-                                  messageId={message.id}
-                                  action='delete'
-                                  title={intl.formatMessage(messages.delete)}
-                                  icon={DeleteIcon}
-                                  onAction={handleMessageAction}
-                                />
-                              </>
-                            )}
+                        {message.reactions.length > 0 && (
+                          <div className='chat-native__reactions'>
+                            {message.reactions.map((reaction) => (
+                              <button
+                                key={`${reaction.account.id}-${reaction.reaction}`}
+                                type='button'
+                                className={
+                                  reaction.account.id === me
+                                    ? 'mine'
+                                    : undefined
+                                }
+                                data-message-id={message.id}
+                                data-reaction={reaction.reaction}
+                                data-account-id={reaction.account.id}
+                                onClick={handleReactionClick}
+                                title={reaction.account.acct}
+                              >
+                                {reaction.url ? (
+                                  <img
+                                    className='emoji'
+                                    src={reaction.static_url ?? reaction.url}
+                                    alt={reaction.reaction}
+                                  />
+                                ) : (
+                                  reaction.reaction
+                                )}
+                              </button>
+                            ))}
                           </div>
                         )}
+                        <div className='chat-native__message-footer'>
+                          {endsRun(messagesList, index) && (
+                            <time
+                              dateTime={message.created_at}
+                              title={new Date(
+                                message.created_at,
+                              ).toLocaleString()}
+                            >
+                              {intl.formatTime(message.created_at, {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </time>
+                          )}
+                          {message.edited_at && !message.deleted_at && (
+                            <span className='chat-native__edited'>
+                              <FormattedMessage
+                                id='chat.message_edited'
+                                defaultMessage='Edited'
+                              />
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </article>
+                    </article>
+                  </Fragment>
                 ))}
               </div>
               {conversation?.archived && (
@@ -2559,7 +2634,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     loading={loadingMore}
                   />
                 )}
-                {visibleConversations.length === 0 && (
+                {conversationsLoaded && visibleConversations.length === 0 && (
                   <div className='chat-native__empty'>
                     {activeTab === 'home' ? (
                       <FormattedMessage
