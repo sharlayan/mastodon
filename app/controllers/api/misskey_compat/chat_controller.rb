@@ -149,7 +149,8 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def room_members
-    render json: paginate(member_room!.memberships).includes(:account, :chat_conversation).map { |membership| serialize_membership(membership) }
+    memberships = paginate(member_room!.memberships.where.not(role: :owner))
+    render json: memberships.includes(:account, :chat_conversation).map { |membership| serialize_membership(membership) }
   end
 
   def show_room

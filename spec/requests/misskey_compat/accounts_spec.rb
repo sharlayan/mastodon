@@ -28,6 +28,58 @@ RSpec.describe 'Misskey-compat account endpoints' do
     expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('memo' => nil)
   end
 
+  it 'treats the Misskey local host marker as a local account filter' do
+    post '/api/users/search-by-username-and-host', params: { i: read_token, username: target.username, host: '.' }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.pluck('id')).to include(MisskeyCompat::MiId.encode(target.id))
+  end
+
+  it 'does not return remote accounts when filtering by the local host marker' do
+    remote = Fabricate(:account, domain: 'remote.example', username: 'bob')
+    local  = Fabricate(:account, username: 'bob')
+
+    post '/api/users/search-by-username-and-host', params: { i: read_token, username: 'bob', host: '.' }, as: :json
+
+    expect(response).to have_http_status(200)
+    ids = response.parsed_body.pluck('id')
+    expect(ids).to include(MisskeyCompat::MiId.encode(local.id))
+    expect(ids).to_not include(MisskeyCompat::MiId.encode(remote.id))
+  end
+
+  it 'returns detailed users by default from the username search' do
+    post '/api/users/search-by-username-and-host', params: { i: read_token, username: target.username, host: '.' }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('url')
+  end
+
+  it 'returns lite users when detail is false' do
+    post '/api/users/search-by-username-and-host', params: { i: read_token, username: target.username, host: '.', detail: false }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to_not include('url')
+  end
+
+  it 'returns detailed users with viewer relationships by default from search' do
+    target.update!(discoverable: true)
+    account.follow!(target, reblogs: true, notify: false)
+
+    post '/api/users/search', params: { i: read_token, query: target.username }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('url', 'isFollowing' => true)
+  end
+
+  it 'returns lite users without viewer relationships when search detail is false' do
+    target.update!(discoverable: true)
+
+    post '/api/users/search', params: { i: read_token, query: target.username, detail: false }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to_not include('url', 'isFollowing')
+  end
+
   def create_mentioned_pointer_note(actor, index)
     mentioned = Fabricate(:account)
     status = Fabricate(:status, account: actor, text: "@#{mentioned.username} audit #{index}")

@@ -279,11 +279,19 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response.parsed_body).to contain_exactly(include(roomId: mi_id(room), room: include(name: 'Room')))
 
     request_chat('rooms/members', roomId: mi_id(room))
-    expect(response.parsed_body.pluck(:userId)).to contain_exactly(mi_id(account), mi_id(other.account))
+    expect(response.parsed_body.pluck(:userId)).to contain_exactly(mi_id(other.account))
 
     request_chat('messages/create-to-room', { toRoomId: mi_id(room), text: 'joined' }, as_user: other)
     expect(response).to have_http_status(200)
     expect(response.parsed_body).to include(toRoomId: mi_id(room), text: 'joined')
+  end
+
+  it 'does not list the owner as a room member' do
+    room = group_conversation
+
+    request_chat('rooms/members', roomId: mi_id(room))
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body).to be_empty
   end
 
   it 'mutes and leaves a joined room' do
