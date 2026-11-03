@@ -223,6 +223,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       canSearchNotes: true,
       canUseTranslator: TranslationService.configured?,
       canUseReaction: true,
+      chatAvailability: Setting.chat_enabled ? 'available' : 'unavailable',
       canHideAds: false,
       canScheduleNote: true,
       scheduleNoteMax: ScheduledStatus::TOTAL_LIMIT,

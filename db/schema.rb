@@ -627,6 +627,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_000200) do
   create_table "chat_invitations", force: :cascade do |t|
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
+    t.boolean "ignored", default: false, null: false
     t.bigint "invitee_account_id", null: false
     t.bigint "inviter_account_id", null: false
     t.integer "state", default: 0, null: false
@@ -1774,7 +1775,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_02_000200) do
     t.index ["target_account_id"], name: "index_reports_on_target_account_id"
   end
 
-  create_table "rp_hidden_statuses", force: :cascade do |t|
+  create_table "rp_hidden_statuses", id: :bigint, default: -> { "timestamp_id('rp_hidden_statuses'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "hidden_by_account_id"
     t.boolean "media_moved", default: false, null: false

@@ -197,8 +197,8 @@ RSpec.describe 'API V1 Chat' do
 
     it 'does not allow reactions on a deleted message' do
       conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :direct, account_ids: [other.account.id])
-      message = Sharlayan::ChatService.new.create_message(user.account, conversation, text: 'delete me')
-      Sharlayan::ChatService.new.delete_message(user.account, message)
+      message = Sharlayan::ChatService.new.create_message(other.account, conversation, text: 'delete me')
+      Sharlayan::ChatService.new.delete_message(other.account, message)
 
       post "/api/v1/chat/messages/#{message.id}/reactions", params: { reaction: '👍' }, headers: headers
 

@@ -26,6 +26,6 @@ RSpec.describe Sharlayan::ChatFederation::Delivery do
 
     described_class.call(actor: owner, conversation: conversation, payload: { type: 'Update' }, except_account_id: remote.id)
 
-    expect(ActivityPub::DeliveryWorker).not_to have_received(:perform_async)
+    expect(ActivityPub::DeliveryWorker).to_not have_received(:perform_async)
   end
 end

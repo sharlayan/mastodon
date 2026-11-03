@@ -622,8 +622,21 @@ describe('Chat live updates', () => {
     expect(screen.getByText('This message was deleted.')).toBeTruthy();
   });
 
+  it('does not offer a reaction picker on your own message', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+
+    expect(screen.queryByRole('button', { name: 'Add reaction' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy();
+  });
+
   it('does not restore a reaction when its local request finishes after deletion', async () => {
     const pending = deferred<{ data: typeof reaction }>();
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations/A/messages'
+        ? Promise.resolve({ data: [{ ...message(), account: remote }] })
+        : getResponse(url),
+    );
     mountChat();
     await screen.findByText('Private message A');
     api.post.mockReturnValueOnce(pending.promise);

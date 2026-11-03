@@ -8,7 +8,7 @@ class MediaProxyController < ApplicationController
 
   skip_before_action :require_functional!
 
-  before_action :authenticate_user!, if: :limited_federation_mode?
+  before_action :authenticate_user!, if: -> { limited_federation_mode? && params[:chat_token].blank? }
   before_action :set_media_attachment
 
   rescue_from ActiveRecord::RecordInvalid, Mastodon::NotPermittedError, Mastodon::UnexpectedResponseError, with: :not_found
@@ -38,6 +38,14 @@ class MediaProxyController < ApplicationController
 
   def set_media_attachment
     @media_attachment = MediaAttachment.attached.find(params[:id])
+    if params[:chat_token].present?
+      viewer = MisskeyCompat::ChatMediaToken.viewer(params[:chat_token], @media_attachment)
+      allowed = Setting.chat_enabled && Setting.misskey_compat_enabled && @media_attachment.chat_attachment? &&
+                viewer.present? && MediaAttachmentPolicy.new(viewer, @media_attachment).download?
+      head 404 unless allowed
+      return
+    end
+
     if @media_attachment.chat_attachment? && Sharlayan::ChatFederation::MediaToken.valid?(params[:token], @media_attachment)
       head 404 unless Setting.chat_enabled && Setting.chat_federation_enabled
       return

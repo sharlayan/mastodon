@@ -94,8 +94,8 @@ RSpec.describe 'Chat federation custom emoji reactions' do
     it 'sends the unqualified name with an Emoji tag, on the reaction and on its Undo' do
       emoji = Fabricate(:custom_emoji, shortcode: 'wave', domain: nil)
 
-      react = payload.reaction(message, owner, ':wave:')
-      undo = payload.undo_reaction(message, owner, ':wave:')
+      react = payload.reaction(message, owner, ':wave:', reaction_id: 123)
+      undo = payload.undo_reaction(message, owner, ':wave:', reaction_id: 123)
 
       expect(react).to include('content' => ':wave:', '_misskey_reaction' => ':wave:')
       expect(react['tag']).to contain_exactly(include('type' => 'Emoji', 'name' => ':wave:', 'icon' => include('url' => be_present), 'id' => ActivityPub::TagManager.instance.uri_for(emoji)))
@@ -110,7 +110,7 @@ RSpec.describe 'Chat federation custom emoji reactions' do
       Fabricate(:custom_emoji, shortcode: 'elsewhere', domain: 'remote.test')
 
       [':secret:', ':off:', ':elsewhere:', '🎉'].each do |reaction|
-        expect(payload.reaction(message, owner, reaction)).to_not have_key('tag')
+        expect(payload.reaction(message, owner, reaction, reaction_id: 123)).to_not have_key('tag')
       end
     end
   end

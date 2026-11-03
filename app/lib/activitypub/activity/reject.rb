@@ -2,9 +2,7 @@
 
 class ActivityPub::Activity::Reject < ActivityPub::Activity
   def perform
-    if Sharlayan::ChatFederation::Incoming.chat_invite?(@json)
-      return Sharlayan::ChatFederation::Incoming.handle_reject(@json, @account)
-    end
+    return Sharlayan::ChatFederation::Incoming.handle_reject(@json, @account) if Sharlayan::ChatFederation::Incoming.chat_invite?(@json)
 
     return reject_follow_for_relay if relay_follow?
     return follow_request_from_object.reject! unless follow_request_from_object.nil?

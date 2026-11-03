@@ -54,6 +54,7 @@ class CreateChatDomain < ActiveRecord::Migration[8.1]
       t.references :inviter_account, null: false, foreign_key: { to_table: :accounts, on_delete: :cascade }
       t.references :invitee_account, null: false, foreign_key: { to_table: :accounts, on_delete: :cascade }
       t.integer :state, null: false, default: 0
+      t.boolean :ignored, null: false, default: false
       t.timestamps
     end
 

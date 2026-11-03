@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Sharlayan::ChatFederation::Incoming, type: :model do
+RSpec.describe 'Chat federation fixtures', type: :model do
   let(:alice) { Fabricate(:user).account }
   let(:bob) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/users/bob/inbox', can_chat: true, chat_scope: 'everyone') }
   let(:carol) { Fabricate(:account, domain: 'other.test', uri: 'https://other.test/users/carol', inbox_url: 'https://other.test/users/carol/inbox') }
@@ -20,7 +20,7 @@ RSpec.describe Sharlayan::ChatFederation::Incoming, type: :model do
   end
 
   def fixture(name, room: 'https://remote.test/chat/rooms/g2')
-    path = Rails.root.join('spec/fixtures/activitypub/chat', "#{name}.json")
+    path = Rails.root.join('spec', 'fixtures', 'activitypub', 'chat', "#{name}.json")
     JSON.parse(path.read
       .gsub('__LOCAL__', local_uri)
       .gsub('__CAROL__', carol.uri)
@@ -62,7 +62,7 @@ RSpec.describe Sharlayan::ChatFederation::Incoming, type: :model do
     expect(conversation.messages.find_by(uri: 'https://remote.test/chat/messages/group-1')).to be_present
   end
 
-  it 'accepts a group Create that names the room only in @context, as this server sends it' do
+  it 'accepts a legacy group Create that names the room only in @context' do
     conversation = service.create_conversation(alice, type: :group, account_ids: [], title: 'Local room')
     conversation.memberships.create!(account: bob)
     room = Sharlayan::ChatFederation::Payload.room_uri(conversation)

@@ -46,6 +46,8 @@ module ContextHelper
       '_misskey_reaction' => 'misskey:_misskey_reaction',
       '_misskey_canChat' => 'misskey:_misskey_canChat',
       '_misskey_chatScope' => 'misskey:_misskey_chatScope',
+      '_misskey_chatRoom' => 'misskey:_misskey_chatRoom',
+      '_misskey_chatArchived' => 'misskey:_misskey_chatArchived',
     },
     limited_scope: { 'kmyblue' => 'http://kmy.blue/ns#', 'limitedScope' => 'kmyblue:limitedScope' },
     quote_requests: { 'QuoteRequest' => 'https://w3id.org/fep/044f#QuoteRequest' },

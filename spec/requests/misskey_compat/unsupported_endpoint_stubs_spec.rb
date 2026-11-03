@@ -7,9 +7,6 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
     %w(
       app/create
       app/show
-      chat/messages/create-to-room
-      chat/messages/create-to-user
-      chat/rooms/create
       ping
       test
       v2/admin/emoji/list
@@ -19,16 +16,12 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
   let(:array_endpoints) do
     %w(
       bubble-game/ranking
-      chat/messages/search
     )
   end
 
   let(:void_endpoints) do
     %w(
       bubble-game/register
-      chat/messages/delete
-      chat/messages/react
-      chat/messages/unreact
       i/export-antennas
       i/export-blocking
       i/export-clips

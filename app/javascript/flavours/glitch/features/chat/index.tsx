@@ -1495,12 +1495,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           defaultMessage='Reply'
                         />
                       </button>
-                      <span className='chat-native__react-picker'>
-                        <ChatEmojiPicker
-                          messageId={message.id}
-                          onPick={handleEmojiPick}
-                        />
-                      </span>
+                      {message.account.id !== me && (
+                        <span className='chat-native__react-picker'>
+                          <ChatEmojiPicker
+                            messageId={message.id}
+                            onPick={handleEmojiPick}
+                          />
+                        </span>
+                      )}
                       {message.account.id === me && (
                         <>
                           <button

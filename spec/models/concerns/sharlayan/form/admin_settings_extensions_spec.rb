@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Form::AdminSettings do
   it 'registers Sharlayan settings with the required storage types' do
-expect(described_class::KEYS).to include(
+    expect(described_class::KEYS).to include(
       :theme_color, :background_color, :background_opacity, :local_status_page_access, :norss, :reactions_enabled,
       :drive_allowed_extensions, :roleplay_forced_skin, :profile_fields_limit, :remote_media_attachments_limit,
       :chat_enabled, :chat_soft_delete_enabled, :chat_delete_window_hours, :chat_max_group_members, :chat_max_attachments

@@ -4,9 +4,7 @@ class ActivityPub::Activity::Remove < ActivityPub::Activity
   def perform
     return if @json['target'].blank?
 
-    if Sharlayan::ChatFederation::Incoming.chat_add?(@json)
-      return Sharlayan::ChatFederation::Incoming.handle_remove(@json, @account)
-    end
+    return Sharlayan::ChatFederation::Incoming.handle_remove(@json, @account) if Sharlayan::ChatFederation::Incoming.chat_add?(@json)
 
     case value_or_id(@json['target'])
     when @account.featured_collection_url

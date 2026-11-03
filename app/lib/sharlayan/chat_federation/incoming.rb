@@ -27,8 +27,10 @@ module Sharlayan
         end
 
         def chat_reaction?(json)
-          message = ChatMessage.find_by(uri: uri_of(json['object']))
-          message.present?
+          uri = uri_of(json['object'])
+          return false if uri.blank?
+
+          chat_message_uri?(uri) || ChatMessage.exists?(uri: uri)
         end
 
         def chat_undo_reaction?(json)
@@ -81,6 +83,7 @@ module Sharlayan
               uri: uri,
               text: text,
               created_at: time_of(object['published']),
+              edited_at: time_of(object['updated']),
               attachments: attachments,
               reply_to_uri: uri_of(object['inReplyTo'])
             )
@@ -91,6 +94,7 @@ module Sharlayan
               uri: uri,
               text: text,
               created_at: time_of(object['published']),
+              edited_at: time_of(object['updated']),
               attachments: attachments,
               reply_to_uri: uri_of(object['inReplyTo'])
             )
@@ -112,7 +116,7 @@ module Sharlayan
           return handle_create(json, account, **) if message.nil?
 
           text = text_of(object)
-          return 'skip: empty chat message' if text.blank?
+          return 'skip: empty chat message' if text.blank? && message.media_attachments.empty?
 
           service.update_remote_message(account, message, text: text, edited_at: time_of(object['updated']) || Time.current)
           'ok: chat message updated'
@@ -152,13 +156,17 @@ module Sharlayan
         def handle_reaction(json, account, &emoji_importer)
           return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
 
-          message = ChatMessage.find_by(uri: uri_of(json['object']))
-          return false if message.nil?
+          uri = uri_of(json['object'])
+          return false if uri.blank?
 
           reaction = json['_misskey_reaction'] || json['content']
           return 'skip: empty reaction' if reaction.blank?
 
-          service.react_remote(account, message, reaction.to_s, &emoji_importer)
+          activity_id = reaction_activity_id(json, account)
+          message = ChatMessage.find_by(uri: uri)
+          raise DependencyNotReadyError, 'Chat message has not arrived' if message.nil?
+
+          service.react_remote(account, message, reaction.to_s, activity_id: activity_id, &emoji_importer)
           'ok: chat reaction'
         rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique, Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
           Rails.logger.info("Dropped incoming chat reaction from #{account.uri}: #{e.message}")
@@ -170,14 +178,16 @@ module Sharlayan
 
           object = json['object']
           return false unless chat_undo_reaction?(json)
-
-          message = ChatMessage.find_by(uri: uri_of(object['object']))
-          return false if message.nil?
+          return 'skip: actor mismatch' if object['actor'].present? && uri_of(object['actor']) != account.uri
 
           reaction = object['_misskey_reaction'] || object['content']
           return 'skip: empty reaction' if reaction.blank?
 
-          service.unreact_remote(account, message, reaction.to_s)
+          activity_id = reaction_activity_id(object, account)
+          message = ChatMessage.find_by(uri: uri_of(object['object']))
+          raise DependencyNotReadyError, 'Chat message has not arrived' if message.nil?
+
+          service.unreact_remote(account, message, reaction.to_s, activity_id: activity_id)
           'ok: chat reaction undone'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped incoming chat reaction undo from #{account.uri}: #{e.message}")
@@ -299,6 +309,15 @@ module Sharlayan
 
         private
 
+        def reaction_activity_id(json, account)
+          id = json['id']
+          return if id.nil?
+
+          raise Sharlayan::ChatService::Error, 'Invalid reaction activity ID' unless id.is_a?(String) && id.length <= 2048 && same_host?(id, account.uri) && %w(http https).include?(Addressable::URI.parse(id).scheme)
+
+          id
+        end
+
         def service
           @service ||= Sharlayan::ChatService.new
         end
@@ -323,7 +342,7 @@ module Sharlayan
         end
 
         def room_uri_of(object)
-          # CherryPick names the room in _misskey_chatRoom and context, and this server in @context.
+          # Keep accepting the legacy room @context used by older Mastodon chat senders.
           [object['_misskey_chatRoom'], object['context'], *Array.wrap(object['@context'])].find { |value| room_uri?(value) }
         end
 

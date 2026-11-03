@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: account_switch_device_approvals
+#
+#  id                       :bigint(8)        not null, primary key
+#  approved_at              :datetime
+#  denied_at                :datetime
+#  expires_at               :datetime         not null
+#  request_ip               :inet
+#  created_at               :datetime         not null
+#  updated_at               :datetime         not null
+#  account_id               :bigint(8)        not null
+#  account_switch_device_id :bigint(8)        not null
+#  approved_by_device_id    :bigint(8)
+#  target_account_id        :bigint(8)        not null
+#
 class AccountSwitchDeviceApproval < ApplicationRecord
   EXPIRATION = 10.minutes
 

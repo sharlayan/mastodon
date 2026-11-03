@@ -12,6 +12,7 @@ module Sharlayan
           '_misskey_talk' => 'misskey:_misskey_talk',
           '_misskey_content' => 'misskey:_misskey_content',
           '_misskey_reaction' => 'misskey:_misskey_reaction',
+          '_misskey_chatRoom' => 'misskey:_misskey_chatRoom',
           '_misskey_chatArchived' => 'misskey:_misskey_chatArchived',
         },
       ].freeze
@@ -37,7 +38,7 @@ module Sharlayan
             'actor' => actor_uri(message.account),
             'published' => Time.now.utc.iso8601,
             'to' => recipients(message),
-            'object' => note(message).merge('updated' => (message.edited_at || Time.current).utc.iso8601),
+            'object' => note(message).merge('updated' => (message.edited_at || Time.current).utc.iso8601(3)),
           }
         end
 
@@ -57,10 +58,10 @@ module Sharlayan
           }
         end
 
-        def reaction(message, account, reaction)
+        def reaction(message, account, reaction, reaction_id:)
           {
             '@context' => CONTEXT,
-            'id' => reaction_uri(message, account, reaction),
+            'id' => reaction_uri(reaction_id),
             'type' => 'EmojiReact',
             'actor' => actor_uri(account),
             'object' => message_uri(message),
@@ -71,8 +72,8 @@ module Sharlayan
           }.merge(reaction_tag(account, reaction))
         end
 
-        def undo_reaction(message, account, reaction)
-          react = reaction(message, account, reaction)
+        def undo_reaction(message, account, reaction, reaction_id:)
+          react = reaction(message, account, reaction, reaction_id: reaction_id)
           {
             '@context' => CONTEXT,
             'id' => "#{react['id']}/undo",
@@ -212,7 +213,11 @@ module Sharlayan
             'published' => message.created_at.iso8601,
             '_misskey_talk' => true,
           }
-          result['@context'] = room_uri(message.chat_conversation) if message.chat_conversation.chat_group?
+          if message.chat_conversation.chat_group?
+            result['context'] = room_uri(message.chat_conversation)
+            result['_misskey_chatRoom'] = result['context']
+          end
+          result['updated'] = message.edited_at.utc.iso8601(3) if message.edited_at.present?
           result['inReplyTo'] = message_uri(message.reply_to) if message.reply_to.present?
           result['attachment'] = message.media_attachments.sort_by(&:id).map { |attachment| document(attachment) } if message.media_attachments.any?
           result
@@ -255,8 +260,8 @@ module Sharlayan
           { 'tag' => [ActivityPub::EmojiSerializer.new(emoji).serializable_hash.as_json] }
         end
 
-        def reaction_uri(message, account, reaction)
-          "#{base_url}/chat/reactions/#{message.id}/#{account.id}/#{ERB::Util.url_encode(reaction)}"
+        def reaction_uri(reaction_id)
+          "#{base_url}/chat/reactions/#{reaction_id}"
         end
 
         def invite_object(conversation, invitation)

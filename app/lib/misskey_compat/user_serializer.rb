@@ -156,13 +156,30 @@ class MisskeyCompat::UserSerializer
       followersVisibility: ff_visibility,
       roles: roles_for(account),
       memo: nil,
-      chatScope: 'none',
-      canChat: false,
+      chatScope: chat_scope(account),
+      canChat: can_chat?(account),
       pinnedNoteIds: pinned_note_ids,
       pinnedNotes: pinned_notes,
       pinnedPageId: pinned_page_id,
       pinnedPage: pinned_page,
     }
+  end
+
+  def can_chat?(account)
+    return false unless Setting.chat_enabled && !account.unavailable?
+
+    account.local? || (Setting.chat_federation_enabled && account.can_chat != false)
+  end
+
+  def chat_scope(account)
+    return 'none' unless can_chat?(account)
+
+    policy = account.local? ? account.user&.settings&.[](:chat_policy) : account.chat_scope.presence || 'mutual'
+    case policy
+    when 'everyone', 'followers', 'following', 'mutual' then policy
+    when 'mutuals' then 'mutual'
+    else 'none'
+    end
   end
 
   def pinned_notes_for(account, viewer)

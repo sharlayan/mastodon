@@ -22,7 +22,7 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
 
     expect(described_class.note(message)['id']).to eq("https://social.example.com/chat/messages/#{message.id}")
     expect(described_class.room(conversation)['id']).to eq("https://social.example.com/chat/rooms/#{conversation.id}")
-    expect(described_class.reaction(message, remote, '👍')['id']).to start_with('https://social.example.com/chat/reactions/')
+    expect(described_class.reaction(message, remote, '👍', reaction_id: 123)['id']).to start_with('https://social.example.com/chat/reactions/')
     expect(described_class.send(:document, attachment)['url']).to start_with('https://social.example.com/media_proxy/123/original')
     expect(described_class.send(:document, attachment)['url']).to include('token=')
   end
@@ -37,8 +37,24 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     expect(note['to']).to include(remote.uri)
   end
 
-  it 'uses the room URI as @context for a group note' do
-    expect(described_class.note(message)['@context']).to eq(described_class.room_uri(conversation))
+  it 'identifies the room without treating it as a JSON-LD context document' do
+    note = described_class.note(message)
+    room_uri = "https://#{Rails.configuration.x.web_domain}/chat/rooms/#{conversation.id}"
+
+    expect(note).to include('context' => room_uri, '_misskey_chatRoom' => room_uri)
+    expect(note).to_not have_key('@context')
+    canonical = Class.new { include JsonLdHelper }.new.canonicalize(described_class.create(message))
+    expect(canonical).to include("<https://www.w3.org/ns/activitystreams#context> <#{room_uri}>")
+    expect(canonical).to include('<https://misskey-hub.net/ns#_misskey_chatRoom>')
+    compacted = Class.new { include JsonLdHelper }.new.compact(described_class.create(message))
+    expect(compacted['object']).to include('context' => room_uri, '_misskey_chatRoom' => room_uri)
+  end
+
+  it 'preserves millisecond edit versions in updates and fetched notes' do
+    message.update!(edited_at: Time.utc(2026, 11, 3, 0, 0, 0, 123_000))
+
+    expect(described_class.update(message).dig('object', 'updated')).to eq('2026-11-03T00:00:00.123Z')
+    expect(described_class.note(message)['updated']).to eq('2026-11-03T00:00:00.123Z')
   end
 
   it 'serializes every attachment of a note' do
@@ -52,9 +68,9 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     expect(described_class.delete(message)['object']).to include('type' => 'Tombstone', 'formerType' => 'Note')
   end
 
-  it 'builds reaction and undo activities with deterministic ids' do
-    react = described_class.reaction(message, remote, '👍')
-    undo = described_class.undo_reaction(message, remote, '👍')
+  it 'builds reaction and undo activities with the same persisted reaction ID' do
+    react = described_class.reaction(message, remote, '👍', reaction_id: 123)
+    undo = described_class.undo_reaction(message, remote, '👍', reaction_id: 123)
 
     expect(react['type']).to eq('EmojiReact')
     expect(react['id']).to start_with("#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}/chat/reactions/")

@@ -41,7 +41,8 @@ RSpec.describe 'ActivityPub chat messages' do
     expect(response.parsed_body['_misskey_talk']).to be(true)
     expect(response.headers['Cache-Control']).to eq('private, no-store')
     expect(response.media_type).to eq('application/activity+json')
-    expect(response.parsed_body['@context']).to eq([*Sharlayan::ChatFederation::Payload::CONTEXT.map(&:as_json), Sharlayan::ChatFederation::Payload.room_uri(conversation)])
+    expect(response.parsed_body['@context']).to eq(Sharlayan::ChatFederation::Payload::CONTEXT.as_json)
+    expect(response.parsed_body).to include('context' => conversation.uri, '_misskey_chatRoom' => conversation.uri)
   end
 
   it 'returns a Tombstone for a deleted message' do

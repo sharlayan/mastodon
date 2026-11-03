@@ -1,5 +1,23 @@
 # frozen_string_literal: true
 
+# == Schema Information
+#
+# Table name: account_switch_devices
+#
+#  id                    :bigint(8)        not null, primary key
+#  first_seen_at         :datetime         not null
+#  first_seen_ip         :inet
+#  last_seen_at          :datetime         not null
+#  last_seen_ip          :inet
+#  revoked_at            :datetime
+#  token_digest          :string           not null
+#  trusted_at            :datetime
+#  user_agent            :string
+#  created_at            :datetime         not null
+#  updated_at            :datetime         not null
+#  account_id            :bigint(8)        not null
+#  session_activation_id :bigint(8)
+#
 class AccountSwitchDevice < ApplicationRecord
   belongs_to :account
   belongs_to :session_activation, optional: true
