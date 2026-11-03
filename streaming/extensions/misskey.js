@@ -78,6 +78,33 @@ const isChatEnabled = async (pgPool) => {
   return ['chat_enabled', 'misskey_compat_enabled'].every((name) => result.rows.some((row) => row.var === name && row.value === '--- true\n'));
 };
 
+// Consulted for each subscriber of each chat event, so one read has to serve a whole fan-out.
+const createChatEnabledCheck = (pgPool, logger, now = Date.now) => {
+  let setting = { value: false, checkedAt: 0 };
+  let refresh;
+
+  return async () => {
+    if (now() - setting.checkedAt < 15000) return setting.value;
+    if (refresh) return refresh;
+
+    refresh = isChatEnabled(pgPool)
+      .then((enabled) => {
+        setting = { value: enabled, checkedAt: now() };
+        return enabled;
+      })
+      .catch((err) => {
+        logger.error({ err }, 'Failed to read chat settings');
+        setting = { value: false, checkedAt: now() };
+        return false;
+      })
+      .finally(() => {
+        refresh = undefined;
+      });
+
+    return refresh;
+  };
+};
+
 const CHAT_TARGET_SQL = `(
   ($3 = 'chatRoom' AND conversation.conversation_type = 1 AND conversation.id = $2::bigint)
   OR ($3 = 'chatUser' AND conversation.conversation_type = 0 AND EXISTS (
@@ -136,7 +163,7 @@ const createMisskeyExtension = (deps) => {
     loadExcludedReactionAccountIds: (viewerAccountId, reactionAccountIds) => excludedReactionAccountIds(deps.pgPool, viewerAccountId, reactionAccountIds),
     loadGrantPermissions: (req) => loadGrantPermissions(deps.pgPool, deps.logger, req),
     loadChatGrantPermissions: (req) => loadGrantPermissions(deps.pgPool, deps.logger, req, true),
-    isChatEnabled: () => isChatEnabled(deps.pgPool),
+    isChatEnabled: createChatEnabledCheck(deps.pgPool, deps.logger),
     authorizeChatAccess: (channel, targetId, req, event) => authorizeChatAccess(deps.pgPool, channel, targetId, req, event),
     markChatRead: (channel, targetId, req, messageId) => markChatRead(deps.pgPool, channel, targetId, req, messageId),
     isEnabled,
@@ -145,4 +172,4 @@ const createMisskeyExtension = (deps) => {
   return { ...compat, isEnabled };
 };
 
-export { authorizeChatAccess, authorizeStatusAccess, createEnabledCheck, createMisskeyExtension, isChatEnabled, loadGrantPermissions, markChatRead };
+export { authorizeChatAccess, authorizeStatusAccess, createChatEnabledCheck, createEnabledCheck, createMisskeyExtension, isChatEnabled, loadGrantPermissions, markChatRead };

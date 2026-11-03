@@ -41,3 +41,29 @@ test('chat grant lookup fails closed instead of falling back to broad OAuth scop
   const grants = await misskey.loadGrantPermissions({ query: async () => { throw new Error('unavailable'); } }, { error: () => {} }, { accessTokenId: '1' }, true);
   assert.deepEqual(grants, []);
 });
+
+test('chat setting is read once per interval across a fan-out and fails closed', async () => {
+  let clock = 0;
+  let queries = 0;
+  let healthy = true;
+  const pgPool = {
+    query: async () => {
+      queries += 1;
+      if (!healthy) throw new Error('database unavailable');
+      return { rows: [{ var: 'chat_enabled', value: '--- true\n' }, { var: 'misskey_compat_enabled', value: '--- true\n' }] };
+    },
+  };
+  const errors = [];
+  const isEnabled = misskey.createChatEnabledCheck(pgPool, { error: (context) => errors.push(context) }, () => clock);
+
+  clock = 20000;
+  assert.deepEqual(await Promise.all([isEnabled(), isEnabled(), isEnabled()]), [true, true, true]);
+  assert.equal(await isEnabled(), true);
+  assert.equal(queries, 1);
+
+  clock += 15000;
+  healthy = false;
+  assert.equal(await isEnabled(), false);
+  assert.equal(queries, 2);
+  assert.equal(errors.length, 1);
+});
