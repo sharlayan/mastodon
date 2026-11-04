@@ -2527,6 +2527,16 @@ describe('Chat search results', () => {
 });
 
 describe('Chat jump to newest', () => {
+  const scrollIntoView = vi.fn();
+  // The message shows on commit, and the effect that starts following the newest
+  // message runs after that. A scroll before it would be overwritten.
+  const openRoom = async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalled();
+    });
+  };
   const scrollAway = () => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
       bottom: window.innerHeight + 5000,
@@ -2547,13 +2557,18 @@ describe('Chat jump to newest', () => {
     });
   };
 
+  beforeEach(() => {
+    scrollIntoView.mockClear();
+    Element.prototype.scrollIntoView = scrollIntoView;
+  });
+
   afterEach(() => {
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
     vi.restoreAllMocks();
   });
 
   it('offers a way back only after scrolling away', async () => {
-    mountChat();
-    await screen.findByText('Private message A');
+    await openRoom();
     expect(
       screen.queryByRole('button', { name: 'Jump to newest message' }),
     ).toBeNull();
@@ -2566,8 +2581,7 @@ describe('Chat jump to newest', () => {
   });
 
   it('says so when a message arrives while reading older ones', async () => {
-    mountChat();
-    await screen.findByText('Private message A');
+    await openRoom();
     scrollAway();
 
     receive();
@@ -2576,8 +2590,7 @@ describe('Chat jump to newest', () => {
   });
 
   it('clears the notice after jumping back', async () => {
-    mountChat();
-    await screen.findByText('Private message A');
+    await openRoom();
     scrollAway();
     receive();
 
