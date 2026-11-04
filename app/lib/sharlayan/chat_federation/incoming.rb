@@ -105,7 +105,7 @@ module Sharlayan
 
           conversation = ChatConversation.find_by(uri: room_uri)
           if conversation.nil?
-            return 'skip: chat room deleted' if service.room_tombstoned?(room_uri)
+            return 'skip: chat room is gone' if service.room_gone?(room_uri)
             raise DependencyNotReadyError, 'Waiting for chat room' if same_host?(room_uri, account.uri)
 
             return 'skip: unknown chat room'
@@ -113,7 +113,7 @@ module Sharlayan
           return 'skip: not the room owner' unless conversation.owner_account_id == account.id
 
           object = json['object']
-          return handle_relayed_activity(object, conversation) if object.is_a?(Hash) && object['type'].present? && !equals_type?(object['type'], 'Note')
+          return handle_relayed_activity(object, conversation, json) if object.is_a?(Hash) && object['type'].present? && !equals_type?(object['type'], 'Note')
           return 'ok: chat message already received' if ChatMessage.exists?(uri: uri) && !update_relay?(json)
           return 'skip: local chat message' if ActivityPub::TagManager.instance.local_uri?(uri)
 
@@ -343,7 +343,7 @@ module Sharlayan
           room_uri = canonical_room_uri(uri_of(json['object']['object']), account)
           return 'skip: invalid chat room' if room_uri.blank?
 
-          service.receive_reject(account, room_uri: room_uri)
+          service.receive_reject(account, room_uri: room_uri, published: time_of(json['published']))
           'ok: chat invitation rejected'
         end
 
@@ -396,7 +396,7 @@ module Sharlayan
 
         private
 
-        def handle_relayed_activity(activity, conversation)
+        def handle_relayed_activity(activity, conversation, announce)
           return 'skip: relayed activity type' unless RELAYED_ACTIVITY_TYPES.include?(activity['type'])
 
           actor_uri = uri_of(activity['actor'])
@@ -408,8 +408,8 @@ module Sharlayan
 
           case activity['type']
           when 'Delete' then handle_relayed_delete(activity, actor, conversation)
-          when 'Undo' then handle_relayed_undo(activity, actor, conversation)
-          else handle_relayed_reaction(activity, actor, conversation)
+          when 'Undo' then handle_relayed_undo(activity, actor, conversation, announce)
+          else handle_relayed_reaction(activity, actor, conversation, announce)
           end
         end
 
@@ -417,29 +417,25 @@ module Sharlayan
           uri = uri_of(activity['object'])
           return 'skip: not a chat message' if uri.blank? || room_uri?(uri)
 
+          # Without its message there is no telling it belongs to this room. The author's own Delete still gets here.
           message = ChatMessage.find_by(uri: uri)
-          if message.nil?
-            return 'skip: not a chat message' unless chat_message_uri?(uri) && service.room_participant?(conversation, actor)
-
-            service.remember_tombstone(uri, actor)
-            return 'ok: relayed chat message tombstone stored'
-          end
+          return 'skip: relayed deletion of an unknown message' if message.nil?
           return 'skip: chat message of another room' unless message.chat_conversation_id == conversation.id
 
           service.delete_remote_message(actor, message)
           'ok: relayed chat message deleted'
         end
 
-        def handle_relayed_reaction(activity, actor, conversation)
+        def handle_relayed_reaction(activity, actor, conversation, announce)
           return 'skip: suspended actor' if actor.suspended?
 
           uri = uri_of(activity['object'])
           message = ChatMessage.find_by(uri: uri)
           if message.nil?
-            return 'skip: chat room deleted' if service.message_of_deleted_room?(uri)
+            return 'skip: chat room is gone' if service.message_of_deleted_room?(uri)
             return 'skip: not a chat message' unless chat_message_uri?(uri)
 
-            raise DependencyNotReadyError, 'Chat message has not arrived'
+            return hold_relay(conversation, uri, announce)
           end
           return 'skip: chat message of another room' unless message.chat_conversation_id == conversation.id
 
@@ -447,7 +443,7 @@ module Sharlayan
           ActivityPub::Activity.factory(activity.merge('tag' => tags), actor).perform
         end
 
-        def handle_relayed_undo(activity, actor, conversation)
+        def handle_relayed_undo(activity, actor, conversation, announce)
           inline = chat_undo_reaction?(activity)
           return 'skip: not a chat reaction undo' unless inline || chat_undo_reaction_reference?(activity, actor)
 
@@ -457,6 +453,7 @@ module Sharlayan
                       ChatMessageReaction.find_by(uri: uri_of(activity['object']), account: actor).chat_message
                     end
           return 'skip: chat message of another room' if message && message.chat_conversation_id != conversation.id
+          return hold_relay(conversation, uri_of(activity['object']['object']), announce) if message.nil? && !service.message_of_deleted_room?(uri_of(activity['object']['object']))
 
           inline ? handle_undo_reaction(activity, actor) : handle_undo_reaction_reference(activity, actor)
         end
@@ -464,7 +461,8 @@ module Sharlayan
         # The room owner vouches for who reacted, but not for another server's emoji image,
         # so that comes from the reacting account's own server.
         def verified_emoji_tags(activity, actor)
-          tag = Array.wrap(activity['tag']).grep(Hash).find { |item| equals_type?(item['type'], 'Emoji') }
+          reaction = activity['_misskey_reaction'] || activity['content']
+          tag = Array.wrap(activity['tag']).grep(Hash).find { |item| equals_type?(item['type'], 'Emoji') && item['name'] == reaction }
           return [] if tag.nil? || !same_host?(uri_of(tag), actor.uri) || CustomEmoji.exists?(shortcode: tag['name'].to_s.delete(':'), domain: actor.domain)
 
           emoji = fetch_resource(uri_of(tag))
@@ -474,9 +472,13 @@ module Sharlayan
           []
         end
 
+        def hold_relay(conversation, message_uri, announce)
+          service.hold_relay(conversation, conversation.owner_account, message_uri, announce) ? 'ok: relayed activity held for its message' : 'skip: too many relayed activities held'
+        end
+
         # The room an activity names says nothing about what it may do, only whether there is anything left to wait for.
         def deleted_room_activity?(message_uri, *activities)
-          service.message_of_deleted_room?(message_uri) || activities.any? { |activity| service.room_tombstoned?(room_uri_of(activity)) }
+          service.message_of_deleted_room?(message_uri) || activities.any? { |activity| service.room_gone?(room_uri_of(activity)) }
         end
 
         def update_relay?(json)

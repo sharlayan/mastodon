@@ -221,6 +221,7 @@ RSpec.describe 'Chat federation relay and roster sync' do
       room.memberships.create!(account: member)
       ChatRosterState.where(chat_conversation: room, account: member).delete_all
       sync(members: [owner.uri, actor_uri(local), member.uri])
+      expect(ChatRosterState.find_by(chat_conversation: room, account: member).last_roster_at).to eq(Time.iso8601(roster_at))
 
       perform({ 'id' => "#{room_uri}#remove/1", 'type' => 'Remove', 'target' => room_uri, 'object' => member.uri, 'published' => older }, owner)
 
@@ -525,12 +526,12 @@ RSpec.describe 'Chat federation relay and roster sync' do
         expect(message.reload).to_not be_deleted
       end
 
-      it 'remembers one for a message that has not arrived from a known participant' do
+      it 'does not remember one for a message that has not arrived, even from a known participant' do
         uri = 'https://member.test/chat/messages/later'
 
         announce(delete_json.merge('object' => uri))
 
-        expect(service).to be_tombstone(uri, member)
+        expect(service).to_not be_tombstone(uri, member)
       end
 
       it 'does not remember one for an account unknown to the room' do
@@ -577,9 +578,10 @@ RSpec.describe 'Chat federation relay and roster sync' do
         expect(message.reactions.reload).to be_empty
       end
 
-      it 'waits for a message that has not arrived' do
-        expect { announce(react_json.merge('object' => 'https://member.test/chat/messages/later')) }
-          .to raise_error(Sharlayan::ChatFederation::DependencyNotReadyError)
+      it 'holds one for a message that has not arrived instead of retrying' do
+        expect { announce(react_json.merge('object' => 'https://member.test/chat/messages/later')) }.to_not raise_error
+
+        expect(service.redis.exists?(Sharlayan::ChatService.held_relay_key('https://member.test/chat/messages/later'))).to be(true)
       end
 
       it 'ignores one for a message of another room' do

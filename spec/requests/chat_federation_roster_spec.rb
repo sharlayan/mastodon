@@ -84,7 +84,7 @@ RSpec.describe 'Chat federation roster ordering' do
     before { room }
 
     it 'ignores an Add older than a Remove that overtook it' do
-      perform(remove(member, published: later), member)
+      perform(remove(member, published: later), owner)
       perform(add(member, published: earlier), owner)
 
       expect(member?(member)).to be(false)
@@ -276,11 +276,12 @@ RSpec.describe 'Chat federation roster ordering' do
       expect(roster_time(room, local)).to be_within(1.minute).of(Time.current)
     end
 
-    it 'moves past the time of the Invite when a local account accepts' do
-      invitation = service.receive_invite(local, owner, room_uri: room_uri, title: 'Remote room', published: 1.hour.ago)
+    it 'keeps the time of the Invite when a local account accepts, as it is in the owner clock' do
+      invited_at = 1.hour.ago
+      invitation = service.receive_invite(local, owner, room_uri: room_uri, title: 'Remote room', published: invited_at)
       service.accept_invitation(local, invitation)
 
-      expect(roster_time(invitation.chat_conversation, local)).to be_within(1.minute).of(Time.current)
+      expect(roster_time(invitation.chat_conversation, local)).to be_within(0.001.seconds).of(invited_at)
     end
 
     it 'records a local account accepting an invitation to a room owned here' do

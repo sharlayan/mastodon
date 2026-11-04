@@ -13,12 +13,23 @@ class Sharlayan::ChatService
   MAX_ROOM_DESCRIPTION_LENGTH = 2048
   INVITE_CANCEL_TTL = 6.hours
   ROOM_TOMBSTONE_TTL = 30.days
+  HELD_RELAY_TTL = 6.hours
+  MAX_HELD_RELAYS = 1000
+  MAX_HELD_RELAY_SIZE = 64.kilobytes
   UNKNOWN_ROOM_TOMBSTONE_TTL = 6.hours
   MAX_TOMBSTONED_ROOM_MESSAGES = 1000
   ACCEPT_DELIVERY_GRACE = 5.minutes
 
   def self.room_tombstone_key(uri)
     "chat_room_tombstone:#{Digest::SHA256.hexdigest(uri.to_s)}"
+  end
+
+  def self.closed_room_key(uri)
+    "chat_room_closed_here:#{Digest::SHA256.hexdigest(uri.to_s)}"
+  end
+
+  def self.held_relay_key(uri)
+    "chat_held_relays:#{Digest::SHA256.hexdigest(uri.to_s)}"
   end
 
   def create_conversation(account, type:, account_ids: [], title: nil, description: nil, refresh: true)
@@ -191,7 +202,8 @@ class Sharlayan::ChatService
       raise Forbidden unless invitation.pending?
 
       ensure_group_capacity!(conversation) unless conversation.memberships.exists?(account: account)
-      Sharlayan::ChatFederation::Roster.advance(conversation, account, Time.current)
+      # A room owned elsewhere keeps its record in its owner's clock, so a cancellation that crossed this acceptance still applies.
+      Sharlayan::ChatFederation::Roster.advance(conversation, account, Time.current) if conversation.local?
       membership = conversation.memberships.find_or_create_by!(account: account)
       invitation.update!(state: :accepted)
       membership.previously_new_record?
@@ -331,6 +343,7 @@ class Sharlayan::ChatService
   end
 
   def destroy_conversation_as_admin(conversation)
+    return close_mirror(conversation) if conversation.chat_group? && conversation.owner_account&.remote?
     return destroy_and_announce(conversation) unless conversation.chat_group? && conversation.local? && conversation.owner_account.present?
 
     deliver_room_state(conversation.owner_account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation))
@@ -338,7 +351,9 @@ class Sharlayan::ChatService
   end
 
   def remove_abandoned_conversation(conversation)
+    room_uri = conversation.uri if conversation.owner_account&.remote?
     destroy_and_announce(conversation)
+    remember_room_closed(room_uri) if room_uri.present?
   end
 
   def resolve_account(uri)
@@ -364,7 +379,7 @@ class Sharlayan::ChatService
   def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, edited_at: nil, attachments: [], reply_to_uri: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     if conversation.nil?
-      raise Error, 'The chat room was deleted' if room_tombstoned?(room_uri)
+      raise Error, 'The chat room is gone' if room_gone?(room_uri)
 
       raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat room'
     end
@@ -380,6 +395,7 @@ class Sharlayan::ChatService
 
     message = create_remote_message(conversation, actor, uri: uri, text: text, created_at: created_at, edited_at: edited_at, attachments: attachments, reply_to_uri: reply_to_uri)
     relay_to_room(conversation, message)
+    release_held_relays(message) if message&.previously_new_record?
     message
   end
 
@@ -398,6 +414,8 @@ class Sharlayan::ChatService
       apply_remote_room_state(conversation, title: (title if title.is_a?(String)).presence || conversation.title || actor.username, description: description, archived: archived, updated: updated)
       ensure_conversation_writable!(conversation)
       conversation.memberships.create_with(role: :owner).find_or_create_by!(account: actor) if conversation.owner_account_id == actor.id
+      next if Sharlayan::ChatFederation::Roster.stale?(conversation, invitee, published)
+
       Sharlayan::ChatFederation::Roster.advance(conversation, invitee, published)
 
       next acknowledge_repeated_invite(conversation, actor, invitee) if conversation.memberships.exists?(account: invitee)
@@ -406,6 +424,9 @@ class Sharlayan::ChatService
       conversation.invitations.pending.find_by(invitee_account: invitee) ||
         conversation.invitations.create!(inviter_account: actor, invitee_account: invitee)
     end
+    return if invitation.nil?
+
+    forget_room_closed(room_uri)
     ChatConversationCleanupWorker.perform_in(ChatConversationCleanupWorker::CLEANUP_DELAY, invitation.chat_conversation_id) if actor.remote?
     broadcast_to(invitee, 'chat.invitation', invitation, REST::ChatInvitationSerializer) if invitation.pending?
     invitation.reload
@@ -450,17 +471,22 @@ class Sharlayan::ChatService
     deliver_to_account(conversation.owner_account, Sharlayan::ChatFederation::Payload.remove(conversation, actor, actor: conversation.owner_account), actor)
   end
 
-  def receive_reject(actor, room_uri:)
+  def receive_reject(actor, room_uri:, published: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
-    return if conversation.nil?
+    return if conversation.nil? || Sharlayan::ChatFederation::Roster.stale?(conversation, actor, published)
 
-    conversation.invitations.pending.find_by(invitee_account: actor)&.update!(state: :rejected)
+    invitation = conversation.invitations.pending.find_by(invitee_account: actor)
+    if invitation
+      invitation.update!(state: :rejected)
+      Sharlayan::ChatFederation::Roster.advance(conversation, actor, published)
+    end
     conversation.destroy_if_unused!
   end
 
   def receive_cancel(actor, room_uri:, invitee:, published: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     raise Forbidden if conversation && conversation.owner_account_id != actor.id
+    return if conversation && Sharlayan::ChatFederation::Roster.stale?(conversation, invitee, published)
 
     invitation = conversation&.invitations&.pending&.find_by(inviter_account: actor, invitee_account: invitee)
     if invitation.nil?
@@ -471,6 +497,8 @@ class Sharlayan::ChatService
 
     invitation.update!(state: :cancelled)
     Sharlayan::ChatFederation::Roster.advance(conversation, invitee, published)
+    # The copy of the room may go with this, and its record with it, so a late Invite would find nothing to be older than.
+    remember_invite_cancel(room_uri, actor, invitee, published) if published
     broadcast_to(invitee, 'chat.invitation', invitation, REST::ChatInvitationSerializer) if invitee.local?
     conversation.destroy_if_unused!
   end
@@ -516,10 +544,15 @@ class Sharlayan::ChatService
     return if account.nil?
     raise Forbidden unless actor.id == account.id || by_owner
 
+    # Times are only compared with others from the same clock. The owner's server holds what this member's server last
+    # sent, and every other server holds what the owner sent, so to them a member's own time says nothing about the order.
+    ordered = by_owner || conversation.local?
     outcome = conversation.with_lock do
-      next :stale unless Sharlayan::ChatFederation::Roster.applies?(conversation, account, published, removal: true)
+      if ordered
+        next :stale unless Sharlayan::ChatFederation::Roster.applies?(conversation, account, published, removal: true)
 
-      Sharlayan::ChatFederation::Roster.advance(conversation, account, published)
+        Sharlayan::ChatFederation::Roster.advance(conversation, account, published)
+      end
       membership = conversation.memberships.find_by(account: account)
       next :absent if membership.nil? && actor.id == account.id
       next :owner if membership&.owner?
@@ -543,7 +576,7 @@ class Sharlayan::ChatService
   def receive_room_update(actor, room_uri:, title:, description: nil, archived: nil, updated: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     if conversation.nil?
-      return if room_tombstoned?(room_uri)
+      return if room_gone?(room_uri)
       raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat room' if same_origin?(room_uri, actor.uri)
 
       raise Error, 'Unknown chat room'
@@ -648,9 +681,36 @@ class Sharlayan::ChatService
     redis.exists?(self.class.room_tombstone_key(uri))
   end
 
+  def room_closed_here?(uri)
+    redis.exists?(self.class.closed_room_key(uri))
+  end
+
+  def room_gone?(uri)
+    room_tombstoned?(uri) || room_closed_here?(uri)
+  end
+
   def room_deleted_at(uri)
     value = redis.get(self.class.room_tombstone_key(uri))
     value && Time.iso8601(value)
+  end
+
+  # Keeps a relayed reaction until its message arrives. It is then processed again as it came, so it goes through
+  # every check there is, including whether the message belongs to the room that relayed it.
+  def hold_relay(conversation, owner, message_uri, activity)
+    body = activity.to_json
+    return false if body.bytesize > MAX_HELD_RELAY_SIZE
+
+    count_key = "chat_held_relay_count:#{conversation.id}"
+    count = redis.incr(count_key)
+    redis.expire(count_key, HELD_RELAY_TTL.to_i) if count == 1
+    return false if count > MAX_HELD_RELAYS
+
+    key = self.class.held_relay_key(message_uri)
+    redis.multi do |transaction|
+      transaction.rpush(key, JSON.generate(owner_id: owner.id, activity: body))
+      transaction.expire(key, HELD_RELAY_TTL.to_i)
+    end
+    true
   end
 
   def message_of_deleted_room?(uri)
@@ -761,7 +821,46 @@ class Sharlayan::ChatService
 
     destroy_and_announce(conversation)
     remember_room_tombstone(room_uri, actor)
+    remember_room_messages(message_uris)
+  end
+
+  # This server's copy is gone but the room goes on, so its owner has to stop counting the people here and may invite someone again.
+  def close_mirror(conversation)
+    conversation.accounts.local.find_each { |member| deliver_to_conversation(member, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, member)) }
+    conversation.invitations.pending.joins(:invitee_account).merge(Account.local).includes(:invitee_account).find_each do |invitation|
+      deliver_to_account(invitation.invitee_account, Sharlayan::ChatFederation::Payload.reject(invitation), conversation.owner_account)
+    end
+
+    message_uris = conversation.messages.where.not(uri: nil).limit(MAX_TOMBSTONED_ROOM_MESSAGES).pluck(:uri)
+    room_uri = conversation.uri
+
+    destroy_and_announce(conversation)
+    remember_room_closed(room_uri)
+    remember_room_messages(message_uris)
+  end
+
+  def remember_room_closed(uri)
+    redis.setex(self.class.closed_room_key(uri), ROOM_TOMBSTONE_TTL.to_i, Time.current.iso8601(3))
+  end
+
+  def forget_room_closed(uri)
+    redis.del(self.class.closed_room_key(uri))
+  end
+
+  def remember_room_messages(message_uris)
     redis.pipelined { |pipeline| message_uris.each { |uri| pipeline.setex(message_tombstone_key(uri), ROOM_TOMBSTONE_TTL.to_i, '1') } }
+  end
+
+  def release_held_relays(message)
+    key = self.class.held_relay_key(message.uri)
+    entries, = redis.multi do |transaction|
+      transaction.lrange(key, 0, -1)
+      transaction.del(key)
+    end
+    entries.each do |entry|
+      held = JSON.parse(entry)
+      ActivityPub::ProcessingWorker.perform_async(held['owner_id'], held['activity'])
+    end
   end
 
   def message_tombstone_key(uri)

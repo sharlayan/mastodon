@@ -20,6 +20,14 @@ module Sharlayan
           last.nil? || published > last || (removal && published == last)
         end
 
+        # Older than what is on record: it says nothing about the invitation or membership there is now.
+        def stale?(conversation, account, published)
+          return false if published.nil?
+
+          last = conversation.roster_states.find_by(account: account)&.last_roster_at
+          last.present? && published < last
+        end
+
         def advance(conversation, account, time)
           return if time.nil?
 
