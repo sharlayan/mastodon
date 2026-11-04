@@ -11,8 +11,15 @@ class Sharlayan::ChatService
   MAX_ROOM_TITLE_LENGTH = 256
   MAX_ROOM_DESCRIPTION_LENGTH = 2048
   INVITE_CANCEL_TTL = 6.hours
+  ROOM_TOMBSTONE_TTL = 30.days
+  UNKNOWN_ROOM_TOMBSTONE_TTL = 6.hours
+  MAX_TOMBSTONED_ROOM_MESSAGES = 1000
 
-  def create_conversation(account, type:, account_ids: [], title: nil, description: nil)
+  def self.room_tombstone_key(uri)
+    "chat_room_tombstone:#{Digest::SHA256.hexdigest(uri.to_s)}"
+  end
+
+  def create_conversation(account, type:, account_ids: [], title: nil, description: nil, refresh: true)
     raise Error, 'Unknown chat type' unless %w(direct group).include?(type.to_s)
 
     requested_ids = account_ids.map(&:to_s).uniq
@@ -24,9 +31,20 @@ class Sharlayan::ChatService
     raise Error, 'One or more chat participants were not found' unless participants.size == requested_ids.size
     raise Error, 'Chat federation is disabled' if participants.any?(&:remote?) && !Setting.chat_federation_enabled
 
-    participants.each { |participant| refresh_remote_account(participant) }
+    participants.each { |participant| refresh_remote_account(participant) } if refresh
 
     type.to_s == 'direct' ? create_direct(account, participants) : create_group(account, participants, title, description)
+  end
+
+  # Leaves no empty conversation behind when the message is refused. The remote account is
+  # refreshed first, as that is a request to another server and must not hold the transaction open.
+  def create_direct_message(account, recipient, text:, media_ids: [])
+    refresh_remote_account(recipient)
+
+    ChatConversation.transaction do
+      conversation = create_conversation(account, type: :direct, account_ids: [recipient.id], refresh: false)
+      create_message(account, conversation, text: text, media_ids: media_ids)
+    end
   end
 
   def create_message(account, conversation, text:, reply_to_id: nil, media_ids: [])
@@ -34,6 +52,7 @@ class Sharlayan::ChatService
     ensure_conversation_writable!(conversation)
     ensure_federation_available!(conversation)
     ensure_direct_participants_not_blocked!(account, conversation)
+    ensure_direct_recipient_not_suspended!(account, conversation)
 
     reply_to = conversation.messages.find_by(id: reply_to_id) if reply_to_id.present?
     raise Error, 'Reply target was not found' if reply_to_id.present? && reply_to.nil?
@@ -52,25 +71,28 @@ class Sharlayan::ChatService
     end
     broadcast(conversation, 'chat.message', message, REST::ChatMessageSerializer)
     notify_members(conversation, message)
-    deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.create(message))
+    deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.create(message), message: message)
     message
   end
 
   def update_message(account, message, text:)
     raise Forbidden unless message.account_id == account.id
+    raise Error, 'This message can no longer be edited' unless message.within_delete_window?
 
     ensure_conversation_writable!(message.chat_conversation)
     ensure_federation_available!(message.chat_conversation)
     ensure_direct_participants_not_blocked!(account, message.chat_conversation)
+    ensure_direct_recipient_not_suspended!(account, message.chat_conversation)
     message.with_lock do
       raise Error, 'Deleted messages cannot be edited' if message.deleted?
 
       edited_at = Time.current
       edited_at = [edited_at, message.edited_at + Rational(1, 1000)].max if message.edited_at
+      keep_previous_text(message, text)
       message.update!(text: text.to_s.strip.presence, edited_at: edited_at)
     end
     broadcast(message.chat_conversation, 'chat.message_update', message, REST::ChatMessageSerializer)
-    deliver_to_conversation(account, message.chat_conversation, Sharlayan::ChatFederation::Payload.update(message))
+    deliver_to_conversation(account, message.chat_conversation, Sharlayan::ChatFederation::Payload.update(message), message: message)
     message
   end
 
@@ -101,6 +123,7 @@ class Sharlayan::ChatService
     ensure_conversation_writable!(message.chat_conversation)
     ensure_federation_available!(message.chat_conversation)
     ensure_direct_participants_not_blocked!(account, message.chat_conversation)
+    ensure_direct_recipient_not_suspended!(account, message.chat_conversation)
     record = message.with_lock do
       raise Error, 'Deleted messages cannot receive reactions' if message.deleted?
 
@@ -158,7 +181,7 @@ class Sharlayan::ChatService
     raise Forbidden unless invitation.invitee_account_id == account.id && invitation.pending?
 
     ensure_conversation_writable!(invitation.chat_conversation)
-    raise Forbidden if blocked_in_either_direction?(invitation.inviter_account, account)
+    raise Forbidden if blocked_in_either_direction?(invitation.inviter_account, account) || invitation.chat_conversation.owner_account&.suspended?
 
     conversation = invitation.chat_conversation
     joined = conversation.with_lock do
@@ -166,6 +189,7 @@ class Sharlayan::ChatService
       raise Forbidden unless invitation.pending?
 
       ensure_group_capacity!(conversation) unless conversation.memberships.exists?(account: account)
+      Sharlayan::ChatFederation::Roster.advance(conversation, account, Time.current)
       membership = conversation.memberships.find_or_create_by!(account: account)
       invitation.update!(state: :accepted)
       membership.previously_new_record?
@@ -234,7 +258,7 @@ class Sharlayan::ChatService
     end
 
     payload = Sharlayan::ChatFederation::Payload.remove(conversation, target, actor: account)
-    recipients.uniq(&:inbox_url).each { |recipient| deliver_to_account(account, payload, recipient) }
+    recipients.uniq(&:preferred_inbox_url).each { |recipient| deliver_to_account(account, payload, recipient) }
     broadcast_to(target, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if target.local?
     broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: target.id.to_s })
     conversation
@@ -285,7 +309,22 @@ class Sharlayan::ChatService
     account.chat_memberships.includes(:chat_conversation).find_each { |membership| purge_membership(membership, federate: federate) }
     account.chat_message_reactions.in_batches.delete_all
     purge_messages(account)
-    ChatInvitation.where(invitee_account: account).or(ChatInvitation.where(inviter_account: account)).in_batches.delete_all
+    purge_invitations(account)
+  end
+
+  # This server decides who is in the rooms it owns, so a suspension ends their membership here for good.
+  # A room owned by another server is left to that server, and a direct conversation comes back with the account.
+  def remove_suspended_account(account)
+    return unless account.remote?
+
+    rooms = ChatConversation.chat_group.local_only.where.not(owner_account_id: nil)
+    account.chat_memberships.where(chat_conversation: rooms).includes(chat_conversation: :owner_account).find_each do |membership|
+      conversation = membership.chat_conversation
+      kick(conversation.owner_account, conversation, account)
+    end
+    ChatInvitation.pending.where(invitee_account: account, chat_conversation: rooms).includes(:inviter_account).find_each do |invitation|
+      cancel_invitation(invitation.inviter_account, invitation)
+    end
   end
 
   def destroy_conversation_as_admin(conversation)
@@ -321,10 +360,14 @@ class Sharlayan::ChatService
 
   def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, edited_at: nil, attachments: [], reply_to_uri: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
-    raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat room' if conversation.nil?
+    if conversation.nil?
+      raise Error, 'The chat room was deleted' if room_tombstoned?(room_uri)
+
+      raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat room'
+    end
 
     ensure_conversation_writable!(conversation)
-    raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat membership' unless conversation.memberships.exists?(account: actor)
+    ensure_room_member!(conversation, actor)
 
     unless conversation.accounts.local.exists?
       raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat membership' if conversation.invitations.pending.joins(:invitee_account).merge(Account.local).exists?
@@ -337,7 +380,7 @@ class Sharlayan::ChatService
     message
   end
 
-  def receive_invite(invitee, actor, room_uri:, title:, description: nil, archived: nil, updated: nil)
+  def receive_invite(invitee, actor, room_uri:, title:, description: nil, archived: nil, updated: nil, published: nil)
     raise Forbidden unless invitee.local?
     raise Forbidden unless invitee.user&.settings&.[](:chat_allow_group_invites)
     raise Forbidden if blocked_in_either_direction?(invitee, actor) || silenced_for?(actor, invitee)
@@ -352,6 +395,7 @@ class Sharlayan::ChatService
       apply_remote_room_state(conversation, title: (title if title.is_a?(String)).presence || conversation.title || actor.username, description: description, archived: archived, updated: updated)
       ensure_conversation_writable!(conversation)
       conversation.memberships.create_with(role: :owner).find_or_create_by!(account: actor) if conversation.owner_account_id == actor.id
+      Sharlayan::ChatFederation::Roster.advance(conversation, invitee, published)
 
       next acknowledge_repeated_invite(conversation, actor, invitee) if conversation.memberships.exists?(account: invitee)
 
@@ -366,7 +410,7 @@ class Sharlayan::ChatService
     retry
   end
 
-  def receive_accept(actor, room_uri:)
+  def receive_accept(actor, room_uri:, published: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     raise Error, 'Unknown chat room' if conversation.nil?
 
@@ -381,6 +425,7 @@ class Sharlayan::ChatService
       raise Forbidden if blocked_in_either_direction?(invitation.inviter_account, actor)
 
       ensure_group_capacity!(conversation) unless conversation.memberships.exists?(account: actor)
+      Sharlayan::ChatFederation::Roster.advance(conversation, actor, published)
       membership = conversation.memberships.find_or_create_by!(account: actor)
       invitation.update!(state: :accepted)
       membership.previously_new_record?
@@ -416,16 +461,18 @@ class Sharlayan::ChatService
 
     invitation = conversation&.invitations&.pending&.find_by(inviter_account: actor, invitee_account: invitee)
     if invitation.nil?
-      remember_invite_cancel(room_uri, actor, invitee, published)
+      membership = conversation&.memberships&.find_by(account: invitee)
+      membership.nil? ? remember_invite_cancel(room_uri, actor, invitee, published) : withdraw_accepted_invite(conversation, membership, published)
       return
     end
 
     invitation.update!(state: :cancelled)
+    Sharlayan::ChatFederation::Roster.advance(conversation, invitee, published)
     broadcast_to(invitee, 'chat.invitation', invitation, REST::ChatInvitationSerializer) if invitee.local?
     conversation.destroy_if_unused!
   end
 
-  def receive_add(actor, room_uri:, account_uri:)
+  def receive_add(actor, room_uri:, account_uri:, published: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     raise Error, 'Unknown chat room' if conversation.nil?
     raise Forbidden unless conversation.owner_account_id == actor.id
@@ -438,12 +485,16 @@ class Sharlayan::ChatService
     if account.local?
       raise Forbidden unless conversation.memberships.exists?(account: account)
 
+      conversation.with_lock { Sharlayan::ChatFederation::Roster.advance(conversation, account, published) }
       return conversation
     end
 
     raise Forbidden if blocked_in_either_direction?(actor, account)
 
     joined = conversation.with_lock do
+      next false unless Sharlayan::ChatFederation::Roster.applies?(conversation, account, published)
+
+      Sharlayan::ChatFederation::Roster.advance(conversation, account, published)
       next false if conversation.memberships.exists?(account: account)
 
       ensure_group_capacity!(conversation)
@@ -457,20 +508,31 @@ class Sharlayan::ChatService
     conversation
   end
 
-  def receive_remove(actor, room_uri:, account_uri:)
+  def receive_remove(actor, room_uri:, account_uri:, published: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     return if conversation.nil?
 
-    account = account_from_uri(account_uri, fetch: false)
+    # Only the owner can name an account this server has not seen. Its later Add has to find this removal on record.
+    by_owner = conversation.owner_account_id == actor.id
+    account = account_from_uri(account_uri, fetch: by_owner)
     return if account.nil?
-    raise Forbidden unless actor.id == account.id || conversation.owner_account_id == actor.id
+    raise Forbidden unless actor.id == account.id || by_owner
 
-    membership = conversation.memberships.find_by(account: account)
-    return if membership.nil? && actor.id == account.id
-    return destroy_and_announce(conversation) if membership&.owner?
+    outcome = conversation.with_lock do
+      next :stale unless Sharlayan::ChatFederation::Roster.applies?(conversation, account, published, removal: true)
+
+      Sharlayan::ChatFederation::Roster.advance(conversation, account, published)
+      membership = conversation.memberships.find_by(account: account)
+      next :absent if membership.nil? && actor.id == account.id
+      next :owner if membership&.owner?
+
+      membership&.destroy!
+      :removed
+    end
+    return if %i(stale absent).include?(outcome)
+    return tombstone_room(conversation, actor) if outcome == :owner
 
     broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
-    membership&.destroy!
     return unless ChatConversation.exists?(conversation.id)
 
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
@@ -482,7 +544,7 @@ class Sharlayan::ChatService
   def receive_room_update(actor, room_uri:, title:, description: nil, archived: nil, updated: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     if conversation.nil?
-      return if room_tombstoned?(room_uri, actor)
+      return if room_tombstoned?(room_uri)
       raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat room' if same_origin?(room_uri, actor.uri)
 
       raise Error, 'Unknown chat room'
@@ -496,17 +558,17 @@ class Sharlayan::ChatService
 
   def receive_room_delete(actor, room_uri:)
     conversation = ChatConversation.find_by(uri: room_uri)
-    return if conversation.nil?
+    return remember_room_tombstone(room_uri, actor, ttl: UNKNOWN_ROOM_TOMBSTONE_TTL) if conversation.nil?
     raise Forbidden unless conversation.owner_account_id == actor.id
 
-    destroy_and_announce(conversation)
+    tombstone_room(conversation, actor)
   end
 
   def update_remote_message(actor, message, text:, edited_at:)
     raise Forbidden unless message.account_id == actor.id
     raise Error, 'Deleted messages cannot be edited' if message.deleted?
 
-    membership!(actor, message.chat_conversation)
+    ensure_room_member!(message.chat_conversation, actor)
     ensure_conversation_writable!(message.chat_conversation)
     ensure_direct_participants_not_blocked!(actor, message.chat_conversation)
 
@@ -514,20 +576,22 @@ class Sharlayan::ChatService
       raise Error, 'Deleted messages cannot be edited' if message.deleted?
       return message if edited_at && message.edited_at && edited_at <= message.edited_at
 
+      keep_previous_text(message, text)
       message.update!(text: text.to_s.strip.presence, edited_at: edited_at || Time.current)
     end
     broadcast(message.chat_conversation, 'chat.message_update', message, REST::ChatMessageSerializer)
+    relay_update(message)
     message
   end
 
-  def delete_remote_message(actor, message)
-    raise Forbidden unless message.account_id == actor.id
+  def delete_remote_message(actor, message, activity: nil)
+    raise Forbidden unless message.account_id == actor.id || (message.chat_conversation.chat_group? && message.chat_conversation.owner_account_id == actor.id)
 
-    tombstone_message(message)
+    relay_activity(message.chat_conversation, actor, activity) if tombstone_message(message)
     message
   end
 
-  def react_remote(actor, message, reaction, activity_id: nil)
+  def react_remote(actor, message, reaction, activity_id: nil, activity: nil)
     state = Sharlayan::ChatFederation::ReactionState.new(actor, message, reaction)
     return unless message.with_lock { remote_reaction_allowed?(actor, message, state, activity_id) }
 
@@ -537,7 +601,7 @@ class Sharlayan::ChatService
     record = message.with_lock do
       next unless remote_reaction_allowed?(actor, message, state, activity_id)
 
-      record = message.reactions.find_or_create_by!(account: actor, reaction: reaction)
+      record = message.reactions.create_with(uri: activity_id).find_or_create_by!(account: actor, reaction: reaction)
       raise Error, 'Reaction activity could not be registered' unless state.add(activity_id)
 
       record
@@ -545,19 +609,24 @@ class Sharlayan::ChatService
     return unless record&.previously_new_record?
 
     broadcast(message.chat_conversation, 'chat.reaction', REST::ChatMessageReactionSerializer.new(record).as_json)
+    relay_activity(message.chat_conversation, actor, activity)
   rescue ActiveRecord::RecordInvalid
     nil
   end
 
-  def unreact_remote(actor, message, reaction, activity_id: nil)
+  def unreact_remote(actor, message, reaction, activity_id: nil, activity: nil)
+    conversation = nil
     message.with_lock do
-      ensure_conversation_writable!(message.chat_conversation)
-      remote_reaction_membership!(actor, message.chat_conversation)
+      conversation = message.chat_conversation
+      ensure_conversation_writable!(conversation)
+      # Someone who has left can still take back what they did while they were a member.
+      remote_reaction_membership!(actor, conversation) unless message.reactions.exists?(account: actor, reaction: reaction) || room_participant?(conversation, actor)
       return unless Sharlayan::ChatFederation::ReactionState.new(actor, message, reaction).remove(activity_id)
 
       message.reactions.find_by(account: actor, reaction: reaction)&.destroy!
     end
-    broadcast(message.chat_conversation, 'chat.reaction_delete', { message_id: message.id.to_s, account_id: actor.id.to_s, reaction: reaction })
+    broadcast(conversation, 'chat.reaction_delete', { message_id: message.id.to_s, account_id: actor.id.to_s, reaction: reaction })
+    relay_activity(conversation, actor, activity)
   end
 
   def remember_tombstone(uri, actor)
@@ -570,14 +639,27 @@ class Sharlayan::ChatService
     redis.exists?("chat_delete_upon_arrival:#{actor.id}:#{uri}")
   end
 
-  def remember_room_tombstone(uri, actor)
+  def remember_room_tombstone(uri, actor, ttl: ROOM_TOMBSTONE_TTL)
     raise Forbidden unless same_origin?(uri, actor.uri)
 
-    redis.setex("chat_room_delete_upon_arrival:#{actor.id}:#{uri}", 6.hours.seconds, true)
+    redis.setex(self.class.room_tombstone_key(uri), ttl.to_i, Time.current.iso8601(3))
   end
 
-  def room_tombstoned?(uri, actor)
-    redis.exists?("chat_room_delete_upon_arrival:#{actor.id}:#{uri}")
+  def room_tombstoned?(uri)
+    redis.exists?(self.class.room_tombstone_key(uri))
+  end
+
+  def room_deleted_at(uri)
+    value = redis.get(self.class.room_tombstone_key(uri))
+    value && Time.iso8601(value)
+  end
+
+  def message_of_deleted_room?(uri)
+    redis.exists?(message_tombstone_key(uri))
+  end
+
+  def room_participant?(conversation, account)
+    conversation.memberships.exists?(account: account) || conversation.roster_states.exists?(account: account)
   end
 
   def invite_cancelled?(room_uri, actor, invitee, published)
@@ -585,7 +667,134 @@ class Sharlayan::ChatService
     cancelled_at.present? && (published.nil? || published.to_f <= cancelled_at.to_f)
   end
 
+  # What the room owner says about the members is applied to whoever it is newer for. Local accounts
+  # only ever join by their own acceptance, so the list can take them out of a room but not put them in.
+  def apply_roster(conversation, member_uris:, roster_at:)
+    return if member_uris.size > MAX_REMOTE_ROOM_MEMBERS
+
+    listed = member_uris.uniq.filter_map { |uri| roster_account(uri) }
+    joined, left = conversation.with_lock { merge_roster(conversation, listed, roster_at) }
+
+    broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer) if joined.any? || left.any?
+    joined.each { |account| broadcast(conversation, 'chat.member_join', { conversation_id: conversation.id.to_s, account_id: account.id.to_s }) }
+    left.each do |account|
+      broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
+      broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account.id.to_s })
+    end
+    schedule_abandoned_room_cleanup(conversation) if left.any?
+  end
+
   private
+
+  def roster_account(uri)
+    account_from_uri(uri)
+  rescue *Mastodon::HTTP_CONNECTION_ERRORS, Mastodon::UnexpectedResponseError, Mastodon::RaceConditionError => e
+    Rails.logger.info("Could not resolve chat room member #{uri}: #{e.message}")
+    nil
+  end
+
+  def merge_roster(conversation, listed, roster_at)
+    memberships = conversation.memberships.includes(:account).index_by(&:account_id)
+    known_at = conversation.roster_states.pluck(:account_id, :last_roster_at).to_h
+
+    joined = []
+    listed.each do |account|
+      next if account.id == conversation.owner_account_id || known_at[account.id]&.>=(roster_at)
+
+      next unless memberships.key?(account.id) || roster_can_add?(conversation, account)
+
+      Sharlayan::ChatFederation::Roster.advance(conversation, account, roster_at)
+      next if memberships.key?(account.id)
+
+      conversation.memberships.create!(account: account)
+      joined << account
+    end
+
+    listed_ids = listed.to_set(&:id)
+    left = memberships.values.filter_map do |membership|
+      next if membership.owner? || listed_ids.include?(membership.account_id) || known_at[membership.account_id]&.>=(roster_at)
+
+      membership.destroy!
+      Sharlayan::ChatFederation::Roster.advance(conversation, membership.account, roster_at)
+      membership.account
+    end
+
+    [joined, left]
+  end
+
+  def roster_can_add?(conversation, account)
+    return false if account.local? || account.suspended? || blocked_in_either_direction?(conversation.owner_account, account)
+
+    conversation.memberships.count < MAX_REMOTE_ROOM_MEMBERS
+  end
+
+  def withdraw_accepted_invite(conversation, membership, published)
+    account = membership.account
+    withdrawn = conversation.with_lock do
+      next false if published.nil? || membership.owner? || !Sharlayan::ChatFederation::Roster.applies?(conversation, account, published)
+
+      Sharlayan::ChatFederation::Roster.advance(conversation, account, published)
+      membership.destroy!
+      true
+    end
+    return unless withdrawn
+
+    broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
+    broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account.id.to_s })
+    conversation.destroy_if_unused!
+  end
+
+  def tombstone_room(conversation, actor)
+    message_uris = conversation.messages.where.not(uri: nil).limit(MAX_TOMBSTONED_ROOM_MESSAGES).pluck(:uri)
+    room_uri = conversation.uri
+
+    destroy_and_announce(conversation)
+    remember_room_tombstone(room_uri, actor)
+    redis.pipelined { |pipeline| message_uris.each { |uri| pipeline.setex(message_tombstone_key(uri), ROOM_TOMBSTONE_TTL.to_i, '1') } }
+  end
+
+  def message_tombstone_key(uri)
+    "chat_room_message_tombstone:#{Digest::SHA256.hexdigest(uri.to_s)}"
+  end
+
+  def ensure_room_member!(conversation, actor)
+    return if conversation.memberships.exists?(account: actor)
+    raise Forbidden unless conversation.chat_group? && actor.remote?
+
+    if conversation.local?
+      raise Forbidden unless conversation.invitations.pending.exists?(invitee_account: actor)
+    else
+      Sharlayan::ChatFederation::Roster.request_sync(conversation, actor.id)
+    end
+
+    raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat membership'
+  end
+
+  def relay_update(message)
+    conversation = message.chat_conversation
+    return unless conversation.chat_group? && conversation.owner_account&.local? && message.account.remote? && Setting.chat_federation_enabled
+
+    Sharlayan::ChatFederation::Delivery.call(
+      actor: conversation.owner_account,
+      conversation: conversation,
+      payload: Sharlayan::ChatFederation::Payload.announce_update(message),
+      except_account_id: message.account_id,
+      except_domain: message.account.domain
+    )
+  end
+
+  def relay_activity(conversation, actor, activity)
+    return if activity.nil? || !activity['id'].is_a?(String)
+    return unless conversation.chat_group? && conversation.owner_account&.local? && actor.remote? && Setting.chat_federation_enabled
+
+    Sharlayan::ChatFederation::Delivery.call(
+      actor: conversation.owner_account,
+      conversation: conversation,
+      payload: Sharlayan::ChatFederation::Payload.announce_activity(conversation, activity),
+      except_account_id: actor.id,
+      except_domain: actor.domain
+    )
+  end
 
   def invite_cancel_key(room_uri, actor, invitee)
     "chat_invite_cancelled:#{actor.id}:#{invitee.id}:#{Digest::SHA256.hexdigest(room_uri.to_s)}"
@@ -630,6 +839,7 @@ class Sharlayan::ChatService
       media = message.media_attachments.to_a
       message.reactions.destroy_all
       message.chat_message_media_attachments.destroy_all
+      message.edits.delete_all
       message.update!(text: nil, deleted_at: Time.current)
       media
     end
@@ -678,12 +888,7 @@ class Sharlayan::ChatService
   end
 
   def remote_reaction_membership!(actor, conversation)
-    membership = conversation.memberships.find_by(account: actor)
-    return membership if membership
-
-    raise Forbidden unless actor.remote? && conversation.chat_group?
-
-    raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat membership'
+    ensure_room_member!(conversation, actor)
   end
 
   def create_remote_message(conversation, actor, uri:, text:, created_at:, attachments:, edited_at: nil, reply_to_uri: nil)
@@ -782,9 +987,24 @@ class Sharlayan::ChatService
       deliver_to_conversation(membership.account, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, membership.account)) if federate
       membership.destroy!
       broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account_id.to_s })
+      relay_departure(conversation, membership.account)
     else
       destroy_and_announce(conversation)
     end
+  end
+
+  # A server let back in after a domain suspension can still accept an old invitation, and only the
+  # record of that invitation earns the Remove that clears its copy of the room.
+  def purge_invitations(account)
+    ChatInvitation.where(inviter_account: account).in_batches.delete_all
+
+    received = ChatInvitation.where(invitee_account: account)
+    if account.remote?
+      owned_here = received.where(chat_conversation_id: ChatConversation.local_only.select(:id))
+      owned_here.pending.in_batches.update_all(state: ChatInvitation.states[:cancelled])
+      received = received.where.not(id: owned_here.select(:id))
+    end
+    received.in_batches.delete_all
   end
 
   def purge_messages(account)
@@ -808,11 +1028,8 @@ class Sharlayan::ChatService
     return if owner.nil?
 
     members = conversation.accounts.to_a
-    members.each do |member|
-      next if member.id == joined_account.id || member.id == owner.id || !member.remote? || member.suspended? || member.inbox_url.blank?
-
-      payload = Sharlayan::ChatFederation::Payload.add(conversation, joined_account)
-      deliver_to_account(owner, payload, member)
+    members.select { |member| member.remote? && member.id != joined_account.id && member.id != owner.id }.uniq(&:preferred_inbox_url).each do |member|
+      deliver_to_account(owner, Sharlayan::ChatFederation::Payload.add(conversation, joined_account), member)
     end
     if joined_account.remote?
       members.each do |member|
@@ -824,11 +1041,11 @@ class Sharlayan::ChatService
     end
   end
 
-  def deliver_to_conversation(actor, conversation, payload)
+  def deliver_to_conversation(actor, conversation, payload, message: nil)
     return unless Setting.chat_federation_enabled
 
     ActiveRecord.after_all_transactions_commit do
-      Sharlayan::ChatFederation::Delivery.call(actor: actor, conversation: conversation, payload: payload, except_account_id: actor.id)
+      Sharlayan::ChatFederation::Delivery.call(actor: actor, conversation: conversation, payload: payload, except_account_id: actor.id, message: message)
     end
   end
 
@@ -842,14 +1059,17 @@ class Sharlayan::ChatService
 
   def deliver_to_account(actor, payload, account)
     return unless Setting.chat_federation_enabled
-    return if account.inbox_url.blank?
+    return if account.preferred_inbox_url.blank?
+    return if account.suspended? && Sharlayan::ChatFederation::Delivery::RETRACTION_TYPES.exclude?(payload['type'])
 
     ActiveRecord.after_all_transactions_commit do
-      ActivityPub::DeliveryWorker.perform_async(payload.to_json, actor.id, account.inbox_url)
+      ActivityPub::DeliveryWorker.perform_async(payload.to_json, actor.id, account.preferred_inbox_url)
     end
   end
 
   def account_from_uri(uri, fetch: true)
+    return if uri.blank?
+
     account = ActivityPub::TagManager.instance.uri_to_resource(uri, Account)
     account ||= ActivityPub::FetchRemoteAccountService.new.call(uri) if fetch && !ActivityPub::TagManager.instance.local_uri?(uri)
     account
@@ -885,8 +1105,16 @@ class Sharlayan::ChatService
     "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.web_domain}"
   end
 
+  # Where deleting only hides a message, an edit must not be a way to get rid of what it said.
+  def keep_previous_text(message, text)
+    return unless RoleplayModeHelper.roleplay_mode? || Setting.chat_soft_delete_enabled
+    return if message.text.blank? || message.text == text.to_s.strip
+
+    message.edits.create!(text: message.text)
+  end
+
   def hide_instead_of_delete?(message)
-    RoleplayModeHelper.roleplay_mode? || Setting.chat_soft_delete_enabled || message.created_at <= Setting.chat_delete_window_hours.hours.ago
+    !message.deletes_for_everyone?
   end
 
   def hide_message(account, message)
@@ -967,6 +1195,12 @@ class Sharlayan::ChatService
     raise Forbidden if other_accounts.any? { |other_account| blocked_in_either_direction?(account, other_account) }
   end
 
+  def ensure_direct_recipient_not_suspended!(account, conversation)
+    return unless conversation.chat_direct?
+
+    raise Forbidden if conversation.accounts.where.not(id: account.id).where.not(suspended_at: nil).exists?
+  end
+
   def ensure_group_capacity!(conversation, include_pending: false)
     size = conversation.memberships.count
     size += conversation.invitations.pending.count if include_pending
@@ -1022,9 +1256,9 @@ class Sharlayan::ChatService
   end
 
   def broadcast(conversation, event, object, serializer = nil)
+    rendered = Sharlayan::ChatBroadcastPayload.new(object, serializer)
     conversation.memberships.joins(:account).merge(Account.local).includes(:account).find_each do |membership|
-      payload = serializer ? serializer.new(object, current_account: membership.account).as_json : object
-      broadcast_to(membership.account, event, payload)
+      broadcast_to(membership.account, event, rendered.for(membership.account))
     end
   end
 
@@ -1037,10 +1271,11 @@ class Sharlayan::ChatService
   end
 
   def notify_members(conversation, message)
+    rendered = Sharlayan::ChatBroadcastPayload.new(message, REST::ChatMessageSerializer)
     conversation.memberships.includes(account: :user).where.not(account_id: message.account_id).find_each do |membership|
       next if membership.muted? || !membership.account.user&.settings&.[](:chat_notifications)
 
-      broadcast_to(membership.account, 'chat.notification', message, REST::ChatMessageSerializer)
+      broadcast_to(membership.account, 'chat.notification', rendered.for(membership.account))
     end
   end
 end

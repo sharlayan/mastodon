@@ -9,7 +9,12 @@ class ActivityPub::ChatMessagesController < ActivityPub::BaseController
 
     message = ChatMessage.find_by(id: params[:id])
     return head 404 if message.nil? || !message.account.local?
-    return head 404 unless visible_to_signed_account?(message)
+
+    unless visible_to_signed_account?(message)
+      # The requester may belong to a room whose owner this server has not heard the latest from.
+      Sharlayan::ChatFederation::Roster.request_sync(message.chat_conversation, signed_request_account.id) if signed_request_account&.suspended? == false
+      return head 404
+    end
 
     if message.deleted?
       render_ap(
@@ -19,7 +24,7 @@ class ActivityPub::ChatMessagesController < ActivityPub::BaseController
         'formerType' => 'Note'
       )
     else
-      render_ap(Sharlayan::ChatFederation::Payload.note(message))
+      render_ap(Sharlayan::ChatFederation::Payload.note(message, domain: signed_request_account.domain))
     end
   end
 

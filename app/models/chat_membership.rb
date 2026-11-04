@@ -9,9 +9,17 @@ class ChatMembership < ApplicationRecord
 
   validates :account_id, uniqueness: { scope: :chat_conversation_id }
   validate :last_read_message_belongs_to_conversation
+  after_create :record_roster_time
   after_destroy_commit :remove_unusable_conversation
 
   private
+
+  # Without a time, the membership would count as older than any member list from the room owner.
+  def record_roster_time
+    return unless chat_conversation.chat_group?
+
+    ChatRosterState.find_or_create_by!(chat_conversation_id: chat_conversation_id, account_id: account_id) { |state| state.last_roster_at = Time.current }
+  end
 
   def last_read_message_belongs_to_conversation
     return if last_read_message.nil? || last_read_message.chat_conversation_id == chat_conversation_id

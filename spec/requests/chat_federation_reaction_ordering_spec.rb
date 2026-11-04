@@ -271,26 +271,41 @@ RSpec.describe 'Chat federation reaction ordering' do
   it 'retries a group reaction that overtook the reactor membership' do
     reaction = react('before-membership')
     conversation.memberships.find_by!(account: actor).destroy!
+    conversation.invitations.create!(inviter_account: owner, invitee_account: actor)
 
     expect { perform(reaction) }.to raise_error(StandardError, 'Waiting for chat membership')
     expect(message.reactions.reload).to be_empty
-    service.receive_add(owner, room_uri: conversation.uri, account_uri: actor.uri)
+    service.receive_accept(actor, room_uri: conversation.uri)
     perform(reaction)
 
     expect(message.reactions.reload.pluck(:reaction)).to eq(['👍'])
   end
 
-  it 'retries a group Undo until the reactor membership arrives' do
-    reaction = react('undo-before-membership')
+  it 'does not retry a group reaction from someone with no invitation to the room' do
+    reaction = react('stranger')
+    conversation.memberships.find_by!(account: actor).destroy!
+
+    expect { perform(reaction) }.to_not raise_error
+    expect(message.reactions.reload).to be_empty
+  end
+
+  it 'lets a former member take back a reaction' do
+    reaction = react('undo-after-leaving')
     perform(reaction)
     conversation.memberships.find_by!(account: actor).destroy!
 
-    expect { perform(undo(reaction)) }.to raise_error(StandardError, 'Waiting for chat membership')
-    expect(message.reactions.reload.pluck(:reaction)).to eq(['👍'])
-    service.receive_add(owner, room_uri: conversation.uri, account_uri: actor.uri)
     perform(undo(reaction))
 
     expect(message.reactions.reload).to be_empty
+  end
+
+  it 'retries a group Undo from someone who has yet to join' do
+    reaction = react('undo-before-membership')
+    stranger = Fabricate(:account, domain: 'stranger.test', uri: 'https://stranger.test/users/dave', inbox_url: 'https://stranger.test/users/dave/inbox')
+    conversation.invitations.create!(inviter_account: owner, invitee_account: stranger)
+    foreign = reaction.merge('id' => 'https://stranger.test/chat-reactions/1', 'actor' => stranger.uri)
+
+    expect { ActivityPub::Activity.factory(undo(foreign, account: stranger), stranger).perform }.to raise_error(StandardError, 'Waiting for chat membership')
   end
 
   it 'rechecks membership on retry before importing a custom emoji' do
@@ -302,6 +317,7 @@ RSpec.describe 'Chat federation reaction ordering' do
     expect { perform(reaction) }.to raise_error(StandardError, 'Chat message has not arrived')
     received = service.receive_group_message(other, room_uri: conversation.uri, uri: target, text: 'later')
     conversation.memberships.find_by!(account: actor).destroy!
+    conversation.invitations.create!(inviter_account: owner, invitee_account: actor)
     expect { perform(reaction) }.to raise_error(StandardError, 'Waiting for chat membership')
 
     expect(received.reactions.reload).to be_empty

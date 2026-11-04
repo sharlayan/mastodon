@@ -7,6 +7,7 @@ class ChatMessage < ApplicationRecord
   belongs_to :account
   belongs_to :reply_to, class_name: 'ChatMessage', optional: true
 
+  has_many :edits, class_name: 'ChatMessageEdit', dependent: :delete_all, inverse_of: :chat_message
   has_many :reactions, class_name: 'ChatMessageReaction', dependent: :destroy, inverse_of: :chat_message
   has_many :chat_message_media_attachments, -> { order(:id) }, dependent: :destroy, inverse_of: :chat_message
   has_many :media_attachments, through: :chat_message_media_attachments
@@ -22,7 +23,7 @@ class ChatMessage < ApplicationRecord
   before_destroy :destroy_chat_media_attachments, prepend: true
 
   scope :visible, -> { where(deleted_at: nil) }
-  scope :visible_to, ->(account) { where.not(account_id: account.id).or(where(hidden_at: nil)) }
+  scope :visible_to, ->(account) { where.not(account_id: account.id).or(where(hidden_at: nil)).where(account_id: Account.where(suspended_at: nil).select(:id)) }
 
   def deleted?
     deleted_at.present?

@@ -14,6 +14,8 @@ module Sharlayan
           '_misskey_reaction' => 'misskey:_misskey_reaction',
           '_misskey_chatRoom' => 'misskey:_misskey_chatRoom',
           '_misskey_chatArchived' => 'misskey:_misskey_chatArchived',
+          '_misskey_chatRoomMembers' => 'misskey:_misskey_chatRoomMembers',
+          '_misskey_chatRoomRosterAt' => 'misskey:_misskey_chatRoomRosterAt',
         },
       ].freeze
 
@@ -43,19 +45,21 @@ module Sharlayan
         end
 
         def announce_message(message)
-          conversation = message.chat_conversation
-          room = room_uri(conversation)
-          {
-            '@context' => CONTEXT,
-            'id' => "#{room}#relay/#{ERB::Util.url_encode(message_uri(message))}",
-            'type' => 'Announce',
-            'actor' => actor_uri(conversation.owner_account),
-            'object' => message_uri(message),
-            'context' => room,
-            '_misskey_chatRoom' => room,
-            'published' => Time.now.utc.iso8601,
-            'to' => conversation.accounts.where.not(id: conversation.owner_account_id).map { |account| actor_uri(account) },
-          }
+          relay_announce(message.chat_conversation, ERB::Util.url_encode(message_uri(message)), message_uri(message))
+        end
+
+        def announce_update(message)
+          relay_announce(message.chat_conversation, "#{ERB::Util.url_encode(message_uri(message))}/#{message.edited_at.utc.strftime('%s%L')}", message_uri(message))
+        end
+
+        def announce_activity(conversation, activity)
+          relay_announce(conversation, ERB::Util.url_encode(activity['id']), activity.except('@context', 'signature'))
+        end
+
+        # The time is taken before the members are read, so a change made while reading is not reported as older than it is.
+        def roster(conversation)
+          roster_at = Time.now.utc.iso8601(3)
+          { '_misskey_chatRoomMembers' => conversation.accounts.map { |account| actor_uri(account) }, '_misskey_chatRoomRosterAt' => roster_at }
         end
 
         def delete(message)
@@ -108,7 +112,7 @@ module Sharlayan
             'type' => 'Invite',
             'actor' => actor_uri(conversation.owner_account),
             'target' => actor_uri(invitee),
-            'published' => Time.now.utc.iso8601,
+            'published' => Time.now.utc.iso8601(3),
             'object' => room(conversation),
           }
         end
@@ -120,7 +124,7 @@ module Sharlayan
             'id' => "#{base_url}/chat/rooms/#{conversation.id}#accept/#{invitation.invitee_account_id}/#{SecureRandom.hex(6)}",
             'type' => 'Accept',
             'actor' => actor_uri(invitation.invitee_account),
-            'published' => Time.now.utc.iso8601,
+            'published' => Time.now.utc.iso8601(3),
             'object' => invite_object(conversation, invitation),
           }
         end
@@ -132,7 +136,7 @@ module Sharlayan
             'id' => "#{base_url}/chat/rooms/#{conversation.id}#reject/#{invitation.invitee_account_id}/#{SecureRandom.hex(6)}",
             'type' => 'Reject',
             'actor' => actor_uri(invitation.invitee_account),
-            'published' => Time.now.utc.iso8601,
+            'published' => Time.now.utc.iso8601(3),
             'object' => invite_object(conversation, invitation),
           }
         end
@@ -144,7 +148,7 @@ module Sharlayan
             'id' => "#{base_url}/chat/rooms/#{room_uri.to_s.split('/').last}#reject/#{invitee.id}",
             'type' => 'Reject',
             'actor' => actor_uri(invitee),
-            'published' => Time.now.utc.iso8601,
+            'published' => Time.now.utc.iso8601(3),
             'object' => {
               'type' => 'Invite',
               'actor' => actor_uri(owner),
@@ -161,7 +165,7 @@ module Sharlayan
             'id' => "#{base_url}/chat/rooms/#{conversation.id}#cancel/#{invitation.invitee_account_id}/#{SecureRandom.hex(6)}",
             'type' => 'Undo',
             'actor' => actor_uri(invitation.inviter_account),
-            'published' => Time.now.utc.iso8601,
+            'published' => Time.now.utc.iso8601(3),
             'object' => invite_object(conversation, invitation),
           }
         end
@@ -174,7 +178,7 @@ module Sharlayan
             'actor' => actor_uri(conversation.owner_account),
             'target' => room_uri(conversation),
             'object' => actor_uri(account),
-            'published' => Time.now.utc.iso8601,
+            'published' => Time.now.utc.iso8601(3),
           }
         end
 
@@ -186,7 +190,7 @@ module Sharlayan
             'actor' => actor_uri(actor),
             'target' => room_uri(conversation),
             'object' => actor_uri(account),
-            'published' => Time.now.utc.iso8601,
+            'published' => Time.now.utc.iso8601(3),
           }
         end
 
@@ -216,7 +220,7 @@ module Sharlayan
           }
         end
 
-        def note(message)
+        def note(message, domain: nil)
           text = message.text.to_s
           result = {
             'id' => message_uri(message),
@@ -235,8 +239,13 @@ module Sharlayan
           end
           result['updated'] = message.edited_at.utc.iso8601(3) if message.edited_at.present?
           result['inReplyTo'] = message_uri(message.reply_to) if message.reply_to.present?
-          result['attachment'] = message.media_attachments.map { |attachment| document(attachment) } if message.media_attachments.any?
+          result['attachment'] = documents(message, domain) if message.media_attachments.any?
           result
+        end
+
+        # An attachment address belongs to one server, so each server gets a copy of the activity with its own.
+        def for_domain(payload, message, domain)
+          payload.merge('object' => payload['object'].merge('attachment' => documents(message, domain)))
         end
 
         def room(conversation)
@@ -269,6 +278,21 @@ module Sharlayan
 
         private
 
+        def relay_announce(conversation, relay_id, object)
+          room = room_uri(conversation)
+          {
+            '@context' => CONTEXT,
+            'id' => "#{room}#relay/#{relay_id}",
+            'type' => 'Announce',
+            'actor' => actor_uri(conversation.owner_account),
+            'object' => object,
+            'context' => room,
+            '_misskey_chatRoom' => room,
+            'published' => Time.now.utc.iso8601,
+            'to' => conversation.accounts.where.not(id: conversation.owner_account_id).map { |account| actor_uri(account) },
+          }
+        end
+
         # Servers from before `context` and `_misskey_chatRoom` read the room only from @context, and
         # take a Note with one address for a direct message, so the sender is addressed like they do.
         # A fetched Note goes without these, because there it would have to replace the real @context.
@@ -299,9 +323,13 @@ module Sharlayan
           }
         end
 
-        def document(attachment)
-          token = Sharlayan::ChatFederation::MediaToken.generate(attachment)
-          url = "#{base_url}/media_proxy/#{attachment.id}/original?token=#{ERB::Util.url_encode(token)}"
+        def documents(message, domain)
+          message.media_attachments.map { |attachment| document(attachment, domain) }
+        end
+
+        def document(attachment, domain)
+          url = "#{base_url}/media_proxy/#{attachment.id}/original"
+          url += "?token=#{ERB::Util.url_encode(Sharlayan::ChatFederation::MediaToken.generate(attachment, domain: domain))}" if domain.present?
 
           {
             'type' => 'Document',

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_03_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -653,6 +653,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_000000) do
     t.index ["chat_conversation_id"], name: "index_chat_memberships_on_chat_conversation_id"
   end
 
+  create_table "chat_message_edits", force: :cascade do |t|
+    t.bigint "chat_message_id", null: false
+    t.text "text"
+    t.datetime "created_at", null: false
+    t.index ["chat_message_id"], name: "index_chat_message_edits_on_chat_message_id"
+  end
+
   create_table "chat_message_media_attachments", force: :cascade do |t|
     t.bigint "chat_message_id", null: false
     t.datetime "created_at", null: false
@@ -668,9 +675,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_000000) do
     t.datetime "created_at", null: false
     t.string "reaction", null: false
     t.datetime "updated_at", null: false
+    t.string "uri"
     t.index ["account_id"], name: "index_chat_message_reactions_on_account_id"
     t.index ["chat_message_id", "account_id", "reaction"], name: "index_chat_message_reactions_on_message_account_reaction", unique: true
     t.index ["chat_message_id"], name: "index_chat_message_reactions_on_chat_message_id"
+    t.index ["uri"], name: "index_chat_message_reactions_on_uri", where: "(uri IS NOT NULL)"
   end
 
   create_table "chat_messages", force: :cascade do |t|
@@ -690,6 +699,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_000000) do
     t.index ["reply_to_id"], name: "index_chat_messages_on_reply_to_id"
     t.index ["text"], name: "index_visible_chat_messages_on_text_trigram", opclass: :gin_trgm_ops, where: "(deleted_at IS NULL)", using: :gin
     t.index ["uri"], name: "index_chat_messages_on_uri", unique: true, where: "(uri IS NOT NULL)"
+  end
+
+  create_table "chat_roster_states", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "chat_conversation_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "last_roster_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_chat_roster_states_on_account_id"
+    t.index ["chat_conversation_id", "account_id"], name: "index_chat_roster_states_on_conversation_and_account", unique: true
   end
 
   create_table "circle_accounts", id: :bigint, default: -> { "timestamp_id('circle_accounts'::text)" }, force: :cascade do |t|
@@ -2297,6 +2316,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_000000) do
   add_foreign_key "chat_memberships", "accounts", on_delete: :cascade
   add_foreign_key "chat_memberships", "chat_conversations", on_delete: :cascade
   add_foreign_key "chat_memberships", "chat_messages", column: "last_read_message_id", on_delete: :nullify
+  add_foreign_key "chat_message_edits", "chat_messages", on_delete: :cascade
   add_foreign_key "chat_message_media_attachments", "chat_messages", on_delete: :cascade
   add_foreign_key "chat_message_media_attachments", "media_attachments", on_delete: :cascade
   add_foreign_key "chat_message_reactions", "accounts", on_delete: :cascade
@@ -2304,6 +2324,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_03_000000) do
   add_foreign_key "chat_messages", "accounts", on_delete: :cascade
   add_foreign_key "chat_messages", "chat_conversations", on_delete: :cascade
   add_foreign_key "chat_messages", "chat_messages", column: "reply_to_id", on_delete: :nullify
+  add_foreign_key "chat_roster_states", "accounts", on_delete: :cascade
+  add_foreign_key "chat_roster_states", "chat_conversations", on_delete: :cascade
   add_foreign_key "circle_accounts", "accounts", on_delete: :cascade
   add_foreign_key "circle_accounts", "circles", on_delete: :cascade
   add_foreign_key "circle_accounts", "follows", on_delete: :cascade

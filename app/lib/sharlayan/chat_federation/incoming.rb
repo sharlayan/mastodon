@@ -9,6 +9,8 @@ module Sharlayan
       ROOM_URI = %r{/chat/rooms/[a-zA-Z0-9]+\z}
       MESSAGE_URI = %r{/chat/messages/[a-zA-Z0-9_-]+\z}
       REACTION_TYPES = %w(EmojiReact Like).freeze
+      RELAYED_ACTIVITY_TYPES = %w(Delete Like EmojiReact Undo).freeze
+      MAX_CLOCK_SKEW = 5.minutes
 
       class << self
         def chat_create?(json)
@@ -103,12 +105,16 @@ module Sharlayan
 
           conversation = ChatConversation.find_by(uri: room_uri)
           if conversation.nil?
+            return 'skip: chat room deleted' if service.room_tombstoned?(room_uri)
             raise DependencyNotReadyError, 'Waiting for chat room' if same_host?(room_uri, account.uri)
 
             return 'skip: unknown chat room'
           end
           return 'skip: not the room owner' unless conversation.owner_account_id == account.id
-          return 'ok: chat message already received' if ChatMessage.exists?(uri: uri)
+
+          object = json['object']
+          return handle_relayed_activity(object, conversation) if object.is_a?(Hash) && object['type'].present? && !equals_type?(object['type'], 'Note')
+          return 'ok: chat message already received' if ChatMessage.exists?(uri: uri) && !update_relay?(json)
           return 'skip: local chat message' if ActivityPub::TagManager.instance.local_uri?(uri)
 
           signer = conversation.accounts.local.first
@@ -116,6 +122,12 @@ module Sharlayan
             raise DependencyNotReadyError, 'Waiting for chat membership' if conversation.invitations.pending.joins(:invitee_account).merge(::Account.local).exists?
 
             return 'skip: no local member'
+          end
+
+          # A member's signature is only sent to the servers of the room's members.
+          unless member_host?(conversation, uri)
+            Roster.request_sync(conversation, Addressable::URI.parse(uri).host)
+            raise DependencyNotReadyError, 'Waiting for chat room member'
           end
 
           note = fetch_relayed_note(uri, signer)
@@ -168,13 +180,12 @@ module Sharlayan
 
           if room_uri?(uri)
             service.receive_room_delete(account, room_uri: uri)
-            service.remember_room_tombstone(uri, account)
             return 'ok: chat room deleted'
           end
 
           message = ChatMessage.find_by(uri: uri)
           if message.present?
-            service.delete_remote_message(account, message)
+            service.delete_remote_message(account, message, activity: json)
             return 'ok: chat message deleted'
           end
 
@@ -197,10 +208,16 @@ module Sharlayan
           return 'skip: empty reaction' if reaction.blank?
 
           activity_id = reaction_activity_id(json, account)
-          message = ChatMessage.find_by(uri: uri)
-          raise DependencyNotReadyError, 'Chat message has not arrived' if message.nil?
+          return 'skip: undone before reaction' if activity_id && redis.exists?("delete_upon_arrival:#{account.id}:#{activity_id}")
 
-          service.react_remote(account, message, reaction.to_s, activity_id: activity_id, &emoji_importer)
+          message = ChatMessage.find_by(uri: uri)
+          if message.nil?
+            return 'skip: chat room deleted' if service.message_of_deleted_room?(uri)
+
+            raise DependencyNotReadyError, 'Chat message has not arrived'
+          end
+
+          service.react_remote(account, message, reaction.to_s, activity_id: activity_id, activity: json, &emoji_importer)
           'ok: chat reaction'
         rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique, Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error => e
           Rails.logger.info("Dropped incoming chat reaction from #{account.uri}: #{e.message}")
@@ -219,9 +236,32 @@ module Sharlayan
 
           activity_id = reaction_activity_id(object, account)
           message = ChatMessage.find_by(uri: uri_of(object['object']))
-          raise DependencyNotReadyError, 'Chat message has not arrived' if message.nil?
+          if message.nil?
+            return 'skip: chat room deleted' if service.message_of_deleted_room?(uri_of(object['object']))
 
-          service.unreact_remote(account, message, reaction.to_s, activity_id: activity_id)
+            raise DependencyNotReadyError, 'Chat message has not arrived'
+          end
+
+          service.unreact_remote(account, message, reaction.to_s, activity_id: activity_id, activity: json)
+          'ok: chat reaction undone'
+        rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+          Rails.logger.info("Dropped incoming chat reaction undo from #{account.uri}: #{e.message}")
+          'skip: chat reaction undo'
+        end
+
+        # Some implementations name the undone activity by its URI alone.
+        def chat_undo_reaction_reference?(json, account)
+          uri = uri_of(json['object'])
+          uri.present? && ChatMessageReaction.exists?(uri: uri, account: account)
+        end
+
+        def handle_undo_reaction_reference(json, account)
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+
+          record = ChatMessageReaction.find_by(uri: uri_of(json['object']), account: account)
+          return 'skip: unknown chat reaction' if record.nil?
+
+          service.unreact_remote(account, record.chat_message, record.reaction, activity_id: record.uri, activity: json)
           'ok: chat reaction undone'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped incoming chat reaction undo from #{account.uri}: #{e.message}")
@@ -236,7 +276,7 @@ module Sharlayan
           room = json['object']
           room_uri = uri_of(room)
           return 'skip: invalid chat room' unless chat_room?(json) && authored_by?(room, account)
-          return 'skip: deleted before invite' if service.room_tombstoned?(room_uri, account)
+          return 'skip: deleted before invite' if service.room_tombstoned?(room_uri)
 
           invitee = local_account_for_target(json)
           return 'skip: no local invitee' if invitee.nil?
@@ -250,7 +290,8 @@ module Sharlayan
               title: room['name'],
               description: room['summary'],
               archived: room['_misskey_chatArchived'],
-              updated: time_of(room['updated'])
+              updated: time_of(room['updated']),
+              published: time_of(json['published'])
             )
             'ok: chat invitation received'
           rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
@@ -285,7 +326,7 @@ module Sharlayan
           room_uri = canonical_room_uri(uri_of(json['object']['object']), account)
           return 'skip: invalid chat room' if room_uri.blank?
 
-          service.receive_accept(account, room_uri: room_uri)
+          service.receive_accept(account, room_uri: room_uri, published: time_of(json['published']))
           'ok: chat invitation accepted'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat accept from #{account.uri}: #{e.message}")
@@ -310,7 +351,7 @@ module Sharlayan
 
           return false unless chat_add?(json)
 
-          service.receive_add(account, room_uri: uri_of(json['target']), account_uri: uri_of(json['object']))
+          service.receive_add(account, room_uri: uri_of(json['target']), account_uri: uri_of(json['object']), published: time_of(json['published']))
           'ok: chat room member added'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat Add from #{account.uri}: #{e.message}")
@@ -322,7 +363,7 @@ module Sharlayan
 
           return false unless chat_add?(json)
 
-          service.receive_remove(account, room_uri: canonical_room_uri(uri_of(json['target']), account), account_uri: uri_of(json['object']))
+          service.receive_remove(account, room_uri: canonical_room_uri(uri_of(json['target']), account), account_uri: uri_of(json['object']), published: time_of(json['published']))
           'ok: chat room member removed'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat Remove from #{account.uri}: #{e.message}")
@@ -343,7 +384,103 @@ module Sharlayan
           'skip: chat room update'
         end
 
+        def time_of(value)
+          return if value.blank?
+
+          time = Time.zone.parse(value.to_s)
+          time if time && (0..9999).cover?(time.year) && time <= MAX_CLOCK_SKEW.from_now
+        rescue ArgumentError
+          nil
+        end
+
         private
+
+        def handle_relayed_activity(activity, conversation)
+          return 'skip: relayed activity type' unless RELAYED_ACTIVITY_TYPES.include?(activity['type'])
+
+          actor_uri = uri_of(activity['actor'])
+          return 'skip: relayed activity from another host' unless same_host?(activity['id'], actor_uri)
+          return 'skip: relayed activity of a local account' if ActivityPub::TagManager.instance.local_uri?(actor_uri)
+
+          actor = service.resolve_account(actor_uri)
+          raise DependencyNotReadyError, 'Waiting for relayed activity actor' if actor.nil?
+
+          case activity['type']
+          when 'Delete' then handle_relayed_delete(activity, actor, conversation)
+          when 'Undo' then handle_relayed_undo(activity, actor, conversation)
+          else handle_relayed_reaction(activity, actor, conversation)
+          end
+        end
+
+        def handle_relayed_delete(activity, actor, conversation)
+          uri = uri_of(activity['object'])
+          return 'skip: not a chat message' if uri.blank? || room_uri?(uri)
+
+          message = ChatMessage.find_by(uri: uri)
+          if message.nil?
+            return 'skip: not a chat message' unless chat_message_uri?(uri) && service.room_participant?(conversation, actor)
+
+            service.remember_tombstone(uri, actor)
+            return 'ok: relayed chat message tombstone stored'
+          end
+          return 'skip: chat message of another room' unless message.chat_conversation_id == conversation.id
+
+          service.delete_remote_message(actor, message)
+          'ok: relayed chat message deleted'
+        end
+
+        def handle_relayed_reaction(activity, actor, conversation)
+          return 'skip: suspended actor' if actor.suspended?
+
+          uri = uri_of(activity['object'])
+          message = ChatMessage.find_by(uri: uri)
+          if message.nil?
+            return 'skip: chat room deleted' if service.message_of_deleted_room?(uri)
+            return 'skip: not a chat message' unless chat_message_uri?(uri)
+
+            raise DependencyNotReadyError, 'Chat message has not arrived'
+          end
+          return 'skip: chat message of another room' unless message.chat_conversation_id == conversation.id
+
+          tags = conversation.memberships.exists?(account: actor) ? verified_emoji_tags(activity, actor) : []
+          ActivityPub::Activity.factory(activity.merge('tag' => tags), actor).perform
+        end
+
+        def handle_relayed_undo(activity, actor, conversation)
+          inline = chat_undo_reaction?(activity)
+          return 'skip: not a chat reaction undo' unless inline || chat_undo_reaction_reference?(activity, actor)
+
+          message = if inline
+                      ChatMessage.find_by(uri: uri_of(activity['object']['object']))
+                    else
+                      ChatMessageReaction.find_by(uri: uri_of(activity['object']), account: actor).chat_message
+                    end
+          return 'skip: chat message of another room' if message && message.chat_conversation_id != conversation.id
+
+          inline ? handle_undo_reaction(activity, actor) : handle_undo_reaction_reference(activity, actor)
+        end
+
+        # The room owner vouches for who reacted, but not for another server's emoji image,
+        # so that comes from the reacting account's own server.
+        def verified_emoji_tags(activity, actor)
+          tag = Array.wrap(activity['tag']).grep(Hash).find { |item| equals_type?(item['type'], 'Emoji') }
+          return [] if tag.nil? || !same_host?(uri_of(tag), actor.uri) || CustomEmoji.exists?(shortcode: tag['name'].to_s.delete(':'), domain: actor.domain)
+
+          emoji = fetch_resource(uri_of(tag))
+          emoji.is_a?(Hash) && equals_type?(emoji['type'], 'Emoji') ? [emoji] : []
+        rescue *Mastodon::HTTP_CONNECTION_ERRORS, Mastodon::UnexpectedResponseError => e
+          Rails.logger.info("Could not fetch relayed chat emoji #{uri_of(tag)}: #{e.message}")
+          []
+        end
+
+        def update_relay?(json)
+          _, relayed = json['id'].to_s.split('#relay/', 2)
+          relayed.to_s.include?('/')
+        end
+
+        def member_host?(conversation, uri)
+          conversation.accounts.remote.pluck(:uri).any? { |account_uri| same_host?(account_uri, uri) }
+        end
 
         def reaction_activity_id(json, account)
           id = json['id']
@@ -449,20 +586,12 @@ module Sharlayan
           return object['_misskey_content'] if object['_misskey_content'].is_a?(String)
           return if object['content'].blank?
 
-          CGI.unescapeHTML(ActionView::Base.full_sanitizer.sanitize(object['content'].to_s))
+          html = object['content'].to_s.gsub(%r{</p>\s*<p[^>]*>}i, "\n\n").gsub(%r{<br\s*/?>}i, "\n")
+          CGI.unescapeHTML(ActionView::Base.full_sanitizer.sanitize(html))
         end
 
         def attachments_of(object)
           Array.wrap(object['attachment']).grep(Hash).first(::Status.remote_media_attachments_limit)
-        end
-
-        def time_of(value)
-          return if value.blank?
-
-          time = Time.zone.parse(value.to_s)
-          time if time && (0..9999).cover?(time.year)
-        rescue ArgumentError
-          nil
         end
 
         def local_recipient_for(object, delivered_to_account_id)
@@ -493,9 +622,9 @@ module Sharlayan
 
         def reject_invite(account, invitee, room)
           payload = Sharlayan::ChatFederation::Payload.reject_invite(account, invitee, room)
-          return if account.inbox_url.blank?
+          return if account.preferred_inbox_url.blank?
 
-          ActivityPub::DeliveryWorker.perform_async(payload.to_json, invitee.id, account.inbox_url)
+          ActivityPub::DeliveryWorker.perform_async(payload.to_json, invitee.id, account.preferred_inbox_url)
         end
       end
     end

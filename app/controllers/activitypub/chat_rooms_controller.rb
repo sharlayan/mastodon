@@ -13,6 +13,7 @@ class ActivityPub::ChatRoomsController < ActivityPub::BaseController
 
     object = Sharlayan::ChatFederation::Payload.room(conversation)
     object['@context'] = Sharlayan::ChatFederation::Payload::CONTEXT
+    object.merge!(Sharlayan::ChatFederation::Payload.roster(conversation)) if conversation.memberships.exists?(account: signed_request_account)
     render json: object, content_type: 'application/activity+json'
   end
 

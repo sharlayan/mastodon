@@ -10,6 +10,7 @@ class ChatConversation < ApplicationRecord
   has_many :accounts, through: :memberships
   has_many :messages, -> { order(id: :desc) }, class_name: 'ChatMessage', dependent: :destroy, inverse_of: :chat_conversation
   has_many :invitations, class_name: 'ChatInvitation', dependent: :destroy, inverse_of: :chat_conversation
+  has_many :roster_states, class_name: 'ChatRosterState', dependent: :delete_all, inverse_of: :chat_conversation
 
   validates :direct_key, presence: true, uniqueness: true, if: :chat_direct?
   validates :direct_key, absence: true, if: :chat_group?
@@ -25,9 +26,7 @@ class ChatConversation < ApplicationRecord
   end
 
   def remote?
-    owner_account&.remote? == true ||
-      accounts.any?(&:remote?) ||
-      invitations.pending.joins(:invitee_account).merge(Account.remote).exists?
+    owner_account&.remote? == true || accounts.any?(&:remote?) || pending_remote_invitee?
   end
 
   def local?
@@ -38,5 +37,13 @@ class ChatConversation < ApplicationRecord
     return if accounts.local.exists? || invitations.pending.exists?
 
     destroy!
+  end
+
+  private
+
+  def pending_remote_invitee?
+    return invitations.any? { |invitation| invitation.pending? && invitation.invitee_account.remote? } if invitations.loaded?
+
+    invitations.pending.joins(:invitee_account).merge(Account.remote).exists?
   end
 end

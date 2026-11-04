@@ -4,6 +4,8 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
   def perform
     return Sharlayan::ChatFederation::Incoming.handle_undo_reaction(@json, @account) if Sharlayan::ChatFederation::Incoming.chat_undo_reaction?(@json)
 
+    return Sharlayan::ChatFederation::Incoming.handle_undo_reaction_reference(@json, @account) if Sharlayan::ChatFederation::Incoming.chat_undo_reaction_reference?(@json, @account)
+
     return Sharlayan::ChatFederation::Incoming.handle_undo_invite(@json, @account) if Sharlayan::ChatFederation::Incoming.chat_invite?(@json)
 
     case @object['type']
