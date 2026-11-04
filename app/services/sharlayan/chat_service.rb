@@ -218,6 +218,7 @@ class Sharlayan::ChatService
       deliver_roster_after_join(conversation, account)
     end
     broadcast(conversation, 'chat.member_join', { conversation_id: conversation.id.to_s, account_id: account.id.to_s }) if joined
+    announce_invitation_settled(invitation)
     conversation
   end
 
@@ -225,6 +226,7 @@ class Sharlayan::ChatService
     raise Forbidden unless invitation.invitee_account_id == account.id && invitation.pending?
 
     invitation.update!(state: :rejected)
+    announce_invitation_settled(invitation)
     owner = invitation.chat_conversation.owner_account
     deliver_to_account(invitation.invitee_account, Sharlayan::ChatFederation::Payload.reject(invitation), owner) if owner&.remote?
     invitation.chat_conversation.destroy_if_unused!
@@ -234,6 +236,7 @@ class Sharlayan::ChatService
     raise Forbidden unless invitation.inviter_account_id == account.id && invitation.pending?
 
     invitation.update!(state: :cancelled)
+    announce_invitation_settled(invitation)
     if invitation.invitee_account.local?
       broadcast_to(invitation.invitee_account, 'chat.invitation', invitation, REST::ChatInvitationSerializer)
     else
@@ -466,6 +469,7 @@ class Sharlayan::ChatService
       invitation.update!(state: :accepted)
       membership.previously_new_record?
     end
+    announce_invitation_settled(invitation)
     return conversation if joined == :left
 
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
@@ -480,7 +484,9 @@ class Sharlayan::ChatService
     return if conversation.memberships.exists?(account: actor)
     return unless conversation.invitations.exists?(invitee_account: actor)
 
-    conversation.invitations.pending.find_by(invitee_account: actor)&.update!(state: :rejected)
+    invitation = conversation.invitations.pending.find_by(invitee_account: actor)
+    invitation&.update!(state: :rejected)
+    announce_invitation_settled(invitation) if invitation
     deliver_to_account(conversation.owner_account, Sharlayan::ChatFederation::Payload.remove(conversation, actor, actor: conversation.owner_account), actor)
   end
 
@@ -492,6 +498,7 @@ class Sharlayan::ChatService
     return if invitation && answers_earlier_invitation?(invitation, invited_at)
 
     invitation&.update!(state: :rejected)
+    announce_invitation_settled(invitation) if invitation
     conversation.destroy_if_unused!
   end
 
@@ -1130,6 +1137,12 @@ class Sharlayan::ChatService
         broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s })
       end
     end
+  end
+
+  # Only whoever sent the invitation can see who has not answered yet, so nobody else needs to hear about this.
+  def announce_invitation_settled(invitation)
+    inviter = invitation.inviter_account
+    broadcast_to(inviter, 'chat.invitation_update', { conversation_id: invitation.chat_conversation_id.to_s }) if inviter.local?
   end
 
   # Someone who did it themselves knows, and their screen has already moved on.

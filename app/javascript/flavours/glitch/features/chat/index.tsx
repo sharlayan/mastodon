@@ -28,8 +28,6 @@ import PhotoLibraryIcon from '@/material-icons/400-20px/photo_library.svg?react'
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
-import CheckIcon from '@/material-icons/400-24px/check.svg?react';
-import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import GroupIcon from '@/material-icons/400-24px/group.svg?react';
@@ -125,6 +123,7 @@ interface ChatInvitation {
   id: string;
   conversation: ChatConversation;
   inviter: ChatAccount;
+  invitee?: ChatAccount;
 }
 
 interface ChatSettings {
@@ -153,6 +152,7 @@ const messages = defineMessages({
   newDirect: { id: 'chat.new_direct', defaultMessage: 'Start a direct chat' },
   open: { id: 'chat.open', defaultMessage: 'Open chat' },
   send: { id: 'chat.send', defaultMessage: 'Send' },
+  save: { id: 'chat.save', defaultMessage: 'Save' },
   newMessages: {
     id: 'chat.new_messages',
     defaultMessage: 'New messages',
@@ -164,6 +164,18 @@ const messages = defineMessages({
   inviteSent: {
     id: 'chat.invite_sent',
     defaultMessage: 'Invitation sent to {account}.',
+  },
+  invitationAccepted: {
+    id: 'chat.invitation_accepted',
+    defaultMessage: 'You joined {group}.',
+  },
+  invitationRejected: {
+    id: 'chat.invitation_rejected',
+    defaultMessage: 'You rejected the invitation to {group}.',
+  },
+  invitationCancelled: {
+    id: 'chat.invitation_cancelled',
+    defaultMessage: 'Cancelled the invitation to {account}.',
   },
   groupSaved: {
     id: 'chat.group_saved',
@@ -256,14 +268,48 @@ const AccountSummary: React.FC<{
   </>
 );
 
+const directPartner = (conversation: ChatConversation) =>
+  conversation.type === 'direct'
+    ? conversation.accounts.find((account) => account.id !== me)
+    : undefined;
+
+// A name alone cannot tell apart two people on different servers. The address is cut off when it does not fit, so the
+// whole of it is in its title, and in the profile it links to where nothing can be hovered over.
+const ConversationTitle: React.FC<{
+  conversation: ChatConversation;
+  linked?: boolean;
+}> = ({ conversation, linked = false }) => {
+  const partner = directPartner(conversation);
+  if (conversation.title || !partner?.display_name) {
+    const name = conversationName(conversation);
+    return linked ? name : <strong>{name}</strong>;
+  }
+
+  const address = `@${partner.acct}`;
+  const Title = linked ? 'span' : 'strong';
+  return (
+    <Title className='chat-native__conversation-title'>
+      <span>{partner.display_name}</span>
+      {linked ? (
+        <Link
+          to={`/${address}`}
+          title={address}
+          data-hover-card-account={partner.id}
+        >
+          {address}
+        </Link>
+      ) : (
+        <span title={address}>{address}</span>
+      )}
+    </Title>
+  );
+};
+
 // A group has no one person to show, but its row still lines up with the direct chats.
 const ConversationPicture: React.FC<{ conversation: ChatConversation }> = ({
   conversation,
 }) => {
-  const other =
-    conversation.type === 'direct'
-      ? conversation.accounts.find((account) => account.id !== me)
-      : undefined;
+  const other = directPartner(conversation);
 
   return other ? (
     <Avatar account={other} size={36} />
@@ -316,6 +362,28 @@ export const withNewMessage = (
     { ...conversation, last_message: message, unread },
     ...list.filter((item) => item !== conversation),
   ];
+};
+
+// The API gives a page of these at a time, and the members screen has to show them all.
+const SENT_INVITATIONS_PAGE = 40;
+const fetchSentInvitations = async (
+  conversationId: string,
+  maxId?: string,
+): Promise<ChatInvitation[]> => {
+  const { data } = await api().get<ChatInvitation[]>(
+    '/api/v1/chat/invitations',
+    {
+      params: {
+        direction: 'sent',
+        conversation_id: conversationId,
+        ...(maxId ? { max_id: maxId } : {}),
+      },
+    },
+  );
+  const last = data.at(-1);
+  return last && data.length === SENT_INVITATIONS_PAGE
+    ? [...data, ...(await fetchSentInvitations(conversationId, last.id))]
+    : data;
 };
 
 // Fetches one conversation in place of the whole list. Events about it can come in bursts,
@@ -400,15 +468,14 @@ const waitForMedia = async (media: ChatMedia): Promise<ChatMedia> => {
 
 const InvitationRow: React.FC<{
   invitation: ChatInvitation;
-  onAnswer: (id: string, action: 'accept' | 'reject') => void;
+  onAnswer: (invitation: ChatInvitation, action: 'accept' | 'reject') => void;
 }> = ({ invitation, onAnswer }) => {
-  const intl = useIntl();
   const handleAccept = useCallback(() => {
-    onAnswer(invitation.id, 'accept');
-  }, [invitation.id, onAnswer]);
+    onAnswer(invitation, 'accept');
+  }, [invitation, onAnswer]);
   const handleReject = useCallback(() => {
-    onAnswer(invitation.id, 'reject');
-  }, [invitation.id, onAnswer]);
+    onAnswer(invitation, 'reject');
+  }, [invitation, onAnswer]);
 
   return (
     <div className='chat-native__invitation'>
@@ -426,25 +493,45 @@ const InvitationRow: React.FC<{
         </span>
       </div>
       <div className='account__relationship'>
-        <IconButton
-          title={intl.formatMessage({
-            id: 'chat.accept',
-            defaultMessage: 'Accept',
-          })}
-          icon='check'
-          iconComponent={CheckIcon}
-          onClick={handleAccept}
-        />
-        <IconButton
-          title={intl.formatMessage({
-            id: 'chat.reject',
-            defaultMessage: 'Reject',
-          })}
-          icon='times'
-          iconComponent={CloseIcon}
-          onClick={handleReject}
-        />
+        <Button compact onClick={handleAccept}>
+          <FormattedMessage id='chat.accept' defaultMessage='Accept' />
+        </Button>
+        <Button compact secondary onClick={handleReject}>
+          <FormattedMessage id='chat.reject' defaultMessage='Reject' />
+        </Button>
       </div>
+    </div>
+  );
+};
+
+const PendingInvitationRow: React.FC<{
+  invitation: ChatInvitation;
+  invitee: ChatAccount;
+  onCancel: (invitation: ChatInvitation) => void;
+}> = ({ invitation, invitee, onCancel }) => {
+  const handleCancel = useCallback(() => {
+    onCancel(invitation);
+  }, [invitation, onCancel]);
+
+  return (
+    <div className='chat-native__member'>
+      <Avatar account={invitee} size={36} withLink />
+      <div>
+        <strong>{invitee.display_name || invitee.acct}</strong>
+        <span>@{invitee.acct}</span>
+      </div>
+      <small className='chat-native__pending-badge'>
+        <FormattedMessage
+          id='chat.invitation_pending'
+          defaultMessage='Invited'
+        />
+      </small>
+      <Button compact secondary onClick={handleCancel}>
+        <FormattedMessage
+          id='chat.cancel_invitation'
+          defaultMessage='Cancel invitation'
+        />
+      </Button>
     </div>
   );
 };
@@ -604,6 +691,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   >([]);
   const [inviteAccount, setInviteAccount] = useState<ChatAccount | null>(null);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [sentInvitations, setSentInvitations] = useState<ChatInvitation[]>([]);
+  const [sentInvitationsVersion, setSentInvitationsVersion] = useState(0);
   const [groupEdit, setGroupEdit] = useState<{
     conversationId: string;
     title: string;
@@ -1188,7 +1278,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           void loadInvitations().catch(() => {
             setError('load');
           });
+        } else if (event === 'chat.invitation_update') {
+          if (eventConversationId === conversationId)
+            setSentInvitationsVersion((version) => version + 1);
         } else if (event === CHAT_STREAM_RECONNECTED) {
+          setSentInvitationsVersion((version) => version + 1);
           // This also runs on every poll while offline, and the next one tries again.
           void loadConversations().catch(() => undefined);
           void loadInvitations().catch(() => undefined);
@@ -1348,6 +1442,30 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const isManagingRoom =
     (roomView === 'members' && conversation?.type === 'group') ||
     (roomView === 'settings' && isGroupOwner);
+  const listsSentInvitations = roomView === 'members' && isGroupOwner;
+
+  useEffect(() => {
+    if (!conversationId || !listsSentInvitations) return undefined;
+
+    let current = true;
+    fetchSentInvitations(conversationId)
+      .then((found) => {
+        if (current) setSentInvitations(found);
+      })
+      .catch(() => {
+        if (current) setError('load');
+      });
+    return () => {
+      current = false;
+    };
+  }, [conversationId, listsSentInvitations, sentInvitationsVersion]);
+
+  // The newest comes first from the API, and here it joins the end of the list.
+  const shownSentInvitations = listsSentInvitations
+    ? sentInvitations
+        .filter((invitation) => invitation.conversation.id === conversationId)
+        .reverse()
+    : [];
 
   const createDirect = useCallback(async () => {
     if (!directAccount) return;
@@ -1384,7 +1502,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     );
 
   const send = useCallback(async () => {
-    if (!conversationId || loading || !hasSendableContent || isTooLong) return;
+    if (
+      !conversationId ||
+      loading ||
+      uploading ||
+      !hasSendableContent ||
+      isTooLong
+    )
+      return;
     setLoading(true);
     setError(null);
     try {
@@ -1430,6 +1555,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     replyToId,
     text,
     updateMessages,
+    uploading,
   ]);
 
   const handleComposerSubmit = useCallback(
@@ -1725,7 +1851,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         return;
       }
       setError(null);
-      setLoading(true);
+      setUploading(true);
       void Promise.all(
         files.map(async (file) => {
           const body = new FormData();
@@ -1741,7 +1867,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setError('upload');
         })
         .finally(() => {
-          setLoading(false);
+          setUploading(false);
         });
     },
     [chatSettings, media.length],
@@ -1941,19 +2067,58 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [editingId, finishEditing]);
 
   const answerInvitation = useCallback(
-    (id: string, action: 'accept' | 'reject') => {
+    (invitation: ChatInvitation, action: 'accept' | 'reject') => {
       setError(null);
       void api()
-        .post(`/api/v1/chat/invitations/${id}/${action}`)
+        .post(`/api/v1/chat/invitations/${invitation.id}/${action}`)
         .then(() => {
-          setInvitations((current) => current.filter((item) => item.id !== id));
+          setInvitations((current) =>
+            current.filter((item) => item.id !== invitation.id),
+          );
+          dispatch(
+            showAlert({
+              message:
+                action === 'accept'
+                  ? messages.invitationAccepted
+                  : messages.invitationRejected,
+              values: { group: conversationName(invitation.conversation) },
+            }),
+          );
           return loadConversations();
         })
         .catch(() => {
           setError('invite');
         });
     },
-    [loadConversations],
+    [dispatch, loadConversations],
+  );
+
+  const cancelInvitation = useCallback(
+    (invitation: ChatInvitation) => {
+      setError(null);
+      void api()
+        .delete(`/api/v1/chat/invitations/${invitation.id}`)
+        .then(() => {
+          setSentInvitations((current) =>
+            current.filter((item) => item.id !== invitation.id),
+          );
+          dispatch(
+            showAlert({
+              message: messages.invitationCancelled,
+              values: {
+                account:
+                  invitation.invitee?.display_name ??
+                  invitation.invitee?.acct ??
+                  '',
+              },
+            }),
+          );
+        })
+        .catch(() => {
+          setError('invite');
+        });
+    },
+    [dispatch],
   );
 
   const handleInviteSubmit = useCallback(
@@ -1976,6 +2141,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
           setInviteAccount(null);
           setInviteAccountQuery('');
+          setSentInvitationsVersion((version) => version + 1);
         })
         .catch((inviteError: unknown) => {
           setError(isRefused(inviteError) ? 'refused' : 'invite');
@@ -2296,21 +2462,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         icon='chat'
         iconComponent={ChatIcon}
         title={
-          creating
-            ? intl.formatMessage(messages.newChat)
-            : roomView === 'members' && conversation?.type === 'group'
-              ? intl.formatMessage(
-                  { id: 'chat.members', defaultMessage: 'Members ({count})' },
-                  { count: conversation.accounts.length },
-                )
-              : roomView === 'settings' && isGroupOwner
-                ? intl.formatMessage({
-                    id: 'chat.group_settings',
-                    defaultMessage: 'Group settings',
-                  })
-                : conversation
-                  ? conversationName(conversation)
-                  : intl.formatMessage(messages.heading)
+          creating ? (
+            intl.formatMessage(messages.newChat)
+          ) : roomView === 'members' && conversation?.type === 'group' ? (
+            intl.formatMessage(
+              { id: 'chat.members', defaultMessage: 'Members ({count})' },
+              { count: conversation.accounts.length },
+            )
+          ) : roomView === 'settings' && isGroupOwner ? (
+            intl.formatMessage({
+              id: 'chat.group_settings',
+              defaultMessage: 'Group settings',
+            })
+          ) : conversation ? (
+            <ConversationTitle conversation={conversation} linked />
+          ) : (
+            intl.formatMessage(messages.heading)
+          )
         }
         multiColumn={multiColumn}
         showBackButton={Boolean(conversationId) || creating}
@@ -2545,6 +2713,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   )}
                 </div>
               ))}
+              {shownSentInvitations.map(
+                (invitation) =>
+                  invitation.invitee && (
+                    <PendingInvitationRow
+                      key={invitation.id}
+                      invitation={invitation}
+                      invitee={invitation.invitee}
+                      onCancel={cancelInvitation}
+                    />
+                  ),
+              )}
             </section>
           ) : roomView === 'settings' && isGroupOwner ? (
             <section className='chat-native__group-settings'>
@@ -2892,6 +3071,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     onClick={handleAttachClick}
                     disabled={
                       loading ||
+                      uploading ||
                       Boolean(editingId) ||
                       Boolean(conversation?.archived) ||
                       !chatSettings ||
@@ -2935,12 +3115,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     conversation?.archived ||
                     recipientSuspended ||
                     loading ||
+                    uploading ||
                     media.some((item) => !item.url) ||
                     !hasSendableContent ||
                     isTooLong
                   }
                 >
-                  {intl.formatMessage(messages.send)}
+                  {intl.formatMessage(
+                    editingId ? messages.save : messages.send,
+                  )}
                 </Button>
               </form>
               <div className='chat-native__end' ref={messagesEndRef} />
@@ -3204,7 +3387,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   >
                     <ConversationPicture conversation={item} />
                     <span className='chat-native__account-names'>
-                      <strong>{conversationName(item)}</strong>
+                      <ConversationTitle conversation={item} />
                       <span>{item.last_message?.content}</span>
                     </span>
                     {item.unread && (

@@ -11,6 +11,7 @@ class Api::V1::Chat::InvitationsController < Api::V1::Chat::BaseController
   def index
     invitations = ChatInvitation.pending.includes(:chat_conversation, :inviter_account, :invitee_account)
     invitations = params[:direction] == 'sent' ? invitations.where(inviter_account: current_account) : invitations.where(invitee_account: current_account).from_available_inviters
+    invitations = invitations.where(chat_conversation_id: params[:conversation_id]) if params[:conversation_id].present?
     invitations = invitations.where(id: ...params[:max_id]) if params[:max_id].present?
     invitations = invitations.order(id: :desc).limit(limit_param(LIMIT, LIMIT))
     render json: invitations, each_serializer: REST::ChatInvitationSerializer, current_account: current_account

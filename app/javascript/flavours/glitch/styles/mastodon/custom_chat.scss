@@ -257,7 +257,7 @@
           font-weight: 700;
         }
 
-        .chat-native__account-names span {
+        .chat-native__account-names > span {
           color: var(--color-text-primary);
         }
       }
@@ -303,26 +303,58 @@
     gap: 2px;
     min-width: 0;
 
-    strong,
-    span {
+    > strong,
+    > span {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    strong {
+    > strong {
       font-weight: 500;
     }
 
-    span {
+    > span {
       color: var(--color-text-secondary);
       font-size: 13px;
     }
   }
 
-  &__search-results &__account-names span {
+  &__search-results &__account-names > span {
     overflow-wrap: anywhere;
     white-space: normal;
+  }
+
+  &__conversation-title {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+
+    > :first-child,
+    > :last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    > :first-child {
+      flex: 0 0 auto;
+      max-width: 60%;
+    }
+
+    > :last-child {
+      flex: 0 1 auto;
+      min-width: 0;
+      color: var(--color-text-secondary);
+      font-size: 13px;
+      font-weight: 400;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
   }
 
   &__room-picture {
@@ -373,6 +405,10 @@
       color: var(--color-text-secondary);
       font-size: 13px;
     }
+
+    > .button {
+      flex: 0 0 auto;
+    }
   }
 
   &__remote-badge {
@@ -382,6 +418,16 @@
     color: var(--color-text-secondary);
     font-size: 9px;
     text-transform: uppercase;
+    border: 1px solid var(--color-border-primary);
+    border-radius: 4px;
+  }
+
+  &__pending-badge {
+    flex: none;
+    padding: 1px 6px;
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+    font-size: 11px;
     border: 1px solid var(--color-border-primary);
     border-radius: 4px;
   }

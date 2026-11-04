@@ -729,7 +729,11 @@ describe('Chat live updates', () => {
         api.post.mockReturnValueOnce(pending.promise);
       }
       fireEvent.change(composer(), { target: { value: 'Delayed content' } });
-      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: operation === 'edit' ? 'Save' : 'Send',
+        }),
+      );
       act(() => {
         emitChatStreamEvent({
           event: 'chat.message_delete',
@@ -990,11 +994,11 @@ describe('Chat review additions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(composer(), { target: { value: '' } });
 
-    const send = screen.getByRole<HTMLButtonElement>('button', {
-      name: 'Send',
+    const save = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Save',
     });
-    expect(send.disabled).toBe(false);
-    fireEvent.click(send);
+    expect(save.disabled).toBe(false);
+    fireEvent.click(save);
 
     await waitFor(() => {
       expect(screen.queryByText('Editing message')).toBeNull();
@@ -1004,7 +1008,7 @@ describe('Chat review additions', () => {
     });
     expect(screen.queryByText('Private message A')).toBeNull();
     expect(screen.getByAltText('Private attachment A')).toBeTruthy();
-    expect(send.disabled).toBe(true);
+    expect(save.disabled).toBe(true);
   });
 
   it('keeps empty text-only edits disabled', async () => {
@@ -1014,7 +1018,7 @@ describe('Chat review additions', () => {
     fireEvent.change(composer(), { target: { value: '   ' } });
 
     expect(
-      screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled,
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }).disabled,
     ).toBe(true);
     const form = composer().closest('form');
     if (!form) throw new Error('Missing composer form');
@@ -1184,7 +1188,7 @@ describe('Chat screen lifecycle', () => {
     await screen.findByText('Private message A');
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(composer(), { target: { value: 'Edited text' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByText('Editing message')).toBeTruthy();
@@ -1201,10 +1205,10 @@ describe('Chat screen lifecycle', () => {
     await screen.findByText('Private message A');
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(composer(), { target: { value: 'Edited text' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await screen.findByRole('alert');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('alert')).toBeNull();
@@ -2040,16 +2044,14 @@ describe('Chat invitations', () => {
     await screen.findByText('Book club');
   };
 
-  it('shows the room and who invited, with icon actions like follow requests', async () => {
+  it('shows the room and who invited, with the actions in words', async () => {
     await openInvitations();
 
     expect(screen.getByText('Invited by Bob')).toBeTruthy();
     const accept = screen.getByRole('button', { name: 'Accept' });
     const reject = screen.getByRole('button', { name: 'Reject' });
-    expect(accept.classList.contains('icon-button')).toBe(true);
-    expect(reject.classList.contains('icon-button')).toBe(true);
-    expect(accept.querySelector('svg')).toBeTruthy();
-    expect(accept.textContent.trim()).toBe('');
+    expect(accept.textContent).toBe('Accept');
+    expect(reject.textContent).toBe('Reject');
     expect(screen.queryByRole('heading', { name: 'Invitations' })).toBeNull();
   });
 
