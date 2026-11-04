@@ -11,7 +11,7 @@ import {
   deleteAnnouncement,
 } from './announcements';
 import { updateConversations, updateConversationReadReceipts } from './conversations';
-import { emitChatStreamEvent, handleChatStreamConnected, showChatDesktopNotification } from '../features/chat/stream';
+import { emitChatStreamEvent, handleChatStreamConnected, handleChatStreamPolled, showChatDesktopNotification } from '../features/chat/stream';
 import { processNewNotificationForGroups, refreshStaleNotificationGroups, pollRecentNotifications as pollRecentGroupNotifications } from './notification_groups';
 import { updateNotifications } from './notifications';
 import { updateStatus } from './statuses';
@@ -175,6 +175,8 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
  * @param {Dispatch} dispatch
  */
 async function refreshHomeTimelineAndNotification(dispatch) {
+  handleChatStreamPolled();
+
   await dispatch(expandHomeTimeline());
 
   // TODO: polling for merged notifications

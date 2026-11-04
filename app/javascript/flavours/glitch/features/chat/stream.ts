@@ -35,6 +35,11 @@ export const handleChatStreamConnected = () => {
   streamConnected = true;
 };
 
+// While the stream is down, polling has to catch what it would have delivered.
+export const handleChatStreamPolled = () => {
+  emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+};
+
 export const showChatDesktopNotification = (
   payload: unknown,
   title = 'Chat',

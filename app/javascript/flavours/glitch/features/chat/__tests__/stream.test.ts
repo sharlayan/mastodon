@@ -30,6 +30,21 @@ describe('Chat stream connection', () => {
     });
     unsubscribe();
   });
+
+  it('announces each poll made while the stream is down', async () => {
+    vi.resetModules();
+    const stream = await import('../stream');
+    const listener = vi.fn();
+    const unsubscribe = stream.subscribeChatStream(listener);
+
+    stream.handleChatStreamPolled();
+
+    expect(listener).toHaveBeenCalledWith({
+      event: stream.CHAT_STREAM_RECONNECTED,
+      payload: {},
+    });
+    unsubscribe();
+  });
 });
 
 describe('Chat desktop notifications', () => {
