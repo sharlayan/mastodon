@@ -305,7 +305,7 @@ RSpec.describe Sharlayan::ChatService do
       service.receive_remove(remote_account, room_uri: conversation.uri, account_uri: ActivityPub::TagManager.instance.uri_for(local_account))
 
       expect(conversation.reload.accounts).to_not include(local_account)
-      expect(service).to have_received(:broadcast_to).with(local_account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s })
+      expect(service).to have_received(:broadcast_to).with(local_account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s, reason: 'removed' })
     end
 
     it 'does not let a remote owner re-add a local account that left' do
@@ -381,8 +381,9 @@ RSpec.describe Sharlayan::ChatService do
 
       service.destroy_conversation(local_account, room)
 
-      [local_account, member, invitee].each do |account|
-        expect(service).to have_received(:broadcast_to).with(account, 'chat.conversation_delete', { conversation_id: room.id.to_s })
+      expect(service).to have_received(:broadcast_to).with(local_account, 'chat.conversation_delete', { conversation_id: room.id.to_s })
+      [member, invitee].each do |account|
+        expect(service).to have_received(:broadcast_to).with(account, 'chat.conversation_delete', { conversation_id: room.id.to_s, reason: 'deleted' })
       end
     end
   end

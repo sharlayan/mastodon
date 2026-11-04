@@ -59,14 +59,14 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     conversation = direct_conversation_for(other.id)
     return render json: [] if conversation.nil?
 
-    messages = paginate(conversation.messages.visible_to(current_account), default: 10)
+    messages = paginate(conversation.messages.visible_to(current_account).visible, default: 10)
     chat_service.mark_read(current_account, conversation)
     render_messages(messages)
   end
 
   def room_timeline
     conversation = member_room!
-    messages = paginate(conversation.messages.visible_to(current_account), default: 10)
+    messages = paginate(conversation.messages.visible_to(current_account).visible, default: 10)
     chat_service.mark_read(current_account, conversation)
     render_messages(messages)
   end

@@ -56,6 +56,46 @@ RSpec.describe MisskeyCompat::ChatSerializer do
     expect(payload.dig(:file, :thumbnailUrl)).to include("/media_proxy/#{media.id}/small")
   end
 
+  describe 'the name of an attachment from another server' do
+    let(:remote) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob') }
+    let(:media) { MediaAttachment.create!(account: remote, remote_url: 'https://remote.test/files/abc', file_content_type: 'image/png') }
+    let(:message) do
+      room.memberships.create!(account: remote)
+      room.messages.create!(account: remote, text: 'attachment').tap { |record| record.media_attachments << media }
+    end
+
+    def file_name
+      described_class.message(ChatMessage.find(message.id), viewer: member).dig(:file, :name)
+    end
+
+    it 'comes from the declared type before the file is downloaded, not from the media ID' do
+      expect(media.needs_redownload?).to be(true)
+      expect(file_name).to eq('file.png')
+    end
+
+    it 'stays the same after the file is downloaded', :attachment_processing do
+      expect(file_name).to eq('file.png')
+
+      media.update!(file: fixture_file_upload('emojo.png', 'image/png'))
+
+      expect(file_name).to eq('file.png')
+    end
+
+    it 'has no extension when the type is not known' do
+      media.update_column(:file_content_type, nil)
+
+      expect(file_name).to eq('file')
+    end
+  end
+
+  it 'keeps the stored name of an attachment from this server' do
+    media = Fabricate(:media_attachment, account: owner)
+    message = room.messages.create!(account: owner, text: 'attachment')
+    message.media_attachments << media
+
+    expect(described_class.message(message, viewer: member).dig(:file, :name)).to eq(media.file_file_name)
+  end
+
   it 'qualifies custom reactions by their server and supplies remote text emoji URLs' do
     remote = Fabricate(:account, domain: 'remote.example')
     room.memberships.create!(account: remote)

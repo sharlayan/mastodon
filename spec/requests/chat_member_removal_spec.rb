@@ -110,7 +110,7 @@ RSpec.describe 'Chat room member removal' do
     expect(service.redis).to have_received(:publish).at_least(:once) do |channel, payload|
       events << [channel, JSON.parse(payload)]
     end
-    expect(events).to include(["timeline:#{member.account.id}", include('event' => 'chat.conversation_delete', 'payload' => { conversation_id: room.id.to_s }.to_json)])
+    expect(events).to include(["timeline:#{member.account.id}", include('event' => 'chat.conversation_delete', 'payload' => { conversation_id: room.id.to_s, reason: 'removed' }.to_json)])
     expect(events).to include(["timeline:#{user.account.id}", include('event' => 'chat.member_leave')])
   end
 

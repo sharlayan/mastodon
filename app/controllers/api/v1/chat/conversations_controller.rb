@@ -6,7 +6,8 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
   before_action :authorize_chat_read!, only: [:index, :show]
   before_action :authorize_chat_write!, except: [:index, :show]
   before_action :enforce_chat_write_rate_limit!, except: [:index, :show, :read]
-  before_action :set_conversation, only: [:show, :update, :destroy, :read, :leave, :kick, :mute, :unmute, :archive, :unarchive]
+  before_action :set_conversation_or_explain_ending, only: :show
+  before_action :set_conversation, only: [:update, :destroy, :read, :leave, :kick, :mute, :unmute, :archive, :unarchive]
 
   def index
     conversations = ChatConversation.for_account(current_account)
@@ -83,5 +84,17 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
 
   def unarchive
     render json: chat_service.archive(current_account, @conversation, archived: false), serializer: REST::ChatConversationSerializer, current_account: current_account
+  end
+
+  private
+
+  # Someone who was in a room is told what became of it, and to anyone else it was never there.
+  def set_conversation_or_explain_ending
+    set_conversation
+  rescue ActiveRecord::RecordNotFound
+    reason = chat_service.room_ending(current_account, params[:id])
+    raise if reason.nil?
+
+    render json: { error: 'Record not found', reason: reason }, status: 404
   end
 end

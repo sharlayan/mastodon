@@ -104,7 +104,7 @@ RSpec.describe Sharlayan::ChatService do
       service.receive_remove(remote_account, room_uri: conversation.uri, account_uri: remote_account.uri)
 
       expect(ChatConversation.exists?(conversation.id)).to be(false)
-      expect(service).to have_received(:broadcast_to).with(local_account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s })
+      expect(service).to have_received(:broadcast_to).with(local_account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s, reason: 'deleted' })
     end
   end
 

@@ -19,9 +19,14 @@ class Sharlayan::ChatService
   UNKNOWN_ROOM_TOMBSTONE_TTL = 6.hours
   MAX_TOMBSTONED_ROOM_MESSAGES = 1000
   ACCEPT_DELIVERY_GRACE = 5.minutes
+  LEFT_ROOM_OWNED_HERE = 'removed_here'
 
   def self.room_tombstone_key(uri)
     "chat_room_tombstone:#{Digest::SHA256.hexdigest(uri.to_s)}"
+  end
+
+  def self.room_ending_key(account_id, conversation_id)
+    "chat_room_ending:#{account_id}:#{conversation_id}"
   end
 
   def self.closed_room_key(uri)
@@ -246,6 +251,7 @@ class Sharlayan::ChatService
     deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, account))
     membership.destroy!
     forget_acceptance(conversation, account)
+    remember_room_ending(account, conversation, 'removed')
     broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account.id.to_s })
     schedule_abandoned_room_cleanup(conversation)
   end
@@ -272,7 +278,7 @@ class Sharlayan::ChatService
 
     payload = Sharlayan::ChatFederation::Payload.remove(conversation, target, actor: account)
     recipients.uniq(&:preferred_inbox_url).each { |recipient| deliver_to_account(account, payload, recipient) }
-    broadcast_to(target, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if target.local?
+    announce_room_ending(target, conversation, 'removed')
     broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: target.id.to_s })
     conversation
   end
@@ -309,7 +315,7 @@ class Sharlayan::ChatService
     raise Forbidden unless conversation.chat_group? && membership.owner?
 
     deliver_room_state(account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation)) if conversation.local?
-    destroy_and_announce(conversation)
+    destroy_and_announce(conversation, actor: account)
   end
 
   def purge_account(account, federate: true)
@@ -574,7 +580,7 @@ class Sharlayan::ChatService
     return if %i(stale absent).include?(outcome)
     return tombstone_room(conversation, actor) if outcome == :owner
 
-    broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
+    announce_room_ending(account, conversation, 'removed')
     return unless ChatConversation.exists?(conversation.id)
 
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
@@ -624,6 +630,10 @@ class Sharlayan::ChatService
     broadcast(message.chat_conversation, 'chat.message_update', message, REST::ChatMessageSerializer)
     relay_update(message)
     message
+  end
+
+  def announce_downloaded_media(message)
+    broadcast(message.chat_conversation, 'chat.message_update', message, REST::ChatMessageSerializer)
   end
 
   def delete_remote_message(actor, message, activity: nil)
@@ -699,6 +709,15 @@ class Sharlayan::ChatService
     room_tombstoned?(uri) || room_closed_here?(uri)
   end
 
+  # What became of a room for someone who was in it. Nobody else learns that it ever existed.
+  def room_ending(account, conversation_id)
+    ending = redis.get(self.class.room_ending_key(account.id, conversation_id))
+    return ending unless ending == LEFT_ROOM_OWNED_HERE
+
+    # A copy of someone else's room also goes once nobody here is in it, but a room owned here only goes by being deleted.
+    ChatConversation.exists?(conversation_id) ? 'removed' : 'deleted'
+  end
+
   def room_deleted_at(uri)
     value = redis.get(self.class.room_tombstone_key(uri))
     value && Time.iso8601(value)
@@ -747,7 +766,7 @@ class Sharlayan::ChatService
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer) if joined.any? || left.any?
     joined.each { |account| broadcast(conversation, 'chat.member_join', { conversation_id: conversation.id.to_s, account_id: account.id.to_s }) }
     left.each do |account|
-      broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
+      announce_room_ending(account, conversation, 'removed')
       broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account.id.to_s })
     end
     schedule_abandoned_room_cleanup(conversation) if left.any?
@@ -825,7 +844,7 @@ class Sharlayan::ChatService
     end
     return unless withdrawn
 
-    broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
+    announce_room_ending(account, conversation, 'removed')
     broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account.id.to_s })
     conversation.destroy_if_unused!
   end
@@ -1028,7 +1047,6 @@ class Sharlayan::ChatService
     reply_to = conversation.messages.find_by(uri: reply_to_uri) if reply_to_uri.present?
 
     message = nil
-    media = []
     conversation.with_lock do
       existing = ChatMessage.find_by(uri: uri)
       if existing
@@ -1053,9 +1071,9 @@ class Sharlayan::ChatService
       media.each { |attachment| message.chat_message_media_attachments.create!(media_attachment: attachment) }
       conversation.update!(last_message: message)
     end
-    download_incoming_media(actor, media)
     broadcast(conversation, 'chat.message', message, REST::ChatMessageSerializer)
     notify_members(conversation, message)
+    download_incoming_media(actor, message)
     message
   end
 
@@ -1093,21 +1111,40 @@ class Sharlayan::ChatService
     :unknown
   end
 
-  def download_incoming_media(actor, media)
-    return if media.empty? || DomainBlock.reject_media?(actor.domain)
+  # Queued after the message is published, so that the first redraw cannot reach a screen before the message does.
+  def download_incoming_media(actor, message)
+    return if message.media_attachments.empty? || DomainBlock.reject_media?(actor.domain)
 
-    ActiveRecord.after_all_transactions_commit do
-      media.each { |attachment| RedownloadMediaWorker.perform_async(attachment.id) }
+    ActiveRecord.after_all_transactions_commit { ChatMediaDownloadWorker.perform_async(message.id) }
+  end
+
+  def destroy_and_announce(conversation, actor: nil)
+    local_accounts = Account.local.where(id: conversation.memberships.select(:account_id))
+      .or(Account.local.where(id: conversation.invitations.pending.select(:invitee_account_id))).to_a
+
+    conversation.destroy!
+    local_accounts.each do |account|
+      if conversation.chat_group?
+        announce_room_ending(account, conversation, 'deleted', actor: actor)
+      else
+        broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s })
+      end
     end
   end
 
-  def destroy_and_announce(conversation)
-    local_accounts = Account.local.where(id: conversation.memberships.select(:account_id))
-      .or(Account.local.where(id: conversation.invitations.pending.select(:invitee_account_id))).to_a
-    conversation_id = conversation.id.to_s
+  # Someone who did it themselves knows, and their screen has already moved on.
+  def announce_room_ending(account, conversation, ending, actor: nil)
+    return unless account.local?
 
-    conversation.destroy!
-    local_accounts.each { |account| broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation_id }) }
+    remember_room_ending(account, conversation, ending)
+    payload = { conversation_id: conversation.id.to_s }
+    payload[:reason] = ending unless account.id == actor&.id
+    broadcast_to(account, 'chat.conversation_delete', payload)
+  end
+
+  def remember_room_ending(account, conversation, ending)
+    stored = ending == 'removed' && conversation.local? ? LEFT_ROOM_OWNED_HERE : ending
+    redis.setex(self.class.room_ending_key(account.id, conversation.id), ROOM_TOMBSTONE_TTL.to_i, stored)
   end
 
   def purge_membership(membership, federate:)

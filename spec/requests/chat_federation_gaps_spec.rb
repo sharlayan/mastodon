@@ -89,8 +89,31 @@ RSpec.describe 'Chat federation gaps' do
     it 'downloads a federated attachment as soon as it arrives' do
       perform(note_json(attachment: [attachment]))
 
-      media = ChatMessage.find_by(uri: 'https://remote.test/chat/messages/1').media_attachments.first
-      expect(RedownloadMediaWorker.jobs.pluck('args')).to contain_exactly([media.id])
+      message = ChatMessage.find_by(uri: 'https://remote.test/chat/messages/1')
+      expect(ChatMediaDownloadWorker.jobs.pluck('args')).to contain_exactly([message.id])
+    end
+
+    it 'queues one download for all the attachments of a message' do
+      perform(note_json(attachment: [attachment, attachment.merge('url' => 'https://remote.test/media_proxy/2/original?token=abc')]))
+
+      expect(ChatMediaDownloadWorker.jobs.size).to eq(1)
+    end
+
+    it 'queues the download after publishing the message, so the first redraw cannot arrive before it' do
+      order = []
+      allow(service.redis).to receive(:publish) { order << :published }
+      allow(ChatMediaDownloadWorker).to receive(:perform_async) { order << :queued }
+
+      perform(note_json(attachment: [attachment]))
+
+      expect(order.first).to eq(:published)
+      expect(order).to include(:queued)
+    end
+
+    it 'does not queue a download for a message without attachments' do
+      perform(note_json)
+
+      expect(ChatMediaDownloadWorker.jobs).to be_empty
     end
 
     it 'records the declared media type until the file is downloaded' do
@@ -105,7 +128,7 @@ RSpec.describe 'Chat federation gaps' do
       perform(note_json(attachment: [attachment]))
 
       expect(ChatMessage.find_by(uri: 'https://remote.test/chat/messages/1').media_attachments.size).to eq(1)
-      expect(RedownloadMediaWorker.jobs).to be_empty
+      expect(ChatMediaDownloadWorker.jobs).to be_empty
     end
   end
 

@@ -71,6 +71,8 @@ interface ChatAccount {
   suspended?: boolean;
 }
 
+type RoomEnding = 'deleted' | 'removed';
+
 interface ChatReaction {
   message_id: string;
   reaction: string;
@@ -205,6 +207,11 @@ const isNotFound = (error: unknown) =>
   (error as { response?: { status?: number } }).response?.status === 404;
 const isRefused = (error: unknown) =>
   (error as { response?: { status?: number } }).response?.status === 403;
+const roomEndingOf = (error: unknown): RoomEnding | null => {
+  const reason = (error as { response?: { data?: { reason?: unknown } } })
+    .response?.data?.reason;
+  return reason === 'deleted' || reason === 'removed' ? reason : null;
+};
 
 export const isRemoteAccount = (account: ChatAccount) =>
   account.acct.includes('@');
@@ -576,6 +583,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
   const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
   const [conversationMissing, setConversationMissing] = useState(false);
+  const [roomEnding, setRoomEnding] = useState<RoomEnding | null>(null);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -732,6 +740,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!cursor) break;
     }
     let missing = false;
+    let ending: RoomEnding | null = null;
     if (conversationId && !loaded.some((item) => item.id === conversationId)) {
       try {
         const selected = await api().get<ChatConversation>(
@@ -741,12 +750,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       } catch (loadError) {
         if (!isNotFound(loadError)) throw loadError;
         missing = true;
+        ending = roomEndingOf(loadError);
       }
     }
     if (requestId !== latestConversationRequest.current) return;
     setNextConversationId(cursor);
     setConversationMissing(missing);
-    if (missing) setError('load');
+    setRoomEnding(ending);
+    if (missing && !ending) setError('load');
     setConversations(loaded);
     setConversationsLoaded(true);
   }, [conversationId]);
@@ -990,6 +1001,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             conversation_id?: string;
             message_id?: string;
             account_id?: string;
+            reason?: RoomEnding;
           };
         const eventConversationId = value.conversation_id;
         if (event === 'chat.message') {
@@ -1122,7 +1134,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               (item) => item.conversation.id !== value.conversation_id,
             ),
           );
-          if (value.conversation_id === conversationId) history.push('/chat');
+          if (value.conversation_id !== conversationId) return;
+          if (!value.reason) {
+            history.push('/chat');
+            return;
+          }
+          // An answer on its way from before this must not bring the room back.
+          latestConversationRequest.current += 1;
+          setConversationMissing(true);
+          setRoomEnding(value.reason);
         } else if (event === 'chat.read' && value.conversation_id) {
           setConversations((current) =>
             current.map((item) =>
@@ -2374,7 +2394,31 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       </ColumnHeader>
 
       <div className='scrollable chat-native'>
-        {conversationId && conversationMissing ? null : conversationId ? (
+        {conversationId && conversationMissing ? (
+          roomEnding && (
+            <div className='chat-native__empty'>
+              <p>
+                {roomEnding === 'deleted' ? (
+                  <FormattedMessage
+                    id='chat.room_deleted'
+                    defaultMessage='This group was deleted.'
+                  />
+                ) : (
+                  <FormattedMessage
+                    id='chat.room_removed'
+                    defaultMessage='You have left this group. An invitation is required to rejoin.'
+                  />
+                )}
+              </p>
+              <Link className='button chat-native__ended-back' to='/chat'>
+                <FormattedMessage
+                  id='chat.room_ended_back'
+                  defaultMessage='Back to chats'
+                />
+              </Link>
+            </div>
+          )
+        ) : conversationId ? (
           roomView === 'members' && conversation?.type === 'group' ? (
             <section className='chat-native__members'>
               {isGroupOwner && (
@@ -3177,7 +3221,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             )}
           </>
         )}
-        {error && (
+        {error && !roomEnding && (
           <div className='chat-native__error' role='alert'>
             {error === 'refused' ? (
               <FormattedMessage

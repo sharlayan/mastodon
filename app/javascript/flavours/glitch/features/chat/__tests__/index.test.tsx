@@ -2600,6 +2600,115 @@ describe('Chat jump to newest', () => {
   });
 });
 
+describe('Chat room ending', () => {
+  const NOTICES = [
+    ['deleted', 'This group was deleted.'],
+    [
+      'removed',
+      'You have left this group. An invitation is required to rejoin.',
+    ],
+  ] as const;
+  const close = (reason?: string) => {
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_delete',
+        payload: { conversation_id: 'A', reason },
+      });
+    });
+  };
+  const roomIsGone = (reason?: string) => {
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: [] });
+      if (url === '/api/v1/chat/conversations/A' || url.endsWith('/messages'))
+        return Promise.reject(
+          Object.assign(new Error('Not found'), {
+            response: {
+              status: 404,
+              data: { error: 'Record not found', reason },
+            },
+          }),
+        );
+      return getResponse(url);
+    });
+  };
+
+  it.each(NOTICES)(
+    'says the group was %s while it was open',
+    async (reason, notice) => {
+      const { history } = mountChat();
+      await screen.findByText('Private message A');
+
+      close(reason);
+
+      expect(screen.getByText(notice)).toBeTruthy();
+      expect(screen.queryByText('Private message A')).toBeNull();
+      expect(screen.queryByPlaceholderText('Write a message')).toBeNull();
+      expect(history.location.pathname).toBe('/chat/A');
+
+      fireEvent.click(screen.getByRole('link', { name: 'Back to chats' }));
+
+      expect(history.location.pathname).toBe('/chat');
+    },
+  );
+
+  it.each(NOTICES)(
+    'says the group was %s when its address is opened again',
+    async (reason, notice) => {
+      roomIsGone(reason);
+
+      mountChat();
+
+      expect(await screen.findByText(notice)).toBeTruthy();
+      await waitFor(() => {
+        expect(api.get).toHaveBeenCalledWith(
+          '/api/v1/chat/conversations/A/messages',
+        );
+      });
+      expect(screen.queryByRole('alert')).toBeNull();
+    },
+  );
+
+  it('keeps the error for an address nobody said anything about', async () => {
+    roomIsGone();
+
+    mountChat();
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Back to chats' })).toBeNull();
+  });
+
+  it('goes to the list without a word for whoever deleted it', async () => {
+    const { history } = mountChat();
+    await screen.findByText('Private message A');
+
+    close();
+
+    expect(history.location.pathname).toBe('/chat');
+    expect(screen.queryByRole('link', { name: 'Back to chats' })).toBeNull();
+  });
+
+  it('does not reopen the group for an answer from before it ended', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    const earlier = deferred<{ data: unknown }>();
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations' ? earlier.promise : getResponse(url),
+    );
+    act(() => {
+      emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+    });
+
+    close('removed');
+    await act(async () => {
+      earlier.resolve(await getResponse('/api/v1/chat/conversations'));
+    });
+
+    expect(screen.getByRole('link', { name: 'Back to chats' })).toBeTruthy();
+    expect(screen.queryByPlaceholderText('Write a message')).toBeNull();
+  });
+});
+
 describe('Chat account search', () => {
   it('says when no account matched', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

@@ -162,6 +162,33 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response.parsed_body.pluck(:id)).to eq([mi_id(previous)])
   end
 
+  it 'leaves deleted messages out of the timelines, as they would not exist on Misskey' do
+    conversation = direct_conversation
+    kept = service.create_message(account, conversation, text: 'kept')
+    service.delete_message(account, service.create_message(account, conversation, text: 'deleted'))
+    room = group_conversation
+    kept_in_room = service.create_message(account, room, text: 'kept')
+    service.delete_message(account, service.create_message(account, room, text: 'deleted'))
+
+    request_chat('messages/user-timeline', userId: mi_id(other.account))
+    expect(response.parsed_body.pluck(:id)).to eq([mi_id(kept)])
+
+    request_chat('messages/room-timeline', roomId: mi_id(room))
+    expect(response.parsed_body.pluck(:id)).to eq([mi_id(kept_in_room)])
+  end
+
+  it 'gives every error the id that clients need to read it' do
+    room = group_conversation
+
+    request_chat('rooms/show', { roomId: mi_id(room) }, as_user: outsider)
+    first = response.parsed_body[:error]
+    request_chat('messages/room-timeline', { roomId: mi_id(room) }, as_user: outsider)
+
+    expect(response).to have_http_status(404)
+    expect(first).to include(code: 'NO_SUCH_ROOM', kind: 'client', id: match(/\A\h{8}-\h{4}-5\h{3}-\h{4}-\h{12}\z/))
+    expect(response.parsed_body.dig(:error, :id)).to eq(first[:id])
+  end
+
   it 'updates and deletes a message through the shared chat service' do
     message = service.create_message(account, direct_conversation, text: 'before')
 

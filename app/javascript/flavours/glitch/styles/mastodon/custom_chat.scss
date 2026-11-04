@@ -919,6 +919,11 @@
     color: var(--color-text-tertiary);
     text-align: center;
   }
+
+  &__ended-back {
+    display: inline-block;
+    margin-top: 16px;
+  }
 }
 
 .chat-native-settings {
