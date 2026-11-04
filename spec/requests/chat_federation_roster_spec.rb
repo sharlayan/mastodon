@@ -545,34 +545,47 @@ RSpec.describe 'Chat federation roster ordering' do
     end
 
     it 'gives an acceptance five minutes to reach the owner' do
-      list_without_second(4.minutes.from_now)
+      invitation.update!(updated_at: 4.minutes.ago)
+      list_without_second(1.minute.from_now)
+
+      expect(member?(second)).to be(true)
+    end
+
+    it 'keeps someone who accepted after the list was made' do
+      invitation.update!(updated_at: 10.minutes.ago)
+      room.roster_states.find_by!(account: second).update!(last_roster_at: 1.hour.ago)
+      list_without_second(20.minutes.ago)
 
       expect(member?(second)).to be(true)
     end
 
     it 'takes the member out once those five minutes have passed' do
-      list_without_second(6.minutes.from_now)
+      invitation.update!(updated_at: 6.minutes.ago)
+      list_without_second(1.minute.from_now)
 
       expect(member?(second)).to be(false)
     end
 
     context 'when the list took them out but they never left' do
-      before { list_without_second(6.minutes.from_now) }
+      before do
+        invitation.update!(updated_at: 10.minutes.ago)
+        list_without_second(1.minute.from_now)
+      end
 
       it 'restores them with a newer Add' do
-        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 7.minutes.from_now)
+        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 2.minutes.from_now)
 
         expect(member?(second)).to be(true)
       end
 
       it 'does not restore them with an older Add' do
-        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 5.minutes.from_now)
+        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 30.seconds.from_now)
 
         expect(member?(second)).to be(false)
       end
 
       it 'does not put them back from the list itself' do
-        service.apply_roster(room, member_uris: [owner.uri, actor_uri(local), actor_uri(second)], roster_at: 8.minutes.from_now)
+        service.apply_roster(room, member_uris: [owner.uri, actor_uri(local), actor_uri(second)], roster_at: 2.minutes.from_now)
 
         expect(member?(second)).to be(false)
       end

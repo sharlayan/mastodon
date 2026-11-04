@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Sharlayan::ChatService
+  include DomainControlHelper
   include Redisable
 
   class Error < StandardError; end
@@ -182,7 +183,7 @@ class Sharlayan::ChatService
     raise Forbidden unless invitation.invitee_account_id == account.id && invitation.pending?
 
     ensure_conversation_writable!(invitation.chat_conversation)
-    raise Forbidden if blocked_in_either_direction?(invitation.inviter_account, account) || invitation.chat_conversation.owner_account&.suspended?
+    raise Forbidden if blocked_in_either_direction?(invitation.inviter_account, account) || owner_refused?(invitation.chat_conversation.owner_account)
 
     conversation = invitation.chat_conversation
     joined = conversation.with_lock do
@@ -723,7 +724,7 @@ class Sharlayan::ChatService
 
   # The owner may have yet to hear of an acceptance this server has only just sent.
   def awaiting_acceptance?(conversation, account, roster_at)
-    account.local? && conversation.invitations.exists?(invitee_account: account, state: :accepted, updated_at: (roster_at - ACCEPT_DELIVERY_GRACE)..)
+    account.local? && conversation.invitations.exists?(invitee_account: account, state: :accepted, updated_at: [roster_at, ACCEPT_DELIVERY_GRACE.ago].min..)
   end
 
   # An acceptance can bring someone back only until they have left or been removed.
@@ -930,6 +931,8 @@ class Sharlayan::ChatService
         created_at: created_at || Time.current
       )
       media = attachments.filter_map { |attachment| incoming_media(actor, attachment) }
+      raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat attachments' if media.empty? && attachments.any? && text.blank?
+
       message.pending_media_attachments = media
       message.save!
       media.each { |attachment| message.chat_message_media_attachments.create!(media_attachment: attachment) }
@@ -958,6 +961,9 @@ class Sharlayan::ChatService
       description: parser.description,
       blurhash: parser.blurhash
     )
+  rescue ActiveRecord::RecordInvalid => e
+    Rails.logger.info("Could not store a chat attachment from #{actor.uri}: #{e.message}")
+    nil
   end
 
   def supported_media_content_type(content_type)
@@ -1203,6 +1209,10 @@ class Sharlayan::ChatService
 
     other_accounts = conversation.accounts.where.not(id: account.id)
     raise Forbidden if other_accounts.any? { |other_account| blocked_in_either_direction?(account, other_account) }
+  end
+
+  def owner_refused?(owner)
+    owner.present? && (owner.suspended? || domain_not_allowed?(owner.domain))
   end
 
   def ensure_direct_recipient_not_suspended!(account, conversation)
