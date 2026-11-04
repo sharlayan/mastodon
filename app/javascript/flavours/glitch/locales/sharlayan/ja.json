@@ -92,6 +92,8 @@
   "chat.delete": "削除",
   "chat.delete_group": "グループを削除",
   "chat.delete_group_confirm": "メンバー全員からこのグループを削除しますか？元に戻せません。",
+  "chat.delete_message": "このメッセージを削除しますか？",
+  "chat.delete_message_confirm": "この会話の全員に削除済みと表示され、元に戻せません。",
   "chat.edit": "編集",
   "chat.editing": "メッセージを編集中",
   "chat.error": "チャットのリクエストを完了できませんでした。",

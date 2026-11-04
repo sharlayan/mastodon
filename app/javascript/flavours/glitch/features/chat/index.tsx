@@ -348,6 +348,7 @@ const MessageActionButton: React.FC<{
 // Messages one person sends in quick succession read as a single thought, so
 // they share one picture, name, and time. Matches CherryPick's
 // CHAT_MESSAGE_GROUPING_INTERVAL, which includes exactly this gap.
+const SEARCH_DEBOUNCE_MS = 250;
 const RUN_GAP_MS = 17 * 60 * 1000;
 
 const startsDay = (list: ChatMessage[], index: number) => {
@@ -476,6 +477,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const followingNewestRef = useRef(true);
   const searchRequestRef = useRef(0);
   const searchTimeoutRef = useRef<number | null>(null);
+  const messageSearchTimeoutRef = useRef<number | undefined>(undefined);
+  const latestMessageSearch = useRef(0);
 
   const applyTombstone = useCallback((message: ChatMessage): ChatMessage => {
     if (message.deleted_at && !deletedMessages.current.has(message.id)) {
@@ -565,7 +568,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           .catch(() => {
             if (requestId === searchRequestRef.current) setter([]);
           });
-      }, 250);
+      }, SEARCH_DEBOUNCE_MS);
     },
     [],
   );
@@ -1327,12 +1330,20 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     fileInputRef.current?.click();
   }, []);
 
+  const cancelMessageSearch = useCallback(() => {
+    window.clearTimeout(messageSearchTimeoutRef.current);
+    latestMessageSearch.current += 1;
+  }, []);
+
   const handleSearchToggle = useCallback(() => {
+    cancelMessageSearch();
     setSearchOpen((open) => !open);
     setSearchQuery('');
     setSearchResults([]);
     setSearchedQuery(null);
-  }, []);
+  }, [cancelMessageSearch]);
+
+  useEffect(() => cancelMessageSearch, [cancelMessageSearch]);
 
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();
@@ -1345,32 +1356,51 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
-  const handleSearchChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(event.target.value);
-    },
-    [],
-  );
-
-  const handleSearchSubmit = useCallback(
-    (event: SyntheticEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const query = searchQuery.trim();
-      if (!query) return;
+  const runMessageSearch = useCallback(
+    (query: string) => {
+      cancelMessageSearch();
+      const requestId = latestMessageSearch.current;
       setError(null);
       void api()
         .get<ChatMessage[]>('/api/v1/chat/messages/search', {
           params: { q: query, limit: 40 },
         })
         .then((response) => {
+          if (requestId !== latestMessageSearch.current) return;
           setSearchResults(response.data);
           setSearchedQuery(query);
         })
         .catch(() => {
-          setError('search');
+          if (requestId === latestMessageSearch.current) setError('search');
         });
     },
-    [searchQuery],
+    [cancelMessageSearch],
+  );
+
+  const handleSearchChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const query = event.target.value.trim();
+      setSearchQuery(event.target.value);
+      cancelMessageSearch();
+      if (query) {
+        messageSearchTimeoutRef.current = window.setTimeout(() => {
+          runMessageSearch(query);
+        }, SEARCH_DEBOUNCE_MS);
+      } else {
+        setSearchResults([]);
+        setSearchedQuery(null);
+      }
+    },
+    [cancelMessageSearch, runMessageSearch],
+  );
+
+  const handleSearchSubmit = useCallback(
+    (event: SyntheticEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const query = searchQuery.trim();
+      if (query) runMessageSearch(query);
+    },
+    [runMessageSearch, searchQuery],
   );
 
   const handleSearchResult = useCallback(
@@ -1462,26 +1492,47 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setMedia([]);
         setText(message.content ?? '');
       } else {
-        void api()
-          .delete(`/api/v1/chat/messages/${id}`)
-          .then(() => {
-            deletedMessages.current.set(id, new Date().toISOString());
-            updateMessages((current) =>
-              current.map((item) =>
-                item.id === id ? applyTombstone(item) : item,
-              ),
-            );
-            refreshConversations();
-          })
-          .catch(() => {
-            setError('delete');
-          });
+        dispatch(
+          openModal({
+            modalType: 'CONFIRM',
+            modalProps: {
+              title: intl.formatMessage({
+                id: 'chat.delete_message',
+                defaultMessage: 'Delete this message?',
+              }),
+              message: intl.formatMessage({
+                id: 'chat.delete_message_confirm',
+                defaultMessage:
+                  "It will show as deleted for everyone in this chat. This can't be undone.",
+              }),
+              confirm: intl.formatMessage(messages.delete),
+              onConfirm: () => {
+                void api()
+                  .delete(`/api/v1/chat/messages/${id}`)
+                  .then(() => {
+                    deletedMessages.current.set(id, new Date().toISOString());
+                    updateMessages((current) =>
+                      current.map((item) =>
+                        item.id === id ? applyTombstone(item) : item,
+                      ),
+                    );
+                    refreshConversations();
+                  })
+                  .catch(() => {
+                    setError('delete');
+                  });
+              },
+            },
+          }),
+        );
       }
     },
     [
       applyTombstone,
+      dispatch,
       editingId,
       finishEditing,
+      intl,
       media,
       messagesList,
       refreshConversations,

@@ -92,6 +92,8 @@
   "chat.delete": "삭제",
   "chat.delete_group": "그룹 삭제",
   "chat.delete_group_confirm": "모든 멤버에게서 이 그룹을 삭제하시겠습니까? 되돌릴 수 없습니다.",
+  "chat.delete_message": "메시지를 삭제할까요?",
+  "chat.delete_message_confirm": "이 대화의 모두에게 삭제된 메시지로 표시되며 되돌릴 수 없습니다.",
   "chat.edit": "편집",
   "chat.editing": "메시지 편집 중",
   "chat.error": "채팅 요청을 완료하지 못했습니다.",

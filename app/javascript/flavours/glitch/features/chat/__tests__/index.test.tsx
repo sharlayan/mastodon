@@ -963,6 +963,8 @@ describe('Chat review additions', () => {
     await screen.findByText('Private message A');
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(api.delete).not.toHaveBeenCalled();
+    await confirmModal();
 
     await waitFor(() => {
       expect(screen.getByText('This message was deleted.')).toBeTruthy();
@@ -1974,6 +1976,29 @@ describe('Chat home', () => {
     ).toBe('');
   });
 
+  it('searches as the user types, using only the latest text', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/messages/search'
+        ? Promise.resolve({ data: [{ ...message(), content: 'Found it' }] })
+        : getResponse(url),
+    );
+    await home();
+    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
+    const search = screen.getByPlaceholderText('Search messages');
+    fireEvent.change(search, { target: { value: 'fo' } });
+    fireEvent.change(search, { target: { value: 'found' } });
+
+    expect(await screen.findByText('Found it')).toBeTruthy();
+    const searches = api.get.mock.calls.filter(
+      ([url]) => url === '/api/v1/chat/messages/search',
+    );
+    expect(searches).toHaveLength(1);
+    expect(searches[0]?.[1]).toMatchObject({ params: { q: 'found' } });
+
+    fireEvent.change(search, { target: { value: '' } });
+    expect(screen.queryByText('Found it')).toBeNull();
+  });
+
   it('sets unread conversations apart from read ones', async () => {
     api.get.mockImplementation((url: string) =>
       url === '/api/v1/chat/conversations'
@@ -2143,6 +2168,7 @@ describe('Chat message actions', () => {
     expect(composer().value).toBe('My message');
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await confirmModal();
     await waitFor(() => {
       expect(api.delete).toHaveBeenCalledWith('/api/v1/chat/messages/mine');
     });

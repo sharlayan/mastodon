@@ -92,6 +92,8 @@
   "chat.delete": "Delete",
   "chat.delete_group": "Delete group",
   "chat.delete_group_confirm": "Delete this group for everyone in it? This cannot be undone.",
+  "chat.delete_message": "Delete this message?",
+  "chat.delete_message_confirm": "It will show as deleted for everyone in this chat. This can't be undone.",
   "chat.edit": "Edit",
   "chat.editing": "Editing message",
   "chat.error": "The chat request could not be completed.",
