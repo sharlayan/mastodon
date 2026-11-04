@@ -13,6 +13,25 @@ const payload = {
   },
 };
 
+describe('Chat stream connection', () => {
+  it('announces reconnections but not the first connection', async () => {
+    vi.resetModules();
+    const stream = await import('../stream');
+    const listener = vi.fn();
+    const unsubscribe = stream.subscribeChatStream(listener);
+
+    stream.handleChatStreamConnected();
+    expect(listener).not.toHaveBeenCalled();
+
+    stream.handleChatStreamConnected();
+    expect(listener).toHaveBeenCalledWith({
+      event: stream.CHAT_STREAM_RECONNECTED,
+      payload: {},
+    });
+    unsubscribe();
+  });
+});
+
 describe('Chat desktop notifications', () => {
   afterEach(() => {
     vi.unstubAllGlobals();

@@ -7,6 +7,15 @@
             sharlayan_only: true
 
 .fields-group
+  = f.input :chat_federation_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.federation_enabled'),
+            hint: t('admin.settings.chat.federation_enabled_hint'),
+            disabled: roleplay_mode?,
+            sharlayan_only: true
+
+.fields-group
   = f.input :chat_soft_delete_enabled,
             as: :boolean,
             wrapper: :with_label,

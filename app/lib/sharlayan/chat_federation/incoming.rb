@@ -459,7 +459,8 @@ module Sharlayan
         def time_of(value)
           return if value.blank?
 
-          Time.zone.parse(value.to_s)
+          time = Time.zone.parse(value.to_s)
+          time if time && (0..9999).cover?(time.year)
         rescue ArgumentError
           nil
         end

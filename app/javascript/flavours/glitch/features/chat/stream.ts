@@ -24,6 +24,17 @@ export const emitChatStreamEvent = (event: ChatStreamEvent) => {
   });
 };
 
+export const CHAT_STREAM_RECONNECTED = 'chat.stream_reconnected';
+
+let streamConnected = false;
+
+// Events sent while the stream was down are not replayed.
+export const handleChatStreamConnected = () => {
+  if (streamConnected)
+    emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+  streamConnected = true;
+};
+
 export const showChatDesktopNotification = (
   payload: unknown,
   title = 'Chat',

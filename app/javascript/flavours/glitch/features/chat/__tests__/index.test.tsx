@@ -22,7 +22,7 @@ import type * as InitialState from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 
 import { Chat } from '../index';
-import { emitChatStreamEvent } from '../stream';
+import { CHAT_STREAM_RECONNECTED, emitChatStreamEvent } from '../stream';
 
 const api = vi.hoisted(() => ({
   get: vi.fn(),
@@ -160,6 +160,8 @@ const settings = {
   max_group_members: 10,
   max_attachments: 4,
   federation_enabled: true,
+  delete_window_hours: 24,
+  soft_delete: false,
 };
 const deferred = <T,>() => {
   let complete!: (value: T) => void;
@@ -2384,6 +2386,31 @@ describe('Chat sending with the keyboard', () => {
     });
   });
 
+  it('stays focusable while sending and does not send twice', async () => {
+    const sending = deferred<{ data: unknown }>();
+    api.post.mockImplementation((url: string) =>
+      url.endsWith('/messages')
+        ? sending.promise
+        : Promise.resolve({ data: {} }),
+    );
+    await typeAndPress({});
+    await waitFor(() => {
+      expect(composer().readOnly).toBe(true);
+    });
+    expect(composer().disabled).toBe(false);
+
+    fireEvent.keyDown(composer(), { key: 'Enter' });
+    expect(sentMessages()).toHaveLength(1);
+
+    await act(async () => {
+      sending.resolve({ data: { ...message(), id: 'sent' } });
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(composer().readOnly).toBe(false);
+    });
+  });
+
   it('keeps Shift+Enter for a new line', async () => {
     await typeAndPress({ shiftKey: true });
     expect(sentMessages()).toHaveLength(0);
@@ -2582,6 +2609,94 @@ describe('Chat account search', () => {
 
     expect(screen.getByText('No accounts found.')).toBeTruthy();
     vi.useRealTimers();
+  });
+});
+
+describe('Chat deletion notice', () => {
+  const HOUR = 3_600_000;
+  const everyone =
+    "It will show as deleted for everyone in this chat. This can't be undone.";
+  const onlyYou =
+    "It will disappear only for you. Others in this chat can still see it. This can't be undone.";
+  const noticeFor = async (age: number, overrides = {}) => {
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/settings')
+        return Promise.resolve({ data: { ...settings, ...overrides } });
+      if (url.endsWith('/messages'))
+        return Promise.resolve({
+          data: [
+            {
+              ...message(),
+              created_at: new Date(Date.now() - age).toISOString(),
+            },
+          ],
+        });
+      return getResponse(url);
+    });
+    mountChat();
+    await screen.findByText('Private message A');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve));
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    return lastConfirmation()?.message;
+  };
+
+  it('promises removal for everyone inside the deletion window', async () => {
+    expect(await noticeFor(HOUR)).toBe(everyone);
+  });
+
+  it('says others keep the message after the deletion window', async () => {
+    expect(await noticeFor(25 * HOUR)).toBe(onlyYou);
+  });
+
+  it('says others keep the message when deleted messages are preserved', async () => {
+    expect(await noticeFor(HOUR, { soft_delete: true })).toBe(onlyYou);
+  });
+});
+
+describe('Chat stream resynchronisation', () => {
+  const messageRequests = () =>
+    api.get.mock.calls.filter(([url]) => String(url).endsWith('/messages'));
+
+  it.each(['chat.member_join', 'chat.member_leave'])(
+    'keeps the loaded messages on %s',
+    async (event) => {
+      mountChat();
+      await screen.findByText('Private message A');
+      const requests = messageRequests().length;
+
+      await act(async () => {
+        emitChatStreamEvent({
+          event,
+          payload: { conversation_id: 'A', account_id: 'remote' },
+        });
+        await Promise.resolve();
+      });
+
+      expect(messageRequests()).toHaveLength(requests);
+    },
+  );
+
+  it('fetches what it missed when the stream reconnects', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    api.get.mockImplementation((url: string) =>
+      url.endsWith('/messages')
+        ? Promise.resolve({
+            data: [
+              message(),
+              { ...message(), id: 'missed', content: 'Missed while offline' },
+            ],
+          })
+        : getResponse(url),
+    );
+
+    act(() => {
+      emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+    });
+
+    expect(await screen.findByText('Missed while offline')).toBeTruthy();
   });
 });
 

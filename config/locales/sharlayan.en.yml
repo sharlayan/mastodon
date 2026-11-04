@@ -401,6 +401,8 @@ en:
         delete_window_hours_hint: Senders may delete a message for everyone during this period. After it expires, deleting only hides the message from the sender. Set to 0 to disable deletion for everyone immediately.
         enabled: Enable native chat
         enabled_hint: Allow local accounts to use the separate real-time chat system. Existing chat data is retained while disabled.
+        federation_enabled: Federate chat with other servers
+        federation_enabled_hint: Let local accounts chat with accounts on other servers. While disabled, chat activities from other servers are ignored and existing remote chats cannot be used.
         max_attachments: Maximum attachments per message
         max_attachments_hint: Allow between 0 and 4 media attachments on one chat message.
         max_group_members: Maximum members per group

@@ -55,7 +55,7 @@ import { me } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
-import { subscribeChatStream } from './stream';
+import { CHAT_STREAM_RECONNECTED, subscribeChatStream } from './stream';
 
 interface ChatAccount {
   id: string;
@@ -124,6 +124,8 @@ interface ChatSettings {
   max_group_members: number;
   max_attachments: number;
   federation_enabled: boolean;
+  delete_window_hours: number;
+  soft_delete: boolean;
 }
 
 interface PickedEmoji {
@@ -900,12 +902,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             setError('load');
           });
           refreshConversations();
+        } else if (event === CHAT_STREAM_RECONNECTED) {
+          refreshConversations();
+          void loadInvitations().catch(() => {
+            setError('load');
+          });
+          void loadMessages().catch(() => {
+            setError('load');
+          });
         } else if (event !== 'chat.notification' && event.startsWith('chat.')) {
           refreshConversations();
-          if (value.conversation_id === conversationId)
-            void loadMessages().catch(() => {
-              setError('load');
-            });
         }
       }),
     [
@@ -1090,7 +1096,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     );
 
   const send = useCallback(async () => {
-    if (!conversationId || !hasSendableContent || isTooLong) return;
+    if (!conversationId || loading || !hasSendableContent || isTooLong) return;
     setLoading(true);
     setError(null);
     try {
@@ -1131,6 +1137,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     finishEditing,
     hasSendableContent,
     isTooLong,
+    loading,
     media,
     replyToId,
     text,
@@ -1468,6 +1475,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setMedia([]);
         setText(message.content ?? '');
       } else {
+        const deletesForEveryone =
+          chatSettings !== null &&
+          !chatSettings.soft_delete &&
+          Date.now() - Date.parse(message.created_at) <
+            chatSettings.delete_window_hours * 3_600_000;
         dispatch(
           openModal({
             modalType: 'CONFIRM',
@@ -1476,11 +1488,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 id: 'chat.delete_message',
                 defaultMessage: 'Delete this message?',
               }),
-              message: intl.formatMessage({
-                id: 'chat.delete_message_confirm',
-                defaultMessage:
-                  "It will show as deleted for everyone in this chat. This can't be undone.",
-              }),
+              message: deletesForEveryone
+                ? intl.formatMessage({
+                    id: 'chat.delete_message_confirm',
+                    defaultMessage:
+                      "It will show as deleted for everyone in this chat. This can't be undone.",
+                  })
+                : intl.formatMessage({
+                    id: 'chat.hide_message_confirm',
+                    defaultMessage:
+                      "It will disappear only for you. Others in this chat can still see it. This can't be undone.",
+                  }),
               confirm: intl.formatMessage(messages.delete),
               onConfirm: () => {
                 void api()
@@ -1505,6 +1523,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     },
     [
       applyTombstone,
+      chatSettings,
       dispatch,
       editingId,
       finishEditing,
@@ -2586,7 +2605,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     onChange={handleTextChange}
                     onKeyDown={handleComposerKeyDown}
                     placeholder={intl.formatMessage(messages.placeholder)}
-                    disabled={loading || isArchived}
+                    readOnly={loading}
+                    disabled={isArchived}
                   />
                 </div>
                 {isTooLong && (

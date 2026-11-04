@@ -48,6 +48,18 @@ RSpec.describe 'API V1 Chat' do
     expect(response).to have_http_status(403)
   end
 
+  it 'tells the client when a deletion only hides the message' do
+    Setting.chat_delete_window_hours = 6
+    get '/api/v1/chat/settings', headers: headers
+    expect(response.parsed_body).to include(delete_window_hours: 6, soft_delete: false)
+
+    allow(RoleplayModeHelper).to receive(:roleplay_mode?).and_return(true)
+    get '/api/v1/chat/settings', headers: headers
+    expect(response.parsed_body).to include(soft_delete: true)
+  ensure
+    Setting.chat_delete_window_hours = 24
+  end
+
   it 'updates personal chat policy settings' do
     patch '/api/v1/chat/settings', params: { policy: 'none', allow_group_invites: false, notifications: false }, headers: headers
 

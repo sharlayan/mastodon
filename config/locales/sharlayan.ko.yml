@@ -376,6 +376,8 @@ ko:
         delete_window_hours_hint: 이 시간 동안에는 발신자가 모두에게서 메시지를 삭제할 수 있습니다. 이후 삭제 요청은 발신자에게서만 숨깁니다. 처음부터 모두에게서 삭제하지 못하게 하려면 0으로 설정하세요.
         enabled: 네이티브 채팅 활성화
         enabled_hint: 로컬 계정이 게시물과 분리된 실시간 채팅을 사용할 수 있도록 합니다. 비활성화해도 기존 채팅 데이터는 보존됩니다.
+        federation_enabled: 다른 서버와 채팅 연합
+        federation_enabled_hint: 로컬 계정이 다른 서버의 계정과 채팅할 수 있도록 합니다. 비활성화하면 다른 서버에서 온 채팅 활동을 무시하고 기존 원격 대화도 쓸 수 없습니다.
         max_attachments: 메시지당 최대 첨부 수
         max_attachments_hint: 채팅 메시지 하나에 첨부할 수 있는 미디어 수를 0~4개로 제한합니다.
         max_group_members: 그룹 최대 인원

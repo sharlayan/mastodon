@@ -465,8 +465,12 @@ class Sharlayan::ChatService
     return if account.nil?
     raise Forbidden unless actor.id == account.id || conversation.owner_account_id == actor.id
 
+    membership = conversation.memberships.find_by(account: account)
+    return if membership.nil? && actor.id == account.id
+    return destroy_and_announce(conversation) if membership&.owner?
+
     broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
-    conversation.memberships.find_by(account: account)&.destroy!
+    membership&.destroy!
     return unless ChatConversation.exists?(conversation.id)
 
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
@@ -1027,7 +1031,7 @@ class Sharlayan::ChatService
   def broadcast_to(account, event, object, serializer = nil)
     payload = serializer ? serializer.new(object, current_account: account).as_json : object
     ActiveRecord.after_all_transactions_commit do
-      redis.publish("timeline:#{account.id}", JSON.generate(event: event, payload: JSON.generate(payload)))
+      redis.publish("timeline:#{account.id}", JSON.generate(event: event, payload: JSON.generate(payload.as_json)))
       MisskeyCompat::ChatStreaming.broadcast(redis, account, event, payload)
     end
   end

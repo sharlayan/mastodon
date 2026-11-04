@@ -41,6 +41,14 @@ RSpec.describe 'Incoming ActivityPub chat messages', type: :model do
     expect(Status.count).to eq(0)
   end
 
+  it 'uses the arrival time when the published date is out of range' do
+    payload['object']['published'] = '999999-01-01T00:00:00Z'
+
+    ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
+
+    expect(ChatMessage.find_by!(uri: payload['object']['id']).created_at).to be_within(1.minute).of(Time.current)
+  end
+
   %w(Create Update).each do |type|
     it "handles a dereferenced chat #{type} without creating a status" do
       object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams')

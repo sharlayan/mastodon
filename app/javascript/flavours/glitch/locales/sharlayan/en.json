@@ -101,6 +101,7 @@
   "chat.group_saved": "Group settings saved.",
   "chat.group_settings": "Group settings",
   "chat.group_title": "Group name",
+  "chat.hide_message_confirm": "It will disappear only for you. Others in this chat can still see it. This can't be undone.",
   "chat.home": "Home",
   "chat.invitations": "Invitations",
   "chat.invite": "Invite",

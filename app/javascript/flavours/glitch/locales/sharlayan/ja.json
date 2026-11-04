@@ -101,6 +101,7 @@
   "chat.group_saved": "グループ設定を保存しました。",
   "chat.group_settings": "グループ設定",
   "chat.group_title": "グループ名",
+  "chat.hide_message_confirm": "自分の画面からのみ消え、この会話の他の人には引き続き表示されます。元に戻せません。",
   "chat.home": "ホーム",
   "chat.invitations": "招待",
   "chat.invite": "招待",
