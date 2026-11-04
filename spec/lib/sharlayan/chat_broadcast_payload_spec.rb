@@ -58,6 +58,18 @@ RSpec.describe Sharlayan::ChatBroadcastPayload do
       end
     end
 
+    it 'does not look up the attachments again for each viewer' do
+      payload = described_class.new(message, REST::ChatMessageSerializer)
+      payload.for(members.first)
+      queries = []
+      subscriber = ActiveSupport::Notifications.subscribe('sql.active_record') { |*, details| queries << details[:sql] }
+
+      members.each { |viewer| payload.for(viewer) }
+
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+      expect(queries.grep(/chat_message_media_attachments/)).to be_empty
+    end
+
     it 'renders the rest of the message only once' do
       allow(REST::ChatMessageSerializer).to receive(:new).and_call_original
       payload = described_class.new(message, REST::ChatMessageSerializer)

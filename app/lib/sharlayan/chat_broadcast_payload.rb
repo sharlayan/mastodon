@@ -24,10 +24,15 @@ class Sharlayan::ChatBroadcastPayload
   private
 
   def message_for(message, account)
-    shared = @messages[message.id] ||= REST::ChatMessageSerializer.new(message).as_json
+    shared = @messages[message.id] ||= shared_message(message)
     return shared if message.media_attachments.empty?
 
     shared.merge(media_attachments: message.media_attachments.map { |media| REST::MediaAttachmentSerializer.new(media, current_account: account).as_json })
+  end
+
+  def shared_message(message)
+    ActiveRecord::Associations::Preloader.new(records: message.media_attachments.to_a, associations: :chat_message_media_attachments).call
+    REST::ChatMessageSerializer.new(message).as_json
   end
 
   def conversation_for(account)
