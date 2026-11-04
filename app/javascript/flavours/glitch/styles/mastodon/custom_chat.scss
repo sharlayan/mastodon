@@ -758,6 +758,15 @@
     }
   }
 
+  &__gallery {
+    width: min(420px, calc(100vw - 120px));
+    max-width: 100%;
+
+    .media-gallery:first-child {
+      margin-top: 4px;
+    }
+  }
+
   &__media-preview {
     display: flex;
     flex: 1 0 100%;

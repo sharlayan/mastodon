@@ -683,10 +683,7 @@ describe('Chat live updates', () => {
           url.includes('/A/messages') ? pending.promise : getResponse(url),
         );
         act(() => {
-          emitChatStreamEvent({
-            event: 'chat.conversation_update',
-            payload: { conversation_id: 'A' },
-          });
+          emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
         });
       }
       act(() => {
@@ -1251,7 +1248,7 @@ describe('Chat screen lifecycle', () => {
     act(() => {
       emitChatStreamEvent({
         event: 'chat.conversation_update',
-        payload: { id: 'A' },
+        payload: { ...live },
       });
     });
     await screen.findByText('This group is archived.');
@@ -1266,7 +1263,7 @@ describe('Chat screen lifecycle', () => {
     act(() => {
       emitChatStreamEvent({
         event: 'chat.conversation_update',
-        payload: { id: 'A' },
+        payload: { ...live },
       });
     });
     await waitFor(() => {
@@ -1326,7 +1323,7 @@ describe('Chat screen lifecycle', () => {
     act(() => {
       emitChatStreamEvent({
         event: 'chat.conversation_update',
-        payload: { id: 'A' },
+        payload: { ...live },
       });
     });
 
@@ -1425,14 +1422,8 @@ describe('Chat screen lifecycle', () => {
     mountChat();
     await screen.findByText('Version 1');
     act(() => {
-      emitChatStreamEvent({
-        event: 'chat.conversation_update',
-        payload: { id: 'A' },
-      });
-      emitChatStreamEvent({
-        event: 'chat.conversation_update',
-        payload: { id: 'A' },
-      });
+      emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+      emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
     });
     await screen.findByText('Version 3');
 
@@ -2618,10 +2609,14 @@ describe('Chat deletion notice', () => {
     "It will show as deleted for everyone in this chat. This can't be undone.";
   const onlyYou =
     "It will disappear only for you. Others in this chat can still see it. This can't be undone.";
-  const noticeFor = async (age: number, overrides = {}) => {
+  const unknown =
+    "It may disappear for everyone or only for you, depending on this server's settings. This can't be undone.";
+  const noticeFor = async (
+    serverAnswer: Promise<{ data: unknown }>,
+    age = 0,
+  ) => {
     api.get.mockImplementation((url: string) => {
-      if (url === '/api/v1/chat/settings')
-        return Promise.resolve({ data: { ...settings, ...overrides } });
+      if (url === '/api/v1/chat/messages/message-A') return serverAnswer;
       if (url.endsWith('/messages'))
         return Promise.resolve({
           data: [
@@ -2635,23 +2630,33 @@ describe('Chat deletion notice', () => {
     });
     mountChat();
     await screen.findByText('Private message A');
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve));
-    });
+    dispatch.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => {
+      expect(dispatch).toHaveBeenCalled();
+    });
     return lastConfirmation()?.message;
   };
 
-  it('promises removal for everyone inside the deletion window', async () => {
-    expect(await noticeFor(HOUR)).toBe(everyone);
+  it('promises removal for everyone when the server says so, whatever the browser clock says', async () => {
+    expect(
+      await noticeFor(
+        Promise.resolve({ data: { deletes_for_everyone: true } }),
+        25 * HOUR,
+      ),
+    ).toBe(everyone);
   });
 
-  it('says others keep the message after the deletion window', async () => {
-    expect(await noticeFor(25 * HOUR)).toBe(onlyYou);
+  it('says others keep the message when the server says so, whatever the browser clock says', async () => {
+    expect(
+      await noticeFor(
+        Promise.resolve({ data: { deletes_for_everyone: false } }),
+      ),
+    ).toBe(onlyYou);
   });
 
-  it('says others keep the message when deleted messages are preserved', async () => {
-    expect(await noticeFor(HOUR, { soft_delete: true })).toBe(onlyYou);
+  it('promises neither when the server cannot be asked', async () => {
+    expect(await noticeFor(Promise.reject(new Error('offline')))).toBe(unknown);
   });
 });
 
@@ -2697,6 +2702,147 @@ describe('Chat stream resynchronisation', () => {
     });
 
     expect(await screen.findByText('Missed while offline')).toBeTruthy();
+  });
+
+  describe('while reading older pages', () => {
+    const page = (from: number, label = 'Message') =>
+      Array.from({ length: 40 }, (_, index) => ({
+        ...message(),
+        id: String(from + index),
+        content: `${label} ${from + index}`,
+      }));
+    const older = { ...message(), id: '90', content: 'Older page' };
+    const serve = (
+      newest: { id: string; content: string | null }[],
+      byCursor: Record<string, { id: string; content: string | null }[]> = {},
+    ) => {
+      api.get.mockImplementation(
+        (url: string, options?: { params?: { max_id?: string } }) => {
+          if (url.endsWith('/A/messages')) {
+            const cursor = options?.params?.max_id;
+            return Promise.resolve({
+              data: cursor ? (byCursor[cursor] ?? []) : newest,
+            });
+          }
+          return getResponse(url);
+        },
+      );
+    };
+    const openWithOlderPage = async () => {
+      serve(page(100), { '100': [older] });
+      mountChat();
+      await screen.findByText('Message 139');
+      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+      await screen.findByText('Older page');
+    };
+    const reconnect = async () => {
+      await act(async () => {
+        emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+        await new Promise((resolve) => setTimeout(resolve));
+      });
+    };
+
+    it('keeps the older page and adds what it missed', async () => {
+      await openWithOlderPage();
+      serve([
+        ...page(100).slice(1),
+        { ...message(), id: '140', content: 'Missed' },
+      ]);
+
+      await reconnect();
+
+      expect(screen.getByText('Older page')).toBeTruthy();
+      expect(screen.getByText('Message 100')).toBeTruthy();
+      expect(screen.getByText('Missed')).toBeTruthy();
+    });
+
+    it('applies edits and removals among the messages it fetched again', async () => {
+      await openWithOlderPage();
+      const fresh = page(100).filter((item) => item.id !== '120');
+      serve(
+        fresh.map((item) =>
+          item.id === '121' ? { ...item, content: 'Edited offline' } : item,
+        ),
+      );
+
+      await reconnect();
+
+      expect(screen.getByText('Edited offline')).toBeTruthy();
+      expect(screen.queryByText('Message 120')).toBeNull();
+      expect(screen.getByText('Older page')).toBeTruthy();
+    });
+
+    it('pages back until it meets what it has, so nothing is left out', async () => {
+      await openWithOlderPage();
+      serve(page(220, 'Newest'), {
+        '220': page(180, 'Middle'),
+        '180': page(135, 'Bridge'),
+      });
+
+      await reconnect();
+
+      expect(screen.getByText('Newest 259')).toBeTruthy();
+      expect(screen.getByText('Middle 180')).toBeTruthy();
+      expect(screen.getByText('Bridge 135')).toBeTruthy();
+      expect(screen.getByText('Older page')).toBeTruthy();
+    });
+
+    it('starts over from the newest page when too much was missed', async () => {
+      await openWithOlderPage();
+      const endless = Object.fromEntries(
+        Array.from({ length: 30 }, (_, index) => [
+          String(1000 + (index + 1) * 40),
+          page(1000 + index * 40, 'Filler'),
+        ]),
+      );
+      serve(page(2240, 'Newest'), { ...endless, '2240': page(2200, 'Filler') });
+
+      await reconnect();
+
+      expect(screen.getByText('Newest 2279')).toBeTruthy();
+      expect(screen.queryByText('Older page')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy();
+    });
+
+    it('still offers older pages after merging', async () => {
+      const full = page(100);
+      serve(full, { '100': page(60, 'Older') });
+      mountChat();
+      await screen.findByText('Message 139');
+      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+      await screen.findByText('Older 60');
+
+      serve(full, { '60': [older] });
+      await reconnect();
+      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+      expect(await screen.findByText('Older page')).toBeTruthy();
+    });
+
+    it('does not mark the conversation read while the reader is elsewhere', async () => {
+      await openWithOlderPage();
+      const scroller = document.querySelector('.chat-messages');
+      if (scroller) {
+        Object.defineProperties(scroller, {
+          scrollHeight: { configurable: true, value: 5000 },
+          clientHeight: { configurable: true, value: 500 },
+          scrollTop: { configurable: true, writable: true, value: 0 },
+        });
+        fireEvent.scroll(scroller);
+      }
+      api.post.mockClear();
+      serve([
+        ...page(100).slice(1),
+        { ...message(), id: '140', content: 'Missed' },
+      ]);
+
+      await reconnect();
+
+      expect(screen.getByText('Missed')).toBeTruthy();
+      expect(
+        api.post.mock.calls.filter(([url]) => String(url).endsWith('/read')),
+      ).toHaveLength(0);
+    });
   });
 });
 
@@ -2759,5 +2905,512 @@ describe('Chat confirmations', () => {
     expect(
       container.querySelector('.chat-native__composer')?.contains(notice),
     ).toBe(true);
+  });
+});
+
+describe('Chat attachments', () => {
+  const pictures = [1, 2, 3, 4].map((index) => ({
+    id: `media-${index}`,
+    url: `/full-${index}.png`,
+    preview_url: `/small-${index}.png`,
+    type: 'image',
+    description: `Picture ${index}`,
+  }));
+  const mountWith = async (attachments: unknown[]) => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({
+            data: [{ ...message(), media_attachments: attachments }],
+          })
+        : getResponse(url),
+    );
+    const view = mountChat();
+    await screen.findByText('Private message A');
+    return view;
+  };
+  const uploadFiles = (container: HTMLElement, count: number) => {
+    const input = container.querySelector('input[type="file"]');
+    if (!input) throw new Error('Missing attachment input');
+    fireEvent.change(input, {
+      target: {
+        files: Array.from(
+          { length: count },
+          (_, index) =>
+            new File(['private'], `${index}.png`, { type: 'image/png' }),
+        ),
+      },
+    });
+  };
+
+  it('shows the attachments of a message in the gallery posts use', async () => {
+    const { container } = await mountWith(pictures);
+
+    expect(container.querySelector('.media-gallery--layout-4')).toBeTruthy();
+    pictures.forEach(({ description }) => {
+      expect(screen.getByAltText(description)).toBeTruthy();
+    });
+  });
+
+  it('opens the picture that was clicked, with the others to browse', async () => {
+    await mountWith(pictures);
+    dispatch.mockClear();
+
+    fireEvent.click(screen.getByAltText('Picture 2'));
+
+    const action = dispatch.mock.lastCall?.[0] as {
+      payload: {
+        modalType: string;
+        modalProps: { index: number; media: { size: number } };
+      };
+    };
+    expect(action.payload.modalType).toBe('MEDIA');
+    expect(action.payload.modalProps.index).toBe(1);
+    expect(action.payload.modalProps.media.size).toBe(4);
+  });
+
+  it('plays audio outside the gallery, which cannot show it', async () => {
+    const { container } = await mountWith([
+      pictures[0],
+      {
+        id: 'media-audio',
+        url: '/sound.mp3',
+        preview_url: null,
+        type: 'audio',
+        description: 'Sound',
+      },
+    ]);
+
+    expect(container.querySelector('audio')?.getAttribute('src')).toBe(
+      '/sound.mp3',
+    );
+    expect(container.querySelector('.media-gallery--layout-1')).toBeTruthy();
+  });
+
+  it('names an attachment that is not ready to show', async () => {
+    await mountWith([
+      {
+        id: 'media-x',
+        url: null,
+        preview_url: null,
+        type: 'image',
+        description: 'Still loading',
+      },
+    ]);
+
+    expect(screen.getByText('Still loading')).toBeTruthy();
+  });
+
+  it('lets several files be picked and sends them in order', async () => {
+    let uploads = 0;
+    api.post.mockImplementation((url: string) => {
+      if (url === '/api/v2/media') {
+        uploads += 1;
+        return Promise.resolve({ data: pictures[uploads - 1] });
+      }
+      return Promise.resolve({ data: message() });
+    });
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+
+    expect(
+      container.querySelector('input[type="file"]')?.hasAttribute('multiple'),
+    ).toBe(true);
+    uploadFiles(container, 3);
+    await screen.findByAltText('Picture 3');
+    expect(
+      screen.getAllByRole('button', { name: 'Remove attachment' }),
+    ).toHaveLength(3);
+
+    const [firstRemove] = screen.getAllByRole('button', {
+      name: 'Remove attachment',
+    });
+    if (!firstRemove) throw new Error('Missing remove button');
+    fireEvent.click(firstRemove);
+    await waitFor(() => {
+      expect(screen.queryByAltText('Picture 1')).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/v1/chat/conversations/A/messages',
+        { text: '', reply_to_id: null, media_ids: ['media-2', 'media-3'] },
+      );
+    });
+  });
+
+  it('turns away more files than the limit with a message that says so', async () => {
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole('button', { name: 'Attach media' })
+          .hasAttribute('disabled'),
+      ).toBe(false);
+    });
+    api.post.mockClear();
+
+    uploadFiles(container, 5);
+
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'You can attach up to 4 files.',
+    );
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it('stops offering to attach at the limit', async () => {
+    let uploads = 0;
+    api.post.mockImplementation((url: string) => {
+      if (url !== '/api/v2/media') return Promise.resolve({ data: {} });
+      uploads += 1;
+      return Promise.resolve({ data: pictures[uploads - 1] });
+    });
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole('button', { name: 'Attach media' })
+          .hasAttribute('disabled'),
+      ).toBe(false);
+    });
+
+    uploadFiles(container, 4);
+    await screen.findByAltText('Picture 4');
+
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole('button', { name: 'Attach media' })
+          .hasAttribute('disabled'),
+      ).toBe(true);
+    });
+  });
+
+  it('does not offer to attach when the server allows none', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/settings'
+        ? Promise.resolve({ data: { ...settings, max_attachments: 0 } })
+        : getResponse(url),
+    );
+    mountChat();
+    await screen.findByText('Private message A');
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith('/api/v1/chat/settings');
+    });
+    expect(
+      screen
+        .getByRole('button', { name: 'Attach media' })
+        .hasAttribute('disabled'),
+    ).toBe(true);
+  });
+});
+
+describe('Chat message edits', () => {
+  const mountMine = async (editable: boolean) => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({ data: [{ ...message(), editable }] })
+        : getResponse(url),
+    );
+    mountChat();
+    await screen.findByText('Private message A');
+  };
+
+  it('offers to edit a message inside the edit window', async () => {
+    await mountMine(true);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy();
+  });
+
+  it('does not offer it once the server says the window has passed', async () => {
+    await mountMine(false);
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy();
+  });
+});
+
+describe('Chat with a suspended account', () => {
+  it('says so and does not offer to send', async () => {
+    api.get.mockImplementation((url: string) =>
+      url.startsWith('/api/v1/chat/conversations') && !url.includes('messages')
+        ? Promise.resolve({
+            data:
+              url === '/api/v1/chat/conversations'
+                ? [
+                    {
+                      ...conversation('A'),
+                      accounts: [account, { ...remote, suspended: true }],
+                    },
+                  ]
+                : {
+                    ...conversation('A'),
+                    accounts: [account, { ...remote, suspended: true }],
+                  },
+          })
+        : getResponse(url),
+    );
+    mountChat();
+
+    expect(await screen.findByText('This account is suspended.')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Send' }).hasAttribute('disabled'),
+    ).toBe(true);
+  });
+
+  it('explains a message the server refuses', async () => {
+    api.post.mockRejectedValue({ response: { status: 403 } });
+    mountChat();
+    await screen.findByText('Private message A');
+
+    fireEvent.change(composer(), { target: { value: 'hello' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      "This account can't receive this.",
+    );
+  });
+
+  it('keeps the general message for other failures', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    api.post.mockRejectedValue({ response: { status: 500 } });
+
+    fireEvent.change(composer(), { target: { value: 'hello' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'The chat request could not be completed.',
+    );
+  });
+});
+
+describe('Chat list updates', () => {
+  const listRequests = () =>
+    api.get.mock.calls.filter(([url]) => url === '/api/v1/chat/conversations')
+      .length;
+  const singleRequests = (id: string) =>
+    api.get.mock.calls.filter(
+      ([url]) => url === `/api/v1/chat/conversations/${id}`,
+    ).length;
+  const emit = async (event: string, payload: unknown) => {
+    await act(async () => {
+      emitChatStreamEvent({ event, payload });
+      await Promise.resolve();
+    });
+  };
+  const mountList = async () => {
+    const view = mountChat('/chat');
+    await screen.findByText('Room A');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    api.get.mockClear();
+    return view;
+  };
+  const rows = () =>
+    Array.from(document.querySelectorAll('[data-conversation-id]')).map((row) =>
+      row.getAttribute('data-conversation-id'),
+    );
+
+  it('moves a conversation to the top with its new message, without reloading the list', async () => {
+    await mountList();
+
+    await emit('chat.message', {
+      ...message('B'),
+      id: 'incoming',
+      content: 'A new message',
+      account: remote,
+    });
+
+    expect(screen.getByText('A new message')).toBeTruthy();
+    expect(rows()).toEqual(['B', 'A']);
+    expect(
+      document.querySelector('[data-conversation-id="B"]')?.className,
+    ).toContain('unread');
+    expect(listRequests()).toBe(0);
+    expect(singleRequests('B')).toBe(0);
+  });
+
+  it('does not mark the sender own message unread', async () => {
+    await mountList();
+
+    await emit('chat.message', { ...message('B'), id: 'own', content: 'Mine' });
+
+    expect(screen.getByText('Mine')).toBeTruthy();
+    expect(
+      document.querySelector('[data-conversation-id="B"]')?.className,
+    ).not.toContain('unread');
+  });
+
+  it('asks only for a conversation it does not know yet', async () => {
+    await mountList();
+
+    await emit('chat.message', {
+      ...message('C'),
+      id: 'first',
+      account: remote,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Room C')).toBeTruthy();
+    });
+    expect(singleRequests('C')).toBe(1);
+    expect(listRequests()).toBe(0);
+  });
+
+  it('shows an edit of the last message without reloading', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations'
+        ? Promise.resolve({
+            data: [{ ...conversation('A'), last_message: message('A') }],
+          })
+        : getResponse(url),
+    );
+    await mountList();
+
+    await emit('chat.message_update', {
+      ...message('A'),
+      content: 'Edited text',
+    });
+
+    expect(screen.getByText('Edited text')).toBeTruthy();
+    expect(listRequests()).toBe(0);
+  });
+
+  it('asks for the conversation when an update comes without its details', async () => {
+    await mountList();
+
+    await emit('chat.conversation_update', { id: 'A' });
+
+    await waitFor(() => {
+      expect(singleRequests('A')).toBe(1);
+    });
+    expect(listRequests()).toBe(0);
+  });
+
+  it('applies a conversation update from its payload', async () => {
+    await mountList();
+
+    await emit('chat.conversation_update', {
+      ...conversation('A'),
+      title: 'Renamed',
+    });
+
+    expect(screen.getByText('Renamed')).toBeTruthy();
+    expect(listRequests()).toBe(0);
+    expect(singleRequests('A')).toBe(0);
+  });
+
+  it.each(['chat.member_join', 'chat.member_leave'])(
+    'asks only for the conversation on %s',
+    async (event) => {
+      await mountList();
+
+      await emit(event, { conversation_id: 'A', account_id: 'remote' });
+
+      await waitFor(() => {
+        expect(singleRequests('A')).toBe(1);
+      });
+      expect(listRequests()).toBe(0);
+    },
+  );
+
+  it('asks only for the conversation when a message is hidden', async () => {
+    await mountList();
+
+    await emit('chat.message_hide', { id: 'message-A', conversation_id: 'A' });
+
+    await waitFor(() => {
+      expect(singleRequests('A')).toBe(1);
+    });
+    expect(listRequests()).toBe(0);
+  });
+
+  it('asks once for bursts of events about one conversation', async () => {
+    const pending = deferred<{ data: ReturnType<typeof conversation> }>();
+    await mountList();
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations/A'
+        ? pending.promise
+        : getResponse(url),
+    );
+
+    await emit('chat.member_join', { conversation_id: 'A', account_id: 'x' });
+    await emit('chat.member_join', { conversation_id: 'A', account_id: 'y' });
+    await emit('chat.member_leave', { conversation_id: 'A', account_id: 'z' });
+
+    expect(singleRequests('A')).toBe(1);
+
+    await act(async () => {
+      pending.resolve({ data: conversation('A') });
+      await pending.promise;
+    });
+    await waitFor(() => {
+      expect(singleRequests('A')).toBe(2);
+    });
+  });
+
+  it('drops a conversation it can no longer see', async () => {
+    await mountList();
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations/A'
+        ? Promise.reject(
+            Object.assign(new Error('gone'), { response: { status: 404 } }),
+          )
+        : getResponse(url),
+    );
+
+    await emit('chat.member_leave', { conversation_id: 'A', account_id: 'me' });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Room A')).toBeNull();
+    });
+  });
+
+  it('does not reload the list for an invitation', async () => {
+    await mountList();
+
+    await emit('chat.invitation', { id: 'invitation' });
+
+    expect(listRequests()).toBe(0);
+    expect(api.get).toHaveBeenCalledWith('/api/v1/chat/invitations');
+  });
+
+  it('marks a message read in the open room without reloading', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    api.get.mockClear();
+
+    await emit('chat.message', {
+      ...message('A'),
+      id: 'incoming',
+      account: remote,
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(listRequests()).toBe(0);
+  });
+
+  it('still reloads everything after the stream reconnects', async () => {
+    await mountList();
+
+    await emit(CHAT_STREAM_RECONNECTED, {});
+
+    await waitFor(() => {
+      expect(listRequests()).toBe(1);
+    });
   });
 });
