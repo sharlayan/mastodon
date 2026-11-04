@@ -78,7 +78,6 @@ const isChatEnabled = async (pgPool) => {
   return ['chat_enabled', 'misskey_compat_enabled'].every((name) => result.rows.some((row) => row.var === name && row.value === '--- true\n'));
 };
 
-// Consulted for each subscriber of each chat event, so one read has to serve a whole fan-out.
 const createChatEnabledCheck = (pgPool, logger, now = Date.now) => {
   let setting = { value: false, checkedAt: 0 };
   let refresh;

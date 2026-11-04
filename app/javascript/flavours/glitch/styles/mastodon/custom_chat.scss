@@ -580,7 +580,6 @@
     opacity: 0;
     pointer-events: none;
 
-    // Keeps the hover alive while the pointer crosses the gap to the bubble.
     &::before {
       content: '';
       position: absolute;
@@ -618,7 +617,6 @@
     }
   }
 
-  // Fingers need more than the 24px a mouse pointer is fine with.
   @media (hover: none) {
     &__actions .icon-button,
     &__actions .chat-native__react-picker button {
@@ -943,7 +941,6 @@
   }
 }
 
-// The navigation bar is fixed over the bottom of the page at these widths.
 @media screen and (width < 760px) {
   .chat-native {
     &__composer {
@@ -977,7 +974,6 @@
   }
 }
 
-// No room beside the bubble here, so the toolbar floats just above it.
 @media screen and (max-width: $mobile-breakpoint) {
   .chat-native {
     &__message {

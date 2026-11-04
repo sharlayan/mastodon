@@ -2,7 +2,6 @@
 
 module Sharlayan
   module ChatFederation
-    # Call while holding the message lock, after checking the reactor's access.
     class ReactionState
       include Redisable
 
@@ -11,7 +10,6 @@ module Sharlayan
       MAX_ACTOR_ACTIVE_IDS = 1000
       MAX_CANCELLED_IDS = 1000
 
-      # Message locks do not serialize reactions to different messages by one actor.
       ADMIT_SCRIPT = <<~LUA
         for _, key in ipairs(KEYS) do
           redis.call('ZREMRANGEBYSCORE', key, '-inf', ARGV[1])
@@ -62,7 +60,6 @@ module Sharlayan
 
       def remove(activity_id)
         prune_expired
-        # Older senders omitted IDs; preserve their existing undo behavior.
         if activity_id.nil?
           members = redis.zrange(@active_key, 0, -1).map { |digest| actor_member(digest) }
           redis.multi do |transaction|

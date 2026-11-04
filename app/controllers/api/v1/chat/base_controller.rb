@@ -12,7 +12,6 @@ class Api::V1::Chat::BaseController < Api::BaseController
     @chat_service ||= Sharlayan::ChatService.new
   end
 
-  # Tokens are checked first so that a missing or expired one gets a 401 clients can act on.
   def authorize_chat_read!
     doorkeeper_authorize! :read, :'read:statuses'
     require_user! unless performed?

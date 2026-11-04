@@ -15,8 +15,6 @@ class ChatMessageReaction < ApplicationRecord
     reaction&.match(CUSTOM_EMOJI_RE)&.captures&.first
   end
 
-  # A shortcode only means something on the reactor's server, so a remote
-  # reaction must never resolve to a local emoji that happens to share its name.
   def custom_emoji
     shortcode = self.class.shortcode_of(reaction)
     shortcode && CustomEmoji.find_by(shortcode: shortcode, domain: account&.domain, disabled: false)

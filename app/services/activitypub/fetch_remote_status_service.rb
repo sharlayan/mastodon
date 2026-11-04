@@ -37,7 +37,6 @@ class ActivityPub::FetchRemoteStatusService < BaseService
 
     return if activity_json.nil? || object_uri.nil? || !trustworthy_attribution?(@json['id'], actor_uri)
     return if expected_actor_uri.present? && actor_uri != expected_actor_uri
-    # Chat messages only enter through the inbox or a room owner's relay, never as statuses.
     return if Sharlayan::ChatFederation::Incoming.chat_create?(activity_json)
     return ActivityPub::TagManager.instance.uri_to_resource(object_uri, Status) if ActivityPub::TagManager.instance.local_uri?(object_uri)
 
@@ -56,7 +55,6 @@ class ActivityPub::FetchRemoteStatusService < BaseService
     end
 
     result = ActivityPub::Activity.factory(activity_json, actor, request_id: @request_id, depth: @depth, relayed_through_actor:).perform
-    # Handlers for chat activities return a status description, and callers expect a Status.
     result unless result.is_a?(String)
   end
 

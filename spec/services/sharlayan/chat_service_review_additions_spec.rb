@@ -39,7 +39,6 @@ RSpec.describe Sharlayan::ChatService do
     expect(message.reload).to have_attributes(text: 'retain me', deleted_at: nil, hidden_at: be_present)
   end
 
-  # An owner cannot accept new members into an archived room, so this is an Add the archive overtook.
   it 'records a remote Add that an archive overtook' do
     conversation = service.create_conversation(local_account, type: :group, title: 'Room')
     service.archive(local_account, conversation, archived: true)

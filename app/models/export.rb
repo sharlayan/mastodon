@@ -84,7 +84,6 @@ class Export
   end
 
   def to_chat_json
-    # Serialized per batch so a long history does not keep every record in memory at once.
     conversations = ChatConversation.for_account(account).includes(:accounts).map do |conversation|
       chat_conversation_data(conversation, chat_messages_for_export(conversation))
     end

@@ -185,6 +185,44 @@ RSpec.describe 'API V1 Chat' do
       expect(conversation.messages).to be_empty
     end
 
+    it 'issues an expiring attachment URL that remains bound to the chat member' do
+      conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :group, title: 'Group')
+      conversation.memberships.create!(account: other.account)
+      media = Fabricate(:media_attachment, account: user.account, status: nil)
+      message = Sharlayan::ChatService.new.create_message(user.account, conversation, text: nil, media_ids: [media.id])
+      token.update!(resource_owner_id: other.id)
+
+      get "/api/v1/chat/messages/#{message.id}", headers: headers
+      attachment_url = response.parsed_body.fetch(:media_attachments).first.fetch(:url)
+      attachment_path = URI.parse(attachment_url).request_uri
+
+      expect(attachment_url).to include('chat_token=')
+      get attachment_path
+      expect(response).to have_http_status(:redirect)
+
+      conversation.memberships.find_by!(account: other.account).destroy!
+      get attachment_path
+      expect(response).to have_http_status(404)
+    end
+
+    it 'rejects tampered and expired chat attachment capabilities' do
+      conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :direct, account_ids: [other.account.id])
+      media = Fabricate(:media_attachment, account: user.account, status: nil)
+      message = Sharlayan::ChatService.new.create_message(user.account, conversation, text: nil, media_ids: [media.id])
+      token.update!(resource_owner_id: other.id)
+
+      get "/api/v1/chat/messages/#{message.id}", headers: headers
+      attachment_path = URI.parse(response.parsed_body.fetch(:media_attachments).first.fetch(:url)).request_uri
+
+      get attachment_path.sub(/chat_token=[^&]+/, 'chat_token=invalid')
+      expect(response).to have_http_status(404)
+
+      travel 11.minutes do
+        get attachment_path
+        expect(response).to have_http_status(404)
+      end
+    end
+
     it 'prevents a non-member from reacting to a message' do
       conversation = Sharlayan::ChatService.new.create_conversation(other.account, type: :direct, account_ids: [third.account.id])
       message = Sharlayan::ChatService.new.create_message(other.account, conversation, text: 'private')

@@ -174,7 +174,6 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
     misskey_can_chat && !unavailable?
   end
 
-  # Stated even when false: Misskey-family servers assume chat when the field is missing.
   def misskey_can_chat
     Setting.chat_enabled && Setting.chat_federation_enabled
   end

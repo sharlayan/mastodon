@@ -67,6 +67,60 @@ describe('Chat desktop notifications', () => {
     );
   });
 
+  it('keeps the advanced layout when the notification is opened', () => {
+    const addEventListener = vi.fn();
+    const assign = vi.fn();
+    class NotificationMock {
+      static permission = 'granted';
+
+      addEventListener = addEventListener;
+      close = vi.fn();
+    }
+    vi.stubGlobal('Notification', NotificationMock);
+    vi.stubGlobal('document', { visibilityState: 'hidden' });
+    vi.stubGlobal('window', {
+      Notification: NotificationMock,
+      focus: vi.fn(),
+      location: { assign, pathname: '/deck/home' },
+    });
+
+    showChatDesktopNotification(payload);
+
+    const click = addEventListener.mock.calls.find(
+      ([event]) => event === 'click',
+    )?.[1] as (() => void) | undefined;
+    click?.();
+
+    expect(assign).toHaveBeenCalledWith('/deck/chat/20');
+  });
+
+  it('opens the single-column chat path outside the advanced layout', () => {
+    const addEventListener = vi.fn();
+    const assign = vi.fn();
+    class NotificationMock {
+      static permission = 'granted';
+
+      addEventListener = addEventListener;
+      close = vi.fn();
+    }
+    vi.stubGlobal('Notification', NotificationMock);
+    vi.stubGlobal('document', { visibilityState: 'hidden' });
+    vi.stubGlobal('window', {
+      Notification: NotificationMock,
+      focus: vi.fn(),
+      location: { assign, pathname: '/home' },
+    });
+
+    showChatDesktopNotification(payload);
+
+    const click = addEventListener.mock.calls.find(
+      ([event]) => event === 'click',
+    )?.[1] as (() => void) | undefined;
+    click?.();
+
+    expect(assign).toHaveBeenCalledWith('/chat/20');
+  });
+
   describe('while the conversation is on screen', () => {
     const setUp = (pathname: string, visibilityState: string) => {
       const constructor = vi.fn();

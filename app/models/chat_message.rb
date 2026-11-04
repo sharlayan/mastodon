@@ -19,7 +19,6 @@ class ChatMessage < ApplicationRecord
   validate :sender_is_member, on: :create
   validate :reply_belongs_to_conversation
 
-  # Must run before `dependent: :destroy` removes the join rows it reads.
   before_destroy :destroy_chat_media_attachments, prepend: true
 
   scope :visible, -> { where(deleted_at: nil) }

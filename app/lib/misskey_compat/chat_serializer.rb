@@ -103,7 +103,6 @@ class MisskeyCompat::ChatSerializer
     media = message.media_attachments.first
     return if media.nil?
 
-    # Drive metadata is reusable, but chat downloads must still check membership.
     token = MisskeyCompat::ChatMediaToken.generate(media, @viewer)
     MisskeyCompat::DriveFileSerializer.serialize(media).merge(
       url: media_proxy_url(media.id, :original, chat_token: token),

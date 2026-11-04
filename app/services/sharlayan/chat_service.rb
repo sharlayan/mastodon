@@ -7,7 +7,6 @@ class Sharlayan::ChatService
   class Forbidden < Error; end
 
   MAX_PENDING_REMOTE_ROOMS = 100
-  # A room's own server sets its size. This only bounds what one peer can make us store.
   MAX_REMOTE_ROOM_MEMBERS = 1000
   MAX_ROOM_TITLE_LENGTH = 256
   MAX_ROOM_DESCRIPTION_LENGTH = 2048
@@ -66,8 +65,6 @@ class Sharlayan::ChatService
     message.with_lock do
       raise Error, 'Deleted messages cannot be edited' if message.deleted?
 
-      # JavaScript peers compare millisecond versions. Reload under the lock so
-      # concurrent edits and edits within one clock tick still advance the version.
       edited_at = Time.current
       edited_at = [edited_at, message.edited_at + Rational(1, 1000)].max if message.edited_at
       message.update!(text: text.to_s.strip.presence, edited_at: edited_at)
@@ -107,7 +104,6 @@ class Sharlayan::ChatService
     record = message.with_lock do
       raise Error, 'Deleted messages cannot receive reactions' if message.deleted?
 
-      # Each activity ID stands for one reaction, so repeating a reaction must not mint another.
       existing = message.reactions.find_by(account: account, reaction: reaction)
       next existing if existing
       raise Error, 'The message has too many reactions' if message.reactions.count >= 100
@@ -209,7 +205,6 @@ class Sharlayan::ChatService
     membership = membership!(account, conversation)
     raise Error, 'The owner cannot leave the room' if membership.owner?
 
-    # Removing one side of a direct chat would delete it for the other side too.
     raise Error, 'Only group chats can be left' unless conversation.chat_group?
 
     deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, account))
@@ -280,8 +275,6 @@ class Sharlayan::ChatService
     destroy_and_announce(conversation)
   end
 
-  # Removes every trace of an account's chat activity. DeleteAccountService keeps
-  # the account record by default, so `dependent: :destroy` alone is not enough.
   def purge_account(account, federate: true)
     federate &&= account.local?
 
@@ -316,8 +309,6 @@ class Sharlayan::ChatService
     ChatConversation.transaction do
       conversation = ChatConversation.lock.find_by(direct_key: key)
 
-      # As with local chats, the policy only gates starting a conversation: it must not
-      # drop replies to a chat the recipient started. create_remote_message checks blocks.
       if conversation.nil?
         raise Forbidden unless direct_chat_allowed?(actor, recipient)
 
@@ -330,8 +321,6 @@ class Sharlayan::ChatService
 
   def receive_group_message(actor, room_uri:, uri:, text:, created_at: nil, edited_at: nil, attachments: [], reply_to_uri: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
-    # Independent delivery queues can put Create ahead of Invite, Accept or Add.
-    # Let the ingress worker retry; membership still has to be granted by the owner.
     raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat room' if conversation.nil?
 
     ensure_conversation_writable!(conversation)
@@ -364,7 +353,6 @@ class Sharlayan::ChatService
       ensure_conversation_writable!(conversation)
       conversation.memberships.create_with(role: :owner).find_or_create_by!(account: actor) if conversation.owner_account_id == actor.id
 
-      # Redelivery of an Invite the member already answered must not ask them again.
       next acknowledge_repeated_invite(conversation, actor, invitee) if conversation.memberships.exists?(account: invitee)
 
       ensure_group_capacity!(conversation)
@@ -373,7 +361,6 @@ class Sharlayan::ChatService
     end
     ChatConversationCleanupWorker.perform_in(ChatConversationCleanupWorker::CLEANUP_DELAY, invitation.chat_conversation_id) if actor.remote?
     broadcast_to(invitee, 'chat.invitation', invitation, REST::ChatInvitationSerializer) if invitation.pending?
-    # Serializing loaded the room and its roster, which later activities change.
     invitation.reload
   rescue ActiveRecord::RecordNotUnique
     retry
@@ -405,8 +392,6 @@ class Sharlayan::ChatService
     conversation
   end
 
-  # The invitee's server joined the room before sending Accept, so it has to hear when
-  # the owner's server cannot honor it. A redelivered Accept from a member is not a refusal.
   def refuse_accept(actor, room_uri:)
     conversation = ChatConversation.find_by(uri: room_uri)
     return if conversation.nil? || !conversation.owner_account&.local?
@@ -444,11 +429,9 @@ class Sharlayan::ChatService
     raise Error, 'Unknown chat room' if conversation.nil?
     raise Forbidden unless conversation.owner_account_id == actor.id
 
-    # The owner decides who is in the room, and an archive may have overtaken this Add.
     raise Error, 'Unknown account' if account_uri.blank?
 
     account = account_from_uri(account_uri)
-    # The account may be unreachable for a moment. Losing the Add would strand that member.
     raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat room member' if account.nil?
 
     if account.local?
@@ -483,7 +466,6 @@ class Sharlayan::ChatService
 
     broadcast_to(account, 'chat.conversation_delete', { conversation_id: conversation.id.to_s }) if account.local?
     conversation.memberships.find_by(account: account)&.destroy!
-    # Removing the owner's own membership removes the room.
     return unless ChatConversation.exists?(conversation.id)
 
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
@@ -544,8 +526,6 @@ class Sharlayan::ChatService
     state = Sharlayan::ChatFederation::ReactionState.new(actor, message, reaction)
     return unless message.with_lock { remote_reaction_allowed?(actor, message, state, activity_id) }
 
-    # Imported only after authorization and replay checks, including on ingress retries, and
-    # outside the lock because it downloads from a server the reactor controls.
     shortcode = ChatMessageReaction.shortcode_of(reaction)
     yield shortcode if shortcode && block_given?
 
@@ -595,7 +575,6 @@ class Sharlayan::ChatService
     redis.exists?("chat_room_delete_upon_arrival:#{actor.id}:#{uri}")
   end
 
-  # An Undo can overtake its Invite. A later re-invitation still has to get through.
   def invite_cancelled?(room_uri, actor, invitee, published)
     cancelled_at = redis.get(invite_cancel_key(room_uri, actor, invitee))
     cancelled_at.present? && (published.nil? || published.to_f <= cancelled_at.to_f)
@@ -613,7 +592,6 @@ class Sharlayan::ChatService
     redis.setex(invite_cancel_key(room_uri, actor, invitee), INVITE_CANCEL_TTL.to_i, (published || Time.current).to_f.to_s)
   end
 
-  # Returns false for a snapshot older than what has been applied. Call while holding the room lock.
   def apply_remote_room_state(conversation, title:, description:, archived:, updated:)
     return false if updated && conversation.state_updated_at && updated < conversation.state_updated_at
 
@@ -625,7 +603,6 @@ class Sharlayan::ChatService
     true
   end
 
-  # Peers compare versions at millisecond precision, so each change has to move past the last one.
   def save_room_state!(conversation)
     return unless conversation.changed?
 
@@ -668,8 +645,6 @@ class Sharlayan::ChatService
     state.accepts?(activity_id)
   end
 
-  # Members deliver to the people they know about, and a roster change can still be in flight,
-  # so the owner's server passes each new message on. Receivers ignore one they already have.
   def relay_to_room(conversation, message)
     return unless message&.previously_new_record? && conversation.owner_account&.local? && Setting.chat_federation_enabled
 
@@ -682,14 +657,12 @@ class Sharlayan::ChatService
     )
   end
 
-  # History stays for a later invitation, but not forever once nobody here can read it.
   def schedule_abandoned_room_cleanup(conversation)
     return if conversation.local? || conversation.accounts.local.exists?
 
     ChatConversationCleanupWorker.perform_in(ChatConversationCleanupWorker::CLEANUP_DELAY, conversation.id)
   end
 
-  # Stale copies of an actor say nothing reliable about whether its server can chat.
   def refresh_remote_account(account)
     return unless account.remote? && account.possibly_stale?
 
@@ -721,8 +694,6 @@ class Sharlayan::ChatService
     message = nil
     media = []
     conversation.with_lock do
-      # Recheck after serializing creation: an Update may have seen no message
-      # before another ingress worker committed Create (or a newer Update).
       existing = ChatMessage.find_by(uri: uri)
       if existing
         raise Forbidden unless existing.account_id == actor.id && existing.chat_conversation_id == conversation.id
@@ -769,12 +740,10 @@ class Sharlayan::ChatService
     )
   end
 
-  # An unsupported declaration must not lose the message. The download validates the real file.
   def supported_media_content_type(content_type)
     content_type if (MediaAttachment::VIDEO_MIME_TYPES + MediaAttachment::AUDIO_MIME_TYPES + MediaAttachment::IMAGE_MIME_TYPES).include?(content_type)
   end
 
-  # Clients pick the player from the type before the file is here. Downloading replaces it.
   def declared_media_type(content_type)
     return :video if MediaAttachment::VIDEO_MIME_TYPES.include?(content_type)
     return :audio if MediaAttachment::AUDIO_MIME_TYPES.include?(content_type)
@@ -783,7 +752,6 @@ class Sharlayan::ChatService
     :unknown
   end
 
-  # The caller may hold a transaction, and the worker gives up on a record it cannot find yet.
   def download_incoming_media(actor, media)
     return if media.empty? || DomainBlock.reject_media?(actor.domain)
 
@@ -810,7 +778,6 @@ class Sharlayan::ChatService
       membership.destroy!
       broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account_id.to_s })
     else
-      # Removing one side of a direct chat removes the conversation with it.
       destroy_and_announce(conversation)
     end
   end
@@ -819,14 +786,11 @@ class Sharlayan::ChatService
     conversation_ids = account.chat_messages.distinct.pluck(:chat_conversation_id)
     account.chat_messages.in_batches.destroy_all
 
-    # The foreign key nullifies the pointer, which would misplace the room in the list.
     ChatConversation.where(id: conversation_ids, last_message_id: nil).find_each do |conversation|
       conversation.update!(last_message: conversation.messages.first)
     end
   end
 
-  # A member's own server only reaches the people it knows about, so the owner's
-  # server tells the rest of the room, as it does when a member joins.
   def relay_departure(conversation, account)
     owner = conversation.owner_account
     return unless owner&.local? && account.remote?
@@ -863,7 +827,6 @@ class Sharlayan::ChatService
     end
   end
 
-  # Invitees have not joined, but what they would be joining has changed.
   def deliver_room_state(actor, conversation, payload)
     return unless Setting.chat_federation_enabled
 
@@ -876,7 +839,6 @@ class Sharlayan::ChatService
     return unless Setting.chat_federation_enabled
     return if account.inbox_url.blank?
 
-    # A caller's transaction can still roll back, and peers must not hear about what never happened.
     ActiveRecord.after_all_transactions_commit do
       ActivityPub::DeliveryWorker.perform_async(payload.to_json, actor.id, account.inbox_url)
     end
@@ -946,7 +908,7 @@ class Sharlayan::ChatService
   def create_group(account, participants, title, description)
     invitees = participants.reject { |participant| participant.id == account.id }
     raise Error, 'The group has too many members' if invitees.size + 1 > Setting.chat_max_group_members
-    raise Forbidden if invitees.any? { |participant| blocked_in_either_direction?(account, participant) }
+    raise Forbidden if invitees.any? { |participant| blocked_in_either_direction?(account, participant) || silenced_for?(account, participant) }
     raise Forbidden unless invitees.all? { |participant| accepts_group_invites?(participant) }
 
     conversation = ChatConversation.transaction do
@@ -969,7 +931,6 @@ class Sharlayan::ChatService
     conversation
   end
 
-  # The savepoint keeps a caller's transaction usable when another request created it first.
   def create_direct_record(account, other, key)
     ChatConversation.transaction(requires_new: true) do
       conversation = ChatConversation.create!(conversation_type: :direct, direct_key: key)
@@ -990,7 +951,6 @@ class Sharlayan::ChatService
     raise Error, 'Archived conversations are read-only' if conversation.archived?
   end
 
-  # Without this, a message would be stored and reported as sent but never reach the other side.
   def ensure_federation_available!(conversation)
     raise Error, 'Chat federation is disabled' if !Setting.chat_federation_enabled && conversation.remote?
   end
@@ -1027,7 +987,6 @@ class Sharlayan::ChatService
     account.local? ? account.user&.settings&.[](:chat_allow_group_invites) : account.can_chat
   end
 
-  # Moderators limited this account, so it reaches only the people who chose to follow it.
   def silenced_for?(sender, recipient)
     sender.silenced? && !recipient.following?(sender)
   end
@@ -1066,7 +1025,6 @@ class Sharlayan::ChatService
 
   def broadcast_to(account, event, object, serializer = nil)
     payload = serializer ? serializer.new(object, current_account: account).as_json : object
-    # A client reacts by reading what the event announced, so it has to be committed by then.
     ActiveRecord.after_all_transactions_commit do
       redis.publish("timeline:#{account.id}", JSON.generate(event: event, payload: JSON.generate(payload)))
       MisskeyCompat::ChatStreaming.broadcast(redis, account, event, payload)

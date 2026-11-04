@@ -19,7 +19,7 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
     if object.not_processed?
       nil
     elsif object.chat_attachment? || object.needs_redownload? || object.on_hold?
-      media_proxy_url(object.id, :original)
+      media_proxy_url(object.id, :original, chat_token: chat_media_token)
     elsif object.drive_pointer?
       full_media_attachment_url(object)
     else
@@ -33,7 +33,7 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
 
   def preview_url
     if object.chat_attachment? || object.needs_redownload? || object.on_hold?
-      media_proxy_url(object.id, :small)
+      media_proxy_url(object.id, :small, chat_token: chat_media_token)
     elsif object.drive_pointer?
       full_media_attachment_preview_url(object)
     elsif object.thumbnail.present?
@@ -53,5 +53,13 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
 
   def meta
     object.file.meta
+  end
+
+  private
+
+  def chat_media_token
+    return unless object.chat_attachment? && instance_options[:current_account]
+
+    Sharlayan::ChatMediaToken.generate(object, instance_options[:current_account])
   end
 end

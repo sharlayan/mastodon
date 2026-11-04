@@ -129,6 +129,29 @@ RSpec.describe 'Chat federation protocol' do
       expect { perform(announce, owner) }.to raise_error(Sharlayan::ChatFederation::DependencyNotReadyError)
     end
 
+    it 'stores the latest message when the member is known on retry' do
+      updated_note = note.merge('_misskey_content' => 'edited text', 'updated' => '2026-11-03T00:01:00.000Z')
+      stub_request(:get, message_uri).to_return(
+        { status: 404 },
+        { status: 200, body: updated_note.to_json, headers: { 'Content-Type' => 'application/activity+json' } }
+      )
+
+      expect { perform(announce, owner) }.to raise_error(Sharlayan::ChatFederation::DependencyNotReadyError)
+      expect { perform(announce, owner) }.to change(ChatMessage, :count).by(1)
+      expect(ChatMessage.find_by!(uri: message_uri).text).to eq('edited text')
+    end
+
+    it 'does not store a message deleted before the member is known on retry' do
+      tombstone = { 'id' => message_uri, 'type' => 'Tombstone' }
+      stub_request(:get, message_uri).to_return(
+        { status: 404 },
+        { status: 200, body: tombstone.to_json, headers: { 'Content-Type' => 'application/activity+json' } }
+      )
+
+      expect { perform(announce, owner) }.to raise_error(Sharlayan::ChatFederation::DependencyNotReadyError)
+      expect { perform(announce, owner) }.to_not change(ChatMessage, :count)
+    end
+
     it 'retries when the author has not been added to the room yet' do
       room.memberships.find_by!(account: author).destroy!
       stub_note

@@ -34,8 +34,6 @@ export const showChatDesktopNotification = (
   const message = payload as Partial<ChatNotificationPayload>;
   if (!message.conversation_id || !message.account) return;
 
-  // The advanced layout serves the same screen under /deck. A background tab
-  // is not on screen, even when it is showing this conversation.
   const path = window.location.pathname.replace(/^\/deck(?=\/)/, '');
   if (
     path === `/chat/${message.conversation_id}` &&
@@ -51,7 +49,8 @@ export const showChatDesktopNotification = (
   });
   notification.addEventListener('click', () => {
     window.focus();
-    window.location.assign(`/chat/${message.conversation_id}`);
+    const prefix = window.location.pathname.startsWith('/deck/') ? '/deck' : '';
+    window.location.assign(`${prefix}/chat/${message.conversation_id}`);
     notification.close();
   });
 };

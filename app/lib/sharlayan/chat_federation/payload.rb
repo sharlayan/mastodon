@@ -42,8 +42,6 @@ module Sharlayan
           }
         end
 
-        # Sent by the owner of a room so a member the author's server did not know about yet still
-        # hears about the message. Receivers fetch the object from its author and verify it there.
         def announce_message(message)
           conversation = message.chat_conversation
           room = room_uri(conversation)

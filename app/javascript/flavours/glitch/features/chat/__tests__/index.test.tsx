@@ -35,8 +35,6 @@ vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
   ...(await importOriginal<typeof InitialState>()),
   me: 'me',
 }));
-// The surrounding column controls and global emoji picker require the app store;
-// keep chat's forms, message rendering, router and stream subscriptions real.
 const dispatch = vi.hoisted(() => vi.fn());
 vi.mock('flavours/glitch/store', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -1675,7 +1673,6 @@ describe('Chat room layout', () => {
 
 describe('Chat scrolling', () => {
   const scrollIntoView = vi.fn();
-  // The window stands in for whichever element scrolls in the current layout.
   const scrollTo = (distanceFromBottom: number) => {
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
       bottom: window.innerHeight + distanceFromBottom,

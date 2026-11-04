@@ -36,7 +36,6 @@ class MediaProxyController < ApplicationController
 
   private
 
-  # Allowlisted servers have no session here, so they present the token from the message.
   def federated_chat_request?
     return false if params[:token].blank?
 
@@ -47,9 +46,14 @@ class MediaProxyController < ApplicationController
   def set_media_attachment
     @media_attachment = MediaAttachment.attached.find(params[:id])
     if params[:chat_token].present?
-      viewer = MisskeyCompat::ChatMediaToken.viewer(params[:chat_token], @media_attachment)
-      allowed = Setting.chat_enabled && Setting.misskey_compat_enabled && @media_attachment.chat_attachment? &&
-                viewer.present? && MediaAttachmentPolicy.new(viewer, @media_attachment).download?
+      viewer = Sharlayan::ChatMediaToken.viewer(params[:chat_token], @media_attachment)
+      allowed = Setting.chat_enabled && viewer.present? && @media_attachment.chat_attachment? &&
+                MediaAttachmentPolicy.new(viewer, @media_attachment).download?
+      unless allowed
+        viewer = MisskeyCompat::ChatMediaToken.viewer(params[:chat_token], @media_attachment)
+        allowed = Setting.chat_enabled && Setting.misskey_compat_enabled && viewer.present? && @media_attachment.chat_attachment? &&
+                  MediaAttachmentPolicy.new(viewer, @media_attachment).download?
+      end
       head 404 unless allowed
       return
     end

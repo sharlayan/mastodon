@@ -188,7 +188,6 @@ const messages = defineMessages({
   },
 });
 
-// Matches ChatMessage::MAX_TEXT_LENGTH, which counts code points after trimming.
 const MAX_MESSAGE_LENGTH = 4096;
 
 const isVisible = () => document.visibilityState !== 'hidden';
@@ -345,9 +344,6 @@ const MessageActionButton: React.FC<{
   );
 };
 
-// Messages one person sends in quick succession read as a single thought, so
-// they share one picture, name, and time. Matches CherryPick's
-// CHAT_MESSAGE_GROUPING_INTERVAL, which includes exactly this gap.
 const SEARCH_DEBOUNCE_MS = 250;
 const RUN_GAP_MS = 17 * 60 * 1000;
 
@@ -379,7 +375,6 @@ const endsRun = (list: ChatMessage[], index: number) =>
 const FOLLOW_NEWEST_DISTANCE = 240;
 const HIGHLIGHT_DURATION_MS = 3000;
 
-// On-screen keyboards keep Enter for new lines and send with the button.
 const usesTouchKeyboard = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(pointer: coarse)').matches;
@@ -393,8 +388,6 @@ const scrollToNewest = (end: HTMLElement | null) => {
 export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { conversationId } = useParams<{ conversationId?: string }>();
 
-  // Each visit owns its messages, composer and pending async completions, even
-  // when the router reuses Chat across room and home navigation.
   return (
     <ChatSession key={conversationId ?? 'home'} multiColumn={multiColumn} />
   );
@@ -463,7 +456,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMounted = useRef(true);
-  // What was in the composer before an edit took it over.
   const [draftBeforeEdit, setDraftBeforeEdit] = useState<{
     text: string;
     media: ChatMedia[];
@@ -580,7 +572,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     };
   }, []);
 
-  // A request can finish after the user moved on to something else.
   const navigateIfActive = useCallback(
     (path: string) => {
       if (isMounted.current) history.push(path);
@@ -615,7 +606,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         missing = true;
       }
     }
-    // Events can start requests faster than they finish, in any order.
     if (requestId !== latestConversationRequest.current) return;
     setNextConversationId(cursor);
     setConversationMissing(missing);
@@ -666,8 +656,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const loadMessages = useCallback(async () => {
     if (!conversationId) return;
-    // Replay mutations received after this request started so a delayed
-    // snapshot cannot erase new messages, edits or reactions.
     const updates: MessageUpdate[] = [];
     pendingMessageUpdates.current.add(updates);
     const requestId = ++latestMessageRequest.current;
@@ -690,7 +678,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         response.data.map(applyTombstone),
       ),
     );
-    // Read state is caught up when the user comes back to this tab.
     if (!isVisible()) return;
     await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
     setConversations((current) =>
@@ -805,8 +792,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (!followingNewestRef.current && value.account?.id !== me) {
             setHasUnseenMessages(true);
           }
-          // The sender's own messages are already read on the server, and a
-          // background tab must not read messages on the user's behalf.
           if (value.id && value.account?.id !== me && isVisible()) {
             void api()
               .post(`/api/v1/chat/conversations/${conversationId}/read`, {
@@ -941,7 +926,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setDraftBeforeEdit(null);
   }, [draftBeforeEdit]);
 
-  // What the composer was working on can go away while it is on screen.
   const isArchived = Boolean(conversation?.archived);
   const editingTargetDeleted = messagesList.some(
     (message) => message.id === editingId && message.deleted_at,
@@ -954,7 +938,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const newestMessageConversationId = newestMessage?.conversation_id;
   const newestMessageIsMine = newestMessage?.account.id === me;
 
-  // Keyed on the newest message, so loading older ones leaves the view alone.
   useEffect(() => {
     if (!newestMessageId || newestMessageConversationId !== conversationId)
       return;
@@ -975,9 +958,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     roomView,
   ]);
 
-  // Images and reactions add height after the scroll above, and no scroll event
-  // says so. Scroll position is read from the window because which element
-  // scrolls depends on the layout.
   useEffect(() => {
     const end = messagesEndRef.current;
     const list = messagesListRef.current;
@@ -1003,7 +983,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           })
         : null;
     observer?.observe(list);
-    // Reply and edit bars make the sticky composer cover the newest message.
     if (composerRef.current) observer?.observe(composerRef.current);
 
     return () => {
@@ -1031,7 +1010,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     };
   }, [jumpTargetId, jumpTargetLoaded]);
 
-  // Keeps paging back until the message turns up or the history runs out.
   useEffect(() => {
     if (
       !jumpTargetId ||
@@ -1040,7 +1018,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       error
     )
       return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetches a page; the state only tracks that request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadOlderMessages();
   }, [
     conversationId,
@@ -1169,11 +1147,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleComposerKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
-      // Enter also confirms Korean and Japanese input, which must not send.
       if (
         event.key !== 'Enter' ||
         event.nativeEvent.isComposing ||
-        // Safari ends composition before this event, leaving only this code.
         // eslint-disable-next-line @typescript-eslint/no-deprecated
         event.keyCode === 229
       )
@@ -1702,7 +1678,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         )
         .then(() => {
           dispatch(showAlert({ message: messages.groupSaved }));
-          // Saved values now come from the room, so later renames show up here.
           setGroupEdit(null);
           return loadConversations();
         })
@@ -2323,7 +2298,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             </strong>
                           )}
                         <div className='chat-native__bubble-wrap'>
-                          {/* Focus is how touch screens reveal this message's actions. */}
                           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
                           <div className='chat-native__bubble' tabIndex={0}>
                             {message.reply_to_id && !message.deleted_at && (
@@ -2640,7 +2614,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   {intl.formatMessage(messages.send)}
                 </Button>
               </form>
-              {/* After the composer, so scrolling here shows the newest message above it. */}
               <div className='chat-native__end' ref={messagesEndRef} />
             </>
           )

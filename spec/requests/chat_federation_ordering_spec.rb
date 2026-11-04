@@ -71,8 +71,6 @@ RSpec.describe 'Chat federation message ordering' do
 
   it 'applies an update when a concurrent Create wins after the initial lookup' do
     message = service.receive_direct_message(owner, remote, uri: message_uri, text: 'original')
-    # The first lookup models the Update worker seeing no row before a second
-    # worker commits Create; the service must recheck after acquiring its lock.
     allow(ChatMessage).to receive(:find_by).and_call_original
     allow(ChatMessage).to receive(:find_by).with(uri: message_uri).and_return(nil, message)
 

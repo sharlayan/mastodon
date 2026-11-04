@@ -19,7 +19,6 @@ module Sharlayan
             object['id'].present?
         end
 
-        # A message from a server that omits the marker is still known by the URI it was stored under.
         def chat_update?(json)
           object = json['object']
           return false unless object.is_a?(Hash) && equals_type?(object['type'], 'Note')
@@ -41,7 +40,6 @@ module Sharlayan
           object.is_a?(Hash) && REACTION_TYPES.any? { |type| equals_type?(object['type'], type) } && chat_reaction?(object)
         end
 
-        # A room owner relays a member's message by reference. It is never a boost.
         def chat_announce?(json)
           object = json['object']
           room_uri_of(json).present? || (object.is_a?(Hash) && object['_misskey_talk'] == true) || chat_message?(uri_of(object))
@@ -72,6 +70,7 @@ module Sharlayan
           return 'skip: not a chat note' unless chat_create?(json)
           return 'skip: suspended actor' if account.suspended?
           return 'skip: actor mismatch' unless authored_by?(object, account)
+          return 'skip: unsupported chat room context' if room_uri_of(object).nil? && Array.wrap(object['@context']).any? { |value| room_uri?(value) }
 
           uri = uri_of(object)
           return 'skip: invalid chat message id' if uri.blank?
@@ -83,7 +82,6 @@ module Sharlayan
 
           room_uri = room_uri_of(object)
           if room_uri.present?
-            # Room membership decides who sees this, whatever the sender's roster put in `to`.
             service.receive_group_message(account, room_uri: room_uri, uri: uri, **message_attributes(object, text, attachments))
           else
             local_recipient = local_recipient_for(object, options[:delivered_to_account_id])
@@ -374,7 +372,6 @@ module Sharlayan
           uri.is_a?(String) && MESSAGE_URI.match?(uri)
         end
 
-        # The path is only a hint for a message that has not arrived. It can also be a status.
         def chat_message?(uri)
           return false if uri.blank?
 
@@ -386,8 +383,7 @@ module Sharlayan
         end
 
         def room_uri_of(object)
-          # Keep accepting the legacy room @context used by older Mastodon chat senders.
-          [object['_misskey_chatRoom'], object['context'], *Array.wrap(object['@context'])].find { |value| room_uri?(value) }
+          [object['_misskey_chatRoom'], object['context']].find { |value| room_uri?(value) }
         end
 
         def message_attributes(object, text, attachments)
@@ -400,7 +396,6 @@ module Sharlayan
           }
         end
 
-        # A 404 can mean the author's server has not heard about the signing member yet.
         def fetch_relayed_note(uri, signer)
           note = fetch_resource(uri, on_behalf_of: signer, raise_on_error: :all)
           equals_type?(note&.fetch('type', nil), 'Tombstone') ? :deleted : note

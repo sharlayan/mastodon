@@ -62,16 +62,18 @@ RSpec.describe 'Chat federation fixtures', type: :model do
     expect(conversation.messages.find_by(uri: 'https://remote.test/chat/messages/group-1')).to be_present
   end
 
-  it 'accepts a legacy group Create that names the room only in @context' do
+  it 'rejects a group Create that names the room only in @context without creating a direct chat' do
     conversation = service.create_conversation(alice, type: :group, account_ids: [], title: 'Local room')
     conversation.memberships.create!(account: bob)
     room = Sharlayan::ChatFederation::Payload.room_uri(conversation)
     json = fixture('create_group', room: room)
     json['object'] = json['object'].except('context', '_misskey_chatRoom').merge('@context' => room)
 
-    perform(json, bob, delivered_to_account_id: alice.id)
+    expect { perform(json, bob, delivered_to_account_id: alice.id) }
+      .to not_change(ChatMessage, :count)
+      .and(not_change { ChatConversation.chat_direct.count })
 
-    expect(conversation.messages.find_by(uri: 'https://remote.test/chat/messages/group-1')).to be_present
+    expect(conversation.messages.find_by(uri: 'https://remote.test/chat/messages/group-1')).to be_nil
   end
 
   it 'does not open a direct conversation for a group message' do
