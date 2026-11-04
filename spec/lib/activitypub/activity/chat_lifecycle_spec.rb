@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'ActivityPub chat message lifecycle', type: :model do
+  include_context 'with an open chat policy'
+
   let(:alice) { Fabricate(:user).account }
   let(:bob) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/users/bob/inbox', can_chat: true, chat_scope: 'everyone') }
   let(:service) { Sharlayan::ChatService.new }

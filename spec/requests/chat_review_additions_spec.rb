@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Chat review additions' do
+  include_context 'with an open chat policy'
+
   let(:service) { Sharlayan::ChatService.new }
   let(:user) { Fabricate(:user) }
   let(:other) { Fabricate(:user) }

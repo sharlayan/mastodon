@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Chat room member removal' do
+  include_context 'with an open chat policy'
+
   include_context 'with API authentication', oauth_scopes: 'read write'
 
   let(:service) { Sharlayan::ChatService.new }

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Chat federation regressions' do
+  include_context 'with an open chat policy'
+
   let(:service) { Sharlayan::ChatService.new }
   let(:owner) { Fabricate(:user).account }
   let(:invitee) { Fabricate(:user).account }

@@ -235,7 +235,7 @@ module Sharlayan
           end
           result['updated'] = message.edited_at.utc.iso8601(3) if message.edited_at.present?
           result['inReplyTo'] = message_uri(message.reply_to) if message.reply_to.present?
-          result['attachment'] = message.media_attachments.sort_by(&:id).map { |attachment| document(attachment) } if message.media_attachments.any?
+          result['attachment'] = message.media_attachments.map { |attachment| document(attachment) } if message.media_attachments.any?
           result
         end
 

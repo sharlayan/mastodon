@@ -312,7 +312,7 @@ RSpec.describe 'Chat federation gaps' do
     end
 
     it 'advertises chat when federation is enabled' do
-      expect(actor_json(owner)).to include('_misskey_canChat' => true, '_misskey_chatScope' => 'everyone')
+      expect(actor_json(owner)).to include('_misskey_canChat' => true, '_misskey_chatScope' => 'mutual')
     end
 
     it 'explicitly refuses chat while federation is disabled' do

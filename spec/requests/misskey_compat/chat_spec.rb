@@ -102,11 +102,11 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(ChatConversation.count).to be_zero
   end
 
-  it 'keeps the Misskey local text limit at 2000 Unicode codepoints' do
-    request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: '🍒' * 2000)
+  it 'keeps the local text limit at 4096 Unicode codepoints' do
+    request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: '🍒' * 4096)
     expect(response).to have_http_status(200)
 
-    request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: '🍒' * 2001)
+    request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: '🍒' * 4097)
     expect(response).to have_http_status(400)
     expect(ChatMessage.count).to eq(1)
   end

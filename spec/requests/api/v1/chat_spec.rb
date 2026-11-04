@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'API V1 Chat' do
+  include_context 'with an open chat policy'
+
   include_context 'with API authentication', oauth_scopes: 'read write'
 
   let!(:user) { Fabricate(:user, account_attributes: { username: 'alice' }) }
@@ -561,12 +563,11 @@ RSpec.describe 'API V1 Chat' do
       expect(conversation.invitations.pending.find_by(invitee_account: remote)).to be_present
     end
 
-    it 'rejects an attachment over the one-image limit' do
+    it 'rejects attachments over the limit' do
       conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :direct, account_ids: [other.account.id])
-      first = Fabricate(:media_attachment, account: user.account, status: nil)
-      second = Fabricate(:media_attachment, account: user.account, status: nil)
+      media = Array.new(5) { Fabricate(:media_attachment, account: user.account, status: nil) }
 
-      post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { media_ids: [first.id, second.id] }, headers: headers
+      post "/api/v1/chat/conversations/#{conversation.id}/messages", params: { media_ids: media.map(&:id) }, headers: headers
 
       expect(response).to have_http_status(422)
       expect(conversation.messages).to be_empty

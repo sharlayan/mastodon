@@ -453,7 +453,7 @@ module Sharlayan
         end
 
         def attachments_of(object)
-          Array.wrap(object['attachment']).grep(Hash).first(Setting.chat_max_attachments)
+          Array.wrap(object['attachment']).grep(Hash).first(::Status.remote_media_attachments_limit)
         end
 
         def time_of(value)

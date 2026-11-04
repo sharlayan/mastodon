@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Admin Chat conversations' do
+  include_context 'with an open chat policy'
+
   let!(:first) { Fabricate(:user) }
   let!(:second) { Fabricate(:user) }
   let!(:conversation) { Sharlayan::ChatService.new.create_conversation(first.account, type: :direct, account_ids: [second.account.id]) }

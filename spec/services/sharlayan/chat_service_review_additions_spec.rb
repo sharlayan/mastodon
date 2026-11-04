@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Sharlayan::ChatService do
+  include_context 'with an open chat policy'
+
   let(:service) { described_class.new }
   let(:local_account) { Fabricate(:user).account }
   let(:remote_account) do

@@ -261,10 +261,12 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
       next unless params.key?(key)
       next if params[key].nil? && NULLABLE_SEARCH_IDS.include?(key) && action_name == 'search'
 
-      return render_invalid_param("#/properties/#{key}", 'must be an id') unless params[key].is_a?(String) && params[key].match?(/\A[1-9][0-9]*\z/)
+      return render_invalid_param("#/properties/#{key}", 'must be an id') unless chat_id?(params[key])
     end
 
-    { name: 256, description: 1024, query: 256, reaction: 100, text: 2000 }.each do |key, max|
+    return render_invalid_param('#/properties/fileIds', 'must be a list of ids') if params.key?(:fileIds) && !(params[:fileIds].is_a?(Array) && params[:fileIds].all? { |id| chat_id?(id) })
+
+    { name: 256, description: 1024, query: 256, reaction: 100, text: ChatMessage::MAX_TEXT_LENGTH }.each do |key, max|
       next unless params.key?(key)
       next if key == :text && params[key].nil? && CREATE_MESSAGE_ACTIONS.include?(action_name)
 
@@ -284,6 +286,10 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     %i(sinceDate untilDate).each do |key|
       return render_invalid_param("#/properties/#{key}", 'must be an integer') if params.key?(key) && !params[key].is_a?(Integer)
     end
+  end
+
+  def chat_id?(value)
+    value.is_a?(String) && value.match?(/\A[1-9][0-9]*\z/)
   end
 
   def enforce_write_rate_limit!
@@ -359,14 +365,18 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def with_media_ids
-    MisskeyCompat::DriveFileResolver.new.with_resolved(account: current_account, file_ids: params[:fileId].presence, allow_drive_files: Setting.drive_enabled) do |media_ids|
+    MisskeyCompat::DriveFileResolver.new.with_resolved(account: current_account, file_ids: requested_file_ids.presence, allow_drive_files: Setting.drive_enabled) do |media_ids|
       yield Array(media_ids)
     end
   end
 
+  def requested_file_ids
+    [*params[:fileId], *params[:fileIds]].uniq
+  end
+
   def valid_message_text?(editing: false)
     return true if params[:text].present? && params[:text].strip.present?
-    return true if !editing && params[:fileId].present?
+    return true if !editing && requested_file_ids.present?
 
     render_error('Message text is empty', 'INVALID_TEXT', 400)
     false

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Chat federation message ordering' do
+  include_context 'with an open chat policy'
+
   let(:service) { Sharlayan::ChatService.new }
   let(:owner) { Fabricate(:user).account }
   let(:remote) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/users/bob/inbox', can_chat: true, chat_scope: 'everyone') }

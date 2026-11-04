@@ -28,7 +28,7 @@ class MisskeyCompat::ChatSerializer
   def message(message)
     conversation = message.chat_conversation
     recipient = conversation.accounts.find { |account| account.id != message.account_id } if conversation.chat_direct?
-    file = attachment(message)
+    files = attachments(message)
 
     {
       id: mid(message.id),
@@ -42,8 +42,10 @@ class MisskeyCompat::ChatSerializer
       toUser: recipient && user(recipient),
       toRoomId: conversation.chat_group? ? mid(conversation.id) : nil,
       toRoom: conversation.chat_group? ? room(conversation) : nil,
-      fileId: file&.fetch(:id),
-      file: file,
+      fileId: files.first&.fetch(:id),
+      fileIds: files.pluck(:id),
+      file: files.first,
+      files: files,
       reactions: message.deleted? ? [] : reactions(message),
       emojis: message.deleted? ? {} : text_emojis(message),
     }
@@ -97,12 +99,13 @@ class MisskeyCompat::ChatSerializer
     MisskeyCompat::UserSerializer.serialize(account, viewer: @viewer)
   end
 
-  def attachment(message)
-    return if message.deleted?
+  def attachments(message)
+    return [] if message.deleted?
 
-    media = message.media_attachments.first
-    return if media.nil?
+    message.media_attachments.map { |media| attachment(media) }
+  end
 
+  def attachment(media)
     token = MisskeyCompat::ChatMediaToken.generate(media, @viewer)
     MisskeyCompat::DriveFileSerializer.serialize(media).merge(
       url: media_proxy_url(media.id, :original, chat_token: token),

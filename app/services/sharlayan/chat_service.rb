@@ -981,7 +981,7 @@ class Sharlayan::ChatService
     normalized_ids = ids.map(&:to_s).uniq
     raise Error, "A chat message can contain up to #{Setting.chat_max_attachments} attachments" if normalized_ids.size > Setting.chat_max_attachments
 
-    attachments = MediaAttachment.unattached.where(id: normalized_ids, account: account).to_a
+    attachments = MediaAttachment.unattached.where(id: normalized_ids, account: account).sort_by { |media| normalized_ids.index(media.id.to_s) }
     raise Error, 'One or more media attachments were not found' unless attachments.size == normalized_ids.size
     raise Error, 'One or more media attachments are still being processed' if attachments.any?(&:not_processed?)
 
