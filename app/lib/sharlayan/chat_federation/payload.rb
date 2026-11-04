@@ -26,7 +26,7 @@ module Sharlayan
             'actor' => actor_uri(message.account),
             'published' => message.created_at.iso8601,
             'to' => recipients(message),
-            'object' => note(message),
+            'object' => note(message).merge(legacy_room_fields(message)),
           }
         end
 
@@ -268,6 +268,15 @@ module Sharlayan
         end
 
         private
+
+        # Servers from before `context` and `_misskey_chatRoom` read the room only from @context, and
+        # take a Note with one address for a direct message, so the sender is addressed like they do.
+        # A fetched Note goes without these, because there it would have to replace the real @context.
+        def legacy_room_fields(message)
+          return {} unless message.chat_conversation.chat_group?
+
+          { '@context' => room_uri(message.chat_conversation), 'to' => [actor_uri(message.account), *recipients(message)] }
+        end
 
         def reaction_tag(account, reaction)
           shortcode = ChatMessageReaction.shortcode_of(reaction)

@@ -55,6 +55,49 @@ RSpec.describe 'Misskey chat media downloads' do
     expect(response).to have_http_status(404)
   end
 
+  context 'when the capability no longer works' do
+    it 'lets a signed-in member keep opening the attachment' do
+      sign_in viewer.user
+      path = download_path
+
+      travel 11.minutes do
+        get path
+        expect(response).to redirect_to(%r{system/media_attachments})
+      end
+
+      get "/media_proxy/#{media.id}/original", params: { chat_token: 'invalid' }
+      expect(response).to redirect_to(%r{system/media_attachments})
+    end
+
+    it 'refuses a signed-in account that is not a member' do
+      sign_in Fabricate(:user)
+
+      get "/media_proxy/#{media.id}/original", params: { chat_token: 'invalid' }
+
+      expect(response).to have_http_status(404)
+    end
+
+    it 'refuses a signed-in member once they have left the room' do
+      sign_in viewer.user
+      path = download_path
+      conversation.memberships.find_by!(account: viewer).destroy!
+
+      travel 11.minutes do
+        get path
+        expect(response).to have_http_status(404)
+      end
+    end
+
+    it 'does not open public media to a signed-out visitor in limited federation mode' do
+      allow(Rails.configuration.x.mastodon).to receive(:limited_federation_mode).and_return(true)
+      public_media = Fabricate(:media_attachment, status: Fabricate(:status, visibility: :public))
+
+      get "/media_proxy/#{public_media.id}/original", params: { chat_token: 'invalid' }
+
+      expect(response).to have_http_status(404)
+    end
+  end
+
   it 'does not allow a previously issued URL to reveal a deleted message attachment' do
     path = download_path
     message.update!(deleted_at: Time.current)

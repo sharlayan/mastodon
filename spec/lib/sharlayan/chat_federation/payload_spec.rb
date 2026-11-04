@@ -43,11 +43,30 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
 
     expect(note).to include('context' => room_uri, '_misskey_chatRoom' => room_uri)
     expect(note).to_not have_key('@context')
-    canonical = Class.new { include JsonLdHelper }.new.canonicalize(described_class.create(message))
+    activity = described_class.create(message).merge('object' => note)
+    canonical = Class.new { include JsonLdHelper }.new.canonicalize(activity)
     expect(canonical).to include("<https://www.w3.org/ns/activitystreams#context> <#{room_uri}>")
     expect(canonical).to include('<https://misskey-hub.net/ns#_misskey_chatRoom>')
-    compacted = Class.new { include JsonLdHelper }.new.compact(described_class.create(message))
+    compacted = Class.new { include JsonLdHelper }.new.compact(activity)
     expect(compacted['object']).to include('context' => room_uri, '_misskey_chatRoom' => room_uri)
+  end
+
+  it 'names the room in the @context of the Note in a Create for servers that read it only there' do
+    room_uri = "https://#{Rails.configuration.x.web_domain}/chat/rooms/#{conversation.id}"
+
+    expect(described_class.create(message)['object']).to include('@context' => room_uri, 'context' => room_uri)
+  end
+
+  it 'addresses more than one account in a Create for a room of two so it is not taken for a direct message' do
+    expect(described_class.create(message)['object']['to']).to contain_exactly(remote.uri, ActivityPub::TagManager.instance.uri_for(owner))
+  end
+
+  it 'does not put a room in the @context of a direct message' do
+    direct = ChatConversation.create!(conversation_type: :direct, direct_key: 'test', owner_account: owner)
+    direct.memberships.create!(account: owner)
+    direct_message = ChatMessage.create!(chat_conversation: direct, account: owner, text: 'hi')
+
+    expect(described_class.create(direct_message)['object']).to_not have_key('@context')
   end
 
   it 'preserves millisecond edit versions in updates and fetched notes' do

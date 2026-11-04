@@ -54,8 +54,9 @@ class MediaProxyController < ApplicationController
         allowed = Setting.chat_enabled && Setting.misskey_compat_enabled && viewer.present? && @media_attachment.chat_attachment? &&
                   MediaAttachmentPolicy.new(viewer, @media_attachment).download?
       end
-      head 404 unless allowed
-      return
+      return if allowed
+      # A token expires while a conversation stays open, and only a session can stand in for it.
+      return head(404) unless user_signed_in?
     end
 
     if @media_attachment.chat_attachment? && Sharlayan::ChatFederation::MediaToken.valid?(params[:token], @media_attachment)

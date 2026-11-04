@@ -70,7 +70,6 @@ module Sharlayan
           return 'skip: not a chat note' unless chat_create?(json)
           return 'skip: suspended actor' if account.suspended?
           return 'skip: actor mismatch' unless authored_by?(object, account)
-          return 'skip: unsupported chat room context' if room_uri_of(object).nil? && Array.wrap(object['@context']).any? { |value| room_uri?(value) }
 
           uri = uri_of(object)
           return 'skip: invalid chat message id' if uri.blank?
@@ -80,7 +79,7 @@ module Sharlayan
           attachments = attachments_of(object)
           return 'skip: empty chat message' if text.blank? && attachments.empty?
 
-          room_uri = room_uri_of(object)
+          room_uri = room_uri_of(object) || legacy_room_uri_of(object, account)
           if room_uri.present?
             service.receive_group_message(account, room_uri: room_uri, uri: uri, **message_attributes(object, text, attachments))
           else
@@ -282,7 +281,7 @@ module Sharlayan
 
           return false unless chat_invite?(json)
 
-          room_uri = uri_of(json['object']['object'])
+          room_uri = canonical_room_uri(uri_of(json['object']['object']), account)
           return 'skip: invalid chat room' if room_uri.blank?
 
           service.receive_accept(account, room_uri: room_uri)
@@ -298,7 +297,7 @@ module Sharlayan
 
           return false unless chat_invite?(json)
 
-          room_uri = uri_of(json['object']['object'])
+          room_uri = canonical_room_uri(uri_of(json['object']['object']), account)
           return 'skip: invalid chat room' if room_uri.blank?
 
           service.receive_reject(account, room_uri: room_uri)
@@ -322,7 +321,7 @@ module Sharlayan
 
           return false unless chat_add?(json)
 
-          service.receive_remove(account, room_uri: uri_of(json['target']), account_uri: uri_of(json['object']))
+          service.receive_remove(account, room_uri: canonical_room_uri(uri_of(json['target']), account), account_uri: uri_of(json['object']))
           'ok: chat room member removed'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat Remove from #{account.uri}: #{e.message}")
@@ -384,6 +383,24 @@ module Sharlayan
 
         def room_uri_of(object)
           [object['_misskey_chatRoom'], object['context']].find { |value| room_uri?(value) }
+        end
+
+        def legacy_room_uri_of(object, account)
+          canonical_room_uri(Array.wrap(object['@context']).find { |value| room_uri?(value) }, account)
+        end
+
+        # Servers from before `context` and `_misskey_chatRoom` name a room they mirror under their own
+        # host, or guess this server's path from an actor URI, so only the ID at the end is reliable.
+        # It is only looked up among the rooms the sender already belongs to or is invited to.
+        def canonical_room_uri(uri, account)
+          return uri if !room_uri?(uri) || ChatConversation.exists?(uri: uri)
+          return uri unless same_host?(uri, account.uri) || ActivityPub::TagManager.instance.local_uri?(uri)
+
+          rooms = ChatConversation.chat_group.where('chat_conversations.uri LIKE ?', "%/chat/rooms/#{uri.split('/').last}")
+          joined = rooms.where(id: ChatMembership.where(account: account).select(:chat_conversation_id))
+          invited = rooms.where(id: ChatInvitation.pending.where(invitee_account: account).select(:chat_conversation_id))
+          matches = joined.or(invited).limit(2).pluck(:uri)
+          matches.one? ? matches.first : uri
         end
 
         def message_attributes(object, text, attachments)
