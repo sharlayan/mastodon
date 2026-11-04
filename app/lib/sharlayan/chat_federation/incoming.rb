@@ -143,6 +143,7 @@ module Sharlayan
 
           object = json['object']
           return 'skip: not a chat note' unless chat_update?(json)
+          return 'skip: suspended actor' if account.suspended?
           return 'skip: actor mismatch' unless authored_by?(object, account)
 
           message = ChatMessage.find_by(uri: object['id'])
@@ -332,6 +333,7 @@ module Sharlayan
           return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
 
           return false unless chat_room?(json)
+          return 'skip: suspended actor' if account.suspended?
 
           object = json['object']
           service.receive_room_update(account, room_uri: uri_of(object), title: object['name'], description: object['summary'], archived: object['_misskey_chatArchived'], updated: time_of(object['updated']))

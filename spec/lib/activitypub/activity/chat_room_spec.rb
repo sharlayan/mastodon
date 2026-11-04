@@ -56,6 +56,25 @@ RSpec.describe 'ActivityPub chat rooms', type: :model do
       expect(conversation.description).to eq('New description')
     end
 
+    it 'ignores Update from a suspended room owner' do
+      bob.suspend!
+      update = {
+        '@context' => 'https://www.w3.org/ns/activitystreams',
+        'type' => 'Update',
+        'actor' => bob.uri,
+        'object' => {
+          'id' => room_uri,
+          'type' => 'Group',
+          'name' => 'New name',
+          'attributedTo' => bob.uri,
+        },
+      }
+
+      ActivityPub::ProcessActivityService.new.call(update.to_json, bob)
+
+      expect(conversation.reload.title).to eq('Remote room')
+    end
+
     it 'deletes the mirror room from Delete' do
       delete = {
         'type' => 'Delete',

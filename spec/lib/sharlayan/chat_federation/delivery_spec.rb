@@ -28,4 +28,38 @@ RSpec.describe Sharlayan::ChatFederation::Delivery do
 
     expect(ActivityPub::DeliveryWorker).to_not have_received(:perform_async)
   end
+
+  context 'when a remote member is suspended' do
+    before do
+      conversation
+      remote.suspend!
+      allow(ActivityPub::DeliveryWorker).to receive(:perform_async)
+    end
+
+    %w(Create Update Announce EmojiReact Add).each do |type|
+      it "does not send them #{type}" do
+        described_class.call(actor: owner, conversation: conversation, payload: { 'type' => type })
+
+        expect(ActivityPub::DeliveryWorker).to_not have_received(:perform_async)
+      end
+    end
+
+    %w(Delete Remove Undo).each do |type|
+      it "still sends them #{type}" do
+        described_class.call(actor: owner, conversation: conversation, payload: { 'type' => type })
+
+        expect(ActivityPub::DeliveryWorker).to have_received(:perform_async).with(anything, owner.id, remote.inbox_url)
+      end
+    end
+
+    it 'does not send a suspended pending invitee a room Update' do
+      invitee = Fabricate(:account, domain: 'other.test', uri: 'https://other.test/users/carol', inbox_url: 'https://other.test/users/carol/inbox')
+      conversation.invitations.create!(inviter_account: owner, invitee_account: invitee)
+      invitee.suspend!
+
+      described_class.call(actor: owner, conversation: conversation, payload: { 'type' => 'Update' }, include_pending_invitees: true)
+
+      expect(ActivityPub::DeliveryWorker).to_not have_received(:perform_async)
+    end
+  end
 end

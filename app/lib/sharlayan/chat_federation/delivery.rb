@@ -3,12 +3,16 @@
 module Sharlayan
   module ChatFederation
     class Delivery
+      # A suspended account gets nothing new, but still hears what was taken back, as with a deleted status.
+      RETRACTION_TYPES = %w(Delete Remove Undo).freeze
+
       class << self
         def call(actor:, conversation:, payload:, except_account_id: nil, except_domain: nil, include_pending_invitees: false)
           seen = Set.new
           json = payload.to_json
-          audience = ::Account.remote.where(id: conversation.memberships.select(:account_id))
-          audience = audience.or(::Account.remote.where(id: conversation.invitations.pending.select(:invitee_account_id))) if include_pending_invitees
+          remote = RETRACTION_TYPES.include?(payload['type']) ? ::Account.remote : ::Account.remote.without_suspended
+          audience = remote.where(id: conversation.memberships.select(:account_id))
+          audience = audience.or(remote.where(id: conversation.invitations.pending.select(:invitee_account_id))) if include_pending_invitees
 
           audience = audience.where.not(domain: except_domain) if except_domain.present?
 

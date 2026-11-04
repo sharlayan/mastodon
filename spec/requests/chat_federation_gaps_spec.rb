@@ -203,6 +203,48 @@ RSpec.describe 'Chat federation gaps' do
     end
   end
 
+  describe 'an Accept from an account that was never invited' do
+    it 'does not answer, so that rooms cannot be discovered' do
+      perform(accept_json(room))
+
+      expect(delivered_types(remote)).to_not include('Remove')
+      expect(room.memberships.exists?(account: remote)).to be(false)
+    end
+  end
+
+  describe 'a suspended remote member' do
+    before do
+      room.memberships.create!(account: remote)
+      remote.suspend!
+    end
+
+    it 'stops receiving what the room sends' do
+      message = service.create_message(owner, room, text: 'sent after suspension')
+      service.update_message(owner, message, text: 'edited after suspension')
+      service.update_conversation(owner, room, { title: 'Renamed' })
+
+      expect(delivered_to(remote)).to be_empty
+    end
+
+    it 'is not told who joined' do
+      other = Fabricate(:account, domain: 'other.test', uri: 'https://other.test/users/carol', inbox_url: 'https://other.test/users/carol/inbox', can_chat: true)
+      service.invite(owner, room, other)
+
+      perform(accept_json(room), other)
+
+      expect(room.memberships.exists?(account: other)).to be(true)
+      expect(delivered_types(remote)).to_not include('Add')
+    end
+
+    it 'still learns what was removed' do
+      message = service.create_message(owner, room, text: 'sent after suspension')
+      service.delete_message(owner, message)
+      service.destroy_conversation(owner, room)
+
+      expect(delivered_types(remote)).to eq(%w(Delete Delete))
+    end
+  end
+
   describe 'archiving' do
     let(:mirror) do
       ChatConversation.create!(conversation_type: :group, owner_account: remote, title: 'Mirror', uri: 'https://remote.test/chat/rooms/9').tap do |record|

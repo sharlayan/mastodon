@@ -74,6 +74,17 @@ RSpec.describe 'Incoming ActivityPub chat messages', type: :model do
     expect(Status.where(uri: payload['object']['id'])).to be_empty
   end
 
+  it 'does not allow a suspended actor to change an existing message through Update' do
+    ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
+    bob.suspend!
+    changed = payload['object'].merge('_misskey_content' => 'changed', 'content' => 'changed', 'updated' => '2026-11-03T00:00:00Z')
+    json = payload.merge('@context' => 'https://www.w3.org/ns/activitystreams', 'type' => 'Update', 'object' => changed)
+
+    ActivityPub::ProcessActivityService.new.call(json.to_json, bob, delivered_to_account_id: alice.id)
+
+    expect(ChatMessage.find_by!(uri: payload['object']['id']).text).to eq('hello')
+  end
+
   it 'finds the local recipient from the numeric AP inbox URI' do
     payload['object']['to'] = [ActivityPub::TagManager.instance.uri_for_account_id(alice.id)]
 

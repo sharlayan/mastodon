@@ -396,6 +396,7 @@ class Sharlayan::ChatService
     conversation = ChatConversation.find_by(uri: room_uri)
     return if conversation.nil? || !conversation.owner_account&.local?
     return if conversation.memberships.exists?(account: actor)
+    return unless conversation.invitations.exists?(invitee_account: actor)
 
     conversation.invitations.pending.find_by(invitee_account: actor)&.update!(state: :rejected)
     deliver_to_account(conversation.owner_account, Sharlayan::ChatFederation::Payload.remove(conversation, actor, actor: conversation.owner_account), actor)
@@ -804,7 +805,7 @@ class Sharlayan::ChatService
 
     members = conversation.accounts.to_a
     members.each do |member|
-      next if member.id == joined_account.id || member.id == owner.id || !member.remote? || member.inbox_url.blank?
+      next if member.id == joined_account.id || member.id == owner.id || !member.remote? || member.suspended? || member.inbox_url.blank?
 
       payload = Sharlayan::ChatFederation::Payload.add(conversation, joined_account)
       deliver_to_account(owner, payload, member)
