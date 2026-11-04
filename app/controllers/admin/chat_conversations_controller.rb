@@ -11,7 +11,7 @@ module Admin
 
     def show
       authorize @conversation, :show?
-      @messages = @conversation.messages.includes(:account, :media_attachments, reactions: :account).page(params[:page]).per(50)
+      @messages = @conversation.messages.includes(:account, :edits, :media_attachments, reactions: :account).page(params[:page]).per(50)
     end
 
     def destroy
@@ -34,7 +34,7 @@ module Admin
     end
 
     def filtered_conversations
-      scope = ChatConversation.local_only.includes(:accounts, :memberships, last_message: :account).order(last_message_id: :desc, id: :desc)
+      scope = ChatConversation.local_only.preload(:accounts, :memberships, last_message: :account).order(last_message_id: :desc, id: :desc)
       scope = scope.where(conversation_type: params[:type]) if ChatConversation.conversation_types.key?(params[:type])
       scope = scope.for_account(Account.find(params[:account_id])) if params[:account_id].present?
       scope

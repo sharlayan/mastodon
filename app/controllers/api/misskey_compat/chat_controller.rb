@@ -81,11 +81,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     return unless valid_message_text?
 
     with_media_ids do |media_ids|
-      message = ChatConversation.transaction do
-        conversation = chat_service.create_conversation(current_account, type: :direct, account_ids: [recipient.id])
-        chat_service.create_message(current_account, conversation, text: params[:text], media_ids: media_ids)
-      end
-      render json: serialize_message(message)
+      render json: serialize_message(chat_service.create_direct_message(current_account, recipient, text: params[:text], media_ids: media_ids))
     end
   end
 
@@ -204,7 +200,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def invitations_inbox
-    invitations = ChatInvitation.pending.where(invitee_account: current_account, ignored: false)
+    invitations = ChatInvitation.pending.from_available_inviters.where(invitee_account: current_account, ignored: false)
     render_invitations(invitations)
   end
 

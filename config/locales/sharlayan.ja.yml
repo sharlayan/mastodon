@@ -238,6 +238,7 @@ ja:
       last_activity: 最終アクティビティ
       message: メッセージ
       participants: 参加者
+      previous_versions: 以前の内容
       sender: 送信者
       sent_at: 送信日時
       title: チャット会話
@@ -507,6 +508,7 @@ ja:
       limit: カスタム絵文字ミュートの上限数に達しています
   exports:
     chat: チャット
+    chat_in_archive: アーカイブに含まれます
     clips: クリップ
     json: JSON
     pages: ページ

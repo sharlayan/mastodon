@@ -48,7 +48,13 @@ RSpec.describe Export do
     end
   end
 
-  describe '#to_chat_json' do
+  describe '#write_chat_json' do
+    def chat_export
+      io = StringIO.new
+      subject.write_chat_json(io)
+      JSON.parse(io.string)
+    end
+
     let(:other_account) { Fabricate(:account) }
     let(:hidden_account) { Fabricate(:account) }
 
@@ -61,7 +67,7 @@ RSpec.describe Export do
       hidden_conversation.memberships.create!([{ account: other_account }, { account: hidden_account }])
       hidden_conversation.messages.create!(account: hidden_account, text: 'private')
 
-      exported = JSON.parse(subject.to_chat_json)
+      exported = chat_export
 
       expect(exported['chat_conversations'].pluck('id')).to contain_exactly(conversation.id.to_s)
       expect(exported.dig('chat_conversations', 0, 'participants')).to contain_exactly(account.local_username_and_domain, other_account.local_username_and_domain)
@@ -78,7 +84,7 @@ RSpec.describe Export do
       conversation.memberships.create!([{ account: account }, { account: other_account }])
       conversation.messages.create!(account: account, text: nil, deleted_at: Time.current)
 
-      exported = JSON.parse(subject.to_chat_json)
+      exported = chat_export
 
       expect(exported.dig('chat_conversations', 0, 'messages', 0, 'text')).to be_nil
       expect(exported.dig('chat_conversations', 0, 'messages', 0, 'deleted_at')).to be_present
@@ -90,9 +96,42 @@ RSpec.describe Export do
       conversation.messages.create!(account: account, text: 'hidden', hidden_at: Time.current)
       visible_message = conversation.messages.create!(account: other_account, text: 'visible')
 
-      exported = JSON.parse(subject.to_chat_json)
+      exported = chat_export
 
       expect(exported.dig('chat_conversations', 0, 'messages').pluck('id')).to contain_exactly(visible_message.id.to_s)
+    end
+
+    it 'links the attachments of exported messages' do
+      conversation = ChatConversation.create!(conversation_type: :direct, direct_key: [account.id, other_account.id].sort.join(':'))
+      conversation.memberships.create!([{ account: account }, { account: other_account }])
+      media = Fabricate(:media_attachment, account: account, status: nil)
+      message = conversation.messages.build(account: account)
+      message.pending_media_attachments = [media]
+      message.save!
+      message.chat_message_media_attachments.create!(media_attachment: media)
+
+      expect(chat_export.dig('chat_conversations', 0, 'messages', 0, 'attachments')).to contain_exactly(end_with("/media_proxy/#{media.id}/original"))
+    end
+
+    it 'writes a valid document without any conversation' do
+      expect(chat_export).to eq('chat_conversations' => [])
+    end
+
+    it 'writes messages as it goes instead of building the document in memory' do
+      stub_const('Export::CHAT_MESSAGE_BATCH_SIZE', 1)
+      conversation = ChatConversation.create!(conversation_type: :direct, direct_key: [account.id, other_account.id].sort.join(':'))
+      conversation.memberships.create!([{ account: account }, { account: other_account }])
+      texts = Array.new(3) { |index| "message number #{index}" }
+      texts.each { |text| conversation.messages.create!(account: account, text: text) }
+      writes = []
+      io = instance_double(IO)
+      allow(io).to receive(:write) { |chunk| writes << chunk }
+
+      subject.write_chat_json(io)
+
+      expect(writes.count { |chunk| texts.any? { |text| chunk.include?(text) } }).to eq(3)
+      expect(writes).to(be_none { |chunk| texts.many? { |text| chunk.include?(text) } })
+      expect(JSON.parse(writes.join)['chat_conversations'][0]['messages'].size).to eq(3)
     end
   end
 

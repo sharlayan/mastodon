@@ -15,16 +15,18 @@ class MisskeyCompat::ChatStreaming
 
       message = message_for(event, data)
       conversation = message&.chat_conversation || conversation_for(event, data)
-      return unless conversation&.memberships&.exists?(account: viewer)
+      return if conversation.nil?
+
+      # Most viewers have no compatible client connected, so look that up before anything else about them.
+      channel = channel_for(viewer, conversation, event)
+      return if channel.nil? || !redis.exists?("subscribed:misskey:#{channel}")
+      return unless conversation.memberships.exists?(account: viewer)
 
       if event == 'chat.message_hide'
         return unless message&.account_id == viewer.id && message.hidden?
       elsif message && !ChatMessage.visible_to(viewer).exists?(id: message.id)
         return
       end
-
-      channel = channel_for(viewer, conversation, event)
-      return if channel.nil? || !redis.exists?("subscribed:misskey:#{channel}")
 
       type, body = event_payload(event, data, message, conversation, viewer)
       publish(redis, channel, type, body, conversation.id, message&.id) if type

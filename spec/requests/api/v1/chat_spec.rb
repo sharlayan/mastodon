@@ -563,6 +563,22 @@ RSpec.describe 'API V1 Chat' do
       expect(conversation.invitations.pending.find_by(invitee_account: remote)).to be_present
     end
 
+    it 'does not list an invitation from a suspended account' do
+      owner = Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/owner', inbox_url: 'https://remote.test/users/owner/inbox')
+      room = ChatConversation.create!(conversation_type: :group, owner_account: owner, title: 'Room', uri: 'https://remote.test/chat/rooms/1')
+      room.memberships.create!(account: owner, role: :owner)
+      room.invitations.create!(inviter_account: owner, invitee_account: user.account)
+      owner.suspend!
+
+      get '/api/v1/chat/invitations', headers: headers
+      expect(response.parsed_body).to be_empty
+
+      owner.unsuspend!
+
+      get '/api/v1/chat/invitations', headers: headers
+      expect(response.parsed_body.size).to eq(1)
+    end
+
     it 'rejects attachments over the limit' do
       conversation = Sharlayan::ChatService.new.create_conversation(user.account, type: :direct, account_ids: [other.account.id])
       media = Array.new(5) { Fabricate(:media_attachment, account: user.account, status: nil) }

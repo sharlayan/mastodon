@@ -45,14 +45,15 @@ RSpec.describe 'Chat review additions' do
     end
 
     it 'uses an expiring proxy token in ActivityPub documents' do
-      document = Sharlayan::ChatFederation::Payload.note(message)['attachment'].first
+      document = Sharlayan::ChatFederation::Payload.note(message, domain: 'remote.test')['attachment'].first
 
       expect(document['url']).to include('/media_proxy/')
       expect(document['url']).to include('token=')
     end
 
     it 'allows the federated media token without a user session' do
-      document = Sharlayan::ChatFederation::Payload.note(message)['attachment'].first
+      conversation.memberships.create!(account: Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob'))
+      document = Sharlayan::ChatFederation::Payload.note(message, domain: 'remote.test')['attachment'].first
       uri = URI.parse(document['url'])
 
       get "#{uri.path}?#{uri.query}"

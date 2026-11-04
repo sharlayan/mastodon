@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Export
+  CHAT_MESSAGE_BATCH_SIZE = 500
+
   attr_reader :account
 
   def initialize(account)
@@ -83,24 +85,35 @@ class Export
     JSON.generate(data_collection)
   end
 
-  def to_chat_json
-    conversations = ChatConversation.for_account(account).includes(:accounts).map do |conversation|
-      chat_conversation_data(conversation, chat_messages_for_export(conversation))
+  # Someone can have far more chat than fits in memory, so this writes to the IO as it reads.
+  def write_chat_json(io)
+    io.write('{"chat_conversations":[')
+    ChatConversation.for_account(account).preload(:accounts).find_each.with_index do |conversation, index|
+      io.write(',') unless index.zero?
+      write_chat_conversation(io, conversation)
     end
-
-    JSON.generate(chat_conversations: conversations)
+    io.write(']}')
   end
 
   private
+
+  def write_chat_conversation(io, conversation)
+    io.write(chat_conversation_data(conversation).to_json.delete_suffix('}'))
+    io.write(',"messages":[')
+    chat_messages_for_export(conversation).find_in_batches(batch_size: CHAT_MESSAGE_BATCH_SIZE).with_index do |messages, batch|
+      io.write(',') unless batch.zero?
+      io.write(messages.map { |message| chat_message_data(message).to_json }.join(','))
+    end
+    io.write(']}')
+  end
 
   def chat_messages_for_export(conversation)
     ChatMessage.visible_to(account)
       .where(chat_conversation_id: conversation.id)
       .includes(:account, :media_attachments, reactions: :account)
-      .find_each
   end
 
-  def chat_conversation_data(conversation, messages)
+  def chat_conversation_data(conversation)
     {
       id: conversation.id.to_s,
       type: conversation.conversation_type,
@@ -108,7 +121,6 @@ class Export
       description: conversation.description,
       archived_at: conversation.archived_at,
       participants: conversation.accounts.map { |participant| acct(participant) },
-      messages: messages.map { |message| chat_message_data(message) },
     }
   end
 

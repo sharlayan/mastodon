@@ -239,6 +239,7 @@ ko:
       last_activity: 최근 활동
       message: 메시지
       participants: 참가자
+      previous_versions: 이전 내용
       sender: 보낸 사람
       sent_at: 보낸 시각
       title: 채팅 대화
@@ -527,6 +528,7 @@ ko:
       limit: 커스텀 에모지 뮤트 최대 개수를 초과합니다
   exports:
     chat: 채팅
+    chat_in_archive: 아카이브에 포함됩니다
     clips: 클립
     json: JSON
     pages: 페이지

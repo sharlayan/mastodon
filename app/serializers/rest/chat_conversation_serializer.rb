@@ -46,7 +46,7 @@ class REST::ChatConversationSerializer < ActiveModel::Serializer
 
     @visible_last_message ||= begin
       candidate = object.last_message
-      candidate = nil if candidate && candidate.account_id == instance_options[:current_account]&.id && candidate.hidden?
+      candidate = nil if candidate && (candidate.account.suspended? || (candidate.account_id == instance_options[:current_account]&.id && candidate.hidden?))
       candidate || object.messages.visible_to(instance_options[:current_account]).first
     end
   end

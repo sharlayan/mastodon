@@ -23,8 +23,8 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     expect(described_class.note(message)['id']).to eq("https://social.example.com/chat/messages/#{message.id}")
     expect(described_class.room(conversation)['id']).to eq("https://social.example.com/chat/rooms/#{conversation.id}")
     expect(described_class.reaction(message, remote, '👍', reaction_id: 123)['id']).to start_with('https://social.example.com/chat/reactions/')
-    expect(described_class.send(:document, attachment)['url']).to start_with('https://social.example.com/media_proxy/123/original')
-    expect(described_class.send(:document, attachment)['url']).to include('token=')
+    expect(described_class.send(:document, attachment, 'remote.test')['url']).to start_with('https://social.example.com/media_proxy/123/original')
+    expect(described_class.send(:document, attachment, 'remote.test')['url']).to include('token=')
   end
 
   it 'builds a canonical chat note' do
@@ -110,8 +110,8 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     file = double(url: '/system/media/test.png')
     attachment = double(id: 123, file: file, file_content_type: 'image/png', description: 'image', sensitive: false)
 
-    expect(described_class.send(:document, attachment)['url'])
+    expect(described_class.send(:document, attachment, 'remote.test')['url'])
       .to start_with("#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}/media_proxy/123/original")
-    expect(described_class.send(:document, attachment)['url']).to include('token=')
+    expect(described_class.send(:document, attachment, 'remote.test')['url']).to include('token=')
   end
 end

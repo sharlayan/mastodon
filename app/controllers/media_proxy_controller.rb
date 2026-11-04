@@ -49,11 +49,6 @@ class MediaProxyController < ApplicationController
       viewer = Sharlayan::ChatMediaToken.viewer(params[:chat_token], @media_attachment)
       allowed = Setting.chat_enabled && viewer.present? && @media_attachment.chat_attachment? &&
                 MediaAttachmentPolicy.new(viewer, @media_attachment).download?
-      unless allowed
-        viewer = MisskeyCompat::ChatMediaToken.viewer(params[:chat_token], @media_attachment)
-        allowed = Setting.chat_enabled && Setting.misskey_compat_enabled && viewer.present? && @media_attachment.chat_attachment? &&
-                  MediaAttachmentPolicy.new(viewer, @media_attachment).download?
-      end
       return if allowed
       # A token expires while a conversation stays open, and only a session can stand in for it.
       return head(404) unless user_signed_in?

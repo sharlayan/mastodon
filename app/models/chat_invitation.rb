@@ -7,6 +7,8 @@ class ChatInvitation < ApplicationRecord
   belongs_to :inviter_account, class_name: 'Account'
   belongs_to :invitee_account, class_name: 'Account'
 
+  scope :from_available_inviters, -> { where(inviter_account_id: Account.where(suspended_at: nil).select(:id)) }
+
   validates :invitee_account_id, uniqueness: { scope: :chat_conversation_id, conditions: -> { pending } }, if: :pending?
   validate :group_conversation
   validate :different_accounts

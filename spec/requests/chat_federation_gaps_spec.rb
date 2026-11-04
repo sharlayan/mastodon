@@ -112,8 +112,13 @@ RSpec.describe 'Chat federation gaps' do
   describe Sharlayan::ChatFederation::MediaToken do
     let(:media) { Fabricate(:media_attachment, account: owner, status: nil) }
 
+    before do
+      room.memberships.create!(account: remote)
+      service.create_message(owner, room, text: 'look', media_ids: [media.id])
+    end
+
     it 'outlives delivery retries and receivers that cache lazily' do
-      token = described_class.generate(media)
+      token = described_class.generate(media, domain: remote.domain)
 
       travel 30.days
 
@@ -121,7 +126,7 @@ RSpec.describe 'Chat federation gaps' do
     end
 
     it 'still expires' do
-      token = described_class.generate(media)
+      token = described_class.generate(media, domain: remote.domain)
 
       travel described_class::TTL + 1.day
 

@@ -58,7 +58,7 @@
         %tr
           %th= t('exports.chat')
           %td= number_with_delimiter @export_summary.total_chat_conversations
-          %td= table_link_to 'download', t('exports.json'), settings_exports_chat_index_path(format: :json)
+          %td= t('exports.chat_in_archive')
 
 %hr.spacer/
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class REST::ChatMessageSerializer < ActiveModel::Serializer
-  attributes :id, :conversation_id, :content, :created_at, :edited_at, :deleted_at, :reply_to_id, :remote, :deletes_for_everyone
+  attributes :id, :conversation_id, :content, :created_at, :edited_at, :deleted_at, :reply_to_id, :remote, :deletes_for_everyone, :editable
 
   belongs_to :account, serializer: REST::AccountSerializer
   has_many :reactions, serializer: REST::ChatMessageReactionSerializer
@@ -25,6 +25,10 @@ class REST::ChatMessageSerializer < ActiveModel::Serializer
 
   def remote
     object.remote?
+  end
+
+  def editable
+    !object.deleted? && object.within_delete_window?
   end
 
   def deletes_for_everyone

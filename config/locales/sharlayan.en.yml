@@ -253,6 +253,7 @@ en:
       last_activity: Last activity
       message: Message
       participants: Participants
+      previous_versions: Earlier versions
       sender: Sender
       sent_at: Sent at
       title: Chat conversations
@@ -575,6 +576,7 @@ en:
       limit: You have reached the maximum number of custom emoji mutes
   exports:
     chat: Chat
+    chat_in_archive: Included in your archive
     clips: Clips
     json: JSON
     pages: Pages

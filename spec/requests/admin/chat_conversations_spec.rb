@@ -16,6 +16,15 @@ RSpec.describe 'Admin Chat conversations' do
 
   after { Setting.chat_enabled = false }
 
+  it 'shows what a message said before its edits' do
+    message = Sharlayan::ChatService.new.create_message(first.account, conversation, text: 'current text')
+    message.edits.create!(text: 'the earlier text')
+
+    get admin_chat_conversation_path(conversation)
+
+    expect(response.body).to include('current text', 'the earlier text')
+  end
+
   it 'lists and inspects chat conversations' do
     Sharlayan::ChatService.new.create_message(first.account, conversation, text: 'moderation-visible')
 

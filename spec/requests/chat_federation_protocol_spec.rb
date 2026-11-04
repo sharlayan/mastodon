@@ -981,7 +981,7 @@ RSpec.describe 'Chat federation protocol' do
     end
 
     it 'lets a remote server fetch with a valid federation token' do
-      get "/media_proxy/#{media.id}/original", params: { token: Sharlayan::ChatFederation::MediaToken.generate(media) }
+      get "/media_proxy/#{media.id}/original", params: { token: Sharlayan::ChatFederation::MediaToken.generate(media, domain: author.domain) }
 
       expect(response).to have_http_status(302)
       expect(response.location).to_not include('/auth/sign_in')

@@ -34,7 +34,6 @@ namespace :settings do
     resources :bookmarks, only: :index
     resources :custom_filters, only: :index, constraints: { format: :json }, controller: :custom_filters
     resources :clips, only: :index, constraints: { format: :json }, controller: :clips
-    resources :chat, only: :index, constraints: { format: :json }, controller: :chat
   end
 
   resources :two_factor_authentication_methods, only: [:index] do
