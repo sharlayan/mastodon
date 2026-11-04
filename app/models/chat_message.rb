@@ -8,7 +8,7 @@ class ChatMessage < ApplicationRecord
   belongs_to :reply_to, class_name: 'ChatMessage', optional: true
 
   has_many :reactions, class_name: 'ChatMessageReaction', dependent: :destroy, inverse_of: :chat_message
-  has_many :chat_message_media_attachments, dependent: :destroy
+  has_many :chat_message_media_attachments, -> { order(:id) }, dependent: :destroy, inverse_of: :chat_message
   has_many :media_attachments, through: :chat_message_media_attachments
 
   MAX_TEXT_LENGTH = 4096
@@ -34,6 +34,14 @@ class ChatMessage < ApplicationRecord
 
   def remote?
     account.remote?
+  end
+
+  def within_delete_window?
+    created_at > Setting.chat_delete_window_hours.hours.ago
+  end
+
+  def deletes_for_everyone?
+    within_delete_window? && !RoleplayModeHelper.roleplay_mode? && !Setting.chat_soft_delete_enabled
   end
 
   private
