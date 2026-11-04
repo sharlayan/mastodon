@@ -43,6 +43,7 @@ import api from 'flavours/glitch/api';
 import { compareId } from 'flavours/glitch/compare_id';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { Button } from 'flavours/glitch/components/button';
+import { CircularProgress } from 'flavours/glitch/components/circular_progress';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
@@ -165,6 +166,17 @@ const messages = defineMessages({
     id: 'chat.invite_sent',
     defaultMessage: 'Invitation sent to {account}.',
   },
+  archiveConfirmTitle: {
+    id: 'chat.archive_confirm_title',
+    defaultMessage: 'Archive this group?',
+  },
+  archiveConfirm: {
+    id: 'chat.archive_confirm',
+    defaultMessage:
+      'Everyone can still read it, but nobody can send messages or reactions. You can undo this at any time with Reopen in this menu.',
+  },
+  archive: { id: 'chat.archive', defaultMessage: 'Archive' },
+  unarchive: { id: 'chat.unarchive', defaultMessage: 'Reopen' },
   invitationAccepted: {
     id: 'chat.invitation_accepted',
     defaultMessage: 'You joined {group}.',
@@ -366,6 +378,42 @@ export const withNewMessage = (
   ];
 };
 
+type AccountSearchStatus = 'idle' | 'searching' | 'empty' | 'failed';
+
+const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
+  status,
+}) => {
+  if (status === 'searching')
+    return (
+      <div className='chat-native__searching' role='status'>
+        <CircularProgress size={16} strokeWidth={2} />
+        <FormattedMessage
+          id='chat.account_search_searching'
+          defaultMessage='Searching…'
+        />
+      </div>
+    );
+  if (status === 'empty')
+    return (
+      <div className='chat-native__empty'>
+        <FormattedMessage
+          id='chat.account_search_no_results'
+          defaultMessage='No accounts found.'
+        />
+      </div>
+    );
+  if (status === 'failed')
+    return (
+      <div className='chat-native__empty'>
+        <FormattedMessage
+          id='chat.account_search_failed'
+          defaultMessage='Could not search for accounts. Try again.'
+        />
+      </div>
+    );
+  return null;
+};
+
 // The API gives a page of these at a time, and the members screen has to show them all.
 const SENT_INVITATIONS_PAGE = 40;
 const fetchSentInvitations = async (
@@ -522,7 +570,7 @@ const PendingInvitationRow: React.FC<{
         <strong>{invitee.display_name || invitee.acct}</strong>
         <span title={`@${invitee.acct}`}>@{invitee.acct}</span>
       </div>
-      <small className='chat-native__pending-badge'>
+      <small className='chat-native__state-badge'>
         <FormattedMessage
           id='chat.invitation_pending'
           defaultMessage='Invited'
@@ -672,7 +720,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [directAccountQuery, setDirectAccountQuery] = useState('');
   const [directAccount, setDirectAccount] = useState<ChatAccount | null>(null);
   const [accountResults, setAccountResults] = useState<ChatAccount[]>([]);
-  const [accountSearchEmpty, setAccountSearchEmpty] = useState(false);
+  const [accountSearchStatus, setAccountSearchStatus] =
+    useState<AccountSearchStatus>('idle');
   const [awayFromNewest, setAwayFromNewest] = useState(false);
   const [hasUnseenMessages, setHasUnseenMessages] = useState(false);
   const [groupTitle, setGroupTitle] = useState('');
@@ -793,12 +842,20 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     return conversations;
   }, [activeTab, conversations]);
 
+  useEffect(
+    () => () => {
+      if (searchTimeoutRef.current !== null)
+        window.clearTimeout(searchTimeoutRef.current);
+    },
+    [],
+  );
+
   const searchAccounts = useCallback(
     (query: string, setter: (accounts: ChatAccount[]) => void) => {
       const normalized = query.trim();
       const requestId = searchRequestRef.current + 1;
       searchRequestRef.current = requestId;
-      setAccountSearchEmpty(false);
+      setAccountSearchStatus(normalized.length < 2 ? 'idle' : 'searching');
 
       if (searchTimeoutRef.current !== null) {
         window.clearTimeout(searchTimeoutRef.current);
@@ -825,10 +882,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               (account) => account.id !== me,
             );
             setter(accounts);
-            setAccountSearchEmpty(accounts.length === 0);
+            setAccountSearchStatus(accounts.length === 0 ? 'empty' : 'idle');
           })
           .catch(() => {
-            if (requestId === searchRequestRef.current) setter([]);
+            if (requestId !== searchRequestRef.current) return;
+            setter([]);
+            setAccountSearchStatus('failed');
           });
       }, SEARCH_DEBOUNCE_MS);
     },
@@ -1608,10 +1667,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const value = event.target.value;
       setDirectAccount(null);
       setDirectAccountQuery(value);
-      if (value.trim().length < 2) {
-        setAccountResults([]);
-        return;
-      }
       searchAccounts(value, setAccountResults);
     },
     [searchAccounts],
@@ -2244,6 +2299,26 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [conversationId, loadConversations],
   );
 
+  const confirmArchive = useCallback(() => {
+    dispatch(
+      openModal({
+        modalType: 'CONFIRM',
+        modalProps: {
+          title: intl.formatMessage(messages.archiveConfirmTitle),
+          message: intl.formatMessage(messages.archiveConfirm),
+          confirm: intl.formatMessage(messages.archive),
+          onConfirm: () => {
+            postRoomAction('archive');
+          },
+        },
+      }),
+    );
+  }, [dispatch, intl, postRoomAction]);
+
+  const handleReopen = useCallback(() => {
+    postRoomAction('unarchive');
+  }, [postRoomAction]);
+
   const confirmThenLeave = useCallback(
     (path: string, title: string, message: string) => {
       dispatch(
@@ -2394,18 +2469,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               to: `${path}/settings`,
             },
             {
-              text: conversation.archived
-                ? intl.formatMessage({
-                    id: 'chat.unarchive',
-                    defaultMessage: 'Reopen',
-                  })
-                : intl.formatMessage({
-                    id: 'chat.archive',
-                    defaultMessage: 'Archive',
-                  }),
-              action: () => {
-                postRoomAction(conversation.archived ? 'unarchive' : 'archive');
-              },
+              text: intl.formatMessage(
+                conversation.archived ? messages.unarchive : messages.archive,
+              ),
+              action: conversation.archived ? handleReopen : confirmArchive,
             },
           ]
         : []),
@@ -2436,7 +2503,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ]
         : []),
     ];
-  }, [confirmThenLeave, conversation, intl, postRoomAction]);
+  }, [
+    confirmArchive,
+    confirmThenLeave,
+    conversation,
+    handleReopen,
+    intl,
+    postRoomAction,
+  ]);
   const handleOpenConversation = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const id = event.currentTarget.dataset.conversationId;
@@ -2454,6 +2528,31 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   if (!signedIn) return <NotSignedInIndicator />;
+
+  // The room scrolls, and only the composer stays on screen wherever it is scrolled.
+  const errorNotice = error && !roomEnding && (
+    <div className='chat-native__error' role='alert'>
+      {error === 'refused' ? (
+        <FormattedMessage
+          id='chat.error_refused'
+          defaultMessage="This account can't receive this."
+        />
+      ) : error === 'too_many_attachments' ? (
+        <FormattedMessage
+          id='chat.error_too_many_attachments'
+          defaultMessage='You can attach up to {max} files.'
+          values={{ max: chatSettings?.max_attachments ?? 0 }}
+        />
+      ) : (
+        <FormattedMessage
+          id='chat.error'
+          defaultMessage='The chat request could not be completed.'
+        />
+      )}
+    </div>
+  );
+  const composerShown =
+    Boolean(conversationId) && !conversationMissing && !isManagingRoom;
 
   return (
     <Column
@@ -2663,15 +2762,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       </div>
                     )}
                   </form>
-                  {inviteAccountQuery.trim().length >= 2 &&
-                    accountSearchEmpty && (
-                      <div className='chat-native__empty'>
-                        <FormattedMessage
-                          id='chat.account_search_no_results'
-                          defaultMessage='No accounts found.'
-                        />
-                      </div>
-                    )}
+                  {inviteAccountQuery.trim().length >= 2 && (
+                    <AccountSearchNotice status={accountSearchStatus} />
+                  )}
                   {inviteAccountResults.length > 0 && (
                     <div className='chat-native__account-results'>
                       {inviteAccountResults.map((account) => (
@@ -2952,6 +3045,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 ref={composerRef}
                 onSubmit={handleComposerSubmit}
               >
+                {errorNotice}
                 {awayFromNewest && (
                   <button
                     type='button'
@@ -2974,10 +3068,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 )}
                 {conversation?.archived && (
                   <div className='chat-native__notice'>
-                    <FormattedMessage
-                      id='chat.archived'
-                      defaultMessage='This group is archived.'
-                    />
+                    <span>
+                      <FormattedMessage
+                        id='chat.archived'
+                        defaultMessage='This group is archived.'
+                      />
+                    </span>
+                    {isGroupOwner && (
+                      <button type='button' onClick={handleReopen}>
+                        {intl.formatMessage(messages.unarchive)}
+                      </button>
+                    )}
                   </div>
                 )}
                 {recipientSuspended && (
@@ -3185,15 +3286,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     </div>
                   )}
                 </form>
-                {directAccountQuery.trim().length >= 2 &&
-                  accountSearchEmpty && (
-                    <div className='chat-native__empty'>
-                      <FormattedMessage
-                        id='chat.account_search_no_results'
-                        defaultMessage='No accounts found.'
-                      />
-                    </div>
-                  )}
+                {directAccountQuery.trim().length >= 2 && (
+                  <AccountSearchNotice status={accountSearchStatus} />
+                )}
                 {accountResults.length > 0 && (
                   <div className='chat-native__account-results'>
                     {accountResults.map((account) => (
@@ -3256,13 +3351,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     </div>
                   )}
                 </form>
-                {groupAccountQuery.trim().length >= 2 && accountSearchEmpty && (
-                  <div className='chat-native__empty'>
-                    <FormattedMessage
-                      id='chat.account_search_no_results'
-                      defaultMessage='No accounts found.'
-                    />
-                  </div>
+                {groupAccountQuery.trim().length >= 2 && (
+                  <AccountSearchNotice status={accountSearchStatus} />
                 )}
                 {groupAccountResults.length > 0 && (
                   <div className='chat-native__account-results'>
@@ -3392,6 +3482,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       <ConversationTitle conversation={item} />
                       <span>{item.last_message?.content}</span>
                     </span>
+                    {item.archived && (
+                      <small className='chat-native__state-badge'>
+                        <FormattedMessage
+                          id='chat.archived_badge'
+                          defaultMessage='Archived'
+                        />
+                      </small>
+                    )}
                     {item.unread && (
                       <i aria-label={intl.formatMessage(messages.unread)} />
                     )}
@@ -3422,27 +3520,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             )}
           </>
         )}
-        {error && !roomEnding && (
-          <div className='chat-native__error' role='alert'>
-            {error === 'refused' ? (
-              <FormattedMessage
-                id='chat.error_refused'
-                defaultMessage="This account can't receive this."
-              />
-            ) : error === 'too_many_attachments' ? (
-              <FormattedMessage
-                id='chat.error_too_many_attachments'
-                defaultMessage='You can attach up to {max} files.'
-                values={{ max: chatSettings?.max_attachments ?? 0 }}
-              />
-            ) : (
-              <FormattedMessage
-                id='chat.error'
-                defaultMessage='The chat request could not be completed.'
-              />
-            )}
-          </div>
-        )}
+        {!composerShown && errorNotice}
       </div>
 
       <Helmet>

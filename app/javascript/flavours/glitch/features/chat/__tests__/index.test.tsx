@@ -3558,3 +3558,279 @@ describe('Chat list updates', () => {
     });
   });
 });
+
+describe('A failed action in a room', () => {
+  it('shows in the composer, which stays on screen wherever the room is scrolled', async () => {
+    api.delete.mockRejectedValue(new Error('no'));
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await confirmModal();
+
+    const alert = await screen.findByRole('alert');
+    expect(
+      container.querySelector('.chat-native__composer')?.contains(alert),
+    ).toBe(true);
+    expect(screen.getByText('Private message A')).toBeTruthy();
+  });
+
+  it('stays out of a composer on a screen that has none', async () => {
+    api.delete.mockRejectedValue(new Error('no'));
+    api.post.mockRejectedValue(new Error('no'));
+    const { container } = mountChat('/chat/new');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a group' }),
+    );
+    fireEvent.change(screen.getByPlaceholderText('Group name'), {
+      target: { value: 'Room' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(container.querySelector('.chat-native__composer')).toBeNull();
+  });
+});
+
+describe('Archiving a group', () => {
+  const group = (extra: object = {}) => ({
+    ...conversation('A'),
+    type: 'group',
+    title: 'Hikers',
+    current_role: 'owner',
+    ...extra,
+  });
+  const respond = (item: object) => {
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: [item], headers: {} });
+      if (url === '/api/v1/chat/conversations/A')
+        return Promise.resolve({ data: item });
+      return getResponse(url);
+    });
+    api.post.mockResolvedValue({ data: item });
+  };
+  const archivePosts = () =>
+    api.post.mock.calls.filter(
+      ([url]) => url === '/api/v1/chat/conversations/A/archive',
+    ).length;
+
+  it('asks first, saying what happens and how to undo it', async () => {
+    respond(group());
+    mountChat();
+    await screen.findByText('Private message A');
+    dispatch.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+
+    expect(archivePosts()).toBe(0);
+    const modal = lastConfirmation();
+    expect(modal?.message).toContain('nobody can send');
+    expect(modal?.message).toContain('Reopen');
+  });
+
+  it('archives once confirmed', async () => {
+    respond(group());
+    mountChat();
+    await screen.findByText('Private message A');
+    dispatch.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await confirmModal();
+
+    await waitFor(() => {
+      expect(archivePosts()).toBe(1);
+    });
+  });
+
+  it('reopens from the menu without asking, since nothing is lost', async () => {
+    respond(group({ archived: true }));
+    mountChat();
+    await screen.findByText('Private message A');
+    dispatch.mockClear();
+
+    fireEvent.click(
+      within(screen.getByRole('banner')).getByRole('button', {
+        name: 'Reopen',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/v1/chat/conversations/A/unarchive',
+      );
+    });
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('offers the owner a way back right where the room says it is archived', async () => {
+    respond(group({ archived: true }));
+    const { container } = mountChat();
+    const notice = (await screen.findByText('This group is archived.')).closest(
+      '.chat-native__notice',
+    ) as HTMLElement;
+
+    fireEvent.click(within(notice).getByRole('button', { name: 'Reopen' }));
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/v1/chat/conversations/A/unarchive',
+      );
+    });
+    expect(container.querySelector('.chat-native__composer')).toBeTruthy();
+  });
+
+  it('offers a member who cannot reopen it nothing to press', async () => {
+    respond(group({ archived: true, current_role: 'member' }));
+    mountChat();
+    const notice = (await screen.findByText('This group is archived.')).closest(
+      '.chat-native__notice',
+    ) as HTMLElement;
+
+    expect(within(notice).queryByRole('button')).toBeNull();
+  });
+
+  it('marks an archived group in the list, and only that one', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/conversations'
+        ? Promise.resolve({
+            data: [
+              group({ id: 'A', title: 'Hikers', archived: true }),
+              group({ id: 'B', title: 'Readers' }),
+            ],
+            headers: {},
+          })
+        : getResponse(url),
+    );
+    mountChat('/chat');
+
+    const archived = (await screen.findByText('Hikers')).closest('button');
+    const open = screen.getByText('Readers').closest('button');
+
+    expect(archived?.textContent).toContain('Archived');
+    expect(open?.textContent).not.toContain('Archived');
+  });
+});
+
+describe('Searching for an account', () => {
+  const deferredSearch = () => {
+    let settle: (accounts: unknown[] | Error) => void = () => undefined;
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v2/search'
+        ? new Promise((resolve, reject) => {
+            settle = (result) => {
+              if (result instanceof Error) reject(result);
+              else resolve({ data: { accounts: result } });
+            };
+          })
+        : getResponse(url),
+    );
+    return (result: unknown[] | Error) => {
+      settle(result);
+    };
+  };
+  const type = async (value: string) => {
+    fireEvent.change(
+      await screen.findByPlaceholderText('Search for an account'),
+      { target: { value } },
+    );
+  };
+  const searchRequests = () =>
+    api.get.mock.calls.filter(([url]) => url === '/api/v2/search').length;
+
+  it('says it is searching from the first keystroke, before any request', async () => {
+    deferredSearch();
+    mountChat('/chat/new');
+    await type('bob');
+
+    expect(screen.getByRole('status').textContent).toBe('Searching…');
+    expect(searchRequests()).toBe(0);
+  });
+
+  it('stops saying so when results arrive', async () => {
+    const settle = deferredSearch();
+    mountChat('/chat/new');
+    await type('bob');
+    await waitFor(() => {
+      expect(searchRequests()).toBe(1);
+    });
+    expect(screen.getByRole('status')).toBeTruthy();
+
+    act(() => {
+      settle([remote]);
+    });
+
+    await screen.findByRole('button', { name: /Bob/ });
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('says when nothing was found', async () => {
+    const settle = deferredSearch();
+    mountChat('/chat/new');
+    await type('nobody');
+    await waitFor(() => {
+      expect(searchRequests()).toBe(1);
+    });
+
+    act(() => {
+      settle([]);
+    });
+
+    expect(await screen.findByText('No accounts found.')).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('says when the search failed, which is not the same as finding nothing', async () => {
+    const settle = deferredSearch();
+    mountChat('/chat/new');
+    await type('bob');
+    await waitFor(() => {
+      expect(searchRequests()).toBe(1);
+    });
+
+    act(() => {
+      settle(new Error('no'));
+    });
+
+    expect(
+      await screen.findByText('Could not search for accounts. Try again.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('No accounts found.')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('says nothing for a query too short to search', async () => {
+    deferredSearch();
+    mountChat('/chat/new');
+    await type('b');
+
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('drops a pending search when the query becomes too short', async () => {
+    deferredSearch();
+    mountChat('/chat/new');
+    await type('bob');
+    await type('b');
+
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 320);
+      });
+    });
+
+    expect(searchRequests()).toBe(0);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('works the same when creating a group', async () => {
+    deferredSearch();
+    mountChat('/chat/new');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a group' }),
+    );
+    await type('bob');
+
+    expect(screen.getByRole('status').textContent).toBe('Searching…');
+  });
+});

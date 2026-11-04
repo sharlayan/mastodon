@@ -422,7 +422,7 @@
     border-radius: 4px;
   }
 
-  &__pending-badge {
+  &__state-badge {
     flex: none;
     padding: 1px 6px;
     white-space: nowrap;
@@ -440,6 +440,9 @@
     min-height: 240px;
     padding: 16px 12px;
     background: var(--color-bg-primary);
+
+    // Pictures and what sits on them have a z-index of their own, which would otherwise reach the composer.
+    isolation: isolate;
   }
 
   &__message {
@@ -896,12 +899,30 @@
       flex: 1 0 100%;
       order: -1;
     }
+
+    > .chat-native__error {
+      position: static;
+      padding: 0;
+      font-size: 13px;
+      text-align: center;
+    }
   }
 
   &__notice {
     color: var(--color-text-secondary);
     font-size: 13px;
     text-align: center;
+
+    button {
+      margin-inline-start: 8px;
+      padding: 0;
+      color: var(--color-text-brand);
+      font-weight: 500;
+      text-decoration: underline;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+    }
   }
 
   &__compose-field {
@@ -945,8 +966,20 @@
   }
 
   &__error {
+    position: sticky;
+    bottom: 0;
     padding: 12px;
     color: var(--color-text-error);
+    background: var(--color-bg-primary);
+  }
+
+  &__searching {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    color: var(--color-text-tertiary);
   }
 
   &__empty {
