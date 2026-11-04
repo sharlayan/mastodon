@@ -75,7 +75,7 @@ module Sharlayan
               'type' => 'Tombstone',
               'formerType' => 'Note',
             },
-          }
+          }.merge(room_fields(message))
         end
 
         def reaction(message, account, reaction, reaction_id:)
@@ -89,7 +89,7 @@ module Sharlayan
             '_misskey_reaction' => reaction,
             'published' => Time.now.utc.iso8601,
             'to' => recipients(message),
-          }.merge(reaction_tag(account, reaction))
+          }.merge(reaction_tag(account, reaction)).merge(room_fields(message))
         end
 
         def undo_reaction(message, account, reaction, reaction_id:)
@@ -102,7 +102,7 @@ module Sharlayan
             'published' => Time.now.utc.iso8601,
             'to' => recipients(message),
             'object' => react,
-          }
+          }.merge(room_fields(message))
         end
 
         def invite(conversation, invitee)
@@ -300,6 +300,14 @@ module Sharlayan
           return {} unless message.chat_conversation.chat_group?
 
           { '@context' => room_uri(message.chat_conversation), 'to' => [actor_uri(message.account), *recipients(message)] }
+        end
+
+        # Lets a server tell that the room is gone when it has never seen the message. It proves nothing else.
+        def room_fields(message)
+          return {} unless message.chat_conversation.chat_group?
+
+          room = room_uri(message.chat_conversation)
+          { 'context' => room, '_misskey_chatRoom' => room }
         end
 
         def reaction_tag(account, reaction)

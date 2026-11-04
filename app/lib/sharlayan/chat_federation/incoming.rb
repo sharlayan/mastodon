@@ -190,6 +190,7 @@ module Sharlayan
           end
 
           return false unless chat_message_uri?(uri)
+          return 'skip: chat room deleted' if deleted_room_activity?(uri, json)
 
           service.remember_tombstone(uri, account)
           'ok: chat message tombstone stored'
@@ -212,7 +213,7 @@ module Sharlayan
 
           message = ChatMessage.find_by(uri: uri)
           if message.nil?
-            return 'skip: chat room deleted' if service.message_of_deleted_room?(uri)
+            return 'skip: chat room deleted' if deleted_room_activity?(uri, json)
 
             raise DependencyNotReadyError, 'Chat message has not arrived'
           end
@@ -237,7 +238,7 @@ module Sharlayan
           activity_id = reaction_activity_id(object, account)
           message = ChatMessage.find_by(uri: uri_of(object['object']))
           if message.nil?
-            return 'skip: chat room deleted' if service.message_of_deleted_room?(uri_of(object['object']))
+            return 'skip: chat room deleted' if deleted_room_activity?(uri_of(object['object']), json, object)
 
             raise DependencyNotReadyError, 'Chat message has not arrived'
           end
@@ -471,6 +472,11 @@ module Sharlayan
         rescue *Mastodon::HTTP_CONNECTION_ERRORS, Mastodon::UnexpectedResponseError => e
           Rails.logger.info("Could not fetch relayed chat emoji #{uri_of(tag)}: #{e.message}")
           []
+        end
+
+        # The room an activity names says nothing about what it may do, only whether there is anything left to wait for.
+        def deleted_room_activity?(message_uri, *activities)
+          service.message_of_deleted_room?(message_uri) || activities.any? { |activity| service.room_tombstoned?(room_uri_of(activity)) }
         end
 
         def update_relay?(json)

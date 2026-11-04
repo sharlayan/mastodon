@@ -240,7 +240,9 @@ RSpec.describe 'Chat federation relay and roster sync' do
       second_local.user.settings[:chat_allow_group_invites] = true
       second_local.user.save!
       perform({ 'id' => "#{room_uri}#invite/1", 'type' => 'Invite', 'target' => actor_uri(second_local), 'published' => older, 'object' => { 'id' => room_uri, 'type' => 'Group', 'name' => 'Remote room', 'attributedTo' => owner.uri } }, owner)
-      service.accept_invitation(second_local, room.invitations.find_by!(invitee_account: second_local))
+      invitation = room.invitations.find_by!(invitee_account: second_local)
+      service.accept_invitation(second_local, invitation)
+      invitation.update!(updated_at: 1.hour.ago)
 
       sync(at: 1.minute.from_now.iso8601(3))
 

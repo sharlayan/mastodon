@@ -443,6 +443,28 @@ RSpec.describe 'Chat federation roster ordering' do
       expect { perform({ 'id' => "#{reaction['id']}/undo", 'type' => 'Undo', 'object' => reaction }, member) }.to_not raise_error
     end
 
+    describe 'for a message it never saw' do
+      let(:unseen_uri) { 'https://member.test/chat/messages/never' }
+      let(:reaction) { { 'id' => 'https://member.test/chat-reactions/2', 'type' => 'EmojiReact', 'object' => unseen_uri, 'content' => '👍' } }
+      let(:room_fields) { { 'context' => room_uri, '_misskey_chatRoom' => room_uri } }
+
+      it 'skips a reaction that names the room' do
+        expect { perform(reaction.merge(room_fields), member) }.to_not raise_error
+      end
+
+      it 'skips an Undo that names the room on the outside' do
+        expect { perform({ 'id' => "#{reaction['id']}/undo", 'type' => 'Undo', 'object' => reaction }.merge(room_fields), member) }.to_not raise_error
+      end
+
+      it 'skips an Undo that names the room on the inside' do
+        expect { perform({ 'id' => "#{reaction['id']}/undo", 'type' => 'Undo', 'object' => reaction.merge(room_fields) }, member) }.to_not raise_error
+      end
+
+      it 'still waits for the message when the activity names no room' do
+        expect { perform(reaction, member) }.to raise_error(Sharlayan::ChatFederation::DependencyNotReadyError)
+      end
+    end
+
     it 'records the room when its owner removes themselves' do
       other_uri = 'https://owner.test/chat/rooms/other'
       other = service.receive_invite(local, owner, room_uri: other_uri, title: 'Other').tap { |invitation| service.accept_invitation(local, invitation) }.chat_conversation
@@ -451,6 +473,145 @@ RSpec.describe 'Chat federation roster ordering' do
 
       expect(ChatConversation.exists?(other.id)).to be(false)
       expect(service.room_deleted_at(other_uri)).to be_present
+    end
+  end
+
+  describe 'the room named on message activities' do
+    let(:owned) { service.create_conversation(local, type: :group, title: 'Room') }
+    let(:group_message) { owned.messages.create!(account: local, text: 'hello') }
+    let(:payload) { Sharlayan::ChatFederation::Payload }
+
+    it 'is on a deletion, a reaction and both levels of its Undo' do
+      undo = payload.undo_reaction(group_message, local, '👍', reaction_id: 1)
+      activities = [payload.delete(group_message), payload.reaction(group_message, local, '👍', reaction_id: 1), undo, undo['object']]
+
+      expect(activities).to all(include('context' => owned.uri, '_misskey_chatRoom' => owned.uri))
+    end
+
+    it 'is left out of a direct conversation' do
+      direct = ChatConversation.create!(conversation_type: :direct, direct_key: [local.id, member.id].sort.join(':'))
+      direct.memberships.create!([{ account: local }, { account: member }])
+      direct_message = direct.messages.create!(account: local, text: 'hello')
+      undo = payload.undo_reaction(direct_message, local, '👍', reaction_id: 1)
+
+      expect([payload.delete(direct_message), payload.reaction(direct_message, local, '👍', reaction_id: 1), undo, undo['object']].flat_map(&:keys))
+        .to_not include('context', '_misskey_chatRoom')
+    end
+
+    context 'when a server receives one' do
+      let(:stored_uri) { 'https://member.test/chat/messages/stored' }
+      let(:gone_uri) { 'https://owner.test/chat/rooms/gone' }
+      let(:third) { Fabricate(:account, domain: 'third.test', uri: 'https://third.test/users/third', inbox_url: 'https://third.test/users/third/inbox') }
+
+      before do
+        room.memberships.create!(account: member)
+        room.memberships.create!(account: third)
+        service.receive_group_message(member, room_uri: room_uri, uri: stored_uri, text: 'stored')
+        service.remember_room_tombstone(gone_uri, owner)
+      end
+
+      it 'goes by the room the message is in, not the one the activity names' do
+        perform({ 'id' => 'https://third.test/chat-reactions/1', 'type' => 'EmojiReact', 'object' => stored_uri, 'content' => '👍', 'context' => gone_uri, '_misskey_chatRoom' => gone_uri }, third)
+
+        expect(ChatMessage.find_by!(uri: stored_uri).reactions.size).to eq(1)
+      end
+
+      it 'does not take the named room as permission to react' do
+        other = service.receive_invite(local, owner, room_uri: 'https://owner.test/chat/rooms/other', title: 'Other').tap { |invitation| service.accept_invitation(local, invitation) }.chat_conversation
+        outsider = Fabricate(:account, domain: 'outsider.test', uri: 'https://outsider.test/users/o', inbox_url: 'https://outsider.test/users/o/inbox')
+        other.memberships.create!(account: outsider)
+
+        expect { perform({ 'id' => 'https://outsider.test/chat-reactions/1', 'type' => 'EmojiReact', 'object' => stored_uri, 'content' => '👍', 'context' => other.uri, '_misskey_chatRoom' => other.uri }, outsider) }
+          .to raise_error(Sharlayan::ChatFederation::DependencyNotReadyError)
+        expect(ChatMessage.find_by!(uri: stored_uri).reactions).to be_empty
+      end
+    end
+  end
+
+  describe 'a local member and the owner list' do
+    let(:second) { Fabricate(:user).account }
+    let(:invitation) { room.invitations.find_by!(invitee_account: second, state: :accepted) }
+
+    before do
+      room
+      second.user.settings[:chat_allow_group_invites] = true
+      second.user.save!
+      perform(invite(second, published: earlier), owner)
+      service.accept_invitation(second, room.invitations.find_by!(invitee_account: second))
+    end
+
+    def list_without_second(at)
+      service.apply_roster(room, member_uris: [owner.uri, actor_uri(local)], roster_at: at)
+    end
+
+    it 'gives an acceptance five minutes to reach the owner' do
+      list_without_second(4.minutes.from_now)
+
+      expect(member?(second)).to be(true)
+    end
+
+    it 'takes the member out once those five minutes have passed' do
+      list_without_second(6.minutes.from_now)
+
+      expect(member?(second)).to be(false)
+    end
+
+    context 'when the list took them out but they never left' do
+      before { list_without_second(6.minutes.from_now) }
+
+      it 'restores them with a newer Add' do
+        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 7.minutes.from_now)
+
+        expect(member?(second)).to be(true)
+      end
+
+      it 'does not restore them with an older Add' do
+        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 5.minutes.from_now)
+
+        expect(member?(second)).to be(false)
+      end
+
+      it 'does not put them back from the list itself' do
+        service.apply_roster(room, member_uris: [owner.uri, actor_uri(local), actor_uri(second)], roster_at: 8.minutes.from_now)
+
+        expect(member?(second)).to be(false)
+      end
+    end
+
+    it 'does not restore someone who left' do
+      service.leave(second, room)
+
+      expect { service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 1.hour.from_now) }.to raise_error(Sharlayan::ChatService::Forbidden)
+      expect(member?(second)).to be(false)
+    end
+
+    it 'does not restore someone the owner removed' do
+      perform(remove(second, published: later), owner)
+
+      expect { service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 1.hour.from_now) }.to raise_error(Sharlayan::ChatService::Forbidden)
+      expect(member?(second)).to be(false)
+    end
+
+    it 'does not restore someone whose acceptance the owner cancelled' do
+      perform(undo_invite(second, published: later), owner)
+
+      expect { service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 1.hour.from_now) }.to raise_error(Sharlayan::ChatService::Forbidden)
+      expect(member?(second)).to be(false)
+    end
+
+    it 'does not add a local account that never accepted' do
+      stranger = Fabricate(:user).account
+
+      expect { service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(stranger), published: 1.hour.from_now) }.to raise_error(Sharlayan::ChatService::Forbidden)
+      expect(member?(stranger)).to be(false)
+    end
+
+    it 'does not add a local account that is only invited' do
+      invited = Fabricate(:user).account
+      room.invitations.create!(inviter_account: owner, invitee_account: invited)
+
+      expect { service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(invited), published: 1.hour.from_now) }.to raise_error(Sharlayan::ChatService::Forbidden)
+      expect(member?(invited)).to be(false)
     end
   end
 

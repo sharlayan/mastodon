@@ -14,6 +14,7 @@ class Sharlayan::ChatService
   ROOM_TOMBSTONE_TTL = 30.days
   UNKNOWN_ROOM_TOMBSTONE_TTL = 6.hours
   MAX_TOMBSTONED_ROOM_MESSAGES = 1000
+  ACCEPT_DELIVERY_GRACE = 5.minutes
 
   def self.room_tombstone_key(uri)
     "chat_room_tombstone:#{Digest::SHA256.hexdigest(uri.to_s)}"
@@ -233,6 +234,7 @@ class Sharlayan::ChatService
 
     deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, account))
     membership.destroy!
+    forget_acceptance(conversation, account)
     broadcast(conversation, 'chat.member_leave', { conversation_id: conversation.id.to_s, account_id: account.id.to_s })
     schedule_abandoned_room_cleanup(conversation)
   end
@@ -482,15 +484,10 @@ class Sharlayan::ChatService
     account = account_from_uri(account_uri)
     raise Sharlayan::ChatFederation::DependencyNotReadyError, 'Waiting for chat room member' if account.nil?
 
-    if account.local?
-      raise Forbidden unless conversation.memberships.exists?(account: account)
+    raise Forbidden if account.local? && !conversation.memberships.exists?(account: account) && !conversation.invitations.exists?(invitee_account: account, state: :accepted)
+    raise Forbidden if account.remote? && blocked_in_either_direction?(actor, account)
 
-      conversation.with_lock { Sharlayan::ChatFederation::Roster.advance(conversation, account, published) }
-      return conversation
-    end
-
-    raise Forbidden if blocked_in_either_direction?(actor, account)
-
+    # A local account only gets here having accepted and having neither left nor been removed since.
     joined = conversation.with_lock do
       next false unless Sharlayan::ChatFederation::Roster.applies?(conversation, account, published)
 
@@ -527,6 +524,7 @@ class Sharlayan::ChatService
       next :owner if membership&.owner?
 
       membership&.destroy!
+      forget_acceptance(conversation, account)
       :removed
     end
     return if %i(stale absent).include?(outcome)
@@ -713,6 +711,7 @@ class Sharlayan::ChatService
     listed_ids = listed.to_set(&:id)
     left = memberships.values.filter_map do |membership|
       next if membership.owner? || listed_ids.include?(membership.account_id) || known_at[membership.account_id]&.>=(roster_at)
+      next if awaiting_acceptance?(conversation, membership.account, roster_at)
 
       membership.destroy!
       Sharlayan::ChatFederation::Roster.advance(conversation, membership.account, roster_at)
@@ -720,6 +719,16 @@ class Sharlayan::ChatService
     end
 
     [joined, left]
+  end
+
+  # The owner may have yet to hear of an acceptance this server has only just sent.
+  def awaiting_acceptance?(conversation, account, roster_at)
+    account.local? && conversation.invitations.exists?(invitee_account: account, state: :accepted, updated_at: (roster_at - ACCEPT_DELIVERY_GRACE)..)
+  end
+
+  # An acceptance can bring someone back only until they have left or been removed.
+  def forget_acceptance(conversation, account)
+    conversation.invitations.where(invitee_account: account, state: :accepted).find_each { |invitation| invitation.update!(state: :cancelled) }
   end
 
   def roster_can_add?(conversation, account)
@@ -735,6 +744,7 @@ class Sharlayan::ChatService
 
       Sharlayan::ChatFederation::Roster.advance(conversation, account, published)
       membership.destroy!
+      forget_acceptance(conversation, account)
       true
     end
     return unless withdrawn
