@@ -629,6 +629,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_100000) do
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
     t.boolean "ignored", default: false, null: false
+    t.datetime "invite_published_at"
     t.bigint "invitee_account_id", null: false
     t.bigint "inviter_account_id", null: false
     t.integer "state", default: 0, null: false
@@ -705,6 +706,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_100000) do
     t.bigint "account_id", null: false
     t.bigint "chat_conversation_id", null: false
     t.datetime "created_at", null: false
+    t.datetime "last_member_at"
     t.datetime "last_roster_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_chat_roster_states_on_account_id"

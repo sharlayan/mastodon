@@ -202,8 +202,6 @@ class Sharlayan::ChatService
       raise Forbidden unless invitation.pending?
 
       ensure_group_capacity!(conversation) unless conversation.memberships.exists?(account: account)
-      # A room owned elsewhere keeps its record in its owner's clock, so a cancellation that crossed this acceptance still applies.
-      Sharlayan::ChatFederation::Roster.advance(conversation, account, Time.current) if conversation.local?
       membership = conversation.memberships.find_or_create_by!(account: account)
       invitation.update!(state: :accepted)
       membership.previously_new_record?
@@ -418,11 +416,13 @@ class Sharlayan::ChatService
 
       Sharlayan::ChatFederation::Roster.advance(conversation, invitee, published)
 
-      next acknowledge_repeated_invite(conversation, actor, invitee) if conversation.memberships.exists?(account: invitee)
+      next acknowledge_repeated_invite(conversation, actor, invitee, published) if conversation.memberships.exists?(account: invitee)
 
       ensure_group_capacity!(conversation)
-      conversation.invitations.pending.find_by(invitee_account: invitee) ||
-        conversation.invitations.create!(inviter_account: actor, invitee_account: invitee)
+      received = conversation.invitations.pending.find_by(invitee_account: invitee) ||
+                 conversation.invitations.create!(inviter_account: actor, invitee_account: invitee)
+      received.update!(invite_published_at: published) if published
+      received
     end
     return if invitation.nil?
 
@@ -434,12 +434,13 @@ class Sharlayan::ChatService
     retry
   end
 
-  def receive_accept(actor, room_uri:, published: nil)
+  def receive_accept(actor, room_uri:, published: nil, invited_at: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
     raise Error, 'Unknown chat room' if conversation.nil?
 
     invitation = conversation.invitations.pending.find_by(invitee_account: actor)
     raise Error, 'Invitation not found' if invitation.nil?
+    return conversation if answers_earlier_invitation?(invitation, invited_at)
 
     joined = conversation.with_lock do
       invitation.lock!
@@ -448,12 +449,18 @@ class Sharlayan::ChatService
       ensure_conversation_writable!(conversation)
       raise Forbidden if blocked_in_either_direction?(invitation.inviter_account, actor)
 
+      if Sharlayan::ChatFederation::Roster.left_since?(conversation, actor, published)
+        invitation.update!(state: :rejected)
+        next :left
+      end
+
       ensure_group_capacity!(conversation) unless conversation.memberships.exists?(account: actor)
-      Sharlayan::ChatFederation::Roster.advance(conversation, actor, published)
+      Sharlayan::ChatFederation::Roster.record_member_time(conversation, actor, published)
       membership = conversation.memberships.find_or_create_by!(account: actor)
       invitation.update!(state: :accepted)
       membership.previously_new_record?
     end
+    return conversation if joined == :left
 
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer)
     broadcast(conversation, 'chat.member_join', { conversation_id: conversation.id.to_s, account_id: actor.id.to_s }) if joined
@@ -471,15 +478,14 @@ class Sharlayan::ChatService
     deliver_to_account(conversation.owner_account, Sharlayan::ChatFederation::Payload.remove(conversation, actor, actor: conversation.owner_account), actor)
   end
 
-  def receive_reject(actor, room_uri:, published: nil)
+  def receive_reject(actor, room_uri:, published: nil, invited_at: nil)
     conversation = ChatConversation.find_by(uri: room_uri)
-    return if conversation.nil? || Sharlayan::ChatFederation::Roster.stale?(conversation, actor, published)
+    return if conversation.nil? || Sharlayan::ChatFederation::Roster.member_answer_stale?(conversation, actor, published)
 
     invitation = conversation.invitations.pending.find_by(invitee_account: actor)
-    if invitation
-      invitation.update!(state: :rejected)
-      Sharlayan::ChatFederation::Roster.advance(conversation, actor, published)
-    end
+    return if invitation && answers_earlier_invitation?(invitation, invited_at)
+
+    invitation&.update!(state: :rejected)
     conversation.destroy_if_unused!
   end
 
@@ -544,16 +550,20 @@ class Sharlayan::ChatService
     return if account.nil?
     raise Forbidden unless actor.id == account.id || by_owner
 
-    # Times are only compared with others from the same clock. The owner's server holds what this member's server last
-    # sent, and every other server holds what the owner sent, so to them a member's own time says nothing about the order.
-    ordered = by_owner || conversation.local?
     outcome = conversation.with_lock do
-      if ordered
+      membership = conversation.memberships.find_by(account: account)
+      # Times are only compared with others from the same clock. A room owned here holds what this member's server last
+      # said. A mirror holds what the owner said, so to it a member's own time says nothing and it goes by arrival.
+      if conversation.local?
+        next :absent unless membership || conversation.invitations.pending.exists?(invitee_account: account)
+        next :stale unless Sharlayan::ChatFederation::Roster.member_departure_applies?(conversation, account, published)
+
+        Sharlayan::ChatFederation::Roster.record_member_time(conversation, account, published)
+      elsif by_owner
         next :stale unless Sharlayan::ChatFederation::Roster.applies?(conversation, account, published, removal: true)
 
         Sharlayan::ChatFederation::Roster.advance(conversation, account, published)
       end
-      membership = conversation.memberships.find_by(account: account)
       next :absent if membership.nil? && actor.id == account.id
       next :owner if membership&.owner?
 
@@ -792,6 +802,11 @@ class Sharlayan::ChatService
     conversation.invitations.where(invitee_account: account, state: :accepted).find_each { |invitation| invitation.update!(state: :cancelled) }
   end
 
+  # The answer states when the Invite it answers was sent, and both that and the invitation are by this server's clock.
+  def answers_earlier_invitation?(invitation, invited_at)
+    invited_at.present? && invited_at < invitation.created_at.floor(3)
+  end
+
   def roster_can_add?(conversation, account)
     return false if account.local? || account.suspended? || blocked_in_either_direction?(conversation.owner_account, account)
 
@@ -935,9 +950,10 @@ class Sharlayan::ChatService
     conversation.save!
   end
 
-  def acknowledge_repeated_invite(conversation, actor, invitee)
+  def acknowledge_repeated_invite(conversation, actor, invitee, published)
     invitation = conversation.invitations.where(invitee_account: invitee).order(:id).last ||
                  conversation.invitations.create!(inviter_account: actor, invitee_account: invitee, state: :accepted)
+    invitation.update!(invite_published_at: published) if published
     deliver_to_account(invitee, Sharlayan::ChatFederation::Payload.accept(invitation), actor)
     invitation
   end

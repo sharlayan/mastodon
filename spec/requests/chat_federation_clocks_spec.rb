@@ -81,6 +81,23 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       expect(roster_time(mirror, local)).to eq(Time.iso8601(stamp(behind)))
     end
 
+    it 'leaves a record older than any owner time when the invitation stated none' do
+      other = Fabricate(:user).account
+      other.user.settings[:chat_allow_group_invites] = true
+      other.user.save!
+      perform(invite_json(other), owner)
+      service.accept_invitation(other, mirror.invitations.find_by!(invitee_account: other))
+
+      expect(roster_time(mirror, other)).to eq(Time.zone.at(0))
+    end
+
+    it 'leaves a record older than any owner time for an Add that states none' do
+      perform(add_json(member), owner)
+
+      expect(member?(member)).to be(true)
+      expect(roster_time(mirror, member)).to eq(Time.zone.at(0))
+    end
+
     it 'applies a removal the owner stamped just after the invitation' do
       perform(remove_json(local, at: behind + 1.second), owner)
 
@@ -148,14 +165,33 @@ RSpec.describe 'Chat federation across servers with different clocks' do
     it 'still lets someone who never joined be ignored' do
       expect { perform(remove_json(third, at: Time.current), third) }.to_not(change(ChatRosterState, :count))
     end
+
+    it 'still orders a Remove the owner relays by the owner clock' do
+      perform(add_json(member, at: 1.minute.from_now), owner)
+
+      perform(remove_json(member, at: 30.seconds.from_now), owner)
+      expect(member?(member)).to be(true)
+
+      perform(remove_json(member, at: 2.minutes.from_now), owner)
+      expect(member?(member)).to be(false)
+    end
   end
 
   describe 'the owner server, comparing a member departure with the same server' do
     let(:owned) { service.create_conversation(local, type: :group, title: 'Room') }
 
-    def accept_json(actor, at:)
+    def accept_json(actor, at:, invited_at: nil)
       { 'id' => "#{owned.uri}#accept/#{SecureRandom.hex(4)}", 'type' => 'Accept', 'published' => stamp(at),
-        'object' => { 'type' => 'Invite', 'actor' => actor_uri(local), 'target' => actor.uri, 'object' => owned.uri } }
+        'object' => { 'type' => 'Invite', 'actor' => actor_uri(local), 'target' => actor.uri, 'object' => owned.uri, 'published' => stamp(invited_at) }.compact }
+    end
+
+    def reject_json(actor, at: nil, invited_at: nil)
+      { 'id' => "#{owned.uri}#reject/#{SecureRandom.hex(4)}", 'type' => 'Reject', 'published' => stamp(at),
+        'object' => { 'type' => 'Invite', 'actor' => actor_uri(local), 'target' => actor.uri, 'object' => owned.uri, 'published' => stamp(invited_at) }.compact }.compact
+    end
+
+    def member_time(account)
+      ChatRosterState.find_by(chat_conversation: owned, account: account)&.last_member_at
     end
 
     def leave_json(actor, at:)
@@ -171,11 +207,136 @@ RSpec.describe 'Chat federation across servers with different clocks' do
     it 'honours a departure right after re-accepting from a server an hour behind' do
       accepted = 1.hour.ago
       perform(accept_json(member, at: accepted), member)
-      expect(roster_time(owned, member)).to eq(Time.iso8601(stamp(accepted)))
+      expect(member_time(member)).to eq(Time.iso8601(stamp(accepted)))
 
       perform(leave_json(member, at: accepted + 1.second), member)
 
       expect(member_of_owned?(member)).to be(false)
+    end
+
+    it 'keeps what the member server says apart from the record of what the owner says' do
+      perform(accept_json(member, at: 1.hour.ago), member)
+
+      expect(roster_time(owned, member)).to eq(Time.zone.at(0))
+    end
+
+    it 'does not move the record when it invites someone again' do
+      perform(accept_json(member, at: 1.hour.ago), member)
+      service.kick(local, owned, member)
+      member.update!(last_webfingered_at: Time.current)
+      before = [roster_time(owned, member), member_time(member)]
+
+      service.invite(local, owned, member)
+
+      expect([roster_time(owned, member), member_time(member)]).to eq(before)
+    end
+
+    it 'lets a departure win a tie with the last acceptance' do
+      accepted = 1.hour.ago
+      perform(accept_json(member, at: accepted), member)
+
+      perform(leave_json(member, at: accepted), member)
+
+      expect(member_of_owned?(member)).to be(false)
+    end
+
+    it 'applies a departure without a time in arrival order' do
+      perform(accept_json(member, at: 1.hour.ago), member)
+
+      perform(leave_json(member, at: nil), member)
+
+      expect(member_of_owned?(member)).to be(false)
+    end
+
+    it 'keeps no record for someone neither in the room nor invited' do
+      expect { perform(leave_json(third, at: Time.current), third) }.to_not(change(ChatRosterState, :count))
+    end
+
+    context 'when the departure overtakes the Accept of a pending invitation' do
+      let(:left_at) { 2.minutes.ago }
+
+      before { perform(leave_json(member, at: left_at), member) }
+
+      it 'records the time and leaves the invitation' do
+        expect(member_time(member)).to eq(Time.iso8601(stamp(left_at)))
+        expect(owned.invitations.pending.exists?(invitee_account: member)).to be(true)
+      end
+
+      it 'uses up the invitation without a membership for an older Accept' do
+        perform(accept_json(member, at: 3.minutes.ago), member)
+
+        expect(member_of_owned?(member)).to be(false)
+        expect(owned.invitations.pending.exists?(invitee_account: member)).to be(false)
+      end
+
+      it 'does the same for an Accept with the same time' do
+        perform(accept_json(member, at: left_at), member)
+
+        expect(member_of_owned?(member)).to be(false)
+        expect(owned.invitations.pending.exists?(invitee_account: member)).to be(false)
+      end
+
+      it 'lets a newer Accept in' do
+        perform(accept_json(member, at: 1.minute.ago), member)
+
+        expect(member_of_owned?(member)).to be(true)
+      end
+    end
+
+    context 'when an answer to an earlier invitation arrives' do
+      let!(:invitation) { owned.invitations.pending.find_by!(invitee_account: member) }
+
+      it 'ignores an Accept of an invitation older than the pending one' do
+        perform(accept_json(member, at: Time.current, invited_at: invitation.created_at - 1.minute), member)
+
+        expect(member_of_owned?(member)).to be(false)
+        expect(invitation.reload).to be_pending
+      end
+
+      it 'ignores a Reject of an invitation older than the pending one' do
+        perform(reject_json(member, at: Time.current, invited_at: invitation.created_at - 1.minute), member)
+
+        expect(invitation.reload).to be_pending
+      end
+
+      it 'says nothing back to an answer it ignores' do
+        Sidekiq::Testing.fake! do
+          invitation
+          ActivityPub::DeliveryWorker.clear
+          perform(accept_json(member, at: Time.current, invited_at: invitation.created_at - 1.minute), member)
+
+          expect(ActivityPub::DeliveryWorker.jobs).to be_empty
+        end
+      end
+
+      it 'accepts an answer stating the time of the pending invitation, cut to milliseconds' do
+        perform(accept_json(member, at: Time.current, invited_at: invitation.created_at), member)
+
+        expect(member_of_owned?(member)).to be(true)
+      end
+
+      it 'takes an Accept without the time as before' do
+        perform(accept_json(member, at: Time.current), member)
+
+        expect(member_of_owned?(member)).to be(true)
+      end
+
+      it 'takes a Reject without the time as before' do
+        perform(reject_json(member, at: Time.current), member)
+
+        expect(invitation.reload).to be_rejected
+      end
+    end
+
+    it 'compares a Reject with the last departure from that server' do
+      perform(leave_json(member, at: 2.minutes.ago), member)
+      invitation = owned.invitations.pending.find_by!(invitee_account: member)
+
+      perform(reject_json(member, at: 3.minutes.ago), member)
+      expect(invitation.reload).to be_pending
+
+      perform(reject_json(member, at: 1.minute.ago), member)
+      expect(invitation.reload).to be_rejected
     end
 
     it 'honours a departure after being kicked and re-invited, whatever time this server keeps' do
@@ -195,6 +356,62 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       perform(leave_json(member, at: 2.hours.ago), member)
 
       expect(member_of_owned?(member)).to be(true)
+    end
+  end
+
+  describe 'the answer a member server gives' do
+    it 'carries the time of the Invite it received, whatever its own clock says' do
+      invited_at = 1.hour.ago
+      perform(invite_json(local, at: invited_at), owner)
+      invitation = mirror.invitations.find_by!(invitee_account: local)
+
+      expect(Sharlayan::ChatFederation::Payload.accept(invitation)['object']['published']).to eq(stamp(invited_at))
+      expect(Sharlayan::ChatFederation::Payload.reject(invitation)['object']['published']).to eq(stamp(invited_at))
+      expect(Time.iso8601(Sharlayan::ChatFederation::Payload.accept(invitation)['published'])).to be_within(1.minute).of(Time.current)
+    end
+
+    it 'carries the time of the latest Invite for the invitation it is answering' do
+      perform(invite_json(local, at: 2.minutes.ago), owner)
+      latest = 1.minute.ago
+      perform(invite_json(local, at: latest), owner)
+
+      expect(Sharlayan::ChatFederation::Payload.accept(mirror.invitations.find_by!(invitee_account: local))['object']['published']).to eq(stamp(latest))
+    end
+
+    it 'carries no time when the Invite stated none' do
+      perform(invite_json(local), owner)
+
+      expect(Sharlayan::ChatFederation::Payload.accept(mirror.invitations.find_by!(invitee_account: local))['object']).to_not have_key('published')
+    end
+
+    it 'carries the time when it refuses an Invite straight away' do
+      invited_at = 1.minute.ago
+      local.user.settings[:chat_allow_group_invites] = false
+      local.user.save!
+
+      Sidekiq::Testing.fake! do
+        ActivityPub::DeliveryWorker.clear
+        perform(invite_json(local, at: invited_at), owner)
+
+        reject = JSON.parse(ActivityPub::DeliveryWorker.jobs.last['args'][0])
+        expect(reject['type']).to eq('Reject')
+        expect(reject['object']['published']).to eq(stamp(invited_at))
+      end
+    end
+
+    it 'carries the time when answering a repeated Invite with Accept' do
+      perform(invite_json(local), owner)
+      service.accept_invitation(local, mirror.invitations.find_by!(invitee_account: local))
+      invited_at = 1.minute.ago
+
+      Sidekiq::Testing.fake! do
+        ActivityPub::DeliveryWorker.clear
+        perform(invite_json(local, at: invited_at), owner)
+
+        accept = JSON.parse(ActivityPub::DeliveryWorker.jobs.last['args'][0])
+        expect(accept['type']).to eq('Accept')
+        expect(accept['object']['published']).to eq(stamp(invited_at))
+      end
     end
   end
 

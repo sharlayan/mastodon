@@ -125,7 +125,7 @@ module Sharlayan
             'type' => 'Accept',
             'actor' => actor_uri(invitation.invitee_account),
             'published' => Time.now.utc.iso8601(3),
-            'object' => invite_object(conversation, invitation),
+            'object' => answered_invite(conversation, invitation),
           }
         end
 
@@ -137,11 +137,11 @@ module Sharlayan
             'type' => 'Reject',
             'actor' => actor_uri(invitation.invitee_account),
             'published' => Time.now.utc.iso8601(3),
-            'object' => invite_object(conversation, invitation),
+            'object' => answered_invite(conversation, invitation),
           }
         end
 
-        def reject_invite(owner, invitee, room)
+        def reject_invite(owner, invitee, room, invited_at: nil)
           room_uri = room.is_a?(Hash) ? room['id'] : room
           {
             '@context' => CONTEXT,
@@ -154,7 +154,8 @@ module Sharlayan
               'actor' => actor_uri(owner),
               'target' => actor_uri(invitee),
               'object' => room,
-            },
+              'published' => invited_at&.utc&.iso8601(3),
+            }.compact,
           }
         end
 
@@ -320,6 +321,13 @@ module Sharlayan
 
         def reaction_uri(reaction_id)
           "#{base_url}/chat/reactions/#{reaction_id}"
+        end
+
+        # The owner can tell from the time of the Invite whether this answers the invitation it has now.
+        def answered_invite(conversation, invitation)
+          object = invite_object(conversation, invitation)
+          object['published'] = invitation.invite_published_at.utc.iso8601(3) if invitation.invite_published_at
+          object
         end
 
         def invite_object(conversation, invitation)

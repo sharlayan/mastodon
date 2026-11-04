@@ -32,7 +32,33 @@ module Sharlayan
           return if time.nil?
 
           state = conversation.roster_states.find_or_initialize_by(account: account)
-          state.update!(last_roster_at: time) if state.last_roster_at.nil? || time > state.last_roster_at
+          state.last_roster_at = time if time > state.last_roster_at
+          state.save!
+        end
+
+        # In a room owned here, a member's own Remove goes against what the same server said last. A Remove wins a tie.
+        def member_departure_applies?(conversation, account, published)
+          last = last_member_at(conversation, account)
+          published.nil? || last.nil? || published >= last
+        end
+
+        def member_answer_stale?(conversation, account, published)
+          last = last_member_at(conversation, account)
+          published.present? && last.present? && published < last
+        end
+
+        # The member left after this Accept was sent, by the clock of the server that sent both.
+        def left_since?(conversation, account, published)
+          last = last_member_at(conversation, account)
+          published.present? && last.present? && published <= last
+        end
+
+        def record_member_time(conversation, account, time)
+          return if time.nil?
+
+          state = conversation.roster_states.find_or_initialize_by(account: account)
+          state.last_member_at = time if state.last_member_at.nil? || time > state.last_member_at
+          state.save!
         end
 
         def request_sync(conversation, subject)
@@ -56,6 +82,10 @@ module Sharlayan
         end
 
         private
+
+        def last_member_at(conversation, account)
+          conversation.roster_states.find_by(account: account)&.last_member_at
+        end
 
         # A mirrored member may have been removed without this server hearing of it, and the owner would answer them with 404.
         def fetch_group(conversation)

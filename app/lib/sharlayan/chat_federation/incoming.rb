@@ -297,7 +297,7 @@ module Sharlayan
             'ok: chat invitation received'
           rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
             Rails.logger.info("Rejected chat invitation from #{account.uri}: #{e.message}")
-            reject_invite(account, invitee, room)
+            reject_invite(account, invitee, room, time_of(json['published']))
             'ok: chat invitation rejected'
           end
         end
@@ -327,7 +327,7 @@ module Sharlayan
           room_uri = canonical_room_uri(uri_of(json['object']['object']), account)
           return 'skip: invalid chat room' if room_uri.blank?
 
-          service.receive_accept(account, room_uri: room_uri, published: time_of(json['published']))
+          service.receive_accept(account, room_uri: room_uri, published: time_of(json['published']), invited_at: time_of(json['object']['published']))
           'ok: chat invitation accepted'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat accept from #{account.uri}: #{e.message}")
@@ -343,7 +343,7 @@ module Sharlayan
           room_uri = canonical_room_uri(uri_of(json['object']['object']), account)
           return 'skip: invalid chat room' if room_uri.blank?
 
-          service.receive_reject(account, room_uri: room_uri, published: time_of(json['published']))
+          service.receive_reject(account, room_uri: room_uri, published: time_of(json['published']), invited_at: time_of(json['object']['published']))
           'ok: chat invitation rejected'
         end
 
@@ -628,8 +628,8 @@ module Sharlayan
           nil
         end
 
-        def reject_invite(account, invitee, room)
-          payload = Sharlayan::ChatFederation::Payload.reject_invite(account, invitee, room)
+        def reject_invite(account, invitee, room, invited_at)
+          payload = Sharlayan::ChatFederation::Payload.reject_invite(account, invitee, room, invited_at: invited_at)
           return if account.preferred_inbox_url.blank?
 
           ActivityPub::DeliveryWorker.perform_async(payload.to_json, invitee.id, account.preferred_inbox_url)

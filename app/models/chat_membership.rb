@@ -14,11 +14,11 @@ class ChatMembership < ApplicationRecord
 
   private
 
-  # Without a time, the membership would count as older than any member list from the room owner.
+  # The owner has stated no time for this, so what is on record is older than anything the owner can state.
   def record_roster_time
     return unless chat_conversation.chat_group?
 
-    ChatRosterState.find_or_create_by!(chat_conversation_id: chat_conversation_id, account_id: account_id) { |state| state.last_roster_at = Time.current }
+    ChatRosterState.find_or_create_by!(chat_conversation_id: chat_conversation_id, account_id: account_id)
   end
 
   def last_read_message_belongs_to_conversation

@@ -265,15 +265,15 @@ RSpec.describe 'Chat federation roster ordering' do
     it 'records the owner of a new room' do
       owned = service.create_conversation(local, type: :group, title: 'Room')
 
-      expect(roster_time(owned, local)).to be_within(1.minute).of(Time.current)
+      expect(roster_time(owned, local)).to eq(Time.zone.at(0))
     end
 
     it 'records the owner when a room is mirrored' do
-      expect(roster_time(room, owner)).to be_within(1.minute).of(Time.current)
+      expect(roster_time(room, owner)).to eq(Time.zone.at(0))
     end
 
     it 'records a local account accepting an invitation to a room owned elsewhere' do
-      expect(roster_time(room, local)).to be_within(1.minute).of(Time.current)
+      expect(roster_time(room, local)).to eq(Time.zone.at(0))
     end
 
     it 'keeps the time of the Invite when a local account accepts, as it is in the owner clock' do
@@ -289,7 +289,7 @@ RSpec.describe 'Chat federation roster ordering' do
       owned = service.create_conversation(local, type: :group, title: 'Room')
       service.accept_invitation(invitee, owned.invitations.create!(inviter_account: local, invitee_account: invitee))
 
-      expect(roster_time(owned, invitee)).to be_within(1.minute).of(Time.current)
+      expect(roster_time(owned, invitee)).to eq(Time.zone.at(0))
     end
 
     it 'records a remote account accepting, with the time it states' do
@@ -297,7 +297,8 @@ RSpec.describe 'Chat federation roster ordering' do
       owned.invitations.create!(inviter_account: local, invitee_account: member)
       service.receive_accept(member, room_uri: owned.uri, published: Time.iso8601(earlier))
 
-      expect(roster_time(owned, member)).to eq(Time.iso8601(earlier))
+      expect(ChatRosterState.find_by(chat_conversation: owned, account: member).last_member_at).to eq(Time.iso8601(earlier))
+      expect(roster_time(owned, member)).to eq(Time.zone.at(0))
     end
 
     it 'records a remote account accepting from a server that states no time' do
@@ -305,7 +306,7 @@ RSpec.describe 'Chat federation roster ordering' do
       owned.invitations.create!(inviter_account: local, invitee_account: member)
       service.receive_accept(member, room_uri: owned.uri)
 
-      expect(roster_time(owned, member)).to be_within(1.minute).of(Time.current)
+      expect(roster_time(owned, member)).to eq(Time.zone.at(0))
     end
 
     it 'records an Add with the time it states' do
@@ -319,7 +320,7 @@ RSpec.describe 'Chat federation roster ordering' do
       room
       perform(add(member), owner)
 
-      expect(roster_time(room, member)).to be_within(1.minute).of(Time.current)
+      expect(roster_time(room, member)).to eq(Time.zone.at(0))
     end
 
     it 'records a member the owner list adds, with the time of the list' do
@@ -331,7 +332,7 @@ RSpec.describe 'Chat federation roster ordering' do
     it 'records any membership created directly' do
       room.memberships.create!(account: member)
 
-      expect(roster_time(room, member)).to be_within(1.minute).of(Time.current)
+      expect(roster_time(room, member)).to eq(Time.zone.at(0))
     end
 
     it 'keeps no record for a direct conversation, which has no member list' do
@@ -373,7 +374,7 @@ RSpec.describe 'Chat federation roster ordering' do
       perform(add(member, published: 1.hour.from_now.iso8601(3)), owner)
 
       expect(member?(member)).to be(true)
-      expect(ChatRosterState.find_by(chat_conversation: room, account: member).last_roster_at).to be_within(1.minute).of(Time.current)
+      expect(ChatRosterState.find_by(chat_conversation: room, account: member).last_roster_at).to eq(Time.zone.at(0))
 
       perform(remove(member, published: 1.minute.from_now.iso8601(3)), owner)
       expect(member?(member)).to be(false)
@@ -532,6 +533,7 @@ RSpec.describe 'Chat federation roster ordering' do
   describe 'a local member and the owner list' do
     let(:second) { Fabricate(:user).account }
     let(:invitation) { room.invitations.find_by!(invitee_account: second, state: :accepted) }
+    let(:later_than_invite) { Time.iso8601(earlier) + 30.seconds }
 
     before do
       room
@@ -547,7 +549,7 @@ RSpec.describe 'Chat federation roster ordering' do
 
     it 'gives an acceptance five minutes to reach the owner' do
       invitation.update!(updated_at: 4.minutes.ago)
-      list_without_second(1.minute.from_now)
+      list_without_second(later_than_invite)
 
       expect(member?(second)).to be(true)
     end
@@ -562,7 +564,7 @@ RSpec.describe 'Chat federation roster ordering' do
 
     it 'takes the member out once those five minutes have passed' do
       invitation.update!(updated_at: 6.minutes.ago)
-      list_without_second(1.minute.from_now)
+      list_without_second(later_than_invite)
 
       expect(member?(second)).to be(false)
     end
@@ -570,23 +572,23 @@ RSpec.describe 'Chat federation roster ordering' do
     context 'when the list took them out but they never left' do
       before do
         invitation.update!(updated_at: 10.minutes.ago)
-        list_without_second(1.minute.from_now)
+        list_without_second(later_than_invite)
       end
 
       it 'restores them with a newer Add' do
-        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 2.minutes.from_now)
+        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: later_than_invite + 1.minute)
 
         expect(member?(second)).to be(true)
       end
 
       it 'does not restore them with an older Add' do
-        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: 30.seconds.from_now)
+        service.receive_add(owner, room_uri: room_uri, account_uri: actor_uri(second), published: later_than_invite - 1.second)
 
         expect(member?(second)).to be(false)
       end
 
       it 'does not put them back from the list itself' do
-        service.apply_roster(room, member_uris: [owner.uri, actor_uri(local), actor_uri(second)], roster_at: 2.minutes.from_now)
+        service.apply_roster(room, member_uris: [owner.uri, actor_uri(local), actor_uri(second)], roster_at: later_than_invite + 1.minute)
 
         expect(member?(second)).to be(false)
       end
