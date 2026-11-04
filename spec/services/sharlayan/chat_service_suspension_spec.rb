@@ -77,6 +77,20 @@ RSpec.describe Sharlayan::ChatService do
     expect(delivered('Undo').map(&:first)).to eq(['https://third.test/users/dave/inbox'])
   end
 
+  it 'does not let a pending invitation be used once the suspension ends' do
+    invitee = Fabricate(:account, domain: 'third.test', uri: 'https://third.test/users/dave', inbox_url: 'https://third.test/users/dave/inbox')
+    room.invitations.create!(inviter_account: owner, invitee_account: invitee)
+    invitee.suspend!
+    SuspendAccountService.new.call(invitee)
+    invitee.unsuspend!
+    ActivityPub::DeliveryWorker.jobs.clear
+
+    ActivityPub::Activity.factory({ 'type' => 'Accept', 'actor' => invitee.uri, 'object' => { 'type' => 'Invite', 'object' => room.uri } }, invitee).perform
+
+    expect(room.memberships.exists?(account: invitee)).to be(false)
+    expect(delivered('Remove').map(&:first)).to eq([invitee.inbox_url])
+  end
+
   it 'leaves a room owned by another server to that server' do
     mirror = ChatConversation.create!(conversation_type: :group, owner_account: bystander, title: 'Mirror', uri: 'https://other.test/chat/rooms/1')
     mirror.memberships.create!(account: bystander, role: :owner)
@@ -223,6 +237,63 @@ RSpec.describe Sharlayan::ChatService do
 
       expect(ChatInvitation.where(id: invitation.id, state: :pending)).to be_empty
       expect(delivered('Reject')).to be_empty
+    end
+  end
+
+  describe 'an invitation from a server that is refused here' do
+    let(:remote_room) do
+      ChatConversation.create!(conversation_type: :group, owner_account: remote, title: 'Remote', uri: 'https://remote.test/chat/rooms/2').tap do |record|
+        record.memberships.create!(account: remote, role: :owner)
+      end
+    end
+    let!(:invitation) { remote_room.invitations.create!(inviter_account: remote, invitee_account: member) }
+
+    before do
+      DomainBlock.create!(domain: 'remote.test', severity: :suspend)
+      ActivityPub::DeliveryWorker.jobs.clear
+    end
+
+    it 'cannot be accepted, even when the owner account is not marked as suspended' do
+      expect(remote.reload).to_not be_suspended
+      expect { service.accept_invitation(member, invitation) }.to raise_error(described_class::Forbidden)
+
+      expect(invitation.reload).to be_pending
+      expect(delivered('Accept')).to be_empty
+    end
+
+    it 'cannot be accepted from a server outside the list in limited federation mode' do
+      DomainBlock.where(domain: 'remote.test').destroy_all
+      allow(Rails.configuration.x.mastodon).to receive(:limited_federation_mode).and_return(true)
+
+      expect { service.accept_invitation(member, invitation) }.to raise_error(described_class::Forbidden)
+    end
+  end
+
+  describe 'a member blocking another in a group' do
+    let(:message) { room.messages.create!(account: remote, text: 'hello', uri: 'https://remote.test/chat/messages/5') }
+
+    before { room }
+
+    it 'does not stop them sending to the group' do
+      owner.block!(remote)
+
+      expect { service.create_message(owner, room, text: 'hello') }.to change(ChatMessage, :count).by(1)
+      expect(service.receive_group_message(remote, room_uri: room.uri, uri: 'https://remote.test/chat/messages/6', text: 'hi')).to be_present
+    end
+
+    it 'does not stop them reacting in the group' do
+      owner.block!(remote)
+      remote.block!(owner)
+      mine = room.messages.create!(account: owner, text: 'mine')
+
+      expect(service.react(owner, message, '👍')).to be_present
+      expect { service.react_remote(remote, mine, '👍', activity_id: 'https://remote.test/reactions/1') }.to change { mine.reactions.count }.by(1)
+    end
+
+    it 'still shows them their messages' do
+      owner.block!(remote)
+
+      expect(room.messages.visible_to(owner)).to include(message)
     end
   end
 

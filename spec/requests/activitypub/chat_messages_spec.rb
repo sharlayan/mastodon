@@ -45,6 +45,19 @@ RSpec.describe 'ActivityPub chat messages' do
     expect(response.parsed_body).to include('context' => conversation.uri, '_misskey_chatRoom' => conversation.uri)
   end
 
+  it 'answers 404 while the author is suspended and again once that ends' do
+    message
+    owner.suspend!
+
+    get "/chat/messages/#{message.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: member
+    expect(response).to have_http_status(404)
+
+    owner.unsuspend!
+
+    get "/chat/messages/#{message.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: member
+    expect(response).to have_http_status(200)
+  end
+
   it 'returns a Tombstone for a deleted message' do
     message.update!(deleted_at: Time.current)
 

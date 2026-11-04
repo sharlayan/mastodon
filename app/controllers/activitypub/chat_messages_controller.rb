@@ -8,7 +8,7 @@ class ActivityPub::ChatMessagesController < ActivityPub::BaseController
     response.headers['Cache-Control'] = 'private, no-store'
 
     message = ChatMessage.find_by(id: params[:id])
-    return head 404 if message.nil? || !message.account.local?
+    return head 404 if message.nil? || !message.account.local? || message.account.suspended?
 
     unless visible_to_signed_account?(message)
       # The requester may belong to a room whose owner this server has not heard the latest from.

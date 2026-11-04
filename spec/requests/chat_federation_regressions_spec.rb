@@ -119,15 +119,31 @@ RSpec.describe 'Chat federation regressions' do
     expect(ChatMessage.where(uri: 'https://remote.test/chat/messages/invalid')).to be_empty
   end
 
-  it 'rolls back the message and media when incoming attachment validation fails' do
+  it 'keeps the text when no attachment can be stored' do
     allow(MediaAttachment).to receive(:create!).and_raise(ActiveRecord::RecordInvalid.new(MediaAttachment.new))
 
+    message = service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/93', text: 'photo', attachments: [document])
+
+    expect(message.reload.text).to eq('photo')
+    expect(message.media_attachments).to be_empty
+  end
+
+  it 'keeps the attachments that can be stored when another cannot' do
+    broken = document.merge('url' => 'ftp://remote.test/broken.png')
+
+    message = service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/95', text: nil, attachments: [broken, document])
+
+    expect(message.media_attachments.map(&:remote_url)).to eq([document['url']])
+  end
+
+  it 'tries again later when a message has only attachments and none can be stored' do
+    broken = document.merge('url' => 'ftp://remote.test/broken.png')
+
     expect do
-      expect do
-        service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/93', text: 'photo', attachments: [document])
-      end.to raise_error(ActiveRecord::RecordInvalid)
-    end.to_not change(ChatMessage, :count)
-    expect(MediaAttachment.where(remote_url: document['url'])).to be_empty
+      expect { service.receive_direct_message(owner, remote, uri: 'https://remote.test/chat/messages/96', text: nil, attachments: [broken]) }
+        .to raise_error(Sharlayan::ChatFederation::DependencyNotReadyError)
+    end.to_not change(ChatConversation, :count)
+    expect(ChatMessage.where(uri: 'https://remote.test/chat/messages/96')).to be_empty
   end
 
   describe 'private media proxy' do

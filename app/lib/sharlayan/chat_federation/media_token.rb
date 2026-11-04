@@ -16,7 +16,7 @@ module Sharlayan
           return false if token.blank?
 
           payload = verifier.verified(token, purpose: PURPOSE)
-          payload.present? && payload['id'] == media_attachment.id && member_on?(media_attachment, payload['domain'])
+          payload.present? && payload['id'] == media_attachment.id && !media_attachment.account.suspended? && member_on?(media_attachment, payload['domain'])
         rescue ActiveSupport::MessageVerifier::InvalidSignature, ArgumentError
           false
         end

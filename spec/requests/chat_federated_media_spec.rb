@@ -104,6 +104,19 @@ RSpec.describe 'Federated chat attachments' do
     expect(response).to have_http_status(404)
   end
 
+  it 'closes while the author is suspended and opens again once that ends' do
+    message
+    url = delivered_url(bob.inbox_url, 'Create')
+
+    owner.suspend!
+    fetch(url)
+    expect(response).to have_http_status(404)
+
+    owner.unsuspend!
+    fetch(url)
+    expect(response).to have_http_status(:redirect)
+  end
+
   it 'does not take a token that names no server' do
     token = Rails.application.message_verifier('sharlayan_chat_media').generate({ 'id' => message.media_attachments.first.id }, expires_in: 1.year, purpose: :chat_media)
 
