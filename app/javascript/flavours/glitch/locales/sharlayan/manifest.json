@@ -94,6 +94,7 @@
   "chat.delete_group_confirm",
   "chat.delete_message",
   "chat.delete_message_confirm",
+  "chat.delete_message_confirm_unknown",
   "chat.edit",
   "chat.editing",
   "chat.error",

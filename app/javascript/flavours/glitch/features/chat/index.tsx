@@ -93,6 +93,7 @@ interface ChatMessage {
   reactions: ChatReaction[];
   media_attachments: ChatMedia[];
   editable?: boolean;
+  deletes_for_everyone?: boolean;
 }
 
 type MessageUpdate = (messages: ChatMessage[]) => ChatMessage[];
@@ -494,6 +495,8 @@ const endsRun = (list: ChatMessage[], index: number) =>
   index === list.length - 1 || startsRun(list, index + 1);
 
 const FOLLOW_NEWEST_DISTANCE = 240;
+const MESSAGE_PAGE_SIZE = 40;
+const MESSAGE_RESYNC_PAGES = 25;
 const HIGHLIGHT_DURATION_MS = 3000;
 
 const usesTouchKeyboard = () =>
@@ -620,6 +623,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const pendingMessageUpdates = useRef(new Set<MessageUpdate[]>());
   const latestMessageRequest = useRef(0);
+  const shownMessagesRef = useRef<ChatMessage[]>([]);
+  useEffect(() => {
+    shownMessagesRef.current = messagesList;
+  }, [messagesList]);
   const conversationPages = useRef(1);
   const latestConversationRequest = useRef(0);
   const updateMessages = useCallback((update: MessageUpdate) => {
@@ -812,6 +819,77 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         response.data.map(applyTombstone),
       ),
     );
+    if (!isVisible()) return;
+    await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
+    setConversations((current) =>
+      current.map((item) =>
+        item.id === conversationId ? { ...item, unread: false } : item,
+      ),
+    );
+  }, [applyTombstone, conversationId]);
+
+  // Fetches what changed while nothing was arriving, without moving anyone from the older pages they are reading.
+  const resyncMessages = useCallback(async () => {
+    if (!conversationId) return;
+    const updates: MessageUpdate[] = [];
+    pendingMessageUpdates.current.add(updates);
+    const requestId = ++latestMessageRequest.current;
+    const newestShown = shownMessagesRef.current.at(-1)?.id;
+    const loaded: ChatMessage[] = [];
+    let reachedStart = false;
+    let meetsShown = false;
+    try {
+      for (let page = 0; page < MESSAGE_RESYNC_PAGES; page++) {
+        const { data }: { data: ChatMessage[] } = await api().get<
+          ChatMessage[]
+        >(
+          `/api/v1/chat/conversations/${conversationId}/messages`,
+          loaded[0] ? { params: { max_id: loaded[0].id } } : undefined,
+        );
+        loaded.unshift(...data);
+        reachedStart = data.length < MESSAGE_PAGE_SIZE;
+        const oldestLoaded = loaded[0]?.id;
+        meetsShown =
+          oldestLoaded !== undefined &&
+          newestShown !== undefined &&
+          compareId(oldestLoaded, newestShown) <= 0;
+        if (reachedStart || meetsShown || newestShown === undefined) break;
+      }
+    } finally {
+      pendingMessageUpdates.current.delete(updates);
+    }
+    if (requestId !== latestMessageRequest.current) return;
+
+    const fetched = updates.reduce(
+      (items, update) => update(items),
+      loaded.map(applyTombstone),
+    );
+    const oldestFetched = fetched[0]?.id;
+    if (meetsShown && oldestFetched !== undefined) {
+      setMessagesList((current) => [
+        ...current.filter((item) => compareId(item.id, oldestFetched) < 0),
+        ...fetched,
+      ]);
+    } else {
+      // Too much happened to bridge, so this starts again from the newest page.
+      const newestPage = reachedStart
+        ? fetched
+        : fetched.slice(-MESSAGE_PAGE_SIZE);
+      setMessagesList(newestPage);
+      setOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
+    }
+
+    if (!followingNewestRef.current) {
+      if (
+        fetched.some(
+          (item) =>
+            item.account.id !== me &&
+            (newestShown === undefined || compareId(item.id, newestShown) > 0),
+        )
+      )
+        setHasUnseenMessages(true);
+      return;
+    }
     if (!isVisible()) return;
     await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
     setConversations((current) =>
@@ -1058,13 +1136,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             setError('load');
           });
         } else if (event === CHAT_STREAM_RECONNECTED) {
-          refreshConversations();
-          void loadInvitations().catch(() => {
-            setError('load');
-          });
-          void loadMessages().catch(() => {
-            setError('load');
-          });
+          // This also runs on every poll while offline, and the next one tries again.
+          void loadConversations().catch(() => undefined);
+          void loadInvitations().catch(() => undefined);
+          void resyncMessages().catch(() => undefined);
         } else if (event !== 'chat.notification' && eventConversationId) {
           refreshConversation(eventConversationId);
         }
@@ -1073,10 +1148,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       applyTombstone,
       conversationId,
       history,
+      loadConversations,
       loadInvitations,
-      loadMessages,
       refreshConversation,
       refreshConversations,
+      resyncMessages,
       updateMessages,
     ],
   );
@@ -1634,55 +1710,66 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setMedia([]);
         setText(message.content ?? '');
       } else {
-        const deletesForEveryone =
-          chatSettings !== null &&
-          !chatSettings.soft_delete &&
-          Date.now() - Date.parse(message.created_at) <
-            chatSettings.delete_window_hours * 3_600_000;
-        dispatch(
-          openModal({
-            modalType: 'CONFIRM',
-            modalProps: {
-              title: intl.formatMessage({
-                id: 'chat.delete_message',
-                defaultMessage: 'Delete this message?',
-              }),
-              message: deletesForEveryone
-                ? intl.formatMessage({
-                    id: 'chat.delete_message_confirm',
-                    defaultMessage:
-                      "It will show as deleted for everyone in this chat. This can't be undone.",
-                  })
-                : intl.formatMessage({
-                    id: 'chat.hide_message_confirm',
-                    defaultMessage:
-                      "It will disappear only for you. Others in this chat can still see it. This can't be undone.",
-                  }),
-              confirm: intl.formatMessage(messages.delete),
-              onConfirm: () => {
-                void api()
-                  .delete(`/api/v1/chat/messages/${id}`)
-                  .then(() => {
-                    deletedMessages.current.set(id, new Date().toISOString());
-                    updateMessages((current) =>
-                      current.map((item) =>
-                        item.id === id ? applyTombstone(item) : item,
-                      ),
-                    );
-                    refreshConversation(message.conversation_id);
-                  })
-                  .catch(() => {
-                    setError('delete');
-                  });
+        const deletionNotice = (deletesForEveryone: boolean | null) => {
+          if (deletesForEveryone === null)
+            return intl.formatMessage({
+              id: 'chat.delete_message_confirm_unknown',
+              defaultMessage:
+                "It may disappear for everyone or only for you, depending on this server's settings. This can't be undone.",
+            });
+          return deletesForEveryone
+            ? intl.formatMessage({
+                id: 'chat.delete_message_confirm',
+                defaultMessage:
+                  "It will show as deleted for everyone in this chat. This can't be undone.",
+              })
+            : intl.formatMessage({
+                id: 'chat.hide_message_confirm',
+                defaultMessage:
+                  "It will disappear only for you. Others in this chat can still see it. This can't be undone.",
+              });
+        };
+        const confirmDeletion = (deletesForEveryone: boolean | null) => {
+          dispatch(
+            openModal({
+              modalType: 'CONFIRM',
+              modalProps: {
+                title: intl.formatMessage({
+                  id: 'chat.delete_message',
+                  defaultMessage: 'Delete this message?',
+                }),
+                message: deletionNotice(deletesForEveryone),
+                confirm: intl.formatMessage(messages.delete),
+                onConfirm: () => {
+                  void api()
+                    .delete(`/api/v1/chat/messages/${id}`)
+                    .then(() => {
+                      deletedMessages.current.set(id, new Date().toISOString());
+                      updateMessages((current) =>
+                        current.map((item) =>
+                          item.id === id ? applyTombstone(item) : item,
+                        ),
+                      );
+                      refreshConversation(message.conversation_id);
+                    })
+                    .catch(() => {
+                      setError('delete');
+                    });
+                },
               },
-            },
-          }),
-        );
+            }),
+          );
+        };
+        // Only the server knows what deleting will do right now.
+        void api()
+          .get<ChatMessage>(`/api/v1/chat/messages/${id}`)
+          .then(({ data }) => data.deletes_for_everyone ?? null)
+          .catch(() => null)
+          .then(confirmDeletion);
       }
     },
     [
       applyTombstone,
-      chatSettings,
       dispatch,
       editingId,
       finishEditing,

@@ -205,6 +205,9 @@ const lastConfirmation = () => {
   return action?.payload.modalProps;
 };
 const confirmModal = async () => {
+  await waitFor(() => {
+    expect(lastConfirmation()).toBeTruthy();
+  });
   await act(async () => {
     lastConfirmation()?.onConfirm();
     await Promise.resolve();
@@ -242,6 +245,8 @@ const getResponse = (url: string): Promise<{ data: unknown }> => {
     return Promise.resolve({
       data: [message(url.includes('/A/') ? 'A' : 'B')],
     });
+  if (/^\/api\/v1\/chat\/messages\/[^/]+$/.test(url))
+    return Promise.resolve({ data: { deletes_for_everyone: true } });
   throw new Error(`Unexpected GET ${url}`);
 };
 beforeEach(() => {
@@ -2612,11 +2617,11 @@ describe('Chat deletion notice', () => {
   const unknown =
     "It may disappear for everyone or only for you, depending on this server's settings. This can't be undone.";
   const noticeFor = async (
-    serverAnswer: Promise<{ data: unknown }>,
+    serverAnswer: () => Promise<{ data: unknown }>,
     age = 0,
   ) => {
     api.get.mockImplementation((url: string) => {
-      if (url === '/api/v1/chat/messages/message-A') return serverAnswer;
+      if (url === '/api/v1/chat/messages/message-A') return serverAnswer();
       if (url.endsWith('/messages'))
         return Promise.resolve({
           data: [
@@ -2641,7 +2646,7 @@ describe('Chat deletion notice', () => {
   it('promises removal for everyone when the server says so, whatever the browser clock says', async () => {
     expect(
       await noticeFor(
-        Promise.resolve({ data: { deletes_for_everyone: true } }),
+        () => Promise.resolve({ data: { deletes_for_everyone: true } }),
         25 * HOUR,
       ),
     ).toBe(everyone);
@@ -2649,14 +2654,16 @@ describe('Chat deletion notice', () => {
 
   it('says others keep the message when the server says so, whatever the browser clock says', async () => {
     expect(
-      await noticeFor(
+      await noticeFor(() =>
         Promise.resolve({ data: { deletes_for_everyone: false } }),
       ),
     ).toBe(onlyYou);
   });
 
   it('promises neither when the server cannot be asked', async () => {
-    expect(await noticeFor(Promise.reject(new Error('offline')))).toBe(unknown);
+    expect(await noticeFor(() => Promise.reject(new Error('offline')))).toBe(
+      unknown,
+    );
   });
 });
 
@@ -2812,7 +2819,7 @@ describe('Chat stream resynchronisation', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
       await screen.findByText('Older 60');
 
-      serve(full, { '60': [older] });
+      serve(full, { '60': [{ ...older, id: '59' }] });
       await reconnect();
       fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
 
@@ -2821,19 +2828,19 @@ describe('Chat stream resynchronisation', () => {
 
     it('does not mark the conversation read while the reader is elsewhere', async () => {
       await openWithOlderPage();
-      const scroller = document.querySelector('.chat-messages');
-      if (scroller) {
-        Object.defineProperties(scroller, {
-          scrollHeight: { configurable: true, value: 5000 },
-          clientHeight: { configurable: true, value: 500 },
-          scrollTop: { configurable: true, writable: true, value: 0 },
-        });
-        fireEvent.scroll(scroller);
-      }
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+        bottom: window.innerHeight + 5000,
+      } as DOMRect);
+      fireEvent.scroll(window);
       api.post.mockClear();
       serve([
         ...page(100).slice(1),
-        { ...message(), id: '140', content: 'Missed' },
+        {
+          ...message(),
+          id: '140',
+          content: 'Missed',
+          account: { ...account, id: 'someone-else' },
+        },
       ]);
 
       await reconnect();
@@ -2842,6 +2849,19 @@ describe('Chat stream resynchronisation', () => {
       expect(
         api.post.mock.calls.filter(([url]) => String(url).endsWith('/read')),
       ).toHaveLength(0);
+      vi.restoreAllMocks();
+    });
+
+    it('stays quiet when a refresh fails, because the next one tries again', async () => {
+      await openWithOlderPage();
+      api.get.mockImplementation(() => Promise.reject(new Error('offline')));
+
+      await reconnect();
+
+      expect(
+        screen.queryByText('The chat request could not be completed.'),
+      ).toBeNull();
+      expect(screen.getByText('Older page')).toBeTruthy();
     });
   });
 });
