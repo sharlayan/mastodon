@@ -36,6 +36,29 @@ RSpec.describe 'Misskey chat media downloads' do
     expect(response).to have_http_status(:redirect)
   end
 
+  it 'stops an issued attachment URL as soon as compatibility is turned off, and not one from the chat API' do
+    misskey_path = download_path
+    rest_path = URI.parse(REST::MediaAttachmentSerializer.new(media, current_account: viewer).as_json[:url]).request_uri
+
+    Setting.misskey_compat_enabled = false
+
+    get misskey_path
+    expect(response).to have_http_status(404)
+
+    get rest_path
+    expect(response).to have_http_status(:redirect)
+  end
+
+  it 'takes an issued attachment URL again if compatibility comes back before it expires' do
+    path = download_path
+    Setting.misskey_compat_enabled = false
+    Setting.misskey_compat_enabled = true
+
+    get path
+
+    expect(response).to have_http_status(:redirect)
+  end
+
   it 'revokes an issued attachment URL when its viewer leaves the room' do
     path = download_path
     conversation.memberships.find_by!(account: viewer).destroy!

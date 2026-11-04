@@ -6,13 +6,14 @@ module Sharlayan::ChatMediaToken
 
   module_function
 
-  def generate(media, viewer)
-    verifier.generate({ 'media_id' => media.id, 'account_id' => viewer.id }, expires_in: TTL, purpose: PURPOSE)
+  def generate(media, viewer, misskey: false)
+    verifier.generate({ 'media_id' => media.id, 'account_id' => viewer.id, 'misskey' => misskey }, expires_in: TTL, purpose: PURPOSE)
   end
 
   def viewer(token, media)
     payload = verifier.verified(token, purpose: PURPOSE)
     return if payload.nil? || payload['media_id'] != media.id
+    return if payload['misskey'] && !Setting.misskey_compat_enabled
 
     account = Account.local.find_by(id: payload['account_id'])
     account if account&.user&.functional?
