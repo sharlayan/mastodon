@@ -357,6 +357,39 @@ describe('Telling apart people with the same name', () => {
     expect(name.closest('button')?.textContent).toBe('plain@cherry.test');
   });
 
+  it('keeps the full address within reach in search results and selected accounts', async () => {
+    api.get.mockImplementation(
+      (url: string, config?: { params?: { direction?: string } }) =>
+        url === '/api/v2/search'
+          ? Promise.resolve({ data: { accounts: [carol] } })
+          : Promise.resolve({ data: responses(url, config) }),
+    );
+    mountAt('/chat/new');
+    fireEvent.change(
+      await screen.findByPlaceholderText('Search for an account'),
+      { target: { value: 'carol' } },
+    );
+
+    const address = await screen.findByText('@carol@cherry.test');
+    expect(address.getAttribute('title')).toBe('@carol@cherry.test');
+
+    fireEvent.click(address.closest('button') as HTMLElement);
+
+    expect(screen.getByText('@carol@cherry.test').getAttribute('title')).toBe(
+      '@carol@cherry.test',
+    );
+  });
+
+  it('keeps the full address within reach for members and people invited', async () => {
+    sentInvitations = [invitationTo(carol)];
+    mountAt('/chat/group-1/members');
+
+    expect(
+      (await screen.findByText('@carol@cherry.test')).getAttribute('title'),
+    ).toBe('@carol@cherry.test');
+    expect(screen.getByText('@bob').getAttribute('title')).toBe('@bob');
+  });
+
   it('leaves a group as its name', async () => {
     mountAt('/chat');
     fireEvent.click(await screen.findByRole('button', { name: 'Your groups' }));

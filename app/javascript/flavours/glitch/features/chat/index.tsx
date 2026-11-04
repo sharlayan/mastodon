@@ -263,7 +263,9 @@ const AccountSummary: React.FC<{
     <Avatar account={account} size={36} />
     <span className='chat-native__account-names'>
       <strong>{account.display_name || account.acct}</strong>
-      <span>{detail ?? `@${account.acct}`}</span>
+      <span title={detail === undefined ? `@${account.acct}` : undefined}>
+        {detail ?? `@${account.acct}`}
+      </span>
     </span>
   </>
 );
@@ -518,7 +520,7 @@ const PendingInvitationRow: React.FC<{
       <Avatar account={invitee} size={36} withLink />
       <div>
         <strong>{invitee.display_name || invitee.acct}</strong>
-        <span>@{invitee.acct}</span>
+        <span title={`@${invitee.acct}`}>@{invitee.acct}</span>
       </div>
       <small className='chat-native__pending-badge'>
         <FormattedMessage
@@ -2691,7 +2693,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   <Avatar account={account} size={36} withLink />
                   <div>
                     <strong>{account.display_name || account.acct}</strong>
-                    <span>@{account.acct}</span>
+                    <span title={`@${account.acct}`}>@{account.acct}</span>
                   </div>
                   {isRemoteAccount(account) && (
                     <small className='chat-native__remote-badge'>
