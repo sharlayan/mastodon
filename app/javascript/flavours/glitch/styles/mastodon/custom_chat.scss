@@ -117,6 +117,10 @@
     border-bottom: 0;
   }
 
+  &__invite {
+    flex-wrap: wrap;
+  }
+
   &__toolbar {
     flex: 0 0 auto;
     padding: 10px 12px;
@@ -231,9 +235,10 @@
 
     button {
       position: relative;
-      display: grid;
+      display: flex;
+      align-items: center;
       width: 100%;
-      gap: 2px;
+      gap: 10px;
       padding: 12px 36px 12px 16px;
       color: var(--color-text-primary);
       text-align: start;
@@ -247,28 +252,12 @@
         background: var(--color-bg-secondary);
       }
 
-      strong,
-      span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      strong {
-        font-weight: 500;
-      }
-
-      span {
-        color: var(--color-text-secondary);
-        font-size: 13px;
-      }
-
       &.unread {
         strong {
           font-weight: 700;
         }
 
-        span {
+        .chat-native__account-names span {
           color: var(--color-text-primary);
         }
       }
@@ -289,14 +278,15 @@
   &__account-results,
   &__search-results {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 4px;
     padding: 8px 12px;
 
     button {
       display: flex;
+      align-items: center;
       width: 100%;
-      justify-content: space-between;
-      gap: 8px;
+      gap: 10px;
       padding: 10px 12px;
       color: var(--color-text-primary);
       text-align: start;
@@ -305,10 +295,46 @@
       border-radius: 8px;
       cursor: pointer;
     }
+  }
+
+  &__account-names {
+    display: grid;
+    flex: 1 1 auto;
+    gap: 2px;
+    min-width: 0;
+
+    strong,
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    strong {
+      font-weight: 500;
+    }
 
     span {
       color: var(--color-text-secondary);
+      font-size: 13px;
     }
+  }
+
+  &__search-results &__account-names span {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  &__room-picture {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-tertiary);
+    border-radius: var(--avatar-border-radius);
   }
 
   &__members {
@@ -719,24 +745,6 @@
     border: 1px solid var(--color-border-primary);
     border-radius: 10px;
 
-    > span {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-
-      strong,
-      small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      small {
-        color: var(--color-text-secondary);
-        font-size: 12px;
-      }
-    }
-
     button {
       flex: 0 0 auto;
       width: 28px;
@@ -811,27 +819,8 @@
     color: var(--color-text-primary);
     border-bottom: 1px solid var(--color-border-primary);
 
-    > div:first-child {
-      display: grid;
-      flex: 1 1 auto;
-      gap: 2px;
-      min-width: 0;
-    }
-
-    strong,
-    span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
     strong {
       font-weight: 600;
-    }
-
-    span {
-      color: var(--color-text-secondary);
-      font-size: 13px;
     }
 
     .account__relationship {

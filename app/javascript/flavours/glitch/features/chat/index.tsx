@@ -242,6 +242,38 @@ const conversationName = (conversation: ChatConversation) => {
     .join(', ');
 };
 
+// The picture is not a link: these names sit inside buttons, and a button cannot hold a link.
+const AccountSummary: React.FC<{
+  account: ChatAccount;
+  detail?: string;
+}> = ({ account, detail }) => (
+  <>
+    <Avatar account={account} size={36} />
+    <span className='chat-native__account-names'>
+      <strong>{account.display_name || account.acct}</strong>
+      <span>{detail ?? `@${account.acct}`}</span>
+    </span>
+  </>
+);
+
+// A group has no one person to show, but its row still lines up with the direct chats.
+const ConversationPicture: React.FC<{ conversation: ChatConversation }> = ({
+  conversation,
+}) => {
+  const other =
+    conversation.type === 'direct'
+      ? conversation.accounts.find((account) => account.id !== me)
+      : undefined;
+
+  return other ? (
+    <Avatar account={other} size={36} />
+  ) : (
+    <span className='chat-native__room-picture'>
+      <Icon id='groups' icon={GroupsIcon} />
+    </span>
+  );
+};
+
 const compareConversations = (
   first: ChatConversation,
   second: ChatConversation,
@@ -380,7 +412,8 @@ const InvitationRow: React.FC<{
 
   return (
     <div className='chat-native__invitation'>
-      <div>
+      <Avatar account={invitation.inviter} size={36} />
+      <div className='chat-native__account-names'>
         <strong>{conversationName(invitation.conversation)}</strong>
         <span>
           <FormattedMessage
@@ -2445,12 +2478,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     {inviteAccount && (
                       <div className='chat-native__selected-accounts'>
                         <div className='chat-native__account-card'>
-                          <span>
-                            <strong>
-                              {inviteAccount.display_name || inviteAccount.acct}
-                            </strong>
-                            <small>@{inviteAccount.acct}</small>
-                          </span>
+                          <AccountSummary account={inviteAccount} />
                           <button
                             type='button'
                             onClick={handleRemoveInviteAccount}
@@ -2483,10 +2511,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           data-account-id={account.id}
                           onClick={handleInviteAccountResult}
                         >
-                          <strong>
-                            {account.display_name || account.acct}
-                          </strong>
-                          <span>@{account.acct}</span>
+                          <AccountSummary account={account} />
                         </button>
                       ))}
                     </div>
@@ -2960,12 +2985,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   {directAccount && (
                     <div className='chat-native__selected-accounts'>
                       <div className='chat-native__account-card'>
-                        <span>
-                          <strong>
-                            {directAccount.display_name || directAccount.acct}
-                          </strong>
-                          <small>@{directAccount.acct}</small>
-                        </span>
+                        <AccountSummary account={directAccount} />
                         <button
                           type='button'
                           onClick={handleRemoveDirectAccount}
@@ -2998,8 +3018,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         data-account-id={account.id}
                         onClick={handleAccountResult}
                       >
-                        <strong>{account.display_name || account.acct}</strong>
-                        <span>@{account.acct}</span>
+                        <AccountSummary account={account} />
                       </button>
                     ))}
                   </div>
@@ -3035,12 +3054,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           className='chat-native__account-card'
                           key={account.id}
                         >
-                          <span>
-                            <strong>
-                              {account.display_name || account.acct}
-                            </strong>
-                            <small>@{account.acct}</small>
-                          </span>
+                          <AccountSummary account={account} />
                           <button
                             type='button'
                             data-account-id={account.id}
@@ -3074,8 +3088,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         data-account-id={account.id}
                         onClick={handleGroupAccountResult}
                       >
-                        <strong>{account.display_name || account.acct}</strong>
-                        <span>@{account.acct}</span>
+                        <AccountSummary account={account} />
                       </button>
                     ))}
                   </div>
@@ -3169,10 +3182,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         data-message-id={result.id}
                         onClick={handleSearchResult}
                       >
-                        <strong>
-                          {result.account.display_name || result.account.acct}
-                        </strong>
-                        <span>{result.content}</span>
+                        <AccountSummary
+                          account={result.account}
+                          detail={result.content ?? ''}
+                        />
                       </button>
                     ))}
                   </div>
@@ -3189,8 +3202,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     data-conversation-id={item.id}
                     onClick={handleOpenConversation}
                   >
-                    <strong>{conversationName(item)}</strong>
-                    <span>{item.last_message?.content}</span>
+                    <ConversationPicture conversation={item} />
+                    <span className='chat-native__account-names'>
+                      <strong>{conversationName(item)}</strong>
+                      <span>{item.last_message?.content}</span>
+                    </span>
                     {item.unread && (
                       <i aria-label={intl.formatMessage(messages.unread)} />
                     )}
