@@ -101,6 +101,10 @@ RSpec.describe 'Profile images from Drive' do
       end
 
       context 'with a file exceeding the profile image limit' do
+        # The stored file is cut below. Paperclip may hard-link it to the file it was given, so it is given a copy, never
+        # the fixture: otherwise every later spec that uses attachment.jpg reads what is left of it.
+        let(:drive_file) { account.drive_files.create!(file: fixture_file_upload('attachment.jpg', 'image/jpeg')) }
+
         before do
           File.truncate(drive_file.file.path, Account::Avatar::AVATAR_LIMIT + 1)
         end
@@ -133,6 +137,9 @@ RSpec.describe 'Profile images from Drive' do
       end
 
       context 'with an empty stored original' do
+        # Emptied below, so it starts from a copy of the fixture, as above.
+        let(:drive_file) { account.drive_files.create!(file: fixture_file_upload('attachment.jpg', 'image/jpeg')) }
+
         before do
           File.truncate(drive_file.file.path, 0)
         end
