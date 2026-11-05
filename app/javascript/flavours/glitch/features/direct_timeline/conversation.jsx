@@ -15,7 +15,6 @@ import MailIcon from '@/material-icons/400-24px/mail.svg?react';
 import { addColumn, removeColumn, moveColumn } from 'flavours/glitch/actions/columns';
 import { markConversationRead, expandConversationStatuses } from 'flavours/glitch/actions/conversations';
 import { openModal } from 'flavours/glitch/actions/modal';
-import { dismissNotificationsForStatuses } from 'flavours/glitch/actions/notification_groups';
 import { connectDirectStream } from 'flavours/glitch/actions/streaming';
 import { clearTimeline } from 'flavours/glitch/actions/timelines';
 import { isNonStatusId } from 'flavours/glitch/actions/timelines_typed';
@@ -93,7 +92,7 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
     return ids;
   }, [conversation, statusIds, statuses]);
 
-  const getRecipientAccounts = useMemo(makeGetConversationRecipientAccounts, []);
+  const getRecipientAccounts = useMemo(() => makeGetConversationRecipientAccounts(), []);
   const recipientAccounts = useSelector(state => getRecipientAccounts(state, recipientIds));
 
   const nameNode = useCallback(account => (
@@ -113,30 +112,6 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
   const orderedIds = useMemo(() => statusIds.reverse(), [statusIds]);
   const oldestId = statusIds.last();
   const latestId = statusIds.first();
-
-  const notificationGroups = useSelector(state => state.notificationGroups.groups);
-
-  const unreadNotificationStatusIds = useMemo(() => {
-    const present = new Set(statusIds.toArray());
-
-    return notificationGroups
-      .filter(group =>
-        group.type !== 'gap' &&
-        (group.type === 'mention' || group.type === 'quote' || group.type === 'reaction') &&
-        'statusId' in group &&
-        group.statusId &&
-        present.has(group.statusId))
-      .map(group => group.statusId);
-  }, [notificationGroups, statusIds]);
-
-  const unreadNotificationKey = unreadNotificationStatusIds.join(',');
-
-  useEffect(() => {
-    if (unreadNotificationStatusIds.length > 0) {
-      dispatch(dismissNotificationsForStatuses(unreadNotificationStatusIds));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, unreadNotificationKey]);
 
   const scrollToBottom = useCallback(() => {
     const node = messagesRef.current;
@@ -179,13 +154,13 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
 
   useLayoutEffect(() => {
     if (!latestId) {
-      return;
+      return undefined;
     }
 
     scrollToBottom();
 
     if (didInitialScrollRef.current) {
-      return;
+      return undefined;
     }
 
     didInitialScrollRef.current = true;
@@ -255,7 +230,7 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
         <div className='conversation-thread__body'>
           <div className='conversation-thread__messages' ref={messagesRef}>
             {hasMore && !isLoading && (
-              <button className='conversation-thread__load-more' onClick={handleLoadMore}>
+              <button type='button' className='conversation-thread__load-more' onClick={handleLoadMore}>
                 <FormattedMessage id='direct_conversation.load_older' defaultMessage='Load older messages' />
               </button>
             )}
