@@ -2384,7 +2384,7 @@ describe('Chat sending with the keyboard', () => {
     });
   });
 
-  it('stays focusable while sending and does not send twice', async () => {
+  it('stays writable while sending and does not send twice', async () => {
     const sending = deferred<{ data: unknown }>();
     api.post.mockImplementation((url: string) =>
       url.endsWith('/messages')
@@ -2393,8 +2393,10 @@ describe('Chat sending with the keyboard', () => {
     );
     await typeAndPress({});
     await waitFor(() => {
-      expect(composer().readOnly).toBe(true);
+      expect(sentMessages()).toHaveLength(1);
     });
+    // A box that cannot be written to sends a phone's keyboard away, even with the focus still in it.
+    expect(composer().readOnly).toBe(false);
     expect(composer().disabled).toBe(false);
 
     fireEvent.keyDown(composer(), { key: 'Enter' });
@@ -2405,8 +2407,9 @@ describe('Chat sending with the keyboard', () => {
       await Promise.resolve();
     });
     await waitFor(() => {
-      expect(composer().readOnly).toBe(false);
+      expect(composer().value).toBe('');
     });
+    expect(composer().readOnly).toBe(false);
   });
 
   it('keeps Shift+Enter for a new line', async () => {

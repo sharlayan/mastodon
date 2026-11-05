@@ -896,6 +896,11 @@
     > .button {
       flex: 0 0 auto;
       height: 44px;
+
+      // A disabled button takes the focus without telling anyone. Pressed through, the form can keep it where it is.
+      &:disabled {
+        pointer-events: none;
+      }
     }
 
     > .chat-native__error,

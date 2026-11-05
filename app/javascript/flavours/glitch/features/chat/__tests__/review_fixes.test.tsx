@@ -197,6 +197,135 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+describe('Pressing Send with the message box in use', () => {
+  const mountRoom = async () => {
+    const view = mountAt('/chat/direct-1');
+    await screen.findByText('What I wrote');
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Attach media' }),
+      ).toHaveProperty('disabled', false);
+    });
+    return view;
+  };
+  const holdSend = () => {
+    let answer: () => void = () => undefined;
+    api.post.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          answer = () => {
+            resolve({ data: { ...myMessage, id: 'sent' } });
+          };
+        }),
+    );
+    return () => {
+      answer();
+    };
+  };
+  const formOf = (container: HTMLElement) => {
+    const form = container.querySelector<HTMLElement>(
+      'form.chat-native__composer',
+    );
+    if (!form) throw new Error('Missing composer');
+    return form;
+  };
+  // fireEvent answers false when the page has stopped what the browser would do: here, moving the focus.
+  const movesFocus = (element: HTMLElement) => fireEvent.mouseDown(element);
+
+  it('keeps the focus in the box', async () => {
+    await mountRoom();
+    fireEvent.change(composer(), { target: { value: 'Going out' } });
+    composer().focus();
+
+    expect(movesFocus(sendButton())).toBe(false);
+  });
+
+  it('keeps the focus in the box when the button is disabled', async () => {
+    const { container } = await mountRoom();
+    composer().focus();
+
+    // A disabled button lets the press through to the form behind it.
+    expect(movesFocus(formOf(container))).toBe(false);
+  });
+
+  it('does not touch the focus when the box does not have it', async () => {
+    const { container } = await mountRoom();
+    fireEvent.change(composer(), { target: { value: 'Going out' } });
+
+    expect(movesFocus(sendButton())).toBe(true);
+    expect(movesFocus(formOf(container))).toBe(true);
+    expect(document.activeElement).not.toBe(composer());
+  });
+
+  it('leaves the other controls of the composer alone', async () => {
+    await mountRoom();
+    composer().focus();
+
+    expect(
+      movesFocus(screen.getByRole('button', { name: 'Attach media' })),
+    ).toBe(true);
+    expect(movesFocus(composer())).toBe(true);
+  });
+
+  it('keeps the box writable while the message is on its way', async () => {
+    const answer = holdSend();
+    await mountRoom();
+    fireEvent.change(composer(), { target: { value: 'Going out' } });
+
+    fireEvent.click(sendButton());
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalled();
+    });
+    expect(composer().readOnly).toBe(false);
+    await act(async () => {
+      answer();
+      await Promise.resolve();
+    });
+  });
+
+  it('keeps what is typed while the message is on its way', async () => {
+    const answer = holdSend();
+    await mountRoom();
+    fireEvent.change(composer(), { target: { value: 'Going out' } });
+
+    fireEvent.click(sendButton());
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalled();
+    });
+    fireEvent.change(composer(), { target: { value: 'Going out and more' } });
+    await act(async () => {
+      answer();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(composer().value).toBe(' and more');
+    });
+  });
+
+  it('keeps a box rewritten while the message is on its way', async () => {
+    const answer = holdSend();
+    await mountRoom();
+    fireEvent.change(composer(), { target: { value: 'Going out' } });
+
+    fireEvent.click(sendButton());
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalled();
+    });
+    fireEvent.change(composer(), { target: { value: 'Something else' } });
+    await act(async () => {
+      answer();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(document.getElementById('chat-message-sent')).toBeTruthy();
+    });
+    expect(composer().value).toBe('Something else');
+  });
+});
+
 describe('Home and End in the message box', () => {
   const MAC =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36';
@@ -384,7 +513,7 @@ describe('Typing while an attachment uploads', () => {
     });
   });
 
-  it('stops typing only while the message itself is being sent', async () => {
+  it('empties the box once the message has gone', async () => {
     let answer: () => void = () => undefined;
     api.post.mockImplementation(
       () =>
@@ -401,8 +530,9 @@ describe('Typing while an attachment uploads', () => {
     fireEvent.click(sendButton());
 
     await waitFor(() => {
-      expect(composer().readOnly).toBe(true);
+      expect(api.post).toHaveBeenCalled();
     });
+    expect(composer().readOnly).toBe(false);
     await act(async () => {
       answer();
       await Promise.resolve();

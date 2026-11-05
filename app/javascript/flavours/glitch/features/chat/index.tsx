@@ -1697,7 +1697,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (editingId) {
         finishEditing();
       } else {
-        setText('');
+        // The box stays writable meanwhile: only what went out leaves it.
+        setText((current) =>
+          current.startsWith(text) ? current.slice(text.length) : current,
+        );
         setMedia([]);
       }
       setReplyToId(null);
@@ -1727,6 +1730,21 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       void send();
     },
     [send],
+  );
+
+  // Pressing Send must not take the focus from the message box, or a phone's keyboard goes away with it. A disabled
+  // button lets the press through to the form. With the focus elsewhere nothing changes, so no keyboard comes up.
+  const handleComposerMouseDown = useCallback(
+    (event: MouseEvent<HTMLFormElement>) => {
+      const form = event.currentTarget;
+      const target = event.target as Element;
+      if (
+        (target === form || target.closest('button[type="submit"]')) &&
+        document.activeElement === form.querySelector('textarea')
+      )
+        event.preventDefault();
+    },
+    [],
   );
 
   const handleComposerKeyDown = useCallback(
@@ -3213,10 +3231,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   </Fragment>
                 ))}
               </div>
+              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- only keeps the focus where it is */}
               <form
                 className='chat-native__composer'
                 ref={composerRef}
                 onSubmit={handleComposerSubmit}
+                onMouseDown={handleComposerMouseDown}
               >
                 {errorNotice}
                 {awayFromNewest && (
@@ -3369,7 +3389,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     onChange={handleTextChange}
                     onKeyDown={handleComposerKeyDown}
                     placeholder={intl.formatMessage(messages.placeholder)}
-                    readOnly={loading}
                     disabled={isArchived}
                   />
                 </div>
