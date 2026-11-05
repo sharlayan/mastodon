@@ -11,6 +11,7 @@ import type {
   KeyboardEvent,
   MouseEvent,
   SyntheticEvent,
+  TouchEvent,
 } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
@@ -28,6 +29,7 @@ import PhotoLibraryIcon from '@/material-icons/400-20px/photo_library.svg?react'
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
+import ContentCopyIcon from '@/material-icons/400-24px/content_copy.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import GroupIcon from '@/material-icons/400-24px/group.svg?react';
@@ -208,6 +210,11 @@ const messages = defineMessages({
   attach: { id: 'chat.attach', defaultMessage: 'Attach media' },
   reply: { id: 'chat.reply', defaultMessage: 'Reply' },
   edit: { id: 'chat.edit', defaultMessage: 'Edit' },
+  copy: { id: 'chat.copy', defaultMessage: 'Copy' },
+  copied: {
+    id: 'copy_icon_button.copied',
+    defaultMessage: 'Copied to clipboard',
+  },
   delete: { id: 'chat.delete', defaultMessage: 'Delete' },
   tabHome: { id: 'chat.home', defaultMessage: 'Home' },
   tabInvitations: { id: 'chat.invitations', defaultMessage: 'Invitations' },
@@ -586,7 +593,80 @@ const PendingInvitationRow: React.FC<{
   );
 };
 
-type MessageAction = 'reply' | 'edit' | 'delete';
+type MessageAction = 'reply' | 'edit' | 'copy' | 'delete';
+
+const hasText = (message: ChatMessage) => Boolean(message.content?.trim());
+
+// Being async turns a browser without a clipboard into a failed copy, like one that refuses.
+const writeToClipboard = async (text: string) => {
+  await navigator.clipboard.writeText(text);
+};
+
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_PX = 10;
+
+// Android Chrome reveals the toolbar by itself on a long press, and iOS Safari does not. Nothing else there would
+// answer the finger now that the text cannot be selected, so a long press opens it on every browser.
+// A picture keeps its browser menu: it is left alone.
+const useLongPressOpensToolbar = () => {
+  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
+
+  const cancel = useCallback(() => {
+    if (press.current) window.clearTimeout(press.current.timer);
+    press.current = null;
+  }, []);
+
+  useEffect(() => cancel, [cancel]);
+
+  const onTouchStart = useCallback(
+    (event: TouchEvent<HTMLElement>) => {
+      cancel();
+      const touch = event.touches[0];
+      const target = event.target as Element;
+      const bubble = target.closest<HTMLElement>('.chat-native__bubble');
+      if (
+        !touch ||
+        event.touches.length > 1 ||
+        !bubble ||
+        target.closest('.chat-native__gallery, .chat-native__attachment')
+      )
+        return;
+
+      press.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        timer: window.setTimeout(() => {
+          press.current = null;
+          bubble.focus({ preventScroll: true });
+        }, LONG_PRESS_MS),
+      };
+    },
+    [cancel],
+  );
+
+  const onTouchMove = useCallback(
+    (event: TouchEvent<HTMLElement>) => {
+      const touch = event.touches[0];
+      if (
+        press.current &&
+        touch &&
+        Math.hypot(
+          touch.clientX - press.current.x,
+          touch.clientY - press.current.y,
+        ) > LONG_PRESS_MOVE_PX
+      )
+        cancel();
+    },
+    [cancel],
+  );
+
+  return {
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd: cancel,
+    onTouchCancel: cancel,
+  };
+};
 
 const ReplyQuote: React.FC<{
   messageId: string;
@@ -752,6 +832,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   } | null>(null);
   const [newChatMode, setNewChatMode] = useState<'direct' | 'group'>('direct');
   const [searchOpen, setSearchOpen] = useState(false);
+  const longPress = useLongPressOpensToolbar();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
@@ -1936,7 +2017,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!message) return;
       setError(null);
 
-      if (action === 'reply') {
+      if (action === 'copy') {
+        void writeToClipboard(message.content ?? '').then(
+          () => {
+            dispatch(showAlert({ message: messages.copied }));
+          },
+          () => {
+            setError('copy');
+          },
+        );
+      } else if (action === 'reply') {
         if (editingId) finishEditing();
         setReplyToId(id);
       } else if (action === 'edit') {
@@ -2537,6 +2627,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           id='chat.error_refused'
           defaultMessage="This account can't receive this."
         />
+      ) : error === 'copy' ? (
+        <FormattedMessage
+          id='chat.error_copy'
+          defaultMessage='The message could not be copied.'
+        />
       ) : error === 'too_many_attachments' ? (
         <FormattedMessage
           id='chat.error_too_many_attachments'
@@ -2874,7 +2969,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               {olderMessageId && (
                 <LoadMore onClick={loadOlderMessages} loading={loadingMore} />
               )}
-              <div className='chat-native__messages' ref={messagesListRef}>
+              <div
+                className='chat-native__messages'
+                ref={messagesListRef}
+                {...longPress}
+              >
                 {messagesList.map((message, index) => (
                   <Fragment key={message.id}>
                     {startsDay(messagesList, index) && (
@@ -2942,45 +3041,63 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                               onOpenMedia={handleOpenMedia}
                             />
                           </div>
-                          {!message.deleted_at && !conversation?.archived && (
-                            <div className='chat-native__actions'>
-                              <MessageActionButton
-                                messageId={message.id}
-                                action='reply'
-                                title={intl.formatMessage(messages.reply)}
-                                icon={ReplyIcon}
-                                onAction={handleMessageAction}
-                              />
-                              {message.account.id !== me && (
-                                <span className='chat-native__react-picker'>
-                                  <ChatEmojiPicker
-                                    messageId={message.id}
-                                    onPick={handleEmojiPick}
-                                  />
-                                </span>
-                              )}
-                              {message.account.id === me && (
-                                <>
-                                  {message.editable !== false && (
+                          {!message.deleted_at &&
+                            (!isArchived || hasText(message)) && (
+                              <div className='chat-native__actions-rail'>
+                                <div className='chat-native__actions'>
+                                  {!isArchived && (
                                     <MessageActionButton
                                       messageId={message.id}
-                                      action='edit'
-                                      title={intl.formatMessage(messages.edit)}
-                                      icon={EditIcon}
+                                      action='reply'
+                                      title={intl.formatMessage(messages.reply)}
+                                      icon={ReplyIcon}
                                       onAction={handleMessageAction}
                                     />
                                   )}
-                                  <MessageActionButton
-                                    messageId={message.id}
-                                    action='delete'
-                                    title={intl.formatMessage(messages.delete)}
-                                    icon={DeleteIcon}
-                                    onAction={handleMessageAction}
-                                  />
-                                </>
-                              )}
-                            </div>
-                          )}
+                                  {!isArchived && message.account.id !== me && (
+                                    <span className='chat-native__react-picker'>
+                                      <ChatEmojiPicker
+                                        messageId={message.id}
+                                        onPick={handleEmojiPick}
+                                      />
+                                    </span>
+                                  )}
+                                  {!isArchived &&
+                                    message.account.id === me &&
+                                    message.editable !== false && (
+                                      <MessageActionButton
+                                        messageId={message.id}
+                                        action='edit'
+                                        title={intl.formatMessage(
+                                          messages.edit,
+                                        )}
+                                        icon={EditIcon}
+                                        onAction={handleMessageAction}
+                                      />
+                                    )}
+                                  {hasText(message) && (
+                                    <MessageActionButton
+                                      messageId={message.id}
+                                      action='copy'
+                                      title={intl.formatMessage(messages.copy)}
+                                      icon={ContentCopyIcon}
+                                      onAction={handleMessageAction}
+                                    />
+                                  )}
+                                  {!isArchived && message.account.id === me && (
+                                    <MessageActionButton
+                                      messageId={message.id}
+                                      action='delete'
+                                      title={intl.formatMessage(
+                                        messages.delete,
+                                      )}
+                                      icon={DeleteIcon}
+                                      onAction={handleMessageAction}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            )}
                         </div>
                         {message.reactions.length > 0 && (
                           <div className='chat-native__reactions'>

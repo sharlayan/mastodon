@@ -450,7 +450,9 @@
     align-items: flex-start;
     align-self: flex-start;
     gap: 8px;
-    max-width: min(calc(100% - 92px), 620px);
+
+    // Room beside the bubble for the toolbar with all four of its buttons.
+    max-width: min(calc(100% - 114px), 620px);
     color: var(--color-text-primary);
 
     img {
@@ -640,12 +642,27 @@
     font-size: 11px;
   }
 
-  &__actions {
+  // Runs the length of the bubble and a toolbar's height past it, so that the toolbar can stay below the column
+  // header when the top of the bubble has scrolled away. Only the toolbar itself takes a touch or a pointer.
+  &__actions-rail {
     position: absolute;
     z-index: 1;
-    inset-block-start: 0;
+    inset-block: 0 -32px;
     inset-inline-start: calc(100% + 6px);
     display: flex;
+    align-items: flex-start;
+    pointer-events: none;
+
+    .chat-native__message--mine & {
+      inset-inline: auto calc(100% + 6px);
+    }
+  }
+
+  &__actions {
+    position: sticky;
+    inset-block-start: 66px;
+    display: flex;
+    flex: none;
     align-items: center;
     gap: 2px;
     padding: 2px;
@@ -683,19 +700,8 @@
       }
     }
 
-    .chat-native__message--mine & {
-      inset-inline: auto calc(100% + 6px);
-
-      &::before {
-        inset-inline: 100% auto;
-      }
-    }
-  }
-
-  @media (hover: none) {
-    &__actions .icon-button,
-    &__actions .chat-native__react-picker button {
-      padding: 8px;
+    .chat-native__message--mine &::before {
+      inset-inline: 100% auto;
     }
   }
 
@@ -818,6 +824,9 @@
   &__gallery {
     width: min(420px, calc(100vw - 120px));
     max-width: 100%;
+
+    // What sits on a picture has a z-index of its own, which would otherwise reach over the toolbar.
+    isolation: isolate;
 
     .media-gallery:first-child {
       margin-top: 4px;
@@ -1056,19 +1065,68 @@
   }
 }
 
+// The column header has no gap above it here.
+@media screen and (max-width: ($no-gap-breakpoint - 1px)) {
+  .chat-native {
+    &__actions {
+      inset-block-start: 54px;
+    }
+  }
+}
+
 @media screen and (max-width: $mobile-breakpoint) {
   .chat-native {
     &__message {
       max-width: 88%;
     }
+  }
+}
 
-    &__actions {
-      inset-block: auto calc(100% + 2px);
-      inset-inline: 0 auto;
+// Above the bubble there is always room, and a thumb does not cover it.
+@media screen and (max-width: $mobile-breakpoint),
+  (hover: none),
+  (pointer: coarse) {
+  .chat-native {
+    &__actions-rail,
+    &__message--mine &__actions-rail {
+      inset-block: -32px;
+      inset-inline: 0;
     }
 
-    &__message--mine &__actions {
-      inset-inline: auto 0;
+    &__message--mine &__actions-rail {
+      justify-content: flex-end;
+    }
+  }
+}
+
+// Some Android phones say they can hover, but their pointer is still coarse.
+@media (hover: none), (pointer: coarse) {
+  .chat-native {
+    &__actions-rail,
+    &__message--mine &__actions-rail {
+      inset-block: -42px;
+    }
+
+    &__actions .icon-button,
+    &__actions &__react-picker button {
+      padding: 8px;
+    }
+
+    // The toolbar opening already shows which message the finger is on.
+    &__bubble:focus-visible {
+      outline: none;
+    }
+
+    // A long press opens the toolbar, whose copy button takes the place of selecting. Pictures are not touched, so
+    // they keep their browser menu.
+    &__message-content > strong,
+    &__bubble > p,
+    &__reply-quote,
+    &__reactions,
+    &__message-footer {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
   }
 }
