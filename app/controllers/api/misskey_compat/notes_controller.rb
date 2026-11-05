@@ -13,6 +13,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   TIMELINE_SCAN_LIMIT = 1_000
   TIMELINE_BATCH_SIZE = 100
   RELATED_NOTE_SCAN_LIMIT = 1_000
+  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show children replies conversation renotes note_reactions featured clips).freeze
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
@@ -23,6 +24,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   requires_misskey_permission 'read:account', :timeline, :local_timeline, :hybrid_timeline, :global_timeline,
                               :mentions, :state, :search, :search_by_tag, :translate, :scheduled_list,
                               :drafts_list, :drafts_count, :polls_recommendation
+  requires_misskey_permission 'read:account', *OPTIONAL_AUTHENTICATION_ACTIONS
   requires_misskey_permission 'read:favorites', :my_favorites
   requires_misskey_permission 'write:notes', :unrenote, :create, :update, :scheduled_cancel, :destroy
   requires_misskey_permission 'write:account', :thread_muting_create, :thread_muting_delete
@@ -41,6 +43,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   ).freeze
 
   before_action :require_user!, only: USER_ACTIONS + %i(local_timeline global_timeline)
+  before_action :require_user_if_authenticated!, only: OPTIONAL_AUTHENTICATION_ACTIONS
   before_action :enforce_reaction_rate_limit!, only: %i(reactions_create reactions_delete)
   before_action :enforce_status_draft_rate_limit!, only: %i(drafts_list drafts_count drafts_create drafts_update drafts_delete)
   before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]

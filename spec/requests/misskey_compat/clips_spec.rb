@@ -120,7 +120,7 @@ RSpec.describe 'Misskey-compat clips' do
       limiter = RateLimiter.new(user.account, family: :clip_notes)
       RateLimiter::FAMILIES[:clip_notes][:limit].times { limiter.record! }
 
-      post '/api/clips/notes', params: { i: write_token, clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
+      post '/api/clips/notes', params: { i: read_token, clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
 
       expect(response).to have_http_status(429)
       expect(response.parsed_body.dig(:error, :code)).to eq('RATE_LIMIT_EXCEEDED')
