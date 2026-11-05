@@ -22,7 +22,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def index
-    @pages = current_account.pages.includes(page_series: :cover_media_attachment).order(is_main: :desc, id: :desc)
+    @pages = current_account.pages.summary_columns.includes(:eye_catching_media_attachment, page_series: :cover_media_attachment).order(is_main: :desc, id: :desc)
       .offset([params[:offset].to_i, 0].max)
       .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
     render json: @pages, each_serializer: REST::PageSummarySerializer
@@ -58,7 +58,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def featured
-    @pages = Page.featured.includes(page_series: :cover_media_attachment).limit(Page::LIST_LIMIT).to_a
+    @pages = Page.featured.summary_columns.includes(:eye_catching_media_attachment, account: [:account_stat, { user: :role }], page_series: :cover_media_attachment).limit(Page::LIST_LIMIT).to_a
     render json: @pages, each_serializer: REST::PageSummarySerializer
   end
 

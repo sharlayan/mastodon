@@ -38,7 +38,10 @@ export const shouldShowCollapseButton = (
   collapsed: boolean,
   characterLimit: number | null,
 ): boolean =>
-  collapsed || characterLimit === null || isLongStatus(status, characterLimit);
+  collapsed ||
+  characterLimit === null ||
+  characterLimit <= 0 ||
+  isLongStatus(status, characterLimit);
 
 export const shouldAutoCollapseNotification = (
   settings: ImmutableMap<string, unknown>,

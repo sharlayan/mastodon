@@ -17,7 +17,9 @@ class DeliveryAntennaService
   private
 
   def deliver!
-    antennas = Antenna.matching(@status).select { |antenna| deliverable?(antenna) }
+    candidates = Antenna.matching(@status).to_a
+    @candidate_account_ids = candidates.map(&:account_id).uniq
+    antennas = candidates.select { |antenna| deliverable?(antenna) }
 
     return if antennas.empty?
 
@@ -45,6 +47,6 @@ class DeliveryAntennaService
   end
 
   def follower_account_ids
-    @follower_account_ids ||= @status.account.followers.pluck(:id).to_set
+    @follower_account_ids ||= Follow.where(target_account_id: @status.account_id, account_id: @candidate_account_ids).pluck(:account_id).to_set
   end
 end

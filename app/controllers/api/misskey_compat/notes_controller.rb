@@ -12,6 +12,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   SCHEDULED_OFFSET_LIMIT = 1_000
   TIMELINE_SCAN_LIMIT = 1_000
   TIMELINE_BATCH_SIZE = 100
+  TIMELINE_MIN_BATCH_SIZE = 20
   RELATED_NOTE_SCAN_LIMIT = 1_000
   OPTIONAL_AUTHENTICATION_ACTIONS = %i(show children replies conversation renotes note_reactions featured clips).freeze
 
@@ -328,7 +329,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def mentions
-    scope = Status.joins(:mentions).where(mentions: { account_id: current_account.id }).distinct
+    scope = Status.joins(:mentions).where(mentions: { account_id: current_account.id })
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
   end
 
@@ -857,12 +858,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def filtered_timeline(feeds, limit, filter_replies: false)
     forward = timeline_min_id.present?
-    states = feeds.map { |feed| { feed: feed, buffer: [], cursor: forward ? timeline_min_id : timeline_until_id, pages: 0, exhausted: false } }
+    states = feeds.map { |feed| { feed: feed, buffer: [], cursor: forward ? timeline_min_id : timeline_until_id, scanned: 0, exhausted: false } }
     seen = Set.new
     results = []
 
     while results.size < limit
-      states.each { |state| fill_timeline_buffer(state, forward) if state[:buffer].empty? && !state[:exhausted] }
+      states.each { |state| fill_timeline_buffer(state, forward, limit) if state[:buffer].empty? && !state[:exhausted] }
       available = states.reject { |state| state[:buffer].empty? }
       break if available.empty?
 
@@ -879,12 +880,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     results
   end
 
-  def fill_timeline_buffer(state, forward)
-    while state[:buffer].empty? && state[:pages] < TIMELINE_SCAN_LIMIT / TIMELINE_BATCH_SIZE
+  def fill_timeline_buffer(state, forward, limit)
+    while state[:buffer].empty? && state[:scanned] < TIMELINE_SCAN_LIMIT
       max_id = forward ? timeline_until_id : state[:cursor]
       min_id = forward ? state[:cursor] : nil
-      page = state[:feed].get(TIMELINE_BATCH_SIZE, max_id, timeline_since_id, min_id).to_a
-      state[:pages] += 1
+      batch_size = [[limit * 2, TIMELINE_MIN_BATCH_SIZE].max, TIMELINE_BATCH_SIZE, TIMELINE_SCAN_LIMIT - state[:scanned]].min
+      page = state[:feed].get(batch_size, max_id, timeline_since_id, min_id).to_a
+      state[:scanned] += batch_size
 
       if page.any?
         ActiveRecord::Associations::Preloader.new(records: page, associations: :media_attachments).call if timeline_with_files? || !timeline_with_renotes?
@@ -899,7 +901,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       end
     end
 
-    state[:exhausted] = true if state[:pages] >= TIMELINE_SCAN_LIMIT / TIMELINE_BATCH_SIZE && state[:buffer].empty?
+    state[:exhausted] = true if state[:scanned] >= TIMELINE_SCAN_LIMIT && state[:buffer].empty?
   end
 
   def pure_timeline_renote?(status)

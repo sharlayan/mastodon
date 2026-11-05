@@ -14,11 +14,11 @@ module Sharlayan::REST::Status::InstanceMetadata
       metadata = ::InstanceMetadata.cached_by_domain(object.account.domain)
 
       if metadata.nil?
-        InstanceMetadataUpdateWorker.perform_async(object.account.domain)
+        ::InstanceMetadata.schedule_refresh(object.account.domain)
         return default_metadata(object.account.domain)
       end
 
-      InstanceMetadataUpdateWorker.perform_async(object.account.domain) if metadata.metadata_needs_update?
+      ::InstanceMetadata.schedule_refresh(object.account.domain) if metadata.metadata_needs_update?
 
       {
         domain: metadata.domain,

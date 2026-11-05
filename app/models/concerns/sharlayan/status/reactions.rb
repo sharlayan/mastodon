@@ -49,7 +49,7 @@ module Sharlayan::Status::Reactions
       end
 
       needed_ids = grouped_account_ids.values.flat_map { |ids| ids.first(StatusReaction::USERS_DISPLAY_LIMIT) }.uniq
-      accounts_by_id = Account.where(id: needed_ids).index_by(&:id)
+      accounts_by_id = Account.where(id: needed_ids).includes(:account_stat, user: :role).index_by(&:id)
 
       records.each do |record|
         ids = grouped_account_ids[[record.status_id, record.name, record.custom_emoji_id]]

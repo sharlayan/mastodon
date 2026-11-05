@@ -91,7 +91,7 @@ class HomeFeed < Feed
     if aggregate_reblogs && preceding_statuses.empty? && max_id.present?
       preceding_statuses = scope
         .where(Status.arel_table[:id].gteq(max_id))
-        .includes(:tags)
+        .includes(:tags, :account, reblog: [:account, :tags])
         .reorder(id: :asc)
         .limit(FeedManager::REBLOG_FALLOFF)
         .to_a
@@ -100,7 +100,7 @@ class HomeFeed < Feed
     end
 
     candidates = scope
-      .includes(:tags)
+      .includes(:tags, :account, reblog: [:account, :tags])
       .to_a_paginated_by_id(fetch_limit, min_id: min_id, max_id: max_id, since_id: since_id)
 
     statuses = FeedManager.instance.filter_home_statuses(candidates, @account, tag_following_ids.to_set)

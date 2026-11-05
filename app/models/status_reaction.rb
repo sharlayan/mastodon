@@ -44,7 +44,7 @@ class StatusReaction < ApplicationRecord
     return @preloaded_users if defined?(@preloaded_users)
 
     account_ids = StatusReaction.where(status_id: status_id, name: name, custom_emoji_id: custom_emoji_id).select(:account_id)
-    Account.where(id: account_ids).limit(USERS_DISPLAY_LIMIT)
+    Account.where(id: account_ids).includes(:account_stat, user: :role).limit(USERS_DISPLAY_LIMIT)
   end
 
   def account_ids

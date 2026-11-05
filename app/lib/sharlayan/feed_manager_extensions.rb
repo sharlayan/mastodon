@@ -82,7 +82,7 @@ module Sharlayan::FeedManagerExtensions
   def build_crutches(receiver_id, statuses, list: nil)
     super.tap do |crutches|
       domains = statuses.flat_map { |status| [status.account.domain, status.reblog&.account&.domain] }.compact
-      crutches[:domain_muting_home] = AccountDomainMute.where(hide_from_home: true, account_id: receiver_id, domain: domains).pluck(:domain).index_with(true)
+      crutches[:domain_muting_home] = domains.empty? ? {} : AccountDomainMute.where(hide_from_home: true, account_id: receiver_id, domain: domains).pluck(:domain).index_with(true)
     end
   end
 
