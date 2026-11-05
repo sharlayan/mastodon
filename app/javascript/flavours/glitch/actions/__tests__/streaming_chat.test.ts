@@ -45,6 +45,17 @@ describe('Chat while the stream is down', () => {
     vi.useRealTimers();
   });
 
+  it('refreshes chat as soon as the user stream connects', () => {
+    const callbacks = open(connectUserStream);
+
+    callbacks.onConnect();
+
+    expect(listener).toHaveBeenCalledWith({
+      event: CHAT_STREAM_RECONNECTED,
+      payload: {},
+    });
+  });
+
   it('refreshes chat on every poll of the user stream', async () => {
     const callbacks = open(connectUserStream);
 
@@ -75,6 +86,7 @@ describe('Chat while the stream is down', () => {
   it('leaves other streams out of it', async () => {
     const callbacks = open(connectCommunityStream);
 
+    callbacks.onConnect();
     callbacks.onDisconnect();
     await vi.advanceTimersByTimeAsync(120_000);
 

@@ -1,0 +1,721 @@
+import { IntlProvider } from 'react-intl';
+
+import { Route, Router } from 'react-router-dom';
+
+import { Map as ImmutableMap } from 'immutable';
+
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { createMemoryHistory } from 'history';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
+
+import type * as InitialState from 'flavours/glitch/initial_state';
+
+// Only the socket and the far side of the requests are stand-ins. Each page below goes
+// through the real stream client, the real API client and the real screen.
+const Socket = vi.hoisted(() => {
+  class FakeSocket {
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSING = 2;
+    static CLOSED = 3;
+    static all: FakeSocket[] = [];
+
+    readyState = FakeSocket.CONNECTING;
+    onopen?: () => void;
+    onclose?: (event: { code: number }) => void;
+    onmessage?: (event: { data: string }) => void;
+    onerror?: () => void;
+
+    constructor() {
+      FakeSocket.all.push(this);
+    }
+
+    send() {
+      return undefined;
+    }
+
+    close() {
+      this.readyState = FakeSocket.CLOSED;
+    }
+
+    connect() {
+      this.readyState = FakeSocket.OPEN;
+      this.onopen?.();
+    }
+
+    refuse() {
+      this.readyState = FakeSocket.CLOSED;
+      this.onclose?.({ code: 1006 });
+    }
+
+    deliver(event: string, payload: unknown) {
+      this.onmessage?.({
+        data: JSON.stringify({
+          stream: ['user'],
+          event,
+          payload: JSON.stringify(payload),
+        }),
+      });
+    }
+  }
+  Object.assign(globalThis, { WebSocket: FakeSocket });
+  return FakeSocket;
+});
+
+vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
+  ...(await importOriginal<typeof InitialState>()),
+  me: 'me',
+  getAccessToken: () => 'token',
+}));
+vi.mock('flavours/glitch/store', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useAppDispatch: () => vi.fn(),
+  useAppSelector: () => false,
+}));
+vi.mock('flavours/glitch/components/dropdown_menu', () => ({
+  Dropdown: () => null,
+}));
+vi.mock('flavours/glitch/components/column/header', () => ({
+  ColumnHeader: ({ title }: { title?: React.ReactNode }) => (
+    <header>{title}</header>
+  ),
+}));
+vi.mock(
+  'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container',
+  () => ({ default: () => null }),
+);
+vi.mock('@unhead/react/helmet', () => ({ Helmet: () => null }));
+
+const PAGE = 40;
+const person = (id: string, name: string) => ({
+  id,
+  acct: id,
+  display_name: name,
+  avatar: `/avatars/${id}.png`,
+  avatar_static: `/avatars/${id}.png`,
+});
+const me = person('me', 'Alice');
+const bob = person('bob', 'Bob');
+
+interface Message {
+  id: string;
+  conversation_id: string;
+  content: string;
+  created_at: string;
+  edited_at: null;
+  deleted_at: null;
+  reply_to_id: null;
+  account: typeof me;
+  reactions: never[];
+  media_attachments: never[];
+}
+const message = (room: string, id: number): Message => ({
+  id: String(id),
+  conversation_id: room,
+  content: `Message ${id}`,
+  created_at: '2026-11-05T00:00:00Z',
+  edited_at: null,
+  deleted_at: null,
+  reply_to_id: null,
+  account: bob,
+  reactions: [],
+  media_attachments: [],
+});
+
+// A server with state: what a read answers is what was there at the moment it read,
+// however late the answer gets back. Holding an answer back is what the tests vary.
+const backend = {
+  messages: new Map<string, Message[]>(),
+  rooms: new Map<string, { unread: boolean; title: string }>(),
+  invitations: [] as { id: string; title: string }[],
+  reads: [] as string[],
+  marked: [] as string[],
+  held: [] as { path: RegExp; until: Promise<void> }[],
+  failing: [] as RegExp[],
+};
+const room = (id: string) => {
+  const { title, unread } = backend.rooms.get(id) ?? {
+    title: `Room ${id}`,
+    unread: false,
+  };
+  return {
+    id,
+    type: 'direct',
+    title,
+    description: null,
+    unread,
+    muted: false,
+    archived: false,
+    current_role: 'member',
+    accounts: [me, bob],
+    last_message: backend.messages.get(id)?.at(-1) ?? null,
+  };
+};
+const take = <T,>(list: T[], matches: (item: T) => boolean) => {
+  const index = list.findIndex(matches);
+  return index === -1 ? undefined : list.splice(index, 1)[0];
+};
+const answer = (read: (url: URL, id: string) => unknown) =>
+  (async ({
+    request,
+    params,
+  }: {
+    request: Request;
+    params: Record<string, unknown>;
+  }) => {
+    const url = new URL(request.url);
+    backend.reads.push(url.pathname + url.search);
+    const fails = take(backend.failing, (path) => path.test(url.pathname));
+    const body = read(url, String(params.id));
+    const held = take(backend.held, ({ path }) => path.test(url.pathname));
+    if (held) await held.until;
+    return fails
+      ? HttpResponse.json({ error: 'unavailable' }, { status: 503 })
+      : HttpResponse.json(body as never);
+  }) as never;
+const server = setupServer(
+  http.get(
+    '*/api/v1/chat/conversations',
+    answer(() => [...backend.rooms.keys()].map(room)),
+  ),
+  http.get(
+    '*/api/v1/chat/conversations/:id',
+    answer((_, id) => room(id)),
+  ),
+  http.get(
+    '*/api/v1/chat/conversations/:id/messages',
+    answer((url, id) => {
+      const before = url.searchParams.get('max_id');
+      const list = (backend.messages.get(id) ?? []).filter(
+        (item) => !before || Number(item.id) < Number(before),
+      );
+      return list.slice(-PAGE);
+    }),
+  ),
+  http.post('*/api/v1/chat/conversations/:id/read', ({ params }) => {
+    const id = String(params.id);
+    backend.marked.push(id);
+    const current = backend.rooms.get(id);
+    if (current) backend.rooms.set(id, { ...current, unread: false });
+    return HttpResponse.json({});
+  }),
+  http.get(
+    '*/api/v1/chat/invitations',
+    answer((url) =>
+      url.searchParams.get('direction') === 'sent'
+        ? []
+        : backend.invitations.map(({ id, title }) => ({
+            id,
+            state: 'pending',
+            conversation: { ...room('invited'), id, title, type: 'group' },
+            inviter: bob,
+          })),
+    ),
+  ),
+  http.get(
+    '*/api/v1/chat/settings',
+    answer(() => ({
+      policy: 'everyone',
+      allow_group_invites: true,
+      notifications: true,
+      max_group_members: 10,
+      max_attachments: 4,
+      federation_enabled: true,
+      delete_window_hours: 24,
+      soft_delete: false,
+    })),
+  ),
+);
+
+const seed = (id: string, from: number, to: number) => {
+  const list = Array.from({ length: to - from + 1 }, (_, index) =>
+    message(id, from + index),
+  );
+  backend.messages.set(id, [...(backend.messages.get(id) ?? []), ...list]);
+  if (!backend.rooms.has(id))
+    backend.rooms.set(id, { title: `Room ${id}`, unread: false });
+  return list;
+};
+const holdNextAnswer = (path: RegExp) => {
+  let release!: () => void;
+  const until = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  backend.held.push({ path, until });
+  return async () => {
+    await act(async () => {
+      release();
+      await until;
+    });
+  };
+};
+const MESSAGES = /\/messages$/;
+const ROOMS = /\/conversations$/;
+const INVITATIONS = /\/invitations$/;
+const readsOf = (path: RegExp) =>
+  backend.reads.filter((read) => path.test(read.split('?')[0] ?? ''));
+
+// A page load: the connection starts, and the screen may come before or after it is up.
+const loadPage = async () => {
+  vi.resetModules();
+  const [{ connectUserStream }, { Chat }, { IdentityContext }] =
+    await Promise.all([
+      import('flavours/glitch/actions/streaming'),
+      import('../index'),
+      import('flavours/glitch/identity_context'),
+    ]);
+  const state = {
+    meta: ImmutableMap({ streaming_api_base_url: 'ws://localhost:4000' }),
+    getIn: () => 'en',
+  };
+  const stream = connectUserStream() as unknown as (
+    dispatch: () => Promise<void>,
+    getState: () => typeof state,
+  ) => () => void;
+  stream(
+    () => Promise.resolve(),
+    () => state,
+  );
+  const history = createMemoryHistory();
+  const open = (path: string, multiColumn = false) => {
+    history.push(path);
+    return render(
+      <IntlProvider locale='en'>
+        <IdentityContext.Provider
+          value={{
+            signedIn: true,
+            permissions: 0,
+            accountId: 'me',
+            disabledAccountId: undefined,
+          }}
+        >
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat multiColumn={multiColumn} />
+            </Route>
+          </Router>
+        </IdentityContext.Provider>
+      </IntlProvider>,
+    );
+  };
+  return {
+    history,
+    open,
+    socket: Socket.all.at(-1) as InstanceType<typeof Socket>,
+  };
+};
+const connect = async (socket: InstanceType<typeof Socket>) => {
+  await act(async () => {
+    socket.connect();
+    await Promise.resolve();
+  });
+};
+const settle = async () => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  });
+};
+const shown = () =>
+  [...document.querySelectorAll('[id^="chat-message-"]')].map((node) =>
+    node.id.replace('chat-message-', ''),
+  );
+const numbers = (from: number, to: number) =>
+  Array.from({ length: to - from + 1 }, (_, index) => String(from + index));
+
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'error' });
+  // Listening wraps the global WebSocket, and the stream client takes what it finds there.
+  Object.defineProperty(globalThis, 'WebSocket', {
+    value: Socket,
+    configurable: true,
+    writable: true,
+  });
+});
+afterAll(() => {
+  server.close();
+});
+beforeEach(() => {
+  backend.messages.clear();
+  backend.rooms.clear();
+  backend.invitations = [];
+  backend.reads = [];
+  backend.marked = [];
+  backend.held = [];
+  backend.failing = [];
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+describe('Chat when the stream connects after the screen has read', () => {
+  it.each([
+    ['one column', false],
+    ['several columns', true],
+  ])(
+    'shows the messages that came in between, in %s',
+    async (_, multiColumn) => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      page.open('/chat/A', multiColumn);
+      await screen.findByText('Message 2');
+
+      seed('A', 3, 4);
+      await connect(page.socket);
+
+      await screen.findByText('Message 4');
+      expect(shown()).toEqual(['1', '2', '3', '4']);
+    },
+  );
+
+  it('shows them after the first attempt to connect failed', async () => {
+    seed('A', 1, 2);
+    const page = await loadPage();
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+
+    act(() => {
+      page.socket.refuse();
+    });
+    await waitFor(() => {
+      expect(Socket.all.at(-1)).not.toBe(page.socket);
+    });
+    seed('A', 3, 3);
+    await connect(Socket.all.at(-1) as InstanceType<typeof Socket>);
+
+    await screen.findByText('Message 3');
+    expect(shown()).toEqual(['1', '2', '3']);
+  });
+
+  it('shows the rooms and the invitations that came in between', async () => {
+    seed('A', 1, 1);
+    const page = await loadPage();
+    page.open('/chat');
+    await screen.findByText('Room A');
+
+    seed('B', 1, 1);
+    backend.invitations = [{ id: 'invite', title: 'Book club' }];
+    await connect(page.socket);
+
+    await screen.findByText('Room B');
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Invitations\s*1/ }),
+    );
+    expect(await screen.findByText('Book club')).toBeTruthy();
+  });
+
+  it('asks for nothing while the chat screen is not open', async () => {
+    seed('A', 1, 1);
+    const page = await loadPage();
+
+    await connect(page.socket);
+    await settle();
+
+    expect(backend.reads).toEqual([]);
+  });
+
+  it.each([
+    ['one column', false],
+    ['several columns', true],
+  ])(
+    'reads once when the stream was up before the screen opened, in %s',
+    async (_, multiColumn) => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      await connect(page.socket);
+
+      page.open('/chat/A', multiColumn);
+      await screen.findByText('Message 2');
+      await settle();
+
+      expect(readsOf(MESSAGES)).toHaveLength(1);
+      expect(readsOf(ROOMS)).toHaveLength(1);
+      expect(readsOf(INVITATIONS)).toHaveLength(1);
+    },
+  );
+
+  describe('while the first read is on its way', () => {
+    it('shows that answer and then fills in after it', async () => {
+      seed('A', 1, 2);
+      const release = holdNextAnswer(MESSAGES);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await waitFor(() => {
+        expect(readsOf(MESSAGES)).toHaveLength(1);
+      });
+
+      seed('A', 3, 3);
+      await connect(page.socket);
+      await settle();
+      expect(readsOf(MESSAGES)).toHaveLength(1);
+
+      await release();
+
+      await screen.findByText('Message 3');
+      expect(shown()).toEqual(['1', '2', '3']);
+      expect(readsOf(MESSAGES)).toHaveLength(2);
+    });
+
+    it.each([
+      ['messages', MESSAGES],
+      ['rooms', ROOMS],
+      ['invitations', INVITATIONS],
+    ])(
+      'still opens the room when reading the %s again fails',
+      async (_, path) => {
+        seed('A', 1, 2);
+        backend.invitations = [{ id: 'invite', title: 'Book club' }];
+        const release = holdNextAnswer(path);
+        const page = await loadPage();
+        page.open('/chat/A');
+        await waitFor(() => {
+          expect(readsOf(path)).toHaveLength(1);
+        });
+
+        backend.failing.push(path);
+        await connect(page.socket);
+        await release();
+        await settle();
+        await settle();
+
+        expect(readsOf(path)).toHaveLength(2);
+        expect(screen.getByText('Message 2')).toBeTruthy();
+        expect(screen.getByText('Room A')).toBeTruthy();
+        expect(
+          screen.queryByText('The chat request could not be completed.'),
+        ).toBeNull();
+      },
+    );
+
+    it('leaves nothing out when the stream brings something newer first', async () => {
+      seed('A', 1, PAGE);
+      const release = holdNextAnswer(MESSAGES);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await waitFor(() => {
+        expect(readsOf(MESSAGES)).toHaveLength(1);
+      });
+
+      seed('A', PAGE + 1, PAGE + 60);
+      await connect(page.socket);
+      const [newest] = seed('A', PAGE + 61, PAGE + 61);
+      act(() => {
+        page.socket.deliver('chat.message', newest);
+      });
+      await release();
+
+      await screen.findByText('Message 1');
+      await waitFor(() => {
+        expect(shown()).toEqual(numbers(1, PAGE + 61));
+      });
+    });
+
+    it('reads nothing more for a room that was left, and does not mark it read', async () => {
+      seed('A', 1, 2);
+      seed('B', 1, 1);
+      const release = holdNextAnswer(MESSAGES);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await waitFor(() => {
+        expect(readsOf(MESSAGES)).toHaveLength(1);
+      });
+      await connect(page.socket);
+
+      act(() => {
+        page.history.push('/chat/B');
+      });
+      await screen.findByText('Message 1');
+      await release();
+      await settle();
+
+      expect(
+        backend.reads.filter((read) => read.includes('/A/messages')),
+      ).toHaveLength(1);
+      expect(backend.marked).not.toContain('A');
+    });
+  });
+
+  describe('while the stream delivers during the read after it', () => {
+    const openRead = async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      seed('A', 3, 4);
+      const release = holdNextAnswer(MESSAGES);
+      await connect(page.socket);
+      await waitFor(() => {
+        expect(readsOf(MESSAGES)).toHaveLength(2);
+      });
+      return { page, release };
+    };
+
+    it('does not repeat a message that was also in the answer', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      const [third] = seed('A', 3, 3);
+      const release = holdNextAnswer(MESSAGES);
+      await connect(page.socket);
+      await waitFor(() => {
+        expect(readsOf(MESSAGES)).toHaveLength(2);
+      });
+
+      act(() => {
+        page.socket.deliver('chat.message', third);
+      });
+      await release();
+      await settle();
+
+      expect(shown()).toEqual(['1', '2', '3']);
+    });
+
+    it('keeps a message the answer was too early for, after the rest', async () => {
+      const { page, release } = await openRead();
+
+      const [fifth] = seed('A', 5, 5);
+      act(() => {
+        page.socket.deliver('chat.message', fifth);
+      });
+      await release();
+      await settle();
+
+      expect(shown()).toEqual(['1', '2', '3', '4', '5']);
+    });
+
+    it('keeps a room up to date that the stream changed meanwhile', async () => {
+      seed('A', 1, 1);
+      const page = await loadPage();
+      page.open('/chat');
+      await screen.findByText('Message 1');
+      const release = holdNextAnswer(ROOMS);
+      await connect(page.socket);
+      await waitFor(() => {
+        expect(readsOf(ROOMS)).toHaveLength(2);
+      });
+
+      const [newer] = seed('A', 2, 2);
+      act(() => {
+        page.socket.deliver('chat.message', newer);
+      });
+      await release();
+      await settle();
+
+      expect(screen.getByText('Message 2')).toBeTruthy();
+      expect(screen.queryByText('Message 1')).toBeNull();
+      expect(screen.getByLabelText('Unread messages')).toBeTruthy();
+    });
+  });
+
+  describe('while someone is reading further up', () => {
+    it('adds below them without moving them, and tells them', async () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      seed('A', 1, PAGE + 10);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText(`Message ${PAGE + 10}`);
+      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+      await screen.findByText('Message 1');
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+        bottom: window.innerHeight + 5000,
+      } as DOMRect);
+      fireEvent.scroll(window);
+      scrollIntoView.mockClear();
+
+      seed('A', PAGE + 11, PAGE + 11);
+      await connect(page.socket);
+
+      await screen.findByText(`Message ${PAGE + 11}`);
+      expect(shown()).toEqual(numbers(1, PAGE + 11));
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(screen.getByText('New messages')).toBeTruthy();
+      expect(backend.marked.filter((id) => id === 'A')).toHaveLength(1);
+    });
+  });
+
+  describe('after moving to another room', () => {
+    it('misses nothing when the stream was already up', async () => {
+      seed('A', 1, 1);
+      seed('B', 11, 12);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 1');
+
+      const release = holdNextAnswer(MESSAGES);
+      act(() => {
+        page.history.push('/chat/B');
+      });
+      await waitFor(() => {
+        expect(readsOf(MESSAGES)).toHaveLength(2);
+      });
+      const [newer] = seed('B', 13, 13);
+      act(() => {
+        page.socket.deliver('chat.message', newer);
+      });
+      await release();
+      await settle();
+
+      expect(shown()).toEqual(['11', '12', '13']);
+      expect(readsOf(MESSAGES)).toHaveLength(2);
+    });
+
+    it('fills in the room now open, not the one left', async () => {
+      seed('A', 1, 1);
+      seed('B', 11, 12);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText('Message 1');
+
+      act(() => {
+        page.history.push('/chat/B');
+      });
+      await screen.findByText('Message 12');
+      expect(shown()).toEqual(['11', '12']);
+
+      seed('A', 2, 2);
+      seed('B', 13, 13);
+      await connect(page.socket);
+
+      await screen.findByText('Message 13');
+      expect(shown()).toEqual(['11', '12', '13']);
+      expect(
+        backend.reads.filter((read) => read.includes('/A/messages')),
+      ).toHaveLength(1);
+    });
+
+    it('does not mark the room left as read when a read comes back late', async () => {
+      seed('A', 1, 2);
+      seed('B', 11, 11);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      const release = holdNextAnswer(MESSAGES);
+      seed('A', 3, 3);
+      await connect(page.socket);
+      await waitFor(() => {
+        expect(readsOf(MESSAGES)).toHaveLength(2);
+      });
+      backend.marked = [];
+
+      act(() => {
+        page.history.push('/chat/B');
+      });
+      await screen.findByText('Message 11');
+      await release();
+      await settle();
+
+      expect(backend.marked).not.toContain('A');
+    });
+  });
+});

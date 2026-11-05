@@ -14,20 +14,23 @@ const payload = {
 };
 
 describe('Chat stream connection', () => {
-  it('announces reconnections but not the first connection', async () => {
+  // The first connection can come after the screen has read what it shows, so what was sent
+  // in between has to be read just like what was sent while a connection was down.
+  it('announces every connection, the first one included', async () => {
     vi.resetModules();
     const stream = await import('../stream');
     const listener = vi.fn();
     const unsubscribe = stream.subscribeChatStream(listener);
 
     stream.handleChatStreamConnected();
-    expect(listener).not.toHaveBeenCalled();
-
-    stream.handleChatStreamConnected();
-    expect(listener).toHaveBeenCalledWith({
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenLastCalledWith({
       event: stream.CHAT_STREAM_RECONNECTED,
       payload: {},
     });
+
+    stream.handleChatStreamConnected();
+    expect(listener).toHaveBeenCalledTimes(2);
     unsubscribe();
   });
 

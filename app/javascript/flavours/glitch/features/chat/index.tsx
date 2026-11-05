@@ -100,6 +100,9 @@ interface ChatMessage {
 }
 
 type MessageUpdate = (messages: ChatMessage[]) => ChatMessage[];
+type ConversationUpdate = (
+  conversations: ChatConversation[],
+) => ChatConversation[];
 
 interface ChatMedia {
   id: string;
@@ -915,6 +918,26 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     pendingMessageUpdates.current.forEach((updates) => updates.push(update));
     setMessagesList(update);
   }, []);
+  const pendingConversationUpdates = useRef(new Set<ConversationUpdate[]>());
+  const updateConversations = useCallback((update: ConversationUpdate) => {
+    pendingConversationUpdates.current.forEach((updates) =>
+      updates.push(update),
+    );
+    setConversations(update);
+  }, []);
+
+  // What the screen asked for on opening and has no answer to yet.
+  const openingReads = useRef(new Set<Promise<unknown>>());
+  const whileOpening = useCallback(<T,>(read: Promise<T>) => {
+    openingReads.current.add(read);
+    void read
+      .catch(() => undefined)
+      .finally(() => {
+        openingReads.current.delete(read);
+      });
+    return read;
+  }, []);
+  const newestOfFirstPage = useRef<string | undefined>(undefined);
 
   const conversation = useMemo(
     () => conversations.find((item) => item.id === conversationId),
@@ -1010,39 +1033,48 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const loadConversations = useCallback(async () => {
     const requestId = ++latestConversationRequest.current;
+    const updates: ConversationUpdate[] = [];
+    pendingConversationUpdates.current.add(updates);
     const loaded: ChatConversation[] = [];
     let cursor: string | null = null;
-    for (let page = 0; page < conversationPages.current; page++) {
-      const { data }: { data: ChatConversation[] } = await api().get<
-        ChatConversation[]
-      >(
-        '/api/v1/chat/conversations',
-        cursor ? { params: { max_id: cursor } } : undefined,
-      );
-      loaded.push(...data);
-      cursor = data.length === 20 ? (data.at(-1)?.id ?? null) : null;
-      if (!cursor) break;
-    }
     let missing = false;
     let ending: RoomEnding | null = null;
-    if (conversationId && !loaded.some((item) => item.id === conversationId)) {
-      try {
-        const selected = await api().get<ChatConversation>(
-          `/api/v1/chat/conversations/${conversationId}`,
+    try {
+      for (let page = 0; page < conversationPages.current; page++) {
+        const { data }: { data: ChatConversation[] } = await api().get<
+          ChatConversation[]
+        >(
+          '/api/v1/chat/conversations',
+          cursor ? { params: { max_id: cursor } } : undefined,
         );
-        loaded.push(selected.data);
-      } catch (loadError) {
-        if (!isNotFound(loadError)) throw loadError;
-        missing = true;
-        ending = roomEndingOf(loadError);
+        loaded.push(...data);
+        cursor = data.length === 20 ? (data.at(-1)?.id ?? null) : null;
+        if (!cursor) break;
       }
+      if (
+        conversationId &&
+        !loaded.some((item) => item.id === conversationId)
+      ) {
+        try {
+          const selected = await api().get<ChatConversation>(
+            `/api/v1/chat/conversations/${conversationId}`,
+          );
+          loaded.push(selected.data);
+        } catch (loadError) {
+          if (!isNotFound(loadError)) throw loadError;
+          missing = true;
+          ending = roomEndingOf(loadError);
+        }
+      }
+    } finally {
+      pendingConversationUpdates.current.delete(updates);
     }
     if (requestId !== latestConversationRequest.current) return;
     setNextConversationId(cursor);
     setConversationMissing(missing);
     setRoomEnding(ending);
     if (missing && !ending) setError('load');
-    setConversations(loaded);
+    setConversations(updates.reduce((items, update) => update(items), loaded));
     setConversationsLoaded(true);
   }, [conversationId]);
 
@@ -1052,9 +1084,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     });
   }, [loadConversations]);
 
-  const refreshConversation = useCallback((id: string) => {
-    fetchConversation(id, conversationFetches.current, setConversations);
-  }, []);
+  const refreshConversation = useCallback(
+    (id: string) => {
+      fetchConversation(id, conversationFetches.current, updateConversations);
+    },
+    [updateConversations],
+  );
 
   const loadMoreConversations = useCallback(() => {
     if (!nextConversationId || loadingMore) return;
@@ -1065,7 +1100,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       })
       .then(({ data }) => {
         conversationPages.current += 1;
-        setConversations((current) => [
+        updateConversations((current) => [
           ...current,
           ...data.filter(
             (item) => !current.some((existing) => existing.id === item.id),
@@ -1081,7 +1116,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       .finally(() => {
         setLoadingMore(false);
       });
-  }, [loadingMore, nextConversationId]);
+  }, [loadingMore, nextConversationId, updateConversations]);
 
   const loadInvitations = useCallback(async () => {
     const response = await api().get<ChatInvitation[]>(
@@ -1108,6 +1143,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setOlderMessageId(
       response.data.length === 40 ? (response.data[0]?.id ?? null) : null,
     );
+    newestOfFirstPage.current = response.data.at(-1)?.id;
     setMessagesList(
       updates.reduce(
         (items, update) => update(items),
@@ -1115,86 +1151,90 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       ),
     );
     setMessagesLoaded(true);
-    if (!isVisible()) return;
+    if (!isVisible() || !isMounted.current) return;
     await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
-    setConversations((current) =>
+    updateConversations((current) =>
       current.map((item) =>
         item.id === conversationId ? { ...item, unread: false } : item,
       ),
     );
-  }, [applyTombstone, conversationId]);
+  }, [applyTombstone, conversationId, updateConversations]);
 
   // Fetches what changed while nothing was arriving, without moving anyone from the older pages they are reading.
-  const resyncMessages = useCallback(async () => {
-    if (!conversationId) return;
-    const updates: MessageUpdate[] = [];
-    pendingMessageUpdates.current.add(updates);
-    const requestId = ++latestMessageRequest.current;
-    const newestShown = shownMessagesRef.current.at(-1)?.id;
-    const loaded: ChatMessage[] = [];
-    let reachedStart = false;
-    let meetsShown = false;
-    try {
-      for (let page = 0; page < MESSAGE_RESYNC_PAGES; page++) {
-        const { data }: { data: ChatMessage[] } = await api().get<
-          ChatMessage[]
-        >(
-          `/api/v1/chat/conversations/${conversationId}/messages`,
-          loaded[0] ? { params: { max_id: loaded[0].id } } : undefined,
-        );
-        loaded.unshift(...data);
-        reachedStart = data.length < MESSAGE_PAGE_SIZE;
-        const oldestLoaded = loaded[0]?.id;
-        meetsShown =
-          oldestLoaded !== undefined &&
-          newestShown !== undefined &&
-          compareId(oldestLoaded, newestShown) <= 0;
-        if (reachedStart || meetsShown || newestShown === undefined) break;
+  const resyncMessages = useCallback(
+    async (from?: string) => {
+      if (!conversationId) return;
+      const updates: MessageUpdate[] = [];
+      pendingMessageUpdates.current.add(updates);
+      const requestId = ++latestMessageRequest.current;
+      const newestShown = from ?? shownMessagesRef.current.at(-1)?.id;
+      const loaded: ChatMessage[] = [];
+      let reachedStart = false;
+      let meetsShown = false;
+      try {
+        for (let page = 0; page < MESSAGE_RESYNC_PAGES; page++) {
+          const { data }: { data: ChatMessage[] } = await api().get<
+            ChatMessage[]
+          >(
+            `/api/v1/chat/conversations/${conversationId}/messages`,
+            loaded[0] ? { params: { max_id: loaded[0].id } } : undefined,
+          );
+          loaded.unshift(...data);
+          reachedStart = data.length < MESSAGE_PAGE_SIZE;
+          const oldestLoaded = loaded[0]?.id;
+          meetsShown =
+            oldestLoaded !== undefined &&
+            newestShown !== undefined &&
+            compareId(oldestLoaded, newestShown) <= 0;
+          if (reachedStart || meetsShown || newestShown === undefined) break;
+        }
+      } finally {
+        pendingMessageUpdates.current.delete(updates);
       }
-    } finally {
-      pendingMessageUpdates.current.delete(updates);
-    }
-    if (requestId !== latestMessageRequest.current) return;
-    setMessagesLoaded(true);
+      if (requestId !== latestMessageRequest.current) return;
+      setMessagesLoaded(true);
 
-    const fetched = updates.reduce(
-      (items, update) => update(items),
-      loaded.map(applyTombstone),
-    );
-    const oldestFetched = fetched[0]?.id;
-    if (meetsShown && oldestFetched !== undefined) {
-      setMessagesList((current) => [
-        ...current.filter((item) => compareId(item.id, oldestFetched) < 0),
-        ...fetched,
-      ]);
-    } else {
-      // Too much happened to bridge, so this starts again from the newest page.
-      const newestPage = reachedStart
-        ? fetched
-        : fetched.slice(-MESSAGE_PAGE_SIZE);
-      setMessagesList(newestPage);
-      setOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
-    }
+      const fetched = updates.reduce(
+        (items, update) => update(items),
+        loaded.map(applyTombstone),
+      );
+      const oldestFetched = fetched[0]?.id;
+      if (meetsShown && oldestFetched !== undefined) {
+        setMessagesList((current) => [
+          ...current.filter((item) => compareId(item.id, oldestFetched) < 0),
+          ...fetched,
+        ]);
+      } else {
+        // Too much happened to bridge, so this starts again from the newest page.
+        const newestPage = reachedStart
+          ? fetched
+          : fetched.slice(-MESSAGE_PAGE_SIZE);
+        setMessagesList(newestPage);
+        setOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
+      }
 
-    if (!followingNewestRef.current) {
-      if (
-        fetched.some(
-          (item) =>
-            item.account.id !== me &&
-            (newestShown === undefined || compareId(item.id, newestShown) > 0),
+      if (!followingNewestRef.current) {
+        if (
+          fetched.some(
+            (item) =>
+              item.account.id !== me &&
+              (newestShown === undefined ||
+                compareId(item.id, newestShown) > 0),
+          )
         )
-      )
-        setHasUnseenMessages(true);
-      return;
-    }
-    if (!isVisible()) return;
-    await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
-    setConversations((current) =>
-      current.map((item) =>
-        item.id === conversationId ? { ...item, unread: false } : item,
-      ),
-    );
-  }, [applyTombstone, conversationId]);
+          setHasUnseenMessages(true);
+        return;
+      }
+      if (!isVisible() || !isMounted.current) return;
+      await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
+      updateConversations((current) =>
+        current.map((item) =>
+          item.id === conversationId ? { ...item, unread: false } : item,
+        ),
+      );
+    },
+    [applyTombstone, conversationId, updateConversations],
+  );
 
   const loadOlderMessages = useCallback(() => {
     if (!olderMessageId || !conversationId || loadingMore) return;
@@ -1237,8 +1277,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   useEffect(() => {
     Promise.all([
-      Promise.resolve().then(loadConversations),
-      Promise.resolve().then(loadInvitations),
+      whileOpening(Promise.resolve().then(loadConversations)),
+      whileOpening(Promise.resolve().then(loadInvitations)),
       api().get<ChatSettings>('/api/v1/chat/settings'),
     ])
       .then(([, , settingsResponse]) => {
@@ -1247,13 +1287,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       .catch(() => {
         setError('load');
       });
-  }, [loadConversations, loadInvitations]);
+  }, [loadConversations, loadInvitations, whileOpening]);
 
   useEffect(() => {
-    void loadMessages().catch(() => {
+    void whileOpening(loadMessages()).catch(() => {
       setError('load');
     });
-  }, [loadMessages]);
+  }, [loadMessages, whileOpening]);
 
   const hasUnread = Boolean(conversation?.unread);
   useEffect(() => {
@@ -1264,7 +1304,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       void api()
         .post(`/api/v1/chat/conversations/${conversationId}/read`)
         .then(() => {
-          setConversations((current) =>
+          updateConversations((current) =>
             current.map((item) =>
               item.id === conversationId ? { ...item, unread: false } : item,
             ),
@@ -1277,7 +1317,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     return () => {
       document.removeEventListener('visibilitychange', markRead);
     };
-  }, [conversationId, hasUnread]);
+  }, [conversationId, hasUnread, updateConversations]);
 
   useEffect(
     () =>
@@ -1295,7 +1335,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           const message = applyTombstone(value as ChatMessage);
           const isOpen = eventConversationId === conversationId;
           const fromOther = value.account?.id !== me;
-          setConversations((current) =>
+          updateConversations((current) =>
             withNewMessage(
               current,
               message,
@@ -1322,7 +1362,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           }
         } else if (event === 'chat.message_update') {
           const message = applyTombstone(value as ChatMessage);
-          setConversations((current) =>
+          updateConversations((current) =>
             current.map((item) =>
               item.id === eventConversationId &&
               item.last_message?.id === value.id
@@ -1337,7 +1377,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         } else if (event === 'chat.message_delete') {
           if (!value.id) return;
           deletedMessages.current.set(value.id, new Date().toISOString());
-          setConversations((current) =>
+          updateConversations((current) =>
             current.map((item) =>
               item.id === eventConversationId &&
               item.last_message &&
@@ -1363,7 +1403,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         } else if (event === 'chat.conversation_update') {
           const updated = payload as Partial<ChatConversation>;
           if (updated.accounts) {
-            setConversations((current) =>
+            updateConversations((current) =>
               upsertConversation(current, updated as ChatConversation),
             );
           } else if (updated.id) {
@@ -1412,7 +1452,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             ),
           );
         } else if (event === 'chat.conversation_delete') {
-          setConversations((current) =>
+          updateConversations((current) =>
             current.filter((item) => item.id !== value.conversation_id),
           );
           setInvitations((current) =>
@@ -1430,7 +1470,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setConversationMissing(true);
           setRoomEnding(value.reason);
         } else if (event === 'chat.read' && value.conversation_id) {
-          setConversations((current) =>
+          updateConversations((current) =>
             current.map((item) =>
               item.id === value.conversation_id
                 ? { ...item, unread: false }
@@ -1447,9 +1487,21 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         } else if (event === CHAT_STREAM_RECONNECTED) {
           setSentInvitationsVersion((version) => version + 1);
           // This also runs on every poll while offline, and the next one tries again.
-          void loadConversations().catch(() => undefined);
-          void loadInvitations().catch(() => undefined);
-          void resyncMessages().catch(() => undefined);
+          const readAgain = (from?: string) => {
+            void loadConversations().catch(() => undefined);
+            void loadInvitations().catch(() => undefined);
+            void resyncMessages(from).catch(() => undefined);
+          };
+          // Starting before the screen's first answers are back would throw them away, and
+          // leave it empty if this failed. A message the stream brought in the meantime says
+          // nothing about those before it, so what is missing is counted from the first page.
+          if (openingReads.current.size > 0) {
+            void Promise.allSettled(openingReads.current).then(() => {
+              if (isMounted.current) readAgain(newestOfFirstPage.current);
+            });
+          } else {
+            readAgain();
+          }
         } else if (event !== 'chat.notification' && eventConversationId) {
           refreshConversation(eventConversationId);
         }
@@ -1463,6 +1515,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       refreshConversation,
       refreshConversations,
       resyncMessages,
+      updateConversations,
       updateMessages,
     ],
   );
@@ -2520,7 +2573,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   `/api/v1/chat/conversations/${conversation.id}/members/${member.id}`,
                 )
                 .then(({ data }) => {
-                  setConversations((current) =>
+                  updateConversations((current) =>
                     current.map((item) => (item.id === data.id ? data : item)),
                   );
                 })
@@ -2535,7 +2588,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         }),
       );
     },
-    [conversation, dispatch, intl, removingMemberId],
+    [conversation, dispatch, intl, removingMemberId, updateConversations],
   );
 
   const memberMenu = useCallback(
