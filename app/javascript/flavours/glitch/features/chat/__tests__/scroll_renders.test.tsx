@@ -247,7 +247,9 @@ describe('Scrolling in a room', () => {
     expect(readsPosted()).toBe(before);
   });
 
-  it('clears the notice and reads the room on returning to the bottom, drawing nothing again', async () => {
+  // Only the notice going away is counted here. The server's answer to reading the room updates the list of rooms,
+  // and that does draw the room again: it happens when a message went unseen, not each time the button comes and goes.
+  it('clears the notice and asks to read the room on returning to the bottom, and clearing it draws nothing again', async () => {
     await openRoom();
     scrollUp();
     receive('live');
@@ -260,7 +262,7 @@ describe('Scrolling in a room', () => {
     expect(readsPosted()).toBe(before + 1);
   });
 
-  it('clears the notice, reads the room and goes down with the button, drawing nothing again', async () => {
+  it('clears the notice, asks to read the room and goes down with the button, and clearing it draws nothing again', async () => {
     await openRoom();
     scrollUp();
     receive('live');
