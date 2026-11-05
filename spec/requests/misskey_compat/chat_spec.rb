@@ -184,9 +184,9 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     first = response.parsed_body[:error]
     request_chat('messages/room-timeline', { roomId: mi_id(room) }, as_user: outsider)
 
-    expect(response).to have_http_status(404)
-    expect(first).to include(code: 'NO_SUCH_ROOM', kind: 'client', id: match(/\A\h{8}-\h{4}-5\h{3}-\h{4}-\h{12}\z/))
-    expect(response.parsed_body.dig(:error, :id)).to eq(first[:id])
+    expect(response).to have_http_status(400)
+    expect(first).to include(code: 'NO_SUCH_ROOM', kind: 'client', id: '857ae02f-8759-4d20-9adb-6e95fffe4fd7')
+    expect(response.parsed_body.dig(:error, :id)).to eq('c4d9f88c-9270-4632-b032-6ed8cee36f7f')
   end
 
   it 'updates and deletes a message through the shared chat service' do
@@ -207,7 +207,7 @@ RSpec.describe 'Misskey-compat chat endpoints' do
 
     %w(show update delete react unreact).each do |action|
       request_chat("messages/#{action}", { messageId: mi_id(message), text: 'stolen', reaction: '👍' }, as_user: outsider)
-      expect(response).to have_http_status(404), action
+      expect(response).to have_http_status(400), action
     end
     expect(message.reload.text).to eq('secret')
   end
@@ -217,7 +217,7 @@ RSpec.describe 'Misskey-compat chat endpoints' do
 
     request_chat('messages/update', messageId: mi_id(message), text: 'stolen')
 
-    expect(response).to have_http_status(403)
+    expect(response).to have_http_status(400)
     expect(message.reload.text).to eq('theirs')
   end
 
@@ -235,7 +235,7 @@ RSpec.describe 'Misskey-compat chat endpoints' do
 
     own_message = service.create_message(account, conversation, text: 'mine')
     request_chat('messages/react', messageId: mi_id(own_message), reaction: '👍')
-    expect(response).to have_http_status(403)
+    expect(response).to have_http_status(400)
   end
 
   it 'searches only accessible messages and supports direct user and room filters' do
@@ -255,7 +255,7 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response.parsed_body.pluck(:id)).to eq([mi_id(room_message)])
 
     request_chat('messages/search', query: 'needle', roomId: mi_id(secret))
-    expect(response).to have_http_status(404)
+    expect(response).to have_http_status(400)
   end
 
   it 'creates and renames a real group room' do
@@ -291,7 +291,7 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response.parsed_body).to include(invitationExists: true)
 
     request_chat('messages/room-timeline', { roomId: mi_id(room) }, as_user: other)
-    expect(response).to have_http_status(404)
+    expect(response).to have_http_status(400)
   end
 
   it 'joins an invited room and exposes its members and timeline' do
@@ -339,7 +339,7 @@ RSpec.describe 'Misskey-compat chat endpoints' do
 
     %w(rooms/show rooms/members rooms/invitations/outbox).each do |endpoint|
       request_chat(endpoint, { roomId: mi_id(room) }, as_user: outsider)
-      expect(response).to have_http_status(404), endpoint
+      expect(response).to have_http_status(400), endpoint
     end
   end
 
@@ -364,9 +364,9 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     service.accept_invitation(other.account, service.invite(account, room, other.account))
 
     request_chat('rooms/update', { roomId: mi_id(room), name: 'stolen' }, as_user: other)
-    expect(response).to have_http_status(403)
+    expect(response).to have_http_status(400)
     request_chat('rooms/delete', { roomId: mi_id(room) }, as_user: other)
-    expect(response).to have_http_status(403)
+    expect(response).to have_http_status(400)
 
     request_chat('rooms/delete', roomId: mi_id(room))
     expect(response).to have_http_status(204)

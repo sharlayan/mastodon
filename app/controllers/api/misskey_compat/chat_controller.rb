@@ -8,6 +8,8 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   CREATE_MESSAGE_ACTIONS = %w(create_to_user create_to_room).freeze
   NONEMPTY_FIELDS = %i(name query reaction).freeze
   CHAT_ID_PARAMS = %i(messageId roomId toRoomId toUserId invitationId).freeze
+  MAX_FILE_IDS = 4
+  MESSAGE_ACTIONS = %w(show update destroy react unreact).freeze
   REQUIRED_PARAMS = {
     user_timeline: %i(userId), room_timeline: %i(roomId), show: %i(messageId),
     create_to_user: %i(toUserId), create_to_room: %i(toRoomId), update: %i(messageId text),
@@ -32,11 +34,9 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
 
   rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
   rescue_from Sharlayan::ChatService::Error, with: :render_chat_error
-  rescue_from Sharlayan::ChatService::Forbidden do
-    render_error('You are not allowed to access this chat', 'PERMISSION_DENIED', 403)
-  end
+  rescue_from Sharlayan::ChatService::Forbidden, with: :render_chat_forbidden
   rescue_from MisskeyCompat::DriveFileResolver::NoSuchFileError do
-    render_error('No such file', 'NO_SUCH_FILE', 400)
+    refuse('NO_SUCH_FILE')
   end
   rescue_from MisskeyCompat::DriveFileResolver::AmbiguousFileError do
     render_invalid_param('#/properties/fileId', 'ambiguous file id')
@@ -76,8 +76,9 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def create_to_user
-    recipient = find_account!(:toUserId)
-    return render_error('Cannot send a message to yourself', 'RECIPIENT_IS_YOURSELF', 400) if recipient.id == current_account.id
+    recipient = Account.find(params[:toUserId])
+    return refuse('RECIPIENT_IS_YOURSELF') if recipient.id == current_account.id
+    return refuse('RECIPIENT_IS_SUSPENDED') if recipient.suspended?
     return unless valid_message_text?
 
     with_media_ids do |media_ids|
@@ -110,6 +111,10 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   def react
     chat_service.react(current_account, find_message!, normalized_reaction)
     head 204
+  rescue ActiveRecord::RecordInvalid => e
+    raise unless e.record.is_a?(ChatMessageReaction)
+
+    refuse('INVALID_REACTION')
   end
 
   def unreact
@@ -151,8 +156,10 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
 
   def show_room
     room = accessible_conversations.chat_group.find_by(id: params[:roomId])
-    room ||= ChatConversation.chat_group.joins(:invitations).where(chat_invitations: { invitee_account_id: current_account.id, state: :pending }).find(params[:roomId])
-    render json: serialize_room(room)
+    room ||= ChatConversation.chat_group.joins(:invitations).find_by(id: params[:roomId], chat_invitations: { invitee_account_id: current_account.id, state: :pending })
+    return render json: serialize_room(room) if room
+
+    refuse(chat_service.room_ending(current_account, params[:roomId]) == 'deleted' ? 'ROOM_DELETED' : 'NO_SUCH_ROOM')
   end
 
   def update_room
@@ -190,10 +197,10 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
 
   def kick_member
     room = accessible_conversations.chat_group.find_by(id: params[:roomId], owner_account: current_account)
-    return render_error('No such room', 'NO_SUCH_ROOM', 400) if room.nil?
+    return refuse('NO_SUCH_ROOM') if room.nil?
 
     member = room.memberships.where.not(account_id: current_account.id).find_by(account_id: params[:userId])
-    return render_error('No such member', 'NO_SUCH_MEMBER', 400) if member.nil?
+    return refuse('NO_SUCH_MEMBER') if member.nil?
 
     chat_service.kick(current_account, room, member.account)
     head 204
@@ -205,13 +212,16 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def invitations_outbox
-    room = accessible_conversations.chat_group.where(owner_account: current_account).find(params[:roomId])
-    render_invitations(room.invitations.pending)
+    render_invitations(owned_room!.invitations.pending)
   end
 
   def create_invitation
-    invitation = chat_service.invite(current_account, member_room!, find_account!(:userId))
-    render json: MisskeyCompat::ChatSerializer.invitation(invitation, viewer: current_account)
+    room = owned_room!
+    invitee = Account.find(params[:userId])
+    return refuse('CANNOT_INVITE_YOURSELF') if invitee.id == current_account.id
+    return refuse('USER_IS_SUSPENDED') if invitee.suspended?
+
+    render json: MisskeyCompat::ChatSerializer.invitation(chat_service.invite(current_account, room, invitee), viewer: current_account)
   end
 
   def ignore_invitation
@@ -261,6 +271,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     end
 
     return render_invalid_param('#/properties/fileIds', 'must be a list of ids') if params.key?(:fileIds) && !(params[:fileIds].is_a?(Array) && params[:fileIds].all? { |id| chat_id?(id) })
+    return render_invalid_param('#/properties/fileIds', "must have at most #{MAX_FILE_IDS} items") if params.key?(:fileIds) && params[:fileIds].size > MAX_FILE_IDS
 
     { name: 256, description: 1024, query: 256, reaction: 100, text: ChatMessage::MAX_TEXT_LENGTH }.each do |key, max|
       next unless params.key?(key)
@@ -312,6 +323,10 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     accessible_conversations.chat_group.find(params[key])
   end
 
+  def owned_room!
+    accessible_conversations.chat_group.where(owner_account: current_account).find(params[:roomId])
+  end
+
   def received_invitation!
     ChatInvitation.pending.where(invitee_account: current_account).find_by!(chat_conversation_id: params[:roomId])
   end
@@ -361,6 +376,8 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def with_media_ids
+    return refuse('TOO_MANY_FILES', message: "A message can have up to #{Setting.chat_max_attachments} files.") if requested_file_ids.size > Setting.chat_max_attachments
+
     MisskeyCompat::DriveFileResolver.new.with_resolved(account: current_account, file_ids: requested_file_ids.presence, allow_drive_files: Setting.drive_enabled) do |media_ids|
       yield Array(media_ids)
     end
@@ -374,7 +391,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     return true if params[:text].present? && params[:text].strip.present?
     return true if !editing && requested_file_ids.present?
 
-    render_error('Message text is empty', 'INVALID_TEXT', 400)
+    refuse(editing ? 'INVALID_TEXT' : 'CONTENT_REQUIRED')
     false
   end
 
@@ -382,18 +399,49 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     params[:reaction].sub(/@\.:\z/, ':')
   end
 
+  def refuse(code, message: nil)
+    render_error(message || MisskeyCompat::ChatErrors.message(action_name, code), code, 400, id: MisskeyCompat::ChatErrors.id(action_name, code))
+  end
+
   def render_not_found(error)
-    code = case error.model
-           when 'Account' then 'NO_SUCH_USER'
-           when 'ChatMessage' then 'NO_SUCH_MESSAGE'
-           when 'ChatInvitation' then 'NO_SUCH_INVITATION'
-           else 'NO_SUCH_ROOM'
-           end
-    render_error('No such resource', code, 404)
+    refuse(
+      case error.model
+      when 'Account' then 'NO_SUCH_USER'
+      when 'ChatMessage' then 'NO_SUCH_MESSAGE'
+      when 'ChatInvitation' then action_name == 'cancel_invitation' ? 'NO_SUCH_INVITATION' : 'NO_SUCH_ROOM'
+      else 'NO_SUCH_ROOM'
+      end
+    )
   end
 
   def render_chat_error(error)
-    code = error.message == 'Archived conversations are read-only' ? 'ROOM_IS_ARCHIVED' : 'INVALID_PARAM'
-    render_error(error.message, code, 400)
+    code = MisskeyCompat::ChatErrors::SERVICE_ERROR_CODES[error.message]
+    return refuse(code) if code
+
+    code = MisskeyCompat::ChatErrors.closest_code(action_name, error.message)
+    return refuse(code, message: error.message) if code
+
+    render_error(error.message, 'INVALID_PARAM', 400)
+  end
+
+  # CherryPick does not tell someone refused like this that there is anything there to be refused from.
+  def render_chat_forbidden
+    refuse(
+      case action_name
+      when *MESSAGE_ACTIONS then 'NO_SUCH_MESSAGE'
+      when 'create_to_user' then Account.find(params[:toUserId]).blocking_or_domain_blocking?(current_account) ? 'YOU_HAVE_BEEN_BLOCKED' : 'CANNOT_CHAT_WITH_USER'
+      when 'create_invitation' then invitation_refusal_code
+      when 'cancel_invitation' then 'NO_SUCH_INVITATION'
+      else 'NO_SUCH_ROOM'
+      end
+    )
+  end
+
+  def invitation_refusal_code
+    invitee = Account.find(params[:userId])
+    return 'YOU_HAVE_BEEN_BLOCKED' if invitee.blocking_or_domain_blocking?(current_account)
+    return 'YOU_ARE_BLOCKING' if current_account.blocking_or_domain_blocking?(invitee)
+
+    'CANNOT_CHAT_WITH_USER'
   end
 end
