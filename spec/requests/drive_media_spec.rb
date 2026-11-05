@@ -17,6 +17,7 @@ RSpec.describe 'Drive media', :attachment_processing do
     expect(response).to have_http_status(200)
     expect(response.media_type).to eq('image/png')
     expect(response.body.b).to eq(File.binread(drive_file.file.path(:original)))
+    expect(response.headers['Cache-Control']).to include('public', 'immutable')
   end
 
   it 'serves previews from local storage with their actual format' do
@@ -66,6 +67,7 @@ RSpec.describe 'Drive media', :attachment_processing do
 
     expect(response).to have_http_status(200)
     expect(response.media_type).to eq('image/png')
+    expect(response.headers['Cache-Control']).to include('public', 'immutable')
   end
 
   it 'redirects public S3 files to their object URL' do

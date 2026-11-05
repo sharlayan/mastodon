@@ -65,6 +65,7 @@ class DriveMediaController < ApplicationController
     content_type = resolved_content_type(attachment, style)
     filename = source_record.respond_to?(:display_name) ? source_record.display_name.to_s : source_record.file_file_name.to_s
 
+    expires_in 1.year, public: true, immutable: true
     return send_file(path, type: content_type, disposition: 'inline', filename: filename) if sendfile_header?
 
     status, headers, body = Rack::Files.new(File.dirname(path)).serving(request, path)
@@ -73,7 +74,6 @@ class DriveMediaController < ApplicationController
 
     response.headers['Content-Type'] = content_type
     response.headers['Content-Disposition'] = ActionDispatch::Http::ContentDisposition.format(disposition: 'inline', filename: filename)
-    response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
     self.status = status
     self.response_body = body
   end
