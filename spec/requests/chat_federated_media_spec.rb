@@ -117,6 +117,86 @@ RSpec.describe 'Federated chat attachments' do
     expect(response).to have_http_status(:redirect)
   end
 
+  # A server that keeps no copy of remote files, as CherryPick usually runs, fetches an attachment each time it is shown.
+  describe 'years after the message was sent' do
+    it 'still opens for a server that has a current member' do
+      message
+      url = delivered_url(bob.inbox_url, 'Create')
+
+      travel 5.years
+      fetch(url)
+
+      expect(response).to have_http_status(:redirect)
+    end
+
+    it 'closes once the last member of that server has been removed' do
+      message
+      url = delivered_url(bob.inbox_url, 'Create')
+
+      travel 5.years
+      service.kick(owner, room, bob)
+      fetch(url)
+
+      expect(response).to have_http_status(404)
+    end
+
+    it 'closes once the last member of that server has left' do
+      message
+      url = delivered_url(bob.inbox_url, 'Create')
+
+      travel 5.years
+      room.memberships.find_by!(account: bob).destroy!
+      fetch(url)
+
+      expect(response).to have_http_status(404)
+    end
+
+    it 'closes while the author is suspended' do
+      message
+      url = delivered_url(bob.inbox_url, 'Create')
+
+      travel 5.years
+      owner.suspend!
+      fetch(url)
+
+      expect(response).to have_http_status(404)
+    end
+
+    it 'does not make a token good for another attachment' do
+      other_media = Fabricate(:media_attachment, account: owner, status: nil)
+      service.create_message(owner, room, text: 'other', media_ids: [other_media.id])
+      token = Sharlayan::ChatFederation::MediaToken.generate(other_media, domain: bob.domain)
+      message
+
+      travel 5.years
+      get "/media_proxy/#{media.id}/original", params: { token: token }
+
+      expect(response).to have_http_status(404)
+    end
+  end
+
+  describe 'a token made when these had a time limit' do
+    let(:token) { Rails.application.message_verifier('sharlayan_chat_media').generate({ 'id' => media.id, 'domain' => bob.domain }, expires_in: 1.year, purpose: :chat_media) }
+
+    before { message }
+
+    it 'is still taken until that limit' do
+      used = token
+      travel 11.months
+      get "/media_proxy/#{media.id}/original", params: { token: used }
+
+      expect(response).to have_http_status(:redirect)
+    end
+
+    it 'is not taken after that limit' do
+      used = token
+      travel 13.months
+      get "/media_proxy/#{media.id}/original", params: { token: used }
+
+      expect(response).to have_http_status(404)
+    end
+  end
+
   it 'does not take a token that names no server' do
     token = Rails.application.message_verifier('sharlayan_chat_media').generate({ 'id' => message.media_attachments.first.id }, expires_in: 1.year, purpose: :chat_media)
 

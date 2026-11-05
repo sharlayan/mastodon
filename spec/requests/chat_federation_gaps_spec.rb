@@ -148,12 +148,13 @@ RSpec.describe 'Chat federation gaps' do
       expect(described_class.valid?(token, media)).to be(true)
     end
 
-    it 'still expires' do
+    it 'has no time limit of its own, for a receiver that keeps no copy' do
       token = described_class.generate(media, domain: remote.domain)
 
-      travel described_class::TTL + 1.day
+      travel 5.years
 
-      expect(described_class.valid?(token, media)).to be(false)
+      expect(described_class.valid?(token, media)).to be(true)
+      expect(described_class.signed_for?(token, media.id)).to be(true)
     end
   end
 

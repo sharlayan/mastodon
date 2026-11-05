@@ -4,12 +4,12 @@ module Sharlayan
   module ChatFederation
     class MediaToken
       PURPOSE = :chat_media
-      TTL = 1.year
 
       class << self
-        # A token is for one server, and works for as long as that server has someone in the conversation.
+        # A token is for one server, and works for as long as that server has someone in the conversation. It has no
+        # time limit, as a server that keeps no copy of remote files fetches one each time it is shown.
         def generate(media_attachment, domain:)
-          verifier.generate({ 'id' => media_attachment.id, 'domain' => domain }, expires_in: TTL, purpose: PURPOSE)
+          verifier.generate({ 'id' => media_attachment.id, 'domain' => domain }, purpose: PURPOSE)
         end
 
         def valid?(token, media_attachment)
