@@ -61,7 +61,11 @@ import { me } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
-import { CHAT_STREAM_RECONNECTED, subscribeChatStream } from './stream';
+import {
+  CHAT_STREAM_RECONNECTED,
+  isChatStreamLive,
+  subscribeChatStream,
+} from './stream';
 
 interface ChatAccount {
   id: string;
@@ -937,7 +941,35 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       });
     return read;
   }, []);
-  const newestOfFirstPage = useRef<string | undefined>(undefined);
+
+  // Reads on opening that failed, and that reading again can make up for.
+  const failedOpeningReads = useRef(new Set<string>());
+  const openingReadFailed = useCallback((read: string) => {
+    failedOpeningReads.current.add(read);
+    setError('opening');
+  }, []);
+  const openingReadRecovered = useCallback((read: string) => {
+    failedOpeningReads.current.delete(read);
+    if (failedOpeningReads.current.size === 0)
+      setError((current) => (current === 'opening' ? null : current));
+  }, []);
+
+  // The newest message up to which nothing is missing, going by what the server answered
+  // and what the live stream brought. The screen can hold newer ones with a gap before
+  // them: what was sent from here, or what arrived before the server had subscribed.
+  const continuousUpTo = useRef<string | undefined>(undefined);
+  // The stream only follows on from what was read after it went live.
+  const readSinceStreamWentLive = useRef(false);
+  const advanceContinuousUpTo = useCallback((id?: string) => {
+    if (
+      id &&
+      (!continuousUpTo.current || compareId(id, continuousUpTo.current) > 0)
+    )
+      continuousUpTo.current = id;
+  }, []);
+
+  // What came in while the reader was further up, which they have not read until they are back down.
+  const unreadWhileAway = useRef(false);
 
   const conversation = useMemo(
     () => conversations.find((item) => item.id === conversationId),
@@ -1130,6 +1162,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const updates: MessageUpdate[] = [];
     pendingMessageUpdates.current.add(updates);
     const requestId = ++latestMessageRequest.current;
+    const liveWhenAsked = isChatStreamLive();
     const response = await api()
       .get<ChatMessage[]>(
         `/api/v1/chat/conversations/${conversationId}/messages`,
@@ -1143,7 +1176,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setOlderMessageId(
       response.data.length === 40 ? (response.data[0]?.id ?? null) : null,
     );
-    newestOfFirstPage.current = response.data.at(-1)?.id;
+    advanceContinuousUpTo(response.data.at(-1)?.id);
+    readSinceStreamWentLive.current = liveWhenAsked && isChatStreamLive();
     setMessagesList(
       updates.reduce(
         (items, update) => update(items),
@@ -1158,83 +1192,108 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         item.id === conversationId ? { ...item, unread: false } : item,
       ),
     );
-  }, [applyTombstone, conversationId, updateConversations]);
+  }, [
+    advanceContinuousUpTo,
+    applyTombstone,
+    conversationId,
+    updateConversations,
+  ]);
 
   // Fetches what changed while nothing was arriving, without moving anyone from the older pages they are reading.
-  const resyncMessages = useCallback(
-    async (from?: string) => {
-      if (!conversationId) return;
-      const updates: MessageUpdate[] = [];
-      pendingMessageUpdates.current.add(updates);
-      const requestId = ++latestMessageRequest.current;
-      const newestShown = from ?? shownMessagesRef.current.at(-1)?.id;
-      const loaded: ChatMessage[] = [];
-      let reachedStart = false;
-      let meetsShown = false;
-      try {
-        for (let page = 0; page < MESSAGE_RESYNC_PAGES; page++) {
-          const { data }: { data: ChatMessage[] } = await api().get<
-            ChatMessage[]
-          >(
-            `/api/v1/chat/conversations/${conversationId}/messages`,
-            loaded[0] ? { params: { max_id: loaded[0].id } } : undefined,
-          );
-          loaded.unshift(...data);
-          reachedStart = data.length < MESSAGE_PAGE_SIZE;
-          const oldestLoaded = loaded[0]?.id;
-          meetsShown =
-            oldestLoaded !== undefined &&
-            newestShown !== undefined &&
-            compareId(oldestLoaded, newestShown) <= 0;
-          if (reachedStart || meetsShown || newestShown === undefined) break;
-        }
-      } finally {
-        pendingMessageUpdates.current.delete(updates);
+  const resyncMessages = useCallback(async () => {
+    if (!conversationId) return;
+    const updates: MessageUpdate[] = [];
+    pendingMessageUpdates.current.add(updates);
+    const requestId = ++latestMessageRequest.current;
+    const liveWhenAsked = isChatStreamLive();
+    const from = continuousUpTo.current;
+    const loaded: ChatMessage[] = [];
+    let reachedStart = false;
+    let meetsKnown = false;
+    try {
+      for (let page = 0; page < MESSAGE_RESYNC_PAGES; page++) {
+        const { data }: { data: ChatMessage[] } = await api().get<
+          ChatMessage[]
+        >(
+          `/api/v1/chat/conversations/${conversationId}/messages`,
+          loaded[0] ? { params: { max_id: loaded[0].id } } : undefined,
+        );
+        loaded.unshift(...data);
+        reachedStart = data.length < MESSAGE_PAGE_SIZE;
+        const oldestLoaded = loaded[0]?.id;
+        meetsKnown =
+          oldestLoaded !== undefined &&
+          from !== undefined &&
+          compareId(oldestLoaded, from) <= 0;
+        if (reachedStart || meetsKnown || from === undefined) break;
       }
-      if (requestId !== latestMessageRequest.current) return;
-      setMessagesLoaded(true);
+    } finally {
+      pendingMessageUpdates.current.delete(updates);
+    }
+    if (requestId !== latestMessageRequest.current) return;
+    setMessagesLoaded(true);
+    advanceContinuousUpTo(loaded.at(-1)?.id);
+    readSinceStreamWentLive.current = liveWhenAsked && isChatStreamLive();
+    openingReadRecovered('messages');
 
-      const fetched = updates.reduce(
-        (items, update) => update(items),
-        loaded.map(applyTombstone),
-      );
-      const oldestFetched = fetched[0]?.id;
-      if (meetsShown && oldestFetched !== undefined) {
-        setMessagesList((current) => [
-          ...current.filter((item) => compareId(item.id, oldestFetched) < 0),
-          ...fetched,
-        ]);
-      } else {
-        // Too much happened to bridge, so this starts again from the newest page.
-        const newestPage = reachedStart
-          ? fetched
-          : fetched.slice(-MESSAGE_PAGE_SIZE);
-        setMessagesList(newestPage);
-        setOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
-      }
+    const fetched = updates.reduce(
+      (items, update) => update(items),
+      loaded.map(applyTombstone),
+    );
+    const oldestFetched = fetched[0]?.id;
+    if (meetsKnown && oldestFetched !== undefined) {
+      setMessagesList((current) => [
+        ...current.filter((item) => compareId(item.id, oldestFetched) < 0),
+        ...fetched,
+      ]);
+    } else {
+      // Too much happened to bridge, so this starts again from the newest page.
+      const newestPage = reachedStart
+        ? fetched
+        : fetched.slice(-MESSAGE_PAGE_SIZE);
+      setMessagesList(newestPage);
+      setOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
+    }
 
-      if (!followingNewestRef.current) {
-        if (
-          fetched.some(
-            (item) =>
-              item.account.id !== me &&
-              (newestShown === undefined ||
-                compareId(item.id, newestShown) > 0),
-          )
-        )
-          setHasUnseenMessages(true);
-        return;
+    if (!followingNewestRef.current) {
+      const shownIds = new Set(shownMessagesRef.current.map((item) => item.id));
+      if (
+        fetched.some((item) => item.account.id !== me && !shownIds.has(item.id))
+      ) {
+        setHasUnseenMessages(true);
+        unreadWhileAway.current = true;
       }
-      if (!isVisible() || !isMounted.current) return;
-      await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
-      updateConversations((current) =>
-        current.map((item) =>
-          item.id === conversationId ? { ...item, unread: false } : item,
-        ),
-      );
-    },
-    [applyTombstone, conversationId, updateConversations],
-  );
+      return;
+    }
+    if (!isVisible() || !isMounted.current) return;
+    await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
+    updateConversations((current) =>
+      current.map((item) =>
+        item.id === conversationId ? { ...item, unread: false } : item,
+      ),
+    );
+  }, [
+    advanceContinuousUpTo,
+    applyTombstone,
+    conversationId,
+    openingReadRecovered,
+    updateConversations,
+  ]);
+
+  const markSeenOnReturn = useCallback(() => {
+    if (!unreadWhileAway.current || !conversationId || !isVisible()) return;
+    unreadWhileAway.current = false;
+    void api()
+      .post(`/api/v1/chat/conversations/${conversationId}/read`)
+      .then(() => {
+        updateConversations((current) =>
+          current.map((item) =>
+            item.id === conversationId ? { ...item, unread: false } : item,
+          ),
+        );
+      })
+      .catch(() => undefined);
+  }, [conversationId, updateConversations]);
 
   const loadOlderMessages = useCallback(() => {
     if (!olderMessageId || !conversationId || loadingMore) return;
@@ -1276,31 +1335,35 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   ]);
 
   useEffect(() => {
-    Promise.all([
-      whileOpening(Promise.resolve().then(loadConversations)),
-      whileOpening(Promise.resolve().then(loadInvitations)),
-      api().get<ChatSettings>('/api/v1/chat/settings'),
-    ])
-      .then(([, , settingsResponse]) => {
+    void whileOpening(Promise.resolve().then(loadConversations)).catch(() => {
+      openingReadFailed('conversations');
+    });
+    void whileOpening(Promise.resolve().then(loadInvitations)).catch(() => {
+      openingReadFailed('invitations');
+    });
+    api()
+      .get<ChatSettings>('/api/v1/chat/settings')
+      .then((settingsResponse) => {
         setChatSettings(settingsResponse.data);
       })
       .catch(() => {
-        setError('load');
+        // Nothing reads these again, so this one stays.
+        openingReadFailed('settings');
       });
-  }, [loadConversations, loadInvitations, whileOpening]);
+  }, [loadConversations, loadInvitations, openingReadFailed, whileOpening]);
 
   useEffect(() => {
     void whileOpening(loadMessages()).catch(() => {
-      setError('load');
+      openingReadFailed('messages');
     });
-  }, [loadMessages, whileOpening]);
+  }, [loadMessages, openingReadFailed, whileOpening]);
 
   const hasUnread = Boolean(conversation?.unread);
   useEffect(() => {
     if (!conversationId || !hasUnread) return;
 
     const markRead = () => {
-      if (!isVisible()) return;
+      if (!isVisible() || !followingNewestRef.current) return;
       void api()
         .post(`/api/v1/chat/conversations/${conversationId}/read`)
         .then(() => {
@@ -1335,16 +1398,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           const message = applyTombstone(value as ChatMessage);
           const isOpen = eventConversationId === conversationId;
           const fromOther = value.account?.id !== me;
+          const seen = isOpen && isVisible() && followingNewestRef.current;
           updateConversations((current) =>
-            withNewMessage(
-              current,
-              message,
-              fromOther && !(isOpen && isVisible()),
-            ),
+            withNewMessage(current, message, fromOther && !seen),
           );
           if (knownConversationIds.current?.has(eventConversationId) === false)
             refreshConversation(eventConversationId);
           if (!isOpen) return;
+          if (isChatStreamLive() && readSinceStreamWentLive.current)
+            advanceContinuousUpTo(value.id);
           updateMessages((current) =>
             current.some((item) => item.id === value.id)
               ? current
@@ -1352,8 +1414,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
           if (!followingNewestRef.current && fromOther) {
             setHasUnseenMessages(true);
+            unreadWhileAway.current = true;
           }
-          if (value.id && fromOther && isVisible()) {
+          if (value.id && fromOther && seen) {
             void api()
               .post(`/api/v1/chat/conversations/${conversationId}/read`, {
                 message_id: value.id,
@@ -1485,19 +1548,27 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (eventConversationId === conversationId)
             setSentInvitationsVersion((version) => version + 1);
         } else if (event === CHAT_STREAM_RECONNECTED) {
+          readSinceStreamWentLive.current = false;
           setSentInvitationsVersion((version) => version + 1);
           // This also runs on every poll while offline, and the next one tries again.
-          const readAgain = (from?: string) => {
-            void loadConversations().catch(() => undefined);
-            void loadInvitations().catch(() => undefined);
-            void resyncMessages(from).catch(() => undefined);
+          const readAgain = () => {
+            void loadConversations()
+              .then(() => {
+                openingReadRecovered('conversations');
+              })
+              .catch(() => undefined);
+            void loadInvitations()
+              .then(() => {
+                openingReadRecovered('invitations');
+              })
+              .catch(() => undefined);
+            void resyncMessages().catch(() => undefined);
           };
           // Starting before the screen's first answers are back would throw them away, and
-          // leave it empty if this failed. A message the stream brought in the meantime says
-          // nothing about those before it, so what is missing is counted from the first page.
+          // leave it empty if this failed.
           if (openingReads.current.size > 0) {
             void Promise.allSettled(openingReads.current).then(() => {
-              if (isMounted.current) readAgain(newestOfFirstPage.current);
+              if (isMounted.current) readAgain();
             });
           } else {
             readAgain();
@@ -1507,11 +1578,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         }
       }),
     [
+      advanceContinuousUpTo,
       applyTombstone,
       conversationId,
       history,
       loadConversations,
       loadInvitations,
+      openingReadRecovered,
       refreshConversation,
       refreshConversations,
       resyncMessages,
@@ -1573,7 +1646,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         FOLLOW_NEWEST_DISTANCE;
       followingNewestRef.current = following;
       setAwayFromNewest(!following);
-      if (following) setHasUnseenMessages(false);
+      if (following) {
+        setHasUnseenMessages(false);
+        markSeenOnReturn();
+      }
     };
     window.addEventListener('scroll', trackPosition, {
       capture: true,
@@ -1593,7 +1669,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       window.removeEventListener('scroll', trackPosition, { capture: true });
       observer?.disconnect();
     };
-  }, [conversationId, conversationMissing, roomView]);
+  }, [conversationId, conversationMissing, markSeenOnReturn, roomView]);
 
   const jumpTargetLoaded = Boolean(
     jumpTargetId && messagesById.has(jumpTargetId),
@@ -1637,8 +1713,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     followingNewestRef.current = true;
     setAwayFromNewest(false);
     setHasUnseenMessages(false);
+    markSeenOnReturn();
     scrollToNewest(messagesEndRef.current);
-  }, []);
+  }, [markSeenOnReturn]);
 
   const handleReplyQuoteClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {

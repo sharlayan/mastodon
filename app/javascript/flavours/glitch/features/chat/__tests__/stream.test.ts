@@ -34,6 +34,19 @@ describe('Chat stream connection', () => {
     unsubscribe();
   });
 
+  it('is live only from being subscribed until it is cut off', async () => {
+    vi.resetModules();
+    const stream = await import('../stream');
+
+    expect(stream.isChatStreamLive()).toBe(false);
+    stream.handleChatStreamConnected();
+    expect(stream.isChatStreamLive()).toBe(true);
+    stream.handleChatStreamDisconnected();
+    expect(stream.isChatStreamLive()).toBe(false);
+    stream.handleChatStreamPolled();
+    expect(stream.isChatStreamLive()).toBe(false);
+  });
+
   it('announces each poll made while the stream is down', async () => {
     vi.resetModules();
     const stream = await import('../stream');

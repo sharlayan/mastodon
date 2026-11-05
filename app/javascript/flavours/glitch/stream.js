@@ -16,6 +16,7 @@ let sharedConnection;
  * @property {() => void} onConnect
  * @property {(event: StreamEvent) => void} onReceive
  * @property {() => void} onDisconnect
+ * @property {() => void} [onSubscribed]
  */
 
 /**
@@ -63,9 +64,9 @@ const subscriptionRetries = {};
 /**
  * @param {Subscription} subscription
  */
-const sendSubscribe = ({ channelName, params }) => {
+const sendSubscribe = ({ channelName, params, onSubscribed }) => {
   // @ts-expect-error
-  sharedConnection.send(JSON.stringify({ type: 'subscribe', stream: channelName, ...params }));
+  sharedConnection.send(JSON.stringify({ type: 'subscribe', stream: channelName, ...params, ...(onSubscribed ? { ack: true } : {}) }));
 };
 
 /**
@@ -176,6 +177,13 @@ const sharedCallbacks = {
       return;
     }
 
+    if (data.event === 'subscribed') {
+      subscriptionsForStream(stream).forEach(subscription => {
+        subscription.onSubscribed?.();
+      });
+      return;
+    }
+
     subscriptionsForStream(stream).forEach(subscription => {
       subscription.onReceive(data);
     });
@@ -210,13 +218,13 @@ const channelNameWithInlineParams = (channelName, params) => {
 /**
  * @param {string} channelName
  * @param {Object.<string, string>} params
- * @param {(dispatch: Dispatch, getState: GetState) => { onConnect: () => void, onReceive: (event: StreamEvent) => void, onDisconnect: () => void }} callbacks
+ * @param {(dispatch: Dispatch, getState: GetState) => { onConnect: () => void, onReceive: (event: StreamEvent) => void, onDisconnect: () => void, onSubscribed?: () => void }} callbacks
  * @returns {(dispatch: Dispatch, getState: GetState) => () => void}
  */
 export const connectStream = (channelName, params, callbacks) => (dispatch, getState) => {
   const streamingAPIBaseURL = getState().meta.get('streaming_api_base_url');
   const accessToken = getAccessToken();
-  const { onConnect, onReceive, onDisconnect } = callbacks(dispatch, getState);
+  const { onConnect, onReceive, onDisconnect, onSubscribed } = callbacks(dispatch, getState);
 
   if(!accessToken) throw new Error("Trying to connect to the streaming server but no access token is available.");
 
@@ -224,8 +232,10 @@ export const connectStream = (channelName, params, callbacks) => (dispatch, getS
   // to using individual connections for each channel
   if (!streamingAPIBaseURL.startsWith('ws')) {
     const connection = createConnection(streamingAPIBaseURL, accessToken, channelNameWithInlineParams(channelName, params), {
+      // A connection of its own has no way to answer, and opening it is the closest thing to that.
       connected() {
         onConnect();
+        onSubscribed?.();
       },
 
       received(data) {
@@ -238,6 +248,7 @@ export const connectStream = (channelName, params, callbacks) => (dispatch, getS
 
       reconnected() {
         onConnect();
+        onSubscribed?.();
       },
     });
 
@@ -252,6 +263,7 @@ export const connectStream = (channelName, params, callbacks) => (dispatch, getS
     onConnect,
     onReceive,
     onDisconnect,
+    onSubscribed,
   };
 
   addSubscription(subscription);

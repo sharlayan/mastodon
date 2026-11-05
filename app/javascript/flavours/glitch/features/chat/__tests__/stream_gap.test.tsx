@@ -29,6 +29,7 @@ const Socket = vi.hoisted(() => {
     static all: FakeSocket[] = [];
 
     readyState = FakeSocket.CONNECTING;
+    sent: string[] = [];
     onopen?: () => void;
     onclose?: (event: { code: number }) => void;
     onmessage?: (event: { data: string }) => void;
@@ -38,8 +39,8 @@ const Socket = vi.hoisted(() => {
       FakeSocket.all.push(this);
     }
 
-    send() {
-      return undefined;
+    send(frame: string) {
+      this.sent.push(frame);
     }
 
     close() {
@@ -54,6 +55,12 @@ const Socket = vi.hoisted(() => {
     refuse() {
       this.readyState = FakeSocket.CLOSED;
       this.onclose?.({ code: 1006 });
+    }
+
+    subscribed() {
+      this.onmessage?.({
+        data: JSON.stringify({ stream: ['user'], event: 'subscribed' }),
+      });
     }
 
     deliver(event: string, payload: unknown) {
@@ -104,6 +111,7 @@ const person = (id: string, name: string) => ({
 });
 const me = person('me', 'Alice');
 const bob = person('bob', 'Bob');
+const REQUEST_FAILED = 'The chat request could not be completed.';
 
 interface Message {
   id: string;
@@ -199,6 +207,24 @@ const server = setupServer(
       );
       return list.slice(-PAGE);
     }),
+  ),
+  http.post(
+    '*/api/v1/chat/conversations/:id/messages',
+    async ({ request, params }) => {
+      const url = new URL(request.url);
+      if (take(backend.failing, (path) => path.test(url.pathname)))
+        return HttpResponse.json({ error: 'unavailable' }, { status: 503 });
+      const id = String(params.id);
+      const { text } = (await request.json()) as { text: string };
+      const list = backend.messages.get(id) ?? [];
+      const mine = {
+        ...message(id, Number(list.at(-1)?.id ?? 0) + 1),
+        content: text,
+        account: me,
+      };
+      backend.messages.set(id, [...list, mine]);
+      return HttpResponse.json(mine);
+    },
   ),
   http.post('*/api/v1/chat/conversations/:id/read', ({ params }) => {
     const id = String(params.id);
@@ -312,11 +338,56 @@ const loadPage = async () => {
     socket: Socket.all.at(-1) as InstanceType<typeof Socket>,
   };
 };
+// The server answers a subscription only for a client that asked it to.
 const connect = async (socket: InstanceType<typeof Socket>) => {
+  await act(async () => {
+    socket.connect();
+    if (
+      socket.sent.some(
+        (frame) => (JSON.parse(frame) as { ack?: unknown }).ack === true,
+      )
+    )
+      socket.subscribed();
+    await Promise.resolve();
+  });
+};
+// Up, and its subscription still on the way to the server.
+const connectUnanswered = async (socket: InstanceType<typeof Socket>) => {
   await act(async () => {
     socket.connect();
     await Promise.resolve();
   });
+};
+const answerSubscription = async (socket: InstanceType<typeof Socket>) => {
+  await act(async () => {
+    socket.subscribed();
+    await Promise.resolve();
+  });
+};
+const dropConnection = async (socket: InstanceType<typeof Socket>) => {
+  act(() => {
+    socket.refuse();
+  });
+  await waitFor(() => {
+    expect(Socket.all.at(-1)).not.toBe(socket);
+  });
+  return Socket.all.at(-1) as InstanceType<typeof Socket>;
+};
+const sendFromComposer = async (text: string) => {
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: text } });
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+  await screen.findByText(text);
+  await settle();
+};
+const readFurtherUp = () => {
+  const measure = vi
+    .spyOn(Element.prototype, 'getBoundingClientRect')
+    .mockReturnValue({ bottom: window.innerHeight + 5000 } as DOMRect);
+  fireEvent.scroll(window);
+  return () => {
+    measure.mockRestore();
+    fireEvent.scroll(window);
+  };
 };
 const settle = async () => {
   await act(async () => {
@@ -330,6 +401,11 @@ const shown = () =>
 const numbers = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, index) => String(from + index));
 
+// The first import of the screen transforms all of it, which can take longer than a test is
+// given on a busy machine. Each test then imports it again from that work.
+beforeAll(async () => {
+  await import('../index');
+}, 60_000);
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
   // Listening wraps the global WebSocket, and the stream client takes what it finds there.
@@ -640,6 +716,389 @@ describe('Chat when the stream connects after the screen has read', () => {
       expect(scrollIntoView).not.toHaveBeenCalled();
       expect(screen.getByText('New messages')).toBeTruthy();
       expect(backend.marked.filter((id) => id === 'A')).toHaveLength(1);
+    });
+  });
+
+  describe('until the server says the subscription is up', () => {
+    it('asks only for the user stream to be answered', async () => {
+      const page = await loadPage();
+
+      await connectUnanswered(page.socket);
+
+      expect(page.socket.sent).toEqual([
+        JSON.stringify({ type: 'subscribe', stream: 'user', ack: true }),
+      ]);
+    });
+
+    it('waits for that answer before reading again', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+
+      seed('A', 3, 3);
+      await connectUnanswered(page.socket);
+      await settle();
+      expect(readsOf(MESSAGES)).toHaveLength(1);
+
+      // Too late for the stream, and read because the answer only comes after it.
+      seed('A', 4, 4);
+      await answerSubscription(page.socket);
+
+      await screen.findByText('Message 4');
+      expect(shown()).toEqual(['1', '2', '3', '4']);
+      expect(readsOf(MESSAGES)).toHaveLength(2);
+    });
+
+    it('waits for it on a connection that came back as well', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      await connect(page.socket);
+      await settle();
+      const readsBefore = readsOf(MESSAGES).length;
+
+      const next = await dropConnection(page.socket);
+      seed('A', 3, 3);
+      await connectUnanswered(next);
+      await settle();
+      expect(readsOf(MESSAGES)).toHaveLength(readsBefore);
+
+      seed('A', 4, 4);
+      await answerSubscription(next);
+
+      await screen.findByText('Message 4');
+      expect(shown()).toEqual(['1', '2', '3', '4']);
+    });
+
+    it('reads once however many rooms and invitations there are to read', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+
+      await connect(page.socket);
+      await settle();
+
+      expect(readsOf(MESSAGES)).toHaveLength(2);
+      expect(readsOf(ROOMS)).toHaveLength(2);
+      expect(readsOf(INVITATIONS)).toHaveLength(2);
+    });
+  });
+
+  describe('when the reader sends something before the stream is up', () => {
+    it('leaves no hole behind their own message on the first connection', async () => {
+      seed('A', 1, PAGE);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText(`Message ${PAGE}`);
+      await settle();
+
+      seed('A', PAGE + 1, PAGE + 50);
+      await sendFromComposer('Mine');
+      await connect(page.socket);
+
+      await screen.findByText(`Message ${PAGE + 1}`);
+      await waitFor(() => {
+        expect(shown()).toEqual(numbers(1, PAGE + 51));
+      });
+    });
+
+    it('leaves no hole behind their own message on a connection that came back', async () => {
+      seed('A', 1, PAGE);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText(`Message ${PAGE}`);
+
+      const next = await dropConnection(page.socket);
+      seed('A', PAGE + 1, PAGE + 50);
+      await sendFromComposer('Mine');
+      await connect(next);
+
+      await screen.findByText(`Message ${PAGE + 1}`);
+      await waitFor(() => {
+        expect(shown()).toEqual(numbers(1, PAGE + 51));
+      });
+    });
+
+    it('does not take what the stream brings before its answer as all there was', async () => {
+      seed('A', 1, PAGE);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText(`Message ${PAGE}`);
+      await settle();
+
+      seed('A', PAGE + 1, PAGE + 50);
+      await connectUnanswered(page.socket);
+      const [newest] = seed('A', PAGE + 51, PAGE + 51);
+      act(() => {
+        page.socket.deliver('chat.message', newest);
+      });
+      await settle();
+      await answerSubscription(page.socket);
+
+      await screen.findByText(`Message ${PAGE + 1}`);
+      await waitFor(() => {
+        expect(shown()).toEqual(numbers(1, PAGE + 51));
+      });
+    });
+  });
+
+  describe('when the connection comes back after the stream delivered', () => {
+    it('reads no further back than what the live stream had already brought', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      const delivered = seed('A', 3, PAGE + 10);
+      act(() => {
+        delivered.forEach((item) => {
+          page.socket.deliver('chat.message', item);
+        });
+      });
+      await screen.findByText(`Message ${PAGE + 10}`);
+      backend.reads = [];
+
+      const next = await dropConnection(page.socket);
+      await connect(next);
+      await settle();
+
+      expect(readsOf(MESSAGES)).toHaveLength(1);
+      expect(shown()).toEqual(numbers(1, PAGE + 10));
+    });
+
+    it('does not count on the stream while what it follows on from has not been read', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      await settle();
+
+      const second = await dropConnection(page.socket);
+      seed('A', 3, PAGE + 10);
+      backend.failing.push(MESSAGES);
+      await connect(second);
+      await settle();
+      const [newest] = seed('A', PAGE + 11, PAGE + 11);
+      act(() => {
+        second.deliver('chat.message', newest);
+      });
+      await screen.findByText(`Message ${PAGE + 11}`);
+      await settle();
+
+      const third = await dropConnection(second);
+      await connect(third);
+
+      await screen.findByText('Message 3');
+      await waitFor(() => {
+        expect(shown()).toEqual(numbers(1, PAGE + 11));
+      });
+    });
+
+    it('counts from there when more than a page came after it', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      const [third] = seed('A', 3, 3);
+      act(() => {
+        page.socket.deliver('chat.message', third);
+      });
+      await screen.findByText('Message 3');
+      await settle();
+
+      const next = await dropConnection(page.socket);
+      seed('A', 4, PAGE + 20);
+      await connect(next);
+
+      await screen.findByText(`Message ${PAGE + 20}`);
+      await waitFor(() => {
+        expect(shown()).toEqual(numbers(1, PAGE + 20));
+      });
+    });
+  });
+
+  describe('when a read failed on opening', () => {
+    it.each([
+      ['messages', MESSAGES],
+      ['rooms', ROOMS],
+      ['invitations', INVITATIONS],
+    ])('stops saying so once the %s have been read', async (_, path) => {
+      seed('A', 1, 2);
+      backend.failing.push(path);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText(REQUEST_FAILED);
+
+      await connect(page.socket);
+
+      await screen.findByText('Message 2');
+      await waitFor(() => {
+        expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+      });
+    });
+
+    it('keeps saying so while another of those reads has not come back well', async () => {
+      seed('A', 1, 2);
+      backend.failing.push(MESSAGES, ROOMS);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText(REQUEST_FAILED);
+
+      backend.failing.push(ROOMS);
+      await connect(page.socket);
+      await screen.findByText('Message 2');
+      await settle();
+
+      expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
+    });
+
+    it('keeps saying so when what failed is not read again', async () => {
+      seed('A', 1, 2);
+      backend.failing.push(/\/settings$/);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText(REQUEST_FAILED);
+
+      await connect(page.socket);
+      await settle();
+
+      expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
+    });
+
+    it('does not take back a failure that reading again has nothing to do with', async () => {
+      seed('A', 1, 2);
+      backend.failing.push(MESSAGES);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await screen.findByText(REQUEST_FAILED);
+
+      backend.failing.push(/\/messages$/);
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'Going out' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      await waitFor(() => {
+        expect(backend.failing).toHaveLength(0);
+      });
+      await settle();
+      await connect(page.socket);
+      await screen.findByText('Message 2');
+      await settle();
+
+      expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
+    });
+  });
+
+  describe('when a message arrives while the reader is further up', () => {
+    const openFurtherUp = async () => {
+      seed('A', 1, 5);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 5');
+      await settle();
+      const back = readFurtherUp();
+      backend.marked = [];
+      return { page, back };
+    };
+    const deliverNext = async (page: {
+      socket: InstanceType<typeof Socket>;
+    }) => {
+      const [newer] = seed('A', 6, 6);
+      act(() => {
+        page.socket.deliver('chat.message', newer);
+      });
+      await screen.findByText('Message 6');
+      await settle();
+    };
+
+    it('leaves it unread', async () => {
+      const { page } = await openFurtherUp();
+
+      await deliverNext(page);
+
+      expect(backend.marked).toEqual([]);
+      expect(screen.getByText('New messages')).toBeTruthy();
+    });
+
+    it('marks it read once the reader is back at the bottom', async () => {
+      const { page, back } = await openFurtherUp();
+      await deliverNext(page);
+
+      back();
+
+      await waitFor(() => {
+        expect(backend.marked).toEqual(['A']);
+      });
+    });
+
+    it('marks it read when the reader jumps to it', async () => {
+      const { page } = await openFurtherUp();
+      await deliverNext(page);
+
+      fireEvent.click(screen.getByText('New messages'));
+
+      await waitFor(() => {
+        expect(backend.marked).toEqual(['A']);
+      });
+    });
+
+    it('marks nothing read for coming back down when nothing new came', async () => {
+      const { back } = await openFurtherUp();
+
+      back();
+      await settle();
+
+      expect(backend.marked).toEqual([]);
+    });
+
+    it('leaves it unread when the reader only comes back to the tab', async () => {
+      const { page } = await openFurtherUp();
+      await deliverNext(page);
+
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await settle();
+
+      expect(backend.marked).toEqual([]);
+    });
+
+    it('still marks it read for someone at the bottom', async () => {
+      seed('A', 1, 5);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 5');
+      await settle();
+      backend.marked = [];
+
+      await deliverNext(page);
+
+      expect(backend.marked).toEqual(['A']);
+    });
+
+    it('marks what reading again found read once the reader is back at the bottom', async () => {
+      const { page, back } = await openFurtherUp();
+
+      const next = await dropConnection(page.socket);
+      seed('A', 6, 6);
+      await connect(next);
+      await screen.findByText('Message 6');
+      await settle();
+      expect(backend.marked).toEqual([]);
+
+      back();
+
+      await waitFor(() => {
+        expect(backend.marked).toEqual(['A']);
+      });
     });
   });
 

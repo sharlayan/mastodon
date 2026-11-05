@@ -11,7 +11,7 @@ import {
   deleteAnnouncement,
 } from './announcements';
 import { updateConversations, updateConversationReadReceipts } from './conversations';
-import { emitChatStreamEvent, handleChatStreamConnected, handleChatStreamPolled, showChatDesktopNotification } from '../features/chat/stream';
+import { emitChatStreamEvent, handleChatStreamConnected, handleChatStreamDisconnected, handleChatStreamPolled, showChatDesktopNotification } from '../features/chat/stream';
 import { processNewNotificationForGroups, refreshStaleNotificationGroups, pollRecentNotifications as pollRecentGroupNotifications } from './notification_groups';
 import { updateNotifications } from './notifications';
 import { updateStatus } from './statuses';
@@ -91,14 +91,17 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
         if (options.fillGaps) {
           dispatch(options.fillGaps());
         }
-
-        if (channelName === 'user') {
-          handleChatStreamConnected();
-        }
       },
+
+      // Having it ask for an answer, which only this stream does, is what chat reads again on.
+      ...(channelName === 'user' ? { onSubscribed: handleChatStreamConnected } : {}),
 
       onDisconnect() {
         const { fallback } = options;
+
+        if (channelName === 'user') {
+          handleChatStreamDisconnected();
+        }
 
         if (fallback) {
           pollingId = setTimeout(() => {

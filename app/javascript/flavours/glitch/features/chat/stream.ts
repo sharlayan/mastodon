@@ -26,10 +26,20 @@ export const emitChatStreamEvent = (event: ChatStreamEvent) => {
 
 export const CHAT_STREAM_RECONNECTED = 'chat.stream_reconnected';
 
-// Events sent before the stream connected are not replayed, whether it was down or had
-// not come up yet, and an open chat screen may have read what it shows before that.
+let live = false;
+
+// Whether every event sent from now on will arrive, so that what does arrive leaves nothing out.
+export const isChatStreamLive = () => live;
+
+// Events sent before the server has subscribed are not replayed, whether the stream was down
+// or had not come up yet, and an open chat screen may have read what it shows before that.
 export const handleChatStreamConnected = () => {
+  live = true;
   emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+};
+
+export const handleChatStreamDisconnected = () => {
+  live = false;
 };
 
 // While the stream is down, polling has to catch what it would have delivered.

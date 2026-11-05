@@ -8,6 +8,7 @@ import { connectUserStream, connectCommunityStream } from '../streaming';
 interface StreamCallbacks {
   onConnect: () => void;
   onDisconnect: () => void;
+  onSubscribed?: () => void;
 }
 type StreamSetup = (dispatch: unknown, getState: unknown) => StreamCallbacks;
 
@@ -45,11 +46,16 @@ describe('Chat while the stream is down', () => {
     vi.useRealTimers();
   });
 
-  it('refreshes chat as soon as the user stream connects', () => {
+  // Reading before the server has subscribed leaves a gap until it has.
+  it('refreshes chat once the server says the user stream is subscribed, not before', () => {
     const callbacks = open(connectUserStream);
 
     callbacks.onConnect();
+    expect(listener).not.toHaveBeenCalled();
 
+    callbacks.onSubscribed?.();
+
+    expect(listener).toHaveBeenCalledTimes(1);
     expect(listener).toHaveBeenCalledWith({
       event: CHAT_STREAM_RECONNECTED,
       payload: {},
@@ -86,6 +92,7 @@ describe('Chat while the stream is down', () => {
   it('leaves other streams out of it', async () => {
     const callbacks = open(connectCommunityStream);
 
+    expect(callbacks.onSubscribed).toBeUndefined();
     callbacks.onConnect();
     callbacks.onDisconnect();
     await vi.advanceTimersByTimeAsync(120_000);
