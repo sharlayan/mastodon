@@ -443,6 +443,10 @@
 
     // Pictures and what sits on them have a z-index of their own, which would otherwise reach the composer.
     isolation: isolate;
+
+    .empty-column-indicator {
+      text-wrap: balance;
+    }
   }
 
   &__message {
@@ -1071,6 +1075,27 @@
     &__actions {
       inset-block-start: 54px;
     }
+  }
+}
+
+// A column scrolls by itself, below its own header, and has the height of the window.
+.layout-multiple-columns .chat-native {
+  // Fitted to that height, the messages would spill over the composer, which then scrolls away with them.
+  &__messages {
+    flex-shrink: 0;
+  }
+
+  &__actions {
+    inset-block-start: 4px;
+  }
+
+  // There is no navigation bar under a column, however narrow the window.
+  &__composer {
+    bottom: 0;
+  }
+
+  &__end {
+    scroll-margin-bottom: 0;
   }
 }
 

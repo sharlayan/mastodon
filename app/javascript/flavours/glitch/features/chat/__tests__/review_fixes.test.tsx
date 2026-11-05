@@ -197,6 +197,92 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+describe('Home and End in the message box', () => {
+  const MAC =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36';
+  const WINDOWS =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36';
+  const mountOn = async (userAgent: string) => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+    mountAt('/chat/direct-1');
+    await screen.findByText('What I wrote');
+  };
+  const shape = (
+    scrollTop: number,
+    clientHeight: number,
+    scrollHeight: number,
+  ) => {
+    const box = composer();
+    Object.defineProperties(box, {
+      scrollTop: { configurable: true, value: scrollTop },
+      clientHeight: { configurable: true, value: clientHeight },
+      scrollHeight: { configurable: true, value: scrollHeight },
+    });
+    return box;
+  };
+  // fireEvent answers false when the page has stopped what the browser would do.
+  const leftToBrowser = (box: HTMLElement, init: object) =>
+    fireEvent.keyDown(box, init);
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each(['Home', 'End'])(
+    'keeps %s from moving the conversation on a Mac',
+    async (key) => {
+      await mountOn(MAC);
+
+      expect(leftToBrowser(shape(0, 44, 44), { key })).toBe(false);
+    },
+  );
+
+  it('leaves End to the box while it still has more to scroll', async () => {
+    await mountOn(MAC);
+
+    expect(leftToBrowser(shape(0, 44, 300), { key: 'End' })).toBe(true);
+    expect(leftToBrowser(shape(256, 44, 300), { key: 'End' })).toBe(false);
+  });
+
+  it('leaves Home to the box while it still has more to scroll', async () => {
+    await mountOn(MAC);
+
+    expect(leftToBrowser(shape(100, 44, 300), { key: 'Home' })).toBe(true);
+    expect(leftToBrowser(shape(0, 44, 300), { key: 'Home' })).toBe(false);
+  });
+
+  it.each([
+    { shiftKey: true },
+    { metaKey: true },
+    { ctrlKey: true },
+    { altKey: true },
+  ])('leaves End with a modifier alone on a Mac: %o', async (modifier) => {
+    await mountOn(MAC);
+
+    expect(leftToBrowser(shape(0, 44, 44), { key: 'End', ...modifier })).toBe(
+      true,
+    );
+  });
+
+  it.each(['PageUp', 'PageDown', 'ArrowLeft'])(
+    'leaves %s alone on a Mac',
+    async (key) => {
+      await mountOn(MAC);
+
+      expect(leftToBrowser(shape(0, 44, 44), { key })).toBe(true);
+    },
+  );
+
+  it.each(['Home', 'End'])(
+    'leaves %s moving the caret on other systems',
+    async (key) => {
+      await mountOn(WINDOWS);
+
+      expect(leftToBrowser(shape(0, 44, 44), { key })).toBe(true);
+    },
+  );
+});
+
 describe('Typing while an attachment uploads', () => {
   const holdUpload = () => {
     let finish: () => void = () => undefined;

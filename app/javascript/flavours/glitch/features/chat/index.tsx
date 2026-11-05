@@ -602,6 +602,24 @@ const writeToClipboard = async (text: string) => {
   await navigator.clipboard.writeText(text);
 };
 
+// On a Mac, Home and End scroll instead of moving the caret. What the box has no room left to scroll goes on to the
+// conversation, which jumps to its first or last message from wherever it was being read.
+const scrollsConversation = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+  if (
+    !navigator.userAgent.includes('Macintosh') ||
+    event.shiftKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey
+  )
+    return false;
+  const box = event.currentTarget;
+  if (event.key === 'Home') return box.scrollTop <= 0;
+  if (event.key === 'End')
+    return box.scrollTop + box.clientHeight >= box.scrollHeight - 1;
+  return false;
+};
+
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_PX = 10;
 
@@ -797,6 +815,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<ChatHomeTab>('home');
   const [messagesList, setMessagesList] = useState<ChatMessage[]>([]);
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [directAccountQuery, setDirectAccountQuery] = useState('');
   const [directAccount, setDirectAccount] = useState<ChatAccount | null>(null);
   const [accountResults, setAccountResults] = useState<ChatAccount[]>([]);
@@ -1095,6 +1114,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         response.data.map(applyTombstone),
       ),
     );
+    setMessagesLoaded(true);
     if (!isVisible()) return;
     await api().post(`/api/v1/chat/conversations/${conversationId}/read`);
     setConversations((current) =>
@@ -1135,6 +1155,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       pendingMessageUpdates.current.delete(updates);
     }
     if (requestId !== latestMessageRequest.current) return;
+    setMessagesLoaded(true);
 
     const fetched = updates.reduce(
       (items, update) => update(items),
@@ -1710,6 +1731,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleComposerKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (scrollsConversation(event)) {
+        event.preventDefault();
+        return;
+      }
       if (
         event.key !== 'Enter' ||
         event.nativeEvent.isComposing ||
@@ -2974,6 +2999,37 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 ref={messagesListRef}
                 {...longPress}
               >
+                {conversation &&
+                  messagesLoaded &&
+                  messagesList.length === 0 &&
+                  !olderMessageId && (
+                    <div className='empty-column-indicator'>
+                      <span>
+                        <FormattedMessage
+                          id='chat.no_messages'
+                          defaultMessage='No messages yet.'
+                        />
+                        {!isArchived && !recipientSuspended && (
+                          <>
+                            {' '}
+                            <FormattedMessage
+                              id='chat.no_messages_send_first'
+                              defaultMessage='Send the first one.'
+                            />
+                          </>
+                        )}
+                        {isGroupOwner && !isArchived && (
+                          <>
+                            <br />
+                            <FormattedMessage
+                              id='chat.no_messages_invites'
+                              defaultMessage='People you invite join once they accept. You can see who hasn’t yet under Members in the ⋯ menu.'
+                            />
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 {messagesList.map((message, index) => (
                   <Fragment key={message.id}>
                     {startsDay(messagesList, index) && (
