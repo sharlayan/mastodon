@@ -53,12 +53,13 @@ class DriveFileFromURLWorker
       description: @options[:description]
     )
 
-    return unless download_to(candidate, url)
+    hashes = download_to(candidate, url)
+    return unless hashes
 
     path = candidate.file.queued_for_write[:original]&.path
     return if path.blank?
 
-    persist(account, candidate, url, Digest::SHA256.file(path).hexdigest, Digest::MD5.file(path).hexdigest)
+    persist(account, candidate, url, *hashes)
   rescue Mastodon::ValidationError, ActiveRecord::RecordInvalid => e
     Rails.logger.warn("DriveFileFromUrlWorker(#{account_id}) skipped: #{e.message}")
   ensure
@@ -71,16 +72,24 @@ class DriveFileFromURLWorker
     parsed = Addressable::URI.parse(url).normalize
     return false unless %w(http https).include?(parsed.scheme) && parsed.host.present?
 
+    hashes = nil
     Request.new(:get, url).perform do |response|
       raise Mastodon::UnexpectedResponseError, response unless (200...300).cover?(response.code)
 
-      candidate.file = ResponseWithLimit.new(response, DriveFile.max_download_size)
+      hashes = assign_downloaded_file(candidate, ResponseWithLimit.new(response, DriveFile.max_download_size))
     end
 
-    candidate.file?
+    hashes if candidate.file?
   rescue Mastodon::UnexpectedResponseError, Mastodon::HostValidationError, Mastodon::LengthValidationError, Addressable::URI::InvalidURIError, Paperclip::Error, *Mastodon::HTTP_CONNECTION_ERRORS => e
     Rails.logger.warn("DriveFileFromUrlWorker download failed for #{url}: #{e.message}")
     false
+  end
+
+  def assign_downloaded_file(candidate, download)
+    upload = Paperclip.io_adapters.for(download)
+    hashes = [Digest::SHA256.file(upload.path).hexdigest, Digest::MD5.file(upload.path).hexdigest]
+    candidate.file = upload
+    hashes
   end
 
   def persist(account, candidate, url, digest, md5)

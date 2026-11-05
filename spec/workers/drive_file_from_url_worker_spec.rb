@@ -12,8 +12,7 @@ RSpec.describe DriveFileFromURLWorker do
       private
 
       def download_to(candidate, _url)
-        candidate.file = Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif').open
-        true
+        assign_downloaded_file(candidate, Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif').open)
       end
     end
   end
@@ -101,6 +100,36 @@ RSpec.describe DriveFileFromURLWorker do
     worker.perform(account.id, 'https://example.com/avatar.gif', { 'sensitive' => false })
 
     expect(existing.reload).to_not be_sensitive
+  end
+
+  context 'when the downloaded image is processed', :attachment_processing do
+    let(:image_path) { Rails.root.join('spec', 'fixtures', 'files', '600x400.png') }
+    let(:worker_class) { described_class }
+
+    before do
+      account.user.update!(settings_attributes: { drive_upload_original_image: false })
+      stub_request(:get, 'https://example.com/600x400.png').to_return(body: File.binread(image_path), headers: { 'Content-Type' => 'image/png' })
+    end
+
+    it 'stores the hashes of the downloaded bytes before WebP conversion' do
+      worker.perform(account.id, 'https://example.com/600x400.png', { 'sensitive' => false })
+
+      file = account.drive_files.sole
+      expect(file.file_content_type).to eq('image/webp')
+      expect(file.sha256).to eq(Digest::SHA256.file(image_path).hexdigest)
+      expect(file.md5).to eq(Digest::MD5.file(image_path).hexdigest)
+    end
+
+    it 'deduplicates a URL upload against the same image uploaded directly' do
+      upload = Rack::Test::UploadedFile.new(image_path, 'image/png')
+      existing = CreateDriveFileService.new.call(account: account, user: account.user, file: upload)
+
+      expect do
+        worker.perform(account.id, 'https://example.com/600x400.png', { 'sensitive' => false })
+      end.to_not change(account.drive_files, :count)
+
+      expect(account.drive_files.sole).to eq(existing)
+    end
   end
 
   it 'uses the quota configured for the account role' do
