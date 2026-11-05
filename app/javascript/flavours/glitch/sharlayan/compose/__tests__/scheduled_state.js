@@ -147,6 +147,44 @@ describe('scheduled compose state', () => {
     expect(state.get('reaction_acceptance')).toBeNull();
   });
 
+  it('releases a deleted reservation so a failed replacement can be retried as a new post', () => {
+    const scheduled = reduceScheduledCompose(initialState, {
+      type: 'COMPOSE_SET_SCHEDULED',
+      scheduledStatus: fromJS({
+        id: 'scheduled-id',
+        scheduled_at: '2030-12-01T12:00:00Z',
+        params: { text: 'Keep this replacement' },
+      }),
+    });
+    const state = composeReducer(scheduled, {
+      type: 'SCHEDULED_STATUS_DELETE_SUCCESS',
+      id: 'scheduled-id',
+    });
+    const failed = composeReducer(state, { type: 'COMPOSE_SUBMIT_FAIL' });
+
+    expect(failed.get('id')).toBeNull();
+    expect(failed.get('scheduled_at')).toBe('2030-12-01T12:00:00Z');
+    expect(failed.get('text')).toBe('Keep this replacement');
+  });
+
+  it('keeps the current composition when another reservation is deleted', () => {
+    const state = initialState.merge({ id: 'scheduled-id', scheduled_at: '2030-12-01T12:00:00Z' });
+
+    expect(composeReducer(state, {
+      type: 'SCHEDULED_STATUS_DELETE_SUCCESS',
+      id: 'different-id',
+    })).toBe(state);
+  });
+
+  it('does not clear an ordinary status edit when an unrelated reservation has the same ID', () => {
+    const state = initialState.merge({ id: 'status-id', scheduled_at: null });
+
+    expect(composeReducer(state, {
+      type: 'SCHEDULED_STATUS_DELETE_SUCCESS',
+      id: 'status-id',
+    })).toBe(state);
+  });
+
   it('is applied by the core compose reducer', () => {
     expect(composeReducer(undefined, {
       type: 'COMPOSE_SCHEDULED_AT_CHANGE',

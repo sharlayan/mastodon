@@ -8,6 +8,10 @@ export const reduceScheduledCompose = (state, action) => {
     return state.set('scheduled_at', action.scheduledAt);
   }
 
+  if (action.type === 'SCHEDULED_STATUS_DELETE_SUCCESS') {
+    return state.get('scheduled_at') && state.get('id') === action.id ? state.set('id', null) : state;
+  }
+
   if (action.type !== 'COMPOSE_SET_SCHEDULED') {
     return null;
   }
