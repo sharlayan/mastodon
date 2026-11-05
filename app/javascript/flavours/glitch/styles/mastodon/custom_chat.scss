@@ -679,14 +679,6 @@
     opacity: 0;
     pointer-events: none;
 
-    &::before {
-      content: '';
-      position: absolute;
-      inset-block: 0;
-      inset-inline-end: 100%;
-      width: 8px;
-    }
-
     .icon-button,
     .chat-native__react-picker button {
       padding: 3px;
@@ -705,10 +697,6 @@
         color: var(--color-text-primary);
         background: var(--color-bg-tertiary);
       }
-    }
-
-    .chat-native__message--mine &::before {
-      inset-inline: 100% auto;
     }
   }
 
@@ -1155,6 +1143,43 @@
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+    }
+  }
+}
+
+// A mouse on its way to the toolbar leaves the bubble, beside a tall one often far below the toolbar. While the message
+// is hovered, the space up to the toolbar still counts as the message, so the toolbar stays open. This lies under
+// everything in the list, so it only ever catches empty space: other messages, their text and their pictures stay in
+// front of it. It does not exist until the message is hovered, so empty space alone opens nothing.
+@media (hover: hover) and (pointer: fine) {
+  .chat-native {
+    &__message:hover &__bubble-wrap::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset-block: 0 -32px;
+      inset-inline-start: 100%;
+      width: 114px;
+    }
+
+    &__message--mine:hover &__bubble-wrap::before {
+      inset-inline: auto 100%;
+    }
+  }
+}
+
+// The toolbar sits above the bubble here, and can be wider than it.
+@media (hover: hover) and (pointer: fine) and (max-width: $mobile-breakpoint) {
+  .chat-native {
+    &__message:hover &__bubble-wrap::before {
+      inset-block: -32px 0;
+      inset-inline: 0 auto;
+      width: 108px;
+      min-width: 100%;
+    }
+
+    &__message--mine:hover &__bubble-wrap::before {
+      inset-inline: auto 0;
     }
   }
 }
