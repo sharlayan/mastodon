@@ -2,6 +2,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -792,28 +793,41 @@ const scrollToNewest = (end: HTMLElement | null) => {
   }
 };
 
-// The button back to the newest message comes and goes while the reader scrolls. Kept in the room's own state, that
-// would draw every message and the box to write in again each time, which a slow phone shows as a stutter.
-const createJumpButtonState = () => {
-  let current = { away: false, unseen: false };
+// For what changes while the reader scrolls or types. Kept in the room's own state, it would draw every message again
+// each time, which a slow phone shows as a stutter. Only what shows it follows it.
+const createStore = <T,>(initial: T) => {
+  let current = initial;
   const listeners = new Set<() => void>();
 
   return {
     get: () => current,
+    set: (next: T) => {
+      if (next === current) return;
+      current = next;
+      listeners.forEach((listener) => {
+        listener();
+      });
+    },
     subscribe: (listener: () => void) => {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
       };
     },
+  };
+};
+
+const createJumpButtonState = () => {
+  const store = createStore({ away: false, unseen: false });
+
+  return {
+    ...store,
     update: (next: { away?: boolean; unseen?: boolean }) => {
+      const current = store.get();
       const away = next.away ?? current.away;
       const unseen = next.unseen ?? current.unseen;
-      if (away === current.away && unseen === current.unseen) return;
-      current = { away, unseen };
-      listeners.forEach((listener) => {
-        listener();
-      });
+      if (away !== current.away || unseen !== current.unseen)
+        store.set({ away, unseen });
     },
   };
 };
@@ -842,6 +856,76 @@ const JumpToNewestButton: React.FC<{
       <Icon id='arrow-down' icon={ArrowDownwardIcon} />
       {unseen && <span>{intl.formatMessage(messages.newMessages)}</span>}
     </button>
+  );
+};
+
+type ComposerText = ReturnType<typeof createStore<string>>;
+
+const isTooLong = (text: string) =>
+  Array.from(text.trim()).length > MAX_MESSAGE_LENGTH;
+
+const ComposerBox: React.FC<{
+  text: ComposerText;
+  onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+  placeholder: string;
+  disabled: boolean;
+}> = ({ text, onKeyDown, placeholder, disabled }) => {
+  const value = useSyncExternalStore(text.subscribe, text.get);
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      text.set(event.target.value);
+    },
+    [text],
+  );
+
+  return (
+    <Textarea
+      minRows={1}
+      maxRows={6}
+      value={value}
+      onChange={handleChange}
+      onKeyDown={onKeyDown}
+      placeholder={placeholder}
+      disabled={disabled}
+    />
+  );
+};
+
+const ComposerTooLongNotice: React.FC<{ text: ComposerText }> = ({ text }) => {
+  // Stays at zero while the message fits, so that a letter typed draws nothing here.
+  const count = useSyncExternalStore(text.subscribe, () =>
+    isTooLong(text.get()) ? Array.from(text.get().trim()).length : 0,
+  );
+
+  if (!count) return null;
+
+  return (
+    <div className='chat-native__error'>
+      <FormattedMessage
+        id='chat.message_too_long'
+        defaultMessage='This message is too long ({count}/{max} characters).'
+        values={{ count, max: MAX_MESSAGE_LENGTH }}
+      />
+    </div>
+  );
+};
+
+const ComposerSendButton: React.FC<{
+  text: ComposerText;
+  hasOtherContent: boolean;
+  disabled: boolean;
+  label: string;
+}> = ({ text, hasOtherContent, disabled, label }) => {
+  const sendable = useSyncExternalStore(
+    text.subscribe,
+    () =>
+      !isTooLong(text.get()) && (hasOtherContent || Boolean(text.get().trim())),
+  );
+
+  return (
+    <Button type='submit' disabled={disabled || !sendable}>
+      {label}
+    </Button>
   );
 };
 
@@ -889,7 +973,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
   const [groupAccounts, setGroupAccounts] = useState<ChatAccount[]>([]);
-  const [text, setText] = useState('');
+  const [composerText] = useState(() => createStore(''));
   const [media, setMedia] = useState<ChatMedia[]>([]);
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1650,10 +1734,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const finishEditing = useCallback(() => {
     setEditingId(null);
-    setText(draftBeforeEdit?.text ?? '');
+    composerText.set(draftBeforeEdit?.text ?? '');
     setMedia(draftBeforeEdit?.media ?? []);
     setDraftBeforeEdit(null);
-  }, [draftBeforeEdit]);
+  }, [composerText, draftBeforeEdit]);
 
   const isArchived = Boolean(conversation?.archived);
   const recipientSuspended =
@@ -1662,7 +1746,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const editingTargetDeleted = messagesList.some(
     (message) => message.id === editingId && message.deleted_at,
   );
-  if (editingId && (isArchived || editingTargetDeleted)) finishEditing();
+  const editingCannotGoOn =
+    Boolean(editingId) && (isArchived || editingTargetDeleted);
+  // After drawing, because it changes what the box shows, and before the screen shows it.
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (editingCannotGoOn) finishEditing();
+  }, [editingCannotGoOn, finishEditing]);
   if (replyToId && isArchived) setReplyToId(null);
 
   const newestMessage = messagesList.at(-1);
@@ -1844,9 +1934,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     }
   }, [directAccount, loadConversations, navigateIfActive]);
 
-  const isTooLong = Array.from(text.trim()).length > MAX_MESSAGE_LENGTH;
-  const hasSendableContent =
-    Boolean(text.trim()) ||
+  const hasOtherContent =
     media.length > 0 ||
     messagesList.some(
       (message) =>
@@ -1856,12 +1944,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     );
 
   const send = useCallback(async () => {
+    const text = composerText.get();
     if (
       !conversationId ||
       loading ||
       uploading ||
-      !hasSendableContent ||
-      isTooLong
+      !(text.trim() || hasOtherContent) ||
+      isTooLong(text)
     )
       return;
     setLoading(true);
@@ -1889,7 +1978,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         finishEditing();
       } else {
         // The box stays writable meanwhile: only what went out leaves it.
-        setText((current) =>
+        const current = composerText.get();
+        composerText.set(
           current.startsWith(text) ? current.slice(text.length) : current,
         );
         setMedia([]);
@@ -1902,15 +1992,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     }
   }, [
     applyTombstone,
+    composerText,
     conversationId,
     editingId,
     finishEditing,
-    hasSendableContent,
-    isTooLong,
+    hasOtherContent,
     loading,
     media,
     replyToId,
-    text,
     updateMessages,
     uploading,
   ]);
@@ -1968,13 +2057,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       void createDirect();
     },
     [createDirect],
-  );
-
-  const handleTextChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setText(event.target.value);
-    },
-    [],
   );
 
   const handleDirectAccountQueryChange = useCallback(
@@ -2264,11 +2346,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         if (editingId) finishEditing();
         setReplyToId(id);
       } else if (action === 'edit') {
-        setDraftBeforeEdit((current) => current ?? { text, media });
+        const draft = { text: composerText.get(), media };
+        setDraftBeforeEdit((current) => current ?? draft);
         setEditingId(id);
         setReplyToId(null);
         setMedia([]);
-        setText(message.content ?? '');
+        composerText.set(message.content ?? '');
       } else {
         const deletionNotice = (deletesForEveryone: boolean | null) => {
           if (deletesForEveryone === null)
@@ -2330,6 +2413,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     },
     [
       applyTombstone,
+      composerText,
       dispatch,
       editingId,
       finishEditing,
@@ -2337,7 +2421,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       media,
       messagesList,
       refreshConversation,
-      text,
       updateMessages,
     ],
   );
@@ -3557,44 +3640,28 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     onChange={handleMediaChange}
                     accept='image/*,video/*,audio/*'
                   />
-                  <Textarea
-                    minRows={1}
-                    maxRows={6}
-                    value={text}
-                    onChange={handleTextChange}
+                  <ComposerBox
+                    text={composerText}
                     onKeyDown={handleComposerKeyDown}
                     placeholder={intl.formatMessage(messages.placeholder)}
                     disabled={isArchived}
                   />
                 </div>
-                {isTooLong && (
-                  <div className='chat-native__error'>
-                    <FormattedMessage
-                      id='chat.message_too_long'
-                      defaultMessage='This message is too long ({count}/{max} characters).'
-                      values={{
-                        count: Array.from(text.trim()).length,
-                        max: MAX_MESSAGE_LENGTH,
-                      }}
-                    />
-                  </div>
-                )}
-                <Button
-                  type='submit'
+                <ComposerTooLongNotice text={composerText} />
+                <ComposerSendButton
+                  text={composerText}
+                  hasOtherContent={hasOtherContent}
                   disabled={
-                    conversation?.archived ||
+                    Boolean(conversation?.archived) ||
                     recipientSuspended ||
                     loading ||
                     uploading ||
-                    media.some((item) => !item.url) ||
-                    !hasSendableContent ||
-                    isTooLong
+                    media.some((item) => !item.url)
                   }
-                >
-                  {intl.formatMessage(
+                  label={intl.formatMessage(
                     editingId ? messages.save : messages.send,
                   )}
-                </Button>
+                />
               </form>
               <div className='chat-native__end' ref={messagesEndRef} />
             </>
