@@ -116,6 +116,20 @@ RSpec.describe 'Misskey-compat clips' do
       expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_CLIP')
     end
 
+    context 'when the requester owns the clip' do
+      let(:clip) { Fabricate(:clip, account: user.account, public: false) }
+
+      it 'rechecks saved note visibility after its author blocks the owner' do
+        hidden_status = statuses.last
+        hidden_status.account.block!(user.account)
+
+        post '/api/clips/notes', params: { i: read_token, clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body.pluck(:id)).to_not include(MisskeyCompat::MiId.encode(hidden_status.id))
+      end
+    end
+
     it 'rate limits authenticated callers as potential attackers' do
       limiter = RateLimiter.new(user.account, family: :clip_notes)
       RateLimiter::FAMILIES[:clip_notes][:limit].times { limiter.record! }

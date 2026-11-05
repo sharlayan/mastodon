@@ -125,7 +125,7 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
     statuses = statuses.where(id: ...params[:untilId]) if params[:untilId].present?
     statuses = statuses.where('statuses.id > ?', params[:sinceId]) if params[:sinceId].present?
     statuses = statuses.limit(Clip::STATUSES_LIMIT).to_a
-    statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? } unless clip.account_id == current_account&.id
+    statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? }
 
     statuses.first(pagination_limit)
   end
