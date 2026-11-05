@@ -104,6 +104,7 @@ class Page < ApplicationRecord
   scope :publicly_accessible, -> { available_accounts.where(visibility: 'public') }
   scope :listed, -> { available_accounts.where(visibility: %w(public authenticated password)) }
   scope :published, -> { publicly_accessible }
+  scope :summary_columns, -> { select(column_names - %w(content)) }
   scope :featured, -> { publicly_accessible.where('likes_count > 0').order(likes_count: :desc) }
 
   attr_reader :access_password

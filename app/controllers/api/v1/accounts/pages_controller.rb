@@ -47,7 +47,7 @@ class Api::V1::Accounts::PagesController < Api::V1::Accounts::BaseController
     pages = @account.pages.listed
     pages = pages.where.not(visibility: 'authenticated') if current_account.nil?
 
-    pages.includes(page_series: :cover_media_attachment).order(is_main: :desc, id: :desc)
+    pages.summary_columns.includes(:eye_catching_media_attachment, page_series: :cover_media_attachment).order(is_main: :desc, id: :desc)
       .offset([params[:offset].to_i, 0].max)
       .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
   end
