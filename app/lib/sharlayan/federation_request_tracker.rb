@@ -6,6 +6,7 @@ class Sharlayan::FederationRequestTracker
   KEY_PREFIX = 'sharlayan:federation_requests'
   BUFFER_EXPIRE_AFTER = 2.days.seconds
   FLUSH_WINDOW = 6.hours
+  FLUSH_LOCK_TTL = 15.minutes.to_i
   FIELD_SEPARATOR = '|'
   METRICS = {
     deliver_succeeded: :deliver_succeeded_count,
@@ -71,19 +72,35 @@ class Sharlayan::FederationRequestTracker
 
     def flush_bucket(bucket_at)
       key = key_at(bucket_at)
-      staging_key = "#{key}:flush:#{SecureRandom.hex(8)}"
+      result = 0
 
-      begin
-        redis.rename(key, staging_key)
-      rescue Redis::CommandError
-        return 0
+      with_redis do |connection|
+        RedisLock.acquire(redis: connection, key: "lock:#{key}", autorelease: FLUSH_LOCK_TTL, retry: false) do |lock|
+          result = flush_staged_bucket(bucket_at, key) if lock.acquired?
+        end
+      end
+
+      result
+    end
+
+    def flush_staged_bucket(bucket_at, key)
+      staging_key = "#{key}:flush"
+
+      unless redis.exists?(staging_key)
+        begin
+          redis.rename(key, staging_key)
+        rescue Redis::CommandError => e
+          raise unless e.message.start_with?('ERR no such key')
+
+          return 0
+        end
       end
 
       counters = redis.hgetall(staging_key)
-      redis.del(staging_key)
 
       rows = build_rows(bucket_at, counters)
       FederationRequestStatistic.accumulate!(rows)
+      redis.del(staging_key)
       rows.size
     end
 
