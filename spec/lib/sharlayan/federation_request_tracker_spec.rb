@@ -202,6 +202,21 @@ RSpec.describe Sharlayan::FederationRequestTracker do
       expect(redis.exists?("#{key}:flush")).to be false
     end
 
+    it 'drains already staged batches after statistics are disabled' do
+      described_class.track_deliver_success!('example.com')
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_raise(ActiveRecord::StatementInvalid, 'database unavailable')
+      expect { described_class.flush! }.to raise_error(ActiveRecord::StatementInvalid)
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_call_original
+
+      Setting.federation_request_statistics_enabled = false
+      described_class.flush!
+
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').deliver_succeeded_count).to eq(1)
+      expect(redis.smembers(described_class::PENDING_KEY)).to be_empty
+    ensure
+      Setting.federation_request_statistics_enabled = true
+    end
+
     it 'propagates Redis command failures while staging a bucket' do
       allow(redis).to receive(:eval).and_raise(Redis::CommandError, 'READONLY You cannot write against a read only replica')
 

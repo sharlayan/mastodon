@@ -45,9 +45,7 @@ class Sharlayan::FederationRequestTracker
     end
 
     def flush!(now: Time.now.utc)
-      return 0 unless enabled?
-
-      bucket_times(now).each { |bucket_at| stage_bucket(bucket_at) }
+      bucket_times(now).each { |bucket_at| stage_bucket(bucket_at) } if enabled?
       redis.smembers(PENDING_KEY).sum { |staging_key| flush_staged(staging_key) }
     end
 
