@@ -62,6 +62,47 @@ RSpec.describe DriveFileFromURLWorker do
     expect(account.drive_files.where(folder: folder).ordered.first).to eq(existing)
   end
 
+  it 'defaults an omitted sensitive option to false' do
+    worker.perform(account.id, 'https://example.com/avatar.gif')
+
+    expect(account.drive_files.sole).to_not be_sensitive
+  end
+
+  it 'treats an explicit nil sensitive option as false' do
+    worker.perform(account.id, 'https://example.com/avatar.gif', { 'sensitive' => nil })
+
+    expect(account.drive_files.sole).to_not be_sensitive
+  end
+
+  it 'preserves sensitive metadata when the download matches an existing file and the option is nil' do
+    digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
+    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, sensitive: true)
+
+    expect do
+      worker.perform(account.id, 'https://example.com/avatar.gif', { 'sensitive' => nil })
+    end.to_not change(account.drive_files, :count)
+
+    expect(existing.reload).to be_sensitive
+  end
+
+  it 'preserves sensitive metadata when the download matches an existing file and the option is omitted' do
+    digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
+    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, sensitive: true)
+
+    worker.perform(account.id, 'https://example.com/avatar.gif')
+
+    expect(existing.reload).to be_sensitive
+  end
+
+  it 'clears sensitive metadata when the download matches an existing file and false is explicit' do
+    digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
+    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, sensitive: true)
+
+    worker.perform(account.id, 'https://example.com/avatar.gif', { 'sensitive' => false })
+
+    expect(existing.reload).to_not be_sensitive
+  end
+
   it 'uses the quota configured for the account role' do
     account.user.role.update!(drive_quota: 1)
     Setting.drive_quota = 100

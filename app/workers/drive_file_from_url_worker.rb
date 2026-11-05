@@ -44,11 +44,12 @@ class DriveFileFromURLWorker
     end
 
     @options = options.with_indifferent_access
+    @options[:sensitive] = ActiveModel::Type::Boolean.new.cast(@options[:sensitive])
     return if quota_full?(account)
 
     candidate = account.drive_files.build(
       folder_id: @options[:folder_id].presence,
-      sensitive: ActiveModel::Type::Boolean.new.cast(@options[:sensitive]),
+      sensitive: @options[:sensitive] || false,
       description: @options[:description]
     )
 
@@ -89,7 +90,7 @@ class DriveFileFromURLWorker
       if existing
         existing.update!(
           folder_id: @options[:folder_id].presence || existing.folder_id,
-          sensitive: ActiveModel::Type::Boolean.new.cast(@options[:sensitive]),
+          sensitive: @options[:sensitive].nil? ? existing.sensitive : @options[:sensitive],
           description: @options[:description],
           created_at: Time.current
         )
