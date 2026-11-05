@@ -444,8 +444,11 @@
     // Pictures and what sits on them have a z-index of their own, which would otherwise reach the composer.
     isolation: isolate;
 
+    // Korean words stay whole; Japanese, which has no spaces, still breaks when a line would overflow.
     .empty-column-indicator {
+      overflow-wrap: anywhere;
       text-wrap: balance;
+      word-break: keep-all;
     }
   }
 
