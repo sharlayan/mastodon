@@ -62,6 +62,8 @@ const initialState = ImmutableMap({
   reactions: ImmutableMap({
     next: null,
     loaded: false,
+    isLoading: false,
+    requestId: null,
     items: ImmutableOrderedSet(),
   }),
   bookmarks: ImmutableMap({
@@ -135,18 +137,24 @@ export default function statusLists(state = initialState, action) {
     return appendToList(state, 'favourites', action.statuses, action.next);
   case REACTED_STATUSES_FETCH_REQUEST:
   case REACTED_STATUSES_EXPAND_REQUEST:
-    return state.setIn(['reactions', 'isLoading'], true);
+    return state.setIn(['reactions', 'isLoading'], true).setIn(['reactions', 'requestId'], action.requestId);
   case REACTED_STATUSES_FETCH_FAIL:
   case REACTED_STATUSES_EXPAND_FAIL:
-    return state.setIn(['reactions', 'isLoading'], false);
+    if (action.requestId !== state.getIn(['reactions', 'requestId'])) return state;
+    return state.setIn(['reactions', 'isLoading'], false).setIn(['reactions', 'requestId'], null);
   case REACTED_STATUSES_FETCH_SUCCESS:
-    return normalizeList(state, 'reactions', action.statuses, action.next);
+    if (action.requestId !== state.getIn(['reactions', 'requestId'])) return state;
+    return normalizeList(state, 'reactions', action.statuses, action.next).setIn(['reactions', 'requestId'], null);
   case REACTED_STATUSES_EXPAND_SUCCESS:
-    return appendToList(state, 'reactions', action.statuses, action.next);
+    if (action.requestId !== state.getIn(['reactions', 'requestId'])) return state;
+    return appendToList(state, 'reactions', action.statuses, action.next).setIn(['reactions', 'requestId'], null);
   case REACTION_SUMMARY_FETCH_SUCCESS:
     return state.set('reactionSummary', ImmutableList(action.summary));
-  case REACTION_FILTER_SET:
-    return state.set('reactionFilter', action.name || null);
+  case REACTION_FILTER_SET: {
+    const name = action.name || null;
+    if (name === state.get('reactionFilter')) return state;
+    return state.set('reactionFilter', name).set('reactions', initialState.get('reactions'));
+  }
   case BOOKMARKED_STATUSES_FETCH_REQUEST:
   case BOOKMARKED_STATUSES_EXPAND_REQUEST:
     return state.setIn(['bookmarks', 'isLoading'], true);
