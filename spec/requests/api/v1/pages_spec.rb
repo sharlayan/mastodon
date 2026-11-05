@@ -8,6 +8,27 @@ RSpec.describe 'Pages' do
   before { Setting.pages_enabled = true }
 
   describe 'GET /api/v1/pages/statistics' do
+    context 'with a read-only token' do
+      let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:accounts') }
+
+      it 'allows the owner to read writing statistics' do
+        get '/api/v1/pages/statistics', headers: headers
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body[:days].size).to eq(365)
+      end
+    end
+
+    context 'with a write-only token' do
+      let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write:accounts') }
+
+      it 'rejects reading writing statistics' do
+        get '/api/v1/pages/statistics', headers: headers
+
+        expect(response).to have_http_status(403)
+      end
+    end
+
     it 'returns up to 365 cached daily values and the current total character count' do
       page = Fabricate(:page, account: user.account, summary: 'summary', content: [{ type: 'text', text: '**hello world**' }], created_at: 2.months.ago)
       PageDailyStatistic.record!(account_id: user.account_id, characters_delta: 3, updated: 1, activity_date: 1.day.ago.to_date)

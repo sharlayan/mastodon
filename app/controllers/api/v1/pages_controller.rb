@@ -12,7 +12,7 @@ class Api::V1::PagesController < Api::BaseController
   before_action :require_feature_enabled!
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories, :featured, :statistics]
   before_action -> { authorize_if_got_token! :read, :'read:accounts' }, only: [:show, :unlock]
-  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock]
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock, :statistics]
 
   before_action :require_user!, except: [:show, :unlock]
   before_action :set_page, only: [:show, :update, :destroy, :like, :unlike, :set_main, :unset_main, :set_series_main, :unset_series_main]

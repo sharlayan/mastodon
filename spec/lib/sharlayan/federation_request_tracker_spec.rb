@@ -97,5 +97,130 @@ RSpec.describe Sharlayan::FederationRequestTracker do
 
       expect(FederationRequestStatistic.find_by(domain: 'example.com').bucket_at).to eq(Time.utc(2026, 8, 4, 9))
     end
+
+    it 'keeps buffered observations available after the database write fails' do
+      described_class.track_deliver_success!('example.com')
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_raise(ActiveRecord::StatementInvalid, 'database unavailable')
+
+      expect { described_class.flush! }.to raise_error(ActiveRecord::StatementInvalid)
+
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_call_original
+      described_class.flush!
+
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').deliver_succeeded_count).to eq(1)
+      expect(described_class.flush!).to eq(0)
+    end
+
+    it 'preserves new observations received while a failed batch is waiting to be retried' do
+      described_class.track_deliver_success!('example.com')
+      allow(FederationRequestStatistic).to receive(:accumulate!) do
+        described_class.track_deliver_failure!('example.com')
+        described_class.track_inbox_received!('other.example')
+        raise ActiveRecord::StatementInvalid, 'database unavailable'
+      end
+
+      expect { described_class.flush! }.to raise_error(ActiveRecord::StatementInvalid)
+
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_call_original
+      described_class.flush!
+      described_class.flush!
+
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com'))
+        .to have_attributes(deliver_succeeded_count: 1, deliver_failed_count: 1)
+      expect(FederationRequestStatistic.find_by!(domain: 'other.example').inbox_received_count).to eq(1)
+      expect(described_class.flush!).to eq(0)
+    end
+
+    it 'does not count a batch twice when another flush runs while its database write is in progress' do
+      described_class.track_deliver_success!('example.com')
+      concurrent_flush_ran = false
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_wrap_original do |original, rows|
+        unless concurrent_flush_ran
+          concurrent_flush_ran = true
+          described_class.track_deliver_success!('example.com')
+          described_class.flush!
+        end
+
+        original.call(rows)
+      end
+
+      described_class.flush!
+      described_class.flush!
+
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').deliver_succeeded_count).to eq(2)
+      expect(described_class.flush!).to eq(0)
+    end
+
+    it 'keeps observations buffered when another flusher holds the bucket lock' do
+      described_class.track_deliver_success!('example.com')
+      allow(RedisLock).to receive(:acquire).and_yield(instance_double(RedisLock, acquired?: false))
+
+      expect(described_class.flush!).to eq(0)
+      expect(FederationRequestStatistic.count).to eq(0)
+
+      allow(RedisLock).to receive(:acquire).and_call_original
+      described_class.flush!
+
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').deliver_succeeded_count).to eq(1)
+    end
+
+    it 'does not count a batch twice when it is retried after the database write committed' do
+      described_class.track_deliver_success!('example.com')
+      allow(described_class).to receive(:discard_staged).and_raise(Redis::CannotConnectError)
+
+      expect { described_class.flush! }.to raise_error(Redis::CannotConnectError)
+
+      allow(described_class).to receive(:discard_staged).and_call_original
+
+      expect(described_class.flush!).to eq(0)
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').deliver_succeeded_count).to eq(1)
+      expect(redis.smembers(described_class::PENDING_KEY)).to be_empty
+    end
+
+    it 'retries a failed batch after its bucket has left the flush window' do
+      described_class.track_deliver_success!('example.com')
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_raise(ActiveRecord::StatementInvalid, 'database unavailable')
+
+      expect { described_class.flush! }.to raise_error(ActiveRecord::StatementInvalid)
+
+      staging_key = redis.smembers(described_class::PENDING_KEY).sole
+      expect(redis.ttl(staging_key)).to eq(-1)
+
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_call_original
+      travel_to(Time.utc(2026, 8, 6, 12, 30)) { described_class.flush! }
+
+      record = FederationRequestStatistic.find_by!(domain: 'example.com')
+      expect(record).to have_attributes(bucket_at: Time.utc(2026, 8, 4, 12), deliver_succeeded_count: 1)
+    end
+
+    it 'recovers a batch staged under the previous single staging key' do
+      key = "#{described_class::KEY_PREFIX}:#{Time.utc(2026, 8, 4, 12).to_i}"
+      redis.hset("#{key}:flush", 'example.com|inbox_received', 3)
+
+      expect(described_class.flush!).to eq(1)
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').inbox_received_count).to eq(3)
+      expect(redis.exists?("#{key}:flush")).to be false
+    end
+
+    it 'drains already staged batches after statistics are disabled' do
+      described_class.track_deliver_success!('example.com')
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_raise(ActiveRecord::StatementInvalid, 'database unavailable')
+      expect { described_class.flush! }.to raise_error(ActiveRecord::StatementInvalid)
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_call_original
+
+      Setting.federation_request_statistics_enabled = false
+      described_class.flush!
+
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').deliver_succeeded_count).to eq(1)
+      expect(redis.smembers(described_class::PENDING_KEY)).to be_empty
+    ensure
+      Setting.federation_request_statistics_enabled = true
+    end
+
+    it 'propagates Redis command failures while staging a bucket' do
+      allow(redis).to receive(:eval).and_raise(Redis::CommandError, 'READONLY You cannot write against a read only replica')
+
+      expect { described_class.flush! }.to raise_error(Redis::CommandError, /READONLY/)
+    end
   end
 end

@@ -4,7 +4,7 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
   include Api::ClipNotesRateLimit
 
   requires_write_scope :create, :update, :destroy, :add_note, :remove_note, :favorite, :unfavorite
-  requires_misskey_permission 'read:account', :index
+  requires_misskey_permission 'read:account', :index, :show, :notes, :by_user
   requires_misskey_permission 'write:account', :create, :update, :destroy, :add_note, :remove_note
   requires_misskey_permission 'read:clip-favorite', :my_favorites
   requires_misskey_permission 'write:clip-favorite', :favorite, :unfavorite
@@ -13,6 +13,7 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
 
   before_action :require_clips_enabled!
   before_action :require_user!, only: OWNER_ACTIONS
+  before_action :require_user_if_authenticated!, only: [:show, :notes, :by_user]
   before_action :set_clip, only: [:show, :update, :destroy, :add_note, :remove_note, :favorite]
   before_action :authorize_owner!, only: [:update, :destroy, :add_note, :remove_note]
   before_action :enforce_clip_notes_rate_limit!, only: [:notes]
@@ -124,7 +125,7 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
     statuses = statuses.where(id: ...params[:untilId]) if params[:untilId].present?
     statuses = statuses.where('statuses.id > ?', params[:sinceId]) if params[:sinceId].present?
     statuses = statuses.limit(Clip::STATUSES_LIMIT).to_a
-    statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? } unless clip.account_id == current_account&.id
+    statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? }
 
     statuses.first(pagination_limit)
   end

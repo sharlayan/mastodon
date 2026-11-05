@@ -107,6 +107,10 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     end
   end
 
+  def require_user_if_authenticated!
+    require_user! if bearer_token.present? || params[:i].present?
+  end
+
   def current_misskey_grant
     return @current_misskey_grant if defined?(@current_misskey_grant)
 

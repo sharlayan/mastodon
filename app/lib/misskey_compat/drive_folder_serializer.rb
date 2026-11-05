@@ -5,7 +5,9 @@ class MisskeyCompat::DriveFolderSerializer
     new.serialize(folder, detail: detail)
   end
 
-  def serialize(folder, detail: false)
+  def serialize(folder, detail: false, visited_ids: Set.new)
+    return unless visited_ids.add?(folder.id)
+
     result = {
       id: MisskeyCompat::MiId.encode(folder.id),
       createdAt: folder.created_at.iso8601,
@@ -14,7 +16,7 @@ class MisskeyCompat::DriveFolderSerializer
     }
 
     if detail
-      result[:parent] = folder.parent && serialize(folder.parent, detail: true)
+      result[:parent] = folder.parent && serialize(folder.parent, detail: true, visited_ids: visited_ids)
       result[:foldersCount] = folder.folders_count
       result[:filesCount] = folder.files_count
     end

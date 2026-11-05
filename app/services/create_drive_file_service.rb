@@ -55,7 +55,9 @@ class CreateDriveFileService < BaseService
 
   def update_existing_file(file)
     file.display_name = uploaded_name if file.custom_name.nil?
-    file.update!(@attributes.except(:file, :thumbnail).compact_blank)
+    attributes = @attributes.except(:file, :thumbnail).compact_blank
+    attributes[:sensitive] = false if @attributes[:sensitive] == false
+    file.update!(attributes)
     file
   end
 

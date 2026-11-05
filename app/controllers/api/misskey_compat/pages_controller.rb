@@ -10,13 +10,14 @@ class Api::MisskeyCompat::PagesController < Api::MisskeyCompat::BaseController
   PAGE_ASSOCIATIONS = [:account, { eye_catching_media_attachment: { drive_file: :custom_name } }].freeze
 
   requires_write_scope :create, :update, :destroy, :like, :unlike
-  requires_misskey_permission 'read:pages', :featured, :index
+  requires_misskey_permission 'read:pages', :featured, :index, :show, :by_user
   requires_misskey_permission 'read:page-likes', :likes
   requires_misskey_permission 'write:pages', :create, :update, :destroy
   requires_misskey_permission 'write:page-likes', :like, :unlike
 
   before_action :require_pages_enabled!
   before_action :require_user!, only: AUTHENTICATED_ACTIONS
+  before_action :require_user_if_authenticated!, only: [:show, :by_user]
   before_action :set_page, only: [:update, :destroy, :like, :unlike]
   before_action :authorize_owner!, only: [:update, :destroy]
 

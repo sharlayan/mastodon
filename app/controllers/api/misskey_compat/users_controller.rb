@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::UsersController < Api::MisskeyCompat::BaseController
+  requires_misskey_permission 'read:account', :show
+
+  before_action :require_user_if_authenticated!
+
   def show
     if params.key?(:userIds)
       return if rate_limited?(:misskey_users_show)

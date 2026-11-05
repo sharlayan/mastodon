@@ -121,6 +121,19 @@ function filterNotificationsForStatus(
   return groups;
 }
 
+function filterNotificationsForIds(
+  groups: NotificationGroupsState['groups'],
+  notificationIds: Set<string>,
+) {
+  groups = groups.filter(
+    (group) =>
+      group.type === 'gap' ||
+      !notificationIds.has(group.most_recent_notification_id),
+  );
+  mergeGaps(groups);
+  return groups;
+}
+
 function removeNotificationsForAccounts(
   state: NotificationGroupsState,
   accountIds: string[],
@@ -505,9 +518,12 @@ export const notificationGroupsReducer = createReducer<NotificationGroupsState>(
         removeNotificationsForStatus(state, action.payload.statusId);
       })
       .addCase(dismissNotificationsForStatuses.fulfilled, (state, action) => {
-        action.payload.statusIds.forEach((statusId) => {
-          removeNotificationsForStatus(state, statusId);
-        });
+        const notificationIds = new Set(action.payload.notificationIds);
+        state.groups = filterNotificationsForIds(state.groups, notificationIds);
+        state.pendingGroups = filterNotificationsForIds(
+          state.pendingGroups,
+          notificationIds,
+        );
       })
       .addCase(clearNotifications.pending, (state) => {
         state.groups = [];

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::BoardAnnouncementsController < Api::BaseController
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :show, :unread_count]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: :read
   before_action :require_user!
   before_action :check_enabled

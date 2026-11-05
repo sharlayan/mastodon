@@ -82,14 +82,14 @@ class NotifyService < BaseService
         WITH RECURSIVE ancestors(id, in_reply_to_id, mention_id, path, depth) AS (
             SELECT s.id, s.in_reply_to_id, m.id, ARRAY[s.id], 0
             FROM statuses s
-            LEFT JOIN mentions m ON m.silent = FALSE AND m.account_id = :sender_id AND m.status_id = s.id
+            LEFT JOIN mentions m ON m.silent = FALSE AND m.account_id = :sender_id AND m.status_id = s.id AND s.account_id = :recipient_id AND s.visibility = 3
             WHERE s.id = :id
           UNION ALL
             SELECT s.id, s.in_reply_to_id, m.id, ancestors.path || s.id, ancestors.depth + 1
             FROM ancestors
             JOIN statuses s ON s.id = ancestors.in_reply_to_id
             /* early exit if we already have a mention matching our requirements */
-            LEFT JOIN mentions m ON m.silent = FALSE AND m.account_id = :sender_id AND m.status_id = s.id AND s.account_id = :recipient_id
+            LEFT JOIN mentions m ON m.silent = FALSE AND m.account_id = :sender_id AND m.status_id = s.id AND s.account_id = :recipient_id AND s.visibility = 3
             WHERE ancestors.mention_id IS NULL AND NOT s.id = ANY(path) AND ancestors.depth < :depth_limit
         )
         SELECT COUNT(*)

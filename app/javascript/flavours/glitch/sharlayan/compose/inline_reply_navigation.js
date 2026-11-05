@@ -1,13 +1,16 @@
 import { openModal } from 'flavours/glitch/actions/modal';
 import { browserHistory } from 'flavours/glitch/components/router';
+import { isInlineComposeFeedRoute, normalizeInlineComposePath } from 'flavours/glitch/features/ui/components/inline_compose_routes';
 import { layoutFromWindow } from 'flavours/glitch/is_mobile';
 
 const detailedStatusPath = /^(?:\/deck)?\/(?:@[^/]+\/[^/]+|statuses\/[^/]+)\/?$/;
-const inlineComposeFeedPath = /^\/(?:home|public(?:\/local)?|lists\/[^/]+|antennas\/[^/]+|conversations|timelines\/direct)\/?$/;
+const conversationListPath = /^\/conversations\/?$/;
 
 const isSingleColumnInlineComposeRoute = ({ enabled, layout, pathname }) =>
   enabled && layout !== 'multi-column' && (
-    detailedStatusPath.test(pathname) || inlineComposeFeedPath.test(pathname)
+    detailedStatusPath.test(pathname) ||
+    isInlineComposeFeedRoute(pathname) ||
+    conversationListPath.test(normalizeInlineComposePath(pathname))
   );
 
 export const shouldExitDetailedForInlineCompose = ({

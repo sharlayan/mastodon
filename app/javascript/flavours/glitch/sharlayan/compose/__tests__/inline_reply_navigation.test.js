@@ -83,6 +83,30 @@ describe('inline compose reply navigation', () => {
   });
 
   it.each([
+    '/deck/home',
+    '/deck/public/local',
+    '/deck/timelines/antenna/123',
+    '/timelines/home',
+    '/timelines/public',
+    '/timelines/public/local',
+    '/timelines/antenna/123',
+    '/deck/conversations',
+  ])('applies reply navigation preferences on the supported feed alias %s', pathname => {
+    const options = { enabled: true, layout: 'mobile', pathname };
+
+    expect(shouldNavigateToComposePage({ ...options, disableMobilePopup: true })).toBe(true);
+    expect(shouldOpenInlineComposeReplyModal({ ...options, disableMobilePopup: false })).toBe(true);
+    expect(shouldOpenInlineComposeReplyModal({ ...options, layout: 'single-column', disablePopup: false })).toBe(true);
+  });
+
+  it('preserves the conversation list exception without treating a conversation thread as an inline feed', () => {
+    const options = { enabled: true, layout: 'single-column', disablePopup: false };
+
+    expect(shouldOpenInlineComposeReplyModal({ ...options, pathname: '/conversations' })).toBe(true);
+    expect(shouldOpenInlineComposeReplyModal({ ...options, pathname: '/conversations/123' })).toBe(false);
+  });
+
+  it.each([
     '/home',
     '/@alice/123',
   ])('navigates to the compose page when the popup is disabled on mobile: %s', (pathname) => {
