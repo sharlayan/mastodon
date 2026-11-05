@@ -25,34 +25,26 @@ module Sharlayan::Status::Reactions
         .group(:status_id, :name, :custom_emoji_id)
         .order(Arel.sql('MIN(status_reactions.created_at)').asc)
         .select(
-          [:status_id, :name, :custom_emoji_id, 'COUNT(*) as count'].tap do |values|
+          [:status_id, :name, :custom_emoji_id, 'COUNT(*) as count', 'ARRAY_AGG(status_reactions.account_id ORDER BY status_reactions.id) AS grouped_account_ids'].tap do |values|
             values << value_for_reaction_me_column(account_id)
           end
         ).to_a
 
       ActiveRecord::Associations::Preloader.new(records: records, associations: { custom_emoji: :local_counterpart }).call
-      preload_reaction_accounts(records, status_ids, excluded_account_ids)
+      preload_reaction_accounts(records)
       records.group_by(&:status_id)
     end
 
     private
 
-    def preload_reaction_accounts(records, status_ids, excluded_account_ids)
+    def preload_reaction_accounts(records)
       return if records.empty?
 
-      rows_scope = StatusReaction.where(status_id: status_ids)
-      rows_scope = rows_scope.where.not(account_id: excluded_account_ids) if excluded_account_ids.present?
-
-      grouped_account_ids = Hash.new { |hash, key| hash[key] = [] }
-      rows_scope.order(:id).pluck(:status_id, :name, :custom_emoji_id, :account_id).each do |status_id, name, custom_emoji_id, account_id|
-        grouped_account_ids[[status_id, name, custom_emoji_id]] << account_id
-      end
-
-      needed_ids = grouped_account_ids.values.flat_map { |ids| ids.first(StatusReaction::USERS_DISPLAY_LIMIT) }.uniq
+      needed_ids = records.flat_map { |record| record.grouped_account_ids.first(StatusReaction::USERS_DISPLAY_LIMIT) }.uniq
       accounts_by_id = Account.where(id: needed_ids).includes(:account_stat, user: :role).index_by(&:id)
 
       records.each do |record|
-        ids = grouped_account_ids[[record.status_id, record.name, record.custom_emoji_id]]
+        ids = record.grouped_account_ids
         record.preloaded_account_ids = ids
         record.preloaded_users = ids.first(StatusReaction::USERS_DISPLAY_LIMIT).filter_map { |id| accounts_by_id[id] }
       end
