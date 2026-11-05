@@ -38,15 +38,12 @@ class DriveFolder < ApplicationRecord
 
   private
 
-  def with_hierarchy_lock
-    return yield if account_id.blank?
+  def with_hierarchy_lock(&block)
+    return yield if account_id.blank? || parent_id.blank? || !parent_id_changed?
 
     self.class.transaction do
       Account.where(id: account_id).lock.pick(:id)
-      self.class.uncached do
-        association(:parent).reset if parent_id.present?
-        yield
-      end
+      self.class.uncached(&block)
     end
   end
 
@@ -60,13 +57,13 @@ class DriveFolder < ApplicationRecord
     return if parent_id.blank?
 
     visited = Set.new
-    node = parent
-    while node
-      if node.id == id || !visited.add?(node.id)
+    ancestor_id = parent_id
+    while ancestor_id
+      if ancestor_id == id || !visited.add?(ancestor_id)
         errors.add(:parent_id, :invalid)
         break
       end
-      node = node.parent
+      ancestor_id = self.class.where(id: ancestor_id).pick(:parent_id)
     end
   end
 end

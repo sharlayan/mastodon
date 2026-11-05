@@ -53,6 +53,17 @@ RSpec.describe DriveFolder do
     end
   end
 
+  describe 'parent association' do
+    it 'keeps the parent instance assigned by the caller through validation' do
+      parent = described_class.create!(account: account, name: 'Parent')
+      folder = described_class.new(account: account, name: 'Child')
+      folder.parent = parent
+
+      expect(folder).to be_valid
+      expect(folder.parent).to equal(parent)
+    end
+  end
+
   describe 'validation boundaries' do
     it 'reports a missing account as a validation error' do
       folder = described_class.new(name: 'Root')
@@ -78,6 +89,25 @@ RSpec.describe DriveFolder do
     after do
       account.destroy!
       other_account.destroy!
+    end
+
+    it 'does not wait for the account lock when the parent is unchanged' do
+      folder = described_class.create!(account: account, name: 'Root')
+      thread = nil
+
+      account.with_lock do
+        thread = Thread.new do
+          ApplicationRecord.connection_pool.with_connection do
+            described_class.find(folder.id).update(name: 'Renamed')
+          end
+        end
+
+        expect(Timeout.timeout(2) { thread.value }).to be true
+      end
+
+      expect(folder.reload.name).to eq('Renamed')
+    ensure
+      thread&.join
     end
 
     it 'does not block another account while the first account is locked' do
