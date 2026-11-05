@@ -4,10 +4,8 @@ import type { EmojiProps, PickerProps } from 'emoji-mart';
 
 import { assetHost } from '@/flavours/glitch/utils/config';
 
-import {
-  NimblePicker as PickerRaw,
-  NimbleEmoji as EmojiRaw,
-} from '../emoji_mart_lazyload';
+import EmojiRaw from '../emoji_mart_lazyload/components/emoji/nimble-emoji';
+import PickerRaw from '../emoji_mart_lazyload/components/picker/nimble-picker';
 
 import { EMOJI_MODE_NATIVE } from './constants';
 import EmojiData from './emoji_data.json';
