@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_074100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_085300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1501,6 +1501,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_074100) do
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.string "visibility", default: "public", null: false
+    t.bigint "referenced_media_attachment_ids", default: [], null: false, array: true
     t.index ["account_id", "name"], name: "index_pages_on_account_id_and_name", unique: true
     t.index ["account_id"], name: "index_pages_on_account_id"
     t.index ["account_id"], name: "index_pages_on_account_id_where_is_main", unique: true, where: "is_main"
@@ -1508,6 +1509,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_074100) do
     t.index ["likes_count"], name: "index_pages_on_likes_count"
     t.index ["page_series_id", "series_position", "id"], name: "index_pages_on_series_order"
     t.index ["page_series_id"], name: "index_pages_on_page_series_id"
+    t.index ["referenced_media_attachment_ids"], name: "index_pages_on_referenced_media_attachment_ids", using: :gin
     t.index ["visibility"], name: "index_pages_on_visibility"
   end
 

@@ -27,6 +27,7 @@
 #  account_id                       :bigint(8)        not null
 #  eye_catching_media_attachment_id :bigint(8)
 #  page_series_id                   :bigint(8)
+#  referenced_media_attachment_ids  :bigint(8)        default([]), not null, is an Array
 #
 
 class Page < ApplicationRecord
@@ -77,6 +78,7 @@ class Page < ApplicationRecord
   before_validation :clear_unused_password
   before_validation :clear_main_unless_public
   before_validation :recompute_text_characters_count, if: :should_recompute_text_characters_count?
+  before_save :refresh_referenced_media_attachment_ids, if: -> { new_record? || will_save_change_to_content? }
   after_update :clear_previous_series_main
   before_destroy :ensure_text_characters_count
   after_create_commit :record_created_writing_statistics
@@ -267,6 +269,26 @@ class Page < ApplicationRecord
 
     PageSeries.where(main_page_id: id).update_all(main_page_id: nil)
     association(:page_series).reset
+  end
+
+  def refresh_referenced_media_attachment_ids
+    ids = Set.new
+    pending = [content]
+
+    until pending.empty?
+      node = pending.pop
+
+      case node
+      when Hash
+        file_id = node['fileId'] || node[:fileId]
+        ids << file_id.to_i if file_id.is_a?(String) && file_id.match?(/\A\d{1,18}\z/)
+        pending.concat(node.values)
+      when Array
+        pending.concat(node)
+      end
+    end
+
+    self.referenced_media_attachment_ids = ids.to_a.sort
   end
 
   def attached_media_ids(blocks = content)

@@ -9,11 +9,7 @@ module Sharlayan::MediaAttachmentExtensions
       FROM pages
       WHERE pages.account_id = media_attachments.account_id
         AND (pages.eye_catching_media_attachment_id = media_attachments.id
-         OR jsonb_path_exists(
-              pages.content,
-              '$.** ? (@.fileId == $media_id)',
-              jsonb_build_object('media_id', to_jsonb(media_attachments.id::text))
-            ))
+         OR pages.referenced_media_attachment_ids @> ARRAY[media_attachments.id])
     )
     OR EXISTS (
       SELECT 1
