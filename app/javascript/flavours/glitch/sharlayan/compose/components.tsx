@@ -181,6 +181,7 @@ export const SharlayanComposeControls = ({
             onScheduleChange={onScheduleChange}
             disabled={controlState.scheduleDisabled}
             isEditing={controlState.scheduleEditing}
+            isEditingScheduled={isEditingScheduled}
             iconOnly={false}
           />
         )}
