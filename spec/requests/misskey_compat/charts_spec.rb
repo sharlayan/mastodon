@@ -40,6 +40,17 @@ RSpec.describe 'Misskey-compat charts' do
     expect(second).to_not have_received(:generate)
   end
 
+  it 'regenerates only the expired newest bucket with the same totals' do
+    Fabricate(:status, account: Fabricate(:account))
+    first = MisskeyCompat::ChartService.new(name: :notes, span: 'hour', limit: 3).call
+    second = MisskeyCompat::ChartService.new(name: :notes, span: 'hour', limit: 3)
+    Rails.cache.delete(second.send(:cache_key, second.send(:buckets).first))
+    allow(second).to receive(:generate_newest).and_call_original
+
+    expect(second.call).to eq(first)
+    expect(second).to have_received(:generate_newest).with(1)
+  end
+
   it 'supports GET and validates the common chart parameters' do
     get '/api/charts/users', params: { span: 'minute', limit: 501 }
 

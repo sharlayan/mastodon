@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 class MisskeyCompat::ChartService
+  include Redisable
+
   CACHE_VERSION = 1
   CURRENT_CACHE_TTL = 5.minutes
   FINALIZED_CACHE_TTL = 30.days
   MAX_LIMIT = 500
+  GENERATION_LOCK_TTL = 2.minutes.to_i
   SPANS = { 'hour' => 1.hour, 'day' => 1.day }.freeze
   QUALIFIED_COLUMNS = {
     ['accounts', :created_at] => 'accounts.created_at',
@@ -105,23 +108,55 @@ class MisskeyCompat::ChartService
     return transpose(buckets.map { zero_record }) if @suppressed
 
     keys = buckets.index_with { |bucket| cache_key(bucket) }
-    cached = Rails.cache.read_multi(*keys.values)
-    records = keys.transform_values { |key| cached[key] }
+    records = read_records(keys)
 
     if records.value?(nil)
-      generated = generate
-      missing = records.select { |_bucket, record| record.nil? }.keys
-      finalized, current = missing.partition { |bucket| bucket.end_at <= Time.current.utc }
-
-      write_records(generated, finalized, FINALIZED_CACHE_TTL)
-      write_records(generated, current, CURRENT_CACHE_TTL)
-      missing.each { |bucket| records[bucket] = generated.fetch(bucket) }
+      with_generation_lock do
+        records = read_records(keys)
+        fill_missing_records(records) if records.value?(nil)
+      end
     end
 
     transpose(records.values)
   end
 
   private
+
+  def read_records(keys)
+    cached = Rails.cache.read_multi(*keys.values)
+    keys.transform_values { |key| cached[key] }
+  end
+
+  def fill_missing_records(records)
+    missing = records.select { |_bucket, record| record.nil? }.keys
+    generated = generate_newest(buckets.rindex { |bucket| records[bucket].nil? } + 1)
+    finalized, current = missing.partition { |bucket| bucket.end_at <= Time.current.utc }
+
+    write_records(generated, finalized, FINALIZED_CACHE_TTL)
+    write_records(generated, current, CURRENT_CACHE_TTL)
+    missing.each { |bucket| records[bucket] = generated.fetch(bucket) }
+  end
+
+  def with_generation_lock
+    with_redis do |connection|
+      RedisLock.acquire(redis: connection, key: "lock:#{generation_lock_key}", autorelease: GENERATION_LOCK_TTL) { |_lock| yield }
+    end
+  end
+
+  def generation_lock_key
+    group = @group.nil? ? '-' : Digest::SHA256.hexdigest(@group.to_s)
+    "misskey_compat:chart:v#{CACHE_VERSION}:#{@name}:#{@span}:#{group}:#{@latest.to_i}#{cache_key_suffix}"
+  end
+
+  def generate_newest(size)
+    all_buckets = buckets
+    @buckets = all_buckets.first(size)
+    @range = @bucket_by_timestamp = nil
+    generate
+  ensure
+    @buckets = all_buckets
+    @range = @bucket_by_timestamp = nil
+  end
 
   def parse_limit(value)
     return 30 if value.nil?
