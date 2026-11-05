@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'timeout'
 
 RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
   let(:user) { Fabricate(:user) }
@@ -293,6 +294,30 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
 
       expect(response.parsed_body.dig(:parent, :id)).to eq(mi_id(parent.id))
       expect(response.parsed_body.dig(:parent, :parent, :id)).to eq(mi_id(grandparent.id))
+      expect(response.parsed_body.dig(:parent, :parent, :parent)).to be_nil
+    end
+
+    it 'truncates a self-referencing parent in folder details' do
+      folder = account.drive_folders.create!(name: 'Self parent')
+      folder.update_column(:parent_id, folder.id)
+
+      Timeout.timeout(2) { rpc_post 'drive/folders/show', folderId: mi_id(folder.id) }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq(mi_id(folder.id))
+      expect(response.parsed_body[:parent]).to be_nil
+    end
+
+    it 'truncates a repeated ancestor in cyclic folder details' do
+      first = account.drive_folders.create!(name: 'First')
+      second = account.drive_folders.create!(name: 'Second', parent: first)
+      first.update_column(:parent_id, second.id)
+
+      Timeout.timeout(2) { rpc_post 'drive/folders/show', folderId: mi_id(first.id) }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.dig(:parent, :id)).to eq(mi_id(second.id))
+      expect(response.parsed_body.dig(:parent, :parent)).to be_nil
     end
 
     it 'rejects deletion of a folder with a child folder without moving it' do
