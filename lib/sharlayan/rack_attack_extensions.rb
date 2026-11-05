@@ -11,8 +11,11 @@ module Sharlayan
       def bypasses_rate_limit?
         return @bypasses_rate_limit if defined?(@bypasses_rate_limit)
 
-        @bypasses_rate_limit = if Setting.rate_limit_bypass_enabled
-                                 authenticated_user&.can_extra?(:bypass_rate_limit) || false
+        user_id = authenticated_user_id
+        @bypasses_rate_limit = if Setting.rate_limit_bypass_enabled && user_id
+                                 Rails.cache.fetch("rack-attack/rate-limit-bypass/#{user_id}", expires_in: 1.minute) do
+                                   User.includes(:role).find_by(id: user_id)&.can_extra?(:bypass_rate_limit) || false
+                                 end
                                else
                                  false
                                end
@@ -33,12 +36,6 @@ module Sharlayan
           user = User.includes(:role).find_by(id: user_id)
           user ? UserRole::RATE_LIMITS.keys.index_with { |name| user.role.rate_limit_for(name) } : defaults
         end
-      end
-
-      def authenticated_user
-        return @authenticated_user if defined?(@authenticated_user)
-
-        @authenticated_user = User.includes(:role).find_by(id: authenticated_user_id)
       end
     end
 
