@@ -69,6 +69,18 @@ RSpec.describe 'Misskey-compat HTTP timeline contract' do
     end
   end
 
+  it 'keeps scanning past a small batch of filtered notes' do
+    with_file = Fabricate(:status, account: account)
+    Fabricate(:media_attachment, account: account, status: with_file)
+    Array.new(Api::MisskeyCompat::NotesController::TIMELINE_MIN_BATCH_SIZE + 5) { Fabricate(:status, account: account) }
+
+    %w(timeline local-timeline).each do |timeline|
+      post "/api/notes/#{timeline}", params: { i: token, withFiles: true, limit: 1 }, as: :json
+
+      expect(response.parsed_body.pluck(:id)).to eq([MisskeyCompat::MiId.encode(with_file.id)])
+    end
+  end
+
   it 'excludes pure renotes without removing ordinary notes' do
     original = Fabricate(:status, account: Fabricate(:account))
     normal = Fabricate(:status, account: account)
