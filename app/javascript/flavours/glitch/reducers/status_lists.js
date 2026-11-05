@@ -62,7 +62,6 @@ const initialState = ImmutableMap({
   reactions: ImmutableMap({
     next: null,
     loaded: false,
-    isLoading: false,
     requestId: null,
     items: ImmutableOrderedSet(),
   }),

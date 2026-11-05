@@ -9,6 +9,10 @@ import {
 import statusLists from '../status_lists';
 
 describe('reaction list response ownership', () => {
+  it('does not report an unfetched reaction list as settled', () => {
+    expect(statusLists(undefined, { type: '@@INIT' }).getIn(['reactions', 'isLoading'])).toBeUndefined();
+  });
+
   it.each([
     REACTED_STATUSES_FETCH_SUCCESS,
     REACTED_STATUSES_FETCH_FAIL,
@@ -43,6 +47,6 @@ describe('reaction list response ownership', () => {
     expect(result.getIn(['reactions', 'items']).isEmpty()).toBe(true);
     expect(result.getIn(['reactions', 'next'])).toBeNull();
     expect(result.getIn(['reactions', 'requestId'])).toBeNull();
-    expect(result.getIn(['reactions', 'isLoading'])).toBe(false);
+    expect(result.getIn(['reactions', 'isLoading'])).toBeUndefined();
   });
 });

@@ -147,11 +147,5 @@ export function fetchReactionSummary() {
 }
 
 export function setReactionFilter(name) {
-  return (dispatch) => {
-    dispatch({
-      type: REACTION_FILTER_SET,
-      name,
-    });
-    dispatch(fetchReactedStatuses(name));
-  };
+  return fetchReactedStatuses(name ?? null);
 }
