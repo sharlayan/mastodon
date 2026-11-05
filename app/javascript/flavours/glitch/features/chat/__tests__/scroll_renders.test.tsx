@@ -1,0 +1,314 @@
+import type { ComponentProps } from 'react';
+
+import { IntlProvider } from 'react-intl';
+
+import { Route, Router } from 'react-router-dom';
+
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from '@testing-library/react';
+import { createMemoryHistory } from 'history';
+
+import { IdentityContext } from 'flavours/glitch/identity_context';
+import type * as InitialState from 'flavours/glitch/initial_state';
+
+import { Chat } from '../index';
+import { emitChatStreamEvent } from '../stream';
+
+const api = vi.hoisted(() => ({
+  get: vi.fn(),
+  post: vi.fn(),
+  patch: vi.fn(),
+  delete: vi.fn(),
+}));
+// What the room draws for a message and for the box to write in, counted each time they are drawn.
+const drawn = vi.hoisted(() => ({ messages: 0, composer: 0 }));
+vi.mock('flavours/glitch/api', () => ({ default: () => api }));
+vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
+  ...(await importOriginal<typeof InitialState>()),
+  me: 'me',
+}));
+vi.mock('flavours/glitch/store', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useAppDispatch: () => vi.fn(),
+  useAppSelector: () => false,
+}));
+vi.mock('flavours/glitch/components/dropdown_menu', () => ({
+  Dropdown: () => null,
+}));
+vi.mock('flavours/glitch/components/column/header', () => ({
+  ColumnHeader: () => <header />,
+}));
+vi.mock(
+  'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container',
+  () => ({ default: () => null }),
+);
+vi.mock('@unhead/react/helmet', () => ({ Helmet: () => null }));
+vi.mock('flavours/glitch/components/avatar', () => ({
+  Avatar: () => {
+    drawn.messages += 1;
+    return <div className='account__avatar' />;
+  },
+}));
+vi.mock('react-textarea-autosize', () => ({
+  default: ({
+    minRows: _minRows,
+    maxRows: _maxRows,
+    ...props
+  }: ComponentProps<'textarea'> & { minRows?: number; maxRows?: number }) => {
+    drawn.composer += 1;
+    return <textarea {...props} />;
+  },
+}));
+
+const me = { id: 'me', acct: 'alice', display_name: 'Alice' };
+const other = { id: 'other', acct: 'bob', display_name: 'Bob' };
+const ROOM = 'A';
+const JUMP = 'Jump to newest message';
+const READ = `/api/v1/chat/conversations/${ROOM}/read`;
+
+const messageFrom = (index: number, account = index % 2 ? me : other) => ({
+  id: `message-${index}`,
+  conversation_id: ROOM,
+  content: `Message ${index}`,
+  created_at: '2026-11-02T00:00:00Z',
+  edited_at: null,
+  deleted_at: null,
+  reply_to_id: null,
+  account,
+  reactions: [],
+  media_attachments: [],
+});
+const room = {
+  id: ROOM,
+  type: 'direct',
+  title: null,
+  description: null,
+  unread: false,
+  muted: false,
+  archived: false,
+  current_role: 'member',
+  accounts: [me, other],
+  last_message: null,
+};
+const responses = (url: string) => {
+  if (url === '/api/v1/chat/conversations') return [room];
+  if (url === `/api/v1/chat/conversations/${ROOM}`) return room;
+  if (url === '/api/v1/chat/invitations') return [];
+  if (url === '/api/v1/chat/settings')
+    return { max_attachments: 4, federation_enabled: true };
+  if (url.endsWith('/messages'))
+    return Array.from({ length: 6 }, (_, index) => messageFrom(index));
+  throw new Error(`Unexpected GET ${url}`);
+};
+
+const scrollIntoView = vi.fn();
+const placedAt = (bottom: number) => {
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+    bottom: window.innerHeight + bottom,
+  } as DOMRect);
+  fireEvent.scroll(window);
+};
+const scrollUp = () => {
+  placedAt(5000);
+};
+const scrollToBottom = () => {
+  placedAt(0);
+};
+const openRoom = async () => {
+  const history = createMemoryHistory({ initialEntries: [`/chat/${ROOM}`] });
+  render(
+    <IntlProvider locale='en'>
+      <IdentityContext.Provider
+        value={{
+          signedIn: true,
+          permissions: 0,
+          accountId: 'me',
+          disabledAccountId: undefined,
+        }}
+      >
+        <Router history={history}>
+          <Route path='/chat/:conversationId?/:view?'>
+            <Chat />
+          </Route>
+        </Router>
+      </IdentityContext.Provider>
+    </IntlProvider>,
+  );
+  await screen.findByText('Message 5');
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+};
+const receive = (id: string, account = other) => {
+  act(() => {
+    emitChatStreamEvent({
+      event: 'chat.message',
+      payload: { ...messageFrom(0, account), id, content: `Live ${id}` },
+    });
+  });
+};
+const readsPosted = () =>
+  api.post.mock.calls.filter(([url]) => url === READ).length;
+// Runs what the reader does, and gives back how many times the room drew its messages and its box meanwhile.
+const drawnWhile = (action: () => void) => {
+  const before = { ...drawn };
+  action();
+  return {
+    messages: drawn.messages - before.messages,
+    composer: drawn.composer - before.composer,
+  };
+};
+const NOTHING = { messages: 0, composer: 0 };
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  drawn.messages = 0;
+  drawn.composer = 0;
+  api.get.mockImplementation((url: string) =>
+    Promise.resolve({ data: responses(url) }),
+  );
+  api.post.mockResolvedValue({ data: {} });
+  scrollIntoView.mockClear();
+  Element.prototype.scrollIntoView = scrollIntoView;
+});
+
+afterEach(() => {
+  cleanup();
+  Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  vi.restoreAllMocks();
+});
+
+describe('Scrolling in a room', () => {
+  it('draws the messages at all, or the counts below would prove nothing', async () => {
+    await openRoom();
+
+    expect(drawn.messages).toBeGreaterThan(0);
+    expect(drawn.composer).toBeGreaterThan(0);
+  });
+
+  it('shows the way back without drawing the messages or the box again', async () => {
+    await openRoom();
+
+    expect(drawnWhile(scrollUp)).toEqual(NOTHING);
+
+    expect(screen.getByRole('button', { name: JUMP })).toBeTruthy();
+  });
+
+  it('hides the way back without drawing the messages or the box again', async () => {
+    await openRoom();
+    scrollUp();
+
+    expect(drawnWhile(scrollToBottom)).toEqual(NOTHING);
+
+    expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+  });
+
+  it('draws nothing again over several trips, or while staying on one side', async () => {
+    await openRoom();
+
+    const trips = drawnWhile(() => {
+      for (let trip = 0; trip < 4; trip++) {
+        scrollUp();
+        scrollUp();
+        scrollToBottom();
+        scrollToBottom();
+      }
+    });
+
+    expect(trips).toEqual(NOTHING);
+  });
+
+  it('tells about a message that arrives while reading older ones, and draws it', async () => {
+    await openRoom();
+    scrollUp();
+
+    const arriving = drawnWhile(() => {
+      receive('live');
+    });
+
+    expect(screen.getByText('New messages')).toBeTruthy();
+    expect(screen.getByText('Live live')).toBeTruthy();
+    expect(arriving.messages).toBeGreaterThan(0);
+  });
+
+  it('does not count a message as read while reading older ones', async () => {
+    await openRoom();
+    scrollUp();
+    const before = readsPosted();
+
+    receive('live');
+    scrollUp();
+
+    expect(readsPosted()).toBe(before);
+  });
+
+  it('clears the notice and reads the room on returning to the bottom, drawing nothing again', async () => {
+    await openRoom();
+    scrollUp();
+    receive('live');
+    const before = readsPosted();
+
+    expect(drawnWhile(scrollToBottom)).toEqual(NOTHING);
+
+    expect(screen.queryByText('New messages')).toBeNull();
+    expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+    expect(readsPosted()).toBe(before + 1);
+  });
+
+  it('clears the notice, reads the room and goes down with the button, drawing nothing again', async () => {
+    await openRoom();
+    scrollUp();
+    receive('live');
+    const before = readsPosted();
+    scrollIntoView.mockClear();
+
+    expect(
+      drawnWhile(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'New messages' }));
+      }),
+    ).toEqual(NOTHING);
+
+    expect(screen.queryByText('New messages')).toBeNull();
+    expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+    expect(readsPosted()).toBe(before + 1);
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the notice while still reading older ones', async () => {
+    await openRoom();
+    scrollUp();
+    receive('live');
+
+    scrollUp();
+
+    expect(screen.getByText('New messages')).toBeTruthy();
+  });
+
+  it('goes down for a message of mine while reading older ones', async () => {
+    await openRoom();
+    scrollUp();
+    scrollIntoView.mockClear();
+
+    receive('mine', me);
+
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(screen.queryByText('New messages')).toBeNull();
+  });
+
+  it('starts a room with no way back, when moving on from one that had it', async () => {
+    await openRoom();
+    scrollUp();
+    receive('live');
+    cleanup();
+
+    await openRoom();
+
+    expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+    expect(screen.queryByText('New messages')).toBeNull();
+  });
+});

@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import type {
   ChangeEvent,
@@ -791,6 +792,59 @@ const scrollToNewest = (end: HTMLElement | null) => {
   }
 };
 
+// The button back to the newest message comes and goes while the reader scrolls. Kept in the room's own state, that
+// would draw every message and the box to write in again each time, which a slow phone shows as a stutter.
+const createJumpButtonState = () => {
+  let current = { away: false, unseen: false };
+  const listeners = new Set<() => void>();
+
+  return {
+    get: () => current,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    update: (next: { away?: boolean; unseen?: boolean }) => {
+      const away = next.away ?? current.away;
+      const unseen = next.unseen ?? current.unseen;
+      if (away === current.away && unseen === current.unseen) return;
+      current = { away, unseen };
+      listeners.forEach((listener) => {
+        listener();
+      });
+    },
+  };
+};
+
+const JumpToNewestButton: React.FC<{
+  state: ReturnType<typeof createJumpButtonState>;
+  onClick: () => void;
+}> = ({ state, onClick }) => {
+  const intl = useIntl();
+  const { away, unseen } = useSyncExternalStore(state.subscribe, state.get);
+
+  if (!away) return null;
+
+  return (
+    <button
+      type='button'
+      className={classNames('chat-native__jump', {
+        'chat-native__jump--unseen': unseen,
+      })}
+      aria-label={intl.formatMessage(
+        unseen ? messages.newMessages : messages.jumpToNewest,
+      )}
+      title={intl.formatMessage(messages.jumpToNewest)}
+      onClick={onClick}
+    >
+      <Icon id='arrow-down' icon={ArrowDownwardIcon} />
+      {unseen && <span>{intl.formatMessage(messages.newMessages)}</span>}
+    </button>
+  );
+};
+
 export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { conversationId } = useParams<{ conversationId?: string }>();
 
@@ -828,8 +882,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [accountResults, setAccountResults] = useState<ChatAccount[]>([]);
   const [accountSearchStatus, setAccountSearchStatus] =
     useState<AccountSearchStatus>('idle');
-  const [awayFromNewest, setAwayFromNewest] = useState(false);
-  const [hasUnseenMessages, setHasUnseenMessages] = useState(false);
+  const [jumpButton] = useState(createJumpButtonState);
   const [groupTitle, setGroupTitle] = useState('');
   const [groupAccountQuery, setGroupAccountQuery] = useState('');
   const [groupAccountResults, setGroupAccountResults] = useState<ChatAccount[]>(
@@ -1260,7 +1313,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (
         fetched.some((item) => item.account.id !== me && !shownIds.has(item.id))
       ) {
-        setHasUnseenMessages(true);
+        jumpButton.update({ unseen: true });
         unreadWhileAway.current = true;
       }
       return;
@@ -1276,6 +1329,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     advanceContinuousUpTo,
     applyTombstone,
     conversationId,
+    jumpButton,
     openingReadRecovered,
     updateConversations,
   ]);
@@ -1413,7 +1467,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               : [...current, message],
           );
           if (!followingNewestRef.current && fromOther) {
-            setHasUnseenMessages(true);
+            jumpButton.update({ unseen: true });
             unreadWhileAway.current = true;
           }
           if (value.id && fromOther && seen) {
@@ -1582,6 +1636,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       applyTombstone,
       conversationId,
       history,
+      jumpButton,
       loadConversations,
       loadInvitations,
       openingReadRecovered,
@@ -1645,10 +1700,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         end.getBoundingClientRect().bottom - window.innerHeight <
         FOLLOW_NEWEST_DISTANCE;
       followingNewestRef.current = following;
-      setAwayFromNewest(!following);
       if (following) {
-        setHasUnseenMessages(false);
+        jumpButton.update({ away: false, unseen: false });
         markSeenOnReturn();
+      } else {
+        jumpButton.update({ away: true });
       }
     };
     window.addEventListener('scroll', trackPosition, {
@@ -1669,7 +1725,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       window.removeEventListener('scroll', trackPosition, { capture: true });
       observer?.disconnect();
     };
-  }, [conversationId, conversationMissing, markSeenOnReturn, roomView]);
+  }, [
+    conversationId,
+    conversationMissing,
+    jumpButton,
+    markSeenOnReturn,
+    roomView,
+  ]);
 
   const jumpTargetLoaded = Boolean(
     jumpTargetId && messagesById.has(jumpTargetId),
@@ -1711,11 +1773,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleJumpToNewest = useCallback(() => {
     followingNewestRef.current = true;
-    setAwayFromNewest(false);
-    setHasUnseenMessages(false);
+    jumpButton.update({ away: false, unseen: false });
     markSeenOnReturn();
     scrollToNewest(messagesEndRef.current);
-  }, [markSeenOnReturn]);
+  }, [jumpButton, markSeenOnReturn]);
 
   const handleReplyQuoteClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -3369,26 +3430,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 onMouseDown={handleComposerMouseDown}
               >
                 {errorNotice}
-                {awayFromNewest && (
-                  <button
-                    type='button'
-                    className={classNames('chat-native__jump', {
-                      'chat-native__jump--unseen': hasUnseenMessages,
-                    })}
-                    aria-label={intl.formatMessage(
-                      hasUnseenMessages
-                        ? messages.newMessages
-                        : messages.jumpToNewest,
-                    )}
-                    title={intl.formatMessage(messages.jumpToNewest)}
-                    onClick={handleJumpToNewest}
-                  >
-                    <Icon id='arrow-down' icon={ArrowDownwardIcon} />
-                    {hasUnseenMessages && (
-                      <span>{intl.formatMessage(messages.newMessages)}</span>
-                    )}
-                  </button>
-                )}
+                <JumpToNewestButton
+                  state={jumpButton}
+                  onClick={handleJumpToNewest}
+                />
                 {conversation?.archived && (
                   <div className='chat-native__notice'>
                     <span>
