@@ -8,6 +8,17 @@ class Sharlayan::FederationRequestTracker
   FLUSH_WINDOW = 6.hours
   FLUSH_LOCK_TTL = 15.minutes.to_i
   FIELD_SEPARATOR = '|'
+  PENDING_KEY = "#{KEY_PREFIX}:pending".freeze
+  STAGING_KEY_PATTERN = /\A#{Regexp.escape(KEY_PREFIX)}:(\d+):flush:\h+\z/
+  STAGE_SCRIPT = <<~LUA
+    if redis.call('EXISTS', KEYS[1]) == 0 then
+      return 0
+    end
+    redis.call('RENAME', KEYS[1], KEYS[2])
+    redis.call('PERSIST', KEYS[2])
+    redis.call('SADD', KEYS[3], KEYS[2])
+    return 1
+  LUA
   METRICS = {
     deliver_succeeded: :deliver_succeeded_count,
     deliver_failed: :deliver_failed_count,
@@ -36,7 +47,8 @@ class Sharlayan::FederationRequestTracker
     def flush!(now: Time.now.utc)
       return 0 unless enabled?
 
-      bucket_times(now).sum { |bucket_at| flush_bucket(bucket_at) }
+      bucket_times(now).each { |bucket_at| stage_bucket(bucket_at) }
+      redis.smembers(PENDING_KEY).sum { |staging_key| flush_staged(staging_key) }
     end
 
     def normalize_domain(url_or_domain)
@@ -70,38 +82,51 @@ class Sharlayan::FederationRequestTracker
       end
     end
 
-    def flush_bucket(bucket_at)
+    def stage_bucket(bucket_at)
       key = key_at(bucket_at)
+
+      [key, "#{key}:flush"].each do |source_key|
+        redis.eval(STAGE_SCRIPT, keys: [source_key, "#{key}:flush:#{SecureRandom.hex(8)}", PENDING_KEY])
+      end
+    end
+
+    def flush_staged(staging_key)
       result = 0
 
       with_redis do |connection|
-        RedisLock.acquire(redis: connection, key: "lock:#{key}", autorelease: FLUSH_LOCK_TTL, retry: false) do |lock|
-          result = flush_staged_bucket(bucket_at, key) if lock.acquired?
+        RedisLock.acquire(redis: connection, key: "lock:#{staging_key}", autorelease: FLUSH_LOCK_TTL, retry: false) do |lock|
+          result = apply_staged(staging_key) if lock.acquired?
         end
       end
 
       result
     end
 
-    def flush_staged_bucket(bucket_at, key)
-      staging_key = "#{key}:flush"
+    def apply_staged(staging_key)
+      bucket_at = staged_bucket_at(staging_key)
+      rows = bucket_at ? build_rows(bucket_at, redis.hgetall(staging_key)) : []
 
-      unless redis.exists?(staging_key)
-        begin
-          redis.rename(key, staging_key)
-        rescue Redis::CommandError => e
-          raise unless e.message.start_with?('ERR no such key')
+      applied = FederationRequestStatistic.transaction do
+        next false unless FederationRequestFlushBatch.claim!(staging_key)
 
-          return 0
-        end
+        FederationRequestStatistic.accumulate!(rows)
+        true
       end
 
-      counters = redis.hgetall(staging_key)
+      discard_staged(staging_key)
+      applied ? rows.size : 0
+    end
 
-      rows = build_rows(bucket_at, counters)
-      FederationRequestStatistic.accumulate!(rows)
-      redis.del(staging_key)
-      rows.size
+    def discard_staged(staging_key)
+      redis.multi do |transaction|
+        transaction.del(staging_key)
+        transaction.srem(PENDING_KEY, staging_key)
+      end
+    end
+
+    def staged_bucket_at(staging_key)
+      match = STAGING_KEY_PATTERN.match(staging_key)
+      Time.at(match[1].to_i).utc if match
     end
 
     def build_rows(bucket_at, counters)

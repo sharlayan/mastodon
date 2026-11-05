@@ -164,8 +164,46 @@ RSpec.describe Sharlayan::FederationRequestTracker do
       expect(FederationRequestStatistic.find_by!(domain: 'example.com').deliver_succeeded_count).to eq(1)
     end
 
-    it 'propagates Redis command failures other than an absent source buffer' do
-      allow(redis).to receive(:rename).and_raise(Redis::CommandError, 'READONLY You cannot write against a read only replica')
+    it 'does not count a batch twice when it is retried after the database write committed' do
+      described_class.track_deliver_success!('example.com')
+      allow(described_class).to receive(:discard_staged).and_raise(Redis::CannotConnectError)
+
+      expect { described_class.flush! }.to raise_error(Redis::CannotConnectError)
+
+      allow(described_class).to receive(:discard_staged).and_call_original
+
+      expect(described_class.flush!).to eq(0)
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').deliver_succeeded_count).to eq(1)
+      expect(redis.smembers(described_class::PENDING_KEY)).to be_empty
+    end
+
+    it 'retries a failed batch after its bucket has left the flush window' do
+      described_class.track_deliver_success!('example.com')
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_raise(ActiveRecord::StatementInvalid, 'database unavailable')
+
+      expect { described_class.flush! }.to raise_error(ActiveRecord::StatementInvalid)
+
+      staging_key = redis.smembers(described_class::PENDING_KEY).sole
+      expect(redis.ttl(staging_key)).to eq(-1)
+
+      allow(FederationRequestStatistic).to receive(:accumulate!).and_call_original
+      travel_to(Time.utc(2026, 8, 6, 12, 30)) { described_class.flush! }
+
+      record = FederationRequestStatistic.find_by!(domain: 'example.com')
+      expect(record).to have_attributes(bucket_at: Time.utc(2026, 8, 4, 12), deliver_succeeded_count: 1)
+    end
+
+    it 'recovers a batch staged under the previous single staging key' do
+      key = "#{described_class::KEY_PREFIX}:#{Time.utc(2026, 8, 4, 12).to_i}"
+      redis.hset("#{key}:flush", 'example.com|inbox_received', 3)
+
+      expect(described_class.flush!).to eq(1)
+      expect(FederationRequestStatistic.find_by!(domain: 'example.com').inbox_received_count).to eq(3)
+      expect(redis.exists?("#{key}:flush")).to be false
+    end
+
+    it 'propagates Redis command failures while staging a bucket' do
+      allow(redis).to receive(:eval).and_raise(Redis::CommandError, 'READONLY You cannot write against a read only replica')
 
       expect { described_class.flush! }.to raise_error(Redis::CommandError, /READONLY/)
     end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_074100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1019,6 +1019,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.index ["source_domain", "target_domain"], name: "index_federation_instance_edges_on_source_and_target", unique: true, nulls_not_distinct: true
     t.index ["target_domain"], name: "index_federation_instance_edges_on_target_domain"
     t.index ["updated_at"], name: "index_federation_instance_edges_on_updated_at"
+  end
+
+  create_table "federation_request_flush_batches", force: :cascade do |t|
+    t.string "batch_key", null: false
+    t.datetime "created_at", null: false
+    t.index ["batch_key"], name: "index_federation_request_flush_batches_on_batch_key", unique: true
+    t.index ["created_at"], name: "index_federation_request_flush_batches_on_created_at"
   end
 
   create_table "federation_request_statistics", force: :cascade do |t|
