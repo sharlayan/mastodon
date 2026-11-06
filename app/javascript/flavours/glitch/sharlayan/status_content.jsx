@@ -1,20 +1,7 @@
 import { FormattedMessage } from 'react-intl';
 
 import { EmojiInfoTooltip } from '../components/emoji_info_tooltip';
-import { MfmRenderer, hasSensitiveFoldTags, hasAnyMfmFn, MFM_FOLD_LENGTH_THRESHOLD } from '../components/mfm';
-
-const mfmDomParser = new DOMParser();
-
-function extractPlainTextFromHtml(html) {
-  const doc = mfmDomParser.parseFromString(html, 'text/html');
-  for (const br of doc.querySelectorAll('br')) {
-    br.replaceWith('\n');
-  }
-  for (const p of doc.querySelectorAll('p')) {
-    p.after('\n');
-  }
-  return doc.body.textContent || '';
-}
+import { MfmRenderer, mfmPlainTextFromHtml, shouldFoldMfm } from '../components/mfm';
 
 export const sharlayanStatusContentState = (state) => ({
   localMfmEnabled: state.getIn(['meta', 'mfm_enabled']) !== false,
@@ -29,10 +16,10 @@ export const getSharlayanMfmSourceText = (status, content) => {
   const translation = status.get('translation');
 
   if (translation && !translation.get('isLoading')) {
-    return extractPlainTextFromHtml(content);
+    return mfmPlainTextFromHtml(content);
   }
 
-  return status.get('mfm_text') ?? extractPlainTextFromHtml(content);
+  return status.get('mfm_text') ?? mfmPlainTextFromHtml(content);
 };
 
 export const renderSharlayanMfmContent = (status, { content, language, mfmEnabled, localMfmEnabled, localMfmAnimations, localMfmFoldMode }) => {
@@ -44,12 +31,7 @@ export const renderSharlayanMfmContent = (status, { content, language, mfmEnable
   const mfmFoldMode = localMfmFoldMode ?? 'sensitive';
 
   const mfmSourceText = getSharlayanMfmSourceText(status, content);
-  const hasMfmFn = hasAnyMfmFn(mfmSourceText);
-  const shouldFoldMfm = (
-    (mfmFoldMode === 'all' && hasMfmFn) ||
-    (mfmFoldMode === 'sensitive' && hasSensitiveFoldTags(mfmSourceText)) ||
-    mfmSourceText.length > MFM_FOLD_LENGTH_THRESHOLD
-  );
+  const foldMfm = shouldFoldMfm(mfmSourceText, mfmFoldMode);
 
   const renderer = (
     <MfmRenderer text={mfmSourceText} emojis={status.get('emojis')} animationsEnabled={mfmAnimationsEnabled} />
@@ -57,7 +39,7 @@ export const renderSharlayanMfmContent = (status, { content, language, mfmEnable
 
   return (
     <div className='status__content__text status__content__text--visible translate' lang={language}>
-      {shouldFoldMfm ? (
+      {foldMfm ? (
         <details className='status__content__mfm-fold'>
           <summary>
             <FormattedMessage id='status.mfm_fold_expand' defaultMessage='Expand MFM post' />

@@ -86,11 +86,15 @@ export const MfmRenderer: React.FC<MfmRendererProps> = ({
     setHovered(false);
   }, []);
 
+  const allowedTags = isProfile ? MFM_PROFILE_ALLOWED_TAGS : MFM_ALLOWED_TAGS;
+  const renderedNodes = useMemo(
+    () => (ast ? renderNodes(ast, allowedTags, animationsEnabled) : null),
+    [ast, allowedTags, animationsEnabled],
+  );
+
   if (!ast) {
     return <span>{text}</span>;
   }
-
-  const allowedTags = isProfile ? MFM_PROFILE_ALLOWED_TAGS : MFM_ALLOWED_TAGS;
 
   return (
     <CustomEmojiProvider emojis={emojis}>
@@ -101,7 +105,7 @@ export const MfmRenderer: React.FC<MfmRendererProps> = ({
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          {renderNodes(ast, allowedTags, animationsEnabled)}
+          {renderedNodes}
         </AnimateEmojiProvider>
       </MfmHoverContext.Provider>
     </CustomEmojiProvider>
