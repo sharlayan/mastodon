@@ -1639,7 +1639,9 @@ describe('Chat room layout', () => {
     );
 
     expect(history.location.pathname).toBe('/chat/A/settings');
-    expect(await screen.findByPlaceholderText('Group name')).toBeTruthy();
+    expect(
+      (await screen.findByPlaceholderText('Group name')).getAttribute('name'),
+    ).toBe('search');
     expect(screen.queryByText('Private message A')).toBeNull();
     expect(screen.queryByPlaceholderText('Write a message')).toBeNull();
 

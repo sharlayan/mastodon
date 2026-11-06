@@ -168,6 +168,13 @@ describe('Chat account pictures', () => {
       await screen.findByRole('button', { name: 'Create a group' }),
     );
 
+    expect(screen.getByPlaceholderText('Group name').getAttribute('name')).toBe(
+      'search',
+    );
+    expect(
+      screen.getByPlaceholderText('Search for an account').getAttribute('name'),
+    ).toBe('search');
+
     await expectPictureWhileChoosingBob();
   });
 
@@ -184,6 +191,7 @@ describe('Chat account pictures', () => {
       await screen.findByRole('button', { name: 'Search messages' }),
     );
     const search = screen.getByPlaceholderText('Search messages');
+    expect(search.getAttribute('name')).toBe('search');
     fireEvent.change(search, { target: { value: 'word' } });
     fireEvent.submit(search.closest('form') as HTMLFormElement);
 

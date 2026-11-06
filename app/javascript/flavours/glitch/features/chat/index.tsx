@@ -3377,6 +3377,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 onSubmit={handleGroupEditSubmit}
               >
                 <input
+                  name='search'
+                  autoComplete='off'
                   value={
                     groupEdit?.conversationId === conversation.id
                       ? groupEdit.title
@@ -3883,6 +3885,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 <form className='chat-native__new' onSubmit={handleGroupSubmit}>
                   <div className='chat-native__form-row'>
                     <input
+                      name='search'
+                      autoComplete='off'
                       value={groupTitle}
                       onChange={handleGroupTitleChange}
                       placeholder={intl.formatMessage(messages.groupTitle)}
@@ -3890,6 +3894,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   </div>
                   <div className='chat-native__form-row'>
                     <input
+                      name='search'
+                      autoComplete='off'
                       value={groupAccountQuery}
                       onChange={handleGroupAccountQueryChange}
                       placeholder={intl.formatMessage(messages.accountSearch)}
@@ -4006,6 +4012,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     <input
                       ref={searchInputRef}
                       type='search'
+                      name='search'
+                      autoComplete='off'
                       value={searchQuery}
                       onChange={handleSearchChange}
                       placeholder={intl.formatMessage(messages.search)}
