@@ -77,6 +77,15 @@ export interface PopoverProps {
    */
   closeOnClickOutside?: boolean;
   /**
+   * Keep the whole popover on what can be seen of the screen (the visual
+   * viewport), which also shrinks when a phone shows its keyboard. The room
+   * it has is given to it as `--popover-available-height` and
+   * `--popover-available-width`, for it to shrink to. When there is little
+   * room beside the reference, it covers the reference instead.
+   * Off by default.
+   */
+  fitViewport?: boolean;
+  /**
    * Render prop that must return the popover element.
    */
   children: (value: {
@@ -107,6 +116,35 @@ export interface PopoverChildProps {
   'data-popover-escaped'?: boolean;
 }
 
+const VIEWPORT_PADDING = 8;
+// Less room than this beside the reference, and the popover covers the reference rather than shrink further.
+const ROOM_BESIDE_REFERENCE = 200;
+
+const fitViewportMiddleware = [
+  flipMiddleware({ padding: VIEWPORT_PADDING }),
+  size({
+    padding: VIEWPORT_PADDING,
+    apply({ availableWidth, availableHeight, elements }) {
+      const screenHeight =
+        (window.visualViewport?.height ?? window.innerHeight) -
+        VIEWPORT_PADDING * 2;
+      const height =
+        availableHeight >= ROOM_BESIDE_REFERENCE
+          ? availableHeight
+          : screenHeight;
+      elements.floating.style.setProperty(
+        '--popover-available-height',
+        `${Math.max(0, Math.floor(height))}px`,
+      );
+      elements.floating.style.setProperty(
+        '--popover-available-width',
+        `${Math.max(0, Math.floor(availableWidth))}px`,
+      );
+    },
+  }),
+  shift({ padding: VIEWPORT_PADDING, crossAxis: true }),
+];
+
 export const Popover: React.FC<PopoverProps> = ({
   isOpen,
   onClose,
@@ -119,6 +157,7 @@ export const Popover: React.FC<PopoverProps> = ({
   container,
   matchReferenceWidth = false,
   closeOnClickOutside = true,
+  fitViewport = false,
   children,
 }) => {
   const {
@@ -139,8 +178,9 @@ export const Popover: React.FC<PopoverProps> = ({
     middleware: [
       offsetMiddleware(offset),
       inline(),
-      shift(),
-      flip ? flipMiddleware() : null,
+      ...(fitViewport
+        ? fitViewportMiddleware
+        : [shift(), flip ? flipMiddleware() : null]),
       matchReferenceWidth
         ? size({
             apply({ rects, elements }) {
@@ -166,6 +206,22 @@ export const Popover: React.FC<PopoverProps> = ({
     },
     isOpen && closeOnClickOutside,
   );
+
+  // A phone's keyboard shrinks only what can be seen, which moves nothing that autoUpdate watches.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!isOpen || !fitViewport || !viewport) {
+      return () => null;
+    }
+
+    viewport.addEventListener('resize', update);
+    viewport.addEventListener('scroll', update);
+
+    return () => {
+      viewport.removeEventListener('resize', update);
+      viewport.removeEventListener('scroll', update);
+    };
+  }, [isOpen, fitViewport, update]);
 
   // Close when pressing Escape
   useEffect(() => {

@@ -103,6 +103,51 @@ describe('EmojiPickerSizeObserver', () => {
     expect(onResize).toHaveBeenCalledWith({ width: 300, height: 350 });
   });
 
+  describe('when the screen holds the picker below the size it was given', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('neither remembers nor reports that size', () => {
+      const onResize = vi.fn();
+      const store = new EmojiPickerSizeObserver(onResize, () => false);
+
+      store.observe({});
+      store.observer.callback([{ contentRect: { width: 300, height: 150 } }]);
+      vi.runAllTimers();
+
+      expect(onResize).not.toHaveBeenCalled();
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    });
+
+    it('still remembers a size the reader chose', () => {
+      const onResize = vi.fn();
+      const store = new EmojiPickerSizeObserver(onResize, () => true);
+
+      store.observe({});
+      store.observer.callback([{ contentRect: { width: 340, height: 280 } }]);
+      vi.runAllTimers();
+
+      expect(onResize).toHaveBeenCalledWith({ width: 340, height: 280 });
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual({ width: 340, height: 280 });
+    });
+
+    it('keeps every size when nothing is said about the screen', () => {
+      const store = new EmojiPickerSizeObserver(() => undefined);
+
+      store.observe({});
+      store.observer.callback([{ contentRect: { width: 300, height: 150 } }]);
+      vi.runAllTimers();
+
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual({ width: 300, height: 150 });
+    });
+  });
+
   it('disconnects on dispose', () => {
     const store = new EmojiPickerSizeObserver(() => undefined);
 

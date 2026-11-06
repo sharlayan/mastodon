@@ -43,7 +43,13 @@ vi.mock('flavours/glitch/components/column/header', () => ({
 vi.mock(
   'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container',
   () => ({
-    default: () => <button type='button' aria-label='React' />,
+    default: ({ fitToViewport }: { fitToViewport?: boolean }) => (
+      <button
+        type='button'
+        aria-label='React'
+        data-fit-viewport={fitToViewport ? 'yes' : undefined}
+      />
+    ),
   }),
 );
 vi.mock('flavours/glitch/components/media_gallery', () => ({
@@ -213,6 +219,14 @@ describe('Message toolbar', () => {
     await mountRoom([message('1', 'Hello')]);
 
     expect(buttonsOf('1')).toEqual(['Reply', 'React', 'Copy']);
+  });
+
+  // On a short phone screen the picker opened beside a message in the middle ran off the bottom of the screen.
+  it('asks the reaction picker to stay on the screen', async () => {
+    await mountRoom([message('1', 'Hello')]);
+
+    const react = toolbarOf('1')?.querySelector('button[aria-label="React"]');
+    expect(react?.getAttribute('data-fit-viewport')).toBe('yes');
   });
 
   it('keeps delete last on my own message', async () => {

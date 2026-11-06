@@ -189,4 +189,13 @@ body:not([class*='skin-mastodon-modern']) {
       height: 100%;
     }
   }
+
+  // Only where it is asked for (reactions in a chat room): never larger than the room the screen has, the list
+  // scrolling inside instead. The 5px is the menu's own top margin.
+  &__menu--fit {
+    min-width: min(322px, var(--popover-available-width, 322px));
+    max-width: min(1024px, var(--popover-available-width, 1024px));
+    min-height: min(300px, calc(var(--popover-available-height, 305px) - 5px));
+    max-height: min(768px, calc(var(--popover-available-height, 773px) - 5px));
+  }
 }

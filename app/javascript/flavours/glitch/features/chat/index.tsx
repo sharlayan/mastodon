@@ -270,7 +270,7 @@ const ChatEmojiPicker: React.FC<{
     [messageId, onPick],
   );
 
-  return <EmojiPickerDropdown onPickEmoji={handlePick} />;
+  return <EmojiPickerDropdown onPickEmoji={handlePick} fitToViewport />;
 };
 
 const conversationName = (conversation: ChatConversation) => {
