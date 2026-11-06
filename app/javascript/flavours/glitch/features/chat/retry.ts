@@ -115,6 +115,19 @@ export const createRetries = (
   const cooldowns = sharedCooldowns ?? new Map<string, number>();
   let hidden = hiddenAtFirst;
 
+  const rememberLimit = (key: string, error: unknown, tried = 0) => {
+    const response = (
+      error as { response?: { status?: number; headers?: unknown } } | null
+    )?.response;
+    if (response?.status !== 429) return false;
+    const asked = waitAskedFor(response.headers, Date.now());
+    const fallback =
+      RETRY_DELAYS_MS[Math.min(tried, RETRY_DELAYS_MS.length - 1)] ?? 0;
+    const until = Date.now() + Math.max(asked ?? fallback, 0);
+    cooldowns.set(key, Math.max(cooldowns.get(key) ?? 0, until));
+    return true;
+  };
+
   const settle = (key: string, entry: Planned, attempt: Promise<unknown>) => {
     void attempt
       .then((value) => {
@@ -135,21 +148,7 @@ export const createRetries = (
         entry.resolveFirst = undefined;
         entry.rejectFirst = undefined;
         entry.running = false;
-        entry.rateLimited =
-          (error as { response?: { status?: number } } | null)?.response
-            ?.status === 429;
-        if (entry.rateLimited) {
-          const response = (
-            error as { response?: { headers?: unknown } } | null
-          )?.response;
-          const asked = waitAskedFor(response?.headers, Date.now());
-          const fallback =
-            RETRY_DELAYS_MS[
-              Math.min(entry.tried, RETRY_DELAYS_MS.length - 1)
-            ] ?? 0;
-          const until = Date.now() + Math.max(asked ?? fallback, 0);
-          cooldowns.set(key, Math.max(cooldowns.get(key) ?? 0, until));
-        }
+        entry.rateLimited = rememberLimit(key, error, entry.tried);
         if (plans.get(key) !== entry) return;
         entry.again = false;
         entry.failed?.(error);
@@ -279,6 +278,9 @@ export const createRetries = (
       try {
         if (!(await nextPage()) || !pageScopes.has(scope)) return undefined;
         return await run(nextPage);
+      } catch (error) {
+        rememberLimit(key, error);
+        throw error;
       } finally {
         pageScopes.delete(scope);
         scope.pageWait?.cancel();

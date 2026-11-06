@@ -515,14 +515,27 @@ const ChatMessageMedia: React.FC<{
   );
 };
 
-const waitForMedia = async (media: ChatMedia): Promise<ChatMedia> => {
+const waitForMedia = async (
+  media: ChatMedia,
+  signal: AbortSignal,
+): Promise<ChatMedia> => {
   if (media.url) return media;
+  const cancelled = () => signal.aborted;
 
   for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (cancelled()) throw new Error('Upload no longer needed');
     const response = await api().get<ChatMedia>(`/api/v1/media/${media.id}`);
+    if (cancelled()) throw new Error('Upload no longer needed');
     if (response.data.url) return response.data;
     await new Promise((resolve) => {
-      window.setTimeout(resolve, 1000);
+      const done = () => {
+        window.clearTimeout(timer);
+        signal.removeEventListener('abort', done);
+        resolve(undefined);
+      };
+      const timer = window.setTimeout(done, 1000);
+      signal.addEventListener('abort', done, { once: true });
+      if (signal.aborted) done();
     });
   }
 
@@ -940,7 +953,13 @@ export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const intl = useIntl();
   const history = useHistory();
-  const location = useLocation<{ chatMessageId?: string } | undefined>();
+  const location = useLocation<
+    | {
+        chatMessageId?: string;
+        chatCreatedConversation?: ChatConversation;
+      }
+    | undefined
+  >();
   const [jumpTargetId, setJumpTargetId] = useState<string | null>(
     location.state?.chatMessageId ?? null,
   );
@@ -952,7 +971,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const creating = routeId === 'new';
   const conversationId = creating ? undefined : routeId;
   const { signedIn } = useIdentity();
-  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [conversations, setConversations] = useState<ChatConversation[]>(() => {
+    const created = location.state?.chatCreatedConversation;
+    return created && created.id === conversationId ? [created] : [];
+  });
   const [nextConversationId, setNextConversationId] = useState<string | null>(
     null,
   );
@@ -1008,6 +1030,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [sendError, setSendError] = useState<string | null>(null);
   const [readingError, setReadingError] = useState(false);
   const isMounted = useRef(true);
+  const uploadAbort = useRef<AbortController | null>(null);
   const [draftBeforeEdit, setDraftBeforeEdit] = useState<{
     text: string;
     media: ChatMedia[];
@@ -1041,6 +1064,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, []);
 
   const knownConversationIds = useRef<Set<string> | null>(null);
+  const conversationVersions = useRef(new Map<string, number>());
   useEffect(() => {
     if (conversationsLoaded)
       knownConversationIds.current = new Set(
@@ -1275,15 +1299,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   useEffect(() => {
+    const controller = new AbortController();
+    uploadAbort.current = controller;
     isMounted.current = true;
     return () => {
       isMounted.current = false;
+      controller.abort();
     };
   }, []);
 
   const navigateIfActive = useCallback(
-    (path: string) => {
-      if (isMounted.current) history.push(path);
+    (path: string, created?: ChatConversation) => {
+      if (isMounted.current)
+        history.push(
+          path,
+          created ? { chatCreatedConversation: created } : undefined,
+        );
     },
     [history],
   );
@@ -1338,24 +1369,32 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         updates.reduce((items, update) => update(items), loaded),
       );
       setConversationsLoaded(true);
+      readRecovered('conversations');
       return true;
     },
-    [conversationId],
+    [conversationId, readRecovered],
   );
 
-  const loadConversationsForAction = useCallback(
-    () => retries.runPages('conversations', loadConversations),
-    [loadConversations, retries],
-  );
-
-  const refreshConversations = useCallback(() => {
-    loadConversationsForAction().catch(() => {
-      setError('load');
-    });
-  }, [loadConversationsForAction]);
+  const loadConversationsForAction = useCallback(async () => {
+    try {
+      return await retries.runPages('conversations', loadConversations);
+    } catch {
+      if (!isMounted.current) return undefined;
+      readFailed('conversations');
+      void retries
+        .keepTrying('conversations', loadConversations, {
+          failed: () => {
+            readFailed('conversations');
+          },
+        })
+        .catch(() => undefined);
+      return undefined;
+    }
+  }, [loadConversations, readFailed, retries]);
 
   const refreshConversation = useCallback(
     (id: string) => {
+      const version = conversationVersions.current.get(id) ?? 0;
       // Bursts share a plan, and the scheduler checks the page before a follow-up.
       void retries
         .keepTrying(`conversation:${id}`, async () => {
@@ -1363,17 +1402,19 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             const { data } = await api().get<ChatConversation>(
               `/api/v1/chat/conversations/${id}`,
             );
+            if ((conversationVersions.current.get(id) ?? 0) !== version) return;
             updateConversations((current) => upsertConversation(current, data));
           } catch (loadError) {
-            if (isNotFound(loadError))
-              updateConversations((current) =>
-                current.filter((item) => item.id !== id),
-              );
-            else if (
+            if (
               (loadError as { response?: { status?: number } } | null)?.response
                 ?.status === 429
             )
               throw loadError;
+            if ((conversationVersions.current.get(id) ?? 0) !== version) return;
+            if (isNotFound(loadError))
+              updateConversations((current) =>
+                current.filter((item) => item.id !== id),
+              );
           }
         })
         .catch(() => undefined);
@@ -1800,6 +1841,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             ),
           );
         } else if (event === 'chat.conversation_delete') {
+          if (value.conversation_id) {
+            const id = value.conversation_id;
+            conversationVersions.current.set(
+              id,
+              (conversationVersions.current.get(id) ?? 0) + 1,
+            );
+            retries.cancel(`conversation:${id}`);
+          }
           updateConversations((current) =>
             current.filter((item) => item.id !== value.conversation_id),
           );
@@ -1890,7 +1939,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       markRead,
       readRecovered,
       refreshConversation,
-      refreshConversations,
       resyncMessages,
       retries,
       updateConversations,
@@ -2103,8 +2151,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           account_ids: [directAccount.id],
         },
       );
-      await loadConversationsForAction();
-      navigateIfActive(`/chat/${response.data.id}`);
+      navigateIfActive(`/chat/${response.data.id}`, response.data);
       setDirectAccount(null);
       setDirectAccountQuery('');
     } catch {
@@ -2112,7 +2159,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     } finally {
       setLoading(false);
     }
-  }, [directAccount, loadConversationsForAction, navigateIfActive]);
+  }, [directAccount, navigateIfActive]);
 
   const hasOtherContent =
     media.length > 0 ||
@@ -2455,8 +2502,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           account_ids: groupAccounts.map((account) => account.id),
         },
       );
-      await loadConversationsForAction();
-      navigateIfActive(`/chat/${response.data.id}`);
+      navigateIfActive(`/chat/${response.data.id}`, response.data);
       setGroupTitle('');
       setGroupAccountQuery('');
       setGroupAccounts([]);
@@ -2465,7 +2511,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     } finally {
       setLoading(false);
     }
-  }, [groupAccounts, groupTitle, loadConversationsForAction, navigateIfActive]);
+  }, [groupAccounts, groupTitle, navigateIfActive]);
 
   const handleGroupSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
@@ -2484,6 +2530,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setError('too_many_attachments');
         return;
       }
+      const signal = uploadAbort.current?.signal;
+      if (!signal || signal.aborted) return;
       setError(null);
       setUploading(true);
       void Promise.all(
@@ -2491,17 +2539,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           const body = new FormData();
           body.append('file', file);
           const response = await api().post<ChatMedia>('/api/v2/media', body);
-          return waitForMedia(response.data);
+          return waitForMedia(response.data, signal);
         }),
       )
         .then((uploaded) => {
+          if (signal.aborted) return;
           setMedia((current) => [...current, ...uploaded]);
         })
         .catch(() => {
-          setError('upload');
+          if (!signal.aborted) setError('upload');
         })
         .finally(() => {
-          setUploading(false);
+          if (!signal.aborted) setUploading(false);
         });
     },
     [chatSettings, media.length],

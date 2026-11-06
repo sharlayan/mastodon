@@ -607,3 +607,28 @@ describe('Paged reads following a user action', () => {
     expect(run).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Rate limits from a user action follow-up', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+  it('records a 429 for the next background plan without hiding the error', async () => {
+    const shared = new Map<string, number>();
+    const first = createRetries(false, shared);
+    const error = Object.assign(
+      new Error('rate limited'),
+      refused(429, { 'retry-after': '20' }),
+    );
+    await expect(
+      first.runPages('conversations', () => Promise.reject(error)),
+    ).rejects.toEqual(error);
+    first.stop();
+    const second = createRetries(false, shared);
+    const run = vi.fn(() => Promise.resolve());
+    void second.keepTrying('conversations', run);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(run).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(1);
+    second.stop();
+  });
+});
