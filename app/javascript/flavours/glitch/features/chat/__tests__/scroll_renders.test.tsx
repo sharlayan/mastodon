@@ -184,6 +184,70 @@ afterEach(() => {
 });
 
 describe('Scrolling in a room', () => {
+  it('finishes opening at the actual bottom of the chat scrollport', async () => {
+    scrollIntoView.mockImplementation(function (this: HTMLElement) {
+      const scrollport = this.closest('.chat-native') as HTMLElement;
+      scrollport.style.overflowY = 'auto';
+      Object.defineProperty(scrollport, 'clientHeight', {
+        configurable: true,
+        value: 400,
+      });
+      Object.defineProperty(scrollport, 'scrollHeight', {
+        configurable: true,
+        value: 1000,
+      });
+      scrollport.scrollTop = 530;
+    });
+    await openRoom();
+    expect(
+      (document.querySelector('.chat-native') as HTMLElement).scrollTop,
+    ).toBe(1000);
+  });
+
+  it('realigns when the visible viewport resizes only while following the newest message', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = new EventTarget();
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    try {
+      await openRoom();
+      scrollIntoView.mockClear();
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      expect(scrollIntoView).toHaveBeenCalled();
+      scrollUp();
+      scrollIntoView.mockClear();
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('does not move the scrollport when a message arrives while reading older ones', async () => {
+    await openRoom();
+    const scrollport = document.querySelector('.chat-native') as HTMLElement;
+    scrollport.style.overflowY = 'auto';
+    Object.defineProperty(scrollport, 'clientHeight', {
+      configurable: true,
+      value: 400,
+    });
+    Object.defineProperty(scrollport, 'scrollHeight', {
+      configurable: true,
+      value: 1000,
+    });
+    scrollport.scrollTop = 100;
+    scrollUp();
+    receive('older-reading');
+    expect(scrollport.scrollTop).toBe(100);
+  });
+
   it('draws the messages at all, or the counts below would prove nothing', async () => {
     await openRoom();
 

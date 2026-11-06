@@ -1188,3 +1188,11 @@
     }
   }
 }
+
+// Match the mobile compose field size so iOS does not zoom text inputs on focus.
+.columns-area--mobile .chat-native {
+  input:not([type='file']),
+  textarea {
+    font-size: 16px;
+  }
+}

@@ -801,8 +801,32 @@ const usesTouchKeyboard = () =>
   window.matchMedia('(pointer: coarse)').matches;
 
 const scrollToNewest = (end: HTMLElement | null) => {
-  if (typeof end?.scrollIntoView === 'function') {
+  if (!end) return;
+  if (typeof end.scrollIntoView === 'function') {
     end.scrollIntoView({ block: 'end' });
+  }
+
+  // A sticky composer can leave the end visible before the scrollport reaches its bottom.
+  // Use the room's own scrollport, or the document in the single-column layout.
+  let parent = end.parentElement;
+  while (
+    parent &&
+    parent !== document.body &&
+    parent !== document.documentElement
+  ) {
+    const overflow = window.getComputedStyle(parent).overflowY;
+    if (
+      (overflow === 'auto' || overflow === 'scroll') &&
+      parent.scrollHeight > parent.clientHeight
+    ) {
+      parent.scrollTop = parent.scrollHeight;
+      return;
+    }
+    parent = parent.parentElement;
+  }
+  if (document.scrollingElement) {
+    document.scrollingElement.scrollTop =
+      document.scrollingElement.scrollHeight;
   }
 };
 
@@ -2291,6 +2315,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       capture: true,
       passive: true,
     });
+    const onViewportResize = () => {
+      if (followingNewestRef.current) scrollToNewest(end);
+    };
+    window.addEventListener('resize', onViewportResize);
+    window.visualViewport?.addEventListener('resize', onViewportResize);
 
     const observer =
       typeof ResizeObserver === 'function'
@@ -2303,6 +2332,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     return () => {
       window.removeEventListener('scroll', trackPosition, { capture: true });
+      window.removeEventListener('resize', onViewportResize);
+      window.visualViewport?.removeEventListener('resize', onViewportResize);
       observer?.disconnect();
     };
   }, [
