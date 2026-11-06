@@ -105,6 +105,50 @@ RSpec.describe StatusReaction do
       expect(record.users.size).to eq(StatusReaction::USERS_DISPLAY_LIMIT)
       expect(record.account_ids.size).to eq(3 + StatusReaction::USERS_DISPLAY_LIMIT)
     end
+
+    it 'keeps the earliest reactors in reaction order when capping users' do
+      extra = Fabricate.times(StatusReaction::USERS_DISPLAY_LIMIT, :account)
+      extra.each { |reactor| described_class.create!(account: reactor, status: status, name: '👍') }
+
+      record = Status.reaction_groups_map([status.id])[status.id].first
+
+      expect(record.users).to eq((reactors + extra).first(StatusReaction::USERS_DISPLAY_LIMIT))
+      expect(record.account_ids).to eq((reactors + extra).map { |reactor| reactor.id.to_s })
+    end
+
+    it 'keeps account ids separate for each reaction group' do
+      other_reactor = Fabricate(:account)
+      described_class.create!(account: other_reactor, status: status, name: '🎉')
+
+      groups = Status.reaction_groups_map([status.id])[status.id].index_by(&:name)
+
+      expect(groups['👍'].account_ids).to match_array(reactors.map { |reactor| reactor.id.to_s })
+      expect(groups['🎉'].account_ids).to eq([other_reactor.id.to_s])
+    end
+
+    it 'preloads the account associations read by the reaction user serializer' do
+      local_reactor = Fabricate(:user).account
+      described_class.create!(account: local_reactor, status: status, name: '🎉')
+
+      record = Status.reaction_groups_map([status.id])[status.id].find { |group| group.name == '🎉' }
+      user = record.users.first
+
+      expect(user.association(:account_stat)).to be_loaded
+      expect(user.association(:user)).to be_loaded
+      expect(user.user.association(:role)).to be_loaded
+    end
+  end
+
+  describe '#users without batch preloading' do
+    it 'preloads the account associations read by the reaction user serializer' do
+      local_reactor = Fabricate(:user).account
+      reaction = described_class.create!(account: local_reactor, status: status, name: '👍')
+      user = described_class.find(reaction.id).users.to_a.first
+
+      expect(user.association(:account_stat)).to be_loaded
+      expect(user.association(:user)).to be_loaded
+      expect(user.user.association(:role)).to be_loaded
+    end
   end
 
   describe 'cache counters' do

@@ -54,6 +54,16 @@ RSpec.describe HomeFeed do
         expect(described_class.new(account, { exclude_quotes: true }).get(10).map(&:id)).to_not include(4)
         expect(described_class.new(account, { exclude_replies: true }).get(10).map(&:id)).to_not include(5)
       end
+
+      it 'preloads the status and reblog accounts used by home filtering' do
+        statuses = described_class.new(account).get(10)
+        reblog = statuses.find { |status| status.id == 2 }
+
+        expect(statuses).to all(satisfy { |status| status.association(:account).loaded? })
+        expect(reblog.association(:reblog)).to be_loaded
+        expect(reblog.reblog.association(:account)).to be_loaded
+        expect(reblog.reblog.association(:tags)).to be_loaded
+      end
     end
 
     context 'when feed is being generated' do
