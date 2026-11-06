@@ -51,6 +51,34 @@ RSpec.describe 'Federation universe' do
     expect(response.parsed_body['edges'].first).to include('source' => 'source-250.example')
   end
 
+  it 'reuses the graph snapshot until an edge changes' do
+    edge = FederationInstanceEdge.create!(source_domain: 'near.example', target_domain: 'far.example', reblogs_count: 1)
+    allow(Sharlayan::FederationUniverse).to receive(:new).and_call_original
+
+    get '/api/v1/federation_universe', headers: headers
+    get '/api/v1/federation_universe', headers: headers
+
+    expect(Sharlayan::FederationUniverse).to have_received(:new).once
+
+    travel 1.minute do
+      edge.update!(reblogs_count: 5)
+      get '/api/v1/federation_universe', headers: headers
+    end
+
+    expect(Sharlayan::FederationUniverse).to have_received(:new).twice
+    expect(response.parsed_body['edges']).to contain_exactly(include('source' => 'near.example', 'target' => 'far.example', 'interactions' => 5))
+  end
+
+  it 'rebuilds the graph snapshot when an edge is added' do
+    FederationInstanceEdge.create!(source_domain: 'near.example', target_domain: 'far.example', reblogs_count: 1)
+    get '/api/v1/federation_universe', headers: headers
+
+    FederationInstanceEdge.create!(source_domain: 'near.example', target_domain: 'other.example', reblogs_count: 2)
+    get '/api/v1/federation_universe', headers: headers
+
+    expect(response.parsed_body['edges'].pluck('target')).to contain_exactly('far.example', 'other.example')
+  end
+
   it 'is unavailable when aggregation is disabled' do
     Setting.federation_instance_edges_enabled = false
 

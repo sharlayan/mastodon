@@ -218,6 +218,17 @@ RSpec.describe Page do
     end
   end
 
+  describe '.summary_columns' do
+    it 'omits the page body while keeping the list attributes' do
+      page = Fabricate(:page, account: account, summary: 'Short', content: [{ 'type' => 'text', 'text' => 'Large body' }])
+      summary = described_class.summary_columns.find(page.id)
+
+      expect(summary.has_attribute?(:content)).to be false
+      expect(summary).to have_attributes(title: page.title, summary: 'Short', account_id: account.id)
+      expect { summary.content }.to raise_error(ActiveModel::MissingAttributeError)
+    end
+  end
+
   describe '.referenced_by_page isolation' do
     it 'does not pin media through a page owned by another account' do
       media = Fabricate(:media_attachment)

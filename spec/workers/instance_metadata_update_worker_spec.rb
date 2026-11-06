@@ -5,6 +5,12 @@ require 'rails_helper'
 RSpec.describe InstanceMetadataUpdateWorker do
   let(:worker) { described_class.new }
 
+  describe 'job uniqueness' do
+    it 'keeps a single pending refresh per domain until it runs' do
+      expect(described_class.get_sidekiq_options).to include('lock' => :until_executed, 'lock_ttl' => 1.hour.to_i)
+    end
+  end
+
   describe '#perform' do
     it 'calls FetchInstanceThemeColorService with the domain' do
       service = instance_double(FetchInstanceThemeColorService)
