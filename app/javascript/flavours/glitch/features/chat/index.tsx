@@ -1058,6 +1058,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setNextConversationId(id);
   }, []);
   const [olderMessageId, setOlderMessageId] = useState<string | null>(null);
+  const olderMessageIdRef = useRef<string | null>(null);
+  const updateOlderMessageId = useCallback((id: string | null) => {
+    olderMessageIdRef.current = id;
+    setOlderMessageId(id);
+  }, []);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<ChatHomeTab>('home');
   const [messagesList, setMessagesList] = useState<ChatMessage[]>([]);
@@ -1153,6 +1158,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const pendingMessageUpdates = useRef(new Set<MessageUpdate[]>());
   const latestMessageRequest = useRef(0);
+  // The cursor belongs to the applied message list, not a request still in flight.
+  const appliedMessageGeneration = useRef(0);
   const shownMessagesRef = useRef<ChatMessage[]>([]);
   useEffect(() => {
     shownMessagesRef.current = messagesList;
@@ -1672,7 +1679,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       });
     pendingMessageUpdates.current.delete(updates);
     if (requestId !== latestMessageRequest.current) return false;
-    setOlderMessageId(
+    appliedMessageGeneration.current += 1;
+    updateOlderMessageId(
       response.data.length === 40 ? (response.data[0]?.id ?? null) : null,
     );
     advanceContinuousUpTo(response.data.at(-1)?.id);
@@ -1687,7 +1695,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     if (isVisible() && isMounted.current)
       markRead(conversationId, response.data.at(-1)?.id);
     return true;
-  }, [advanceContinuousUpTo, applyTombstone, conversationId, markRead]);
+  }, [
+    advanceContinuousUpTo,
+    applyTombstone,
+    conversationId,
+    markRead,
+    updateOlderMessageId,
+  ]);
 
   // Fetches what changed while nothing was arriving, without moving anyone from the older pages they are reading.
   const resyncMessages = useCallback(
@@ -1743,8 +1757,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         const newestPage = reachedStart
           ? fetched
           : fetched.slice(-MESSAGE_PAGE_SIZE);
+        appliedMessageGeneration.current += 1;
         setMessagesList(newestPage);
-        setOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
+        updateOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
       }
 
       if (!followingNewestRef.current) {
@@ -1771,6 +1786,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       jumpButton,
       markRead,
       readRecovered,
+      updateOlderMessageId,
     ],
   );
 
@@ -1786,17 +1802,26 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const updates: MessageUpdate[] = [];
     pendingMessageUpdates.current.add(updates);
     let requestId = latestMessageRequest.current;
+    let appliedGeneration = appliedMessageGeneration.current;
     void retries
       .runPages(`messages:${conversationId}`, () => {
         requestId = latestMessageRequest.current;
+        appliedGeneration = appliedMessageGeneration.current;
+        const cursor = olderMessageIdRef.current;
+        if (!cursor) return Promise.resolve(undefined);
         return api().get<ChatMessage[]>(
           `/api/v1/chat/conversations/${conversationId}/messages`,
-          { params: { max_id: olderMessageId } },
+          { params: { max_id: cursor } },
         );
       })
       .then((response) => {
         pendingMessageUpdates.current.delete(updates);
-        if (!response || requestId !== latestMessageRequest.current) return;
+        if (
+          !response ||
+          requestId !== latestMessageRequest.current ||
+          appliedGeneration !== appliedMessageGeneration.current
+        )
+          return;
         const { data } = response;
         const older = updates.reduce(
           (items, update) => update(items),
@@ -1808,11 +1833,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ),
           ...current,
         ]);
-        setOlderMessageId(data.length === 40 ? (data[0]?.id ?? null) : null);
+        updateOlderMessageId(data.length === 40 ? (data[0]?.id ?? null) : null);
         readRecovered('messages');
       })
       .catch(() => {
-        if (isMounted.current && requestId === latestMessageRequest.current)
+        if (
+          isMounted.current &&
+          requestId === latestMessageRequest.current &&
+          appliedGeneration === appliedMessageGeneration.current
+        )
           readFailed('messages');
       })
       .finally(() => {
@@ -1828,6 +1857,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     readRecovered,
     retries,
     updateMessages,
+    updateOlderMessageId,
   ]);
 
   // Read, by itself again while that fails.

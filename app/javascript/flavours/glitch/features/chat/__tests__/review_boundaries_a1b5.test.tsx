@@ -1254,7 +1254,9 @@ describe('Review f98c boundaries', () => {
     const page = await loadPage();
     await connect(page.socket);
     page.open('/chat');
-    await waitFor(() => { expect(listed()).toContain('6'); });
+    await waitFor(() => {
+      expect(listed()).toContain('6');
+    });
     await settle();
     backend.messages.set('3', [
       ...(backend.messages.get('3') ?? []),
@@ -1263,10 +1265,14 @@ describe('Review f98c boundaries', () => {
     const releaseRefresh = holdNextAnswer(ROOMS);
     const socket = await dropConnection(page.socket);
     await connect(socket);
-    await waitFor(() => { expect(readsOf(ROOMS)).toHaveLength(2); });
+    await waitFor(() => {
+      expect(readsOf(ROOMS)).toHaveLength(2);
+    });
     const releaseMore = holdNextAnswer(ROOMS);
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => { expect(readsOf(ROOMS)).toHaveLength(3); });
+    await waitFor(() => {
+      expect(readsOf(ROOMS)).toHaveLength(3);
+    });
     await releaseRefresh();
     await settle();
     await releaseMore();
@@ -1275,7 +1281,9 @@ describe('Review f98c boundaries', () => {
     const button = screen.getByRole('button', { name: 'Load more' });
     expect((button as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(button);
-    await waitFor(() => { expect(listed()).toHaveLength(25); });
+    await waitFor(() => {
+      expect(listed()).toHaveLength(25);
+    });
     const shown = listed();
     expect(new Set(shown).size).toBe(25);
     expect(shown).toContain('6');
@@ -1287,7 +1295,9 @@ describe('Review f98c boundaries', () => {
     const page = await loadPage();
     await connect(page.socket);
     page.open('/chat');
-    await waitFor(() => { expect(listed()).toContain('6'); });
+    await waitFor(() => {
+      expect(listed()).toContain('6');
+    });
     await settle();
     backend.messages.set('3', [
       ...(backend.messages.get('3') ?? []),
@@ -1296,13 +1306,79 @@ describe('Review f98c boundaries', () => {
     const releaseRefresh = holdNextAnswer(ROOMS);
     const socket = await dropConnection(page.socket);
     await connect(socket);
-    await waitFor(() => { expect(readsOf(ROOMS)).toHaveLength(2); });
+    await waitFor(() => {
+      expect(readsOf(ROOMS)).toHaveLength(2);
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => { expect(listed()).toHaveLength(24); });
+    await waitFor(() => {
+      expect(listed()).toHaveLength(24);
+    });
     await releaseRefresh();
-    await waitFor(() => { expect(listed()).toHaveLength(25); });
+    await waitFor(() => {
+      expect(listed()).toHaveLength(25);
+    });
     expect(new Set(listed()).size).toBe(25);
     expect(listed()).toContain('6');
+  }, 60000);
+
+  it('keeps the older cursor aligned when resync replaces an unbridgeable message gap', async () => {
+    seed('A', 1, 80);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 80');
+    await settle();
+    seed('A', 81, 1120);
+    const messagesPath = /\/conversations\/A\/messages$/;
+    const releaseRefresh = holdNextAnswer(messagesPath);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(2); },
+    );
+    const releaseOlder = holdNextAnswer(messagesPath);
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(3); },
+    );
+    await releaseRefresh();
+    await waitFor(
+      () => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(27); },
+      { timeout: 10000 },
+    );
+    await screen.findByText('Message 1120');
+    await releaseOlder();
+    await settle();
+    expect(screen.queryByText('Message 1')).toBeNull();
+    const button = screen.getByRole('button', { name: 'Load more' });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(button);
+    await screen.findByText('Message 1041');
+  }, 60000);
+
+  it('keeps a held older page when resync bridges to the existing history', async () => {
+    seed('A', 1, 80);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 80');
+    await settle();
+    seed('A', 81, 90);
+    const messagesPath = /\/conversations\/A\/messages$/;
+    const releaseRefresh = holdNextAnswer(messagesPath);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(2); },
+    );
+    const releaseOlder = holdNextAnswer(messagesPath);
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(3); },
+    );
+    await releaseRefresh();
+    await screen.findByText('Message 90');
+    await releaseOlder();
+    await screen.findByText('Message 1');
+    expect(screen.getByText('Message 40')).toBeTruthy();
+    expect(screen.getByText('Message 41')).toBeTruthy();
+    expect(screen.getByText('Message 90')).toBeTruthy();
   }, 60000);
 
   it.each([
@@ -1334,8 +1410,9 @@ describe('Review f98c boundaries', () => {
       });
       await later(1000);
       await screen.findByText('initial result');
-      act(() => { page.socket.deliver('chat.message_update', { ...found, content }); },
-      );
+      act(() => {
+        page.socket.deliver('chat.message_update', { ...found, content });
+      });
       await settle();
       expect(
         document.querySelectorAll('.chat-native__search-results button'),
