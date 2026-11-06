@@ -228,6 +228,21 @@ RSpec.describe Page do
       expect(MediaAttachment.unattached).to include(media)
     end
 
+    it 'tracks media referenced anywhere in saved page content' do
+      media = Fabricate(:media_attachment, account: account)
+      page = Fabricate(:page, account: account)
+      page.update!(content: [{ 'type' => 'section', 'children' => [{ 'type' => 'image', 'fileId' => media.id.to_s }] }])
+
+      expect(page.reload.referenced_media_attachment_ids).to eq([media.id])
+      expect(MediaAttachment.referenced_by_page).to include(media)
+      expect(MediaAttachment.unattached).to_not include(media)
+
+      page.update!(content: [])
+
+      expect(page.reload.referenced_media_attachment_ids).to eq([])
+      expect(MediaAttachment.unattached).to include(media)
+    end
+
     it 'includes media used as a Booklet cover' do
       media = Fabricate(:media_attachment, account: account)
       Fabricate(:page_series, account: account, cover_media_attachment: media)

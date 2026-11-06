@@ -446,8 +446,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       break if page.empty?
 
       ActiveRecord::Associations::Preloader.new(records: page, associations: [:account, :mentions]).call
+      relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(page)
       page.each do |status|
-        statuses << status if StatusPolicy.new(current_account, status).show?
+        statuses << status if relations.visible?(status)
         break if statuses.size >= limit
       end
 
@@ -466,7 +467,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def render_visible_notes(scope)
-    statuses = scope.to_a.select { |status| StatusPolicy.new(current_account, status).show? }
+    candidates = scope.to_a
+    relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(candidates)
+    statuses = candidates.select { |status| relations.visible?(status) }
     render json: serialize_collection(statuses)
   end
 

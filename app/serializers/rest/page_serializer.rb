@@ -82,7 +82,7 @@ class REST::PageSerializer < ActiveModel::Serializer
   def serialize_blocks(blocks)
     Array(blocks).map do |source|
       block = source.deep_dup
-      block['html'] = AdvancedTextFormatter.new(block['text'], content_type: 'text/markdown').to_s if block['type'] == 'text' && block['format'] == 'markdown'
+      block['html'] = Sharlayan::PageMarkdown.to_html(block['text']) if block['type'] == 'text' && block['format'] == 'markdown'
       block['children'] = serialize_blocks(block['children']) if block['children'].is_a?(Array)
       block
     end

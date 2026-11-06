@@ -32,10 +32,11 @@ class MisskeyCompat::MediaAttachmentMd5
   def persist(digest)
     return unless @media.persisted?
 
-    meta = @media.file_meta.is_a?(Hash) ? @media.file_meta.dup : {}
-    return if meta['md5'] == digest
-
-    meta['md5'] = digest
-    @media.update_column(:file_meta, meta)
+    MediaAttachment.where(id: @media.id).update_all(
+      [
+        "file_meta = (COALESCE(file_meta::jsonb, '{}'::jsonb) || jsonb_build_object('md5', ?::text))::json",
+        digest,
+      ]
+    )
   end
 end
