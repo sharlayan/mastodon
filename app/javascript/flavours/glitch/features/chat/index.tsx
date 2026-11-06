@@ -826,14 +826,7 @@ const usesTouchKeyboard = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(pointer: coarse)').matches;
 
-const scrollToNewest = (end: HTMLElement | null) => {
-  if (!end) return;
-  if (typeof end.scrollIntoView === 'function') {
-    end.scrollIntoView({ block: 'end' });
-  }
-
-  // A sticky composer can leave the end visible before the scrollport reaches its bottom.
-  // Use the room's own scrollport, or the document in the single-column layout.
+const chatScrollport = (end: HTMLElement): Element | null => {
   let parent = end.parentElement;
   while (
     parent &&
@@ -845,15 +838,44 @@ const scrollToNewest = (end: HTMLElement | null) => {
       (overflow === 'auto' || overflow === 'scroll') &&
       parent.scrollHeight > parent.clientHeight
     ) {
-      parent.scrollTop = parent.scrollHeight;
-      return;
+      return parent;
     }
     parent = parent.parentElement;
   }
-  if (document.scrollingElement) {
-    document.scrollingElement.scrollTop =
-      document.scrollingElement.scrollHeight;
+  return document.scrollingElement;
+};
+
+const scrollToNewest = (end: HTMLElement | null) => {
+  if (!end) return;
+  const composer = end.previousElementSibling;
+  if (
+    usesTouchKeyboard() &&
+    composer?.contains(document.activeElement) &&
+    document.activeElement instanceof HTMLTextAreaElement
+  ) {
+    // While the keyboard is open, scrolling the document to its end can pull the
+    // area beneath Safari's toolbar above the keyboard. Reveal only the message.
+    const last = Array.from(
+      composer.previousElementSibling?.querySelectorAll<HTMLElement>(
+        '[id^="chat-message-"]',
+      ) ?? [],
+    ).at(-1);
+    const scrollport = chatScrollport(end);
+    if (last && scrollport) {
+      const delta =
+        last.getBoundingClientRect().bottom -
+        composer.getBoundingClientRect().top +
+        16;
+      if (delta > 0) scrollport.scrollTop += delta;
+    }
+    return;
   }
+
+  if (typeof end.scrollIntoView === 'function')
+    end.scrollIntoView({ block: 'end' });
+  // A sticky composer can leave the end visible before the scrollport reaches its bottom.
+  const scrollport = chatScrollport(end);
+  if (scrollport) scrollport.scrollTop = scrollport.scrollHeight;
 };
 
 // For what changes while the reader scrolls or types. Kept in the room's own state, it would draw every message again
@@ -1178,6 +1200,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   const followingNewestRef = useRef(true);
+  const keyboardExplicitFollowRef = useRef<(() => void) | null>(null);
   const searchRequestRef = useRef(0);
   const searchTimeoutRef = useRef<number | null>(null);
   const messageSearchTimeoutRef = useRef<number | undefined>(undefined);
@@ -2336,6 +2359,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const openingRoom = scrolledConversationIdRef.current !== screenKey;
     scrolledConversationIdRef.current = screenKey;
     if (openingRoom) followingNewestRef.current = true;
+    if (newestMessageIsMine) keyboardExplicitFollowRef.current?.();
+    if (newestMessageIsMine && !followingNewestRef.current) {
+      followingNewestRef.current = true;
+      jumpButton.update({ away: false, unseen: false });
+    }
 
     if (followingNewestRef.current || newestMessageIsMine) {
       scrollToNewest(messagesEndRef.current);
@@ -2346,6 +2374,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     newestMessageId,
     newestMessageIsMine,
     roomView,
+    jumpButton,
   ]);
 
   useEffect(() => {
@@ -2353,11 +2382,107 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const list = messagesListRef.current;
     if (!end || !list) return;
 
+    const composer = composerRef.current;
+    let keyboard: {
+      scrollport: Element | null;
+      scrollTop: number;
+      height: number;
+      shrunk: boolean;
+      userScrollUntil: number;
+      restorePosition: boolean;
+      awayFromEnd: boolean;
+      following: boolean;
+      timer?: number;
+    } | null = null;
+    const finishKeyboard = () => {
+      if (!keyboard) return;
+      if (keyboard.awayFromEnd && keyboard.restorePosition) {
+        if (keyboard.scrollport)
+          keyboard.scrollport.scrollTop = keyboard.scrollTop;
+        followingNewestRef.current = keyboard.following;
+        jumpButton.update({ away: !keyboard.following });
+      }
+      keyboard = null;
+    };
+    const scheduleKeyboardFinish = (delay: number) => {
+      if (!keyboard) return;
+      if (keyboard.timer !== undefined) window.clearTimeout(keyboard.timer);
+      keyboard.timer = window.setTimeout(finishKeyboard, delay);
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      if (
+        !usesTouchKeyboard() ||
+        !(event.target instanceof HTMLTextAreaElement)
+      )
+        return;
+      if (keyboard) {
+        if (keyboard.timer !== undefined) window.clearTimeout(keyboard.timer);
+        keyboard.timer = undefined;
+        return;
+      }
+      const scrollport = chatScrollport(end);
+      const awayFromEnd = scrollport
+        ? scrollport.scrollHeight -
+            scrollport.clientHeight -
+            scrollport.scrollTop >
+          2
+        : !followingNewestRef.current;
+      keyboard = {
+        scrollport,
+        scrollTop: scrollport?.scrollTop ?? 0,
+        height: window.visualViewport?.height ?? window.innerHeight,
+        shrunk: false,
+        userScrollUntil: 0,
+        restorePosition: true,
+        awayFromEnd,
+        following: followingNewestRef.current,
+      };
+    };
+    const onFocusOut = () => { scheduleKeyboardFinish(700); };
+    const onUserScroll = (event: Event) => {
+      if (
+        !keyboard ||
+        (event.target instanceof Node && composer?.contains(event.target))
+      )
+        return;
+      keyboard.userScrollUntil = Date.now() + 500;
+    };
+    const onPageAction = (event: Event) => {
+      if (
+        keyboard &&
+        event.target instanceof Element &&
+        !composer?.contains(event.target) &&
+        event.target.closest('button, a')
+      )
+        keyboard.restorePosition = false;
+    };
     const trackPosition = () => {
+      // Safari can scroll the document to reveal the input as the keyboard moves.
+      // That movement must not be mistaken for the reader choosing the newest message.
+      if ((window.visualViewport?.scale ?? 1) !== 1) return;
+      if (
+        keyboard &&
+        (!keyboard.userScrollUntil || Date.now() > keyboard.userScrollUntil)
+      )
+        return;
+      const viewportBottom = keyboard
+        ? (window.visualViewport?.offsetTop ?? 0) +
+          (window.visualViewport?.height ?? window.innerHeight)
+        : window.innerHeight;
       const following =
-        end.getBoundingClientRect().bottom - window.innerHeight <
+        end.getBoundingClientRect().bottom - viewportBottom <
         FOLLOW_NEWEST_DISTANCE;
       followingNewestRef.current = following;
+      if (keyboard) {
+        keyboard.scrollTop = keyboard.scrollport?.scrollTop ?? 0;
+        keyboard.awayFromEnd = keyboard.scrollport
+          ? keyboard.scrollport.scrollHeight -
+              keyboard.scrollport.clientHeight -
+              keyboard.scrollTop >
+            2
+          : !following;
+        keyboard.following = following;
+      }
       if (following) {
         jumpButton.update({ away: false, unseen: false });
         markSeenOnReturn();
@@ -2369,6 +2494,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       capture: true,
       passive: true,
     });
+    composer?.addEventListener('focusin', onFocusIn);
+    composer?.addEventListener('focusout', onFocusOut);
+    window.addEventListener('touchmove', onUserScroll, { passive: true });
+    window.addEventListener('wheel', onUserScroll, { passive: true });
+    window.addEventListener('pointerdown', onPageAction, { passive: true });
+    keyboardExplicitFollowRef.current = () => {
+      if (keyboard) keyboard.restorePosition = false;
+    };
     let viewportScale = window.visualViewport?.scale ?? 1;
     let viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const onViewportResize = () => {
@@ -2378,6 +2511,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const heightChanged = height !== viewportHeight;
       viewportScale = scale;
       viewportHeight = height;
+      if (keyboard) {
+        if (scale === 1 && !scaleChanged) {
+          if (height < keyboard.height - 80) keyboard.shrunk = true;
+          if (keyboard.shrunk && height >= keyboard.height - 2)
+            scheduleKeyboardFinish(200);
+          else if (keyboard.timer !== undefined) scheduleKeyboardFinish(700);
+        }
+        return;
+      }
       if (
         scale === 1 &&
         !scaleChanged &&
@@ -2392,7 +2534,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const observer =
       typeof ResizeObserver === 'function'
         ? new ResizeObserver(() => {
-            if (followingNewestRef.current) scrollToNewest(end);
+            if (!keyboard && followingNewestRef.current) scrollToNewest(end);
           })
         : null;
     observer?.observe(list);
@@ -2400,8 +2542,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     return () => {
       window.removeEventListener('scroll', trackPosition, { capture: true });
+      composer?.removeEventListener('focusin', onFocusIn);
+      composer?.removeEventListener('focusout', onFocusOut);
+      window.removeEventListener('touchmove', onUserScroll);
+      window.removeEventListener('wheel', onUserScroll);
+      window.removeEventListener('pointerdown', onPageAction);
+      keyboardExplicitFollowRef.current = null;
       window.removeEventListener('resize', onViewportResize);
       window.visualViewport?.removeEventListener('resize', onViewportResize);
+      if (keyboard?.timer !== undefined) window.clearTimeout(keyboard.timer);
       observer?.disconnect();
     };
   }, [
@@ -2455,6 +2604,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   ]);
 
   const handleJumpToNewest = useCallback(() => {
+    keyboardExplicitFollowRef.current?.();
     followingNewestRef.current = true;
     jumpButton.update({ away: false, unseen: false });
     markSeenOnReturn();
