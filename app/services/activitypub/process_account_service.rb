@@ -478,7 +478,7 @@ class ActivityPub::ProcessAccountService < BaseService
       process_avatar_decorations_from_ap!(raw)
     elsif @account.domain.present?
       meta = InstanceMetadata.find_by(domain: @account.domain)
-      FetchRemoteAvatarDecorationsWorker.perform_in(rand(30), @account.id) if meta.nil? || meta.avatar_decorations_compatible?
+      FetchRemoteAvatarDecorationsWorker.schedule(@account.id) if meta.nil? || meta.avatar_decorations_compatible?
     end
   end
 
