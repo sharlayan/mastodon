@@ -1184,6 +1184,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setSearchResults((items) => update(items, query));
   }, []);
   const pendingConversationUpdates = useRef(new Set<ConversationUpdate[]>());
+  const pendingConversationMessages = useRef(new Set<Set<string>>());
   const updateConversations = useCallback((update: ConversationUpdate) => {
     pendingConversationUpdates.current.forEach((updates) =>
       updates.push(update),
@@ -1439,11 +1440,54 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     history.replace({ ...location, state });
   }, [history, location]);
 
+  const refreshConversation = useCallback(
+    (id: string) => {
+      const version = conversationVersions.current.get(id) ?? 0;
+      // Bursts share a plan, and the scheduler checks the page before a follow-up.
+      void retries
+        .keepTrying(`conversation:${id}`, async () => {
+          const updates: ConversationUpdate[] = [];
+          pendingConversationUpdates.current.add(updates);
+          try {
+            const { data } = await api().get<ChatConversation>(
+              `/api/v1/chat/conversations/${id}`,
+            );
+            if ((conversationVersions.current.get(id) ?? 0) !== version) return;
+            const latest = updates
+              .reduce((items, update) => update(items), [data])
+              .find((item) => item.id === id);
+            pendingConversationUpdates.current.delete(updates);
+            if (latest)
+              updateConversations((current) =>
+                upsertConversation(current, latest),
+              );
+          } catch (loadError) {
+            if (
+              (loadError as { response?: { status?: number } } | null)?.response
+                ?.status === 429
+            )
+              throw loadError;
+            if ((conversationVersions.current.get(id) ?? 0) !== version) return;
+            if (isNotFound(loadError))
+              updateConversations((current) =>
+                current.filter((item) => item.id !== id),
+              );
+          } finally {
+            pendingConversationUpdates.current.delete(updates);
+          }
+        })
+        .catch(() => undefined);
+    },
+    [retries, updateConversations],
+  );
+
   const loadConversations = useCallback(
     async (nextPage: PageCheckpoint) => {
       const requestId = ++latestConversationRequest.current;
       const updates: ConversationUpdate[] = [];
+      const activeRooms = new Set<string>();
       pendingConversationUpdates.current.add(updates);
+      pendingConversationMessages.current.add(activeRooms);
       const loaded: ChatConversation[] = [];
       let cursor: string | null = null;
       let missing = false;
@@ -1485,6 +1529,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         throw loadError;
       } finally {
         pendingConversationUpdates.current.delete(updates);
+        pendingConversationMessages.current.delete(activeRooms);
       }
       if (requestId !== latestConversationRequest.current) return;
       appliedConversationGeneration.current += 1;
@@ -1492,14 +1537,27 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       setConversationMissing(missing);
       setRoomEnding(ending);
       if (missing && !ending) setError('load');
-      setConversations(
-        updates.reduce((items, update) => update(items), loaded),
+      const reconciled = updates.reduce(
+        (items, update) => update(items),
+        loaded,
       );
+      setConversations(reconciled);
       setConversationsLoaded(true);
       readRecovered('conversations');
+      readRecovered('conversations:more');
+      // A room can move in front of the cursor between pages and disappear from both.
+      activeRooms.forEach((id) => {
+        if (!reconciled.some((item) => item.id === id)) refreshConversation(id);
+      });
       return true;
     },
-    [conversationId, readRecovered, retries, updateNextConversationId],
+    [
+      conversationId,
+      readRecovered,
+      refreshConversation,
+      retries,
+      updateNextConversationId,
+    ],
   );
 
   const loadConversationsForAction = useCallback(async () => {
@@ -1530,47 +1588,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       return undefined;
     }
   }, [loadConversations, readFailed, retries]);
-
-  const refreshConversation = useCallback(
-    (id: string) => {
-      const version = conversationVersions.current.get(id) ?? 0;
-      // Bursts share a plan, and the scheduler checks the page before a follow-up.
-      void retries
-        .keepTrying(`conversation:${id}`, async () => {
-          const updates: ConversationUpdate[] = [];
-          pendingConversationUpdates.current.add(updates);
-          try {
-            const { data } = await api().get<ChatConversation>(
-              `/api/v1/chat/conversations/${id}`,
-            );
-            if ((conversationVersions.current.get(id) ?? 0) !== version) return;
-            const latest = updates
-              .reduce((items, update) => update(items), [data])
-              .find((item) => item.id === id);
-            pendingConversationUpdates.current.delete(updates);
-            if (latest)
-              updateConversations((current) =>
-                upsertConversation(current, latest),
-              );
-          } catch (loadError) {
-            if (
-              (loadError as { response?: { status?: number } } | null)?.response
-                ?.status === 429
-            )
-              throw loadError;
-            if ((conversationVersions.current.get(id) ?? 0) !== version) return;
-            if (isNotFound(loadError))
-              updateConversations((current) =>
-                current.filter((item) => item.id !== id),
-              );
-          } finally {
-            pendingConversationUpdates.current.delete(updates);
-          }
-        })
-        .catch(() => undefined);
-    },
-    [retries, updateConversations],
-  );
 
   const loadMoreConversations = useCallback(() => {
     if (!nextConversationId || loadingMore) return;
@@ -1615,19 +1632,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         );
         readRecovered('conversations:more');
       })
-      .catch(() => {
+      .catch(async (error: unknown) => {
         if (
           isMounted.current &&
           requestId === latestConversationRequest.current &&
           appliedGeneration === appliedConversationGeneration.current
-        )
-          readFailed('conversations:more');
+        ) {
+          if (isNotFound(error)) await loadConversationsForAction();
+          else readFailed('conversations:more');
+        }
       })
       .finally(() => {
         pendingConversationUpdates.current.delete(updates);
         setLoadingMore(false);
       });
   }, [
+    loadConversationsForAction,
     loadingMore,
     nextConversationId,
     readFailed,
@@ -1962,6 +1982,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         const eventConversationId = value.conversation_id;
         if (event === 'chat.message') {
           if (!eventConversationId) return;
+          pendingConversationMessages.current.forEach((rooms) =>
+            rooms.add(eventConversationId),
+          );
           const message = applyTombstone(value as ChatMessage);
           const isOpen = eventConversationId === conversationId;
           const fromOther = value.account?.id !== me;
@@ -2094,6 +2117,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         } else if (event === 'chat.conversation_delete') {
           if (value.conversation_id) {
             const id = value.conversation_id;
+            pendingConversationMessages.current.forEach((rooms) =>
+              rooms.delete(id),
+            );
             updateSearchResults((current) =>
               current.filter((item) => item.conversation_id !== id),
             );

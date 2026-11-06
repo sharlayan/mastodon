@@ -1333,15 +1333,19 @@ describe('Review f98c boundaries', () => {
     const releaseRefresh = holdNextAnswer(messagesPath);
     const socket = await dropConnection(page.socket);
     await connect(socket);
-    await waitFor(() => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(2); },
-    );
+    await waitFor(() => {
+      expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(2);
+    });
     const releaseOlder = holdNextAnswer(messagesPath);
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(3); },
-    );
+    await waitFor(() => {
+      expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(3);
+    });
     await releaseRefresh();
     await waitFor(
-      () => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(27); },
+      () => {
+        expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(27);
+      },
       { timeout: 10000 },
     );
     await screen.findByText('Message 1120');
@@ -1366,12 +1370,14 @@ describe('Review f98c boundaries', () => {
     const releaseRefresh = holdNextAnswer(messagesPath);
     const socket = await dropConnection(page.socket);
     await connect(socket);
-    await waitFor(() => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(2); },
-    );
+    await waitFor(() => {
+      expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(2);
+    });
     const releaseOlder = holdNextAnswer(messagesPath);
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => { expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(3); },
-    );
+    await waitFor(() => {
+      expect(readsOf(messagesPath).length).toBeGreaterThanOrEqual(3);
+    });
     await releaseRefresh();
     await screen.findByText('Message 90');
     await releaseOlder();
@@ -1419,4 +1425,278 @@ describe('Review f98c boundaries', () => {
       ).toHaveLength(matches ? 1 : 0);
     },
   );
+});
+
+const roomOrder = (a: string, b: string) =>
+  lastId(b) - lastId(a) || Number(b) - Number(a);
+// As useActivityPagedRooms, and as Mastodon does: the cursor room is looked up among the
+// reader's rooms first (ConversationsController#index, find), so a room that is gone is a 404.
+const useStrictActivityPagedRooms = () => {
+  server.use(
+    http.get('*/api/v1/chat/conversations', ({ request }) => {
+      const url = new URL(request.url);
+      backend.reads.push(url.pathname + url.search);
+      const maxId = url.searchParams.get('max_id');
+      if (maxId && !backend.rooms.has(maxId))
+        return HttpResponse.json(
+          { error: 'Record not found' },
+          { status: 404 },
+        );
+      return HttpResponse.json(
+        [...backend.rooms.keys()]
+          .sort(roomOrder)
+          .filter(
+            (id) =>
+              !maxId ||
+              lastId(id) < lastId(maxId) ||
+              (lastId(id) === lastId(maxId) && Number(id) < Number(maxId)),
+          )
+          .slice(0, 20)
+          .map(room) as never,
+      );
+    }),
+  );
+};
+
+const record = vi.fn();
+describe('Review 84a6', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    server.resetHandlers();
+  });
+
+  it.each([
+    ['deleted', 'X1a the owner deletes the group'],
+    ['removed', 'X1b the reader is removed from the group'],
+  ])(
+    'X1 Load more still reads on after the cursor room ends (%s)',
+    async (reason, label) => {
+      // Rooms 1..25, room n's last message is n: page one is 25..6 and the cursor is room 6.
+      for (let id = 1; id <= 25; id += 1) seed(String(id), id, id);
+      useStrictActivityPagedRooms();
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat');
+      await waitFor(() => {
+        expect(listed()).toContain('6');
+      });
+      await settle();
+      const before = listed();
+      // Room 6 ends on the server, and the stream says so, as Sharlayan::ChatService does.
+      backend.rooms.delete('6');
+      backend.messages.delete('6');
+      act(() => {
+        page.socket.deliver('chat.conversation_delete', {
+          conversation_id: '6',
+          reason,
+        });
+      });
+      await waitFor(() => {
+        expect(listed()).not.toContain('6');
+      });
+      await settle();
+      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+      await later(1_000);
+      await settle();
+      const afterFirst = listed();
+      const noticeFirst = Boolean(screen.queryByText(REQUEST_FAILED));
+      const again = screen.queryByRole('button', { name: 'Load more' });
+      if (again) {
+        fireEvent.click(again);
+        await later(1_000);
+        await settle();
+      }
+      const after = listed();
+      const serverOrder = [...backend.rooms.keys()].sort(roomOrder);
+      record('X1', {
+        label,
+        before,
+        afterFirst,
+        noticeFirst,
+        after,
+        notice: Boolean(screen.queryByText(REQUEST_FAILED)),
+        loadMoreButton: Boolean(
+          screen.queryByRole('button', { name: 'Load more' }),
+        ),
+        reads: readsOf(ROOMS),
+        missing: serverOrder.filter((id) => !after.includes(id)),
+      });
+      expect(after).toEqual(serverOrder);
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+    },
+    60_000,
+  );
+
+  it('recovers a missing cursor even if the deletion event was missed', async () => {
+    for (let id = 1; id <= 25; id += 1) seed(String(id), id, id);
+    useStrictActivityPagedRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => { expect(listed()).toContain('6'); });
+    backend.rooms.delete('6');
+    backend.messages.delete('6');
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => { expect(listed()).not.toContain('6'); });
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy(); },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => { expect(listed()).toEqual([...backend.rooms.keys()].sort(roomOrder)); },
+    );
+    expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+  }, 60000);
+
+  it('does not restore a room deleted after it received a message during a reread', async () => {
+    for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
+    useActivityPagedRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => { expect(listed()).toContain('26'); });
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => { expect(listed()).toContain('10'); });
+    const releaseFirst = holdNextAnswer(ROOMS);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => { expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3); },
+    );
+    const newest = message('10', 100);
+    backend.messages.set('10', [...(backend.messages.get('10') ?? []), newest]);
+    act(() => { socket.deliver('chat.message', newest); });
+    backend.rooms.delete('10');
+    backend.messages.delete('10');
+    act(() => { socket.deliver('chat.conversation_delete', {
+        conversation_id: '10',
+        reason: 'deleted',
+      }); },
+    );
+    await releaseFirst();
+    await settle();
+    await later(1000);
+    expect(listed()).not.toContain('10');
+    expect(
+      backend.reads.filter((read) => read.endsWith("conversations/10")),
+    ).toHaveLength(0);
+  }, 60000);
+
+  it('X3 a room that gets a message while a two-page list reread is between its pages stays listed', async () => {
+    // Rooms 1..45, room n's last message is n. Page one is 45..26, page two 25..6.
+    for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
+    useActivityPagedRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => {
+      expect(listed()).toContain('26');
+    });
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => {
+      expect(listed()).toContain('6');
+    });
+    await settle();
+    const before = listed();
+    // The stream comes back and the screen reads its two pages again. The first page's answer
+    // is what the server had when it was asked; it reaches the screen a moment later.
+    const releaseFirst = holdNextAnswer(ROOMS);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => {
+      expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3);
+    });
+    // Meanwhile room 10 (page two) gets a message, and the stream says so.
+    const newest = message('10', 100);
+    backend.messages.set('10', [...(backend.messages.get('10') ?? []), newest]);
+    act(() => {
+      socket.deliver('chat.message', newest);
+    });
+    await settle();
+    const whileReading = listed();
+    await releaseFirst();
+    await settle();
+    await later(1_000);
+    await settle();
+    const after = listed();
+    const serverOrder = [...backend.rooms.keys()].sort(roomOrder).slice(0, 40);
+    record('X3', {
+      before: [before.length, before[0], before.at(-1)],
+      whileReading: whileReading.slice(0, 3),
+      reads: readsOf(ROOMS),
+      after,
+      serverFirst40: serverOrder,
+      missing: serverOrder.filter((id) => !after.includes(id)),
+      detailReads: backend.reads.filter((read) =>
+        read.endsWith("conversations/10"),
+      ),
+    });
+    expect(after).toContain('10');
+    expect(new Set(after).size).toBe(after.length);
+  }, 60_000);
+
+  it('X3b the same when the page is hidden between the reread pages (no answer held)', async () => {
+    const setHidden = (hidden: boolean) => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => (hidden ? 'hidden' : 'visible'),
+      });
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+    };
+    for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
+    useActivityPagedRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => {
+      expect(listed()).toContain('26');
+    });
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => {
+      expect(listed()).toContain('6');
+    });
+    await settle();
+    // The stream comes back; just as page one's answer arrives, the reader leaves the tab.
+    // (The hold only lines the hiding up with that moment; the answer itself is not delayed.)
+    const releaseFirst = holdNextAnswer(ROOMS);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => {
+      expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3);
+    });
+    setHidden(true);
+    await releaseFirst();
+    await settle();
+    const readsWhileHidden = readsOf(ROOMS).length;
+    // While the tab is away (the stream stays connected), room 10 on page two gets a message.
+    await later(30_000);
+    const newest = message('10', 100);
+    backend.messages.set('10', [...(backend.messages.get('10') ?? []), newest]);
+    act(() => {
+      socket.deliver('chat.message', newest);
+    });
+    await settle();
+    setHidden(false);
+    await settle();
+    await later(1_000);
+    await settle();
+    const after = listed();
+    const serverOrder = [...backend.rooms.keys()].sort(roomOrder).slice(0, 40);
+    record('X3b', {
+      readsWhileHidden,
+      reads: readsOf(ROOMS),
+      after: [after.length, after[0], after.at(-1)],
+      missing: serverOrder.filter((id) => !after.includes(id)),
+    });
+    Reflect.deleteProperty(document, 'visibilityState');
+    expect(after).toContain('10');
+    expect(new Set(after).size).toBe(after.length);
+  }, 60_000);
 });
