@@ -372,6 +372,62 @@ describe('Scrolling in a room', () => {
     }
   });
 
+  it('reveals the last message with only the required scroll when the keyboard opens', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const originalMatch = Object.getOwnPropertyDescriptor(window, 'matchMedia');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    try {
+      await openRoom();
+      const scrollport = document.querySelector('.chat-native') as HTMLElement;
+      scrollport.style.overflowY = 'auto';
+      Object.defineProperty(scrollport, 'clientHeight', {
+        configurable: true,
+        value: 200,
+      });
+      Object.defineProperty(scrollport, 'scrollHeight', {
+        configurable: true,
+        value: 1000,
+      });
+      scrollport.scrollTop = 800;
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          return {
+            top: this.classList.contains('chat-native__composer') ? 180 : 0,
+            bottom: 250,
+          } as DOMRect;
+        },
+      );
+      Object.defineProperty(scrollport, 'scrollHeight', {
+        configurable: true,
+        value: 1200,
+      });
+      viewport.height = 307;
+      scrollIntoView.mockClear();
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(scrollport.scrollTop).toBe(886);
+    } finally {
+      if (originalMatch)
+        Object.defineProperty(window, 'matchMedia', originalMatch);
+      else Reflect.deleteProperty(window, 'matchMedia');
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
   it('honours an explicit scroll while the touch keyboard is open', async () => {
     const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
     const originalMatch = Object.getOwnPropertyDescriptor(window, 'matchMedia');

@@ -2438,7 +2438,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         following: followingNewestRef.current,
       };
     };
-    const onFocusOut = () => { scheduleKeyboardFinish(700); };
+    const onFocusOut = () => {
+      scheduleKeyboardFinish(700);
+    };
     const onUserScroll = (event: Event) => {
       if (
         !keyboard ||
@@ -2513,6 +2515,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       viewportHeight = height;
       if (keyboard) {
         if (scale === 1 && !scaleChanged) {
+          if (
+            heightChanged &&
+            followingNewestRef.current &&
+            !keyboard.awayFromEnd &&
+            composer?.contains(document.activeElement)
+          )
+            scrollToNewest(end);
           if (height < keyboard.height - 80) keyboard.shrunk = true;
           if (keyboard.shrunk && height >= keyboard.height - 2)
             scheduleKeyboardFinish(200);
