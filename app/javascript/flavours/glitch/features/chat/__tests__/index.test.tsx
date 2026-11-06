@@ -1399,7 +1399,9 @@ describe('Chat screen lifecycle', () => {
     setVisibility('hidden');
 
     mountChat();
-    await screen.findByText('Private message A');
+    expect(api.get).not.toHaveBeenCalledWith(
+      '/api/v1/chat/conversations/A/messages',
+    );
     expect(api.post).not.toHaveBeenCalledWith(
       '/api/v1/chat/conversations/A/read',
     );
@@ -1409,20 +1411,24 @@ describe('Chat screen lifecycle', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
+    await screen.findByText('Private message A');
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith(
         '/api/v1/chat/conversations/A/read',
+        { message_id: 'message-A' },
       );
     });
   });
 
-  it('ignores a conversation list response that arrives out of order', async () => {
+  it('coalesces reconnects while a conversation list response is on its way', async () => {
     const older = deferred<{ data: unknown }>();
+    const newer = deferred<{ data: unknown }>();
     let requests = 0;
     api.get.mockImplementation((url: string) => {
       if (url !== '/api/v1/chat/conversations') return getResponse(url);
       requests += 1;
       if (requests === 2) return older.promise;
+      if (requests === 3) return newer.promise;
       return Promise.resolve({
         data: [{ ...conversation('A'), title: `Version ${requests}` }],
       });
@@ -1434,7 +1440,8 @@ describe('Chat screen lifecycle', () => {
       emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
       emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
     });
-    await screen.findByText('Version 3');
+    expect(screen.getByText('Version 1')).toBeTruthy();
+    expect(requests).toBe(2);
 
     await act(async () => {
       older.resolve({
@@ -1443,6 +1450,18 @@ describe('Chat screen lifecycle', () => {
       await Promise.resolve();
     });
 
+    await waitFor(() => {
+      expect(requests).toBe(3);
+    });
+    expect(screen.queryByText('Old version')).toBeNull();
+    expect(screen.getByText('Version 1')).toBeTruthy();
+    await act(async () => {
+      newer.resolve({
+        data: [{ ...conversation('A'), title: 'Version 3' }],
+      });
+      await Promise.resolve();
+    });
+    await screen.findByText('Version 3');
     expect(screen.queryByText('Old version')).toBeNull();
     expect(screen.getByText('Version 3')).toBeTruthy();
   });

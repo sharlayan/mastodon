@@ -90,6 +90,135 @@ describe('Chat retries while the page is hidden', () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
+  it('holds a new background request until a hidden page is shown', async () => {
+    const retries = createRetries(true);
+    const run = vi.fn(() => Promise.resolve('loaded'));
+    const first = retries.keepTrying('invitations', run);
+    expect(run).not.toHaveBeenCalled();
+    retries.show();
+    await expect(first).resolves.toBe('loaded');
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not restart a pending rate limit when the same read is requested again', async () => {
+    const retries = createRetries(false);
+    let attempts = 0;
+    const run = vi.fn(() => {
+      attempts += 1;
+      return attempts === 1
+        ? Promise.reject(
+            Object.assign(
+              new Error('rate limited'),
+              refused(429, { 'retry-after': '20' }),
+            ),
+          )
+        : Promise.resolve();
+    });
+    void retries.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    void retries.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(run).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads once more if an event arrives during an in-flight read', async () => {
+    const retries = createRetries(false);
+    let finish!: () => void;
+    const run = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(undefined);
+    void retries.keepTrying('invitations', run);
+    void retries.keepTrying('invitations', run);
+    expect(run).toHaveBeenCalledTimes(1);
+    finish();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not reset the retry count for events during backoff', async () => {
+    const retries = createRetries(false);
+    const run = vi.fn(() => Promise.reject(new Error('offline')));
+    void retries.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    for (const delay of [2_000, 5_000, 15_000, 30_000]) {
+      void retries.keepTrying('invitations', run).catch(() => undefined);
+      await vi.advanceTimersByTimeAsync(delay);
+    }
+    expect(run).toHaveBeenCalledTimes(5);
+    expect(retries.planned('invitations')).toBe(false);
+  });
+
+  it('can try an offline read on reconnect without shortening a server rate limit', async () => {
+    const retries = createRetries(false);
+    const offline = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue(undefined);
+    const limited = vi
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(
+          new Error('rate limited'),
+          refused(429, { 'retry-after': '20' }),
+        ),
+      )
+      .mockResolvedValue(undefined);
+    void retries.keepTrying('messages', offline).catch(() => undefined);
+    void retries.keepTrying('invitations', limited).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    retries.wake('messages');
+    retries.wake('invitations');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(offline).toHaveBeenCalledTimes(2);
+    expect(limited).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(limited).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a 429 deadline even when the last retry has failed', async () => {
+    const retries = createRetries(false);
+    const error = Object.assign(
+      new Error('rate limited'),
+      refused(429, { 'retry-after': '2' }),
+    );
+    const run = vi.fn(() => Promise.reject(error));
+    void retries.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(52_000);
+    expect(run).toHaveBeenCalledTimes(5);
+    void retries.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(1_999);
+    expect(run).toHaveBeenCalledTimes(5);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(6);
+    retries.stop();
+  });
+
+  it('does not send a new request while a too-long rate limit is active', async () => {
+    const retries = createRetries(false);
+    const run = vi.fn(() =>
+      Promise.reject(
+        Object.assign(
+          new Error('rate limited'),
+          refused(429, { 'retry-after': '3600' }),
+        ),
+      ),
+    );
+    void retries.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    void retries.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(retries.planned('invitations')).toBe(false);
+  });
+
   it('honours the rate limit after the page is hidden and shown early', async () => {
     const retries = createRetries(false);
     let attempts = 0;

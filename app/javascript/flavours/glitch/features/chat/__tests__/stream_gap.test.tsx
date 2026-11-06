@@ -240,6 +240,8 @@ const server = setupServer(
       const url = new URL(request.url);
       if (take(backend.failing, (path) => path.test(url.pathname)))
         return HttpResponse.json({ error: 'unavailable' }, { status: 503 });
+      const held = take(backend.held, ({ path }) => path.test(url.pathname));
+      if (held) await held.until;
       const id = String(params.id);
       const { text } = (await request.json()) as { text: string };
       const list = backend.messages.get(id) ?? [];
@@ -1515,6 +1517,217 @@ describe('Chat when something it asked for by itself fails', () => {
 
       expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
       expect(backend.messages.get('A')).toHaveLength(2);
+    });
+  });
+});
+
+describe('Independent review: overlapping failures', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('preserves a user send failure after a later background read fails and recovers', async () => {
+    seed('A', 1, 2);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await settle();
+    backend.failing.push(/\/messages$/);
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'unsent text' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await screen.findByText(REQUEST_FAILED);
+    expect(backend.messages.get('A')).toHaveLength(2);
+    backend.failing.push(INVITATIONS);
+    act(() => {
+      page.socket.deliver('chat.invitation', { id: 'invite' });
+    });
+    await settle();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
+  });
+
+  it('keeps the send failure visible while a retry has not yet succeeded', async () => {
+    seed('A', 1, 2);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await settle();
+    backend.failing.push(MESSAGES);
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'unsent text' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await screen.findByText(REQUEST_FAILED);
+    const release = holdNextAnswer(MESSAGES);
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await settle();
+    expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
+    expect(backend.messages.get('A')).toHaveLength(2);
+    await release();
+    await screen.findByText('unsent text');
+    await waitFor(() => {
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+    });
+  });
+
+  it('honours the invitation endpoint 429 deadline when a second invitation event arrives', async () => {
+    seed('A', 1, 2);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await settle();
+    const prior = readsOf(INVITATIONS).length;
+    backend.refusals.push({
+      path: INVITATIONS,
+      status: 429,
+      headers: { 'Retry-After': '20' },
+    });
+    act(() => {
+      page.socket.deliver('chat.invitation', { id: 'invite1' });
+    });
+    await waitFor(() => {
+      expect(readsOf(INVITATIONS).length).toBe(prior + 1);
+    });
+    await settle();
+    act(() => {
+      page.socket.deliver('chat.invitation', { id: 'invite2' });
+    });
+    await settle();
+    expect(readsOf(INVITATIONS).length).toBe(prior + 1);
+  });
+
+  it('honours the invitation 429 deadline when the stream reconnects', async () => {
+    seed('A', 1, 2);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await settle();
+    const prior = readsOf(INVITATIONS).length;
+    backend.refusals.push({
+      path: INVITATIONS,
+      status: 429,
+      headers: { 'Retry-After': '20' },
+    });
+    act(() => {
+      page.socket.deliver('chat.invitation', { id: 'invite1' });
+    });
+    await waitFor(() => {
+      expect(readsOf(INVITATIONS).length).toBe(prior + 1);
+    });
+    const next = await dropConnection(page.socket);
+    await connect(next);
+    await settle();
+    expect(readsOf(INVITATIONS).length).toBe(prior + 1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20_000);
+    });
+    await waitFor(() => {
+      expect(readsOf(INVITATIONS).length).toBe(prior + 2);
+    });
+  });
+});
+
+describe('Independent review: unread arriving during read retry', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  it('does not mark a message that arrived after the reader scrolled away', async () => {
+    seed('A', 1, 2);
+    backend.rooms.set('A', { title: 'Room A', unread: true });
+    backend.refusals.push({ path: /\/read$/, status: 503 });
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await waitFor(() => {
+      expect(backend.markAttempts).toHaveLength(1);
+    });
+    const restore = readFurtherUp();
+    const [newest] = seed('A', 3, 3);
+    act(() => {
+      page.socket.deliver('chat.message', newest);
+    });
+    await screen.findByText('Message 3');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(backend.markAttempts).toHaveLength(2);
+    expect(backend.markAttempts[1]?.messageId).toBe('2');
+    restore();
+  });
+});
+
+describe('Independent review: hidden tab', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(document, 'visibilityState');
+  });
+  it('does not fetch invitations for an event received while hidden', async () => {
+    seed('A', 1, 2);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await settle();
+    const prior = readsOf(INVITATIONS).length;
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    act(() => {
+      page.socket.deliver('chat.invitation', { id: 'invite1' });
+    });
+    await settle();
+    expect(readsOf(INVITATIONS).length).toBe(prior);
+  });
+
+  it('does not fetch invitations on a reconnect until the page is shown', async () => {
+    seed('A', 1, 2);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await settle();
+    const prior = readsOf(INVITATIONS).length;
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    const next = await dropConnection(page.socket);
+    await connect(next);
+    await settle();
+    expect(readsOf(INVITATIONS).length).toBe(prior);
+    Reflect.deleteProperty(document, 'visibilityState');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => {
+      expect(readsOf(INVITATIONS).length).toBe(prior + 1);
     });
   });
 });

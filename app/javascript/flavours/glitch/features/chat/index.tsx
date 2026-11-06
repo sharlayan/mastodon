@@ -159,10 +159,10 @@ type ChatHomeTab = 'home' | 'invitations' | 'joiningRooms' | 'ownedRooms';
 
 // A room's read mark that has yet to reach the server.
 interface ReadMark {
-  // The newest message to mark read, or null for all of them.
-  upTo: string | null;
+  // The newest message the reader has actually reached.
+  upTo: string;
   // What the request on its way marks, while one is.
-  sending?: string | null;
+  sending?: string;
   // Asked for again while a request was on its way, for more than it marks.
   again: boolean;
 }
@@ -1019,6 +1019,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [readingError, setReadingError] = useState(false);
   const isMounted = useRef(true);
   const [draftBeforeEdit, setDraftBeforeEdit] = useState<{
     text: string;
@@ -1113,17 +1115,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const failedReads = useRef(new Set<string>());
   const readFailed = useCallback((read: string) => {
     failedReads.current.add(read);
-    setError('reading');
+    setReadingError(true);
   }, []);
-  const readRecovered = useCallback(
-    (read: string) => {
-      retries.cancel(read);
-      failedReads.current.delete(read);
-      if (failedReads.current.size === 0)
-        setError((current) => (current === 'reading' ? null : current));
-    },
-    [retries],
-  );
+  const readRecovered = useCallback((read: string) => {
+    failedReads.current.delete(read);
+    if (failedReads.current.size === 0) setReadingError(false);
+  }, []);
 
   // Marking a room read is never asked for by hand. As with the timelines' read markers
   // (actions/markers.ts), a failure is not shown: the room stays unread here, and the mark is
@@ -1131,16 +1128,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const readMarks = useRef(new Map<string, ReadMark>());
   const sendReadMark = useCallback(
     async (id: string) => {
+      let lastMarked: string | undefined;
       for (;;) {
         const mark = readMarks.current.get(id);
         if (!mark) return;
-        mark.sending = mark.upTo;
+        const upTo = mark.upTo;
+        mark.sending = upTo;
         mark.again = false;
         const path = `/api/v1/chat/conversations/${id}/read`;
         try {
-          await (mark.upTo
-            ? api().post(path, { message_id: mark.upTo })
-            : api().post(path));
+          await api().post(path, { message_id: upTo });
+          lastMarked = upTo;
         } finally {
           mark.sending = undefined;
         }
@@ -1152,17 +1150,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           break;
         }
       }
+      const marked = lastMarked;
+      if (!marked) return;
       updateConversations((current) =>
         current.map((item) =>
-          item.id === id ? { ...item, unread: false } : item,
+          item.id === id &&
+          (!item.last_message || compareId(item.last_message.id, marked) <= 0)
+            ? { ...item, unread: false }
+            : item,
         ),
       );
     },
     [updateConversations],
   );
   const markRead = useCallback(
-    (id: string, messageId?: string) => {
-      const asked = messageId ?? null;
+    (id: string, asked?: string) => {
+      if (!asked) return;
       const mark = readMarks.current.get(id);
       if (!mark) {
         readMarks.current.set(id, { upTo: asked, again: false });
@@ -1175,19 +1178,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           .catch(() => undefined);
         return;
       }
-      mark.upTo =
-        mark.upTo === null || asked === null
-          ? null
-          : compareId(asked, mark.upTo) > 0
-            ? asked
-            : mark.upTo;
+      if (compareId(asked, mark.upTo) > 0) mark.upTo = asked;
       // The try planned next takes this along.
       if (mark.sending === undefined) return;
       // One is on its way; another goes after it unless it already covers this.
-      const covered =
-        mark.sending === null
-          ? asked === null
-          : asked !== null && compareId(asked, mark.sending) <= 0;
+      const covered = compareId(asked, mark.sending) <= 0;
       if (!covered) mark.again = true;
     },
     [retries, sendReadMark],
@@ -1433,7 +1428,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       ),
     );
     setMessagesLoaded(true);
-    if (isVisible() && isMounted.current) markRead(conversationId);
+    if (isVisible() && isMounted.current)
+      markRead(conversationId, response.data.at(-1)?.id);
     return true;
   }, [advanceContinuousUpTo, applyTombstone, conversationId, markRead]);
 
@@ -1503,7 +1499,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       }
       return;
     }
-    if (isVisible() && isMounted.current) markRead(conversationId);
+    if (isVisible() && isMounted.current)
+      markRead(conversationId, loaded.at(-1)?.id);
   }, [
     advanceContinuousUpTo,
     applyTombstone,
@@ -1516,7 +1513,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const markSeenOnReturn = useCallback(() => {
     if (!unreadWhileAway.current || !conversationId || !isVisible()) return;
     unreadWhileAway.current = false;
-    markRead(conversationId);
+    markRead(conversationId, shownMessagesRef.current.at(-1)?.id);
   }, [conversationId, markRead]);
 
   const loadOlderMessages = useCallback(() => {
@@ -1644,7 +1641,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     const markReadWhenShown = () => {
       if (!isVisible() || !followingNewestRef.current) return;
-      markRead(conversationId);
+      markRead(conversationId, shownMessagesRef.current.at(-1)?.id);
     };
 
     document.addEventListener('visibilitychange', markReadWhenShown);
@@ -1800,7 +1797,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         } else if (event === 'chat.read' && value.conversation_id) {
           updateConversations((current) =>
             current.map((item) =>
-              item.id === value.conversation_id
+              item.id === value.conversation_id &&
+              value.message_id &&
+              (!item.last_message ||
+                compareId(item.last_message.id, value.message_id) <= 0)
                 ? { ...item, unread: false }
                 : item,
             ),
@@ -1818,17 +1818,29 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setSentInvitationsVersion((version) => version + 1);
           // This also runs on every poll while offline, and the next one tries again.
           const readAgain = () => {
-            void loadConversations()
-              .then(() => {
+            // A queued reread supersedes the snapshot currently on its way.
+            if (retries.planned('conversations'))
+              latestConversationRequest.current += 1;
+            void retries
+              .keepTrying('conversations', async () => {
+                await loadConversations();
                 readRecovered('conversations');
               })
               .catch(() => undefined);
-            void loadInvitations()
-              .then(() => {
+            retries.wake('conversations');
+            void retries
+              .keepTrying('invitations', async () => {
+                await loadInvitations();
                 readRecovered('invitations');
               })
               .catch(() => undefined);
-            void resyncMessages().catch(() => undefined);
+            retries.wake('invitations');
+            if (conversationId) {
+              void retries
+                .keepTrying(`messages:${conversationId}`, resyncMessages)
+                .catch(() => undefined);
+              retries.wake(`messages:${conversationId}`);
+            }
           };
           // Starting before the screen's first answers are back would throw them away, and
           // leave it empty if this failed.
@@ -1857,6 +1869,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       refreshConversation,
       refreshConversations,
       resyncMessages,
+      retries,
       updateConversations,
       updateMessages,
     ],
@@ -1977,7 +1990,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       !jumpTargetId ||
       jumpTargetLoaded ||
       newestMessageConversationId !== conversationId ||
-      error
+      error ||
+      sendError ||
+      readingError
     )
       return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -1985,6 +2000,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [
     conversationId,
     error,
+    sendError,
+    readingError,
     jumpTargetId,
     jumpTargetLoaded,
     loadOlderMessages,
@@ -2032,6 +2049,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     return () => {
       current = false;
       // Away from the members screen, nothing on screen misses this list.
+      retries.cancel(read);
       readRecovered(read);
     };
   }, [
@@ -2039,6 +2057,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     keepReading,
     listsSentInvitations,
     readRecovered,
+    retries,
     sentInvitationsVersion,
   ]);
 
@@ -2092,7 +2111,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     )
       return;
     setLoading(true);
-    setError(null);
     try {
       const response = editingId
         ? await api().patch<ChatMessage>(`/api/v1/chat/messages/${editingId}`, {
@@ -2106,6 +2124,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               media_ids: media.map((item) => item.id),
             },
           );
+      setSendError(null);
       const message = applyTombstone(response.data);
       updateMessages((current) =>
         current.some((item) => item.id === message.id)
@@ -2124,7 +2143,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       }
       setReplyToId(null);
     } catch (sendError) {
-      setError(isRefused(sendError) ? 'refused' : 'send');
+      setSendError(isRefused(sendError) ? 'refused' : 'send');
     } finally {
       setLoading(false);
     }
@@ -3075,32 +3094,34 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   if (!signedIn) return <NotSignedInIndicator />;
 
   // The room scrolls, and only the composer stays on screen wherever it is scrolled.
-  const errorNotice = error && !roomEnding && (
-    <div className='chat-native__error' role='alert'>
-      {error === 'refused' ? (
-        <FormattedMessage
-          id='chat.error_refused'
-          defaultMessage="This account can't receive this."
-        />
-      ) : error === 'copy' ? (
-        <FormattedMessage
-          id='chat.error_copy'
-          defaultMessage='The message could not be copied.'
-        />
-      ) : error === 'too_many_attachments' ? (
-        <FormattedMessage
-          id='chat.error_too_many_attachments'
-          defaultMessage='You can attach up to {max} files.'
-          values={{ max: chatSettings?.max_attachments ?? 0 }}
-        />
-      ) : (
-        <FormattedMessage
-          id='chat.error'
-          defaultMessage='The chat request could not be completed.'
-        />
-      )}
-    </div>
-  );
+  const visibleError = error ?? sendError;
+  const errorNotice = (Boolean(visibleError) || readingError) &&
+    !roomEnding && (
+      <div className='chat-native__error' role='alert'>
+        {visibleError === 'refused' ? (
+          <FormattedMessage
+            id='chat.error_refused'
+            defaultMessage="This account can't receive this."
+          />
+        ) : visibleError === 'copy' ? (
+          <FormattedMessage
+            id='chat.error_copy'
+            defaultMessage='The message could not be copied.'
+          />
+        ) : visibleError === 'too_many_attachments' ? (
+          <FormattedMessage
+            id='chat.error_too_many_attachments'
+            defaultMessage='You can attach up to {max} files.'
+            values={{ max: chatSettings?.max_attachments ?? 0 }}
+          />
+        ) : (
+          <FormattedMessage
+            id='chat.error'
+            defaultMessage='The chat request could not be completed.'
+          />
+        )}
+      </div>
+    );
   const composerShown =
     Boolean(conversationId) && !conversationMissing && !isManagingRoom;
 

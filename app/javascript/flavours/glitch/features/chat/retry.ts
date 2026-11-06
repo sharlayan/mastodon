@@ -58,6 +58,12 @@ interface Planned {
   timer: ReturnType<typeof setTimeout> | null;
   // Its time came while the page was hidden, and it waits to be shown.
   due: boolean;
+  running: boolean;
+  again: boolean;
+  rateLimited: boolean;
+  first: Promise<unknown>;
+  resolveFirst?: (value: unknown) => void;
+  rejectFirst?: (error: unknown) => void;
   run: () => Promise<unknown>;
   failed?: (error: unknown) => void;
   gaveUp?: () => void;
@@ -67,8 +73,8 @@ export interface Retries {
   /**
    * Runs `run` now, and again later while it fails, until it works, another try would not
    * help, or it is cancelled. `failed` hears each failure, `gaveUp` when no more tries are
-   * planned. Starting again under the same key replaces what was planned. The promise is the
-   * first try's.
+   * planned. Reads under the same key share their plan and rate-limit deadline. The promise
+   * is the first try's.
    */
   keepTrying: <T>(
     key: string,
@@ -77,6 +83,8 @@ export interface Retries {
   ) => Promise<T>;
   /** Whether something is planned under this key. */
   planned: (key: string) => boolean;
+  /** A reconnect can wake an offline read, but not shorten a 429 deadline. */
+  wake: (key: string) => void;
   /** Plans nothing more under this key, or any key that starts with it and a colon. */
   cancel: (key: string) => void;
   /** Nothing is tried while the page is hidden. */
@@ -91,15 +99,45 @@ export const createRetries = (
     document.visibilityState === 'hidden',
 ): Retries => {
   const plans = new Map<string, Planned>();
+  const cooldowns = new Map<string, number>();
   let hidden = hiddenAtFirst;
 
   const settle = (key: string, entry: Planned, attempt: Promise<unknown>) => {
     void attempt
-      .then(() => {
-        if (plans.get(key) === entry) plans.delete(key);
+      .then((value) => {
+        entry.resolveFirst?.(value);
+        entry.resolveFirst = undefined;
+        entry.rejectFirst = undefined;
+        entry.running = false;
+        if (plans.get(key) !== entry) return;
+        if (entry.again) {
+          entry.again = false;
+          fire(key, entry);
+        } else {
+          plans.delete(key);
+        }
       })
       .catch((error: unknown) => {
+        entry.rejectFirst?.(error);
+        entry.resolveFirst = undefined;
+        entry.rejectFirst = undefined;
+        entry.running = false;
         if (plans.get(key) !== entry) return;
+        entry.again = false;
+        entry.rateLimited =
+          (error as { response?: { status?: number } } | null)?.response
+            ?.status === 429;
+        if (entry.rateLimited) {
+          const response = (
+            error as { response?: { headers?: unknown } } | null
+          )?.response;
+          const asked = waitAskedFor(response?.headers, Date.now());
+          const fallback =
+            RETRY_DELAYS_MS[
+              Math.min(entry.tried, RETRY_DELAYS_MS.length - 1)
+            ] ?? 0;
+          cooldowns.set(key, Date.now() + Math.max(asked ?? fallback, 0));
+        }
         entry.failed?.(error);
         if (plans.get(key) !== entry) return;
         const delay = retryDelay(error, entry.tried);
@@ -122,7 +160,18 @@ export const createRetries = (
       return;
     }
     entry.due = false;
-    settle(key, entry, entry.run());
+    entry.running = true;
+    try {
+      settle(key, entry, entry.run());
+    } catch (error) {
+      settle(
+        key,
+        entry,
+        Promise.reject(
+          error instanceof Error ? error : new Error(String(error)),
+        ),
+      );
+    }
   };
 
   const drop = (key: string) => {
@@ -130,25 +179,65 @@ export const createRetries = (
     if (!entry) return;
     if (entry.timer !== null) clearTimeout(entry.timer);
     plans.delete(key);
+    entry.rejectFirst?.(new Error('The background read was cancelled'));
+    entry.resolveFirst = undefined;
+    entry.rejectFirst = undefined;
   };
 
   return {
     keepTrying(key, run, callbacks = {}) {
-      drop(key);
+      const existing = plans.get(key);
+      if (existing) {
+        existing.run = run;
+        if (existing.running) existing.again = true;
+        return existing.first as ReturnType<typeof run>;
+      }
+      const remaining = (cooldowns.get(key) ?? 0) - Date.now();
+      if (remaining > LONGEST_WAIT_MS) {
+        callbacks.gaveUp?.();
+        return Promise.reject(
+          new Error('The server rate limit is still active'),
+        );
+      }
+      if (remaining <= 0) cooldowns.delete(key);
+      let resolveFirst!: (value: unknown) => void;
+      let rejectFirst!: (error: unknown) => void;
+      const first = new Promise<unknown>((resolve, reject) => {
+        resolveFirst = resolve;
+        rejectFirst = reject;
+      });
       const entry: Planned = {
         tried: 0,
         timer: null,
         due: false,
+        running: false,
+        again: false,
+        rateLimited: false,
+        first,
+        resolveFirst,
+        rejectFirst,
         run,
         ...callbacks,
       };
       plans.set(key, entry);
-      const first = run();
-      settle(key, entry, first);
-      return first;
+      if (remaining > 0) {
+        entry.rateLimited = true;
+        entry.timer = setTimeout(() => {
+          fire(key, entry);
+        }, remaining);
+      } else {
+        fire(key, entry);
+      }
+      return first as ReturnType<typeof run>;
     },
     planned(key) {
       return plans.has(key);
+    },
+    wake(key) {
+      const entry = plans.get(key);
+      if (entry?.timer == null || entry.rateLimited || hidden) return;
+      clearTimeout(entry.timer);
+      fire(key, entry);
     },
     cancel(key) {
       [...plans.keys()]
@@ -166,6 +255,7 @@ export const createRetries = (
     },
     stop() {
       [...plans.keys()].forEach(drop);
+      cooldowns.clear();
     },
   };
 };
