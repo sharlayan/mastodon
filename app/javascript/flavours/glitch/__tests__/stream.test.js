@@ -11,7 +11,23 @@ vi.mock('@gamestdio/websocket', () => {
       this.url = url;
       this.readyState = FakeWebSocketClient.OPEN;
       this.sent = [];
+      this.opens = 0;
+      this.backoff = {
+        attempts: 0,
+        delay: 100,
+        onReady: () => {
+          this.opens += 1;
+        },
+        backoff() {
+          setTimeout(this.onReady, Math.floor(Math.random() * (2 ** ++this.attempts) * this.delay));
+        },
+      };
       sockets.push(this);
+    }
+
+    drop() {
+      this.onclose?.({ code: 1006 });
+      this.backoff.backoff();
     }
 
     send(message) {
@@ -58,7 +74,35 @@ describe('shared streaming connection', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
+  });
+
+  it('caps the reconnect delay for a long-lived page', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.999);
+    const { socket, disconnect } = await connect();
+
+    socket.backoff.attempts = 15;
+    socket.drop();
+
+    await vi.advanceTimersByTimeAsync(30000);
+
+    expect(socket.opens).toBe(1);
+    disconnect();
+  });
+
+  it('resets the reconnect backoff after a successful connection', async () => {
+    const { socket, disconnect } = await connect();
+
+    socket.drop();
+    socket.drop();
+    socket.drop();
+    expect(socket.backoff.attempts).toBe(3);
+
+    socket.onopen();
+
+    expect(socket.backoff.attempts).toBe(0);
+    disconnect();
   });
 
   it('dispatches events to the matching subscription', async () => {

@@ -56,6 +56,46 @@ RSpec.describe DeliveryAntennaService do
     expect(antenna_feed_of(antenna)).to_not include(status.id)
   end
 
+  context 'with a private status' do
+    let!(:follower) { Fabricate(:user, current_sign_in_at: last_active_at).account }
+    let!(:stranger) { Fabricate(:user, current_sign_in_at: last_active_at).account }
+    let(:status) { Fabricate(:status, account: author, text: 'followers only', visibility: :private) }
+
+    before do
+      follower.follow!(author)
+      Fabricate.times(2, :account).each { |account| account.follow!(author) }
+    end
+
+    it 'delivers only to antennas owned by followers' do
+      follower_antenna = Fabricate(:antenna, account: follower, any_keywords: false, keywords: %w(followers))
+      stranger_antenna = Fabricate(:antenna, account: stranger, any_keywords: false, keywords: %w(followers))
+
+      subject.call(status, false, mode: :home)
+
+      expect(antenna_feed_of(follower_antenna)).to include(status.id)
+      expect(antenna_feed_of(stranger_antenna)).to_not include(status.id)
+    end
+
+    it 'looks up follows only for antenna owners' do
+      Fabricate(:antenna, account: follower, any_keywords: false, keywords: %w(followers))
+      Fabricate(:antenna, account: stranger, any_keywords: false, keywords: %w(followers))
+      allow(Follow).to receive(:where).and_call_original
+
+      subject.call(status, false, mode: :home)
+
+      expect(Follow).to have_received(:where).with(target_account_id: author.id, account_id: contain_exactly(follower.id, stranger.id))
+    end
+  end
+
+  it 'does not deliver a direct status to antennas' do
+    antenna = Fabricate(:antenna, account: owner, any_keywords: false, keywords: %w(hello))
+    status = Fabricate(:status, account: author, text: 'hello', visibility: :direct)
+
+    subject.call(status, false, mode: :home)
+
+    expect(antenna_feed_of(antenna)).to_not include(status.id)
+  end
+
   it 'skips blocked authors via FeedManager filtering' do
     owner.block!(author)
     antenna = Fabricate(:antenna, account: owner)

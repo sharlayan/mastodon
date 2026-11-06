@@ -54,12 +54,25 @@ export const LinkedNotificationsPoller: React.FC = () => {
   useEffect(() => {
     if (!me || !loaded || !hasAuthorizedLinkedAccounts) return;
 
-    const initialTimer = setTimeout(() => void poll(), 3_000);
-    const intervalId = setInterval(() => void poll(), POLL_INTERVAL_MS);
+    let lastPolledAt = 0;
+    const pollIfVisible = () => {
+      if (document.hidden) return;
+      lastPolledAt = Date.now();
+      void poll();
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden && Date.now() - lastPolledAt >= POLL_INTERVAL_MS)
+        pollIfVisible();
+    };
+
+    const initialTimer = setTimeout(pollIfVisible, 3_000);
+    const intervalId = setInterval(pollIfVisible, POLL_INTERVAL_MS);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       clearTimeout(initialTimer);
       clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [hasAuthorizedLinkedAccounts, loaded, poll]);
 

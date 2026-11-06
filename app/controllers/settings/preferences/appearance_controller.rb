@@ -28,7 +28,7 @@ class Settings::Preferences::AppearanceController < Settings::Preferences::BaseC
   end
 
   def available_flavours
-    roleplay_mode? ? Themes.instance.flavours & ['glitch'] : Themes.instance.flavours
+    roleplay_mode? ? Sharlayan::RoleplayThemes.flavours : Themes.instance.flavours
   end
 
   def available_themes_for_select

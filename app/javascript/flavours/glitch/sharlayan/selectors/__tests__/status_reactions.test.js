@@ -40,6 +40,31 @@ describe('Sharlayan status reaction selectors', () => {
     expect(selectBase(changedCompose, { id: '1' })).toBe(selectBase(state, { id: '1' }));
   });
 
+  it('keeps resolved users stable when unrelated accounts are imported', () => {
+    const state = stateWith({
+      '1': { reactions: [{ name: '👍', users: [{ id: 'a' }] }] },
+    }, {
+      a: { id: 'a', username: 'alice' },
+    });
+    const imported = state.setIn(['accounts', 'z'], fromJS({ id: 'z', username: 'zed' }));
+
+    expect(selectBase(imported, { id: '1' })).toBe(selectBase(state, { id: '1' }));
+  });
+
+  it('resolves again when a reacting account changes', () => {
+    const state = stateWith({
+      '1': { reactions: [{ name: '👍', users: [{ id: 'a' }] }] },
+    }, {
+      a: { id: 'a', username: 'alice' },
+    });
+    const before = selectBase(state, { id: '1' });
+    const renamed = state.setIn(['accounts', 'a', 'username'], 'alicia');
+    const after = selectBase(renamed, { id: '1' });
+
+    expect(after).not.toBe(before);
+    expect(after.getIn([0, 0, 'username'])).toBe('alicia');
+  });
+
   it('keeps an embedded streaming reaction user when the account is not in state', () => {
     const state = stateWith({
       '1': { reactions: [{ name: '👍', users: [{ id: 'missing', username: 'alice' }] }] },

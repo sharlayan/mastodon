@@ -94,7 +94,7 @@ class DriveFile < ApplicationRecord
   scope :ordered, -> { order(id: :desc) }
 
   scope :orphaned, lambda {
-    where.not(id: MediaAttachment.in_use.where.not(drive_file_id: nil).select(:drive_file_id))
+    where.not(MediaAttachment.in_use.where(MediaAttachment.arel_table[:drive_file_id].eq(arel_table[:id])).arel.exists)
   }
 
   before_destroy :prevent_destroy_if_attached, prepend: true

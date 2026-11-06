@@ -28,7 +28,7 @@ RSpec.describe MediaAttachment, :attachment_processing do
 
     it 'keeps same-account page media in use and out of the unattached scope' do
       page = Fabricate(:page, account: account)
-      page.update_column(:content, [{ type: 'image', fileId: media_attachment.id.to_s }])
+      page.update!(content: [{ type: 'image', fileId: media_attachment.id.to_s }])
 
       expect(described_class.referenced_by_page).to include(media_attachment)
       expect(described_class.in_use).to include(media_attachment)

@@ -18,7 +18,7 @@ class Settings::FlavoursController < Settings::BaseController
   end
 
   def update
-    flavour = roleplay_mode? ? 'glitch' : params.require(:flavour)
+    flavour = roleplay_mode? ? Sharlayan::RoleplayThemes.flavour_for(params[:flavour]) : params.require(:flavour)
     return redirect_to(action: 'show', flavour: current_flavour) unless Themes.instance.flavours.include?(flavour)
 
     available_skins = Themes.instance.skins_for(flavour)

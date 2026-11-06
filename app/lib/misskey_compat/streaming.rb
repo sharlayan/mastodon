@@ -16,6 +16,20 @@ module MisskeyCompat
       Rails.logger.warn("[misskey_compat] streaming broadcast failed for #{timeline_key}: #{e.class} #{e.message}")
     end
 
+    def broadcast_anonymous_note(redis, timeline_keys, status)
+      return unless Setting.misskey_compat_enabled
+      return if status.nil?
+
+      subscribed_keys = timeline_keys.uniq.select { |timeline_key| redis.exists?("subscribed:misskey:#{timeline_key}") }
+      return if subscribed_keys.empty?
+
+      context = MisskeyCompat::SerializationContext.for([status])
+      message = JSON.generate({ event: 'note', payload: MisskeyCompat::NoteSerializer.serialize(status, context: context) })
+      subscribed_keys.each { |timeline_key| redis.publish("misskey:#{timeline_key}", message) }
+    rescue => e
+      Rails.logger.warn("[misskey_compat] streaming broadcast failed for #{status&.id}: #{e.class} #{e.message}")
+    end
+
     def broadcast_reaction(redis, status, reaction, account, type)
       return unless Setting.misskey_compat_enabled
       return if status.nil? || reaction.nil? || account.nil?

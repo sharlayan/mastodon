@@ -33,6 +33,38 @@ RSpec.describe 'Settings Preferences Appearance' do
     end
   end
 
+  describe 'selecting a theme in roleplay mode' do
+    let(:user) { Fabricate(:user) }
+
+    before { sign_in user }
+
+    it 'allows the legacy glitch flavour and rejects vanilla' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        put settings_preferences_appearance_path(theme: 'glitch-classic/birdsiteui', user: { settings_attributes: { 'web.contrast': 'auto' } })
+        expect(user.reload.setting_flavour).to eq('glitch-classic')
+
+        put settings_preferences_appearance_path(theme: 'vanilla/default', user: { settings_attributes: { 'web.contrast': 'auto' } })
+        expect(user.reload.setting_flavour).to eq('glitch-classic')
+      end
+    end
+
+    it 'saves the legacy glitch flavour through the flavour settings' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        put settings_flavour_path('glitch-classic'), params: { user: { setting_skin: 'birdsiteui' } }
+      end
+
+      expect(user.reload).to have_attributes(setting_flavour: 'glitch-classic', setting_skin: 'birdsiteui')
+    end
+
+    it 'keeps vanilla out of the flavour settings' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        put settings_flavour_path('vanilla'), params: { user: { setting_skin: 'default' } }
+      end
+
+      expect(user.reload.setting_flavour).to eq('glitch')
+    end
+  end
+
   describe 'selecting the legacy glitch flavour' do
     let(:user) { Fabricate(:user) }
 

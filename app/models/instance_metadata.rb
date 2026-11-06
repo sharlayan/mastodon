@@ -156,6 +156,15 @@ class InstanceMetadata < ApplicationRecord
     RequestStore.store[:instance_metadata_by_domain][domain] = metadata
   end
 
+  def self.schedule_refresh(domain)
+    return if domain.blank?
+
+    scheduled = RequestStore.store[:instance_metadata_refresh_scheduled] ||= Set.new
+    return unless scheduled.add?(domain)
+
+    InstanceMetadataUpdateWorker.perform_async(domain)
+  end
+
   def self.preload_domains(domains)
     cache = RequestStore.store[:instance_metadata_by_domain] ||= {}
     missing = domains.compact.uniq.reject { |domain| domain.blank? || cache.key?(domain) }

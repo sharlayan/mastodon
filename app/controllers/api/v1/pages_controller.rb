@@ -12,7 +12,7 @@ class Api::V1::PagesController < Api::BaseController
   before_action :require_feature_enabled!
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :categories, :featured, :statistics]
   before_action -> { authorize_if_got_token! :read, :'read:accounts' }, only: [:show, :unlock]
-  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock]
+  before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, except: [:index, :categories, :show, :featured, :unlock, :statistics]
 
   before_action :require_user!, except: [:show, :unlock]
   before_action :set_page, only: [:show, :update, :destroy, :like, :unlike, :set_main, :unset_main, :set_series_main, :unset_series_main]
@@ -22,7 +22,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def index
-    @pages = current_account.pages.includes(page_series: :cover_media_attachment).order(is_main: :desc, id: :desc)
+    @pages = current_account.pages.summary_columns.includes(:eye_catching_media_attachment, page_series: :cover_media_attachment).order(is_main: :desc, id: :desc)
       .offset([params[:offset].to_i, 0].max)
       .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
     render json: @pages, each_serializer: REST::PageSummarySerializer
@@ -58,7 +58,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def featured
-    @pages = Page.featured.includes(page_series: :cover_media_attachment).limit(Page::LIST_LIMIT).to_a
+    @pages = Page.featured.summary_columns.includes(:eye_catching_media_attachment, account: [:account_stat, { user: :role }], page_series: :cover_media_attachment).limit(Page::LIST_LIMIT).to_a
     render json: @pages, each_serializer: REST::PageSummarySerializer
   end
 

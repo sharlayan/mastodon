@@ -51,7 +51,8 @@ class MisskeyCompat::DriveFileSerializer
     stored = media.file_meta.is_a?(Hash) ? media.file_meta['md5'].presence : nil
     return stored if stored
 
-    MisskeyCompat::MediaAttachmentMd5.for(media).to_s
+    MisskeyCompatMediaMd5Worker.perform_async(media.id) if media.persisted? && media.file.present?
+    ''
   end
 
   def serialize_drive_file(file, sensitive: nil)

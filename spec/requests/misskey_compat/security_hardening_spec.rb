@@ -173,6 +173,162 @@ RSpec.describe 'Misskey-compat security hardening' do
     end
   end
 
+  describe 'optional authentication on public read endpoints' do
+    let(:private_note) { Fabricate(:status, account: account, visibility: :direct) }
+    let(:public_note) { Fabricate(:status, account: account, visibility: :public) }
+
+    it 'does not allow a write-only token to read a direct note' do
+      access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
+
+      post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
+    end
+
+    it 'does not allow a MiAuth token without account read permission to read a direct note' do
+      access_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['write:notes'])
+
+      post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
+
+      expect(response).to have_http_status(403)
+      expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
+    end
+
+    it 'does not allow a disabled user to read a direct note using optional authentication' do
+      user.update!(disabled: true)
+
+      post '/api/notes/show', params: { i: token, noteId: private_note.id.to_s }, as: :json
+
+      expect(response).to have_http_status(403)
+    end
+
+    it 'allows a read token to read an authorized direct note' do
+      access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read')
+
+      post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(private_note.id))
+    end
+
+    it 'allows a MiAuth token with account read permission to read an authorized direct note' do
+      access_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:account'])
+
+      post '/api/notes/show', params: { i: access_token.token, noteId: private_note.id.to_s }, as: :json
+
+      expect(response).to have_http_status(200)
+    end
+
+    it 'preserves anonymous public note reads' do
+      post '/api/notes/show', params: { noteId: public_note.id.to_s }, as: :json
+
+      expect(response).to have_http_status(200)
+    end
+
+    it 'does not expose a direct note to anonymous requests' do
+      post '/api/notes/show', params: { noteId: private_note.id.to_s }, as: :json
+
+      expect(response).to have_http_status(404)
+    end
+
+    it 'does not allow a write-only token to retrieve private account settings through users/show' do
+      access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
+
+      post '/api/users/show', params: { i: access_token.token, userId: account.id.to_s }, as: :json
+
+      expect(response).to have_http_status(403)
+    end
+
+    it 'does not allow a write-only token to list private notes through users/notes' do
+      private_note
+      access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
+
+      post '/api/users/notes', params: { i: access_token.token, userId: account.id.to_s }, as: :json
+
+      expect(response).to have_http_status(403)
+    end
+
+    it 'rejects invalid credentials instead of silently treating them as anonymous' do
+      post '/api/notes/show', params: { i: 'invalid', noteId: public_note.id.to_s }, as: :json
+
+      expect(response).to have_http_status(401)
+    end
+
+    it 'keeps public user profiles available without exposing private settings anonymously' do
+      post '/api/users/show', params: { userId: account.id.to_s }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to_not have_key(:mutedWords)
+    end
+
+    context 'with clips enabled' do
+      let(:private_clip) { Fabricate(:clip, account: account, public: false) }
+      let(:public_clip) { Fabricate(:clip, account: account, public: true) }
+
+      before { Setting.clips_enabled = true }
+      after { Setting.clips_enabled = false }
+
+      it 'requires read access when a token is used to retrieve a private clip' do
+        access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
+
+        post '/api/clips/show', params: { i: access_token.token, clipId: private_clip.id.to_s }, as: :json
+
+        expect(response).to have_http_status(403)
+      end
+
+      it 'allows an authorized read token to retrieve a private clip' do
+        post '/api/clips/show', params: { i: token, clipId: private_clip.id.to_s }, as: :json
+
+        expect(response).to have_http_status(200)
+      end
+
+      it 'keeps public clips available anonymously' do
+        post '/api/clips/show', params: { clipId: public_clip.id.to_s }, as: :json
+
+        expect(response).to have_http_status(200)
+      end
+    end
+
+    context 'with pages enabled' do
+      let(:private_page) { Fabricate(:page, account: account, visibility: :private) }
+      let(:public_page) { Fabricate(:page, account: account, visibility: :public) }
+
+      before { Setting.pages_enabled = true }
+      after { Setting.pages_enabled = false }
+
+      it 'requires read access when a token is used to retrieve a private page' do
+        access_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write')
+
+        post '/api/pages/show', params: { i: access_token.token, pageId: private_page.id.to_s }, as: :json
+
+        expect(response).to have_http_status(403)
+      end
+
+      it 'requires the page-specific permission for a MiAuth private page read' do
+        access_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:account'])
+
+        post '/api/pages/show', params: { i: access_token.token, pageId: private_page.id.to_s }, as: :json
+
+        expect(response).to have_http_status(403)
+      end
+
+      it 'allows a MiAuth token with page read permission to retrieve a private page' do
+        access_token = MisskeyCompat::MiAuth.issue_token(user, permissions: ['read:pages'])
+
+        post '/api/pages/show', params: { i: access_token.token, pageId: private_page.id.to_s }, as: :json
+
+        expect(response).to have_http_status(200)
+      end
+
+      it 'keeps public pages available anonymously' do
+        post '/api/pages/show', params: { pageId: public_page.id.to_s }, as: :json
+
+        expect(response).to have_http_status(200)
+      end
+    end
+  end
+
   describe 'POST /api/users/show (feature gate)' do
     it 'is unavailable when the compat layer is disabled' do
       Setting.misskey_compat_enabled = false

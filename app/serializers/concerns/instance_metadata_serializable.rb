@@ -48,7 +48,7 @@ module InstanceMetadataSerializable
   end
 
   def schedule_metadata_update(domain)
-    InstanceMetadataUpdateWorker.perform_async(domain)
+    InstanceMetadata.schedule_refresh(domain)
   rescue => e
     Rails.logger.warn("Could not schedule metadata update for #{domain}: #{e.message}")
   end

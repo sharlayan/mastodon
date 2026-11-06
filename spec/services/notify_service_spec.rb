@@ -11,6 +11,60 @@ RSpec.describe NotifyService do
   let(:activity) { Fabricate(:follow, account: sender, target_account: recipient) }
   let(:type) { :follow }
 
+  shared_examples 'private mention conversation history' do |policy|
+    let(:original_status) { Fabricate(:status, account: notification.account, visibility: :direct) }
+    let(:intermediary_status) { Fabricate(:status, visibility: :direct, thread: original_status) }
+    let(:invitation_silent) { false }
+
+    before do
+      notification.account.create_notification_policy!(for_private_mentions: policy)
+      notification.target_status.update!(visibility: :direct, thread: intermediary_status)
+      Fabricate(:mention, status: original_status, account: notification.from_account, silent: invitation_silent)
+      Fabricate(:mention, status: intermediary_status, account: notification.from_account)
+    end
+
+    it 'accepts a reply after another participant mentions the sender' do
+      expect(subject.public_send(:"#{policy}?")).to be false
+    end
+
+    context 'when the recipient mentions the sender in an intervening non-direct post' do
+      let(:intermediary_status) { Fabricate(:status, account: notification.account, visibility: :public, thread: original_status) }
+
+      it 'continues looking for the earlier private invitation' do
+        expect(subject.public_send(:"#{policy}?")).to be false
+      end
+    end
+
+    context 'when a non-direct mention appears deeper in the reply chain' do
+      let(:non_direct_status) { Fabricate(:status, account: notification.account, visibility: :public, thread: original_status) }
+      let(:intermediary_status) { Fabricate(:status, visibility: :direct, thread: non_direct_status) }
+
+      before do
+        Fabricate(:mention, status: non_direct_status, account: notification.from_account)
+      end
+
+      it 'continues looking for the earlier private invitation' do
+        expect(subject.public_send(:"#{policy}?")).to be false
+      end
+    end
+
+    context 'when only other participants have mentioned the sender' do
+      let(:original_status) { Fabricate(:status, visibility: :direct) }
+
+      it 'still treats the reply as unsolicited' do
+        expect(subject.public_send(:"#{policy}?")).to be true
+      end
+    end
+
+    context 'when the earlier invitation is a silent mention' do
+      let(:invitation_silent) { true }
+
+      it 'still treats the reply as unsolicited' do
+        expect(subject.public_send(:"#{policy}?")).to be true
+      end
+    end
+  end
+
   it { expect { subject }.to change(Notification, :count).by(1) }
 
   describe 'linked-account streaming' do
@@ -301,6 +355,10 @@ RSpec.describe NotifyService do
         it 'returns true' do
           expect(subject.drop?).to be true
         end
+      end
+
+      context 'when recipient drops unsolicited private mentions' do
+        it_behaves_like 'private mention conversation history', :drop
       end
 
       context 'with bot policies' do
@@ -602,6 +660,10 @@ RSpec.describe NotifyService do
             end
           end
         end
+      end
+
+      context 'with private mention conversation history' do
+        it_behaves_like 'private mention conversation history', :filter
       end
 
       context 'with bot policies' do

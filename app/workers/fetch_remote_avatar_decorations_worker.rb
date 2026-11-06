@@ -3,7 +3,15 @@
 class FetchRemoteAvatarDecorationsWorker
   include Sidekiq::Worker
 
-  sidekiq_options queue: 'pull', retry: 2
+  sidekiq_options queue: 'pull', retry: 2, lock: :until_executed, lock_ttl: 1.hour.to_i
+
+  REFETCH_INTERVAL = 6.hours
+  CATALOG_CACHE_TTL = 1.hour
+
+  def self.schedule(account_id)
+    acquired = RedisConnection.with { |redis| redis.set("avatar_decorations:fetch_scheduled:#{account_id}", 1, nx: true, ex: REFETCH_INTERVAL.to_i) }
+    perform_in(rand(30), account_id) if acquired
+  end
 
   def perform(account_id)
     account = eligible_account(account_id)
@@ -63,7 +71,9 @@ class FetchRemoteAvatarDecorationsWorker
   end
 
   def fetch_relevant_decorations(account, user_decorations)
-    all_decorations = fetch_json("https://#{account.domain}/api/get-avatar-decorations", {})
+    all_decorations = Rails.cache.fetch("avatar_decorations:catalog:#{account.domain}", expires_in: CATALOG_CACHE_TTL, skip_nil: true) do
+      fetch_json("https://#{account.domain}/api/get-avatar-decorations", {})
+    end
     return unless all_decorations.is_a?(Array)
 
     decorations_by_id = all_decorations.filter_map do |decoration|

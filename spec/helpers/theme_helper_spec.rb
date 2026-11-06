@@ -172,6 +172,45 @@ RSpec.describe ThemeHelper do
         end
       end
     end
+
+    context 'when roleplay mode is enabled' do
+      around do |example|
+        original_forced_skin = Setting.roleplay_forced_skin
+        ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run }
+      ensure
+        Setting.roleplay_forced_skin = original_forced_skin
+      end
+
+      it 'forces a legacy glitch theme' do
+        Setting.roleplay_forced_skin = 'glitch-classic/birdsiteui'
+        allow(helper).to receive(:current_user).and_return(Fabricate(:user, settings: { flavour: 'glitch', skin: 'default' }))
+
+        expect(helper.current_theme).to eq(%w(glitch-classic birdsiteui))
+        expect(helper.roleplay_forced_skin).to eq('birdsiteui')
+      end
+
+      it 'keeps a user selection of the legacy glitch flavour' do
+        Setting.roleplay_forced_skin = ''
+        allow(helper).to receive(:current_user).and_return(Fabricate(:user, settings: { flavour: 'glitch-classic', skin: 'birdsiteui' }))
+
+        expect(helper.current_theme).to eq(%w(glitch-classic birdsiteui))
+      end
+
+      it 'moves a vanilla selection to glitch' do
+        Setting.roleplay_forced_skin = ''
+        allow(helper).to receive(:current_user).and_return(Fabricate(:user, settings: { flavour: 'vanilla', skin: 'default' }))
+
+        expect(helper.current_theme).to eq(%w(glitch default))
+      end
+
+      it 'ignores a forced theme that is not installed' do
+        Setting.roleplay_forced_skin = 'glitch-classic/missing'
+        allow(helper).to receive(:current_user).and_return(Fabricate(:user, settings: { flavour: 'glitch', skin: 'birdsiteui' }))
+
+        expect(helper.current_theme).to eq(%w(glitch birdsiteui))
+        expect(helper.roleplay_forced_skin).to be_nil
+      end
+    end
   end
 
   describe '#current_flavour' do

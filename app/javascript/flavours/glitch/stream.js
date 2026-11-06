@@ -54,6 +54,7 @@ const removeSubscription = subscription => {
 
 const MAX_SUBSCRIPTION_RETRIES = 5;
 const SUBSCRIPTION_RETRY_DELAY = 2000;
+const MAX_RECONNECT_DELAY = 30000;
 
 /**
  * @type {Object.<string, number>}
@@ -294,6 +295,27 @@ const handleEventSourceMessage = (e, received) => {
 };
 
 /**
+ * @param {WebSocketClient} ws
+ * @returns {() => void}
+ */
+const limitReconnectBackoff = ws => {
+  // @ts-expect-error
+  const { backoff } = ws;
+
+  backoff.backoff = () => {
+    backoff.attempts += 1;
+
+    const maxDelay = Math.min(MAX_RECONNECT_DELAY, (2 ** backoff.attempts) * backoff.delay);
+
+    setTimeout(backoff.onReady, Math.floor(Math.random() * maxDelay));
+  };
+
+  return () => {
+    backoff.attempts = 0;
+  };
+};
+
+/**
  * @param {string} streamingAPIBaseURL
  * @param {string} accessToken
  * @param {string} channelName
@@ -309,8 +331,12 @@ const createConnection = (streamingAPIBaseURL, accessToken, channelName, { conne
   if (streamingAPIBaseURL.startsWith('ws')) {
     // @ts-expect-error
     const ws = new WebSocketClient(`${streamingAPIBaseURL}/api/v1/streaming/?${params.join('&')}`, accessToken);
+    const resetReconnectBackoff = limitReconnectBackoff(ws);
 
-    ws.onopen = connected;
+    ws.onopen = () => {
+      resetReconnectBackoff();
+      connected();
+    };
     ws.onmessage = e => {
       try {
         received(JSON.parse(e.data));

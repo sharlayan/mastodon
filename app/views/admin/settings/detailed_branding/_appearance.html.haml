@@ -82,7 +82,11 @@
 
   .fields-group
     = f.input :roleplay_forced_skin,
-              collection: Themes.instance.skins_for('glitch').map { |skin| [skin_label('glitch', skin), skin] },
+              as: :grouped_select,
+              collection: Sharlayan::RoleplayThemes.flavours.map { |flavour| [t("flavours.#{flavour}.name", default: flavour), Themes.instance.skins_for(flavour).map { |skin| [skin_label(flavour, skin), "#{flavour}/#{skin}"] }] },
+              group_method: :last,
+              group_label_method: :first,
+              selected: Sharlayan::RoleplayThemes.normalize(f.object.roleplay_forced_skin),
               include_blank: t('admin.settings.community_mode_override.roleplay_forced_skin_none'),
               wrapper: :with_label,
               label: t('admin.settings.community_mode_override.roleplay_forced_skin'),

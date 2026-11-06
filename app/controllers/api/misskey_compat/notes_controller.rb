@@ -12,7 +12,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   SCHEDULED_OFFSET_LIMIT = 1_000
   TIMELINE_SCAN_LIMIT = 1_000
   TIMELINE_BATCH_SIZE = 100
+  TIMELINE_MIN_BATCH_SIZE = 20
   RELATED_NOTE_SCAN_LIMIT = 1_000
+  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show children replies conversation renotes note_reactions featured clips).freeze
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
@@ -23,6 +25,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   requires_misskey_permission 'read:account', :timeline, :local_timeline, :hybrid_timeline, :global_timeline,
                               :mentions, :state, :search, :search_by_tag, :translate, :scheduled_list,
                               :drafts_list, :drafts_count, :polls_recommendation
+  requires_misskey_permission 'read:account', *OPTIONAL_AUTHENTICATION_ACTIONS
   requires_misskey_permission 'read:favorites', :my_favorites
   requires_misskey_permission 'write:notes', :unrenote, :create, :update, :scheduled_cancel, :destroy
   requires_misskey_permission 'write:account', :thread_muting_create, :thread_muting_delete
@@ -41,6 +44,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   ).freeze
 
   before_action :require_user!, only: USER_ACTIONS + %i(local_timeline global_timeline)
+  before_action :require_user_if_authenticated!, only: OPTIONAL_AUTHENTICATION_ACTIONS
   before_action :enforce_reaction_rate_limit!, only: %i(reactions_create reactions_delete)
   before_action :enforce_status_draft_rate_limit!, only: %i(drafts_list drafts_count drafts_create drafts_update drafts_delete)
   before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
@@ -325,7 +329,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def mentions
-    scope = Status.joins(:mentions).where(mentions: { account_id: current_account.id }).distinct
+    scope = Status.joins(:mentions).where(mentions: { account_id: current_account.id })
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
   end
 
@@ -442,8 +446,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       break if page.empty?
 
       ActiveRecord::Associations::Preloader.new(records: page, associations: [:account, :mentions]).call
+      relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(page)
       page.each do |status|
-        statuses << status if StatusPolicy.new(current_account, status).show?
+        statuses << status if relations.visible?(status)
         break if statuses.size >= limit
       end
 
@@ -462,7 +467,9 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def render_visible_notes(scope)
-    statuses = scope.to_a.select { |status| StatusPolicy.new(current_account, status).show? }
+    candidates = scope.to_a
+    relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(candidates)
+    statuses = candidates.select { |status| relations.visible?(status) }
     render json: serialize_collection(statuses)
   end
 
@@ -854,12 +861,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def filtered_timeline(feeds, limit, filter_replies: false)
     forward = timeline_min_id.present?
-    states = feeds.map { |feed| { feed: feed, buffer: [], cursor: forward ? timeline_min_id : timeline_until_id, pages: 0, exhausted: false } }
+    states = feeds.map { |feed| { feed: feed, buffer: [], cursor: forward ? timeline_min_id : timeline_until_id, scanned: 0, exhausted: false } }
     seen = Set.new
     results = []
 
     while results.size < limit
-      states.each { |state| fill_timeline_buffer(state, forward) if state[:buffer].empty? && !state[:exhausted] }
+      states.each { |state| fill_timeline_buffer(state, forward, limit) if state[:buffer].empty? && !state[:exhausted] }
       available = states.reject { |state| state[:buffer].empty? }
       break if available.empty?
 
@@ -876,12 +883,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     results
   end
 
-  def fill_timeline_buffer(state, forward)
-    while state[:buffer].empty? && state[:pages] < TIMELINE_SCAN_LIMIT / TIMELINE_BATCH_SIZE
+  def fill_timeline_buffer(state, forward, limit)
+    while state[:buffer].empty? && state[:scanned] < TIMELINE_SCAN_LIMIT
       max_id = forward ? timeline_until_id : state[:cursor]
       min_id = forward ? state[:cursor] : nil
-      page = state[:feed].get(TIMELINE_BATCH_SIZE, max_id, timeline_since_id, min_id).to_a
-      state[:pages] += 1
+      batch_size = [[limit * 2, TIMELINE_MIN_BATCH_SIZE].max, TIMELINE_BATCH_SIZE, TIMELINE_SCAN_LIMIT - state[:scanned]].min
+      page = state[:feed].get(batch_size, max_id, timeline_since_id, min_id).to_a
+      state[:scanned] += batch_size
 
       if page.any?
         ActiveRecord::Associations::Preloader.new(records: page, associations: :media_attachments).call if timeline_with_files? || !timeline_with_renotes?
@@ -896,7 +904,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       end
     end
 
-    state[:exhausted] = true if state[:pages] >= TIMELINE_SCAN_LIMIT / TIMELINE_BATCH_SIZE && state[:buffer].empty?
+    state[:exhausted] = true if state[:scanned] >= TIMELINE_SCAN_LIMIT && state[:buffer].empty?
   end
 
   def pure_timeline_renote?(status)

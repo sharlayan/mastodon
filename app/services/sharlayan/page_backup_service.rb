@@ -91,6 +91,7 @@ class Sharlayan::PageBackupService
       id: series.id,
       title: series.title,
       description: series.description,
+      displayed: series.displayed,
       main_page_id: series.main_page_id,
       cover_media_attachment_id: series.cover_media_attachment_id,
     }
@@ -215,6 +216,7 @@ class Sharlayan::PageBackupService
       imported = @account.page_series.create!(
         title: available_series_title(attributes.fetch('title')),
         description: attributes['description'],
+        displayed: attributes.fetch('displayed', true),
         cover_media_attachment_id: media_ids[attributes['cover_media_attachment_id'].to_s]
       )
       [attributes.fetch('id').to_s, imported.id]

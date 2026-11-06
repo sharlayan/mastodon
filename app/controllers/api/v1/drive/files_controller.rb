@@ -197,20 +197,39 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
     scope = scope.where(type: params[:type]) if params[:type].present? && DriveFile.types.key?(params[:type])
     scope = scope.orphaned if truthy_param?(:orphaned)
     scope = apply_date_range(scope)
-    scope = scope.paginate_by_max_id(limit_param(LIMIT), params[:max_id], params[:since_id])
     apply_sort(scope)
   end
 
   def apply_sort(scope)
-    case params[:sort]
-    when '+createdAt' then scope.reorder(id: :desc)
-    when '-createdAt' then scope.reorder(id: :asc)
-    when '+name' then scope.reorder(file_file_name: :desc, id: :desc)
-    when '-name' then scope.reorder(file_file_name: :asc, id: :desc)
-    when '+size' then scope.reorder(file_file_size: :desc, id: :desc)
-    when '-size' then scope.reorder(file_file_size: :asc, id: :desc)
-    else scope
-    end
+    column = case params[:sort]
+             when '+name', '-name'
+               scope = scope.left_joins(:custom_name)
+               Arel::Nodes::NamedFunction.new('COALESCE', [DriveFileName.arel_table[:name], DriveFile.arel_table[:file_file_name]])
+             when '+size', '-size'
+               DriveFile.arel_table[:file_file_size]
+             when '-createdAt'
+               DriveFile.arel_table[:id]
+             else
+               return scope.paginate_by_max_id(limit_param(LIMIT), params[:max_id], params[:since_id])
+             end
+
+    direction = params[:sort].start_with?('+') ? :desc : :asc
+    conditions = %i(max_id since_id).filter_map { |param| sorted_cursor_condition(scope, column, direction, param) }
+    scope = scope.where(conditions.reduce(&:and)) if conditions.any?
+    scope.reorder(column.public_send(direction), DriveFile.arel_table[:id].desc).limit(limit_param(LIMIT))
+  end
+
+  def sorted_cursor_condition(scope, column, direction, param)
+    cursor_id = params[param]
+    return if cursor_id.blank?
+
+    value = scope.where(id: cursor_id).pick(column)
+    return DriveFile.arel_table[:id].eq(nil) if value.nil?
+
+    after = param == :max_id
+    comparison = (direction == :asc) == after ? :gt : :lt
+    id_comparison = after ? :lt : :gt
+    column.public_send(comparison, value).or(column.eq(value).and(DriveFile.arel_table[:id].public_send(id_comparison, cursor_id)))
   end
 
   def attached_ids_for(files)

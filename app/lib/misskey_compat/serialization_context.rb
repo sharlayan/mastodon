@@ -45,10 +45,33 @@ class MisskeyCompat::SerializationContext
     expanded = prepare(statuses)
     prime_reactions(expanded)
     prime_own_votes(expanded)
+    prime_relations(expanded)
     self
   end
 
+  def prime_relations(statuses)
+    return self if @current_account.nil?
+
+    account_ids = statuses.filter_map(&:account_id).uniq
+    return self if account_ids.empty?
+
+    @relation_account = @current_account.clone
+    @relation_account.preload_relations!(account_ids, nil, skip_blocking_and_muting: true)
+    @relation_account_ids = account_ids.to_set
+    self
+  end
+
+  def visible?(status)
+    StatusPolicy.new(policy_account_for(status), status).show?
+  end
+
   private
+
+  def policy_account_for(status)
+    return @current_account if @relation_account.nil? || !@relation_account_ids.include?(status.account_id)
+
+    @relation_account
+  end
 
   def prepare(statuses)
     roots = statuses.compact.uniq(&:object_id)

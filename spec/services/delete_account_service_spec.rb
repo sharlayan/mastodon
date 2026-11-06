@@ -146,6 +146,37 @@ RSpec.describe DeleteAccountService do
     end
   end
 
+  describe 'custom reaction purge' do
+    let(:account) { Fabricate(:account, domain: 'remote.example') }
+    let(:status) { Fabricate(:status) }
+    let(:other_status) { Fabricate(:status) }
+    let(:remaining_account) { Fabricate(:account) }
+
+    before do
+      Fabricate(:status_reaction, account: account, status: status, name: "\u2764")
+      Fabricate(:status_reaction, account: account, status: status, name: "\u{1F600}")
+      Fabricate(:status_reaction, account: account, status: other_status, name: "\u2764")
+      Fabricate(:status_reaction, account: remaining_account, status: status, name: "\u2764")
+    end
+
+    it 'subtracts every removed reaction while keeping other accounts reactions' do
+      described_class.new.call(account, skip_side_effects: true)
+
+      expect(status.reload.reactions_count).to eq(1)
+      expect(other_status.reload.reactions_count).to eq(0)
+      expect(status.status_reactions.pluck(:account_id)).to eq([remaining_account.id])
+    end
+
+    it 'invalidates the reaction summary and current status caches' do
+      cache_keys = [StatusReaction.summary_cache_key(status.id), "v3:statuses/#{status.id}", "statuses/show:v3:statuses/#{status.id}"]
+      cache_keys.each { |key| Rails.cache.write(key, 'stale') }
+
+      described_class.new.call(account, skip_side_effects: true)
+
+      expect(Rails.cache.read_multi(*cache_keys)).to be_empty
+    end
+  end
+
   describe '#call on local account', :inline_jobs do
     before do
       stub_request(:post, remote_alice.inbox_url).to_return(status: 201)

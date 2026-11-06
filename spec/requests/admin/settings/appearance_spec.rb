@@ -47,6 +47,24 @@ RSpec.describe 'Admin Settings Appearance' do
       end
     end
 
+    it 'groups forced roleplay themes by glitch flavour and selects a stored plain skin' do
+      Setting.roleplay_forced_skin = 'birdsiteui'
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        get admin_settings_custom_appearance_path
+      end
+
+      select = response.parsed_body.at_css('select[name="form_admin_settings[roleplay_forced_skin]"]')
+      values = select.css('option').pluck('value')
+
+      expect(values).to include('glitch/default', 'glitch/birdsiteui', 'glitch-classic/default', 'glitch-classic/birdsiteui')
+      expect(values).to_not include(a_string_starting_with('vanilla/'))
+      expect(select.css('optgroup').size).to eq(2)
+      expect(select.at_css('option[selected]')['value']).to eq('glitch/birdsiteui')
+    ensure
+      Setting.roleplay_forced_skin = ''
+    end
+
     it 'renders timeline controls only in roleplay mode' do
       get admin_settings_custom_timeline_control_path
       expect(response).to have_http_status(404)
@@ -100,6 +118,25 @@ RSpec.describe 'Admin Settings Appearance' do
 
       expect(response).to redirect_to(admin_settings_custom_appearance_path)
       expect(Setting.roleplay_forced_skin).to eq('contrast')
+    end
+
+    it 'stores a forced roleplay theme from the legacy glitch flavour' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        patch admin_settings_custom_appearance_path, params: { form_admin_settings: { roleplay_forced_skin: 'glitch-classic/birdsiteui' } }
+      end
+
+      expect(response).to redirect_to(admin_settings_custom_appearance_path)
+      expect(Setting.roleplay_forced_skin).to eq('glitch-classic/birdsiteui')
+    end
+
+    it 'rejects a forced roleplay theme outside the glitch flavours' do
+      Setting.roleplay_forced_skin = ''
+
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        patch admin_settings_custom_appearance_path, params: { form_admin_settings: { roleplay_forced_skin: 'vanilla/default' } }
+      end
+
+      expect(Setting.roleplay_forced_skin).to eq('')
     end
   end
 end

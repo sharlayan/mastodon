@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_085300) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1021,6 +1021,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.index ["updated_at"], name: "index_federation_instance_edges_on_updated_at"
   end
 
+  create_table "federation_request_flush_batches", force: :cascade do |t|
+    t.string "batch_key", null: false
+    t.datetime "created_at", null: false
+    t.index ["batch_key"], name: "index_federation_request_flush_batches_on_batch_key", unique: true
+    t.index ["created_at"], name: "index_federation_request_flush_batches_on_created_at"
+  end
+
   create_table "federation_request_statistics", force: :cascade do |t|
     t.datetime "bucket_at", null: false
     t.datetime "created_at", null: false
@@ -1494,6 +1501,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.string "visibility", default: "public", null: false
+    t.bigint "referenced_media_attachment_ids", default: [], null: false, array: true
     t.index ["account_id", "name"], name: "index_pages_on_account_id_and_name", unique: true
     t.index ["account_id"], name: "index_pages_on_account_id"
     t.index ["account_id"], name: "index_pages_on_account_id_where_is_main", unique: true, where: "is_main"
@@ -1501,6 +1509,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_27_100800) do
     t.index ["likes_count"], name: "index_pages_on_likes_count"
     t.index ["page_series_id", "series_position", "id"], name: "index_pages_on_series_order"
     t.index ["page_series_id"], name: "index_pages_on_page_series_id"
+    t.index ["referenced_media_attachment_ids"], name: "index_pages_on_referenced_media_attachment_ids", using: :gin
     t.index ["visibility"], name: "index_pages_on_visibility"
   end
 

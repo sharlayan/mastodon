@@ -61,6 +61,37 @@ RSpec.describe Sharlayan::PageBackupService do
     expect(restored_cover.id).to_not eq(cover.id)
   end
 
+  it 'preserves whether Booklets are displayed in the public bookcase' do
+    Fabricate(:page_series, account: account, title: 'Hidden', displayed: false)
+    Fabricate(:page_series, account: account, title: 'Visible', displayed: true)
+
+    archive_upload(service.export) do |upload|
+      account.page_series.destroy_all
+      service.import!(upload)
+    end
+
+    expect(account.page_series.find_by!(title: 'Hidden')).to_not be_displayed
+    expect(account.page_series.find_by!(title: 'Visible')).to be_displayed
+  end
+
+  it 'defaults legacy Booklets without a display preference to displayed' do
+    archive = zip_archive do |zip|
+      zip.get_output_stream(described_class::MANIFEST) do |io|
+        io.write({
+          format: described_class::FORMAT,
+          version: 2,
+          pages: [],
+          media: [],
+          series: [{ id: 'old-series', title: 'Legacy', main_page_id: nil }],
+        }.to_json)
+      end
+    end
+
+    archive_upload(archive) { |upload| service.import!(upload) }
+
+    expect(account.page_series.sole).to be_displayed
+  end
+
   it 'continues to import version 1 archives without series data' do
     archive = zip_archive do |zip|
       zip.get_output_stream(described_class::MANIFEST) do |io|

@@ -49,5 +49,50 @@ RSpec.describe Sharlayan::RackAttackExtensions do
       expect(another_request.role_rate_limit(:api)).to eq(2_000)
       expect(User).to have_received(:includes).once
     end
+
+    describe '#bypasses_rate_limit?' do
+      before do
+        Setting.rate_limit_bypass_enabled = true
+        role.update!(extra_permissions: UserRole::EXTRA_FLAGS[:bypass_rate_limit])
+      end
+
+      after do
+        Setting.rate_limit_bypass_enabled = false
+      end
+
+      it 'allows a role with the bypass permission' do
+        expect(request.bypasses_rate_limit?).to be true
+      end
+
+      it 'denies a role without the bypass permission' do
+        role.update!(extra_permissions: 0)
+
+        expect(request.bypasses_rate_limit?).to be false
+      end
+
+      it 'shares the bypass decision between requests without loading the user again' do
+        allow(User).to receive(:includes).and_call_original
+        expect(request.bypasses_rate_limit?).to be true
+        another_request = request_class.new(user.id)
+
+        expect(another_request.bypasses_rate_limit?).to be true
+        expect(User).to have_received(:includes).once
+      end
+
+      it 'does not look up anonymous requests' do
+        allow(User).to receive(:includes).and_call_original
+
+        expect(request_class.new(nil).bypasses_rate_limit?).to be false
+        expect(User).to_not have_received(:includes)
+      end
+
+      it 'does not look up users when the bypass setting is disabled' do
+        Setting.rate_limit_bypass_enabled = false
+        allow(User).to receive(:includes).and_call_original
+
+        expect(request.bypasses_rate_limit?).to be false
+        expect(User).to_not have_received(:includes)
+      end
+    end
   end
 end

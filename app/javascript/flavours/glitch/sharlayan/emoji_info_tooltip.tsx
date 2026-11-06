@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { EmojiInfoTooltip } from '@/flavours/glitch/components/emoji_info_tooltip';
 
@@ -7,9 +7,12 @@ export function useSharlayanEmojiInfoTooltip() {
     null,
   );
 
-  const tooltip = (
-    <EmojiInfoTooltip containerRef={{ current: containerElement }} enabled />
+  const containerRef = useMemo(
+    () => ({ current: containerElement }),
+    [containerElement],
   );
+
+  const tooltip = <EmojiInfoTooltip containerRef={containerRef} enabled />;
 
   return { setContainerElement, tooltip };
 }

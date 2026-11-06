@@ -43,6 +43,71 @@ RSpec.describe 'Drive files API' do
       expect(response.parsed_body.pluck(:id)).to contain_exactly(files.first.id.to_s)
     end
 
+    it 'sorts by display names rather than the storage file names' do
+      first = insert_drive_file
+      first.update!(file_file_name: 'a.jpg', display_name: 'Zulu')
+      second = insert_drive_file
+      second.update!(file_file_name: 'z.jpg', display_name: 'Alpha')
+
+      get '/api/v1/drive/files', headers: headers, params: { sort: '-name' }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq([second.id, first.id].map(&:to_s))
+    end
+
+    [
+      ['+name', [2, 0, 4, 3, 1]],
+      ['-name', [1, 4, 3, 0, 2]],
+      ['+size', [2, 0, 4, 3, 1]],
+      ['-size', [1, 4, 3, 0, 2]],
+      ['+createdAt', [4, 3, 2, 1, 0]],
+      ['-createdAt', [0, 1, 2, 3, 4]],
+    ].each do |sort, expected_indices|
+      context "with #{sort} ordering" do
+        let(:files) { sorted_drive_file_fixtures }
+        let(:expected_ids) { expected_indices.map { |index| files.fetch(index).id.to_s } }
+
+        before do
+          files
+          nested_file = insert_drive_file(folder_id: folder.id)
+          nested_file.update!(file_file_size: 25, display_name: '25')
+        end
+
+        it 'paginates without skipping or repeating files' do
+          get '/api/v1/drive/files', headers: headers, params: { sort: sort, limit: 2, folder_id: '' }
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body.pluck(:id)).to eq(expected_ids.first(2))
+          next_page = response.headers['Link'][/<([^>]+)>; rel="next"/, 1]
+
+          get URI.parse(next_page).request_uri, headers: headers
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body.pluck(:id)).to eq(expected_ids.slice(2, 2))
+          next_page = response.headers['Link'][/<([^>]+)>; rel="next"/, 1]
+
+          get URI.parse(next_page).request_uri, headers: headers
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body.pluck(:id)).to eq(expected_ids.last(1))
+          expect(response.headers['Link']).to_not include('rel="next"')
+        end
+
+        it 'uses the previous link to retrieve files before the current sort position' do
+          get '/api/v1/drive/files', headers: headers, params: { sort: sort, limit: 2, folder_id: '' }
+          next_page = response.headers['Link'][/<([^>]+)>; rel="next"/, 1]
+
+          get URI.parse(next_page).request_uri, headers: headers
+          previous_page = response.headers['Link'][/<([^>]+)>; rel="prev"/, 1]
+
+          get URI.parse(previous_page).request_uri, headers: headers
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body.pluck(:id)).to eq(expected_ids.first(2))
+        end
+      end
+    end
+
     it 'flags files that no status uses as orphaned' do
       attached_file = insert_drive_file
       unused_file = insert_drive_file
@@ -402,6 +467,14 @@ RSpec.describe 'Drive files API' do
       end.to_not change(MediaAttachment, :count)
 
       expect(response).to have_http_status(404)
+    end
+  end
+
+  def sorted_drive_file_fixtures
+    [30, 10, 40, 20, 20].map do |size|
+      file = insert_drive_file
+      file.update!(file_file_size: size, display_name: size.to_s)
+      file
     end
   end
 

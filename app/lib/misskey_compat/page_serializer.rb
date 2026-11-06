@@ -48,7 +48,7 @@ class MisskeyCompat::PageSerializer
       block = source.deep_dup
       block.delete('spoiler')
       if block['type'] == 'text' && block.delete('format') == 'markdown'
-        html = AdvancedTextFormatter.new(block['text'], content_type: 'text/markdown').to_s
+        html = Sharlayan::PageMarkdown.to_html(block['text'])
         block['text'] = Nokogiri::HTML5.fragment(html).text.gsub(/(\\*)\$\[/) { "#{Regexp.last_match(1) * 2}\\$[" }
       end
       block['fileId'] = serialize_media_id(media_by_id[block['fileId'].to_s]) if block['type'] == 'image' && block['fileId'].present?

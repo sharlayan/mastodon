@@ -45,7 +45,7 @@ function fromDatetimeLocal(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-export function ScheduleButton({ scheduledAt, onScheduleChange, disabled, isEditing, iconOnly }) {
+export function ScheduleButton({ scheduledAt, onScheduleChange, disabled, isEditing, isEditingScheduled, iconOnly }) {
   const intl = useIntl();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(() => toDatetimeLocal(scheduledAt));
@@ -183,6 +183,7 @@ export function ScheduleButton({ scheduledAt, onScheduleChange, disabled, isEdit
                   <button
                     type='button'
                     className='schedule-button__clear'
+                    disabled={isEditingScheduled}
                     onClick={handleClear}
                   >
                     {intl.formatMessage(messages.clear_schedule)}
@@ -210,5 +211,6 @@ ScheduleButton.propTypes = {
   onScheduleChange: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
   isEditing: PropTypes.bool,
+  isEditingScheduled: PropTypes.bool,
   iconOnly: PropTypes.bool,
 };

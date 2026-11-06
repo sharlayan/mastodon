@@ -16,6 +16,7 @@ RSpec.describe BroadcastStatusUpdateWorker do
     allow(redis).to receive(:publish) do |channel, message|
       published_messages << [channel, JSON.parse(message)]
     end
+    allow(redis).to receive(:pipelined).and_yield(redis)
   end
 
   describe '#perform' do

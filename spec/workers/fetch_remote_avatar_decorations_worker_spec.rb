@@ -54,4 +54,16 @@ RSpec.describe FetchRemoteAvatarDecorationsWorker do
     expect(decoration.image_remote_url).to eq('https://remote.example/fallback.png')
     expect(account.reload.avatar_decorations).to contain_exactly(include('id' => decoration.id))
   end
+
+  describe '.schedule' do
+    it 'enqueues one refetch per account within the refetch interval' do
+      allow(described_class).to receive(:perform_in)
+
+      3.times { described_class.schedule(123) }
+      described_class.schedule(456)
+
+      expect(described_class).to have_received(:perform_in).with(anything, 123).once
+      expect(described_class).to have_received(:perform_in).with(anything, 456).once
+    end
+  end
 end

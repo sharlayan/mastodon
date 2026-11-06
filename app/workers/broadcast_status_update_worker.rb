@@ -60,8 +60,12 @@ class BroadcastStatusUpdateWorker
 
     excluded_ids = muted_by_ids + list_excluded_ids
 
-    status.account.followers.where(domain: nil).where.not(id: excluded_ids).select(:id).reorder(nil).find_each do |follower|
-      redis.publish("timeline:#{follower.id}", message)
+    status.account.followers.where(domain: nil).where.not(id: excluded_ids).reorder(nil).in_batches(of: 1_000) do |batch|
+      follower_ids = batch.pluck(:id)
+
+      redis.pipelined do |pipeline|
+        follower_ids.each { |follower_id| pipeline.publish("timeline:#{follower_id}", message) }
+      end
     end
   end
 

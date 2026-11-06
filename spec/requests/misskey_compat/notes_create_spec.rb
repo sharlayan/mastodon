@@ -173,12 +173,13 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
       expect(status.in_reply_to_id).to eq(parent.id)
       expect(status.mentions.where(account_id: parent.account_id).count).to eq(1)
 
-      post '/api/notes/children', params: { i: token, noteId: MisskeyCompat::MiId.encode(parent.id) }, as: :json
+      read_token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token
+      post '/api/notes/children', params: { i: read_token, noteId: MisskeyCompat::MiId.encode(parent.id) }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(status.id))
 
-      post '/api/notes/show', params: { i: token, noteId: MisskeyCompat::MiId.encode(status.id) }, as: :json
+      post '/api/notes/show', params: { i: read_token, noteId: MisskeyCompat::MiId.encode(status.id) }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.dig(:reply, :id)).to eq(MisskeyCompat::MiId.encode(parent.id))

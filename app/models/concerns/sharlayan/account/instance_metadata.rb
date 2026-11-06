@@ -13,7 +13,7 @@ module Sharlayan::Account::InstanceMetadata
     return false if domain.blank?
 
     metadata = ::InstanceMetadata.find_by(domain: domain)
-    metadata.nil? || metadata.theme_color_needs_update?
+    metadata.nil? || (metadata.theme_color_needs_update? && metadata.metadata_needs_update?)
   end
 
   def schedule_instance_metadata_update

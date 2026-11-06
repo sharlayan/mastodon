@@ -1,6 +1,7 @@
 // The plain-text transformation rules are ported from Misskey
 // (https://github.com/misskey-dev/misskey, packages/misskey-js/src/nyaize.ts
 
+import { createLruCache } from '@/flavours/glitch/components/mfm/lru_cache';
 import {
   catEnabled,
   catFederationEnabled,
@@ -65,7 +66,13 @@ function nyaifyTextSegment(text: string): string {
     .join('');
 }
 
+const nyaifyHtmlCache = createLruCache<string>();
+
 export function nyaifyHtml(html: string): string {
+  return nyaifyHtmlCache(html, () => nyaifyHtmlUncached(html));
+}
+
+function nyaifyHtmlUncached(html: string): string {
   let skipDepth = 0;
 
   return html.replace(

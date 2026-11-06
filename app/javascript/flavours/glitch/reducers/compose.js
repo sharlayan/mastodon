@@ -715,7 +715,7 @@ export const composeReducer = (state = initialState, action) => {
   case REDRAFT: {
     const do_not_federate = !!action.status.get('local_only');
     let text = action.raw_text || unescapeHTML(expandMentions(action.status));
-    return state.withMutations(map => {
+    return resetSharlayanComposeState(state).withMutations(map => {
       map.set('text', text);
       map.set('content_type', action.content_type || 'text/plain');
       map.set('in_reply_to', action.status.get('in_reply_to_id'));
@@ -735,6 +735,7 @@ export const composeReducer = (state = initialState, action) => {
       // Mastodon-authored posts can be expected to have at most one automatic approval policy
       map.set('quote_policy', action.status.getIn(['quote_approval', 'automatic', 0]) || 'nobody');
       map.set('reaction_acceptance', action.status.get('reaction_acceptance') || null);
+      map.set('poll', null);
 
       if (action.status.get('spoiler_text').length > 0) {
         map.set('spoiler', true);
@@ -763,7 +764,7 @@ export const composeReducer = (state = initialState, action) => {
     });
   }
   case COMPOSE_SET_STATUS:
-    return state.withMutations(map => {
+    return resetSharlayanComposeState(state).withMutations(map => {
       map.set('id', action.status.get('id'));
       map.set('text', action.text);
       map.updateIn(['advanced_options'], opts => opts.set('do_not_federate', !!action.status.get('local_only')));
@@ -780,6 +781,7 @@ export const composeReducer = (state = initialState, action) => {
       // Mastodon-authored posts can be expected to have at most one automatic approval policy
       map.set('quote_policy', action.status.getIn(['quote_approval', 'automatic', 0]) || 'nobody');
       map.set('reaction_acceptance', action.status.get('reaction_acceptance') || null);
+      map.set('poll', null);
 
       if (action.spoiler_text.length > 0) {
         map.set('spoiler', true);

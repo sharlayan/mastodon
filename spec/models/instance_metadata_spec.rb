@@ -31,6 +31,29 @@ RSpec.describe InstanceMetadata do
     end
   end
 
+  describe '.schedule_refresh' do
+    before { allow(InstanceMetadataUpdateWorker).to receive(:perform_async) }
+
+    it 'enqueues one refresh per domain until the request store is cleared' do
+      3.times { described_class.schedule_refresh('busy.example') }
+      described_class.schedule_refresh('other.example')
+
+      expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with('busy.example').once
+      expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with('other.example').once
+
+      RequestStore.clear!
+      described_class.schedule_refresh('busy.example')
+
+      expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with('busy.example').twice
+    end
+
+    it 'ignores blank domains' do
+      described_class.schedule_refresh('')
+
+      expect(InstanceMetadataUpdateWorker).to_not have_received(:perform_async)
+    end
+  end
+
   describe '#default_theme_color' do
     it 'returns the correct color for known software' do
       record = Fabricate(:instance_metadata, software: 'misskey')

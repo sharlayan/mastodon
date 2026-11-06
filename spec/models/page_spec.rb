@@ -218,6 +218,17 @@ RSpec.describe Page do
     end
   end
 
+  describe '.summary_columns' do
+    it 'omits the page body while keeping the list attributes' do
+      page = Fabricate(:page, account: account, summary: 'Short', content: [{ 'type' => 'text', 'text' => 'Large body' }])
+      summary = described_class.summary_columns.find(page.id)
+
+      expect(summary.has_attribute?(:content)).to be false
+      expect(summary).to have_attributes(title: page.title, summary: 'Short', account_id: account.id)
+      expect { summary.content }.to raise_error(ActiveModel::MissingAttributeError)
+    end
+  end
+
   describe '.referenced_by_page isolation' do
     it 'does not pin media through a page owned by another account' do
       media = Fabricate(:media_attachment)
@@ -225,6 +236,21 @@ RSpec.describe Page do
       page.update_column(:content, [{ type: 'image', fileId: media.id.to_s }])
 
       expect(MediaAttachment.referenced_by_page).to_not include(media)
+      expect(MediaAttachment.unattached).to include(media)
+    end
+
+    it 'tracks media referenced anywhere in saved page content' do
+      media = Fabricate(:media_attachment, account: account)
+      page = Fabricate(:page, account: account)
+      page.update!(content: [{ 'type' => 'section', 'children' => [{ 'type' => 'image', 'fileId' => media.id.to_s }] }])
+
+      expect(page.reload.referenced_media_attachment_ids).to eq([media.id])
+      expect(MediaAttachment.referenced_by_page).to include(media)
+      expect(MediaAttachment.unattached).to_not include(media)
+
+      page.update!(content: [])
+
+      expect(page.reload.referenced_media_attachment_ids).to eq([])
       expect(MediaAttachment.unattached).to include(media)
     end
 

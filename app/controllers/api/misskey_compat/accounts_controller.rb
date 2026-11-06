@@ -3,10 +3,12 @@
 class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseController
   requires_write_scope :update_memo, :report_abuse
   requires_misskey_permission 'read:account', :followers, :following, :search, :search_by_username_and_host
+  requires_misskey_permission 'read:account', :index, :notes, :reactions, :featured_notes, :pinned_users
   requires_misskey_permission 'write:account', :update_memo
   requires_misskey_permission 'write:report-abuse', :report_abuse
 
   before_action :require_user!, only: [:followers, :following, :search, :search_by_username_and_host, :update_memo, :report_abuse]
+  before_action :require_user_if_authenticated!, only: [:index, :notes, :reactions, :featured_notes, :pinned_users]
 
   def index
     scope = apply_user_origin(Account.discoverable.without_suspended)

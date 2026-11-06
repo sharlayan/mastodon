@@ -103,4 +103,35 @@ RSpec.describe MisskeyCompat::Streaming do
       expect(MisskeyCompat::DriveFolderSerializer).to_not have_received(:serialize)
     end
   end
+
+  describe '.broadcast_anonymous_note' do
+    let(:context) { instance_double(MisskeyCompat::SerializationContext) }
+
+    before do
+      allow(MisskeyCompat::SerializationContext).to receive(:for).and_return(context)
+      allow(MisskeyCompat::NoteSerializer).to receive(:serialize).and_return({ id: 'note' })
+      allow(broadcast_redis).to receive(:publish)
+    end
+
+    it 'serializes once and publishes only to subscribed timelines' do
+      allow(broadcast_redis).to receive(:exists?).with('subscribed:misskey:timeline:public').and_return(true)
+      allow(broadcast_redis).to receive(:exists?).with('subscribed:misskey:timeline:hashtag:a').and_return(true)
+      allow(broadcast_redis).to receive(:exists?).with('subscribed:misskey:timeline:hashtag:b').and_return(false)
+
+      described_class.broadcast_anonymous_note(broadcast_redis, %w(timeline:public timeline:hashtag:a timeline:hashtag:b), status)
+
+      expect(MisskeyCompat::NoteSerializer).to have_received(:serialize).once
+      expect(broadcast_redis).to have_received(:publish).with('misskey:timeline:public', anything)
+      expect(broadcast_redis).to have_received(:publish).with('misskey:timeline:hashtag:a', anything)
+      expect(broadcast_redis).to_not have_received(:publish).with('misskey:timeline:hashtag:b', anything)
+    end
+
+    it 'does not serialize when no timeline is subscribed' do
+      allow(broadcast_redis).to receive(:exists?).and_return(false)
+
+      described_class.broadcast_anonymous_note(broadcast_redis, %w(timeline:public), status)
+
+      expect(MisskeyCompat::NoteSerializer).to_not have_received(:serialize)
+    end
+  end
 end

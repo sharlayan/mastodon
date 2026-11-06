@@ -2,9 +2,8 @@ import { FormattedMessage } from 'react-intl';
 
 import {
   MfmRenderer,
-  hasAnyMfmFn,
-  hasSensitiveFoldTags,
-  MFM_FOLD_LENGTH_THRESHOLD,
+  mfmPlainTextFromHtml,
+  shouldFoldMfm,
 } from '@/flavours/glitch/components/mfm';
 import { mfmEnabled } from '@/flavours/glitch/initial_state';
 import type { AnyStatusShape } from '@/flavours/glitch/models/status';
@@ -22,10 +21,7 @@ export function redesignMfmSource(status: AnyStatusShape, content: string) {
     return status.mfm_text;
   }
 
-  const doc = new DOMParser().parseFromString(content, 'text/html');
-  for (const br of doc.querySelectorAll('br')) br.replaceWith('\n');
-  for (const paragraph of doc.querySelectorAll('p')) paragraph.after('\n');
-  return doc.body.textContent;
+  return mfmPlainTextFromHtml(content);
 }
 
 export function useRedesignMfmContent(status: AnyStatusShape, content: string) {
@@ -42,10 +38,7 @@ export function useRedesignMfmContent(status: AnyStatusShape, content: string) {
   if (!status.mfm || !mfmEnabled || !enabled) return null;
 
   const source = redesignMfmSource(status, content);
-  const fold =
-    (foldMode === 'all' && hasAnyMfmFn(source)) ||
-    (foldMode === 'sensitive' && hasSensitiveFoldTags(source)) ||
-    source.length > MFM_FOLD_LENGTH_THRESHOLD;
+  const fold = shouldFoldMfm(source, foldMode);
   const renderer = (
     <MfmRenderer
       text={source}

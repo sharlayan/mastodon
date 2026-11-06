@@ -222,6 +222,29 @@ RSpec.describe FeedManager do
       end
     end
 
+    context 'when building home domain mute crutches' do
+      before do
+        allow(AccountDomainMute).to receive(:where).and_call_original
+      end
+
+      it 'skips the domain mute lookup when every status is local' do
+        alice.follow!(jeff)
+        status = Fabricate(:status, account: jeff)
+
+        expect(subject.filter?(:home, status, alice)).to be false
+        expect(AccountDomainMute).to_not have_received(:where).with(hash_including(hide_from_home: true))
+      end
+
+      it 'looks up domain mutes for remote statuses' do
+        alice.mute_domain!('example.com', hide_from_home: true)
+        alice.follow!(jeff)
+        reblog = Fabricate(:status, reblog: Fabricate(:status, account: bob), account: jeff)
+
+        expect(subject.filter?(:home, reblog, alice)).to be true
+        expect(AccountDomainMute).to have_received(:where).with(hash_including(hide_from_home: true, domain: ['example.com']))
+      end
+    end
+
     context 'with followed tags feed' do
       it 'filters a status from a domain muted from home' do
         alice.mute_domain!('example.com', hide_from_home: true)

@@ -21,6 +21,7 @@ class DriveFolder < ApplicationRecord
   has_many :drive_files, foreign_key: :folder_id, inverse_of: :folder, dependent: :nullify
 
   validates :name, presence: true, length: { maximum: MAX_NAME_LENGTH }
+  set_callback :validation, :around, :with_hierarchy_lock
   validate :validate_parent_ownership
   validate :validate_no_cycle
 
@@ -37,6 +38,15 @@ class DriveFolder < ApplicationRecord
 
   private
 
+  def with_hierarchy_lock(&block)
+    return yield if account_id.blank? || parent_id.blank? || !parent_id_changed?
+
+    self.class.transaction do
+      Account.where(id: account_id).lock.pick(:id)
+      self.class.uncached(&block)
+    end
+  end
+
   def validate_parent_ownership
     return if parent_id.blank?
 
@@ -46,13 +56,14 @@ class DriveFolder < ApplicationRecord
   def validate_no_cycle
     return if parent_id.blank?
 
-    node = parent
-    while node
-      if node.id == id
+    visited = Set.new
+    ancestor_id = parent_id
+    while ancestor_id
+      if ancestor_id == id || !visited.add?(ancestor_id)
         errors.add(:parent_id, :invalid)
         break
       end
-      node = node.parent
+      ancestor_id = self.class.where(id: ancestor_id).pick(:parent_id)
     end
   end
 end

@@ -143,7 +143,7 @@ module Sharlayan::AdminSettingsExtensions
   end
 
   def validate_roleplay_forced_skin
-    return if @roleplay_forced_skin.blank? || Themes.instance.skins_for('glitch').include?(@roleplay_forced_skin)
+    return if @roleplay_forced_skin.blank? || Sharlayan::RoleplayThemes.parse(@roleplay_forced_skin)
 
     errors.add(:roleplay_forced_skin, :inclusion)
   end

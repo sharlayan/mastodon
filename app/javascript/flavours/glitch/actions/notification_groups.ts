@@ -263,23 +263,28 @@ export const dismissNotificationsForStatuses = createAppAsyncThunk(
   'notificationGroups/dismissForStatuses',
   async (statusIds: string[], { getState }) => {
     const wanted = new Set(statusIds);
+    const { groups, pendingGroups } = getState().notificationGroups;
 
-    const notificationIds = getState()
-      .notificationGroups.groups.filter(
-        (group): group is NotificationGroup =>
-          group.type !== 'gap' &&
-          (group.type === 'mention' ||
-            group.type === 'quote' ||
-            group.type === 'reaction') &&
-          'statusId' in group &&
-          !!group.statusId &&
-          wanted.has(group.statusId),
-      )
-      .map((group) => group.most_recent_notification_id);
+    const notificationIds = [
+      ...new Set(
+        [...groups, ...pendingGroups]
+          .filter(
+            (group): group is NotificationGroup =>
+              group.type !== 'gap' &&
+              (group.type === 'mention' ||
+                group.type === 'quote' ||
+                group.type === 'reaction') &&
+              'statusId' in group &&
+              !!group.statusId &&
+              wanted.has(group.statusId),
+          )
+          .map((group) => group.most_recent_notification_id),
+      ),
+    ];
 
     await Promise.all(notificationIds.map((id) => apiDismissNotification(id)));
 
-    return { statusIds };
+    return { notificationIds };
   },
 );
 

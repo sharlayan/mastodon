@@ -6,6 +6,7 @@ import { uuid } from '../uuid';
 
 import { showAlert } from './alerts';
 import { importFetchedStatus } from './importer';
+import { dismissNotificationsForStatuses } from './notification_groups';
 import { updateTimeline } from './timelines';
 
 export const DIRECT_COMPOSE_CHANGE = 'DIRECT_COMPOSE_CHANGE';
@@ -90,7 +91,7 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
   const state = getState();
 
   if (state.getIn(['direct_compose', conversationId, 'is_submitting'])) {
-    return;
+    return Promise.resolve();
   }
 
   const text  = (state.getIn(['direct_compose', conversationId, 'text']) || '').trim();
@@ -100,7 +101,7 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
   const spoilerText   = spoilerActive ? (state.getIn(['direct_compose', conversationId, 'spoiler_text']) || '').trim() : '';
 
   if (text.length === 0 && media.size === 0) {
-    return;
+    return Promise.resolve();
   }
 
   let accts = acctsFromIds(state, recipientIds || []);
@@ -111,10 +112,13 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
 
   const mentions = [...new Set(accts)].map(acct => `@${acct}`).join(' ');
   const status   = mentions ? `${mentions} ${text}`.trim() : text;
+  const notificationStatusIds = state.getIn(['timelines', `conversation:${conversationId}`, 'items'], ImmutableList())
+    .filter(id => state.getIn(['statuses', id, 'visibility']) === 'direct')
+    .toArray();
 
   dispatch({ type: DIRECT_COMPOSE_SUBMIT_REQUEST, conversationId });
 
-  api().post('/api/v1/statuses', {
+  return api().post('/api/v1/statuses', {
     status,
     in_reply_to_id: inReplyToId || null,
     media_ids: media.map(item => item.get('id')).toArray(),
@@ -127,6 +131,9 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
     dispatch(importFetchedStatus({ ...response.data }));
     dispatch(updateTimeline(`conversation:${conversationId}`, { ...response.data }));
     dispatch({ type: DIRECT_COMPOSE_SUBMIT_SUCCESS, conversationId });
+    if (notificationStatusIds.length > 0) {
+      dispatch(dismissNotificationsForStatuses(notificationStatusIds));
+    }
   }).catch(error => {
     dispatch({ type: DIRECT_COMPOSE_SUBMIT_FAIL, conversationId, error });
     dispatch(showAlert({ message: error.message }));

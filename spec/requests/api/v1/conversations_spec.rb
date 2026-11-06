@@ -230,6 +230,15 @@ RSpec.describe 'API V1 Conversations' do
       expect(response).to have_http_status(200)
       expect(StatusReadReceipt.find_by(status: status, account: user.account)).to be_present
     end
+
+    it 'keeps the direct-message notification when the conversation is read' do
+      notification = user.account.notifications.find_by!(activity: status.mentions.find_by!(account: user.account))
+
+      expect { post "/api/v1/conversations/#{conversation.id}/read", headers: write_headers }
+        .to_not change { Notification.exists?(notification.id) }.from(true)
+
+      expect(response).to have_http_status(200)
+    end
   end
 
   describe 'GET /api/v1/conversations/with_account/:account_id', :inline_jobs do
