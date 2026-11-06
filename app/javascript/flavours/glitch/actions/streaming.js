@@ -66,6 +66,8 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
 
     // @ts-expect-error
     let pollingId;
+    let isConnected = false;
+    let isDisconnectPending = false;
 
     /**
      * @param {FallbackFunction} fallback
@@ -73,18 +75,33 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
 
     const useFallback = async fallback => {
       await fallback(dispatch, getState);
-      // eslint-disable-next-line react-hooks/rules-of-hooks -- this is not a react hook
-      pollingId = setTimeout(() => useFallback(fallback), 20000 + randomUpTo(20000));
+
+      // @ts-expect-error
+      if (isConnected || pollingId) {
+        return;
+      }
+
+      pollingId = setTimeout(() => {
+        pollingId = null;
+        // eslint-disable-next-line react-hooks/rules-of-hooks -- this is not a react hook
+        useFallback(fallback);
+      }, 20000 + randomUpTo(20000));
     };
 
     return {
       onConnect() {
+        isConnected = true;
         dispatch(connectTimeline(timelineId));
 
         // @ts-expect-error
         if (pollingId) {
           // @ts-ignore
           clearTimeout(pollingId); pollingId = null;
+        }
+
+        if (isDisconnectPending && options.fallback) {
+          isDisconnectPending = false;
+          options.fallback(dispatch, getState).catch(() => {});
         }
 
         if (options.fillGaps) {
@@ -95,8 +112,13 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
       onDisconnect() {
         const { fallback } = options;
 
+        isConnected = false;
+
         if (fallback) {
+          isDisconnectPending = true;
           pollingId = setTimeout(() => {
+            pollingId = null;
+            isDisconnectPending = false;
             dispatch(disconnectTimeline({ timeline: timelineId }));
             useFallback(fallback);
           }, randomUpTo(40000));
