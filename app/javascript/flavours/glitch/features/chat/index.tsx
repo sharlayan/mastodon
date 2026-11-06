@@ -944,10 +944,9 @@ const pastePlainText = (event: ClipboardEvent<HTMLDivElement>) => {
 };
 
 const foldSearch = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/i\u0307/g, 'i')
-    .replace(/\u03c2/g, '\u03c3');
+  Array.from(value, (character) =>
+    character === 'İ' ? 'i' : character.toLowerCase(),
+  ).join('');
 
 const ComposerBox: React.FC<{
   text: ComposerText;
@@ -1160,6 +1159,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [messagesList]);
   const conversationPages = useRef(1);
   const latestConversationRequest = useRef(0);
+  // Request IDs advance before the matching list and cursor are applied.
+  const appliedConversationGeneration = useRef(0);
   const updateMessages = useCallback((update: MessageUpdate) => {
     pendingMessageUpdates.current.forEach((updates) => updates.push(update));
     setMessagesList(update);
@@ -1479,6 +1480,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         pendingConversationUpdates.current.delete(updates);
       }
       if (requestId !== latestConversationRequest.current) return;
+      appliedConversationGeneration.current += 1;
       updateNextConversationId(cursor);
       setConversationMissing(missing);
       setRoomEnding(ending);
@@ -1567,11 +1569,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     if (!nextConversationId || loadingMore) return;
     setLoadingMore(true);
     let requestId = latestConversationRequest.current;
+    let appliedGeneration = appliedConversationGeneration.current;
     const updates: ConversationUpdate[] = [];
     pendingConversationUpdates.current.add(updates);
     void retries
       .runPages('conversations', () => {
         requestId = latestConversationRequest.current;
+        appliedGeneration = appliedConversationGeneration.current;
         const cursor = nextConversationIdRef.current;
         if (!cursor) return Promise.resolve(undefined);
         return api().get<ChatConversation[]>('/api/v1/chat/conversations', {
@@ -1580,7 +1584,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       })
       .then((response) => {
         pendingConversationUpdates.current.delete(updates);
-        if (!response || requestId !== latestConversationRequest.current)
+        if (
+          !response ||
+          requestId !== latestConversationRequest.current ||
+          appliedGeneration !== appliedConversationGeneration.current
+        )
           return;
         const data = updates.reduce(
           (items, update) => update(items),
@@ -1603,7 +1611,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       .catch(() => {
         if (
           isMounted.current &&
-          requestId === latestConversationRequest.current
+          requestId === latestConversationRequest.current &&
+          appliedGeneration === appliedConversationGeneration.current
         )
           readFailed('conversations:more');
       })

@@ -1235,3 +1235,111 @@ describe('Pasting text that Safari also supplies as a URI', () => {
     expect(exec).not.toHaveBeenCalled();
   });
 });
+
+describe('Review f98c boundaries', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    server.resetHandlers();
+  });
+
+  it('discards a page from an old cursor after an in-flight list refresh applies', async () => {
+    for (let id = 1; id <= 25; id += 1) seed(String(id), id, id);
+    useActivityPagedRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => { expect(listed()).toContain('6'); });
+    await settle();
+    backend.messages.set('3', [
+      ...(backend.messages.get('3') ?? []),
+      message('3', 100),
+    ]);
+    const releaseRefresh = holdNextAnswer(ROOMS);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => { expect(readsOf(ROOMS)).toHaveLength(2); });
+    const releaseMore = holdNextAnswer(ROOMS);
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => { expect(readsOf(ROOMS)).toHaveLength(3); });
+    await releaseRefresh();
+    await settle();
+    await releaseMore();
+    await settle();
+    await later(1000);
+    const button = screen.getByRole('button', { name: 'Load more' });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(button);
+    await waitFor(() => { expect(listed()).toHaveLength(25); });
+    const shown = listed();
+    expect(new Set(shown).size).toBe(25);
+    expect(shown).toContain('6');
+  }, 60000);
+
+  it('keeps a page that finishes before the ongoing list refresh', async () => {
+    for (let id = 1; id <= 25; id += 1) seed(String(id), id, id);
+    useActivityPagedRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => { expect(listed()).toContain('6'); });
+    await settle();
+    backend.messages.set('3', [
+      ...(backend.messages.get('3') ?? []),
+      message('3', 100),
+    ]);
+    const releaseRefresh = holdNextAnswer(ROOMS);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => { expect(readsOf(ROOMS)).toHaveLength(2); });
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => { expect(listed()).toHaveLength(24); });
+    await releaseRefresh();
+    await waitFor(() => { expect(listed()).toHaveLength(25); });
+    expect(new Set(listed()).size).toBe(25);
+    expect(listed()).toContain('6');
+  }, 60000);
+
+  it.each([
+    ['I\u0307stanbul', 'istanbul', false],
+    ['İstanbul', 'istanbul', true],
+    ['ΛΟΓΟΣ', 'λογος', false],
+    ['λογος', 'λογοσ', false],
+    ['λογος', 'λογος', true],
+    ['ΟΔΟΣΑ', 'ΟΔΟΣ', true],
+    ['li\u0307', 'li', true],
+    ['li', 'li\u0307', false],
+  ])(
+    'matches server ILIKE for edited %s and query %s',
+    async (content, query, matches) => {
+      seed('A', 1, 1);
+      const found = { ...message('A', 1), content: 'initial result' };
+      server.use(
+        http.get('*/api/v1/chat/messages/search', () =>
+          HttpResponse.json([found]),
+        ),
+      );
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat');
+      await screen.findByText('Room A');
+      fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
+      fireEvent.change(screen.getByPlaceholderText('Search messages'), {
+        target: { value: query },
+      });
+      await later(1000);
+      await screen.findByText('initial result');
+      act(() => { page.socket.deliver('chat.message_update', { ...found, content }); },
+      );
+      await settle();
+      expect(
+        document.querySelectorAll('.chat-native__search-results button'),
+      ).toHaveLength(matches ? 1 : 0);
+    },
+  );
+});
