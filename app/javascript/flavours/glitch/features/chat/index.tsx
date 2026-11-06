@@ -64,6 +64,7 @@ import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import { createRetries } from './retry';
+import type { PageCheckpoint } from './retry';
 import {
   CHAT_STREAM_RECONNECTED,
   isChatStreamLive,
@@ -456,8 +457,9 @@ const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
 const SENT_INVITATIONS_PAGE = 40;
 const fetchSentInvitations = async (
   conversationId: string,
+  nextPage: PageCheckpoint,
   maxId?: string,
-): Promise<ChatInvitation[]> => {
+): Promise<ChatInvitation[] | undefined> => {
   const { data } = await api().get<ChatInvitation[]>(
     '/api/v1/chat/invitations',
     {
@@ -469,37 +471,10 @@ const fetchSentInvitations = async (
     },
   );
   const last = data.at(-1);
-  return last && data.length === SENT_INVITATIONS_PAGE
-    ? [...data, ...(await fetchSentInvitations(conversationId, last.id))]
-    : data;
-};
-
-// Fetches one conversation in place of the whole list. Events about it can come in bursts,
-// so those arriving during a fetch are answered by one more fetch once it ends.
-const fetchConversation = (
-  id: string,
-  fetches: Map<string, boolean>,
-  update: (change: (list: ChatConversation[]) => ChatConversation[]) => void,
-) => {
-  if (fetches.has(id)) {
-    fetches.set(id, true);
-    return;
-  }
-  fetches.set(id, false);
-  void api()
-    .get<ChatConversation>(`/api/v1/chat/conversations/${id}`)
-    .then(({ data }) => {
-      update((current) => upsertConversation(current, data));
-    })
-    .catch((loadError: unknown) => {
-      if (isNotFound(loadError))
-        update((current) => current.filter((item) => item.id !== id));
-    })
-    .finally(() => {
-      const again = fetches.get(id);
-      fetches.delete(id);
-      if (again) fetchConversation(id, fetches, update);
-    });
+  if (!last || data.length !== SENT_INVITATIONS_PAGE) return data;
+  if (!(await nextPage())) return undefined;
+  const rest = await fetchSentInvitations(conversationId, nextPage, last.id);
+  return rest ? [...data, ...rest] : undefined;
 };
 
 const ChatMessageMedia: React.FC<{
@@ -1066,7 +1041,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, []);
 
   const knownConversationIds = useRef<Set<string> | null>(null);
-  const conversationFetches = useRef(new Map<string, boolean>());
   useEffect(() => {
     if (conversationsLoaded)
       knownConversationIds.current = new Set(
@@ -1314,64 +1288,97 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [history],
   );
 
-  const loadConversations = useCallback(async () => {
-    const requestId = ++latestConversationRequest.current;
-    const updates: ConversationUpdate[] = [];
-    pendingConversationUpdates.current.add(updates);
-    const loaded: ChatConversation[] = [];
-    let cursor: string | null = null;
-    let missing = false;
-    let ending: RoomEnding | null = null;
-    try {
-      for (let page = 0; page < conversationPages.current; page++) {
-        const { data }: { data: ChatConversation[] } = await api().get<
-          ChatConversation[]
-        >(
-          '/api/v1/chat/conversations',
-          cursor ? { params: { max_id: cursor } } : undefined,
-        );
-        loaded.push(...data);
-        cursor = data.length === 20 ? (data.at(-1)?.id ?? null) : null;
-        if (!cursor) break;
-      }
-      if (
-        conversationId &&
-        !loaded.some((item) => item.id === conversationId)
-      ) {
-        try {
-          const selected = await api().get<ChatConversation>(
-            `/api/v1/chat/conversations/${conversationId}`,
+  const loadConversations = useCallback(
+    async (nextPage: PageCheckpoint) => {
+      const requestId = ++latestConversationRequest.current;
+      const updates: ConversationUpdate[] = [];
+      pendingConversationUpdates.current.add(updates);
+      const loaded: ChatConversation[] = [];
+      let cursor: string | null = null;
+      let missing = false;
+      let ending: RoomEnding | null = null;
+      try {
+        for (let page = 0; page < conversationPages.current; page++) {
+          if (page > 0 && !(await nextPage())) return false;
+          const { data }: { data: ChatConversation[] } = await api().get<
+            ChatConversation[]
+          >(
+            '/api/v1/chat/conversations',
+            cursor ? { params: { max_id: cursor } } : undefined,
           );
-          loaded.push(selected.data);
-        } catch (loadError) {
-          if (!isNotFound(loadError)) throw loadError;
-          missing = true;
-          ending = roomEndingOf(loadError);
+          loaded.push(...data);
+          cursor = data.length === 20 ? (data.at(-1)?.id ?? null) : null;
+          if (!cursor) break;
         }
+        if (
+          conversationId &&
+          !loaded.some((item) => item.id === conversationId)
+        ) {
+          if (!(await nextPage())) return false;
+          try {
+            const selected = await api().get<ChatConversation>(
+              `/api/v1/chat/conversations/${conversationId}`,
+            );
+            loaded.push(selected.data);
+          } catch (loadError) {
+            if (!isNotFound(loadError)) throw loadError;
+            missing = true;
+            ending = roomEndingOf(loadError);
+          }
+        }
+      } finally {
+        pendingConversationUpdates.current.delete(updates);
       }
-    } finally {
-      pendingConversationUpdates.current.delete(updates);
-    }
-    if (requestId !== latestConversationRequest.current) return;
-    setNextConversationId(cursor);
-    setConversationMissing(missing);
-    setRoomEnding(ending);
-    if (missing && !ending) setError('load');
-    setConversations(updates.reduce((items, update) => update(items), loaded));
-    setConversationsLoaded(true);
-  }, [conversationId]);
+      if (requestId !== latestConversationRequest.current) return;
+      setNextConversationId(cursor);
+      setConversationMissing(missing);
+      setRoomEnding(ending);
+      if (missing && !ending) setError('load');
+      setConversations(
+        updates.reduce((items, update) => update(items), loaded),
+      );
+      setConversationsLoaded(true);
+      return true;
+    },
+    [conversationId],
+  );
+
+  const loadConversationsForAction = useCallback(
+    () => retries.runPages('conversations', loadConversations),
+    [loadConversations, retries],
+  );
 
   const refreshConversations = useCallback(() => {
-    loadConversations().catch(() => {
+    loadConversationsForAction().catch(() => {
       setError('load');
     });
-  }, [loadConversations]);
+  }, [loadConversationsForAction]);
 
   const refreshConversation = useCallback(
     (id: string) => {
-      fetchConversation(id, conversationFetches.current, updateConversations);
+      // Bursts share a plan, and the scheduler checks the page before a follow-up.
+      void retries
+        .keepTrying(`conversation:${id}`, async () => {
+          try {
+            const { data } = await api().get<ChatConversation>(
+              `/api/v1/chat/conversations/${id}`,
+            );
+            updateConversations((current) => upsertConversation(current, data));
+          } catch (loadError) {
+            if (isNotFound(loadError))
+              updateConversations((current) =>
+                current.filter((item) => item.id !== id),
+              );
+            else if (
+              (loadError as { response?: { status?: number } } | null)?.response
+                ?.status === 429
+            )
+              throw loadError;
+          }
+        })
+        .catch(() => undefined);
     },
-    [updateConversations],
+    [retries, updateConversations],
   );
 
   const loadMoreConversations = useCallback(() => {
@@ -1443,81 +1450,89 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [advanceContinuousUpTo, applyTombstone, conversationId, markRead]);
 
   // Fetches what changed while nothing was arriving, without moving anyone from the older pages they are reading.
-  const resyncMessages = useCallback(async () => {
-    if (!conversationId) return;
-    const updates: MessageUpdate[] = [];
-    pendingMessageUpdates.current.add(updates);
-    const requestId = ++latestMessageRequest.current;
-    const liveWhenAsked = isChatStreamLive();
-    const from = continuousUpTo.current;
-    const loaded: ChatMessage[] = [];
-    let reachedStart = false;
-    let meetsKnown = false;
-    try {
-      for (let page = 0; page < MESSAGE_RESYNC_PAGES; page++) {
-        const { data }: { data: ChatMessage[] } = await api().get<
-          ChatMessage[]
-        >(
-          `/api/v1/chat/conversations/${conversationId}/messages`,
-          loaded[0] ? { params: { max_id: loaded[0].id } } : undefined,
+  const resyncMessages = useCallback(
+    async (nextPage: PageCheckpoint) => {
+      if (!conversationId) return;
+      const updates: MessageUpdate[] = [];
+      pendingMessageUpdates.current.add(updates);
+      const requestId = ++latestMessageRequest.current;
+      const liveWhenAsked = isChatStreamLive();
+      const from = continuousUpTo.current;
+      const loaded: ChatMessage[] = [];
+      let reachedStart = false;
+      let meetsKnown = false;
+      try {
+        for (let page = 0; page < MESSAGE_RESYNC_PAGES; page++) {
+          if (page > 0 && !(await nextPage())) return;
+          const { data }: { data: ChatMessage[] } = await api().get<
+            ChatMessage[]
+          >(
+            `/api/v1/chat/conversations/${conversationId}/messages`,
+            loaded[0] ? { params: { max_id: loaded[0].id } } : undefined,
+          );
+          loaded.unshift(...data);
+          reachedStart = data.length < MESSAGE_PAGE_SIZE;
+          const oldestLoaded = loaded[0]?.id;
+          meetsKnown =
+            oldestLoaded !== undefined &&
+            from !== undefined &&
+            compareId(oldestLoaded, from) <= 0;
+          if (reachedStart || meetsKnown || from === undefined) break;
+        }
+      } finally {
+        pendingMessageUpdates.current.delete(updates);
+      }
+      if (requestId !== latestMessageRequest.current) return;
+      setMessagesLoaded(true);
+      advanceContinuousUpTo(loaded.at(-1)?.id);
+      readSinceStreamWentLive.current = liveWhenAsked && isChatStreamLive();
+      readRecovered('messages');
+
+      const fetched = updates.reduce(
+        (items, update) => update(items),
+        loaded.map(applyTombstone),
+      );
+      const oldestFetched = fetched[0]?.id;
+      if (meetsKnown && oldestFetched !== undefined) {
+        setMessagesList((current) => [
+          ...current.filter((item) => compareId(item.id, oldestFetched) < 0),
+          ...fetched,
+        ]);
+      } else {
+        // Too much happened to bridge, so this starts again from the newest page.
+        const newestPage = reachedStart
+          ? fetched
+          : fetched.slice(-MESSAGE_PAGE_SIZE);
+        setMessagesList(newestPage);
+        setOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
+      }
+
+      if (!followingNewestRef.current) {
+        const shownIds = new Set(
+          shownMessagesRef.current.map((item) => item.id),
         );
-        loaded.unshift(...data);
-        reachedStart = data.length < MESSAGE_PAGE_SIZE;
-        const oldestLoaded = loaded[0]?.id;
-        meetsKnown =
-          oldestLoaded !== undefined &&
-          from !== undefined &&
-          compareId(oldestLoaded, from) <= 0;
-        if (reachedStart || meetsKnown || from === undefined) break;
+        if (
+          fetched.some(
+            (item) => item.account.id !== me && !shownIds.has(item.id),
+          )
+        ) {
+          jumpButton.update({ unseen: true });
+          unreadWhileAway.current = true;
+        }
+        return;
       }
-    } finally {
-      pendingMessageUpdates.current.delete(updates);
-    }
-    if (requestId !== latestMessageRequest.current) return;
-    setMessagesLoaded(true);
-    advanceContinuousUpTo(loaded.at(-1)?.id);
-    readSinceStreamWentLive.current = liveWhenAsked && isChatStreamLive();
-    readRecovered('messages');
-
-    const fetched = updates.reduce(
-      (items, update) => update(items),
-      loaded.map(applyTombstone),
-    );
-    const oldestFetched = fetched[0]?.id;
-    if (meetsKnown && oldestFetched !== undefined) {
-      setMessagesList((current) => [
-        ...current.filter((item) => compareId(item.id, oldestFetched) < 0),
-        ...fetched,
-      ]);
-    } else {
-      // Too much happened to bridge, so this starts again from the newest page.
-      const newestPage = reachedStart
-        ? fetched
-        : fetched.slice(-MESSAGE_PAGE_SIZE);
-      setMessagesList(newestPage);
-      setOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
-    }
-
-    if (!followingNewestRef.current) {
-      const shownIds = new Set(shownMessagesRef.current.map((item) => item.id));
-      if (
-        fetched.some((item) => item.account.id !== me && !shownIds.has(item.id))
-      ) {
-        jumpButton.update({ unseen: true });
-        unreadWhileAway.current = true;
-      }
-      return;
-    }
-    if (isVisible() && isMounted.current)
-      markRead(conversationId, loaded.at(-1)?.id);
-  }, [
-    advanceContinuousUpTo,
-    applyTombstone,
-    conversationId,
-    jumpButton,
-    markRead,
-    readRecovered,
-  ]);
+      if (isVisible() && isMounted.current)
+        markRead(conversationId, loaded.at(-1)?.id);
+    },
+    [
+      advanceContinuousUpTo,
+      applyTombstone,
+      conversationId,
+      jumpButton,
+      markRead,
+      readRecovered,
+    ],
+  );
 
   const markSeenOnReturn = useCallback(() => {
     if (!unreadWhileAway.current || !conversationId || !isVisible()) return;
@@ -1566,7 +1581,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   // Read, by itself again while that fails.
   const keepReading = useCallback(
-    <T,>(read: string, run: () => Promise<T>) =>
+    <T,>(read: string, run: (nextPage: PageCheckpoint) => Promise<T>) =>
       retries
         .keepTrying(read, run, {
           failed: () => {
@@ -1579,9 +1594,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   useEffect(() => {
     void whileOpening(
-      keepReading('conversations', async () => {
-        await Promise.resolve().then(loadConversations);
-        readRecovered('conversations');
+      keepReading('conversations', async (nextPage) => {
+        if (await loadConversations(nextPage)) readRecovered('conversations');
       }),
     );
     void whileOpening(
@@ -1831,9 +1845,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             if (retries.planned('conversations'))
               latestConversationRequest.current += 1;
             void retries
-              .keepTrying('conversations', async () => {
-                await loadConversations();
-                readRecovered('conversations');
+              .keepTrying('conversations', async (nextPage) => {
+                if (await loadConversations(nextPage))
+                  readRecovered('conversations');
               })
               .catch(() => undefined);
             retries.wake('conversations');
@@ -2049,9 +2063,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     let current = true;
     const read = `sent:${conversationId}`;
-    void keepReading(read, async () => {
-      const found = await fetchSentInvitations(conversationId);
-      if (!current) return;
+    void keepReading(read, async (nextPage) => {
+      const found = await fetchSentInvitations(conversationId, nextPage);
+      if (!current || !found) return;
       setSentInvitations(found);
       readRecovered(read);
     });
@@ -2089,7 +2103,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           account_ids: [directAccount.id],
         },
       );
-      await loadConversations();
+      await loadConversationsForAction();
       navigateIfActive(`/chat/${response.data.id}`);
       setDirectAccount(null);
       setDirectAccountQuery('');
@@ -2098,7 +2112,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     } finally {
       setLoading(false);
     }
-  }, [directAccount, loadConversations, navigateIfActive]);
+  }, [directAccount, loadConversationsForAction, navigateIfActive]);
 
   const hasOtherContent =
     media.length > 0 ||
@@ -2441,7 +2455,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           account_ids: groupAccounts.map((account) => account.id),
         },
       );
-      await loadConversations();
+      await loadConversationsForAction();
       navigateIfActive(`/chat/${response.data.id}`);
       setGroupTitle('');
       setGroupAccountQuery('');
@@ -2451,7 +2465,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     } finally {
       setLoading(false);
     }
-  }, [groupAccounts, groupTitle, loadConversations, navigateIfActive]);
+  }, [groupAccounts, groupTitle, loadConversationsForAction, navigateIfActive]);
 
   const handleGroupSubmit = useCallback(
     (event: SyntheticEvent<HTMLFormElement>) => {
@@ -2714,13 +2728,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               values: { group: conversationName(invitation.conversation) },
             }),
           );
-          return loadConversations();
+          return loadConversationsForAction();
         })
         .catch(() => {
           setError('invite');
         });
     },
-    [dispatch, loadConversations],
+    [dispatch, loadConversationsForAction],
   );
 
   const cancelInvitation = useCallback(
@@ -2805,13 +2819,19 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         .then(() => {
           dispatch(showAlert({ message: messages.groupSaved }));
           setGroupEdit(null);
-          return loadConversations();
+          return loadConversationsForAction();
         })
         .catch(() => {
           setError('update');
         });
     },
-    [conversation, conversationId, dispatch, groupEdit, loadConversations],
+    [
+      conversation,
+      conversationId,
+      dispatch,
+      groupEdit,
+      loadConversationsForAction,
+    ],
   );
 
   const handlePolicyChange = useCallback(
@@ -2864,12 +2884,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       setError(null);
       void api()
         .post(`/api/v1/chat/conversations/${conversationId}/${action}`)
-        .then(() => loadConversations())
+        .then(() => loadConversationsForAction())
         .catch(() => {
           setError('update');
         });
     },
-    [conversationId, loadConversations],
+    [conversationId, loadConversationsForAction],
   );
 
   const confirmArchive = useCallback(() => {

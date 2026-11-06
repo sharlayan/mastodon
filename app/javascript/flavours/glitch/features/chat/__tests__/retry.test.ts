@@ -460,3 +460,150 @@ describe('Shared deadlines arriving after a retry was planned', () => {
     current.stop();
   });
 });
+
+describe('Pages within a running chat read', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('waits for visibility and then continues the same accumulated read', async () => {
+    const retries = createRetries(false);
+    let firstDone!: () => void;
+    const first = new Promise<void>((resolve) => {
+      firstDone = resolve;
+    });
+    const pages: number[] = [];
+    const finished = retries.keepTrying('messages:A', async (nextPage) => {
+      pages.push(1);
+      await first;
+      if (!(await nextPage())) return;
+      pages.push(2);
+    });
+    retries.hide();
+    firstDone();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(pages).toEqual([1]);
+    retries.show();
+    await finished;
+    expect(pages).toEqual([1, 2]);
+  });
+
+  it('does not continue an old read when the same key is restarted after cancellation', async () => {
+    const retries = createRetries(false);
+    let finishOld!: () => void;
+    const oldFirst = new Promise<void>((resolve) => {
+      finishOld = resolve;
+    });
+    const pages: string[] = [];
+    void retries
+      .keepTrying('messages:A', async (nextPage) => {
+        pages.push('old-1');
+        await oldFirst;
+        if (await nextPage()) pages.push('old-2');
+      })
+      .catch(() => undefined);
+    retries.cancel('messages:A');
+    await retries.keepTrying('messages:A', () => {
+      pages.push('new');
+      return Promise.resolve();
+    });
+    finishOld();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(pages).toEqual(['old-1', 'new']);
+  });
+
+  it('waits at the next page for a late 429 and a still later extension', async () => {
+    const shared = new Map<string, number>();
+    const old = createRetries(false, shared);
+    let rejectOld!: (error: unknown) => void;
+    void old
+      .keepTrying(
+        'messages:A',
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectOld = reject;
+          }),
+      )
+      .catch(() => undefined);
+    old.stop();
+    const current = createRetries(false, shared);
+    let finishFirst!: () => void;
+    const first = new Promise<void>((resolve) => {
+      finishFirst = resolve;
+    });
+    const pages: number[] = [];
+    const done = current.keepTrying('messages:A', async (nextPage) => {
+      pages.push(1);
+      await first;
+      if (await nextPage()) pages.push(2);
+    });
+    rejectOld(refused(429, { 'retry-after': '20' }));
+    await vi.advanceTimersByTimeAsync(0);
+    finishFirst();
+    await vi.advanceTimersByTimeAsync(2_000);
+    shared.set('messages:A', Date.now() + 25_000);
+    await vi.advanceTimersByTimeAsync(24_999);
+    expect(pages).toEqual([1]);
+    await vi.advanceTimersByTimeAsync(1);
+    await done;
+    expect(pages).toEqual([1, 2]);
+  });
+
+  it('releases a waiting page on cancellation without sending it', async () => {
+    const retries = createRetries(false);
+    const pages: number[] = [];
+    const done = retries.keepTrying('sent:A', async (nextPage) => {
+      pages.push(1);
+      retries.hide();
+      if (await nextPage()) pages.push(2);
+    });
+    retries.cancel('sent:A');
+    await expect(done).rejects.toThrow();
+    retries.show();
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(pages).toEqual([1]);
+  });
+});
+
+describe('Paged reads following a user action', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+  it('preserves the action result while hidden and cancels its remaining pages on exit', async () => {
+    const retries = createRetries(false);
+    const pages: number[] = [];
+    let finish!: () => void;
+    const first = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const read = retries.runPages('conversations', async (nextPage) => {
+      pages.push(1);
+      await first;
+      if (await nextPage()) pages.push(2);
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    retries.hide();
+    finish();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(pages).toEqual([1]);
+    retries.stop();
+    await read;
+    retries.show();
+    expect(pages).toEqual([1]);
+  });
+  it('does not start a follow-up if the screen closes immediately', async () => {
+    const retries = createRetries(false);
+    const run = vi.fn(() => Promise.resolve());
+    const read = retries.runPages('conversations', run);
+    retries.stop();
+    await read;
+    expect(run).not.toHaveBeenCalled();
+  });
+  it('does not retry or hide an error from a user action follow-up', async () => {
+    const retries = createRetries(false);
+    const run = vi.fn(() => Promise.reject(new Error('failed')));
+    await expect(retries.runPages('conversations', run)).rejects.toThrow(
+      'failed',
+    );
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+});

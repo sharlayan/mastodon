@@ -53,7 +53,14 @@ export const retryDelay = (
   return delay;
 };
 
-interface Planned {
+export type PageCheckpoint = () => Promise<boolean>;
+
+interface PageScope {
+  pageWait?: { check: () => void; cancel: () => void };
+  gaveUp?: () => void;
+}
+
+interface Planned extends PageScope {
   tried: number;
   timer: ReturnType<typeof setTimeout> | null;
   // Its time came while the page was hidden, and it waits to be shown.
@@ -64,9 +71,8 @@ interface Planned {
   first: Promise<unknown>;
   resolveFirst?: (value: unknown) => void;
   rejectFirst?: (error: unknown) => void;
-  run: () => Promise<unknown>;
+  run: (nextPage: PageCheckpoint) => Promise<unknown>;
   failed?: (error: unknown) => void;
-  gaveUp?: () => void;
 }
 
 export interface Retries {
@@ -78,9 +84,14 @@ export interface Retries {
    */
   keepTrying: <T>(
     key: string,
-    run: () => Promise<T>,
+    run: (nextPage: PageCheckpoint) => Promise<T>,
     callbacks?: { failed?: (error: unknown) => void; gaveUp?: () => void },
   ) => Promise<T>;
+  /** Follow-up reads from user actions use page checks without retrying the action. */
+  runPages: <T>(
+    key: string,
+    run: (nextPage: PageCheckpoint) => Promise<T>,
+  ) => Promise<T | undefined>;
   /** Whether something is planned under this key. */
   planned: (key: string) => boolean;
   /** A reconnect can wake an offline read, but not shorten a 429 deadline. */
@@ -100,6 +111,7 @@ export const createRetries = (
   sharedCooldowns?: Map<string, number>,
 ): Retries => {
   const plans = new Map<string, Planned>();
+  const pageScopes = new Set<PageScope>();
   const cooldowns = sharedCooldowns ?? new Map<string, number>();
   let hidden = hiddenAtFirst;
 
@@ -155,6 +167,50 @@ export const createRetries = (
       });
   };
 
+  // A running read may need another page. Keep its accumulated data in place while the
+  // page is hidden or a newer 429 deadline is active; cancellation releases it without a GET.
+  const waitForPage = (
+    key: string,
+    entry: PageScope,
+    isCurrent: () => boolean,
+  ): Promise<boolean> =>
+    new Promise((resolve) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const finish = (allowed: boolean) => {
+        if (timer !== undefined) clearTimeout(timer);
+        if (entry.pageWait === waiting) entry.pageWait = undefined;
+        resolve(allowed);
+      };
+      const check = () => {
+        if (timer !== undefined) clearTimeout(timer);
+        timer = undefined;
+        if (!isCurrent()) {
+          finish(false);
+          return;
+        }
+        if (hidden) return;
+        const remaining = (cooldowns.get(key) ?? 0) - Date.now();
+        if (remaining > LONGEST_WAIT_MS) {
+          entry.gaveUp?.();
+          finish(false);
+          return;
+        }
+        if (remaining > 0) {
+          timer = setTimeout(check, remaining);
+          return;
+        }
+        finish(true);
+      };
+      const waiting = {
+        check,
+        cancel: () => {
+          finish(false);
+        },
+      };
+      entry.pageWait = waiting;
+      check();
+    });
+
   const fire = (key: string, entry: Planned) => {
     entry.timer = null;
     if (hidden) {
@@ -185,7 +241,13 @@ export const createRetries = (
     entry.rateLimited = false;
     entry.running = true;
     try {
-      settle(key, entry, entry.run());
+      settle(
+        key,
+        entry,
+        entry.run(() =>
+          waitForPage(key, entry, () => plans.get(key) === entry),
+        ),
+      );
     } catch (error) {
       settle(
         key,
@@ -202,12 +264,26 @@ export const createRetries = (
     if (!entry) return;
     if (entry.timer !== null) clearTimeout(entry.timer);
     plans.delete(key);
+    entry.pageWait?.cancel();
     entry.rejectFirst?.(new Error('The background read was cancelled'));
     entry.resolveFirst = undefined;
     entry.rejectFirst = undefined;
   };
 
   return {
+    async runPages(key, run) {
+      const scope: PageScope = {};
+      pageScopes.add(scope);
+      const nextPage = () =>
+        waitForPage(key, scope, () => pageScopes.has(scope));
+      try {
+        if (!(await nextPage()) || !pageScopes.has(scope)) return undefined;
+        return await run(nextPage);
+      } finally {
+        pageScopes.delete(scope);
+        scope.pageWait?.cancel();
+      }
+    },
     keepTrying(key, run, callbacks = {}) {
       const existing = plans.get(key);
       if (existing) {
@@ -276,12 +352,16 @@ export const createRetries = (
     },
     show() {
       hidden = false;
+      pageScopes.forEach((scope) => scope.pageWait?.check());
       plans.forEach((entry, key) => {
+        entry.pageWait?.check();
         if (entry.due) fire(key, entry);
       });
     },
     stop() {
       [...plans.keys()].forEach(drop);
+      pageScopes.forEach((scope) => scope.pageWait?.cancel());
+      pageScopes.clear();
       if (!sharedCooldowns) cooldowns.clear();
     },
   };

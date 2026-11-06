@@ -1911,3 +1911,306 @@ describe('Independent c5d8: late shared 429 deadline', () => {
     expect(readsOf(INVITATIONS)).toHaveLength(prior + 2);
   });
 });
+
+describe('Independent 4d6a: paginated in-flight requests', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(document, 'visibilityState');
+  });
+  const beginResync = async () => {
+    seed('A', 1, 40);
+    seed('B', 1, 2);
+    const page = await loadPage();
+    page.open('/chat/A');
+    await screen.findByText('Message 40');
+    await settle();
+    seed('A', 41, 140);
+    const release = holdNextAnswer(MESSAGES);
+    await connect(page.socket);
+    await waitFor(() => {
+      expect(
+        backend.reads.filter((r) => r.includes('/A/messages')),
+      ).toHaveLength(2);
+    });
+    return { page, release };
+  };
+  it('starts no further message page after the tab becomes hidden', async () => {
+    const { release } = await beginResync();
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await release();
+    await settle();
+    expect(backend.reads.filter((r) => r.includes('/A/messages'))).toHaveLength(
+      2,
+    );
+    Reflect.deleteProperty(document, 'visibilityState');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await screen.findByText('Message 140');
+    expect(shown()).toEqual(numbers(1, 140));
+  });
+  it('starts no further message page after leaving the room', async () => {
+    const { page, release } = await beginResync();
+    act(() => {
+      page.history.push('/chat/B');
+    });
+    await screen.findByText('Room B');
+    await release();
+    await settle();
+    expect(backend.reads.filter((r) => r.includes('/A/messages'))).toHaveLength(
+      2,
+    );
+  });
+});
+
+describe('Independent 4d6a: late 429 during paginated resync', () => {
+  it('honours the late shared deadline before requesting the next message page', async () => {
+    seed('A', 1, 40);
+    seed('B', 1, 2);
+    const page = await loadPage();
+    backend.refusals.push({
+      path: /\/A\/messages$/,
+      status: 429,
+      headers: { 'Retry-After': '20' },
+    });
+    const releaseOld = holdNextAnswer(/\/A\/messages$/);
+    page.open('/chat/A');
+    await waitFor(() => {
+      expect(
+        backend.reads.filter((r) => r.includes('/A/messages')),
+      ).toHaveLength(1);
+    });
+    act(() => {
+      page.history.push('/chat/B');
+    });
+    await screen.findByText('Room B');
+    act(() => {
+      page.history.push('/chat/A');
+    });
+    await screen.findByText('Message 40');
+    await settle();
+    seed('A', 41, 140);
+    const releaseResync = holdNextAnswer(/\/A\/messages$/);
+    await connect(page.socket);
+    await waitFor(() => {
+      expect(
+        backend.reads.filter((r) => r.includes('/A/messages')),
+      ).toHaveLength(3);
+    });
+    await releaseOld();
+    await settle();
+    await releaseResync();
+    await settle();
+    expect(backend.reads.filter((r) => r.includes('/A/messages'))).toHaveLength(
+      3,
+    );
+  });
+});
+
+describe('Independent 4d6a: other sequential reads', () => {
+  afterEach(() => {
+    server.resetHandlers();
+    Reflect.deleteProperty(document, 'visibilityState');
+  });
+  const hide = () => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+  };
+  const show = () => {
+    Reflect.deleteProperty(document, 'visibilityState');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+  };
+  it('pauses a multi-page conversation refresh until shown and keeps both pages', async () => {
+    for (let n = 0; n < 22; n++) seed(`room${n}`, 1, 1);
+    let hold = false;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.get('*/api/v1/chat/conversations', async ({ request }) => {
+        const url = new URL(request.url);
+        backend.reads.push(url.pathname + url.search);
+        const all = [...backend.rooms.keys()].map(room);
+        const data = url.searchParams.has('max_id')
+          ? all.slice(20)
+          : all.slice(0, 20);
+        if (hold && !url.searchParams.has('max_id')) await held;
+        return HttpResponse.json(data);
+      }),
+    );
+    const page = await loadPage();
+    page.open('/chat');
+    await screen.findByText('Room room0');
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Room room21');
+    hold = true;
+    await connect(page.socket);
+    await waitFor(() => {
+      expect(readsOf(ROOMS)).toHaveLength(3);
+    });
+    hide();
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(readsOf(ROOMS)).toHaveLength(3);
+    show();
+    await waitFor(() => {
+      expect(readsOf(ROOMS)).toHaveLength(4);
+    });
+    await screen.findByText('Room room21');
+    expect(document.querySelectorAll('[data-conversation-id]')).toHaveLength(
+      22,
+    );
+  });
+  it('pauses conversation pages after accepting an invitation while hidden', async () => {
+    for (let n = 0; n < 22; n++) seed(`room${n}`, 1, 1);
+    backend.invitations = [{ id: 'invite', title: 'Invited room' }];
+    let hold = false;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.post('*/api/v1/chat/invitations/:id/accept', () =>
+        HttpResponse.json({}),
+      ),
+      http.get('*/api/v1/chat/conversations', async ({ request }) => {
+        const url = new URL(request.url);
+        backend.reads.push(url.pathname + url.search);
+        const all = [...backend.rooms.keys()].map(room);
+        const data = url.searchParams.has('max_id')
+          ? all.slice(20)
+          : all.slice(0, 20);
+        if (hold && !url.searchParams.has('max_id')) await held;
+        return HttpResponse.json(data);
+      }),
+    );
+    const page = await loadPage();
+    page.open('/chat');
+    await screen.findByText('Room room0');
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Room room21');
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Invitations\s*1/ }),
+    );
+    await screen.findByText('Invited room');
+    hold = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    await waitFor(() => {
+      expect(readsOf(ROOMS)).toHaveLength(3);
+    });
+    hide();
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(readsOf(ROOMS)).toHaveLength(3);
+    show();
+    await waitFor(() => {
+      expect(readsOf(ROOMS)).toHaveLength(4);
+    });
+  });
+  it('pauses a sent-invitations page until the members screen is visible', async () => {
+    seed('A', 1, 1);
+    backend.rooms.set('A', {
+      title: 'Room A',
+      unread: false,
+      type: 'group',
+      role: 'owner',
+    });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.get('*/api/v1/chat/invitations', async ({ request }) => {
+        const url = new URL(request.url);
+        backend.reads.push(url.pathname + url.search);
+        if (url.searchParams.get('direction') !== 'sent')
+          return HttpResponse.json([]);
+        if (url.searchParams.has('max_id')) return HttpResponse.json([]);
+        await held;
+        return HttpResponse.json(
+          Array.from({ length: 40 }, (_, n) => ({
+            id: String(n + 1),
+            state: 'pending',
+            conversation: room('A'),
+            inviter: me,
+            invitee: bob,
+          })),
+        );
+      }),
+    );
+    const page = await loadPage();
+    page.open('/chat/A/members');
+    await waitFor(() => {
+      expect(
+        backend.reads.filter((r) => r.includes('direction=sent')),
+      ).toHaveLength(1);
+    });
+    hide();
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(
+      backend.reads.filter((r) => r.includes('direction=sent')),
+    ).toHaveLength(1);
+    show();
+    await waitFor(() => {
+      expect(
+        backend.reads.filter((r) => r.includes('direction=sent')),
+      ).toHaveLength(2);
+    });
+  });
+  it('pauses a coalesced conversation detail refresh while hidden', async () => {
+    seed('A', 1, 1);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await screen.findByText('Room A');
+    await settle();
+    const [first, second] = seed('B', 1, 2);
+    const release = holdNextAnswer(/\/conversations\/B$/);
+    act(() => {
+      page.socket.deliver('chat.message', first);
+    });
+    await waitFor(() => {
+      expect(
+        backend.reads.filter((r) => r.endsWith('/conversations/B')),
+      ).toHaveLength(1);
+    });
+    act(() => {
+      page.socket.deliver('chat.message', second);
+    });
+    hide();
+    await release();
+    await settle();
+    expect(
+      backend.reads.filter((r) => r.endsWith('/conversations/B')),
+    ).toHaveLength(1);
+    show();
+    await waitFor(() => {
+      expect(
+        backend.reads.filter((r) => r.endsWith('/conversations/B')),
+      ).toHaveLength(2);
+    });
+  });
+});
