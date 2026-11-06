@@ -1085,6 +1085,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     pendingMessageUpdates.current.forEach((updates) => updates.push(update));
     setMessagesList(update);
   }, []);
+  const pendingSearchUpdates = useRef(new Set<MessageUpdate[]>());
+  const updateSearchResults = useCallback((update: MessageUpdate) => {
+    pendingSearchUpdates.current.forEach((updates) => updates.push(update));
+    setSearchResults(update);
+  }, []);
   const pendingConversationUpdates = useRef(new Set<ConversationUpdate[]>());
   const updateConversations = useCallback((update: ConversationUpdate) => {
     pendingConversationUpdates.current.forEach((updates) =>
@@ -1097,6 +1102,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const updateInvitations = useCallback((update: InvitationUpdate) => {
     pendingInvitationUpdates.current.forEach((updates) => updates.push(update));
     setInvitations(update);
+  }, []);
+  const pendingSentInvitationUpdates = useRef(new Set<InvitationUpdate[]>());
+  const updateSentInvitations = useCallback((update: InvitationUpdate) => {
+    pendingSentInvitationUpdates.current.forEach((updates) =>
+      updates.push(update),
+    );
+    setSentInvitations(update);
   }, []);
 
   // What the screen asked for on opening and has no answer to yet.
@@ -1834,6 +1846,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (value.id && fromOther && seen) markRead(conversationId, value.id);
         } else if (event === 'chat.message_update') {
           const message = applyTombstone(value as ChatMessage);
+          updateSearchResults((current) =>
+            current.map((item) => (item.id === message.id ? message : item)),
+          );
           updateConversations((current) =>
             current.map((item) =>
               item.id === eventConversationId &&
@@ -1848,6 +1863,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
         } else if (event === 'chat.message_delete') {
           if (!value.id) return;
+          const id = value.id;
+          updateSearchResults((current) =>
+            current.filter((item) => item.id !== id),
+          );
           deletedMessages.current.set(value.id, new Date().toISOString());
           updateConversations((current) =>
             current.map((item) =>
@@ -1926,6 +1945,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         } else if (event === 'chat.conversation_delete') {
           if (value.conversation_id) {
             const id = value.conversation_id;
+            updateSearchResults((current) =>
+              current.filter((item) => item.conversation_id !== id),
+            );
             conversationVersions.current.set(
               id,
               (conversationVersions.current.get(id) ?? 0) + 1,
@@ -2021,6 +2043,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       updateConversations,
       updateInvitations,
       updateMessages,
+      updateSearchResults,
     ],
   );
 
@@ -2190,10 +2213,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     let current = true;
     const read = `sent:${conversationId}`;
     void keepReading(read, async (nextPage) => {
-      const found = await fetchSentInvitations(conversationId, nextPage);
-      if (!current || !found) return;
-      setSentInvitations(found);
-      readRecovered(read);
+      const updates: InvitationUpdate[] = [];
+      pendingSentInvitationUpdates.current.add(updates);
+      try {
+        const found = await fetchSentInvitations(conversationId, nextPage);
+        if (!current || !found) return;
+        setSentInvitations(
+          updates.reduce((items, update) => update(items), found),
+        );
+        readRecovered(read);
+      } finally {
+        pendingSentInvitationUpdates.current.delete(updates);
+      }
     });
     return () => {
       current = false;
@@ -2516,6 +2547,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (query: string) => {
       cancelMessageSearch();
       const requestId = latestMessageSearch.current;
+      const updates: MessageUpdate[] = [];
+      pendingSearchUpdates.current.add(updates);
       setError(null);
       void api()
         .get<ChatMessage[]>('/api/v1/chat/messages/search', {
@@ -2523,11 +2556,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         })
         .then((response) => {
           if (requestId !== latestMessageSearch.current) return;
-          setSearchResults(response.data);
+          setSearchResults(
+            updates.reduce((items, update) => update(items), response.data),
+          );
           setSearchedQuery(query);
         })
         .catch(() => {
           if (requestId === latestMessageSearch.current) setError('search');
+        })
+        .finally(() => {
+          pendingSearchUpdates.current.delete(updates);
         });
     },
     [cancelMessageSearch],
@@ -2880,7 +2918,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       void api()
         .delete(`/api/v1/chat/invitations/${invitation.id}`)
         .then(() => {
-          setSentInvitations((current) =>
+          updateSentInvitations((current) =>
             current.filter((item) => item.id !== invitation.id),
           );
           dispatch(
@@ -2899,7 +2937,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setError('invite');
         });
     },
-    [dispatch],
+    [dispatch, updateSentInvitations],
   );
 
   const handleInviteSubmit = useCallback(

@@ -576,6 +576,187 @@ describe('Review a99b', () => {
     Reflect.deleteProperty(document, 'visibilityState');
   });
 
+  it('does not restore a deleted message from an older search answer', async () => {
+    seed('A', 1, 1);
+    const found = { ...message('A', 1), content: 'A unique search result' };
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = false;
+    server.use(
+      http.get('*/api/v1/chat/messages/search', async () => {
+        asked = true;
+        await held;
+        return HttpResponse.json([found]);
+      }),
+    );
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await screen.findByText('Room A');
+    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
+    fireEvent.change(screen.getByPlaceholderText('Search messages'), {
+      target: { value: 'unique' },
+    });
+    await later(1_000);
+    await waitFor(() => {
+      expect(asked).toBe(true);
+    });
+    act(() => {
+      page.socket.deliver('chat.message_delete', {
+        id: '1',
+        conversation_id: 'A',
+      });
+    });
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(screen.queryByText('A unique search result')).toBeNull();
+  });
+
+  it('does not restore search results from a deleted conversation', async () => {
+    seed('A', 1, 1);
+    const found = { ...message('A', 1), content: 'A unique search result' };
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = false;
+    server.use(
+      http.get('*/api/v1/chat/messages/search', async () => {
+        asked = true;
+        await held;
+        return HttpResponse.json([found]);
+      }),
+    );
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await screen.findByText('Room A');
+    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
+    fireEvent.change(screen.getByPlaceholderText('Search messages'), {
+      target: { value: 'unique' },
+    });
+    await later(1_000);
+    await waitFor(() => {
+      expect(asked).toBe(true);
+    });
+    act(() => {
+      page.socket.deliver('chat.conversation_delete', { conversation_id: 'A' });
+    });
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(screen.queryByText('A unique search result')).toBeNull();
+  });
+
+  it('keeps a message edit that arrives before an older search answer', async () => {
+    seed('A', 1, 1);
+    const found = { ...message('A', 1), content: 'A unique search result' };
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = false;
+    server.use(
+      http.get('*/api/v1/chat/messages/search', async () => {
+        asked = true;
+        await held;
+        return HttpResponse.json([found]);
+      }),
+    );
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await screen.findByText('Room A');
+    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
+    fireEvent.change(screen.getByPlaceholderText('Search messages'), {
+      target: { value: 'unique' },
+    });
+    await later(1_000);
+    await waitFor(() => {
+      expect(asked).toBe(true);
+    });
+    act(() => {
+      page.socket.deliver('chat.message_update', {
+        ...found,
+        content: 'A unique edited result',
+      });
+    });
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(
+      document.querySelector('.chat-native__search-results')?.textContent,
+    ).toContain('A unique edited result');
+  });
+
+  it('does not restore a cancelled sent invitation from a read already in flight', async () => {
+    seed('A', 1, 1);
+    backend.rooms.set('A', {
+      title: 'Room A',
+      unread: false,
+      type: 'group',
+      role: 'owner',
+    });
+    const carol = person('carol', 'Carol');
+    let invitations = [
+      {
+        id: 'sent-1',
+        state: 'pending',
+        conversation: room('A'),
+        inviter: me,
+        invitee: carol,
+      },
+    ];
+    let reads = 0;
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.get('*/api/v1/chat/invitations', async ({ request }) => {
+        if (new URL(request.url).searchParams.get('direction') !== 'sent')
+          return HttpResponse.json([]);
+        const snapshot = [...invitations];
+        reads += 1;
+        if (reads === 2) await held;
+        return HttpResponse.json(snapshot);
+      }),
+      http.delete('*/api/v1/chat/invitations/:id', () => {
+        invitations = [];
+        return HttpResponse.json({});
+      }),
+    );
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A/members');
+    await screen.findByText('Carol');
+    act(() => {
+      page.socket.deliver('chat.invitation_update', { conversation_id: 'A' });
+    });
+    await waitFor(() => {
+      expect(reads).toBe(2);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel invitation' }));
+    await waitFor(() => {
+      expect(screen.queryByText('Carol')).toBeNull();
+    });
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(screen.queryByText('Carol')).toBeNull();
+  });
+
   it('keeps a newer settings change when an older successful patch arrives late', async () => {
     let release!: () => void;
     const held = new Promise<void>((resolve) => {
