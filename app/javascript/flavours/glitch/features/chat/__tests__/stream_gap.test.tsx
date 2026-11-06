@@ -142,27 +142,40 @@ const message = (room: string, id: number): Message => ({
 // however late the answer gets back. Holding an answer back is what the tests vary.
 const backend = {
   messages: new Map<string, Message[]>(),
-  rooms: new Map<string, { unread: boolean; title: string }>(),
+  rooms: new Map<
+    string,
+    { unread: boolean; title: string; type?: 'direct' | 'group'; role?: string }
+  >(),
   invitations: [] as { id: string; title: string }[],
   reads: [] as string[],
   marked: [] as string[],
+  // Every request to mark a room read, answered or not, with when it came.
+  markAttempts: [] as { room: string; at: number; messageId?: string }[],
   held: [] as { path: RegExp; until: Promise<void> }[],
   failing: [] as RegExp[],
+  // Answers given once, in place of the real one, to the next request whose path matches.
+  refusals: [] as {
+    path: RegExp;
+    status: number;
+    headers?: Record<string, string>;
+  }[],
+  // Paths that fail for as long as they are listed here.
+  down: [] as RegExp[],
 };
 const room = (id: string) => {
-  const { title, unread } = backend.rooms.get(id) ?? {
+  const { title, unread, type, role } = backend.rooms.get(id) ?? {
     title: `Room ${id}`,
     unread: false,
   };
   return {
     id,
-    type: 'direct',
+    type: type ?? 'direct',
     title,
     description: null,
     unread,
     muted: false,
     archived: false,
-    current_role: 'member',
+    current_role: role ?? 'member',
     accounts: [me, bob],
     last_message: backend.messages.get(id)?.at(-1) ?? null,
   };
@@ -170,6 +183,17 @@ const room = (id: string) => {
 const take = <T,>(list: T[], matches: (item: T) => boolean) => {
   const index = list.findIndex(matches);
   return index === -1 ? undefined : list.splice(index, 1)[0];
+};
+const refusalFor = (path: string) => {
+  const refusal = take(backend.refusals, (item) => item.path.test(path));
+  if (refusal)
+    return HttpResponse.json(
+      { error: 'refused' },
+      { status: refusal.status, headers: refusal.headers },
+    );
+  if (backend.down.some((item) => item.test(path)))
+    return HttpResponse.json({ error: 'unavailable' }, { status: 503 });
+  return null;
 };
 const answer = (read: (url: URL, id: string) => unknown) =>
   (async ({
@@ -182,9 +206,11 @@ const answer = (read: (url: URL, id: string) => unknown) =>
     const url = new URL(request.url);
     backend.reads.push(url.pathname + url.search);
     const fails = take(backend.failing, (path) => path.test(url.pathname));
+    const refused = refusalFor(url.pathname);
     const body = read(url, String(params.id));
     const held = take(backend.held, ({ path }) => path.test(url.pathname));
     if (held) await held.until;
+    if (refused) return refused;
     return fails
       ? HttpResponse.json({ error: 'unavailable' }, { status: 503 })
       : HttpResponse.json(body as never);
@@ -226,13 +252,27 @@ const server = setupServer(
       return HttpResponse.json(mine);
     },
   ),
-  http.post('*/api/v1/chat/conversations/:id/read', ({ params }) => {
-    const id = String(params.id);
-    backend.marked.push(id);
-    const current = backend.rooms.get(id);
-    if (current) backend.rooms.set(id, { ...current, unread: false });
-    return HttpResponse.json({});
-  }),
+  http.post(
+    '*/api/v1/chat/conversations/:id/read',
+    async ({ request, params }) => {
+      const id = String(params.id);
+      const url = new URL(request.url);
+      const body = (await request.json().catch(() => ({}))) as {
+        message_id?: string;
+      } | null;
+      backend.markAttempts.push({
+        room: id,
+        at: Date.now(),
+        messageId: body?.message_id,
+      });
+      const refused = refusalFor(url.pathname);
+      if (refused) return refused;
+      backend.marked.push(id);
+      const current = backend.rooms.get(id);
+      if (current) backend.rooms.set(id, { ...current, unread: false });
+      return HttpResponse.json({});
+    },
+  ),
   http.get(
     '*/api/v1/chat/invitations',
     answer((url) =>
@@ -424,8 +464,11 @@ beforeEach(() => {
   backend.invitations = [];
   backend.reads = [];
   backend.marked = [];
+  backend.markAttempts = [];
   backend.held = [];
   backend.failing = [];
+  backend.refusals = [];
+  backend.down = [];
 });
 afterEach(() => {
   cleanup();
@@ -958,7 +1001,7 @@ describe('Chat when the stream connects after the screen has read', () => {
       expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
     });
 
-    it('keeps saying so when what failed is not read again', async () => {
+    it('keeps saying so when coming back reads again only other things', async () => {
       seed('A', 1, 2);
       backend.failing.push(/\/settings$/);
       const page = await loadPage();
@@ -1175,6 +1218,303 @@ describe('Chat when the stream connects after the screen has read', () => {
       await settle();
 
       expect(backend.marked).not.toContain('A');
+    });
+  });
+});
+
+// What the screen asks for by itself is asked for again by the screen. It cannot wait for
+// the stream to say so: the stream may have been up, and said so, before the screen was there.
+describe('Chat when something it asked for by itself fails', () => {
+  const READ = /\/read$/;
+  const SETTINGS = /\/settings$/;
+  const marksOf = (id: string) =>
+    backend.markAttempts.filter((mark) => mark.room === id);
+  const later = async (ms: number) => {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+  };
+  const setHidden = (hidden: boolean) => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => (hidden ? 'hidden' : 'visible'),
+    });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+  };
+  // A room with something unread, opened once the stream is up.
+  const openUnread = async () => {
+    seed('A', 1, 2);
+    backend.rooms.set('A', { title: 'Room A', unread: true });
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await waitFor(() => {
+      expect(marksOf('A')).toHaveLength(1);
+    });
+    return page;
+  };
+  const listSaysUnread = async (page: Awaited<ReturnType<typeof loadPage>>) => {
+    act(() => {
+      page.history.push('/chat');
+    });
+    const item = await waitFor(() => {
+      const found = document.querySelector('[data-conversation-id="A"]');
+      expect(found).not.toBeNull();
+      return found as HTMLElement;
+    });
+    await settle();
+    return item.classList.contains('unread');
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    Reflect.deleteProperty(document, 'visibilityState');
+  });
+
+  describe('marking the room read', () => {
+    it('does not say that a request failed', async () => {
+      backend.refusals.push({ path: READ, status: 503 });
+      await openUnread();
+      await settle();
+
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+    });
+
+    it('tries again by itself, and the room is then read', async () => {
+      backend.refusals.push({ path: READ, status: 503 });
+      const page = await openUnread();
+
+      await later(3_000);
+
+      expect(backend.marked).toEqual(['A']);
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+      expect(await listSaysUnread(page)).toBe(false);
+    });
+
+    it('waits as long as the server says after too many requests', async () => {
+      backend.refusals.push({
+        path: READ,
+        status: 429,
+        headers: {
+          'X-RateLimit-Reset': new Date(Date.now() + 20_000).toISOString(),
+        },
+      });
+      await openUnread();
+
+      await later(15_000);
+      expect(marksOf('A')).toHaveLength(1);
+
+      await later(6_000);
+      expect(backend.marked).toEqual(['A']);
+    });
+
+    it('tries a few times, further apart each time, and then leaves it for the next time', async () => {
+      backend.down.push(READ);
+      const page = await openUnread();
+
+      await later(10 * 60_000);
+
+      const marks = marksOf('A');
+      const gaps = marks
+        .slice(1)
+        .map((mark, index) => mark.at - (marks[index]?.at ?? 0));
+      expect(marks.length).toBeGreaterThan(1);
+      expect(marks.length).toBeLessThanOrEqual(5);
+      gaps.forEach((gap, index) => {
+        expect(gap).toBeGreaterThanOrEqual(gaps[index - 1] ?? 1_000);
+      });
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+      expect(await listSaysUnread(page)).toBe(true);
+    });
+
+    it('stops once the reader has left the room', async () => {
+      backend.down.push(READ);
+      const page = await openUnread();
+      await later(3_000);
+      expect(marksOf('A')).toHaveLength(2);
+
+      act(() => {
+        page.history.push('/chat');
+      });
+      await screen.findByText('Room A');
+      await later(10 * 60_000);
+
+      expect(marksOf('A')).toHaveLength(2);
+    });
+
+    it('stops while the page is hidden, and tries once when it is shown again', async () => {
+      backend.down.push(READ);
+      await openUnread();
+      await later(3_000);
+      expect(marksOf('A')).toHaveLength(2);
+
+      setHidden(true);
+      await later(10 * 60_000);
+      expect(marksOf('A')).toHaveLength(2);
+
+      backend.down = [];
+      setHidden(false);
+      await waitFor(() => {
+        expect(backend.marked).toEqual(['A']);
+      });
+      await settle();
+      expect(marksOf('A')).toHaveLength(3);
+    });
+
+    it('tries again when marking a message that came in live failed', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      await waitFor(() => {
+        expect(backend.marked).toEqual(['A']);
+      });
+      backend.markAttempts = [];
+      backend.refusals.push({ path: READ, status: 503 });
+
+      const [newest] = seed('A', 3, 3);
+      act(() => {
+        page.socket.deliver('chat.message', newest);
+      });
+      await screen.findByText('Message 3');
+      await waitFor(() => {
+        expect(marksOf('A')).toHaveLength(1);
+      });
+      await later(3_000);
+
+      expect(marksOf('A').map((mark) => mark.messageId)).toEqual(['3', '3']);
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+    });
+  });
+
+  describe('reading what failed on opening, when the stream was up before', () => {
+    it.each([
+      ['messages', MESSAGES],
+      ['rooms', ROOMS],
+      ['invitations', INVITATIONS],
+      ['settings', SETTINGS],
+    ])(
+      'reads the %s again by itself, and stops saying that a request failed',
+      async (_, path) => {
+        seed('A', 1, 2);
+        const page = await loadPage();
+        await connect(page.socket);
+        backend.failing.push(path);
+        page.open('/chat/A');
+        await screen.findByText(REQUEST_FAILED);
+
+        await later(3_000);
+
+        await screen.findByText('Message 2');
+        await waitFor(() => {
+          expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+        });
+      },
+    );
+
+    it('keeps saying so while the read goes on failing', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      await connect(page.socket);
+      backend.down.push(SETTINGS);
+      page.open('/chat/A');
+      await screen.findByText(REQUEST_FAILED);
+
+      await later(10 * 60_000);
+
+      expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
+      expect(readsOf(SETTINGS).length).toBeLessThanOrEqual(5);
+    });
+  });
+
+  describe('reading again what an event asked for', () => {
+    it('reads the invitations again by itself after reading them for a new one failed', async () => {
+      seed('A', 1, 1);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat');
+      await screen.findByText('Room A');
+      await settle();
+
+      backend.failing.push(INVITATIONS);
+      backend.invitations = [{ id: 'invite', title: 'Book club' }];
+      act(() => {
+        page.socket.deliver('chat.invitation', { id: 'invite' });
+      });
+      await screen.findByText(REQUEST_FAILED);
+
+      await later(3_000);
+
+      await waitFor(() => {
+        expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+      });
+      fireEvent.click(
+        await screen.findByRole('button', { name: /Invitations\s*1/ }),
+      );
+      expect(await screen.findByText('Book club')).toBeTruthy();
+    });
+
+    it('reads the sent invitations again by itself on the members screen', async () => {
+      seed('A', 1, 1);
+      backend.rooms.set('A', {
+        title: 'Book club',
+        unread: false,
+        type: 'group',
+        role: 'owner',
+      });
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 1');
+      await settle();
+
+      backend.failing.push(INVITATIONS);
+      act(() => {
+        page.history.push('/chat/A/members');
+      });
+      await screen.findByText(REQUEST_FAILED);
+
+      await later(3_000);
+
+      await waitFor(() => {
+        expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+      });
+      expect(
+        backend.reads.filter((read) => read.includes('direction=sent')),
+      ).toHaveLength(2);
+    });
+  });
+
+  describe('what the reader did', () => {
+    it('keeps saying that sending failed, and does not send again by itself', async () => {
+      seed('A', 1, 2);
+      const page = await loadPage();
+      await connect(page.socket);
+      page.open('/chat/A');
+      await screen.findByText('Message 2');
+      await settle();
+      backend.failing.push(/\/messages$/);
+
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'Going out' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      await screen.findByText(REQUEST_FAILED);
+
+      await later(10 * 60_000);
+
+      expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
+      expect(backend.messages.get('A')).toHaveLength(2);
     });
   });
 });
