@@ -144,15 +144,17 @@ class FanOutOnWriteService < BaseService
   end
 
   def broadcast_to_hashtag_streams!
+    misskey_timeline_keys = []
+
     @status.tags.map(&:name).each do |hashtag|
       redis.publish("timeline:hashtag:#{hashtag.downcase}", anonymous_payload)
       redis.publish("timeline:hashtag:#{hashtag.downcase}:local", anonymous_payload) if @status.local?
 
-      unless update?
-        MisskeyCompat::Streaming.broadcast_note(redis, "timeline:hashtag:#{hashtag.downcase}", @status)
-        MisskeyCompat::Streaming.broadcast_note(redis, "timeline:hashtag:#{hashtag.downcase}:local", @status) if @status.local?
-      end
+      misskey_timeline_keys << "timeline:hashtag:#{hashtag.downcase}"
+      misskey_timeline_keys << "timeline:hashtag:#{hashtag.downcase}:local" if @status.local?
     end
+
+    MisskeyCompat::Streaming.broadcast_anonymous_note(redis, misskey_timeline_keys, @status) unless update?
   end
 
   def broadcast_to_public_streams!
@@ -166,10 +168,7 @@ class FanOutOnWriteService < BaseService
       redis.publish(@status.local? ? 'timeline:public:local:media' : 'timeline:public:remote:media', anonymous_payload)
     end
 
-    unless update?
-      MisskeyCompat::Streaming.broadcast_note(redis, 'timeline:public', @status)
-      MisskeyCompat::Streaming.broadcast_note(redis, @status.local? ? 'timeline:public:local' : 'timeline:public:remote', @status)
-    end
+    MisskeyCompat::Streaming.broadcast_anonymous_note(redis, ['timeline:public', @status.local? ? 'timeline:public:local' : 'timeline:public:remote'], @status) unless update?
   end
 
   def deliver_to_conversation!
