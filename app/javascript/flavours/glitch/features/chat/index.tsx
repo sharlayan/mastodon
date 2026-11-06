@@ -10,6 +10,7 @@ import {
 } from 'react';
 import type {
   ChangeEvent,
+  ClipboardEvent,
   KeyboardEvent,
   MouseEvent,
   SyntheticEvent,
@@ -108,6 +109,7 @@ interface ChatMessage {
 }
 
 type MessageUpdate = (messages: ChatMessage[]) => ChatMessage[];
+type SearchUpdate = (messages: ChatMessage[], query: string) => ChatMessage[];
 type InvitationUpdate = (invitations: ChatInvitation[]) => ChatInvitation[];
 type ConversationUpdate = (
   conversations: ChatConversation[],
@@ -875,6 +877,78 @@ type ComposerText = ReturnType<typeof createStore<string>>;
 const isTooLong = (text: string) =>
   Array.from(text.trim()).length > MAX_MESSAGE_LENGTH;
 
+// Match the cases where Safari exposes copied text as a differently encoded URL.
+const pastePlainText = (event: ClipboardEvent<HTMLDivElement>) => {
+  const target = event.target;
+  if (
+    !(
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLInputElement
+    )
+  )
+    return;
+  if (
+    target instanceof HTMLInputElement &&
+    !['text', 'search', 'url', 'tel', 'password'].includes(target.type)
+  )
+    return;
+  if (target.disabled || target.readOnly) return;
+  const clipboard = event.clipboardData;
+  if (
+    clipboard.files.length ||
+    Array.from(clipboard.items).some((item) => item.kind === 'file')
+  )
+    return;
+  if (
+    !clipboard.types.includes('text/plain') ||
+    !clipboard.types.includes('text/uri-list')
+  )
+    return;
+  const plain = clipboard.getData('text/plain');
+  const uri = clipboard.getData('text/uri-list');
+  if (!plain || !uri || plain === uri) return;
+  try {
+    const decoded = decodeURIComponent(uri);
+    const scheme = /^[a-z][a-z\d+.-]*:/i.exec(plain)?.[0];
+    if (!scheme) return;
+    if (
+      decoded.slice(0, scheme.length).toLowerCase() !== scheme.toLowerCase() ||
+      decoded.slice(scheme.length) !== plain.slice(scheme.length)
+    )
+      return;
+  } catch {
+    return;
+  }
+  event.preventDefault();
+  // Native insertion is the browser API that preserves the editing undo stack.
+  // eslint-disable-next-line @typescript-eslint/no-deprecated, @typescript-eslint/unbound-method
+  const insertText = document.execCommand;
+  if (
+    typeof insertText === 'function' &&
+    insertText.call(document, 'insertText', false, plain)
+  )
+    return;
+  target.setRangeText(
+    plain,
+    target.selectionStart ?? 0,
+    target.selectionEnd ?? 0,
+    'end',
+  );
+  target.dispatchEvent(
+    new InputEvent('input', {
+      bubbles: true,
+      inputType: 'insertFromPaste',
+      data: plain,
+    }),
+  );
+};
+
+const foldSearch = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/i\u0307/g, 'i')
+    .replace(/\u03c2/g, '\u03c3');
+
 const ComposerBox: React.FC<{
   text: ComposerText;
   onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -979,6 +1053,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [nextConversationId, setNextConversationId] = useState<string | null>(
     null,
   );
+  const nextConversationIdRef = useRef<string | null>(null);
+  const updateNextConversationId = useCallback((id: string | null) => {
+    nextConversationIdRef.current = id;
+    setNextConversationId(id);
+  }, []);
   const [olderMessageId, setOlderMessageId] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTab, setActiveTab] = useState<ChatHomeTab>('home');
@@ -1085,11 +1164,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     pendingMessageUpdates.current.forEach((updates) => updates.push(update));
     setMessagesList(update);
   }, []);
-  const pendingSearchUpdates = useRef(new Set<MessageUpdate[]>());
-  const activeSearchQuery = useRef('');
-  const updateSearchResults = useCallback((update: MessageUpdate) => {
-    pendingSearchUpdates.current.forEach((updates) => updates.push(update));
-    setSearchResults(update);
+  const pendingSearchUpdates = useRef(
+    new Set<{ query: string; updates: MessageUpdate[] }>(),
+  );
+  const displayedSearchQuery = useRef('');
+  const updateSearchResults = useCallback((update: SearchUpdate) => {
+    pendingSearchUpdates.current.forEach(({ query, updates }) =>
+      updates.push((items) => update(items, query)),
+    );
+    const query = displayedSearchQuery.current;
+    setSearchResults((items) => update(items, query));
   }, []);
   const pendingConversationUpdates = useRef(new Set<ConversationUpdate[]>());
   const updateConversations = useCallback((update: ConversationUpdate) => {
@@ -1395,7 +1479,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         pendingConversationUpdates.current.delete(updates);
       }
       if (requestId !== latestConversationRequest.current) return;
-      setNextConversationId(cursor);
+      updateNextConversationId(cursor);
       setConversationMissing(missing);
       setRoomEnding(ending);
       if (missing && !ending) setError('load');
@@ -1406,7 +1490,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       readRecovered('conversations');
       return true;
     },
-    [conversationId, readRecovered, retries],
+    [conversationId, readRecovered, retries, updateNextConversationId],
   );
 
   const loadConversationsForAction = useCallback(async () => {
@@ -1444,12 +1528,21 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       // Bursts share a plan, and the scheduler checks the page before a follow-up.
       void retries
         .keepTrying(`conversation:${id}`, async () => {
+          const updates: ConversationUpdate[] = [];
+          pendingConversationUpdates.current.add(updates);
           try {
             const { data } = await api().get<ChatConversation>(
               `/api/v1/chat/conversations/${id}`,
             );
             if ((conversationVersions.current.get(id) ?? 0) !== version) return;
-            updateConversations((current) => upsertConversation(current, data));
+            const latest = updates
+              .reduce((items, update) => update(items), [data])
+              .find((item) => item.id === id);
+            pendingConversationUpdates.current.delete(updates);
+            if (latest)
+              updateConversations((current) =>
+                upsertConversation(current, latest),
+              );
           } catch (loadError) {
             if (
               (loadError as { response?: { status?: number } } | null)?.response
@@ -1461,6 +1554,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               updateConversations((current) =>
                 current.filter((item) => item.id !== id),
               );
+          } finally {
+            pendingConversationUpdates.current.delete(updates);
           }
         })
         .catch(() => undefined);
@@ -1477,8 +1572,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     void retries
       .runPages('conversations', () => {
         requestId = latestConversationRequest.current;
+        const cursor = nextConversationIdRef.current;
+        if (!cursor) return Promise.resolve(undefined);
         return api().get<ChatConversation[]>('/api/v1/chat/conversations', {
-          params: { max_id: nextConversationId },
+          params: { max_id: cursor },
         });
       })
       .then((response) => {
@@ -1496,7 +1593,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             (item) => !current.some((existing) => existing.id === item.id),
           ),
         ]);
-        setNextConversationId(
+        updateNextConversationId(
           response.data.length === 20
             ? (response.data.at(-1)?.id ?? null)
             : null,
@@ -1521,6 +1618,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     readRecovered,
     retries,
     updateConversations,
+    updateNextConversationId,
   ]);
 
   const loadInvitations = useCallback(async () => {
@@ -1849,14 +1947,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (value.id && fromOther && seen) markRead(conversationId, value.id);
         } else if (event === 'chat.message_update') {
           const message = applyTombstone(value as ChatMessage);
-          const matchesSearch = message.content
-            ?.toLowerCase()
-            .includes(activeSearchQuery.current.toLowerCase());
-          updateSearchResults((current) =>
-            current.flatMap((item) =>
+          updateSearchResults((current, query) => {
+            const matchesSearch =
+              message.content &&
+              foldSearch(message.content).includes(foldSearch(query));
+            return current.flatMap((item) =>
               item.id !== message.id ? [item] : matchesSearch ? [message] : [],
-            ),
-          );
+            );
+          });
           updateConversations((current) =>
             current.map((item) =>
               item.id === eventConversationId &&
@@ -1893,6 +1991,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
         } else if (event === 'chat.message_hide') {
           if (!value.id) return;
+          const id = value.id;
+          updateSearchResults((current) =>
+            current.filter((item) => item.id !== id),
+          );
           deletedMessages.current.set(value.id, new Date().toISOString());
           if (eventConversationId) refreshConversation(eventConversationId);
           if (eventConversationId !== conversationId) return;
@@ -2555,9 +2657,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (query: string) => {
       cancelMessageSearch();
       const requestId = latestMessageSearch.current;
-      activeSearchQuery.current = query;
       const updates: MessageUpdate[] = [];
-      pendingSearchUpdates.current.add(updates);
+      const pending = { query, updates };
+      pendingSearchUpdates.current.add(pending);
       setError(null);
       void api()
         .get<ChatMessage[]>('/api/v1/chat/messages/search', {
@@ -2565,6 +2667,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         })
         .then((response) => {
           if (requestId !== latestMessageSearch.current) return;
+          displayedSearchQuery.current = query;
           setSearchResults(
             updates.reduce((items, update) => update(items), response.data),
           );
@@ -2574,7 +2677,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (requestId === latestMessageSearch.current) setError('search');
         })
         .finally(() => {
-          pendingSearchUpdates.current.delete(updates);
+          pendingSearchUpdates.current.delete(pending);
         });
     },
     [cancelMessageSearch],
@@ -2955,10 +3058,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!conversationId || !inviteAccount) return;
       setError(null);
       void api()
-        .post(`/api/v1/chat/conversations/${conversationId}/invitations`, {
-          account_id: inviteAccount.id,
-        })
-        .then(() => {
+        .post<ChatInvitation | undefined>(
+          `/api/v1/chat/conversations/${conversationId}/invitations`,
+          {
+            account_id: inviteAccount.id,
+          },
+        )
+        .then(({ data }) => {
+          if (data?.id)
+            updateSentInvitations((current) => [
+              data,
+              ...current.filter((item) => item.id !== data.id),
+            ]);
           dispatch(
             showAlert({
               message: messages.inviteSent,
@@ -2975,7 +3086,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setError(isRefused(inviteError) ? 'refused' : 'invite');
         });
     },
-    [conversationId, dispatch, inviteAccount],
+    [conversationId, dispatch, inviteAccount, updateSentInvitations],
   );
 
   const handleGroupEditSubmit = useCallback(
@@ -3501,7 +3612,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         )}
       </ColumnHeader>
 
-      <div className='scrollable chat-native'>
+      <div className='scrollable chat-native' onPaste={pastePlainText}>
         {conversationId && conversationMissing ? (
           roomEnding && (
             <div className='chat-native__empty'>
