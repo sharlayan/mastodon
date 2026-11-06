@@ -164,9 +164,18 @@ const drawnWhile = (action: () => void) => {
   };
 };
 const NOTHING = { messages: 0, composer: 0 };
+const originalMatchMedia = Object.getOwnPropertyDescriptor(
+  window,
+  'matchMedia',
+);
 
 beforeEach(() => {
   vi.resetAllMocks();
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockReturnValue({ matches: false }),
+  });
   drawn.messages = 0;
   drawn.composer = 0;
   api.get.mockImplementation((url: string) =>
@@ -181,6 +190,9 @@ afterEach(() => {
   cleanup();
   Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
   vi.restoreAllMocks();
+  if (originalMatchMedia)
+    Object.defineProperty(window, 'matchMedia', originalMatchMedia);
+  else Reflect.deleteProperty(window, 'matchMedia');
 });
 
 describe('Scrolling in a room', () => {
