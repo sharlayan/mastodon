@@ -21,4 +21,36 @@ RSpec.describe MisskeyCompat::SerializationContext do
     expect(embedded_parent.association(:mentions)).to be_loaded
     expect(embedded_parent.mentions.first.association(:account)).to be_loaded
   end
+
+  describe '#visible?' do
+    let(:viewer) { Fabricate(:account) }
+    let(:blocker) { Fabricate(:account) }
+    let(:friend) { Fabricate(:account) }
+
+    before { blocker.block!(viewer) }
+
+    it 'hides posts from authors who block the viewer using preloaded relations' do
+      blocked_status = Fabricate(:status, account: blocker)
+      visible_status = Fabricate(:status, account: friend)
+      context = described_class.new(current_account: viewer).prime_relations([blocked_status, visible_status])
+
+      expect(context.visible?(blocked_status)).to be false
+      expect(context.visible?(visible_status)).to be true
+    end
+
+    it 'checks authors outside the preloaded set against the database' do
+      visible_status = Fabricate(:status, account: friend)
+      blocked_status = Fabricate(:status, account: blocker)
+      context = described_class.new(current_account: viewer).prime_relations([visible_status])
+
+      expect(context.visible?(blocked_status)).to be false
+    end
+
+    it 'does not leave preloaded relations on the viewer account' do
+      status = Fabricate(:status, account: friend)
+      described_class.new(current_account: viewer).prime_relations([status])
+
+      expect(viewer.blocked_by?(blocker)).to be true
+    end
+  end
 end

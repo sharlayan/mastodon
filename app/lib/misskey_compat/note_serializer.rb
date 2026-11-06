@@ -97,7 +97,7 @@ class MisskeyCompat::NoteSerializer
 
   def embedded_note(status)
     return nil if status.nil?
-    return nil unless StatusPolicy.new(@current_account, status).show?
+    return nil unless @context.visible?(status)
 
     serialize(status, embed_relations: false, context: @context)
   rescue Mastodon::NotPermittedError
