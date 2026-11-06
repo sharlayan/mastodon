@@ -891,6 +891,9 @@ const ComposerBox: React.FC<{
 
   return (
     <Textarea
+      // iOS 27 Safari reads an address in the text around a box (one letter of Korean is enough)
+      // and offers contacts' addresses in place of words; autocomplete="off" does not stop it.
+      name='search'
       minRows={1}
       maxRows={6}
       value={value}
@@ -3385,6 +3388,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   disabled={conversation.archived}
                 />
                 <textarea
+                  // Keeps iOS 27 Safari from taking it for an address box; see ComposerBox.
+                  name='search'
                   value={
                     groupEdit?.conversationId === conversation.id
                       ? groupEdit.description
