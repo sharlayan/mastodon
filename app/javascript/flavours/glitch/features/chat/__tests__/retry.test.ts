@@ -44,12 +44,12 @@ describe('How long chat waits before trying again', () => {
     ).toBe(5_000);
   });
 
-  it('plans no further ahead than ten minutes', () => {
+  it('does not retry early when the rate limit resets more than ten minutes away', () => {
     const reset = new Date(NOW + 3_600_000).toISOString();
 
     expect(
       retryDelay(refused(429, { 'x-ratelimit-reset': reset }), 0, NOW),
-    ).toBe(600_000);
+    ).toBeNull();
   });
 
   it.each([400, 401, 403, 404, 410, 422])(
@@ -87,6 +87,34 @@ describe('Chat retries while the page is hidden', () => {
 
     retries.show();
     await vi.advanceTimersByTimeAsync(0);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('honours the rate limit after the page is hidden and shown early', async () => {
+    const retries = createRetries(false);
+    let attempts = 0;
+    const run = vi.fn(() => {
+      attempts += 1;
+      return attempts === 1
+        ? Promise.reject(
+            Object.assign(
+              new Error('rate limited'),
+              refused(429, { 'retry-after': '20' }),
+            ),
+          )
+        : Promise.resolve();
+    });
+    void retries.keepTrying('read', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+
+    await vi.advanceTimersByTimeAsync(3_000);
+    retries.hide();
+    await vi.advanceTimersByTimeAsync(2_000);
+    retries.show();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(run).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(15_000);
     expect(run).toHaveBeenCalledTimes(2);
   });
 

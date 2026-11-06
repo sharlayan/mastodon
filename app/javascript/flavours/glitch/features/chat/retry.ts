@@ -44,7 +44,8 @@ export const retryDelay = (
   const status = response?.status;
   if (status === 429) {
     const asked = waitAskedFor(response?.headers, now);
-    return Math.min(Math.max(delay, asked ?? delay), LONGEST_WAIT_MS);
+    const wait = Math.max(delay, asked ?? delay);
+    return wait > LONGEST_WAIT_MS ? null : wait;
   }
   // The server understood and said no; asking again gets the same answer.
   if (status !== undefined && status >= 400 && status < 500 && status !== 408)
@@ -156,12 +157,6 @@ export const createRetries = (
     },
     hide() {
       hidden = true;
-      plans.forEach((entry) => {
-        if (entry.timer === null) return;
-        clearTimeout(entry.timer);
-        entry.timer = null;
-        entry.due = true;
-      });
     },
     show() {
       hidden = false;
