@@ -70,18 +70,29 @@ module ThemeHelper
   end
 
   def current_flavour
-    return 'glitch' if roleplay_mode? && Themes.instance.flavours.include?('glitch')
+    return roleplay_flavour if roleplay_mode? && Sharlayan::RoleplayThemes.flavours.any?
 
     [current_user&.setting_flavour, Setting.flavour, 'glitch', 'vanilla'].find { |flavour| Themes.instance.flavours.include?(flavour) }
   end
 
   def current_skin
+    forced_theme = roleplay_forced_theme
+    return forced_theme.last if forced_theme
+
     skins = Themes.instance.skins_for(current_flavour)
-    [roleplay_forced_skin, current_user&.setting_skin, Setting.skin, 'default'].compact.find { |skin| skins.include?(skin) }
+    [current_user&.setting_skin, Setting.skin, 'default'].compact.find { |skin| skins.include?(skin) }
   end
 
   def roleplay_forced_skin
-    Setting.roleplay_forced_skin.presence if roleplay_mode?
+    roleplay_forced_theme&.last
+  end
+
+  def roleplay_forced_theme
+    Sharlayan::RoleplayThemes.parse(Setting.roleplay_forced_skin) if roleplay_mode?
+  end
+
+  def roleplay_flavour
+    roleplay_forced_theme&.first || Sharlayan::RoleplayThemes.flavour_for(current_user&.setting_flavour, Setting.flavour)
   end
 
   def current_theme
