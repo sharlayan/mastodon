@@ -108,6 +108,7 @@ interface ChatMessage {
 }
 
 type MessageUpdate = (messages: ChatMessage[]) => ChatMessage[];
+type InvitationUpdate = (invitations: ChatInvitation[]) => ChatInvitation[];
 type ConversationUpdate = (
   conversations: ChatConversation[],
 ) => ChatConversation[];
@@ -1091,6 +1092,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     );
     setConversations(update);
   }, []);
+  const pendingInvitationUpdates = useRef(new Set<InvitationUpdate[]>());
+  const latestInvitationRequest = useRef(0);
+  const updateInvitations = useCallback((update: InvitationUpdate) => {
+    pendingInvitationUpdates.current.forEach((updates) => updates.push(update));
+    setInvitations(update);
+  }, []);
 
   // What the screen asked for on opening and has no answer to yet.
   const openingReads = useRef(new Set<Promise<unknown>>());
@@ -1319,6 +1326,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [history],
   );
 
+  // The creation response is only a bridge for the first render, not a history snapshot.
+  useEffect(() => {
+    if (!location.state?.chatCreatedConversation) return;
+    const state = { ...location.state };
+    delete state.chatCreatedConversation;
+    history.replace({ ...location, state });
+  }, [history, location]);
+
   const loadConversations = useCallback(
     async (nextPage: PageCheckpoint) => {
       const requestId = ++latestConversationRequest.current;
@@ -1357,6 +1372,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             ending = roomEndingOf(loadError);
           }
         }
+      } catch (loadError) {
+        if (requestId !== latestConversationRequest.current) {
+          retries.recordFailure('conversations', loadError);
+          return false;
+        }
+        throw loadError;
       } finally {
         pendingConversationUpdates.current.delete(updates);
       }
@@ -1372,10 +1393,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       readRecovered('conversations');
       return true;
     },
-    [conversationId, readRecovered],
+    [conversationId, readRecovered, retries],
   );
 
   const loadConversationsForAction = useCallback(async () => {
+    // One background plan owns a rate-limited read, even if an action asks for it first.
+    if (retries.limited('conversations')) {
+      if (!retries.planned('conversations'))
+        void retries
+          .keepTrying('conversations', loadConversations, {
+            failed: () => {
+              readFailed('conversations');
+            },
+          })
+          .catch(() => undefined);
+      return undefined;
+    }
     try {
       return await retries.runPages('conversations', loadConversations);
     } catch {
@@ -1425,11 +1458,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const loadMoreConversations = useCallback(() => {
     if (!nextConversationId || loadingMore) return;
     setLoadingMore(true);
-    void api()
-      .get<ChatConversation[]>('/api/v1/chat/conversations', {
-        params: { max_id: nextConversationId },
-      })
-      .then(({ data }) => {
+    const requestId = latestConversationRequest.current;
+    const updates: ConversationUpdate[] = [];
+    pendingConversationUpdates.current.add(updates);
+    void retries
+      .runPages('conversations', () =>
+        api().get<ChatConversation[]>('/api/v1/chat/conversations', {
+          params: { max_id: nextConversationId },
+        }),
+      )
+      .then((response) => {
+        pendingConversationUpdates.current.delete(updates);
+        if (!response || requestId !== latestConversationRequest.current)
+          return;
+        const data = updates.reduce(
+          (items, update) => update(items),
+          response.data,
+        );
         conversationPages.current += 1;
         updateConversations((current) => [
           ...current,
@@ -1438,23 +1483,56 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ),
         ]);
         setNextConversationId(
-          data.length === 20 ? (data.at(-1)?.id ?? null) : null,
+          response.data.length === 20
+            ? (response.data.at(-1)?.id ?? null)
+            : null,
         );
+        readRecovered('conversations:more');
       })
       .catch(() => {
-        setError('load');
+        if (
+          isMounted.current &&
+          requestId === latestConversationRequest.current
+        )
+          readFailed('conversations:more');
       })
       .finally(() => {
+        pendingConversationUpdates.current.delete(updates);
         setLoadingMore(false);
       });
-  }, [loadingMore, nextConversationId, updateConversations]);
+  }, [
+    loadingMore,
+    nextConversationId,
+    readFailed,
+    readRecovered,
+    retries,
+    updateConversations,
+  ]);
 
   const loadInvitations = useCallback(async () => {
-    const response = await api().get<ChatInvitation[]>(
-      '/api/v1/chat/invitations',
-    );
-    setInvitations(response.data);
-  }, []);
+    const requestId = ++latestInvitationRequest.current;
+    const updates: InvitationUpdate[] = [];
+    pendingInvitationUpdates.current.add(updates);
+    try {
+      const response = await api().get<ChatInvitation[]>(
+        '/api/v1/chat/invitations',
+      );
+      if (requestId !== latestInvitationRequest.current) return false;
+      setInvitations(
+        updates.reduce((items, update) => update(items), response.data),
+      );
+      readRecovered('invitations');
+      return true;
+    } catch (error) {
+      if (requestId !== latestInvitationRequest.current) {
+        retries.recordFailure('invitations', error);
+        return false;
+      }
+      throw error;
+    } finally {
+      pendingInvitationUpdates.current.delete(updates);
+    }
+  }, [readRecovered, retries]);
 
   // Whether what it read is what the screen shows: a newer read can take over.
   const loadMessages = useCallback(async () => {
@@ -1586,13 +1664,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setLoadingMore(true);
     const updates: MessageUpdate[] = [];
     pendingMessageUpdates.current.add(updates);
-    void api()
-      .get<ChatMessage[]>(
-        `/api/v1/chat/conversations/${conversationId}/messages`,
-        { params: { max_id: olderMessageId } },
+    const requestId = latestMessageRequest.current;
+    void retries
+      .runPages(`messages:${conversationId}`, () =>
+        api().get<ChatMessage[]>(
+          `/api/v1/chat/conversations/${conversationId}/messages`,
+          { params: { max_id: olderMessageId } },
+        ),
       )
-      .then(({ data }) => {
+      .then((response) => {
         pendingMessageUpdates.current.delete(updates);
+        if (!response || requestId !== latestMessageRequest.current) return;
+        const { data } = response;
         const older = updates.reduce(
           (items, update) => update(items),
           data.map(applyTombstone),
@@ -1604,9 +1687,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ...current,
         ]);
         setOlderMessageId(data.length === 40 ? (data[0]?.id ?? null) : null);
+        readRecovered('messages');
       })
       .catch(() => {
-        setError('load');
+        if (isMounted.current && requestId === latestMessageRequest.current)
+          readFailed('messages');
       })
       .finally(() => {
         pendingMessageUpdates.current.delete(updates);
@@ -1617,6 +1702,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     conversationId,
     loadingMore,
     olderMessageId,
+    readFailed,
+    readRecovered,
+    retries,
     updateMessages,
   ]);
 
@@ -1639,12 +1727,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         if (await loadConversations(nextPage)) readRecovered('conversations');
       }),
     );
-    void whileOpening(
-      keepReading('invitations', async () => {
-        await Promise.resolve().then(loadInvitations);
-        readRecovered('invitations');
-      }),
-    );
+    void whileOpening(keepReading('invitations', loadInvitations));
     void keepReading('settings', async () => {
       const settingsResponse = await api().get<ChatSettings>(
         '/api/v1/chat/settings',
@@ -1852,7 +1935,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           updateConversations((current) =>
             current.filter((item) => item.id !== value.conversation_id),
           );
-          setInvitations((current) =>
+          updateInvitations((current) =>
             current.filter(
               (item) => item.conversation.id !== value.conversation_id,
             ),
@@ -1878,10 +1961,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             ),
           );
         } else if (event === 'chat.invitation') {
-          void keepReading('invitations', async () => {
-            await loadInvitations();
-            readRecovered('invitations');
-          });
+          void keepReading('invitations', loadInvitations);
         } else if (event === 'chat.invitation_update') {
           if (eventConversationId === conversationId)
             setSentInvitationsVersion((version) => version + 1);
@@ -1901,10 +1981,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               .catch(() => undefined);
             retries.wake('conversations');
             void retries
-              .keepTrying('invitations', async () => {
-                await loadInvitations();
-                readRecovered('invitations');
-              })
+              .keepTrying('invitations', loadInvitations)
               .catch(() => undefined);
             retries.wake('invitations');
             if (conversationId) {
@@ -1942,6 +2019,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       resyncMessages,
       retries,
       updateConversations,
+      updateInvitations,
       updateMessages,
     ],
   );
@@ -2525,7 +2603,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (event: ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files ?? []);
       event.target.value = '';
-      if (!chatSettings) return;
+      if (!chatSettings || files.length === 0) return;
       if (files.length + media.length > chatSettings.max_attachments) {
         setError('too_many_attachments');
         return;
@@ -2534,24 +2612,25 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!signal || signal.aborted) return;
       setError(null);
       setUploading(true);
-      void Promise.all(
-        files.map(async (file) => {
+      let remaining = files.length;
+      files.forEach((file) => {
+        void (async () => {
           const body = new FormData();
           body.append('file', file);
           const response = await api().post<ChatMedia>('/api/v2/media', body);
           return waitForMedia(response.data, signal);
-        }),
-      )
-        .then((uploaded) => {
-          if (signal.aborted) return;
-          setMedia((current) => [...current, ...uploaded]);
-        })
-        .catch(() => {
-          if (!signal.aborted) setError('upload');
-        })
-        .finally(() => {
-          if (!signal.aborted) setUploading(false);
-        });
+        })()
+          .then((uploaded) => {
+            if (!signal.aborted) setMedia((current) => [...current, uploaded]);
+          })
+          .catch(() => {
+            if (!signal.aborted) setError('upload');
+          })
+          .finally(() => {
+            remaining -= 1;
+            if (!signal.aborted && remaining === 0) setUploading(false);
+          });
+      });
     },
     [chatSettings, media.length],
   );
@@ -2763,11 +2842,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (invitation: ChatInvitation, action: 'accept' | 'reject') => {
       setError(null);
       void api()
-        .post(`/api/v1/chat/invitations/${invitation.id}/${action}`)
-        .then(() => {
-          setInvitations((current) =>
+        .post<ChatConversation | undefined>(
+          `/api/v1/chat/invitations/${invitation.id}/${action}`,
+        )
+        .then(({ data }) => {
+          updateInvitations((current) =>
             current.filter((item) => item.id !== invitation.id),
           );
+          if (action === 'accept' && data?.id)
+            updateConversations((current) => upsertConversation(current, data));
           dispatch(
             showAlert({
               message:
@@ -2783,7 +2866,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           setError('invite');
         });
     },
-    [dispatch, loadConversationsForAction],
+    [
+      dispatch,
+      loadConversationsForAction,
+      updateConversations,
+      updateInvitations,
+    ],
   );
 
   const cancelInvitation = useCallback(
@@ -2865,7 +2953,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             description: description.trim(),
           },
         )
-        .then(() => {
+        .then(({ data }) => {
+          updateConversations((current) =>
+            current.map((item) => (item.id === data.id ? data : item)),
+          );
           dispatch(showAlert({ message: messages.groupSaved }));
           setGroupEdit(null);
           return loadConversationsForAction();
@@ -2880,6 +2971,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       dispatch,
       groupEdit,
       loadConversationsForAction,
+      updateConversations,
     ],
   );
 
@@ -2891,7 +2983,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           policy: event.target.value,
         })
         .then((response) => {
-          setChatSettings(response.data);
+          setChatSettings((current) =>
+            current
+              ? { ...current, policy: response.data.policy }
+              : response.data,
+          );
         })
         .catch(() => {
           setError('settings');
@@ -2903,7 +2999,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleSettingToggle = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const key = event.target.dataset.setting;
-      if (!key) return;
+      if (key !== 'notifications' && key !== 'allow_group_invites') return;
       if (
         key === 'notifications' &&
         event.target.checked &&
@@ -2918,7 +3014,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           [key]: event.target.checked,
         })
         .then((response) => {
-          setChatSettings(response.data);
+          setChatSettings((current) =>
+            current ? { ...current, [key]: response.data[key] } : response.data,
+          );
         })
         .catch(() => {
           setError('settings');
@@ -2932,13 +3030,25 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!conversationId) return;
       setError(null);
       void api()
-        .post(`/api/v1/chat/conversations/${conversationId}/${action}`)
-        .then(() => loadConversationsForAction())
+        .post<ChatConversation | undefined>(
+          `/api/v1/chat/conversations/${conversationId}/${action}`,
+        )
+        .then(({ data }) => {
+          updateConversations((current) =>
+            current.map((item) => {
+              if (item.id !== conversationId) return item;
+              if (action === 'mute' || action === 'unmute')
+                return { ...item, muted: action === 'mute' };
+              return data?.id === item.id ? data : item;
+            }),
+          );
+          return loadConversationsForAction();
+        })
         .catch(() => {
           setError('update');
         });
     },
-    [conversationId, loadConversationsForAction],
+    [conversationId, loadConversationsForAction, updateConversations],
   );
 
   const confirmArchive = useCallback(() => {

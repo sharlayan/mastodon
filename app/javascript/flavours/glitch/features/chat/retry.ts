@@ -92,8 +92,12 @@ export interface Retries {
     key: string,
     run: (nextPage: PageCheckpoint) => Promise<T>,
   ) => Promise<T | undefined>;
+  /** Preserve a 429 even when the response is too old to affect the screen. */
+  recordFailure: (key: string, error: unknown) => void;
   /** Whether something is planned under this key. */
   planned: (key: string) => boolean;
+  /** Whether a shared server deadline is currently active for this key. */
+  limited: (key: string) => boolean;
   /** A reconnect can wake an offline read, but not shorten a 429 deadline. */
   wake: (key: string) => void;
   /** Plans nothing more under this key, or any key that starts with it and a colon. */
@@ -270,6 +274,9 @@ export const createRetries = (
   };
 
   return {
+    recordFailure(key, error) {
+      rememberLimit(key, error);
+    },
     async runPages(key, run) {
       const scope: PageScope = {};
       pageScopes.add(scope);
@@ -337,6 +344,9 @@ export const createRetries = (
     },
     planned(key) {
       return plans.has(key);
+    },
+    limited(key) {
+      return (cooldowns.get(key) ?? 0) > Date.now();
     },
     wake(key) {
       const entry = plans.get(key);
