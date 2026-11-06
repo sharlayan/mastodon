@@ -597,6 +597,35 @@ describe('Paged reads following a user action', () => {
     await read;
     expect(run).not.toHaveBeenCalled();
   });
+  it('waits after a hidden rate limit and cancels the queued page on exit', async () => {
+    const retries = createRetries(false);
+    retries.recordFailure(
+      'conversations',
+      refused(429, { 'retry-after': '20' }),
+    );
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const background = vi.fn(async () => {
+      await held;
+    });
+    void retries.keepTrying('conversations', background).catch(() => undefined);
+    const run = vi.fn(() => Promise.resolve());
+    const read = retries.runPages('conversations', run);
+    retries.hide();
+    await vi.advanceTimersByTimeAsync(21_000);
+    expect(background).not.toHaveBeenCalled();
+    retries.show();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(background).toHaveBeenCalledTimes(1);
+    expect(run).not.toHaveBeenCalled();
+    retries.stop();
+    release();
+    await read;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(run).not.toHaveBeenCalled();
+  });
   it('does not retry or hide an error from a user action follow-up', async () => {
     const retries = createRetries(false);
     const run = vi.fn(() => Promise.reject(new Error('failed')));

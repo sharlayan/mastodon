@@ -58,6 +58,9 @@ export type PageCheckpoint = () => Promise<boolean>;
 interface PageScope {
   pageWait?: { check: () => void; cancel: () => void };
   gaveUp?: () => void;
+  waitForLimitedPlan?: boolean;
+  wasLimited?: boolean;
+  waitingFor?: Planned;
 }
 
 interface Planned extends PageScope {
@@ -71,6 +74,8 @@ interface Planned extends PageScope {
   first: Promise<unknown>;
   resolveFirst?: (value: unknown) => void;
   rejectFirst?: (error: unknown) => void;
+  finished: Promise<void>;
+  finish: () => void;
   run: (nextPage: PageCheckpoint) => Promise<unknown>;
   failed?: (error: unknown) => void;
 }
@@ -145,6 +150,7 @@ export const createRetries = (
           fire(key, entry);
         } else {
           plans.delete(key);
+          entry.finish();
         }
       })
       .catch((error: unknown) => {
@@ -160,6 +166,7 @@ export const createRetries = (
         const delay = retryDelay(error, entry.tried);
         if (delay === null) {
           plans.delete(key);
+          entry.finish();
           entry.gaveUp?.();
           return;
         }
@@ -191,8 +198,9 @@ export const createRetries = (
           finish(false);
           return;
         }
-        if (hidden) return;
         const remaining = (cooldowns.get(key) ?? 0) - Date.now();
+        if (cooldowns.has(key)) entry.wasLimited = true;
+        if (hidden) return;
         if (remaining > LONGEST_WAIT_MS) {
           entry.gaveUp?.();
           finish(false);
@@ -202,6 +210,17 @@ export const createRetries = (
           timer = setTimeout(check, remaining);
           return;
         }
+        const planned = plans.get(key);
+        if (entry.waitForLimitedPlan && entry.wasLimited && planned) {
+          if (entry.waitingFor !== planned) {
+            entry.waitingFor = planned;
+            void planned.finished.then(() => {
+              if (entry.pageWait === waiting) check();
+            });
+          }
+          return;
+        }
+        entry.wasLimited = false;
         finish(true);
       };
       const waiting = {
@@ -227,6 +246,7 @@ export const createRetries = (
     const remaining = (cooldowns.get(key) ?? 0) - Date.now();
     if (remaining > LONGEST_WAIT_MS) {
       plans.delete(key);
+      entry.finish();
       entry.rejectFirst?.(new Error('The server rate limit is still active'));
       entry.resolveFirst = undefined;
       entry.rejectFirst = undefined;
@@ -267,6 +287,7 @@ export const createRetries = (
     if (!entry) return;
     if (entry.timer !== null) clearTimeout(entry.timer);
     plans.delete(key);
+    entry.finish();
     entry.pageWait?.cancel();
     entry.rejectFirst?.(new Error('The background read was cancelled'));
     entry.resolveFirst = undefined;
@@ -278,7 +299,7 @@ export const createRetries = (
       rememberLimit(key, error);
     },
     async runPages(key, run) {
-      const scope: PageScope = {};
+      const scope: PageScope = { waitForLimitedPlan: true };
       pageScopes.add(scope);
       const nextPage = () =>
         waitForPage(key, scope, () => pageScopes.has(scope));
@@ -318,6 +339,10 @@ export const createRetries = (
         resolveFirst = resolve;
         rejectFirst = reject;
       });
+      let finish!: () => void;
+      const finished = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
       const entry: Planned = {
         tried: 0,
         timer: null,
@@ -326,6 +351,8 @@ export const createRetries = (
         again: false,
         rateLimited: false,
         first,
+        finished,
+        finish,
         resolveFirst,
         rejectFirst,
         run,

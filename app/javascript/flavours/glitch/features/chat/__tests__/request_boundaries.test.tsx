@@ -698,6 +698,49 @@ describe('Review a99b', () => {
     ).toContain('A unique edited result');
   });
 
+  it('drops an edited search result that no longer matches the query', async () => {
+    seed('A', 1, 1);
+    const found = { ...message('A', 1), content: 'A unique search result' };
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = false;
+    server.use(
+      http.get('*/api/v1/chat/messages/search', async () => {
+        asked = true;
+        await held;
+        return HttpResponse.json([found]);
+      }),
+    );
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await screen.findByText('Room A');
+    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
+    fireEvent.change(screen.getByPlaceholderText('Search messages'), {
+      target: { value: 'unique' },
+    });
+    await later(1_000);
+    await waitFor(() => {
+      expect(asked).toBe(true);
+    });
+    act(() => {
+      page.socket.deliver('chat.message_update', {
+        ...found,
+        content: 'Changed text',
+      });
+    });
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(
+      document.querySelectorAll('.chat-native__search-results button'),
+    ).toHaveLength(0);
+  });
+
   it('does not restore a cancelled sent invitation from a read already in flight', async () => {
     seed('A', 1, 1);
     backend.rooms.set('A', {
@@ -1075,6 +1118,34 @@ describe('Review a99b', () => {
     expect(within).toHaveLength(2);
   }, 30_000);
 
+  it('waits for the rate-limited background list before retrying Load more', async () => {
+    numericRooms(25);
+    usePagedRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await screen.findByText('Room 25');
+    backend.refusals.push({
+      path: ROOMS,
+      status: 429,
+      headers: { 'Retry-After': '20' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText(REQUEST_FAILED);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    const release = holdNextAnswer(ROOMS);
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await later(20_500);
+    await settle();
+    expect(readsOf(ROOMS)).toHaveLength(3);
+    await release();
+    await screen.findByText('Room 1');
+    await waitFor(() => {
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+    });
+  }, 30_000);
+
   it('S4b a 429 on loading older messages keeps the server deadline for the next resync', async () => {
     seed('A', 1, 45);
     const MESSAGES = /\/conversations\/A\/messages$/;
@@ -1102,6 +1173,35 @@ describe('Review a99b', () => {
       messageReadsAfterLoadMore: within,
     });
     expect(within).toHaveLength(1);
+  }, 30_000);
+
+  it('waits for a rate-limited message resync before retrying older messages', async () => {
+    seed('A', 1, 45);
+    const MESSAGES = /\/conversations\/A\/messages$/;
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 45');
+    const before = readsOf(MESSAGES).length;
+    backend.refusals.push({
+      path: MESSAGES,
+      status: 429,
+      headers: { 'Retry-After': '20' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText(REQUEST_FAILED);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    const release = holdNextAnswer(MESSAGES);
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await later(20_500);
+    await settle();
+    expect(readsOf(MESSAGES)).toHaveLength(before + 2);
+    await release();
+    await screen.findByText('Message 1');
+    await waitFor(() => {
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+    });
   }, 30_000);
 
   it('clears the Load more reading error when the same page later succeeds', async () => {

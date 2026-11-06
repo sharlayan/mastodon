@@ -1086,6 +1086,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setMessagesList(update);
   }, []);
   const pendingSearchUpdates = useRef(new Set<MessageUpdate[]>());
+  const activeSearchQuery = useRef('');
   const updateSearchResults = useCallback((update: MessageUpdate) => {
     pendingSearchUpdates.current.forEach((updates) => updates.push(update));
     setSearchResults(update);
@@ -1470,15 +1471,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const loadMoreConversations = useCallback(() => {
     if (!nextConversationId || loadingMore) return;
     setLoadingMore(true);
-    const requestId = latestConversationRequest.current;
+    let requestId = latestConversationRequest.current;
     const updates: ConversationUpdate[] = [];
     pendingConversationUpdates.current.add(updates);
     void retries
-      .runPages('conversations', () =>
-        api().get<ChatConversation[]>('/api/v1/chat/conversations', {
+      .runPages('conversations', () => {
+        requestId = latestConversationRequest.current;
+        return api().get<ChatConversation[]>('/api/v1/chat/conversations', {
           params: { max_id: nextConversationId },
-        }),
-      )
+        });
+      })
       .then((response) => {
         pendingConversationUpdates.current.delete(updates);
         if (!response || requestId !== latestConversationRequest.current)
@@ -1676,14 +1678,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setLoadingMore(true);
     const updates: MessageUpdate[] = [];
     pendingMessageUpdates.current.add(updates);
-    const requestId = latestMessageRequest.current;
+    let requestId = latestMessageRequest.current;
     void retries
-      .runPages(`messages:${conversationId}`, () =>
-        api().get<ChatMessage[]>(
+      .runPages(`messages:${conversationId}`, () => {
+        requestId = latestMessageRequest.current;
+        return api().get<ChatMessage[]>(
           `/api/v1/chat/conversations/${conversationId}/messages`,
           { params: { max_id: olderMessageId } },
-        ),
-      )
+        );
+      })
       .then((response) => {
         pendingMessageUpdates.current.delete(updates);
         if (!response || requestId !== latestMessageRequest.current) return;
@@ -1846,8 +1849,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (value.id && fromOther && seen) markRead(conversationId, value.id);
         } else if (event === 'chat.message_update') {
           const message = applyTombstone(value as ChatMessage);
+          const matchesSearch = message.content
+            ?.toLowerCase()
+            .includes(activeSearchQuery.current.toLowerCase());
           updateSearchResults((current) =>
-            current.map((item) => (item.id === message.id ? message : item)),
+            current.flatMap((item) =>
+              item.id !== message.id ? [item] : matchesSearch ? [message] : [],
+            ),
           );
           updateConversations((current) =>
             current.map((item) =>
@@ -2547,6 +2555,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (query: string) => {
       cancelMessageSearch();
       const requestId = latestMessageSearch.current;
+      activeSearchQuery.current = query;
       const updates: MessageUpdate[] = [];
       pendingSearchUpdates.current.add(updates);
       setError(null);
