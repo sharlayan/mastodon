@@ -62,6 +62,19 @@ describe('Chat while the stream is down', () => {
     });
   });
 
+  // The timelines fill the gap of a short drop as soon as the connection is back; chat waits for the subscription.
+  it('does not refresh chat when the connection comes back before polling began', () => {
+    const callbacks = open(connectUserStream);
+
+    callbacks.onDisconnect();
+    callbacks.onConnect();
+    expect(listener).not.toHaveBeenCalled();
+
+    callbacks.onSubscribed?.();
+
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
   it('refreshes chat on every poll of the user stream', async () => {
     const callbacks = open(connectUserStream);
 

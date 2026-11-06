@@ -75,6 +75,12 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
      */
 
     const useFallback = async fallback => {
+      // Each poll stands in for what the stream would have brought, chat included. A connection that comes back calls the
+      // fallback too, to fill a short gap in the timelines, but chat reads again on its subscription instead.
+      if (channelName === 'user') {
+        handleChatStreamPolled();
+      }
+
       await fallback(dispatch, getState);
 
       // @ts-expect-error
@@ -200,8 +206,6 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
  * @param {Dispatch} dispatch
  */
 async function refreshHomeTimelineAndNotification(dispatch) {
-  handleChatStreamPolled();
-
   await dispatch(expandHomeTimeline());
 
   // TODO: polling for merged notifications
