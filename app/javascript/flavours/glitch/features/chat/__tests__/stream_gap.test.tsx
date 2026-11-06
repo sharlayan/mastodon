@@ -1862,3 +1862,52 @@ describe('Independent re-review: in-flight and navigation', () => {
     });
   });
 });
+
+describe('Independent c5d8: late shared 429 deadline', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  it('updates a new room retry timer when the departed room later reports a longer 429', async () => {
+    seed('A', 1, 2);
+    seed('B', 1, 2);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await settle();
+    const prior = readsOf(INVITATIONS).length;
+    backend.refusals.push({
+      path: INVITATIONS,
+      status: 429,
+      headers: { 'Retry-After': '20' },
+    });
+    const releaseOld = holdNextAnswer(INVITATIONS);
+    act(() => {
+      page.socket.deliver('chat.invitation', { id: 'held' });
+    });
+    await waitFor(() => {
+      expect(readsOf(INVITATIONS)).toHaveLength(prior + 1);
+    });
+    backend.refusals.push({ path: INVITATIONS, status: 503 });
+    act(() => {
+      page.history.push('/chat/B');
+    });
+    await screen.findByText('Room B');
+    await waitFor(() => {
+      expect(readsOf(INVITATIONS)).toHaveLength(prior + 2);
+    });
+    await screen.findByText(REQUEST_FAILED);
+    await releaseOld();
+    await settle();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2100);
+    });
+    expect(readsOf(INVITATIONS)).toHaveLength(prior + 2);
+  });
+});

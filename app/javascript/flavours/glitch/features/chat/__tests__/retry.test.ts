@@ -302,3 +302,161 @@ describe('Chat retries while the page is hidden', () => {
     expect(retries.planned('messages:A')).toBe(false);
   });
 });
+
+describe('Shared deadlines arriving after a retry was planned', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const setup = async () => {
+    const shared = new Map<string, number>();
+    const old = createRetries(false, shared);
+    let rejectOld!: (error: unknown) => void;
+    void old
+      .keepTrying(
+        'invitations',
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectOld = reject;
+          }),
+      )
+      .catch(() => undefined);
+    old.stop();
+    const current = createRetries(false, shared);
+    const run = vi
+      .fn()
+      .mockRejectedValueOnce(refused(503))
+      .mockResolvedValue(undefined);
+    void current.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    rejectOld(refused(429, { 'retry-after': '20' }));
+    await vi.advanceTimersByTimeAsync(0);
+    return { shared, current, run };
+  };
+
+  it('rechecks an already scheduled retry and honours later extensions', async () => {
+    const { shared, current, run } = await setup();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(run).toHaveBeenCalledTimes(1);
+    shared.set('invitations', Date.now() + 30_000);
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(run).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(2);
+    current.stop();
+  });
+
+  it('does not let an event or reconnect wake the old timer before the new deadline', async () => {
+    const { current, run } = await setup();
+    void current.keepTrying('invitations', run).catch(() => undefined);
+    current.wake('invitations');
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(run).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(2);
+    current.stop();
+  });
+
+  it('rechecks the deadline when a due hidden retry is shown', async () => {
+    const { current, run } = await setup();
+    current.hide();
+    await vi.advanceTimersByTimeAsync(2_000);
+    current.show();
+    await vi.advanceTimersByTimeAsync(17_999);
+    expect(run).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(2);
+    current.stop();
+  });
+
+  it('checks a late deadline before a coalesced follow-up to a successful request', async () => {
+    const shared = new Map<string, number>();
+    const old = createRetries(false, shared);
+    let rejectOld!: (error: unknown) => void;
+    void old
+      .keepTrying(
+        'invitations',
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectOld = reject;
+          }),
+      )
+      .catch(() => undefined);
+    old.stop();
+    const current = createRetries(false, shared);
+    let finish!: () => void;
+    const run = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+      )
+      .mockResolvedValue(undefined);
+    void current.keepTrying('invitations', run);
+    void current.keepTrying('invitations', run);
+    rejectOld(refused(429, { 'retry-after': '20' }));
+    await vi.advanceTimersByTimeAsync(0);
+    finish();
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(run).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(2);
+    current.stop();
+  });
+
+  it('does not shorten a long deadline when a later short 429 arrives', async () => {
+    const shared = new Map<string, number>();
+    const long = createRetries(false, shared);
+    const short = createRetries(false, shared);
+    let rejectLong!: (error: unknown) => void;
+    let rejectShort!: (error: unknown) => void;
+    void long
+      .keepTrying(
+        'invitations',
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectLong = reject;
+          }),
+      )
+      .catch(() => undefined);
+    void short
+      .keepTrying(
+        'invitations',
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectShort = reject;
+          }),
+      )
+      .catch(() => undefined);
+    long.stop();
+    short.stop();
+    const current = createRetries(false, shared);
+    const run = vi
+      .fn()
+      .mockRejectedValueOnce(refused(503))
+      .mockResolvedValue(undefined);
+    void current.keepTrying('invitations', run).catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    rejectLong(refused(429, { 'retry-after': '20' }));
+    await vi.advanceTimersByTimeAsync(1_000);
+    const earlierDeadline = shared.get('invitations');
+    rejectShort(refused(429, { 'retry-after': '5' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(shared.get('invitations')).toBe(earlierDeadline);
+    await vi.advanceTimersByTimeAsync(18_999);
+    expect(run).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(2);
+    current.stop();
+  });
+
+  it('does not plan a retry beyond the maximum wait after a late long 429', async () => {
+    const { shared, current, run } = await setup();
+    shared.set('invitations', Date.now() + 3_600_000);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(current.planned('invitations')).toBe(false);
+    current.stop();
+  });
+});

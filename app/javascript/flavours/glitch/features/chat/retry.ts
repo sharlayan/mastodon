@@ -162,6 +162,27 @@ export const createRetries = (
       return;
     }
     entry.due = false;
+    // Another screen may have received a 429 after this retry was scheduled.
+    // Every path into a request (timer, reconnect, visibility, or coalescing)
+    // passes here, so consult the latest account-wide deadline at that point.
+    const remaining = (cooldowns.get(key) ?? 0) - Date.now();
+    if (remaining > LONGEST_WAIT_MS) {
+      plans.delete(key);
+      entry.rejectFirst?.(new Error('The server rate limit is still active'));
+      entry.resolveFirst = undefined;
+      entry.rejectFirst = undefined;
+      entry.gaveUp?.();
+      return;
+    }
+    if (remaining > 0) {
+      entry.rateLimited = true;
+      entry.timer = setTimeout(() => {
+        fire(key, entry);
+      }, remaining);
+      return;
+    }
+    cooldowns.delete(key);
+    entry.rateLimited = false;
     entry.running = true;
     try {
       settle(key, entry, entry.run());
