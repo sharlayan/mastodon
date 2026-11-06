@@ -219,6 +219,27 @@ describe('Chat retries while the page is hidden', () => {
     expect(retries.planned('invitations')).toBe(false);
   });
 
+  it('keeps a shared 429 deadline when one screen stops and another starts', async () => {
+    const shared = new Map<string, number>();
+    const first = createRetries(false, shared);
+    const limited = Object.assign(
+      new Error('rate limited'),
+      refused(429, { 'retry-after': '20' }),
+    );
+    void first
+      .keepTrying('invitations', () => Promise.reject(limited))
+      .catch(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    first.stop();
+    const second = createRetries(false, shared);
+    const run = vi.fn(() => Promise.resolve());
+    void second.keepTrying('invitations', run);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(run).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
   it('honours the rate limit after the page is hidden and shown early', async () => {
     const retries = createRetries(false);
     let attempts = 0;

@@ -1731,3 +1731,134 @@ describe('Independent review: hidden tab', () => {
     });
   });
 });
+
+describe('Independent re-review: in-flight and navigation', () => {
+  afterEach(() => {
+    server.resetHandlers();
+    Reflect.deleteProperty(document, 'visibilityState');
+    vi.useRealTimers();
+  });
+  it('does not start a second read mark after the tab becomes hidden', async () => {
+    seed('A', 1, 2);
+    backend.rooms.set('A', { title: 'Room A', unread: true });
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const sent: { id?: string; hidden: boolean }[] = [];
+    server.use(
+      http.post('*/api/v1/chat/conversations/:id/read', async ({ request }) => {
+        const body = (await request.json()) as { message_id?: string };
+        sent.push({
+          id: body.message_id,
+          hidden: document.visibilityState === 'hidden',
+        });
+        if (sent.length === 1) await held;
+        return HttpResponse.json({});
+      }),
+    );
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    const [next] = seed('A', 3, 3);
+    act(() => {
+      page.socket.deliver('chat.message', next);
+    });
+    await screen.findByText('Message 3');
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await act(async () => {
+      release();
+      await held;
+    });
+    await settle();
+    expect(sent).toEqual([{ id: '2', hidden: false }]);
+    Reflect.deleteProperty(document, 'visibilityState');
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => {
+      expect(sent).toEqual([
+        { id: '2', hidden: false },
+        { id: '3', hidden: false },
+      ]);
+    });
+  });
+  it('retains an invitation 429 deadline when navigating to another room', async () => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+    seed('A', 1, 2);
+    seed('B', 1, 2);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 2');
+    await settle();
+    const prior = readsOf(INVITATIONS).length;
+    backend.refusals.push({
+      path: INVITATIONS,
+      status: 429,
+      headers: { 'Retry-After': '20' },
+    });
+    act(() => {
+      page.socket.deliver('chat.invitation', { id: 'one' });
+    });
+    await waitFor(() => {
+      expect(readsOf(INVITATIONS)).toHaveLength(prior + 1);
+    });
+    await settle();
+    act(() => {
+      page.history.push('/chat/B');
+    });
+    await screen.findByText('Room B');
+    await settle();
+    expect(readsOf(INVITATIONS)).toHaveLength(prior + 1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20_000);
+    });
+    await waitFor(() => {
+      expect(readsOf(INVITATIONS)).toHaveLength(prior + 2);
+    });
+  });
+  it('keeps unread on an old chat.read event and clears it for the last message', async () => {
+    seed('A', 1, 3);
+    backend.rooms.set('A', { title: 'Room A', unread: true });
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await screen.findByText('Room A');
+    const item = () =>
+      document.querySelector('[data-conversation-id="A"]') as HTMLElement;
+    await waitFor(() => {
+      expect(item().classList.contains('unread')).toBe(true);
+    });
+    act(() => {
+      page.socket.deliver('chat.read', {
+        conversation_id: 'A',
+        message_id: '2',
+      });
+    });
+    await settle();
+    expect(item().classList.contains('unread')).toBe(true);
+    act(() => {
+      page.socket.deliver('chat.read', {
+        conversation_id: 'A',
+        message_id: '3',
+      });
+    });
+    await waitFor(() => {
+      expect(item().classList.contains('unread')).toBe(false);
+    });
+  });
+});

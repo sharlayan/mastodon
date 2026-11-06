@@ -97,9 +97,10 @@ export interface Retries {
 export const createRetries = (
   hiddenAtFirst = typeof document !== 'undefined' &&
     document.visibilityState === 'hidden',
+  sharedCooldowns?: Map<string, number>,
 ): Retries => {
   const plans = new Map<string, Planned>();
-  const cooldowns = new Map<string, number>();
+  const cooldowns = sharedCooldowns ?? new Map<string, number>();
   let hidden = hiddenAtFirst;
 
   const settle = (key: string, entry: Planned, attempt: Promise<unknown>) => {
@@ -122,8 +123,6 @@ export const createRetries = (
         entry.resolveFirst = undefined;
         entry.rejectFirst = undefined;
         entry.running = false;
-        if (plans.get(key) !== entry) return;
-        entry.again = false;
         entry.rateLimited =
           (error as { response?: { status?: number } } | null)?.response
             ?.status === 429;
@@ -136,8 +135,11 @@ export const createRetries = (
             RETRY_DELAYS_MS[
               Math.min(entry.tried, RETRY_DELAYS_MS.length - 1)
             ] ?? 0;
-          cooldowns.set(key, Date.now() + Math.max(asked ?? fallback, 0));
+          const until = Date.now() + Math.max(asked ?? fallback, 0);
+          cooldowns.set(key, Math.max(cooldowns.get(key) ?? 0, until));
         }
+        if (plans.get(key) !== entry) return;
+        entry.again = false;
         entry.failed?.(error);
         if (plans.get(key) !== entry) return;
         const delay = retryDelay(error, entry.tried);
@@ -192,7 +194,11 @@ export const createRetries = (
         if (existing.running) existing.again = true;
         return existing.first as ReturnType<typeof run>;
       }
-      const remaining = (cooldowns.get(key) ?? 0) - Date.now();
+      const now = Date.now();
+      cooldowns.forEach((until, cooldownKey) => {
+        if (until <= now) cooldowns.delete(cooldownKey);
+      });
+      const remaining = (cooldowns.get(key) ?? 0) - now;
       if (remaining > LONGEST_WAIT_MS) {
         callbacks.gaveUp?.();
         return Promise.reject(
@@ -255,7 +261,7 @@ export const createRetries = (
     },
     stop() {
       [...plans.keys()].forEach(drop);
-      cooldowns.clear();
+      if (!sharedCooldowns) cooldowns.clear();
     },
   };
 };

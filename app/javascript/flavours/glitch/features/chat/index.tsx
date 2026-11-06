@@ -167,6 +167,17 @@ interface ReadMark {
   again: boolean;
 }
 
+// A room change remounts the screen, but a server's deadline belongs to the account.
+const cooldownsByAccount = new Map<string, Map<string, number>>();
+const chatCooldownsFor = (accountId: string) => {
+  let cooldowns = cooldownsByAccount.get(accountId);
+  if (!cooldowns) {
+    cooldowns = new Map<string, number>();
+    cooldownsByAccount.set(accountId, cooldowns);
+  }
+  return cooldowns;
+};
+
 const messages = defineMessages({
   heading: { id: 'chat.title', defaultMessage: 'Chat' },
   more: { id: 'status.more', defaultMessage: 'More' },
@@ -1097,7 +1108,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   // What the screen asks for by itself is tried again by the screen, not only when the stream
   // comes back: the stream may have come back, and said so, before this screen was there.
-  const [retries] = useState(createRetries);
+  const [retries] = useState(() =>
+    createRetries(undefined, chatCooldownsFor(me ?? '')),
+  );
   useEffect(() => {
     const followVisibility = () => {
       if (isVisible()) retries.show();
@@ -1128,30 +1141,20 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const readMarks = useRef(new Map<string, ReadMark>());
   const sendReadMark = useCallback(
     async (id: string) => {
-      let lastMarked: string | undefined;
-      for (;;) {
-        const mark = readMarks.current.get(id);
-        if (!mark) return;
-        const upTo = mark.upTo;
-        mark.sending = upTo;
-        mark.again = false;
-        const path = `/api/v1/chat/conversations/${id}/read`;
-        try {
-          await api().post(path, { message_id: upTo });
-          lastMarked = upTo;
-        } finally {
-          mark.sending = undefined;
-        }
-        // Read again: markRead may have asked for more while that was on its way.
-        const now = readMarks.current.get(id);
-        if (now !== mark) break;
-        if (!now.again) {
-          readMarks.current.delete(id);
-          break;
-        }
+      const mark = readMarks.current.get(id);
+      if (!mark) return;
+      const marked = mark.upTo;
+      mark.sending = marked;
+      mark.again = false;
+      try {
+        await api().post(`/api/v1/chat/conversations/${id}/read`, {
+          message_id: marked,
+        });
+      } finally {
+        mark.sending = undefined;
       }
-      const marked = lastMarked;
-      if (!marked) return;
+      const current = readMarks.current.get(id);
+      if (current === mark && !current.again) readMarks.current.delete(id);
       updateConversations((current) =>
         current.map((item) =>
           item.id === id &&
@@ -1183,7 +1186,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (mark.sending === undefined) return;
       // One is on its way; another goes after it unless it already covers this.
       const covered = compareId(asked, mark.sending) <= 0;
-      if (!covered) mark.again = true;
+      if (!covered) {
+        mark.again = true;
+        // Let the retry scheduler check visibility before the next request.
+        void retries
+          .keepTrying(`read:${id}`, () => sendReadMark(id))
+          .catch(() => undefined);
+      }
     },
     [retries, sendReadMark],
   );
