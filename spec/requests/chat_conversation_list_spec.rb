@@ -216,7 +216,8 @@ RSpec.describe 'Chat conversation list' do
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body.first[:last_message][:id]).to eq(previous.id.to_s)
-      expect(response.parsed_body.first[:cursor_last_message_id]).to eq(last.id.to_s)
+      expect(response.headers['X-Chat-Cursor-Message-Id']).to eq(last.id.to_s)
+      expect(response.parsed_body.first).to_not have_key(:cursor_last_message_id)
     end
 
     it 'rejects malformed snapshot cursor parts' do

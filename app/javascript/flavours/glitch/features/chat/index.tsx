@@ -134,7 +134,6 @@ interface ChatConversation {
   current_role: 'owner' | 'member' | null;
   accounts: ChatAccount[];
   last_message: ChatMessage | null;
-  cursor_last_message_id?: string | null;
 }
 
 interface ChatInvitation {
@@ -397,18 +396,25 @@ interface ConversationCursor {
   messageId: string;
 }
 
-const conversationCursor = (item: ChatConversation): ConversationCursor => ({
+const conversationCursor = (
+  item: ChatConversation,
+  messageId?: string,
+): ConversationCursor => ({
   id: item.id,
-  messageId:
-    item.cursor_last_message_id === undefined
-      ? (item.last_message?.id ?? '0')
-      : (item.cursor_last_message_id ?? '0'),
+  messageId: messageId ?? item.last_message?.id ?? '0',
 });
 
 const cursorParams = (cursor: ConversationCursor) => ({
   max_id: cursor.id,
   max_id_message_id: cursor.messageId,
 });
+
+const conversationCursorHeader = (response: object): string | undefined => {
+  const headers = Reflect.get(response, 'headers') as
+    | Record<string, string>
+    | undefined;
+  return headers?.['x-chat-cursor-message-id'];
+};
 
 export const upsertConversation = (
   list: ChatConversation[],
@@ -1544,11 +1550,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         for (let page = 0; page < conversationPages.current; page++) {
           if (page > 0 && !(await nextPage())) return false;
           let data: ChatConversation[];
+          let cursorMessageId: string | undefined;
           try {
-            ({ data } = await api().get<ChatConversation[]>(
+            const response = await api().get<ChatConversation[]>(
               '/api/v1/chat/conversations',
               cursor ? { params: cursorParams(cursor) } : undefined,
-            ));
+            );
+            data = response.data;
+            cursorMessageId = conversationCursorHeader(response);
           } catch (error) {
             // A legacy server can still reject an ended cursor. Restart once, respecting the gate.
             if (!cursor || restarted || !isNotFound(error)) throw error;
@@ -1567,7 +1576,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             }
           });
           const last = data.at(-1);
-          cursor = data.length === 20 && last ? conversationCursor(last) : null;
+          cursor =
+            data.length === 20 && last
+              ? conversationCursor(last, cursorMessageId)
+              : null;
           if (!cursor) break;
         }
         if (
@@ -1692,7 +1704,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         ]);
         const last = response.data.at(-1);
         updateNextConversationId(
-          response.data.length === 20 && last ? conversationCursor(last) : null,
+          response.data.length === 20 && last
+            ? conversationCursor(last, conversationCursorHeader(response))
+            : null,
         );
         readRecovered('conversations:more');
       })

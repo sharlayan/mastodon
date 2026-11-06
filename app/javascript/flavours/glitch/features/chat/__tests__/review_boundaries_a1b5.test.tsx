@@ -1741,14 +1741,18 @@ const useSnapshotPagedRooms = (hiddenLastRoom?: string) => {
             .slice(0, 20)
             .map((roomId) => ({
               ...room(roomId),
-              cursor_last_message_id: String(lastId(roomId)),
               ...(roomId === hiddenLastRoom ? { last_message: null } : {}),
             }));
+      const cursorMessageId = String(lastId(body?.at(-1)?.id ?? ''));
       const held = take(backend.held, ({ path }) => path.test(url.pathname));
       if (held) await held.until;
       return missing
         ? HttpResponse.json({ error: 'Record not found' }, { status: 404 })
-        : HttpResponse.json(body as never);
+        : HttpResponse.json(body as never, {
+            headers: {
+              'X-Chat-Cursor-Message-Id': cursorMessageId,
+            },
+          });
     }),
   );
 };

@@ -24,7 +24,12 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
       cursor = ChatConversation.for_account(current_account).find(params[:max_id])
       conversations = before_cursor(conversations, cursor.id, cursor.last_message_id)
     end
-    render json: conversations, each_serializer: REST::ChatConversationListSerializer, current_account: current_account
+    conversations = conversations.to_a
+    if conversations.any?
+      # The visible last message can differ from the value used for ordering.
+      response.set_header('X-Chat-Cursor-Message-Id', conversations.last.last_message_id&.to_s || '0')
+    end
+    render json: conversations, each_serializer: REST::ChatConversationSerializer, current_account: current_account
   end
 
   def show
