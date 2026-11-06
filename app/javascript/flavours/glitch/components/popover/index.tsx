@@ -120,8 +120,10 @@ const VIEWPORT_PADDING = 8;
 // Less room than this beside the reference, and the popover covers the reference rather than shrink further.
 const ROOM_BESIDE_REFERENCE = 200;
 
+// Sideways first, so that size() counts the width the popover gets once moved; up or down last, once it has its height.
 const fitViewportMiddleware = [
   flipMiddleware({ padding: VIEWPORT_PADDING }),
+  shift({ padding: VIEWPORT_PADDING }),
   size({
     padding: VIEWPORT_PADDING,
     apply({ availableWidth, availableHeight, elements }) {
@@ -142,7 +144,7 @@ const fitViewportMiddleware = [
       );
     },
   }),
-  shift({ padding: VIEWPORT_PADDING, crossAxis: true }),
+  shift({ padding: VIEWPORT_PADDING, mainAxis: false, crossAxis: true }),
 ];
 
 export const Popover: React.FC<PopoverProps> = ({
