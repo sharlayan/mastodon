@@ -14,18 +14,17 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
       .preload(:owner_account, :memberships, accounts: [:account_stat, :user], invitations: :invitee_account, last_message: [:account, { reactions: :account, media_attachments: :chat_message_media_attachments }])
       .order(Arel.sql('chat_conversations.last_message_id DESC NULLS LAST, chat_conversations.id DESC'))
       .limit(limit_param(LIMIT, 40))
-    if params[:max_id].present?
+    if params.key?(:max_id_message_id)
+      # The pair is captured from a previous response, so it remains valid even if that room moves or ends.
+      room_id = snapshot_cursor_part(params[:max_id], allow_zero: false)
+      message_id = snapshot_cursor_part(params[:max_id_message_id], allow_zero: true)
+      conversations = before_cursor(conversations, room_id, message_id.zero? ? nil : message_id)
+    elsif params[:max_id].present?
+      # Preserve the original room-id semantics for existing clients.
       cursor = ChatConversation.for_account(current_account).find(params[:max_id])
-      conversations = if cursor.last_message_id.nil?
-                        conversations.where(last_message_id: nil).where(id: ...cursor.id)
-                      else
-                        conversations.where(
-                          'chat_conversations.last_message_id < :message_id OR (chat_conversations.last_message_id = :message_id AND chat_conversations.id < :id) OR chat_conversations.last_message_id IS NULL',
-                          message_id: cursor.last_message_id, id: cursor.id
-                        )
-                      end
+      conversations = before_cursor(conversations, cursor.id, cursor.last_message_id)
     end
-    render json: conversations, each_serializer: REST::ChatConversationSerializer, current_account: current_account
+    render json: conversations, each_serializer: REST::ChatConversationListSerializer, current_account: current_account
   end
 
   def show
@@ -87,6 +86,26 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
   end
 
   private
+
+  def snapshot_cursor_part(value, allow_zero:)
+    raise Mastodon::InvalidParameterError, 'Invalid conversation cursor' unless value.is_a?(String) && value.match?(/\A\d{1,19}\z/)
+
+    number = value.to_i
+    raise Mastodon::InvalidParameterError, 'Invalid conversation cursor' if number > 9_223_372_036_854_775_807 || (!allow_zero && number.zero?)
+
+    number
+  end
+
+  def before_cursor(conversations, room_id, message_id)
+    if message_id.nil?
+      conversations.where(last_message_id: nil).where(id: ...room_id)
+    else
+      conversations.where(
+        'chat_conversations.last_message_id < :message_id OR (chat_conversations.last_message_id = :message_id AND chat_conversations.id < :id) OR chat_conversations.last_message_id IS NULL',
+        message_id: message_id, id: room_id
+      )
+    end
+  end
 
   # Someone who was in a room is told what became of it, and to anyone else it was never there.
   def set_conversation_or_explain_ending

@@ -1539,16 +1539,22 @@ describe('Review 84a6', () => {
     const page = await loadPage();
     await connect(page.socket);
     page.open('/chat');
-    await waitFor(() => { expect(listed()).toContain('6'); });
+    await waitFor(() => {
+      expect(listed()).toContain('6');
+    });
     backend.rooms.delete('6');
     backend.messages.delete('6');
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => { expect(listed()).not.toContain('6'); });
-    await waitFor(() => { expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy(); },
-    );
+    await waitFor(() => {
+      expect(listed()).not.toContain('6');
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Load more' })).toBeTruthy();
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => { expect(listed()).toEqual([...backend.rooms.keys()].sort(roomOrder)); },
-    );
+    await waitFor(() => {
+      expect(listed()).toEqual([...backend.rooms.keys()].sort(roomOrder));
+    });
     expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
   }, 60000);
 
@@ -1558,30 +1564,38 @@ describe('Review 84a6', () => {
     const page = await loadPage();
     await connect(page.socket);
     page.open('/chat');
-    await waitFor(() => { expect(listed()).toContain('26'); });
+    await waitFor(() => {
+      expect(listed()).toContain('26');
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-    await waitFor(() => { expect(listed()).toContain('10'); });
+    await waitFor(() => {
+      expect(listed()).toContain('10');
+    });
     const releaseFirst = holdNextAnswer(ROOMS);
     const socket = await dropConnection(page.socket);
     await connect(socket);
-    await waitFor(() => { expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3); },
-    );
+    await waitFor(() => {
+      expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3);
+    });
     const newest = message('10', 100);
     backend.messages.set('10', [...(backend.messages.get('10') ?? []), newest]);
-    act(() => { socket.deliver('chat.message', newest); });
+    act(() => {
+      socket.deliver('chat.message', newest);
+    });
     backend.rooms.delete('10');
     backend.messages.delete('10');
-    act(() => { socket.deliver('chat.conversation_delete', {
+    act(() => {
+      socket.deliver('chat.conversation_delete', {
         conversation_id: '10',
         reason: 'deleted',
-      }); },
-    );
+      });
+    });
     await releaseFirst();
     await settle();
     await later(1000);
     expect(listed()).not.toContain('10');
     expect(
-      backend.reads.filter((read) => read.endsWith("conversations/10")),
+      backend.reads.filter((read) => read.endsWith('conversations/10')),
     ).toHaveLength(0);
   }, 60000);
 
@@ -1632,7 +1646,7 @@ describe('Review 84a6', () => {
       serverFirst40: serverOrder,
       missing: serverOrder.filter((id) => !after.includes(id)),
       detailReads: backend.reads.filter((read) =>
-        read.endsWith("conversations/10"),
+        read.endsWith('conversations/10'),
       ),
     });
     expect(after).toContain('10');
@@ -1698,5 +1712,258 @@ describe('Review 84a6', () => {
     Reflect.deleteProperty(document, 'visibilityState');
     expect(after).toContain('10');
     expect(new Set(after).size).toBe(after.length);
+  }, 60_000);
+});
+
+// Mirrors both the legacy room-id cursor and the optional frozen message-id cursor.
+const useSnapshotPagedRooms = (hiddenLastRoom?: string) => {
+  server.use(
+    http.get('*/api/v1/chat/conversations', async ({ request }) => {
+      const url = new URL(request.url);
+      backend.reads.push(url.pathname + url.search);
+      const id = url.searchParams.get('max_id');
+      const snapshot = url.searchParams.get('max_id_message_id');
+      const missing = Boolean(
+        id && snapshot === null && !backend.rooms.has(id),
+      );
+      const boundary =
+        snapshot === null ? (id ? lastId(id) : 0) : Number(snapshot);
+      const body = missing
+        ? null
+        : [...backend.rooms.keys()]
+            .sort(roomOrder)
+            .filter(
+              (roomId) =>
+                !id ||
+                lastId(roomId) < boundary ||
+                (lastId(roomId) === boundary && Number(roomId) < Number(id)),
+            )
+            .slice(0, 20)
+            .map((roomId) => ({
+              ...room(roomId),
+              cursor_last_message_id: String(lastId(roomId)),
+              ...(roomId === hiddenLastRoom ? { last_message: null } : {}),
+            }));
+      const held = take(backend.held, ({ path }) => path.test(url.pathname));
+      if (held) await held.until;
+      return missing
+        ? HttpResponse.json({ error: 'Record not found' }, { status: 404 })
+        : HttpResponse.json(body as never);
+    }),
+  );
+};
+const duplicates = (ids: (string | undefined)[]) =>
+  ids.filter((id, index) => ids.indexOf(id) !== index);
+const showTwoPages = async () => {
+  const page = await loadPage();
+  await connect(page.socket);
+  page.open('/chat');
+  await waitFor(() => {
+    expect(listed()).toContain('26');
+  });
+  await settle();
+  fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+  await waitFor(() => {
+    expect(listed()).toContain('6');
+  });
+  await settle();
+  return page;
+};
+const giveMessage = (
+  socket: InstanceType<typeof Socket>,
+  id: string,
+  messageId: number,
+) => {
+  const newest = message(id, messageId);
+  backend.messages.set(id, [...(backend.messages.get(id) ?? []), newest]);
+  act(() => {
+    socket.deliver('chat.message', newest);
+  });
+};
+
+describe('Review cursor boundaries', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    server.resetHandlers();
+  });
+  it('uses the server ordering cursor when the last message is not visible to the viewer', async () => {
+    for (let id = 1; id <= 25; id += 1) seed(String(id), id, id);
+    useSnapshotPagedRooms('6');
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => {
+      expect(listed()).toContain('6');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => {
+      expect(listed()).toContain('1');
+    });
+    expect(new Set(listed()).size).toBe(25);
+  }, 60_000);
+  it('C1 the reread page cursor room itself gets a message between reread pages', async () => {
+    // Rooms 1..45, room n's last message is n. Shown: 45..26 and 25..6.
+    for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
+    useSnapshotPagedRooms();
+    const page = await showTwoPages();
+    const before = listed();
+    // The stream comes back and the screen reads its two pages again. Page one (45..26) is
+    // what the server had when it was asked; it reaches the screen a moment later.
+    const releaseFirst = holdNextAnswer(ROOMS);
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => {
+      expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3);
+    });
+    // Meanwhile room 26, the last room of that page and so the cursor of page two, gets a
+    // message, and the stream says so.
+    giveMessage(socket, '26', 100);
+    await settle();
+    const whileReading = listed();
+    await releaseFirst();
+    await settle();
+    await later(1_000);
+    await settle();
+    const after = listed();
+    const serverFirst40 = [...backend.rooms.keys()]
+      .sort(roomOrder)
+      .slice(0, 40);
+    record('C1', {
+      before: [before.length, before[0], before.at(-1)],
+      whileReading: whileReading.slice(0, 3),
+      reads: readsOf(ROOMS),
+      after,
+      length: after.length,
+      duplicates: duplicates(after),
+      serverFirst40,
+      missing: serverFirst40.filter((id) => !after.includes(id)),
+    });
+    expect(duplicates(after)).toEqual([]);
+    expect(after).toEqual(serverFirst40);
+  }, 60_000);
+
+  it('C2 Load more after the cursor room got a message reads on past the shown rooms', async () => {
+    for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
+    useSnapshotPagedRooms();
+    const page = await showTwoPages();
+    // Room 6, the last room shown and so the Load more cursor, gets a message.
+    giveMessage(page.socket, '6', 100);
+    await waitFor(() => {
+      expect(listed()[0]).toBe('6');
+    });
+    await settle();
+    const before = listed();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await later(1_000);
+    await settle();
+    const afterFirst = listed();
+    record('C2', {
+      before: [before.length, before[0], before.at(-1)],
+      reads: readsOf(ROOMS),
+      afterFirst: [afterFirst.length, afterFirst.at(-1)],
+      added: afterFirst.filter((id) => !before.includes(id)),
+      loadMoreButton: Boolean(
+        screen.queryByRole('button', { name: 'Load more' }),
+      ),
+    });
+    // Rooms 5..1 are the rest of the server's list.
+    expect(afterFirst.filter((id) => !before.includes(id))).toEqual([
+      '5',
+      '4',
+      '3',
+      '2',
+      '1',
+    ]);
+  }, 60_000);
+
+  it('C3 the reread on reconnect survives its page cursor room ending between pages', async () => {
+    for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
+    useSnapshotPagedRooms();
+    const page = await showTwoPages();
+    // While the stream is down, room 50 is made and gets a message (no event reaches the screen).
+    const releaseFirst = holdNextAnswer(ROOMS);
+    const socket = await dropConnection(page.socket);
+    seed('50', 200, 200);
+    await connect(socket);
+    await waitFor(() => {
+      expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3);
+    });
+    // Page one of the reread (50, 45..27) is on its way; its last room, 27, ends now.
+    backend.rooms.delete('27');
+    backend.messages.delete('27');
+    act(() => {
+      socket.deliver('chat.conversation_delete', {
+        conversation_id: '27',
+        reason: 'deleted',
+      });
+    });
+    await settle();
+    await releaseFirst();
+    await settle();
+    await later(40_000);
+    await settle();
+    const after = listed();
+    const serverFirst40 = [...backend.rooms.keys()]
+      .sort(roomOrder)
+      .slice(0, 40);
+    record('C3', {
+      reads: readsOf(ROOMS),
+      after,
+      notice: Boolean(screen.queryByText(REQUEST_FAILED)),
+      serverFirst40,
+      missing: serverFirst40.filter((id) => !after.includes(id)),
+    });
+    expect(after).toContain('50');
+    expect(after).toEqual(serverFirst40.slice(0, after.length));
+    if (after.length < serverFirst40.length) {
+      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+      await waitFor(() => {
+        expect(listed().slice(0, 40)).toEqual(serverFirst40);
+      });
+    }
+    expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
+  }, 90_000);
+
+  it('C4 a room in the Load more page that gets a message before that page lands goes to the top', async () => {
+    for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
+    useSnapshotPagedRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => {
+      expect(listed()).toContain('26');
+    });
+    await settle();
+    // Load more is asked (page 25..6 computed), and its answer is on its way.
+    const releaseMore = holdNextAnswer(ROOMS);
+    const releaseDetail = holdNextAnswer(/\/conversations\/10$/);
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => {
+      expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(2);
+    });
+    // Room 10, in that page, gets a message; the screen does not know it yet, so it asks for it.
+    giveMessage(page.socket, '10', 100);
+    await settle();
+    await releaseMore();
+    await settle();
+    await releaseDetail();
+    await settle();
+    await later(1_000);
+    await settle();
+    const after = listed();
+    record('C4', {
+      reads: backend.reads,
+      after,
+      position10: after.indexOf('10'),
+      duplicates: duplicates(after),
+    });
+    expect(duplicates(after)).toEqual([]);
+    expect(after[0]).toBe('10');
   }, 60_000);
 });

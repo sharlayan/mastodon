@@ -134,6 +134,7 @@ interface ChatConversation {
   current_role: 'owner' | 'member' | null;
   accounts: ChatAccount[];
   last_message: ChatMessage | null;
+  cursor_last_message_id?: string | null;
 }
 
 interface ChatInvitation {
@@ -391,20 +392,39 @@ const compareConversations = (
   return compareId(second.id, first.id);
 };
 
+interface ConversationCursor {
+  id: string;
+  messageId: string;
+}
+
+const conversationCursor = (item: ChatConversation): ConversationCursor => ({
+  id: item.id,
+  messageId:
+    item.cursor_last_message_id === undefined
+      ? (item.last_message?.id ?? '0')
+      : (item.cursor_last_message_id ?? '0'),
+});
+
+const cursorParams = (cursor: ConversationCursor) => ({
+  max_id: cursor.id,
+  max_id_message_id: cursor.messageId,
+});
+
 export const upsertConversation = (
   list: ChatConversation[],
   conversation: ChatConversation,
 ) => {
-  if (list.some((item) => item.id === conversation.id))
-    return list.map((item) =>
-      item.id === conversation.id ? conversation : item,
-    );
-  const position = list.findIndex(
+  const remaining = list.filter((item) => item.id !== conversation.id);
+  const position = remaining.findIndex(
     (item) => compareConversations(conversation, item) < 0,
   );
   return position === -1
-    ? [...list, conversation]
-    : [...list.slice(0, position), conversation, ...list.slice(position)];
+    ? [...remaining, conversation]
+    : [
+        ...remaining.slice(0, position),
+        conversation,
+        ...remaining.slice(position),
+      ];
 };
 
 export const withNewMessage = (
@@ -1073,14 +1093,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const created = location.state?.chatCreatedConversation;
     return created && created.id === conversationId ? [created] : [];
   });
-  const [nextConversationId, setNextConversationId] = useState<string | null>(
-    null,
+  const [nextConversationId, setNextConversationId] =
+    useState<ConversationCursor | null>(null);
+  const nextConversationIdRef = useRef<ConversationCursor | null>(null);
+  const updateNextConversationId = useCallback(
+    (id: ConversationCursor | null) => {
+      nextConversationIdRef.current = id;
+      setNextConversationId(id);
+    },
+    [],
   );
-  const nextConversationIdRef = useRef<string | null>(null);
-  const updateNextConversationId = useCallback((id: string | null) => {
-    nextConversationIdRef.current = id;
-    setNextConversationId(id);
-  }, []);
   const [olderMessageId, setOlderMessageId] = useState<string | null>(null);
   const olderMessageIdRef = useRef<string | null>(null);
   const updateOlderMessageId = useCallback((id: string | null) => {
@@ -1513,20 +1535,39 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       pendingConversationUpdates.current.add(updates);
       pendingConversationMessages.current.add(activeRooms);
       const loaded: ChatConversation[] = [];
-      let cursor: string | null = null;
+      const loadedIds = new Set<string>();
+      let cursor: ConversationCursor | null = null;
+      let restarted = false;
       let missing = false;
       let ending: RoomEnding | null = null;
       try {
         for (let page = 0; page < conversationPages.current; page++) {
           if (page > 0 && !(await nextPage())) return false;
-          const { data }: { data: ChatConversation[] } = await api().get<
-            ChatConversation[]
-          >(
-            '/api/v1/chat/conversations',
-            cursor ? { params: { max_id: cursor } } : undefined,
-          );
-          loaded.push(...data);
-          cursor = data.length === 20 ? (data.at(-1)?.id ?? null) : null;
+          let data: ChatConversation[];
+          try {
+            ({ data } = await api().get<ChatConversation[]>(
+              '/api/v1/chat/conversations',
+              cursor ? { params: cursorParams(cursor) } : undefined,
+            ));
+          } catch (error) {
+            // A legacy server can still reject an ended cursor. Restart once, respecting the gate.
+            if (!cursor || restarted || !isNotFound(error)) throw error;
+            if (!(await nextPage())) return false;
+            restarted = true;
+            loaded.length = 0;
+            loadedIds.clear();
+            cursor = null;
+            page = -1;
+            continue;
+          }
+          data.forEach((item) => {
+            if (!loadedIds.has(item.id)) {
+              loadedIds.add(item.id);
+              loaded.push(item);
+            }
+          });
+          const last = data.at(-1);
+          cursor = data.length === 20 && last ? conversationCursor(last) : null;
           if (!cursor) break;
         }
         if (
@@ -1627,7 +1668,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         const cursor = nextConversationIdRef.current;
         if (!cursor) return Promise.resolve(undefined);
         return api().get<ChatConversation[]>('/api/v1/chat/conversations', {
-          params: { max_id: cursor },
+          params: cursorParams(cursor),
         });
       })
       .then((response) => {
@@ -1649,10 +1690,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             (item) => !current.some((existing) => existing.id === item.id),
           ),
         ]);
+        const last = response.data.at(-1);
         updateNextConversationId(
-          response.data.length === 20
-            ? (response.data.at(-1)?.id ?? null)
-            : null,
+          response.data.length === 20 && last ? conversationCursor(last) : null,
         );
         readRecovered('conversations:more');
       })
@@ -2315,8 +2355,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       capture: true,
       passive: true,
     });
+    let viewportScale = window.visualViewport?.scale ?? 1;
+    let viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const onViewportResize = () => {
-      if (followingNewestRef.current) scrollToNewest(end);
+      const scale = window.visualViewport?.scale ?? 1;
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      const scaleChanged = scale !== viewportScale;
+      const heightChanged = height !== viewportHeight;
+      viewportScale = scale;
+      viewportHeight = height;
+      if (
+        scale === 1 &&
+        !scaleChanged &&
+        heightChanged &&
+        followingNewestRef.current
+      )
+        scrollToNewest(end);
     };
     window.addEventListener('resize', onViewportResize);
     window.visualViewport?.addEventListener('resize', onViewportResize);

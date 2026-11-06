@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_085300) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_07_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -620,6 +620,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_085300) do
     t.string "uri"
     t.index ["archived_at"], name: "index_chat_conversations_on_archived_at"
     t.index ["direct_key"], name: "index_chat_conversations_on_direct_key", unique: true, where: "(direct_key IS NOT NULL)"
+    t.index ["last_message_id", "id"], name: "index_chat_conversations_on_cursor", order: { last_message_id: "DESC NULLS LAST", id: :desc }
     t.index ["last_message_id"], name: "index_chat_conversations_on_last_message_id"
     t.index ["owner_account_id"], name: "index_chat_conversations_on_owner_account_id"
     t.index ["uri"], name: "index_chat_conversations_on_uri", unique: true, where: "(uri IS NOT NULL)"

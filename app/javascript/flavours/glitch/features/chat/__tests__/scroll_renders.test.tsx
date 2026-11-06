@@ -206,7 +206,10 @@ describe('Scrolling in a room', () => {
 
   it('realigns when the visible viewport resizes only while following the newest message', async () => {
     const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
-    const viewport = new EventTarget();
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
     Object.defineProperty(window, 'visualViewport', {
       configurable: true,
       value: viewport,
@@ -214,16 +217,54 @@ describe('Scrolling in a room', () => {
     try {
       await openRoom();
       scrollIntoView.mockClear();
+      viewport.height = 500;
       act(() => {
         viewport.dispatchEvent(new Event('resize'));
       });
       expect(scrollIntoView).toHaveBeenCalled();
       scrollUp();
       scrollIntoView.mockClear();
+      viewport.height = 450;
       act(() => {
         viewport.dispatchEvent(new Event('resize'));
       });
       expect(scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('does not snap to the composer when pinch zoom changes the viewport scale', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    try {
+      await openRoom();
+      scrollIntoView.mockClear();
+      viewport.scale = 2;
+      viewport.height = 333;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      viewport.scale = 1;
+      viewport.height = 667;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      viewport.height = 500;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      expect(scrollIntoView).toHaveBeenCalled();
     } finally {
       if (original) Object.defineProperty(window, 'visualViewport', original);
       else Reflect.deleteProperty(window, 'visualViewport');
