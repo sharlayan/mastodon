@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const RETRY_DELAYS = [5_000, 15_000, 30_000];
+const MAX_FOCUS_RETRIES = 2;
 
 const withRetryToken = (src: string, token: number) => {
   if (token === 0) return src;
@@ -44,7 +45,12 @@ const RetryingImageContent: React.FC<Props> = ({
   );
 
   useEffect(() => {
-    if (!failed || attempt < RETRY_DELAYS.length) return undefined;
+    if (
+      !failed ||
+      attempt < RETRY_DELAYS.length ||
+      attempt >= RETRY_DELAYS.length + MAX_FOCUS_RETRIES
+    )
+      return undefined;
 
     const handleFocus = () => {
       retry();
