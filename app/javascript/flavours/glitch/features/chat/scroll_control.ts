@@ -230,8 +230,9 @@ export const initialScrollState = (targetId: string | null): ScrollState => ({
 
 const seeking = (state: ScrollState) => state.target?.phase === 'seeking';
 
-// Brings the newest message into view. What follows by itself waits while the reader is scrolling, and is never
-// done zoomed in; what the reader asked for is done at once.
+// Brings the newest message into view. What follows by itself is never done zoomed in, and while the reader is
+// scrolling it waits for them to stop: a message that came in is then shown if they are still near the newest. What
+// the reader asked for is done at once.
 const toNewest = (
   state: ScrollState,
   s: Snapshot,
@@ -533,7 +534,12 @@ export const step = (
       const keyboard = state.keyboard;
       if (keyboard) {
         if (s.scale === 1 && !scaleChanged) {
-          if (heightChanged && state.following && s.composerFocused) {
+          if (
+            heightChanged &&
+            state.following &&
+            s.composerFocused &&
+            !state.userScrolling
+          ) {
             if (isEcho(state, s)) state.echo = null;
             else toNewest(state, s, commands, true);
           }
@@ -557,7 +563,14 @@ export const step = (
         commands.push({ type: 'read', kind: 'check' });
         break;
       }
-      if (s.scale === 1 && !scaleChanged && heightChanged && state.following)
+      // A toolbar coming back as the reader scrolls is their scroll: it is not undone, then or after.
+      if (
+        s.scale === 1 &&
+        !scaleChanged &&
+        heightChanged &&
+        state.following &&
+        !state.userScrolling
+      )
         toNewest(state, s, commands, true);
       break;
     }

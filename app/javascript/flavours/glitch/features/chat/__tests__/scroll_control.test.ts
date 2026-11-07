@@ -995,6 +995,20 @@ describe('Following the newest message (state table)', () => {
     expect(scrolls(ended.commands)).toEqual([{ type: 'alignEnd' }]);
   });
 
+  it('31 a toolbar coming back as the reader drags is not undone after the drag either', () => {
+    // Pixel t5: 70px down at the collapsed-toolbar end; only the viewport resizes.
+    const { state, commands } = run(opened().state, [
+      [{ type: 'userIntent' }],
+      [{ type: 'viewportResized' }, { height: 640 }],
+      [{ type: 'scrolled' }, { distance: 40 }],
+      [{ type: 'viewportResized' }, { height: 603.4 }],
+      [{ type: 'scrolled' }, { distance: 70 }],
+      [{ type: 'timer', name: 'userScrollEnd' }, { distance: 70 }],
+    ]);
+    expect(state.following).toBe(true);
+    expect(scrolls(commands)).toEqual([]);
+  });
+
   it('31 what waited is dropped when the reader ends up reading older ones', () => {
     const { commands } = run(opened().state, [
       [{ type: 'userIntent' }],

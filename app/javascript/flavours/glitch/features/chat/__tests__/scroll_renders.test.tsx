@@ -2878,7 +2878,7 @@ describe('Android visual viewport regressions', () => {
 describe('A reader scrolling while the screen changes size', () => {
   // Pixel 1 (android-masto-diag t5): a finger drags down at the end with the address bar collapsed. The bar comes
   // back, the visual viewport resizes 12 times, and each resize used to pull the page back to the end.
-  const dragWhileResizing = async (endsAt: number) => {
+  const dragWhileResizing = async (endsAt: number, arrives?: string) => {
     const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
     const viewport = Object.assign(new EventTarget(), {
       scale: 1,
@@ -2901,6 +2901,7 @@ describe('A reader scrolling while the screen changes size', () => {
         });
         fireEvent.touchMove(window);
       }
+      if (arrives) receive(arrives);
       const whileDragging = endScrolls();
       placedAt(603.4 - window.innerHeight + endsAt);
       await wait(250);
@@ -2911,15 +2912,22 @@ describe('A reader scrolling while the screen changes size', () => {
     }
   };
 
-  it('does not pull the reader back while they drag, and aligns once they stop near the newest', async () => {
-    expect(await dragWhileResizing(7)).toEqual({
+  it('does not pull the reader back while they drag, nor once they stop', async () => {
+    expect(await dragWhileResizing(70)).toEqual({
+      whileDragging: 0,
+      afterDrag: 0,
+    });
+  });
+
+  it('shows a message that came in during the drag once they stop near the newest', async () => {
+    expect(await dragWhileResizing(70, 'during-drag')).toEqual({
       whileDragging: 0,
       afterDrag: 1,
     });
   });
 
-  it('leaves the reader where they stopped when that is away from the newest', async () => {
-    expect(await dragWhileResizing(400)).toEqual({
+  it('leaves a reader who stopped away from the newest where they are', async () => {
+    expect(await dragWhileResizing(400, 'during-drag-away')).toEqual({
       whileDragging: 0,
       afterDrag: 0,
     });
