@@ -235,6 +235,7 @@ function continueThread (state, status) {
     map.set('caretPosition', null);
     map.set('preselectDate', new Date());
     map.set('quoted_status_id', null);
+    map.set('draft_id', null);
   });
 }
 
@@ -580,6 +581,7 @@ export const composeReducer = (state = initialState, action) => {
   case COMPOSE_REPLY:
     return state.withMutations(map => {
       map.set('id', null);
+      map.set('draft_id', null);
       map.set('in_reply_to', action.status.get('id'));
       map.set('text', statusToTextMentions(state, action.status, action.statusRebloggedBy));
       map.set('privacy', privacyPreference(action.status.get('visibility'), state.get('default_privacy')));
@@ -625,6 +627,7 @@ export const composeReducer = (state = initialState, action) => {
       map.set('spoiler_text', '');
       map.set('privacy', state.get('default_privacy'));
       map.set('id', null);
+      map.set('draft_id', null);
       map.set('poll', null);
       map.set('language', state.get('default_language'));
       map.update(
