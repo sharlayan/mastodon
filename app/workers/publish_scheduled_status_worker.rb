@@ -15,14 +15,12 @@ class PublishScheduledStatusWorker
 
     PostStatusService.new.call(
       scheduled_status.account,
-      options_with_objects(scheduled_status.params.with_indifferent_access)
+      options_with_objects(scheduled_status.params.with_indifferent_access).merge(scheduled_status: scheduled_status)
     )
 
-    scheduled_status.destroy!
-  rescue ActiveRecord::RecordNotFound
-    true
-  rescue ActiveRecord::RecordInvalid
-    scheduled_status&.destroy!
+    scheduled_status.destroy! unless scheduled_status.destroyed?
+  rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordInvalid, Mastodon::NotPermittedError, Mastodon::ValidationError
+    scheduled_status.destroy! if scheduled_status.present? && !scheduled_status.destroyed?
     true
   end
 
