@@ -4,6 +4,9 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
   include Api::AccountRateLimit
 
   SEARCH_OFFSET_LIMIT = 1_000
+  LIST_CACHE_TTL = 10.minutes
+  LOCAL_COUNT_SQL = 'COUNT(CASE WHEN accounts.domain IS NULL THEN 1 END)'
+  REMOTE_COUNT_SQL = 'COUNT(CASE WHEN accounts.domain IS NOT NULL THEN 1 END)'
 
   requires_misskey_permission 'read:account', :index, :trend, :search, :show, :users
 
@@ -29,24 +32,10 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
     sort = params[:sort].to_s
     return render_invalid_param('#/properties/sort', 'unsupported sort') unless SORT_ORDERS.key?(sort)
 
-    tags = Tag.listable
-      .left_joins(:accounts)
-      .group('tags.id')
-      .select(
-        'tags.*',
-        'COUNT(accounts.id) AS attached_users_count',
-        'COUNT(CASE WHEN accounts.domain IS NULL THEN 1 END) AS attached_local_users_count',
-        'COUNT(CASE WHEN accounts.domain IS NOT NULL THEN 1 END) AS attached_remote_users_count'
-      )
-    tags = tags.having('COUNT(accounts.id) > 0') if boolean_param?(:attachedToUserOnly)
-    tags = tags.having('COUNT(CASE WHEN accounts.domain IS NULL THEN 1 END) > 0') if boolean_param?(:attachedToLocalUserOnly)
-    tags = tags.having('COUNT(CASE WHEN accounts.domain IS NOT NULL THEN 1 END) > 0') if boolean_param?(:attachedToRemoteUserOnly)
+    filters = %i(attachedToUserOnly attachedToLocalUserOnly attachedToRemoteUserOnly).select { |key| boolean_param?(key) }
+    limit = pagination_limit(default: 10, max: 100)
 
-    order = SORT_ORDERS.fetch(sort)
-    tags = tags.order(order || { name: :asc })
-    tags = tags.limit(pagination_limit(default: 10, max: 100)).to_a
-
-    render json: tags.map { |tag| serialize_tag(tag) }
+    render json: Rails.cache.fetch(['misskey_compat:hashtags:list', sort, filters.join(','), limit], expires_in: LIST_CACHE_TTL) { listed_tags(sort, filters, limit) }
   end
 
   def trend
@@ -95,6 +84,23 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
     enforce_account_rate_limit!(:misskey_hashtags)
   rescue Mastodon::RateLimitExceededError
     render_error(I18n.t('errors.429'), 'RATE_LIMIT_EXCEEDED', 429)
+  end
+
+  def listed_tags(sort, filters, limit)
+    tags = Tag.listable
+      .left_joins(:accounts)
+      .group('tags.id')
+      .select(
+        'tags.*',
+        'COUNT(accounts.id) AS attached_users_count',
+        "#{LOCAL_COUNT_SQL} AS attached_local_users_count",
+        "#{REMOTE_COUNT_SQL} AS attached_remote_users_count"
+      )
+    tags = tags.having('COUNT(accounts.id) > 0') if filters.include?(:attachedToUserOnly)
+    tags = tags.having("#{LOCAL_COUNT_SQL} > 0") if filters.include?(:attachedToLocalUserOnly)
+    tags = tags.having("#{REMOTE_COUNT_SQL} > 0") if filters.include?(:attachedToRemoteUserOnly)
+
+    tags.order(SORT_ORDERS.fetch(sort) || { name: :asc }).limit(limit).map { |tag| serialize_tag(tag) }
   end
 
   def serialize_tag(tag)

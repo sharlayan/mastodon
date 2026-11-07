@@ -88,6 +88,23 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       expect(response.parsed_body.pluck('tag')).to_not include('localtag')
     end
 
+    it 'reuses the aggregated list for identical parameters' do
+      post '/api/hashtags/list', params: { i: read_token, sort: '+attachedUsers', limit: 10 }, as: :json
+      first = response.parsed_body
+
+      queries = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
+      end
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        post '/api/hashtags/list', params: { i: read_token, sort: '+attachedUsers', limit: 10 }, as: :json
+      end
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq(first)
+      expect(queries.grep(/FROM "tags"/)).to be_empty
+    end
+
     it 'rejects an unknown sort mode' do
       post '/api/hashtags/list', params: { i: read_token, sort: '+unknown' }, as: :json
 
