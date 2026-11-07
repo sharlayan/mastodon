@@ -78,12 +78,17 @@ en:
             api_paging_rate_limit: *rate_limit_hierarchy_errors
             api_rate_limit: *rate_limit_hierarchy_errors
             api_token_rate_limit: *rate_limit_hierarchy_errors
+            drive_quota:
+              own_role: cannot be changed with your current role
             drive_upload_rate_limit: *rate_limit_hierarchy_errors
+            extra_permissions_as_keys:
+              elevated: cannot include permissions your current role does not possess
+              own_role: cannot be changed with your current role
+              restricted: API rate limit bypass can only be changed by the owner or an administrator
             permissions_as_keys:
               dangerous: include permissions that are not safe for the base role
               elevated: cannot include permissions your current role does not possess
               own_role: cannot be changed with your current role
-              restricted: API rate limit bypass can only be changed by the owner or an administrator
             position:
               elevated: cannot be higher than your current role
               own_role: cannot be changed with your current role
