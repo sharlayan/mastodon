@@ -514,6 +514,7 @@
 
   &__avatar-space {
     flex: 0 0 36px;
+    width: 36px;
   }
 
   &__message-content {
@@ -700,7 +701,6 @@
     }
   }
 
-  &__message:hover &__actions,
   &__message:focus-within &__actions {
     opacity: 1;
     pointer-events: auto;
@@ -1158,6 +1158,11 @@
 // front of it. It does not exist until the message is hovered, so empty space alone opens nothing.
 @media (hover: hover) and (pointer: fine) {
   .chat-native {
+    &__message:hover &__actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
     &__message:hover &__bubble-wrap::before {
       content: '';
       position: absolute;
