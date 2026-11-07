@@ -6,6 +6,7 @@ RSpec.describe FetchInstanceThemeColorService do
   subject { described_class.new }
 
   let(:domain) { 'remote.example.com' }
+  let(:public_path) { Pathname.new(Dir.mktmpdir('instance-favicons')) }
 
   before do
     described_class.allow_remote_fetch_in_test = true
@@ -21,15 +22,14 @@ RSpec.describe FetchInstanceThemeColorService do
     stub_request(:get, "https://#{domain}/favicon.ico").to_return(status: 200, body: 'fake-ico-data')
     stub_request(:get, "https://#{domain}/custom-favicon.png").to_return(status: 200, body: 'png-data')
 
-    storage_path = Rails.public_path.join('system', 'instance_favicons')
-    FileUtils.mkdir_p(storage_path)
+    allow(Rails).to receive(:public_path).and_return(public_path)
+    FileUtils.mkdir_p(public_path.join('system', 'instance_favicons'))
   end
 
   after do
     described_class.allow_remote_fetch_in_test = false
 
-    storage_path = Rails.public_path.join('system', 'instance_favicons')
-    FileUtils.rm_rf(storage_path)
+    FileUtils.rm_rf(public_path)
   end
 
   def default_html
@@ -62,6 +62,13 @@ RSpec.describe FetchInstanceThemeColorService do
   end
 
   describe '#call' do
+    it 'records the attempt when the domain resolves to a private address' do
+      allow(Request).to receive(:new).and_raise(Mastodon::PrivateNetworkAddressError.new('192.168.0.1'))
+
+      expect { subject.call(domain) }.to_not raise_error
+      expect(InstanceMetadata.find_by(domain: domain).metadata_updated_at).to be_within(5.seconds).of(Time.now.utc)
+    end
+
     it 'creates and returns instance metadata' do
       result = subject.call(domain)
       expect(result).to be_a(InstanceMetadata)

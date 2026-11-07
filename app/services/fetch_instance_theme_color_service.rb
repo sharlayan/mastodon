@@ -16,6 +16,7 @@ class FetchInstanceThemeColorService < BaseService
     Errno::EHOSTUNREACH,
     Errno::ETIMEDOUT,
     Mastodon::LengthValidationError,
+    Mastodon::HostValidationError,
   ].freeze
 
   INSTANCE_NAME_MAX_LENGTH = 100
