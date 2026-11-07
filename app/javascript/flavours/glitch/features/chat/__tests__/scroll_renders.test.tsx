@@ -1818,6 +1818,19 @@ describe('Cancelling a pending quote jump', () => {
     };
   };
 
+  it('keeps an incoming message unread and stays put while seeking an older quote', async () => {
+    const finish = await openDelayedQuote();
+    const beforeEnds = endScrolls();
+    const beforeReads = readsPosted();
+    receive('incoming-during-quote-seek');
+    await wait(50);
+    expect(endScrolls()).toBe(beforeEnds);
+    expect(readsPosted()).toBe(beforeReads);
+    expect(screen.getByText('New messages')).toBeTruthy();
+    await finish();
+    expect(targetScrolls('message-1')).toBe(1);
+  });
+
   it('does not jump to a delayed original after the user scrolls elsewhere', async () => {
     const finish = await openDelayedQuote();
     fireEvent.wheel(window);
