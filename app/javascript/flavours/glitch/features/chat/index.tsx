@@ -1425,6 +1425,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   // Reads the screen made by itself that failed, and that reading again can make up for.
   // Unlike marking a room read, what they bring is missing from the screen, so that is said.
   const failedReads = useRef(new Set<string>());
+  // A 429 on an older page leaves the search target pending for the shared retry.
+  const olderPageRateLimited = useRef(false);
   const readFailed = useCallback((read: string) => {
     failedReads.current.add(read);
     setReadingError(true);
@@ -2128,15 +2130,20 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ...current,
         ]);
         updateOlderMessageId(data.length === 40 ? (data[0]?.id ?? null) : null);
+        olderPageRateLimited.current = false;
         readRecovered('messages');
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (
           isMounted.current &&
           requestId === latestMessageRequest.current &&
           appliedGeneration === appliedMessageGeneration.current
-        )
+        ) {
+          olderPageRateLimited.current =
+            (error as { response?: { status?: number } } | null)?.response
+              ?.status === 429;
           readFailed('messages');
+        }
       })
       .finally(() => {
         pendingMessageUpdates.current.delete(updates);
@@ -2940,7 +2947,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       jumpTargetLoaded ||
       !messagesLoaded ||
       loadingMore ||
-      (olderMessageId && !failedReads.current.has('messages'))
+      (olderMessageId &&
+        (!failedReads.current.has('messages') || olderPageRateLimited.current))
     )
       return;
     jumpNavigationRef.current.seeking = false;

@@ -1690,6 +1690,43 @@ describe('Review f88a', () => {
 });
 
 describe('Search targets and keyboard navigation', () => {
+  it('keeps a searched target through an older-page 429 and resumes it after reconnect', async () => {
+    let olderAttempts = 0;
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages')) {
+          if (options?.params?.max_id) {
+            olderAttempts += 1;
+            if (olderAttempts === 1)
+              return Promise.reject(
+                Object.assign(new Error('rate limited'), {
+                  response: { status: 429, headers: { 'retry-after': '1' } },
+                }),
+              );
+            return Promise.resolve({
+              data: Array.from({ length: 20 }, (_, i) => messageFrom(i)),
+            });
+          }
+          return Promise.resolve({
+            data: Array.from({ length: 40 }, (_, i) => messageFrom(i + 20)),
+          });
+        }
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    await openWith('message-1', 'Message 59');
+    await wait(100);
+    expect(olderAttempts).toBe(1);
+    expect(endScrolls()).toBe(0);
+    expect(readsPosted()).toBe(0);
+    act(() => {
+      emitChatStreamEvent({ event: 'chat.stream_reconnected', payload: {} });
+    });
+    await screen.findByText('Message 1', {}, { timeout: 4000 });
+    expect(olderAttempts).toBe(2);
+    expect(targetScrolls('message-1')).toBeGreaterThan(0);
+  });
+
   it('returns to the newest when the older page for a searched target fails', async () => {
     api.get.mockImplementation(
       (url: string, options?: { params?: { max_id?: string } }) => {
