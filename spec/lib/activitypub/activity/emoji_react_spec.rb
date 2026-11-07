@@ -101,6 +101,28 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
       end
     end
 
+    context 'with a new custom emoji from a domain whose media is rejected' do
+      subject { described_class.new(json_new_remote_emoji, remote_sender) }
+
+      let(:json_new_remote_emoji) do
+        json_remote_custom_emoji.merge(
+          content: ':fresh:',
+          tag: [{ type: 'Emoji', name: ':fresh:', icon: { type: 'Image', url: 'https://example.com/fresh.png' } }]
+        )
+      end
+
+      before do
+        Fabricate(:domain_block, domain: 'example.com', severity: :noop, reject_media: true)
+        stub_request(:get, 'https://example.com/fresh.png').to_return(status: 200, body: attachment_fixture('emojo.png'))
+        subject.perform
+      end
+
+      it 'does not create or download the emoji' do
+        expect(CustomEmoji.exists?(shortcode: 'fresh', domain: 'example.com')).to be false
+        expect(a_request(:get, 'https://example.com/fresh.png')).to_not have_been_made
+      end
+    end
+
     context 'with a sensitive remote custom emoji that the status excludes' do
       subject { described_class.new(json_remote_custom_emoji, remote_sender) }
 

@@ -212,6 +212,7 @@ class ActivityPub::Activity
     return if custom_emoji_parser.shortcode.blank? || custom_emoji_parser.image_remote_url.blank? || !name.eql?(custom_emoji_parser.shortcode)
 
     emoji = CustomEmoji.find_by(shortcode: custom_emoji_parser.shortcode, domain: @account.domain)
+    return emoji if DomainBlock.reject_media?(@account.domain)
     return emoji unless emoji.nil? ||
                         custom_emoji_parser.image_remote_url != emoji.image_remote_url ||
                         (!custom_emoji_parser.sensitive.nil? && custom_emoji_parser.sensitive != emoji.is_sensitive?) ||

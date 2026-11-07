@@ -470,7 +470,7 @@ class ActivityPub::ProcessAccountService < BaseService
   end
 
   def process_avatar_decorations!
-    return if AvatarDecorationDomainBlock.blocked?(@account.domain)
+    return if AvatarDecorationDomainBlock.blocked?(@account.domain) || skip_download?
 
     raw = @json['_misskey_avatarDecorations']
 
