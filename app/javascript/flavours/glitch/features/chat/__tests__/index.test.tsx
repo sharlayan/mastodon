@@ -170,6 +170,22 @@ const deferred = <T,>() => {
   });
   return { promise, resolve: complete };
 };
+// The next POST to `path` gets `answer`. Any other POST meanwhile, such as a read mark the room sends whenever it
+// gets to it, keeps the usual answer: given the held one instead, it left the request under test with the usual
+// answer (an attachment, no account) on a busy runner (17026ee8ad, test-js).
+const answerNextPost = (path: string, answer: Promise<unknown>) => {
+  const usual = api.post.getMockImplementation();
+  let answered = false;
+  api.post.mockImplementation((url: string, ...rest: unknown[]) => {
+    if (!answered && url === path) {
+      answered = true;
+      return answer;
+    }
+    return usual
+      ? (usual(url, ...rest) as Promise<unknown>)
+      : Promise.resolve({ data: attachment });
+  });
+};
 const mountChat = (path = '/chat/A') => {
   const history = createMemoryHistory({ initialEntries: [path] });
   const view = render(
@@ -414,9 +430,12 @@ describe('Chat conversation isolation', () => {
       expect(screen.queryByText('Editing message')).toBeNull();
       expect(screen.queryByText(/Replying to/)).toBeNull();
       fireEvent.change(composer(), { target: { value: 'Hello B' } });
-      api.post.mockResolvedValueOnce({
-        data: { ...message('B'), id: 'sent-B', content: 'Hello B' },
-      });
+      answerNextPost(
+        '/api/v1/chat/conversations/B/messages',
+        Promise.resolve({
+          data: { ...message('B'), id: 'sent-B', content: 'Hello B' },
+        }),
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Send' }));
       await screen.findByText('Hello B');
       expect(api.post).toHaveBeenCalledWith(
@@ -736,7 +755,10 @@ describe('Chat live updates', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
         api.patch.mockReturnValueOnce(pending.promise);
       } else {
-        api.post.mockReturnValueOnce(pending.promise);
+        answerNextPost(
+          '/api/v1/chat/conversations/A/messages',
+          pending.promise,
+        );
       }
       fireEvent.change(composer(), { target: { value: 'Delayed content' } });
       fireEvent.click(
@@ -845,7 +867,10 @@ describe('Chat live updates', () => {
     );
     mountChat();
     await screen.findByText('Private message A');
-    api.post.mockReturnValueOnce(pending.promise);
+    answerNextPost(
+      '/api/v1/chat/messages/message-A/reactions',
+      pending.promise,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }));
     act(() => {
       emitChatStreamEvent({
