@@ -17,6 +17,15 @@ RSpec.describe Scheduler::InstanceMetadataRefreshScheduler do
         expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with('missing-software.example.com')
       end
 
+      it 'rotates through incomplete domains by least recent attempt' do
+        50.times { |i| Fabricate(:instance_metadata, domain: "recent#{i}.example.com", software: nil, instance_name: 'Test', metadata_updated_at: 1.minute.ago) }
+        stale = Fabricate(:instance_metadata, domain: 'stale.example.com', software: nil, instance_name: 'Test', metadata_updated_at: 2.days.ago)
+
+        scheduler.perform
+
+        expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with(stale.domain)
+      end
+
       it 'enqueues workers for domains with missing instance_name' do
         Fabricate(:instance_metadata, domain: 'missing-name.example.com', software: 'mastodon', instance_name: nil)
         scheduler.perform
