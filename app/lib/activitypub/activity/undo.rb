@@ -113,10 +113,7 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
 
     return if status.nil?
 
-    if @object['content'].present? || @object['_misskey_reaction'].present?
-      undo_emoji_react
-      return
-    end
+    return if (@object['content'].present? || @object['_misskey_reaction'].present?) && undo_emoji_react(fallback: true)
 
     return unless status.account.local?
 
@@ -128,31 +125,46 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
     end
   end
 
-  def undo_emoji_react
+  def undo_emoji_react(fallback: false)
     name = @object['content'] || @object['_misskey_reaction']
-    return if name.nil?
+    return false unless name.is_a?(String)
 
-    status = status_from_uri(target_uri)
+    status = status_from_uri(target_uri)&.proper
 
-    return if status.nil?
+    return true if status.nil?
 
     custom_emoji = nil
 
     if /^:.*:$/.match?(name)
-      name.delete! ':'
+      name = name.delete(':')
       custom_emoji = process_emoji_tags(name, @object['tag'])
 
-      return if custom_emoji.nil?
+      return false if custom_emoji.nil? && fallback
+      return true if custom_emoji.nil?
     end
 
-    if @account.reacted?(status, name, custom_emoji)
-      reaction = status.status_reactions.where(account: @account, name: name, custom_emoji: custom_emoji).first
-      reaction&.destroy
-    else
-      delete_later!(object_uri)
+    reaction = undo_reaction_target(status, name, custom_emoji)
+
+    if reaction
+      reaction.destroy
+      BroadcastStatusUpdateWorker.perform_async(status.id)
+      return true
     end
 
-    BroadcastStatusUpdateWorker.perform_async(status.id)
+    return false if fallback
+
+    delete_later!(object_uri)
+    true
+  end
+
+  def undo_reaction_target(status, name, custom_emoji)
+    reaction = status.status_reactions.find_by(account: @account, name: name, custom_emoji: custom_emoji)
+    return reaction if reaction
+
+    accepted_name, accepted_emoji = status.accepted_reaction(name, custom_emoji, @account)
+    return if accepted_name == name && accepted_emoji == custom_emoji
+
+    status.status_reactions.find_by(account: @account, name: accepted_name, custom_emoji: accepted_emoji)
   end
 
   def undo_block

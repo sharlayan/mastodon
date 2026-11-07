@@ -6,11 +6,10 @@ module MultiAccounts
     KEY_PREFIX = 'multi_account:state:'
 
     class << self
-      def store!(state, nonce, user_id, redirect_uri = nil, switch_parent_stack: nil, session_id: nil, reauthenticate_account_id: nil)
+      def store!(state, nonce, user_id, switch_parent_stack: nil, session_id: nil, reauthenticate_account_id: nil)
         data = {
           nonce: nonce,
           user_id: user_id,
-          redirect_uri: redirect_uri,
           switch_parent_stack: switch_parent_stack,
           session_id: session_id,
           reauthenticate_account_id: reauthenticate_account_id,
@@ -43,14 +42,12 @@ module MultiAccounts
       end
 
       def consume!(state, nonce)
-        data = fetch(state)
-        return false if data.nil?
-        return false if data[:nonce] != nonce
-
-        RedisConnection.with do |redis|
-          redis.del("#{KEY_PREFIX}#{state}")
+        raw = RedisConnection.with do |redis|
+          redis.getdel("#{KEY_PREFIX}#{state}")
         end
-        true
+        return false if raw.blank? || nonce.blank?
+
+        JSON.parse(raw, symbolize_names: true)[:nonce] == nonce
       end
     end
   end

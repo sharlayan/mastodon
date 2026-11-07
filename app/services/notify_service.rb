@@ -289,7 +289,7 @@ class NotifyService < BaseService
   end
 
   def push_to_linked_account_subscribers!
-    linked_auths = AccountSwitchAuthorization
+    linked_auths = AccountSwitchAuthorization.linked
       .where(target_account_id: @recipient.id)
       .joins('INNER JOIN users ON users.account_id = account_switch_authorizations.account_id')
 

@@ -37,7 +37,7 @@ class AccountSwitchDevice < ApplicationRecord
   def revoke!
     transaction do
       lock!
-      session_activation&.destroy!
+      session_activation.destroy! if session_activation&.user&.account_id == account_id
       update!(revoked_at: Time.current, session_activation: nil)
     end
   end

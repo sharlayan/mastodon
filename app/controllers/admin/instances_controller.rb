@@ -55,7 +55,7 @@ module Admin
 
     def refresh_metadata
       authorize :instance, :refresh_metadata?
-      InstanceMetadataUpdateWorker.perform_async(@instance.domain)
+      InstanceMetadataUpdateWorker.perform_async(@instance.domain, 'manual')
       redirect_to admin_instance_path(@instance), notice: I18n.t('admin.instances.metadata_refresh_scheduled')
     end
 

@@ -9,6 +9,12 @@ module Sharlayan::DeleteAccountServiceExtensions
     purge_drive!
   end
 
+  def purge_user!
+    user_id = @account.user&.id if @account.local?
+    super
+    LocalSettingsStore.delete(user_id) if user_id
+  end
+
   def purge_bookmarks!
     purge_status_reactions!
     super

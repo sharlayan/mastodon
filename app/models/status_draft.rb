@@ -29,7 +29,11 @@ class StatusDraft < ApplicationRecord
   scope :within_data_limit, -> { where('octet_length(status_drafts.data::text) <= ?', MAX_DATA_BYTES) }
 
   def data_bytes
-    JSON.generate(data).bytesize
+    json = JSON.generate(data)
+    return @data_bytes if @data_bytes_source == json
+
+    @data_bytes_source = json
+    @data_bytes = self.class.connection.select_value(self.class.sanitize_sql_array(['SELECT octet_length(CAST(? AS jsonb)::text)', json])).to_i
   rescue JSON::GeneratorError, TypeError
     MAX_DATA_BYTES + 1
   end

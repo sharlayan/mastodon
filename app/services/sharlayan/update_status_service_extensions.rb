@@ -13,12 +13,19 @@ module Sharlayan::UpdateStatusServiceExtensions
   end
 
   def apply_sharlayan_immediate_attributes
-    @status.mfm_text = @status.mfm? ? @status.text : nil if @options.key?(:text)
+    apply_sharlayan_mfm_attributes if @options.key?(:text) || @options.key?(:content_type)
 
     return unless @options.key?(:sensitive) || @options.key?(:spoiler_text) || @options.key?(:media_ids)
 
     requested_sensitive = @options.key?(:sensitive) ? @options[:sensitive] : @status.sensitive?
     @status.sensitive = requested_sensitive || @options[:spoiler_text].present? || sensitive_drive_media?
+  end
+
+  def apply_sharlayan_mfm_attributes
+    composition_allowed = Setting.mfm_enabled && Setting.mfm_allow_composition
+    @status.content_type = 'text/plain' if @status.content_type == 'text/x-mfm' && !composition_allowed
+    @status.mfm = composition_allowed && (@status.content_type == 'text/x-mfm' || MfmDetector.contains_mfm?(@status.text))
+    @status.mfm_text = @status.mfm? ? @status.text : nil
   end
 
   def sensitive_drive_media?

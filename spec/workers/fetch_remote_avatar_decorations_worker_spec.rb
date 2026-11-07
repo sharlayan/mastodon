@@ -41,6 +41,34 @@ RSpec.describe FetchRemoteAvatarDecorationsWorker do
     expect(image_request).to_not have_been_requested
   end
 
+  it 'replaces a stored image when the remote image URL changes' do
+    decoration = Fabricate(:avatar_decoration, host: account.domain, remote_id: 'new', image_remote_url: 'https://remote.example/old.png')
+    stub_request(:post, 'https://remote.example/api/users/show')
+      .to_return(status: 200, body: { avatarDecorations: [{ id: 'new' }] }.to_json)
+    stub_request(:post, 'https://remote.example/api/get-avatar-decorations')
+      .to_return(status: 200, body: [{ id: 'new', name: 'New', url: 'https://remote.example/new.png' }].to_json)
+    allow(RedownloadAvatarDecorationWorker).to receive(:enqueue)
+
+    worker.perform(account.id)
+
+    expect(decoration.reload).to have_attributes(image_remote_url: 'https://remote.example/new.png', image_file_name: nil)
+    expect(RedownloadAvatarDecorationWorker).to have_received(:enqueue).with(decoration.id, account_id: account.id)
+  end
+
+  it 'keeps a stored image when the remote image URL is unchanged' do
+    decoration = Fabricate(:avatar_decoration, host: account.domain, remote_id: 'new', image_remote_url: 'https://remote.example/new.png')
+    stub_request(:post, 'https://remote.example/api/users/show')
+      .to_return(status: 200, body: { avatarDecorations: [{ id: 'new' }] }.to_json)
+    stub_request(:post, 'https://remote.example/api/get-avatar-decorations')
+      .to_return(status: 200, body: [{ id: 'new', name: 'New', url: 'https://remote.example/new.png' }].to_json)
+    allow(RedownloadAvatarDecorationWorker).to receive(:enqueue)
+
+    worker.perform(account.id)
+
+    expect(decoration.reload.image_file_name).to be_present
+    expect(RedownloadAvatarDecorationWorker).to_not have_received(:enqueue)
+  end
+
   it 'ignores malformed catalogue entries while using a valid user decoration fallback URL' do
     stub_request(:post, 'https://remote.example/api/users/show')
       .to_return(status: 200, body: { avatarDecorations: [{ id: 'new', url: 'https://remote.example/fallback.png' }] }.to_json)

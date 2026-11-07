@@ -171,7 +171,7 @@ class ApplicationController < ActionController::Base
   end
 
   def switch_parent_authorized?(parent_id, owner_id)
-    AccountSwitchAuthorization.exists?(account_id: parent_id, target_account_id: owner_id)
+    parent_id != owner_id && AccountSwitchAuthorization.exists?(account_id: parent_id, target_account_id: owner_id)
   end
 
   def clear_switch_parent_stack

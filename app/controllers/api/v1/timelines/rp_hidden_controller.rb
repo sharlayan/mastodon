@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Api::V1::Timelines::RpHiddenController < Api::V1::Timelines::BaseController
-  include Authorization
-
   before_action -> { doorkeeper_authorize! :read, :'read:statuses' }
   before_action :require_user!
   before_action :require_owner!
@@ -11,8 +9,8 @@ class Api::V1::Timelines::RpHiddenController < Api::V1::Timelines::BaseControlle
 
   def show
     with_read_replica do
-      @statuses = load_statuses
-      @statuses.each { |status| authorize status, :show? }
+      @loaded_statuses = load_statuses
+      @statuses = @loaded_statuses.select { |status| StatusPolicy.new(current_account, status).show? }
       @relationships = StatusRelationshipsPresenter.new(@statuses, current_account.id)
     end
 
@@ -35,6 +33,14 @@ class Api::V1::Timelines::RpHiddenController < Api::V1::Timelines::BaseControlle
       .joins(:rp_hidden_status)
       .order(id: :desc)
       .paginate_by_max_id(limit_param(DEFAULT_STATUSES_LIMIT), params[:max_id], params[:since_id])
+  end
+
+  def pagination_collection
+    @loaded_statuses
+  end
+
+  def pagination_available?
+    @loaded_statuses.present?
   end
 
   def require_owner!

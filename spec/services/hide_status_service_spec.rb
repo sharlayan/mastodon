@@ -159,4 +159,31 @@ RSpec.describe HideStatusService do
       expect(HideStatusMediaWorker).to have_enqueued_sidekiq_job(status.id)
     end
   end
+
+  context 'with a direct message' do
+    it 'removes the message from the participants conversations' do
+      bob_account = Fabricate(:user, account: Fabricate(:account, username: 'dmrecipient')).account
+      first = PostStatusService.new.call(alice, text: '@dmrecipient first', visibility: 'direct')
+      second = PostStatusService.new.call(alice, text: '@dmrecipient second', visibility: 'direct', thread: first)
+      [first, second].each { |status| AccountConversation.add_status(bob_account, status) }
+
+      subject.call(second)
+
+      conversation = AccountConversation.find_by!(account: bob_account)
+      expect(conversation.status_ids).to eq [first.id]
+      expect(conversation.last_status_id).to eq first.id
+    end
+  end
+
+  context 'with a boost that is already being removed' do
+    it 'does not hide it again or decrement its counters twice' do
+      status = PostStatusService.new.call(alice, text: 'boosted')
+      booster = Fabricate(:account)
+      boost = ReblogService.new.call(booster, status)
+      boost.discard
+
+      expect { subject.call(status) }.to_not(change { booster.reload.statuses_count })
+      expect(RpHiddenStatus.exists?(status_id: boost.id)).to be(false)
+    end
+  end
 end

@@ -115,5 +115,37 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
         expect(remote_sender.reacted?(status, "\u2764")).to be true
       end
     end
+
+    context 'when the object is a boost of a status whose author mutes the sender' do
+      subject { described_class.new(json.merge(object: ActivityPub::TagManager.instance.uri_for(boost)), sender) }
+
+      let(:boost) { Fabricate(:status, account: Fabricate(:account, domain: 'booster.example'), uri: 'https://booster.example/notes/boost', reblog: status) }
+
+      before do
+        ReactionMute.create!(account: recipient, target_account: sender)
+        subject.perform
+      end
+
+      it 'does not create a reaction' do
+        expect(status.status_reactions).to be_empty
+      end
+    end
+
+    context 'when the object is a boost' do
+      subject { described_class.new(json.merge(object: ActivityPub::TagManager.instance.uri_for(boost)), sender) }
+
+      let(:boost) { Fabricate(:status, account: Fabricate(:account, domain: 'booster.example'), uri: 'https://booster.example/notes/boost', reblog: status) }
+
+      before do
+        allow(LocalNotificationWorker).to receive(:perform_async)
+        subject.perform
+      end
+
+      it 'notifies the original author' do
+        reaction = status.status_reactions.find_by!(account: sender)
+
+        expect(LocalNotificationWorker).to have_received(:perform_async).with(recipient.id, reaction.id, 'StatusReaction', 'reaction')
+      end
+    end
   end
 end

@@ -1,7 +1,7 @@
 import { fromJS, List as ImmutableList } from 'immutable';
 import { defineMessages } from 'react-intl';
 
-import api from 'flavours/glitch/api';
+import api, { getLinks } from 'flavours/glitch/api';
 import { forceLocalOnly } from 'flavours/glitch/initial_state';
 
 import { showAlert, showAlertForError } from './alerts';
@@ -46,9 +46,24 @@ const composePayload = (state) => {
   };
 };
 
+const MAX_DRAFT_PAGES = 5;
+
+const fetchAllDraftPages = async () => {
+  const drafts = [];
+  let url = '/api/v1/status_drafts';
+
+  for (let page = 0; url && page < MAX_DRAFT_PAGES; page++) {
+    const response = await api().get(url);
+    drafts.push(...response.data);
+    url = getLinks(response).refs.find(link => link.rel === 'next')?.uri;
+  }
+
+  return drafts;
+};
+
 export const fetchStatusDrafts = () => (dispatch) => {
   dispatch({ type: STATUS_DRAFTS_FETCH_REQUEST });
-  return api().get('/api/v1/status_drafts').then(({ data }) => {
+  return fetchAllDraftPages().then((data) => {
     const drafts = ImmutableList(data.map(draft => fromJS(draft)));
     dispatch({ type: STATUS_DRAFTS_FETCH_SUCCESS, drafts });
     return drafts;

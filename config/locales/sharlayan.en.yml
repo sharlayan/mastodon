@@ -628,8 +628,6 @@ en:
   multi_accounts:
     auth:
       add_account: Add account
-      authorization_complete: Authorization complete. You may close this window.
-      completing_authorization: Completing authorization...
       reauthenticate_account: Reauthenticate account
       reauthentication_account_mismatch: Sign in to the linked account being reauthenticated.
       reauthentication_hint: Sign in again to authorize this session for the linked account.

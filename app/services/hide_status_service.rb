@@ -34,6 +34,8 @@ class HideStatusService < BaseService
     remove_from_direct if @status.direct_visibility?
     remove_from_admin
 
+    @status.unlink_from_conversations!
+
     deindex
 
     HideStatusMediaWorker.perform_async(@status.id) if @status.with_media?
@@ -60,7 +62,7 @@ class HideStatusService < BaseService
   def hide_reblogs
     return if @status.reblog?
 
-    Status.unscoped.where(reblog_of_id: @status.id).find_each do |reblog|
+    Status.unscoped.kept.where(reblog_of_id: @status.id).find_each do |reblog|
       HideStatusService.new.call(reblog, **@options)
     end
   end

@@ -191,10 +191,75 @@
 }
 
 .account-switcher-modal__item--switchable {
+  position: relative;
   flex-direction: column;
   align-items: stretch;
   cursor: default;
   padding: 0;
+}
+
+.account-switcher-modal__item--authorization-required {
+  min-height: 112px;
+}
+
+.account-switcher-modal__authorization-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--color-bg-primary) 62%, transparent);
+  backdrop-filter: blur(5px);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  box-sizing: border-box;
+  border-block: 1px solid rgba(128, 128, 128, 10%);
+}
+
+.account-switcher-modal__authorization-overlay .icon {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  color: var(--color-accent);
+}
+
+.account-switcher-modal__authorization-overlay > span:first-of-type {
+  white-space: pre-line;
+}
+
+.account-switcher-modal__authorization-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.account-switcher-modal__authorization-actions button {
+  padding: 5px 9px;
+  border: 1px solid var(--color-border-primary);
+  border-radius: 5px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.account-switcher-modal__authorization-actions button:hover,
+.account-switcher-modal__authorization-actions button:focus-visible {
+  background: var(--color-bg-brand-softest);
+}
+
+.account-switcher-modal__authorization-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .account-switcher-modal__item--switchable:hover {

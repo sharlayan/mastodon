@@ -105,4 +105,60 @@ RSpec.describe DeliveryAntennaService do
 
     expect(antenna_feed_of(antenna)).to_not include(status.id)
   end
+
+  it 'skips boosts of authors the owner blocks or mutes' do
+    blocked = Fabricate(:account, username: 'blocked')
+    muted = Fabricate(:account, username: 'muted')
+    owner.block!(blocked)
+    owner.mute!(muted)
+    antenna = Fabricate(:antenna, account: owner, any_keywords: false, keywords: %w(hello))
+    blocked_boost = Fabricate(:status, account: author, reblog: Fabricate(:status, account: blocked, text: 'hello', visibility: :public))
+    muted_boost = Fabricate(:status, account: author, reblog: Fabricate(:status, account: muted, text: 'hello', visibility: :public))
+
+    subject.call(blocked_boost, false, mode: :home)
+    subject.call(muted_boost, false, mode: :home)
+
+    expect(antenna_feed_of(antenna)).to_not include(blocked_boost.id, muted_boost.id)
+  end
+
+  it 'skips boosts of authors that block the owner' do
+    blocker = Fabricate(:account, username: 'blocker')
+    blocker.block!(owner)
+    antenna = Fabricate(:antenna, account: owner, any_keywords: false, keywords: %w(hello))
+    boost = Fabricate(:status, account: author, reblog: Fabricate(:status, account: blocker, text: 'hello', visibility: :public))
+
+    subject.call(boost, false, mode: :home)
+
+    expect(antenna_feed_of(antenna)).to_not include(boost.id)
+  end
+
+  context 'with a silenced author' do
+    let!(:follower) { Fabricate(:user, current_sign_in_at: last_active_at).account }
+
+    before do
+      author.silence!
+      follower.follow!(author)
+    end
+
+    it 'delivers only to antennas whose owners follow the author' do
+      follower_antenna = Fabricate(:antenna, account: follower, any_keywords: false, keywords: %w(hello))
+      stranger_antenna = Fabricate(:antenna, account: owner, any_keywords: false, keywords: %w(hello))
+      status = Fabricate(:status, account: author, text: 'hello', visibility: :public)
+
+      subject.call(status, false, mode: :home)
+
+      expect(antenna_feed_of(follower_antenna)).to include(status.id)
+      expect(antenna_feed_of(stranger_antenna)).to_not include(status.id)
+    end
+
+    it 'does not deliver boosts of the author to owners who do not follow them' do
+      booster = Fabricate(:account, username: 'booster')
+      antenna = Fabricate(:antenna, account: owner, any_keywords: false, keywords: %w(hello))
+      boost = Fabricate(:status, account: booster, reblog: Fabricate(:status, account: author, text: 'hello', visibility: :public))
+
+      subject.call(boost, false, mode: :home)
+
+      expect(antenna_feed_of(antenna)).to_not include(boost.id)
+    end
+  end
 end

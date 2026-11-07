@@ -114,7 +114,9 @@ class AvatarDecoration < ApplicationRecord
     account.avatar_decorations.filter_map do |config|
       decoration = decorations_by_id[config['id']]
       next if decoration.nil?
-      next if decoration.host.present? && blocked_domains.include?(decoration.host)
+      next if decoration.host.present? && AvatarDecorationDomainBlock.blocked_in?(blocked_domains, decoration.host)
+      next if decoration.image_file_name.blank?
+      next if decoration.local? && !decoration.available_to_account?(account)
 
       [config, decoration]
     end
@@ -132,6 +134,13 @@ class AvatarDecoration < ApplicationRecord
 
   def local?
     host.nil?
+  end
+
+  def available_to_account?(account)
+    return false unless approved?
+    return true if required_role_id.nil?
+
+    required_role.present? && (account.user&.role || UserRole.everyone).position >= required_role.position
   end
 
   def image_url

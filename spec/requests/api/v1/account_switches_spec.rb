@@ -6,11 +6,20 @@ RSpec.describe 'AccountSwitches' do
   let(:user)        { Fabricate(:user) }
   let(:child_user)  { Fabricate(:user) }
   let(:child)       { child_user.account }
+  let(:web_app)     { Fabricate(:application, superapp: true) }
 
-  let(:read_token)  { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:accounts') }
-  let(:write_token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'write:accounts') }
+  let(:read_token)  { Fabricate(:accessible_access_token, application: web_app, resource_owner_id: user.id, scopes: 'read:accounts') }
+  let(:write_token) { Fabricate(:accessible_access_token, application: web_app, resource_owner_id: user.id, scopes: 'write:accounts') }
   let(:read_headers)  { { 'Authorization' => "Bearer #{read_token.token}" } }
   let(:write_headers) { { 'Authorization' => "Bearer #{write_token.token}" } }
+
+  it 'refuses tokens that do not belong to the web app' do
+    token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:accounts')
+
+    get '/api/v1/account_switches', headers: { 'Authorization' => "Bearer #{token.token}" }
+
+    expect(response).to have_http_status(403)
+  end
 
   describe 'GET /api/v1/account_switches' do
     subject { get '/api/v1/account_switches', headers: read_headers }
@@ -38,6 +47,23 @@ RSpec.describe 'AccountSwitches' do
         expect(response.parsed_body[:children].map { |c| c[:target_account][:id] })
           .to contain_exactly(child.id.to_s)
         expect(response.parsed_body[:children].first).to include(session_authorized: false, session_approval_pending: true)
+      end
+
+      it 'does not create approval requests for passive background reads' do
+        expect do
+          get '/api/v1/account_switches', headers: read_headers, params: { passive: true }
+        end.to_not change(AccountSwitchDeviceApproval, :count)
+
+        expect(response.parsed_body[:children].first).to include(session_authorized: false, session_approval_pending: false)
+      end
+
+      it 'does not reopen a request the target account just denied' do
+        subject
+        AccountSwitchDeviceApproval.last.update!(denied_at: Time.current)
+
+        get '/api/v1/account_switches', headers: read_headers
+
+        expect(response.parsed_body[:children].first[:session_approval_pending]).to be false
       end
 
       it 'reports authorization for only the target account on this session' do
@@ -150,7 +176,7 @@ RSpec.describe 'AccountSwitches' do
     end
 
     it 'does not allow a different target to revoke access' do
-      other_token = Fabricate(:accessible_access_token, resource_owner_id: child_user.id, scopes: 'write:accounts')
+      other_token = Fabricate(:accessible_access_token, application: web_app, resource_owner_id: child_user.id, scopes: 'write:accounts')
 
       delete "/api/v1/account_switches/#{auth.id}/inbound", headers: { 'Authorization' => "Bearer #{other_token.token}" }
 
@@ -181,12 +207,20 @@ RSpec.describe 'AccountSwitches' do
       expect { auth.reload }.to raise_error(ActiveRecord::RecordNotFound)
     end
 
+    it 'removes pending session approval requests for the unlinked account' do
+      get '/api/v1/account_switches', headers: read_headers
+
+      expect do
+        delete "/api/v1/account_switches/#{auth.id}", headers: write_headers
+      end.to change(AccountSwitchDeviceApproval, :count).by(-1)
+    end
+
     it 'refuses to unlink while switched into a linked account' do
       sign_in user
       post switch_account_path, params: { switch_to: child.id }
       AccountSwitchDevice.find_by!(account: child).update!(trusted_at: Time.current)
       post switch_account_path, params: { switch_to: child.id }
-      child_token = Fabricate(:accessible_access_token, resource_owner_id: child_user.id, scopes: 'write:accounts')
+      child_token = Fabricate(:accessible_access_token, application: web_app, resource_owner_id: child_user.id, scopes: 'write:accounts')
 
       delete "/api/v1/account_switches/#{auth.id}", headers: { 'Authorization' => "Bearer #{child_token.token}" }
 
@@ -206,12 +240,30 @@ RSpec.describe 'AccountSwitches' do
     let!(:auth) { Fabricate(:account_switch_authorization, account: user.account, target_account: child) }
 
     it 'enables push forwarding' do
+      get '/api/v1/account_switches', headers: read_headers
+      AccountSwitchDevice.find_by!(account: child).update!(trusted_at: Time.current)
+
       post '/api/v1/account_switches/push_forward',
            headers: write_headers,
            params: { linked_account_id: child.id }
 
       expect(response).to have_http_status(200)
       expect(auth.reload.push_forward).to be true
+    end
+
+    it 'refuses a linked account that is not authorized for this session' do
+      post '/api/v1/account_switches/push_forward', headers: write_headers, params: { linked_account_id: child.id }
+
+      expect(response).to have_http_status(403)
+      expect(auth.reload.push_forward).to be false
+    end
+
+    it 'does not link the root account to itself' do
+      expect do
+        post '/api/v1/account_switches/push_forward', headers: write_headers, params: { linked_account_id: user.account.id }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response).to have_http_status(404)
     end
 
     context 'when the account is not linked' do

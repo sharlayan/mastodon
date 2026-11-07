@@ -34,14 +34,16 @@ class AccountSwitchDeviceApproval < ApplicationRecord
       new_approval.request_ip = request_ip
       new_approval.expires_at = EXPIRATION.from_now
     end
-    approval.update!(request_ip:, expires_at: EXPIRATION.from_now, approved_at: nil, denied_at: nil, approved_by_device: nil) unless approval.pending?
+    return approval if approval.pending? || approval.denied_at&.after?(EXPIRATION.ago)
+
+    approval.update!(request_ip:, expires_at: EXPIRATION.from_now, approved_at: nil, denied_at: nil, approved_by_device: nil)
     approval
   end
 
   def approve!(device)
     transaction do
       lock!
-      raise ActiveRecord::RecordNotFound unless pending? && approver_valid?(device)
+      raise ActiveRecord::RecordNotFound unless pending? && approver_valid?(device) && AccountSwitchAuthorization.exists?(account_id:, target_account_id:)
 
       update!(approved_at: Time.current, approved_by_device: device)
       account_switch_device.update!(trusted_at: Time.current, revoked_at: nil)

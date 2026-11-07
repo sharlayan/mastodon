@@ -7,6 +7,7 @@ class ReactService < BaseService
   include ActivityPub::ReactionDistribution
 
   def call(account, status, emoji)
+    status = status.proper
     authorize_with account, status, :react?
 
     return if emoji.blank?
@@ -31,6 +32,8 @@ class ReactService < BaseService
     reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
     return reaction if reaction
 
+    validate_before_eviction!(StatusReaction.new(account: account, status: status, name: name, custom_emoji: custom_emoji))
+
     evict_existing_reactions(account, status)
 
     begin
@@ -51,16 +54,22 @@ class ReactService < BaseService
 
   private
 
+  def validate_before_eviction!(reaction)
+    return if reaction.valid?
+
+    reaction.errors.delete(:base, :limit_reached)
+    raise ActiveRecord::RecordInvalid, reaction if reaction.errors.any?
+  end
+
   def evict_existing_reactions(account, status)
     return unless account.local?
 
-    target = status.reblog? ? status.reblog : status
-    existing = StatusReaction.where(account: account, status: target).order(id: :asc).to_a
+    existing = StatusReaction.where(account: account, status: status).order(id: :asc).to_a
     overflow = existing.size + 1 - StatusReactionValidator::LIMIT
     return if overflow <= 0
 
     existing.first(overflow).each do |reaction|
-      UnreactService.new.call(account, target, reaction_emoji_string(reaction))
+      UnreactService.new.call(account, status, reaction_emoji_string(reaction))
     end
   end
 

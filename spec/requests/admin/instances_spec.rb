@@ -24,4 +24,16 @@ RSpec.describe 'Admin Instances' do
       end
     end
   end
+
+  describe 'POST /admin/instances/:id/refresh_metadata' do
+    before { sign_in Fabricate(:admin_user) }
+
+    it 'queues a manual refresh separately from automatic refreshes' do
+      Fabricate(:account, domain: 'remote.example')
+
+      post refresh_metadata_admin_instance_path(id: 'remote.example')
+
+      expect(InstanceMetadataUpdateWorker).to have_enqueued_sidekiq_job('remote.example', 'manual')
+    end
+  end
 end

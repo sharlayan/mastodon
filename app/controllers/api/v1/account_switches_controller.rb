@@ -29,6 +29,7 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :linked_unread_counts]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:destroy, :destroy_inbound, :create_push_forward, :destroy_push_forward]
   before_action :require_user!
+  before_action :require_web_app_token!
   before_action :require_root_account, only: [:destroy]
   before_action :set_authorization, only: [:destroy]
   before_action :set_inbound_authorization, only: [:destroy_inbound]
@@ -65,7 +66,7 @@ class Api::V1::AccountSwitchesController < Api::BaseController
     serialized_children.each do |serialized|
       authorization = child_authorization_state.fetch(serialized[:id].to_s)
       device = find_or_record_account_switch_device(authorization.target_account, trust: legacy_account_switch_session?)
-      AccountSwitchDeviceApproval.request!(account: children_owner, target_account: authorization.target_account, account_switch_device: device, request_ip: request.remote_ip) unless device.trusted?
+      AccountSwitchDeviceApproval.request!(account: children_owner, target_account: authorization.target_account, account_switch_device: device, request_ip: request.remote_ip) unless device.trusted? || truthy_param?(:passive)
       serialized[:session_authorized] = device.trusted?
       serialized[:session_approval_pending] = AccountSwitchDeviceApproval.pending.exists?(account: children_owner, target_account: authorization.target_account, account_switch_device: device)
     end
@@ -99,16 +100,8 @@ class Api::V1::AccountSwitchesController < Api::BaseController
 
   def create_push_forward
     auth = find_linked_authorization
-
-    if auth.nil?
-      owner = resolve_children_owner
-      if params[:linked_account_id].to_s == owner.id.to_s
-        auth = owner.account_switch_authorizations.create!(target_account_id: owner.id, push_forward: true)
-        return render json: { id: auth.id.to_s }, status: 200
-      end
-    end
-
     return render json: { error: 'Not found' }, status: 404 unless auth
+    return render json: { error: 'This session is not authorized for the linked account' }, status: 403 unless linked_device_trusted?(auth.target_account_id)
 
     auth.update!(push_forward: true)
     render json: { id: auth.id.to_s }, status: 200
@@ -120,17 +113,32 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   end
 
   def destroy
-    @authorization.destroy!
+    destroy_authorization!(@authorization)
     render_empty
   end
 
   def destroy_inbound
-    @inbound_authorization.destroy!
+    destroy_authorization!(@inbound_authorization)
     clear_switch_parent_stack
     render_empty
   end
 
   private
+
+  def require_web_app_token!
+    render json: { error: 'This method requires a web session token' }, status: 403 unless doorkeeper_token&.application&.superapp?
+  end
+
+  def linked_device_trusted?(account_id)
+    AccountSwitchDevice.trusted.exists?(account_id:, token_digest: account_switch_device_digest)
+  end
+
+  def destroy_authorization!(authorization)
+    AccountSwitchAuthorization.transaction do
+      AccountSwitchDeviceApproval.where(account_id: authorization.account_id, target_account_id: authorization.target_account_id).delete_all
+      authorization.destroy!
+    end
+  end
 
   def linked_unread_counts_for(authorizations)
     pairs = authorizations.filter_map do |authorization|
@@ -192,8 +200,10 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   end
 
   def find_linked_authorization
-    resolve_children_owner.account_switch_authorizations
-      .find_by(target_account_id: params[:linked_account_id])
+    owner = resolve_children_owner
+    return if params[:linked_account_id].to_s == owner.id.to_s
+
+    owner.account_switch_authorizations.find_by(target_account_id: params[:linked_account_id])
   end
 
   def set_push_forward_auth

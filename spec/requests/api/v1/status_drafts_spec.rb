@@ -88,6 +88,20 @@ RSpec.describe 'Status drafts' do
       expect(response.parsed_body.pluck(:id)).to_not include(draft.id.to_s)
     end
 
+    it 'links to the next page when more drafts remain' do
+      StatusDraft::LIST_LIMIT.times { Fabricate(:status_draft, account: user.account) }
+
+      get '/api/v1/status_drafts', headers: headers
+      next_url = response.headers['Link'][/<([^>]+)>; rel="next"/, 1]
+
+      expect(next_url).to be_present
+
+      get next_url, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq [draft.id.to_s]
+    end
+
     it 'refuses to serialize an oversized legacy draft' do
       draft.update_column(:data, { status: 'x' * StatusDraft::MAX_DATA_BYTES })
 

@@ -22,6 +22,15 @@ RSpec.describe Sharlayan::Status::Reactions do
       expect(reaction.me).to be true
     end
 
+    it 'does not show suspended accounts among the reacting users' do
+      suspended_account = Fabricate(:account, suspended: true)
+      Fabricate(:status_reaction, status: status, account: suspended_account, name: '👍', custom_emoji: nil)
+
+      group = Status.reaction_groups_map([status.id]).fetch(status.id).find { |reaction| reaction.name == '👍' }
+
+      expect(group.users).to be_empty
+    end
+
     it 'excludes reactions from blocked accounts' do
       blocked_account = Fabricate(:account)
       Fabricate(:status_reaction, status: status, account: blocked_account, name: '👍', custom_emoji: nil)

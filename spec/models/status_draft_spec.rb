@@ -29,4 +29,13 @@ RSpec.describe StatusDraft do
 
     expect(draft).to be_valid
   end
+
+  it 'measures data the same way as the list size filter' do
+    items = Array.new(4_000) { |i| "item#{i}" }
+    compact_bytes = JSON.generate({ status: '', poll: { options: items } }).bytesize
+    draft = Fabricate.build(:status_draft, account: account, data: { status: 'x' * (described_class::MAX_DATA_BYTES - compact_bytes), poll: { options: items } })
+
+    expect(JSON.generate(draft.data).bytesize).to eq described_class::MAX_DATA_BYTES
+    expect(draft).to_not be_valid
+  end
 end

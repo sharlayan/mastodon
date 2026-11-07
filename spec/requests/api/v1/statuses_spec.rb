@@ -765,6 +765,22 @@ RSpec.describe '/api/v1/statuses' do
           expect(RemovalWorker).to_not have_enqueued_sidekiq_job(any_args)
         end
 
+        it 'releases the media of a redrafted status so it can be posted again' do
+          media = Fabricate(:media_attachment, account: user.account, status: status)
+
+          delete "/api/v1/statuses/#{status.id}?delete_media=false", headers: headers
+
+          expect(media.reload.status_id).to be_nil
+        end
+
+        it 'keeps the media attached when the media is deleted with the status' do
+          media = Fabricate(:media_attachment, account: user.account, status: status)
+
+          delete "/api/v1/statuses/#{status.id}?delete_media=true", headers: headers
+
+          expect(media.reload.status_id).to eq status.id
+        end
+
         it 'soft-hides the status when the job runs', :aggregate_failures, :inline_jobs do
           subject
 

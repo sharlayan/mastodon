@@ -552,8 +552,6 @@ ja:
   multi_accounts:
     auth:
       add_account: アカウントを追加
-      authorization_complete: 認証が完了しました。このウィンドウを閉じてください。
-      completing_authorization: 認証を完了しています...
       reauthenticate_account: アカウントを再認証
       reauthentication_account_mismatch: 再認証する連携アカウントでログインしてください。
       reauthentication_hint: このセッションで連携アカウントを使用するため、もう一度ログインしてください。

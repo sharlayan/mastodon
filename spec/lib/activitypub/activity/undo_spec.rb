@@ -223,5 +223,73 @@ RSpec.describe ActivityPub::Activity::Undo do
         expect(sender.reacted?(status, custom_emoji.shortcode)).to be false
       end
     end
+
+    context 'with EmojiReact that was stored as a like by the reaction policy' do
+      let(:status) { Fabricate(:status, reaction_acceptance: 'likeOnlyForRemote') }
+
+      let(:object_json) do
+        {
+          id: 'bar',
+          type: 'EmojiReact',
+          content: '🎉',
+          actor: ActivityPub::TagManager.instance.uri_for(sender),
+          object: ActivityPub::TagManager.instance.uri_for(status),
+        }
+      end
+
+      before do
+        Fabricate(:status_reaction, account: sender, status: status, name: "\u2764")
+      end
+
+      it 'deletes the stored reaction' do
+        expect { subject.perform }.to change { status.status_reactions.count }.from(1).to(0)
+      end
+    end
+
+    context 'with a Like with content that was stored as a favourite' do
+      let(:status) { Fabricate(:status) }
+
+      let(:object_json) do
+        {
+          id: 'bar',
+          type: 'Like',
+          content: ':missing_emoji:',
+          actor: ActivityPub::TagManager.instance.uri_for(sender),
+          object: ActivityPub::TagManager.instance.uri_for(status),
+        }
+      end
+
+      before do
+        Fabricate(:favourite, account: sender, status: status)
+      end
+
+      it 'deletes the favourite' do
+        subject.perform
+        expect(sender.favourited?(status)).to be false
+      end
+    end
+
+    context 'with EmojiReact targeting a boost' do
+      let(:original) { Fabricate(:status) }
+      let(:boost) { Fabricate(:status, account: Fabricate(:account, domain: 'booster.example'), uri: 'https://booster.example/notes/boost', reblog: original) }
+
+      let(:object_json) do
+        {
+          id: 'bar',
+          type: 'EmojiReact',
+          content: '👍',
+          actor: ActivityPub::TagManager.instance.uri_for(sender),
+          object: ActivityPub::TagManager.instance.uri_for(boost),
+        }
+      end
+
+      before do
+        Fabricate(:status_reaction, account: sender, status: original, name: '👍')
+      end
+
+      it 'deletes the reaction on the original status' do
+        expect { subject.perform }.to change { original.status_reactions.count }.from(1).to(0)
+      end
+    end
   end
 end

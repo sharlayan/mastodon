@@ -8,6 +8,7 @@ RSpec.describe 'Account switching' do
   let(:child_user)  { Fabricate(:user) }
   let(:child)       { child_user.account }
   let(:other_user)  { Fabricate(:user) }
+  let(:web_app)     { Fabricate(:application, superapp: true) }
 
   let!(:authorization) { Fabricate(:account_switch_authorization, account: parent, target_account: child) }
 
@@ -25,7 +26,7 @@ RSpec.describe 'Account switching' do
   end
 
   def account_switches_as(user)
-    token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:accounts')
+    token = Fabricate(:accessible_access_token, application: web_app, resource_owner_id: user.id, scopes: 'read:accounts')
     get '/api/v1/account_switches', headers: { 'Authorization' => "Bearer #{token.token}" }
     response.parsed_body
   end
@@ -90,6 +91,21 @@ RSpec.describe 'Account switching' do
       expect(response).to have_http_status(403)
     ensure
       Setting.server_stored_account_switching_enabled = true
+    end
+
+    it 'completes adding an account that is already linked' do
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: child_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response).to have_http_status(200)
+      expect(AccountSwitchDevice.find_by!(account: child)).to be_trusted
+    end
+
+    it 'does not link an account to itself' do
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: parent_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
     end
 
     it 'renders and completes an existing link as reauthentication' do
@@ -217,9 +233,24 @@ RSpec.describe 'Account switching' do
     end
   end
 
+  describe 'when the switched session ends without logging out' do
+    it 'does not let a fresh sign-in of the child account return to the parent' do
+      switch_to_child
+      sign_out child_user
+
+      post user_session_path, params: { user: { email: child_user.email, password: child_user.password } }
+
+      expect(account_switches_as(child_user)[:parent]).to be_nil
+
+      post switch_account_path, params: { switch_to: parent.id }
+
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_unauthorized'))
+    end
+  end
+
   describe 'background polling from the switcher' do
     def poll_as(user, path)
-      token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:accounts')
+      token = Fabricate(:accessible_access_token, application: web_app, resource_owner_id: user.id, scopes: 'read:accounts')
       get path, headers: { 'Authorization' => "Bearer #{token.token}" }
       response.headers['Set-Cookie']
     end
@@ -249,6 +280,26 @@ RSpec.describe 'Account switching' do
 
       expect(body[:parent]).to be_nil
       expect(body[:root_account_id]).to eq(child.id.to_s)
+    end
+  end
+
+  describe 'with a self-referencing link left by an earlier version' do
+    before { AccountSwitchAuthorization.new(account: parent, target_account: parent, push_forward: true).save!(validate: false) }
+
+    it 'does not switch the account into itself' do
+      sign_in parent_user
+      post switch_account_path, params: { switch_to: parent.id }
+
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_unauthorized'))
+      expect(account_switches_as(parent_user)[:parent]).to be_nil
+    end
+
+    it 'does not forward the account notifications to itself' do
+      allow(Web::LinkedPushNotificationWorker).to receive(:perform_async)
+
+      NotifyService.new.call(parent, :favourite, Fabricate(:favourite, status: Fabricate(:status, account: parent)))
+
+      expect(Web::LinkedPushNotificationWorker).to_not have_received(:perform_async)
     end
   end
 
