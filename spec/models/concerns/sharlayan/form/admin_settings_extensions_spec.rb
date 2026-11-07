@@ -15,6 +15,13 @@ RSpec.describe Form::AdminSettings do
     expect(described_class.new(background_color: 'red', background_opacity: '101')).to_not be_valid
   end
 
+  it 'validates the avatar decoration count limit' do
+    expect(described_class.new(avatar_decorations_max_count: '4')).to be_valid
+    expect(described_class.new(avatar_decorations_max_count: '')).to_not be_valid
+    expect(described_class.new(avatar_decorations_max_count: '1.5')).to_not be_valid
+    expect(described_class.new(avatar_decorations_max_count: '17')).to_not be_valid
+  end
+
   it 'requires a status character limit of at least 300' do
     expect(described_class.new(status_character_limit: '500')).to be_valid
     expect(described_class.new(status_character_limit: '299')).to_not be_valid
