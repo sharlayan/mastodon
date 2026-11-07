@@ -1,7 +1,33 @@
 # frozen_string_literal: true
 
 module Sharlayan::DeleteAccountServiceExtensions
+  PURGED_ASSOCIATIONS_WITHOUT_SIDE_EFFECTS = %w(
+    reaction_mutes
+    avatar_decoration_mutes
+    favorite_emojis
+    status_read_receipts
+    page_daily_statistics
+    misskey_registry_items
+  ).freeze
+
+  PURGED_ASSOCIATIONS = (%w(
+    status_drafts
+    domain_mutes
+    custom_emoji_mutes
+    page_series
+  ) + PURGED_ASSOCIATIONS_WITHOUT_SIDE_EFFECTS).freeze
+
   private
+
+  def associations_for_destruction
+    super + PURGED_ASSOCIATIONS
+  end
+
+  def purge_association(association_name)
+    return @account.public_send(association_name).in_batches.delete_all if PURGED_ASSOCIATIONS_WITHOUT_SIDE_EFFECTS.include?(association_name)
+
+    super
+  end
 
   def purge_media_attachments!
     purge_pages!
@@ -21,7 +47,10 @@ module Sharlayan::DeleteAccountServiceExtensions
   end
 
   def purge_pages!
-    @account.page_likes.in_batches.delete_all
+    @account.page_likes.in_batches do |page_likes|
+      Page.where(id: page_likes.pluck(:page_id)).update_all('likes_count = GREATEST(0, likes_count - 1)')
+      page_likes.delete_all
+    end
     @account.pages.in_batches.destroy_all
   end
 
