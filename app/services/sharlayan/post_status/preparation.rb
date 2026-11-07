@@ -17,7 +17,7 @@ module Sharlayan::PostStatus
       content_type = 'text/plain' if content_type == 'text/x-mfm' && !mfm_composition_allowed?
       mfm = mfm_composition_allowed? && (content_type == 'text/x-mfm' || MfmDetector.contains_mfm?(@text))
       circle, visibility, limited_scope = prepare_circle(visibility)
-      quoted_status, implicit_quote = prepare_quote
+      quoted_status, implicit_quote = prepare_quote(visibility)
 
       Result.new(
         content_type: content_type,
@@ -45,10 +45,11 @@ module Sharlayan::PostStatus
       [@account.circles.find(@options[:circle_id]), :limited, :circle]
     end
 
-    def prepare_quote
+    def prepare_quote(visibility)
       implicit_quote = @options[:implicit_quote_from_url] == true
       return [@quoted_status, implicit_quote] if @quoted_status.present?
       return [nil, implicit_quote] unless auto_quote_from_url_enabled?
+      return [nil, false] unless %w(public unlisted).include?(visibility.to_s)
 
       quoted_status = Sharlayan::PostStatus::ImplicitQuote.new(account: @account, text: @text, in_reply_to: @in_reply_to).detect
       [quoted_status, quoted_status.present?]

@@ -34,7 +34,7 @@ RSpec.describe PostStatusService do
 
     it 'preserves an implicit quote for publication' do
       user = Fabricate(:user)
-      quoted_status = Fabricate(:status)
+      quoted_status = Fabricate(:status, quote_approval_policy: InteractionPolicy::POLICY_FLAGS[:public] << 16)
       resolve_url_service = instance_double(ResolveURLService, call: quoted_status)
       Setting.auto_quote_from_url = true
       allow(user).to receive(:setting_auto_quote_from_url).and_return(true)
@@ -244,7 +244,7 @@ RSpec.describe PostStatusService do
 
   context 'with automatic URL quotes enabled' do
     let(:user) { Fabricate(:user) }
-    let(:quoted_status) { Fabricate(:status) }
+    let(:quoted_status) { Fabricate(:status, quote_approval_policy: InteractionPolicy::POLICY_FLAGS[:public] << 16) }
     let(:rate_limiter) { instance_double(RateLimiter) }
     let(:resolve_url_service) { instance_double(ResolveURLService) }
     let(:events) { [] }
@@ -284,6 +284,32 @@ RSpec.describe PostStatusService do
 
       expect(events).to be_empty
       expect(status.quote).to_not be_legacy
+    end
+
+    it 'does not look for quotes in followers-only posts' do
+      status = subject.call(user.account, text: 'https://example.com/@alice/1', visibility: 'private')
+
+      expect(events).to be_empty
+      expect(status.quote).to be_nil
+      expect(status.mentions).to be_empty
+    end
+
+    it 'does not look for quotes in direct messages' do
+      recipient = Fabricate(:account, username: 'recipient')
+
+      status = subject.call(user.account, text: '@recipient https://example.com/@alice/1', visibility: 'direct')
+
+      expect(events).to be_empty
+      expect(status.quote).to be_nil
+      expect(status.mentions.map(&:account_id)).to eq [recipient.id]
+    end
+
+    it 'does not quote a local status whose author denies quotes' do
+      quoted_status.update!(quote_approval_policy: 0)
+
+      status = subject.call(user.account, text: 'https://example.com/@alice/1')
+
+      expect(status.quote).to be_nil
     end
   end
 end
