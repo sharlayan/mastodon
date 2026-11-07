@@ -1483,6 +1483,47 @@ describe('Review f88a', () => {
     }).toEqual({ followed: true, read: 1, jumpButton: false });
   });
 
+  it('S2b follows at the document bottom when layout padding puts the end above the viewport edge', async () => {
+    withQuote();
+    await openRoom();
+    // Desktop review server: end at 888.75px in a 900px viewport, document at its bottom.
+    const documentScrollport = document.createElement('div');
+    Object.defineProperty(documentScrollport, 'scrollHeight', {
+      configurable: true,
+      value: window.innerHeight + 100,
+    });
+    documentScrollport.scrollTop = 100;
+    const originalScrollingElement = Object.getOwnPropertyDescriptor(
+      document,
+      'scrollingElement',
+    );
+    Object.defineProperty(document, 'scrollingElement', {
+      configurable: true,
+      value: documentScrollport,
+    });
+    placedAt(-11.25);
+    const quote = quoteOf('message-1');
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    await wait(3300);
+    const readsBefore = readsPosted();
+    const endBefore = endScrolls();
+    receive('after-quote-with-layout-padding');
+    await wait(50);
+    expect({
+      followed: endScrolls() - endBefore > 0,
+      read: readsPosted() - readsBefore,
+      jumpButton: document.querySelector('.chat-native__jump') !== null,
+    }).toEqual({ followed: true, read: 1, jumpButton: false });
+    if (originalScrollingElement)
+      Object.defineProperty(
+        document,
+        'scrollingElement',
+        originalScrollingElement,
+      );
+    else Reflect.deleteProperty(document, 'scrollingElement');
+  });
+
   // S3: the searched message never comes (hidden for the viewer, or its author suspended, after the search).
   it('S3 a room opened at a searched message that never loads still aligns to the newest', async () => {
     await openWith('message-gone', 'Message 5');

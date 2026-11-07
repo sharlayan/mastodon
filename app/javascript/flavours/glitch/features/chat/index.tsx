@@ -968,9 +968,14 @@ const endIsAtNewest = (end: HTMLElement) => {
     Math.abs(endBottom - viewportBottom) <= 2 ||
     Boolean(
       scrollport &&
-      scrollport.clientHeight > 0 &&
-      scrollport.scrollHeight <= scrollport.clientHeight &&
-      endBottom <= viewportBottom + 2,
+      endBottom <= viewportBottom + 2 &&
+      ((scrollport.clientHeight > 0 &&
+        scrollport.scrollHeight <= scrollport.clientHeight) ||
+        // Page layouts can leave padding below the end marker. At the actual
+        // document bottom the visible end still represents the newest message.
+        (scrollport === document.scrollingElement &&
+          scrollport.scrollHeight - window.innerHeight - scrollport.scrollTop <=
+            2)),
     )
   );
 };
