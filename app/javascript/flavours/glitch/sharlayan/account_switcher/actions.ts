@@ -1,7 +1,7 @@
 import { createAction } from '@reduxjs/toolkit';
 
 import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
-import type { AppDispatch } from 'flavours/glitch/store';
+import type { AppDispatch, RootState } from 'flavours/glitch/store';
 import { createDataLoadingThunk } from 'flavours/glitch/store/typed_functions';
 
 import {
@@ -51,16 +51,27 @@ const importAccountSwitches = (
   return data;
 };
 
+const isLatestAccountSwitchRequest = (
+  getState: () => RootState,
+  requestId: string,
+) => getState().accountSwitches.get('latestRequestId') === requestId;
+
 export const fetchAccountSwitches = createDataLoadingThunk(
   'accountSwitches/fetch',
   () => apiGetAccountSwitches(),
-  (data, { dispatch }) => importAccountSwitches(data, dispatch),
+  (data, { dispatch, getState, requestId }) =>
+    isLatestAccountSwitchRequest(getState, requestId)
+      ? importAccountSwitches(data, dispatch)
+      : data,
 );
 
 export const refreshAccountSwitches = createDataLoadingThunk(
   'accountSwitches/refresh',
   () => apiGetAccountSwitches(true).catch(() => null),
-  (data, { dispatch }) => (data ? importAccountSwitches(data, dispatch) : null),
+  (data, { dispatch, getState, requestId }) =>
+    data && isLatestAccountSwitchRequest(getState, requestId)
+      ? importAccountSwitches(data, dispatch)
+      : data,
   { useLoadingBar: false },
 );
 
