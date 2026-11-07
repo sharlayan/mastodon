@@ -2143,6 +2143,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             (error as { response?: { status?: number } } | null)?.response
               ?.status === 429;
           readFailed('messages');
+          if (olderPageRateLimited.current && jumpNavigationRef.current.seeking)
+            void retries
+              .keepTrying(`messages:${conversationId}`, resyncMessages, {
+                failed: () => readFailed('messages'),
+              })
+              .catch(() => undefined);
         }
       })
       .finally(() => {
@@ -2156,6 +2162,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     olderMessageId,
     readFailed,
     readRecovered,
+    resyncMessages,
     retries,
     updateMessages,
     updateOlderMessageId,
