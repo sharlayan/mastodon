@@ -34,6 +34,8 @@ class HideStatusService < BaseService
     remove_from_direct if @status.direct_visibility?
     remove_from_admin
 
+    @status.unlink_from_conversations!
+
     deindex
 
     HideStatusMediaWorker.perform_async(@status.id) if @status.with_media?
