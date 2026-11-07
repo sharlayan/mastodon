@@ -37,6 +37,22 @@ RSpec.describe 'Clip statuses' do
         expect(response.parsed_body.pluck('id')).to include(status.id.to_s)
       end
 
+      context 'when local status pages require authentication' do
+        before { Setting.local_status_page_access = 'authenticated' }
+
+        it 'omits local statuses and keeps remote ones' do
+          local_status = Fabricate(:status)
+          remote_status = Fabricate(:status, account: Fabricate(:account, domain: 'remote.example'))
+          clip.clip_statuses.create!(status: local_status)
+          clip.clip_statuses.create!(status: remote_status)
+
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body.pluck('id')).to contain_exactly(remote_status.id.to_s)
+        end
+      end
+
       context 'when the clip is private' do
         let(:public) { false }
 
@@ -45,6 +61,20 @@ RSpec.describe 'Clip statuses' do
 
           expect(response).to have_http_status(404)
         end
+      end
+    end
+
+    context 'when local status pages are disabled' do
+      before { Setting.local_status_page_access = 'disabled' }
+
+      it 'omits local statuses for users without feed access' do
+        local_status = Fabricate(:status)
+        clip.clip_statuses.create!(status: local_status)
+
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to be_empty
       end
     end
 
