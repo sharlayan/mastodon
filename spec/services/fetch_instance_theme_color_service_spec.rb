@@ -110,6 +110,17 @@ RSpec.describe FetchInstanceThemeColorService do
     end
   end
 
+  describe 'suspended domains' do
+    it 'does not contact a domain suspended by a domain block' do
+      Fabricate(:domain_block, domain: domain, severity: :suspend)
+
+      subject.call(domain)
+
+      expect(a_request(:get, "https://#{domain}")).to_not have_been_made
+      expect(a_request(:get, "https://#{domain}/.well-known/nodeinfo")).to_not have_been_made
+    end
+  end
+
   describe 'usage metric collection' do
     it 'stores public NodeInfo 2.1 usage fields' do
       stub_nodeinfo(
