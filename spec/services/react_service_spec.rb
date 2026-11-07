@@ -200,4 +200,24 @@ RSpec.describe ReactService, type: :service do
       expect(StatusReaction.exists?(existing.id)).to be(true)
     end
   end
+
+  describe 'replacing a remote custom emoji with a local one of the same shortcode' do
+    let(:status) { Fabricate(:status) }
+
+    before do
+      Setting.reaction_local_emoji_only = false
+      Fabricate(:custom_emoji, shortcode: 'blobcat', domain: 'remote.example')
+      Fabricate(:custom_emoji, shortcode: 'blobcat')
+    end
+
+    it 'replaces the reaction' do
+      existing = subject.call(sender, status, 'blobcat@remote.example')
+
+      replacement = subject.call(sender, status, 'blobcat')
+
+      expect(StatusReaction.exists?(existing.id)).to be(false)
+      expect(replacement.custom_emoji.domain).to be_nil
+      expect(status.status_reactions.where(account: sender).count).to eq 1
+    end
+  end
 end
