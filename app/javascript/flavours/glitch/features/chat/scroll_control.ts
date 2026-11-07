@@ -765,9 +765,12 @@ export const step = (
       if (state.keyboard) raise(state, s, commands);
       if (state.ownJump && state.stillJump && !scaleChanged)
         measureJump(state, s, commands);
+      // Back at the page's own scale, the reader is where they would be after scrolling there: near the newest, they
+      // follow it again (12). Zooming in moved the page up around the pinch, and letting go just short of 1 sends no
+      // scroll event to measure it by (Galaxy and Pixel on a7566004ab at 1.005: 42.3 and 21.7px, left away).
       if (scaleChanged && s.scale === 1 && state.zoomedAway) {
         state.zoomedAway = false;
-        if (s.distance <= AT_NEWEST_TOLERANCE && !state.target) {
+        if (s.distance < FOLLOW_NEWEST_DISTANCE && !state.target) {
           if (state.keyboard) state.keyboard.following = true;
           setFollowing(state, true, commands);
           commands.push({ type: 'read', kind: 'return' });

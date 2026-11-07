@@ -1866,3 +1866,79 @@ describe('iPhone on ddbad17ba3 (ios-masto-final3)', () => {
     expect(reads(commands)).toContainEqual({ type: 'read', kind: 'return' });
   });
 });
+
+// Galaxy and Pixel on a7566004ab (android-masto-final4/raw/<galaxy|pixel>/zn2-*.json `unzoomed`): a pinch at the
+// newest moved the page up as it zoomed in (1.795), and it was let go at 1.005, where Chrome only nudges the visual
+// viewport and the page sends no scroll event.
+describe('Android on a7566004ab (android-masto-final4)', () => {
+  const unzoomed = {
+    galaxy: {
+      viewport: {
+        innerHeight: 744,
+        rootClientHeight: 744,
+        scrollY: 1344,
+        visual: { height: 741, offsetTop: 3.6, scale: 1.005, pageTop: 1347.7 },
+      },
+      scroller: null,
+      navigation: { top: 689.7, bottom: 744.7, height: 55 },
+      composer: { top: 620.7, bottom: 689.7 },
+      end: { top: 732, bottom: 732 },
+    },
+    pixel: {
+      viewport: {
+        innerHeight: 603,
+        rootClientHeight: 603,
+        scrollY: 1437.7,
+        visual: {
+          height: 600.5,
+          offsetTop: 2.7,
+          scale: 1.005,
+          pageTop: 1440.4,
+        },
+      },
+      scroller: null,
+      navigation: { top: 548.9, bottom: 603.4, height: 54.5 },
+      composer: { top: 479.7, bottom: 548.4 },
+      end: { top: 570.6, bottom: 570.6 },
+    },
+  } satisfies Record<string, LayoutReading>;
+
+  for (const [name, layout, distance] of [
+    ['Galaxy', unzoomed.galaxy, 42.3],
+    ['Pixel', unzoomed.pixel, 21.7],
+  ] as const)
+    it(`47 letting go of a pinch at 1.005 near the newest follows and reads again (${name}, ${distance}px)`, () => {
+      expect(distanceFromNewest(layout)).toBeCloseTo(distance);
+      const scale = visibleArea(layout.viewport).scale;
+      expect(scale).toBe(1);
+      const unzoom = run(opened().state, [
+        [{ type: 'viewportResized' }, { scale: 1.795 }],
+        // The page moves up as the pinch zooms in around its centre.
+        [{ type: 'scrolled' }, { scale: 1.795 }],
+        [{ type: 'viewportScrolled' }, { scale: 1.795 }],
+        [
+          { type: 'viewportResized' },
+          { scale, distance: distanceFromNewest(layout) },
+        ],
+      ]);
+      expect(unzoom.state.following).toBe(true);
+      expect(lastAway(unzoom.commands)).toBe(false);
+      expect(reads(unzoom.commands)).toContainEqual({
+        type: 'read',
+        kind: 'return',
+      });
+      const arrival = run(unzoom.state, [
+        [{ type: 'newestShown', screen: 'A:', mine: false }, { scale }],
+      ]);
+      expect(scrolls(arrival.commands)).toEqual([{ type: 'alignEnd' }]);
+    });
+
+  it('47 letting go of a pinch away from the newest still keeps the place (300px)', () => {
+    const { state } = run(opened().state, [
+      [{ type: 'viewportResized' }, { scale: 1.795 }],
+      [{ type: 'scrolled' }, { scale: 1.795 }],
+      [{ type: 'viewportResized' }, { scale: 1, distance: 300 }],
+    ]);
+    expect(state.following).toBe(false);
+  });
+});
