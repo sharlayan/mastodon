@@ -93,6 +93,15 @@ RSpec.describe DriveFileFromURLWorker do
     expect(existing.reload).to be_sensitive
   end
 
+  it 'preserves the description when the download matches an existing file and none is given' do
+    digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
+    existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, description: 'kept')
+
+    worker.perform(account.id, 'https://example.com/avatar.gif', {})
+
+    expect(existing.reload.description).to eq 'kept'
+  end
+
   it 'clears sensitive metadata when the download matches an existing file and false is explicit' do
     digest = Digest::SHA256.file(Rails.root.join('spec', 'fixtures', 'files', 'avatar.gif')).hexdigest
     existing = DriveFile.create!(account: account, file: attachment_fixture('avatar.gif'), sha256: digest, sensitive: true)
