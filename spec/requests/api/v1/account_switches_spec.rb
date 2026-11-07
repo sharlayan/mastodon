@@ -49,6 +49,23 @@ RSpec.describe 'AccountSwitches' do
         expect(response.parsed_body[:children].first).to include(session_authorized: false, session_approval_pending: true)
       end
 
+      it 'does not create approval requests for passive background reads' do
+        expect do
+          get '/api/v1/account_switches', headers: read_headers, params: { passive: true }
+        end.to_not change(AccountSwitchDeviceApproval, :count)
+
+        expect(response.parsed_body[:children].first).to include(session_authorized: false, session_approval_pending: false)
+      end
+
+      it 'does not reopen a request the target account just denied' do
+        subject
+        AccountSwitchDeviceApproval.last.update!(denied_at: Time.current)
+
+        get '/api/v1/account_switches', headers: read_headers
+
+        expect(response.parsed_body[:children].first[:session_approval_pending]).to be false
+      end
+
       it 'reports authorization for only the target account on this session' do
         subject
         AccountSwitchDevice.find_by!(account: child).update!(trusted_at: Time.current)
@@ -188,6 +205,14 @@ RSpec.describe 'AccountSwitches' do
 
       expect(response).to have_http_status(200)
       expect { auth.reload }.to raise_error(ActiveRecord::RecordNotFound)
+    end
+
+    it 'removes pending session approval requests for the unlinked account' do
+      get '/api/v1/account_switches', headers: read_headers
+
+      expect do
+        delete "/api/v1/account_switches/#{auth.id}", headers: write_headers
+      end.to change(AccountSwitchDeviceApproval, :count).by(-1)
     end
 
     it 'refuses to unlink while switched into a linked account' do

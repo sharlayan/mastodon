@@ -66,7 +66,7 @@ class Api::V1::AccountSwitchesController < Api::BaseController
     serialized_children.each do |serialized|
       authorization = child_authorization_state.fetch(serialized[:id].to_s)
       device = find_or_record_account_switch_device(authorization.target_account, trust: legacy_account_switch_session?)
-      AccountSwitchDeviceApproval.request!(account: children_owner, target_account: authorization.target_account, account_switch_device: device, request_ip: request.remote_ip) unless device.trusted?
+      AccountSwitchDeviceApproval.request!(account: children_owner, target_account: authorization.target_account, account_switch_device: device, request_ip: request.remote_ip) unless device.trusted? || truthy_param?(:passive)
       serialized[:session_authorized] = device.trusted?
       serialized[:session_approval_pending] = AccountSwitchDeviceApproval.pending.exists?(account: children_owner, target_account: authorization.target_account, account_switch_device: device)
     end
@@ -113,12 +113,12 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   end
 
   def destroy
-    @authorization.destroy!
+    destroy_authorization!(@authorization)
     render_empty
   end
 
   def destroy_inbound
-    @inbound_authorization.destroy!
+    destroy_authorization!(@inbound_authorization)
     clear_switch_parent_stack
     render_empty
   end
@@ -131,6 +131,13 @@ class Api::V1::AccountSwitchesController < Api::BaseController
 
   def linked_device_trusted?(account_id)
     AccountSwitchDevice.trusted.exists?(account_id:, token_digest: account_switch_device_digest)
+  end
+
+  def destroy_authorization!(authorization)
+    AccountSwitchAuthorization.transaction do
+      AccountSwitchDeviceApproval.where(account_id: authorization.account_id, target_account_id: authorization.target_account_id).delete_all
+      authorization.destroy!
+    end
   end
 
   def linked_unread_counts_for(authorizations)
