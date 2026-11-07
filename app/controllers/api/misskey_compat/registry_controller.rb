@@ -106,16 +106,6 @@ class Api::MisskeyCompat::RegistryController < Api::MisskeyCompat::BaseControlle
     end
   end
 
-  def native_user_token?
-    current_misskey_grant&.native_user_token? && current_token.scopes.exists?(MisskeyCompat::MiAuth::TOKEN_SCOPE)
-  end
-
-  def require_native_user_token!
-    return if native_user_token?
-
-    render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e')
-  end
-
   def find_item
     scoped_items.find_by(key: registry_key)
   end

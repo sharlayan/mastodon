@@ -29,25 +29,15 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
       chat/messages/delete
       chat/messages/react
       chat/messages/unreact
-      i/export-antennas
-      i/export-blocking
-      i/export-clips
-      i/export-favorites
-      i/export-following
-      i/export-mute
-      i/export-notes
-      i/export-user-lists
-      i/import-antennas
-      i/import-blocking
-      i/import-following
-      i/import-muting
-      i/import-user-lists
       promo/read
     )
   end
 
   let(:explicitly_unsupported_endpoints) do
     %w(
+      i/export-antennas
+      i/export-favorites
+      i/import-antennas
       channels/create
       channels/favorite
       channels/featured
