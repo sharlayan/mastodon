@@ -54,6 +54,7 @@ module Sharlayan::Api::StatusesRoleplayDeletion
 
   def hide_roleplay_status
     @status.account.statuses_count -= 1
+    @status.media_attachments.update_all(status_id: nil) if @status.account_id == current_account.id && !truthy_param?(:delete_media)
 
     HideStatusWorker.perform_async(@status.id, { 'hidden_by_account_id' => current_account.id })
   end
