@@ -32,8 +32,23 @@ class DeliveryAntennaService
     return false unless antenna.account.user&.signed_in_recently?
     return false if @status.reblog? && antenna.ignore_reblog?
     return false if antenna.with_media_only? && !@target.with_media?
+    return false unless silenced_authors_followed_by?(antenna)
 
     visible_to?(antenna)
+  end
+
+  def silenced_authors_followed_by?(antenna)
+    silenced_author_ids.all? do |author_id|
+      author_id == antenna.account_id || silenced_author_follows.include?([antenna.account_id, author_id])
+    end
+  end
+
+  def silenced_author_ids
+    @silenced_author_ids ||= [@status.account, @target.account].uniq.select(&:silenced?).map(&:id)
+  end
+
+  def silenced_author_follows
+    @silenced_author_follows ||= Follow.where(account_id: @candidate_account_ids, target_account_id: silenced_author_ids).pluck(:account_id, :target_account_id).to_set
   end
 
   def visible_to?(antenna)
