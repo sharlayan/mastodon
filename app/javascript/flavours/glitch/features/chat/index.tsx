@@ -420,6 +420,12 @@ export const upsertConversation = (
   list: ChatConversation[],
   conversation: ChatConversation,
 ) => {
+  // The visible last message can be older than the server's ordering key
+  // when a newer message was hidden. Keep known rooms in their server order.
+  if (list.some((item) => item.id === conversation.id))
+    return list.map((item) =>
+      item.id === conversation.id ? conversation : item,
+    );
   const remaining = list.filter((item) => item.id !== conversation.id);
   const position = remaining.findIndex(
     (item) => compareConversations(conversation, item) < 0,
@@ -843,6 +849,33 @@ const chatScrollport = (end: HTMLElement): Element | null => {
     parent = parent.parentElement;
   }
   return document.scrollingElement;
+};
+
+const messageIsVisible = (
+  list: HTMLElement | null,
+  composer: HTMLElement | null,
+  id: string,
+) => {
+  if (
+    !list ||
+    !composer ||
+    !isVisible() ||
+    (window.visualViewport?.scale ?? 1) !== 1
+  )
+    return false;
+  const message = document.getElementById(`chat-message-${id}`);
+  if (!message || !list.contains(message)) return false;
+  const bounds = message.getBoundingClientRect();
+  const viewportTop = window.visualViewport?.offsetTop ?? 0;
+  const scrollport = chatScrollport(message);
+  const scrollBounds = scrollport?.getBoundingClientRect();
+  const top = Math.max(viewportTop, scrollBounds?.top ?? viewportTop);
+  const bottom = Math.min(
+    viewportTop + (window.visualViewport?.height ?? window.innerHeight),
+    composer.getBoundingClientRect().top,
+    scrollBounds?.bottom ?? Number.POSITIVE_INFINITY,
+  );
+  return bounds.bottom > top && bounds.top < bottom;
 };
 
 const scrollToNewest = (end: HTMLElement | null) => {
@@ -1407,6 +1440,41 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   // What came in while the reader was further up, which they have not read until they are back down.
   const unreadWhileAway = useRef(false);
+  const pendingVisibleRead = useRef<{
+    room: string;
+    message: string;
+    notify: boolean;
+  } | null>(null);
+  const [visibleReadRevision, setVisibleReadRevision] = useState(0);
+  const queueVisibleRead = useCallback(
+    (room: string, message?: string, notify = false) => {
+      if (!message) return;
+      pendingVisibleRead.current = { room, message, notify };
+      setVisibleReadRevision((revision) => revision + 1);
+    },
+    [],
+  );
+  const attemptVisibleRead = useCallback(() => {
+    const pending = pendingVisibleRead.current;
+    if (
+      !pending ||
+      pending.room !== conversationId ||
+      !followingNewestRef.current
+    )
+      return;
+    if (
+      !messageIsVisible(
+        messagesListRef.current,
+        composerRef.current,
+        pending.message,
+      )
+    )
+      return;
+    pendingVisibleRead.current = null;
+    unreadWhileAway.current = false;
+    jumpButton.update({ unseen: false });
+    markRead(pending.room, pending.message);
+  }, [conversationId, jumpButton, markRead]);
 
   const conversation = useMemo(
     () => conversations.find((item) => item.id === conversationId),
@@ -1714,17 +1782,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           appliedGeneration !== appliedConversationGeneration.current
         )
           return;
-        const data = updates.reduce(
-          (items, update) => update(items),
-          response.data,
-        );
         conversationPages.current += 1;
-        updateConversations((current) => [
-          ...current,
-          ...data.filter(
-            (item) => !current.some((existing) => existing.id === item.id),
+        updateConversations((current) =>
+          updates.reduce(
+            (items, update) => update(items),
+            [
+              ...current,
+              ...response.data.filter(
+                (item) => !current.some((existing) => existing.id === item.id),
+              ),
+            ],
           ),
-        ]);
+        );
         const last = response.data.at(-1);
         updateNextConversationId(
           response.data.length === 20 && last
@@ -1813,14 +1882,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       ),
     );
     setMessagesLoaded(true);
-    if (isVisible() && isMounted.current)
-      markRead(conversationId, response.data.at(-1)?.id);
+    if (isMounted.current)
+      queueVisibleRead(conversationId, response.data.at(-1)?.id);
     return true;
   }, [
     advanceContinuousUpTo,
     applyTombstone,
     conversationId,
-    markRead,
+    queueVisibleRead,
     updateOlderMessageId,
   ]);
 
@@ -1883,7 +1952,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         updateOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
       }
 
-      if (!followingNewestRef.current) {
+      if (
+        !followingNewestRef.current ||
+        (window.visualViewport?.scale ?? 1) !== 1
+      ) {
         const shownIds = new Set(
           shownMessagesRef.current.map((item) => item.id),
         );
@@ -1897,15 +1969,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         }
         return;
       }
-      if (isVisible() && isMounted.current)
-        markRead(conversationId, loaded.at(-1)?.id);
+      if (isMounted.current)
+        queueVisibleRead(conversationId, loaded.at(-1)?.id);
     },
     [
       advanceContinuousUpTo,
       applyTombstone,
       conversationId,
       jumpButton,
-      markRead,
+      queueVisibleRead,
       readRecovered,
       updateOlderMessageId,
     ],
@@ -1913,9 +1985,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const markSeenOnReturn = useCallback(() => {
     if (!unreadWhileAway.current || !conversationId || !isVisible()) return;
+    const newest = shownMessagesRef.current.at(-1)?.id;
+    if (
+      !newest ||
+      !messageIsVisible(messagesListRef.current, composerRef.current, newest)
+    )
+      return;
     unreadWhileAway.current = false;
-    markRead(conversationId, shownMessagesRef.current.at(-1)?.id);
-  }, [conversationId, markRead]);
+    pendingVisibleRead.current = null;
+    jumpButton.update({ unseen: false });
+    markRead(conversationId, newest);
+  }, [conversationId, jumpButton, markRead]);
 
   const loadOlderMessages = useCallback(() => {
     if (!olderMessageId || !conversationId || loadingMore) return;
@@ -2061,14 +2141,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     const markReadWhenShown = () => {
       if (!isVisible() || !followingNewestRef.current) return;
-      markRead(conversationId, shownMessagesRef.current.at(-1)?.id);
+      queueVisibleRead(conversationId, shownMessagesRef.current.at(-1)?.id);
     };
 
     document.addEventListener('visibilitychange', markReadWhenShown);
     return () => {
       document.removeEventListener('visibilitychange', markReadWhenShown);
     };
-  }, [conversationId, hasUnread, markRead]);
+  }, [conversationId, hasUnread, queueVisibleRead]);
 
   useEffect(
     () =>
@@ -2089,9 +2169,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           const message = applyTombstone(value as ChatMessage);
           const isOpen = eventConversationId === conversationId;
           const fromOther = value.account?.id !== me;
-          const seen = isOpen && isVisible() && followingNewestRef.current;
+          const seen =
+            isOpen &&
+            isVisible() &&
+            followingNewestRef.current &&
+            (window.visualViewport?.scale ?? 1) === 1;
           updateConversations((current) =>
-            withNewMessage(current, message, fromOther && !seen),
+            withNewMessage(current, message, fromOther),
           );
           if (knownConversationIds.current?.has(eventConversationId) === false)
             refreshConversation(eventConversationId);
@@ -2103,11 +2187,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               ? current
               : [...current, message],
           );
-          if (!followingNewestRef.current && fromOther) {
+          if (!seen && fromOther) {
             jumpButton.update({ unseen: true });
             unreadWhileAway.current = true;
           }
-          if (value.id && fromOther && seen) markRead(conversationId, value.id);
+          if (value.id && fromOther && seen)
+            queueVisibleRead(conversationId, value.id, true);
         } else if (event === 'chat.message_update') {
           const message = applyTombstone(value as ChatMessage);
           updateSearchResults((current, query) => {
@@ -2311,7 +2396,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       keepReading,
       loadConversations,
       loadInvitations,
-      markRead,
+      queueVisibleRead,
       readRecovered,
       refreshConversation,
       resyncMessages,
@@ -2359,13 +2444,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const openingRoom = scrolledConversationIdRef.current !== screenKey;
     scrolledConversationIdRef.current = screenKey;
     if (openingRoom) followingNewestRef.current = true;
-    if (newestMessageIsMine) keyboardExplicitFollowRef.current?.();
-    if (newestMessageIsMine && !followingNewestRef.current) {
-      followingNewestRef.current = true;
-      jumpButton.update({ away: false, unseen: false });
-    }
-
-    if (followingNewestRef.current || newestMessageIsMine) {
+    if (
+      followingNewestRef.current &&
+      (window.visualViewport?.scale ?? 1) === 1
+    ) {
       scrollToNewest(messagesEndRef.current);
     }
   }, [
@@ -2378,6 +2460,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   ]);
 
   useEffect(() => {
+    attemptVisibleRead();
+    if (
+      pendingVisibleRead.current &&
+      pendingVisibleRead.current.room === conversationId &&
+      pendingVisibleRead.current.notify
+    ) {
+      unreadWhileAway.current = true;
+      jumpButton.update({ unseen: true });
+    }
+  }, [attemptVisibleRead, conversationId, jumpButton, visibleReadRevision]);
+
+  useEffect(() => {
     const end = messagesEndRef.current;
     const list = messagesListRef.current;
     if (!end || !list) return;
@@ -2388,20 +2482,26 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       scrollTop: number;
       height: number;
       shrunk: boolean;
-      userScrollUntil: number;
+      userScrolling: boolean;
+      settleTimer?: number;
       restorePosition: boolean;
-      awayFromEnd: boolean;
       following: boolean;
       timer?: number;
     } | null = null;
     const finishKeyboard = () => {
       if (!keyboard) return;
-      if (keyboard.awayFromEnd && keyboard.restorePosition) {
-        if (keyboard.scrollport)
-          keyboard.scrollport.scrollTop = keyboard.scrollTop;
-        followingNewestRef.current = keyboard.following;
-        jumpButton.update({ away: !keyboard.following });
+      if ((window.visualViewport?.scale ?? 1) === 1) {
+        if (!keyboard.following && keyboard.restorePosition) {
+          if (keyboard.scrollport)
+            keyboard.scrollport.scrollTop = keyboard.scrollTop;
+          followingNewestRef.current = false;
+          jumpButton.update({ away: true });
+        } else if (keyboard.following) {
+          scrollToNewest(end);
+        }
       }
+      if (keyboard.settleTimer !== undefined)
+        window.clearTimeout(keyboard.settleTimer);
       keyboard = null;
     };
     const scheduleKeyboardFinish = (delay: number) => {
@@ -2421,20 +2521,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         return;
       }
       const scrollport = chatScrollport(end);
-      const awayFromEnd = scrollport
-        ? scrollport.scrollHeight -
-            scrollport.clientHeight -
-            scrollport.scrollTop >
-          2
-        : !followingNewestRef.current;
       keyboard = {
         scrollport,
         scrollTop: scrollport?.scrollTop ?? 0,
         height: window.visualViewport?.height ?? window.innerHeight,
         shrunk: false,
-        userScrollUntil: 0,
+        userScrolling: false,
         restorePosition: true,
-        awayFromEnd,
         following: followingNewestRef.current,
       };
     };
@@ -2447,7 +2540,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         (event.target instanceof Node && composer?.contains(event.target))
       )
         return;
-      keyboard.userScrollUntil = Date.now() + 500;
+      keyboard.userScrolling = true;
+      if (keyboard.settleTimer !== undefined)
+        window.clearTimeout(keyboard.settleTimer);
+      keyboard.settleTimer = window.setTimeout(() => {
+        if (keyboard) keyboard.userScrolling = false;
+      }, 200);
     };
     const onPageAction = (event: Event) => {
       if (
@@ -2461,12 +2559,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const trackPosition = () => {
       // Safari can scroll the document to reveal the input as the keyboard moves.
       // That movement must not be mistaken for the reader choosing the newest message.
-      if ((window.visualViewport?.scale ?? 1) !== 1) return;
-      if (
-        keyboard &&
-        (!keyboard.userScrollUntil || Date.now() > keyboard.userScrollUntil)
-      )
+      if ((window.visualViewport?.scale ?? 1) !== 1) {
+        followingNewestRef.current = false;
+        if (keyboard) {
+          keyboard.following = false;
+          keyboard.restorePosition = false;
+        }
+        jumpButton.update({ away: true });
         return;
+      }
+      if (keyboard && !keyboard.userScrolling) return;
       const viewportBottom = keyboard
         ? (window.visualViewport?.offsetTop ?? 0) +
           (window.visualViewport?.height ?? window.innerHeight)
@@ -2476,18 +2578,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         FOLLOW_NEWEST_DISTANCE;
       followingNewestRef.current = following;
       if (keyboard) {
+        if (keyboard.settleTimer !== undefined)
+          window.clearTimeout(keyboard.settleTimer);
+        keyboard.settleTimer = window.setTimeout(() => {
+          if (keyboard) keyboard.userScrolling = false;
+        }, 200);
         keyboard.scrollTop = keyboard.scrollport?.scrollTop ?? 0;
-        keyboard.awayFromEnd = keyboard.scrollport
-          ? keyboard.scrollport.scrollHeight -
-              keyboard.scrollport.clientHeight -
-              keyboard.scrollTop >
-            2
-          : !following;
         keyboard.following = following;
       }
       if (following) {
-        jumpButton.update({ away: false, unseen: false });
+        jumpButton.update({ away: false });
         markSeenOnReturn();
+        attemptVisibleRead();
       } else {
         jumpButton.update({ away: true });
       }
@@ -2496,6 +2598,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       capture: true,
       passive: true,
     });
+    const onScrollEnd = () => {
+      if (!keyboard?.userScrolling) return;
+      trackPosition();
+      keyboard.userScrolling = false;
+      if (keyboard.settleTimer !== undefined)
+        window.clearTimeout(keyboard.settleTimer);
+    };
+    window.addEventListener('scrollend', onScrollEnd, { capture: true });
     composer?.addEventListener('focusin', onFocusIn);
     composer?.addEventListener('focusout', onFocusOut);
     window.addEventListener('touchmove', onUserScroll, { passive: true });
@@ -2518,7 +2628,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (
             heightChanged &&
             followingNewestRef.current &&
-            !keyboard.awayFromEnd &&
             composer?.contains(document.activeElement)
           )
             scrollToNewest(end);
@@ -2543,7 +2652,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const observer =
       typeof ResizeObserver === 'function'
         ? new ResizeObserver(() => {
-            if (!keyboard && followingNewestRef.current) scrollToNewest(end);
+            if (
+              followingNewestRef.current &&
+              (window.visualViewport?.scale ?? 1) === 1 &&
+              (!keyboard || composer?.contains(document.activeElement))
+            ) {
+              scrollToNewest(end);
+              attemptVisibleRead();
+            }
           })
         : null;
     observer?.observe(list);
@@ -2551,6 +2667,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
     return () => {
       window.removeEventListener('scroll', trackPosition, { capture: true });
+      window.removeEventListener('scrollend', onScrollEnd, { capture: true });
       composer?.removeEventListener('focusin', onFocusIn);
       composer?.removeEventListener('focusout', onFocusOut);
       window.removeEventListener('touchmove', onUserScroll);
@@ -2560,9 +2677,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       window.removeEventListener('resize', onViewportResize);
       window.visualViewport?.removeEventListener('resize', onViewportResize);
       if (keyboard?.timer !== undefined) window.clearTimeout(keyboard.timer);
+      if (keyboard?.settleTimer !== undefined)
+        window.clearTimeout(keyboard.settleTimer);
       observer?.disconnect();
     };
   }, [
+    attemptVisibleRead,
     conversationId,
     conversationMissing,
     jumpButton,
@@ -2615,9 +2735,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleJumpToNewest = useCallback(() => {
     keyboardExplicitFollowRef.current?.();
     followingNewestRef.current = true;
-    jumpButton.update({ away: false, unseen: false });
-    markSeenOnReturn();
+    jumpButton.update({ away: false });
     scrollToNewest(messagesEndRef.current);
+    markSeenOnReturn();
   }, [jumpButton, markSeenOnReturn]);
 
   const handleReplyQuoteClick = useCallback(

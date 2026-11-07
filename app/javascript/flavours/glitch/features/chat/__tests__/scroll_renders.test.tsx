@@ -108,9 +108,18 @@ const responses = (url: string) => {
 
 const scrollIntoView = vi.fn();
 const placedAt = (bottom: number) => {
-  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
-    bottom: window.innerHeight + bottom,
-  } as DOMRect);
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: Element) {
+      if (this.classList.contains('chat-native__end'))
+        return {
+          top: window.innerHeight + bottom,
+          bottom: window.innerHeight + bottom,
+        } as DOMRect;
+      if (this.classList.contains('chat-native__composer'))
+        return { top: 300, bottom: 350 } as DOMRect;
+      return { top: 100, bottom: 150 } as DOMRect;
+    },
+  );
   fireEvent.scroll(window);
 };
 const scrollUp = () => {
@@ -184,6 +193,13 @@ beforeEach(() => {
   api.post.mockResolvedValue({ data: {} });
   scrollIntoView.mockClear();
   Element.prototype.scrollIntoView = scrollIntoView;
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: Element) {
+      if (this.classList.contains('chat-native__composer'))
+        return { top: 300, bottom: 350 } as DOMRect;
+      return { top: 100, bottom: 150 } as DOMRect;
+    },
+  );
 });
 
 afterEach(() => {
@@ -196,6 +212,183 @@ afterEach(() => {
 });
 
 describe('Scrolling in a room', () => {
+  it('does not mark a message read when the composer still obscures it', async () => {
+    await openRoom();
+    const before = readsPosted();
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        if (this.classList.contains('chat-native__composer'))
+          return { top: 180, bottom: 230 } as DOMRect;
+        if (this.id === 'chat-message-obscured')
+          return { top: 200, bottom: 220 } as DOMRect;
+        return { top: 0, bottom: 100 } as DOMRect;
+      },
+    );
+    receive('obscured');
+    expect(readsPosted()).toBe(before);
+    placedAt(0);
+    expect(readsPosted()).toBe(before + 1);
+  });
+
+  it('does not follow or mark a new message during zoom even without a scroll event', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    try {
+      await openRoom();
+      viewport.scale = 2;
+      const before = readsPosted();
+      scrollIntoView.mockClear();
+      receive('zoomed-without-scroll');
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(readsPosted()).toBe(before);
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('does not scroll or mark incoming messages read while zoomed', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    try {
+      await openRoom();
+      viewport.scale = 2;
+      scrollUp();
+      const before = readsPosted();
+      scrollIntoView.mockClear();
+      receive('zoomed');
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(readsPosted()).toBe(before);
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('does not restore an old following position after zooming and panning with the keyboard open', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    try {
+      await openRoom();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.scale = 2;
+      scrollUp();
+      viewport.scale = 1;
+      scrollIntoView.mockClear();
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 750));
+      });
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('keeps the newest message after closing a focused composer near the bottom', async () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    await openRoom();
+    const scrollport = document.querySelector('.chat-native') as HTMLElement;
+    scrollport.style.overflowY = 'auto';
+    Object.defineProperty(scrollport, 'clientHeight', {
+      configurable: true,
+      value: 200,
+    });
+    Object.defineProperty(scrollport, 'scrollHeight', {
+      configurable: true,
+      value: 1000,
+    });
+    scrollport.scrollTop = 700;
+    placedAt(100);
+    act(() => {
+      screen.getByRole('textbox').focus();
+    });
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        return {
+          top: this.classList.contains('chat-native__composer') ? 180 : 0,
+          bottom: 200,
+        } as DOMRect;
+      },
+    );
+    receive('keyboard-follow');
+    const afterMessage = scrollport.scrollTop;
+    expect(afterMessage).toBeGreaterThan(700);
+    act(() => {
+      screen.getByRole('textbox').blur();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    });
+    expect(scrollport.scrollTop).toBeGreaterThanOrEqual(afterMessage);
+  });
+
+  it('preserves the end of inertial scrolling while the keyboard is open', async () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    await openRoom();
+    const scrollport = document.querySelector('.chat-native') as HTMLElement;
+    scrollport.style.overflowY = 'auto';
+    Object.defineProperty(scrollport, 'clientHeight', {
+      configurable: true,
+      value: 200,
+    });
+    Object.defineProperty(scrollport, 'scrollHeight', {
+      configurable: true,
+      value: 1000,
+    });
+    scrollport.scrollTop = 500;
+    scrollUp();
+    act(() => {
+      screen.getByRole('textbox').focus();
+    });
+    fireEvent.touchMove(window);
+    scrollport.scrollTop = 300;
+    placedAt(5000);
+    for (let i = 0; i < 6; i++) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
+      scrollport.scrollTop = 300 - i * 5;
+      placedAt(5000);
+    }
+    scrollport.scrollTop = 250;
+    placedAt(5000);
+    act(() => {
+      screen.getByRole('textbox').blur();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+    });
+    expect(scrollport.scrollTop).toBe(250);
+  });
+
   it('finishes opening at the actual bottom of the chat scrollport', async () => {
     scrollIntoView.mockImplementation(function (this: HTMLElement) {
       const scrollport = this.closest('.chat-native') as HTMLElement;
@@ -513,7 +706,7 @@ describe('Scrolling in a room', () => {
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 250));
       });
-      expect(scrollport.scrollTop).toBe(700);
+      expect(scrollport.scrollTop).toBeGreaterThanOrEqual(700);
       expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
     } finally {
       if (originalMatch)
@@ -577,7 +770,7 @@ describe('Scrolling in a room', () => {
     }
   });
 
-  it('keeps a deliberate send at the newest message after the keyboard closes', async () => {
+  it('keeps the reading position after a send while the keyboard closes', async () => {
     const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
     const originalMatch = Object.getOwnPropertyDescriptor(window, 'matchMedia');
     const viewport = Object.assign(new EventTarget(), {
@@ -600,7 +793,7 @@ describe('Scrolling in a room', () => {
         viewport.dispatchEvent(new Event('resize'));
       });
       receive('sent-while-keyboard', me);
-      expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+      expect(screen.queryByRole('button', { name: JUMP })).not.toBeNull();
       viewport.height = 667;
       act(() => {
         viewport.dispatchEvent(new Event('resize'));
@@ -608,7 +801,7 @@ describe('Scrolling in a room', () => {
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 250));
       });
-      expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+      expect(screen.queryByRole('button', { name: JUMP })).not.toBeNull();
     } finally {
       if (originalMatch)
         Object.defineProperty(window, 'matchMedia', originalMatch);
@@ -743,14 +936,14 @@ describe('Scrolling in a room', () => {
     expect(screen.getByText('New messages')).toBeTruthy();
   });
 
-  it('goes down for a message of mine while reading older ones', async () => {
+  it('does not go down for a message of mine while reading older ones', async () => {
     await openRoom();
     scrollUp();
     scrollIntoView.mockClear();
 
     receive('mine', me);
 
-    expect(scrollIntoView).toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
     expect(screen.queryByText('New messages')).toBeNull();
   });
 

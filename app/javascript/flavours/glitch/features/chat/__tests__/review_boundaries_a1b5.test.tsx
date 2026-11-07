@@ -1971,3 +1971,128 @@ describe('Review cursor boundaries', () => {
     expect(after[0]).toBe('10');
   }, 60_000);
 });
+
+const sortKey = new Map<string, number>();
+const visible = new Map<string, number>();
+const shown = (id: string) => ({
+  ...room(id),
+  last_message: visible.has(id) ? message(id, visible.get(id) ?? 0) : null,
+});
+const useSortKeyRooms = () => {
+  server.use(
+    http.get(
+      '*/api/v1/chat/conversations',
+      answer(() =>
+        [...backend.rooms.keys()]
+          .sort(
+            (a, b) =>
+              (sortKey.get(b) ?? 0) - (sortKey.get(a) ?? 0) ||
+              Number(b) - Number(a),
+          )
+          .slice(0, 20)
+          .map(shown),
+      ),
+    ),
+    http.get(
+      '*/api/v1/chat/conversations/:id',
+      answer((_, id) => shown(id)),
+    ),
+  );
+};
+const put = (id: string, key: number, seen: number) => {
+  backend.rooms.set(id, { title: `Room ${id}`, unread: false, type: 'group' });
+  sortKey.set(id, key);
+  visible.set(id, seen);
+};
+const serverOrder = () =>
+  [...backend.rooms.keys()].sort(
+    (a, b) =>
+      (sortKey.get(b) ?? 0) - (sortKey.get(a) ?? 0) || Number(b) - Number(a),
+  );
+
+describe('Review 2963', () => {
+  beforeEach(() => {
+    sortKey.clear();
+    visible.clear();
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    server.resetHandlers();
+  });
+
+  it('D1 a room update keeps the server order when another room shows an older message than it is sorted by', async () => {
+    // Room 40's real last message (190) is hidden for the reader, so it shows 10.
+    put('50', 200, 200);
+    put('40', 190, 10);
+    put('30', 180, 180);
+    put('20', 170, 170);
+    put('10', 160, 160);
+    useSortKeyRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => {
+      expect(listed()).toContain('10');
+    });
+    await settle();
+    const loaded = listed();
+    // The owner renames room 10: the stream sends the whole room, as the server renders it.
+    act(() => {
+      page.socket.deliver('chat.conversation_update', {
+        ...shown('10'),
+        title: 'Renamed',
+      });
+    });
+    await settle();
+    const after = listed();
+    record({ test: 'D1', loaded, after, server: serverOrder() });
+    expect(loaded).toEqual(serverOrder());
+    expect(after).toEqual(serverOrder());
+  });
+
+  it('D1b hiding my own last message keeps the room where a reread puts it', async () => {
+    put('3', 300, 300);
+    put('2', 200, 200);
+    put('1', 100, 100);
+    useSortKeyRooms();
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat');
+    await waitFor(() => {
+      expect(listed()).toEqual(['3', '2', '1']);
+    });
+    await settle();
+    // I delete my old message 300 in room 3: the server hides it for me (the room keeps its place).
+    visible.set('3', 50);
+    const detailsBefore = readsOf(/\/conversations\/3$/).length;
+    act(() => {
+      page.socket.deliver('chat.message_hide', {
+        id: '300',
+        conversation_id: '3',
+      });
+    });
+    await waitFor(() => {
+      expect(readsOf(/\/conversations\/3$/).length).toBeGreaterThan(
+        detailsBefore,
+      );
+    });
+    await settle();
+    const live = listed();
+    // A reconnection rereads the list.
+    const listReads = readsOf(ROOMS).length;
+    const socket = await dropConnection(page.socket);
+    await connect(socket);
+    await waitFor(() => {
+      expect(readsOf(ROOMS).length).toBeGreaterThan(listReads);
+    });
+    await later(500);
+    await settle();
+    const reread = listed();
+    record({ test: 'D1b', live, reread, server: serverOrder() });
+    expect(live).toEqual(reread);
+  });
+});

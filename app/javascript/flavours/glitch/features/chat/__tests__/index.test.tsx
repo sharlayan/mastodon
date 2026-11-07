@@ -251,11 +251,21 @@ const getResponse = (url: string): Promise<{ data: unknown }> => {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: Element) {
+      if (this.classList.contains('chat-native__composer'))
+        return { top: 500, bottom: 550 } as DOMRect;
+      return { top: 100, bottom: 150 } as DOMRect;
+    },
+  );
   api.get.mockImplementation(getResponse);
   api.post.mockResolvedValue({ data: attachment });
   api.delete.mockResolvedValue({ data: {} });
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('Chat owner member removal', () => {
   let room = { ...conversation('A'), type: 'group', current_role: 'owner' };
@@ -1769,7 +1779,7 @@ describe('Chat scrolling', () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
 
-  it('shows my own new message even when scrolled up', async () => {
+  it('keeps the reading position for my own new message when scrolled up', async () => {
     await openRoom();
     scrollTo(3000);
     scrollIntoView.mockClear();
@@ -1777,7 +1787,7 @@ describe('Chat scrolling', () => {
     liveMessage(account);
     await screen.findByText('Live message');
 
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
   it('stays in place when loading older messages', async () => {

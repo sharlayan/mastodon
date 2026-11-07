@@ -427,9 +427,14 @@ const readFurtherUp = () => {
     .mockReturnValue({ bottom: window.innerHeight + 5000 } as DOMRect);
   fireEvent.scroll(window);
   return () => {
-    measure.mockRestore();
+    measure.mockImplementation(visibleGeometry);
     fireEvent.scroll(window);
   };
+};
+const visibleGeometry = function (this: Element) {
+  if (this.classList.contains('chat-native__composer'))
+    return { top: 500, bottom: 550 } as DOMRect;
+  return { top: 100, bottom: 150 } as DOMRect;
 };
 const settle = async () => {
   await act(async () => {
@@ -461,6 +466,9 @@ afterAll(() => {
   server.close();
 });
 beforeEach(() => {
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+    visibleGeometry,
+  );
   backend.messages.clear();
   backend.rooms.clear();
   backend.invitations = [];
@@ -1087,11 +1095,18 @@ describe('Chat when the stream connects after the screen has read', () => {
       const { page } = await openFurtherUp();
       await deliverNext(page);
 
+      // The click scrolls the real viewport; jsdom needs its resulting geometry.
+      Element.prototype.scrollIntoView = vi.fn(() => {
+        vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+          visibleGeometry,
+        );
+      });
       fireEvent.click(screen.getByText('New messages'));
 
       await waitFor(() => {
         expect(backend.marked).toEqual(['A']);
       });
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
     });
 
     it('marks nothing read for coming back down when nothing new came', async () => {
