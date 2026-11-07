@@ -254,6 +254,15 @@ RSpec.describe Page do
       expect(MediaAttachment.unattached).to include(media)
     end
 
+    it 'tracks media referenced by a numeric file id' do
+      media = Fabricate(:media_attachment, account: account)
+      page = Fabricate(:page, account: account)
+      page.update!(content: [{ 'type' => 'image', 'fileId' => media.id }])
+
+      expect(page.reload.referenced_media_attachment_ids).to eq([media.id])
+      expect(MediaAttachment.unattached).to_not include(media)
+    end
+
     it 'includes media used as a Booklet cover' do
       media = Fabricate(:media_attachment, account: account)
       Fabricate(:page_series, account: account, cover_media_attachment: media)

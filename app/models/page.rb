@@ -281,7 +281,7 @@ class Page < ApplicationRecord
       case node
       when Hash
         file_id = node['fileId'] || node[:fileId]
-        ids << file_id.to_i if file_id.is_a?(String) && file_id.match?(/\A\d{1,18}\z/)
+        ids << file_id.to_i if (file_id.is_a?(Integer) && file_id.positive?) || (file_id.is_a?(String) && file_id.match?(/\A\d{1,18}\z/))
         pending.concat(node.values)
       when Array
         pending.concat(node)
