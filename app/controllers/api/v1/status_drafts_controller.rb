@@ -8,9 +8,10 @@ class Api::V1::StatusDraftsController < Api::BaseController
   before_action :set_draft, only: [:show, :update, :destroy]
 
   def index
-    drafts = current_account.status_drafts.within_data_limit.includes(:media_attachments)
+    @drafts = current_account.status_drafts.within_data_limit.includes(:media_attachments)
       .to_a_paginated_by_id(limit_param(StatusDraft::LIST_LIMIT, StatusDraft::LIST_LIMIT), params_slice(:max_id, :since_id, :min_id))
-    render json: drafts, each_serializer: REST::StatusDraftSerializer
+    insert_pagination_headers unless @drafts.empty?
+    render json: @drafts, each_serializer: REST::StatusDraftSerializer
   end
 
   def show
@@ -37,6 +38,18 @@ class Api::V1::StatusDraftsController < Api::BaseController
   end
 
   private
+
+  def pagination_collection
+    @drafts
+  end
+
+  def next_path
+    api_v1_status_drafts_url(pagination_params(max_id: pagination_max_id)) if @drafts.size == limit_param(StatusDraft::LIST_LIMIT, StatusDraft::LIST_LIMIT)
+  end
+
+  def prev_path
+    api_v1_status_drafts_url(pagination_params(min_id: pagination_since_id))
+  end
 
   def set_draft
     @draft = current_account.status_drafts.find(params[:id])
