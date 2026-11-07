@@ -51,6 +51,25 @@ RSpec.describe 'Clips' do
       end
     end
 
+    context 'when the clip owner blocks the viewer' do
+      let(:scopes) { 'read:lists' }
+
+      before { clip.account.block!(user.account) }
+
+      it 'returns http not found' do
+        subject
+
+        expect(response).to have_http_status(404)
+      end
+
+      it 'does not list the owner clips' do
+        get "/api/v1/accounts/#{clip.account_id}/clips", headers: headers
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to be_empty
+      end
+    end
+
     context 'with a token missing the read lists scope' do
       let(:scopes) { 'read:accounts' }
 
