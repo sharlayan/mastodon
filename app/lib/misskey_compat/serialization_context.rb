@@ -49,6 +49,11 @@ class MisskeyCompat::SerializationContext
     self
   end
 
+  def prime_reaction_counts(statuses)
+    prime_reactions(statuses)
+    self
+  end
+
   def prime_relations(statuses)
     return self if @current_account.nil?
 

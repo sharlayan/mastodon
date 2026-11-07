@@ -235,6 +235,7 @@ namespace :api, format: false do
     post 'notes/hybrid-timeline', to: 'notes#hybrid_timeline'
     post 'notes/global-timeline', to: 'notes#global_timeline'
     post 'notes/show', to: 'notes#show'
+    post 'notes/show-partial-bulk', to: 'notes#show_partial_bulk'
     post 'notes/update', to: 'notes#update'
     post 'notes/scheduled/list', to: 'notes#scheduled_list'
     post 'notes/scheduled/cancel', to: 'notes#scheduled_cancel'

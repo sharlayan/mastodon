@@ -12,7 +12,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   TIMELINE_BATCH_SIZE = 100
   TIMELINE_MIN_BATCH_SIZE = 20
   RELATED_NOTE_SCAN_LIMIT = 1_000
-  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show children replies conversation renotes note_reactions featured clips).freeze
+  PARTIAL_BULK_MAX_IDS = 100
+  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show show_partial_bulk children replies conversation renotes note_reactions featured clips).freeze
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
@@ -74,6 +75,23 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
     @note = MisskeyCompat::ThreadResolveService.new.call(@note, on_behalf_of: current_account)
     render json: serialize(@note)
+  end
+
+  def show_partial_bulk
+    return if current_account.nil? && rate_limited?(:misskey_compat_api)
+
+    ids = params[:noteIds]
+    return render_invalid_param('#/properties/noteIds', 'must be array') unless ids.is_a?(Array)
+    return render_invalid_param('#/properties/noteIds', 'must NOT have fewer than 1 items') if ids.empty?
+    return render_invalid_param('#/properties/noteIds', "must NOT have more than #{PARTIAL_BULK_MAX_IDS} items") if ids.size > PARTIAL_BULK_MAX_IDS
+    return render_invalid_param('#/properties/noteIds/items/type', 'must be string') unless ids.all?(String)
+
+    statuses = Status.where(id: ids.grep(/\A\d+\z/).uniq).includes(:account, :mentions).to_a
+    context = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(statuses)
+    statuses.select! { |status| context.visible?(status) }
+    context.prime_reaction_counts(statuses)
+
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize_reaction_diff(status, context: context) }
   end
 
   def children
