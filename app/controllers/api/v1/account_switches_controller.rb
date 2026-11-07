@@ -100,16 +100,8 @@ class Api::V1::AccountSwitchesController < Api::BaseController
 
   def create_push_forward
     auth = find_linked_authorization
-
-    if auth.nil?
-      owner = resolve_children_owner
-      if params[:linked_account_id].to_s == owner.id.to_s
-        auth = owner.account_switch_authorizations.create!(target_account_id: owner.id, push_forward: true)
-        return render json: { id: auth.id.to_s }, status: 200
-      end
-    end
-
     return render json: { error: 'Not found' }, status: 404 unless auth
+    return render json: { error: 'This session is not authorized for the linked account' }, status: 403 unless linked_device_trusted?(auth.target_account_id)
 
     auth.update!(push_forward: true)
     render json: { id: auth.id.to_s }, status: 200
@@ -135,6 +127,10 @@ class Api::V1::AccountSwitchesController < Api::BaseController
 
   def require_web_app_token!
     render json: { error: 'This method requires a web session token' }, status: 403 unless doorkeeper_token&.application&.superapp?
+  end
+
+  def linked_device_trusted?(account_id)
+    AccountSwitchDevice.trusted.exists?(account_id:, token_digest: account_switch_device_digest)
   end
 
   def linked_unread_counts_for(authorizations)
@@ -197,8 +193,10 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   end
 
   def find_linked_authorization
-    resolve_children_owner.account_switch_authorizations
-      .find_by(target_account_id: params[:linked_account_id])
+    owner = resolve_children_owner
+    return if params[:linked_account_id].to_s == owner.id.to_s
+
+    owner.account_switch_authorizations.find_by(target_account_id: params[:linked_account_id])
   end
 
   def set_push_forward_auth

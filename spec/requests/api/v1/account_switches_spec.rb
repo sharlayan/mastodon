@@ -215,12 +215,30 @@ RSpec.describe 'AccountSwitches' do
     let!(:auth) { Fabricate(:account_switch_authorization, account: user.account, target_account: child) }
 
     it 'enables push forwarding' do
+      get '/api/v1/account_switches', headers: read_headers
+      AccountSwitchDevice.find_by!(account: child).update!(trusted_at: Time.current)
+
       post '/api/v1/account_switches/push_forward',
            headers: write_headers,
            params: { linked_account_id: child.id }
 
       expect(response).to have_http_status(200)
       expect(auth.reload.push_forward).to be true
+    end
+
+    it 'refuses a linked account that is not authorized for this session' do
+      post '/api/v1/account_switches/push_forward', headers: write_headers, params: { linked_account_id: child.id }
+
+      expect(response).to have_http_status(403)
+      expect(auth.reload.push_forward).to be false
+    end
+
+    it 'does not link the root account to itself' do
+      expect do
+        post '/api/v1/account_switches/push_forward', headers: write_headers, params: { linked_account_id: user.account.id }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response).to have_http_status(404)
     end
 
     context 'when the account is not linked' do
