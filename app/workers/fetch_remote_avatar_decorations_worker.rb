@@ -101,6 +101,7 @@ class FetchRemoteAvatarDecorationsWorker
   def sync_decoration(account, existing, remote_id, user_decoration, full_decoration, image_url)
     decoration = existing || AvatarDecoration.new(host: account.domain, remote_id:)
     decoration.image_remote_url = image_url.slice(0, 4096)
+    decoration.image = nil if decoration.persisted? && decoration.image_remote_url_changed? && decoration.image_file_name.present?
     decoration.name = (full_decoration&.dig('name') || remote_id).slice(0, 256) if decoration.name.blank?
     decoration.approved = true if decoration.new_record?
     decoration.save! if decoration.changed?
