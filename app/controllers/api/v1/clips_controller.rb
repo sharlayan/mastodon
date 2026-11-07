@@ -8,6 +8,7 @@ class Api::V1::ClipsController < Api::BaseController
 
   before_action :require_user!, except: [:show]
   before_action :set_clip, only: [:show, :update, :destroy]
+  before_action :authorize_owner!, only: [:update, :destroy]
 
   def index
     @clips = Clip.where(account: current_account).to_a
@@ -24,13 +25,11 @@ class Api::V1::ClipsController < Api::BaseController
   end
 
   def update
-    authorize_owner!
     @clip.update!(clip_params)
     render json: @clip, serializer: REST::ClipSerializer
   end
 
   def destroy
-    authorize_owner!
     @clip.destroy!
     render_empty
   end

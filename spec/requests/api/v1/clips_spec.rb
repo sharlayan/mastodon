@@ -84,4 +84,22 @@ RSpec.describe 'Clips' do
       expect(response).to have_http_status(401)
     end
   end
+
+  describe 'owner-only actions on another account clip' do
+    let(:other_clip) { Fabricate(:clip, account: Fabricate(:account), title: 'Original', public: true) }
+
+    it 'does not update the clip' do
+      put "/api/v1/clips/#{other_clip.id}", params: { title: 'Hijacked', public: false }, headers: headers
+
+      expect(response).to have_http_status(404)
+      expect(other_clip.reload).to have_attributes(title: 'Original', public: true)
+    end
+
+    it 'does not delete the clip' do
+      delete "/api/v1/clips/#{other_clip.id}", headers: headers
+
+      expect(response).to have_http_status(404)
+      expect(Clip.exists?(other_clip.id)).to be(true)
+    end
+  end
 end

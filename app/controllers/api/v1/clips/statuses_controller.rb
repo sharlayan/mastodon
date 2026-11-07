@@ -21,7 +21,7 @@ class Api::V1::Clips::StatusesController < Api::BaseController
 
   def create
     status = Status.find(status_params[:status_id])
-    not_found unless StatusPolicy.new(current_account, status).show?
+    return not_found unless StatusPolicy.new(current_account, status).show?
 
     @clip.with_lock do
       @clip.clip_statuses.find_or_create_by!(status_id: status.id)
