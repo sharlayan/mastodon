@@ -384,6 +384,7 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
     expected = %w(
       drive/files
       drive/files/attached-notes
+      drive/files/attached-chat-messages
       drive/files/check-existence
       drive/files/create
       drive/files/delete
@@ -403,6 +404,14 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
     )
     expect(drive_endpoints).to match_array(expected)
     expect(response.parsed_body).to include('drive')
+  end
+
+  it 'advertises the endpoint when Drive is enabled even if chat is disabled' do
+    Setting.chat_enabled = false
+
+    post '/api/endpoints', as: :json
+
+    expect(response.parsed_body).to include('drive/files/attached-chat-messages', 'chat/messages/user-timeline')
   end
 
   it 'advertises only the legacy upload endpoint while the native Drive feature is disabled' do

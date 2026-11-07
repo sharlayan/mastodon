@@ -291,6 +291,7 @@ namespace :api, format: false do
 
     post 'drive/files/create', to: 'drive#create'
     post 'drive/files/attached-notes', to: 'drive#attached_notes'
+    post 'drive/files/attached-chat-messages', to: 'drive#attached_chat_messages'
     post 'drive', to: 'drive#overview'
     post 'drive/stream', to: 'drive#stream'
     post 'drive/files', to: 'drive#index'

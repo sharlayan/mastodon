@@ -4,9 +4,10 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   include Redisable
 
   requires_write_scope :create, :update, :destroy, :move_bulk, :upload_from_url
-  requires_misskey_permission 'read:drive', :overview, :stream, :attached_notes, :index, :show, :find, :find_by_hash, :check_existence
+  requires_misskey_permission 'read:drive', :overview, :stream, :attached_notes, :attached_chat_messages, :index, :show, :find, :find_by_hash, :check_existence
   requires_misskey_permission 'write:drive', :create, :update, :destroy, :move_bulk, :upload_from_url
 
+  before_action :require_chat_enabled!, only: :attached_chat_messages
   before_action :require_user!, except: :unavailable
   before_action :require_drive_enabled!, only: [:overview, :stream, :index, :show, :update, :destroy, :find, :find_by_hash, :check_existence, :move_bulk, :upload_from_url]
   before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
@@ -49,6 +50,35 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
     render json: statuses.map { |note| MisskeyCompat::NoteSerializer.serialize(note, context: context) }
+  end
+
+  def attached_chat_messages
+    return unless valid_attached_chat_params?
+
+    drive_scope = current_user.role.administrator? ? DriveFile.all : current_account.drive_files
+    drive_file = drive_scope.find_by(id: params[:fileId]) if Setting.drive_enabled
+    media_scope = if drive_file
+                    MediaAttachment.where(account_id: drive_file.account_id)
+                  elsif current_user.role.administrator?
+                    MediaAttachment.all
+                  else
+                    current_account.media_attachments
+                  end
+    media = media_scope.find_by(id: params[:fileId], drive_file_id: nil)
+    raise MisskeyCompat::DriveFileResolver::AmbiguousFileError if drive_file && media
+    # rubocop:disable-next I18n/RailsI18n/DecorateString
+    return render_error('No such file.', 'NO_SUCH_FILE', 400, id: '485ce26d-f5d2-4313-9783-e689d131eafb') if drive_file.nil? && media.nil?
+
+    media_ids = drive_file ? drive_file.media_attachments.select(:id) : MediaAttachment.where(id: media.id).select(:id)
+    message_ids = ChatMessageMediaAttachment.where(media_attachment_id: media_ids).select(:chat_message_id)
+    conversations = ChatConversation.for_account(current_account).select(:id)
+    messages = ChatMessage.visible_to(current_account).visible.where(id: message_ids, chat_conversation_id: conversations)
+    messages = messages.where(ChatMessage.arel_table[:id].lt(params[:untilId])) if params[:untilId].present?
+    messages = messages.where(ChatMessage.arel_table[:id].gt(params[:sinceId])) if params[:sinceId].present?
+    messages = apply_compat_pagination_dates(messages).reorder(id: forward_pagination? ? :asc : :desc).limit(pagination_limit(default: 10, max: LIMIT))
+    messages = messages.includes(:account, chat_conversation: [:owner_account, :invitations, :memberships, :accounts], reactions: :account, media_attachments: [:chat_message_media_attachments, { drive_file: :custom_name }])
+
+    render json: messages.map { |message| MisskeyCompat::ChatSerializer.message(message, viewer: current_account) }
   end
 
   def index
@@ -149,6 +179,40 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def require_chat_enabled!
+    render_error('Chat is not available', 'ENDPOINT_DISABLED', 404) unless Setting.chat_enabled
+  end
+
+  def valid_attached_chat_params?
+    return false unless object_body!
+
+    unless params.key?(:fileId)
+      render_invalid_param('#/properties/fileId', 'is required')
+      return false
+    end
+
+    %i(fileId sinceId untilId).each do |key|
+      next unless params.key?(key)
+      next if params[key].is_a?(String) && params[key].match?(/\A[1-9][0-9]*\z/)
+
+      render_invalid_param("#/properties/#{key}", 'must be an id')
+      return false
+    end
+
+    if params.key?(:limit) && (!params[:limit].is_a?(Integer) || !params[:limit].between?(1, LIMIT))
+      render_invalid_param('#/properties/limit', 'must be an integer between 1 and 100')
+      return false
+    end
+
+    %i(sinceDate untilDate).each do |key|
+      next unless params.key?(key) && !params[key].is_a?(Integer)
+
+      render_invalid_param("#/properties/#{key}", 'must be an integer')
+      return false
+    end
+    true
+  end
 
   def enforce_upload_rate_limit!
     return if Setting.rate_limit_bypass_enabled && current_user.can_extra?(:bypass_rate_limit)
