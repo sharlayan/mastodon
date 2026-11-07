@@ -150,23 +150,28 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
     return import_error(type, :empty_file, 'That file is empty', 'EMPTY_FILE') if size.zero?
     return import_error(type, :too_big_file, 'That file is too big', 'TOO_BIG_FILE') if size > Form::Import::FILE_SIZE_LIMIT
 
-    with_import_upload(drive_file) do |upload|
-      import = Form::Import.new(current_account: current_account, type: type, mode: :merge, data: upload)
-      next import_error(type, :unexpected_file_type, import.errors.full_messages.to_sentence, 'UNEXPECTED_FILE_TYPE') unless import.save
+    tempfile = fetch_drive_file(drive_file)
+    return import_error(type, :no_such_file, 'No such file', 'NO_SUCH_FILE') if tempfile.nil?
 
-      import.bulk_import.update!(state: :scheduled)
-      BulkImportWorker.perform_async(import.bulk_import.id)
-      head 204
-    end
-  rescue Errno::ENOENT
-    import_error(type, :no_such_file, 'No such file', 'NO_SUCH_FILE')
+    upload = ActionDispatch::Http::UploadedFile.new(tempfile: tempfile, filename: drive_file.display_name.presence || 'import.csv', type: 'text/csv')
+    import = Form::Import.new(current_account: current_account, type: type, mode: :merge, data: upload)
+    return import_error(type, :unexpected_file_type, import.errors.full_messages.to_sentence, 'UNEXPECTED_FILE_TYPE') unless import.save
+
+    import.bulk_import.update!(state: :scheduled)
+    BulkImportWorker.perform_async(import.bulk_import.id)
+    head 204
+  ensure
+    tempfile&.close!
   end
 
-  def with_import_upload(drive_file)
-    adapter = Paperclip.io_adapters.for(drive_file.file)
-    yield ActionDispatch::Http::UploadedFile.new(tempfile: adapter, filename: drive_file.display_name.presence || 'import.csv', type: 'text/csv')
-  ensure
-    adapter&.close!
+  def fetch_drive_file(drive_file)
+    tempfile = Tempfile.new(['misskey-import', '.csv'])
+    drive_file.file.copy_to_local_file(:original, tempfile.path)
+    tempfile.open.binmode
+    tempfile
+  rescue Errno::ENOENT
+    tempfile.close!
+    nil
   end
 
   def import_error(type, error, message, code)
