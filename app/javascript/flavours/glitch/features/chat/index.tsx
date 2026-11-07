@@ -2378,6 +2378,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const readNewestWhenShown = useCallback(() => {
     queueVisibleRead(conversationId ?? '', newestMessageId);
   }, [conversationId, newestMessageId, queueVisibleRead]);
+  // Like the creation response above, the searched message is for opening the room once: reloading the page after it
+  // was reached, or after going to the newest, opens the room at the newest (iPhone on ddbad17ba3).
+  const forgetSearchedMessage = useCallback(() => {
+    const current = history.location as typeof location;
+    if (!current.state?.chatMessageId) return;
+    const state = { ...current.state };
+    delete state.chatMessageId;
+    history.replace({ ...current, state });
+  }, [history]);
   useChatScroll(scroll, {
     endRef: messagesEndRef,
     listRef: messagesListRef,
@@ -2395,6 +2404,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     onReadCheck: attemptVisibleRead,
     onReturn: markSeenOnReturn,
     onReadNewest: readNewestWhenShown,
+    onForgetSearch: forgetSearchedMessage,
   });
 
   useEffect(() => {

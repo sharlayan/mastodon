@@ -18,6 +18,7 @@ import type {
 import {
   distanceFromNewest,
   initialScrollState,
+  rectShown,
   rectVisible,
   revealAmount,
   step,
@@ -58,11 +59,13 @@ const readViewport = (): ViewportReading => {
   return {
     innerHeight: window.innerHeight,
     rootClientHeight: document.documentElement.clientHeight,
+    scrollY: window.scrollY,
     visual: visual
       ? {
           height: visual.height,
           offsetTop: visual.offsetTop,
           scale: visual.scale,
+          pageTop: visual.pageTop,
         }
       : null,
   };
@@ -140,6 +143,14 @@ const snapshotOf = (room: Room): Snapshot => {
         ? message.getBoundingClientRect().top
         : null;
     },
+    messageShown: (id: string) => {
+      const message = document.getElementById(`chat-message-${id}`);
+      return Boolean(
+        message &&
+        room.list.contains(message) &&
+        rectShown(measured(), box(message.getBoundingClientRect())),
+      );
+    },
     get scale() {
       return currentScale();
     },
@@ -185,6 +196,7 @@ const detachedSnapshot = (): Snapshot => ({
   ownScroller: false,
   firstMessage: null,
   messageTop: () => null,
+  messageShown: () => false,
 });
 
 // Raises the composer and the navigation bar onto the visible bottom while the keyboard is open, and puts back what
@@ -364,6 +376,7 @@ export const useChatScroll = (
     onReadCheck,
     onReturn,
     onReadNewest,
+    onForgetSearch,
   }: {
     endRef: RefObject<HTMLElement | null>;
     listRef: RefObject<HTMLElement | null>;
@@ -382,6 +395,8 @@ export const useChatScroll = (
     onReadCheck: () => void;
     onReturn: () => void;
     onReadNewest: () => void;
+    // The page's history entry is no longer to open the room at the searched message.
+    onForgetSearch: () => void;
   },
 ) => {
   const read = useEffectEvent((kind: 'check' | 'return' | 'newest') => {
@@ -391,6 +406,9 @@ export const useChatScroll = (
     }
     if (kind === 'return') onReturn();
     onReadCheck();
+  });
+  const forgetSearch = useEffectEvent(() => {
+    onForgetSearch();
   });
 
   // Before the screen is drawn, so that what is aligned is never seen out of place.
@@ -447,6 +465,9 @@ export const useChatScroll = (
           break;
         case 'read':
           read(command.kind);
+          break;
+        case 'forgetSearch':
+          forgetSearch();
           break;
         case 'lift':
           if (command.by === null) lift.restore();

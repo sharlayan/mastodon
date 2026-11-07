@@ -58,6 +58,32 @@ describe('defaultShouldUpdateScroll', () => {
     });
   });
 
+  describe('a room forgetting the searched message it was opened at', () => {
+    it('stays where the reader is when only that leaves its history entry', () => {
+      expect(
+        update(
+          at('/chat/123', {
+            key: 'abc',
+            state: { fromMastodon: true, chatMessageId: '343' } as never,
+          }),
+          at('/chat/123', { key: 'def', state: { fromMastodon: true } }),
+        ),
+      ).toBe(false);
+    });
+
+    it('leaves opening a room at a searched message to the usual rules', () => {
+      expect(
+        update(
+          at('/chat'),
+          at('/chat/123', {
+            key: 'def',
+            state: { fromMastodon: true, chatMessageId: '343' } as never,
+          }),
+        ),
+      ).toBe(true);
+    });
+  });
+
   describe('moving to other chat screens inside the app', () => {
     it.each(['/chat/123', '/chat/123/members', '/chat/new'])(
       'leaves %s to the usual rules',

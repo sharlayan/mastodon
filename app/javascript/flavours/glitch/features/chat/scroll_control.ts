@@ -22,6 +22,8 @@ const ECHO_PX = 2;
 const TOUCH_STALE_MS = 5000;
 // Room left between the last message and the composer when revealing it over the keyboard.
 const REVEAL_GAP = 16;
+// A pinch let go just short of 1 is not zoomed in: the page looks the same (SE 3 stayed at 1.0033 for 20s).
+const ZOOM_TOLERANCE = 0.01;
 
 export interface Box {
   top: number;
@@ -32,7 +34,14 @@ export interface ViewportReading {
   innerHeight: number;
   // The root element's clientHeight, or 0 where it is not known.
   rootClientHeight: number;
-  visual: { height: number; offsetTop: number; scale: number } | null;
+  // window.scrollY, where it is known.
+  scrollY?: number;
+  visual: {
+    height: number;
+    offsetTop: number;
+    scale: number;
+    pageTop?: number;
+  } | null;
 }
 
 export interface VisibleArea extends Box {
@@ -56,16 +65,34 @@ const finite = (value: number | undefined, fallback: number) =>
 // Chrome keeps the layout viewport (and innerHeight) at the page's height and gives rectangles relative to it, so the
 // visual viewport starts offsetTop below their origin. Safari shrinks innerHeight with the keyboard (or grows it with
 // a collapsed toolbar) and gives rectangles relative to what is on the screen, whatever offsetTop it reports.
+// Safari can also keep innerHeight and report an offsetTop while its scrollY is already the top of what is shown
+// (pageTop) and rectangles are relative to that: focused far up, or reading on with the keyboard open (iPhone on
+// ddbad17ba3: offsetTop 262 with pageTop 1937.5 at scrollY 1938). Chrome's scrollY is its layout viewport's, below
+// which the visual viewport is: pageTop = scrollY + offsetTop (Galaxy: 1599.3 = 1275.3 + 324).
+const scrollYIsVisualTop = ({ scrollY, visual }: ViewportReading) => {
+  if (!visual || typeof scrollY !== 'number') return false;
+  const { pageTop } = visual;
+  return (
+    typeof pageTop === 'number' &&
+    finite(visual.offsetTop, 0) > 2 &&
+    Math.abs(pageTop - scrollY) <= 2
+  );
+};
+
 // Whether rectangles are relative to a layout viewport taller than what is on the screen (Chrome).
-export const rectsInLayoutViewport = ({
-  innerHeight,
-  rootClientHeight,
-  visual,
-}: ViewportReading) =>
-  visual !== null &&
-  rootClientHeight > 0 &&
-  innerHeight >= rootClientHeight - 2 &&
-  innerHeight > finite(visual.height, innerHeight) + 2;
+export const rectsInLayoutViewport = (viewport: ViewportReading) => {
+  const { innerHeight, rootClientHeight, visual } = viewport;
+  return (
+    visual !== null &&
+    rootClientHeight > 0 &&
+    innerHeight >= rootClientHeight - 2 &&
+    innerHeight > finite(visual.height, innerHeight) + 2 &&
+    !scrollYIsVisualTop(viewport)
+  );
+};
+
+const pageScale = (scale: number) =>
+  Math.abs(scale - 1) < ZOOM_TOLERANCE ? 1 : scale;
 
 export const visibleArea = (viewport: ViewportReading): VisibleArea => {
   const { innerHeight, visual } = viewport;
@@ -73,7 +100,12 @@ export const visibleArea = (viewport: ViewportReading): VisibleArea => {
     return { top: 0, bottom: innerHeight, height: innerHeight, scale: 1 };
   const height = finite(visual.height, innerHeight);
   const top = rectsInLayoutViewport(viewport) ? finite(visual.offsetTop, 0) : 0;
-  return { top, bottom: top + height, height, scale: finite(visual.scale, 1) };
+  return {
+    top,
+    bottom: top + height,
+    height,
+    scale: pageScale(finite(visual.scale, 1)),
+  };
 };
 
 // What of the room can be seen: within the visible area and the room's own scrolling box, above a navigation bar
@@ -115,6 +147,17 @@ export const rectVisible = (layout: LayoutReading, rect: Box) => {
   );
 };
 
+// Whether a message is in full view: all of it on the screen, clear of the composer.
+export const rectShown = (layout: LayoutReading, rect: Box) => {
+  if (visibleArea(layout.viewport).scale !== 1 || !layout.composer)
+    return false;
+  const bounds = contentBounds(layout);
+  return (
+    rect.top >= bounds.top &&
+    rect.bottom <= Math.min(bounds.bottom, layout.composer.top)
+  );
+};
+
 // Whether Chrome has brought the visual viewport down onto the keyboard, where it shows the focused composer.
 export const viewportRestsOnKeyboard = (viewport: ViewportReading) => {
   const area = visibleArea(viewport);
@@ -125,6 +168,15 @@ export const viewportRestsOnKeyboard = (viewport: ViewportReading) => {
   );
 };
 
+// Whether what is shown has come to rest over the keyboard: Chrome has brought its visual viewport down onto it, or
+// Safari, which never reports the keyboard opening, gives rectangles relative to a visual viewport it has shrunk.
+const keyboardShown = (viewport: ViewportReading) =>
+  rectsInLayoutViewport(viewport)
+    ? viewportRestsOnKeyboard(viewport)
+    : viewport.rootClientHeight > 0 &&
+      visibleArea(viewport).height <
+        viewport.rootClientHeight - KEYBOARD_SHRINK_PX;
+
 // How far the composer and the navigation bar are to be raised to sit on the bottom of the visible area.
 // Safari keeps fixed and sticky elements on the bottom of its layout viewport, which never goes past the end of the
 // page: min(innerHeight, root clientHeight − offsetTop) in on-screen coordinates. While the reader drags up with the
@@ -134,7 +186,10 @@ export const viewportRestsOnKeyboard = (viewport: ViewportReading) => {
 // Chrome keeps the layout viewport at the page's height and moves the visual viewport within it, also up when the
 // reader drags. While an Android keyboard is opening, Chrome itself moves the visual viewport down to the composer and
 // the end of the room with it; raising the composer first would leave the end of the room under the keyboard (Galaxy
-// and Pixel on f35f1ec: 323 and 284px). So in Chrome's coordinates nothing is raised until it has got there.
+// and Pixel on f35f1ec: 323 and 284px). So in Chrome's coordinates nothing is raised until what is shown has rested
+// on the keyboard. Safari has by the time it says anything, and a flick with its keyboard open puts innerHeight back
+// and offsetTop to 0 for the rest of the inertia, in Chrome's coordinates: the composer still goes on the keyboard
+// (iPhone on ddbad17ba3: 262 and 226.5, raised by nothing there).
 export const keyboardLift = (viewport: ViewportReading, rested: boolean) => {
   const area = visibleArea(viewport);
   if (rectsInLayoutViewport(viewport))
@@ -185,6 +240,8 @@ export interface Snapshot {
   // The first message shown and where it is on the screen, and where a given message is now.
   firstMessage: { id: string; top: number } | null;
   messageTop: (id: string) => number | null;
+  // A given message is in full view, clear of the composer.
+  messageShown: (id: string) => boolean;
 }
 
 export interface Target {
@@ -201,13 +258,15 @@ export interface KeyboardSession {
   baseHeight: number;
   shrunk: boolean;
   closing: boolean;
-  // Chrome has brought the visual viewport onto the keyboard (see keyboardLift).
+  // What is shown has come to rest over the keyboard (see keyboardLift).
   rested: boolean;
 }
 
 export interface ScrollState {
   following: boolean;
   target: Target | null;
+  // The room was opened at a searched message the page's history entry still names.
+  searchEntry: boolean;
   screen: string | null;
   ownJump: boolean;
   // The last jump did not move the page: its original was already shown.
@@ -241,6 +300,9 @@ export type Command =
   | { type: 'restoreScroll'; top: number }
   | { type: 'away'; value: boolean }
   | { type: 'read'; kind: 'check' | 'return' | 'newest' }
+  // The searched message the room was opened at has been reached, or the reader went to the newest: opening the page
+  // again is to open it at the newest.
+  | { type: 'forgetSearch' }
   // How far to raise the composer and the navigation bar, or null to put back what was there.
   | { type: 'lift'; by: number | null }
   | { type: 'timer'; name: TimerName; delay: number }
@@ -275,6 +337,7 @@ export const initialScrollState = (targetId: string | null): ScrollState => ({
   target: targetId
     ? { id: targetId, fromSearch: true, phase: 'seeking' }
     : null,
+  searchEntry: Boolean(targetId),
   screen: null,
   ownJump: false,
   stillJump: false,
@@ -327,6 +390,12 @@ const isEcho = (state: ScrollState, s: Snapshot) =>
   s.height < state.echo.height &&
   state.echo.height - s.height <= ECHO_PX;
 
+const forgetSearch = (state: ScrollState, commands: Command[]) => {
+  if (!state.searchEntry) return;
+  state.searchEntry = false;
+  commands.push({ type: 'forgetSearch' });
+};
+
 const setFollowing = (
   state: ScrollState,
   following: boolean,
@@ -334,6 +403,7 @@ const setFollowing = (
 ) => {
   state.following = following;
   if (!following) state.pendingFollow = false;
+  else forgetSearch(state, commands);
   commands.push({ type: 'away', value: !following });
 };
 
@@ -348,7 +418,7 @@ const raise = (state: ScrollState, s: Snapshot, commands: Command[]) => {
     commands.push({ type: 'lift', by: null });
     return;
   }
-  if (viewportRestsOnKeyboard(s.viewport)) keyboard.rested = true;
+  if (keyboardShown(s.viewport)) keyboard.rested = true;
   commands.push({
     type: 'lift',
     by: keyboardLift(s.viewport, keyboard.rested),
@@ -528,6 +598,7 @@ export const step = (
 
     case 'targetScrolled': {
       if (state.target?.id !== event.id || !seeking(state)) break;
+      if (state.target.fromSearch) forgetSearch(state, commands);
       state.target = { ...state.target, phase: 'landed' };
       state.ownJump = true;
       state.stillJump = !event.moved;
@@ -558,11 +629,22 @@ export const step = (
 
     case 'quoteClicked':
       if (!event.id || state.target?.id === event.id) break;
-      state.target = { id: event.id, fromSearch: false, phase: 'seeking' };
       state.ownJump = false;
       state.stillJump = false;
       commands.push({ type: 'clearTimer', name: 'ownJumpEnd' });
       commands.push({ type: 'clearTimer', name: 'highlightEnd' });
+      // An original in full view is highlighted where it is: centring it moved an iPhone page by 63px and let go of
+      // the newest (ddbad17ba3, S2b). The reader stays where they were, following or not.
+      if (s.messageShown(event.id)) {
+        state.target = { id: event.id, fromSearch: false, phase: 'landed' };
+        commands.push({
+          type: 'timer',
+          name: 'highlightEnd',
+          delay: HIGHLIGHT_DURATION_MS,
+        });
+        break;
+      }
+      state.target = { id: event.id, fromSearch: false, phase: 'seeking' };
       setFollowing(state, false, commands);
       break;
 
@@ -644,6 +726,16 @@ export const step = (
         commands.push({ type: 'clearTimer', name: 'keyboardClose' });
         break;
       }
+      // Safari scrolls by the keyboard from where the page is, and a little up from the newest that leaves its end
+      // under the keyboard, beyond what can be scrolled while it is open (iPhone on ddbad17ba3: the last message under
+      // the composer by 36~181px). A reader following is shown the newest before it opens, as at the newest.
+      if (
+        state.following &&
+        !seeking(state) &&
+        s.scale === 1 &&
+        s.distance > AT_NEWEST_TOLERANCE
+      )
+        toNewest(state, s, commands, false);
       state.keyboard = {
         restoreTop: s.scrollTop,
         following: state.following,

@@ -12,6 +12,10 @@ export type ShouldUpdateScrollFn = ShouldUpdateScroll<MastodonLocation>;
 
 const CHAT_SCREEN = /^\/chat(\/|$)/;
 
+const searchedMessage = (location: MastodonLocation | null) =>
+  (location?.state as { chatMessageId?: unknown } | null | undefined)
+    ?.chatMessageId;
+
 export const defaultShouldUpdateScroll: ShouldUpdateScrollFn = (
   prevLocation,
   location,
@@ -25,6 +29,18 @@ export const defaultShouldUpdateScroll: ShouldUpdateScrollFn = (
   // A chat screen fetches what it shows only after this runs, so a saved position would be cut short by the height
   // of an empty page, which on a phone is just enough to hide the tabs. A page load has no location key either, so
   // what it would restore may be left over from another page. A room then scrolls to its newest message by itself.
+  // A room drops the searched message it was opened at from its history entry once it is done with it; the reader
+  // stays where they are.
+  if (
+    prevLocation &&
+    CHAT_SCREEN.test(location.pathname) &&
+    prevLocation.pathname === location.pathname &&
+    prevLocation.search === location.search &&
+    searchedMessage(prevLocation) !== undefined &&
+    searchedMessage(location) === undefined
+  )
+    return false;
+
   if (
     shouldUpdateScroll &&
     (prevLocation

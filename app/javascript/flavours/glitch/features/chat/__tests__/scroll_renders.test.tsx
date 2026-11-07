@@ -995,6 +995,21 @@ const endScrolls = () =>
   scrollIntoView.mock.contexts.filter((element) =>
     (element as Element).classList.contains('chat-native__end'),
   ).length;
+// The quoted original out of full view until the page is measured again, as a jump that moves the page to it has it:
+// above the screen (700px up: the box from 800 to 100), or with its top cut off. One in full view is highlighted where
+// it is instead (state table 45).
+const originalAway = (top = -600, bottom = top + 50) => {
+  const measure = vi
+    .spyOn(Element.prototype, 'getBoundingClientRect')
+    .getMockImplementation();
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: Element) {
+      if (this.id === 'chat-message-message-1')
+        return { top, bottom } as DOMRect;
+      return measure ? measure.call(this) : ({} as DOMRect);
+    },
+  );
+};
 
 describe('Review 355b', () => {
   it('does not snap back while a quoted message is still loading', async () => {
@@ -1104,6 +1119,7 @@ describe('Review 355b', () => {
       await openRoom();
       const scrollport = tallScrollport(800);
       placedAt(0);
+      originalAway();
       act(() => {
         screen.getByRole('textbox').focus();
       });
@@ -1278,6 +1294,7 @@ describe('Review 355b', () => {
       await openRoom();
       const scrollport = tallScrollport(top);
       placedAt(gap);
+      originalAway();
       act(() => {
         screen.getByRole('textbox').focus();
       });
@@ -1314,6 +1331,7 @@ describe('Review 355b', () => {
     await openRoom();
     const scrollport = tallScrollport(800);
     placedAt(0);
+    originalAway();
     const quote = document.querySelector(
       '.chat-native__reply-quote[data-message-id="message-1"]',
     ) as HTMLElement;
@@ -1409,14 +1427,17 @@ describe('Review f88a', () => {
   // S1: the reader is at the newest and taps the quote of a reply to a message just above. The jump
   // centres the original; the browser's scroll event then finds the end still within 240px, so the
   // screen counts as following again. When the highlight ends 3s later, nothing new has arrived.
-  for (const [name, below] of [
-    ['nearby original (end 120px below)', 120],
-    ['far original (end 400px below, control)', 400],
+  // Centring it moves the page, so the original is not in full view: just above the newest, its bottom under the
+  // composer (300), or far above the screen.
+  for (const [name, below, original] of [
+    ['nearby original (end 120px below)', 120, [260, 310]],
+    ['far original (end 400px below, control)', 400, [-600, -550]],
   ] as const) {
     it(`S1 a quote jump stays where it went when the highlight ends: ${name}`, async () => {
       withQuote();
       await openRoom();
       placedAt(0);
+      originalAway(...original);
       const quote = quoteOf('message-1');
       fireEvent.pointerDown(quote);
       fireEvent.click(quote);
@@ -1649,6 +1670,7 @@ describe('Review f88a', () => {
     await openRoom();
     const scrollport = tallScrollport(800);
     placedAt(0);
+    originalAway();
     act(() => {
       screen.getByRole('textbox').focus();
     });
@@ -3333,5 +3355,357 @@ describe('iOS keyboard on f35f1ec', () => {
         else Reflect.deleteProperty(target, key);
       }
     }
+  });
+});
+
+// iPhone SE 2 on ddbad17ba3 (ios-masto-final3/out/se2/b-*.json): Safari's innerHeight, visual viewport and scrollY
+// as recorded, with the rectangles the page measured.
+describe('iOS keyboard on ddbad17ba3', () => {
+  const geo = {
+    end: { top: 494.8, bottom: 494.8 },
+    composer: { top: 425, bottom: 494 },
+    nav: { top: 494, bottom: 549 },
+    last: { top: 355, bottom: 410 },
+  };
+  let scrollTop = 0;
+  let scrollTops: number[] = [];
+  const iphone = () => {
+    const root = document.documentElement;
+    const saved = {
+      viewport: Object.getOwnPropertyDescriptor(window, 'visualViewport'),
+      inner: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
+      scrollY: Object.getOwnPropertyDescriptor(window, 'scrollY'),
+      client: Object.getOwnPropertyDescriptor(root, 'clientHeight'),
+      top: Object.getOwnPropertyDescriptor(root, 'scrollTop'),
+      height: Object.getOwnPropertyDescriptor(root, 'scrollHeight'),
+      scrolling: Object.getOwnPropertyDescriptor(document, 'scrollingElement'),
+    };
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 549,
+      offsetTop: 0,
+      pageTop: 0,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 549,
+    });
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      writable: true,
+      value: 0,
+    });
+    Object.defineProperty(root, 'clientHeight', {
+      configurable: true,
+      value: 549,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    const nav = document.createElement('div');
+    nav.className = 'ui__navigation-bar';
+    document.body.appendChild(nav);
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        if (this.classList.contains('chat-native__end'))
+          return geo.end as DOMRect;
+        if (this.classList.contains('chat-native__composer'))
+          return geo.composer as DOMRect;
+        if (this.classList.contains('ui__navigation-bar'))
+          return { ...geo.nav, height: 55 } as DOMRect;
+        if (this.id.startsWith('chat-message-live')) return geo.last as DOMRect;
+        return { top: -2000, bottom: -1950 } as DOMRect;
+      },
+    );
+    // The page as Safari has it: where it is scrolled, how tall, and what it shows.
+    const page = (
+      at: {
+        innerHeight?: number;
+        height?: number;
+        offsetTop?: number;
+        scrollY: number;
+      },
+      events: ('resize' | 'scroll' | 'window')[] = ['scroll'],
+    ) => {
+      if (at.innerHeight !== undefined) window.innerHeight = at.innerHeight;
+      if (at.height !== undefined) viewport.height = at.height;
+      if (at.offsetTop !== undefined) viewport.offsetTop = at.offsetTop;
+      window.scrollY = at.scrollY;
+      viewport.pageTop = at.scrollY;
+      scrollTop = at.scrollY;
+      act(() => {
+        for (const type of events)
+          if (type === 'window') fireEvent.scroll(window);
+          else viewport.dispatchEvent(new Event(type));
+      });
+    };
+    const measurePage = (height: number) => {
+      scrollTops = [];
+      Object.defineProperty(document, 'scrollingElement', {
+        configurable: true,
+        value: root,
+      });
+      Object.defineProperty(root, 'scrollHeight', {
+        configurable: true,
+        value: height,
+      });
+      Object.defineProperty(root, 'scrollTop', {
+        configurable: true,
+        get: () => scrollTop,
+        set: (value: number) => {
+          scrollTops.push(value);
+          scrollTop = Math.min(value, height - window.innerHeight);
+        },
+      });
+    };
+    const restore = () => {
+      cleanup();
+      nav.remove();
+      for (const [target, key, descriptor] of [
+        [window, 'visualViewport', saved.viewport],
+        [window, 'innerHeight', saved.inner],
+        [window, 'scrollY', saved.scrollY],
+        [root, 'clientHeight', saved.client],
+        [root, 'scrollTop', saved.top],
+        [root, 'scrollHeight', saved.height],
+        [document, 'scrollingElement', saved.scrolling],
+      ] as const) {
+        if (descriptor) Object.defineProperty(target, key, descriptor);
+        else Reflect.deleteProperty(target, key);
+      }
+    };
+    return { viewport, nav, page, measurePage, restore };
+  };
+  const drag = (move: () => void) => {
+    fireEvent.touchStart(document.body);
+    fireEvent.touchMove(document.body);
+    move();
+    fireEvent.touchEnd(document.body);
+  };
+
+  beforeEach(() => {
+    Object.assign(geo, {
+      end: { top: 494.8, bottom: 494.8 },
+      composer: { top: 425, bottom: 494 },
+      nav: { top: 494, bottom: 549 },
+      last: { top: 355, bottom: 410 },
+    });
+  });
+
+  it('keeps the composer over the keyboard through a flick (b-k2s3: 262px, raised by 0 on ddbad17)', async () => {
+    const device = iphone();
+    try {
+      await openRoom();
+      device.page({ scrollY: 1695 });
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      device.page(
+        { innerHeight: 287, height: 287, offsetTop: 262, scrollY: 1957 },
+        ['resize'],
+      );
+      drag(() => {
+        device.page({ innerHeight: 367, offsetTop: 182, scrollY: 1877 });
+        device.page({ innerHeight: 447, offsetTop: 102, scrollY: 1797 });
+      });
+      const dragged = device.nav.style.bottom;
+      // 0.26s into the inertia: innerHeight back to 549, offsetTop to 0, for the rest of it.
+      device.page({ innerHeight: 549, offsetTop: -0.5, scrollY: 1611 }, [
+        'scroll',
+        'resize',
+        'window',
+      ]);
+      expect({ dragged, flicked: device.nav.style.bottom }).toEqual({
+        dragged: '160px',
+        flicked: '262.5px',
+      });
+    } finally {
+      device.restore();
+    }
+  });
+
+  it('does not start following, nor pull to a new message, after reading a little with the keyboard open far up (b-fk)', async () => {
+    const device = iphone();
+    try {
+      await openRoom();
+      device.measurePage(2627);
+      // About 420pt up: the end 457.6 below the navigation, and the way back shown.
+      geo.end = { top: 951.6, bottom: 951.6 };
+      drag(() => {
+        device.page({ scrollY: 1621 }, ['window']);
+      });
+      await wait(300);
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      // Safari keeps innerHeight and moves only the visual viewport; scrollY is its top already.
+      Object.assign(geo, {
+        composer: { top: 162.5, bottom: 231.5 },
+        nav: { top: 231.5, bottom: 286.5 },
+        end: { top: 634.6, bottom: 634.6 },
+      });
+      device.page({ height: 287, offsetTop: 262, scrollY: 1938 }, [
+        'resize',
+        'window',
+      ]);
+      // 60pt up with the keyboard open: 185.6 by Chrome's coordinates, under 240.
+      geo.end = { top: 684.6, bottom: 684.6 };
+      drag(() => {
+        device.page({ offsetTop: 212, scrollY: 1888 }, ['scroll', 'window']);
+      });
+      await wait(300);
+      const shownAway = document.querySelector('.chat-native__jump') !== null;
+      scrollTops = [];
+      geo.last = { top: 650, bottom: 690 };
+      receive('live-far');
+      await wait(50);
+      expect({ shownAway, scrolled: scrollTops }).toEqual({
+        shownAway: true,
+        scrolled: [],
+      });
+    } finally {
+      device.restore();
+    }
+  });
+
+  it('shows the newest before the keyboard opens when the box is focused a little up (b-a130: 117pt)', async () => {
+    const device = iphone();
+    try {
+      await openRoom();
+      device.measurePage(2957);
+      geo.end = { top: 611.1, bottom: 611.1 };
+      geo.last = { top: 471.3, bottom: 526.1 };
+      receive('live-near');
+      drag(() => {
+        device.page({ scrollY: 2292 }, ['window']);
+      });
+      await wait(300);
+      scrollTops = [];
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      expect(scrollTop).toBe(2408);
+    } finally {
+      device.restore();
+    }
+  });
+});
+
+describe('A room opened at a searched message, on ddbad17ba3', () => {
+  const open = async (chatMessageId: string) => {
+    const history = createMemoryHistory({
+      initialEntries: [{ pathname: `/chat/${ROOM}`, state: { chatMessageId } }],
+    });
+    render(
+      <IntlProvider locale='en'>
+        <IdentityContext.Provider
+          value={{
+            signedIn: true,
+            permissions: 0,
+            accountId: 'me',
+            disabledAccountId: undefined,
+          }}
+        >
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat />
+            </Route>
+          </Router>
+        </IdentityContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText('Message 5');
+    await wait(50);
+    return history;
+  };
+
+  it('is opened at the newest after reloading once the searched message was reached (343 kept on ddbad17)', async () => {
+    placedAt(5000);
+    const history = await open('message-1');
+    expect(targetScrolls('message-1')).toBe(1);
+    expect({
+      pathname: history.location.pathname,
+      state: history.location.state,
+      entries: history.length,
+    }).toEqual({ pathname: `/chat/${ROOM}`, state: {}, entries: 1 });
+  });
+
+  it('forgets it when the reader scrolls down to the newest before it is reached', async () => {
+    placedAt(5000);
+    const history = createMemoryHistory({
+      initialEntries: [
+        { pathname: `/chat/${ROOM}`, state: { chatMessageId: 'message-1' } },
+      ],
+    });
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages'))
+          return options?.params?.max_id
+            ? new Promise(() => undefined)
+            : Promise.resolve({
+                data: Array.from({ length: 40 }, (_, i) => messageFrom(i + 20)),
+              });
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    render(
+      <IntlProvider locale='en'>
+        <IdentityContext.Provider
+          value={{
+            signedIn: true,
+            permissions: 0,
+            accountId: 'me',
+            disabledAccountId: undefined,
+          }}
+        >
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat />
+            </Route>
+          </Router>
+        </IdentityContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText('Message 59');
+    await wait(50);
+    expect(history.location.state).toEqual({ chatMessageId: 'message-1' });
+    fireEvent.touchMove(document.body);
+    placedAt(0);
+    expect(history.location.state).toEqual({});
+  });
+});
+
+describe('A quote whose original is in full view, on ddbad17ba3', () => {
+  it('highlights it where it is and keeps following (iPhone S2b: centred 63px and let go of the newest)', async () => {
+    withQuote();
+    await openRoom();
+    placedAt(0);
+    const quote = quoteOf('message-1');
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    await wait(50);
+    const highlighted = document
+      .getElementById('chat-message-message-1')
+      ?.classList.contains('chat-native__message--highlighted');
+    const readsBefore = readsPosted();
+    const endBefore = endScrolls();
+    receive('after-shown-quote');
+    await wait(50);
+    expect({
+      jumped: targetScrolls('message-1'),
+      highlighted,
+      jumpButton: document.querySelector('.chat-native__jump') !== null,
+      followed: endScrolls() - endBefore > 0,
+      read: readsPosted() - readsBefore,
+    }).toEqual({
+      jumped: 0,
+      highlighted: true,
+      jumpButton: false,
+      followed: true,
+      read: 1,
+    });
   });
 });

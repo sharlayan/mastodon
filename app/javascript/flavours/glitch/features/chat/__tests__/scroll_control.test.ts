@@ -10,6 +10,7 @@ import {
   initialScrollState,
   isAtNewest,
   keyboardLift,
+  rectShown,
   rectVisible,
   revealAmount,
   step,
@@ -472,6 +473,7 @@ const snap = (over: Partial<Snapshot> = {}): Snapshot => ({
   ownScroller: false,
   firstMessage: null,
   messageTop: () => null,
+  messageShown: () => false,
   ...over,
 });
 
@@ -1453,5 +1455,414 @@ describe('Raising over the iOS keyboard after reading a little up (iPhone on f35
           false,
         ),
       ).toBeCloseTo(lift);
+  });
+});
+
+// iPhone SE 2 (iOS 27.2) and SE 3 (iOS 18.7.7) on ddbad17ba3: ios-masto-final3/out/<se2|se3>/b-*.json `samples`
+// (sy = window.scrollY, vvpt = visualViewport.pageTop). Both devices showed each of these.
+const iphone = {
+  // b-k2s3: keyboard open at the newest, then dragged up twice; just before the flick (snap k2s3-before-flick).
+  se2BeforeFlick: {
+    innerHeight: 447,
+    rootClientHeight: 549,
+    scrollY: 1797,
+    visual: { height: 287, offsetTop: 102, scale: 1, pageTop: 1797 },
+  },
+  // 0.26s after the flick: Safari puts innerHeight back and offsetTop to 0 for the rest of the inertia (t=87660).
+  se2Flicked: {
+    innerHeight: 549,
+    rootClientHeight: 549,
+    scrollY: 1611,
+    visual: { height: 287, offsetTop: -0.5, scale: 1, pageTop: 1610.5 },
+  },
+  se3BeforeFlick: {
+    innerHeight: 453,
+    rootClientHeight: 547,
+    scrollY: 1709,
+    visual: { height: 320.5, offsetTop: 94, scale: 1, pageTop: 1709 },
+  },
+  se3Flicked: {
+    innerHeight: 547,
+    rootClientHeight: 547,
+    scrollY: 1567,
+    visual: { height: 320.5, offsetTop: 0, scale: 1, pageTop: 1566.5 },
+  },
+  // b-fk: the box focused about 420pt up. Safari keeps innerHeight and moves only the visual viewport, yet scrollY is
+  // already where that viewport is (pageTop) and rectangles are relative to the screen (t=75097).
+  se2FarFocused: {
+    viewport: {
+      innerHeight: 549,
+      rootClientHeight: 549,
+      scrollY: 1938,
+      visual: { height: 287, offsetTop: 262, scale: 1, pageTop: 1937.5 },
+    },
+    scroller: null,
+    navigation: { top: 231.5, bottom: 286.5, height: 55 },
+    composer: { top: 162.5, bottom: 231.5 },
+    end: { top: 634.6, bottom: 634.6 },
+  },
+  // Then reading 60pt up with the keyboard open (t=114453).
+  se2FarDragged: {
+    viewport: {
+      innerHeight: 549,
+      rootClientHeight: 549,
+      scrollY: 1888,
+      visual: { height: 287, offsetTop: 212, scale: 1, pageTop: 1887.5 },
+    },
+    scroller: null,
+    navigation: { top: 231.5, bottom: 286.5, height: 55 },
+    composer: { top: 162.5, bottom: 231.5 },
+    end: { top: 684.6, bottom: 684.6 },
+  },
+  se3FarFocused: {
+    viewport: {
+      innerHeight: 547,
+      rootClientHeight: 547,
+      scrollY: 1674,
+      visual: { height: 320.5, offsetTop: 226.5, scale: 1, pageTop: 1674 },
+    },
+    scroller: null,
+    navigation: { top: 265.5, bottom: 320.5, height: 55 },
+    composer: { top: 196.5, bottom: 265.5 },
+    end: { top: 648, bottom: 648 },
+  },
+  se3FarDragged: {
+    viewport: {
+      innerHeight: 547,
+      rootClientHeight: 547,
+      scrollY: 1628,
+      visual: { height: 320.5, offsetTop: 180, scale: 1, pageTop: 1627.5 },
+    },
+    scroller: null,
+    navigation: { top: 265, bottom: 320, height: 55 },
+    composer: { top: 196, bottom: 265 },
+    end: { top: 694, bottom: 694 },
+  },
+  // SE 3 b-c11: let go of a pinch at the end with the toolbar collapsed; the scale stayed 1.0033 for 20s (t=51944).
+  se3AlmostUnzoomed: {
+    viewport: {
+      innerHeight: 625,
+      rootClientHeight: 547,
+      scrollY: 1450,
+      visual: {
+        height: 625,
+        offsetTop: 0.5,
+        scale: 1.003308653831482,
+        pageTop: 1450,
+      },
+    },
+    scroller: null,
+    navigation: { top: 569, bottom: 624, height: 55 },
+    composer: { top: 500, bottom: 569 },
+    end: { top: 570, bottom: 570 },
+  },
+  // SE 2 b-s2b: at the newest without the keyboard, the quoted original 274.1~308.9 is in full view (t=29533).
+  se2QuoteShown: {
+    viewport: {
+      innerHeight: 549,
+      rootClientHeight: 549,
+      scrollY: 1825,
+      visual: { height: 549, offsetTop: 0, scale: 1, pageTop: 1825 },
+    },
+    scroller: null,
+    navigation: { top: 494, bottom: 549, height: 55 },
+    composer: { top: 425, bottom: 494 },
+    end: { top: 494.8, bottom: 494.8 },
+  },
+  // b-s2bk: the same with the keyboard open, the original at 12.1~46.9 (t=36757).
+  se2QuoteShownKeyboard: {
+    viewport: {
+      innerHeight: 287,
+      rootClientHeight: 549,
+      scrollY: 2119,
+      visual: { height: 287, offsetTop: 262, scale: 1, pageTop: 2119 },
+    },
+    scroller: null,
+    navigation: { top: 232, bottom: 287, height: 55 },
+    composer: { top: 163, bottom: 232 },
+    end: { top: 232.8, bottom: 232.8 },
+  },
+} satisfies Record<string, LayoutReading | LayoutReading['viewport']>;
+
+describe('iPhone on ddbad17ba3 (ios-masto-final3)', () => {
+  const at = (viewport: LayoutReading['viewport'], over = {}) => ({
+    viewport,
+    height: viewport.visual?.height ?? viewport.innerHeight,
+    composerFocused: true,
+    ...over,
+  });
+
+  for (const [name, base, keyboard, dragged, before, flicked, lift] of [
+    [
+      'SE 2',
+      549,
+      { ...device.se2Keyboard.viewport, scrollY: 1957 },
+      device.se2KeyboardDrag1.viewport,
+      iphone.se2BeforeFlick,
+      iphone.se2Flicked,
+      262.5,
+    ],
+    [
+      'SE 3',
+      547,
+      { ...device.se3Keyboard.viewport, scrollY: 1842 },
+      {
+        innerHeight: 398,
+        rootClientHeight: 547,
+        visual: { height: 320.5, offsetTop: 149.5, scale: 1 },
+      },
+      iphone.se3BeforeFlick,
+      iphone.se3Flicked,
+      226.5,
+    ],
+  ] as const) {
+    it(`41 a flick with the keyboard open keeps the composer over the keyboard (${name}: 0 on ddbad17, ${lift})`, () => {
+      const start: LayoutReading['viewport'] = {
+        innerHeight: base,
+        rootClientHeight: base,
+        visual: { height: base, offsetTop: 0, scale: 1 },
+      };
+      const { commands } = run(opened().state, [
+        [{ type: 'composerFocused' }, at(start)],
+        [{ type: 'viewportResized' }, at(keyboard)],
+        [{ type: 'userIntent', touch: true }],
+        [{ type: 'viewportScrolled' }, at(dragged)],
+        [{ type: 'viewportScrolled' }, at(before)],
+        [{ type: 'touch', down: false }],
+        [{ type: 'viewportScrolled' }, at(flicked)],
+        [{ type: 'viewportResized' }, at(flicked)],
+      ]);
+      expect(liftAmounts(commands).at(-1)).toBeCloseTo(lift);
+    });
+  }
+
+  it('41 an Android keyboard still opening is not taken for that flick', () => {
+    const { commands } = run(opened().state, [
+      [{ type: 'composerFocused' }, at(device.galaxy.viewport)],
+      [{ type: 'viewportResized' }, at(galaxyOpening)],
+    ]);
+    expect(liftAmounts(commands).every((by) => by === 0)).toBe(true);
+  });
+
+  it('42 Safari’s visual viewport offset is not added when scrollY already is its top (far focus: 85.6/101 on ddbad17)', () => {
+    expect(visibleArea(iphone.se2FarFocused.viewport)).toMatchObject({
+      top: 0,
+      bottom: 287,
+    });
+    expect(distanceFromNewest(iphone.se2FarFocused)).toBeCloseTo(403.1);
+    expect(distanceFromNewest(iphone.se3FarFocused)).toBeCloseTo(382.5);
+    // Read 60pt up with the keyboard open: 185.6/193.5 on ddbad17, under 240.
+    expect(distanceFromNewest(iphone.se2FarDragged)).toBeCloseTo(453.1);
+    expect(distanceFromNewest(iphone.se3FarDragged)).toBeCloseTo(429);
+    // Chrome's scrollY is its layout viewport's: pageTop = scrollY + offsetTop (Galaxy k12-1: 1599.3 = 1275.3 + 324).
+    expect(
+      visibleArea({
+        ...device.galaxyKeyboard.viewport,
+        scrollY: 1275.3,
+        visual: { ...device.galaxyKeyboard.viewport.visual, pageTop: 1599.3 },
+      }).top,
+    ).toBe(324);
+  });
+
+  it('42 reading a little with the keyboard open far up does not start following, nor pull to a new message', () => {
+    for (const [focused, dragged] of [
+      [iphone.se2FarFocused, iphone.se2FarDragged],
+      [iphone.se3FarFocused, iphone.se3FarDragged],
+    ] as const) {
+      const away = run(opened().state, [
+        [{ type: 'scrolled' }, { distance: 457.6 }],
+      ]).state;
+      const { state, commands } = run(away, [
+        [
+          { type: 'composerFocused' },
+          {
+            composerFocused: true,
+            height: focused.viewport.innerHeight,
+            distance: 457.6,
+          },
+        ],
+        [
+          { type: 'viewportResized' },
+          at(focused.viewport, { distance: distanceFromNewest(focused) }),
+        ],
+        [{ type: 'userIntent', touch: true }],
+        [
+          { type: 'viewportScrolled' },
+          at(dragged.viewport, { distance: distanceFromNewest(dragged) }),
+        ],
+        [
+          { type: 'scrolled' },
+          at(dragged.viewport, { distance: distanceFromNewest(dragged) }),
+        ],
+        [{ type: 'touch', down: false }],
+        [{ type: 'timer', name: 'userScrollEnd' }],
+        [
+          { type: 'newestShown', screen: 'A:', mine: false },
+          at(focused.viewport, { distance: 500, reveal: 176 }),
+        ],
+      ]);
+      expect(state.following).toBe(false);
+      expect(scrolls(commands)).toEqual([]);
+    }
+  });
+
+  for (const [name, distance, reveal] of [
+    // SE 2 b-a130: 117pt up, end 611.1 against the navigation at 494; 116 left to scroll (2957 − 549 − 2292).
+    ['SE 2, 117pt up', 117.1, 116],
+    // SE 3 b-a100: 87pt up, end 578.4 against 491.5; 85 left (2923 − 547 − 2291).
+    ['SE 3, 87pt up', 86.9, 85],
+  ] as const)
+    it(`43 focusing the box near the newest shows it before the keyboard opens (${name})`, () => {
+      const near = run(opened().state, [
+        [{ type: 'scrolled' }, { distance }],
+      ]).state;
+      expect(near.following).toBe(true);
+      const { commands } = run(near, [
+        [
+          { type: 'composerFocused' },
+          { composerFocused: true, height: 549, distance, reveal },
+        ],
+      ]);
+      expect(scrolls(commands)).toEqual([{ type: 'reveal', by: reveal }]);
+    });
+
+  it('43 focusing the box at the newest, or away from it, moves nothing', () => {
+    for (const distance of [1.1, 300]) {
+      const state = run(opened().state, [
+        [{ type: 'scrolled' }, { distance }],
+      ]).state;
+      const { commands } = run(state, [
+        [
+          { type: 'composerFocused' },
+          { composerFocused: true, height: 549, distance, reveal: 50 },
+        ],
+      ]);
+      expect(scrolls(commands)).toEqual([]);
+    }
+  });
+
+  const forgets = (commands: Command[]) =>
+    commands.filter((command) => command.type === 'forgetSearch').length;
+
+  it('44 a room opened at a searched message forgets it once it is reached', () => {
+    const { commands } = run(opened('m1').state, [
+      [{ type: 'targetLoaded', id: 'm1' }],
+      [
+        { type: 'targetScrolled', id: 'm1', movedUp: true, moved: true },
+        { distance: 5482 },
+      ],
+      [{ type: 'timer', name: 'highlightEnd' }],
+      [{ type: 'jumpToNewest' }],
+    ]);
+    expect(forgets(commands)).toBe(1);
+  });
+
+  it('44 or once the reader goes to the newest before it is reached', () => {
+    for (const toNewest of [
+      [{ type: 'jumpToNewest' }, {}],
+      [{ type: 'targetMissing' }, {}],
+    ] as [ScrollEvent, Partial<Snapshot>][]) {
+      const { commands } = run(opened('m1').state, [toNewest]);
+      expect(forgets(commands)).toBe(1);
+    }
+    const scrolled = run(opened('m1').state, [
+      [{ type: 'userIntent', touch: true }],
+      [{ type: 'scrolled' }, { distance: 3000 }],
+      [{ type: 'scrolled' }, { distance: 100 }],
+    ]);
+    expect(forgets(scrolled.commands)).toBe(1);
+  });
+
+  it('44 a quote, or a room opened without a searched message, has nothing to forget', () => {
+    const { commands } = run(opened().state, [
+      [{ type: 'quoteClicked', id: 'm4' }],
+      [{ type: 'targetLoaded', id: 'm4' }],
+      [
+        { type: 'targetScrolled', id: 'm4', movedUp: true, moved: true },
+        { distance: 400 },
+      ],
+      [{ type: 'jumpToNewest' }],
+    ]);
+    expect(forgets(commands)).toBe(0);
+  });
+
+  it('45 an original in full view is where it is: on the screen, clear of the composer', () => {
+    expect(rectShown(iphone.se2QuoteShown, { top: 274.1, bottom: 308.9 })).toBe(
+      true,
+    );
+    expect(rectShown(iphone.se2QuoteShown, { top: 400, bottom: 440 })).toBe(
+      false,
+    );
+    expect(
+      rectShown(iphone.se2QuoteShownKeyboard, { top: 12.1, bottom: 46.9 }),
+    ).toBe(true);
+    expect(
+      rectShown(iphone.se2QuoteShownKeyboard, { top: -20, bottom: 20 }),
+    ).toBe(false);
+  });
+
+  it('45 a quote whose original is in full view highlights it without moving, following or not (63px on ddbad17)', () => {
+    for (const distance of [0.8, 150, 600]) {
+      const before = run(opened().state, [
+        [{ type: 'scrolled' }, { distance }],
+      ]).state;
+      const { state, commands } = run(before, [
+        [
+          { type: 'quoteClicked', id: 'm4' },
+          { messageShown: (id) => id === 'm4', distance },
+        ],
+        [{ type: 'targetLoaded', id: 'm4' }, { distance }],
+      ]);
+      expect(scrolls(commands)).toEqual([]);
+      expect(state.following).toBe(before.following);
+      expect(state.target).toMatchObject({ id: 'm4', phase: 'landed' });
+      expect(commands).toContainEqual({
+        type: 'timer',
+        name: 'highlightEnd',
+        delay: 3000,
+      });
+      expect(commands.some((command) => command.type === 'away')).toBe(false);
+    }
+  });
+
+  it('45 with the keyboard open it keeps following as the quote takes the focus and the keyboard goes', () => {
+    const { state, commands } = run(keyboardOpen(opened().state).state, [
+      [{ type: 'pageAction' }],
+      [
+        { type: 'quoteClicked', id: 'm4' },
+        { messageShown: () => true, composerFocused: true, height: 287 },
+      ],
+      [{ type: 'composerBlurred' }],
+      [
+        { type: 'timer', name: 'keyboardClose' },
+        { height: 549, distance: 1 },
+      ],
+    ]);
+    expect(state.following).toBe(true);
+    expect(scrolls(commands).filter((c) => c.type !== 'alignEnd')).toEqual([]);
+  });
+
+  it('46 a scale within 0.01 of 1 is not zoomed in (SE 3: 1.0033 after letting go of a pinch)', () => {
+    expect(visibleArea(iphone.se3AlmostUnzoomed.viewport).scale).toBe(1);
+    expect(
+      visibleArea({
+        ...iphone.se3AlmostUnzoomed.viewport,
+        visual: { height: 520, offsetTop: 0, scale: 1.045 },
+      }).scale,
+    ).toBe(1.045);
+    expect(
+      rectVisible(iphone.se3AlmostUnzoomed, { top: 440, bottom: 495 }),
+    ).toBe(true);
+    const scale = visibleArea(iphone.se3AlmostUnzoomed.viewport).scale;
+    const { state, commands } = run(opened().state, [
+      [{ type: 'viewportResized' }, { scale: 1.72 }],
+      [{ type: 'scrolled' }, { scale: 1.72 }],
+      [
+        { type: 'viewportResized' },
+        { scale, distance: distanceFromNewest(iphone.se3AlmostUnzoomed) },
+      ],
+    ]);
+    expect(state.following).toBe(true);
+    expect(reads(commands)).toContainEqual({ type: 'read', kind: 'return' });
   });
 });
