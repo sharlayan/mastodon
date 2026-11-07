@@ -10,7 +10,7 @@ class Sharlayan::FollowMessageService < BaseService
   end
 
   def store(follow, message)
-    return follow if message.blank?
+    return follow unless message.is_a?(String) && message.present?
 
     follow.update_column(:follow_message, message.truncate(MAX_LENGTH))
     follow
@@ -21,7 +21,7 @@ class Sharlayan::FollowMessageService < BaseService
   end
 
   def call_for_request(request, message)
-    return if message.blank? || !request.account.local?
+    return if !message.is_a?(String) || message.blank? || !request.account.local?
 
     follow = Follow.find_by(account: request.account, target_account: request.target_account)
     call(follow, message, recipient: request.account) if follow
