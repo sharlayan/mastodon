@@ -15,6 +15,11 @@ const KEYBOARD_RESTORED_MS = 200;
 const KEYBOARD_SHRINK_PX = 80;
 // Safari answers a scroll at the end of the page by shrinking its visual viewport, soon after it.
 const ECHO_MS = 300;
+// What Safari's answer to a scroll at the end of the page shrinks its viewport by, each time (iOS diagnostics: 1px).
+const ECHO_PX = 2;
+// A finger is taken to have left the screen when nothing is heard of it for this long (a touchend can be lost when
+// what it was on goes away).
+const TOUCH_STALE_MS = 5000;
 // Room left between the last message and the composer when revealing it over the keyboard.
 const REVEAL_GAP = 16;
 
@@ -51,19 +56,23 @@ const finite = (value: number | undefined, fallback: number) =>
 // Chrome keeps the layout viewport (and innerHeight) at the page's height and gives rectangles relative to it, so the
 // visual viewport starts offsetTop below their origin. Safari shrinks innerHeight with the keyboard (or grows it with
 // a collapsed toolbar) and gives rectangles relative to what is on the screen, whatever offsetTop it reports.
-export const visibleArea = ({
+// Whether rectangles are relative to a layout viewport taller than what is on the screen (Chrome).
+export const rectsInLayoutViewport = ({
   innerHeight,
   rootClientHeight,
   visual,
-}: ViewportReading): VisibleArea => {
+}: ViewportReading) =>
+  visual !== null &&
+  rootClientHeight > 0 &&
+  innerHeight >= rootClientHeight - 2 &&
+  innerHeight > finite(visual.height, innerHeight) + 2;
+
+export const visibleArea = (viewport: ViewportReading): VisibleArea => {
+  const { innerHeight, visual } = viewport;
   if (!visual)
     return { top: 0, bottom: innerHeight, height: innerHeight, scale: 1 };
   const height = finite(visual.height, innerHeight);
-  const layoutCoordinates =
-    rootClientHeight > 0 &&
-    innerHeight >= rootClientHeight - 2 &&
-    innerHeight > height + 2;
-  const top = layoutCoordinates ? finite(visual.offsetTop, 0) : 0;
+  const top = rectsInLayoutViewport(viewport) ? finite(visual.offsetTop, 0) : 0;
   return { top, bottom: top + height, height, scale: finite(visual.scale, 1) };
 };
 
@@ -106,10 +115,25 @@ export const rectVisible = (layout: LayoutReading, rect: Box) => {
   );
 };
 
+// Whether Chrome has brought the visual viewport down onto the keyboard, where it shows the focused composer.
+export const viewportRestsOnKeyboard = (viewport: ViewportReading) => {
+  const area = visibleArea(viewport);
+  return (
+    rectsInLayoutViewport(viewport) &&
+    area.height < viewport.innerHeight - KEYBOARD_SHRINK_PX &&
+    area.top >= viewport.innerHeight - area.height - 2
+  );
+};
+
 // How far the composer and the navigation bar are to be raised to sit on the bottom of the visible area: iOS grows
-// innerHeight below it while the keyboard is open, and Android moves the visual viewport up within the page.
-export const keyboardLift = (viewport: ViewportReading) =>
-  Math.max(0, viewport.innerHeight - visibleArea(viewport).bottom);
+// innerHeight below it while the keyboard is open, and Android moves the visual viewport up within the page when the
+// reader drags. While an Android keyboard is opening, Chrome itself moves the visual viewport down to the composer
+// and the end of the room with it; raising the composer first would leave the end of the room under the keyboard
+// (Galaxy and Pixel on f35f1ec: 323 and 284px). So in Chrome's coordinates nothing is raised until it has got there.
+export const keyboardLift = (viewport: ViewportReading, rested: boolean) => {
+  const lift = Math.max(0, viewport.innerHeight - visibleArea(viewport).bottom);
+  return rectsInLayoutViewport(viewport) && !rested ? 0 : lift;
+};
 
 // How far to scroll to bring the last message out from under the composer while the keyboard is open. Never past the
 // end of the page, which Safari answers by shrinking its viewport, and never less than a pixel, which moves nothing.
@@ -141,6 +165,12 @@ export interface Snapshot {
   distance: number;
   // What revealing the last message over the keyboard would scroll by, 0 when nothing.
   reveal: number;
+  viewport: ViewportReading;
+  // The room scrolls in a box of its own rather than with the page.
+  ownScroller: boolean;
+  // The first message shown and where it is on the screen, and where a given message is now.
+  firstMessage: { id: string; top: number } | null;
+  messageTop: (id: string) => number | null;
 }
 
 export interface Target {
@@ -157,6 +187,8 @@ export interface KeyboardSession {
   baseHeight: number;
   shrunk: boolean;
   closing: boolean;
+  // Chrome has brought the visual viewport onto the keyboard (see keyboardLift).
+  rested: boolean;
 }
 
 export interface ScrollState {
@@ -164,11 +196,17 @@ export interface ScrollState {
   target: Target | null;
   screen: string | null;
   ownJump: boolean;
+  // The last jump did not move the page: its original was already shown.
+  stillJump: boolean;
   zoomedAway: boolean;
   userScrolling: boolean;
+  // A finger is on the screen.
+  touching: boolean;
   pendingFollow: boolean;
+  // Where the first message was when older ones were about to come in above it.
+  anchor: { id: string; top: number } | null;
   keyboard: KeyboardSession | null;
-  echo: { height: number; amount: number } | null;
+  echo: { height: number } | null;
   scale: number;
   height: number;
 }
@@ -178,16 +216,19 @@ export type TimerName =
   | 'highlightEnd'
   | 'userScrollEnd'
   | 'keyboardClose'
-  | 'echoEnd';
+  | 'echoEnd'
+  | 'touchStale';
 
 export type Command =
   | { type: 'alignEnd' }
   | { type: 'reveal'; by: number }
+  | { type: 'scrollBy'; by: number }
   | { type: 'scrollToMessage'; id: string }
   | { type: 'restoreScroll'; top: number }
   | { type: 'away'; value: boolean }
   | { type: 'read'; kind: 'check' | 'return' | 'newest' }
-  | { type: 'lift'; on: boolean }
+  // How far to raise the composer and the navigation bar, or null to put back what was there.
+  | { type: 'lift'; by: number | null }
   | { type: 'timer'; name: TimerName; delay: number }
   | { type: 'clearTimer'; name: TimerName };
 
@@ -196,11 +237,13 @@ export type ScrollEvent =
   | { type: 'detached' }
   | { type: 'newestShown'; screen: string; mine: boolean }
   | { type: 'targetLoaded'; id: string }
-  | { type: 'targetScrolled'; id: string; movedUp: boolean }
+  // movedUp: the page went up to it; moved: the page moved at all (or only the visual viewport did).
+  | { type: 'targetScrolled'; id: string; movedUp: boolean; moved: boolean }
   | { type: 'targetMissing' }
   | { type: 'quoteClicked'; id: string }
   | { type: 'jumpToNewest' }
-  | { type: 'userIntent' }
+  | { type: 'userIntent'; touch: boolean }
+  | { type: 'touch'; down: boolean }
   | { type: 'pageAction' }
   | { type: 'scrolled' }
   | { type: 'viewportScrolled' }
@@ -209,6 +252,7 @@ export type ScrollEvent =
   | { type: 'composerBlurred' }
   | { type: 'viewportResized' }
   | { type: 'contentResized' }
+  | { type: 'olderArriving' }
   | { type: 'olderLoaded' }
   | { type: 'timer'; name: TimerName };
 
@@ -219,9 +263,12 @@ export const initialScrollState = (targetId: string | null): ScrollState => ({
     : null,
   screen: null,
   ownJump: false,
+  stillJump: false,
   zoomedAway: false,
   userScrolling: false,
+  touching: false,
   pendingFollow: false,
+  anchor: null,
   keyboard: null,
   echo: null,
   scale: 1,
@@ -241,7 +288,7 @@ const toNewest = (
 ) => {
   if (automatic) {
     if (s.scale !== 1) return;
-    if (state.userScrolling) {
+    if (state.userScrolling || state.touching) {
       state.pendingFollow = true;
       return;
     }
@@ -255,15 +302,16 @@ const toNewest = (
   const by = s.reveal;
   if (by < 1) return;
   commands.push({ type: 'reveal', by });
-  state.echo = { height: s.height, amount: by };
+  state.echo = { height: s.height };
   commands.push({ type: 'timer', name: 'echoEnd', delay: ECHO_MS });
 };
 
-// A visual viewport that shrank, soon after a reveal, by no more than it scrolled: Safari answering it.
+// Soon after a reveal, the visual viewport shrinking by a pixel or two: Safari answering it (iOS diagnostics B 1·2).
+// A larger shrink is the keyboard or the page really changing, and is answered.
 const isEcho = (state: ScrollState, s: Snapshot) =>
   state.echo !== null &&
   s.height < state.echo.height &&
-  state.echo.height - s.height <= state.echo.amount + 1;
+  state.echo.height - s.height <= ECHO_PX;
 
 const setFollowing = (
   state: ScrollState,
@@ -273,6 +321,35 @@ const setFollowing = (
   state.following = following;
   if (!following) state.pendingFollow = false;
   commands.push({ type: 'away', value: !following });
+};
+
+const raise = (state: ScrollState, s: Snapshot, commands: Command[]) => {
+  const keyboard = state.keyboard;
+  if (!keyboard) return;
+  if (
+    s.ownScroller ||
+    !s.viewport.visual ||
+    visibleArea(s.viewport).scale !== 1
+  ) {
+    commands.push({ type: 'lift', by: null });
+    return;
+  }
+  if (viewportRestsOnKeyboard(s.viewport)) keyboard.rested = true;
+  commands.push({
+    type: 'lift',
+    by: keyboardLift(s.viewport, keyboard.rested),
+  });
+};
+
+// Right after a jump, what the page does with it (the visual viewport moving, or the keyboard going away as the
+// quote takes the focus) decides whether the reader is at the newest, exactly as its scroll events do.
+const measureJump = (state: ScrollState, s: Snapshot, commands: Command[]) => {
+  if (s.scale !== 1) return;
+  const following = s.distance <= AT_NEWEST_TOLERANCE;
+  const was = state.following;
+  if (state.keyboard) state.keyboard.following = following;
+  setFollowing(state, following, commands);
+  if (following && !was) commands.push({ type: 'read', kind: 'return' });
 };
 
 const trackPosition = (
@@ -319,11 +396,26 @@ const endUserScroll = (
   s: Snapshot,
   commands: Command[],
 ) => {
+  // A finger resting on the screen is still the reader's (review f35f D3): what waits keeps waiting.
+  if (state.touching) return;
   state.userScrolling = false;
   commands.push({ type: 'clearTimer', name: 'userScrollEnd' });
   if (!state.pendingFollow) return;
   state.pendingFollow = false;
   if (state.following && !seeking(state)) toNewest(state, s, commands, true);
+};
+
+const liftFinger = (state: ScrollState, s: Snapshot, commands: Command[]) => {
+  state.touching = false;
+  commands.push({ type: 'clearTimer', name: 'touchStale' });
+  // Inertia may go on; its scroll events extend this.
+  if (state.userScrolling)
+    commands.push({
+      type: 'timer',
+      name: 'userScrollEnd',
+      delay: USER_SCROLL_SETTLE_MS,
+    });
+  else endUserScroll(state, s, commands);
 };
 
 const closeKeyboard = (
@@ -339,11 +431,22 @@ const closeKeyboard = (
       setFollowing(state, false, commands);
     } else if (keyboard.following && state.following) {
       toNewest(state, s, commands, false);
+    } else if (
+      !state.following &&
+      state.stillJump &&
+      keyboard.restoreTop === null &&
+      !seeking(state) &&
+      s.distance <= AT_NEWEST_TOLERANCE
+    ) {
+      // An explicit move (a jump, a button) left nothing to go back to, and with the keyboard gone the reader is at
+      // the newest: an original already shown, centred in the shorter view (Android on f35f1ec, 4/4).
+      setFollowing(state, true, commands);
+      commands.push({ type: 'read', kind: 'return' });
     }
   }
   state.keyboard = null;
   commands.push({ type: 'clearTimer', name: 'keyboardClose' });
-  commands.push({ type: 'lift', on: false });
+  commands.push({ type: 'lift', by: null });
 };
 
 // The next state, and what to do, for something that happened in the room.
@@ -365,11 +468,14 @@ export const step = (
       break;
 
     case 'detached':
-      if (state.keyboard) commands.push({ type: 'lift', on: false });
+      if (state.keyboard) commands.push({ type: 'lift', by: null });
       state.keyboard = null;
       state.userScrolling = false;
+      state.touching = false;
       state.pendingFollow = false;
+      state.anchor = null;
       state.ownJump = false;
+      state.stillJump = false;
       state.zoomedAway = false;
       state.echo = null;
       for (const name of [
@@ -377,6 +483,7 @@ export const step = (
         'userScrollEnd',
         'echoEnd',
         'ownJumpEnd',
+        'touchStale',
       ] as const)
         commands.push({ type: 'clearTimer', name });
       break;
@@ -409,6 +516,7 @@ export const step = (
       if (state.target?.id !== event.id || !seeking(state)) break;
       state.target = { ...state.target, phase: 'landed' };
       state.ownJump = true;
+      state.stillJump = !event.moved;
       const following =
         !event.movedUp && s.scale === 1 && s.distance <= AT_NEWEST_TOLERANCE;
       if (state.keyboard) state.keyboard.following = following;
@@ -438,6 +546,7 @@ export const step = (
       if (!event.id || state.target?.id === event.id) break;
       state.target = { id: event.id, fromSearch: false, phase: 'seeking' };
       state.ownJump = false;
+      state.stillJump = false;
       commands.push({ type: 'clearTimer', name: 'ownJumpEnd' });
       commands.push({ type: 'clearTimer', name: 'highlightEnd' });
       setFollowing(state, false, commands);
@@ -446,6 +555,7 @@ export const step = (
     case 'jumpToNewest':
       if (seeking(state)) state.target = null;
       state.ownJump = false;
+      state.stillJump = false;
       commands.push({ type: 'clearTimer', name: 'ownJumpEnd' });
       if (state.keyboard) {
         state.keyboard.restoreTop = null;
@@ -458,6 +568,7 @@ export const step = (
 
     case 'userIntent':
       state.ownJump = false;
+      state.stillJump = false;
       commands.push({ type: 'clearTimer', name: 'ownJumpEnd' });
       // A target still on its way no longer takes the reader anywhere.
       if (seeking(state)) state.target = null;
@@ -467,6 +578,27 @@ export const step = (
         name: 'userScrollEnd',
         delay: USER_SCROLL_SETTLE_MS,
       });
+      if (event.touch) {
+        state.touching = true;
+        commands.push({
+          type: 'timer',
+          name: 'touchStale',
+          delay: TOUCH_STALE_MS,
+        });
+      }
+      break;
+
+    case 'touch':
+      if (event.down) {
+        state.touching = true;
+        commands.push({
+          type: 'timer',
+          name: 'touchStale',
+          delay: TOUCH_STALE_MS,
+        });
+      } else if (state.touching) {
+        liftFinger(state, s, commands);
+      }
       break;
 
     case 'pageAction':
@@ -479,9 +611,10 @@ export const step = (
 
     case 'viewportScrolled':
       if (state.keyboard) {
-        commands.push({ type: 'lift', on: true });
+        raise(state, s, commands);
         if (state.userScrolling) trackPosition(state, s, commands);
       }
+      if (state.ownJump && state.stillJump) measureJump(state, s, commands);
       commands.push({ type: 'read', kind: 'check' });
       break;
 
@@ -503,8 +636,9 @@ export const step = (
         baseHeight: s.height,
         shrunk: false,
         closing: false,
+        rested: false,
       };
-      commands.push({ type: 'lift', on: true });
+      raise(state, s, commands);
       break;
 
     case 'composerBlurred':
@@ -522,7 +656,9 @@ export const step = (
       const heightChanged = s.height !== state.height;
       state.scale = s.scale;
       state.height = s.height;
-      if (state.keyboard) commands.push({ type: 'lift', on: true });
+      if (state.keyboard) raise(state, s, commands);
+      if (state.ownJump && state.stillJump && !scaleChanged)
+        measureJump(state, s, commands);
       if (scaleChanged && s.scale === 1 && state.zoomedAway) {
         state.zoomedAway = false;
         if (s.distance <= AT_NEWEST_TOLERANCE && !state.target) {
@@ -540,7 +676,7 @@ export const step = (
             s.composerFocused &&
             !state.userScrolling
           ) {
-            if (isEcho(state, s)) state.echo = null;
+            if (isEcho(state, s)) state.echo = { height: s.height };
             else toNewest(state, s, commands, true);
           }
           if (s.height < keyboard.baseHeight - KEYBOARD_SHRINK_PX)
@@ -587,10 +723,23 @@ export const step = (
       }
       break;
 
-    // The browser keeps the reader's place as older messages come in above (rule 5). Following, the content
-    // growing keeps the newest in view.
-    case 'olderLoaded':
+    // Older messages come in above what is being read: the reader's place is kept (rule 5). Browsers do not keep it
+    // when the page is at its top, where the button to load them is (review f35f D2: +2,700~3,100px). Following, the
+    // content growing keeps the newest in view instead.
+    case 'olderArriving':
+      state.anchor = state.following ? null : s.firstMessage;
       break;
+
+    case 'olderLoaded': {
+      const anchor = state.anchor;
+      if (!anchor) break;
+      state.anchor = null;
+      const top = s.messageTop(anchor.id);
+      if (top === null) break;
+      const by = top - anchor.top;
+      if (Math.abs(by) >= 1) commands.push({ type: 'scrollBy', by });
+      break;
+    }
 
     case 'timer':
       switch (event.name) {
@@ -599,6 +748,7 @@ export const step = (
           break;
         case 'highlightEnd':
           if (state.target?.phase === 'landed') state.target = null;
+          state.stillJump = false;
           break;
         case 'userScrollEnd':
           endUserScroll(state, s, commands);
@@ -608,6 +758,9 @@ export const step = (
           break;
         case 'echoEnd':
           state.echo = null;
+          break;
+        case 'touchStale':
+          if (state.touching) liftFinger(state, s, commands);
           break;
       }
       break;

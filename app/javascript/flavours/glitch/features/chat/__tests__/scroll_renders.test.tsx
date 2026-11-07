@@ -2904,6 +2904,8 @@ describe('A reader scrolling while the screen changes size', () => {
       if (arrives) receive(arrives);
       const whileDragging = endScrolls();
       placedAt(603.4 - window.innerHeight + endsAt);
+      // The finger leaves the screen.
+      fireEvent.touchEnd(window);
       await wait(250);
       return { whileDragging, afterDrag: endScrolls() - whileDragging };
     } finally {
@@ -2931,5 +2933,335 @@ describe('A reader scrolling while the screen changes size', () => {
       whileDragging: 0,
       afterDrag: 0,
     });
+  });
+});
+
+// Android Chrome on f35f1ec (android-masto-final2): Galaxy Z Flip3, innerHeight 744, the keyboard leaving a visual
+// viewport of 420.7 that Chrome moves down to 324 over ~400ms.
+const androidViewport = () => {
+  const originals = {
+    viewport: Object.getOwnPropertyDescriptor(window, 'visualViewport'),
+    inner: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
+    client: Object.getOwnPropertyDescriptor(
+      document.documentElement,
+      'clientHeight',
+    ),
+  };
+  const viewport = Object.assign(new EventTarget(), {
+    scale: 1,
+    height: 744.7,
+    offsetTop: 0,
+  });
+  Object.defineProperty(window, 'visualViewport', {
+    configurable: true,
+    value: viewport,
+  });
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    value: 744,
+  });
+  Object.defineProperty(document.documentElement, 'clientHeight', {
+    configurable: true,
+    value: 744,
+  });
+  window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+  const nav = document.createElement('div');
+  nav.className = 'ui__navigation-bar';
+  document.body.appendChild(nav);
+  // Rectangles in layout coordinates: the composer and navigation rest on the bottom of the page (k12 "pre").
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+    function (this: Element) {
+      if (this === nav)
+        return { top: 689.7, bottom: 744.7, height: 55 } as DOMRect;
+      if (this.classList.contains('chat-native__end'))
+        return { top: 690.6, bottom: 690.6 } as DOMRect;
+      if (this.classList.contains('chat-native__composer'))
+        return { top: 620.7, bottom: 689.7 } as DOMRect;
+      if (this.classList.contains('chat-native'))
+        return { top: 0, bottom: 744 } as DOMRect;
+      return { top: 550.7, bottom: 605.6 } as DOMRect;
+    },
+  );
+  const move = (height: number, offsetTop: number, event: string) => {
+    viewport.height = height;
+    viewport.offsetTop = offsetTop;
+    act(() => {
+      viewport.dispatchEvent(new Event(event));
+    });
+  };
+  const restore = () => {
+    cleanup();
+    nav.remove();
+    for (const [target, key, descriptor] of [
+      [window, 'visualViewport', originals.viewport],
+      [window, 'innerHeight', originals.inner],
+      [document.documentElement, 'clientHeight', originals.client],
+    ] as const) {
+      if (descriptor) Object.defineProperty(target, key, descriptor);
+      else Reflect.deleteProperty(target, key);
+    }
+  };
+  return { nav, move, restore };
+};
+
+describe('Android keyboard on f35f1ec', () => {
+  it('raises nothing while Chrome brings the visual viewport down to the composer, then follows a drag', async () => {
+    const android = androidViewport();
+    try {
+      await openRoom();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      // k12: 111~148ms after the tap the viewport shrinks, still at the top of the page.
+      android.move(420.7, 0, 'resize');
+      const whileOpening = parseFloat(android.nav.style.bottom || '0');
+      android.move(420.7, 150, 'scroll');
+      android.move(420.7, 324, 'scroll');
+      const rested = parseFloat(android.nav.style.bottom || '0');
+      fireEvent.touchMove(window);
+      android.move(420.7, 238.3, 'scroll');
+      expect({
+        whileOpening,
+        rested,
+        dragged: Math.round(parseFloat(android.nav.style.bottom) * 10) / 10,
+      }).toEqual({ whileOpening: 0, rested: 0, dragged: 85 });
+    } finally {
+      android.restore();
+    }
+  });
+
+  it('follows and reads again when a quote to an original already shown is tapped with the keyboard open', async () => {
+    withQuote();
+    const android = androidViewport();
+    try {
+      await openRoom();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      android.move(420.7, 0, 'resize');
+      android.move(420.7, 324, 'scroll');
+      // s7v: centring the original moves only Chrome's visual viewport (324 -> 246); the page stays.
+      scrollIntoView.mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'chat-message-message-1')
+          android.move(420.7, 246, 'scroll');
+      });
+      const quote = quoteOf('message-1');
+      fireEvent.pointerDown(quote);
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      fireEvent.click(quote);
+      // 56ms later the keyboard has gone with the focus.
+      await wait(50);
+      android.move(744.7, 0, 'resize');
+      await wait(1000);
+      const readsBefore = readsPosted();
+      const endBefore = endScrolls();
+      receive('after-keyboard-quote');
+      await wait(50);
+      expect({
+        followed: endScrolls() - endBefore > 0,
+        read: readsPosted() - readsBefore,
+        jumpButton: document.querySelector('.chat-native__jump') !== null,
+      }).toEqual({ followed: true, read: 1, jumpButton: false });
+    } finally {
+      android.restore();
+    }
+  });
+});
+
+// Review f35f probes P1 and P2, and D2.
+describe('Review f35f', () => {
+  it('P1 a finger resting on the screen after a short drag is not pulled by an arriving message', async () => {
+    await openRoom();
+    placedAt(85);
+    scrollIntoView.mockClear();
+    fireEvent.touchStart(window);
+    fireEvent.touchMove(window);
+    fireEvent.scroll(window);
+    await wait(400);
+    receive('resting');
+    await wait(50);
+    const whileResting = endScrolls();
+    fireEvent.touchEnd(window);
+    await wait(250);
+    expect({ whileResting, afterLifting: endScrolls() }).toEqual({
+      whileResting: 0,
+      afterLifting: 1,
+    });
+  });
+
+  it('P2 a real viewport shrink right after a keyboard reveal still reveals the last message', async () => {
+    const originalViewport = Object.getOwnPropertyDescriptor(
+      window,
+      'visualViewport',
+    );
+    const originalInner = Object.getOwnPropertyDescriptor(
+      window,
+      'innerHeight',
+    );
+    const originalScrolling = Object.getOwnPropertyDescriptor(
+      document,
+      'scrollingElement',
+    );
+    const root = document.documentElement;
+    const originalTop = Object.getOwnPropertyDescriptor(root, 'scrollTop');
+    const originalHeight = Object.getOwnPropertyDescriptor(
+      root,
+      'scrollHeight',
+    );
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 549,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 549,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    try {
+      await openRoom();
+      let scrollTop = 3000;
+      const assignments: number[] = [];
+      Object.defineProperty(document, 'scrollingElement', {
+        configurable: true,
+        value: root,
+      });
+      Object.defineProperty(root, 'scrollHeight', {
+        configurable: true,
+        value: 9000,
+      });
+      Object.defineProperty(root, 'scrollTop', {
+        configurable: true,
+        get: () => scrollTop,
+        set: (value: number) => {
+          assignments.push(value - scrollTop);
+          scrollTop = value;
+        },
+      });
+      // iOS: rectangles in visual coordinates, the composer on the bottom of the visual viewport.
+      let lastBottomAtStart = 147;
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          const composerTop = viewport.height - 124;
+          if (this.classList.contains('chat-native__composer'))
+            return { top: composerTop, bottom: composerTop + 69 } as DOMRect;
+          if (this.classList.contains('chat-native__end'))
+            return {
+              top: composerTop + 69,
+              bottom: composerTop + 70,
+            } as DOMRect;
+          if (this.id.startsWith('chat-message-'))
+            return {
+              top: 0,
+              bottom: lastBottomAtStart - (scrollTop - 3000),
+            } as DOMRect;
+          return { top: 0, bottom: viewport.height } as DOMRect;
+        },
+      );
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.height = 287;
+      window.innerHeight = 287;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      assignments.length = 0;
+      lastBottomAtStart = 240 + (scrollTop - 3000);
+      receive('under-composer');
+      await wait(20);
+      const revealed = [...assignments];
+      viewport.height = 247;
+      window.innerHeight = 247;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      await wait(20);
+      const afterShrink = assignments.slice(revealed.length);
+      expect({ revealed, afterShrink }).toEqual({
+        revealed: [93],
+        afterShrink: [40],
+      });
+    } finally {
+      cleanup();
+      if (originalTop) Object.defineProperty(root, 'scrollTop', originalTop);
+      else Reflect.deleteProperty(root, 'scrollTop');
+      if (originalHeight)
+        Object.defineProperty(root, 'scrollHeight', originalHeight);
+      else Reflect.deleteProperty(root, 'scrollHeight');
+      if (originalScrolling)
+        Object.defineProperty(document, 'scrollingElement', originalScrolling);
+      else Reflect.deleteProperty(document, 'scrollingElement');
+      if (originalInner)
+        Object.defineProperty(window, 'innerHeight', originalInner);
+      else Reflect.deleteProperty(window, 'innerHeight');
+      if (originalViewport)
+        Object.defineProperty(window, 'visualViewport', originalViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('D2 keeps the reader’s place when older messages come in above (review server: +3,050px)', async () => {
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages'))
+          return Promise.resolve({
+            data: options?.params?.max_id
+              ? Array.from({ length: 37 }, (_, i) => messageFrom(i))
+              : Array.from({ length: 40 }, (_, i) => messageFrom(i + 37)),
+          });
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    const history = createMemoryHistory({ initialEntries: [`/chat/${ROOM}`] });
+    render(
+      <IntlProvider locale='en'>
+        <IdentityContext.Provider
+          value={{
+            signedIn: true,
+            permissions: 0,
+            accountId: 'me',
+            disabledAccountId: undefined,
+          }}
+        >
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat />
+            </Route>
+          </Router>
+        </IdentityContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText('Message 76');
+    await wait(0);
+    const scrollport = tallScrollport(0);
+    // At the top of the room: the first message at 159; once 37 older ones are above it, at 3,209.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        if (this.classList.contains('chat-native__end'))
+          return { top: 5000, bottom: 5000 } as DOMRect;
+        if (this.classList.contains('chat-native'))
+          return { top: 0, bottom: 768 } as DOMRect;
+        if (this.classList.contains('chat-native__composer'))
+          return { top: 700, bottom: 768 } as DOMRect;
+        if (this.id === 'chat-message-message-37')
+          return document.getElementById('chat-message-message-36')
+            ? ({ top: 3209, bottom: 3259 } as DOMRect)
+            : ({ top: 159, bottom: 209 } as DOMRect);
+        return { top: 100, bottom: 150 } as DOMRect;
+      },
+    );
+    fireEvent.scroll(window);
+    expect(screen.getByRole('button', { name: JUMP })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Message 0');
+    expect(scrollport.scrollTop).toBe(3050);
   });
 });

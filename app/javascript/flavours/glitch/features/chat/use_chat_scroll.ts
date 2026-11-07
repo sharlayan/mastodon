@@ -18,7 +18,6 @@ import type {
 import {
   distanceFromNewest,
   initialScrollState,
-  keyboardLift,
   rectVisible,
   revealAmount,
   step,
@@ -111,11 +110,36 @@ const composerFocused = (composer: HTMLElement | null) => {
   );
 };
 
+const firstMessageOf = (room: Room) =>
+  room.list.querySelector<HTMLElement>('[id^="chat-message-"]');
+
 // Measured only when a decision reads it, once per happening.
 const snapshotOf = (room: Room): Snapshot => {
   let layout: LayoutReading | undefined;
   const measured = () => (layout ??= readLayout(room));
   return {
+    get viewport() {
+      return readViewport();
+    },
+    get ownScroller() {
+      const scroller = chatScrollport(room.end);
+      return Boolean(scroller && scroller !== document.scrollingElement);
+    },
+    get firstMessage() {
+      const first = firstMessageOf(room);
+      return first
+        ? {
+            id: first.id.slice('chat-message-'.length),
+            top: first.getBoundingClientRect().top,
+          }
+        : null;
+    },
+    messageTop: (id: string) => {
+      const message = document.getElementById(`chat-message-${id}`);
+      return message && room.list.contains(message)
+        ? message.getBoundingClientRect().top
+        : null;
+    },
     get scale() {
       return currentScale();
     },
@@ -157,6 +181,10 @@ const detachedSnapshot = (): Snapshot => ({
   scrollTop: 0,
   distance: Number.POSITIVE_INFINITY,
   reveal: 0,
+  viewport: readViewport(),
+  ownScroller: false,
+  firstMessage: null,
+  messageTop: () => null,
 });
 
 // Raises the composer and the navigation bar onto the visible bottom while the keyboard is open, and puts back what
@@ -190,16 +218,7 @@ const createLift = (room: Room) => {
     }
   };
 
-  const apply = () => {
-    const viewport = readViewport();
-    const scroller = chatScrollport(room.end);
-    if (
-      viewport.visual?.scale !== 1 ||
-      (scroller && scroller !== document.scrollingElement)
-    ) {
-      restore();
-      return;
-    }
+  const apply = (by: number) => {
     if (!applied) {
       const navigation = document.querySelector<HTMLElement>(
         '.ui__navigation-bar',
@@ -215,7 +234,7 @@ const createLift = (room: Room) => {
           '',
       };
     }
-    const value = `${keyboardLift(viewport)}px`;
+    const value = `${by}px`;
     applied.navigation?.style.setProperty('bottom', value);
     room.composer?.style.setProperty('--chat-keyboard-lift', value);
   };
@@ -340,6 +359,7 @@ export const useChatScroll = (
     screen,
     newestId,
     newestIsMine,
+    oldestId,
     targetShown,
     onReadCheck,
     onReturn,
@@ -355,6 +375,8 @@ export const useChatScroll = (
     screen: string | null;
     newestId: string | undefined;
     newestIsMine: boolean;
+    // The oldest message shown: older ones came in when it changes.
+    oldestId: string | undefined;
     // The message being gone to is among those shown.
     targetShown: boolean;
     onReadCheck: () => void;
@@ -390,7 +412,8 @@ export const useChatScroll = (
           if (scroller) scroller.scrollTop = scroller.scrollHeight;
           break;
         }
-        case 'reveal': {
+        case 'reveal':
+        case 'scrollBy': {
           const scroller = chatScrollport(end);
           if (scroller) scroller.scrollTop += command.by;
           break;
@@ -401,14 +424,16 @@ export const useChatScroll = (
           const before = scroller?.scrollTop;
           if (typeof target?.scrollIntoView === 'function')
             target.scrollIntoView({ block: 'center' });
+          const after = scroller?.scrollTop;
           scroll.dispatch({
             type: 'targetScrolled',
             id: command.id,
-            movedUp: Boolean(
-              scroller &&
+            movedUp:
+              before !== undefined && after !== undefined && after < before - 1,
+            moved:
               before !== undefined &&
-              scroller.scrollTop < before - 1,
-            ),
+              after !== undefined &&
+              Math.abs(after - before) > 1,
           });
           break;
         }
@@ -424,8 +449,8 @@ export const useChatScroll = (
           read(command.kind);
           break;
         case 'lift':
-          if (command.on) lift.apply();
-          else lift.restore();
+          if (command.by === null) lift.restore();
+          else lift.apply(command.by);
           break;
       }
     });
@@ -439,8 +464,20 @@ export const useChatScroll = (
     const onScrollEnd = (event: Event) => {
       if (!inComposer(event)) scroll.dispatch({ type: 'scrollEnded' });
     };
-    const onUserIntent = (event: Event) => {
-      if (!inComposer(event)) scroll.dispatch({ type: 'userIntent' });
+    const onTouchMove = (event: Event) => {
+      if (!inComposer(event))
+        scroll.dispatch({ type: 'userIntent', touch: true });
+    };
+    const onWheel = (event: Event) => {
+      if (!inComposer(event))
+        scroll.dispatch({ type: 'userIntent', touch: false });
+    };
+    const onTouchStart = (event: Event) => {
+      if (!inComposer(event)) scroll.dispatch({ type: 'touch', down: true });
+    };
+    // A finger still on the screen moves again and says so.
+    const onTouchEnd = () => {
+      scroll.dispatch({ type: 'touch', down: false });
     };
     const onFocusIn = (event: FocusEvent) => {
       if (usesTouchKeyboard() && event.target instanceof HTMLTextAreaElement)
@@ -471,8 +508,11 @@ export const useChatScroll = (
     window.addEventListener('scrollend', onScrollEnd, { capture: true });
     composer?.addEventListener('focusin', onFocusIn);
     composer?.addEventListener('focusout', onFocusOut);
-    window.addEventListener('touchmove', onUserIntent, { passive: true });
-    window.addEventListener('wheel', onUserIntent, { passive: true });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: true });
     window.addEventListener('pointerdown', onPointerDown, { passive: true });
     window.addEventListener('resize', onResize);
     window.visualViewport?.addEventListener('resize', onResize);
@@ -491,8 +531,11 @@ export const useChatScroll = (
       window.removeEventListener('scrollend', onScrollEnd, { capture: true });
       composer?.removeEventListener('focusin', onFocusIn);
       composer?.removeEventListener('focusout', onFocusOut);
-      window.removeEventListener('touchmove', onUserIntent);
-      window.removeEventListener('wheel', onUserIntent);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchcancel', onTouchEnd);
+      window.removeEventListener('wheel', onWheel);
       window.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('resize', onResize);
       window.visualViewport?.removeEventListener('resize', onResize);
@@ -508,6 +551,11 @@ export const useChatScroll = (
     if (!screen || !newestId) return;
     scroll.dispatch({ type: 'newestShown', screen, mine: newestIsMine });
   }, [newestId, newestIsMine, screen, scroll]);
+
+  // After older messages are drawn above and before the screen shows them, so the reader's place is kept.
+  useLayoutEffect(() => {
+    scroll.dispatch({ type: 'olderLoaded' });
+  }, [oldestId, scroll]);
 
   const targetId = useSyncExternalStore(scroll.subscribe, scroll.targetId);
   useLayoutEffect(() => {

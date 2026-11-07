@@ -1945,6 +1945,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           (items, update) => update(items),
           data.map(applyTombstone),
         );
+        // Where the reader is, measured before the older messages go in above it.
+        scroll.dispatch({ type: 'olderArriving' });
         updateMessages((current) => [
           ...older.filter(
             (item) => !current.some((existing) => existing.id === item.id),
@@ -1954,7 +1956,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         updateOlderMessageId(data.length === 40 ? (data[0]?.id ?? null) : null);
         olderPageRateLimited.current = false;
         readRecovered('messages');
-        scroll.dispatch({ type: 'olderLoaded' });
       })
       .catch((error: unknown) => {
         if (
@@ -2389,6 +2390,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         : null,
     newestId: newestMessageId,
     newestIsMine: newestMessageIsMine,
+    oldestId: messagesList[0]?.id,
     targetShown: jumpTargetLoaded,
     onReadCheck: attemptVisibleRead,
     onReturn: markSeenOnReturn,

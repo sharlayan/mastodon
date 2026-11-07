@@ -13,6 +13,7 @@ import {
   rectVisible,
   revealAmount,
   step,
+  viewportRestsOnKeyboard,
   visibleArea,
 } from '../scroll_control';
 
@@ -190,7 +191,7 @@ const device = {
 } satisfies Record<string, LayoutReading>;
 
 const lifted = (layout: LayoutReading): LayoutReading => {
-  const lift = keyboardLift(layout.viewport);
+  const lift = keyboardLift(layout.viewport, true);
   const navigation = layout.navigation && {
     ...layout.navigation,
     top: layout.navigation.top - lift,
@@ -369,25 +370,54 @@ describe('Whether a message can be seen', () => {
   });
 });
 
+// Android keyboard opening (android-masto-final2 k12, f35f1ec): the visual viewport has shrunk but Chrome has not
+// moved it down yet.
+const galaxyOpening = {
+  innerHeight: 744,
+  rootClientHeight: 744,
+  visual: { height: 420.7, offsetTop: 0, scale: 1 },
+};
+const pixelOpening = {
+  innerHeight: 603,
+  rootClientHeight: 603,
+  visual: { height: 319.2, offsetTop: 0, scale: 1 },
+};
+
 describe('Raising the composer and navigation over the keyboard', () => {
   it('raises nothing when the keyboard just opened', () => {
-    expect(keyboardLift(device.se2Keyboard.viewport)).toBe(0);
-    expect(keyboardLift(device.galaxyKeyboard.viewport)).toBe(0);
+    expect(keyboardLift(device.se2Keyboard.viewport, false)).toBe(0);
+    expect(keyboardLift(device.galaxyKeyboard.viewport, true)).toBe(0);
   });
 
-  it('raises by what iOS added below the visual viewport (80, 160)', () => {
-    expect(keyboardLift(device.se2KeyboardDrag1.viewport)).toBe(80);
-    expect(keyboardLift(device.se2KeyboardDrag2.viewport)).toBe(160);
+  it('raises by what iOS added below the visual viewport (80, 160), at any time', () => {
+    expect(keyboardLift(device.se2KeyboardDrag1.viewport, false)).toBe(80);
+    expect(keyboardLift(device.se2KeyboardDrag2.viewport, false)).toBe(160);
   });
 
-  it('raises by how far the Android visual viewport moved up (85.0, 84.6)', () => {
-    expect(keyboardLift(device.galaxyKeyboardDrag1.viewport)).toBeCloseTo(85);
+  it('raises by how far the Android visual viewport moved up (85.0, 84.6) once it has rested on the keyboard', () => {
+    expect(keyboardLift(device.galaxyKeyboardDrag1.viewport, true)).toBeCloseTo(
+      85,
+    );
     expect(
-      keyboardLift({
-        ...device.pixelKeyboard.viewport,
-        visual: { height: 319.2, offsetTop: 199.2, scale: 1 },
-      }),
+      keyboardLift(
+        {
+          ...device.pixelKeyboard.viewport,
+          visual: { height: 319.2, offsetTop: 199.2, scale: 1 },
+        },
+        true,
+      ),
     ).toBeCloseTo(84.6);
+  });
+
+  it('raises nothing while Chrome is still to bring the visual viewport down (323.3 and 283.8 on f35f1ec)', () => {
+    expect(keyboardLift(galaxyOpening, false)).toBe(0);
+    expect(keyboardLift(pixelOpening, false)).toBe(0);
+    expect(keyboardLift(galaxyOpening, true)).toBeCloseTo(323.3);
+    expect(viewportRestsOnKeyboard(galaxyOpening)).toBe(false);
+    expect(viewportRestsOnKeyboard(device.galaxyKeyboard.viewport)).toBe(true);
+    expect(viewportRestsOnKeyboard(device.pixelKeyboard.viewport)).toBe(true);
+    expect(viewportRestsOnKeyboard(device.galaxy.viewport)).toBe(false);
+    expect(viewportRestsOnKeyboard(device.se2Keyboard.viewport)).toBe(false);
   });
 });
 
@@ -430,6 +460,18 @@ const snap = (over: Partial<Snapshot> = {}): Snapshot => ({
   scrollTop: 0,
   distance: 0,
   reveal: 0,
+  viewport: {
+    innerHeight: 667,
+    rootClientHeight: 667,
+    visual: {
+      height: over.height ?? 667,
+      offsetTop: 0,
+      scale: over.scale ?? 1,
+    },
+  },
+  ownScroller: false,
+  firstMessage: null,
+  messageTop: () => null,
   ...over,
 });
 
@@ -514,7 +556,10 @@ describe('Following the newest message (state table)', () => {
   it('3 a searched target that loads at once is scrolled to; away from the newest it does not follow', () => {
     const { state, commands } = run(opened('m1').state, [
       [{ type: 'targetLoaded', id: 'm1' }],
-      [{ type: 'targetScrolled', id: 'm1', movedUp: true }, { distance: 1400 }],
+      [
+        { type: 'targetScrolled', id: 'm1', movedUp: true, moved: true },
+        { distance: 1400 },
+      ],
     ]);
     expect(scrolls(commands)).toEqual([{ type: 'scrollToMessage', id: 'm1' }]);
     expect(state.following).toBe(false);
@@ -526,7 +571,10 @@ describe('Following the newest message (state table)', () => {
   it('3 a searched target at the newest follows and reads what is shown', () => {
     const { state, commands } = run(opened('m5').state, [
       [{ type: 'targetLoaded', id: 'm5' }],
-      [{ type: 'targetScrolled', id: 'm5', movedUp: false }, { distance: 0 }],
+      [
+        { type: 'targetScrolled', id: 'm5', movedUp: false, moved: false },
+        { distance: 0 },
+      ],
     ]);
     expect(state.following).toBe(true);
     expect(reads(commands)).toEqual([{ type: 'read', kind: 'return' }]);
@@ -573,7 +621,10 @@ describe('Following the newest message (state table)', () => {
     const { state, commands } = run(opened().state, [
       [{ type: 'quoteClicked', id: 'm1' }],
       [{ type: 'targetLoaded', id: 'm1' }],
-      [{ type: 'targetScrolled', id: 'm1', movedUp: true }, { distance: 1500 }],
+      [
+        { type: 'targetScrolled', id: 'm1', movedUp: true, moved: true },
+        { distance: 1500 },
+      ],
     ]);
     expect(state.following).toBe(false);
     expect(lastAway(commands)).toBe(true);
@@ -584,7 +635,10 @@ describe('Following the newest message (state table)', () => {
     const { state } = run(opened().state, [
       [{ type: 'quoteClicked', id: 'm4' }],
       [{ type: 'targetLoaded', id: 'm4' }],
-      [{ type: 'targetScrolled', id: 'm4', movedUp: false }, { distance: 0 }],
+      [
+        { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
+        { distance: 0 },
+      ],
     ]);
     expect(state.following).toBe(true);
   });
@@ -594,7 +648,7 @@ describe('Following the newest message (state table)', () => {
       [{ type: 'quoteClicked', id: 'm4' }],
       [{ type: 'targetLoaded', id: 'm4' }],
       [
-        { type: 'targetScrolled', id: 'm4', movedUp: false },
+        { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
         { distance: distanceFromNewest(device.desktopPadded) },
       ],
     ]);
@@ -605,7 +659,10 @@ describe('Following the newest message (state table)', () => {
     const landed = run(opened().state, [
       [{ type: 'quoteClicked', id: 'm4' }],
       [{ type: 'targetLoaded', id: 'm4' }],
-      [{ type: 'targetScrolled', id: 'm4', movedUp: false }, { distance: 0 }],
+      [
+        { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
+        { distance: 0 },
+      ],
     ]).state;
     const { state, commands } = run(landed, [
       [{ type: 'quoteClicked', id: 'm4' }],
@@ -628,7 +685,10 @@ describe('Following the newest message (state table)', () => {
     const { state, commands } = run(opened().state, [
       [{ type: 'quoteClicked', id: 'm4' }],
       [{ type: 'targetLoaded', id: 'm4' }],
-      [{ type: 'targetScrolled', id: 'm4', movedUp: true }, { distance: 120 }],
+      [
+        { type: 'targetScrolled', id: 'm4', movedUp: true, moved: true },
+        { distance: 120 },
+      ],
       [{ type: 'timer', name: 'ownJumpEnd' }],
       [{ type: 'timer', name: 'highlightEnd' }, { distance: 120 }],
     ]);
@@ -661,7 +721,7 @@ describe('Following the newest message (state table)', () => {
   it('13 the reader scrolling while an original is sought cancels it', () => {
     const { state, commands } = run(opened().state, [
       [{ type: 'quoteClicked', id: 'm1' }],
-      [{ type: 'userIntent' }],
+      [{ type: 'userIntent', touch: false }],
       [{ type: 'targetLoaded', id: 'm1' }],
     ]);
     expect(state.target).toBeNull();
@@ -673,7 +733,10 @@ describe('Following the newest message (state table)', () => {
     const { state } = run(opened().state, [
       [{ type: 'quoteClicked', id: 'm4' }],
       [{ type: 'targetLoaded', id: 'm4' }],
-      [{ type: 'targetScrolled', id: 'm4', movedUp: false }, { distance: 0 }],
+      [
+        { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
+        { distance: 0 },
+      ],
       [{ type: 'scrolled' }, { distance: 120 }],
     ]);
     expect(state.following).toBe(false);
@@ -715,7 +778,10 @@ describe('Following the newest message (state table)', () => {
     const { commands } = run(opened().state, [
       [{ type: 'quoteClicked', id: 'm4' }],
       [{ type: 'targetLoaded', id: 'm4' }],
-      [{ type: 'targetScrolled', id: 'm4', movedUp: false }, { distance: 0 }],
+      [
+        { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
+        { distance: 0 },
+      ],
       [{ type: 'newestShown', screen: 'A:', mine: true }],
     ]);
     expect(scrolls(commands).at(-1)).toEqual({ type: 'alignEnd' });
@@ -728,7 +794,11 @@ describe('Following the newest message (state table)', () => {
       following: true,
       baseHeight: 549,
     });
-    expect(commands).toContainEqual({ type: 'lift', on: true });
+    expect(
+      commands.some(
+        (command) => command.type === 'lift' && command.by !== null,
+      ),
+    ).toBe(true);
   });
 
   it('20 the keyboard opening at the end of the page asks no scroll (SE 3 delta 1.4, nothing left)', () => {
@@ -760,7 +830,7 @@ describe('Following the newest message (state table)', () => {
   it('21 a drag up with the keyboard open stops following and records where the reader is', () => {
     const { state } = keyboardOpen(opened().state);
     const dragged = run(state, [
-      [{ type: 'userIntent' }],
+      [{ type: 'userIntent', touch: false }],
       [
         { type: 'scrolled' },
         {
@@ -814,7 +884,7 @@ describe('Following the newest message (state table)', () => {
   it('22 the Android visual viewport moving with a finger raises the composer and tracks the reader', () => {
     const { state } = keyboardOpen(opened().state, { height: 420.7 });
     const { state: after, commands } = run(state, [
-      [{ type: 'userIntent' }],
+      [{ type: 'userIntent', touch: false }],
       [
         { type: 'viewportScrolled' },
         {
@@ -824,7 +894,11 @@ describe('Following the newest message (state table)', () => {
         },
       ],
     ]);
-    expect(commands).toContainEqual({ type: 'lift', on: true });
+    expect(
+      commands.some(
+        (command) => command.type === 'lift' && command.by !== null,
+      ),
+    ).toBe(true);
     expect(after.following).toBe(true);
     expect(reads(commands)).toContainEqual({ type: 'read', kind: 'check' });
   });
@@ -837,7 +911,7 @@ describe('Following the newest message (state table)', () => {
     ]);
     expect(after.keyboard).toBeNull();
     expect(scrolls(commands)).toEqual([{ type: 'alignEnd' }]);
-    expect(commands).toContainEqual({ type: 'lift', on: false });
+    expect(commands).toContainEqual({ type: 'lift', by: null });
   });
 
   it('24 closing the keyboard while reading older ones goes back to where inertia ended', () => {
@@ -846,7 +920,7 @@ describe('Following the newest message (state table)', () => {
     ]).state;
     const { state } = keyboardOpen(away, { scrollTop: 250 });
     const { state: after, commands } = run(state, [
-      [{ type: 'userIntent' }],
+      [{ type: 'userIntent', touch: false }],
       [{ type: 'scrolled' }, { distance: 3000, scrollTop: 300 }],
       [{ type: 'scrolled' }, { distance: 3000, scrollTop: 275 }],
       [{ type: 'timer', name: 'userScrollEnd' }],
@@ -881,7 +955,7 @@ describe('Following the newest message (state table)', () => {
         [{ type: 'quoteClicked', id: 'm1' }],
         [{ type: 'targetLoaded', id: 'm1' }],
         [
-          { type: 'targetScrolled', id: 'm1', movedUp: true },
+          { type: 'targetScrolled', id: 'm1', movedUp: true, moved: true },
           { distance: 1500 },
         ],
       ],
@@ -980,7 +1054,7 @@ describe('Following the newest message (state table)', () => {
   it('31 nothing pulls the reader down while they scroll; following again after it, the newest is aligned', () => {
     // Pixel: dragging down at the collapsed-toolbar end re-expands it and resizes the viewport 12 times.
     const dragging = run(opened().state, [
-      [{ type: 'userIntent' }],
+      [{ type: 'userIntent', touch: false }],
       [{ type: 'viewportResized' }, { height: 640 }],
       [{ type: 'scrolled' }, { distance: 7 }],
       [{ type: 'viewportResized' }, { height: 620 }],
@@ -998,7 +1072,7 @@ describe('Following the newest message (state table)', () => {
   it('31 a toolbar coming back as the reader drags is not undone after the drag either', () => {
     // Pixel t5: 70px down at the collapsed-toolbar end; only the viewport resizes.
     const { state, commands } = run(opened().state, [
-      [{ type: 'userIntent' }],
+      [{ type: 'userIntent', touch: false }],
       [{ type: 'viewportResized' }, { height: 640 }],
       [{ type: 'scrolled' }, { distance: 40 }],
       [{ type: 'viewportResized' }, { height: 603.4 }],
@@ -1011,7 +1085,7 @@ describe('Following the newest message (state table)', () => {
 
   it('31 what waited is dropped when the reader ends up reading older ones', () => {
     const { commands } = run(opened().state, [
-      [{ type: 'userIntent' }],
+      [{ type: 'userIntent', touch: false }],
       [{ type: 'newestShown', screen: 'A:', mine: false }],
       [{ type: 'scrolled' }, { distance: 600 }],
       [{ type: 'scrollEnded' }, { distance: 600 }],
@@ -1073,7 +1147,7 @@ describe('Following the newest message (state table)', () => {
     const { state: after, commands } = run(state, [[{ type: 'detached' }]]);
     expect(after.keyboard).toBeNull();
     expect(after.following).toBe(true);
-    expect(commands).toContainEqual({ type: 'lift', on: false });
+    expect(commands).toContainEqual({ type: 'lift', by: null });
   });
 
   it('34 coming back to the room view follows the newest again', () => {
@@ -1100,5 +1174,244 @@ describe('Following the newest message (state table)', () => {
       state = step(state, event, snap({ distance: 0, height: 500 })).state;
       expect(state.following).toBe(false);
     }
+  });
+});
+
+const liftAmounts = (commands: Command[]) =>
+  commands
+    .filter(
+      (command): command is Extract<Command, { type: 'lift' }> =>
+        command.type === 'lift',
+    )
+    .map((command) => command.by);
+
+// Android on f35f1ec (android-masto-final2): k12 keyboard opening, s7v quote with the keyboard open. Review f35f:
+// D1 (P2), D2 (older pages at the top, review server), D3 (a resting finger, review server).
+describe('Following the newest message (state table, after f35f1ec)', () => {
+  for (const [name, before, opening, rested, dragged, lift] of [
+    [
+      'Galaxy',
+      device.galaxy.viewport,
+      galaxyOpening,
+      device.galaxyKeyboard.viewport,
+      device.galaxyKeyboardDrag1.viewport,
+      85,
+    ],
+    [
+      'Pixel',
+      {
+        innerHeight: 603,
+        rootClientHeight: 603,
+        visual: { height: 603.4, offsetTop: 0, scale: 1 },
+      },
+      pixelOpening,
+      device.pixelKeyboard.viewport,
+      {
+        ...device.pixelKeyboard.viewport,
+        visual: { height: 319.2, offsetTop: 199.6, scale: 1 },
+      },
+      84.2,
+    ],
+  ] as const) {
+    it(`35 an Android keyboard opening raises nothing until Chrome has brought the view down (${name})`, () => {
+      const at = (viewport: typeof before) => ({
+        viewport,
+        height: viewport.visual.height,
+        composerFocused: true,
+      });
+      const { commands } = run(opened().state, [
+        [{ type: 'composerFocused' }, at(before)],
+        [{ type: 'viewportResized' }, at(opening)],
+        [
+          { type: 'viewportScrolled' },
+          at({ ...opening, visual: { ...opening.visual, offsetTop: 150 } }),
+        ],
+        [{ type: 'viewportScrolled' }, at(rested)],
+      ]);
+      expect(liftAmounts(commands).every((by) => by === 0)).toBe(true);
+      const drag = run(
+        run(opened().state, [
+          [{ type: 'composerFocused' }, at(before)],
+          [{ type: 'viewportResized' }, at(opening)],
+          [{ type: 'viewportScrolled' }, at(rested)],
+        ]).state,
+        [
+          [{ type: 'userIntent', touch: true }],
+          [{ type: 'viewportScrolled' }, at(dragged)],
+        ],
+      );
+      expect(liftAmounts(drag.commands).at(-1)).toBeCloseTo(lift);
+    });
+  }
+
+  it('35 iOS still raises at once, as its innerHeight grows under the visual viewport', () => {
+    const at = (viewport: typeof device.se2Keyboard.viewport) => ({
+      viewport,
+      height: viewport.visual.height,
+      composerFocused: true,
+    });
+    const { commands } = run(opened().state, [
+      [
+        { type: 'composerFocused' },
+        at({
+          innerHeight: 549,
+          rootClientHeight: 549,
+          visual: { height: 549, offsetTop: 0, scale: 1 },
+        }),
+      ],
+      [{ type: 'viewportResized' }, at(device.se2Keyboard.viewport)],
+      [{ type: 'viewportScrolled' }, at(device.se2KeyboardDrag1.viewport)],
+    ]);
+    expect(liftAmounts(commands)).toEqual([0, 0, 80]);
+  });
+
+  const keyboardQuote = () =>
+    run(keyboardOpen(opened().state).state, [
+      [{ type: 'quoteClicked', id: 'm4' }],
+      [{ type: 'targetLoaded', id: 'm4' }],
+      // Galaxy s7v-3: the document stays, Chrome moves only the visual viewport up (324 -> 246): 78.3 away.
+      [
+        { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
+        { distance: 78.3, composerFocused: true, height: 420.7 },
+      ],
+      [{ type: 'composerBlurred' }],
+    ]);
+
+  it('36 an original already shown, tapped with the keyboard open, follows again as the keyboard goes', () => {
+    const landed = keyboardQuote();
+    expect(landed.state.following).toBe(false);
+    // 56ms later the keyboard is gone and the reader is at the newest again.
+    const { state, commands } = run(landed.state, [
+      [{ type: 'viewportResized' }, { height: 744.7, distance: 1 }],
+      [{ type: 'newestShown', screen: 'A:', mine: false }],
+    ]);
+    expect(state.following).toBe(true);
+    expect(reads(commands)).toContainEqual({ type: 'read', kind: 'return' });
+    expect(scrolls(commands).at(-1)).toEqual({ type: 'alignEnd' });
+  });
+
+  it('36 the same when the keyboard is noticed gone only after the jump settled', () => {
+    const landed = keyboardQuote();
+    const { state } = run(landed.state, [
+      [{ type: 'timer', name: 'ownJumpEnd' }],
+      [
+        { type: 'timer', name: 'keyboardClose' },
+        { height: 744.7, distance: 1 },
+      ],
+    ]);
+    expect(state.following).toBe(true);
+  });
+
+  it('36 a far original tapped with the keyboard open stays away when it goes', () => {
+    const { state } = run(keyboardOpen(opened().state).state, [
+      [{ type: 'quoteClicked', id: 'm1' }],
+      [{ type: 'targetLoaded', id: 'm1' }],
+      [
+        { type: 'targetScrolled', id: 'm1', movedUp: true, moved: true },
+        { distance: 1500, composerFocused: true, height: 287 },
+      ],
+      [{ type: 'composerBlurred' }],
+      [{ type: 'viewportResized' }, { height: 549, distance: 1500 }],
+      [
+        { type: 'timer', name: 'keyboardClose' },
+        { height: 549, distance: 1500 },
+      ],
+    ]);
+    expect(state.following).toBe(false);
+  });
+
+  it('37 a real shrink right after a reveal is answered; a pixel or two is Safari answering the reveal', () => {
+    const { state } = keyboardOpen(opened().state);
+    const revealed = run(state, [
+      [
+        { type: 'newestShown', screen: 'A:', mine: false },
+        { height: 287, composerFocused: true, reveal: 93 },
+      ],
+    ]).state;
+    const real = run(revealed, [
+      [
+        { type: 'viewportResized' },
+        { height: 247, composerFocused: true, reveal: 40 },
+      ],
+    ]);
+    expect(scrolls(real.commands)).toEqual([{ type: 'reveal', by: 40 }]);
+    const echoed = run(revealed, [
+      [
+        { type: 'viewportResized' },
+        { height: 286, composerFocused: true, reveal: 1.4 },
+      ],
+      [
+        { type: 'viewportResized' },
+        { height: 285, composerFocused: true, reveal: 1.4 },
+      ],
+    ]);
+    expect(scrolls(echoed.commands)).toEqual([]);
+  });
+
+  it('38 a finger resting on the screen after a drag is not pulled by an arriving message', () => {
+    const resting = run(opened().state, [
+      [{ type: 'touch', down: true }],
+      [{ type: 'userIntent', touch: true }],
+      [{ type: 'scrolled' }, { distance: 85 }],
+      // 200ms of nothing: the finger is still down.
+      [{ type: 'timer', name: 'userScrollEnd' }, { distance: 85 }],
+      [{ type: 'newestShown', screen: 'A:', mine: false }],
+    ]);
+    expect(scrolls(resting.commands)).toEqual([]);
+    expect(resting.state.pendingFollow).toBe(true);
+    const lifted = run(resting.state, [
+      [{ type: 'touch', down: false }, { distance: 85 }],
+      [{ type: 'timer', name: 'userScrollEnd' }, { distance: 85 }],
+    ]);
+    expect(scrolls(lifted.commands)).toEqual([{ type: 'alignEnd' }]);
+  });
+
+  it('38 a tap without a drag lets a message that came in meanwhile be shown as the finger lifts', () => {
+    const { commands } = run(opened().state, [
+      [{ type: 'touch', down: true }],
+      [{ type: 'newestShown', screen: 'A:', mine: false }],
+      [{ type: 'touch', down: false }],
+    ]);
+    expect(scrolls(commands)).toEqual([{ type: 'alignEnd' }]);
+  });
+
+  it('38 a lost touchend does not hold following back for good', () => {
+    const { state, commands } = run(opened().state, [
+      [{ type: 'touch', down: true }],
+      [{ type: 'newestShown', screen: 'A:', mine: false }],
+      [{ type: 'timer', name: 'touchStale' }],
+    ]);
+    expect(state.touching).toBe(false);
+    expect(scrolls(commands)).toEqual([{ type: 'alignEnd' }]);
+  });
+
+  it('39 older messages coming in above keep the reader’s place (review f35f D2: +3,050px)', () => {
+    const away = run(opened().state, [
+      [{ type: 'scrolled' }, { distance: 3000 }],
+    ]).state;
+    const { state, commands } = run(away, [
+      [{ type: 'olderArriving' }, { firstMessage: { id: 'm40', top: 159 } }],
+      [{ type: 'olderLoaded' }, { messageTop: () => 3209 }],
+    ]);
+    expect(commands).toEqual([{ type: 'scrollBy', by: 3050 }]);
+    expect(state.anchor).toBeNull();
+  });
+
+  it('39 nothing is moved when the browser kept the place, the anchor is gone, or the reader follows', () => {
+    const away = run(opened().state, [
+      [{ type: 'scrolled' }, { distance: 3000 }],
+    ]).state;
+    for (const top of [159, null]) {
+      const { commands } = run(away, [
+        [{ type: 'olderArriving' }, { firstMessage: { id: 'm40', top: 159 } }],
+        [{ type: 'olderLoaded' }, { messageTop: () => top }],
+      ]);
+      expect(commands).toEqual([]);
+    }
+    const following = run(opened().state, [
+      [{ type: 'olderArriving' }, { firstMessage: { id: 'm40', top: 159 } }],
+      [{ type: 'olderLoaded' }, { messageTop: () => 3209 }],
+    ]);
+    expect(scrolls(following.commands)).toEqual([]);
   });
 });
