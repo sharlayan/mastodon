@@ -8,7 +8,7 @@ class HideStatusMediaWorker
     hidden = status.rp_hidden_status
     return unless hidden
 
-    UpdateMediaAttachmentsPermissionsService.new.call(status.media_attachments.reorder(nil), :private)
+    UpdateMediaAttachmentsPermissionsService.new.call(status.media_attachments.where(drive_file_id: nil).reorder(nil), :private)
     hidden.update!(media_moved: true)
   rescue ActiveRecord::RecordNotFound
     true
