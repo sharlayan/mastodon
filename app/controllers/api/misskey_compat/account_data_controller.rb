@@ -166,7 +166,13 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
 
   def fetch_drive_file(drive_file)
     tempfile = Tempfile.new(['misskey-import', '.csv'])
-    drive_file.file.copy_to_local_file(:original, tempfile.path)
+    copied = drive_file.file.copy_to_local_file(:original, tempfile.path)
+
+    if copied == false || File.empty?(tempfile.path)
+      tempfile.close!
+      return
+    end
+
     tempfile.open.binmode
     tempfile
   rescue Errno::ENOENT

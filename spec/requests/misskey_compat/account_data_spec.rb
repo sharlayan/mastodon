@@ -187,6 +187,17 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
       expect(response.parsed_body['error']).to include('code' => 'NO_SUCH_FILE', 'id' => 'b98644cf-a5ac-4277-a502-0b8054a709a3')
     end
 
+    it 'returns the Misskey error when the storage cannot provide the file' do
+      drive_file = upload_drive_csv("bob@remote.example\n")
+      File.truncate(drive_file.file.path, 0)
+
+      post '/api/i/import-following', params: { i: token, fileId: mi(drive_file.id) }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body['error']).to include('code' => 'NO_SUCH_FILE', 'id' => 'b98644cf-a5ac-4277-a502-0b8054a709a3')
+      expect(account.bulk_imports).to be_empty
+    end
+
     it 'returns the Misskey error for an empty file' do
       drive_file = upload_drive_csv("bob@remote.example\n")
       drive_file.update_column(:file_file_size, 0)
