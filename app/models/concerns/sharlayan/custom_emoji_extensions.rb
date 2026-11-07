@@ -23,6 +23,8 @@ module Sharlayan::CustomEmojiExtensions
   included do
     attr_accessor :aliases_raw
 
+    has_many :status_reactions, inverse_of: :custom_emoji, dependent: :destroy
+
     validates :license, length: { maximum: LICENSE_MAX_LENGTH }, allow_blank: true
     validate :validate_aliases_count_and_length
   end
