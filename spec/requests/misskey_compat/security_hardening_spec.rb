@@ -62,6 +62,31 @@ RSpec.describe 'Misskey-compat security hardening' do
       author_ids = response.parsed_body.pluck(:userId)
       expect(author_ids).to_not include(blocked.id.to_s)
     end
+
+    it 'excludes statuses from suspended accounts' do
+      suspended = Fabricate(:account)
+      hidden = Fabricate(:status, account: suspended, text: 'searchable needle', visibility: :public)
+      suspended.suspend!
+
+      post '/api/notes/search', params: { i: token, query: 'needle' }, as: :json
+
+      expect(response.parsed_body.pluck(:id)).to_not include(MisskeyCompat::MiId.encode(hidden.id))
+    end
+  end
+
+  describe 'POST /api/notes/mentions' do
+    it 'excludes mentions from muted and blocked accounts' do
+      muted = Fabricate(:account)
+      account.mute!(muted)
+      shown = Fabricate(:status, account: Fabricate(:account), text: 'hi')
+      hidden = Fabricate(:status, account: muted, text: 'hi')
+      [shown, hidden].each { |status| Fabricate(:mention, status: status, account: account) }
+
+      post '/api/notes/mentions', params: { i: token }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq([MisskeyCompat::MiId.encode(shown.id)])
+    end
   end
 
   describe 'OAuth token enforcement' do
