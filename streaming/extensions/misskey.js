@@ -38,20 +38,38 @@ const authorizeStatusAccess = async (pgPool, statusId, req) => {
   const result = await pgPool.query(`
     SELECT 1
     FROM statuses
+    INNER JOIN accounts ON accounts.id = statuses.account_id
     WHERE statuses.id = $1
+      AND statuses.deleted_at IS NULL
+      AND accounts.suspended_at IS NULL
+      AND accounts.requested_deletion_at IS NULL
       AND (
         statuses.account_id = $2
-        OR statuses.visibility IN (0, 1)
-        OR statuses.visibility = 2 AND EXISTS (
-          SELECT 1 FROM follows
-          WHERE follows.account_id = $2
-            AND follows.target_account_id = statuses.account_id
+        OR NOT EXISTS (SELECT 1 FROM rp_hidden_statuses WHERE rp_hidden_statuses.status_id = statuses.id)
+      )
+      AND (
+        statuses.account_id = $2
+        OR statuses.visibility IN (0, 1) AND NOT EXISTS (
+          SELECT 1 FROM blocks
+          WHERE blocks.account_id = statuses.account_id
+            AND blocks.target_account_id = $2
+        )
+        OR statuses.visibility = 2 AND (
+          EXISTS (
+            SELECT 1 FROM follows
+            WHERE follows.account_id = $2
+              AND follows.target_account_id = statuses.account_id
+          )
+          OR EXISTS (
+            SELECT 1 FROM mentions
+            WHERE mentions.status_id = statuses.id
+              AND mentions.account_id = $2
+          )
         )
         OR statuses.visibility IN (3, 4) AND EXISTS (
           SELECT 1 FROM mentions
           WHERE mentions.status_id = statuses.id
             AND mentions.account_id = $2
-            AND mentions.silent = FALSE
         )
       )
     LIMIT 1
