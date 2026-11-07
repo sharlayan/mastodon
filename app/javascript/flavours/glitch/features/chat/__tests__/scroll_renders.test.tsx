@@ -2083,6 +2083,15 @@ describe('iOS visual viewport regressions', () => {
 
   it('marks a visible message read when keyboard offsetTop is in a different coordinate space', async () => {
     const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const originalInner = Object.getOwnPropertyDescriptor(
+      window,
+      'innerHeight',
+    );
+    const root = document.documentElement;
+    const originalClient = Object.getOwnPropertyDescriptor(
+      root,
+      'clientHeight',
+    );
     const viewport = Object.assign(new EventTarget(), {
       scale: 1,
       height: 549,
@@ -2092,6 +2101,15 @@ describe('iOS visual viewport regressions', () => {
       configurable: true,
       value: viewport,
     });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 549,
+    });
+    Object.defineProperty(root, 'clientHeight', {
+      configurable: true,
+      value: 549,
+    });
     window.matchMedia = vi.fn().mockReturnValue({ matches: true });
     try {
       await openRoom();
@@ -2100,6 +2118,7 @@ describe('iOS visual viewport regressions', () => {
       });
       viewport.height = 287;
       viewport.offsetTop = 262;
+      window.innerHeight = 287;
       vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
         function (this: Element) {
           if (this.classList.contains('chat-native__composer'))
@@ -2114,6 +2133,12 @@ describe('iOS visual viewport regressions', () => {
       expect(readsPosted()).toBe(before + 1);
     } finally {
       cleanup();
+      if (originalClient)
+        Object.defineProperty(root, 'clientHeight', originalClient);
+      else Reflect.deleteProperty(root, 'clientHeight');
+      if (originalInner)
+        Object.defineProperty(window, 'innerHeight', originalInner);
+      else Reflect.deleteProperty(window, 'innerHeight');
       if (original) Object.defineProperty(window, 'visualViewport', original);
       else Reflect.deleteProperty(window, 'visualViewport');
     }
@@ -2366,6 +2391,332 @@ describe('iOS visual viewport regressions', () => {
       });
       const before = endScrolls();
       receive('after-toolbar-collapse');
+      await wait(50);
+      expect(endScrolls()).toBeGreaterThan(before);
+    } finally {
+      cleanup();
+      nav.remove();
+      if (originalTop) Object.defineProperty(root, 'scrollTop', originalTop);
+      else Reflect.deleteProperty(root, 'scrollTop');
+      if (originalHeight)
+        Object.defineProperty(root, 'scrollHeight', originalHeight);
+      else Reflect.deleteProperty(root, 'scrollHeight');
+      if (originalClient)
+        Object.defineProperty(root, 'clientHeight', originalClient);
+      else Reflect.deleteProperty(root, 'clientHeight');
+      if (originalScrolling)
+        Object.defineProperty(document, 'scrollingElement', originalScrolling);
+      else Reflect.deleteProperty(document, 'scrollingElement');
+      if (originalInner)
+        Object.defineProperty(window, 'innerHeight', originalInner);
+      else Reflect.deleteProperty(window, 'innerHeight');
+      if (originalViewport)
+        Object.defineProperty(window, 'visualViewport', originalViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+});
+
+describe('Android visual viewport regressions', () => {
+  it('keeps the keyboard and navigation aligned as the visual viewport moves', async () => {
+    const originalViewport = Object.getOwnPropertyDescriptor(
+      window,
+      'visualViewport',
+    );
+    const originalInner = Object.getOwnPropertyDescriptor(
+      window,
+      'innerHeight',
+    );
+    const root = document.documentElement;
+    const originalClient = Object.getOwnPropertyDescriptor(
+      root,
+      'clientHeight',
+    );
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 603.4,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 603,
+    });
+    Object.defineProperty(root, 'clientHeight', {
+      configurable: true,
+      value: 603,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    const nav = document.createElement('div');
+    nav.className = 'ui__navigation-bar';
+    document.body.appendChild(nav);
+    try {
+      await openRoom();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.height = 319.2;
+      viewport.offsetTop = 284.2;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      expect(parseFloat(nav.style.bottom)).toBeCloseTo(0);
+      viewport.offsetTop = 199.2;
+      fireEvent.touchMove(window);
+      act(() => {
+        viewport.dispatchEvent(new Event('scroll'));
+      });
+      expect(parseFloat(nav.style.bottom)).toBeCloseTo(84.6);
+      expect(
+        parseFloat(
+          (
+            document.querySelector('.chat-native__composer') as HTMLElement
+          ).style.getPropertyValue('--chat-keyboard-lift'),
+        ),
+      ).toBeCloseTo(84.6);
+      cleanup();
+      expect(nav.style.bottom).toBe('');
+    } finally {
+      cleanup();
+      nav.remove();
+      if (originalClient)
+        Object.defineProperty(root, 'clientHeight', originalClient);
+      else Reflect.deleteProperty(root, 'clientHeight');
+      if (originalInner)
+        Object.defineProperty(window, 'innerHeight', originalInner);
+      else Reflect.deleteProperty(window, 'innerHeight');
+      if (originalViewport)
+        Object.defineProperty(window, 'visualViewport', originalViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('reads only messages within the offset visual viewport while the keyboard is open', async () => {
+    const originalViewport = Object.getOwnPropertyDescriptor(
+      window,
+      'visualViewport',
+    );
+    const originalInner = Object.getOwnPropertyDescriptor(
+      window,
+      'innerHeight',
+    );
+    const root = document.documentElement;
+    const originalClient = Object.getOwnPropertyDescriptor(
+      root,
+      'clientHeight',
+    );
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 603.4,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: 603,
+    });
+    Object.defineProperty(root, 'clientHeight', {
+      configurable: true,
+      value: 603,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    try {
+      await openRoom();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.height = 319.2;
+      viewport.offsetTop = 284.2;
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          if (this.classList.contains('chat-native__composer'))
+            return { top: 479.7, bottom: 548.4 } as DOMRect;
+          if (this.id === 'chat-message-above-android-viewport')
+            return { top: 200, bottom: 260 } as DOMRect;
+          if (this.id === 'chat-message-visible-android-viewport')
+            return { top: 410.4, bottom: 465 } as DOMRect;
+          return { top: 0, bottom: 603.4 } as DOMRect;
+        },
+      );
+      const before = readsPosted();
+      receive('above-android-viewport');
+      expect(readsPosted()).toBe(before);
+      receive('visible-android-viewport');
+      expect(readsPosted()).toBe(before + 1);
+    } finally {
+      cleanup();
+      if (originalClient)
+        Object.defineProperty(root, 'clientHeight', originalClient);
+      else Reflect.deleteProperty(root, 'clientHeight');
+      if (originalInner)
+        Object.defineProperty(window, 'innerHeight', originalInner);
+      else Reflect.deleteProperty(window, 'innerHeight');
+      if (originalViewport)
+        Object.defineProperty(window, 'visualViewport', originalViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('tracks a touch-driven visual viewport pan without mistaking a small pan for reading away', async () => {
+    const originalViewport = Object.getOwnPropertyDescriptor(
+      window,
+      'visualViewport',
+    );
+    const originalInner = Object.getOwnPropertyDescriptor(
+      window,
+      'innerHeight',
+    );
+    const root = document.documentElement;
+    const originalClient = Object.getOwnPropertyDescriptor(
+      root,
+      'clientHeight',
+    );
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 744.7,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: 744,
+    });
+    Object.defineProperty(root, 'clientHeight', {
+      configurable: true,
+      value: 744,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    try {
+      await openRoom();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.height = 420.7;
+      viewport.offsetTop = 239;
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          if (this.classList.contains('chat-native__end'))
+            return { top: 689.7, bottom: 689.7 } as DOMRect;
+          if (this.classList.contains('chat-native__composer'))
+            return { top: 620.7, bottom: 689.7 } as DOMRect;
+          return { top: 0, bottom: 744.7 } as DOMRect;
+        },
+      );
+      fireEvent.touchMove(window);
+      act(() => {
+        viewport.dispatchEvent(new Event('scroll'));
+      });
+      expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+      viewport.offsetTop = 0;
+      fireEvent.touchMove(window);
+      act(() => {
+        viewport.dispatchEvent(new Event('scroll'));
+      });
+      expect(screen.getByRole('button', { name: JUMP })).toBeTruthy();
+    } finally {
+      cleanup();
+      if (originalClient)
+        Object.defineProperty(root, 'clientHeight', originalClient);
+      else Reflect.deleteProperty(root, 'clientHeight');
+      if (originalInner)
+        Object.defineProperty(window, 'innerHeight', originalInner);
+      else Reflect.deleteProperty(window, 'innerHeight');
+      if (originalViewport)
+        Object.defineProperty(window, 'visualViewport', originalViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('resumes following at the Pixel collapsed-toolbar bottom measured on device', async () => {
+    const originalViewport = Object.getOwnPropertyDescriptor(
+      window,
+      'visualViewport',
+    );
+    const originalInner = Object.getOwnPropertyDescriptor(
+      window,
+      'innerHeight',
+    );
+    const originalScrolling = Object.getOwnPropertyDescriptor(
+      document,
+      'scrollingElement',
+    );
+    const root = document.documentElement;
+    const originalTop = Object.getOwnPropertyDescriptor(root, 'scrollTop');
+    const originalHeight = Object.getOwnPropertyDescriptor(
+      root,
+      'scrollHeight',
+    );
+    const originalClient = Object.getOwnPropertyDescriptor(
+      root,
+      'clientHeight',
+    );
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 659.4,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      value: 659,
+    });
+    const nav = document.createElement('div');
+    nav.className = 'ui__navigation-bar';
+    document.body.appendChild(nav);
+    try {
+      await openRoom();
+      Object.defineProperty(document, 'scrollingElement', {
+        configurable: true,
+        value: root,
+      });
+      Object.defineProperty(root, 'scrollHeight', {
+        configurable: true,
+        value: 1386,
+      });
+      Object.defineProperty(root, 'clientHeight', {
+        configurable: true,
+        value: 603,
+      });
+      Object.defineProperty(root, 'scrollTop', {
+        configurable: true,
+        writable: true,
+        value: 726.5,
+      });
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          if (this === nav)
+            return { top: 604.9, bottom: 659.4, height: 54.5 } as DOMRect;
+          if (this.classList.contains('chat-native__end'))
+            return { top: 605.8, bottom: 605.8 } as DOMRect;
+          if (this.classList.contains('chat-native__composer'))
+            return { top: 536, bottom: 604.9 } as DOMRect;
+          return { top: 0, bottom: 659.4 } as DOMRect;
+        },
+      );
+      viewport.scale = 2;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      fireEvent.scroll(window);
+      viewport.scale = 1;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      const before = endScrolls();
+      receive('after-pixel-toolbar-collapse');
       await wait(50);
       expect(endScrolls()).toBeGreaterThan(before);
     } finally {

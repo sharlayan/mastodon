@@ -855,9 +855,18 @@ const chatScrollport = (end: HTMLElement): Element | null => {
 // on the visual viewport (including a collapsed browser toolbar).
 const visualViewportTop = (keyboardFocused: boolean) => {
   const viewport = window.visualViewport;
-  if (!viewport || keyboardFocused || window.innerHeight <= viewport.height + 2)
-    return 0;
-  return Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0;
+  if (!viewport) return 0;
+  const offset = Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0;
+  if (keyboardFocused) {
+    // Android keeps innerHeight at the layout viewport height and reports
+    // element rectangles in that space. iOS shrinks innerHeight while keeping
+    // the root clientHeight, and reports rectangles in the visual space.
+    const layoutHeight = document.documentElement.clientHeight;
+    return layoutHeight > 0 && window.innerHeight >= layoutHeight - 2
+      ? offset
+      : 0;
+  }
+  return window.innerHeight <= viewport.height + 2 ? 0 : offset;
 };
 
 const messageIsVisible = (
@@ -2612,7 +2621,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       }
       // Fixed and sticky elements use innerHeight on iOS, even when only the
       // shorter visual viewport remains above the keyboard and Safari toolbar.
-      const lift = Math.max(0, window.innerHeight - viewport.height);
+      const lift = Math.max(
+        0,
+        window.innerHeight - (visualViewportTop(true) + viewport.height),
+      );
       if (!keyboardBoundsApplied) {
         previousNavigationBottom =
           navigation?.style.getPropertyValue('bottom') ?? '';
@@ -2724,7 +2736,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (jumpNavigationRef.current.seeking) return;
       if (keyboard && !keyboard.userScrolling) return;
       const viewportBottom = keyboard
-        ? (window.visualViewport?.height ?? window.innerHeight)
+        ? visualViewportTop(true) +
+          (window.visualViewport?.height ?? window.innerHeight)
         : window.innerHeight;
       const following =
         end.getBoundingClientRect().bottom - viewportBottom <
@@ -2812,7 +2825,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         scrollToNewest(end);
     };
     const onVisualViewportScroll = () => {
-      if (keyboard) updateKeyboardBounds();
+      if (keyboard) {
+        updateKeyboardBounds();
+        if (keyboard.userScrolling) trackPosition();
+      }
       attemptVisibleRead();
     };
     window.addEventListener('resize', onViewportResize);
