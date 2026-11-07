@@ -121,7 +121,7 @@ class Api::MisskeyCompat::HashtagsController < Api::MisskeyCompat::BaseControlle
     if tag.has_attribute?(:attached_users_count)
       [tag[:attached_users_count].to_i, tag[:attached_local_users_count].to_i, tag[:attached_remote_users_count].to_i]
     else
-      [tag.accounts.count, tag.accounts.local.count, tag.accounts.remote.count]
+      tag.accounts.pick(Arel.sql('COUNT(accounts.id)'), Arel.sql(LOCAL_COUNT_SQL), Arel.sql(REMOTE_COUNT_SQL))
     end
   end
 

@@ -105,6 +105,20 @@ RSpec.describe 'Misskey-compat near-miss endpoints' do
       expect(queries.grep(/FROM "tags"/)).to be_empty
     end
 
+    it 'counts attached users of a single tag in one query' do
+      queries = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
+      end
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        post '/api/hashtags/show', params: { i: read_token, tag: 'remotetag' }, as: :json
+      end
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to include('attachedUsersCount' => 2, 'attachedLocalUsersCount' => 0, 'attachedRemoteUsersCount' => 2)
+      expect(queries.grep(/COUNT/).size).to eq(1)
+    end
+
     it 'rejects an unknown sort mode' do
       post '/api/hashtags/list', params: { i: read_token, sort: '+unknown' }, as: :json
 
