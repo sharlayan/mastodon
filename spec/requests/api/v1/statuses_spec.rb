@@ -728,6 +728,18 @@ RSpec.describe '/api/v1/statuses' do
         expect(RemovalWorker).to have_enqueued_sidekiq_job(status.id, { 'redraft' => true })
       end
 
+      context 'with a circle status' do
+        let(:circle) { Circle.create!(account: user.account, title: 'Friends') }
+        let(:status) { Fabricate(:status, account: user.account, visibility: :limited, limited_scope: :circle).tap { |record| circle.statuses << record } }
+
+        it 'returns the circle so the redraft keeps its audience' do
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body).to include(visibility: 'private', limited_scope: 'circle', circle_id: circle.id.to_s)
+        end
+      end
+
       context 'when called with truthy delete_media' do
         subject do
           delete "/api/v1/statuses/#{status.id}?delete_media=true", headers: headers

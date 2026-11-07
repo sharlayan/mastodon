@@ -93,4 +93,26 @@ describe('compose restoration transitions', () => {
     expect(state.get('quote_policy')).toBe('nobody');
     expect(state.get('reaction_acceptance')).toBeNull();
   });
+
+  it('restores the circle of a redrafted circle post', () => {
+    const state = restore(loadedDraft(), REDRAFT, sourceStatus.merge({ visibility: 'private', limited_scope: 'circle', circle_id: 'source-circle' }));
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(submission.circleId).toBe('source-circle');
+    expect(submission.visibility).toBe('private');
+  });
+
+  it('narrows a redrafted limited post without a known circle to direct', () => {
+    const state = restore(loadedDraft(), REDRAFT, sourceStatus.merge({ visibility: 'private', limited_scope: 'reply' }));
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(submission.circleId).toBeNull();
+    expect(submission.visibility).toBe('direct');
+  });
 });

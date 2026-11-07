@@ -719,7 +719,9 @@ export const composeReducer = (state = initialState, action) => {
       map.set('text', text);
       map.set('content_type', action.content_type || 'text/plain');
       map.set('in_reply_to', action.status.get('in_reply_to_id'));
-      map.set('privacy', action.status.get('visibility'));
+      const circleId = action.status.get('circle_id') || null;
+      map.set('circle_id', circleId);
+      map.set('privacy', action.status.get('limited_scope') && !circleId ? 'direct' : action.status.get('visibility'));
       map.set('media_attachments', action.status.get('media_attachments').map((media) => media.set('unattached', true)));
       map.set('focusDate', new Date());
       map.set('caretPosition', null);
