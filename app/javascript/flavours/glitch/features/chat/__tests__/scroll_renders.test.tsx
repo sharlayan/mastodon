@@ -3444,20 +3444,27 @@ describe('iOS keyboard on ddbad17ba3', () => {
     };
     const measurePage = (height: number) => {
       scrollTops = [];
+      // Room made below the end of the room makes the page that much longer.
+      const total = () =>
+        height +
+        (parseFloat(
+          document.querySelector<HTMLElement>('.chat-native__end')?.style
+            .marginBottom ?? '',
+        ) || 0);
       Object.defineProperty(document, 'scrollingElement', {
         configurable: true,
         value: root,
       });
       Object.defineProperty(root, 'scrollHeight', {
         configurable: true,
-        value: height,
+        get: total,
       });
       Object.defineProperty(root, 'scrollTop', {
         configurable: true,
         get: () => scrollTop,
         set: (value: number) => {
           scrollTops.push(value);
-          scrollTop = Math.min(value, height - window.innerHeight);
+          scrollTop = Math.min(value, total() - window.innerHeight);
         },
       });
     };
@@ -3590,6 +3597,170 @@ describe('iOS keyboard on ddbad17ba3', () => {
       expect(scrollTop).toBe(2408);
     } finally {
       device.restore();
+    }
+  });
+});
+
+// iPhone SE 3 (iOS 18.7.7) on a7566004ab, ios-masto-final4/out/se3/b-a130.json: 119pt up, then a tap on the box.
+describe('iOS 18 keyboard on a7566004ab', () => {
+  it('makes room under the keyboard and shows the newest when Safari scrolls from where the page was (a130)', async () => {
+    const root = document.documentElement;
+    const saved = {
+      viewport: Object.getOwnPropertyDescriptor(window, 'visualViewport'),
+      inner: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
+      scrollY: Object.getOwnPropertyDescriptor(window, 'scrollY'),
+      client: Object.getOwnPropertyDescriptor(root, 'clientHeight'),
+      top: Object.getOwnPropertyDescriptor(root, 'scrollTop'),
+      height: Object.getOwnPropertyDescriptor(root, 'scrollHeight'),
+      scrolling: Object.getOwnPropertyDescriptor(document, 'scrollingElement'),
+    };
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 547,
+      offsetTop: 0,
+      pageTop: 1545,
+    });
+    let top = 1545;
+    const geo = {
+      end: { top: 493, bottom: 493 },
+      composer: { top: 423, bottom: 492 },
+      nav: { top: 492, bottom: 547 },
+      last: { top: 354, bottom: 408 },
+    };
+    const total = () =>
+      2092 +
+      (parseFloat(
+        document.querySelector<HTMLElement>('.chat-native__end')?.style
+          .marginBottom ?? '',
+      ) || 0);
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 547,
+    });
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      get: () => top,
+    });
+    Object.defineProperty(root, 'clientHeight', {
+      configurable: true,
+      value: 547,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    const nav = document.createElement('div');
+    nav.className = 'ui__navigation-bar';
+    document.body.appendChild(nav);
+    try {
+      await openRoom();
+      Object.defineProperty(document, 'scrollingElement', {
+        configurable: true,
+        value: root,
+      });
+      Object.defineProperty(root, 'scrollHeight', {
+        configurable: true,
+        get: total,
+      });
+      Object.defineProperty(root, 'scrollTop', {
+        configurable: true,
+        get: () => top,
+        set: (value: number) => {
+          top = Math.min(value, total() - window.innerHeight);
+          viewport.pageTop = top;
+        },
+      });
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          // What the page measured, moved by what the app scrolled after Safari's own scroll.
+          const by = window.innerHeight < 547 ? top - 1725 : 0;
+          const at = (r: { top: number; bottom: number }) =>
+            ({ top: r.top - by, bottom: r.bottom - by }) as DOMRect;
+          if (this.classList.contains('chat-native__end')) return at(geo.end);
+          if (this.classList.contains('chat-native__composer'))
+            return geo.composer as DOMRect;
+          if (this.classList.contains('ui__navigation-bar'))
+            return { ...geo.nav, height: 55 } as DOMRect;
+          if (this.id === 'chat-message-message-5') return at(geo.last);
+          return { top: -2000, bottom: -1950 } as DOMRect;
+        },
+      );
+      // 119pt up, reading with a finger: following.
+      Object.assign(geo, {
+        end: { top: 611, bottom: 611 },
+        last: { top: 472, bottom: 526 },
+      });
+      fireEvent.touchStart(document.body);
+      fireEvent.touchMove(document.body);
+      top = 1427;
+      viewport.pageTop = 1427;
+      fireEvent.scroll(window);
+      fireEvent.touchEnd(document.body);
+      await wait(300);
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      const atFocus = top;
+      // Safari puts the page back (1427) and scrolls it by 298 from there; innerHeight 367 = 2092 − 1725.
+      top = 1725;
+      viewport.pageTop = 1725;
+      viewport.height = 320.5;
+      viewport.offsetTop = 226.5;
+      window.innerHeight = 367;
+      Object.assign(geo, {
+        composer: { top: 196.5, bottom: 265.5 },
+        nav: { top: 265.5, bottom: 320.5 },
+        end: { top: 313, bottom: 313 },
+        last: { top: 174, bottom: 228 },
+      });
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+        viewport.dispatchEvent(new Event('scroll'));
+      });
+      const end = document.querySelector<HTMLElement>('.chat-native__end');
+      const shown = {
+        room: end?.style.marginBottom,
+        scrollTop: top,
+        lastBottom: geo.last.bottom - (top - 1725),
+      };
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      window.innerHeight = 547;
+      viewport.height = 547;
+      viewport.offsetTop = 0;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      await wait(800);
+      expect({
+        atFocus,
+        ...shown,
+        closedRoom: end?.style.marginBottom,
+      }).toEqual({
+        atFocus: 1545,
+        room: '46.5px',
+        scrollTop: 1771.5,
+        lastBottom: 181.5,
+        closedRoom: '',
+      });
+    } finally {
+      cleanup();
+      nav.remove();
+      for (const [target, key, descriptor] of [
+        [window, 'visualViewport', saved.viewport],
+        [window, 'innerHeight', saved.inner],
+        [window, 'scrollY', saved.scrollY],
+        [root, 'clientHeight', saved.client],
+        [root, 'scrollTop', saved.top],
+        [root, 'scrollHeight', saved.height],
+        [document, 'scrollingElement', saved.scrolling],
+      ] as const) {
+        if (descriptor) Object.defineProperty(target, key, descriptor);
+        else Reflect.deleteProperty(target, key);
+      }
     }
   });
 });

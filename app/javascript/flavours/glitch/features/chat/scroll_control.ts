@@ -204,6 +204,21 @@ export const keyboardLift = (viewport: ViewportReading, rested: boolean) => {
   return Math.max(0, fixedBottom - area.bottom);
 };
 
+// How far Safari's layout viewport reaches past the end of what is shown while the keyboard is open, with the page
+// at the end of what a script can scroll. Focused a little up, Safari 18 puts the page back where it was before the
+// focus and scrolls it by the keyboard from there, whatever the page did meanwhile, and keeps innerHeight at
+// scrollHeight − scrollY: the end of the page stays that far under the keyboard, out of reach (iPhone SE 3 on
+// a7566004ab: 367 + 226.5 − 547 = 46.5, last message under the composer). Nothing at the newest, while the reader
+// drags up (the composer is raised instead), or in Chrome's coordinates.
+export const keyboardRoom = (viewport: ViewportReading) => {
+  const { visual, innerHeight, rootClientHeight } = viewport;
+  if (!visual || rootClientHeight <= 0 || rectsInLayoutViewport(viewport))
+    return 0;
+  if (visibleArea(viewport).scale !== 1) return 0;
+  const room = innerHeight + finite(visual.offsetTop, 0) - rootClientHeight;
+  return room >= 1 ? room : 0;
+};
+
 // How far to scroll to bring the last message out from under the composer while the keyboard is open. Never past the
 // end of the page, which Safari answers by shrinking its viewport, and never less than a pixel, which moves nothing.
 export const revealAmount = ({
@@ -242,6 +257,8 @@ export interface Snapshot {
   messageTop: (id: string) => number | null;
   // A given message is in full view, clear of the composer.
   messageShown: (id: string) => boolean;
+  // How much further the room's scrolling box can be scrolled by a script.
+  remaining: number;
 }
 
 export interface Target {
@@ -260,6 +277,8 @@ export interface KeyboardSession {
   closing: boolean;
   // What is shown has come to rest over the keyboard (see keyboardLift).
   rested: boolean;
+  // Room made below the end of the page for what Safari keeps under the keyboard (see keyboardRoom).
+  room: number;
 }
 
 export interface ScrollState {
@@ -305,6 +324,8 @@ export type Command =
   | { type: 'forgetSearch' }
   // How far to raise the composer and the navigation bar, or null to put back what was there.
   | { type: 'lift'; by: number | null }
+  // How much longer to make the page below its end, or null to put back what was there; done, it says roomMade.
+  | { type: 'room'; by: number | null }
   | { type: 'timer'; name: TimerName; delay: number }
   | { type: 'clearTimer'; name: TimerName };
 
@@ -330,6 +351,7 @@ export type ScrollEvent =
   | { type: 'contentResized' }
   | { type: 'olderArriving' }
   | { type: 'olderLoaded' }
+  | { type: 'roomMade' }
   | { type: 'timer'; name: TimerName };
 
 export const initialScrollState = (targetId: string | null): ScrollState => ({
@@ -423,6 +445,20 @@ const raise = (state: ScrollState, s: Snapshot, commands: Command[]) => {
     type: 'lift',
     by: keyboardLift(s.viewport, keyboard.rested),
   });
+  // Following, the page is made as long as what Safari keeps under the keyboard, and the newest shown in it. Once a
+  // keyboard: a page made longer is never answered by making it longer again.
+  if (
+    keyboard.room ||
+    !state.following ||
+    seeking(state) ||
+    !s.composerFocused ||
+    s.remaining > 1
+  )
+    return;
+  const room = keyboardRoom(s.viewport);
+  if (!room) return;
+  keyboard.room = room;
+  commands.push({ type: 'room', by: room });
 };
 
 // Right after a jump, what the page does with it (the visual viewport moving, or the keyboard going away as the
@@ -509,6 +545,8 @@ const closeKeyboard = (
 ) => {
   const keyboard = state.keyboard;
   if (!keyboard) return;
+  // The page is its own length again before going anywhere.
+  if (keyboard.room) commands.push({ type: 'room', by: null });
   if (s.scale === 1) {
     if (!keyboard.following && keyboard.restoreTop !== null) {
       commands.push({ type: 'restoreScroll', top: keyboard.restoreTop });
@@ -553,6 +591,7 @@ export const step = (
 
     case 'detached':
       if (state.keyboard) commands.push({ type: 'lift', by: null });
+      if (state.keyboard?.room) commands.push({ type: 'room', by: null });
       state.keyboard = null;
       state.userScrolling = false;
       state.touching = false;
@@ -743,6 +782,7 @@ export const step = (
         shrunk: false,
         closing: false,
         rested: false,
+        room: 0,
       };
       raise(state, s, commands);
       break;
@@ -849,6 +889,16 @@ export const step = (
       if (Math.abs(by) >= 1) commands.push({ type: 'scrollBy', by });
       break;
     }
+
+    case 'roomMade':
+      if (
+        state.keyboard &&
+        state.following &&
+        !seeking(state) &&
+        s.composerFocused
+      )
+        toNewest(state, s, commands, true);
+      break;
 
     case 'timer':
       switch (event.name) {

@@ -10,6 +10,7 @@ import {
   initialScrollState,
   isAtNewest,
   keyboardLift,
+  keyboardRoom,
   rectShown,
   rectVisible,
   revealAmount,
@@ -474,6 +475,7 @@ const snap = (over: Partial<Snapshot> = {}): Snapshot => ({
   firstMessage: null,
   messageTop: () => null,
   messageShown: () => false,
+  remaining: 0,
   ...over,
 });
 
@@ -1940,5 +1942,124 @@ describe('Android on a7566004ab (android-masto-final4)', () => {
       [{ type: 'viewportResized' }, { scale: 1, distance: 300 }],
     ]);
     expect(state.following).toBe(false);
+  });
+});
+
+// iPhone SE 3 (iOS 18.7.7) on a7566004ab (ios-masto-final4/out/se3/b-a130.json, b-ak180.json): focused a little up,
+// Safari puts the page back where it was before the focus and scrolls it by 298 from there, whatever the page did
+// at the focus, and keeps innerHeight at scrollHeight − scrollY: the end of the page stays under the keyboard.
+describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
+  const se3 = (
+    innerHeight: number,
+    height: number,
+    offsetTop: number,
+    scrollY: number,
+  ) => ({
+    innerHeight,
+    rootClientHeight: 547,
+    scrollY,
+    visual: { height, offsetTop, scale: 1, pageTop: scrollY },
+  });
+  const at = (
+    viewport: ReturnType<typeof se3>,
+    over: Partial<Snapshot> = {},
+  ) => ({
+    viewport,
+    height: viewport.visual.height,
+    composerFocused: true,
+    ...over,
+  });
+  const rooms = (commands: Command[]) =>
+    commands
+      .filter(
+        (command): command is Extract<Command, { type: 'room' }> =>
+          command.type === 'room',
+      )
+      .map((command) => command.by);
+
+  it('48 measures how far Safari leaves the end of the page under the keyboard', () => {
+    // a130: 367 + 226.5 − 547; ak180: 414 + 226.5 − 547.
+    expect(keyboardRoom(se3(367, 320.5, 226.5, 1725))).toBeCloseTo(46.5);
+    expect(keyboardRoom(se3(414, 320.5, 226.5, 1634))).toBeCloseTo(93.5);
+    // At the newest (f5a: 321/320.5/226.5) and dragged up (R5: 398/149.5), nothing is left there.
+    expect(keyboardRoom(se3(321, 320.5, 226.5, 1842))).toBe(0);
+    expect(keyboardRoom(se3(398, 320.5, 149.5, 1765))).toBe(0);
+    // iOS 27 at the newest, and Chrome's keyboard, neither.
+    expect(
+      keyboardRoom({ ...device.se2Keyboard.viewport, scrollY: 1957 }),
+    ).toBe(0);
+    expect(keyboardRoom(device.galaxyKeyboard.viewport)).toBe(0);
+  });
+
+  for (const [name, before, distance, safari, room, last] of [
+    // a130: 119 up; Safari: 1427 → 1725, innerHeight 367; last message 174~228 under the composer at 196.5.
+    ['a130, 119pt up', 1427, 119, se3(367, 320.5, 226.5, 1725), 46.5, 228],
+    // ak180: 165 up; 1336 → 1634, innerHeight 414; last 221~275.
+    ['ak180, 165pt up', 1336, 165, se3(414, 320.5, 226.5, 1634), 93.5, 275],
+  ] as const)
+    it(`48 the newest is shown over the keyboard although Safari scrolled from where the page was (${name})`, () => {
+      const near = run(opened().state, [
+        [{ type: 'scrolled' }, { distance }],
+      ]).state;
+      const opening = run(near, [
+        [
+          { type: 'composerFocused' },
+          at(se3(547, 547, 0, before), { distance, reveal: distance - 1 }),
+        ],
+        // +55ms: the visual viewport shrinks first, the page where the app put it.
+        [
+          { type: 'viewportResized' },
+          at(se3(547, 320.5, 0, before + distance - 1)),
+        ],
+        // +71ms: Safari's own scroll, from where the page was before the focus.
+        [{ type: 'viewportScrolled' }, at(safari)],
+        [{ type: 'viewportResized' }, at(safari)],
+      ]);
+      expect(rooms(opening.commands)).toEqual([room]);
+      // The page is that much longer now: the last message is shown 16px over the composer, as far as it goes.
+      const reveal = Math.min(last - 196.5 + 16, room);
+      const made = run(opening.state, [
+        [{ type: 'roomMade' }, at(safari, { remaining: room, reveal })],
+      ]);
+      expect(scrolls(made.commands)).toEqual([{ type: 'reveal', by: reveal }]);
+      // Closing the keyboard takes the room away before going to the newest.
+      const closed = run(made.state, [
+        [{ type: 'composerBlurred' }],
+        [{ type: 'timer', name: 'keyboardClose' }, { distance: 1 }],
+      ]);
+      expect(closed.commands.map((command) => command.type)).toEqual(
+        expect.arrayContaining(['room', 'alignEnd']),
+      );
+      expect(rooms(closed.commands)).toEqual([null]);
+      const order = closed.commands.map((command) => command.type);
+      expect(order.indexOf('room')).toBeLessThan(order.indexOf('alignEnd'));
+    });
+
+  it('48 a reader away from the newest, or a page not at its end, is given no room', () => {
+    const away = run(opened().state, [
+      [{ type: 'scrolled' }, { distance: 300 }],
+    ]).state;
+    const { commands } = run(away, [
+      [{ type: 'composerFocused' }, at(se3(547, 547, 0, 1285))],
+      [{ type: 'viewportScrolled' }, at(se3(509, 320.5, 226.5, 1583))],
+    ]);
+    expect(rooms(commands)).toEqual([]);
+    // Far up (b-fk, 549/287/262 while following): the page is not at its end, the layout viewport is not its end.
+    const following = run(opened().state, [
+      [{ type: 'composerFocused' }, at(se3(547, 547, 0, 1938))],
+      [
+        { type: 'viewportScrolled' },
+        at(
+          {
+            innerHeight: 549,
+            rootClientHeight: 549,
+            scrollY: 1938,
+            visual: { height: 287, offsetTop: 262, scale: 1, pageTop: 1937.5 },
+          },
+          { remaining: 140 },
+        ),
+      ],
+    ]);
+    expect(rooms(following.commands)).toEqual([]);
   });
 });

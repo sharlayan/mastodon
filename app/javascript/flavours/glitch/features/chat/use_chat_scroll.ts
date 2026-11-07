@@ -113,6 +113,17 @@ const composerFocused = (composer: HTMLElement | null) => {
   );
 };
 
+// How much further a script can scroll the room's box.
+const remainingOf = (room: Room) => {
+  const scroller = chatScrollport(room.end);
+  if (!scroller) return 0;
+  const height =
+    scroller === document.scrollingElement
+      ? window.innerHeight
+      : scroller.clientHeight;
+  return scroller.scrollHeight - height - scroller.scrollTop;
+};
+
 const firstMessageOf = (room: Room) =>
   room.list.querySelector<HTMLElement>('[id^="chat-message-"]');
 
@@ -166,20 +177,18 @@ const snapshotOf = (room: Room): Snapshot => {
     get distance() {
       return distanceFromNewest(measured());
     },
+    get remaining() {
+      return remainingOf(room);
+    },
     get reveal() {
-      const scroller = chatScrollport(room.end);
       const last = Array.from(
         room.list.querySelectorAll<HTMLElement>('[id^="chat-message-"]'),
       ).at(-1);
-      if (!scroller || !last) return 0;
-      const height =
-        scroller === document.scrollingElement
-          ? window.innerHeight
-          : scroller.clientHeight;
+      if (!chatScrollport(room.end) || !last) return 0;
       return revealAmount({
         last: box(last.getBoundingClientRect()),
         composer: measured().composer,
-        remaining: scroller.scrollHeight - height - scroller.scrollTop,
+        remaining: remainingOf(room),
       });
     },
   };
@@ -197,6 +206,7 @@ const detachedSnapshot = (): Snapshot => ({
   firstMessage: null,
   messageTop: () => null,
   messageShown: () => false,
+  remaining: 0,
 });
 
 // Raises the composer and the navigation bar onto the visible bottom while the keyboard is open, and puts back what
@@ -251,6 +261,26 @@ const createLift = (room: Room) => {
     room.composer?.style.setProperty('--chat-keyboard-lift', value);
   };
 
+  return { apply, restore };
+};
+
+// Makes the page longer below the end of the room while the keyboard is open, and puts back what was there.
+const createRoom = (end: HTMLElement) => {
+  let applied: { value: string; priority: string } | null = null;
+  const restore = () => {
+    if (!applied) return;
+    const { value, priority } = applied;
+    applied = null;
+    if (value) end.style.setProperty('margin-bottom', value, priority);
+    else end.style.removeProperty('margin-bottom');
+  };
+  const apply = (by: number) => {
+    applied ??= {
+      value: end.style.getPropertyValue('margin-bottom'),
+      priority: end.style.getPropertyPriority('margin-bottom'),
+    };
+    end.style.setProperty('margin-bottom', `${by}px`);
+  };
   return { apply, restore };
 };
 
@@ -419,6 +449,7 @@ export const useChatScroll = (
     const composer = composerRef.current;
     const room: Room = { end, list, composer };
     const lift = createLift(room);
+    const spare = createRoom(end);
 
     scroll.attach(room, (command) => {
       switch (command.type) {
@@ -472,6 +503,13 @@ export const useChatScroll = (
         case 'lift':
           if (command.by === null) lift.restore();
           else lift.apply(command.by);
+          break;
+        case 'room':
+          if (command.by === null) spare.restore();
+          else {
+            spare.apply(command.by);
+            scroll.dispatch({ type: 'roomMade' });
+          }
           break;
       }
     });
@@ -565,6 +603,7 @@ export const useChatScroll = (
       scroll.dispatch({ type: 'detached' });
       scroll.detach();
       lift.restore();
+      spare.restore();
     };
   }, [attachKey, composerRef, endRef, jumpButton, listRef, scroll]);
 
