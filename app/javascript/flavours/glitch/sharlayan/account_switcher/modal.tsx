@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
@@ -216,6 +216,15 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
     null,
   );
   const [showSettings, setShowSettings] = useState(false);
+  const popupCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(
+    () => () => {
+      popupCleanupRef.current?.();
+      popupCleanupRef.current = null;
+    },
+    [],
+  );
 
   const items = useAppSelector((state) => state.accountSwitches.get('items'));
   const inboundItems = useAppSelector((state) =>
@@ -280,11 +289,13 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
 
         let messageReceived = false;
         let bc: BroadcastChannel | undefined;
+        const cleanup = () => {
+          popupCleanupRef.current?.();
+          popupCleanupRef.current = null;
+        };
 
-        const handleMessage = (event: MessageEvent) => {
-          if (event.origin !== window.location.origin) return;
-
-          const messageData = event.data as {
+        const handleMessageData = (payload: unknown) => {
+          const messageData = payload as {
             type?: string;
             state?: string;
             success?: boolean;
@@ -294,11 +305,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           if (messageData.state !== data.state) return;
 
           messageReceived = true;
-          window.removeEventListener('message', handleMessage);
-          if (bc) {
-            bc.close();
-            bc = undefined;
-          }
+          cleanup();
 
           if (messageData.success) {
             void dispatch(fetchAccountSwitches()).then(() => {
@@ -309,46 +316,41 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           }
         };
 
+        const handleMessage = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          handleMessageData(event.data);
+        };
+
         window.addEventListener('message', handleMessage);
 
         if (typeof BroadcastChannel !== 'undefined') {
           bc = new BroadcastChannel('multi_account_auth');
           bc.onmessage = (event: MessageEvent) => {
-            const syntheticEvent = Object.assign(
-              Object.create(Object.getPrototypeOf(event) as object),
-              event,
-              { origin: window.location.origin },
-            ) as MessageEvent;
-            handleMessage(syntheticEvent);
+            handleMessageData(event.data);
           };
         }
 
-        const cleanup = () => {
-          window.removeEventListener('message', handleMessage);
-          if (bc) {
-            bc.close();
-            bc = undefined;
-          }
+        const finishWithoutMessage = () => {
+          if (messageReceived) return;
+          cleanup();
+          setAddingAccount(false);
         };
-
-        setTimeout(() => {
-          if (!messageReceived) {
-            cleanup();
-            setAddingAccount(false);
-          }
-        }, OAUTH_TIMEOUT);
-
+        const timeoutId = setTimeout(finishWithoutMessage, OAUTH_TIMEOUT);
+        let closedTimeoutId: ReturnType<typeof setTimeout> | undefined;
         const checkPopup = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(checkPopup);
-            setTimeout(() => {
-              if (!messageReceived) {
-                cleanup();
-                setAddingAccount(false);
-              }
-            }, 1000);
-          }
+          if (!popup.closed) return;
+          clearInterval(checkPopup);
+          closedTimeoutId = setTimeout(finishWithoutMessage, 1000);
         }, 500);
+
+        popupCleanupRef.current = () => {
+          window.removeEventListener('message', handleMessage);
+          bc?.close();
+          bc = undefined;
+          clearTimeout(timeoutId);
+          clearInterval(checkPopup);
+          if (closedTimeoutId !== undefined) clearTimeout(closedTimeoutId);
+        };
       } catch {
         setAddingAccount(false);
       }
