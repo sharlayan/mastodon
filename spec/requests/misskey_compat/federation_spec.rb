@@ -29,6 +29,13 @@ RSpec.describe 'Misskey-compat federation' do
       expect(body.pluck(:host)).to eq(['big.example'])
       expect(body.first).to include(host: 'big.example', usersCount: 10)
     end
+
+    it 'rejects offsets above the query budget' do
+      post '/api/federation/instances', params: { i: token, offset: 1_001 }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :info, :param)).to eq('#/properties/offset')
+    end
   end
 
   describe 'federation/show-instance' do

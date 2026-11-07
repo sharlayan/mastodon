@@ -8,8 +8,6 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   SPECIFIED_REPLY_VISIBILITY_ERROR = 'Cannot reply to a specified note with broader visibility'
 
-  CONVERSATION_OFFSET_LIMIT = 1_000
-  SCHEDULED_OFFSET_LIMIT = 1_000
   TIMELINE_SCAN_LIMIT = 1_000
   TIMELINE_BATCH_SIZE = 100
   TIMELINE_MIN_BATCH_SIZE = 20
@@ -98,8 +96,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def conversation
-    offset = [params[:offset].to_i, 0].max
-    return render_invalid_param('#/properties/offset', "must be less than or equal to #{CONVERSATION_OFFSET_LIMIT}") if offset > CONVERSATION_OFFSET_LIMIT
+    return if (offset = offset_param).nil?
 
     limit = pagination_limit(default: 10, max: 100)
     statuses = @note.ancestors(limit + offset, current_account).reverse
@@ -236,8 +233,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def scheduled_list
-    offset = [params[:offset].to_i, 0].max
-    return render_invalid_param('#/properties/offset', "must be less than or equal to #{SCHEDULED_OFFSET_LIMIT}") if offset > SCHEDULED_OFFSET_LIMIT
+    return if (offset = offset_param).nil?
 
     scope = current_account.scheduled_statuses.includes(media_attachments: { drive_file: :custom_name }).order(id: :desc)
     scheduled = scope.limit(pagination_limit).offset(offset).to_a
@@ -400,6 +396,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def polls_recommendation
+    return if (offset = offset_param).nil?
+
     scope = Status.where(visibility: [:public, :unlisted])
       .where.not(poll_id: nil)
       .joins(:poll)
@@ -407,7 +405,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       .not_excluded_by_account(current_account)
       .where.not(account_id: current_account.id)
       .order(id: :desc)
-      .offset(params[:offset].to_i)
+      .offset(offset)
       .limit(pagination_limit)
 
     render_notes scope

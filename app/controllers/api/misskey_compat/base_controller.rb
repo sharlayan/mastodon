@@ -13,6 +13,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   before_action :decode_mi_ids!
 
   INVALID_PARAM_ID = '3d81ceae-475f-4600-b2a8-2bc116157532'
+  OFFSET_LIMIT = 1_000
 
   MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId pageId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId eyeCatchingImageId channelId draftId).freeze
   MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
@@ -145,6 +146,14 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   rescue JSON::ParserError
     render_invalid_param('#/type', 'must be object')
     false
+  end
+
+  def offset_param(max: OFFSET_LIMIT)
+    offset = [params[:offset].to_i, 0].max
+    return offset if offset <= max
+
+    render_invalid_param('#/properties/offset', "must be less than or equal to #{max}")
+    nil
   end
 
   def pagination_limit(default: 20, max: 40)
