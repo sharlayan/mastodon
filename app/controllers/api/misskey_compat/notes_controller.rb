@@ -86,10 +86,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     return render_invalid_param('#/properties/noteIds', "must NOT have more than #{PARTIAL_BULK_MAX_IDS} items") if ids.size > PARTIAL_BULK_MAX_IDS
     return render_invalid_param('#/properties/noteIds/items/type', 'must be string') unless ids.all?(String)
 
-    statuses = Status.where(id: ids.grep(/\A\d+\z/).uniq).includes(:account, :mentions).to_a
+    statuses = Status.where(id: ids.grep(/\A\d+\z/).uniq).includes(:account, :mentions, :media_attachments).to_a
     context = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(statuses)
     statuses.select! { |status| context.visible?(status) }
-    context.prime_reaction_counts(statuses)
+    context.prime_reactions(statuses)
 
     render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize_reaction_diff(status, context: context) }
   end
