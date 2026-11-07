@@ -71,7 +71,23 @@ const isSelfChannel = (channel) => channel === 'drive';
 
 const isPureRenote = (note) => note.renoteId != null && note.text == null && note.cw == null && note.replyId == null && note.poll == null && !note.fileIds?.length;
 
+const isFeedFiltered = (options, note) => (note.user?.host == null ? options?.filterLocal : options?.filterRemote);
+
+const needsViewerFiltering = (sourceChannel) => sourceChannel.startsWith('timeline:public') || sourceChannel.startsWith('timeline:hashtag:');
+
+const timelineNoteTargets = (note) => {
+  const authors = [note, note.renote].filter(Boolean);
+  const authorIds = authors.map((entry) => decodeDatabaseId(entry.userId)).filter(Boolean);
+  const mentionIds = Array.isArray(note.mentions) ? note.mentions.map(decodeDatabaseId).filter(Boolean) : [];
+  const domainTargets = authors
+    .map((entry) => [entry.user?.host, decodeDatabaseId(entry.userId)])
+    .filter(([domain, accountId]) => typeof domain === 'string' && domain.length > 0 && accountId);
+
+  return { authorIds, accountIds: [...new Set([...authorIds, ...mentionIds])], domainTargets };
+};
+
 const allowsTimelineNote = (channel, params, request, options, sourceChannel, note) => {
+  if (channel === 'hashtag') return !isFeedFiltered(options, note);
   if (!TIMELINE_CHANNELS.has(channel)) return true;
 
   if (params.withFiles === true && !note.fileIds?.length) return false;
@@ -79,7 +95,7 @@ const allowsTimelineNote = (channel, params, request, options, sourceChannel, no
 
   if (channel === 'globalTimeline') {
     if (note.localOnly === true) return false;
-    if (note.user?.host == null ? options?.filterLocal : options?.filterRemote) return false;
+    if (isFeedFiltered(options, note)) return false;
   }
 
   if ((channel === 'localTimeline' || (channel === 'hybridTimeline' && sourceChannel === 'timeline:public:local')) && params.withReplies !== true && note.replyId != null) {
@@ -131,11 +147,12 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
  * @param {Function} deps.channelNameToIds
  * @param {Function} deps.authorizeStatusAccess
  * @param {Function} deps.loadExcludedReactionAccountIds
+ * @param {Function} deps.loadExcludedTimelineNote
  * @param {Function} deps.loadGrantPermissions
  * @param {function(): Promise.<boolean>} deps.isEnabled
  * @param {import('pino').Logger} deps.logger
  */
-const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadGrantPermissions, isEnabled, logger }) => {
+const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadExcludedTimelineNote, loadGrantPermissions, isEnabled, logger }) => {
   const send = (session, type, body) => {
     const ws = session.websocket;
     if (ws.readyState !== ws.OPEN) return;
@@ -280,12 +297,27 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
           : (json) => {
             if (!json || json.event !== 'note') return;
             if (!allowsTimelineNote(channel, params, session.request, options, sourceChannel, json.payload)) return;
-            if (recentNotes) {
-              if (recentNotes.has(json.payload.id)) return;
-              recentNotes.add(json.payload.id);
-              if (recentNotes.size > MAX_RECENT_HYBRID_NOTES) recentNotes.delete(recentNotes.values().next().value);
+
+            const deliver = () => {
+              if (recentNotes) {
+                if (recentNotes.has(json.payload.id)) return;
+                recentNotes.add(json.payload.id);
+                if (recentNotes.size > MAX_RECENT_HYBRID_NOTES) recentNotes.delete(recentNotes.values().next().value);
+              }
+              send(session, 'channel', { id, type: 'note', body: json.payload });
+            };
+
+            if (!needsViewerFiltering(sourceChannel)) {
+              deliver();
+              return;
             }
-            send(session, 'channel', { id, type: 'note', body: json.payload });
+
+            const subscription = channels.get(id);
+            loadExcludedTimelineNote(session.request.accountId, timelineNoteTargets(json.payload))
+              .then((excluded) => {
+                if (!excluded && channels.get(id) === subscription) deliver();
+              })
+              .catch((err) => logger.error({ err }, 'misskey compat timeline filter failed'));
           };
 
         subscribe(channelId, listener);

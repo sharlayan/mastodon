@@ -1,6 +1,8 @@
 import { createMisskeyCompat } from '../misskey_compat.js';
 import { excludedReactionAccountIds } from '../reaction_account_filter.js';
 
+import { createDomainTargetsFilter } from './domain_filter.js';
+
 const createEnabledCheck = (pgPool, logger, now = Date.now) => {
   let setting = { value: false, checkedAt: 0 };
   let refresh;
@@ -58,6 +60,31 @@ const authorizeStatusAccess = async (pgPool, statusId, req) => {
   return result.rows.length > 0;
 };
 
+const excludedTimelineNote = async (pgPool, viewerAccountId, { authorIds, accountIds, domainTargets }) => {
+  if (!viewerAccountId || accountIds.length === 0) return false;
+
+  const queries = [
+    pgPool.query(`
+      SELECT 1
+      FROM blocks
+      WHERE (account_id = $1 AND target_account_id = ANY($2::bigint[]))
+         OR (target_account_id = $1 AND account_id = ANY($3::bigint[]))
+      UNION
+      SELECT 1
+      FROM mutes
+      WHERE account_id = $1
+        AND target_account_id = ANY($2::bigint[])
+      LIMIT 1
+    `, [viewerAccountId, accountIds, authorIds]),
+  ];
+
+  const domainFilter = createDomainTargetsFilter({ accountId: viewerAccountId }, domainTargets);
+  if (domainFilter) queries.push(domainFilter.query(pgPool));
+
+  const results = await Promise.all(queries);
+  return results.some((result) => result.rows.length > 0);
+};
+
 const loadGrantPermissions = async (pgPool, logger, req) => {
   if (!req.accessTokenId) return undefined;
 
@@ -77,6 +104,7 @@ const createMisskeyExtension = (deps) => {
     ...deps,
     authorizeStatusAccess: (statusId, req) => authorizeStatusAccess(deps.pgPool, statusId, req),
     loadExcludedReactionAccountIds: (viewerAccountId, reactionAccountIds) => excludedReactionAccountIds(deps.pgPool, viewerAccountId, reactionAccountIds),
+    loadExcludedTimelineNote: (viewerAccountId, targets) => excludedTimelineNote(deps.pgPool, viewerAccountId, targets),
     loadGrantPermissions: (req) => loadGrantPermissions(deps.pgPool, deps.logger, req),
     isEnabled,
   });
@@ -84,4 +112,4 @@ const createMisskeyExtension = (deps) => {
   return { ...compat, isEnabled };
 };
 
-export { authorizeStatusAccess, createEnabledCheck, createMisskeyExtension, loadGrantPermissions };
+export { authorizeStatusAccess, createEnabledCheck, createMisskeyExtension, excludedTimelineNote, loadGrantPermissions };
