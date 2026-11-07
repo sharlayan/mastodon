@@ -15,6 +15,18 @@ class MisskeyCompat::NoteSerializer
     new.serialize(status, current_account: current_account, embed_relations: embed_relations, context: context)
   end
 
+  def self.serialize_reaction_diff(status, context:)
+    new.serialize_reaction_diff(status, context: context)
+  end
+
+  def serialize_reaction_diff(status, context:)
+    @context = context
+    reaction_emojis = {}
+    reactions = pure_renote?(status) ? {} : reactions_for(status, reaction_emojis, {}).first
+
+    { id: MisskeyCompat::MiId.encode(status.id), reactions: reactions, reactionEmojis: reaction_emojis }
+  end
+
   def serialize(status, current_account: nil, embed_relations: true, context: nil)
     @context = context || MisskeyCompat::SerializationContext.new(current_account: current_account)
     @current_account = @context.current_account

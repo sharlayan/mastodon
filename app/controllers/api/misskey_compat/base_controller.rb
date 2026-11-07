@@ -112,6 +112,20 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     require_user! if bearer_token.present? || params[:i].present?
   end
 
+  def native_user_token?
+    current_misskey_grant&.native_user_token? && current_token.scopes.exists?(MisskeyCompat::MiAuth::TOKEN_SCOPE)
+  end
+
+  def require_drive_enabled!
+    render_error('Drive is not available on this server', 'UNAVAILABLE', 400) unless Setting.drive_enabled
+  end
+
+  def require_native_user_token!
+    return if native_user_token?
+
+    render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e')
+  end
+
   def current_misskey_grant
     return @current_misskey_grant if defined?(@current_misskey_grant)
 
@@ -238,6 +252,11 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       canUseTranslator: TranslationService.configured?,
       canUseReaction: true,
       chatAvailability: Setting.chat_enabled ? 'available' : 'unavailable',
+      canImportFollowing: Setting.drive_enabled,
+      canImportBlocking: Setting.drive_enabled,
+      canImportMuting: Setting.drive_enabled,
+      canImportUserLists: Setting.drive_enabled,
+      canImportAntennas: false,
       canHideAds: false,
       canScheduleNote: true,
       scheduleNoteMax: ScheduledStatus::TOTAL_LIMIT,

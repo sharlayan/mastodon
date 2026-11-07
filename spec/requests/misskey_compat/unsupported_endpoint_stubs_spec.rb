@@ -22,25 +22,15 @@ RSpec.describe 'Misskey-compat unsupported endpoint stubs' do
   let(:void_endpoints) do
     %w(
       bubble-game/register
-      i/export-antennas
-      i/export-blocking
-      i/export-clips
-      i/export-favorites
-      i/export-following
-      i/export-mute
-      i/export-notes
-      i/export-user-lists
-      i/import-antennas
-      i/import-blocking
-      i/import-following
-      i/import-muting
-      i/import-user-lists
       promo/read
     )
   end
 
   let(:explicitly_unsupported_endpoints) do
     %w(
+      i/export-antennas
+      i/export-favorites
+      i/import-antennas
       channels/create
       channels/favorite
       channels/featured

@@ -234,10 +234,6 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     quota.positive? && current_account.drive_files.sum(:storage_file_size).to_i >= quota
   end
 
-  def require_drive_enabled!
-    render_error('Drive is not available on this server', 'UNAVAILABLE', 400) unless Setting.drive_enabled
-  end
-
   def find_file!
     current_account.drive_files.find(params[:fileId])
   rescue ActiveRecord::RecordNotFound

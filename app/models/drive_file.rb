@@ -63,6 +63,10 @@ class DriveFile < ApplicationRecord
     application/xml image/svg+xml text/css text/html text/javascript text/xml
   ).freeze
 
+  GENERATED_EXPORT_CONTENT_TYPES = %w(text/csv application/json).freeze
+
+  attr_accessor :generated_export
+
   belongs_to :account
   belongs_to :folder, class_name: 'DriveFolder', optional: true
   has_one :custom_name, class_name: 'DriveFileName', inverse_of: :drive_file, autosave: true, dependent: :destroy
@@ -284,7 +288,8 @@ class DriveFile < ApplicationRecord
   end
 
   def validate_content_type
-    return if file_content_type.blank?
+    return if file_content_type.blank? || !will_save_change_to_file_content_type?
+    return if generated_export && GENERATED_EXPORT_CONTENT_TYPES.include?(file_content_type)
 
     errors.add(:file, :invalid) unless self.class.allowed_content_types.include?(file_content_type)
   end

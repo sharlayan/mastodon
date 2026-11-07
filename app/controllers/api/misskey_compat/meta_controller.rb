@@ -2,7 +2,11 @@
 
 class Api::MisskeyCompat::MetaController < Api::MisskeyCompat::BaseController
   PAGE_ENDPOINT_NAMES = %w(i/pages i/page-likes users/pages).freeze
-  DRIVE_ENDPOINT_NAMES = %w(charts/drive charts/user/drive).freeze
+  DRIVE_ENDPOINT_NAMES = %w(
+    charts/drive charts/user/drive
+    i/export-blocking i/export-clips i/export-following i/export-mute i/export-user-lists
+    i/import-blocking i/import-following i/import-muting i/import-user-lists
+  ).freeze
 
   def show
     return unless object_body!
