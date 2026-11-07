@@ -7,9 +7,7 @@ class MisskeyCompat::ThreadResolveService
 
   def call(status, on_behalf_of: nil)
     return status unless resolvable?(status)
-    return status if recently_attempted?(status)
-
-    mark_attempted!(status)
+    return status unless claim_attempt!(status)
 
     parent = resolve_parent(status, on_behalf_of)
     return status if parent.nil?
@@ -37,12 +35,8 @@ class MisskeyCompat::ThreadResolveService
       FetchRemoteStatusService.new.call(parent_uri)
   end
 
-  def recently_attempted?(status)
-    Rails.cache.exist?(marker_key(status))
-  end
-
-  def mark_attempted!(status)
-    Rails.cache.write(marker_key(status), true, expires_in: RETRY_MARKER_TTL)
+  def claim_attempt!(status)
+    Rails.cache.write(marker_key(status), true, expires_in: RETRY_MARKER_TTL, unless_exist: true)
   end
 
   def marker_key(status)

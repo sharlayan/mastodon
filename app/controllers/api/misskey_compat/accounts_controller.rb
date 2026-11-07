@@ -11,9 +11,11 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   before_action :require_user_if_authenticated!, only: [:index, :notes, :reactions, :featured_notes, :pinned_users]
 
   def index
+    return if (offset = offset_param).nil?
+
     scope = apply_user_origin(Account.discoverable.without_suspended)
     scope = scope.where(domain: normalized_hostname) if normalized_hostname
-    accounts = apply_user_sort(scope).limit(pagination_limit).offset(params[:offset].to_i).to_a
+    accounts = apply_user_sort(scope).limit(pagination_limit).offset(offset).to_a
     render json: serialize_detailed_accounts(accounts, viewer: current_account)
   end
 
@@ -33,12 +35,13 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     query = params[:query].to_s.strip
     return render json: [] if query.blank?
     return if rate_limited?(:misskey_compat_api)
+    return if (offset = offset_param).nil?
 
     accounts = AccountSearchService.new.call(
       query,
       current_account,
       limit: pagination_limit,
-      offset: params[:offset].to_i,
+      offset: offset,
       resolve: false
     )
 

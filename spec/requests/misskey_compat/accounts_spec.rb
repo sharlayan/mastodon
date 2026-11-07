@@ -12,6 +12,34 @@ RSpec.describe 'Misskey-compat account endpoints' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
+  it 'normalizes a negative directory offset and rejects offsets above the query budget' do
+    target.update!(discoverable: true)
+    target.account_stat.save!
+
+    post '/api/users', params: { i: read_token, offset: -5 }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.pluck('id')).to include(MisskeyCompat::MiId.encode(target.id))
+
+    post '/api/users', params: { i: read_token, offset: 1_001 }, as: :json
+
+    expect(response).to have_http_status(400)
+    expect(response.parsed_body.dig('error', 'info', 'param')).to eq('#/properties/offset')
+  end
+
+  it 'rejects poll recommendation offsets above the query budget' do
+    post '/api/notes/polls/recommendation', params: { i: read_token, offset: 1_001 }, as: :json
+
+    expect(response).to have_http_status(400)
+    expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
+  end
+
+  it 'accepts a negative poll recommendation offset' do
+    post '/api/notes/polls/recommendation', params: { i: read_token, offset: -1 }, as: :json
+
+    expect(response).to have_http_status(200)
+  end
+
   it 'keeps memo values null in directory and detailed search results' do
     target.update!(discoverable: true)
     target.account_stat.save!

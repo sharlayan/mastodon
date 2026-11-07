@@ -29,6 +29,14 @@ RSpec.describe MisskeyCompat::ThreadResolveService do
     expect(subject.call(status).thread).to eq parent
   end
 
+  it 'fetches the remote object only once while the retry marker is held' do
+    stub_request(:get, status.uri).to_return(status: 404)
+
+    2.times { subject.call(status) }
+
+    expect(a_request(:get, status.uri)).to have_been_made.once
+  end
+
   it 'does not trust a redirected response from another origin' do
     stub_request(:get, status.uri).to_return(status: 302, headers: { Location: 'https://evil.example/notes/child' })
     stub_request(:get, 'https://evil.example/notes/child').to_return(status: 200, body: json.to_json, headers: { 'Content-Type': 'application/activity+json' })
