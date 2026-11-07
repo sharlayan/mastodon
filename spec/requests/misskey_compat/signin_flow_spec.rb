@@ -239,6 +239,24 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
         expect(response).to have_http_status(403)
         expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_TOKEN_ID)
       end
+
+      it 'shares the hourly two-factor attempt limit with the web sign-in' do
+        redis.set("2fa_auth_attempts:#{user.id}:#{Time.now.utc.hour}", Auth::SessionsController::MAX_2FA_ATTEMPTS_PER_HOUR)
+
+        post '/api/signin-flow', params: { username: email, password: password, token: user.current_otp }, headers: origin_headers, as: :json
+
+        expect(response).to have_http_status(429)
+        expect(response.parsed_body['finished']).to be_nil
+      end
+
+      it 'notifies the owner of a failed two-factor attempt', :inline_jobs do
+        emails = capture_emails do
+          post '/api/signin-flow', params: { username: email, password: password, token: '000000' }, headers: origin_headers, as: :json
+        end
+
+        expect(emails.size).to eq(1)
+        expect(emails.first.to).to eq([email])
+      end
     end
   end
 end
