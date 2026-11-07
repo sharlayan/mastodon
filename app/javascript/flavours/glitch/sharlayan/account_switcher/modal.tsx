@@ -241,6 +241,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   );
   const [showSettings, setShowSettings] = useState(false);
   const popupCleanupRef = useRef<(() => void) | null>(null);
+  const addingAccountRef = useRef(false);
 
   useEffect(
     () => () => {
@@ -274,8 +275,13 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
 
   const handleAddAccount = useCallback(
     async (reauthenticateAccountId?: string) => {
-      if (addingAccount) return;
+      if (addingAccountRef.current) return;
+      addingAccountRef.current = true;
       setAddingAccount(true);
+      const finishAdding = () => {
+        addingAccountRef.current = false;
+        setAddingAccount(false);
+      };
 
       try {
         const entryUrl = reauthenticateAccountId
@@ -301,7 +307,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
 
         const popup = openOAuthPopup(data.authorize_url);
         if (!popup) {
-          setAddingAccount(false);
+          finishAdding();
           return;
         }
 
@@ -327,10 +333,10 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
 
           if (messageData.success) {
             void dispatch(fetchAccountSwitches()).then(() => {
-              setAddingAccount(false);
+              finishAdding();
             });
           } else {
-            setAddingAccount(false);
+            finishAdding();
           }
         };
 
@@ -351,7 +357,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
         const finishWithoutMessage = () => {
           if (messageReceived) return;
           cleanup();
-          setAddingAccount(false);
+          finishAdding();
         };
         const timeoutId = setTimeout(finishWithoutMessage, OAUTH_TIMEOUT);
         let closedTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -370,10 +376,10 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           if (closedTimeoutId !== undefined) clearTimeout(closedTimeoutId);
         };
       } catch {
-        setAddingAccount(false);
+        finishAdding();
       }
     },
-    [addingAccount, dispatch],
+    [dispatch],
   );
 
   const handleRemoveAccount = useCallback(
