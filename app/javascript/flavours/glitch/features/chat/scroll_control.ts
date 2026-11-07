@@ -209,12 +209,15 @@ export const keyboardLift = (viewport: ViewportReading, rested: boolean) => {
 // focus and scrolls it by the keyboard from there, whatever the page did meanwhile, and keeps innerHeight at
 // scrollHeight − scrollY: the end of the page stays that far under the keyboard, out of reach (iPhone SE 3 on
 // a7566004ab: 367 + 226.5 − 547 = 46.5, last message under the composer). Nothing at the newest, while the reader
-// drags up (the composer is raised instead), or in Chrome's coordinates.
+// drags up (the composer is raised instead), or in Chrome's coordinates. Nothing either until a keyboard is shown: at
+// the focus, before it, a browser bar collapsed by scrolling down makes innerHeight taller than the root by itself
+// (Pixel 659/603, iPhone SE 2 589/549, SE 3 625/547 at the newest), and room made from that stayed as a band between
+// the composer and the navigation bar over the keyboard (review 730b E1: Pixel 55.3px).
 export const keyboardRoom = (viewport: ViewportReading) => {
   const { visual, innerHeight, rootClientHeight } = viewport;
   if (!visual || rootClientHeight <= 0 || rectsInLayoutViewport(viewport))
     return 0;
-  if (visibleArea(viewport).scale !== 1) return 0;
+  if (visibleArea(viewport).scale !== 1 || !keyboardShown(viewport)) return 0;
   const room = innerHeight + finite(visual.offsetTop, 0) - rootClientHeight;
   return room >= 1 ? room : 0;
 };
@@ -341,7 +344,8 @@ export type ScrollEvent =
   | { type: 'jumpToNewest' }
   | { type: 'userIntent'; touch: boolean }
   | { type: 'touch'; down: boolean }
-  | { type: 'pageAction' }
+  // A button or a link on the page was pressed; for a quote, the message it goes to.
+  | { type: 'pageAction'; quote?: string }
   | { type: 'scrolled' }
   | { type: 'viewportScrolled' }
   | { type: 'scrollEnded' }
@@ -737,7 +741,11 @@ export const step = (
       break;
 
     case 'pageAction':
-      if (state.keyboard) state.keyboard.restoreTop = null;
+      // What a button does may move the page, and an explicit move is not undone when the keyboard closes. A quote
+      // whose original is in full view moves nothing (it is highlighted where it is): the reader is still where they
+      // were, and goes back there (review 730b J1: 298px off on the review server's emulated browsers).
+      if (state.keyboard && !(event.quote && s.messageShown(event.quote)))
+        state.keyboard.restoreTop = null;
       break;
 
     case 'scrolled':

@@ -3880,3 +3880,364 @@ describe('A quote whose original is in full view, on ddbad17ba3', () => {
     });
   });
 });
+
+// A phone page as the hook reads it: innerHeight, the root's clientHeight, the visual viewport, and the page's
+// scrolling element, which records what the app writes and keeps within what can be scrolled.
+const phonePage = ({
+  innerHeight,
+  clientHeight,
+  scrollHeight,
+  scrollTop,
+}: {
+  innerHeight: number;
+  clientHeight: number;
+  scrollHeight: number;
+  scrollTop: number;
+}) => {
+  const root = document.documentElement;
+  const saved = {
+    viewport: Object.getOwnPropertyDescriptor(window, 'visualViewport'),
+    inner: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
+    scrollY: Object.getOwnPropertyDescriptor(window, 'scrollY'),
+    client: Object.getOwnPropertyDescriptor(root, 'clientHeight'),
+    top: Object.getOwnPropertyDescriptor(root, 'scrollTop'),
+    height: Object.getOwnPropertyDescriptor(root, 'scrollHeight'),
+    scrolling: Object.getOwnPropertyDescriptor(document, 'scrollingElement'),
+  };
+  const state = {
+    top: scrollTop,
+    client: clientHeight,
+    writes: [] as number[],
+  };
+  const viewport = Object.assign(new EventTarget(), {
+    scale: 1,
+    height: innerHeight,
+    offsetTop: 0,
+    pageTop: scrollTop,
+  });
+  const margin = () =>
+    parseFloat(
+      document.querySelector<HTMLElement>('.chat-native__end')?.style
+        .marginBottom ?? '',
+    ) || 0;
+  Object.defineProperty(window, 'visualViewport', {
+    configurable: true,
+    value: viewport,
+  });
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    writable: true,
+    value: innerHeight,
+  });
+  Object.defineProperty(window, 'scrollY', {
+    configurable: true,
+    get: () => state.top,
+  });
+  Object.defineProperty(root, 'clientHeight', {
+    configurable: true,
+    get: () => state.client,
+  });
+  window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+  const nav = document.createElement('div');
+  nav.className = 'ui__navigation-bar';
+  document.body.appendChild(nav);
+  // After the room is drawn: the page scrolls as a whole.
+  const scrollWithPage = () => {
+    Object.defineProperty(document, 'scrollingElement', {
+      configurable: true,
+      value: root,
+    });
+    Object.defineProperty(root, 'scrollHeight', {
+      configurable: true,
+      get: () => scrollHeight + margin(),
+    });
+    Object.defineProperty(root, 'scrollTop', {
+      configurable: true,
+      get: () => state.top,
+      set: (value: number) => {
+        state.writes.push(value);
+        state.top = Math.min(
+          value,
+          scrollHeight + margin() - window.innerHeight,
+        );
+        viewport.pageTop = state.top + viewport.offsetTop;
+      },
+    });
+  };
+  const restore = () => {
+    cleanup();
+    nav.remove();
+    for (const [target, key, descriptor] of [
+      [window, 'visualViewport', saved.viewport],
+      [window, 'innerHeight', saved.inner],
+      [window, 'scrollY', saved.scrollY],
+      [root, 'clientHeight', saved.client],
+      [root, 'scrollTop', saved.top],
+      [root, 'scrollHeight', saved.height],
+      [document, 'scrollingElement', saved.scrolling],
+    ] as const) {
+      if (descriptor) Object.defineProperty(target, key, descriptor);
+      else Reflect.deleteProperty(target, key);
+    }
+  };
+  return { state, viewport, nav, margin, scrollWithPage, restore };
+};
+
+// Review 730b E1 (730b5828c2): at the newest, reached by scrolling down, the browser bar is collapsed and innerHeight
+// is taller than the root by it. Tapping the box made room below the end of the room by that much before any
+// keyboard (Pixel android-masto-final5/raw/pixel/kcol-1~3.json: margin-bottom 56px at +20ms, then a 55.3px band
+// between the composer and the navigation bar over the keyboard; iPhone SE 2 and SE 3 at ios-masto-final4 b-c11).
+describe('Focusing the box at the newest with the browser bar collapsed (review 730b E1)', () => {
+  interface Collapsed {
+    innerHeight: number;
+    clientHeight: number;
+    height: number;
+    offsetTop: number;
+    scrollHeight: number;
+    scrollTop: number;
+    composer: { top: number; bottom: number };
+    nav: { top: number; bottom: number; height: number };
+    end: number;
+  }
+  const collapsed: [string, Collapsed][] = [
+    [
+      'Pixel URL bar, kcol-1',
+      {
+        innerHeight: 659,
+        clientHeight: 603,
+        height: 659.4,
+        offsetTop: 0,
+        scrollHeight: 1926,
+        scrollTop: 1266.7,
+        composer: { top: 535.7, bottom: 604.4 },
+        nav: { top: 604.9, bottom: 659.4, height: 54.5 },
+        end: 605.6,
+      },
+    ],
+    [
+      'iPhone SE 2 toolbar, b-c11',
+      {
+        innerHeight: 589,
+        clientHeight: 549,
+        height: 589,
+        offsetTop: 0,
+        scrollHeight: 2237,
+        scrollTop: 1648,
+        composer: { top: 465, bottom: 534 },
+        nav: { top: 534, bottom: 589, height: 55 },
+        end: 534.6,
+      },
+    ],
+    [
+      'iPhone SE 3 toolbar, b-c11',
+      {
+        innerHeight: 625,
+        clientHeight: 547,
+        height: 625,
+        offsetTop: 1,
+        scrollHeight: 2120,
+        scrollTop: 1496,
+        composer: { top: 499.5, bottom: 568.5 },
+        nav: { top: 568.5, bottom: 623.5, height: 55 },
+        end: 570,
+      },
+    ],
+  ];
+  for (const [name, at] of collapsed)
+    it(`makes no room below the end at the focus (${name}: 56/40/79px on 730b)`, async () => {
+      const page = phonePage(at);
+      try {
+        await openRoom();
+        page.scrollWithPage();
+        page.viewport.height = at.height;
+        page.viewport.offsetTop = at.offsetTop;
+        vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+          function (this: Element) {
+            if (this === page.nav) return at.nav as DOMRect;
+            if (this.classList.contains('chat-native__end'))
+              return { top: at.end, bottom: at.end } as DOMRect;
+            if (this.classList.contains('chat-native__composer'))
+              return at.composer as DOMRect;
+            return { top: 100, bottom: 150 } as DOMRect;
+          },
+        );
+        act(() => {
+          screen.getByRole('textbox').focus();
+        });
+        await wait(50);
+        expect(page.margin()).toBe(0);
+      } finally {
+        page.restore();
+      }
+    });
+
+  it('leaves no band between the composer and the navigation bar as Chrome opens its keyboard (Pixel kcol-1: 55.3px)', async () => {
+    const page = phonePage({
+      innerHeight: 659,
+      clientHeight: 603,
+      scrollHeight: 1926,
+      scrollTop: 1266.7,
+    });
+    try {
+      await openRoom();
+      page.scrollWithPage();
+      page.viewport.height = 659.4;
+      // The composer is sticky at the bottom of what the page has: room below the end lifts it off the bar by as much.
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          if (this === page.nav)
+            return { top: 604.9, bottom: 659.4, height: 54.5 } as DOMRect;
+          if (this.classList.contains('chat-native__end'))
+            return {
+              top: 605.6 - page.margin(),
+              bottom: 605.6 - page.margin(),
+            } as DOMRect;
+          if (this.classList.contains('chat-native__composer'))
+            return {
+              top: 535.7 - page.margin(),
+              bottom: 604.4 - page.margin(),
+            } as DOMRect;
+          return { top: 100, bottom: 150 } as DOMRect;
+        },
+      );
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      // Chrome's keyboard: the root takes innerHeight, the visual viewport shrinks, then comes down onto it.
+      page.state.client = 659;
+      for (const [height, offsetTop, type] of [
+        [351.7, 0, 'resize'],
+        [375.2, 4.2, 'scroll'],
+        [375.2, 99.8, 'scroll'],
+        [375.2, 284.2, 'scroll'],
+      ] as const) {
+        page.viewport.height = height;
+        page.viewport.offsetTop = offsetTop;
+        page.viewport.pageTop = page.state.top + offsetTop;
+        act(() => {
+          page.viewport.dispatchEvent(new Event(type));
+        });
+      }
+      await wait(50);
+      const composer = document
+        .querySelector('.chat-native__composer')
+        ?.getBoundingClientRect();
+      expect({
+        room: page.margin(),
+        band: composer ? Math.round((604.9 - composer.bottom) * 10) / 10 : null,
+      }).toEqual({ room: 0, band: 0.5 });
+    } finally {
+      page.restore();
+    }
+  });
+});
+
+// Review 730b J1: away from the newest with the keyboard open, a quote whose original is in full view is highlighted
+// where it is and nothing moves; closing the keyboard still goes back to where the reader was (rule 4). iPhone SE 3,
+// ios-masto-final4/out/se3/b-aw1.json: read 418pt up to 1128, the box tapped, Safari at 1426 with its keyboard
+// (547/320.5/226.5), and only the app's write took the page back to 1128 when it closed. On 730b the quote's press
+// cancelled that write: the review server's emulated browsers were left 298px off (terra-masto-e1 live/).
+describe('A quote highlighted where it is with the keyboard open, away from the newest (review 730b J1)', () => {
+  it('goes back to where the reader was when the keyboard closes (SE 3 b-aw1: 298px off on 730b)', async () => {
+    withQuote();
+    const page = phonePage({
+      innerHeight: 547,
+      clientHeight: 547,
+      scrollHeight: 2092,
+      scrollTop: 1545,
+    });
+    const geo = {
+      end: 493 as number,
+      composer: { top: 423, bottom: 492 },
+      nav: { top: 492, bottom: 547 },
+      original: { top: -400, bottom: -350 },
+    };
+    try {
+      await openRoom();
+      page.scrollWithPage();
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          if (this === page.nav) return { ...geo.nav, height: 55 } as DOMRect;
+          if (this.classList.contains('chat-native__end'))
+            return { top: geo.end, bottom: geo.end } as DOMRect;
+          if (this.classList.contains('chat-native__composer'))
+            return geo.composer as DOMRect;
+          if (this.id === 'chat-message-message-1')
+            return geo.original as DOMRect;
+          return { top: -2000, bottom: -1950 } as DOMRect;
+        },
+      );
+      // Read 418pt up.
+      geo.end = 910;
+      page.state.top = 1128;
+      page.viewport.pageTop = 1128;
+      fireEvent.scroll(window);
+      expect(screen.queryByRole('button', { name: JUMP })).not.toBeNull();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      // Safari's keyboard, and its own scroll to show the box: the original is in full view over the composer.
+      page.state.top = 1426;
+      Object.assign(page.viewport, {
+        height: 320.5,
+        offsetTop: 226.5,
+        pageTop: 1426,
+      });
+      Object.assign(geo, {
+        end: 612,
+        composer: { top: 196.5, bottom: 265.5 },
+        nav: { top: 265.5, bottom: 320.5 },
+        original: { top: 40, bottom: 90 },
+      });
+      act(() => {
+        page.viewport.dispatchEvent(new Event('resize'));
+        page.viewport.dispatchEvent(new Event('scroll'));
+      });
+      fireEvent.scroll(window);
+      await wait(50);
+      page.state.writes = [];
+      const quote = quoteOf('message-1');
+      fireEvent.pointerDown(quote);
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      fireEvent.click(quote);
+      await wait(50);
+      const highlighted = document
+        .getElementById('chat-message-message-1')
+        ?.classList.contains('chat-native__message--highlighted');
+      const atTap = page.state.top;
+      // The keyboard goes; Safari leaves the page where it was (b-aw1: 1426 until the app's write).
+      Object.assign(page.viewport, {
+        height: 547,
+        offsetTop: 0,
+        pageTop: 1426,
+      });
+      Object.assign(geo, {
+        end: 612,
+        composer: { top: 423, bottom: 492 },
+        nav: { top: 492, bottom: 547 },
+        original: { top: 40, bottom: 90 },
+      });
+      act(() => {
+        page.viewport.dispatchEvent(new Event('resize'));
+      });
+      await wait(800);
+      expect({
+        jumped: targetScrolls('message-1'),
+        highlighted,
+        atTap,
+        writes: page.state.writes,
+        closedAt: page.state.top,
+      }).toEqual({
+        jumped: 0,
+        highlighted: true,
+        atTap: 1426,
+        writes: [1128],
+        closedAt: 1128,
+      });
+    } finally {
+      page.restore();
+    }
+  });
+});

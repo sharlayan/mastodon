@@ -2063,3 +2063,296 @@ describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
     expect(rooms(following.commands)).toEqual([]);
   });
 });
+
+// Review 730b E1 (730b5828c2): the focus comes before any keyboard. Reached by scrolling down, the newest has the
+// browser bar collapsed and innerHeight taller than the root, by the bar: Pixel 659/603 (android-masto-final5/raw/
+// pixel/kcol-1.json, the samples before and right after the tap), iPhone SE 2 589/549 and SE 3 625/547
+// (ios-masto-final4/out/<se2|se3>/b-c11.json, at the end). What the bar left is not what Safari leaves under a
+// keyboard: room made from it stayed as a band between the composer and the navigation bar (Pixel 3/3: 55.3px).
+describe('Review 730b E1: focusing the box at the newest with the browser bar collapsed', () => {
+  const collapsed = [
+    [
+      'Pixel URL bar (kcol-1)',
+      {
+        innerHeight: 659,
+        rootClientHeight: 603,
+        scrollY: 1266.7,
+        visual: { height: 659.4, offsetTop: 0, scale: 1, pageTop: 1266.7 },
+      },
+      0.3,
+      0.8,
+    ],
+    [
+      'SE 2 toolbar (b-c11)',
+      {
+        innerHeight: 589,
+        rootClientHeight: 549,
+        scrollY: 1648,
+        visual: { height: 589, offsetTop: 0, scale: 1, pageTop: 1648 },
+      },
+      0,
+      0.6,
+    ],
+    [
+      'SE 3 toolbar (b-c11)',
+      {
+        innerHeight: 625,
+        rootClientHeight: 547,
+        scrollY: 1496,
+        visual: { height: 625, offsetTop: 1, scale: 1, pageTop: 1496 },
+      },
+      -1,
+      1.5,
+    ],
+  ] as const;
+  const rooms = (commands: Command[]) =>
+    commands
+      .filter(
+        (command): command is Extract<Command, { type: 'room' }> =>
+          command.type === 'room',
+      )
+      .map((command) => command.by);
+  const at = (
+    viewport: Snapshot['viewport'],
+    over: Partial<Snapshot> = {},
+  ): Partial<Snapshot> => ({
+    viewport,
+    height: viewport.visual?.height ?? viewport.innerHeight,
+    composerFocused: true,
+    ...over,
+  });
+
+  it('49 nothing is left under a keyboard before one is shown (Pixel 56, SE 2 40, SE 3 79 on 730b)', () => {
+    for (const [, viewport] of collapsed)
+      expect(keyboardRoom(viewport)).toBe(0);
+  });
+
+  for (const [name, viewport, remaining, distance] of collapsed)
+    it(`49 no room is made at the focus (${name})`, () => {
+      const { state, commands } = run(opened().state, [
+        [{ type: 'composerFocused' }, at(viewport, { remaining, distance })],
+      ]);
+      expect(rooms(commands)).toEqual([]);
+      expect(state.keyboard?.room).toBe(0);
+    });
+
+  it('49 nor as Chrome opens its keyboard over the collapsed bar (kcol-1: 351.7, 375.2 at 4.2, 99.8, 284.2)', () => {
+    const [, focus, remaining, distance] = collapsed[0];
+    const chrome = (height: number, offsetTop: number) => ({
+      innerHeight: 659,
+      rootClientHeight: 659,
+      scrollY: 1266.7,
+      visual: {
+        height,
+        offsetTop,
+        scale: 1,
+        pageTop: 1266.7 + offsetTop,
+      },
+    });
+    const { state, commands } = run(opened().state, [
+      [{ type: 'composerFocused' }, at(focus, { remaining, distance })],
+      [{ type: 'viewportResized' }, at(chrome(351.7, 0), { remaining })],
+      [{ type: 'viewportScrolled' }, at(chrome(375.2, 4.2), { remaining })],
+      [{ type: 'viewportScrolled' }, at(chrome(375.2, 99.8), { remaining })],
+      [{ type: 'viewportScrolled' }, at(chrome(375.2, 284.2), { remaining })],
+    ]);
+    expect(rooms(commands)).toEqual([]);
+    expect(liftAmounts(commands).every((by) => by === 0 || by === null)).toBe(
+      true,
+    );
+    expect(state.keyboard?.rested).toBe(true);
+  });
+
+  // No device has recorded Safari opening a keyboard from a collapsed toolbar; these are its readings at the newest
+  // with the toolbar shown (SE 2 b-r3: 287 at 262; SE 3 f5a: 321/320.5 at 226.5), which leave nothing either.
+  for (const [name, focus, keyboard] of [
+    [
+      'SE 2',
+      collapsed[1],
+      {
+        innerHeight: 287,
+        rootClientHeight: 549,
+        scrollY: 1910,
+        visual: { height: 287, offsetTop: 262, scale: 1, pageTop: 1910 },
+      },
+    ],
+    [
+      'SE 3',
+      collapsed[2],
+      {
+        innerHeight: 321,
+        rootClientHeight: 547,
+        scrollY: 1795,
+        visual: { height: 320.5, offsetTop: 226.5, scale: 1, pageTop: 1795 },
+      },
+    ],
+  ] as const)
+    it(`49 nor once Safari's keyboard is shown at the newest (${name})`, () => {
+      const [, viewport, remaining, distance] = focus;
+      const { commands } = run(opened().state, [
+        [{ type: 'composerFocused' }, at(viewport, { remaining, distance })],
+        [{ type: 'viewportResized' }, at(keyboard, { remaining: 0 })],
+        [{ type: 'viewportScrolled' }, at(keyboard, { remaining: 0 })],
+      ]);
+      expect(rooms(commands)).toEqual([]);
+    });
+
+  it('49 the room Safari 18 leaves is still made once in the session, after a focus that left nothing (a130)', () => {
+    const [, viewport, remaining, distance] = collapsed[2];
+    const safari = {
+      innerHeight: 367,
+      rootClientHeight: 547,
+      scrollY: 1725,
+      visual: { height: 320.5, offsetTop: 226.5, scale: 1, pageTop: 1725 },
+    };
+    const { commands } = run(opened().state, [
+      [{ type: 'composerFocused' }, at(viewport, { remaining, distance })],
+      [{ type: 'viewportScrolled' }, at(safari, { remaining: 0 })],
+      [{ type: 'viewportResized' }, at(safari, { remaining: 0 })],
+    ]);
+    expect(rooms(commands)).toEqual([46.5]);
+  });
+});
+
+// Review 730b J1: with the keyboard open, away from the newest, the reader taps a quote whose original is in full
+// view. It is highlighted where it is (45) and nothing moves, so closing the keyboard still goes back to where they
+// were reading (rule 4), as without the tap. The press of a button that may move the page still cancels it (25).
+describe('Review 730b J1: a quote highlighted where it is keeps the place to go back to', () => {
+  const restores = (commands: Command[]) =>
+    commands.filter((command) => command.type === 'restoreScroll');
+  // The review's probe: reading 300px up with the keyboard open, inertia ending at 3201.
+  const readUpWithKeyboard = () =>
+    run(keyboardOpen(opened().state).state, [
+      [
+        { type: 'touch', down: true },
+        { composerFocused: true, height: 287 },
+      ],
+      [
+        { type: 'userIntent', touch: true },
+        { composerFocused: true, height: 287 },
+      ],
+      [
+        { type: 'scrolled' },
+        { composerFocused: true, height: 287, distance: 300, scrollTop: 3201 },
+      ],
+      [
+        { type: 'touch', down: false },
+        { composerFocused: true, height: 287 },
+      ],
+      [
+        { type: 'timer', name: 'userScrollEnd' },
+        { composerFocused: true, height: 287, distance: 300, scrollTop: 3201 },
+      ],
+    ]).state;
+  // iPhone SE 3 (ios-masto-final4/out/se3/b-aw1.json): read 418pt up to 1128, then the box is tapped; Safari scrolls
+  // the page to 1426 as its keyboard opens (547/320.5/226.5), and only the app's write took it back to 1128.
+  const focusedAway = () => {
+    const away = run(opened().state, [
+      [{ type: 'scrolled' }, { distance: 418, scrollTop: 1128 }],
+    ]).state;
+    return run(away, [
+      [
+        { type: 'composerFocused' },
+        { height: 547, scrollTop: 1128, composerFocused: true, distance: 418 },
+      ],
+      [
+        { type: 'viewportResized' },
+        {
+          height: 320.5,
+          scrollTop: 1426,
+          composerFocused: true,
+          distance: 346.5,
+        },
+      ],
+      [
+        { type: 'scrolled' },
+        {
+          height: 320.5,
+          scrollTop: 1426,
+          composerFocused: true,
+          distance: 346.5,
+        },
+      ],
+    ]).state;
+  };
+  const tapShownQuote = (state: ScrollState) =>
+    run(state, [
+      [
+        { type: 'pageAction', quote: 'm4' },
+        { composerFocused: true, messageShown: (id) => id === 'm4' },
+      ],
+      [{ type: 'composerBlurred' }],
+      [
+        { type: 'quoteClicked', id: 'm4' },
+        { messageShown: (id) => id === 'm4' },
+      ],
+    ]);
+  const close = (state: ScrollState, distance: number) =>
+    run(state, [[{ type: 'timer', name: 'keyboardClose' }, { distance }]]);
+
+  for (const [name, reading, top, distance] of [
+    [
+      'read up with the keyboard open (review probe)',
+      readUpWithKeyboard,
+      3201,
+      300,
+    ],
+    ['read up, then focused (SE 3 b-aw1)', focusedAway, 1128, 418],
+  ] as const) {
+    it(`J1 control: closing goes back to ${top} (${name})`, () => {
+      const closed = run(reading(), [[{ type: 'composerBlurred' }]]);
+      expect(restores(close(closed.state, distance).commands)).toEqual([
+        { type: 'restoreScroll', top },
+      ]);
+    });
+
+    it(`J1 closing after the quote still goes back to ${top} (${name})`, () => {
+      const tapped = tapShownQuote(reading());
+      expect(scrolls(tapped.commands)).toEqual([]);
+      expect(tapped.state.target).toMatchObject({ id: 'm4', phase: 'landed' });
+      expect(tapped.state.following).toBe(false);
+      expect(restores(close(tapped.state, distance).commands)).toEqual([
+        { type: 'restoreScroll', top },
+      ]);
+    });
+  }
+
+  it('J1 a quote to an original out of view still wins over the place (25)', () => {
+    const { state } = run(focusedAway(), [
+      [
+        { type: 'pageAction', quote: 'm1' },
+        { composerFocused: true, messageShown: () => false },
+      ],
+      [{ type: 'quoteClicked', id: 'm1' }, { messageShown: () => false }],
+      [{ type: 'targetLoaded', id: 'm1' }],
+      [
+        { type: 'targetScrolled', id: 'm1', movedUp: true, moved: true },
+        { distance: 900 },
+      ],
+      [{ type: 'composerBlurred' }],
+    ]);
+    expect(restores(close(state, 900).commands)).toEqual([]);
+  });
+
+  it('J1 any other button pressed still cancels going back (25)', () => {
+    const { state } = run(focusedAway(), [
+      [{ type: 'pageAction' }, { composerFocused: true }],
+      [{ type: 'composerBlurred' }],
+    ]);
+    expect(restores(close(state, 418).commands)).toEqual([]);
+  });
+
+  it('J1 after an explicit move, a quote highlighted where it is gives back nothing', () => {
+    const { state } = run(focusedAway(), [
+      [{ type: 'jumpToNewest' }, { composerFocused: true }],
+      [{ type: 'scrolled' }, { distance: 600, scrollTop: 900 }],
+      [
+        { type: 'pageAction', quote: 'm4' },
+        { composerFocused: true, messageShown: () => true },
+      ],
+      [{ type: 'quoteClicked', id: 'm4' }, { messageShown: () => true }],
+      [{ type: 'composerBlurred' }],
+    ]);
+    expect(restores(close(state, 600).commands)).toEqual([]);
+  });
+});

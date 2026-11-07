@@ -547,11 +547,18 @@ export const useChatScroll = (
     };
     const onPointerDown = (event: Event) => {
       if (
-        event.target instanceof Element &&
-        !composer?.contains(event.target) &&
-        event.target.closest('button, a')
+        !(event.target instanceof Element) ||
+        composer?.contains(event.target)
       )
-        scroll.dispatch({ type: 'pageAction' });
+        return;
+      const pressed = event.target.closest<HTMLElement>('button, a');
+      if (!pressed) return;
+      const quote = pressed.matches('.chat-native__reply-quote')
+        ? pressed.dataset.messageId
+        : undefined;
+      scroll.dispatch(
+        quote ? { type: 'pageAction', quote } : { type: 'pageAction' },
+      );
     };
     const onResize = () => {
       scroll.dispatch({ type: 'viewportResized' });
