@@ -158,7 +158,7 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
       BulkImportWorker.perform_async(import.bulk_import.id)
       head 204
     end
-  rescue Errno::ENOENT, Seahorse::Client::NetworkingError
+  rescue Errno::ENOENT
     import_error(type, :no_such_file, 'No such file', 'NO_SUCH_FILE')
   end
 
