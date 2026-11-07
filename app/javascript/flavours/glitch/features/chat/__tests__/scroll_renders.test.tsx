@@ -3265,3 +3265,73 @@ describe('Review f35f', () => {
     expect(scrollport.scrollTop).toBe(3050);
   });
 });
+
+describe('iOS keyboard on f35f1ec', () => {
+  it('does not raise the composer when the box is focused while reading a little up (SE 3, 136pt)', async () => {
+    const originals = {
+      viewport: Object.getOwnPropertyDescriptor(window, 'visualViewport'),
+      inner: Object.getOwnPropertyDescriptor(window, 'innerHeight'),
+      client: Object.getOwnPropertyDescriptor(
+        document.documentElement,
+        'clientHeight',
+      ),
+    };
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 547,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      configurable: true,
+      writable: true,
+      value: 547,
+    });
+    Object.defineProperty(document.documentElement, 'clientHeight', {
+      configurable: true,
+      value: 547,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    const nav = document.createElement('div');
+    nav.className = 'ui__navigation-bar';
+    document.body.appendChild(nav);
+    try {
+      await openRoom();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      // g6 aw1: Safari scrolls 162 past the end to show the box; innerHeight 385, visual viewport 320.5 at 226.5.
+      viewport.height = 320.5;
+      viewport.offsetTop = 226.5;
+      window.innerHeight = 385;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      const focused = parseFloat(nav.style.bottom || '0');
+      // ru1: then a drag up with the keyboard open, innerHeight 398 at 149.5.
+      viewport.offsetTop = 149.5;
+      window.innerHeight = 398;
+      act(() => {
+        viewport.dispatchEvent(new Event('scroll'));
+      });
+      expect({
+        focused,
+        dragged: parseFloat(nav.style.bottom),
+      }).toEqual({ focused: 0, dragged: 77 });
+    } finally {
+      cleanup();
+      nav.remove();
+      for (const [target, key, descriptor] of [
+        [window, 'visualViewport', originals.viewport],
+        [window, 'innerHeight', originals.inner],
+        [document.documentElement, 'clientHeight', originals.client],
+      ] as const) {
+        if (descriptor) Object.defineProperty(target, key, descriptor);
+        else Reflect.deleteProperty(target, key);
+      }
+    }
+  });
+});

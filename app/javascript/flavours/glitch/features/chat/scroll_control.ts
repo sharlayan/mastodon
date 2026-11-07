@@ -125,14 +125,28 @@ export const viewportRestsOnKeyboard = (viewport: ViewportReading) => {
   );
 };
 
-// How far the composer and the navigation bar are to be raised to sit on the bottom of the visible area: iOS grows
-// innerHeight below it while the keyboard is open, and Android moves the visual viewport up within the page when the
-// reader drags. While an Android keyboard is opening, Chrome itself moves the visual viewport down to the composer
-// and the end of the room with it; raising the composer first would leave the end of the room under the keyboard
-// (Galaxy and Pixel on f35f1ec: 323 and 284px). So in Chrome's coordinates nothing is raised until it has got there.
+// How far the composer and the navigation bar are to be raised to sit on the bottom of the visible area.
+// Safari keeps fixed and sticky elements on the bottom of its layout viewport, which never goes past the end of the
+// page: min(innerHeight, root clientHeight − offsetTop) in on-screen coordinates. While the reader drags up with the
+// keyboard open that is innerHeight, below what is shown (iPhone diagnostics: 367 against 287, so 80). When the box is
+// focused while reading a little up, Safari scrolls past the end to show it and that bottom is already the visible one
+// although innerHeight is larger (iPhone on f35f1ec: 385 against 320.5 raised 64.5 too far; 505 against 287, 218).
+// Chrome keeps the layout viewport at the page's height and moves the visual viewport within it, also up when the
+// reader drags. While an Android keyboard is opening, Chrome itself moves the visual viewport down to the composer and
+// the end of the room with it; raising the composer first would leave the end of the room under the keyboard (Galaxy
+// and Pixel on f35f1ec: 323 and 284px). So in Chrome's coordinates nothing is raised until it has got there.
 export const keyboardLift = (viewport: ViewportReading, rested: boolean) => {
-  const lift = Math.max(0, viewport.innerHeight - visibleArea(viewport).bottom);
-  return rectsInLayoutViewport(viewport) && !rested ? 0 : lift;
+  const area = visibleArea(viewport);
+  if (rectsInLayoutViewport(viewport))
+    return rested ? Math.max(0, viewport.innerHeight - area.bottom) : 0;
+  const fixedBottom =
+    viewport.visual && viewport.rootClientHeight > 0
+      ? Math.min(
+          viewport.innerHeight,
+          viewport.rootClientHeight - finite(viewport.visual.offsetTop, 0),
+        )
+      : viewport.innerHeight;
+  return Math.max(0, fixedBottom - area.bottom);
 };
 
 // How far to scroll to bring the last message out from under the composer while the keyboard is open. Never past the

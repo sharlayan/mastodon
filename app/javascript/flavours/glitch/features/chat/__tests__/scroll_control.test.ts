@@ -1415,3 +1415,43 @@ describe('Following the newest message (state table, after f35f1ec)', () => {
     expect(scrolls(following.commands)).toEqual([]);
   });
 });
+
+// iPhone on f35f1ec (ios-masto-final2 g6 aw·nr, ru): the box focused after reading a little up, against a drag up
+// with the keyboard open.
+describe('Raising over the iOS keyboard after reading a little up (iPhone on f35f1ec)', () => {
+  for (const [name, innerHeight, height, offsetTop, rootClientHeight, was] of [
+    ['SE 3, 116~136pt up', 385, 320.5, 226.5, 547, 64.5],
+    ['SE 3, 116pt up', 365, 320.5, 226.5, 547, 44.5],
+    ['SE 2, 116pt up', 349, 287, 262, 549, 62],
+    ['SE 2, 190pt up', 423, 287, 262, 549, 136],
+    ['SE 2, 272pt up', 505, 287, 262, 549, 218],
+  ] as const) {
+    it(`40 raises nothing when Safari already shows the composer on the bottom (${name}, was ${was})`, () => {
+      const viewport = {
+        innerHeight,
+        rootClientHeight,
+        visual: { height, offsetTop, scale: 1 },
+      };
+      expect(keyboardLift(viewport, false)).toBe(0);
+      expect(keyboardLift(viewport, true)).toBe(0);
+    });
+  }
+
+  it('40 still raises by what Safari adds below while the reader drags up (SE 3: 348, 376, 398)', () => {
+    for (const [innerHeight, offsetTop, lift] of [
+      [348, 199, 27.5],
+      [376, 171, 55.5],
+      [398, 149.5, 77],
+    ] as const)
+      expect(
+        keyboardLift(
+          {
+            innerHeight,
+            rootClientHeight: 547,
+            visual: { height: 320.5, offsetTop, scale: 1 },
+          },
+          false,
+        ),
+      ).toBeCloseTo(lift);
+  });
+});
