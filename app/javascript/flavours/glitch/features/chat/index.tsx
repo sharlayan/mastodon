@@ -71,6 +71,11 @@ import {
   isChatStreamLive,
   subscribeChatStream,
 } from './stream';
+import {
+  createChatScroll,
+  useChatScroll,
+  usesTouchKeyboard,
+} from './use_chat_scroll';
 
 interface ChatAccount {
   id: string;
@@ -823,162 +828,8 @@ const startsRun = (list: ChatMessage[], index: number) => {
 const endsRun = (list: ChatMessage[], index: number) =>
   index === list.length - 1 || startsRun(list, index + 1);
 
-const FOLLOW_NEWEST_DISTANCE = 240;
 const MESSAGE_PAGE_SIZE = 40;
 const MESSAGE_RESYNC_PAGES = 25;
-const HIGHLIGHT_DURATION_MS = 3000;
-
-const usesTouchKeyboard = () =>
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(pointer: coarse)').matches;
-
-const chatScrollport = (end: HTMLElement): Element | null => {
-  let parent = end.parentElement;
-  while (
-    parent &&
-    parent !== document.body &&
-    parent !== document.documentElement
-  ) {
-    const overflow = window.getComputedStyle(parent).overflowY;
-    if (
-      (overflow === 'auto' || overflow === 'scroll') &&
-      parent.scrollHeight > parent.clientHeight
-    ) {
-      return parent;
-    }
-    parent = parent.parentElement;
-  }
-  return document.scrollingElement;
-};
-
-// Safari can report an offset even when element rectangles are already based
-// on the visual viewport (including a collapsed browser toolbar).
-const visualViewportTop = (keyboardFocused: boolean) => {
-  const viewport = window.visualViewport;
-  if (!viewport) return 0;
-  const offset = Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0;
-  if (keyboardFocused) {
-    // Android keeps innerHeight at the layout viewport height and reports
-    // element rectangles in that space. iOS shrinks innerHeight while keeping
-    // the root clientHeight, and reports rectangles in the visual space.
-    const layoutHeight = document.documentElement.clientHeight;
-    return layoutHeight > 0 && window.innerHeight >= layoutHeight - 2
-      ? offset
-      : 0;
-  }
-  return window.innerHeight <= viewport.height + 2 ? 0 : offset;
-};
-
-const messageIsVisible = (
-  list: HTMLElement | null,
-  composer: HTMLElement | null,
-  id: string,
-) => {
-  if (
-    !list ||
-    !composer ||
-    !isVisible() ||
-    (window.visualViewport?.scale ?? 1) !== 1
-  )
-    return false;
-  const message = document.getElementById(`chat-message-${id}`);
-  if (!message || !list.contains(message)) return false;
-  const bounds = message.getBoundingClientRect();
-  const viewportTop = visualViewportTop(
-    usesTouchKeyboard() && composer.contains(document.activeElement),
-  );
-  const scrollport = chatScrollport(message);
-  const scrollBounds = scrollport?.getBoundingClientRect();
-  const top = Math.max(viewportTop, scrollBounds?.top ?? viewportTop);
-  const bottom = Math.min(
-    viewportTop + (window.visualViewport?.height ?? window.innerHeight),
-    composer.getBoundingClientRect().top,
-    scrollBounds?.bottom ?? Number.POSITIVE_INFINITY,
-  );
-  return bounds.bottom > top && bounds.top < bottom;
-};
-
-const scrollToNewest = (end: HTMLElement | null) => {
-  if (!end) return;
-  const composer = end.previousElementSibling;
-  if (
-    usesTouchKeyboard() &&
-    composer?.contains(document.activeElement) &&
-    document.activeElement instanceof HTMLTextAreaElement
-  ) {
-    // While the keyboard is open, scrolling the document to its end can pull the
-    // area beneath Safari's toolbar above the keyboard. Reveal only the message.
-    const last = Array.from(
-      composer.previousElementSibling?.querySelectorAll<HTMLElement>(
-        '[id^="chat-message-"]',
-      ) ?? [],
-    ).at(-1);
-    const scrollport = chatScrollport(end);
-    if (last && scrollport) {
-      const delta =
-        last.getBoundingClientRect().bottom -
-        composer.getBoundingClientRect().top +
-        16;
-      // Safari can shrink its visual viewport when asked to scroll beyond the
-      // document end. Cap the reveal so a resize cannot request it again.
-      const height =
-        scrollport === document.scrollingElement
-          ? window.innerHeight
-          : scrollport.clientHeight;
-      const remaining = Math.max(
-        0,
-        scrollport.scrollHeight - height - scrollport.scrollTop,
-      );
-      if (delta > 0 && remaining > 0)
-        scrollport.scrollTop += Math.min(delta, remaining);
-    }
-    return;
-  }
-
-  if (typeof end.scrollIntoView === 'function')
-    end.scrollIntoView({ block: 'end' });
-  // A sticky composer can leave the end visible before the scrollport reaches its bottom.
-  const scrollport = chatScrollport(end);
-  if (scrollport) scrollport.scrollTop = scrollport.scrollHeight;
-};
-
-const endIsAtNewest = (end: HTMLElement) => {
-  const composer = end.previousElementSibling;
-  const keyboardFocused =
-    usesTouchKeyboard() && composer?.contains(document.activeElement);
-  const visibleBottom =
-    visualViewportTop(Boolean(keyboardFocused)) +
-    (window.visualViewport?.height ?? window.innerHeight);
-  const endBottom = end.getBoundingClientRect().bottom;
-  const scrollport = chatScrollport(end);
-  const navigation = document.querySelector('.ui__navigation-bar');
-  const navigationBounds = navigation?.getBoundingClientRect();
-  const navigationTop =
-    navigationBounds &&
-    navigationBounds.height > 0 &&
-    navigationBounds.top <= visibleBottom &&
-    navigationBounds.bottom >= visibleBottom - 2
-      ? navigationBounds.top
-      : visibleBottom;
-  const viewportBottom =
-    scrollport && scrollport !== document.scrollingElement
-      ? Math.min(visibleBottom, scrollport.getBoundingClientRect().bottom)
-      : navigationTop;
-  return (
-    Math.abs(endBottom - viewportBottom) <= 2 ||
-    Boolean(
-      scrollport &&
-      endBottom <= viewportBottom + 2 &&
-      ((scrollport.clientHeight > 0 &&
-        scrollport.scrollHeight <= scrollport.clientHeight) ||
-        // Page layouts can leave padding below the end marker. At the actual
-        // document bottom the visible end still represents the newest message.
-        (scrollport === document.scrollingElement &&
-          scrollport.scrollHeight - window.innerHeight - scrollport.scrollTop <=
-            2)),
-    )
-  );
-};
 
 // For what changes while the reader scrolls or types. Kept in the room's own state, it would draw every message again
 // each time, which a slow phone shows as a stutter. Only what shows it follows it.
@@ -1208,9 +1059,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       }
     | undefined
   >();
-  const [jumpTargetId, setJumpTargetId] = useState<string | null>(
-    location.state?.chatMessageId ?? null,
+  // Where the room scrolls to, and whether it keeps up with the newest message, is decided in scroll_control.ts.
+  const [scroll] = useState(() =>
+    createChatScroll(location.state?.chatMessageId ?? null),
   );
+  const jumpTargetId = useSyncExternalStore(scroll.subscribe, scroll.targetId);
   const dispatch = useAppDispatch();
   const { conversationId: routeId, view: roomView } = useParams<{
     conversationId?: string;
@@ -1297,23 +1150,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   } | null>(null);
   const deletedMessages = useRef(new Map<string, string>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrolledConversationIdRef = useRef<string | undefined>(undefined);
   const messagesListRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
-  const followingNewestRef = useRef(!jumpTargetId);
-  // Seeking and highlighting are different: a highlighted message may already
-  // be at the bottom, where new messages should continue to be followed.
-  const jumpNavigationRef = useRef({
-    targetId: jumpTargetId,
-    seeking: Boolean(jumpTargetId),
-    fromSearch: Boolean(jumpTargetId),
-    programmatic: false,
-  });
-  useEffect(() => {
-    jumpNavigationRef.current.targetId = jumpTargetId;
-  }, [jumpTargetId]);
-  const keyboardExplicitFollowRef = useRef<(() => void) | null>(null);
   const searchRequestRef = useRef(0);
   const searchTimeoutRef = useRef<number | null>(null);
   const messageSearchTimeoutRef = useRef<number | undefined>(undefined);
@@ -1538,25 +1377,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
   const attemptVisibleRead = useCallback(() => {
     const pending = pendingVisibleRead.current;
-    if (
-      !pending ||
-      pending.room !== conversationId ||
-      !followingNewestRef.current
-    )
+    if (!pending || pending.room !== conversationId || !scroll.following())
       return;
-    if (
-      !messageIsVisible(
-        messagesListRef.current,
-        composerRef.current,
-        pending.message,
-      )
-    )
-      return;
+    if (!scroll.messageVisible(pending.message)) return;
     pendingVisibleRead.current = null;
     unreadWhileAway.current = false;
     jumpButton.update({ unseen: false });
     markRead(pending.room, pending.message);
-  }, [conversationId, jumpButton, markRead]);
+  }, [conversationId, jumpButton, markRead, scroll]);
 
   const conversation = useMemo(
     () => conversations.find((item) => item.id === conversationId),
@@ -2047,10 +1875,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         updateOlderMessageId(reachedStart ? null : (newestPage[0]?.id ?? null));
       }
 
-      if (
-        !followingNewestRef.current ||
-        (window.visualViewport?.scale ?? 1) !== 1
-      ) {
+      if (!scroll.follows()) {
         const shownIds = new Set(
           shownMessagesRef.current.map((item) => item.id),
         );
@@ -2074,6 +1899,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       jumpButton,
       queueVisibleRead,
       readRecovered,
+      scroll,
       updateOlderMessageId,
     ],
   );
@@ -2081,16 +1907,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const markSeenOnReturn = useCallback(() => {
     if (!unreadWhileAway.current || !conversationId || !isVisible()) return;
     const newest = shownMessagesRef.current.at(-1)?.id;
-    if (
-      !newest ||
-      !messageIsVisible(messagesListRef.current, composerRef.current, newest)
-    )
-      return;
+    if (!newest || !scroll.messageVisible(newest)) return;
     unreadWhileAway.current = false;
     pendingVisibleRead.current = null;
     jumpButton.update({ unseen: false });
     markRead(conversationId, newest);
-  }, [conversationId, jumpButton, markRead]);
+  }, [conversationId, jumpButton, markRead, scroll]);
 
   const loadOlderMessages = useCallback(() => {
     if (!olderMessageId || !conversationId || loadingMore) return;
@@ -2132,6 +1954,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         updateOlderMessageId(data.length === 40 ? (data[0]?.id ?? null) : null);
         olderPageRateLimited.current = false;
         readRecovered('messages');
+        scroll.dispatch({ type: 'olderLoaded' });
       })
       .catch((error: unknown) => {
         if (
@@ -2143,10 +1966,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             (error as { response?: { status?: number } } | null)?.response
               ?.status === 429;
           readFailed('messages');
-          if (olderPageRateLimited.current && jumpNavigationRef.current.seeking)
+          if (olderPageRateLimited.current && scroll.seeking())
             void retries
               .keepTrying(`messages:${conversationId}`, resyncMessages, {
-                failed: () => readFailed('messages'),
+                failed: () => {
+                  readFailed('messages');
+                },
               })
               .catch(() => undefined);
         }
@@ -2164,6 +1989,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     readRecovered,
     resyncMessages,
     retries,
+    scroll,
     updateMessages,
     updateOlderMessageId,
   ]);
@@ -2247,7 +2073,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     if (!conversationId || !hasUnread) return;
 
     const markReadWhenShown = () => {
-      if (!isVisible() || !followingNewestRef.current) return;
+      if (!isVisible() || !scroll.following()) return;
       queueVisibleRead(conversationId, shownMessagesRef.current.at(-1)?.id);
     };
 
@@ -2255,7 +2081,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     return () => {
       document.removeEventListener('visibilitychange', markReadWhenShown);
     };
-  }, [conversationId, hasUnread, queueVisibleRead]);
+  }, [conversationId, hasUnread, queueVisibleRead, scroll]);
 
   useEffect(
     () =>
@@ -2276,11 +2102,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           const message = applyTombstone(value as ChatMessage);
           const isOpen = eventConversationId === conversationId;
           const fromOther = value.account?.id !== me;
-          const seen =
-            isOpen &&
-            isVisible() &&
-            followingNewestRef.current &&
-            (window.visualViewport?.scale ?? 1) === 1;
+          const seen = isOpen && isVisible() && scroll.follows();
           updateConversations((current) =>
             withNewMessage(current, message, fromOther),
           );
@@ -2508,6 +2330,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       refreshConversation,
       resyncMessages,
       retries,
+      scroll,
       updateConversations,
       updateInvitations,
       updateMessages,
@@ -2543,30 +2366,34 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const newestMessageConversationId = newestMessage?.conversation_id;
   const newestMessageIsMine = newestMessage?.account.id === me;
 
-  useEffect(() => {
-    if (!newestMessageId || newestMessageConversationId !== conversationId)
-      return;
-
-    const screenKey = `${conversationId}:${roomView ?? ''}`;
-    const openingRoom = scrolledConversationIdRef.current !== screenKey;
-    scrolledConversationIdRef.current = screenKey;
-    if (openingRoom)
-      followingNewestRef.current = !jumpNavigationRef.current.seeking;
-    if (jumpNavigationRef.current.seeking) return;
-    if (
-      followingNewestRef.current &&
-      (window.visualViewport?.scale ?? 1) === 1
-    ) {
-      scrollToNewest(messagesEndRef.current);
-    }
-  }, [
-    conversationId,
-    newestMessageConversationId,
-    newestMessageId,
-    newestMessageIsMine,
-    roomView,
+  const isGroupOwner =
+    conversation?.type === 'group' && conversation.current_role === 'owner';
+  const isManagingRoom =
+    (roomView === 'members' && conversation?.type === 'group') ||
+    (roomView === 'settings' && isGroupOwner);
+  const jumpTargetLoaded = Boolean(
+    jumpTargetId && messagesById.has(jumpTargetId),
+  );
+  const readNewestWhenShown = useCallback(() => {
+    queueVisibleRead(conversationId ?? '', newestMessageId);
+  }, [conversationId, newestMessageId, queueVisibleRead]);
+  useChatScroll(scroll, {
+    endRef: messagesEndRef,
+    listRef: messagesListRef,
+    composerRef,
     jumpButton,
-  ]);
+    attachKey: `${conversationId ?? ''}:${roomView ?? ''}:${conversationMissing}:${isManagingRoom}`,
+    screen:
+      newestMessageConversationId === conversationId
+        ? `${conversationId}:${roomView ?? ''}`
+        : null,
+    newestId: newestMessageId,
+    newestIsMine: newestMessageIsMine,
+    targetShown: jumpTargetLoaded,
+    onReadCheck: attemptVisibleRead,
+    onReturn: markSeenOnReturn,
+    onReadNewest: readNewestWhenShown,
+  });
 
   useEffect(() => {
     attemptVisibleRead();
@@ -2580,374 +2407,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     }
   }, [attemptVisibleRead, conversationId, jumpButton, visibleReadRevision]);
 
-  useEffect(() => {
-    const end = messagesEndRef.current;
-    const list = messagesListRef.current;
-    if (!end || !list) return;
-
-    const composer = composerRef.current;
-    let keyboard: {
-      scrollport: Element | null;
-      scrollTop: number;
-      height: number;
-      shrunk: boolean;
-      userScrolling: boolean;
-      settleTimer?: number;
-      restorePosition: boolean;
-      following: boolean;
-      timer?: number;
-    } | null = null;
-    const navigation = document.querySelector<HTMLElement>(
-      '.ui__navigation-bar',
-    );
-    let previousNavigationBottom = '';
-    let previousNavigationPriority = '';
-    let previousComposerLift = '';
-    let previousComposerPriority = '';
-    let keyboardBoundsApplied = false;
-    const restoreKeyboardBounds = () => {
-      if (!keyboardBoundsApplied) return;
-      keyboardBoundsApplied = false;
-      if (navigation) {
-        if (previousNavigationBottom)
-          navigation.style.setProperty(
-            'bottom',
-            previousNavigationBottom,
-            previousNavigationPriority,
-          );
-        else navigation.style.removeProperty('bottom');
-      }
-      if (composer) {
-        if (previousComposerLift)
-          composer.style.setProperty(
-            '--chat-keyboard-lift',
-            previousComposerLift,
-            previousComposerPriority,
-          );
-        else composer.style.removeProperty('--chat-keyboard-lift');
-      }
-    };
-    const updateKeyboardBounds = () => {
-      const viewport = window.visualViewport;
-      if (
-        !keyboard ||
-        viewport?.scale !== 1 ||
-        (keyboard.scrollport &&
-          keyboard.scrollport !== document.scrollingElement)
-      ) {
-        restoreKeyboardBounds();
-        return;
-      }
-      // Fixed and sticky elements use innerHeight on iOS, even when only the
-      // shorter visual viewport remains above the keyboard and Safari toolbar.
-      const lift = Math.max(
-        0,
-        window.innerHeight - (visualViewportTop(true) + viewport.height),
-      );
-      if (!keyboardBoundsApplied) {
-        previousNavigationBottom =
-          navigation?.style.getPropertyValue('bottom') ?? '';
-        previousNavigationPriority =
-          navigation?.style.getPropertyPriority('bottom') ?? '';
-        previousComposerLift =
-          composer?.style.getPropertyValue('--chat-keyboard-lift') ?? '';
-        previousComposerPriority =
-          composer?.style.getPropertyPriority('--chat-keyboard-lift') ?? '';
-        keyboardBoundsApplied = true;
-      }
-      navigation?.style.setProperty('bottom', `${lift}px`);
-      composer?.style.setProperty('--chat-keyboard-lift', `${lift}px`);
-    };
-    const finishKeyboard = () => {
-      if (!keyboard) return;
-      if ((window.visualViewport?.scale ?? 1) === 1) {
-        if (!keyboard.following && keyboard.restorePosition) {
-          if (keyboard.scrollport)
-            keyboard.scrollport.scrollTop = keyboard.scrollTop;
-          followingNewestRef.current = false;
-          jumpButton.update({ away: true });
-        } else if (keyboard.following && followingNewestRef.current) {
-          scrollToNewest(end);
-        }
-      }
-      if (keyboard.settleTimer !== undefined)
-        window.clearTimeout(keyboard.settleTimer);
-      keyboard = null;
-      restoreKeyboardBounds();
-    };
-    const scheduleKeyboardFinish = (delay: number) => {
-      if (!keyboard) return;
-      if (keyboard.timer !== undefined) window.clearTimeout(keyboard.timer);
-      keyboard.timer = window.setTimeout(finishKeyboard, delay);
-    };
-    const onFocusIn = (event: FocusEvent) => {
-      if (
-        !usesTouchKeyboard() ||
-        !(event.target instanceof HTMLTextAreaElement)
-      )
-        return;
-      if (keyboard) {
-        if (keyboard.timer !== undefined) window.clearTimeout(keyboard.timer);
-        keyboard.timer = undefined;
-        return;
-      }
-      const scrollport = chatScrollport(end);
-      keyboard = {
-        scrollport,
-        scrollTop: scrollport?.scrollTop ?? 0,
-        height: window.visualViewport?.height ?? window.innerHeight,
-        shrunk: false,
-        userScrolling: false,
-        restorePosition: true,
-        following: followingNewestRef.current,
-      };
-      updateKeyboardBounds();
-    };
-    const onFocusOut = () => {
-      scheduleKeyboardFinish(700);
-    };
-    const onUserScroll = (event: Event) => {
-      if (event.target instanceof Node && composer?.contains(event.target))
-        return;
-      jumpNavigationRef.current.programmatic = false;
-      if (jumpNavigationRef.current.seeking) {
-        jumpNavigationRef.current.seeking = false;
-        jumpNavigationRef.current.targetId = null;
-        setJumpTargetId(null);
-      }
-      if (!keyboard) return;
-      keyboard.userScrolling = true;
-      if (keyboard.settleTimer !== undefined)
-        window.clearTimeout(keyboard.settleTimer);
-      keyboard.settleTimer = window.setTimeout(() => {
-        if (keyboard) keyboard.userScrolling = false;
-      }, 200);
-    };
-    const onPageAction = (event: Event) => {
-      if (
-        keyboard &&
-        event.target instanceof Element &&
-        !composer?.contains(event.target) &&
-        event.target.closest('button, a')
-      )
-        keyboard.restorePosition = false;
-    };
-    let zoomScrolled = false;
-    const trackPosition = () => {
-      // Safari can scroll the document to reveal the input as the keyboard moves.
-      // That movement must not be mistaken for the reader choosing the newest message.
-      if ((window.visualViewport?.scale ?? 1) !== 1) {
-        zoomScrolled = true;
-        followingNewestRef.current = false;
-        if (keyboard) {
-          keyboard.following = false;
-          keyboard.restorePosition = false;
-        }
-        jumpButton.update({ away: true });
-        return;
-      }
-      if (jumpNavigationRef.current.programmatic) {
-        followingNewestRef.current = endIsAtNewest(end);
-        if (keyboard && !followingNewestRef.current) keyboard.following = false;
-        jumpButton.update({ away: !followingNewestRef.current });
-        return;
-      }
-      if (jumpNavigationRef.current.seeking) return;
-      if (keyboard && !keyboard.userScrolling) return;
-      const viewportBottom = keyboard
-        ? visualViewportTop(true) +
-          (window.visualViewport?.height ?? window.innerHeight)
-        : window.innerHeight;
-      const following =
-        end.getBoundingClientRect().bottom - viewportBottom <
-        FOLLOW_NEWEST_DISTANCE;
-      followingNewestRef.current = following;
-      if (keyboard) {
-        if (keyboard.settleTimer !== undefined)
-          window.clearTimeout(keyboard.settleTimer);
-        keyboard.settleTimer = window.setTimeout(() => {
-          if (keyboard) keyboard.userScrolling = false;
-        }, 200);
-        keyboard.scrollTop = keyboard.scrollport?.scrollTop ?? 0;
-        keyboard.following = following;
-      }
-      if (following) {
-        jumpButton.update({ away: false });
-        markSeenOnReturn();
-        attemptVisibleRead();
-      } else {
-        jumpButton.update({ away: true });
-      }
-    };
-    window.addEventListener('scroll', trackPosition, {
-      capture: true,
-      passive: true,
-    });
-    const onScrollEnd = () => {
-      if (!keyboard?.userScrolling) return;
-      trackPosition();
-      keyboard.userScrolling = false;
-      if (keyboard.settleTimer !== undefined)
-        window.clearTimeout(keyboard.settleTimer);
-    };
-    window.addEventListener('scrollend', onScrollEnd, { capture: true });
-    composer?.addEventListener('focusin', onFocusIn);
-    composer?.addEventListener('focusout', onFocusOut);
-    window.addEventListener('touchmove', onUserScroll, { passive: true });
-    window.addEventListener('wheel', onUserScroll, { passive: true });
-    window.addEventListener('pointerdown', onPageAction, { passive: true });
-    keyboardExplicitFollowRef.current = () => {
-      if (keyboard) keyboard.restorePosition = false;
-    };
-    let viewportScale = window.visualViewport?.scale ?? 1;
-    let viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-    const onViewportResize = () => {
-      const scale = window.visualViewport?.scale ?? 1;
-      const height = window.visualViewport?.height ?? window.innerHeight;
-      const scaleChanged = scale !== viewportScale;
-      const heightChanged = height !== viewportHeight;
-      viewportScale = scale;
-      viewportHeight = height;
-      if (keyboard) updateKeyboardBounds();
-      if (scaleChanged && scale === 1 && zoomScrolled) {
-        zoomScrolled = false;
-        if (endIsAtNewest(end) && !jumpNavigationRef.current.targetId) {
-          followingNewestRef.current = true;
-          if (keyboard) keyboard.following = true;
-          jumpButton.update({ away: false });
-          markSeenOnReturn();
-          attemptVisibleRead();
-        }
-      }
-      if (keyboard) {
-        if (scale === 1 && !scaleChanged) {
-          if (
-            heightChanged &&
-            followingNewestRef.current &&
-            composer?.contains(document.activeElement)
-          )
-            scrollToNewest(end);
-          if (height < keyboard.height - 80) keyboard.shrunk = true;
-          if (keyboard.shrunk && height >= keyboard.height - 2)
-            scheduleKeyboardFinish(200);
-          else if (keyboard.timer !== undefined) scheduleKeyboardFinish(700);
-        }
-        attemptVisibleRead();
-        return;
-      }
-      if (
-        scale === 1 &&
-        !scaleChanged &&
-        heightChanged &&
-        followingNewestRef.current
-      )
-        scrollToNewest(end);
-    };
-    const onVisualViewportScroll = () => {
-      if (keyboard) {
-        updateKeyboardBounds();
-        if (keyboard.userScrolling) trackPosition();
-      }
-      attemptVisibleRead();
-    };
-    window.addEventListener('resize', onViewportResize);
-    window.visualViewport?.addEventListener('resize', onViewportResize);
-    window.visualViewport?.addEventListener('scroll', onVisualViewportScroll);
-
-    const observer =
-      typeof ResizeObserver === 'function'
-        ? new ResizeObserver(() => {
-            if (
-              followingNewestRef.current &&
-              (window.visualViewport?.scale ?? 1) === 1 &&
-              (!keyboard || composer?.contains(document.activeElement))
-            ) {
-              scrollToNewest(end);
-              attemptVisibleRead();
-            }
-          })
-        : null;
-    observer?.observe(list);
-    if (composerRef.current) observer?.observe(composerRef.current);
-
-    return () => {
-      window.removeEventListener('scroll', trackPosition, { capture: true });
-      window.removeEventListener('scrollend', onScrollEnd, { capture: true });
-      composer?.removeEventListener('focusin', onFocusIn);
-      composer?.removeEventListener('focusout', onFocusOut);
-      window.removeEventListener('touchmove', onUserScroll);
-      window.removeEventListener('wheel', onUserScroll);
-      window.removeEventListener('pointerdown', onPageAction);
-      keyboardExplicitFollowRef.current = null;
-      window.removeEventListener('resize', onViewportResize);
-      window.visualViewport?.removeEventListener('resize', onViewportResize);
-      window.visualViewport?.removeEventListener(
-        'scroll',
-        onVisualViewportScroll,
-      );
-      restoreKeyboardBounds();
-      if (keyboard?.timer !== undefined) window.clearTimeout(keyboard.timer);
-      if (keyboard?.settleTimer !== undefined)
-        window.clearTimeout(keyboard.settleTimer);
-      observer?.disconnect();
-    };
-  }, [
-    attemptVisibleRead,
-    conversationId,
-    conversationMissing,
-    jumpButton,
-    markSeenOnReturn,
-    roomView,
-  ]);
-
-  const jumpTargetLoaded = Boolean(
-    jumpTargetId && messagesById.has(jumpTargetId),
-  );
-
-  useEffect(() => {
-    if (!jumpTargetId || !jumpTargetLoaded) return;
-    const jumpNavigation = jumpNavigationRef.current;
-    const target = document.getElementById(`chat-message-${jumpTargetId}`);
-    const end = messagesEndRef.current;
-    keyboardExplicitFollowRef.current?.();
-    jumpNavigation.programmatic = true;
-    const scrollport = end && chatScrollport(end);
-    const beforeJump = scrollport?.scrollTop;
-    if (typeof target?.scrollIntoView === 'function') {
-      target.scrollIntoView({ block: 'center' });
-    }
-    jumpNavigation.seeking = false;
-    const movedUp =
-      beforeJump !== undefined &&
-      scrollport !== null &&
-      scrollport.scrollTop < beforeJump - 1;
-    const atBottom = Boolean(end && !movedUp && endIsAtNewest(end));
-    followingNewestRef.current =
-      atBottom && (window.visualViewport?.scale ?? 1) === 1;
-    jumpButton.update({ away: !followingNewestRef.current });
-    if (followingNewestRef.current) {
-      markSeenOnReturn();
-      attemptVisibleRead();
-    }
-    const motionTimeout = window.setTimeout(() => {
-      jumpNavigation.programmatic = false;
-    }, 200);
-    const timeout = window.setTimeout(() => {
-      setJumpTargetId(null);
-    }, HIGHLIGHT_DURATION_MS);
-    return () => {
-      window.clearTimeout(motionTimeout);
-      jumpNavigation.programmatic = false;
-      window.clearTimeout(timeout);
-    };
-  }, [
-    attemptVisibleRead,
-    jumpButton,
-    jumpTargetId,
-    jumpTargetLoaded,
-    markSeenOnReturn,
-  ]);
-
+  // Every page that could hold it has been read, or reading on failed for good: it is not coming.
   useEffect(() => {
     if (
       !jumpTargetId ||
@@ -2958,26 +2418,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         (!failedReads.current.has('messages') || olderPageRateLimited.current))
     )
       return;
-    jumpNavigationRef.current.seeking = false;
-    jumpNavigationRef.current.targetId = null;
-    setJumpTargetId(null);
-    if (jumpNavigationRef.current.fromSearch) {
-      followingNewestRef.current = true;
-      jumpButton.update({ away: false });
-      scrollToNewest(messagesEndRef.current);
-      queueVisibleRead(conversationId ?? '', newestMessageId);
-    }
+    scroll.dispatch({ type: 'targetMissing' });
   }, [
-    conversationId,
-    jumpButton,
     jumpTargetId,
     jumpTargetLoaded,
     loadingMore,
     messagesLoaded,
-    newestMessageId,
     olderMessageId,
-    queueVisibleRead,
     readingError,
+    scroll,
   ]);
 
   useEffect(() => {
@@ -3004,32 +2453,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   ]);
 
   const handleJumpToNewest = useCallback(() => {
-    keyboardExplicitFollowRef.current?.();
-    if (jumpNavigationRef.current.seeking) {
-      jumpNavigationRef.current.seeking = false;
-      jumpNavigationRef.current.targetId = null;
-      setJumpTargetId(null);
-    }
-    jumpNavigationRef.current.programmatic = false;
-    followingNewestRef.current = true;
-    jumpButton.update({ away: false });
-    scrollToNewest(messagesEndRef.current);
-    markSeenOnReturn();
-    attemptVisibleRead();
-  }, [attemptVisibleRead, jumpButton, markSeenOnReturn]);
+    scroll.dispatch({ type: 'jumpToNewest' });
+  }, [scroll]);
 
   const handleReplyQuoteClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
-      const targetId = event.currentTarget.dataset.messageId ?? null;
-      if (!targetId || targetId === jumpNavigationRef.current.targetId) return;
-      jumpNavigationRef.current.targetId = targetId;
-      jumpNavigationRef.current.seeking = true;
-      jumpNavigationRef.current.fromSearch = false;
-      followingNewestRef.current = false;
-      jumpButton.update({ away: true });
-      setJumpTargetId(targetId);
+      const targetId = event.currentTarget.dataset.messageId;
+      if (targetId) scroll.dispatch({ type: 'quoteClicked', id: targetId });
     },
-    [jumpButton],
+    [scroll],
   );
 
   const handleBack = useCallback(() => {
@@ -3038,11 +2470,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     );
   }, [conversationId, history, roomView]);
 
-  const isGroupOwner =
-    conversation?.type === 'group' && conversation.current_role === 'owner';
-  const isManagingRoom =
-    (roomView === 'members' && conversation?.type === 'group') ||
-    (roomView === 'settings' && isGroupOwner);
   const listsSentInvitations = roomView === 'members' && isGroupOwner;
 
   useEffect(() => {

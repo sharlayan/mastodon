@@ -107,6 +107,8 @@ const responses = (url: string) => {
 };
 
 const scrollIntoView = vi.fn();
+// The end of the room `bottom` px below the window. When a test lets the room scroll in a box of its own, that box
+// covers the window, as a column does: what can be seen of the room is within it.
 const placedAt = (bottom: number) => {
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
     function (this: Element) {
@@ -117,6 +119,8 @@ const placedAt = (bottom: number) => {
         } as DOMRect;
       if (this.classList.contains('chat-native__composer'))
         return { top: 300, bottom: 350 } as DOMRect;
+      if (this.classList.contains('chat-native'))
+        return { top: 0, bottom: window.innerHeight } as DOMRect;
       return { top: 100, bottom: 150 } as DOMRect;
     },
   );
@@ -1135,6 +1139,8 @@ describe('Review 355b', () => {
   });
 
   it('does not read the newest message while loading an older searched target', async () => {
+    // Opened at an older message: the end of the room, and the newest message above it, are below the screen.
+    placedAt(5000);
     api.get.mockImplementation(
       (url: string, options?: { params?: { max_id?: string } }) => {
         if (url.endsWith('/messages')) {
@@ -1324,6 +1330,8 @@ describe('Review 355b', () => {
   });
 
   it('O1 opening a room at a searched message does not mark the never shown newest one read', async () => {
+    // Opened at an older message: the end of the room, and the newest message above it, are below the screen.
+    placedAt(5000);
     const history = createMemoryHistory({
       initialEntries: [
         { pathname: `/chat/${ROOM}`, state: { chatMessageId: 'message-1' } },
@@ -1673,6 +1681,8 @@ describe('Review f88a', () => {
   });
 
   it('R2 after opening at a searched message, scrolling down reads the newest and follows again', async () => {
+    // Opened at an older message: the end of the room, and the newest message above it, are below the screen.
+    placedAt(5000);
     await openWith('message-1', 'Message 5');
     await wait(3300);
     expect(readsPosted()).toBe(0);
@@ -2862,5 +2872,56 @@ describe('Android visual viewport regressions', () => {
         Object.defineProperty(window, 'visualViewport', originalViewport);
       else Reflect.deleteProperty(window, 'visualViewport');
     }
+  });
+});
+
+describe('A reader scrolling while the screen changes size', () => {
+  // Pixel 1 (android-masto-diag t5): a finger drags down at the end with the address bar collapsed. The bar comes
+  // back, the visual viewport resizes 12 times, and each resize used to pull the page back to the end.
+  const dragWhileResizing = async (endsAt: number) => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 659.4,
+      offsetTop: 0,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    try {
+      await openRoom();
+      placedAt(659.4 - window.innerHeight);
+      scrollIntoView.mockClear();
+      fireEvent.touchMove(window);
+      for (const height of [640, 620, 603.4]) {
+        viewport.height = height;
+        act(() => {
+          viewport.dispatchEvent(new Event('resize'));
+        });
+        fireEvent.touchMove(window);
+      }
+      const whileDragging = endScrolls();
+      placedAt(603.4 - window.innerHeight + endsAt);
+      await wait(250);
+      return { whileDragging, afterDrag: endScrolls() - whileDragging };
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  };
+
+  it('does not pull the reader back while they drag, and aligns once they stop near the newest', async () => {
+    expect(await dragWhileResizing(7)).toEqual({
+      whileDragging: 0,
+      afterDrag: 1,
+    });
+  });
+
+  it('leaves the reader where they stopped when that is away from the newest', async () => {
+    expect(await dragWhileResizing(400)).toEqual({
+      whileDragging: 0,
+      afterDrag: 0,
+    });
   });
 });
