@@ -885,7 +885,7 @@
 
   &__composer {
     position: sticky;
-    bottom: 0;
+    bottom: var(--chat-keyboard-lift, 0px);
     flex-wrap: wrap;
     align-items: flex-end;
     margin-top: auto;
@@ -1036,7 +1036,8 @@
   .chat-native {
     &__composer {
       bottom: calc(
-        var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom, 0px)
+        var(--mobile-bottom-nav-height) + env(safe-area-inset-bottom, 0px) +
+          var(--chat-keyboard-lift, 0px)
       );
     }
 

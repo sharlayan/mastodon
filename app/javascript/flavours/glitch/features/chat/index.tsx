@@ -851,6 +851,15 @@ const chatScrollport = (end: HTMLElement): Element | null => {
   return document.scrollingElement;
 };
 
+// Safari can report an offset even when element rectangles are already based
+// on the visual viewport (including a collapsed browser toolbar).
+const visualViewportTop = (keyboardFocused: boolean) => {
+  const viewport = window.visualViewport;
+  if (!viewport || keyboardFocused || window.innerHeight <= viewport.height + 2)
+    return 0;
+  return Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0;
+};
+
 const messageIsVisible = (
   list: HTMLElement | null,
   composer: HTMLElement | null,
@@ -866,7 +875,9 @@ const messageIsVisible = (
   const message = document.getElementById(`chat-message-${id}`);
   if (!message || !list.contains(message)) return false;
   const bounds = message.getBoundingClientRect();
-  const viewportTop = window.visualViewport?.offsetTop ?? 0;
+  const viewportTop = visualViewportTop(
+    usesTouchKeyboard() && composer.contains(document.activeElement),
+  );
   const scrollport = chatScrollport(message);
   const scrollBounds = scrollport?.getBoundingClientRect();
   const top = Math.max(viewportTop, scrollBounds?.top ?? viewportTop);
@@ -899,7 +910,18 @@ const scrollToNewest = (end: HTMLElement | null) => {
         last.getBoundingClientRect().bottom -
         composer.getBoundingClientRect().top +
         16;
-      if (delta > 0) scrollport.scrollTop += delta;
+      // Safari can shrink its visual viewport when asked to scroll beyond the
+      // document end. Cap the reveal so a resize cannot request it again.
+      const height =
+        scrollport === document.scrollingElement
+          ? window.innerHeight
+          : scrollport.clientHeight;
+      const remaining = Math.max(
+        0,
+        scrollport.scrollHeight - height - scrollport.scrollTop,
+      );
+      if (delta > 0 && remaining > 0)
+        scrollport.scrollTop += Math.min(delta, remaining);
     }
     return;
   }
@@ -912,15 +934,27 @@ const scrollToNewest = (end: HTMLElement | null) => {
 };
 
 const endIsAtNewest = (end: HTMLElement) => {
+  const composer = end.previousElementSibling;
+  const keyboardFocused =
+    usesTouchKeyboard() && composer?.contains(document.activeElement);
   const visibleBottom =
-    (window.visualViewport?.offsetTop ?? 0) +
+    visualViewportTop(Boolean(keyboardFocused)) +
     (window.visualViewport?.height ?? window.innerHeight);
   const endBottom = end.getBoundingClientRect().bottom;
   const scrollport = chatScrollport(end);
+  const navigation = document.querySelector('.ui__navigation-bar');
+  const navigationBounds = navigation?.getBoundingClientRect();
+  const navigationTop =
+    navigationBounds &&
+    navigationBounds.height > 0 &&
+    navigationBounds.top <= visibleBottom &&
+    navigationBounds.bottom >= visibleBottom - 2
+      ? navigationBounds.top
+      : visibleBottom;
   const viewportBottom =
     scrollport && scrollport !== document.scrollingElement
       ? Math.min(visibleBottom, scrollport.getBoundingClientRect().bottom)
-      : visibleBottom;
+      : navigationTop;
   return (
     Math.abs(endBottom - viewportBottom) <= 2 ||
     Boolean(
@@ -2535,6 +2569,64 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       following: boolean;
       timer?: number;
     } | null = null;
+    const navigation = document.querySelector<HTMLElement>(
+      '.ui__navigation-bar',
+    );
+    let previousNavigationBottom = '';
+    let previousNavigationPriority = '';
+    let previousComposerLift = '';
+    let previousComposerPriority = '';
+    let keyboardBoundsApplied = false;
+    const restoreKeyboardBounds = () => {
+      if (!keyboardBoundsApplied) return;
+      keyboardBoundsApplied = false;
+      if (navigation) {
+        if (previousNavigationBottom)
+          navigation.style.setProperty(
+            'bottom',
+            previousNavigationBottom,
+            previousNavigationPriority,
+          );
+        else navigation.style.removeProperty('bottom');
+      }
+      if (composer) {
+        if (previousComposerLift)
+          composer.style.setProperty(
+            '--chat-keyboard-lift',
+            previousComposerLift,
+            previousComposerPriority,
+          );
+        else composer.style.removeProperty('--chat-keyboard-lift');
+      }
+    };
+    const updateKeyboardBounds = () => {
+      const viewport = window.visualViewport;
+      if (
+        !keyboard ||
+        viewport?.scale !== 1 ||
+        (keyboard.scrollport &&
+          keyboard.scrollport !== document.scrollingElement)
+      ) {
+        restoreKeyboardBounds();
+        return;
+      }
+      // Fixed and sticky elements use innerHeight on iOS, even when only the
+      // shorter visual viewport remains above the keyboard and Safari toolbar.
+      const lift = Math.max(0, window.innerHeight - viewport.height);
+      if (!keyboardBoundsApplied) {
+        previousNavigationBottom =
+          navigation?.style.getPropertyValue('bottom') ?? '';
+        previousNavigationPriority =
+          navigation?.style.getPropertyPriority('bottom') ?? '';
+        previousComposerLift =
+          composer?.style.getPropertyValue('--chat-keyboard-lift') ?? '';
+        previousComposerPriority =
+          composer?.style.getPropertyPriority('--chat-keyboard-lift') ?? '';
+        keyboardBoundsApplied = true;
+      }
+      navigation?.style.setProperty('bottom', `${lift}px`);
+      composer?.style.setProperty('--chat-keyboard-lift', `${lift}px`);
+    };
     const finishKeyboard = () => {
       if (!keyboard) return;
       if ((window.visualViewport?.scale ?? 1) === 1) {
@@ -2550,6 +2642,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (keyboard.settleTimer !== undefined)
         window.clearTimeout(keyboard.settleTimer);
       keyboard = null;
+      restoreKeyboardBounds();
     };
     const scheduleKeyboardFinish = (delay: number) => {
       if (!keyboard) return;
@@ -2577,6 +2670,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         restorePosition: true,
         following: followingNewestRef.current,
       };
+      updateKeyboardBounds();
     };
     const onFocusOut = () => {
       scheduleKeyboardFinish(700);
@@ -2630,8 +2724,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (jumpNavigationRef.current.seeking) return;
       if (keyboard && !keyboard.userScrolling) return;
       const viewportBottom = keyboard
-        ? (window.visualViewport?.offsetTop ?? 0) +
-          (window.visualViewport?.height ?? window.innerHeight)
+        ? (window.visualViewport?.height ?? window.innerHeight)
         : window.innerHeight;
       const following =
         end.getBoundingClientRect().bottom - viewportBottom <
@@ -2683,16 +2776,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const heightChanged = height !== viewportHeight;
       viewportScale = scale;
       viewportHeight = height;
+      if (keyboard) updateKeyboardBounds();
       if (scaleChanged && scale === 1 && zoomScrolled) {
         zoomScrolled = false;
-        const scrollport = chatScrollport(end);
-        const atBottom = scrollport
-          ? scrollport.scrollHeight -
-              scrollport.clientHeight -
-              scrollport.scrollTop <=
-            2
-          : end.getBoundingClientRect().bottom <= window.innerHeight + 2;
-        if (atBottom && !jumpNavigationRef.current.targetId) {
+        if (endIsAtNewest(end) && !jumpNavigationRef.current.targetId) {
           followingNewestRef.current = true;
           if (keyboard) keyboard.following = true;
           jumpButton.update({ away: false });
@@ -2713,6 +2800,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             scheduleKeyboardFinish(200);
           else if (keyboard.timer !== undefined) scheduleKeyboardFinish(700);
         }
+        attemptVisibleRead();
         return;
       }
       if (
@@ -2723,8 +2811,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       )
         scrollToNewest(end);
     };
+    const onVisualViewportScroll = () => {
+      if (keyboard) updateKeyboardBounds();
+      attemptVisibleRead();
+    };
     window.addEventListener('resize', onViewportResize);
     window.visualViewport?.addEventListener('resize', onViewportResize);
+    window.visualViewport?.addEventListener('scroll', onVisualViewportScroll);
 
     const observer =
       typeof ResizeObserver === 'function'
@@ -2753,6 +2846,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       keyboardExplicitFollowRef.current = null;
       window.removeEventListener('resize', onViewportResize);
       window.visualViewport?.removeEventListener('resize', onViewportResize);
+      window.visualViewport?.removeEventListener(
+        'scroll',
+        onVisualViewportScroll,
+      );
+      restoreKeyboardBounds();
       if (keyboard?.timer !== undefined) window.clearTimeout(keyboard.timer);
       if (keyboard?.settleTimer !== undefined)
         window.clearTimeout(keyboard.settleTimer);
@@ -2773,16 +2871,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   useEffect(() => {
     if (!jumpTargetId || !jumpTargetLoaded) return;
+    const jumpNavigation = jumpNavigationRef.current;
     const target = document.getElementById(`chat-message-${jumpTargetId}`);
     const end = messagesEndRef.current;
     keyboardExplicitFollowRef.current?.();
-    jumpNavigationRef.current.programmatic = true;
+    jumpNavigation.programmatic = true;
     const scrollport = end && chatScrollport(end);
     const beforeJump = scrollport?.scrollTop;
     if (typeof target?.scrollIntoView === 'function') {
       target.scrollIntoView({ block: 'center' });
     }
-    jumpNavigationRef.current.seeking = false;
+    jumpNavigation.seeking = false;
     const movedUp =
       beforeJump !== undefined &&
       scrollport !== null &&
@@ -2796,14 +2895,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       attemptVisibleRead();
     }
     const motionTimeout = window.setTimeout(() => {
-      jumpNavigationRef.current.programmatic = false;
+      jumpNavigation.programmatic = false;
     }, 200);
     const timeout = window.setTimeout(() => {
       setJumpTargetId(null);
     }, HIGHLIGHT_DURATION_MS);
     return () => {
       window.clearTimeout(motionTimeout);
-      jumpNavigationRef.current.programmatic = false;
+      jumpNavigation.programmatic = false;
       window.clearTimeout(timeout);
     };
   }, [
