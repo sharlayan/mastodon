@@ -1,12 +1,13 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 
 import { me } from 'flavours/glitch/initial_state';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
-import { fetchAccountSwitches, setLinkedUnreadCounts } from './actions';
+import { refreshAccountSwitches, setLinkedUnreadCounts } from './actions';
 import { apiGetLinkedUnreadCounts } from './api';
 
 const POLL_INTERVAL_MS = 5 * 60_000;
+const INITIAL_RETRY_MS = 30_000;
 
 export const LinkedNotificationsPoller: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -27,18 +28,50 @@ export const LinkedNotificationsPoller: React.FC = () => {
     )?.some((item) => item.get('session_authorized') === true),
   );
 
+  const [initialAttempt, setInitialAttempt] = useState(0);
+
   useEffect(() => {
-    if (!loaded) {
-      void dispatch(fetchAccountSwitches());
-    }
-  }, [dispatch, loaded]);
+    if (!me || loaded) return;
+
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const retry = () => {
+      if (!cancelled) setInitialAttempt((attempt) => attempt + 1);
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden && retryTimer === undefined) retry();
+    };
+
+    void dispatch(refreshAccountSwitches())
+      .unwrap()
+      .then((data) => {
+        if (data || cancelled) return;
+
+        const delay = Math.min(
+          INITIAL_RETRY_MS * 2 ** initialAttempt,
+          POLL_INTERVAL_MS,
+        );
+        retryTimer = setTimeout(() => {
+          retryTimer = undefined;
+          if (!document.hidden) retry();
+        }, delay);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+      });
+
+    return () => {
+      cancelled = true;
+      if (retryTimer !== undefined) clearTimeout(retryTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [dispatch, loaded, initialAttempt]);
 
   const poll = useCallback(async () => {
     if (!me || !hasAuthorizedLinkedAccounts || pollingRef.current) return;
 
     pollingRef.current = true;
     try {
-      const switches = await dispatch(fetchAccountSwitches()).unwrap();
+      const switches = await dispatch(refreshAccountSwitches()).unwrap();
+      if (!switches) return;
       if (!switches.children.some((item) => item.session_authorized)) {
         dispatch(setLinkedUnreadCounts({}));
         return;

@@ -6,8 +6,11 @@ import {
 
 import type { ApiAccountSwitchesResponseJSON } from './api_types';
 
-export const apiGetAccountSwitches = () =>
-  apiRequestGet<ApiAccountSwitchesResponseJSON>('v1/account_switches');
+export const apiGetAccountSwitches = (passive = false) =>
+  apiRequestGet<ApiAccountSwitchesResponseJSON>(
+    'v1/account_switches',
+    passive ? { passive: true } : undefined,
+  );
 
 export const apiDeleteAccountSwitch = (id: string) =>
   apiRequestDelete(`v1/account_switches/${id}`);
