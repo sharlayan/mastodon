@@ -22,6 +22,24 @@ RSpec.describe RemoteMediaDownloadBudget do
     expect(subject).to_not be_available
   end
 
+  it 'charges stored bytes for a completed download' do
+    subject.charge_download(80, 'https://remote.example/file', 30)
+
+    expect(subject.size_limit(200)).to eq(70)
+  end
+
+  it 'charges the allowance for a download that left no file' do
+    subject.charge_download(80, 'https://remote.example/file', nil)
+
+    expect(subject.size_limit(200)).to eq(20)
+  end
+
+  it 'does not charge when no download was attempted' do
+    subject.charge_download(80, '', nil)
+
+    expect(subject.size_limit(200)).to eq(100)
+  end
+
   it 'becomes unavailable when the time budget is exhausted' do
     allow(clock).to receive(:call).and_return(10.0, 15.0)
 
