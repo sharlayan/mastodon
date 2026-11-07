@@ -83,7 +83,7 @@ class AvatarDecoration < ApplicationRecord
 
     CONFIG_BOUNDS.each do |key, bounds|
       raw = config_value(source, key)
-      raw = CONFIG_DEFAULTS[key] if raw.nil?
+      raw = CONFIG_DEFAULTS[key] unless raw.is_a?(Numeric) || raw.is_a?(String)
       config[key] = raw.to_f.clamp(bounds)
     end
 
