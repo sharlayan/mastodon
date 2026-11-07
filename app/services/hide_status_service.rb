@@ -62,7 +62,7 @@ class HideStatusService < BaseService
   def hide_reblogs
     return if @status.reblog?
 
-    Status.unscoped.where(reblog_of_id: @status.id).find_each do |reblog|
+    Status.unscoped.kept.where(reblog_of_id: @status.id).find_each do |reblog|
       HideStatusService.new.call(reblog, **@options)
     end
   end

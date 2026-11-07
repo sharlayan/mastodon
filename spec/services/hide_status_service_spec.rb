@@ -174,4 +174,16 @@ RSpec.describe HideStatusService do
       expect(conversation.last_status_id).to eq first.id
     end
   end
+
+  context 'with a boost that is already being removed' do
+    it 'does not hide it again or decrement its counters twice' do
+      status = PostStatusService.new.call(alice, text: 'boosted')
+      booster = Fabricate(:account)
+      boost = ReblogService.new.call(booster, status)
+      boost.discard
+
+      expect { subject.call(status) }.to_not(change { booster.reload.statuses_count })
+      expect(RpHiddenStatus.exists?(status_id: boost.id)).to be(false)
+    end
+  end
 end
