@@ -1,4 +1,4 @@
-// Run from the repository root with `node .../actions_hover.browser.mjs`.
+// Run from the repository root with `node .../actions_hover.mjs`.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
