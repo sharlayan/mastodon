@@ -283,6 +283,26 @@ RSpec.describe 'Account switching' do
     end
   end
 
+  describe 'with a self-referencing link left by an earlier version' do
+    before { AccountSwitchAuthorization.new(account: parent, target_account: parent, push_forward: true).save!(validate: false) }
+
+    it 'does not switch the account into itself' do
+      sign_in parent_user
+      post switch_account_path, params: { switch_to: parent.id }
+
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_unauthorized'))
+      expect(account_switches_as(parent_user)[:parent]).to be_nil
+    end
+
+    it 'does not forward the account notifications to itself' do
+      allow(Web::LinkedPushNotificationWorker).to receive(:perform_async)
+
+      NotifyService.new.call(parent, :favourite, Fabricate(:favourite, status: Fabricate(:status, account: parent)))
+
+      expect(Web::LinkedPushNotificationWorker).to_not have_received(:perform_async)
+    end
+  end
+
   describe 'switching to an unauthorized account' do
     it 'refuses and keeps the current account signed in' do
       sign_in parent_user

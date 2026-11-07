@@ -78,6 +78,8 @@ module Sharlayan::SessionsControllerExtensions
   end
 
   def compute_switch_stack(parent_stack, target_account)
+    return if target_account.id == current_account.id
+
     if parent_stack.present?
       root_account_id = parent_stack.first
 
