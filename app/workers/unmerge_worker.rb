@@ -16,6 +16,8 @@ class UnmergeWorker
       unmerge_from_home!(into_id)
     when 'list'
       unmerge_from_list!(into_id)
+    when 'antenna'
+      unmerge_from_antennas!(into_id)
     end
   rescue ActiveRecord::RecordNotFound
     true
@@ -30,6 +32,16 @@ class UnmergeWorker
 
     with_read_replica do
       FeedManager.instance.unmerge_from_home(@from_account, @into_account)
+    end
+  end
+
+  def unmerge_from_antennas!(into_account_id)
+    with_primary do
+      @into_account = Account.find(into_account_id)
+    end
+
+    with_read_replica do
+      FeedManager.instance.unmerge_private_from_antennas(@from_account, @into_account)
     end
   end
 

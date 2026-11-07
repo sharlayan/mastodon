@@ -27,7 +27,7 @@ RSpec.describe MuteWorker do
     end
 
     context 'with feed contents' do
-      let(:manager_service) { instance_double(FeedManager, clear_from_home: nil, clear_from_lists: nil) }
+      let(:manager_service) { instance_double(FeedManager, clear_from_home: nil, clear_from_lists: nil, clear_from_antennas: nil) }
 
       before { allow(FeedManager).to receive(:instance).and_return manager_service }
 
@@ -38,6 +38,8 @@ RSpec.describe MuteWorker do
           .to have_received(:clear_from_home).with(account, target_account)
         expect(manager_service)
           .to have_received(:clear_from_lists).with(account, target_account)
+        expect(manager_service)
+          .to have_received(:clear_from_antennas).with(account, target_account)
       end
     end
   end
