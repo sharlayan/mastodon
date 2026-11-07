@@ -156,6 +156,18 @@ RSpec.describe PostStatusService do
       expect(circle.statuses).to include(status)
     end
 
+    it 'accepts allowed mentions that omit circle members' do
+      follower = Fabricate(:account)
+      follower.follow!(account)
+      circle.circle_accounts.create!(account: follower)
+      Setting.circles_enabled = true
+
+      status = subject.call(account, text: 'circle post', circle_id: circle.id, allowed_mentions: [])
+
+      expect(status).to be_persisted
+      expect(status.mentions.map(&:account_id)).to eq [follower.id]
+    end
+
     it 'returns the existing status when the selected circle has been deleted' do
       Setting.circles_enabled = true
       options = { text: 'circle post', visibility: :private, circle_id: circle.id, idempotency: 'deleted-circle' }
