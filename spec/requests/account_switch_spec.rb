@@ -93,6 +93,21 @@ RSpec.describe 'Account switching' do
       Setting.server_stored_account_switching_enabled = true
     end
 
+    it 'completes adding an account that is already linked' do
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: child_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
+
+      expect(response).to have_http_status(200)
+      expect(AccountSwitchDevice.find_by!(account: child)).to be_trusted
+    end
+
+    it 'does not link an account to itself' do
+      expect do
+        post multi_accounts_auth_sign_in_path(state: state), params: { user: { email: parent_user.email, password: '123456789' } }
+      end.to_not change(AccountSwitchAuthorization, :count)
+    end
+
     it 'renders and completes an existing link as reauthentication' do
       MultiAccounts::StateStore.update!(state, reauthenticate_account_id: child.id)
 

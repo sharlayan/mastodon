@@ -144,7 +144,7 @@ class MultiAccounts::AuthController < ApplicationController
       return
     end
 
-    AccountSwitchAuthorization.create_or_find_by!(account: source_account, target_account: target_account) unless @reauthentication
+    AccountSwitchAuthorization.find_or_create_by!(account: source_account, target_account: target_account) unless @reauthentication
     trust_account_switch_device(target_account)
 
     @result_state = @state
