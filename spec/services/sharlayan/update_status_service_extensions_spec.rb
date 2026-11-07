@@ -19,29 +19,54 @@ RSpec.describe Sharlayan::UpdateStatusServiceExtensions do
     end
   end
 
-  describe '#apply_sharlayan_immediate_attributes' do
-    it 'keeps edited MFM source synchronized with status text' do
-      status = instance_double(Status, mfm?: true, text: '$[tada edited]')
-      allow(status).to receive(:mfm_text=)
-      service.instance_variable_set(:@status, status)
-      service.instance_variable_set(:@options, { text: '$[tada edited]' })
+  describe 'MFM on edit' do
+    let(:account) { Fabricate(:account) }
 
-      service.send(:apply_sharlayan_immediate_attributes)
+    around do |example|
+      mfm_enabled = Setting.mfm_enabled
+      mfm_allow_composition = Setting.mfm_allow_composition
+      example.run
+    ensure
+      Setting.mfm_enabled = mfm_enabled
+      Setting.mfm_allow_composition = mfm_allow_composition
+    end
 
-      expect(status).to have_received(:mfm_text=).with('$[tada edited]')
+    before do
+      Setting.mfm_enabled = true
+      Setting.mfm_allow_composition = true
+    end
+
+    it 'turns a plain status into MFM when MFM syntax is added' do
+      status = PostStatusService.new.call(account, text: 'plain')
+
+      service.call(status, account.id, text: '$[tada edited]')
+
+      expect(status.reload).to have_attributes(mfm: true, mfm_text: '$[tada edited]')
+    end
+
+    it 'clears MFM when the syntax is removed' do
+      status = PostStatusService.new.call(account, text: '$[tada first]')
+
+      service.call(status, account.id, text: 'plain')
+
+      expect(status.reload).to have_attributes(mfm: false, mfm_text: nil)
+    end
+
+    it 'does not switch to the MFM content type while composition is disabled' do
+      status = PostStatusService.new.call(account, text: 'plain')
+      Setting.mfm_allow_composition = false
+
+      service.call(status, account.id, text: '$[x2 edited]', content_type: 'text/x-mfm')
+
+      expect(status.reload).to have_attributes(content_type: 'text/plain', mfm: false)
     end
 
     it 'does not change sensitivity when no related option is submitted' do
-      status = instance_double(Status, mfm?: false, text: 'plain')
-      allow(status).to receive(:mfm_text=)
-      allow(status).to receive(:sensitive=)
-      service.instance_variable_set(:@status, status)
-      service.instance_variable_set(:@options, { text: 'plain' })
+      status = PostStatusService.new.call(account, text: 'plain', sensitive: true, media_ids: [])
 
-      service.send(:apply_sharlayan_immediate_attributes)
+      service.call(status, account.id, text: 'edited')
 
-      expect(status).to have_received(:mfm_text=).with(nil)
-      expect(status).to_not have_received(:sensitive=)
+      expect(status.reload.sensitive).to be(true)
     end
   end
 end
