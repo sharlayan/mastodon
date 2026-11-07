@@ -27,7 +27,6 @@ get '/drive_media/:id/(:style)', to: 'drive_media#show', as: :drive_media, forma
 
 namespace :multi_accounts do
   resource :entry, only: [:show], controller: :entries
-  resource :callback, only: [:show], controller: :callbacks
 
   scope :auth, controller: :auth do
     get 'sign_in', action: :new, as: :auth_sign_in
