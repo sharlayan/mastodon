@@ -29,6 +29,7 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :linked_unread_counts]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: [:destroy, :destroy_inbound, :create_push_forward, :destroy_push_forward]
   before_action :require_user!
+  before_action :require_web_app_token!
   before_action :require_root_account, only: [:destroy]
   before_action :set_authorization, only: [:destroy]
   before_action :set_inbound_authorization, only: [:destroy_inbound]
@@ -131,6 +132,10 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   end
 
   private
+
+  def require_web_app_token!
+    render json: { error: 'This method requires a web session token' }, status: 403 unless doorkeeper_token&.application&.superapp?
+  end
 
   def linked_unread_counts_for(authorizations)
     pairs = authorizations.filter_map do |authorization|

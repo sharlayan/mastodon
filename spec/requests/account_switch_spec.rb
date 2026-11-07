@@ -8,6 +8,7 @@ RSpec.describe 'Account switching' do
   let(:child_user)  { Fabricate(:user) }
   let(:child)       { child_user.account }
   let(:other_user)  { Fabricate(:user) }
+  let(:web_app)     { Fabricate(:application, superapp: true) }
 
   let!(:authorization) { Fabricate(:account_switch_authorization, account: parent, target_account: child) }
 
@@ -25,7 +26,7 @@ RSpec.describe 'Account switching' do
   end
 
   def account_switches_as(user)
-    token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:accounts')
+    token = Fabricate(:accessible_access_token, application: web_app, resource_owner_id: user.id, scopes: 'read:accounts')
     get '/api/v1/account_switches', headers: { 'Authorization' => "Bearer #{token.token}" }
     response.parsed_body
   end
@@ -219,7 +220,7 @@ RSpec.describe 'Account switching' do
 
   describe 'background polling from the switcher' do
     def poll_as(user, path)
-      token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read:accounts')
+      token = Fabricate(:accessible_access_token, application: web_app, resource_owner_id: user.id, scopes: 'read:accounts')
       get path, headers: { 'Authorization' => "Bearer #{token.token}" }
       response.headers['Set-Cookie']
     end
