@@ -61,14 +61,18 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
     end
 
     it 'reports an export with nothing in it instead of storing an empty file' do
-      post '/api/i/export-blocking', params: { i: token }, as: :json
+      %w(i/export-following i/export-blocking i/export-mute i/export-user-lists).each do |endpoint|
+        post "/api/#{endpoint}", params: { i: token }, as: :json
 
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig('error', 'code')).to eq('NOTHING_TO_EXPORT')
+        expect(response).to have_http_status(400), endpoint
+        expect(response.parsed_body.dig('error', 'code')).to eq('NOTHING_TO_EXPORT')
+      end
+
       expect(account.drive_files).to be_empty
     end
 
     it 'keeps generated exports editable after creation' do
+      account.follow!(Fabricate(:account))
       post '/api/i/export-following', params: { i: token }, as: :json
 
       drive_file = account.drive_files.last
@@ -79,6 +83,7 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
 
     it 'stores the clips export as JSON when clips are enabled' do
       Setting.clips_enabled = true
+      Fabricate(:clip, account: account)
 
       post '/api/i/export-clips', params: { i: token }, as: :json
 
@@ -93,8 +98,8 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
 
       post '/api/i/export-clips', params: { i: token }, as: :json
 
-      expect(response).to have_http_status(501)
-      expect(response.parsed_body.dig('error', 'code')).to eq('UNSUPPORTED_ENDPOINT')
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig('error', 'code')).to eq('UNAVAILABLE')
     end
 
     it 'requires the drive for file exports' do
@@ -170,6 +175,16 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
 
       expect(response).to have_http_status(400)
       expect(response.parsed_body['error']).to include('code' => 'NO_SUCH_FILE', 'id' => 'e674141e-bd2a-ba85-e616-aefb187c9c2a')
+    end
+
+    it 'returns the Misskey error when the stored file is missing' do
+      drive_file = upload_drive_csv("bob@remote.example\n")
+      File.delete(drive_file.file.path)
+
+      post '/api/i/import-following', params: { i: token, fileId: mi(drive_file.id) }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body['error']).to include('code' => 'NO_SUCH_FILE', 'id' => 'b98644cf-a5ac-4277-a502-0b8054a709a3')
     end
 
     it 'returns the Misskey error for an empty file' do

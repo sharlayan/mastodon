@@ -116,6 +116,10 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     current_misskey_grant&.native_user_token? && current_token.scopes.exists?(MisskeyCompat::MiAuth::TOKEN_SCOPE)
   end
 
+  def require_drive_enabled!
+    render_error('Drive is not available on this server', 'UNAVAILABLE', 400) unless Setting.drive_enabled
+  end
+
   def require_native_user_token!
     return if native_user_token?
 

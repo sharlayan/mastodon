@@ -8,10 +8,10 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
   IMPORT_ACTIONS = %i(import_following import_blocking import_muting import_user_lists).freeze
 
   EXPORTS = {
-    following: { filename: 'following_accounts', extension: 'csv', content_type: 'text/csv', method: :to_following_accounts_csv },
-    blocking: { filename: 'blocked_accounts', extension: 'csv', content_type: 'text/csv', method: :to_blocked_accounts_csv },
-    muting: { filename: 'muted_accounts', extension: 'csv', content_type: 'text/csv', method: :to_muted_accounts_csv },
-    lists: { filename: 'lists', extension: 'csv', content_type: 'text/csv', method: :to_lists_csv },
+    following: { filename: 'following_accounts', extension: 'csv', content_type: 'text/csv', method: :to_following_accounts_csv, header_lines: 1 },
+    blocking: { filename: 'blocked_accounts', extension: 'csv', content_type: 'text/csv', method: :to_blocked_accounts_csv, header_lines: 0 },
+    muting: { filename: 'muted_accounts', extension: 'csv', content_type: 'text/csv', method: :to_muted_accounts_csv, header_lines: 1 },
+    lists: { filename: 'lists', extension: 'csv', content_type: 'text/csv', method: :to_lists_csv, header_lines: 0 },
     clips: { filename: 'clips', extension: 'json', content_type: 'application/json', method: :to_clips_json },
   }.freeze
 
@@ -48,6 +48,7 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
   before_action :require_user!
   before_action :require_native_user_token!
   before_action :require_drive_enabled!, except: :export_notes
+  before_action :require_clips_enabled!, only: :export_clips
   before_action :enforce_account_data_rate_limit!
 
   rescue_from Mastodon::NotPermittedError, Mastodon::RaceConditionError do
@@ -71,8 +72,6 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
   end
 
   def export_clips
-    return render_error('This endpoint is not supported on this server', 'UNSUPPORTED_ENDPOINT', 501, kind: 'server') unless Setting.clips_enabled
-
     export_to_drive(:clips)
   end
 
@@ -106,8 +105,8 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
 
   private
 
-  def require_drive_enabled!
-    render_error('Drive is not available on this server', 'UNAVAILABLE', 400) unless Setting.drive_enabled
+  def require_clips_enabled!
+    render_error('Clips are not available on this server', 'UNAVAILABLE', 400) unless Setting.clips_enabled
   end
 
   def enforce_account_data_rate_limit!
@@ -117,7 +116,7 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
   def export_to_drive(kind)
     definition = EXPORTS.fetch(kind)
     data = Export.new(current_account).public_send(definition[:method])
-    return render_error('Nothing to export', 'NOTHING_TO_EXPORT', 400) if data.empty?
+    return render_error('Nothing to export', 'NOTHING_TO_EXPORT', 400) if export_empty?(definition, data)
 
     filename = "#{definition[:filename]}-#{Time.now.utc.strftime('%Y-%m-%d-%H-%M-%S')}.#{definition[:extension]}"
 
@@ -137,6 +136,12 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
     render_error('The exported file could not be stored in the drive', 'INVALID_FILE', 422)
   end
 
+  def export_empty?(definition, data)
+    return JSON.parse(data).values.all?(&:empty?) if definition[:extension] == 'json'
+
+    data.lines.size <= definition[:header_lines]
+  end
+
   def import_from_drive(type)
     drive_file = current_account.drive_files.find_by(id: params[:fileId])
     return import_error(type, :no_such_file, 'No such file', 'NO_SUCH_FILE') if drive_file.nil?
@@ -153,16 +158,15 @@ class Api::MisskeyCompat::AccountDataController < Api::MisskeyCompat::BaseContro
       BulkImportWorker.perform_async(import.bulk_import.id)
       head 204
     end
+  rescue Errno::ENOENT, Seahorse::Client::NetworkingError
+    import_error(type, :no_such_file, 'No such file', 'NO_SUCH_FILE')
   end
 
   def with_import_upload(drive_file)
-    Tempfile.create(['misskey-import', '.csv']) do |tempfile|
-      tempfile.binmode
-      IO.copy_stream(Paperclip.io_adapters.for(drive_file.file), tempfile)
-      tempfile.rewind
-
-      yield ActionDispatch::Http::UploadedFile.new(tempfile: tempfile, filename: drive_file.display_name.presence || 'import.csv', type: 'text/csv')
-    end
+    adapter = Paperclip.io_adapters.for(drive_file.file)
+    yield ActionDispatch::Http::UploadedFile.new(tempfile: adapter, filename: drive_file.display_name.presence || 'import.csv', type: 'text/csv')
+  ensure
+    adapter&.close!
   end
 
   def import_error(type, error, message, code)
