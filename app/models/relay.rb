@@ -49,11 +49,11 @@ class Relay < ApplicationRecord
   end
 
   def pause!
-    update!(state: :paused)
+    update!(state: :paused) if accepted?
   end
 
   def resume!
-    update!(state: :accepted)
+    update!(state: :accepted) if paused?
   end
 
   private
