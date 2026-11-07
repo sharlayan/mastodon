@@ -2096,3 +2096,134 @@ describe('Review 2963', () => {
     expect(live).toEqual(reread);
   });
 });
+
+// ---- Review 355b: reproductions appended to a copy of review_boundaries_a1b5.test.tsx ----
+const script: { hold?: Promise<void>; status?: number }[] = [];
+const useScriptedSnapshotRooms = () => {
+  server.use(
+    http.get('*/api/v1/chat/conversations', async ({ request }) => {
+      const url = new URL(request.url);
+      backend.reads.push(url.pathname + url.search);
+      const step = script.shift();
+      const id = url.searchParams.get('max_id');
+      const snapshot = url.searchParams.get('max_id_message_id');
+      const boundary =
+        snapshot === null ? (id ? lastId(id) : 0) : Number(snapshot);
+      const body = [...backend.rooms.keys()]
+        .sort(roomOrder)
+        .filter(
+          (roomId) =>
+            !id ||
+            lastId(roomId) < boundary ||
+            (lastId(roomId) === boundary && Number(roomId) < Number(id)),
+        )
+        .slice(0, 20)
+        .map((roomId) => room(roomId));
+      if (step?.hold) await step.hold;
+      if (step?.status === 429)
+        return HttpResponse.json(
+          { error: 'test 429' },
+          { status: 429, headers: { 'Retry-After': '20' } },
+        );
+      return HttpResponse.json(body as never, {
+        headers: {
+          'X-Chat-Cursor-Message-Id': String(lastId(body.at(-1)?.id ?? '')),
+        },
+      });
+    }),
+  );
+};
+const gate = () => {
+  let release!: () => void;
+  const hold = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { hold, release };
+};
+
+describe('Review 355b list', () => {
+  beforeEach(() => {
+    script.length = 0;
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'Date'],
+    });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    server.resetHandlers();
+  });
+
+  for (const second of [false, true]) {
+    it(`L1 late 429 from a left screen, then the reread waits for the deadline (${second ? 'two' : 'one'} reread signals)`, async () => {
+      for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
+      useScriptedSnapshotRooms();
+      const page = await loadPage();
+      await connect(page.socket);
+      // Screen A asks for the list; its answer, a 429, comes only after A is gone.
+      const stale = gate();
+      script.push({ hold: stale.hold, status: 429 });
+      page.open('/chat');
+      await waitFor(() => {
+        expect(readsOf(ROOMS).length).toBe(1);
+      });
+      act(() => {
+        page.history.push('/home');
+      });
+      await settle();
+      act(() => {
+        page.history.push('/chat');
+      });
+      await waitFor(() => {
+        expect(listed()).toContain('26');
+      });
+      await settle();
+      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+      await waitFor(() => {
+        expect(listed()).toContain('6');
+      });
+      await settle();
+      // The stream comes back: the reread's first page is on its way.
+      const reread = gate();
+      script.push({ hold: reread.hold });
+      const socket = await dropConnection(page.socket);
+      const before = readsOf(ROOMS).length;
+      await connect(socket);
+      await waitFor(() => {
+        expect(readsOf(ROOMS).length).toBe(before + 1);
+      });
+      if (second)
+        await act(async () => {
+          socket.subscribed();
+          await Promise.resolve();
+        });
+      await settle();
+      await act(async () => {
+        stale.release();
+        await stale.hold;
+      });
+      await settle();
+      await act(async () => {
+        reread.release();
+        await reread.hold;
+      });
+      await settle();
+      const atRelease = readsOf(ROOMS).length;
+      await later(19_000);
+      const beforeDeadline = readsOf(ROOMS).slice(atRelease);
+      await later(6_000);
+      await settle();
+      await later(2_000);
+      await settle();
+      const afterDeadline = readsOf(ROOMS).slice(atRelease);
+      const after = listed();
+      expect(beforeDeadline).toEqual([]);
+      expect(duplicates(after)).toEqual([]);
+      // One reread is two pages; any more is a request whose answer nobody uses.
+      const cursorReads = afterDeadline.filter((read) =>
+        read.includes('max_id='),
+      );
+      expect(cursorReads.length).toBe(1);
+    }, 90_000);
+  }
+});

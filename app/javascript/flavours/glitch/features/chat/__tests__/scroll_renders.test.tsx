@@ -959,3 +959,388 @@ describe('Scrolling in a room', () => {
     expect(screen.queryByText('New messages')).toBeNull();
   });
 });
+
+// ---- Review 355b: reproductions appended to a copy of scroll_renders.test.tsx ----
+const withQuote = () => {
+  api.get.mockImplementation((url: string) => {
+    if (url.endsWith('/messages'))
+      return Promise.resolve({
+        data: Array.from({ length: 6 }, (_, index) => ({
+          ...messageFrom(index),
+          reply_to_id: index === 5 ? 'message-1' : null,
+        })),
+      });
+    return Promise.resolve({ data: responses(url) });
+  });
+};
+const tallScrollport = (top: number) => {
+  const scrollport = document.querySelector('.chat-native') as HTMLElement;
+  scrollport.style.overflowY = 'auto';
+  Object.defineProperty(scrollport, 'clientHeight', {
+    configurable: true,
+    value: 200,
+  });
+  Object.defineProperty(scrollport, 'scrollHeight', {
+    configurable: true,
+    value: 1000,
+  });
+  scrollport.scrollTop = top;
+  return scrollport;
+};
+const endScrolls = () =>
+  scrollIntoView.mock.contexts.filter((element) =>
+    (element as Element).classList.contains('chat-native__end'),
+  ).length;
+
+describe('Review 355b', () => {
+  it('does not snap back while a quoted message is still loading', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    let release!: (value: { data: ReturnType<typeof messageFrom>[] }) => void;
+    const older = new Promise<{ data: ReturnType<typeof messageFrom>[] }>(
+      (resolve) => {
+        release = resolve;
+      },
+    );
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages')) {
+          if (options?.params?.max_id) return older;
+          return Promise.resolve({
+            data: Array.from({ length: 40 }, (_, i) => ({
+              ...messageFrom(i + 20),
+              reply_to_id: i === 39 ? 'message-1' : null,
+            })),
+          });
+        }
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    try {
+      const history = createMemoryHistory({
+        initialEntries: [`/chat/${ROOM}`],
+      });
+      render(
+        <IntlProvider locale='en'>
+          <IdentityContext.Provider
+            value={{
+              signedIn: true,
+              permissions: 0,
+              accountId: 'me',
+              disabledAccountId: undefined,
+            }}
+          >
+            <Router history={history}>
+              <Route path='/chat/:conversationId?/:view?'>
+                <Chat />
+              </Route>
+            </Router>
+          </IdentityContext.Provider>
+        </IntlProvider>,
+      );
+      await screen.findByText('Message 59');
+      const scrollport = tallScrollport(800);
+      placedAt(0);
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.height = 307;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      const quote = document.querySelector(
+        '.chat-native__reply-quote[data-message-id="message-1"]',
+      ) as HTMLElement;
+      scrollIntoView.mockClear();
+      fireEvent.pointerDown(quote);
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      fireEvent.click(quote);
+      viewport.height = 667;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      });
+      expect(scrollport.scrollTop).toBe(800);
+      expect(endScrolls()).toBe(0);
+      await act(async () => {
+        release({ data: Array.from({ length: 20 }, (_, i) => messageFrom(i)) });
+        await older;
+      });
+      expect(document.getElementById('chat-message-message-1')).not.toBeNull();
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+  it('keeps a quote jump when keyboard closure resizes the viewport', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    try {
+      withQuote();
+      await openRoom();
+      const scrollport = tallScrollport(800);
+      placedAt(0);
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.height = 307;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      const quote = document.querySelector(
+        '.chat-native__reply-quote[data-message-id="message-1"]',
+      ) as HTMLElement;
+      scrollIntoView.mockClear();
+      scrollIntoView.mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'chat-message-message-1') scrollport.scrollTop = 100;
+      });
+      fireEvent.pointerDown(quote);
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      fireEvent.click(quote);
+      viewport.height = 667;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      });
+      expect(scrollport.scrollTop).toBe(100);
+      expect(endScrolls()).toBe(0);
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('does not read the newest message while loading an older searched target', async () => {
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages')) {
+          const start = options?.params?.max_id ? 0 : 20;
+          const length = start === 0 ? 20 : 40;
+          return Promise.resolve({
+            data: Array.from({ length }, (_, i) => messageFrom(start + i)),
+          });
+        }
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    const history = createMemoryHistory({
+      initialEntries: [
+        { pathname: `/chat/${ROOM}`, state: { chatMessageId: 'message-1' } },
+      ],
+    });
+    render(
+      <IntlProvider locale='en'>
+        <IdentityContext.Provider
+          value={{
+            signedIn: true,
+            permissions: 0,
+            accountId: 'me',
+            disabledAccountId: undefined,
+          }}
+        >
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat />
+            </Route>
+          </Router>
+        </IdentityContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText('Message 1');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(readsPosted()).toBe(0);
+    expect(
+      scrollIntoView.mock.contexts.some((element) =>
+        (element as Element).classList.contains('chat-native__end'),
+      ),
+    ).toBe(false);
+  });
+
+  it('resumes following after zooming, panning back to the bottom, and unzooming', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    try {
+      await openRoom();
+      const scrollport = tallScrollport(800);
+      viewport.scale = 2;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      scrollUp();
+      scrollport.scrollTop = 800;
+      viewport.scale = 1;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      const before = readsPosted();
+      scrollIntoView.mockClear();
+      receive('after-unzoom');
+      expect(scrollIntoView).toHaveBeenCalled();
+      expect(readsPosted()).toBe(before + 1);
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  it('keeps reading older messages after unzooming away from the bottom', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    try {
+      await openRoom();
+      const scrollport = tallScrollport(800);
+      viewport.scale = 2;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      scrollUp();
+      scrollport.scrollTop = 600;
+      viewport.scale = 1;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      const before = readsPosted();
+      scrollIntoView.mockClear();
+      receive('after-unzoom-away');
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(readsPosted()).toBe(before);
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+  for (const [name, top, gap] of [
+    ['at the newest', 800, 0],
+    ['100px above the newest', 700, 100],
+  ] as const) {
+    it(`Q1 keeps a quote jump after the keyboard closes (${name})`, async () => {
+      window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+      withQuote();
+      await openRoom();
+      const scrollport = tallScrollport(top);
+      placedAt(gap);
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      const quote = document.querySelector(
+        '.chat-native__reply-quote[data-message-id="message-1"]',
+      ) as HTMLElement;
+      scrollIntoView.mockClear();
+      scrollIntoView.mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'chat-message-message-1') scrollport.scrollTop = 100;
+      });
+      // A tap on the quote: the pointer goes down on it, the box loses focus, the click lands.
+      fireEvent.pointerDown(quote);
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      fireEvent.click(quote);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      const afterJump = scrollport.scrollTop;
+      const endBefore = endScrolls();
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 900));
+      });
+      expect(afterJump).toBe(100);
+      expect(scrollport.scrollTop).toBe(afterJump);
+      expect(endScrolls() - endBefore).toBe(0);
+      expect(screen.getByRole('button', { name: JUMP })).toBeTruthy();
+    });
+  }
+
+  it('Q2 a quote jump without the keyboard stays where it went (control)', async () => {
+    withQuote();
+    await openRoom();
+    const scrollport = tallScrollport(800);
+    placedAt(0);
+    const quote = document.querySelector(
+      '.chat-native__reply-quote[data-message-id="message-1"]',
+    ) as HTMLElement;
+    scrollIntoView.mockClear();
+    scrollIntoView.mockImplementation(function (this: HTMLElement) {
+      if (this.id === 'chat-message-message-1') scrollport.scrollTop = 100;
+    });
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 950));
+    });
+    expect(scrollport.scrollTop).toBe(100);
+  });
+
+  it('O1 opening a room at a searched message does not mark the never shown newest one read', async () => {
+    const history = createMemoryHistory({
+      initialEntries: [
+        { pathname: `/chat/${ROOM}`, state: { chatMessageId: 'message-1' } },
+      ],
+    });
+    render(
+      <IntlProvider locale='en'>
+        <IdentityContext.Provider
+          value={{
+            signedIn: true,
+            permissions: 0,
+            accountId: 'me',
+            disabledAccountId: undefined,
+          }}
+        >
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat />
+            </Route>
+          </Router>
+        </IdentityContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText('Message 5');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(readsPosted()).toBe(0);
+    expect(endScrolls()).toBe(0);
+    fireEvent.click(screen.getByRole('button', { name: JUMP }));
+    expect(readsPosted()).toBe(1);
+  });
+});

@@ -1232,7 +1232,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const messagesListRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
-  const followingNewestRef = useRef(true);
+  const followingNewestRef = useRef(!jumpTargetId);
+  const jumpTargetRef = useRef(jumpTargetId);
+  useEffect(() => {
+    jumpTargetRef.current = jumpTargetId;
+  }, [jumpTargetId]);
   const keyboardExplicitFollowRef = useRef<(() => void) | null>(null);
   const searchRequestRef = useRef(0);
   const searchTimeoutRef = useRef<number | null>(null);
@@ -1639,7 +1643,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       let ending: RoomEnding | null = null;
       try {
         for (let page = 0; page < conversationPages.current; page++) {
-          if (page > 0 && !(await nextPage())) return false;
+          if (
+            page > 0 &&
+            (!(await nextPage()) ||
+              requestId !== latestConversationRequest.current)
+          )
+            return false;
           let data: ChatConversation[];
           let cursorMessageId: string | undefined;
           try {
@@ -1652,7 +1661,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           } catch (error) {
             // A legacy server can still reject an ended cursor. Restart once, respecting the gate.
             if (!cursor || restarted || !isNotFound(error)) throw error;
-            if (!(await nextPage())) return false;
+            if (
+              !(await nextPage()) ||
+              requestId !== latestConversationRequest.current
+            )
+              return false;
             restarted = true;
             loaded.length = 0;
             loadedIds.clear();
@@ -1677,7 +1690,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           conversationId &&
           !loaded.some((item) => item.id === conversationId)
         ) {
-          if (!(await nextPage())) return false;
+          if (
+            !(await nextPage()) ||
+            requestId !== latestConversationRequest.current
+          )
+            return false;
           try {
             const selected = await api().get<ChatConversation>(
               `/api/v1/chat/conversations/${conversationId}`,
@@ -2443,7 +2460,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const screenKey = `${conversationId}:${roomView ?? ''}`;
     const openingRoom = scrolledConversationIdRef.current !== screenKey;
     scrolledConversationIdRef.current = screenKey;
-    if (openingRoom) followingNewestRef.current = true;
+    if (openingRoom) followingNewestRef.current = !jumpTargetId;
+    if (jumpTargetId) return;
     if (
       followingNewestRef.current &&
       (window.visualViewport?.scale ?? 1) === 1
@@ -2455,6 +2473,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     newestMessageConversationId,
     newestMessageId,
     newestMessageIsMine,
+    jumpTargetId,
     roomView,
     jumpButton,
   ]);
@@ -2496,7 +2515,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             keyboard.scrollport.scrollTop = keyboard.scrollTop;
           followingNewestRef.current = false;
           jumpButton.update({ away: true });
-        } else if (keyboard.following) {
+        } else if (keyboard.following && followingNewestRef.current) {
           scrollToNewest(end);
         }
       }
@@ -2556,10 +2575,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       )
         keyboard.restorePosition = false;
     };
+    let zoomScrolled = false;
     const trackPosition = () => {
       // Safari can scroll the document to reveal the input as the keyboard moves.
       // That movement must not be mistaken for the reader choosing the newest message.
       if ((window.visualViewport?.scale ?? 1) !== 1) {
+        zoomScrolled = true;
         followingNewestRef.current = false;
         if (keyboard) {
           keyboard.following = false;
@@ -2623,6 +2644,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const heightChanged = height !== viewportHeight;
       viewportScale = scale;
       viewportHeight = height;
+      if (scaleChanged && scale === 1 && zoomScrolled) {
+        zoomScrolled = false;
+        const scrollport = chatScrollport(end);
+        const atBottom = scrollport
+          ? scrollport.scrollHeight -
+              scrollport.clientHeight -
+              scrollport.scrollTop <=
+            2
+          : end.getBoundingClientRect().bottom <= window.innerHeight + 2;
+        if (atBottom && !jumpTargetRef.current) {
+          followingNewestRef.current = true;
+          if (keyboard) keyboard.following = true;
+          jumpButton.update({ away: false });
+          markSeenOnReturn();
+          attemptVisibleRead();
+        }
+      }
       if (keyboard) {
         if (scale === 1 && !scaleChanged) {
           if (
@@ -2697,6 +2735,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   useEffect(() => {
     if (!jumpTargetId || !jumpTargetLoaded) return;
     followingNewestRef.current = false;
+    jumpButton.update({ away: true });
     const target = document.getElementById(`chat-message-${jumpTargetId}`);
     if (typeof target?.scrollIntoView === 'function') {
       target.scrollIntoView({ block: 'center' });
@@ -2707,7 +2746,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [jumpTargetId, jumpTargetLoaded]);
+  }, [jumpButton, jumpTargetId, jumpTargetLoaded]);
 
   useEffect(() => {
     if (
@@ -2738,13 +2777,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     jumpButton.update({ away: false });
     scrollToNewest(messagesEndRef.current);
     markSeenOnReturn();
-  }, [jumpButton, markSeenOnReturn]);
+    attemptVisibleRead();
+  }, [attemptVisibleRead, jumpButton, markSeenOnReturn]);
 
   const handleReplyQuoteClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
+      followingNewestRef.current = false;
+      jumpButton.update({ away: true });
       setJumpTargetId(event.currentTarget.dataset.messageId ?? null);
     },
-    [],
+    [jumpButton],
   );
 
   const handleBack = useCallback(() => {
