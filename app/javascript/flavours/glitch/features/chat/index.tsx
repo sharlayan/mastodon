@@ -911,6 +911,27 @@ const scrollToNewest = (end: HTMLElement | null) => {
   if (scrollport) scrollport.scrollTop = scrollport.scrollHeight;
 };
 
+const endIsAtNewest = (end: HTMLElement) => {
+  const visibleBottom =
+    (window.visualViewport?.offsetTop ?? 0) +
+    (window.visualViewport?.height ?? window.innerHeight);
+  const endBottom = end.getBoundingClientRect().bottom;
+  const scrollport = chatScrollport(end);
+  const viewportBottom =
+    scrollport && scrollport !== document.scrollingElement
+      ? Math.min(visibleBottom, scrollport.getBoundingClientRect().bottom)
+      : visibleBottom;
+  return (
+    Math.abs(endBottom - viewportBottom) <= 2 ||
+    Boolean(
+      scrollport &&
+      scrollport.clientHeight > 0 &&
+      scrollport.scrollHeight <= scrollport.clientHeight &&
+      endBottom <= viewportBottom + 2,
+    )
+  );
+};
+
 // For what changes while the reader scrolls or types. Kept in the room's own state, it would draw every message again
 // each time, which a slow phone shows as a stutter. Only what shows it follows it.
 const createStore = <T,>(initial: T) => {
@@ -1233,9 +1254,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
   const followingNewestRef = useRef(!jumpTargetId);
-  const jumpTargetRef = useRef(jumpTargetId);
+  // Seeking and highlighting are different: a highlighted message may already
+  // be at the bottom, where new messages should continue to be followed.
+  const jumpNavigationRef = useRef({
+    targetId: jumpTargetId,
+    seeking: Boolean(jumpTargetId),
+    fromSearch: Boolean(jumpTargetId),
+    programmatic: false,
+  });
   useEffect(() => {
-    jumpTargetRef.current = jumpTargetId;
+    jumpNavigationRef.current.targetId = jumpTargetId;
   }, [jumpTargetId]);
   const keyboardExplicitFollowRef = useRef<(() => void) | null>(null);
   const searchRequestRef = useRef(0);
@@ -2460,8 +2488,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     const screenKey = `${conversationId}:${roomView ?? ''}`;
     const openingRoom = scrolledConversationIdRef.current !== screenKey;
     scrolledConversationIdRef.current = screenKey;
-    if (openingRoom) followingNewestRef.current = !jumpTargetId;
-    if (jumpTargetId) return;
+    if (openingRoom)
+      followingNewestRef.current = !jumpNavigationRef.current.seeking;
+    if (jumpNavigationRef.current.seeking) return;
     if (
       followingNewestRef.current &&
       (window.visualViewport?.scale ?? 1) === 1
@@ -2473,7 +2502,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     newestMessageConversationId,
     newestMessageId,
     newestMessageIsMine,
-    jumpTargetId,
     roomView,
     jumpButton,
   ]);
@@ -2554,11 +2582,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       scheduleKeyboardFinish(700);
     };
     const onUserScroll = (event: Event) => {
-      if (
-        !keyboard ||
-        (event.target instanceof Node && composer?.contains(event.target))
-      )
+      if (event.target instanceof Node && composer?.contains(event.target))
         return;
+      jumpNavigationRef.current.programmatic = false;
+      if (jumpNavigationRef.current.seeking) {
+        jumpNavigationRef.current.seeking = false;
+        jumpNavigationRef.current.targetId = null;
+        setJumpTargetId(null);
+      }
+      if (!keyboard) return;
       keyboard.userScrolling = true;
       if (keyboard.settleTimer !== undefined)
         window.clearTimeout(keyboard.settleTimer);
@@ -2589,6 +2621,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         jumpButton.update({ away: true });
         return;
       }
+      if (jumpNavigationRef.current.programmatic) {
+        followingNewestRef.current = endIsAtNewest(end);
+        if (keyboard && !followingNewestRef.current) keyboard.following = false;
+        jumpButton.update({ away: !followingNewestRef.current });
+        return;
+      }
+      if (jumpNavigationRef.current.seeking) return;
       if (keyboard && !keyboard.userScrolling) return;
       const viewportBottom = keyboard
         ? (window.visualViewport?.offsetTop ?? 0) +
@@ -2653,7 +2692,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               scrollport.scrollTop <=
             2
           : end.getBoundingClientRect().bottom <= window.innerHeight + 2;
-        if (atBottom && !jumpTargetRef.current) {
+        if (atBottom && !jumpNavigationRef.current.targetId) {
           followingNewestRef.current = true;
           if (keyboard) keyboard.following = true;
           jumpButton.update({ away: false });
@@ -2734,19 +2773,77 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   useEffect(() => {
     if (!jumpTargetId || !jumpTargetLoaded) return;
-    followingNewestRef.current = false;
-    jumpButton.update({ away: true });
     const target = document.getElementById(`chat-message-${jumpTargetId}`);
+    const end = messagesEndRef.current;
+    keyboardExplicitFollowRef.current?.();
+    jumpNavigationRef.current.programmatic = true;
+    const scrollport = end && chatScrollport(end);
+    const beforeJump = scrollport?.scrollTop;
     if (typeof target?.scrollIntoView === 'function') {
       target.scrollIntoView({ block: 'center' });
     }
+    jumpNavigationRef.current.seeking = false;
+    const movedUp =
+      beforeJump !== undefined &&
+      scrollport !== null &&
+      scrollport.scrollTop < beforeJump - 1;
+    const atBottom = Boolean(end && !movedUp && endIsAtNewest(end));
+    followingNewestRef.current =
+      atBottom && (window.visualViewport?.scale ?? 1) === 1;
+    jumpButton.update({ away: !followingNewestRef.current });
+    if (followingNewestRef.current) {
+      markSeenOnReturn();
+      attemptVisibleRead();
+    }
+    const motionTimeout = window.setTimeout(() => {
+      jumpNavigationRef.current.programmatic = false;
+    }, 200);
     const timeout = window.setTimeout(() => {
       setJumpTargetId(null);
     }, HIGHLIGHT_DURATION_MS);
     return () => {
+      window.clearTimeout(motionTimeout);
+      jumpNavigationRef.current.programmatic = false;
       window.clearTimeout(timeout);
     };
-  }, [jumpButton, jumpTargetId, jumpTargetLoaded]);
+  }, [
+    attemptVisibleRead,
+    jumpButton,
+    jumpTargetId,
+    jumpTargetLoaded,
+    markSeenOnReturn,
+  ]);
+
+  useEffect(() => {
+    if (
+      !jumpTargetId ||
+      jumpTargetLoaded ||
+      !messagesLoaded ||
+      loadingMore ||
+      (olderMessageId && !failedReads.current.has('messages'))
+    )
+      return;
+    jumpNavigationRef.current.seeking = false;
+    jumpNavigationRef.current.targetId = null;
+    setJumpTargetId(null);
+    if (jumpNavigationRef.current.fromSearch) {
+      followingNewestRef.current = true;
+      jumpButton.update({ away: false });
+      scrollToNewest(messagesEndRef.current);
+      queueVisibleRead(conversationId ?? '', newestMessageId);
+    }
+  }, [
+    conversationId,
+    jumpButton,
+    jumpTargetId,
+    jumpTargetLoaded,
+    loadingMore,
+    messagesLoaded,
+    newestMessageId,
+    olderMessageId,
+    queueVisibleRead,
+    readingError,
+  ]);
 
   useEffect(() => {
     if (
@@ -2773,6 +2870,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleJumpToNewest = useCallback(() => {
     keyboardExplicitFollowRef.current?.();
+    if (jumpNavigationRef.current.seeking) {
+      jumpNavigationRef.current.seeking = false;
+      jumpNavigationRef.current.targetId = null;
+      setJumpTargetId(null);
+    }
+    jumpNavigationRef.current.programmatic = false;
     followingNewestRef.current = true;
     jumpButton.update({ away: false });
     scrollToNewest(messagesEndRef.current);
@@ -2782,9 +2885,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const handleReplyQuoteClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
+      const targetId = event.currentTarget.dataset.messageId ?? null;
+      if (!targetId || targetId === jumpNavigationRef.current.targetId) return;
+      jumpNavigationRef.current.targetId = targetId;
+      jumpNavigationRef.current.seeking = true;
+      jumpNavigationRef.current.fromSearch = false;
       followingNewestRef.current = false;
       jumpButton.update({ away: true });
-      setJumpTargetId(event.currentTarget.dataset.messageId ?? null);
+      setJumpTargetId(targetId);
     },
     [jumpButton],
   );

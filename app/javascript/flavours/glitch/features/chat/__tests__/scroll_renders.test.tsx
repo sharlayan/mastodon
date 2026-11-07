@@ -1344,3 +1344,511 @@ describe('Review 355b', () => {
     expect(readsPosted()).toBe(1);
   });
 });
+
+// ---- Review f88a: suspicions around the cdf34d4941 changes (appended to a copy of scroll_renders helpers) ----
+const wait = (ms: number) =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  });
+const quoteOf = (id: string) =>
+  document.querySelector(
+    `.chat-native__reply-quote[data-message-id="${id}"]`,
+  ) as HTMLElement;
+const targetScrolls = (id: string) =>
+  scrollIntoView.mock.contexts.filter(
+    (element) => (element as Element).id === `chat-message-${id}`,
+  ).length;
+const openWith = async (chatMessageId: string, text: string) => {
+  const history = createMemoryHistory({
+    initialEntries: [{ pathname: `/chat/${ROOM}`, state: { chatMessageId } }],
+  });
+  render(
+    <IntlProvider locale='en'>
+      <IdentityContext.Provider
+        value={{
+          signedIn: true,
+          permissions: 0,
+          accountId: 'me',
+          disabledAccountId: undefined,
+        }}
+      >
+        <Router history={history}>
+          <Route path='/chat/:conversationId?/:view?'>
+            <Chat />
+          </Route>
+        </Router>
+      </IdentityContext.Provider>
+    </IntlProvider>,
+  );
+  await screen.findByText(text);
+  await wait(0);
+};
+
+describe('Review f88a', () => {
+  // S1: the reader is at the newest and taps the quote of a reply to a message just above. The jump
+  // centres the original; the browser's scroll event then finds the end still within 240px, so the
+  // screen counts as following again. When the highlight ends 3s later, nothing new has arrived.
+  for (const [name, below] of [
+    ['nearby original (end 120px below)', 120],
+    ['far original (end 400px below, control)', 400],
+  ] as const) {
+    it(`S1 a quote jump stays where it went when the highlight ends: ${name}`, async () => {
+      withQuote();
+      await openRoom();
+      placedAt(0);
+      const quote = quoteOf('message-1');
+      fireEvent.pointerDown(quote);
+      fireEvent.click(quote);
+      await wait(50);
+      expect(targetScrolls('message-1')).toBe(1);
+      // The scroll event of the jump, as the browser reports it after the effect.
+      placedAt(below);
+      const endBefore = endScrolls();
+      await wait(3200);
+      expect(endScrolls() - endBefore).toBe(0);
+    });
+  }
+
+  it('S1b a room opened at a searched message near the newest stays there when the highlight ends', async () => {
+    await openWith('message-4', 'Message 5');
+    await wait(50);
+    expect(targetScrolls('message-4')).toBe(1);
+    placedAt(120);
+    const endBefore = endScrolls();
+    await wait(3200);
+    expect(endScrolls() - endBefore).toBe(0);
+  });
+
+  // S2: tap a quote, come back to the newest, tap the same quote again within its highlight.
+  it('S2 tapping the same quote again within its highlight does not stop following at the newest', async () => {
+    withQuote();
+    await openRoom();
+    placedAt(0);
+    const quote = quoteOf('message-1');
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    await wait(50);
+    placedAt(400);
+    fireEvent.click(screen.getByRole('button', { name: JUMP }));
+    placedAt(0);
+    await wait(50);
+    const jumpsBefore = targetScrolls('message-1');
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    await wait(50);
+    // (both versions) the second tap does not move the screen
+    expect(targetScrolls('message-1')).toBe(jumpsBefore);
+    const readsBefore = readsPosted();
+    const endBefore = endScrolls();
+    receive('after-second-tap');
+    await wait(50);
+    expect({
+      followed: endScrolls() - endBefore > 0,
+      read: readsPosted() - readsBefore,
+      jumpButton: screen.queryByRole('button', { name: JUMP }) !== null,
+    }).toEqual({ followed: true, read: 1, jumpButton: false });
+  });
+
+  // S2b: at the newest, tap a quote whose original is already on screen below the middle: centring it
+  // cannot scroll further down, so no scroll happens at all (desktop Chromium on the review server).
+  it('S2b a quote to an original already shown at the newest does not stop following', async () => {
+    withQuote();
+    await openRoom();
+    placedAt(0);
+    const quote = quoteOf('message-1');
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    await wait(3300);
+    const readsBefore = readsPosted();
+    const endBefore = endScrolls();
+    receive('after-quote-in-place');
+    await wait(50);
+    expect({
+      followed: endScrolls() - endBefore > 0,
+      read: readsPosted() - readsBefore,
+      jumpButton: document.querySelector('.chat-native__jump') !== null,
+    }).toEqual({ followed: true, read: 1, jumpButton: false });
+  });
+
+  // S3: the searched message never comes (hidden for the viewer, or its author suspended, after the search).
+  it('S3 a room opened at a searched message that never loads still aligns to the newest', async () => {
+    await openWith('message-gone', 'Message 5');
+    await wait(3500);
+    expect({
+      endScrolls: endScrolls(),
+      jumpButton: screen.queryByRole('button', { name: JUMP }) !== null,
+    }).toEqual({ endScrolls: 1, jumpButton: false });
+  });
+
+  // S5: a jump that lands while the touch keyboard is open (quote tapped first, box focused while the
+  // original is still on its way), then the keyboard closes.
+  it('S5 a quote jump that lands while the keyboard is open survives closing the keyboard', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    let release!: (value: { data: ReturnType<typeof messageFrom>[] }) => void;
+    const older = new Promise<{ data: ReturnType<typeof messageFrom>[] }>(
+      (resolve) => {
+        release = resolve;
+      },
+    );
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages')) {
+          if (options?.params?.max_id) return older;
+          return Promise.resolve({
+            data: Array.from({ length: 40 }, (_, i) => ({
+              ...messageFrom(i + 20),
+              reply_to_id: i === 39 ? 'message-1' : null,
+            })),
+          });
+        }
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    try {
+      const history = createMemoryHistory({
+        initialEntries: [`/chat/${ROOM}`],
+      });
+      render(
+        <IntlProvider locale='en'>
+          <IdentityContext.Provider
+            value={{
+              signedIn: true,
+              permissions: 0,
+              accountId: 'me',
+              disabledAccountId: undefined,
+            }}
+          >
+            <Router history={history}>
+              <Route path='/chat/:conversationId?/:view?'>
+                <Chat />
+              </Route>
+            </Router>
+          </IdentityContext.Provider>
+        </IntlProvider>,
+      );
+      await screen.findByText('Message 59');
+      const scrollport = tallScrollport(800);
+      placedAt(0);
+      const quote = quoteOf('message-1');
+      // The quote is tapped with the keyboard closed; the original is on an older page.
+      fireEvent.pointerDown(quote);
+      fireEvent.click(quote);
+      await wait(50);
+      // While it is on its way, the reader taps the box and the keyboard opens.
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.height = 307;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      scrollIntoView.mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'chat-message-message-1') scrollport.scrollTop = 100;
+      });
+      await act(async () => {
+        release({ data: Array.from({ length: 20 }, (_, i) => messageFrom(i)) });
+        await older;
+      });
+      await wait(50);
+      const afterJump = scrollport.scrollTop;
+      // The keyboard closes (tap elsewhere / done).
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      viewport.height = 667;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      await wait(900);
+      expect({ afterJump, afterClose: scrollport.scrollTop }).toEqual({
+        afterJump: 100,
+        afterClose: 100,
+      });
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  // Coordinator questions (expected to pass): following and reading come back after a quote or search
+  // jump once the reader goes back down or taps the jump button.
+  it('R1 after a quote jump with the keyboard, the jump button brings following and reading back', async () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    withQuote();
+    await openRoom();
+    const scrollport = tallScrollport(800);
+    placedAt(0);
+    act(() => {
+      screen.getByRole('textbox').focus();
+    });
+    scrollIntoView.mockImplementation(function (this: HTMLElement) {
+      if (this.id === 'chat-message-message-1') scrollport.scrollTop = 100;
+    });
+    const quote = quoteOf('message-1');
+    fireEvent.pointerDown(quote);
+    act(() => {
+      screen.getByRole('textbox').blur();
+    });
+    fireEvent.click(quote);
+    await wait(900);
+    receive('while-away');
+    const readsAway = readsPosted();
+    // The button reads "New messages" now; it is the same jump button.
+    fireEvent.click(
+      document.querySelector('.chat-native__jump') as HTMLElement,
+    );
+    placedAt(0);
+    const readsBack = readsPosted();
+    const endBefore = endScrolls();
+    receive('after-return');
+    await wait(50);
+    expect({
+      readOnReturn: readsBack - readsAway,
+      followed: endScrolls() - endBefore > 0,
+      readAfter: readsPosted() - readsBack,
+    }).toEqual({ readOnReturn: 1, followed: true, readAfter: 1 });
+  });
+
+  it('R2 after opening at a searched message, scrolling down reads the newest and follows again', async () => {
+    await openWith('message-1', 'Message 5');
+    await wait(3300);
+    expect(readsPosted()).toBe(0);
+    placedAt(0);
+    const readsBack = readsPosted();
+    const endBefore = endScrolls();
+    receive('after-scroll-down');
+    await wait(50);
+    expect({
+      readOnReturn: readsBack,
+      followed: endScrolls() - endBefore > 0,
+      readAfter: readsPosted() - readsBack,
+    }).toEqual({ readOnReturn: 1, followed: true, readAfter: 1 });
+  });
+});
+
+describe('Search targets and keyboard navigation', () => {
+  it('returns to the newest when the older page for a searched target fails', async () => {
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages')) {
+          if (options?.params?.max_id)
+            return Promise.reject(new Error('offline'));
+          return Promise.resolve({
+            data: Array.from({ length: 40 }, (_, i) => messageFrom(i + 20)),
+          });
+        }
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    await openWith('message-1', 'Message 59');
+    await wait(500);
+    expect(endScrolls()).toBe(1);
+    expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+  });
+
+  it('keeps a delayed searched target after the keyboard closes', async () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const viewport = Object.assign(new EventTarget(), {
+      scale: 1,
+      height: 667,
+    });
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: viewport,
+    });
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    let release!: (value: { data: ReturnType<typeof messageFrom>[] }) => void;
+    const older = new Promise<{ data: ReturnType<typeof messageFrom>[] }>(
+      (resolve) => {
+        release = resolve;
+      },
+    );
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages')) {
+          if (options?.params?.max_id) return older;
+          return Promise.resolve({
+            data: Array.from({ length: 40 }, (_, i) => messageFrom(i + 20)),
+          });
+        }
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    try {
+      await openWith('message-1', 'Message 59');
+      const scrollport = tallScrollport(800);
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      viewport.height = 307;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      scrollIntoView.mockImplementation(function (this: HTMLElement) {
+        if (this.id === 'chat-message-message-1') scrollport.scrollTop = 100;
+      });
+      await act(async () => {
+        release({ data: Array.from({ length: 20 }, (_, i) => messageFrom(i)) });
+        await older;
+      });
+      await wait(50);
+      expect(scrollport.scrollTop).toBe(100);
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      viewport.height = 667;
+      act(() => {
+        viewport.dispatchEvent(new Event('resize'));
+      });
+      await wait(900);
+      expect(scrollport.scrollTop).toBe(100);
+    } finally {
+      if (original) Object.defineProperty(window, 'visualViewport', original);
+      else Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+});
+
+describe('Sending while a quote is highlighted at the newest message', () => {
+  it('follows my message while the highlighted quote has not moved the viewport', async () => {
+    withQuote();
+    await openRoom();
+    placedAt(0);
+    const quote = quoteOf('message-1');
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    const before = endScrolls();
+    receive('own-after-quote', me);
+    await wait(50);
+    expect(endScrolls()).toBeGreaterThan(before);
+    expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
+  });
+});
+
+describe('A nested chat scrollport', () => {
+  it('keeps following when a quote cannot move beyond the bottom of the scrollport', async () => {
+    withQuote();
+    await openRoom();
+    const scrollport = tallScrollport(800);
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        if (this === scrollport || this.classList.contains('chat-native__end'))
+          return { top: 0, bottom: 400 } as DOMRect;
+        if (this.classList.contains('chat-native__composer'))
+          return { top: 350, bottom: 400 } as DOMRect;
+        return { top: 100, bottom: 150 } as DOMRect;
+      },
+    );
+    fireEvent.scroll(window);
+    const quote = quoteOf('message-1');
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    const readsBefore = readsPosted();
+    const endBefore = endScrolls();
+    receive('nested-bottom');
+    await wait(50);
+    expect(endScrolls()).toBeGreaterThan(endBefore);
+    expect(readsPosted()).toBe(readsBefore + 1);
+    expect(document.querySelector('.chat-native__jump')).toBeNull();
+  });
+});
+
+describe('Cancelling a pending quote jump', () => {
+  const openDelayedQuote = async () => {
+    let release!: (value: { data: ReturnType<typeof messageFrom>[] }) => void;
+    const older = new Promise<{ data: ReturnType<typeof messageFrom>[] }>(
+      (resolve) => {
+        release = resolve;
+      },
+    );
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages')) {
+          if (options?.params?.max_id) return older;
+          return Promise.resolve({
+            data: Array.from({ length: 40 }, (_, i) => ({
+              ...messageFrom(i + 20),
+              reply_to_id: i === 39 ? 'message-1' : null,
+            })),
+          });
+        }
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    const history = createMemoryHistory({ initialEntries: [`/chat/${ROOM}`] });
+    render(
+      <IntlProvider locale='en'>
+        <IdentityContext.Provider
+          value={{
+            signedIn: true,
+            permissions: 0,
+            accountId: 'me',
+            disabledAccountId: undefined,
+          }}
+        >
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat />
+            </Route>
+          </Router>
+        </IdentityContext.Provider>
+      </IntlProvider>,
+    );
+    await screen.findByText('Message 59');
+    placedAt(0);
+    const quote = quoteOf('message-1');
+    fireEvent.pointerDown(quote);
+    fireEvent.click(quote);
+    await wait(50);
+    return async () => {
+      await act(async () => {
+        release({ data: Array.from({ length: 20 }, (_, i) => messageFrom(i)) });
+        await older;
+      });
+      await wait(50);
+    };
+  };
+
+  it('does not jump to a delayed original after the user scrolls elsewhere', async () => {
+    const finish = await openDelayedQuote();
+    fireEvent.wheel(window);
+    placedAt(400);
+    await finish();
+    expect(targetScrolls('message-1')).toBe(0);
+    const before = endScrolls();
+    receive('after-user-scroll');
+    await wait(50);
+    expect(endScrolls()).toBe(before);
+  });
+
+  it('does not jump to a delayed original after the user chooses newest', async () => {
+    const finish = await openDelayedQuote();
+    fireEvent.click(screen.getByRole('button', { name: JUMP }));
+    placedAt(0);
+    await finish();
+    expect(targetScrolls('message-1')).toBe(0);
+    const before = endScrolls();
+    receive('after-user-newest');
+    await wait(50);
+    expect(endScrolls()).toBeGreaterThan(before);
+  });
+});
+
+describe('A search result at the newest message', () => {
+  it('reads a visible newest message when the search jump needs no movement', async () => {
+    placedAt(0);
+    await openWith('message-5', 'Message 5');
+    await wait(50);
+    expect(readsPosted()).toBe(1);
+    expect(document.querySelector('.chat-native__jump')).toBeNull();
+  });
+});
