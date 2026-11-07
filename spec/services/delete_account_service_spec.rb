@@ -96,6 +96,24 @@ RSpec.describe DeleteAccountService do
     end
   end
 
+  describe 'local settings purge' do
+    let(:user) { Fabricate(:user) }
+
+    before { allow(LocalSettingsStore).to receive(:delete) }
+
+    it 'deletes the synchronized local settings of a deleted user' do
+      described_class.new.call(user.account, skip_side_effects: true)
+
+      expect(LocalSettingsStore).to have_received(:delete).with(user.id)
+    end
+
+    it 'deletes the synchronized local settings when the user record is kept' do
+      described_class.new.call(user.account, reserve_username: true, reserve_email: true, skip_side_effects: true)
+
+      expect(LocalSettingsStore).to have_received(:delete).with(user.id)
+    end
+  end
+
   describe 'custom collection purge' do
     let(:account) { Fabricate(:user).account }
     let(:other_account) { Fabricate(:account) }
