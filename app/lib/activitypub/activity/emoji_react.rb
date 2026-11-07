@@ -4,7 +4,7 @@ class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
   def perform
     return if DomainBlock.reject_favourite?(@account.domain)
 
-    original_status = status_from_uri(object_uri)
+    original_status = status_from_uri(object_uri)&.proper
     raw_name = @json['content'].to_s
 
     return if original_status.nil? || delete_arrived_first?(@json['id'])

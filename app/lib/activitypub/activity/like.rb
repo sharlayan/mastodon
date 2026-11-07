@@ -18,7 +18,8 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
     Trends.statuses.register(original_status)
   end
 
-  def misskey_reaction(original_status)
+  def misskey_reaction(status)
+    original_status = status.proper
     raw_name = @json['content'] || @json['_misskey_reaction']
 
     return false unless raw_name.is_a?(String) && raw_name.present?
