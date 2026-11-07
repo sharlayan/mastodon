@@ -109,6 +109,20 @@ RSpec.describe 'Misskey-compat discovery endpoints' do
       )
     end
 
+    it 'does not reveal roles that are not shown on profiles' do
+      unlisted = Fabricate(:user_role, name: 'Probation', highlighted: false, position: 5)
+      Fabricate(:user, role: unlisted).account.update!(discoverable: true)
+
+      post '/api/roles/list', params: { i: read_token }, as: :json
+      expect(response.parsed_body.pluck(:name)).to eq(['Explorers'])
+
+      %w(show users notes).each do |endpoint|
+        post "/api/roles/#{endpoint}", params: { i: read_token, roleId: MisskeyCompat::MiId.encode(unlisted.id) }, as: :json
+
+        expect(response).to have_http_status(404), endpoint
+      end
+    end
+
     it 'returns NO_SUCH_ROLE for an unknown MiId' do
       post '/api/roles/show', params: { i: read_token, roleId: MisskeyCompat::MiId.encode(-1) }, as: :json
 
