@@ -5,7 +5,7 @@ class InstanceMetadataUpdateWorker
 
   sidekiq_options queue: 'pull', retry: 3, lock: :until_executed, lock_ttl: 1.hour.to_i
 
-  def perform(domain, priority: false)
+  def perform(domain, _source = nil, priority: false)
     return if domain.blank?
     return unless Setting.instance_metadata_enabled
 
