@@ -218,6 +218,21 @@ RSpec.describe 'Account switching' do
     end
   end
 
+  describe 'when the switched session ends without logging out' do
+    it 'does not let a fresh sign-in of the child account return to the parent' do
+      switch_to_child
+      sign_out child_user
+
+      post user_session_path, params: { user: { email: child_user.email, password: child_user.password } }
+
+      expect(account_switches_as(child_user)[:parent]).to be_nil
+
+      post switch_account_path, params: { switch_to: parent.id }
+
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_unauthorized'))
+    end
+  end
+
   describe 'background polling from the switcher' do
     def poll_as(user, path)
       token = Fabricate(:accessible_access_token, application: web_app, resource_owner_id: user.id, scopes: 'read:accounts')

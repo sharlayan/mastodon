@@ -22,14 +22,7 @@ module Sharlayan::SessionsControllerExtensions
       return
     end
 
-    clear_switch_parent_stack
-    cookies.delete(Sharlayan::AccountSwitchDeviceConcern::LEGACY_COOKIE)
-    super
-  end
-
-  protected
-
-  def require_no_authentication
+    clear_account_switch_browser_state
     super
   end
 
@@ -40,11 +33,6 @@ module Sharlayan::SessionsControllerExtensions
   end
 
   def handle_account_switch
-    unless user_signed_in?
-      redirect_to new_user_session_path
-      return
-    end
-
     target_account = Account.find_by(id: params[:switch_to])
     target_user = target_account&.user
 
@@ -109,6 +97,7 @@ module Sharlayan::SessionsControllerExtensions
 
   def on_authentication_success(user, security_measure)
     disable_custom_css_if_requested(user)
+    clear_account_switch_browser_state
     trust_account_switch_device(user.account)
     super
   end
