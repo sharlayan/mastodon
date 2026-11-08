@@ -412,6 +412,59 @@ describe('Long press on a message', () => {
     return view;
   };
 
+  it('keeps Safari from focusing the bubble before a touched quote receives its click', async () => {
+    await mountForTouch([
+      message('1', 'The original'),
+      message('2', 'Reply', { reply_to_id: '1' }),
+    ]);
+    const quote = bubbleOf('2').querySelector(
+      '.chat-native__reply-quote strong',
+    );
+    if (!quote) throw new Error('Missing quote');
+    const composer = document.querySelector<HTMLTextAreaElement>(
+      '.chat-native__composer textarea',
+    );
+    if (!composer) throw new Error('Missing composer');
+    composer.focus();
+
+    fireEvent.touchStart(quote, finger(103, 63));
+    wait(57);
+    fireEvent.touchEnd(quote, { touches: [] });
+    expect(fireEvent.mouseDown(quote)).toBe(false);
+    expect(document.activeElement).not.toBe(composer);
+    expect(fireEvent.click(quote)).toBe(true);
+  });
+
+  it('leaves an ordinary mouse press and bubble text alone', async () => {
+    await mountForTouch([
+      message('1', 'The original'),
+      message('2', 'Reply', { reply_to_id: '1' }),
+    ]);
+    const quote = bubbleOf('2').querySelector(
+      '.chat-native__reply-quote strong',
+    );
+    if (!quote) throw new Error('Missing quote');
+    expect(fireEvent.mouseDown(quote)).toBe(true);
+    fireEvent.touchStart(textOf('2'), finger());
+    fireEvent.touchEnd(textOf('2'), { touches: [] });
+    expect(fireEvent.mouseDown(textOf('2'))).toBe(true);
+  });
+
+  it('does not suppress mouse focus after a quote touch turns into a scroll', async () => {
+    await mountForTouch([
+      message('1', 'The original'),
+      message('2', 'Reply', { reply_to_id: '1' }),
+    ]);
+    const quote = bubbleOf('2').querySelector(
+      '.chat-native__reply-quote strong',
+    );
+    if (!quote) throw new Error('Missing quote');
+    fireEvent.touchStart(quote, finger(103, 100));
+    fireEvent.touchMove(quote, finger(103, 89));
+    fireEvent.touchEnd(quote, { touches: [] });
+    expect(fireEvent.mouseDown(quote)).toBe(true);
+  });
+
   it('opens the toolbar by focusing the bubble', async () => {
     await mountForTouch([message('1', 'Hello')]);
 

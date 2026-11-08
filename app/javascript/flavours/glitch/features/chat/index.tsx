@@ -14,7 +14,6 @@ import type {
   KeyboardEvent,
   MouseEvent,
   SyntheticEvent,
-  TouchEvent,
 } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
@@ -76,6 +75,7 @@ import {
   useChatScroll,
   usesTouchKeyboard,
 } from './use_chat_scroll';
+import { useLongPressOpensToolbar } from './use_message_toolbar';
 
 interface ChatAccount {
   id: string;
@@ -677,72 +677,6 @@ const scrollsConversation = (event: KeyboardEvent<HTMLTextAreaElement>) => {
   if (event.key === 'End')
     return box.scrollTop + box.clientHeight >= box.scrollHeight - 1;
   return false;
-};
-
-const LONG_PRESS_MS = 500;
-const LONG_PRESS_MOVE_PX = 10;
-
-// Android Chrome reveals the toolbar by itself on a long press, and iOS Safari does not. Nothing else there would
-// answer the finger now that the text cannot be selected, so a long press opens it on every browser.
-// A picture keeps its browser menu: it is left alone.
-const useLongPressOpensToolbar = () => {
-  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
-
-  const cancel = useCallback(() => {
-    if (press.current) window.clearTimeout(press.current.timer);
-    press.current = null;
-  }, []);
-
-  useEffect(() => cancel, [cancel]);
-
-  const onTouchStart = useCallback(
-    (event: TouchEvent<HTMLElement>) => {
-      cancel();
-      const touch = event.touches[0];
-      const target = event.target as Element;
-      const bubble = target.closest<HTMLElement>('.chat-native__bubble');
-      if (
-        !touch ||
-        event.touches.length > 1 ||
-        !bubble ||
-        target.closest('.chat-native__gallery, .chat-native__attachment')
-      )
-        return;
-
-      press.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-        timer: window.setTimeout(() => {
-          press.current = null;
-          bubble.focus({ preventScroll: true });
-        }, LONG_PRESS_MS),
-      };
-    },
-    [cancel],
-  );
-
-  const onTouchMove = useCallback(
-    (event: TouchEvent<HTMLElement>) => {
-      const touch = event.touches[0];
-      if (
-        press.current &&
-        touch &&
-        Math.hypot(
-          touch.clientX - press.current.x,
-          touch.clientY - press.current.y,
-        ) > LONG_PRESS_MOVE_PX
-      )
-        cancel();
-    },
-    [cancel],
-  );
-
-  return {
-    onTouchStart,
-    onTouchMove,
-    onTouchEnd: cancel,
-    onTouchCancel: cancel,
-  };
 };
 
 const ReplyQuote: React.FC<{
