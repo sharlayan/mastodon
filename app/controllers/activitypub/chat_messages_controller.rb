@@ -34,7 +34,7 @@ class ActivityPub::ChatMessagesController < ActivityPub::BaseController
   end
 
   def require_chat_readable!
-    head 404 unless Setting.chat_enabled && Setting.chat_federation_enabled
+    head 404 unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
   end
 
   def visible_to_signed_account?(message)

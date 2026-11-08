@@ -53,7 +53,7 @@ class Sharlayan::ChatService
 
     participants = Account.without_suspended.where(id: requested_ids).to_a
     raise Error, 'One or more chat participants were not found' unless participants.size == requested_ids.size
-    raise Error, 'Chat federation is disabled' if participants.any?(&:remote?) && !Setting.chat_federation_enabled
+    raise Error, 'Chat federation is disabled' if participants.any?(&:remote?) && !Sharlayan::ChatFederation.enabled?
 
     participants.each { |participant| refresh_remote_account(participant) } if refresh
 
@@ -179,7 +179,7 @@ class Sharlayan::ChatService
     raise Forbidden unless conversation.chat_group? && membership.owner?
 
     ensure_conversation_writable!(conversation)
-    raise Error, 'Chat federation is disabled' if invitee.remote? && !Setting.chat_federation_enabled
+    raise Error, 'Chat federation is disabled' if invitee.remote? && !Sharlayan::ChatFederation.enabled?
     raise Error, 'Account is already a member' if conversation.memberships.exists?(account: invitee)
     raise Forbidden if invitee.suspended? || blocked_in_either_direction?(account, invitee) || silenced_for?(account, invitee)
 
@@ -950,7 +950,7 @@ class Sharlayan::ChatService
 
   def relay_update(message)
     conversation = message.chat_conversation
-    return unless conversation.chat_group? && conversation.owner_account&.local? && message.account.remote? && Setting.chat_federation_enabled
+    return unless conversation.chat_group? && conversation.owner_account&.local? && message.account.remote? && Sharlayan::ChatFederation.enabled?
 
     Sharlayan::ChatFederation::Delivery.call(
       actor: conversation.owner_account,
@@ -963,7 +963,7 @@ class Sharlayan::ChatService
 
   def relay_activity(conversation, actor, activity)
     return if activity.nil? || !activity['id'].is_a?(String)
-    return unless conversation.chat_group? && conversation.owner_account&.local? && actor.remote? && Setting.chat_federation_enabled
+    return unless conversation.chat_group? && conversation.owner_account&.local? && actor.remote? && Sharlayan::ChatFederation.enabled?
 
     Sharlayan::ChatFederation::Delivery.call(
       actor: conversation.owner_account,
@@ -1040,7 +1040,7 @@ class Sharlayan::ChatService
   end
 
   def relay_to_room(conversation, message)
-    return unless message&.previously_new_record? && conversation.owner_account&.local? && Setting.chat_federation_enabled
+    return unless message&.previously_new_record? && conversation.owner_account&.local? && Sharlayan::ChatFederation.enabled?
 
     Sharlayan::ChatFederation::Delivery.call(
       actor: conversation.owner_account,
@@ -1255,7 +1255,7 @@ class Sharlayan::ChatService
   end
 
   def deliver_to_conversation(actor, conversation, payload, message: nil)
-    return unless Setting.chat_federation_enabled
+    return unless Sharlayan::ChatFederation.enabled?
 
     ActiveRecord.after_all_transactions_commit do
       Sharlayan::ChatFederation::Delivery.call(actor: actor, conversation: conversation, payload: payload, except_account_id: actor.id, message: message)
@@ -1263,7 +1263,7 @@ class Sharlayan::ChatService
   end
 
   def deliver_room_state(actor, conversation, payload)
-    return unless Setting.chat_federation_enabled
+    return unless Sharlayan::ChatFederation.enabled?
 
     ActiveRecord.after_all_transactions_commit do
       Sharlayan::ChatFederation::Delivery.call(actor: actor, conversation: conversation, payload: payload, except_account_id: actor.id, include_pending_invitees: true)
@@ -1271,7 +1271,7 @@ class Sharlayan::ChatService
   end
 
   def deliver_to_account(actor, payload, account)
-    return unless Setting.chat_federation_enabled
+    return unless Sharlayan::ChatFederation.enabled?
     return if account.preferred_inbox_url.blank?
     return if account.suspended? && Sharlayan::ChatFederation::Delivery::RETRACTION_TYPES.exclude?(payload['type'])
 
@@ -1397,11 +1397,11 @@ class Sharlayan::ChatService
   end
 
   def ensure_federation_available!(conversation)
-    raise Error, 'Chat federation is disabled' if !Setting.chat_federation_enabled && conversation.remote?
+    raise Error, 'Chat federation is disabled' if !Sharlayan::ChatFederation.enabled? && conversation.remote?
   end
 
   def ensure_owner_reachable!(conversation)
-    raise Error, 'Chat federation is disabled' if !Setting.chat_federation_enabled && conversation.owner_account&.remote?
+    raise Error, 'Chat federation is disabled' if !Sharlayan::ChatFederation.enabled? && conversation.owner_account&.remote?
   end
 
   def ensure_direct_participants_not_blocked!(account, conversation)

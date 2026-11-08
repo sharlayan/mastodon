@@ -14,7 +14,7 @@ module Sharlayan
 
       class << self
         def enabled?
-          Setting.chat_enabled && Setting.chat_federation_enabled
+          Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
         end
 
         def chat_create?(json)
@@ -70,7 +70,7 @@ module Sharlayan
         end
 
         def handle_create(json, account, **options)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           object = json['object']
           return 'skip: not a chat note' unless chat_create?(json)
@@ -101,7 +101,7 @@ module Sharlayan
         end
 
         def handle_announce(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           uri = uri_of(json['object'])
           room_uri = room_uri_of(json)
@@ -159,7 +159,7 @@ module Sharlayan
         end
 
         def handle_update(json, account, **)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           object = json['object']
           return 'skip: not a chat note' unless chat_update?(json)
@@ -180,7 +180,7 @@ module Sharlayan
         end
 
         def handle_delete(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           object = json['object']
           uri = uri_of(object)
@@ -210,7 +210,7 @@ module Sharlayan
         end
 
         def handle_reaction(json, account, &emoji_importer)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           uri = uri_of(json['object'])
           return false if uri.blank?
@@ -237,7 +237,7 @@ module Sharlayan
         end
 
         def handle_undo_reaction(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           object = json['object']
           return false unless chat_undo_reaction?(json)
@@ -267,7 +267,7 @@ module Sharlayan
         end
 
         def handle_undo_reaction_reference(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           record = ChatMessageReaction.find_by(uri: uri_of(json['object']), account: account)
           return 'skip: unknown chat reaction' if record.nil?
@@ -280,7 +280,7 @@ module Sharlayan
         end
 
         def handle_invite(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           return false unless chat_invite_activity?(json)
 
@@ -313,7 +313,7 @@ module Sharlayan
         end
 
         def handle_undo_invite(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
           return false unless chat_invite?(json)
 
           invitation = json['object']
@@ -330,7 +330,7 @@ module Sharlayan
         end
 
         def handle_accept(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           return false unless chat_invite?(json)
 
@@ -346,7 +346,7 @@ module Sharlayan
         end
 
         def handle_reject(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           return false unless chat_invite?(json)
 
@@ -358,7 +358,7 @@ module Sharlayan
         end
 
         def handle_add(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           return false unless chat_add?(json)
 
@@ -374,7 +374,7 @@ module Sharlayan
         end
 
         def handle_remove(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           return false unless chat_add?(json)
 
@@ -386,7 +386,7 @@ module Sharlayan
         end
 
         def handle_room_update(json, account)
-          return 'skip: chat federation disabled' unless Setting.chat_enabled && Setting.chat_federation_enabled
+          return 'skip: chat federation disabled' unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
 
           return false unless chat_room?(json)
           return 'skip: suspended actor' if account.suspended?

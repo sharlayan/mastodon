@@ -175,7 +175,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
   end
 
   def misskey_can_chat
-    Setting.chat_enabled && Setting.chat_federation_enabled
+    Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
   end
 
   def misskey_chat_scope

@@ -56,14 +56,14 @@ module Sharlayan
         end
 
         def request_sync(conversation, subject)
-          return unless Setting.chat_federation_enabled && conversation.chat_group? && !conversation.local?
+          return unless Sharlayan::ChatFederation.enabled? && conversation.chat_group? && !conversation.local?
           return unless redis.set("chat_roster_sync:#{conversation.id}:#{subject}", '1', nx: true, ex: SYNC_INTERVAL.to_i)
 
           ChatRosterSyncWorker.perform_async(conversation.id)
         end
 
         def sync(conversation)
-          return unless Setting.chat_enabled && Setting.chat_federation_enabled && conversation.chat_group? && !conversation.local?
+          return unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled? && conversation.chat_group? && !conversation.local?
 
           group = fetch_group(conversation)
           return if group.nil? || group['attributedTo'] != conversation.owner_account&.uri

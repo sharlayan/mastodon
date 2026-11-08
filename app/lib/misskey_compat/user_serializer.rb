@@ -168,7 +168,7 @@ class MisskeyCompat::UserSerializer
   def can_chat?(account)
     return false unless Setting.chat_enabled && !account.unavailable?
 
-    account.local? || (Setting.chat_federation_enabled && account.can_chat != false)
+    account.local? || (Sharlayan::ChatFederation.enabled? && account.can_chat != false)
   end
 
   def chat_scope(account)

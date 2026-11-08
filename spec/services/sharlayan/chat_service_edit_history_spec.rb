@@ -75,9 +75,15 @@ RSpec.describe Sharlayan::ChatService do
     around { |example| ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run } }
 
     it 'keeps what a message said before an edit' do
-      service.update_message(owner, message, text: 'changed')
+      local_room = ChatConversation.create!(conversation_type: :group, owner_account: owner, title: 'Local').tap do |record|
+        record.memberships.create!(account: owner, role: :owner)
+        record.memberships.create!(account: Fabricate(:user).account)
+      end
+      local_message = local_room.messages.create!(account: owner, text: 'original')
 
-      expect(message.edits.pluck(:text)).to eq(['original'])
+      service.update_message(owner, local_message, text: 'changed')
+
+      expect(local_message.edits.pluck(:text)).to eq(['original'])
     end
   end
 

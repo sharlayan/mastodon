@@ -57,7 +57,7 @@ class MediaProxyController < ApplicationController
     end
 
     if @media_attachment.chat_attachment? && Sharlayan::ChatFederation::MediaToken.valid?(params[:token], @media_attachment)
-      head 404 unless Setting.chat_enabled && Setting.chat_federation_enabled
+      head 404 unless Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
       return
     end
 
@@ -80,7 +80,9 @@ class MediaProxyController < ApplicationController
   end
 
   def reject_media?
-    @media_attachment.account.remote? && DomainBlock.reject_media?(@media_attachment.account.domain)
+    return false unless @media_attachment.account.remote?
+
+    DomainBlock.reject_media?(@media_attachment.account.domain) || (@media_attachment.chat_attachment? && !Sharlayan::ChatFederation.enabled?)
   end
 
   def media_attachment_file_path

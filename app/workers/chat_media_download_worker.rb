@@ -7,6 +7,8 @@ class ChatMediaDownloadWorker
   sidekiq_options queue: 'pull', retry: 3
 
   def perform(message_id)
+    return unless Sharlayan::ChatFederation.enabled?
+
     message = showable_message(message_id)
     return if message.nil?
 
