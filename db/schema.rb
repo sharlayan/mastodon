@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_233800) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_002800) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -652,6 +652,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_233800) do
     t.index ["account_id"], name: "index_chat_memberships_on_account_id"
     t.index ["chat_conversation_id", "account_id"], name: "index_chat_memberships_on_conversation_and_account", unique: true
     t.index ["chat_conversation_id"], name: "index_chat_memberships_on_chat_conversation_id"
+    t.index ["last_read_message_id"], name: "index_chat_memberships_on_last_read_message_id", where: "(last_read_message_id IS NOT NULL)"
   end
 
   create_table "chat_message_edits", force: :cascade do |t|
