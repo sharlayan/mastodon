@@ -306,11 +306,11 @@ RSpec.describe 'Chat federation regressions' do
 
   %i(chat_enabled chat_federation_enabled).each do |setting|
     context "when #{setting} is disabled" do
-      it 'consumes chat Creates without creating messages or public statuses' do
+      it 'keeps chat Creates as private statuses without creating messages' do
         json = note_json
         Setting.public_send(:"#{setting}=", false)
         expect { perform(json) }.to_not change(ChatMessage, :count)
-        expect(Status.where(uri: json['object']['id'])).to be_empty
+        expect(Status.where(uri: json['object']['id']).pluck(:visibility)).to eq(['limited'])
       end
 
       it 'does not accept invitations' do

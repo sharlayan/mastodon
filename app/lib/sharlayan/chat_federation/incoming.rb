@@ -13,6 +13,10 @@ module Sharlayan
       MAX_CLOCK_SKEW = 5.minutes
 
       class << self
+        def enabled?
+          Setting.chat_enabled && Setting.chat_federation_enabled
+        end
+
         def chat_create?(json)
           object = json['object']
           object.is_a?(Hash) &&
@@ -25,7 +29,7 @@ module Sharlayan
           object = json['object']
           return false unless object.is_a?(Hash) && equals_type?(object['type'], 'Note')
 
-          object['_misskey_talk'] == true || (uri_of(object).present? && ChatMessage.exists?(uri: uri_of(object)))
+          (object['_misskey_talk'] == true && enabled?) || (uri_of(object).present? && ChatMessage.exists?(uri: uri_of(object)))
         end
 
         def chat_delete?(json)

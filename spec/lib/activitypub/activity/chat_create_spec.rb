@@ -62,16 +62,50 @@ RSpec.describe 'Incoming ActivityPub chat messages', type: :model do
       expect(Status.where(uri: object['id'])).to be_empty
     end
 
-    it "drops a dereferenced chat #{type} when federation is disabled" do
+    it "keeps a dereferenced chat #{type} as a private status when federation is disabled" do
       Setting.chat_federation_enabled = false
-      object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams')
+      object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams', 'published' => Time.current.utc.iso8601)
       stub_request(:get, object['id']).to_return(body: object.to_json, headers: { 'Content-Type' => 'application/activity+json' })
 
       ActivityPub::Activity.factory(payload.merge('type' => type, 'object' => object['id']), bob, delivered_to_account_id: alice.id).perform
 
       expect(ChatMessage.where(uri: object['id'])).to be_empty
-      expect(Status.where(uri: object['id'])).to be_empty
+      expect(Status.where(uri: object['id']).pluck(:visibility)).to eq(['limited'])
     end
+  end
+
+  %i(chat_enabled chat_federation_enabled).each do |setting|
+    it "keeps a chat note as a private status when #{setting} is off" do
+      Setting.public_send(:"#{setting}=", false)
+
+      ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
+
+      status = Status.find_by!(uri: payload['object']['id'])
+      expect(status).to have_attributes(visibility: 'limited', account: bob)
+      expect(status.mentions.pluck(:account_id)).to eq([alice.id])
+      expect(ChatMessage.where(uri: payload['object']['id'])).to be_empty
+    end
+
+    it "applies an edit to that status when #{setting} is off" do
+      Setting.public_send(:"#{setting}=", false)
+      ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
+      changed = payload['object'].merge('content' => 'changed', '_misskey_content' => 'changed', 'updated' => '2026-11-03T00:00:00Z')
+
+      ActivityPub::Activity.factory(payload.merge('type' => 'Update', 'object' => changed), bob, delivered_to_account_id: alice.id).perform
+
+      expect(Status.find_by!(uri: payload['object']['id']).text).to eq('changed')
+    end
+  end
+
+  it 'keeps handling an edit of a stored chat message as chat while federation is off' do
+    ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
+    Setting.chat_federation_enabled = false
+    changed = payload['object'].merge('content' => 'changed', '_misskey_content' => 'changed', 'updated' => '2026-11-03T00:00:00Z')
+
+    ActivityPub::Activity.factory(payload.merge('type' => 'Update', 'object' => changed), bob, delivered_to_account_id: alice.id).perform
+
+    expect(ChatMessage.find_by!(uri: payload['object']['id']).text).to eq('hello')
+    expect(Status.where(uri: payload['object']['id'])).to be_empty
   end
 
   it 'does not allow a suspended actor to create a new message through Update' do
