@@ -1,9 +1,4 @@
-// How the chat screen tries again what it asked for by itself: its reads, and marking rooms
-// read. It cannot leave that to the stream, whose signal to read again may have come before
-// the screen was there to hear it. A few tries, further apart each time, then it waits for the
-// next occasion; a server that says how long to wait is waited for.
 export const RETRY_DELAYS_MS = [2_000, 5_000, 15_000, 30_000] as const;
-// However long a server asks to wait, nothing is planned further ahead than this.
 const LONGEST_WAIT_MS = 10 * 60_000;
 
 const headerOf = (headers: unknown, name: string) => {
@@ -12,8 +7,6 @@ const headerOf = (headers: unknown, name: string) => {
   return typeof value === 'string' ? value : undefined;
 };
 
-// What a 429 says about when to come back: Retry-After if a proxy set it, else the reset time
-// Mastodon's rate limits send (the same header the app's alerts read).
 const waitAskedFor = (headers: unknown, now: number) => {
   const retryAfter = headerOf(headers, 'retry-after');
   if (retryAfter) {
@@ -26,10 +19,6 @@ const waitAskedFor = (headers: unknown, now: number) => {
   return Number.isNaN(reset) ? null : reset - now;
 };
 
-/**
- * How long to wait before trying again, after `tried` tries again have already been made,
- * or null when another try would not help or enough have been made.
- */
 export const retryDelay = (
   error: unknown,
   tried: number,
@@ -37,7 +26,6 @@ export const retryDelay = (
 ): number | null => {
   const delay = RETRY_DELAYS_MS[tried];
   if (delay === undefined) return null;
-  // Read as the rest of the chat screen reads failed requests.
   const response = (
     error as { response?: { status?: number; headers?: unknown } } | null
   )?.response;
@@ -47,7 +35,6 @@ export const retryDelay = (
     const wait = Math.max(delay, asked ?? delay);
     return wait > LONGEST_WAIT_MS ? null : wait;
   }
-  // The server understood and said no; asking again gets the same answer.
   if (status !== undefined && status >= 400 && status < 500 && status !== 408)
     return null;
   return delay;
@@ -66,7 +53,6 @@ interface PageScope {
 interface Planned extends PageScope {
   tried: number;
   timer: ReturnType<typeof setTimeout> | null;
-  // Its time came while the page was hidden, and it waits to be shown.
   due: boolean;
   running: boolean;
   again: boolean;
@@ -81,35 +67,21 @@ interface Planned extends PageScope {
 }
 
 export interface Retries {
-  /**
-   * Runs `run` now, and again later while it fails, until it works, another try would not
-   * help, or it is cancelled. `failed` hears each failure, `gaveUp` when no more tries are
-   * planned. Reads under the same key share their plan and rate-limit deadline. The promise
-   * is the first try's.
-   */
   keepTrying: <T>(
     key: string,
     run: (nextPage: PageCheckpoint) => Promise<T>,
     callbacks?: { failed?: (error: unknown) => void; gaveUp?: () => void },
   ) => Promise<T>;
-  /** Follow-up reads from user actions use page checks without retrying the action. */
   runPages: <T>(
     key: string,
     run: (nextPage: PageCheckpoint) => Promise<T>,
   ) => Promise<T | undefined>;
-  /** Preserve a 429 even when the response is too old to affect the screen. */
   recordFailure: (key: string, error: unknown) => void;
-  /** Whether something is planned under this key. */
   planned: (key: string) => boolean;
-  /** Whether a shared server deadline is currently active for this key. */
   limited: (key: string) => boolean;
-  /** A reconnect can wake an offline read, but not shorten a 429 deadline. */
   wake: (key: string) => void;
-  /** Plans nothing more under this key, or any key that starts with it and a colon. */
   cancel: (key: string) => void;
-  /** Nothing is tried while the page is hidden. */
   hide: () => void;
-  /** What came due while hidden is tried once, now. */
   show: () => void;
   stop: () => void;
 }
@@ -177,8 +149,6 @@ export const createRetries = (
       });
   };
 
-  // A running read may need another page. Keep its accumulated data in place while the
-  // page is hidden or a newer 429 deadline is active; cancellation releases it without a GET.
   const waitForPage = (
     key: string,
     entry: PageScope,
@@ -240,9 +210,6 @@ export const createRetries = (
       return;
     }
     entry.due = false;
-    // Another screen may have received a 429 after this retry was scheduled.
-    // Every path into a request (timer, reconnect, visibility, or coalescing)
-    // passes here, so consult the latest account-wide deadline at that point.
     const remaining = (cooldowns.get(key) ?? 0) - Date.now();
     if (remaining > LONGEST_WAIT_MS) {
       plans.delete(key);

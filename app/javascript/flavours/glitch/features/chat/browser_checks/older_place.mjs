@@ -1,8 +1,3 @@
-// Run from the repository root with `node .../older_place.mjs`.
-// Draws a room with React, the chat's own styles and the real scroll hook in Chromium and WebKit, reads up to the top
-// as someone about to load older messages does, puts 40 older messages in above, and checks that the message being
-// read stays where it was on the screen (rule 5; review f35f D2 measured +2,700~3,100px on the review server).
-// CHAT_SCROLL_HOOK may point at another use_chat_scroll.ts to compare.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -38,7 +33,6 @@ const nothing = () => undefined;
 
 const Room = () => {
   const [scroll] = useState(() => createChatScroll(null));
-  // Stable, as the room's own (index.tsx keeps it in state).
   const [jumpButton] = useState(() => ({ update: nothing }));
   const [ids, setIds] = useState(() => range(40, 80));
   const endRef = useRef(null);
@@ -141,7 +135,6 @@ for (const [name, engine] of [
           const waitFrames = new Function(`return (${framesSource})()`);
           await waitFrames();
           const openedFollowing = window.following();
-          // Read up to the top, where the button to load older messages is.
           findScroller().scrollTop = 0;
           await waitFrames();
           const reading = document.getElementById('chat-message-40');

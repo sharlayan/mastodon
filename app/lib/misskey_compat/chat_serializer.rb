@@ -124,8 +124,6 @@ class MisskeyCompat::ChatSerializer
     media.remote_url.present? ? file.merge(name: remote_file_name(media)) : file
   end
 
-  # Another server does not send a file name, and the stored one is random once the file has been downloaded.
-  # The media ID is no better to look at, so the name comes from the type, before the download and after it.
   def remote_file_name(media)
     ['file', MIME::Types[media.file_content_type.to_s].first&.extensions&.first].compact.join('.')
   end

@@ -56,7 +56,6 @@ module Sharlayan
           relay_announce(conversation, ERB::Util.url_encode(activity['id']), activity.except('@context', 'signature'))
         end
 
-        # The time is taken before the members are read, so a change made while reading is not reported as older than it is.
         def roster(conversation)
           roster_at = Time.now.utc.iso8601(3)
           { '_misskey_chatRoomMembers' => conversation.accounts.map { |account| actor_uri(account) }, '_misskey_chatRoomRosterAt' => roster_at }
@@ -244,7 +243,6 @@ module Sharlayan
           result
         end
 
-        # An attachment address belongs to one server, so each server gets a copy of the activity with its own.
         def for_domain(payload, message, domain)
           payload.merge('object' => payload['object'].merge('attachment' => documents(message, domain)))
         end
@@ -294,16 +292,12 @@ module Sharlayan
           }
         end
 
-        # Servers from before `context` and `_misskey_chatRoom` read the room only from @context, and
-        # take a Note with one address for a direct message, so the sender is addressed like they do.
-        # A fetched Note goes without these, because there it would have to replace the real @context.
         def legacy_room_fields(message)
           return {} unless message.chat_conversation.chat_group?
 
           { '@context' => room_uri(message.chat_conversation), 'to' => [actor_uri(message.account), *recipients(message)] }
         end
 
-        # Lets a server tell that the room is gone when it has never seen the message. It proves nothing else.
         def room_fields(message)
           return {} unless message.chat_conversation.chat_group?
 
@@ -323,7 +317,6 @@ module Sharlayan
           "#{base_url}/chat/reactions/#{reaction_id}"
         end
 
-        # The owner can tell from the time of the Invite whether this answers the invitation it has now.
         def answered_invite(conversation, invitation)
           object = invite_object(conversation, invitation)
           object['published'] = invitation.invite_published_at.utc.iso8601(3) if invitation.invite_published_at

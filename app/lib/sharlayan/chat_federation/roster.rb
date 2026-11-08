@@ -2,8 +2,6 @@
 
 module Sharlayan
   module ChatFederation
-    # Membership events reach a server in any order, and some never arrive. Events are ordered per room
-    # and member by their `published` time, and the room owner's member list repairs what was lost.
     class Roster
       extend Redisable
       extend JsonLdHelper
@@ -12,7 +10,6 @@ module Sharlayan
       SYNC_SIGNERS = 3
 
       class << self
-        # When both happen at the same time, the removal wins. Servers that do not send a time apply in arrival order.
         def applies?(conversation, account, published, removal: false)
           return true if published.nil?
 
@@ -20,7 +17,6 @@ module Sharlayan
           last.nil? || published > last || (removal && published == last)
         end
 
-        # Older than what is on record: it says nothing about the invitation or membership there is now.
         def stale?(conversation, account, published)
           return false if published.nil?
 
@@ -36,7 +32,6 @@ module Sharlayan
           state.save!
         end
 
-        # In a room owned here, a member's own Remove goes against what the same server said last. A Remove wins a tie.
         def member_departure_applies?(conversation, account, published)
           last = last_member_at(conversation, account)
           published.nil? || last.nil? || published >= last
@@ -47,7 +42,6 @@ module Sharlayan
           published.present? && last.present? && published < last
         end
 
-        # The member left after this Accept was sent, by the clock of the server that sent both.
         def left_since?(conversation, account, published)
           last = last_member_at(conversation, account)
           published.present? && last.present? && published <= last
@@ -87,7 +81,6 @@ module Sharlayan
           conversation.roster_states.find_by(account: account)&.last_member_at
         end
 
-        # A mirrored member may have been removed without this server hearing of it, and the owner would answer them with 404.
         def fetch_group(conversation)
           conversation.accounts.local.limit(SYNC_SIGNERS).each do |signer|
             group = fetch_resource(conversation.uri, on_behalf_of: signer, raise_on_error: :temporary)

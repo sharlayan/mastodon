@@ -18,8 +18,6 @@ import { setupServer } from 'msw/node';
 
 import type * as InitialState from 'flavours/glitch/initial_state';
 
-// Only the socket and the far side of the requests are stand-ins. Each page below goes
-// through the real stream client, the real API client and the real screen.
 const Socket = vi.hoisted(() => {
   class FakeSocket {
     static CONNECTING = 0;
@@ -138,8 +136,6 @@ const message = (room: string, id: number): Message => ({
   media_attachments: [],
 });
 
-// A server with state: what a read answers is what was there at the moment it read,
-// however late the answer gets back. Holding an answer back is what the tests vary.
 const backend = {
   messages: new Map<string, Message[]>(),
   rooms: new Map<
@@ -149,17 +145,14 @@ const backend = {
   invitations: [] as { id: string; title: string }[],
   reads: [] as string[],
   marked: [] as string[],
-  // Every request to mark a room read, answered or not, with when it came.
   markAttempts: [] as { room: string; at: number; messageId?: string }[],
   held: [] as { path: RegExp; until: Promise<void> }[],
   failing: [] as RegExp[],
-  // Answers given once, in place of the real one, to the next request whose path matches.
   refusals: [] as {
     path: RegExp;
     status: number;
     headers?: Record<string, string>;
   }[],
-  // Paths that fail for as long as they are listed here.
   down: [] as RegExp[],
 };
 const room = (id: string) => {
@@ -331,7 +324,6 @@ const INVITATIONS = /\/invitations$/;
 const readsOf = (path: RegExp) =>
   backend.reads.filter((read) => path.test(read.split('?')[0] ?? ''));
 
-// A page load: the connection starts, and the screen may come before or after it is up.
 const loadPage = async () => {
   vi.resetModules();
   const [{ connectUserStream }, { Chat }, { IdentityContext }] =
@@ -380,7 +372,6 @@ const loadPage = async () => {
     socket: Socket.all.at(-1) as InstanceType<typeof Socket>,
   };
 };
-// The server answers a subscription only for a client that asked it to.
 const connect = async (socket: InstanceType<typeof Socket>) => {
   await act(async () => {
     socket.connect();
@@ -393,7 +384,6 @@ const connect = async (socket: InstanceType<typeof Socket>) => {
     await Promise.resolve();
   });
 };
-// Up, and its subscription still on the way to the server.
 const connectUnanswered = async (socket: InstanceType<typeof Socket>) => {
   await act(async () => {
     socket.connect();
@@ -448,14 +438,11 @@ const shown = () =>
 const numbers = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, index) => String(from + index));
 
-// The first import of the screen transforms all of it, which can take longer than a test is
-// given on a busy machine. Each test then imports it again from that work.
 beforeAll(async () => {
   await import('../index');
 }, 60_000);
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
-  // Listening wraps the global WebSocket, and the stream client takes what it finds there.
   Object.defineProperty(globalThis, 'WebSocket', {
     value: Socket,
     configurable: true,
@@ -817,7 +804,6 @@ describe('Chat when the stream connects after the screen has read', () => {
       await settle();
       expect(readsOf(MESSAGES)).toHaveLength(1);
 
-      // Too late for the stream, and read because the answer only comes after it.
       seed('A', 4, 4);
       await answerSubscription(page.socket);
 
@@ -1118,7 +1104,6 @@ describe('Chat when the stream connects after the screen has read', () => {
       const { page } = await openFurtherUp();
       await deliverNext(page);
 
-      // The click scrolls the real viewport; jsdom needs its resulting geometry.
       Element.prototype.scrollIntoView = vi.fn(() => {
         vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
           visibleGeometry,
@@ -1262,8 +1247,6 @@ describe('Chat when the stream connects after the screen has read', () => {
   });
 });
 
-// What the screen asks for by itself is asked for again by the screen. It cannot wait for
-// the stream to say so: the stream may have been up, and said so, before the screen was there.
 describe('Chat when something it asked for by itself fails', () => {
   const READ = /\/read$/;
   const SETTINGS = /\/settings$/;
@@ -1283,7 +1266,6 @@ describe('Chat when something it asked for by itself fails', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
   };
-  // A room with something unread, opened once the stream is up.
   const openUnread = async () => {
     seed('A', 1, 2);
     backend.rooms.set('A', { title: 'Room A', unread: true });

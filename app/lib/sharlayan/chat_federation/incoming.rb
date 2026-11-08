@@ -128,7 +128,6 @@ module Sharlayan
             return 'skip: no local member'
           end
 
-          # A member's signature is only sent to the servers of the room's members.
           unless member_host?(conversation, uri)
             Roster.request_sync(conversation, Addressable::URI.parse(uri).host)
             raise DependencyNotReadyError, 'Waiting for chat room member'
@@ -262,7 +261,6 @@ module Sharlayan
           'skip: chat reaction undo'
         end
 
-        # Some implementations name the undone activity by its URI alone.
         def chat_undo_reaction_reference?(json, account)
           uri = uri_of(json['object'])
           uri.present? && ChatMessageReaction.exists?(uri: uri, account: account)
@@ -433,7 +431,6 @@ module Sharlayan
           uri = uri_of(activity['object'])
           return 'skip: not a chat message' if uri.blank? || room_uri?(uri)
 
-          # Without its message there is no telling it belongs to this room. The author's own Delete still gets here.
           message = ChatMessage.find_by(uri: uri)
           return 'skip: relayed deletion of an unknown message' if message.nil?
           return 'skip: chat message of another room' unless message.chat_conversation_id == conversation.id
@@ -475,8 +472,6 @@ module Sharlayan
           inline ? handle_undo_reaction(activity, actor) : handle_undo_reaction_reference(activity, actor)
         end
 
-        # The room owner vouches for who reacted, but not for another server's emoji image,
-        # so that comes from the reacting account's own server.
         def verified_emoji_tags(activity, actor)
           reaction = activity['_misskey_reaction'] || activity['content']
           tag = Array.wrap(activity['tag']).grep(Hash).find { |item| equals_type?(item['type'], 'Emoji') && item['name'] == reaction }
@@ -493,7 +488,6 @@ module Sharlayan
           service.hold_relay(conversation, conversation.owner_account, message_uri, announce) ? 'ok: relayed activity held for its message' : 'skip: too many relayed activities held'
         end
 
-        # The room an activity names says nothing about what it may do, only whether there is anything left to wait for.
         def deleted_room_activity?(message_uri, *activities)
           service.message_of_deleted_room?(message_uri) || activities.any? { |activity| service.room_gone?(room_uri_of(activity)) }
         end
@@ -567,9 +561,6 @@ module Sharlayan
           canonical_room_uri(Array.wrap(object['@context']).find { |value| room_uri?(value) }, account)
         end
 
-        # Servers from before `context` and `_misskey_chatRoom` name a room they mirror under their own
-        # host, or guess this server's path from an actor URI, so only the ID at the end is reliable.
-        # It is only looked up among the rooms the sender already belongs to or is invited to.
         def canonical_room_uri(uri, account)
           return uri if !room_uri?(uri) || ChatConversation.exists?(uri: uri)
           return uri unless same_host?(uri, account.uri) || ActivityPub::TagManager.instance.local_uri?(uri)

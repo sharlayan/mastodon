@@ -25,14 +25,10 @@ import {
   visibleArea,
 } from './scroll_control';
 
-// The page itself, measured and moved for scroll_control.ts. Nothing here decides where to scroll or whether to
-// follow the newest message: it reports what happened and carries out what `step` says.
-
 export const usesTouchKeyboard = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(pointer: coarse)').matches;
 
-// The box the room scrolls in: its own column, or the page.
 const chatScrollport = (end: HTMLElement): Element | null => {
   let parent = end.parentElement;
   while (
@@ -81,7 +77,6 @@ interface Room {
   composer: HTMLElement | null;
 }
 
-// The column header: in one column it is drawn in the tabs bar held at the top of the page, otherwise in the column.
 const headerOf = (end: HTMLElement) =>
   document.querySelector('.tabs-bar__wrapper') ??
   end.closest('.column')?.querySelector('.column-header__wrapper') ??
@@ -121,7 +116,6 @@ const composerFocused = (composer: HTMLElement | null) => {
   );
 };
 
-// How much further a script can scroll the room's box.
 const remainingOf = (room: Room) => {
   const scroller = chatScrollport(room.end);
   if (!scroller) return 0;
@@ -135,7 +129,6 @@ const remainingOf = (room: Room) => {
 const firstMessageOf = (room: Room) =>
   room.list.querySelector<HTMLElement>('[id^="chat-message-"]');
 
-// Measured only when a decision reads it, once per happening.
 const snapshotOf = (room: Room): Snapshot => {
   let layout: LayoutReading | undefined;
   const measured = () => (layout ??= readLayout(room));
@@ -217,8 +210,6 @@ const detachedSnapshot = (): Snapshot => ({
   remaining: 0,
 });
 
-// Raises the composer and the navigation bar onto the visible bottom while the keyboard is open, and puts back what
-// was there before.
 const createLift = (room: Room) => {
   let applied: {
     navigation: HTMLElement | null;
@@ -272,7 +263,6 @@ const createLift = (room: Room) => {
   return { apply, restore };
 };
 
-// Makes the page longer below the end of the room while the keyboard is open, and puts back what was there.
 const createRoom = (end: HTMLElement) => {
   let applied: { value: string; priority: string } | null = null;
   const restore = () => {
@@ -292,7 +282,6 @@ const createRoom = (end: HTMLElement) => {
   return { apply, restore };
 };
 
-// Holds the room's scroll state and runs it, one happening at a time.
 export const createChatScroll = (initialTarget: string | null) => {
   let state = initialScrollState(initialTarget);
   let room: Room | null = null;
@@ -309,7 +298,6 @@ export const createChatScroll = (initialTarget: string | null) => {
     timers.delete(name);
   };
 
-  // What `step` says is done in order; a happening it causes waits for the one before to be done.
   const dispatch = (event: ScrollEvent) => {
     queue.push(event);
     if (running) return;
@@ -353,7 +341,6 @@ export const createChatScroll = (initialTarget: string | null) => {
   return {
     dispatch,
     following: () => state.following,
-    // Following, and not zoomed in: what comes in is shown and can be read.
     follows: () => state.following && currentScale() === 1,
     seeking: () => state.target?.phase === 'seeking',
     targetId: () => state.target?.id ?? null,
@@ -363,7 +350,6 @@ export const createChatScroll = (initialTarget: string | null) => {
         listeners.delete(listener);
       };
     },
-    // Whether a message is actually on the screen, clear of the composer, in a page that is shown.
     messageVisible: (id: string) => {
       if (!room || document.visibilityState === 'hidden') return false;
       const message = document.getElementById(`chat-message-${id}`);
@@ -396,8 +382,6 @@ interface JumpButton {
   update: (next: { away?: boolean }) => void;
 }
 
-// Connects a room on the page to its scroll state: what the reader and the page do goes in as happenings, and what
-// comes back is done to the page.
 export const useChatScroll = (
   scroll: ChatScroll,
   {
@@ -420,20 +404,15 @@ export const useChatScroll = (
     listRef: RefObject<HTMLElement | null>;
     composerRef: RefObject<HTMLElement | null>;
     jumpButton: JumpButton;
-    // Changes whenever the room's elements may have been replaced.
     attachKey: string;
-    // The room and view the newest message is shown in, when it is this room's.
     screen: string | null;
     newestId: string | undefined;
     newestIsMine: boolean;
-    // The oldest message shown: older ones came in when it changes.
     oldestId: string | undefined;
-    // The message being gone to is among those shown.
     targetShown: boolean;
     onReadCheck: () => void;
     onReturn: () => void;
     onReadNewest: () => void;
-    // The page's history entry is no longer to open the room at the searched message.
     onForgetSearch: () => void;
   },
 ) => {
@@ -449,7 +428,6 @@ export const useChatScroll = (
     onForgetSearch();
   });
 
-  // Before the screen is drawn, so that what is aligned is never seen out of place.
   useLayoutEffect(() => {
     const end = endRef.current;
     const list = listRef.current;
@@ -464,7 +442,6 @@ export const useChatScroll = (
         case 'alignEnd': {
           if (typeof end.scrollIntoView === 'function')
             end.scrollIntoView({ block: 'end' });
-          // A sticky composer can leave the end in view before the box reaches its bottom.
           const scroller = chatScrollport(end);
           if (scroller) scroller.scrollTop = scroller.scrollHeight;
           break;
@@ -542,7 +519,6 @@ export const useChatScroll = (
     const onTouchStart = (event: Event) => {
       if (!inComposer(event)) scroll.dispatch({ type: 'touch', down: true });
     };
-    // A finger still on the screen moves again and says so.
     const onTouchEnd = () => {
       scroll.dispatch({ type: 'touch', down: false });
     };
@@ -555,8 +531,6 @@ export const useChatScroll = (
     };
     const onPointerDown = (event: Event) => {
       if (!(event.target instanceof Element)) return;
-      // Android's back key puts the keyboard away and leaves the box focused: a tap on it brings the keyboard back with
-      // no focus to say so (Pixel on f496c2c, kupc-6·8·9: Chrome took the page 70.9px down, and it stayed there).
       if (
         usesTouchKeyboard() &&
         event.target === document.activeElement &&
@@ -635,7 +609,6 @@ export const useChatScroll = (
     scroll.dispatch({ type: 'newestShown', screen, mine: newestIsMine });
   }, [newestId, newestIsMine, screen, scroll]);
 
-  // After older messages are drawn above and before the screen shows them, so the reader's place is kept.
   useLayoutEffect(() => {
     scroll.dispatch({ type: 'olderLoaded' });
   }, [oldestId, scroll]);

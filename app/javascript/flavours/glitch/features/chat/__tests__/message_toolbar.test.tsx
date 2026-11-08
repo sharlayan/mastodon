@@ -221,7 +221,6 @@ describe('Message toolbar', () => {
     expect(buttonsOf('1')).toEqual(['Reply', 'React', 'Copy']);
   });
 
-  // On a short phone screen the picker opened beside a message in the middle ran off the bottom of the screen.
   it('asks the reaction picker to stay on the screen', async () => {
     await mountRoom([message('1', 'Hello')]);
 

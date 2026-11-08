@@ -1,5 +1,3 @@
-// Run from the repository root with `node .../bubble_layout.mjs`.
-// This uses real layout engines because jsdom does not implement flex sizing.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';

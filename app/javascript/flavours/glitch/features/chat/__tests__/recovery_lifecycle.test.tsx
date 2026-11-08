@@ -18,8 +18,6 @@ import { setupServer } from 'msw/node';
 
 import type * as InitialState from 'flavours/glitch/initial_state';
 
-// Only the socket and the far side of the requests are stand-ins. Each page below goes
-// through the real stream client, the real API client and the real screen.
 const Socket = vi.hoisted(() => {
   class FakeSocket {
     static CONNECTING = 0;
@@ -77,9 +75,6 @@ const Socket = vi.hoisted(() => {
   return FakeSocket;
 });
 
-// Review 37ca: jsdom's multipart body does not reach MSW, so only the upload POST itself is
-// answered here (as Mastodon answers a video: 202, no URL yet). Every other request, including
-// the processing poll, goes through the real API client to MSW.
 vi.mock('flavours/glitch/api', async (importOriginal) => {
   const actual = await importOriginal<{
     default: (auth?: boolean) => {
@@ -173,8 +168,6 @@ const message = (room: string, id: number): Message => ({
   media_attachments: [],
 });
 
-// A server with state: what a read answers is what was there at the moment it read,
-// however late the answer gets back. Holding an answer back is what the tests vary.
 const backend = {
   messages: new Map<string, Message[]>(),
   rooms: new Map<
@@ -184,17 +177,14 @@ const backend = {
   invitations: [] as { id: string; title: string }[],
   reads: [] as string[],
   marked: [] as string[],
-  // Every request to mark a room read, answered or not, with when it came.
   markAttempts: [] as { room: string; at: number; messageId?: string }[],
   held: [] as { path: RegExp; until: Promise<void> }[],
   failing: [] as RegExp[],
-  // Answers given once, in place of the real one, to the next request whose path matches.
   refusals: [] as {
     path: RegExp;
     status: number;
     headers?: Record<string, string>;
   }[],
-  // Paths that fail for as long as they are listed here.
   down: [] as RegExp[],
 };
 const room = (id: string) => {
@@ -364,7 +354,6 @@ const ROOMS = /\/conversations$/;
 const readsOf = (path: RegExp) =>
   backend.reads.filter((read) => path.test(read.split('?')[0] ?? ''));
 
-// A page load: the connection starts, and the screen may come before or after it is up.
 const loadPage = async () => {
   vi.resetModules();
   const [{ connectUserStream }, { Chat }, { IdentityContext }] =
@@ -413,7 +402,6 @@ const loadPage = async () => {
     socket: Socket.all.at(-1) as InstanceType<typeof Socket>,
   };
 };
-// The server answers a subscription only for a client that asked it to.
 const connect = async (socket: InstanceType<typeof Socket>) => {
   await act(async () => {
     socket.connect();
@@ -440,14 +428,11 @@ const settle = async () => {
     await new Promise((resolve) => setTimeout(resolve, 60));
   });
 };
-// The first import of the screen transforms all of it, which can take longer than a test is
-// given on a busy machine. Each test then imports it again from that work.
 beforeAll(async () => {
   await import('../index');
 }, 60_000);
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
-  // Listening wraps the global WebSocket, and the stream client takes what it finds there.
   Object.defineProperty(globalThis, 'WebSocket', {
     value: Socket,
     configurable: true,
@@ -474,7 +459,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ---- Review 37ca: reproductions ----
 const MEDIA = /\/api\/v1\/media\/m1$/;
 const later = async (ms: number) => {
   await act(async () => {

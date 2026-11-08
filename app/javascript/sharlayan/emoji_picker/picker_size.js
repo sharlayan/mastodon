@@ -20,7 +20,6 @@ export function computeEmojiPickerStyle(style, pickerSize) {
 
 export class EmojiPickerSizeObserver {
 
-  // shouldKeep says whether the size seen now is one to remember. A size the screen holds the picker to is not.
   constructor(onResize, shouldKeep = () => true) {
     this.onResize = onResize;
     this.shouldKeep = shouldKeep;

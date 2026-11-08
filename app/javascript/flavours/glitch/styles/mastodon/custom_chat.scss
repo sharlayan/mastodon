@@ -440,11 +440,8 @@
     min-height: 240px;
     padding: 16px 12px;
     background: var(--color-bg-primary);
-
-    // Pictures and what sits on them have a z-index of their own, which would otherwise reach the composer.
     isolation: isolate;
 
-    // Korean words stay whole; Japanese, which has no spaces, still breaks when a line would overflow.
     .empty-column-indicator {
       overflow-wrap: anywhere;
       text-wrap: balance;
@@ -457,8 +454,6 @@
     align-items: flex-start;
     align-self: flex-start;
     gap: 8px;
-
-    // Room beside the bubble for the toolbar with all four of its buttons.
     max-width: min(calc(100% - 114px), 620px);
     color: var(--color-text-primary);
 
@@ -650,8 +645,6 @@
     font-size: 11px;
   }
 
-  // Runs the length of the bubble and a toolbar's height past it, so that the toolbar can stay below the column
-  // header when the top of the bubble has scrolled away. Only the toolbar itself takes a touch or a pointer.
   &__actions-rail {
     position: absolute;
     z-index: 1;
@@ -701,11 +694,6 @@
     }
   }
 
-  // The toolbar is the bubble's: it opens when the bubble itself takes the focus (a tap, a long press) or the toolbar
-  // does. A finger on a quote, a link, a picture or a reaction is for that, and a toolbar opened by its focus can be
-  // held under the column header over what was tapped, taking the click (Pixel and Galaxy on f496c2c: the first tap
-  // on a quote near the top went to the bubble's wrapper). A completed long press stays open if the browser moves
-  // focus from the bubble to the quote while opening its context menu.
   &__bubble:focus ~ &__actions-rail &__actions,
   &__bubble[data-chat-long-pressed]:focus-within ~ &__actions-rail &__actions,
   &__actions:focus-within {
@@ -713,7 +701,6 @@
     pointer-events: auto;
   }
 
-  // Going through a message with the keyboard still shows its toolbar.
   &__message:has(:focus-visible) &__actions {
     opacity: 1;
     pointer-events: auto;
@@ -833,8 +820,6 @@
   &__gallery {
     width: min(420px, calc(100vw - 120px));
     max-width: 100%;
-
-    // What sits on a picture has a z-index of its own, which would otherwise reach over the toolbar.
     isolation: isolate;
 
     .media-gallery:first-child {
@@ -911,7 +896,6 @@
       flex: 0 0 auto;
       height: 44px;
 
-      // A disabled button takes the focus without telling anyone. Pressed through, the form can keep it where it is.
       &:disabled {
         pointer-events: none;
       }
@@ -1056,10 +1040,6 @@
       bottom: calc(
         var(--chat-navigation-height) + var(--chat-keyboard-lift, 0px)
       );
-
-      // The bar can be drawn a fraction of a pixel shorter than the height the composer stands on (Pixel 1 at dpr
-      // 2.625: 54.5px), and the messages behind showed through as a thin line. The composer reaches under it, from
-      // its own edge so that no rounding leaves a line between them.
       box-shadow: 0 1px 0 var(--color-bg-primary);
     }
 
@@ -1086,7 +1066,6 @@
   }
 }
 
-// The column header has no gap above it here.
 @media screen and (max-width: ($no-gap-breakpoint - 1px)) {
   .chat-native {
     &__actions {
@@ -1095,9 +1074,7 @@
   }
 }
 
-// A column scrolls by itself, below its own header, and has the height of the window.
 .layout-multiple-columns .chat-native {
-  // Fitted to that height, the messages would spill over the composer, which then scrolls away with them.
   &__messages {
     flex-shrink: 0;
   }
@@ -1106,7 +1083,6 @@
     inset-block-start: 4px;
   }
 
-  // There is no navigation bar under a column, however narrow the window.
   &__composer {
     bottom: 0;
     box-shadow: none;
@@ -1125,7 +1101,6 @@
   }
 }
 
-// Above the bubble there is always room, and a thumb does not cover it.
 @media screen and (max-width: $mobile-breakpoint),
   (hover: none),
   (pointer: coarse) {
@@ -1142,7 +1117,6 @@
   }
 }
 
-// Some Android phones say they can hover, but their pointer is still coarse.
 @media (hover: none), (pointer: coarse) {
   .chat-native {
     &__actions-rail,
@@ -1155,13 +1129,10 @@
       padding: 8px;
     }
 
-    // The toolbar opening already shows which message the finger is on.
     &__bubble:focus-visible {
       outline: none;
     }
 
-    // A long press opens the toolbar, whose copy button takes the place of selecting. Pictures are not touched, so
-    // they keep their browser menu.
     &__message-content > strong,
     &__bubble > p,
     &__reply-quote,
@@ -1174,10 +1145,6 @@
   }
 }
 
-// A mouse on its way to the toolbar leaves the bubble, beside a tall one often far below the toolbar. While the message
-// is hovered, the space up to the toolbar still counts as the message, so the toolbar stays open. This lies under
-// everything in the list, so it only ever catches empty space: other messages, their text and their pictures stay in
-// front of it. It does not exist until the message is hovered, so empty space alone opens nothing.
 @media (hover: hover) and (pointer: fine) {
   .chat-native {
     &__message:hover &__actions {
@@ -1200,7 +1167,6 @@
   }
 }
 
-// The toolbar sits above the bubble here, and can be wider than it.
 @media (hover: hover) and (pointer: fine) and (max-width: $mobile-breakpoint) {
   .chat-native {
     &__message:hover &__bubble-wrap::before {
@@ -1216,7 +1182,6 @@
   }
 }
 
-// Match the mobile compose field size so iOS does not zoom text inputs on focus.
 .columns-area--mobile .chat-native {
   input:not([type='file']),
   textarea {

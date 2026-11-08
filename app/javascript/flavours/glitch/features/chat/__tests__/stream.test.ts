@@ -14,8 +14,6 @@ const payload = {
 };
 
 describe('Chat stream connection', () => {
-  // The first connection can come after the screen has read what it shows, so what was sent
-  // in between has to be read just like what was sent while a connection was down.
   it('announces every connection, the first one included', async () => {
     vi.resetModules();
     const stream = await import('../stream');

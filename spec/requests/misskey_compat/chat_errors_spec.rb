@@ -2,8 +2,6 @@
 
 require 'rails_helper'
 
-# The expected messages, codes and ids are copied from the endpoints of CherryPick. Clients written for it read
-# them, so each refusal has to look the same there and here. Every one is reached by a real request.
 RSpec.describe 'Misskey-compat chat errors' do
   let(:user) { Fabricate(:user) }
   let(:account) { user.account }

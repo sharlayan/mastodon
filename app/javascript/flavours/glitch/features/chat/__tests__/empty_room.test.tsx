@@ -132,7 +132,6 @@ const mount = () =>
     </IntlProvider>,
   );
 
-// Lets everything already answered reach the screen, so that an absence is a real one.
 const settle = async () => {
   await act(async () => {
     await new Promise((resolve) => {

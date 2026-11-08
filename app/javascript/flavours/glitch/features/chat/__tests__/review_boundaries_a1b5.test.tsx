@@ -18,8 +18,6 @@ import { setupServer } from 'msw/node';
 
 import type * as InitialState from 'flavours/glitch/initial_state';
 
-// Only the socket and the far side of the requests are stand-ins. Each page below goes
-// through the real stream client, the real API client and the real screen.
 const Socket = vi.hoisted(() => {
   class FakeSocket {
     static CONNECTING = 0;
@@ -77,9 +75,6 @@ const Socket = vi.hoisted(() => {
   return FakeSocket;
 });
 
-// Review 37ca: jsdom's multipart body does not reach MSW, so only the upload POST itself is
-// answered here (as Mastodon answers a video: 202, no URL yet). Every other request, including
-// the processing poll, goes through the real API client to MSW.
 vi.mock('flavours/glitch/api', async (importOriginal) => {
   const actual = await importOriginal<{
     default: (auth?: boolean) => {
@@ -95,8 +90,6 @@ vi.mock('flavours/glitch/api', async (importOriginal) => {
         if (url === '/api/v2/media') {
           (globalThis as { __uploads?: number }).__uploads =
             ((globalThis as { __uploads?: number }).__uploads ?? 0) + 1;
-          // Review a99b: a file whose name says "bad" is refused, as Mastodon refuses an
-          // unsupported file (422). Every other file is answered as before (202, no URL yet).
           const file = (rest[0] as FormData | undefined)?.get('file') as
             | File
             | undefined;
@@ -133,7 +126,6 @@ vi.mock('flavours/glitch/store', async (importOriginal) => ({
   useAppDispatch: () => vi.fn(),
   useAppSelector: () => false,
 }));
-// Review a99b: the room menu is drawn as plain buttons so a test can press Mute.
 vi.mock('flavours/glitch/components/dropdown_menu', () => ({
   Dropdown: ({
     items,
@@ -156,7 +148,6 @@ vi.mock('flavours/glitch/components/dropdown_menu', () => ({
     </div>
   ),
 }));
-// Review a99b: the header also draws its extra button, where the room menu lives.
 vi.mock('flavours/glitch/components/column/header', () => ({
   ColumnHeader: ({
     title,
@@ -217,8 +208,6 @@ const message = (room: string, id: number): Message => ({
   media_attachments: [],
 });
 
-// A server with state: what a read answers is what was there at the moment it read,
-// however late the answer gets back. Holding an answer back is what the tests vary.
 const backend = {
   messages: new Map<string, Message[]>(),
   rooms: new Map<
@@ -228,17 +217,14 @@ const backend = {
   invitations: [] as { id: string; title: string }[],
   reads: [] as string[],
   marked: [] as string[],
-  // Every request to mark a room read, answered or not, with when it came.
   markAttempts: [] as { room: string; at: number; messageId?: string }[],
   held: [] as { path: RegExp; until: Promise<void> }[],
   failing: [] as RegExp[],
-  // Answers given once, in place of the real one, to the next request whose path matches.
   refusals: [] as {
     path: RegExp;
     status: number;
     headers?: Record<string, string>;
   }[],
-  // Paths that fail for as long as they are listed here.
   down: [] as RegExp[],
 };
 const room = (id: string) => {
@@ -408,7 +394,6 @@ const ROOMS = /\/conversations$/;
 const readsOf = (path: RegExp) =>
   backend.reads.filter((read) => path.test(read.split('?')[0] ?? ''));
 
-// A page load: the connection starts, and the screen may come before or after it is up.
 const loadPage = async () => {
   vi.resetModules();
   const [{ connectUserStream }, { Chat }, { IdentityContext }] =
@@ -457,7 +442,6 @@ const loadPage = async () => {
     socket: Socket.all.at(-1) as InstanceType<typeof Socket>,
   };
 };
-// The server answers a subscription only for a client that asked it to.
 const connect = async (socket: InstanceType<typeof Socket>) => {
   await act(async () => {
     socket.connect();
@@ -484,14 +468,11 @@ const settle = async () => {
     await new Promise((resolve) => setTimeout(resolve, 60));
   });
 };
-// The first import of the screen transforms all of it, which can take longer than a test is
-// given on a busy machine. Each test then imports it again from that work.
 beforeAll(async () => {
   await import('../index');
 }, 60_000);
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
-  // Listening wraps the global WebSocket, and the stream client takes what it finds there.
   Object.defineProperty(globalThis, 'WebSocket', {
     value: Socket,
     configurable: true,
@@ -518,7 +499,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ---- Review 37ca: reproductions ----
 const later = async (ms: number) => {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(ms);
@@ -530,13 +510,9 @@ const listed = () =>
   );
 const INVITATIONS = /\/invitations$/;
 
-// ---- Review a1b5: reproductions. Each test asserts what the screen should do; a failing
-// assertion is a reproduced defect. What each one saw goes to mock-events.jsonl. ----
 const note = vi.fn().mockResolvedValue(undefined);
 const lastId = (id: string) =>
   Number(backend.messages.get(id)?.at(-1)?.id ?? 0);
-// The list as the server pages it: newest last message first, and max_id is a keyset on the
-// cursor room's last message as it is when the page is asked for.
 const useActivityPagedRooms = () => {
   server.use(
     http.get(
@@ -574,7 +550,6 @@ describe('Review a1b5', () => {
   });
 
   it('N1 Load more that waited for a rate-limited list read does not skip a room', async () => {
-    // Rooms 1..25, room n's last message is n: page one is 25..6, and Load more asks max_id=6.
     for (let id = 1; id <= 25; id += 1) seed(String(id), id, id);
     useActivityPagedRooms();
     const page = await loadPage();
@@ -585,7 +560,6 @@ describe('Review a1b5', () => {
     });
     await settle();
     const before = listed();
-    // While the stream is away, room 3 (on page two) gets a message and moves to the top.
     backend.messages.set('3', [
       ...(backend.messages.get('3') ?? []),
       message('3', 100),
@@ -649,7 +623,6 @@ describe('Review a1b5', () => {
         '*/api/v1/chat/conversations/:id',
         answer((_, id) => withMute(id)),
       ),
-      // Mastodon answers mute with render_empty ({}), and sends no stream event.
       http.post('*/api/v1/chat/conversations/:id/mute', ({ params }) => {
         muted.add(String(params.id));
         backend.reads.push('POST mute');
@@ -664,7 +637,6 @@ describe('Review a1b5', () => {
     await settle();
     const DETAIL = /\/conversations\/A$/;
     const release = holdNextAnswer(DETAIL);
-    // Someone joins: the screen reads the room again. The server answers now (not muted).
     act(() => {
       page.socket.deliver('chat.member_join', {
         conversation_id: 'A',
@@ -787,7 +759,6 @@ describe('Review a1b5', () => {
       account: me,
       content: 'A unique search result',
     };
-    // The server no longer gives the author a message they hid.
     backend.messages.set(
       'A',
       (backend.messages.get('A') ?? []).filter((item) => item.id !== '5'),
@@ -878,7 +849,6 @@ describe('Review a1b5', () => {
       expect(sentReads).toBe(1);
     });
     await settle();
-    // A later sent-list read (the inviter's list changed elsewhere) gets 429 Retry-After 60.
     backend.refusals.push({
       path: INVITATIONS,
       status: 429,
@@ -937,7 +907,6 @@ describe('Review a1b5 search matching', () => {
     seed('A', 1, 1);
     const found = { ...message('A', 1), content: 'Istanbul trip' };
     server.use(
-      // The server matched with ILIKE (verified on the review DB: 'İstanbul' ILIKE '%istanbul%').
       http.get('*/api/v1/chat/messages/search', () =>
         HttpResponse.json([found]),
       ),
@@ -1022,7 +991,6 @@ describe('Review a1b5 search matching', () => {
     await screen.findByText('apple pie');
     fireEvent.change(input, { target: { value: 'banana' } });
     await later(1_000);
-    // Still an apple result: edited, it still says apple.
     act(() => {
       page.socket.deliver('chat.message_update', {
         ...apple,
@@ -1429,8 +1397,6 @@ describe('Review f98c boundaries', () => {
 
 const roomOrder = (a: string, b: string) =>
   lastId(b) - lastId(a) || Number(b) - Number(a);
-// As useActivityPagedRooms, and as Mastodon does: the cursor room is looked up among the
-// reader's rooms first (ConversationsController#index, find), so a room that is gone is a 404.
 const useStrictActivityPagedRooms = () => {
   server.use(
     http.get('*/api/v1/chat/conversations', ({ request }) => {
@@ -1477,7 +1443,6 @@ describe('Review 84a6', () => {
   ])(
     'X1 Load more still reads on after the cursor room ends (%s)',
     async (reason, label) => {
-      // Rooms 1..25, room n's last message is n: page one is 25..6 and the cursor is room 6.
       for (let id = 1; id <= 25; id += 1) seed(String(id), id, id);
       useStrictActivityPagedRooms();
       const page = await loadPage();
@@ -1488,7 +1453,6 @@ describe('Review 84a6', () => {
       });
       await settle();
       const before = listed();
-      // Room 6 ends on the server, and the stream says so, as Sharlayan::ChatService does.
       backend.rooms.delete('6');
       backend.messages.delete('6');
       act(() => {
@@ -1600,7 +1564,6 @@ describe('Review 84a6', () => {
   }, 60000);
 
   it('X3 a room that gets a message while a two-page list reread is between its pages stays listed', async () => {
-    // Rooms 1..45, room n's last message is n. Page one is 45..26, page two 25..6.
     for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
     useActivityPagedRooms();
     const page = await loadPage();
@@ -1616,15 +1579,12 @@ describe('Review 84a6', () => {
     });
     await settle();
     const before = listed();
-    // The stream comes back and the screen reads its two pages again. The first page's answer
-    // is what the server had when it was asked; it reaches the screen a moment later.
     const releaseFirst = holdNextAnswer(ROOMS);
     const socket = await dropConnection(page.socket);
     await connect(socket);
     await waitFor(() => {
       expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3);
     });
-    // Meanwhile room 10 (page two) gets a message, and the stream says so.
     const newest = message('10', 100);
     backend.messages.set('10', [...(backend.messages.get('10') ?? []), newest]);
     act(() => {
@@ -1677,8 +1637,6 @@ describe('Review 84a6', () => {
       expect(listed()).toContain('6');
     });
     await settle();
-    // The stream comes back; just as page one's answer arrives, the reader leaves the tab.
-    // (The hold only lines the hiding up with that moment; the answer itself is not delayed.)
     const releaseFirst = holdNextAnswer(ROOMS);
     const socket = await dropConnection(page.socket);
     await connect(socket);
@@ -1689,7 +1647,6 @@ describe('Review 84a6', () => {
     await releaseFirst();
     await settle();
     const readsWhileHidden = readsOf(ROOMS).length;
-    // While the tab is away (the stream stays connected), room 10 on page two gets a message.
     await later(30_000);
     const newest = message('10', 100);
     backend.messages.set('10', [...(backend.messages.get('10') ?? []), newest]);
@@ -1715,7 +1672,6 @@ describe('Review 84a6', () => {
   }, 60_000);
 });
 
-// Mirrors both the legacy room-id cursor and the optional frozen message-id cursor.
 const useSnapshotPagedRooms = (hiddenLastRoom?: string) => {
   server.use(
     http.get('*/api/v1/chat/conversations', async ({ request }) => {
@@ -1812,21 +1768,16 @@ describe('Review cursor boundaries', () => {
     expect(new Set(listed()).size).toBe(25);
   }, 60_000);
   it('C1 the reread page cursor room itself gets a message between reread pages', async () => {
-    // Rooms 1..45, room n's last message is n. Shown: 45..26 and 25..6.
     for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
     useSnapshotPagedRooms();
     const page = await showTwoPages();
     const before = listed();
-    // The stream comes back and the screen reads its two pages again. Page one (45..26) is
-    // what the server had when it was asked; it reaches the screen a moment later.
     const releaseFirst = holdNextAnswer(ROOMS);
     const socket = await dropConnection(page.socket);
     await connect(socket);
     await waitFor(() => {
       expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3);
     });
-    // Meanwhile room 26, the last room of that page and so the cursor of page two, gets a
-    // message, and the stream says so.
     giveMessage(socket, '26', 100);
     await settle();
     const whileReading = listed();
@@ -1856,7 +1807,6 @@ describe('Review cursor boundaries', () => {
     for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
     useSnapshotPagedRooms();
     const page = await showTwoPages();
-    // Room 6, the last room shown and so the Load more cursor, gets a message.
     giveMessage(page.socket, '6', 100);
     await waitFor(() => {
       expect(listed()[0]).toBe('6');
@@ -1876,7 +1826,6 @@ describe('Review cursor boundaries', () => {
         screen.queryByRole('button', { name: 'Load more' }),
       ),
     });
-    // Rooms 5..1 are the rest of the server's list.
     expect(afterFirst.filter((id) => !before.includes(id))).toEqual([
       '5',
       '4',
@@ -1890,7 +1839,6 @@ describe('Review cursor boundaries', () => {
     for (let id = 1; id <= 45; id += 1) seed(String(id), id, id);
     useSnapshotPagedRooms();
     const page = await showTwoPages();
-    // While the stream is down, room 50 is made and gets a message (no event reaches the screen).
     const releaseFirst = holdNextAnswer(ROOMS);
     const socket = await dropConnection(page.socket);
     seed('50', 200, 200);
@@ -1898,7 +1846,6 @@ describe('Review cursor boundaries', () => {
     await waitFor(() => {
       expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(3);
     });
-    // Page one of the reread (50, 45..27) is on its way; its last room, 27, ends now.
     backend.rooms.delete('27');
     backend.messages.delete('27');
     act(() => {
@@ -1944,14 +1891,12 @@ describe('Review cursor boundaries', () => {
       expect(listed()).toContain('26');
     });
     await settle();
-    // Load more is asked (page 25..6 computed), and its answer is on its way.
     const releaseMore = holdNextAnswer(ROOMS);
     const releaseDetail = holdNextAnswer(/\/conversations\/10$/);
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await waitFor(() => {
       expect(readsOf(ROOMS).length).toBeGreaterThanOrEqual(2);
     });
-    // Room 10, in that page, gets a message; the screen does not know it yet, so it asks for it.
     giveMessage(page.socket, '10', 100);
     await settle();
     await releaseMore();
@@ -2025,7 +1970,6 @@ describe('Review 2963', () => {
   });
 
   it('D1 a room update keeps the server order when another room shows an older message than it is sorted by', async () => {
-    // Room 40's real last message (190) is hidden for the reader, so it shows 10.
     put('50', 200, 200);
     put('40', 190, 10);
     put('30', 180, 180);
@@ -2040,7 +1984,6 @@ describe('Review 2963', () => {
     });
     await settle();
     const loaded = listed();
-    // The owner renames room 10: the stream sends the whole room, as the server renders it.
     act(() => {
       page.socket.deliver('chat.conversation_update', {
         ...shown('10'),
@@ -2066,7 +2009,6 @@ describe('Review 2963', () => {
       expect(listed()).toEqual(['3', '2', '1']);
     });
     await settle();
-    // I delete my old message 300 in room 3: the server hides it for me (the room keeps its place).
     visible.set('3', 50);
     const detailsBefore = readsOf(/\/conversations\/3$/).length;
     act(() => {
@@ -2082,7 +2024,6 @@ describe('Review 2963', () => {
     });
     await settle();
     const live = listed();
-    // A reconnection rereads the list.
     const listReads = readsOf(ROOMS).length;
     const socket = await dropConnection(page.socket);
     await connect(socket);
@@ -2097,7 +2038,6 @@ describe('Review 2963', () => {
   });
 });
 
-// ---- Review 355b: reproductions appended to a copy of review_boundaries_a1b5.test.tsx ----
 const script: { hold?: Promise<void>; status?: number }[] = [];
 const useScriptedSnapshotRooms = () => {
   server.use(
@@ -2160,7 +2100,6 @@ describe('Review 355b list', () => {
       useScriptedSnapshotRooms();
       const page = await loadPage();
       await connect(page.socket);
-      // Screen A asks for the list; its answer, a 429, comes only after A is gone.
       const stale = gate();
       script.push({ hold: stale.hold, status: 429 });
       page.open('/chat');
@@ -2183,7 +2122,6 @@ describe('Review 355b list', () => {
         expect(listed()).toContain('6');
       });
       await settle();
-      // The stream comes back: the reread's first page is on its way.
       const reread = gate();
       script.push({ hold: reread.hold });
       const socket = await dropConnection(page.socket);
@@ -2219,7 +2157,6 @@ describe('Review 355b list', () => {
       const after = listed();
       expect(beforeDeadline).toEqual([]);
       expect(duplicates(after)).toEqual([]);
-      // One reread is two pages; any more is a request whose answer nobody uses.
       const cursorReads = afterDeadline.filter((read) =>
         read.includes('max_id='),
       );

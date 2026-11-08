@@ -20,7 +20,6 @@ RSpec.describe ChatMediaDownloadWorker, :attachment_processing do
   end
   let(:published) { [] }
 
-  # What an open screen has received, in order, for this message.
   def redraws
     published.select { |event| event['event'] == 'chat.message_update' }.map { |event| JSON.parse(event['payload']) }
   end

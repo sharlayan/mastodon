@@ -46,7 +46,6 @@ describe('Chat while the stream is down', () => {
     vi.useRealTimers();
   });
 
-  // Reading before the server has subscribed leaves a gap until it has.
   it('refreshes chat once the server says the user stream is subscribed, not before', () => {
     const callbacks = open(connectUserStream);
 
@@ -62,7 +61,6 @@ describe('Chat while the stream is down', () => {
     });
   });
 
-  // The timelines fill the gap of a short drop as soon as the connection is back; chat waits for the subscription.
   it('does not refresh chat when the connection comes back before polling began', () => {
     const callbacks = open(connectUserStream);
 

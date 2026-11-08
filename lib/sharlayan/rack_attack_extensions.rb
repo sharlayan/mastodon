@@ -9,8 +9,6 @@ module Sharlayan
     CHAT_MEDIA_PATH_REGEX = %r{\A/media_proxy/(\d+)(?:/|\z)}
 
     module RequestMethods
-      # A chat attachment fails silently for whoever hits the general limit, so its readers get a limit of their own.
-      # That takes a token this server signed for this attachment: having the parameter proves nothing.
       def holds_chat_media_token?
         return @holds_chat_media_token if defined?(@holds_chat_media_token)
 

@@ -20,10 +20,7 @@ import {
   visibleArea,
 } from '../scroll_control';
 
-// Geometry measured on the devices, from the diagnostics of f88ac08119 (/tmp/fediverse-continuation-20261106).
-// iOS: ios-masto-diag/out/<se2|se3>/b-*.json `samples`; Android: android-masto-diag/raw/<galaxy|pixel>/*.json.
 const device = {
-  // iPhone SE 2nd generation, iOS 27.2: keyboard open at the newest (b-r3 t=9491).
   se2Keyboard: {
     viewport: {
       innerHeight: 287,
@@ -35,7 +32,6 @@ const device = {
     composer: { top: 163, bottom: 232 },
     end: { top: 232.6, bottom: 232.6 },
   },
-  // The same, after dragging up 80px with the keyboard open: innerHeight grows under it (b-r3 t=23912).
   se2KeyboardDrag1: {
     viewport: {
       innerHeight: 367,
@@ -47,7 +43,6 @@ const device = {
     composer: { top: 243, bottom: 312 },
     end: { top: 312.6, bottom: 312.6 },
   },
-  // Dragged up 80px more (b-r3 t=44416).
   se2KeyboardDrag2: {
     viewport: {
       innerHeight: 447,
@@ -59,7 +54,6 @@ const device = {
     composer: { top: 323, bottom: 392 },
     end: { top: 392.6, bottom: 392.6 },
   },
-  // iPhone SE 3rd generation, iOS 18.7.7: keyboard open at the newest (b-f1 t=13134).
   se3Keyboard: {
     viewport: {
       innerHeight: 320,
@@ -71,7 +65,6 @@ const device = {
     composer: { top: 196, bottom: 265 },
     end: { top: 265.8, bottom: 265.8 },
   },
-  // SE 2: Safari toolbar collapsed at the actual end of the page: scrollHeight−clientHeight−scrollTop = 40 (b-c2).
   se2Collapsed: {
     viewport: {
       innerHeight: 589,
@@ -83,7 +76,6 @@ const device = {
     composer: { top: 464.5, bottom: 533.5 },
     end: { top: 534.6, bottom: 534.6 },
   },
-  // SE 3: toolbar collapsed at the end, 77px by that formula (b-c2 t=35925).
   se3Collapsed: {
     viewport: {
       innerHeight: 625,
@@ -95,7 +87,6 @@ const device = {
     composer: { top: 499.5, bottom: 568.5 },
     end: { top: 570.4, bottom: 570.4 },
   },
-  // SE 3: the same page bouncing past its end while the toolbar collapses (b-c2 t=17027).
   se3Bounce: {
     viewport: {
       innerHeight: 625,
@@ -107,7 +98,6 @@ const device = {
     composer: { top: 457, bottom: 526 },
     end: { top: 527.4, bottom: 527.4 },
   },
-  // SE 3: read 33px up with the toolbar collapsed (b-c2 t=42307).
   se3CollapsedUp: {
     viewport: {
       innerHeight: 625,
@@ -119,7 +109,6 @@ const device = {
     composer: { top: 500, bottom: 569 },
     end: { top: 603.4, bottom: 603.4 },
   },
-  // Galaxy Z Flip3, Chrome 156: at the newest without the keyboard (k12-1 "pre").
   galaxy: {
     viewport: {
       innerHeight: 744,
@@ -131,7 +120,6 @@ const device = {
     composer: { top: 620.7, bottom: 689.7 },
     end: { top: 690.6, bottom: 690.6 },
   },
-  // Keyboard open: innerHeight stays, the visual viewport moves down by 324 (k12-1 "tap").
   galaxyKeyboard: {
     viewport: {
       innerHeight: 744,
@@ -143,7 +131,6 @@ const device = {
     composer: { top: 620.7, bottom: 689.7 },
     end: { top: 690.6, bottom: 690.6 },
   },
-  // Dragged up 85px with the keyboard open: only the visual viewport moves (k12-1 "drag1").
   galaxyKeyboardDrag1: {
     viewport: {
       innerHeight: 744,
@@ -155,7 +142,6 @@ const device = {
     composer: { top: 620.7, bottom: 689.7 },
     end: { top: 690.6, bottom: 690.6 },
   },
-  // Pixel 1, Chrome 156: keyboard open (k12-1 "tap") and dragged up (k12-1 "drag1").
   pixelKeyboard: {
     viewport: {
       innerHeight: 603,
@@ -167,7 +153,6 @@ const device = {
     composer: { top: 479.7, bottom: 548.4 },
     end: { top: 549.8, bottom: 549.8 },
   },
-  // Address bar collapsed at the actual end: scrollHeight−clientHeight−scrollTop = 56.5 (t5-1 "down").
   pixelCollapsed: {
     viewport: {
       innerHeight: 659,
@@ -179,7 +164,6 @@ const device = {
     composer: { top: 535.7, bottom: 604.4 },
     end: { top: 605.8, bottom: 605.8 },
   },
-  // Desktop Chromium on the review server: page padding below the end at the document's bottom (s2b-diag-8533).
   desktopPadded: {
     viewport: {
       innerHeight: 900,
@@ -302,18 +286,15 @@ describe('Whether the newest message is in view', () => {
   });
 
   it('measures how far the reader went up, with the composer and navigation raised onto the visible bottom', () => {
-    // iOS: 80px and 160px up.
     expect(distanceFromNewest(lifted(device.se2KeyboardDrag1))).toBeCloseTo(
       80.6,
     );
     expect(distanceFromNewest(lifted(device.se2KeyboardDrag2))).toBeCloseTo(
       160.6,
     );
-    // Android: 85.7px up.
     expect(distanceFromNewest(lifted(device.galaxyKeyboardDrag1))).toBeCloseTo(
       85.9,
     );
-    // Collapsed toolbar, 33px up.
     expect(distanceFromNewest(device.se3CollapsedUp)).toBeCloseTo(34.4);
     expect(isAtNewest(device.se3CollapsedUp)).toBe(false);
   });
@@ -342,7 +323,6 @@ describe('Whether a message can be seen', () => {
   });
 
   it('sees only what is within the Android visual viewport', () => {
-    // Galaxy k3-1: the new message 550.9~605.7 under the keyboard-moved viewport 324~744.7.
     expect(
       rectVisible(device.galaxyKeyboard, { top: 550.9, bottom: 605.7 }),
     ).toBe(true);
@@ -373,8 +353,6 @@ describe('Whether a message can be seen', () => {
   });
 });
 
-// Android keyboard opening (android-masto-final2 k12, f35f1ec): the visual viewport has shrunk but Chrome has not
-// moved it down yet.
 const galaxyOpening = {
   innerHeight: 744,
   rootClientHeight: 744,
@@ -616,7 +594,6 @@ describe('Following the newest message (state table)', () => {
   });
 
   it('6 a rate-limited older page leaves the target sought', () => {
-    // Nothing is said to the scroll state: the target is sought again after the shared wait.
     const { state } = opened('m1');
     expect(state.target?.phase).toBe('seeking');
     expect(state.following).toBe(false);
@@ -846,7 +823,6 @@ describe('Following the newest message (state table)', () => {
         },
       ],
     ]);
-    // 160px up is still within 240px.
     expect(dragged.state.following).toBe(true);
     const further = run(dragged.state, [
       [
@@ -1057,7 +1033,6 @@ describe('Following the newest message (state table)', () => {
   });
 
   it('31 nothing pulls the reader down while they scroll; following again after it, the newest is aligned', () => {
-    // Pixel: dragging down at the collapsed-toolbar end re-expands it and resizes the viewport 12 times.
     const dragging = run(opened().state, [
       [{ type: 'userIntent', touch: false }],
       [{ type: 'viewportResized' }, { height: 640 }],
@@ -1075,7 +1050,6 @@ describe('Following the newest message (state table)', () => {
   });
 
   it('31 a toolbar coming back as the reader drags is not undone after the drag either', () => {
-    // Pixel t5: 70px down at the collapsed-toolbar end; only the viewport resizes.
     const { state, commands } = run(opened().state, [
       [{ type: 'userIntent', touch: false }],
       [{ type: 'viewportResized' }, { height: 640 }],
@@ -1099,7 +1073,6 @@ describe('Following the newest message (state table)', () => {
   });
 
   it('32 Safari answering a reveal by shrinking its viewport is not answered again', () => {
-    // iOS 27 SE 2 n1: the reveal of 84 at 287, then Safari shrinks the viewport 1px at a time.
     const { state } = keyboardOpen(opened().state);
     const revealed = run(state, [
       [
@@ -1190,8 +1163,6 @@ const liftAmounts = (commands: Command[]) =>
     )
     .map((command) => command.by);
 
-// Android on f35f1ec (android-masto-final2): k12 keyboard opening, s7v quote with the keyboard open. Review f35f:
-// D1 (P2), D2 (older pages at the top, review server), D3 (a resting finger, review server).
 describe('Following the newest message (state table, after f35f1ec)', () => {
   for (const [name, before, opening, rested, dragged, lift] of [
     [
@@ -1274,7 +1245,6 @@ describe('Following the newest message (state table, after f35f1ec)', () => {
     run(keyboardOpen(opened().state).state, [
       [{ type: 'quoteClicked', id: 'm4' }],
       [{ type: 'targetLoaded', id: 'm4' }],
-      // Galaxy s7v-3: the document stays, Chrome moves only the visual viewport up (324 -> 246): 78.3 away.
       [
         { type: 'targetScrolled', id: 'm4', movedUp: false, moved: false },
         { distance: 78.3, composerFocused: true, height: 420.7 },
@@ -1285,7 +1255,6 @@ describe('Following the newest message (state table, after f35f1ec)', () => {
   it('36 an original already shown, tapped with the keyboard open, follows again as the keyboard goes', () => {
     const landed = keyboardQuote();
     expect(landed.state.following).toBe(false);
-    // 56ms later the keyboard is gone and the reader is at the newest again.
     const { state, commands } = run(landed.state, [
       [{ type: 'viewportResized' }, { height: 744.7, distance: 1 }],
       [{ type: 'newestShown', screen: 'A:', mine: false }],
@@ -1358,7 +1327,6 @@ describe('Following the newest message (state table, after f35f1ec)', () => {
       [{ type: 'touch', down: true }],
       [{ type: 'userIntent', touch: true }],
       [{ type: 'scrolled' }, { distance: 85 }],
-      // 200ms of nothing: the finger is still down.
       [{ type: 'timer', name: 'userScrollEnd' }, { distance: 85 }],
       [{ type: 'newestShown', screen: 'A:', mine: false }],
     ]);
@@ -1421,8 +1389,6 @@ describe('Following the newest message (state table, after f35f1ec)', () => {
   });
 });
 
-// iPhone on f35f1ec (ios-masto-final2 g6 aw·nr, ru): the box focused after reading a little up, against a drag up
-// with the keyboard open.
 describe('Raising over the iOS keyboard after reading a little up (iPhone on f35f1ec)', () => {
   for (const [name, innerHeight, height, offsetTop, rootClientHeight, was] of [
     ['SE 3, 116~136pt up', 385, 320.5, 226.5, 547, 64.5],
@@ -1461,17 +1427,13 @@ describe('Raising over the iOS keyboard after reading a little up (iPhone on f35
   });
 });
 
-// iPhone SE 2 (iOS 27.2) and SE 3 (iOS 18.7.7) on ddbad17ba3: ios-masto-final3/out/<se2|se3>/b-*.json `samples`
-// (sy = window.scrollY, vvpt = visualViewport.pageTop). Both devices showed each of these.
 const iphone = {
-  // b-k2s3: keyboard open at the newest, then dragged up twice; just before the flick (snap k2s3-before-flick).
   se2BeforeFlick: {
     innerHeight: 447,
     rootClientHeight: 549,
     scrollY: 1797,
     visual: { height: 287, offsetTop: 102, scale: 1, pageTop: 1797 },
   },
-  // 0.26s after the flick: Safari puts innerHeight back and offsetTop to 0 for the rest of the inertia (t=87660).
   se2Flicked: {
     innerHeight: 549,
     rootClientHeight: 549,
@@ -1490,8 +1452,6 @@ const iphone = {
     scrollY: 1567,
     visual: { height: 320.5, offsetTop: 0, scale: 1, pageTop: 1566.5 },
   },
-  // b-fk: the box focused about 420pt up. Safari keeps innerHeight and moves only the visual viewport, yet scrollY is
-  // already where that viewport is (pageTop) and rectangles are relative to the screen (t=75097).
   se2FarFocused: {
     viewport: {
       innerHeight: 549,
@@ -1504,7 +1464,6 @@ const iphone = {
     composer: { top: 162.5, bottom: 231.5 },
     end: { top: 634.6, bottom: 634.6 },
   },
-  // Then reading 60pt up with the keyboard open (t=114453).
   se2FarDragged: {
     viewport: {
       innerHeight: 549,
@@ -1541,7 +1500,6 @@ const iphone = {
     composer: { top: 196, bottom: 265 },
     end: { top: 694, bottom: 694 },
   },
-  // SE 3 b-c11: let go of a pinch at the end with the toolbar collapsed; the scale stayed 1.0033 for 20s (t=51944).
   se3AlmostUnzoomed: {
     viewport: {
       innerHeight: 625,
@@ -1559,7 +1517,6 @@ const iphone = {
     composer: { top: 500, bottom: 569 },
     end: { top: 570, bottom: 570 },
   },
-  // SE 2 b-s2b: at the newest without the keyboard, the quoted original 274.1~308.9 is in full view (t=29533).
   se2QuoteShown: {
     viewport: {
       innerHeight: 549,
@@ -1572,7 +1529,6 @@ const iphone = {
     composer: { top: 425, bottom: 494 },
     end: { top: 494.8, bottom: 494.8 },
   },
-  // b-s2bk: the same with the keyboard open, the original at 12.1~46.9 (t=36757).
   se2QuoteShownKeyboard: {
     viewport: {
       innerHeight: 287,
@@ -1654,10 +1610,8 @@ describe('iPhone on ddbad17ba3 (ios-masto-final3)', () => {
     });
     expect(distanceFromNewest(iphone.se2FarFocused)).toBeCloseTo(403.1);
     expect(distanceFromNewest(iphone.se3FarFocused)).toBeCloseTo(382.5);
-    // Read 60pt up with the keyboard open: 185.6/193.5 on ddbad17, under 240.
     expect(distanceFromNewest(iphone.se2FarDragged)).toBeCloseTo(453.1);
     expect(distanceFromNewest(iphone.se3FarDragged)).toBeCloseTo(429);
-    // Chrome's scrollY is its layout viewport's: pageTop = scrollY + offsetTop (Galaxy k12-1: 1599.3 = 1275.3 + 324).
     expect(
       visibleArea({
         ...device.galaxyKeyboard.viewport,
@@ -1710,9 +1664,7 @@ describe('iPhone on ddbad17ba3 (ios-masto-final3)', () => {
   });
 
   for (const [name, distance, reveal] of [
-    // SE 2 b-a130: 117pt up, end 611.1 against the navigation at 494; 116 left to scroll (2957 − 549 − 2292).
     ['SE 2, 117pt up', 117.1, 116],
-    // SE 3 b-a100: 87pt up, end 578.4 against 491.5; 85 left (2923 − 547 − 2291).
     ['SE 3, 87pt up', 86.9, 85],
   ] as const)
     it(`43 focusing the box near the newest shows it before the keyboard opens (${name})`, () => {
@@ -1870,9 +1822,6 @@ describe('iPhone on ddbad17ba3 (ios-masto-final3)', () => {
   });
 });
 
-// Galaxy and Pixel on a7566004ab (android-masto-final4/raw/<galaxy|pixel>/zn2-*.json `unzoomed`): a pinch at the
-// newest moved the page up as it zoomed in (1.795), and it was let go at 1.005, where Chrome only nudges the visual
-// viewport and the page sends no scroll event.
 describe('Android on a7566004ab (android-masto-final4)', () => {
   const unzoomed = {
     galaxy: {
@@ -1916,7 +1865,6 @@ describe('Android on a7566004ab (android-masto-final4)', () => {
       expect(scale).toBe(1);
       const unzoom = run(opened().state, [
         [{ type: 'viewportResized' }, { scale: 1.795 }],
-        // The page moves up as the pinch zooms in around its centre.
         [{ type: 'scrolled' }, { scale: 1.795 }],
         [{ type: 'viewportScrolled' }, { scale: 1.795 }],
         [
@@ -1946,9 +1894,6 @@ describe('Android on a7566004ab (android-masto-final4)', () => {
   });
 });
 
-// iPhone SE 3 (iOS 18.7.7) on a7566004ab (ios-masto-final4/out/se3/b-a130.json, b-ak180.json): focused a little up,
-// Safari puts the page back where it was before the focus and scrolls it by 298 from there, whatever the page did
-// at the focus, and keeps innerHeight at scrollHeight − scrollY: the end of the page stays under the keyboard.
 describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
   const se3 = (
     innerHeight: number,
@@ -1979,13 +1924,10 @@ describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
       .map((command) => command.by);
 
   it('48 measures how far Safari leaves the end of the page under the keyboard', () => {
-    // a130: 367 + 226.5 − 547; ak180: 414 + 226.5 − 547.
     expect(keyboardRoom(se3(367, 320.5, 226.5, 1725))).toBeCloseTo(46.5);
     expect(keyboardRoom(se3(414, 320.5, 226.5, 1634))).toBeCloseTo(93.5);
-    // At the newest (f5a: 321/320.5/226.5) and dragged up (R5: 398/149.5), nothing is left there.
     expect(keyboardRoom(se3(321, 320.5, 226.5, 1842))).toBe(0);
     expect(keyboardRoom(se3(398, 320.5, 149.5, 1765))).toBe(0);
-    // iOS 27 at the newest, and Chrome's keyboard, neither.
     expect(
       keyboardRoom({ ...device.se2Keyboard.viewport, scrollY: 1957 }),
     ).toBe(0);
@@ -1993,9 +1935,7 @@ describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
   });
 
   for (const [name, before, distance, safari, room, last] of [
-    // a130: 119 up; Safari: 1427 → 1725, innerHeight 367; last message 174~228 under the composer at 196.5.
     ['a130, 119pt up', 1427, 119, se3(367, 320.5, 226.5, 1725), 46.5, 228],
-    // ak180: 165 up; 1336 → 1634, innerHeight 414; last 221~275.
     ['ak180, 165pt up', 1336, 165, se3(414, 320.5, 226.5, 1634), 93.5, 275],
   ] as const)
     it(`48 the newest is shown over the keyboard although Safari scrolled from where the page was (${name})`, () => {
@@ -2007,23 +1947,19 @@ describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
           { type: 'composerFocused' },
           at(se3(547, 547, 0, before), { distance, reveal: distance - 1 }),
         ],
-        // +55ms: the visual viewport shrinks first, the page where the app put it.
         [
           { type: 'viewportResized' },
           at(se3(547, 320.5, 0, before + distance - 1)),
         ],
-        // +71ms: Safari's own scroll, from where the page was before the focus.
         [{ type: 'viewportScrolled' }, at(safari)],
         [{ type: 'viewportResized' }, at(safari)],
       ]);
       expect(rooms(opening.commands)).toEqual([room]);
-      // The page is that much longer now: the last message is shown 16px over the composer, as far as it goes.
       const reveal = Math.min(last - 196.5 + 16, room);
       const made = run(opening.state, [
         [{ type: 'roomMade' }, at(safari, { remaining: room, reveal })],
       ]);
       expect(scrolls(made.commands)).toEqual([{ type: 'reveal', by: reveal }]);
-      // Closing the keyboard takes the room away before going to the newest.
       const closed = run(made.state, [
         [{ type: 'composerBlurred' }],
         [{ type: 'timer', name: 'keyboardClose' }, { distance: 1 }],
@@ -2045,7 +1981,6 @@ describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
       [{ type: 'viewportScrolled' }, at(se3(509, 320.5, 226.5, 1583))],
     ]);
     expect(rooms(commands)).toEqual([]);
-    // Far up (b-fk, 549/287/262 while following): the page is not at its end, the layout viewport is not its end.
     const following = run(opened().state, [
       [{ type: 'composerFocused' }, at(se3(547, 547, 0, 1938))],
       [
@@ -2065,11 +2000,6 @@ describe('iPhone SE 3 on a7566004ab (ios-masto-final4)', () => {
   });
 });
 
-// Review 730b E1 (730b5828c2): the focus comes before any keyboard. Reached by scrolling down, the newest has the
-// browser bar collapsed and innerHeight taller than the root, by the bar: Pixel 659/603 (android-masto-final5/raw/
-// pixel/kcol-1.json, the samples before and right after the tap), iPhone SE 2 589/549 and SE 3 625/547
-// (ios-masto-final4/out/<se2|se3>/b-c11.json, at the end). What the bar left is not what Safari leaves under a
-// keyboard: room made from it stayed as a band between the composer and the navigation bar (Pixel 3/3: 55.3px).
 describe('Review 730b E1: focusing the box at the newest with the browser bar collapsed', () => {
   const collapsed = [
     [
@@ -2164,8 +2094,6 @@ describe('Review 730b E1: focusing the box at the newest with the browser bar co
     expect(state.keyboard?.rested).toBe(true);
   });
 
-  // No device has recorded Safari opening a keyboard from a collapsed toolbar; these are its readings at the newest
-  // with the toolbar shown (SE 2 b-r3: 287 at 262; SE 3 f5a: 321/320.5 at 226.5), which leave nothing either.
   for (const [name, focus, keyboard] of [
     [
       'SE 2',
@@ -2215,13 +2143,9 @@ describe('Review 730b E1: focusing the box at the newest with the browser bar co
   });
 });
 
-// Review 730b J1: with the keyboard open, away from the newest, the reader taps a quote whose original is in full
-// view. It is highlighted where it is (45) and nothing moves, so closing the keyboard still goes back to where they
-// were reading (rule 4), as without the tap. The press of a button that may move the page still cancels it (25).
 describe('Review 730b J1: a quote highlighted where it is keeps the place to go back to', () => {
   const restores = (commands: Command[]) =>
     commands.filter((command) => command.type === 'restoreScroll');
-  // The review's probe: reading 300px up with the keyboard open, inertia ending at 3201.
   const readUpWithKeyboard = () =>
     run(keyboardOpen(opened().state).state, [
       [
@@ -2245,8 +2169,6 @@ describe('Review 730b J1: a quote highlighted where it is keeps the place to go 
         { composerFocused: true, height: 287, distance: 300, scrollTop: 3201 },
       ],
     ]).state;
-  // iPhone SE 3 (ios-masto-final4/out/se3/b-aw1.json): read 418pt up to 1128, then the box is tapped; Safari scrolls
-  // the page to 1426 as its keyboard opens (547/320.5/226.5), and only the app's write took it back to 1128.
   const focusedAway = () => {
     const away = run(opened().state, [
       [{ type: 'scrolled' }, { distance: 418, scrollTop: 1128 }],
@@ -2358,7 +2280,6 @@ describe('Review 730b J1: a quote highlighted where it is keeps the place to go 
   });
 });
 
-// Android on f496c2c262 (android-masto-final6/raw/<galaxy|pixel>/) and the review of f496 (review-masto-f496).
 describe('Android on f496c2c262 and review f496', () => {
   const restores = (commands: Command[]) =>
     commands.filter((command) => command.type === 'restoreScroll');
@@ -2367,8 +2288,6 @@ describe('Android on f496c2c262 and review f496', () => {
       (command) => command.type === 'timer' && command.name === name,
     );
 
-  // Defect 2 (s7h-1): the original 31.6~66 on Pixel and 27.7~62.6 on Galaxy, under the column header held at the top
-  // of the page down to 50.8 and 51: 19.2 and 23.3px of it hidden. The quote highlighted it where it was.
   const pixelUnderHeader: LayoutReading = {
     viewport: {
       innerHeight: 603,
@@ -2426,7 +2345,6 @@ describe('Android on f496c2c262 and review f496', () => {
         pixelOriginal,
       ),
     ).toBe(true);
-    // Pixel keyboard (k12): the visual viewport 284.2 below the layout viewport the header is held at the top of.
     expect(
       rectShown(
         { ...device.pixelKeyboard, header: { top: 0, bottom: 50.8 } },
@@ -2435,10 +2353,6 @@ describe('Android on f496c2c262 and review f496', () => {
     ).toBe(true);
   });
 
-  // Defect 3 (kupc-1·3·5·7·11, kcol-2): the keyboard opened with Chrome's URL bar collapsed (659.4) is put away with the
-  // back key, which leaves the box focused, and Chrome shows the bar again at once: 375.2 → 603.4, never near 659.4.
-  // The keyboard was kept as open and the page was left 126~132px down from where the reader was (kupc-3: 902.1 →
-  // 1033.9).
   const pixelUpCollapsed = (state: ScrollState) =>
     run(state, [
       [
@@ -2542,7 +2456,6 @@ describe('Android on f496c2c262 and review f496', () => {
       [603, 603, 375.2],
     ]);
     expect(timers(commands, 'keyboardClose')).toEqual([]);
-    // iPhone SE 3 b-aw1: innerHeight as short as what is shown, the root as tall as the screen.
     const iphone = run(opened().state, [
       [
         { type: 'composerFocused' },
@@ -2564,9 +2477,6 @@ describe('Android on f496c2c262 and review f496', () => {
     expect(timers(iphone.commands, 'keyboardClose')).toEqual([]);
   });
 
-  // A browser that resizes the page with its keyboard has the root as short as what is shown while the keyboard is up
-  // (the regression's keyboard, a smaller window: 667 → 367 with innerHeight and the root; Firefox does the same). On
-  // d25d9cf06b that was taken as closed as soon as it opened, and the place was not given back (kb, both engines).
   it('3 a keyboard that shortens the root with it is still open', () => {
     const page = (height: number) => ({
       height,
@@ -2596,9 +2506,6 @@ describe('Android on f496c2c262 and review f496', () => {
     ]);
   });
 
-  // Candidate (kupc-7): reading down, Chrome hides its URL bar. The visual viewport is 659.4 for a second before the
-  // window says so: innerHeight still 603, and the navigation bar's rectangle still 548.9~603.4 while it is drawn on the
-  // bottom of what is shown. The end at 878.8 was taken as 219.3 from the newest; it was 273.1 (after the resize).
   it('5 the navigation bar is on the bottom of what is shown while Chrome hides its bar (kupc-7)', () => {
     const hiding: LayoutReading = {
       viewport: {
@@ -2623,8 +2530,6 @@ describe('Android on f496c2c262 and review f496', () => {
     expect(distanceFromNewest(hiding)).toBeGreaterThanOrEqual(240);
   });
 
-  // J1′ (review f496 P1): the same quote pressed again while its original is highlighted, after it went partly out of
-  // full view without the reader scrolling. The press is ignored (9) and nothing moves.
   const focusedAway = () => {
     const away = run(opened().state, [
       [{ type: 'scrolled' }, { distance: 418, scrollTop: 1128 }],
@@ -2721,13 +2626,8 @@ describe('Android on f496c2c262 and review f496', () => {
     expect(restores(close(state, 700).commands)).toEqual([]);
   });
 
-  // P4 (review f496): a quote whose original is never found. Nothing moves the reader (5: a quote stays away), and
-  // while it is sought older pages come in above what is read, kept in place by the app or the browser (39): the place
-  // to go back to moves down the page with what was read (rules 4 and 5).
   for (const [name, after] of [
-    // Safari 18 keeps nothing: the first message is pushed down by what came in, and the app scrolls by it.
     ['the app keeps the place', { top: -500, scrollTop: 1426 }],
-    // Chrome and Safari 27 anchor the page themselves: the first message stays, the page is scrolled by it.
     ['the browser keeps the place', { top: -600, scrollTop: 1526 }],
   ] as const) {
     it(`P4 a quote never found goes back to the place, moved with older pages (${name})`, () => {

@@ -1,4 +1,3 @@
-// Run from the repository root with `node .../keyboard_position.mjs`.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';

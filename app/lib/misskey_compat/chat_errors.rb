@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-# How CherryPick answers when it refuses a chat request, as its endpoints declare it. Clients show the message and
-# read the code, and its own web client picks its wording by the id, which differs from one endpoint to the next.
 module MisskeyCompat::ChatErrors
-  # rubocop:disable I18n/RailsI18n/DecorateString -- These are the words of the API that clients know, not text to translate.
+  # rubocop:disable I18n/RailsI18n/DecorateString
   MESSAGES = {
     'ALREADY_MEMBER' => 'That user is already a member of this room.',
     'CANNOT_CHAT_WITH_USER' => 'This user does not accept your messages.',
@@ -29,7 +27,6 @@ module MisskeyCompat::ChatErrors
   }.freeze
 
   INVITATION_MESSAGES = {
-    # CherryPick has no setting for taking no invitations, and this is the code it has for someone who takes nothing from you.
     'CANNOT_CHAT_WITH_USER' => 'This user does not accept invitations.',
     'YOU_HAVE_BEEN_BLOCKED' => 'You cannot invite this user because you have been blocked by them.',
   }.freeze
@@ -112,7 +109,6 @@ module MisskeyCompat::ChatErrors
     'invitations_outbox' => { 'NO_SUCH_ROOM' => 'a3c6b309-9717-4316-ae94-a69b53437237' },
   }.freeze
 
-  # What the chat service says, for the refusals that CherryPick makes in the same situation.
   SERVICE_ERROR_CODES = {
     'Account is already a member' => 'ALREADY_MEMBER',
     'Archived conversations are read-only' => 'ROOM_IS_ARCHIVED',
@@ -124,7 +120,6 @@ module MisskeyCompat::ChatErrors
     'The owner cannot leave the room' => 'NO_SUCH_ROOM',
   }.freeze
 
-  # CherryPick never refuses for these reasons. They get the closest code it has, and keep saying what really happened.
   CLOSEST_SERVICE_ERROR_CODES = {
     'One or more media attachments are still being processed' => 'NO_SUCH_FILE',
     'Rooms cannot be deleted while chat history is preserved' => 'NO_SUCH_ROOM',

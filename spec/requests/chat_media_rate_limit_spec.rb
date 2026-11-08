@@ -22,7 +22,6 @@ RSpec.describe 'Chat attachments and the media proxy limit' do
   let(:server_ip) { '198.51.100.7' }
   let(:token) { Fabricate(:accessible_access_token, resource_owner_id: reader.id, scopes: 'read write') }
 
-  # Rack::Attack periods are not rolling, so every example starts at the beginning of one.
   before do
     travel_to Time.zone.at(((Time.now.to_i / period.seconds).to_i + 1) * period.seconds)
     Setting.chat_enabled = true
@@ -55,7 +54,6 @@ RSpec.describe 'Chat attachments and the media proxy limit' do
   end
 
   describe 'another server fetching attachments' do
-    # The very addresses in the activities this server sends to that server.
     def delivered_urls(message)
       Sharlayan::ChatFederation::Payload.for_domain(Sharlayan::ChatFederation::Payload.create(message), message, 'cherry.test').dig('object', 'attachment').pluck('url')
     end

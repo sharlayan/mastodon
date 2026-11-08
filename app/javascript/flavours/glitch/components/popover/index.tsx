@@ -76,14 +76,6 @@ export interface PopoverProps {
    * of it (enabled by default).
    */
   closeOnClickOutside?: boolean;
-  /**
-   * Keep the whole popover on what can be seen of the screen (the visual
-   * viewport), which also shrinks when a phone shows its keyboard. The room
-   * it has is given to it as `--popover-available-height` and
-   * `--popover-available-width`, for it to shrink to. When there is little
-   * room beside the reference, it covers the reference instead.
-   * Off by default.
-   */
   fitViewport?: boolean;
   /**
    * Render prop that must return the popover element.
@@ -117,10 +109,8 @@ export interface PopoverChildProps {
 }
 
 const VIEWPORT_PADDING = 8;
-// Less room than this beside the reference, and the popover covers the reference rather than shrink further.
 const ROOM_BESIDE_REFERENCE = 200;
 
-// Sideways first, so that size() counts the width the popover gets once moved; up or down last, once it has its height.
 const fitViewportMiddleware = [
   flipMiddleware({ padding: VIEWPORT_PADDING }),
   shift({ padding: VIEWPORT_PADDING }),
@@ -209,7 +199,6 @@ export const Popover: React.FC<PopoverProps> = ({
     isOpen && closeOnClickOutside,
   );
 
-  // A phone's keyboard shrinks only what can be seen, which moves nothing that autoUpdate watches.
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!isOpen || !fitViewport || !viewport) {

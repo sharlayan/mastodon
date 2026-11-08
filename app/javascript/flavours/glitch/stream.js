@@ -233,7 +233,6 @@ export const connectStream = (channelName, params, callbacks) => (dispatch, getS
   // to using individual connections for each channel
   if (!streamingAPIBaseURL.startsWith('ws')) {
     const connection = createConnection(streamingAPIBaseURL, accessToken, channelNameWithInlineParams(channelName, params), {
-      // A connection of its own has no way to answer, and opening it is the closest thing to that.
       connected() {
         onConnect();
         onSubscribed?.();

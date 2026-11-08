@@ -1,4 +1,3 @@
-// Real toolbar hook and CSS, with Safari's observed mouse-focus default reproduced in the browser.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -73,8 +72,6 @@ for (const [name, engine] of [
       window.scrollBy(0, r.top + Math.min(r.height, 20) / 2 - 63);
     });
     await page.locator('textarea').focus();
-    // On SE2 Safari, a mouse press on the quote focuses its nearest focusable ancestor before mouseup. Simulate only
-    // that browser default after React's mousedown handlers, and only if the default has not been cancelled.
     await page.evaluate(() =>
       document.addEventListener('mousedown', (e) => {
         if (
@@ -125,7 +122,6 @@ for (const [name, engine] of [
       `${name}: a short tap on text opens the toolbar`,
     );
     await page.evaluate(() => document.activeElement?.blur());
-    // Synthetic long press, separately from the real touchscreen tap above.
     await text.evaluate((el) => {
       const event = new Event('touchstart', { bubbles: true });
       Object.defineProperty(event, 'touches', {
@@ -156,7 +152,6 @@ for (const [name, engine] of [
       el.dispatchEvent(event);
     });
     await page.waitForTimeout(500);
-    // Galaxy Z Flip3: the browser moves focus from the bubble to the quote as its context menu opens.
     await quote.evaluate((el) => el.closest('button').focus());
     await page.waitForTimeout(100);
     await quote.evaluate((el) =>

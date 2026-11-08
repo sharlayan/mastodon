@@ -6,8 +6,6 @@ module Sharlayan
       PURPOSE = :chat_media
 
       class << self
-        # A token is for one server, and works for as long as that server has someone in the conversation. It has no
-        # time limit, as a server that keeps no copy of remote files fetches one each time it is shown.
         def generate(media_attachment, domain:)
           verifier.generate({ 'id' => media_attachment.id, 'domain' => domain }, purpose: PURPOSE)
         end
@@ -21,7 +19,6 @@ module Sharlayan
           false
         end
 
-        # Only proves that this server signed it for this attachment, without asking the database who may see it.
         def signed_for?(token, media_id)
           token.is_a?(String) && verifier.verified(token, purpose: PURPOSE)&.dig('id').to_s == media_id.to_s
         rescue ActiveSupport::MessageVerifier::InvalidSignature, ArgumentError

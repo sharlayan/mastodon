@@ -63,7 +63,6 @@ RSpec.describe 'Acknowledging a streaming subscription', :inline_jobs, :streamin
 
   it 'sends a client that does not ask nothing new' do
     streaming_client.subscribe('user')
-    # This answer comes after the first subscription has been dealt with, and only for its own stream.
     streaming_client.subscribe('public:local', ack: true)
 
     expect(streaming_client.wait_for_message).to eq(stream: ['public:local'], event: 'subscribed')

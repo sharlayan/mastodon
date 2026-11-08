@@ -30,11 +30,8 @@ export const CHAT_STREAM_POLLED = 'chat.stream_polled';
 let live = false;
 let polledWhileDown = false;
 
-// Whether every event sent from now on will arrive, so that what does arrive leaves nothing out.
 export const isChatStreamLive = () => live;
 
-// Events sent before the server has subscribed are not replayed, whether the stream was down
-// or had not come up yet, and an open chat screen may have read what it shows before that.
 export const handleChatStreamConnected = () => {
   live = true;
   polledWhileDown = false;
@@ -45,7 +42,6 @@ export const handleChatStreamDisconnected = () => {
   live = false;
 };
 
-// While the stream is down, polling has to catch what it would have delivered.
 export const handleChatStreamPolled = () => {
   const event = polledWhileDown ? CHAT_STREAM_POLLED : CHAT_STREAM_RECONNECTED;
   polledWhileDown = true;

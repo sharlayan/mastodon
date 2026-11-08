@@ -229,7 +229,6 @@ describe('Pressing Send with the message box in use', () => {
     if (!form) throw new Error('Missing composer');
     return form;
   };
-  // fireEvent answers false when the page has stopped what the browser would do: here, moving the focus.
   const movesFocus = (element: HTMLElement) => fireEvent.mouseDown(element);
 
   it('keeps the focus in the box', async () => {
@@ -244,7 +243,6 @@ describe('Pressing Send with the message box in use', () => {
     const { container } = await mountRoom();
     composer().focus();
 
-    // A disabled button lets the press through to the form behind it.
     expect(movesFocus(formOf(container))).toBe(false);
   });
 
@@ -349,7 +347,6 @@ describe('Home and End in the message box', () => {
     });
     return box;
   };
-  // fireEvent answers false when the page has stopped what the browser would do.
   const leftToBrowser = (box: HTMLElement, init: object) =>
     fireEvent.keyDown(box, init);
 
@@ -662,7 +659,6 @@ describe('People who have not answered an invitation', () => {
   });
 
   it('lists them in the order they were invited, after the members', async () => {
-    // The API gives the newest first.
     sentInvitations = [
       invitationTo(unnamed, 'sent-2'),
       invitationTo(carol, 'sent-1'),

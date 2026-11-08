@@ -15,21 +15,16 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
       .order(Arel.sql('chat_conversations.last_message_id DESC NULLS LAST, chat_conversations.id DESC'))
       .limit(limit_param(LIMIT, 40))
     if params.key?(:max_id_message_id)
-      # The pair is captured from a previous response, so it remains valid even if that room moves or ends.
       room_id = snapshot_cursor_part(params[:max_id], allow_zero: false)
       message_id = snapshot_cursor_part(params[:max_id_message_id], allow_zero: true)
       conversations = before_cursor(conversations, room_id, message_id.zero? ? nil : message_id)
     elsif params[:max_id].present?
-      # Preserve the original room-id semantics for existing clients.
       cursor = ChatConversation.for_account(current_account).find(params[:max_id])
       conversations = before_cursor(conversations, cursor.id, cursor.last_message_id)
     end
     conversations = conversations.to_a
     ChatMessageReaction.preload_custom_emojis(conversations.filter_map(&:last_message).flat_map(&:reactions))
-    if conversations.any?
-      # The visible last message can differ from the value used for ordering.
-      response.set_header('X-Chat-Cursor-Message-Id', conversations.last.last_message_id&.to_s || '0')
-    end
+    response.set_header('X-Chat-Cursor-Message-Id', conversations.last.last_message_id&.to_s || '0') if conversations.any?
     render json: conversations, each_serializer: REST::ChatConversationSerializer, current_account: current_account
   end
 
@@ -113,7 +108,6 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
     end
   end
 
-  # Someone who was in a room is told what became of it, and to anyone else it was never there.
   def set_conversation_or_explain_ending
     set_conversation
   rescue ActiveRecord::RecordNotFound

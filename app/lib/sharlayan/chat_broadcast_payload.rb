@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# Renders one object for every member of a conversation. A big room would otherwise repeat the whole
-# serialization per member during the request, when only a few values depend on who is looking.
 class Sharlayan::ChatBroadcastPayload
   def initialize(object, serializer)
     @object = object

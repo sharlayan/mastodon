@@ -174,9 +174,6 @@ const deferred = <T,>() => {
   });
   return { promise, resolve: complete };
 };
-// The next POST to `path` gets `answer`. Any other POST meanwhile, such as a read mark the room sends whenever it
-// gets to it, keeps the usual answer: given the held one instead, it left the request under test with the usual
-// answer (an attachment, no account) on a busy runner (17026ee8ad, test-js).
 const answerNextPost = (path: string, answer: Promise<unknown>) => {
   const usual = api.post.getMockImplementation();
   let answered = false;
@@ -2522,7 +2519,6 @@ describe('Chat sending with the keyboard', () => {
     await waitFor(() => {
       expect(sentMessages()).toHaveLength(1);
     });
-    // A box that cannot be written to sends a phone's keyboard away, even with the focus still in it.
     expect(composer().readOnly).toBe(false);
     expect(composer().disabled).toBe(false);
 
@@ -2660,8 +2656,6 @@ describe('Chat search results', () => {
 
 describe('Chat jump to newest', () => {
   const scrollIntoView = vi.fn();
-  // The message shows on commit, and the effect that starts following the newest
-  // message runs after that. A scroll before it would be overwritten.
   const openRoom = async () => {
     mountChat();
     await screen.findByText('Private message A');

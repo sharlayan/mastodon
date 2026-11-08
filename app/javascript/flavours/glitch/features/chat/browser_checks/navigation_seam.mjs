@@ -1,6 +1,3 @@
-// Run from the repository root with `node .../navigation_seam.mjs`.
-// Pixel 1 (dpr 2.625) draws the mobile navigation bar 54.5px tall against the 55px the composer stands on; the
-// messages behind showed through that half pixel as a thin line (android-masto-final3, observation 1).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -51,7 +48,6 @@ for (const [name, engine] of [
         .getBoundingClientRect();
       return { composerBottom: composer.bottom, navigationTop: navigation.top };
     });
-    // The rows of device pixels from just above the composer's bottom to just below the bar's top.
     const top = Math.floor(geometry.composerBottom) - 2;
     const shot = await page.screenshot({
       clip: { x: 0, y: top, width: 411, height: 6 },

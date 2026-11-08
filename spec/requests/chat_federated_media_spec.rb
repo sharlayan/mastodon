@@ -117,7 +117,6 @@ RSpec.describe 'Federated chat attachments' do
     expect(response).to have_http_status(:redirect)
   end
 
-  # A server that keeps no copy of remote files, as CherryPick usually runs, fetches an attachment each time it is shown.
   describe 'years after the message was sent' do
     it 'still opens for a server that has a current member' do
       message

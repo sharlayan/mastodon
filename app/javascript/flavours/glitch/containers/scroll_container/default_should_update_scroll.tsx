@@ -26,11 +26,6 @@ export const defaultShouldUpdateScroll: ShouldUpdateScrollFn = (
     location.state.mastodonModalKey !== prevLocation?.state?.mastodonModalKey
   );
 
-  // A chat screen fetches what it shows only after this runs, so a saved position would be cut short by the height
-  // of an empty page, which on a phone is just enough to hide the tabs. A page load has no location key either, so
-  // what it would restore may be left over from another page. A room then scrolls to its newest message by itself.
-  // A room drops the searched message it was opened at from its history entry once it is done with it; the reader
-  // stays where they are.
   if (
     prevLocation &&
     CHAT_SCREEN.test(location.pathname) &&

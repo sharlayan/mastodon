@@ -27,7 +27,6 @@ const api = vi.hoisted(() => ({
   patch: vi.fn(),
   delete: vi.fn(),
 }));
-// What the screen draws around the box, counted each time it is drawn, and what the box was last given.
 const drawn = vi.hoisted(() => ({
   messages: 0,
   room: 0,
@@ -135,7 +134,6 @@ const sendButton = () =>
 const type = (value: string) => {
   fireEvent.change(box(), { target: { value } });
 };
-// One letter at a time, as a person does.
 const typeLetters = (word: string, from = '') => {
   let value = from;
   for (const letter of word) {

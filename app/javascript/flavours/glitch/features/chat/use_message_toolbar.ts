@@ -4,9 +4,6 @@ import type { MouseEvent, TouchEvent } from 'react';
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_PX = 10;
 
-// Android Chrome reveals the toolbar by itself on a long press, and iOS Safari does not. Nothing else there would
-// answer the finger now that the text cannot be selected, so a long press opens it on every browser.
-// A picture keeps its browser menu: it is left alone.
 export const useLongPressOpensToolbar = () => {
   const press = useRef<{ timer: number; x: number; y: number } | null>(null);
   const longPressedBubble = useRef<HTMLElement | null>(null);
@@ -123,8 +120,6 @@ export const useLongPressOpensToolbar = () => {
         return;
       }
 
-      // Safari can focus the bubble between a quote's touchend and click. The sticky toolbar then appears over the
-      // finger and takes the click. Keep that default focus from moving while allowing the click itself to go through.
       event.preventDefault();
       const active = document.activeElement;
       if (

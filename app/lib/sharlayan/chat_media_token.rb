@@ -3,8 +3,6 @@
 module Sharlayan::ChatMediaToken
   PURPOSE = :chat_media
   TTL = 10.minutes
-  # Browsers cache a picture by its whole address, so the token stays the same for a moment instead of changing with
-  # every response. It is dated from the start of the moment, so it never works for longer than TTL.
   STABLE_FOR = 1.minute
 
   module_function
@@ -17,7 +15,6 @@ module Sharlayan::ChatMediaToken
     Time.zone.at(Time.current.to_i / STABLE_FOR.to_i * STABLE_FOR.to_i)
   end
 
-  # Only proves that this server signed it for this attachment, without asking the database who may see it.
   def signed_for?(token, media_id)
     token.is_a?(String) && verifier.verified(token, purpose: PURPOSE)&.dig('media_id').to_s == media_id.to_s
   rescue ActiveSupport::MessageVerifier::InvalidSignature, ArgumentError

@@ -75,8 +75,6 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
      */
 
     const useFallback = async fallback => {
-      // Each poll stands in for what the stream would have brought, chat included. A connection that comes back calls the
-      // fallback too, to fill a short gap in the timelines, but chat reads again on its subscription instead.
       if (channelName === 'user') {
         handleChatStreamPolled();
       }
@@ -116,7 +114,6 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
         }
       },
 
-      // Having it ask for an answer, which only this stream does, is what chat reads again on.
       ...(channelName === 'user' ? { onSubscribed: handleChatStreamConnected } : {}),
 
       onDisconnect() {

@@ -196,7 +196,6 @@ class EmojiPickerMenuImpl extends PureComponent {
     this.setState({ pickerSize });
   }, () => !this.isHeldByScreen());
 
-  // Fitted to a short screen, the picker can be smaller than the size the reader chose. That is not a size to keep.
   isHeldByScreen = () => {
     if (!this.props.fitToViewport || !this.node) return false;
 
@@ -338,7 +337,6 @@ class EmojiPickerDropdown extends PureComponent {
     skinTone: PropTypes.number.isRequired,
     inverted: PropTypes.bool,
     disabled: PropTypes.bool,
-    // Keep the whole picker on the screen, shrinking it when the screen is short. Off unless asked for.
     fitToViewport: PropTypes.bool,
   };
 

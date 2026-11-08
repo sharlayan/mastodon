@@ -60,8 +60,6 @@ class Sharlayan::ChatService
     type.to_s == 'direct' ? create_direct(account, participants) : create_group(account, participants, title, description)
   end
 
-  # Leaves no empty conversation behind when the message is refused. The remote account is
-  # refreshed first, as that is a request to another server and must not hold the transaction open.
   def create_direct_message(account, recipient, text:, media_ids: [])
     refresh_remote_account(recipient)
 
@@ -346,8 +344,6 @@ class Sharlayan::ChatService
     purge_invitations(account)
   end
 
-  # This server decides who is in the rooms it owns, so a suspension ends their membership here for good.
-  # A room owned by another server is left to that server, and a direct conversation comes back with the account.
   def remove_suspended_account(account)
     return unless account.remote?
 
@@ -532,7 +528,6 @@ class Sharlayan::ChatService
 
     invitation.update!(state: :cancelled)
     Sharlayan::ChatFederation::Roster.advance(conversation, invitee, published)
-    # The copy of the room may go with this, and its record with it, so a late Invite would find nothing to be older than.
     remember_invite_cancel(room_uri, actor, invitee, published) if published
     broadcast_to(invitee, 'chat.invitation', invitation, REST::ChatInvitationSerializer) if invitee.local?
     conversation.destroy_if_unused!
@@ -551,7 +546,6 @@ class Sharlayan::ChatService
     raise Forbidden if account.local? && !conversation.memberships.exists?(account: account) && !conversation.invitations.exists?(invitee_account: account, state: :accepted)
     raise Forbidden if account.remote? && blocked_in_either_direction?(actor, account)
 
-    # A local account only gets here having accepted and having neither left nor been removed since.
     joined = conversation.with_lock do
       next false unless Sharlayan::ChatFederation::Roster.applies?(conversation, account, published)
 
@@ -573,7 +567,6 @@ class Sharlayan::ChatService
     conversation = ChatConversation.find_by(uri: room_uri)
     return if conversation.nil?
 
-    # Only the owner can name an account this server has not seen. Its later Add has to find this removal on record.
     by_owner = conversation.owner_account_id == actor.id
     account = account_from_uri(account_uri, fetch: by_owner)
     return if account.nil?
@@ -581,8 +574,6 @@ class Sharlayan::ChatService
 
     outcome = conversation.with_lock do
       membership = conversation.memberships.find_by(account: account)
-      # Times are only compared with others from the same clock. A room owned here holds what this member's server last
-      # said. A mirror holds what the owner said, so to it a member's own time says nothing and it goes by arrival.
       if conversation.local?
         next :absent unless membership || conversation.invitations.pending.exists?(invitee_account: account)
         next :stale unless Sharlayan::ChatFederation::Roster.member_departure_applies?(conversation, account, published)
@@ -694,7 +685,6 @@ class Sharlayan::ChatService
     message.with_lock do
       conversation = message.chat_conversation
       ensure_conversation_writable!(conversation)
-      # Someone who has left can still take back what they did while they were a member.
       remote_reaction_membership!(actor, conversation) unless message.reactions.exists?(account: actor, reaction: reaction) || room_participant?(conversation, actor)
       return unless Sharlayan::ChatFederation::ReactionState.new(actor, message, reaction).remove(activity_id)
 
@@ -732,12 +722,10 @@ class Sharlayan::ChatService
     room_tombstoned?(uri) || room_closed_here?(uri)
   end
 
-  # What became of a room for someone who was in it. Nobody else learns that it ever existed.
   def room_ending(account, conversation_id)
     ending = redis.get(self.class.room_ending_key(account.id, conversation_id))
     return ending unless ending == LEFT_ROOM_OWNED_HERE
 
-    # A copy of someone else's room also goes once nobody here is in it, but a room owned here only goes by being deleted.
     ChatConversation.exists?(conversation_id) ? 'removed' : 'deleted'
   end
 
@@ -746,8 +734,6 @@ class Sharlayan::ChatService
     value && Time.iso8601(value)
   end
 
-  # Keeps a relayed reaction until its message arrives. It is then processed again as it came, so it goes through
-  # every check there is, including whether the message belongs to the room that relayed it.
   def hold_relay(conversation, owner, message_uri, activity)
     body = activity.to_json
     return false if body.bytesize > MAX_HELD_RELAY_SIZE
@@ -778,8 +764,6 @@ class Sharlayan::ChatService
     cancelled_at.present? && (published.nil? || published.to_f <= cancelled_at.to_f)
   end
 
-  # What the room owner says about the members is applied to whoever it is newer for. Local accounts
-  # only ever join by their own acceptance, so the list can take them out of a room but not put them in.
   def apply_roster(conversation, member_uris:, roster_at:)
     return if member_uris.size > MAX_REMOTE_ROOM_MEMBERS
 
@@ -865,17 +849,14 @@ class Sharlayan::ChatService
     end
   end
 
-  # The owner may have yet to hear of an acceptance this server has only just sent.
   def awaiting_acceptance?(conversation, account, roster_at)
     account.local? && conversation.invitations.exists?(invitee_account: account, state: :accepted, updated_at: [roster_at, ACCEPT_DELIVERY_GRACE.ago].min..)
   end
 
-  # An acceptance can bring someone back only until they have left or been removed.
   def forget_acceptance(conversation, account)
     conversation.invitations.where(invitee_account: account, state: :accepted).find_each { |invitation| invitation.update!(state: :cancelled) }
   end
 
-  # The answer states when the Invite it answers was sent, and both that and the invitation are by this server's clock.
   def answers_earlier_invitation?(invitation, invited_at)
     invited_at.present? && invited_at < invitation.created_at.floor(3)
   end
@@ -912,7 +893,6 @@ class Sharlayan::ChatService
     remember_room_messages(message_uris)
   end
 
-  # This server's copy is gone but the room goes on, so its owner has to stop counting the people here and may invite someone again.
   def close_mirror(conversation)
     conversation.accounts.local.find_each { |member| deliver_to_conversation(member, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, member)) }
     conversation.invitations.pending.joins(:invitee_account).merge(Account.local).includes(:invitee_account).find_each do |invitation|
@@ -1165,7 +1145,6 @@ class Sharlayan::ChatService
     :unknown
   end
 
-  # Queued after the message is published, so that the first redraw cannot reach a screen before the message does.
   def download_incoming_media(actor, message)
     return if message.media_attachments.empty? || DomainBlock.reject_media?(actor.domain)
 
@@ -1186,13 +1165,11 @@ class Sharlayan::ChatService
     end
   end
 
-  # Only whoever sent the invitation can see who has not answered yet, so nobody else needs to hear about this.
   def announce_invitation_settled(invitation)
     inviter = invitation.inviter_account
     broadcast_to(inviter, 'chat.invitation_update', { conversation_id: invitation.chat_conversation_id.to_s }) if inviter.local?
   end
 
-  # Someone who did it themselves knows, and their screen has already moved on.
   def announce_room_ending(account, conversation, ending, actor: nil)
     return unless account.local?
 
@@ -1221,8 +1198,6 @@ class Sharlayan::ChatService
     end
   end
 
-  # A server let back in after a domain suspension can still accept an old invitation, and only the
-  # record of that invitation earns the Remove that clears its copy of the room.
   def purge_invitations(account)
     ChatInvitation.where(inviter_account: account).in_batches.delete_all
 
@@ -1343,7 +1318,6 @@ class Sharlayan::ChatService
     "#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.web_domain}"
   end
 
-  # Where deleting only hides a message, an edit must not be a way to get rid of what it said.
   def keep_previous_text(message, text)
     return unless RoleplayModeHelper.roleplay_mode? || Setting.chat_soft_delete_enabled
     return if message.text.blank? || message.text == text.to_s.strip

@@ -425,7 +425,6 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     render_error(error.message, 'INVALID_PARAM', 400)
   end
 
-  # CherryPick does not tell someone refused like this that there is anything there to be refused from.
   def render_chat_forbidden
     refuse(
       case action_name

@@ -1,28 +1,15 @@
-// Where a room is scrolled to, and whether it keeps up with the newest message, is decided here and nowhere else.
-// Nothing in this file touches the page: it reads what was measured and says what to do. The hook in
-// use_chat_scroll.ts measures, passes each happening on to `step`, and carries out what comes back.
-
 export const FOLLOW_NEWEST_DISTANCE = 240;
-// How far below the visible bottom the end may be and still count as the newest being in view.
 export const AT_NEWEST_TOLERANCE = 2;
 export const HIGHLIGHT_DURATION_MS = 3000;
-// A jump's own scroll events arrive after it; until then they are not the reader's.
 const OWN_JUMP_MS = 200;
-// A scroll event within this time of the last one belongs to the same scroll, inertia included.
 const USER_SCROLL_SETTLE_MS = 200;
 const KEYBOARD_BLUR_MS = 700;
 const KEYBOARD_RESTORED_MS = 200;
 const KEYBOARD_SHRINK_PX = 80;
-// Safari answers a scroll at the end of the page by shrinking its visual viewport, soon after it.
 const ECHO_MS = 300;
-// What Safari's answer to a scroll at the end of the page shrinks its viewport by, each time (iOS diagnostics: 1px).
 const ECHO_PX = 2;
-// A finger is taken to have left the screen when nothing is heard of it for this long (a touchend can be lost when
-// what it was on goes away).
 const TOUCH_STALE_MS = 5000;
-// Room left between the last message and the composer when revealing it over the keyboard.
 const REVEAL_GAP = 16;
-// A pinch let go just short of 1 is not zoomed in: the page looks the same (SE 3 stayed at 1.0033 for 20s).
 const ZOOM_TOLERANCE = 0.01;
 
 export interface Box {
@@ -32,9 +19,7 @@ export interface Box {
 
 export interface ViewportReading {
   innerHeight: number;
-  // The root element's clientHeight, or 0 where it is not known.
   rootClientHeight: number;
-  // window.scrollY, where it is known.
   scrollY?: number;
   visual: {
     height: number;
@@ -51,10 +36,8 @@ export interface VisibleArea extends Box {
 
 export interface LayoutReading {
   viewport: ViewportReading;
-  // The room's own scrolling box, when it does not scroll with the page.
   scroller: Box | null;
   navigation: (Box & { height: number }) | null;
-  // The column header, held at the top of the page in one column.
   header?: Box | null;
   composer: Box | null;
   end: Box;
@@ -63,14 +46,6 @@ export interface LayoutReading {
 const finite = (value: number | undefined, fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
-// What of the page is on the screen, in the coordinates element rectangles use.
-// Chrome keeps the layout viewport (and innerHeight) at the page's height and gives rectangles relative to it, so the
-// visual viewport starts offsetTop below their origin. Safari shrinks innerHeight with the keyboard (or grows it with
-// a collapsed toolbar) and gives rectangles relative to what is on the screen, whatever offsetTop it reports.
-// Safari can also keep innerHeight and report an offsetTop while its scrollY is already the top of what is shown
-// (pageTop) and rectangles are relative to that: focused far up, or reading on with the keyboard open (iPhone on
-// ddbad17ba3: offsetTop 262 with pageTop 1937.5 at scrollY 1938). Chrome's scrollY is its layout viewport's, below
-// which the visual viewport is: pageTop = scrollY + offsetTop (Galaxy: 1599.3 = 1275.3 + 324).
 const scrollYIsVisualTop = ({ scrollY, visual }: ViewportReading) => {
   if (!visual || typeof scrollY !== 'number') return false;
   const { pageTop } = visual;
@@ -81,7 +56,6 @@ const scrollYIsVisualTop = ({ scrollY, visual }: ViewportReading) => {
   );
 };
 
-// Whether rectangles are relative to a layout viewport taller than what is on the screen (Chrome).
 export const rectsInLayoutViewport = (viewport: ViewportReading) => {
   const { innerHeight, rootClientHeight, visual } = viewport;
   return (
@@ -110,8 +84,6 @@ export const visibleArea = (viewport: ViewportReading): VisibleArea => {
   };
 };
 
-// What of the room can be seen: within the visible area and the room's own scrolling box, below a column header held
-// over the top of it, and above a navigation bar resting on the bottom of the screen.
 export const contentBounds = (layout: LayoutReading): Box => {
   const area = visibleArea(layout.viewport);
   let { top, bottom } = area;
@@ -119,18 +91,12 @@ export const contentBounds = (layout: LayoutReading): Box => {
     top = Math.max(top, layout.scroller.top);
     bottom = Math.min(bottom, layout.scroller.bottom);
   }
-  // A message behind the header is not seen (Pixel and Galaxy on f496c2c: an original 19~23px under it was taken as
-  // in full view). Scrolled away, or above what Chrome shows over its keyboard, the header covers nothing.
   const header = layout.header;
   if (header && header.top <= top + 2 && header.bottom > top)
     top = Math.max(top, header.bottom);
   const navigation = layout.navigation;
   if (navigation && navigation.height > 0) {
     const { innerHeight } = layout.viewport;
-    // Chrome hiding its URL bar as the reader scrolls grows the visual viewport past innerHeight before the window is
-    // resized, a second later; a bar fixed to the bottom of the window is drawn on the bottom of what is shown while
-    // its rectangle stays where it was (Pixel on f496c2c: 659.4 shown, innerHeight 603, the bar at 548.9~603.4 and the
-    // newest taken as 56px nearer than it was).
     if (
       area.bottom > innerHeight + 2 &&
       Math.abs(navigation.bottom - innerHeight) <= 2
@@ -145,15 +111,12 @@ export const contentBounds = (layout: LayoutReading): Box => {
   return { top, bottom };
 };
 
-// How far the end of the room is below what can be seen. The end comes right after the composer: in view, it means
-// the composer rests in its place with the newest message just above it, however much the page has below it.
 export const distanceFromNewest = (layout: LayoutReading) =>
   layout.end.bottom - contentBounds(layout).bottom;
 
 export const isAtNewest = (layout: LayoutReading) =>
   distanceFromNewest(layout) <= AT_NEWEST_TOLERANCE;
 
-// Whether a message can actually be seen: not zoomed, and not under the composer.
 export const rectVisible = (layout: LayoutReading, rect: Box) => {
   if (visibleArea(layout.viewport).scale !== 1 || !layout.composer)
     return false;
@@ -164,7 +127,6 @@ export const rectVisible = (layout: LayoutReading, rect: Box) => {
   );
 };
 
-// Whether a message is in full view: all of it on the screen, clear of the composer.
 export const rectShown = (layout: LayoutReading, rect: Box) => {
   if (visibleArea(layout.viewport).scale !== 1 || !layout.composer)
     return false;
@@ -175,7 +137,6 @@ export const rectShown = (layout: LayoutReading, rect: Box) => {
   );
 };
 
-// Whether Chrome has brought the visual viewport down onto the keyboard, where it shows the focused composer.
 export const viewportRestsOnKeyboard = (viewport: ViewportReading) => {
   const area = visibleArea(viewport);
   return (
@@ -185,8 +146,6 @@ export const viewportRestsOnKeyboard = (viewport: ViewportReading) => {
   );
 };
 
-// Whether what is shown has come to rest over the keyboard: Chrome has brought its visual viewport down onto it, or
-// Safari, which never reports the keyboard opening, gives rectangles relative to a visual viewport it has shrunk.
 const keyboardShown = (viewport: ViewportReading) =>
   rectsInLayoutViewport(viewport)
     ? viewportRestsOnKeyboard(viewport)
@@ -194,19 +153,6 @@ const keyboardShown = (viewport: ViewportReading) =>
       visibleArea(viewport).height <
         viewport.rootClientHeight - KEYBOARD_SHRINK_PX;
 
-// How far the composer and the navigation bar are to be raised to sit on the bottom of the visible area.
-// Safari keeps fixed and sticky elements on the bottom of its layout viewport, which never goes past the end of the
-// page: min(innerHeight, root clientHeight − offsetTop) in on-screen coordinates. While the reader drags up with the
-// keyboard open that is innerHeight, below what is shown (iPhone diagnostics: 367 against 287, so 80). When the box is
-// focused while reading a little up, Safari scrolls past the end to show it and that bottom is already the visible one
-// although innerHeight is larger (iPhone on f35f1ec: 385 against 320.5 raised 64.5 too far; 505 against 287, 218).
-// Chrome keeps the layout viewport at the page's height and moves the visual viewport within it, also up when the
-// reader drags. While an Android keyboard is opening, Chrome itself moves the visual viewport down to the composer and
-// the end of the room with it; raising the composer first would leave the end of the room under the keyboard (Galaxy
-// and Pixel on f35f1ec: 323 and 284px). So in Chrome's coordinates nothing is raised until what is shown has rested
-// on the keyboard. Safari has by the time it says anything, and a flick with its keyboard open puts innerHeight back
-// and offsetTop to 0 for the rest of the inertia, in Chrome's coordinates: the composer still goes on the keyboard
-// (iPhone on ddbad17ba3: 262 and 226.5, raised by nothing there).
 export const keyboardLift = (viewport: ViewportReading, rested: boolean) => {
   const area = visibleArea(viewport);
   if (rectsInLayoutViewport(viewport))
@@ -221,15 +167,6 @@ export const keyboardLift = (viewport: ViewportReading, rested: boolean) => {
   return Math.max(0, fixedBottom - area.bottom);
 };
 
-// How far Safari's layout viewport reaches past the end of what is shown while the keyboard is open, with the page
-// at the end of what a script can scroll. Focused a little up, Safari 18 puts the page back where it was before the
-// focus and scrolls it by the keyboard from there, whatever the page did meanwhile, and keeps innerHeight at
-// scrollHeight − scrollY: the end of the page stays that far under the keyboard, out of reach (iPhone SE 3 on
-// a7566004ab: 367 + 226.5 − 547 = 46.5, last message under the composer). Nothing at the newest, while the reader
-// drags up (the composer is raised instead), or in Chrome's coordinates. Nothing either until a keyboard is shown: at
-// the focus, before it, a browser bar collapsed by scrolling down makes innerHeight taller than the root by itself
-// (Pixel 659/603, iPhone SE 2 589/549, SE 3 625/547 at the newest), and room made from that stayed as a band between
-// the composer and the navigation bar over the keyboard (review 730b E1: Pixel 55.3px).
 export const keyboardRoom = (viewport: ViewportReading) => {
   const { visual, innerHeight, rootClientHeight } = viewport;
   if (!visual || rootClientHeight <= 0 || rectsInLayoutViewport(viewport))
@@ -239,8 +176,6 @@ export const keyboardRoom = (viewport: ViewportReading) => {
   return room >= 1 ? room : 0;
 };
 
-// How far to scroll to bring the last message out from under the composer while the keyboard is open. Never past the
-// end of the page, which Safari answers by shrinking its viewport, and never less than a pixel, which moves nothing.
 export const revealAmount = ({
   last,
   composer,
@@ -258,64 +193,48 @@ export const revealAmount = ({
   return amount >= 1 ? amount : 0;
 };
 
-// What the hook measured when something happened. Read lazily there, so only what a decision needs is measured.
 export interface Snapshot {
   scale: number;
-  // The visual viewport's height, or innerHeight.
   height: number;
-  // The touch keyboard is up for the composer's text box.
   composerFocused: boolean;
   scrollTop: number;
   distance: number;
-  // What revealing the last message over the keyboard would scroll by, 0 when nothing.
   reveal: number;
   viewport: ViewportReading;
-  // The room scrolls in a box of its own rather than with the page.
   ownScroller: boolean;
-  // The first message shown and where it is on the screen, and where a given message is now.
   firstMessage: { id: string; top: number } | null;
   messageTop: (id: string) => number | null;
-  // A given message is in full view, clear of the composer.
   messageShown: (id: string) => boolean;
-  // How much further the room's scrolling box can be scrolled by a script.
   remaining: number;
 }
 
 export interface Target {
   id: string;
   fromSearch: boolean;
-  // Seeking until it is scrolled to, then highlighted for a while.
   phase: 'seeking' | 'landed';
 }
 
 export interface KeyboardSession {
-  // Where to go back to when it closes, or null when an explicit move took over.
   restoreTop: number | null;
   following: boolean;
   baseHeight: number;
   shrunk: boolean;
   closing: boolean;
-  // What is shown has come to rest over the keyboard (see keyboardLift).
   rested: boolean;
-  // Room made below the end of the page for what Safari keeps under the keyboard (see keyboardRoom).
   room: number;
 }
 
 export interface ScrollState {
   following: boolean;
   target: Target | null;
-  // The room was opened at a searched message the page's history entry still names.
   searchEntry: boolean;
   screen: string | null;
   ownJump: boolean;
-  // The last jump did not move the page: its original was already shown.
   stillJump: boolean;
   zoomedAway: boolean;
   userScrolling: boolean;
-  // A finger is on the screen.
   touching: boolean;
   pendingFollow: boolean;
-  // Where the first message was when older ones were about to come in above it, and where the page was scrolled to.
   anchor: { id: string; top: number; scrollTop: number } | null;
   keyboard: KeyboardSession | null;
   echo: { height: number } | null;
@@ -339,12 +258,8 @@ export type Command =
   | { type: 'restoreScroll'; top: number }
   | { type: 'away'; value: boolean }
   | { type: 'read'; kind: 'check' | 'return' | 'newest' }
-  // The searched message the room was opened at has been reached, or the reader went to the newest: opening the page
-  // again is to open it at the newest.
   | { type: 'forgetSearch' }
-  // How far to raise the composer and the navigation bar, or null to put back what was there.
   | { type: 'lift'; by: number | null }
-  // How much longer to make the page below its end, or null to put back what was there; done, it says roomMade.
   | { type: 'room'; by: number | null }
   | { type: 'timer'; name: TimerName; delay: number }
   | { type: 'clearTimer'; name: TimerName };
@@ -354,14 +269,12 @@ export type ScrollEvent =
   | { type: 'detached' }
   | { type: 'newestShown'; screen: string; mine: boolean }
   | { type: 'targetLoaded'; id: string }
-  // movedUp: the page went up to it; moved: the page moved at all (or only the visual viewport did).
   | { type: 'targetScrolled'; id: string; movedUp: boolean; moved: boolean }
   | { type: 'targetMissing' }
   | { type: 'quoteClicked'; id: string }
   | { type: 'jumpToNewest' }
   | { type: 'userIntent'; touch: boolean }
   | { type: 'touch'; down: boolean }
-  // A button or a link on the page was pressed; for a quote, the message it goes to.
   | { type: 'pageAction'; quote?: string }
   | { type: 'scrolled' }
   | { type: 'viewportScrolled' }
@@ -397,9 +310,6 @@ export const initialScrollState = (targetId: string | null): ScrollState => ({
 
 const seeking = (state: ScrollState) => state.target?.phase === 'seeking';
 
-// Brings the newest message into view. What follows by itself is never done zoomed in, and while the reader is
-// scrolling it waits for them to stop: a message that came in is then shown if they are still near the newest. What
-// the reader asked for is done at once.
 const toNewest = (
   state: ScrollState,
   s: Snapshot,
@@ -418,7 +328,6 @@ const toNewest = (
     commands.push({ type: 'alignEnd' });
     return;
   }
-  // Scrolling to the end of the page with the keyboard open pulls what is under Safari's toolbar above it.
   const by = s.reveal;
   if (by < 1) return;
   commands.push({ type: 'reveal', by });
@@ -426,8 +335,6 @@ const toNewest = (
   commands.push({ type: 'timer', name: 'echoEnd', delay: ECHO_MS });
 };
 
-// Soon after a reveal, the visual viewport shrinking by a pixel or two: Safari answering it (iOS diagnostics B 1·2).
-// A larger shrink is the keyboard or the page really changing, and is answered.
 const isEcho = (state: ScrollState, s: Snapshot) =>
   state.echo !== null &&
   s.height < state.echo.height &&
@@ -466,8 +373,6 @@ const raise = (state: ScrollState, s: Snapshot, commands: Command[]) => {
     type: 'lift',
     by: keyboardLift(s.viewport, keyboard.rested),
   });
-  // Following, the page is made as long as what Safari keeps under the keyboard, and the newest shown in it. Once a
-  // keyboard: a page made longer is never answered by making it longer again.
   if (
     keyboard.room ||
     !state.following ||
@@ -482,8 +387,6 @@ const raise = (state: ScrollState, s: Snapshot, commands: Command[]) => {
   commands.push({ type: 'room', by: room });
 };
 
-// Right after a jump, what the page does with it (the visual viewport moving, or the keyboard going away as the
-// quote takes the focus) decides whether the reader is at the newest, exactly as its scroll events do.
 const measureJump = (state: ScrollState, s: Snapshot, commands: Command[]) => {
   if (s.scale !== 1) return;
   const following = s.distance <= AT_NEWEST_TOLERANCE;
@@ -514,7 +417,6 @@ const trackPosition = (
     return;
   }
   if (seeking(state)) return;
-  // With the keyboard open Safari scrolls by itself to show the box; only the reader's own scrolling counts.
   if (state.keyboard && !state.userScrolling) return;
   const following = s.distance < FOLLOW_NEWEST_DISTANCE;
   if (state.userScrolling)
@@ -537,7 +439,6 @@ const endUserScroll = (
   s: Snapshot,
   commands: Command[],
 ) => {
-  // A finger resting on the screen is still the reader's (review f35f D3): what waits keeps waiting.
   if (state.touching) return;
   state.userScrolling = false;
   commands.push({ type: 'clearTimer', name: 'userScrollEnd' });
@@ -549,7 +450,6 @@ const endUserScroll = (
 const liftFinger = (state: ScrollState, s: Snapshot, commands: Command[]) => {
   state.touching = false;
   commands.push({ type: 'clearTimer', name: 'touchStale' });
-  // Inertia may go on; its scroll events extend this.
   if (state.userScrolling)
     commands.push({
       type: 'timer',
@@ -566,7 +466,6 @@ const closeKeyboard = (
 ) => {
   const keyboard = state.keyboard;
   if (!keyboard) return;
-  // The page is its own length again before going anywhere.
   if (keyboard.room) commands.push({ type: 'room', by: null });
   if (s.scale === 1) {
     if (!keyboard.following && keyboard.restoreTop !== null) {
@@ -581,8 +480,6 @@ const closeKeyboard = (
       !seeking(state) &&
       s.distance <= AT_NEWEST_TOLERANCE
     ) {
-      // An explicit move (a jump, a button) left nothing to go back to, and with the keyboard gone the reader is at
-      // the newest: an original already shown, centred in the shorter view (Android on f35f1ec, 4/4).
       setFollowing(state, true, commands);
       commands.push({ type: 'read', kind: 'return' });
     }
@@ -592,7 +489,6 @@ const closeKeyboard = (
   commands.push({ type: 'lift', by: null });
 };
 
-// The next state, and what to do, for something that happened in the room.
 export const step = (
   previous: ScrollState,
   event: ScrollEvent,
@@ -640,7 +536,6 @@ export const step = (
         if (state.following) commands.push({ type: 'away', value: false });
       }
       if (seeking(state) || !state.following) break;
-      // Opening is aligned to the newest even while zoomed out of it, as it always was; arrivals wait.
       if (opening) {
         if (s.scale === 1) toNewest(state, s, commands, false);
       } else {
@@ -651,7 +546,6 @@ export const step = (
 
     case 'targetLoaded':
       if (state.target?.id !== event.id || !seeking(state)) break;
-      // Going to the original is an explicit move: closing the keyboard must not undo it.
       if (state.keyboard) state.keyboard.restoreTop = null;
       commands.push({ type: 'scrollToMessage', id: event.id });
       break;
@@ -693,8 +587,6 @@ export const step = (
       state.stillJump = false;
       commands.push({ type: 'clearTimer', name: 'ownJumpEnd' });
       commands.push({ type: 'clearTimer', name: 'highlightEnd' });
-      // An original in full view is highlighted where it is: centring it moved an iPhone page by 63px and let go of
-      // the newest (ddbad17ba3, S2b). The reader stays where they were, following or not.
       if (s.messageShown(event.id)) {
         state.target = { id: event.id, fromSearch: false, phase: 'landed' };
         commands.push({
@@ -726,7 +618,6 @@ export const step = (
       state.ownJump = false;
       state.stillJump = false;
       commands.push({ type: 'clearTimer', name: 'ownJumpEnd' });
-      // A target still on its way no longer takes the reader anywhere.
       if (seeking(state)) state.target = null;
       state.userScrolling = true;
       commands.push({
@@ -758,11 +649,6 @@ export const step = (
       break;
 
     case 'pageAction':
-      // What a button does may move the page, and an explicit move is not undone when the keyboard closes. A quote
-      // moves the page only when its original is gone to, which then takes the place over itself (targetLoaded). One
-      // highlighted where it is (review 730b J1: 298px off on the review server's emulated browsers), the same one
-      // pressed again (review f496 J1′), or one whose original never comes (review f496 P4) moves nothing: the reader
-      // is still where they were, and goes back there.
       if (state.keyboard && !event.quote) state.keyboard.restoreTop = null;
       break;
 
@@ -791,9 +677,6 @@ export const step = (
         commands.push({ type: 'clearTimer', name: 'keyboardClose' });
         break;
       }
-      // Safari scrolls by the keyboard from where the page is, and a little up from the newest that leaves its end
-      // under the keyboard, beyond what can be scrolled while it is open (iPhone on ddbad17ba3: the last message under
-      // the composer by 36~181px). A reader following is shown the newest before it opens, as at the newest.
       if (
         state.following &&
         !seeking(state) &&
@@ -831,9 +714,6 @@ export const step = (
       if (state.keyboard) raise(state, s, commands);
       if (state.ownJump && state.stillJump && !scaleChanged)
         measureJump(state, s, commands);
-      // Back at the page's own scale, the reader is where they would be after scrolling there: near the newest, they
-      // follow it again (12). Zooming in moved the page up around the pinch, and letting go just short of 1 sends no
-      // scroll event to measure it by (Galaxy and Pixel on a7566004ab at 1.005: 42.3 and 21.7px, left away).
       if (scaleChanged && s.scale === 1 && state.zoomedAway) {
         state.zoomedAway = false;
         if (s.distance < FOLLOW_NEWEST_DISTANCE && !state.target) {
@@ -856,12 +736,6 @@ export const step = (
           }
           if (s.height < keyboard.baseHeight - KEYBOARD_SHRINK_PX)
             keyboard.shrunk = true;
-          // Back to what is shown without a keyboard: the height it opened at, or, when the browser shows its bar again
-          // as the keyboard goes, as tall as the root and short of that height by less than a keyboard. A keyboard
-          // opened with Chrome's URL bar collapsed (659.4) and put away with the back key, which keeps the box focused,
-          // came back to 603.4 and was kept as open (Pixel on f496c2c, 6/17, the place not given back). A browser that
-          // resizes the page with its keyboard has the root as short as what is shown while it is up (the
-          // regression's keyboard on d25d9cf06b: 367 of 667, taken as closed as it opened).
           const { rootClientHeight } = s.viewport;
           const closed =
             s.height >= keyboard.baseHeight - 2 ||
@@ -886,7 +760,6 @@ export const step = (
         commands.push({ type: 'read', kind: 'check' });
         break;
       }
-      // A toolbar coming back as the reader scrolls is their scroll: it is not undone, then or after.
       if (
         s.scale === 1 &&
         !scaleChanged &&
@@ -910,9 +783,6 @@ export const step = (
       }
       break;
 
-    // Older messages come in above what is being read: the reader's place is kept (rule 5). Browsers do not keep it
-    // when the page is at its top, where the button to load them is (review f35f D2: +2,700~3,100px). Following, the
-    // content growing keeps the newest in view instead.
     case 'olderArriving': {
       const first = state.following ? null : s.firstMessage;
       state.anchor = first && { ...first, scrollTop: s.scrollTop };
@@ -927,8 +797,6 @@ export const step = (
       if (top === null) break;
       const by = top - anchor.top;
       if (Math.abs(by) >= 1) commands.push({ type: 'scrollBy', by });
-      // What was being read is further down the page by what came in above it, kept in place by the browser or by
-      // that scroll, and so is the place to go back to when the keyboard closes (review f496 P4).
       const grown = top + s.scrollTop - (anchor.top + anchor.scrollTop);
       const keyboard = state.keyboard;
       if (keyboard && keyboard.restoreTop !== null && Math.abs(grown) >= 1)

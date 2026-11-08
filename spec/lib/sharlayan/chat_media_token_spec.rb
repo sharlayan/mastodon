@@ -8,7 +8,6 @@ RSpec.describe Sharlayan::ChatMediaToken do
   let(:media) { Fabricate(:media_attachment, account: viewer, status: nil) }
   let(:other_media) { Fabricate(:media_attachment, account: viewer, status: nil) }
 
-  # Starts at the beginning of a minute, so an example knows how far it is from the next one.
   before { travel_to Time.zone.at(((Time.now.to_i / 60) + 1) * 60) }
 
   describe 'staying the same so that a picture can be cached' do

@@ -1,7 +1,3 @@
-// Run from the repository root with `node .../scroll_geometry.mjs`.
-// Lays a room out with the chat's own styles in Chromium and WebKit, aligns it to the newest message the way the
-// room does, and checks scroll_control.ts's one measure of the newest against the real rectangles: with page padding
-// below the end, under a mobile navigation bar, and in a column that scrolls by itself.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -39,17 +35,14 @@ const messages = Array.from(
 const room = `<div class="chat-native__messages">${messages}</div><form class="chat-native__composer"><textarea>draft</textarea><button>send</button></form><div class="chat-native__end"></div>`;
 
 const layouts = {
-  // Desktop review server: the column ends 11.25px above the bottom of the page.
   desktopPadded: {
     viewport: { width: 1280, height: 900 },
     body: `<div class="scrollable chat-native" style="display:flex;flex-direction:column">${room}</div><div style="height:11.25px"></div>`,
   },
-  // A phone: a fixed navigation bar, and page padding for it below the room.
   mobileNavigation: {
     viewport: { width: 375, height: 667 },
     body: `<div class="scrollable chat-native" style="display:flex;flex-direction:column;padding-bottom:55px">${room}</div><div class="ui__navigation-bar" style="position:fixed;left:0;right:0;bottom:0;height:55px;background:#ccc">navigation</div>`,
   },
-  // A column that scrolls by itself (the multi-column layout), with something below it.
   column: {
     viewport: { width: 1280, height: 900 },
     body: `<div class="layout-multiple-columns"><div style="height:60px">header</div><div class="scrollable chat-native" style="display:flex;flex-direction:column;height:640px;overflow-y:auto">${room}</div><div style="height:200px">below</div></div>`,
@@ -100,12 +93,10 @@ const measure = () => {
     atNewest: isAtNewest(layout),
     lastVisible: rectVisible(layout, box(last)),
     lastAboveComposer: box(last).bottom <= box(composer).top + 0.5,
-    // The sticky composer rests in its place in the room, right above the end, not stuck over older messages.
     composerResting: Math.abs(box(composer).bottom - box(end).top) <= 1,
   };
 };
 
-// What the room does to show the newest message without the keyboard (use_chat_scroll.ts `alignEnd`).
 const alignEnd = () => {
   const end = document.querySelector('.chat-native__end');
   end.scrollIntoView({ block: 'end' });
@@ -155,7 +146,6 @@ for (const [name, engine] of [
       process.stdout.write(
         `${name} ${layoutName} ${JSON.stringify({ bottom, up200, up300 })}\n`,
       );
-      // Aligned: the newest counts as in view, shown above the composer resting in its place.
       assert.ok(bottom.atNewest, `${name} ${layoutName}: aligned is at newest`);
       assert.ok(bottom.lastVisible, `${name} ${layoutName}: last visible`);
       assert.ok(
@@ -166,7 +156,6 @@ for (const [name, engine] of [
         bottom.composerResting,
         `${name} ${layoutName}: composer resting above the end`,
       );
-      // Read up: the distance is how far the reader went, the 240px rule follows at 200 and not at 300.
       assert.ok(
         Math.abs(up200.distance - bottom.distance - 200) <= 1,
         `${name} ${layoutName}: 200px up measures 200`,

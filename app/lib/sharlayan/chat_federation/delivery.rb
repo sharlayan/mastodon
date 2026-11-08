@@ -3,7 +3,6 @@
 module Sharlayan
   module ChatFederation
     class Delivery
-      # A suspended account gets nothing new, but still hears what was taken back, as with a deleted status.
       RETRACTION_TYPES = %w(Delete Remove Undo).freeze
 
       class << self

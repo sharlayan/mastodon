@@ -286,7 +286,6 @@ const startServer = async () => {
   const subs = {};
 
   /**
-   * What Redis was asked to subscribe to, resolved to whether it did once it has answered.
    * @type {Object.<string, Promise<boolean>>}
    */
   const redisSubscriptions = {};
@@ -1334,8 +1333,6 @@ const startServer = async () => {
    */
 
   /**
-   * Tells a client that asked for it that nothing published from now on can pass it by. Only Redis can
-   * say so, and a client that reads what it has missed after this answer has left no gap behind it.
    * @param {WebSocketSession} session
    * @param {string[]} channelIds
    * @param {string[]} streamName

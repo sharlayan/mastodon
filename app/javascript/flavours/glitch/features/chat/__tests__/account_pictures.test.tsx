@@ -126,7 +126,6 @@ const pictureOf = (element: Element | null) =>
 const closestTo = (text: string, selector: string) =>
   screen.getByText(text).closest(selector);
 
-// Finds Bob among the results and picks him, checking both places he shows up in.
 const expectPictureWhileChoosingBob = async () => {
   fireEvent.change(screen.getByPlaceholderText('Search for an account'), {
     target: { value: 'bob' },

@@ -25,7 +25,6 @@ const api = vi.hoisted(() => ({
   patch: vi.fn(),
   delete: vi.fn(),
 }));
-// What the room draws for a message and for the box to write in, counted each time they are drawn.
 const drawn = vi.hoisted(() => ({ messages: 0, composer: 0 }));
 vi.mock('flavours/glitch/api', () => ({ default: () => api }));
 vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
@@ -107,8 +106,6 @@ const responses = (url: string) => {
 };
 
 const scrollIntoView = vi.fn();
-// The end of the room `bottom` px below the window. When a test lets the room scroll in a box of its own, that box
-// covers the window, as a column does: what can be seen of the room is within it.
 const placedAt = (bottom: number) => {
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
     function (this: Element) {
@@ -167,7 +164,6 @@ const receive = (id: string, account = other) => {
 };
 const readsPosted = () =>
   api.post.mock.calls.filter(([url]) => url === READ).length;
-// Runs what the reader does, and gives back how many times the room drew its messages and its box meanwhile.
 const drawnWhile = (action: () => void) => {
   const before = { ...drawn };
   action();
@@ -896,8 +892,6 @@ describe('Scrolling in a room', () => {
     expect(readsPosted()).toBe(before);
   });
 
-  // Only the notice going away is counted here. The server's answer to reading the room updates the list of rooms,
-  // and that does draw the room again: it happens when a message went unseen, not each time the button comes and goes.
   it('clears the notice and asks to read the room on returning to the bottom, and clearing it draws nothing again', async () => {
     await openRoom();
     scrollUp();
@@ -964,7 +958,6 @@ describe('Scrolling in a room', () => {
   });
 });
 
-// ---- Review 355b: reproductions appended to a copy of scroll_renders.test.tsx ----
 const withQuote = () => {
   api.get.mockImplementation((url: string) => {
     if (url.endsWith('/messages'))
@@ -995,9 +988,6 @@ const endScrolls = () =>
   scrollIntoView.mock.contexts.filter((element) =>
     (element as Element).classList.contains('chat-native__end'),
   ).length;
-// The quoted original out of full view until the page is measured again, as a jump that moves the page to it has it:
-// above the screen (700px up: the box from 800 to 100), or with its top cut off. One in full view is highlighted where
-// it is instead (state table 45).
 const originalAway = (top = -600, bottom = top + 50) => {
   const measure = vi
     .spyOn(Element.prototype, 'getBoundingClientRect')
@@ -1155,7 +1145,6 @@ describe('Review 355b', () => {
   });
 
   it('does not read the newest message while loading an older searched target', async () => {
-    // Opened at an older message: the end of the room, and the newest message above it, are below the screen.
     placedAt(5000);
     api.get.mockImplementation(
       (url: string, options?: { params?: { max_id?: string } }) => {
@@ -1223,7 +1212,6 @@ describe('Review 355b', () => {
       });
       scrollUp();
       scrollport.scrollTop = 800;
-      // The last marker is at the bottom edge of this nested scrollport.
       vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
         function (this: Element) {
           if (
@@ -1305,7 +1293,6 @@ describe('Review 355b', () => {
       scrollIntoView.mockImplementation(function (this: HTMLElement) {
         if (this.id === 'chat-message-message-1') scrollport.scrollTop = 100;
       });
-      // A tap on the quote: the pointer goes down on it, the box loses focus, the click lands.
       fireEvent.pointerDown(quote);
       act(() => {
         screen.getByRole('textbox').blur();
@@ -1348,7 +1335,6 @@ describe('Review 355b', () => {
   });
 
   it('O1 opening a room at a searched message does not mark the never shown newest one read', async () => {
-    // Opened at an older message: the end of the room, and the newest message above it, are below the screen.
     placedAt(5000);
     const history = createMemoryHistory({
       initialEntries: [
@@ -1384,7 +1370,6 @@ describe('Review 355b', () => {
   });
 });
 
-// ---- Review f88a: suspicions around the cdf34d4941 changes (appended to a copy of scroll_renders helpers) ----
 const wait = (ms: number) =>
   act(async () => {
     await new Promise((resolve) => setTimeout(resolve, ms));
@@ -1424,11 +1409,6 @@ const openWith = async (chatMessageId: string, text: string) => {
 };
 
 describe('Review f88a', () => {
-  // S1: the reader is at the newest and taps the quote of a reply to a message just above. The jump
-  // centres the original; the browser's scroll event then finds the end still within 240px, so the
-  // screen counts as following again. When the highlight ends 3s later, nothing new has arrived.
-  // Centring it moves the page, so the original is not in full view: just above the newest, its bottom under the
-  // composer (300), or far above the screen.
   for (const [name, below, original] of [
     ['nearby original (end 120px below)', 120, [260, 310]],
     ['far original (end 400px below, control)', 400, [-600, -550]],
@@ -1443,7 +1423,6 @@ describe('Review f88a', () => {
       fireEvent.click(quote);
       await wait(50);
       expect(targetScrolls('message-1')).toBe(1);
-      // The scroll event of the jump, as the browser reports it after the effect.
       placedAt(below);
       const endBefore = endScrolls();
       await wait(3200);
@@ -1461,7 +1440,6 @@ describe('Review f88a', () => {
     expect(endScrolls() - endBefore).toBe(0);
   });
 
-  // S2: tap a quote, come back to the newest, tap the same quote again within its highlight.
   it('S2 tapping the same quote again within its highlight does not stop following at the newest', async () => {
     withQuote();
     await openRoom();
@@ -1478,7 +1456,6 @@ describe('Review f88a', () => {
     fireEvent.pointerDown(quote);
     fireEvent.click(quote);
     await wait(50);
-    // (both versions) the second tap does not move the screen
     expect(targetScrolls('message-1')).toBe(jumpsBefore);
     const readsBefore = readsPosted();
     const endBefore = endScrolls();
@@ -1491,8 +1468,6 @@ describe('Review f88a', () => {
     }).toEqual({ followed: true, read: 1, jumpButton: false });
   });
 
-  // S2b: at the newest, tap a quote whose original is already on screen below the middle: centring it
-  // cannot scroll further down, so no scroll happens at all (desktop Chromium on the review server).
   it('S2b a quote to an original already shown at the newest does not stop following', async () => {
     withQuote();
     await openRoom();
@@ -1515,7 +1490,6 @@ describe('Review f88a', () => {
   it('S2b follows at the document bottom when layout padding puts the end above the viewport edge', async () => {
     withQuote();
     await openRoom();
-    // Desktop review server: end at 888.75px in a 900px viewport, document at its bottom.
     const documentScrollport = document.createElement('div');
     Object.defineProperty(documentScrollport, 'scrollHeight', {
       configurable: true,
@@ -1553,7 +1527,6 @@ describe('Review f88a', () => {
     else Reflect.deleteProperty(document, 'scrollingElement');
   });
 
-  // S3: the searched message never comes (hidden for the viewer, or its author suspended, after the search).
   it('S3 a room opened at a searched message that never loads still aligns to the newest', async () => {
     await openWith('message-gone', 'Message 5');
     await wait(3500);
@@ -1563,8 +1536,6 @@ describe('Review f88a', () => {
     }).toEqual({ endScrolls: 1, jumpButton: false });
   });
 
-  // S5: a jump that lands while the touch keyboard is open (quote tapped first, box focused while the
-  // original is still on its way), then the keyboard closes.
   it('S5 a quote jump that lands while the keyboard is open survives closing the keyboard', async () => {
     const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
     const viewport = Object.assign(new EventTarget(), {
@@ -1622,11 +1593,9 @@ describe('Review f88a', () => {
       const scrollport = tallScrollport(800);
       placedAt(0);
       const quote = quoteOf('message-1');
-      // The quote is tapped with the keyboard closed; the original is on an older page.
       fireEvent.pointerDown(quote);
       fireEvent.click(quote);
       await wait(50);
-      // While it is on its way, the reader taps the box and the keyboard opens.
       act(() => {
         screen.getByRole('textbox').focus();
       });
@@ -1643,7 +1612,6 @@ describe('Review f88a', () => {
       });
       await wait(50);
       const afterJump = scrollport.scrollTop;
-      // The keyboard closes (tap elsewhere / done).
       act(() => {
         screen.getByRole('textbox').blur();
       });
@@ -1662,8 +1630,6 @@ describe('Review f88a', () => {
     }
   });
 
-  // Coordinator questions (expected to pass): following and reading come back after a quote or search
-  // jump once the reader goes back down or taps the jump button.
   it('R1 after a quote jump with the keyboard, the jump button brings following and reading back', async () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true });
     withQuote();
@@ -1686,7 +1652,6 @@ describe('Review f88a', () => {
     await wait(900);
     receive('while-away');
     const readsAway = readsPosted();
-    // The button reads "New messages" now; it is the same jump button.
     fireEvent.click(
       document.querySelector('.chat-native__jump') as HTMLElement,
     );
@@ -1703,7 +1668,6 @@ describe('Review f88a', () => {
   });
 
   it('R2 after opening at a searched message, scrolling down reads the newest and follows again', async () => {
-    // Opened at an older message: the end of the room, and the newest message above it, are below the screen.
     placedAt(5000);
     await openWith('message-1', 'Message 5');
     await wait(3300);
@@ -2898,8 +2862,6 @@ describe('Android visual viewport regressions', () => {
 });
 
 describe('A reader scrolling while the screen changes size', () => {
-  // Pixel 1 (android-masto-diag t5): a finger drags down at the end with the address bar collapsed. The bar comes
-  // back, the visual viewport resizes 12 times, and each resize used to pull the page back to the end.
   const dragWhileResizing = async (endsAt: number, arrives?: string) => {
     const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
     const viewport = Object.assign(new EventTarget(), {
@@ -2926,7 +2888,6 @@ describe('A reader scrolling while the screen changes size', () => {
       if (arrives) receive(arrives);
       const whileDragging = endScrolls();
       placedAt(603.4 - window.innerHeight + endsAt);
-      // The finger leaves the screen.
       fireEvent.touchEnd(window);
       await wait(250);
       return { whileDragging, afterDrag: endScrolls() - whileDragging };
@@ -2958,8 +2919,6 @@ describe('A reader scrolling while the screen changes size', () => {
   });
 });
 
-// Android Chrome on f35f1ec (android-masto-final2): Galaxy Z Flip3, innerHeight 744, the keyboard leaving a visual
-// viewport of 420.7 that Chrome moves down to 324 over ~400ms.
 const androidViewport = () => {
   const originals = {
     viewport: Object.getOwnPropertyDescriptor(window, 'visualViewport'),
@@ -2990,7 +2949,6 @@ const androidViewport = () => {
   const nav = document.createElement('div');
   nav.className = 'ui__navigation-bar';
   document.body.appendChild(nav);
-  // Rectangles in layout coordinates: the composer and navigation rest on the bottom of the page (k12 "pre").
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
     function (this: Element) {
       if (this === nav)
@@ -3034,7 +2992,6 @@ describe('Android keyboard on f35f1ec', () => {
       act(() => {
         screen.getByRole('textbox').focus();
       });
-      // k12: 111~148ms after the tap the viewport shrinks, still at the top of the page.
       android.move(420.7, 0, 'resize');
       const whileOpening = parseFloat(android.nav.style.bottom || '0');
       android.move(420.7, 150, 'scroll');
@@ -3062,7 +3019,6 @@ describe('Android keyboard on f35f1ec', () => {
       });
       android.move(420.7, 0, 'resize');
       android.move(420.7, 324, 'scroll');
-      // s7v: centring the original moves only Chrome's visual viewport (324 -> 246); the page stays.
       scrollIntoView.mockImplementation(function (this: HTMLElement) {
         if (this.id === 'chat-message-message-1')
           android.move(420.7, 246, 'scroll');
@@ -3073,7 +3029,6 @@ describe('Android keyboard on f35f1ec', () => {
         screen.getByRole('textbox').blur();
       });
       fireEvent.click(quote);
-      // 56ms later the keyboard has gone with the focus.
       await wait(50);
       android.move(744.7, 0, 'resize');
       await wait(1000);
@@ -3092,7 +3047,6 @@ describe('Android keyboard on f35f1ec', () => {
   });
 });
 
-// Review f35f probes P1 and P2, and D2.
 describe('Review f35f', () => {
   it('P1 a finger resting on the screen after a short drag is not pulled by an arriving message', async () => {
     await openRoom();
@@ -3167,7 +3121,6 @@ describe('Review f35f', () => {
           scrollTop = value;
         },
       });
-      // iOS: rectangles in visual coordinates, the composer on the bottom of the visual viewport.
       let lastBottomAtStart = 147;
       vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
         function (this: Element) {
@@ -3264,7 +3217,6 @@ describe('Review f35f', () => {
     await screen.findByText('Message 76');
     await wait(0);
     const scrollport = tallScrollport(0);
-    // At the top of the room: the first message at 159; once 37 older ones are above it, at 3,209.
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
       function (this: Element) {
         if (this.classList.contains('chat-native__end'))
@@ -3325,7 +3277,6 @@ describe('iOS keyboard on f35f1ec', () => {
       act(() => {
         screen.getByRole('textbox').focus();
       });
-      // g6 aw1: Safari scrolls 162 past the end to show the box; innerHeight 385, visual viewport 320.5 at 226.5.
       viewport.height = 320.5;
       viewport.offsetTop = 226.5;
       window.innerHeight = 385;
@@ -3333,7 +3284,6 @@ describe('iOS keyboard on f35f1ec', () => {
         viewport.dispatchEvent(new Event('resize'));
       });
       const focused = parseFloat(nav.style.bottom || '0');
-      // ru1: then a drag up with the keyboard open, innerHeight 398 at 149.5.
       viewport.offsetTop = 149.5;
       window.innerHeight = 398;
       act(() => {
@@ -3358,8 +3308,6 @@ describe('iOS keyboard on f35f1ec', () => {
   });
 });
 
-// iPhone SE 2 on ddbad17ba3 (ios-masto-final3/out/se2/b-*.json): Safari's innerHeight, visual viewport and scrollY
-// as recorded, with the rectangles the page measured.
 describe('iOS keyboard on ddbad17ba3', () => {
   const geo = {
     end: { top: 494.8, bottom: 494.8 },
@@ -3420,7 +3368,6 @@ describe('iOS keyboard on ddbad17ba3', () => {
         return { top: -2000, bottom: -1950 } as DOMRect;
       },
     );
-    // The page as Safari has it: where it is scrolled, how tall, and what it shows.
     const page = (
       at: {
         innerHeight?: number;
@@ -3444,7 +3391,6 @@ describe('iOS keyboard on ddbad17ba3', () => {
     };
     const measurePage = (height: number) => {
       scrollTops = [];
-      // Room made below the end of the room makes the page that much longer.
       const total = () =>
         height +
         (parseFloat(
@@ -3519,7 +3465,6 @@ describe('iOS keyboard on ddbad17ba3', () => {
         device.page({ innerHeight: 447, offsetTop: 102, scrollY: 1797 });
       });
       const dragged = device.nav.style.bottom;
-      // 0.26s into the inertia: innerHeight back to 549, offsetTop to 0, for the rest of it.
       device.page({ innerHeight: 549, offsetTop: -0.5, scrollY: 1611 }, [
         'scroll',
         'resize',
@@ -3539,7 +3484,6 @@ describe('iOS keyboard on ddbad17ba3', () => {
     try {
       await openRoom();
       device.measurePage(2627);
-      // About 420pt up: the end 457.6 below the navigation, and the way back shown.
       geo.end = { top: 951.6, bottom: 951.6 };
       drag(() => {
         device.page({ scrollY: 1621 }, ['window']);
@@ -3548,7 +3492,6 @@ describe('iOS keyboard on ddbad17ba3', () => {
       act(() => {
         screen.getByRole('textbox').focus();
       });
-      // Safari keeps innerHeight and moves only the visual viewport; scrollY is its top already.
       Object.assign(geo, {
         composer: { top: 162.5, bottom: 231.5 },
         nav: { top: 231.5, bottom: 286.5 },
@@ -3558,7 +3501,6 @@ describe('iOS keyboard on ddbad17ba3', () => {
         'resize',
         'window',
       ]);
-      // 60pt up with the keyboard open: 185.6 by Chrome's coordinates, under 240.
       geo.end = { top: 684.6, bottom: 684.6 };
       drag(() => {
         device.page({ offsetTop: 212, scrollY: 1888 }, ['scroll', 'window']);
@@ -3601,7 +3543,6 @@ describe('iOS keyboard on ddbad17ba3', () => {
   });
 });
 
-// iPhone SE 3 (iOS 18.7.7) on a7566004ab, ios-masto-final4/out/se3/b-a130.json: 119pt up, then a tap on the box.
 describe('iOS 18 keyboard on a7566004ab', () => {
   it('makes room under the keyboard and shows the newest when Safari scrolls from where the page was (a130)', async () => {
     const root = document.documentElement;
@@ -3674,7 +3615,6 @@ describe('iOS 18 keyboard on a7566004ab', () => {
       });
       vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
         function (this: Element) {
-          // What the page measured, moved by what the app scrolled after Safari's own scroll.
           const by = window.innerHeight < 547 ? top - 1725 : 0;
           const at = (r: { top: number; bottom: number }) =>
             ({ top: r.top - by, bottom: r.bottom - by }) as DOMRect;
@@ -3687,7 +3627,6 @@ describe('iOS 18 keyboard on a7566004ab', () => {
           return { top: -2000, bottom: -1950 } as DOMRect;
         },
       );
-      // 119pt up, reading with a finger: following.
       Object.assign(geo, {
         end: { top: 611, bottom: 611 },
         last: { top: 472, bottom: 526 },
@@ -3703,7 +3642,6 @@ describe('iOS 18 keyboard on a7566004ab', () => {
         screen.getByRole('textbox').focus();
       });
       const atFocus = top;
-      // Safari puts the page back (1427) and scrolls it by 298 from there; innerHeight 367 = 2092 − 1725.
       top = 1725;
       viewport.pageTop = 1725;
       viewport.height = 320.5;
@@ -3881,8 +3819,6 @@ describe('A quote whose original is in full view, on ddbad17ba3', () => {
   });
 });
 
-// A phone page as the hook reads it: innerHeight, the root's clientHeight, the visual viewport, and the page's
-// scrolling element, which records what the app writes and keeps within what can be scrolled.
 const phonePage = ({
   innerHeight,
   clientHeight,
@@ -3941,7 +3877,6 @@ const phonePage = ({
   const nav = document.createElement('div');
   nav.className = 'ui__navigation-bar';
   document.body.appendChild(nav);
-  // After the room is drawn: the page scrolls as a whole.
   const scrollWithPage = () => {
     Object.defineProperty(document, 'scrollingElement', {
       configurable: true,
@@ -3983,10 +3918,6 @@ const phonePage = ({
   return { state, viewport, nav, margin, scrollWithPage, restore };
 };
 
-// Review 730b E1 (730b5828c2): at the newest, reached by scrolling down, the browser bar is collapsed and innerHeight
-// is taller than the root by it. Tapping the box made room below the end of the room by that much before any
-// keyboard (Pixel android-masto-final5/raw/pixel/kcol-1~3.json: margin-bottom 56px at +20ms, then a 55.3px band
-// between the composer and the navigation bar over the keyboard; iPhone SE 2 and SE 3 at ios-masto-final4 b-c11).
 describe('Focusing the box at the newest with the browser bar collapsed (review 730b E1)', () => {
   interface Collapsed {
     innerHeight: number;
@@ -4082,7 +4013,6 @@ describe('Focusing the box at the newest with the browser bar collapsed (review 
       await openRoom();
       page.scrollWithPage();
       page.viewport.height = 659.4;
-      // The composer is sticky at the bottom of what the page has: room below the end lifts it off the bar by as much.
       vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
         function (this: Element) {
           if (this === page.nav)
@@ -4103,7 +4033,6 @@ describe('Focusing the box at the newest with the browser bar collapsed (review 
       act(() => {
         screen.getByRole('textbox').focus();
       });
-      // Chrome's keyboard: the root takes innerHeight, the visual viewport shrinks, then comes down onto it.
       page.state.client = 659;
       for (const [height, offsetTop, type] of [
         [351.7, 0, 'resize'],
@@ -4132,11 +4061,6 @@ describe('Focusing the box at the newest with the browser bar collapsed (review 
   });
 });
 
-// Review 730b J1: away from the newest with the keyboard open, a quote whose original is in full view is highlighted
-// where it is and nothing moves; closing the keyboard still goes back to where the reader was (rule 4). iPhone SE 3,
-// ios-masto-final4/out/se3/b-aw1.json: read 418pt up to 1128, the box tapped, Safari at 1426 with its keyboard
-// (547/320.5/226.5), and only the app's write took the page back to 1128 when it closed. On 730b the quote's press
-// cancelled that write: the review server's emulated browsers were left 298px off (terra-masto-e1 live/).
 describe('A quote highlighted where it is with the keyboard open, away from the newest (review 730b J1)', () => {
   it('goes back to where the reader was when the keyboard closes (SE 3 b-aw1: 298px off on 730b)', async () => {
     withQuote();
@@ -4167,7 +4091,6 @@ describe('A quote highlighted where it is with the keyboard open, away from the 
           return { top: -2000, bottom: -1950 } as DOMRect;
         },
       );
-      // Read 418pt up.
       geo.end = 910;
       page.state.top = 1128;
       page.viewport.pageTop = 1128;
@@ -4176,7 +4099,6 @@ describe('A quote highlighted where it is with the keyboard open, away from the 
       act(() => {
         screen.getByRole('textbox').focus();
       });
-      // Safari's keyboard, and its own scroll to show the box: the original is in full view over the composer.
       page.state.top = 1426;
       Object.assign(page.viewport, {
         height: 320.5,
@@ -4207,7 +4129,6 @@ describe('A quote highlighted where it is with the keyboard open, away from the 
         .getElementById('chat-message-message-1')
         ?.classList.contains('chat-native__message--highlighted');
       const atTap = page.state.top;
-      // The keyboard goes; Safari leaves the page where it was (b-aw1: 1426 until the app's write).
       Object.assign(page.viewport, {
         height: 547,
         offsetTop: 0,
@@ -4242,9 +4163,7 @@ describe('A quote highlighted where it is with the keyboard open, away from the 
   });
 });
 
-// Android on f496c2c262 (android-masto-final6/raw/<galaxy|pixel>/) and the review of f496 (review-masto-f496).
 describe('Android on f496c2c262 and review f496', () => {
-  // The column header, held at the top of the page in one column.
   const tabsBar = () => {
     const bar = document.createElement('div');
     bar.className = 'tabs-bar__wrapper';
@@ -4252,8 +4171,6 @@ describe('Android on f496c2c262 and review f496', () => {
     return bar;
   };
 
-  // Defect 2 (s7h-1): no keyboard, the original under the header by 19.2 / 23.3px, the quote below it. The quote
-  // highlighted the original where it was, half hidden, and nothing moved (4/4).
   for (const [name, at] of [
     [
       'Pixel s7h-1',
@@ -4339,9 +4256,6 @@ describe('Android on f496c2c262 and review f496', () => {
       });
   }
 
-  // Defect 3 (kupc-3): read 273px up with Chrome's URL bar collapsed (659 / 603), the box tapped: Chrome takes the
-  // page 131.8px down to it (902.1 → 1033.9). The back key puts the keyboard away and leaves the box focused, and
-  // Chrome shows its bar again at once (375.2 → 603.4, then the window 603). The page was left at 1033.9.
   it('3 gives the place back when the keyboard goes as Chrome shows its bar again (Pixel kupc-3)', async () => {
     const page = phonePage({
       innerHeight: 659,
@@ -4373,7 +4287,6 @@ describe('Android on f496c2c262 and review f496', () => {
       act(() => {
         screen.getByRole('textbox').focus();
       });
-      // Chrome's keyboard: the visual viewport over it, the page taken down to the box.
       page.state.top = 1033.9;
       page.state.client = 659;
       Object.assign(page.viewport, { height: 375.2, offsetTop: 284.2 });
@@ -4386,7 +4299,6 @@ describe('Android on f496c2c262 and review f496', () => {
       fireEvent.scroll(window);
       await wait(50);
       page.state.writes = [];
-      // The back key: the visual viewport first, then the window with the bar shown again.
       Object.assign(page.viewport, { height: 603.4, offsetTop: 0 });
       act(() => {
         page.viewport.dispatchEvent(new Event('resize'));
@@ -4418,7 +4330,6 @@ describe('Android on f496c2c262 and review f496', () => {
     nav: { top: number; bottom: number };
     message: (element: Element) => DOMRect | undefined;
   }
-  // The J1 flow (SE 3 b-aw1: read 418pt up to 1128, the box tapped, Safari at 1426 with its keyboard).
   const focusAway = async (page: ReturnType<typeof phonePage>, geo: Geo) => {
     page.scrollWithPage();
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
@@ -4476,9 +4387,6 @@ describe('Android on f496c2c262 and review f496', () => {
     await wait(800);
   };
 
-  // J1′ (review f496 P1): the original, highlighted where it was, goes partly under the composer without a scroll
-  // (something above it grew), and the same quote is pressed again within the highlight: ignored (9), nothing moves.
-  // iOS Safari: a button does not take the focus, so the keyboard stays open across the presses.
   it('J1′ goes back to where the reader was after the same quote is pressed again (SE 3 b-aw1)', async () => {
     withQuote();
     const page = phonePage({
@@ -4531,9 +4439,6 @@ describe('Android on f496c2c262 and review f496', () => {
     }
   });
 
-  // P4 (review f496): a quote whose original is never found. Older messages come in above while it is sought, 100px
-  // of them, and Safari 18 keeps nothing in place: the app scrolls by them (39). Nothing else moves; closing goes back
-  // to where the reader was, which is 100px further down the page now (rules 4 and 5).
   it('P4 goes back to where the reader was, older messages and all, after a quote never found (SE 3 b-aw1)', async () => {
     api.get.mockImplementation(
       (url: string, options?: { params?: { max_id?: string } }) => {
@@ -4619,9 +4524,6 @@ describe('Android on f496c2c262 and review f496', () => {
   });
 });
 
-// Android on f496c2c262, observation 3 (kupc-6·8·9): after the back key the box keeps the focus, and a tap on it brings
-// the keyboard back without a focus event. Chrome took the page down to the box again (945.5 → 1016.4) and nothing
-// gave the place back when that keyboard went too (3/3).
 describe('The keyboard brought back by a tap on the box still focused (Android on f496c2c262)', () => {
   it('3 gives the place back again after the keyboard comes back with a tap and goes (Pixel kupc-6)', async () => {
     const page = phonePage({
@@ -4676,7 +4578,6 @@ describe('The keyboard brought back by a tap on the box still focused (Android o
       await wait(400);
       const first = [...page.state.writes];
       page.state.writes = [];
-      // The same box, still focused, tapped again.
       fireEvent.pointerDown(box);
       keyboard(1016.4);
       await wait(50);
@@ -4699,9 +4600,6 @@ describe('The keyboard brought back by a tap on the box still focused (Android o
   });
 });
 
-// The regression's keyboard on d25d9cf06b (layout kb, Chromium and WebKit): a smaller window, the root as short as
-// what is shown, as a browser that resizes the page with its keyboard has it. Reading 600px up, the box focused, the
-// page moved 420px to show it (Safari's move, emulated), a message, the keyboard gone: the reader was not taken back.
 describe('A keyboard that shortens the page with it (regression kb on d25d9cf06b)', () => {
   it('3 gives the place back when it goes', async () => {
     const page = phonePage({

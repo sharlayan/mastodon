@@ -1,4 +1,3 @@
-// Run from the repository root with `node .../actions_hover.mjs`.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -16,8 +15,6 @@ const css = process.env.CHAT_TEST_CSS
       'app/javascript/flavours/glitch/styles/mastodon/custom_chat.scss',
     ).css;
 const html = `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font:16px sans-serif}${css}</style><div class="chat-native"><div class="chat-native__messages"><article class="chat-native__message"><span class="chat-native__avatar-space"></span><div class="chat-native__message-content"><div class="chat-native__bubble-wrap"><div class="chat-native__bubble" tabindex="-1"><button class="chat-native__reply-quote">quote</button><p>Message <a href="#link">link</a></p><button class="chat-native__reaction">reaction</button><button class="attachment">attachment</button></div><div class="chat-native__actions-rail"><div class="chat-native__actions"><button>tool</button></div></div></div></div></article></div><form class="chat-native__composer"><textarea aria-label="compose"></textarea></form></div>`;
-// A message near the top of a phone's screen, under the column header held there (Pixel 1 on f496c2c: header bottom
-// 50.8, the toolbar held 54px down and 40px tall over the top of the bubble, android-masto-final6 s7f).
 const icon =
   '<button class="icon-button"><svg class="icon" viewBox="0 0 24 24"></svg></button>';
 const filler = '<p style="height:60px;margin:0"></p>'.repeat(12);
@@ -88,7 +85,6 @@ for (const [name, engine] of [
           );
         }
       } else {
-        // Moving through the room with the keyboard still shows the toolbar of the message being moved through.
         await page.mouse.move(1270, 890);
         await page.locator('.chat-native__bubble').focus();
         await page.keyboard.press('Tab');
@@ -109,8 +105,6 @@ for (const [name, engine] of [
       await context.close();
     }
 
-    // The first tap on what a message near the top holds goes to it, not to the toolbar its focus would bring up over
-    // it (Pixel 6/6, Galaxy 2/2 on f496c2c: the click went to the bubble's wrapper, the quote never went anywhere).
     const phone =
       name === 'chromium'
         ? {

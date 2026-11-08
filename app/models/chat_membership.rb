@@ -14,7 +14,6 @@ class ChatMembership < ApplicationRecord
 
   private
 
-  # The owner has stated no time for this, so what is on record is older than anything the owner can state.
   def record_roster_time
     return unless chat_conversation.chat_group?
 

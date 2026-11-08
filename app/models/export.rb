@@ -85,7 +85,6 @@ class Export
     JSON.generate(data_collection)
   end
 
-  # Someone can have far more chat than fits in memory, so this writes to the IO as it reads.
   def write_chat_json(io)
     io.write('{"chat_conversations":[')
     ChatConversation.for_account(account).preload(:accounts).find_each.with_index do |conversation, index|

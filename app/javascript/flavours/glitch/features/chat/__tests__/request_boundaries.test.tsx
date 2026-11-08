@@ -18,8 +18,6 @@ import { setupServer } from 'msw/node';
 
 import type * as InitialState from 'flavours/glitch/initial_state';
 
-// Only the socket and the far side of the requests are stand-ins. Each page below goes
-// through the real stream client, the real API client and the real screen.
 const Socket = vi.hoisted(() => {
   class FakeSocket {
     static CONNECTING = 0;
@@ -77,9 +75,6 @@ const Socket = vi.hoisted(() => {
   return FakeSocket;
 });
 
-// Review 37ca: jsdom's multipart body does not reach MSW, so only the upload POST itself is
-// answered here (as Mastodon answers a video: 202, no URL yet). Every other request, including
-// the processing poll, goes through the real API client to MSW.
 vi.mock('flavours/glitch/api', async (importOriginal) => {
   const actual = await importOriginal<{
     default: (auth?: boolean) => {
@@ -95,8 +90,6 @@ vi.mock('flavours/glitch/api', async (importOriginal) => {
         if (url === '/api/v2/media') {
           (globalThis as { __uploads?: number }).__uploads =
             ((globalThis as { __uploads?: number }).__uploads ?? 0) + 1;
-          // Review a99b: a file whose name says "bad" is refused, as Mastodon refuses an
-          // unsupported file (422). Every other file is answered as before (202, no URL yet).
           const file = (rest[0] as FormData | undefined)?.get('file') as
             | File
             | undefined;
@@ -133,7 +126,6 @@ vi.mock('flavours/glitch/store', async (importOriginal) => ({
   useAppDispatch: () => vi.fn(),
   useAppSelector: () => false,
 }));
-// Review a99b: the room menu is drawn as plain buttons so a test can press Mute.
 vi.mock('flavours/glitch/components/dropdown_menu', () => ({
   Dropdown: ({
     items,
@@ -156,7 +148,6 @@ vi.mock('flavours/glitch/components/dropdown_menu', () => ({
     </div>
   ),
 }));
-// Review a99b: the header also draws its extra button, where the room menu lives.
 vi.mock('flavours/glitch/components/column/header', () => ({
   ColumnHeader: ({
     title,
@@ -217,8 +208,6 @@ const message = (room: string, id: number): Message => ({
   media_attachments: [],
 });
 
-// A server with state: what a read answers is what was there at the moment it read,
-// however late the answer gets back. Holding an answer back is what the tests vary.
 const backend = {
   messages: new Map<string, Message[]>(),
   rooms: new Map<
@@ -228,17 +217,14 @@ const backend = {
   invitations: [] as { id: string; title: string }[],
   reads: [] as string[],
   marked: [] as string[],
-  // Every request to mark a room read, answered or not, with when it came.
   markAttempts: [] as { room: string; at: number; messageId?: string }[],
   held: [] as { path: RegExp; until: Promise<void> }[],
   failing: [] as RegExp[],
-  // Answers given once, in place of the real one, to the next request whose path matches.
   refusals: [] as {
     path: RegExp;
     status: number;
     headers?: Record<string, string>;
   }[],
-  // Paths that fail for as long as they are listed here.
   down: [] as RegExp[],
 };
 const room = (id: string) => {
@@ -408,7 +394,6 @@ const ROOMS = /\/conversations$/;
 const readsOf = (path: RegExp) =>
   backend.reads.filter((read) => path.test(read.split('?')[0] ?? ''));
 
-// A page load: the connection starts, and the screen may come before or after it is up.
 const loadPage = async () => {
   vi.resetModules();
   const [{ connectUserStream }, { Chat }, { IdentityContext }] =
@@ -457,7 +442,6 @@ const loadPage = async () => {
     socket: Socket.all.at(-1) as InstanceType<typeof Socket>,
   };
 };
-// The server answers a subscription only for a client that asked it to.
 const connect = async (socket: InstanceType<typeof Socket>) => {
   await act(async () => {
     socket.connect();
@@ -484,14 +468,11 @@ const settle = async () => {
     await new Promise((resolve) => setTimeout(resolve, 60));
   });
 };
-// The first import of the screen transforms all of it, which can take longer than a test is
-// given on a busy machine. Each test then imports it again from that work.
 beforeAll(async () => {
   await import('../index');
 }, 60_000);
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
-  // Listening wraps the global WebSocket, and the stream client takes what it finds there.
   Object.defineProperty(globalThis, 'WebSocket', {
     value: Socket,
     configurable: true,
@@ -518,7 +499,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// ---- Review 37ca: reproductions ----
 const MEDIA = /\/api\/v1\/media\/m1$/;
 const later = async (ms: number) => {
   await act(async () => {
@@ -535,8 +515,6 @@ const setHidden = (hidden: boolean) => {
   });
 };
 
-// ---- Review a99b: reproductions. Each test asserts what the screen should do; a failing
-// assertion is a reproduced defect. What each one saw goes to mock-events.jsonl. ----
 const record = vi.fn();
 const listed = () =>
   [...document.querySelectorAll('[data-conversation-id]')].map(
@@ -545,7 +523,6 @@ const listed = () =>
 const numericRooms = (count: number) => {
   for (let id = 1; id <= count; id += 1) seed(String(id), 1, 1);
 };
-// Pages of 20, newest (highest id) first, as the list API pages.
 const usePagedRooms = () => {
   server.use(
     http.get(
@@ -876,7 +853,6 @@ describe('Review a99b', () => {
       await screen.findByRole('button', { name: /Invitations\s*1/ }),
     );
     await screen.findByText('Invited room');
-    // The read after the accept: held back, then answered 429 Retry-After 20.
     backend.refusals.push({
       path: ROOMS,
       status: 429,
@@ -888,7 +864,6 @@ describe('Review a99b', () => {
       expect(readsOf(ROOMS)).toHaveLength(2);
     });
     await settle();
-    // A newer read (the stream coming back) is answered and applied first.
     backend.rooms.set('B', { title: 'Room B', unread: false });
     const socket = await dropConnection(page.socket);
     await connect(socket);
@@ -987,7 +962,6 @@ describe('Review a99b', () => {
     await waitFor(() => {
       expect(readsOf(ROOMS)).toHaveLength(2);
     });
-    // The server answered page two before the room went; the event comes first here.
     backend.rooms.delete('3');
     act(() => {
       page.socket.deliver('chat.conversation_delete', { conversation_id: '3' });
@@ -1271,7 +1245,6 @@ describe('Review a99b', () => {
     await screen.findByText('Message 1');
     await screen.findByRole('button', { name: 'Mute' });
     await settle();
-    // A background list read (the stream coming back) is answered 429 Retry-After 120.
     backend.refusals.push({
       path: ROOMS,
       status: 429,
@@ -1452,7 +1425,6 @@ describe('Review a99b', () => {
       expect(page.history.location.pathname).toBe('/chat/G');
     });
     const titleAtCreate = screen.getByTestId('column-title').textContent;
-    // Renamed elsewhere; this screen goes to the list, which reads the new name.
     backend.rooms.set('G', {
       title: 'Renamed G',
       unread: false,
@@ -1463,7 +1435,6 @@ describe('Review a99b', () => {
       page.history.push('/chat');
     });
     await screen.findByText('Renamed G');
-    // Back to the room, while the list read is answered 429 Retry-After 60.
     backend.refusals.push({
       path: ROOMS,
       status: 429,

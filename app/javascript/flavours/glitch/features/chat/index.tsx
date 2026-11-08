@@ -168,17 +168,12 @@ interface PickedEmoji {
 
 type ChatHomeTab = 'home' | 'invitations' | 'joiningRooms' | 'ownedRooms';
 
-// A room's read mark that has yet to reach the server.
 interface ReadMark {
-  // The newest message the reader has actually reached.
   upTo: string;
-  // What the request on its way marks, while one is.
   sending?: string;
-  // Asked for again while a request was on its way, for more than it marks.
   again: boolean;
 }
 
-// A room change remounts the screen, but a server's deadline belongs to the account.
 const cooldownsByAccount = new Map<string, Map<string, number>>();
 const chatCooldownsFor = (accountId: string) => {
   let cooldowns = cooldownsByAccount.get(accountId);
@@ -315,7 +310,6 @@ const conversationName = (conversation: ChatConversation) => {
     .join(', ');
 };
 
-// The picture is not a link: these names sit inside buttons, and a button cannot hold a link.
 const AccountSummary: React.FC<{
   account: ChatAccount;
   detail?: string;
@@ -336,8 +330,6 @@ const directPartner = (conversation: ChatConversation) =>
     ? conversation.accounts.find((account) => account.id !== me)
     : undefined;
 
-// A name alone cannot tell apart two people on different servers. The address is cut off when it does not fit, so the
-// whole of it is in its title, and in the profile it links to where nothing can be hovered over.
 const ConversationTitle: React.FC<{
   conversation: ChatConversation;
   linked?: boolean;
@@ -368,7 +360,6 @@ const ConversationTitle: React.FC<{
   );
 };
 
-// A group has no one person to show, but its row still lines up with the direct chats.
 const ConversationPicture: React.FC<{ conversation: ChatConversation }> = ({
   conversation,
 }) => {
@@ -427,8 +418,6 @@ export const upsertConversation = (
   list: ChatConversation[],
   conversation: ChatConversation,
 ) => {
-  // The visible last message can be older than the server's ordering key
-  // when a newer message was hidden. Keep known rooms in their server order.
   if (list.some((item) => item.id === conversation.id))
     return list.map((item) =>
       item.id === conversation.id ? conversation : item,
@@ -538,7 +527,6 @@ const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
   return null;
 };
 
-// The API gives a page of these at a time, and the members screen has to show them all.
 const SENT_INVITATIONS_PAGE = 40;
 const fetchSentInvitations = async (
   conversationId: string,
@@ -701,13 +689,10 @@ type MessageAction = 'reply' | 'edit' | 'copy' | 'delete';
 
 const hasText = (message: ChatMessage) => Boolean(message.content?.trim());
 
-// Being async turns a browser without a clipboard into a failed copy, like one that refuses.
 const writeToClipboard = async (text: string) => {
   await navigator.clipboard.writeText(text);
 };
 
-// On a Mac, Home and End scroll instead of moving the caret. What the box has no room left to scroll goes on to the
-// conversation, which jumps to its first or last message from wherever it was being read.
 const scrollsConversation = (event: KeyboardEvent<HTMLTextAreaElement>) => {
   if (
     !navigator.userAgent.includes('Macintosh') ||
@@ -810,8 +795,6 @@ const endsRun = (list: ChatMessage[], index: number) =>
 const MESSAGE_PAGE_SIZE = 40;
 const MESSAGE_RESYNC_PAGES = 25;
 
-// For what changes while the reader scrolls or types. Kept in the room's own state, it would draw every message again
-// each time, which a slow phone shows as a stutter. Only what shows it follows it.
 const createStore = <T,>(initial: T) => {
   let current = initial;
   const listeners = new Set<() => void>();
@@ -881,7 +864,6 @@ type ComposerText = ReturnType<typeof createStore<string>>;
 const isTooLong = (text: string) =>
   Array.from(text.trim()).length > MAX_MESSAGE_LENGTH;
 
-// Match the cases where Safari exposes copied text as a differently encoded URL.
 const pastePlainText = (event: ClipboardEvent<HTMLDivElement>) => {
   const target = event.target;
   if (
@@ -924,7 +906,6 @@ const pastePlainText = (event: ClipboardEvent<HTMLDivElement>) => {
     return;
   }
   event.preventDefault();
-  // Native insertion is the browser API that preserves the editing undo stack.
   // eslint-disable-next-line @typescript-eslint/no-deprecated, @typescript-eslint/unbound-method
   const insertText = document.execCommand;
   if (
@@ -968,8 +949,6 @@ const ComposerBox: React.FC<{
 
   return (
     <Textarea
-      // iOS 27 Safari reads an address in the text around a box (one letter of Korean is enough)
-      // and offers contacts' addresses in place of words; autocomplete="off" does not stop it.
       name='search'
       minRows={1}
       maxRows={6}
@@ -983,7 +962,6 @@ const ComposerBox: React.FC<{
 };
 
 const ComposerTooLongNotice: React.FC<{ text: ComposerText }> = ({ text }) => {
-  // Stays at zero while the message fits, so that a letter typed draws nothing here.
   const count = useSyncExternalStore(text.subscribe, () =>
     isTooLong(text.get()) ? Array.from(text.get().trim()).length : 0,
   );
@@ -1038,7 +1016,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       }
     | undefined
   >();
-  // Where the room scrolls to, and whether it keeps up with the newest message, is decided in scroll_control.ts.
   const [scroll] = useState(() =>
     createChatScroll(location.state?.chatMessageId ?? null),
   );
@@ -1163,7 +1140,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const pendingMessageUpdates = useRef(new Set<MessageUpdate[]>());
   const latestMessageRequest = useRef(0);
-  // The cursor belongs to the applied message list, not a request still in flight.
   const appliedMessageGeneration = useRef(0);
   const shownMessagesRef = useRef<ChatMessage[]>([]);
   useEffect(() => {
@@ -1171,7 +1147,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   }, [messagesList]);
   const conversationPages = useRef(1);
   const latestConversationRequest = useRef(0);
-  // Request IDs advance before the matching list and cursor are applied.
   const appliedConversationGeneration = useRef(0);
   const updateMessages = useCallback((update: MessageUpdate) => {
     pendingMessageUpdates.current.forEach((updates) => updates.push(update));
@@ -1210,7 +1185,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setSentInvitations(update);
   }, []);
 
-  // What the screen asked for on opening and has no answer to yet.
   const openingReads = useRef(new Set<Promise<unknown>>());
   const whileOpening = useCallback(<T,>(read: Promise<T>) => {
     openingReads.current.add(read);
@@ -1222,8 +1196,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     return read;
   }, []);
 
-  // What the screen asks for by itself is tried again by the screen, not only when the stream
-  // comes back: the stream may have come back, and said so, before this screen was there.
   const [retries] = useState(() =>
     createRetries(undefined, chatCooldownsFor(me ?? '')),
   );
@@ -1239,10 +1211,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     };
   }, [retries]);
 
-  // Reads the screen made by itself that failed, and that reading again can make up for.
-  // Unlike marking a room read, what they bring is missing from the screen, so that is said.
   const failedReads = useRef(new Set<string>());
-  // A 429 on an older page leaves the search target pending for the shared retry.
   const olderPageRateLimited = useRef(false);
   const readFailed = useCallback((read: string) => {
     failedReads.current.add(read);
@@ -1253,9 +1222,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     if (failedReads.current.size === 0) setReadingError(false);
   }, []);
 
-  // Marking a room read is never asked for by hand. As with the timelines' read markers
-  // (actions/markers.ts), a failure is not shown: the room stays unread here, and the mark is
-  // sent again, by itself a few times, and after that on the next occasion for it.
   const readMarks = useRef(new Map<string, ReadMark>());
   const sendReadMark = useCallback(
     async (id: string) => {
@@ -1300,13 +1266,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         return;
       }
       if (compareId(asked, mark.upTo) > 0) mark.upTo = asked;
-      // The try planned next takes this along.
       if (mark.sending === undefined) return;
-      // One is on its way; another goes after it unless it already covers this.
       const covered = compareId(asked, mark.sending) <= 0;
       if (!covered) {
         mark.again = true;
-        // Let the retry scheduler check visibility before the next request.
         void retries
           .keepTrying(`read:${id}`, () => sendReadMark(id))
           .catch(() => undefined);
@@ -1323,14 +1286,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     };
   }, [conversationId, retries]);
 
-  // The newest message up to which nothing is missing, going by what the server answered
-  // and what the live stream brought. The screen can hold newer ones with a gap before
-  // them: what was sent from here, or what arrived before the server had subscribed.
   const continuousUpTo = useRef<string | undefined>(undefined);
-  // An empty first snapshot is a known boundary before the first message.
   const initialMessageSnapshotWasEmpty = useRef(false);
   const firstMessagesRead = useRef(false);
-  // The stream only follows on from what was read after it went live.
   const readSinceStreamWentLive = useRef(false);
   const advanceContinuousUpTo = useCallback((id?: string) => {
     if (
@@ -1340,7 +1298,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       continuousUpTo.current = id;
   }, []);
 
-  // What came in while the reader was further up, which they have not read until they are back down.
   const unreadWhileAway = useRef(false);
   const pendingVisibleRead = useRef<{
     room: string;
@@ -1466,7 +1423,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [history],
   );
 
-  // The creation response is only a bridge for the first render, not a history snapshot.
   useEffect(() => {
     if (!location.state?.chatCreatedConversation) return;
     const state = { ...location.state };
@@ -1478,7 +1434,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (id: string) => {
       if (!stillMounted()) return;
       const version = conversationVersions.current.get(id) ?? 0;
-      // Bursts share a plan, and the scheduler checks the page before a follow-up.
       void retries
         .keepTrying(`conversation:${id}`, async () => {
           const updates: ConversationUpdate[] = [];
@@ -1549,7 +1504,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             data = response.data;
             cursorMessageId = conversationCursorHeader(response);
           } catch (error) {
-            // A legacy server can still reject an ended cursor. Restart once, respecting the gate.
             if (!cursor || restarted || !isNotFound(error)) throw error;
             if (
               !(await nextPage()) ||
@@ -1623,7 +1577,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       setConversationsLoaded(true);
       readRecovered('conversations');
       readRecovered('conversations:more');
-      // A room can move in front of the cursor between pages and disappear from both.
       activeRooms.forEach((id) => {
         if (!reconciled.some((item) => item.id === id)) refreshConversation(id);
       });
@@ -1674,7 +1627,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const loadConversationsForAction = useCallback(async () => {
     if (!stillMounted()) return undefined;
-    // One background plan owns a rate-limited read, even if an action asks for it first.
     if (retries.limited('conversations')) {
       if (!retries.planned('conversations'))
         void retries
@@ -1797,7 +1749,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     }
   }, [readRecovered, retries]);
 
-  // Whether what it read is what the screen shows: a newer read can take over.
   const loadMessages = useCallback(async () => {
     if (!conversationId) return false;
     const updates: MessageUpdate[] = [];
@@ -1840,7 +1791,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     updateOlderMessageId,
   ]);
 
-  // Fetches what changed while nothing was arriving, without moving anyone from the older pages they are reading.
   const resyncMessages = useCallback(
     async (nextPage: PageCheckpoint, latestOnly = false) => {
       if (!conversationId) return;
@@ -1851,8 +1801,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const oldestShown = shownMessagesRef.current[0]?.id;
       const continuous = continuousUpTo.current;
       const mustReachStart = initialMessageSnapshotWasEmpty.current;
-      // The shown list can still be a stream-only render while the initial
-      // snapshot has been applied but has not rendered yet.
       const from =
         latestOnly && continuous
           ? continuous
@@ -1908,7 +1856,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ...fetched,
         ]);
       } else {
-        // Too much happened to bridge, so this starts again from the newest page.
         const newestPage = reachedStart
           ? fetched
           : fetched.slice(-MESSAGE_PAGE_SIZE);
@@ -1992,7 +1939,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           (items, update) => update(items),
           data.map(applyTombstone),
         );
-        // Where the reader is, measured before the older messages go in above it.
         scroll.dispatch({ type: 'olderArriving' });
         updateMessages((current) => [
           ...older.filter(
@@ -2042,7 +1988,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     updateOlderMessageId,
   ]);
 
-  // Read, by itself again while that fails.
   const keepReading = useCallback(
     <T,>(read: string, run: (nextPage: PageCheckpoint) => Promise<T>) =>
       retries
@@ -2084,7 +2029,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   ]);
 
   const readFirstMessages = useCallback(async () => {
-    // A newer read took over; this one goes on until that one has done.
     if (!(await loadMessages())) throw new Error('A newer read took over');
     readRecovered('messages');
   }, [loadMessages, readRecovered]);
@@ -2293,7 +2237,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             history.push('/chat');
             return;
           }
-          // An answer on its way from before this must not bring the room back.
           latestConversationRequest.current += 1;
           setConversationMissing(true);
           setRoomEnding(value.reason);
@@ -2320,10 +2263,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           const latestOnly = event === CHAT_STREAM_POLLED;
           readSinceStreamWentLive.current = false;
           if (!latestOnly) setSentInvitationsVersion((version) => version + 1);
-          // This also runs on every poll while offline, and the next one tries again.
           const readAgain = () => {
             if (!latestOnly || !retries.planned('conversations')) {
-              // A queued reread supersedes the snapshot currently on its way.
               if (retries.planned('conversations'))
                 latestConversationRequest.current += 1;
               const readConversations = latestOnly
@@ -2357,8 +2298,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               retries.wake(read);
             }
           };
-          // Starting before the screen's first answers are back would throw them away, and
-          // leave it empty if this failed.
           if (openingReads.current.size > 0) {
             void Promise.allSettled(openingReads.current).then(() => {
               if (isMounted.current) readAgain();
@@ -2410,7 +2349,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
   const editingCannotGoOn =
     Boolean(editingId) && (isArchived || editingTargetDeleted);
-  // After drawing, because it changes what the box shows, and before the screen shows it.
   useLayoutEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (editingCannotGoOn) finishEditing();
@@ -2433,8 +2371,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const readNewestWhenShown = useCallback(() => {
     queueVisibleRead(conversationId ?? '', newestMessageId);
   }, [conversationId, newestMessageId, queueVisibleRead]);
-  // Like the creation response above, the searched message is for opening the room once: reloading the page after it
-  // was reached, or after going to the newest, opens the room at the newest (iPhone on ddbad17ba3).
   const forgetSearchedMessage = useCallback(() => {
     const current = history.location as typeof location;
     if (!current.state?.chatMessageId) return;
@@ -2474,7 +2410,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     }
   }, [attemptVisibleRead, conversationId, jumpButton, visibleReadRevision]);
 
-  // Every page that could hold it has been read, or reading on failed for good: it is not coming.
   useEffect(() => {
     if (
       !jumpTargetId ||
@@ -2560,7 +2495,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     });
     return () => {
       current = false;
-      // Away from the members screen, nothing on screen misses this list.
       retries.cancel(read);
       readRecovered(read);
     };
@@ -2573,7 +2507,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     sentInvitationsVersion,
   ]);
 
-  // The newest comes first from the API, and here it joins the end of the list.
   const shownSentInvitations = listsSentInvitations
     ? sentInvitations
         .filter((invitation) => invitation.conversation.id === conversationId)
@@ -2647,7 +2580,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (editingId) {
         finishEditing();
       } else {
-        // The box stays writable meanwhile: only what went out leaves it.
         const withoutSent = (current: string) =>
           current.startsWith(text) ? current.slice(text.length) : current;
         if (textBeforeEdit.current === null)
@@ -2685,8 +2617,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [send],
   );
 
-  // Pressing Send must not take the focus from the message box, or a phone's keyboard goes away with it. A disabled
-  // button lets the press through to the form. With the focus elsewhere nothing changes, so no keyboard comes up.
   const handleComposerMouseDown = useCallback(
     (event: MouseEvent<HTMLFormElement>) => {
       const form = event.currentTarget;
@@ -3086,7 +3016,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             }),
           );
         };
-        // Only the server knows what deleting will do right now.
         void api()
           .get<ChatMessage>(`/api/v1/chat/messages/${id}`)
           .then(({ data }) => data.deletes_for_everyone ?? null)
@@ -3665,7 +3594,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   if (!signedIn) return <NotSignedInIndicator />;
 
-  // The room scrolls, and only the composer stays on screen wherever it is scrolled.
   const visibleError = error ?? sendError;
   const errorNotice = (Boolean(visibleError) || readingError) &&
     !roomEnding && (
@@ -3983,7 +3911,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   disabled={conversation.archived}
                 />
                 <textarea
-                  // Keeps iOS 27 Safari from taking it for an address box; see ComposerBox.
                   name='search'
                   value={
                     groupEdit?.conversationId === conversation.id
@@ -4250,7 +4177,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   </Fragment>
                 ))}
               </div>
-              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- only keeps the focus where it is */}
+              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
               <form
                 className='chat-native__composer'
                 ref={composerRef}

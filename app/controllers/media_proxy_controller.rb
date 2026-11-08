@@ -27,8 +27,6 @@ class MediaProxyController < ApplicationController
       end
     end
 
-    # The address with this token only stays the same for a moment, and only this browser was given it. Without this,
-    # opening a conversation again asks for every picture again, however many times the same address was given out.
     expires_in Sharlayan::ChatMediaToken::STABLE_FOR, public: false if @viewer_holds_chat_token
 
     if requires_file_streaming?
@@ -55,7 +53,6 @@ class MediaProxyController < ApplicationController
                 MediaAttachmentPolicy.new(viewer, @media_attachment).download?
       @viewer_holds_chat_token = allowed
       return if allowed
-      # A token expires while a conversation stays open, and only a session can stand in for it.
       return head(404) unless user_signed_in?
     end
 
