@@ -23,8 +23,12 @@ class ChatMessageReaction < ApplicationRecord
 
     ActiveRecord::Associations::Preloader.new(records: pending, associations: :account).call
     wanted = pending.filter_map { |record| (shortcode = shortcode_of(record.reaction)) && [shortcode, record.account&.domain] }.uniq
-    emojis = wanted.group_by(&:last).flat_map { |domain, pairs| CustomEmoji.where(domain: domain, shortcode: pairs.map(&:first), disabled: false).to_a }
-      .index_by { |emoji| [emoji.shortcode, emoji.domain] }
+    emojis = if wanted.empty?
+               {}
+             else
+               CustomEmoji.where(shortcode: wanted.map(&:first).uniq, domain: wanted.map(&:last).uniq, disabled: false)
+                 .index_by { |emoji| [emoji.shortcode, emoji.domain] }
+             end
     pending.each { |record| record.custom_emoji = emojis[[shortcode_of(record.reaction), record.account&.domain]] }
     reactions
   end

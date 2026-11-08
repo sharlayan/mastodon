@@ -81,4 +81,38 @@ RSpec.describe 'Chat query counts' do
       expect(many.count { |query| query.include?('"custom_emojis"') }).to eq(one.count { |query| query.include?('"custom_emojis"') })
     end
   end
+
+  describe 'listing conversations' do
+    def varied_room
+      role = Fabricate(:user_role, highlighted: true, permissions: 0)
+      local_emoji = Fabricate(:custom_emoji, shortcode: "local#{SecureRandom.hex(3)}")
+      domain = "remote#{SecureRandom.hex(3)}.test"
+      remote_emoji = Fabricate(:custom_emoji, shortcode: "remote#{SecureRandom.hex(3)}", domain: domain)
+      local = Fabricate(:user, role: role, account: Fabricate(:account, display_name: "Local :#{local_emoji.shortcode}:")).account
+      remote = Fabricate(:account, domain: domain, display_name: "Remote :#{remote_emoji.shortcode}:")
+      ChatConversation.create!(conversation_type: :group, owner_account: user.account, title: 'Room').tap do |record|
+        record.memberships.create!(account: user.account, role: :owner)
+        record.memberships.create!(account: local)
+        record.memberships.create!(account: remote)
+        message = record.messages.create!(account: user.account, text: 'hello')
+        message.reactions.create!(account: local, reaction: ":#{local_emoji.shortcode}:")
+        message.reactions.create!(account: remote, reaction: ":#{remote_emoji.shortcode}:")
+        record.update!(last_message: message)
+      end
+    end
+
+    it 'does not query more for each conversation' do
+      varied_room
+      get '/api/v1/chat/conversations', headers: headers
+      one = queries_during { get '/api/v1/chat/conversations', headers: headers }
+
+      4.times { varied_room }
+      get '/api/v1/chat/conversations', headers: headers
+      many = queries_during { get '/api/v1/chat/conversations', headers: headers }
+
+      expect(response.parsed_body.size).to eq(5)
+      expect(response.parsed_body.flat_map { |room| room[:last_message][:reactions] }.pluck(:url)).to all(be_present)
+      expect(many.grep_v(/"instance_metadata"/).size).to eq(one.grep_v(/"instance_metadata"/).size)
+    end
+  end
 end
