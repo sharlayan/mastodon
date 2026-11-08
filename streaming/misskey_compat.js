@@ -263,10 +263,10 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     session.misskeyNotes.delete(noteId);
   };
 
-  const authorizeChat = async (session) => {
+  const authorizeChat = async (session, oauthScopes = ['read']) => {
     if (!await isEnabled() || !await isChatEnabled()) return false;
     const permissions = await loadChatGrantPermissions(session.request);
-    return Array.isArray(permissions) ? permissions.includes('read:chat') : hasScope(session.request, 'read');
+    return Array.isArray(permissions) ? permissions.includes('read:chat') : hasScope(session.request, ...oauthScopes);
   };
 
   const chatId = (value) => {
@@ -334,7 +334,7 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       while (subscription.readPending && !subscription.closed) {
         const pendingId = subscription.readPending;
         subscription.readPending = undefined;
-        if (!await authorizeChat(session) || subscription.closed) return;
+        if (!await authorizeChat(session, ['write', 'write:statuses']) || subscription.closed) return;
         await markChatRead(subscription.channel, subscription.targetId, session.request, pendingId);
       }
     };

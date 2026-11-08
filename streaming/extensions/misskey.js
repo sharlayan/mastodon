@@ -182,7 +182,7 @@ const authorizeChatAccess = async (pgPool, channel, targetId, req, event) => {
   return result.rows.length > 0;
 };
 
-const markChatRead = async (pgPool, channel, targetId, req, messageId) => {
+const markChatRead = async (pgPool, channel, targetId, req, messageId, publish) => {
   if (!['chatUser', 'chatRoom'].includes(channel) || !validChatId(req.accountId) || !validChatId(targetId) || !validChatId(messageId)) return false;
   if (channel === 'chatUser' && targetId === req.accountId) return false;
   const result = await pgPool.query(`
@@ -194,9 +194,14 @@ const markChatRead = async (pgPool, channel, targetId, req, messageId) => {
       AND (message.account_id != $1 OR message.hidden_at IS NULL)
       AND (membership.last_read_message_id IS NULL OR membership.last_read_message_id < message.id)
       AND ${CHAT_TARGET_SQL}
-    RETURNING membership.last_read_message_id
+    RETURNING membership.chat_conversation_id AS conversation_id, membership.last_read_message_id AS message_id
   `, [req.accountId, targetId, channel, messageId]);
-  return result.rows.length > 0;
+  if (result.rows.length === 0) return false;
+
+  const [row] = result.rows;
+  const payload = JSON.stringify({ conversation_id: String(row.conversation_id), message_id: String(row.message_id) });
+  if (publish) await publish(`timeline:${req.accountId}`, JSON.stringify({ event: 'chat.read', payload }));
+  return true;
 };
 
 const createMisskeyExtension = (deps) => {
@@ -210,7 +215,7 @@ const createMisskeyExtension = (deps) => {
     loadChatGrantPermissions: (req) => loadGrantPermissions(deps.pgPool, deps.logger, req, true),
     isChatEnabled: createChatEnabledCheck(deps.pgPool, deps.logger),
     authorizeChatAccess: (channel, targetId, req, event) => authorizeChatAccess(deps.pgPool, channel, targetId, req, event),
-    markChatRead: (channel, targetId, req, messageId) => markChatRead(deps.pgPool, channel, targetId, req, messageId),
+    markChatRead: (channel, targetId, req, messageId) => markChatRead(deps.pgPool, channel, targetId, req, messageId, deps.publish),
     isEnabled,
   });
 

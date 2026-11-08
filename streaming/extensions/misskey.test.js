@@ -35,6 +35,19 @@ test('read updates bind viewer, subscription and message, rejecting malformed or
   assert.match(calls[0].sql, /message\.chat_conversation_id = conversation\.id/);
   assert.match(calls[0].sql, /membership\.account_id = \$1/);
   assert.match(calls[0].sql, /last_read_message_id < message\.id/);
+  assert.match(calls[0].sql, /RETURNING membership\.chat_conversation_id/);
+});
+
+test('a read that moves the pointer forward tells the viewer other clients, as a read through the API does', async () => {
+  const published = [];
+  const publish = async (channel, message) => { published.push({ channel, message: JSON.parse(message) }); };
+  const moved = { query: async () => ({ rows: [{ conversation_id: '9', message_id: '10' }] }) };
+  assert.equal(await misskey.markChatRead(moved, 'chatRoom', '9', { accountId: '7' }, '10', publish), true);
+  assert.deepEqual(published, [{ channel: 'timeline:7', message: { event: 'chat.read', payload: JSON.stringify({ conversation_id: '9', message_id: '10' }) } }]);
+
+  const unchanged = { query: async () => ({ rows: [] }) };
+  assert.equal(await misskey.markChatRead(unchanged, 'chatRoom', '9', { accountId: '7' }, '10', publish), false);
+  assert.equal(published.length, 1);
 });
 
 test('chat grant lookup fails closed instead of falling back to broad OAuth scopes', async () => {

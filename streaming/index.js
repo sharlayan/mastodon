@@ -1480,6 +1480,7 @@ const startServer = async () => {
 
   const extensions = createStreamingExtensions({
     pgPool,
+    publish: (channel, message) => redisClient.publish(redisNamespaced(channel), message),
     subscribe,
     unsubscribe,
     subscriptionHeartbeat,

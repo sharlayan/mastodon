@@ -249,6 +249,7 @@ test('deleted events permit only the matching message ID, never a content payloa
 
 test('channel read commands use the authorized subscription target and decoded message ID', async () => {
   const chat = chatFixture();
+  chat.session.request.scopes = ['read', 'write'];
   await chat.connect('chatRoom', { roomId: '9' });
   chat.compat.handleMessage(chat.session, { type: 'channel', body: { id: 'chatRoom', type: 'read', body: { id: '000000000000000a', roomId: '999' } } });
   await chat.flush();
@@ -257,6 +258,25 @@ test('channel read commands use the authorized subscription target and decoded m
   chat.compat.handleMessage(chat.session, { type: 'ch', body: { id: 'chatRoom', type: 'read', body: { id: '11' } } });
   await chat.flush();
   assert.deepEqual(chat.reads, [{ channel: 'chatRoom', targetId: '9', viewer: '7', messageId: '10' }]);
+});
+
+test('moving the read pointer needs write access from an OAuth token and read:chat from a Misskey grant', async () => {
+  const chat = chatFixture();
+  await chat.connect('chatRoom', { roomId: '9' });
+  chat.compat.handleMessage(chat.session, { type: 'ch', body: { id: 'chatRoom', type: 'read', body: { id: '10' } } });
+  await chat.flush();
+  assert.deepEqual(chat.reads, []);
+
+  chat.session.request.scopes = ['read', 'write:statuses'];
+  chat.compat.handleMessage(chat.session, { type: 'ch', body: { id: 'chatRoom', type: 'read', body: { id: '11' } } });
+  await chat.flush();
+  assert.deepEqual(chat.reads.map(({ messageId }) => messageId), ['11']);
+
+  chat.session.request.scopes = ['misskey'];
+  chat.state.grants = ['read:chat'];
+  chat.compat.handleMessage(chat.session, { type: 'ch', body: { id: 'chatRoom', type: 'read', body: { id: '12' } } });
+  await chat.flush();
+  assert.deepEqual(chat.reads.map(({ messageId }) => messageId), ['11', '12']);
 });
 
 test('public timelines drop notes excluded by the viewer blocks, mutes and domain blocks', async () => {
