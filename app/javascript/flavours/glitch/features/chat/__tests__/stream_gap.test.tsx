@@ -2252,3 +2252,28 @@ describe('Independent 4d6a: other sequential reads', () => {
     });
   });
 });
+
+describe('Chat when the stream comes back before the first read of a room succeeded', () => {
+  it('keeps the older pages reachable after stream messages were shown', async () => {
+    seed('A', 1, 60);
+    backend.failing.push(MESSAGES);
+    const page = await loadPage();
+    page.open('/chat/A');
+    await screen.findByText(REQUEST_FAILED);
+
+    await connectUnanswered(page.socket);
+    const [newest] = seed('A', 61, 61);
+    act(() => {
+      page.socket.deliver('chat.message', newest);
+    });
+    await screen.findByText('Message 61');
+    await answerSubscription(page.socket);
+
+    await screen.findByText('Message 22');
+    await settle();
+    expect(shown()).toEqual(numbers(22, 61));
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Message 1');
+    expect(shown()).toEqual(numbers(1, 61));
+  });
+});

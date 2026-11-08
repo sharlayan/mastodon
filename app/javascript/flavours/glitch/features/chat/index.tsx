@@ -1299,6 +1299,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const continuousUpTo = useRef<string | undefined>(undefined);
   // An empty first snapshot is a known boundary before the first message.
   const initialMessageSnapshotWasEmpty = useRef(false);
+  const firstMessagesRead = useRef(false);
   // The stream only follows on from what was read after it went live.
   const readSinceStreamWentLive = useRef(false);
   const advanceContinuousUpTo = useCallback((id?: string) => {
@@ -1742,6 +1743,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       });
     pendingMessageUpdates.current.delete(updates);
     if (requestId !== latestMessageRequest.current) return false;
+    firstMessagesRead.current = true;
     appliedMessageGeneration.current += 1;
     updateOlderMessageId(
       response.data.length === 40 ? (response.data[0]?.id ?? null) : null,
@@ -2002,38 +2004,28 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     whileOpening,
   ]);
 
+  const readFirstMessages = useCallback(async () => {
+    // A newer read took over; this one goes on until that one has done.
+    if (!(await loadMessages())) throw new Error('A newer read took over');
+    readRecovered('messages');
+  }, [loadMessages, readRecovered]);
+
   useEffect(() => {
     if (!conversationId) return undefined;
     const read = `messages:${conversationId}`;
     void whileOpening(
       retries
-        .keepTrying(
-          read,
-          async () => {
-            // A newer read took over; this one goes on until that one has done.
-            if (!(await loadMessages()))
-              throw new Error('A newer read took over');
-            readRecovered('messages');
+        .keepTrying(read, readFirstMessages, {
+          failed: () => {
+            readFailed('messages');
           },
-          {
-            failed: () => {
-              readFailed('messages');
-            },
-          },
-        )
+        })
         .catch(() => undefined),
     );
     return () => {
       retries.cancel(read);
     };
-  }, [
-    conversationId,
-    loadMessages,
-    readFailed,
-    readRecovered,
-    retries,
-    whileOpening,
-  ]);
+  }, [conversationId, readFailed, readFirstMessages, retries, whileOpening]);
 
   const hasUnread = Boolean(conversation?.unread);
   useEffect(() => {
@@ -2261,7 +2253,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             retries.wake('invitations');
             if (conversationId) {
               void retries
-                .keepTrying(`messages:${conversationId}`, resyncMessages)
+                .keepTrying(
+                  `messages:${conversationId}`,
+                  firstMessagesRead.current
+                    ? resyncMessages
+                    : readFirstMessages,
+                )
                 .catch(() => undefined);
               retries.wake(`messages:${conversationId}`);
             }
@@ -2289,6 +2286,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       loadConversations,
       loadInvitations,
       queueVisibleRead,
+      readFirstMessages,
       readRecovered,
       refreshConversation,
       resyncMessages,
