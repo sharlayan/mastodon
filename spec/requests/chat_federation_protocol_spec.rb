@@ -173,6 +173,55 @@ RSpec.describe 'Chat federation protocol' do
       expect { perform(announce, owner) }.to_not change(ChatMessage, :count)
     end
 
+    context 'when a delayed update relay fetches a deleted message' do
+      let(:update_announce) { announce.merge('id' => "#{room_uri}#relay/message/123") }
+      let!(:message) { service.receive_group_message(author, room_uri: room_uri, uri: message_uri, text: 'previous text') }
+
+      it 'deletes the existing copy after a Tombstone response' do
+        stub_note({ 'id' => message_uri, 'type' => 'Tombstone' })
+
+        perform(update_announce, owner)
+
+        expect(message.reload).to be_deleted
+        expect(message.text).to be_nil
+      end
+
+      it 'deletes the existing copy after a Gone response' do
+        stub_note(status: 410)
+
+        perform(update_announce, owner)
+
+        expect(message.reload).to be_deleted
+      end
+
+      it 'does not delete a message belonging to another room' do
+        other_room = service.create_conversation(local, type: :group, title: 'Another room')
+        message.update!(chat_conversation: other_room)
+        stub_note({ 'id' => message_uri, 'type' => 'Tombstone' })
+
+        perform(update_announce, owner)
+
+        expect(message.reload).to_not be_deleted
+      end
+
+      it 'does not trust a response from another author origin' do
+        message.update!(account: owner)
+        stub_note({ 'id' => message_uri, 'type' => 'Tombstone' })
+
+        perform(update_announce, owner)
+
+        expect(message.reload).to_not be_deleted
+      end
+
+      it 'does not trust a Tombstone identifying another message' do
+        stub_note({ 'id' => "#{message_uri}other", 'type' => 'Tombstone' })
+
+        perform(update_announce, owner)
+
+        expect(message.reload).to_not be_deleted
+      end
+    end
+
     it 'never reblogs a chat message announced without room fields' do
       stub = stub_note
       message = service.receive_group_message(author, room_uri: room_uri, uri: message_uri, text: 'direct')

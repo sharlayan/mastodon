@@ -131,7 +131,12 @@ module Sharlayan
           end
 
           note = fetch_relayed_note(uri, signer)
-          return 'skip: chat message deleted' if note == :deleted
+          if note == :deleted
+            message = conversation.messages.find_by(uri: uri)
+            service.delete_remote_message(message.account, message) if message&.account&.remote? && same_host?(uri, message.account.uri)
+            return 'skip: chat message deleted'
+          end
+
           return 'skip: invalid chat message' unless note && chat_create?('object' => note) && room_uri_of(note) == room_uri
 
           author = service.resolve_account(uri_of(note['attributedTo']))
