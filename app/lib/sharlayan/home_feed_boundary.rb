@@ -16,6 +16,7 @@ class Sharlayan::HomeFeedBoundary
 
   def resolve
     return nil unless @status_id.positive?
+    return nil if original_in_home_feed?
 
     candidates = feed_reblogs
     return nil if candidates.empty?
@@ -36,6 +37,10 @@ class Sharlayan::HomeFeedBoundary
       .limit(CANDIDATE_LIMIT)
       .to_a
       .reject { |reblog| hidden_own_reblog?(reblog) }
+  end
+
+  def original_in_home_feed?
+    redis.zscore(FeedManager.instance.key(:home, @account.id), @status_id).present?
   end
 
   def hidden_own_reblog?(reblog)

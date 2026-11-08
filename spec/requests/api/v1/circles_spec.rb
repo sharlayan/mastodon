@@ -28,6 +28,23 @@ RSpec.describe 'Circles API' do
     end
   end
 
+  describe 'POST /api/v1/circles' do
+    it 'locks the account while validating the per-account limit' do
+      Setting.circles_enabled = true
+      queries = []
+      callback = lambda do |_name, _started, _finished, _unique_id, payload|
+        queries << payload[:sql] if payload[:name] != 'SCHEMA' && !payload[:cached]
+      end
+
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') do
+        post '/api/v1/circles', headers: headers, params: { title: 'bounded circle' }
+      end
+
+      expect(response).to have_http_status(200)
+      expect(queries.any? { |sql| sql.include?('FROM "accounts"') && sql.include?('FOR UPDATE') }).to be(true)
+    end
+  end
+
   describe '/api/v1/circles/:circle_id/accounts' do
     let(:circle) { Circle.create!(account: user.account, title: 'Friends') }
 

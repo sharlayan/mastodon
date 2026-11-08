@@ -125,6 +125,7 @@ RSpec.describe InitialStateSerializer do
       pages_enabled: Setting.pages_enabled,
       pages_drive_only: Setting.pages_drive_only,
       drive_enabled: Setting.drive_enabled,
+      chat_enabled: Setting.chat_enabled,
       roleplay_mode: RoleplayModeHelper.roleplay_mode?,
       user_themes_enabled: Setting.user_themes_enabled,
       user_theme_catalog: Setting.user_theme_catalog,

@@ -101,6 +101,8 @@ RSpec.describe 'Profile images from Drive' do
       end
 
       context 'with a file exceeding the profile image limit' do
+        let(:drive_file) { account.drive_files.create!(file: fixture_file_upload('attachment.jpg', 'image/jpeg')) }
+
         before do
           File.truncate(drive_file.file.path, Account::Avatar::AVATAR_LIMIT + 1)
         end
@@ -133,6 +135,8 @@ RSpec.describe 'Profile images from Drive' do
       end
 
       context 'with an empty stored original' do
+        let(:drive_file) { account.drive_files.create!(file: fixture_file_upload('attachment.jpg', 'image/jpeg')) }
+
         before do
           File.truncate(drive_file.file.path, 0)
         end

@@ -22,3 +22,7 @@ test('public timeline channels remain available outside roleplay mode', () => {
     false,
   );
 });
+
+test('roleplay mode treats a missing channel name as a non-public channel', () => {
+  assert.equal(isRoleplayPublicTimelineChannel(undefined, { OC_ROLEPLAY_OPTION: 'true' }), false);
+});

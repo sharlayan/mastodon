@@ -91,6 +91,24 @@ RSpec.describe BroadcastStatusUpdateWorker do
       end
     end
 
+    context 'with a local-only public status' do
+      before do
+        status.update_columns(visibility: Status.visibilities[:public], local_only: true)
+      end
+
+      it 'does not publish to the public timeline' do
+        subject.perform(status.id)
+
+        expect(redis).to_not have_received(:publish).with('timeline:public', anything)
+      end
+
+      it 'still publishes to followers' do
+        subject.perform(status.id)
+
+        expect(redis).to have_received(:publish).with("timeline:#{follower.id}", anything)
+      end
+    end
+
     context 'with a private status' do
       before do
         status.update(visibility: :private)

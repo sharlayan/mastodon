@@ -21,7 +21,7 @@ class Api::V1::Clips::StatusesController < Api::BaseController
 
   def create
     status = Status.find(status_params[:status_id])
-    not_found unless StatusPolicy.new(current_account, status).show?
+    return not_found unless StatusPolicy.new(current_account, status).show?
 
     @clip.with_lock do
       @clip.clip_statuses.find_or_create_by!(status_id: status.id)
@@ -51,7 +51,14 @@ class Api::V1::Clips::StatusesController < Api::BaseController
 
   def load_statuses
     preloaded = preload_collection(results.map(&:status), Status)
-    preloaded.select { |status| StatusPolicy.new(current_account, status).show? }
+    preloaded.select { |status| (!status.local? || local_status_page_accessible?) && StatusPolicy.new(current_account, status).show? }
+  end
+
+  def local_status_page_accessible?
+    return @local_status_page_accessible if defined?(@local_status_page_accessible)
+
+    mode = Setting.local_status_page_access
+    @local_status_page_accessible = mode == 'public' || (current_user.present? && (mode != 'disabled' || current_user.can?(:view_feeds)))
   end
 
   def results

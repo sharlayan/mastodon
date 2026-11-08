@@ -262,6 +262,8 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.attribution_domains     = as_array(@json['attributionDomains'] || []).take(Account::ATTRIBUTION_DOMAINS_HARD_LIMIT).grep(String)
     @account.followed_message        = (@json['_misskey_followedMessage'] || @json['followedMessage'] || '')[0...256].presence
     @account.is_cat                  = Setting.cat_enabled && Setting.cat_federation_enabled && (@json['isCat'] || false)
+    @account.can_chat                = @json['_misskey_canChat'] == true
+    @account.chat_scope              = Sharlayan::ChatFederation::ChatScope.normalize(@json['_misskey_chatScope'])
     process_avatar_decorations! if Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
   end
 
@@ -470,7 +472,7 @@ class ActivityPub::ProcessAccountService < BaseService
   end
 
   def process_avatar_decorations!
-    return if AvatarDecorationDomainBlock.blocked?(@account.domain)
+    return if AvatarDecorationDomainBlock.blocked?(@account.domain) || skip_download?
 
     raw = @json['_misskey_avatarDecorations']
 
@@ -505,6 +507,7 @@ class ActivityPub::ProcessAccountService < BaseService
       decoration = begin
         dec = AvatarDecoration.find_or_initialize_by(host: @account.domain, remote_id: d['id'].to_s)
         dec.image_remote_url = image_url.slice(0, 4096)
+        dec.image            = nil if dec.persisted? && dec.image_remote_url_changed? && dec.image_file_name.present?
         dec.name             = d['id'].to_s.slice(0, 256) if dec.name.blank?
         dec.approved         = true if dec.new_record?
         dec.save if dec.changed?

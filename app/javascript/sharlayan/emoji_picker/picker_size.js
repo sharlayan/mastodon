@@ -20,8 +20,9 @@ export function computeEmojiPickerStyle(style, pickerSize) {
 
 export class EmojiPickerSizeObserver {
 
-  constructor(onResize) {
+  constructor(onResize, shouldKeep = () => true) {
     this.onResize = onResize;
+    this.shouldKeep = shouldKeep;
     this.observer = null;
     this.timeout = null;
   }
@@ -33,6 +34,10 @@ export class EmojiPickerSizeObserver {
 
     this.observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
+        if (!this.shouldKeep()) {
+          continue;
+        }
+
         const { width, height } = entry.contentRect;
         this.save(width, height);
         this.onResize({ width, height });

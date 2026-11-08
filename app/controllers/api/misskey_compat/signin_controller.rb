@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
+  include Sharlayan::SecondFactorAttemptLimit
+
   NO_SUCH_USER_ID = '6cc579cc-885d-43d8-95c2-b8c7fc963280'
   UNAVAILABLE_ID = 'b2c5a2f0-1d2f-4b0d-9d0a-1b8a6d7f0c11'
   INCORRECT_PASSWORD_ID = '932c904e-9460-45b7-9ce6-7ed33be7eb2c'
@@ -14,24 +16,20 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
     return unless object_body!
     return if rate_limited?(:misskey_compat_signin)
 
-    username = params[:username]
-    return render_invalid_param('#/properties/username/type', 'must be string') unless username.is_a?(String)
-
-    user = Account.find_local(username.strip.delete_prefix('@'))&.user
-    return signin_error(404, NO_SUCH_USER_ID) if user.nil? || user.account.suspended?
-    return signin_error(403, UNAVAILABLE_ID) unless user.functional?
+    email = params[:username]
+    return render_invalid_param('#/properties/username/type', 'must be string') unless email.is_a?(String)
 
     password = params[:password]
-    return render_next(user.two_factor_enabled? ? 'password' : 'captcha') if password.nil?
+    return render_next('password') if password.nil?
     return render_invalid_param('#/properties/password/type', 'must be string') unless password.is_a?(String)
 
-    correct_password = user.encrypted_password.present? && user.valid_password?(password)
+    user = authenticate(email, password)
+    return signin_error(403, INCORRECT_PASSWORD_ID) if user.nil?
+    return signin_error(404, NO_SUCH_USER_ID) if user.account.suspended?
+    return signin_error(403, UNAVAILABLE_ID) unless user.functional?
+    return render_finished(user) unless user.two_factor_enabled?
 
-    unless user.two_factor_enabled?
-      return correct_password ? render_finished(user) : signin_error(403, INCORRECT_PASSWORD_ID)
-    end
-
-    resolve_two_factor(user, correct_password)
+    resolve_two_factor(user)
   end
 
   private
@@ -47,16 +45,31 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
     render_error('This endpoint is not available from this origin', 'ORIGIN_NOT_ALLOWED', 403)
   end
 
-  def resolve_two_factor(user, correct_password)
+  def authenticate(email, password)
+    user = User.find_for_authentication(email: email)
+
+    if user&.encrypted_password.present?
+      user if user.valid_password?(password)
+    else
+      User.new.password = password
+      nil
+    end
+  end
+
+  def resolve_two_factor(user)
     token = params[:token]
 
     if token.present?
-      return signin_error(403, INCORRECT_PASSWORD_ID) unless correct_password
+      return render_error(I18n.t('errors.429'), 'RATE_LIMIT_EXCEEDED', 429) if second_factor_attempts_exceeded?(user)
 
-      consume_otp(user, token.to_s) ? render_finished(user) : signin_error(403, INCORRECT_TOKEN_ID)
+      if consume_otp(user, token.to_s)
+        clear_second_factor_attempts(user)
+        render_finished(user)
+      else
+        notify_failed_second_factor(user)
+        signin_error(403, INCORRECT_TOKEN_ID)
+      end
     elsif user.otp_required_for_login?
-      return signin_error(403, INCORRECT_PASSWORD_ID) unless correct_password
-
       render_next('totp')
     else
       signin_error(400, PASSKEY_UNSUPPORTED_ID)

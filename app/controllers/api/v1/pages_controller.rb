@@ -16,6 +16,7 @@ class Api::V1::PagesController < Api::BaseController
 
   before_action :require_user!, except: [:show, :unlock]
   before_action :set_page, only: [:show, :update, :destroy, :like, :unlike, :set_main, :unset_main, :set_series_main, :unset_series_main]
+  before_action :authorize_owner!, only: [:update, :destroy, :set_main, :unset_main, :set_series_main, :unset_series_main]
 
   rescue_from Page::ContentLimitError do
     render json: { error: 'Page content exceeds the allowed limits' }, status: 422
@@ -95,19 +96,18 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def update
-    authorize_owner!
     @page.update!(page_params)
     render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
   def destroy
-    authorize_owner!
     @page.destroy!
     render_empty
   end
 
   def like
-    not_found unless page_accessible?
+    return not_found unless page_accessible?
+
     render json: { error: I18n.t('pages.errors.own_page') }, status: 422 and return if @page.account_id == current_account.id
 
     PageLike.find_or_create_by!(account: current_account, page: @page)
@@ -116,14 +116,14 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def unlike
-    not_found unless page_accessible?
+    return not_found unless page_accessible?
+
     PageLike.find_by(account: current_account, page: @page)&.destroy
     @page.reload
     render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
   def set_main
-    authorize_owner!
     return not_found unless @page.eligible_for_main?
 
     Page.transaction do
@@ -135,14 +135,11 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def unset_main
-    authorize_owner!
     @page.update!(is_main: false)
     render json: @page, serializer: REST::PageSerializer, page_unlocked: true
   end
 
   def set_series_main
-    authorize_owner!
-
     Page.transaction do
       @page.lock!
       return not_found unless @page.eligible_for_main? && @page.page_series
@@ -162,8 +159,6 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def unset_series_main
-    authorize_owner!
-
     Page.transaction do
       @page.lock!
       return not_found unless @page.page_series
@@ -186,7 +181,8 @@ class Api::V1::PagesController < Api::BaseController
     @page = Page.find(params[:id])
     return not_found if @page.account.unavailable?
 
-    not_found if @page.private_visibility? && @page.account_id != current_account&.id
+    return not_found if @page.private_visibility? && @page.account_id != current_account&.id
+
     not_found if @page.authenticated_visibility? && current_account.nil?
   end
 

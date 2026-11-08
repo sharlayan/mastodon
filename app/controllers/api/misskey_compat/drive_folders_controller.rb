@@ -63,10 +63,6 @@ class Api::MisskeyCompat::DriveFoldersController < Api::MisskeyCompat::BaseContr
 
   private
 
-  def require_drive_enabled!
-    render_error('Drive is not available on this server', 'UNAVAILABLE', 400) unless Setting.drive_enabled
-  end
-
   def folder_scope(parent_key)
     scope = current_account.drive_folders.includes(:parent)
     scope = params[parent_key].present? ? scope.where(parent_id: params[parent_key]) : scope.where(parent_id: nil)

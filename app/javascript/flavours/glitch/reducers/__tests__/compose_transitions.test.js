@@ -1,6 +1,7 @@
 import { fromJS } from 'immutable';
 
-import { COMPOSE_SET_STATUS } from '../../actions/compose';
+import { COMPOSE_REPLY, COMPOSE_RESET, COMPOSE_SET_STATUS, COMPOSE_SUBMIT_SUCCESS } from '../../actions/compose';
+import { STATUS_DRAFT_DELETE_SUCCESS } from '../../actions/status_drafts';
 import { REDRAFT } from '../../actions/statuses';
 import { getScheduledSubmissionContext } from '../../sharlayan/compose/scheduled_submission';
 import { getSharlayanComposeSubmission } from '../../sharlayan/compose/submission';
@@ -92,5 +93,50 @@ describe('compose restoration transitions', () => {
     expect(state.get('quoted_status_id')).toBeNull();
     expect(state.get('quote_policy')).toBe('nobody');
     expect(state.get('reaction_acceptance')).toBeNull();
+  });
+
+  it('forgets the loaded draft when the composer is reset', () => {
+    expect(composeReducer(loadedDraft(), { type: COMPOSE_RESET }).get('draft_id')).toBeNull();
+  });
+
+  it('forgets the loaded draft when replying to another status', () => {
+    const state = composeReducer(loadedDraft(), { type: COMPOSE_REPLY, status: sourceStatus.merge(fromJS({ account: { id: '1', acct: 'alice' }, mentions: [] })) });
+
+    expect(state.get('draft_id')).toBeNull();
+  });
+
+  it('forgets the loaded draft after the first post of a thread', () => {
+    const threaded = loadedDraft().setIn(['advanced_options', 'threaded_mode'], true);
+    const state = composeReducer(threaded, { type: COMPOSE_SUBMIT_SUCCESS, status: { id: 'posted', visibility: 'public', spoiler_text: '', content: '', mentions: [], tags: [], account: { id: '1', acct: 'me' } } });
+
+    expect(state.get('in_reply_to')).toBe('posted');
+    expect(state.get('draft_id')).toBeNull();
+  });
+
+  it('forgets the loaded draft only when that draft is deleted', () => {
+    expect(composeReducer(loadedDraft(), { type: STATUS_DRAFT_DELETE_SUCCESS, id: 'other-draft' }).get('draft_id')).toBe('unrelated-draft');
+    expect(composeReducer(loadedDraft(), { type: STATUS_DRAFT_DELETE_SUCCESS, id: 'unrelated-draft' }).get('draft_id')).toBeNull();
+  });
+
+  it('restores the circle of a redrafted circle post', () => {
+    const state = restore(loadedDraft(), REDRAFT, sourceStatus.merge({ visibility: 'private', limited_scope: 'circle', circle_id: 'source-circle' }));
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(submission.circleId).toBe('source-circle');
+    expect(submission.visibility).toBe('private');
+  });
+
+  it('narrows a redrafted limited post without a known circle to direct', () => {
+    const state = restore(loadedDraft(), REDRAFT, sourceStatus.merge({ visibility: 'private', limited_scope: 'reply' }));
+    const submission = getSharlayanComposeSubmission({
+      getState: () => fromJS({}).set('compose', state),
+      effectiveStatusId: null,
+    });
+
+    expect(submission.circleId).toBeNull();
+    expect(submission.visibility).toBe('direct');
   });
 });

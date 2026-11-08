@@ -6,8 +6,18 @@ module Sharlayan
     MISSKEY_SIGNIN_PATH = '/api/signin-flow'
     MISSKEY_URL_PREVIEW_PATH = '/url'
     MEDIA_PROXY_PATH_REGEX = %r{\A/(?:media_proxy|proxy)(?:/|\z)}
+    CHAT_MEDIA_PATH_REGEX = %r{\A/media_proxy/(\d+)(?:/|\z)}
 
     module RequestMethods
+      def holds_chat_media_token?
+        return @holds_chat_media_token if defined?(@holds_chat_media_token)
+
+        media_id = path[CHAT_MEDIA_PATH_REGEX, 1]
+        @holds_chat_media_token = media_id.present? &&
+                                  (Sharlayan::ChatMediaToken.signed_for?(params['chat_token'], media_id) ||
+                                   Sharlayan::ChatFederation::MediaToken.signed_for?(params['token'], media_id))
+      end
+
       def bypasses_rate_limit?
         return @bypasses_rate_limit if defined?(@bypasses_rate_limit)
 
@@ -62,7 +72,11 @@ module Sharlayan
       end
 
       attack.throttle('throttle_media_proxy', limit: 100, period: 10.minutes) do |req|
-        req.throttleable_remote_ip if req.path.match?(MEDIA_PROXY_PATH_REGEX)
+        req.throttleable_remote_ip if req.path.match?(MEDIA_PROXY_PATH_REGEX) && !req.holds_chat_media_token?
+      end
+
+      attack.throttle('throttle_chat_media', limit: 1_500, period: 10.minutes) do |req|
+        req.throttleable_remote_ip if req.holds_chat_media_token?
       end
 
       attack.throttle('throttle_misskey_url_preview', limit: 100, period: 10.minutes) do |req|
@@ -108,7 +122,7 @@ module Sharlayan
       end
 
       attack.throttle('throttle_multi_account_login_attempts/email', limit: 25, period: 1.hour) do |req|
-        req.params.dig('user', 'email').presence if req.post? && req.path == '/multi_accounts/auth/sign_in'
+        req.normalized_email if req.post? && req.path == '/multi_accounts/auth/sign_in'
       end
 
       attack.throttle('throttle_multi_account_login_attempts/state', limit: 10, period: 15.minutes) do |req|

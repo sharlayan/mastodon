@@ -34,6 +34,15 @@ RSpec.describe RedownloadAvatarDecorationWorker do
       .to change { decoration.reload.image_file_name.present? }.from(false).to(true)
   end
 
+  it 'does not download decorations from a domain whose media is rejected' do
+    Fabricate(:domain_block, domain: 'remote.example', severity: :noop, reject_media: true)
+    decoration = remote_decoration('one')
+
+    worker.perform(decoration.id, account.id)
+
+    expect(decoration.reload.image_file_name).to be_blank
+  end
+
   it 'enforces the hourly account download budget' do
     stub_const("#{described_class}::ACCOUNT_LIMIT", 1)
     first = remote_decoration('one')

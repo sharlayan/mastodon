@@ -6,11 +6,36 @@ RSpec.describe MisskeyCompat::UserSerializer do
   before do
     Setting.avatar_decorations_enabled = true
     Setting.avatar_decorations_local_only_view = false
+    Setting.chat_enabled = false
+    Setting.chat_federation_enabled = false
   end
 
   after do
     Setting.avatar_decorations_enabled = false
     Setting.avatar_decorations_local_only_view = false
+    Setting.chat_enabled = false
+    Setting.chat_federation_enabled = false
+  end
+
+  it 'exposes local chat availability and the actual inbox policy' do
+    account = Fabricate(:user).account
+    account.user.settings[:chat_policy] = 'following'
+    Setting.chat_enabled = true
+
+    expect(described_class.serialize(account, detailed: true)).to include(canChat: true, chatScope: 'following')
+    Setting.chat_enabled = false
+    expect(described_class.serialize(account, detailed: true)).to include(canChat: false, chatScope: 'none')
+  end
+
+  it 'requires federation for remote chat and respects the remote capability' do
+    account = Fabricate(:account, domain: 'remote.example', can_chat: true, chat_scope: 'mutual')
+    Setting.chat_enabled = true
+
+    expect(described_class.serialize(account, detailed: true)).to include(canChat: false)
+    Setting.chat_federation_enabled = true
+    expect(described_class.serialize(account, detailed: true)).to include(canChat: true, chatScope: 'mutual')
+    account.can_chat = false
+    expect(described_class.serialize(account, detailed: true)).to include(canChat: false)
   end
 
   it 'preserves detailed fields, decorations, relationships and pin order when batching accounts' do

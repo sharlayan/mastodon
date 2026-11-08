@@ -152,27 +152,33 @@ write_systemd_units() {
       web)
         description='Mastodon web'
         command="$BUNDLE_BIN exec puma -C config/puma.rb"
-        extra_environment=
+        service_environment='RAILS_ENV=production'
         memory_limits='MemoryHigh=520M
 MemoryMax=650M'
         ;;
       sidekiq)
         description='Mastodon Sidekiq'
         command="$BUNDLE_BIN exec sidekiq -c 1"
-        extra_environment='Environment=RUBY_YJIT_ENABLE=0
-Environment=DB_POOL=2'
+        service_environment='RAILS_ENV=production
+RUBY_YJIT_ENABLE=0
+DB_POOL=2'
         memory_limits='MemoryHigh=400M
 MemoryMax=500M'
         ;;
       streaming)
         description='Mastodon streaming'
         command="$NODE_BIN ./streaming/index.js"
-        extra_environment='Environment=PORT=4000
-Environment=DB_POOL=2'
+        service_environment='NODE_ENV=production
+PORT=4000
+DB_POOL=2'
         memory_limits='MemoryHigh=160M
 MemoryMax=220M'
         ;;
     esac
+
+    service_env_file=/etc/mastodon/mastodon-$service.env
+    printf '%s\n' "$service_environment" >"$service_env_file"
+    chmod 644 "$service_env_file"
 
     unit=/etc/systemd/system/mastodon-$service.service
     {
@@ -181,8 +187,7 @@ MemoryMax=220M'
       printf '%s\n' 'After=network-online.target postgresql.service redis-server.service' \
         'Wants=network-online.target' '' '[Service]' 'Type=simple'
       printf 'User=%s\nGroup=%s\nWorkingDirectory=%s\n' "$APP_USER" "$APP_GROUP" "$APP_DIR"
-      printf 'EnvironmentFile=%s\nEnvironmentFile=%s\n' "$ENV_FILE" "$PROFILE_TARGET"
-      [ -z "$extra_environment" ] || printf '%s\n' "$extra_environment"
+      printf 'EnvironmentFile=%s\nEnvironmentFile=%s\nEnvironmentFile=%s\n' "$ENV_FILE" "$PROFILE_TARGET" "$service_env_file"
       printf 'ExecStart=%s\n' "$command"
       printf '%s\n' 'Restart=on-failure' 'RestartSec=3' 'TimeoutStopSec=30'
       printf '%s\n' "$memory_limits"
@@ -206,12 +211,12 @@ write_openrc_units() {
   runner=/usr/local/libexec/mastodon-source-run
   {
     printf '%s\n' '#!/bin/sh' 'set -eu' 'service=$1' 'set -a'
-    printf '. %s\n. %s\n' "$ENV_FILE" "$PROFILE_TARGET"
+    printf '. %s\n' "$PROFILE_TARGET"
     printf '%s\n' 'set +a' 'cd '"$APP_DIR"
     printf '%s\n' 'case "$service" in'
-    printf '  web) exec %s exec puma -C config/puma.rb ;;\n' "$BUNDLE_BIN"
-    printf '  sidekiq) export RUBY_YJIT_ENABLE=0 DB_POOL=2; exec %s exec sidekiq -c 1 ;;\n' "$BUNDLE_BIN"
-    printf '  streaming) export PORT=4000 DB_POOL=2; exec %s ./streaming/index.js ;;\n' "$NODE_BIN"
+    printf '  web) export RAILS_ENV=production; exec %s exec puma -C config/puma.rb ;;\n' "$BUNDLE_BIN"
+    printf '  sidekiq) export RAILS_ENV=production RUBY_YJIT_ENABLE=0 DB_POOL=2; exec %s exec sidekiq -c 1 ;;\n' "$BUNDLE_BIN"
+    printf '  streaming) export NODE_ENV=production PORT=4000 DB_POOL=2; exec %s ./streaming/index.js ;;\n' "$NODE_BIN"
     printf '%s\n' '  *) exit 64 ;;' 'esac'
   } >"$runner"
   chmod 755 "$runner"

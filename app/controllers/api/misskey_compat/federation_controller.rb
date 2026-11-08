@@ -22,8 +22,9 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
   def instances
     return unless object_body!
     return if rate_limited?(:misskey_compat_api)
+    return if (offset = offset_param).nil?
 
-    stats = filtered_instances.order(sort_order).limit(instances_limit).offset(instances_offset).to_a
+    stats = filtered_instances.order(sort_order).limit(instances_limit).offset(offset).to_a
     render json: serialize_instances(stats)
   end
 
@@ -174,10 +175,6 @@ class Api::MisskeyCompat::FederationController < Api::MisskeyCompat::BaseControl
 
   def instances_limit
     pagination_limit(default: 30, max: 100)
-  end
-
-  def instances_offset
-    [params[:offset].to_i, 0].max
   end
 
   def host_param

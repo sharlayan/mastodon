@@ -1,5 +1,8 @@
 ---
 en:
+  chat:
+    errors:
+      media_in_use: Media attached to a chat message cannot be used in a post.
   roleplay_reset:
     apply_hint: Run again with --apply to remove the roleplay overrides.
     disable_first: Disable OC_ROLEPLAY_OPTION and restart before running this command.
@@ -68,6 +71,7 @@ en:
       unblocked_avatar_decorations_msg: Avatar decorations unblocked for %{username}
     action_logs:
       actions:
+        destroy_chat_conversation_html: "%{name} deleted chat conversation %{target}"
         update_collection_html: "%{name} updated collection by %{target}"
     avatar_decoration_domain_blocks:
       added_at: Added
@@ -235,6 +239,29 @@ en:
       size: Size
       status: Status
       title: Drive files
+    chat:
+      all: All
+      attachments: Attachments
+      close_copy: 'Close this server''s copy'
+      close_copy_confirm: 'Remove this server''s copy of the room, along with its messages here? The room goes on on the server that owns it, and local members leave it.'
+      conversation: 'Chat #%{id}'
+      deleted_message: Deleted message
+      hidden_message: Hidden by sender
+      destroy: Delete conversation
+      destroy_confirm: Permanently delete this conversation and all of its messages?
+      direct: Direct
+      filter: Filter
+      group: Group
+      inspect: Inspect
+      last_activity: Last activity
+      message: Message
+      participants: Participants
+      previous_versions: Earlier versions
+      remote_copy_hint: 'This room belongs to %{domain}. This server only holds a copy for its local members.'
+      sender: Sender
+      sent_at: Sent at
+      title: Chat conversations
+      type: Type
     instances:
       content_policies:
         policies:
@@ -273,7 +300,7 @@ en:
           settings, users with this permission are not subject to API rate limits
         view_admin_timeline: View the admin timeline
         view_admin_timeline_description: >-
-          In community (roleplay) mode, users with this permission can view the admin timeline. Direct conversations involving an owner account remain hidden unless the viewer is an owner. Posts with limited visibility are only listed when they were never federated (local-only).
+          In community (roleplay) mode, users with this permission can view the admin timeline. Direct conversations involving an owner account remain hidden unless the viewer is an owner. Posts with limited visibility are only listed when they were never federated (local-only). It also allows reviewing chats between local accounts.
         view_followers_admin_timeline: Remove visibility restrictions for followers' posts
         view_followers_admin_timeline_description: >-
           In community (roleplay) mode, users with this permission can view management-timeline-eligible posts from local accounts that follow them regardless of visibility. Direct conversations involving an owner account remain hidden.
@@ -378,6 +405,21 @@ en:
         enabled_hint: Allow users to create clips and collect posts into named collections.
           When disabled, existing clips are kept but cannot be accessed.
         title: Clips
+      chat:
+        delete_window_hours: Message deletion window (hours)
+        delete_window_hours_hint: Senders may delete a message for everyone during this period. After it expires, deleting only hides the message from the sender. Set to 0 to disable deletion for everyone immediately.
+        enabled: Enable native chat
+        enabled_hint: Allow local accounts to use the separate real-time chat system. Existing chat data is retained while disabled.
+        federation_enabled: Federate chat with other servers
+        federation_enabled_hint: Let local accounts chat with accounts on other servers. While disabled, chat activities from other servers are ignored and existing remote chats cannot be used.
+        max_attachments: Maximum attachments per message
+        max_attachments_hint: Allow between 0 and 4 media attachments on one chat message.
+        max_group_members: Maximum members per group
+        max_group_members_hint: Limit group chats to between 2 and 200 members, including the owner.
+        soft_delete_enabled: Preserve all deleted chat messages
+        soft_delete_enabled_hint: Never delete messages for other participants. A deletion only hides the message from its sender while retaining it for participants and authorized moderation.
+        soft_delete_roleplay_hint: Always enabled in OC roleplay mode so authorized owners can audit local chat messages.
+        title: Chat
       community_mode:
         soft_hide_deletion: Keep deleted posts for the owner
         soft_hide_deletion_hint: When a post is deleted, hide it instead of destroying
@@ -541,6 +583,8 @@ en:
     errors:
       limit: You have reached the maximum number of custom emoji mutes
   exports:
+    chat: Chat
+    chat_in_archive: Included in your archive
     clips: Clips
     json: JSON
     pages: Pages
@@ -592,8 +636,6 @@ en:
   multi_accounts:
     auth:
       add_account: Add account
-      authorization_complete: Authorization complete. You may close this window.
-      completing_authorization: Completing authorization...
       reauthenticate_account: Reauthenticate account
       reauthentication_account_mismatch: Sign in to the linked account being reauthenticated.
       reauthentication_hint: Sign in again to authorize this session for the linked account.

@@ -114,6 +114,18 @@ RSpec.describe 'Antennas' do
       expect(response).to have_http_status(200)
       expect(antenna.antenna_domains.includes_only.pluck(:name)).to include('example.com')
     end
+
+    it 'stores domains in the same form as account domains' do
+      post "/api/v1/antennas/#{antenna.id}/domains", headers: headers, params: { domains: ['Example.COM', 'xn--3e0b707e.example', '한국.example'] }
+
+      expect(antenna.antenna_domains.includes_only.pluck(:name)).to contain_exactly('example.com', 'xn--3e0b707e.example')
+    end
+
+    it 'normalizes excluded domains' do
+      post "/api/v1/antennas/#{antenna.id}/exclude_domains", headers: headers, params: { domains: ['Example.COM'] }
+
+      expect(antenna.reload.exclude_domains).to eq ['example.com']
+    end
   end
 
   describe 'POST /api/v1/antennas/:id/accounts' do

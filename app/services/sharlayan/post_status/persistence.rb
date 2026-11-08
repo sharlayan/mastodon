@@ -20,6 +20,7 @@ module Sharlayan::PostStatus
         yield
         @circle.statuses << status if @circle.present?
         attach_clips!(status)
+        @options[:scheduled_status]&.destroy!
       end
     end
 

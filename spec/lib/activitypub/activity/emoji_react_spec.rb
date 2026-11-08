@@ -101,6 +101,28 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
       end
     end
 
+    context 'with a new custom emoji from a domain whose media is rejected' do
+      subject { described_class.new(json_new_remote_emoji, remote_sender) }
+
+      let(:json_new_remote_emoji) do
+        json_remote_custom_emoji.merge(
+          content: ':fresh:',
+          tag: [{ type: 'Emoji', name: ':fresh:', icon: { type: 'Image', url: 'https://example.com/fresh.png' } }]
+        )
+      end
+
+      before do
+        Fabricate(:domain_block, domain: 'example.com', severity: :noop, reject_media: true)
+        stub_request(:get, 'https://example.com/fresh.png').to_return(status: 200, body: attachment_fixture('emojo.png'))
+        subject.perform
+      end
+
+      it 'does not create or download the emoji' do
+        expect(CustomEmoji.exists?(shortcode: 'fresh', domain: 'example.com')).to be false
+        expect(a_request(:get, 'https://example.com/fresh.png')).to_not have_been_made
+      end
+    end
+
     context 'with a sensitive remote custom emoji that the status excludes' do
       subject { described_class.new(json_remote_custom_emoji, remote_sender) }
 
@@ -113,6 +135,38 @@ RSpec.describe ActivityPub::Activity::EmojiReact do
       it 'stores the remote sensitivity and normalizes the reaction to a like' do
         expect(remote_custom_emoji.reload).to be_is_sensitive
         expect(remote_sender.reacted?(status, "\u2764")).to be true
+      end
+    end
+
+    context 'when the object is a boost of a status whose author mutes the sender' do
+      subject { described_class.new(json.merge(object: ActivityPub::TagManager.instance.uri_for(boost)), sender) }
+
+      let(:boost) { Fabricate(:status, account: Fabricate(:account, domain: 'booster.example'), uri: 'https://booster.example/notes/boost', reblog: status) }
+
+      before do
+        ReactionMute.create!(account: recipient, target_account: sender)
+        subject.perform
+      end
+
+      it 'does not create a reaction' do
+        expect(status.status_reactions).to be_empty
+      end
+    end
+
+    context 'when the object is a boost' do
+      subject { described_class.new(json.merge(object: ActivityPub::TagManager.instance.uri_for(boost)), sender) }
+
+      let(:boost) { Fabricate(:status, account: Fabricate(:account, domain: 'booster.example'), uri: 'https://booster.example/notes/boost', reblog: status) }
+
+      before do
+        allow(LocalNotificationWorker).to receive(:perform_async)
+        subject.perform
+      end
+
+      it 'notifies the original author' do
+        reaction = status.status_reactions.find_by!(account: sender)
+
+        expect(LocalNotificationWorker).to have_received(:perform_async).with(recipient.id, reaction.id, 'StatusReaction', 'reaction')
       end
     end
   end

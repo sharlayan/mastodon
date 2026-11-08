@@ -19,6 +19,9 @@ RSpec.describe Sharlayan::SettingExtensions do
 
       expect(defaults).to include(
         'drive_enabled' => false,
+        'chat_delete_window_hours' => 24,
+        'chat_enabled' => false,
+        'chat_soft_delete_enabled' => false,
         'misskey_compat_enabled' => false,
         'pages_drive_only' => false,
         'pages_enabled' => false

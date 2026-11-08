@@ -51,42 +51,46 @@ RSpec.describe Sharlayan::ActivityPubCreateExtensions do
   end
 
   describe '#download_remote_media_with_budget!' do
-    it 'downloads the file and thumbnail within the shared budget' do
-      media_attachment = instance_double(
-        MediaAttachment,
-        file_file_size: 40,
-        thumbnail_file_size: 10
-      )
-      budget = instance_double(RemoteMediaDownloadBudget)
+    let(:budget) { RemoteMediaDownloadBudget.new(byte_limit: 200, time_limit: 60) }
 
-      allow(budget).to receive(:size_limit).with(MediaAttachment::VIDEO_LIMIT).and_return(100)
-      allow(budget).to receive(:size_limit).with(MediaAttachment::IMAGE_LIMIT).and_return(60)
-      allow(budget).to receive(:available?).and_return(true)
-      allow(budget).to receive(:consume)
-      allow(media_attachment).to receive(:download_file!)
-      allow(media_attachment).to receive(:download_thumbnail!)
+    def media_double(file_size:, thumbnail_size: nil)
+      instance_double(
+        MediaAttachment,
+        remote_url: 'https://remote.example/file.png',
+        thumbnail_remote_url: 'https://remote.example/thumb.png',
+        file_file_size: file_size,
+        thumbnail_file_size: thumbnail_size
+      ).tap do |media|
+        allow(media).to receive(:download_file!)
+        allow(media).to receive(:download_thumbnail!)
+      end
+    end
+
+    it 'downloads the file and thumbnail within the shared budget' do
+      media_attachment = media_double(file_size: 40, thumbnail_size: 10)
 
       activity.send(:download_remote_media_with_budget!, media_attachment, budget)
 
-      expect(media_attachment).to have_received(:download_file!).with(size_limit: 100).ordered
-      expect(budget).to have_received(:consume).with(40).ordered
-      expect(media_attachment).to have_received(:download_thumbnail!).with(size_limit: 60).ordered
-      expect(budget).to have_received(:consume).with(10).ordered
+      expect(media_attachment).to have_received(:download_file!).with(size_limit: 200).ordered
+      expect(media_attachment).to have_received(:download_thumbnail!).with(size_limit: 160).ordered
+      expect(budget.size_limit(1_000)).to eq(150)
     end
 
     it 'stops before the thumbnail when the file exhausts the budget' do
-      media_attachment = instance_double(MediaAttachment, file_file_size: 100)
-      budget = instance_double(RemoteMediaDownloadBudget)
-
-      allow(budget).to receive(:size_limit).with(MediaAttachment::VIDEO_LIMIT).and_return(100)
-      allow(budget).to receive(:available?).and_return(false)
-      allow(budget).to receive(:consume)
-      allow(media_attachment).to receive(:download_file!)
-      allow(media_attachment).to receive(:download_thumbnail!)
+      media_attachment = media_double(file_size: 200)
 
       activity.send(:download_remote_media_with_budget!, media_attachment, budget)
 
-      expect(media_attachment).to have_received(:download_file!).with(size_limit: 100)
+      expect(media_attachment).to have_received(:download_file!).with(size_limit: 200)
+      expect(media_attachment).to_not have_received(:download_thumbnail!)
+    end
+
+    it 'charges the full allowance when a download is discarded' do
+      media_attachment = media_double(file_size: nil)
+
+      activity.send(:download_remote_media_with_budget!, media_attachment, budget)
+
+      expect(budget).to_not be_available
       expect(media_attachment).to_not have_received(:download_thumbnail!)
     end
   end

@@ -5,6 +5,7 @@ module Sharlayan::BackupServiceExtensions
 
   def dump_sharlayan_data!(zip)
     Sharlayan::PageBackupService.new(account).write_to_zip(zip) if Setting.pages_enabled
+    zip.get_output_stream('chat.json') { |io| Export.new(account).write_chat_json(io) } if Setting.chat_enabled
   end
 
   def dump_media_attachments!(zipfile)

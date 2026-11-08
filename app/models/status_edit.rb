@@ -30,7 +30,7 @@ class StatusEdit < ApplicationRecord
              :not_processed?, :needs_redownload?, :local?,
              :file, :thumbnail, :thumbnail_remote_url,
              :shortcode, :video?, :audio?, :discarded?, :on_hold?,
-             :drive_pointer?, :drive_access_key, :file_file_name, to: :media_attachment
+             :drive_pointer?, :drive_access_key, :file_file_name, :chat_attachment?, to: :media_attachment
   end
 
   rate_limit by: :account, family: :statuses

@@ -75,6 +75,40 @@ RSpec.describe AvatarDecoration do
     end
   end
 
+  describe '.visible_configs_for' do
+    before { Setting.avatar_decorations_enabled = true }
+
+    it 'hides a remote decoration whose image has not been downloaded' do
+      account = Fabricate(:account, domain: 'remote.example')
+      decoration = Fabricate(:avatar_decoration, host: 'remote.example', remote_id: 'x', image_remote_url: 'https://remote.example/x.png', image: nil)
+      account.update_columns(avatar_decorations: [{ 'id' => decoration.id }])
+
+      expect(described_class.visible_configs_for(account)).to be_empty
+    end
+
+    it 'hides a local decoration once the account role no longer meets its requirement' do
+      role = Fabricate(:user_role, position: 100)
+      user = Fabricate(:user, role: role)
+      decoration = Fabricate(:avatar_decoration, required_role: role)
+      user.account.update_columns(avatar_decorations: [{ 'id' => decoration.id }])
+
+      expect(described_class.visible_configs_for(user.account)).to contain_exactly([include('id' => decoration.id), decoration])
+
+      RequestStore.clear!
+      user.update!(role: UserRole.everyone)
+
+      expect(described_class.visible_configs_for(user.account.reload)).to be_empty
+    end
+
+    it 'hides a local decoration that is no longer approved' do
+      account = Fabricate(:account)
+      decoration = Fabricate(:avatar_decoration, approved: false)
+      account.update_columns(avatar_decorations: [{ 'id' => decoration.id }])
+
+      expect(described_class.visible_configs_for(account)).to be_empty
+    end
+  end
+
   describe '#local?' do
     it 'returns true when host is nil' do
       expect(Fabricate(:avatar_decoration, host: nil).local?).to be true

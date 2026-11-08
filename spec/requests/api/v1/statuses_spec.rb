@@ -728,6 +728,18 @@ RSpec.describe '/api/v1/statuses' do
         expect(RemovalWorker).to have_enqueued_sidekiq_job(status.id, { 'redraft' => true })
       end
 
+      context 'with a circle status' do
+        let(:circle) { Circle.create!(account: user.account, title: 'Friends') }
+        let(:status) { Fabricate(:status, account: user.account, visibility: :limited, limited_scope: :circle).tap { |record| circle.statuses << record } }
+
+        it 'returns the circle so the redraft keeps its audience' do
+          subject
+
+          expect(response).to have_http_status(200)
+          expect(response.parsed_body).to include(visibility: 'private', limited_scope: 'circle', circle_id: circle.id.to_s)
+        end
+      end
+
       context 'when called with truthy delete_media' do
         subject do
           delete "/api/v1/statuses/#{status.id}?delete_media=true", headers: headers
@@ -763,6 +775,22 @@ RSpec.describe '/api/v1/statuses' do
           expect(response).to have_http_status(200)
           expect(HideStatusWorker).to have_enqueued_sidekiq_job(status.id, { 'hidden_by_account_id' => user.account.id })
           expect(RemovalWorker).to_not have_enqueued_sidekiq_job(any_args)
+        end
+
+        it 'releases the media of a redrafted status so it can be posted again' do
+          media = Fabricate(:media_attachment, account: user.account, status: status)
+
+          delete "/api/v1/statuses/#{status.id}?delete_media=false", headers: headers
+
+          expect(media.reload.status_id).to be_nil
+        end
+
+        it 'keeps the media attached when the media is deleted with the status' do
+          media = Fabricate(:media_attachment, account: user.account, status: status)
+
+          delete "/api/v1/statuses/#{status.id}?delete_media=true", headers: headers
+
+          expect(media.reload.status_id).to eq status.id
         end
 
         it 'soft-hides the status when the job runs', :aggregate_failures, :inline_jobs do

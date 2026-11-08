@@ -22,6 +22,15 @@ RSpec.describe InstanceMetadataUpdateWorker do
       expect(service).to have_received(:call).with('example.com')
     end
 
+    it 'accepts the manual refresh marker' do
+      service = instance_double(FetchInstanceThemeColorService, call: nil)
+      allow(FetchInstanceThemeColorService).to receive(:new).and_return(service)
+
+      worker.perform('example.com', 'manual')
+
+      expect(service).to have_received(:call).with('example.com')
+    end
+
     it 'returns early for blank domain' do
       allow(FetchInstanceThemeColorService).to receive(:new)
 

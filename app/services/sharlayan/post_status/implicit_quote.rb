@@ -37,8 +37,10 @@ module Sharlayan::PostStatus
     def quotable?(status)
       return false if status.id == @in_reply_to&.id
       return false unless StatusPolicy.new(@account, status).show?
+      return true if status.account_id == @account.id
+      return false unless status.distributable?
 
-      status.account_id == @account.id || status.distributable?
+      !status.local? || StatusPolicy.new(@account, status).quote?
     end
   end
 end

@@ -90,7 +90,7 @@ const acctsFromStatus = (state, statusId) => {
 export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds }) => (dispatch, getState) => {
   const state = getState();
 
-  if (state.getIn(['direct_compose', conversationId, 'is_submitting'])) {
+  if (state.getIn(['direct_compose', conversationId, 'is_submitting']) || state.getIn(['direct_compose', conversationId, 'is_uploading'])) {
     return Promise.resolve();
   }
 

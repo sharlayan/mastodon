@@ -131,7 +131,7 @@ class MisskeyCompat::UserSerializer
     pinned_page_id, pinned_page = pinned_page_for(account, viewer)
 
     {
-      description: PlainTextFormatter.new(account.note, account.local?).to_s.presence,
+      description: account.unavailable? ? nil : PlainTextFormatter.new(account.note, account.local?).to_s.presence,
       followersCount: account.followers_count,
       followingCount: account.following_count,
       notesCount: account.statuses_count,
@@ -156,8 +156,8 @@ class MisskeyCompat::UserSerializer
       followersVisibility: ff_visibility,
       roles: roles_for(account),
       memo: nil,
-      chatScope: 'none',
-      canChat: false,
+      chatScope: chat_scope(account),
+      canChat: can_chat?(account),
       pinnedNoteIds: pinned_note_ids,
       pinnedNotes: pinned_notes,
       pinnedPageId: pinned_page_id,
@@ -165,10 +165,27 @@ class MisskeyCompat::UserSerializer
     }
   end
 
+  def can_chat?(account)
+    return false unless Setting.chat_enabled && !account.unavailable?
+
+    account.local? || (Sharlayan::ChatFederation.enabled? && account.can_chat != false)
+  end
+
+  def chat_scope(account)
+    return 'none' unless can_chat?(account)
+
+    policy = account.local? ? account.user&.settings&.[](:chat_policy) : account.chat_scope.presence || 'mutual'
+    Sharlayan::ChatFederation::ChatScope.normalize(policy, default: 'none')
+  end
+
   def pinned_notes_for(account, viewer)
     return @collection.pinned_notes_for(account) if @collection
 
-    statuses = account.pinned_statuses.where(visibility: [:public, :unlisted]).to_a
+    return [[], []] if account.unavailable? || (viewer && account.blocking?(viewer))
+
+    statuses = account.pinned_statuses.where(visibility: [:public, :unlisted])
+    statuses = statuses.not_local_only if viewer.nil?
+    statuses = statuses.to_a
     return [[], []] if statuses.empty?
 
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: viewer)
@@ -260,6 +277,8 @@ class MisskeyCompat::UserSerializer
   end
 
   def fields_for(account)
+    return [] if account.unavailable?
+
     account.fields.map { |field| { name: field.name.to_s, value: PlainTextFormatter.new(field.value.to_s, account.local?).to_s } }
   end
 

@@ -12,11 +12,17 @@ module Sharlayan::Account::Interactions
   def mute_domain!(other_domain, hide_from_home: nil)
     hide_from_home = false if hide_from_home.nil?
 
-    domain_mute = domain_mutes.create_with(hide_from_home: hide_from_home).find_or_initialize_by(domain: other_domain)
+    domain_mute = domain_mutes.create_with(hide_from_home: hide_from_home).find_or_initialize_by(domain: normalized_mute_domain(other_domain))
     domain_mute.save!
     domain_mute.update(hide_from_home: hide_from_home) if domain_mute.hide_from_home? != hide_from_home
 
     domain_mute
+  end
+
+  def normalized_mute_domain(domain)
+    normalized_domain(domain)
+  rescue Addressable::URI::InvalidURIError
+    domain
   end
 
   def unmute_domain!(other_domain)

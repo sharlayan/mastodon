@@ -171,7 +171,7 @@ class PostStatusService < BaseService
 
     expected_account_ids = @options[:allowed_mentions].map(&:to_i)
 
-    unexpected_accounts = status.mentions.map(&:account).to_a.reject { |mentioned_account| expected_account_ids.include?(mentioned_account.id) }
+    unexpected_accounts = status.mentions.reject(&:silent?).map(&:account).reject { |mentioned_account| expected_account_ids.include?(mentioned_account.id) }
     return if unexpected_accounts.empty?
 
     raise UnexpectedMentionsError.new('Post would be sent to unexpected accounts', unexpected_accounts)

@@ -1,0 +1,17 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      "misskey": "https://misskey-hub.net/ns#",
+      "_misskey_chatRoom": "misskey:_misskey_chatRoom"
+    }
+  ],
+  "id": "__ROOM__#relay/https%3A%2F%2Fother.test%2Fchat%2Fmessages%2Frelayed",
+  "type": "Announce",
+  "actor": "https://remote.test/users/bob",
+  "object": "https://other.test/chat/messages/relayed",
+  "context": "__ROOM__",
+  "_misskey_chatRoom": "__ROOM__",
+  "published": "2026-11-02T00:11:00Z",
+  "to": ["__LOCAL__", "__CAROL__"]
+}

@@ -17,10 +17,23 @@ class AvatarDecorationDomainBlock < ApplicationRecord
   scope :by_domain, ->(domain) { where(domain: domain) }
 
   def self.blocked?(domain)
-    exists?(domain: domain)
+    return false if domain.blank?
+
+    exists?(domain: domain_and_parents(domain))
   end
 
   def self.blocked_domains_cached
     RequestStore.store[:avatar_decoration_blocked_domains] ||= pluck(:domain).to_set
+  end
+
+  def self.blocked_in?(blocked_domains, domain)
+    return false if domain.blank?
+
+    domain_and_parents(domain).any? { |candidate| blocked_domains.include?(candidate) }
+  end
+
+  def self.domain_and_parents(domain)
+    segments = domain.to_s.downcase.split('.')
+    Array.new(segments.size) { |index| segments[index..].join('.') }
   end
 end

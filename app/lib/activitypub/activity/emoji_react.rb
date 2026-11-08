@@ -4,7 +4,13 @@ class ActivityPub::Activity::EmojiReact < ActivityPub::Activity
   def perform
     return if DomainBlock.reject_favourite?(@account.domain)
 
-    original_status = status_from_uri(object_uri)
+    if Sharlayan::ChatFederation::Incoming.chat_reaction?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_reaction(@json, @account) do |shortcode|
+        process_emoji_tags(shortcode, @json['tag']) unless DomainBlock.reject_media?(@account.domain)
+      end
+    end
+
+    original_status = status_from_uri(object_uri)&.proper
     raw_name = @json['content'].to_s
 
     return if original_status.nil? || delete_arrived_first?(@json['id'])

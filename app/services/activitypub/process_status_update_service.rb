@@ -137,13 +137,15 @@ class ActivityPub::ProcessStatusUpdateService < BaseService
       next if media_attachment.skip_download || !download_budget.available?
 
       if media_attachment.remote_url_previously_changed?
-        media_attachment.download_file!(size_limit: download_budget.size_limit(MediaAttachment::VIDEO_LIMIT))
-        download_budget.consume(media_attachment.file_file_size)
+        file_limit = download_budget.size_limit(MediaAttachment::VIDEO_LIMIT)
+        media_attachment.download_file!(size_limit: file_limit)
+        download_budget.charge_download(file_limit, media_attachment.remote_url, media_attachment.file_file_size)
       end
 
       if media_attachment.thumbnail_remote_url_previously_changed? && download_budget.available?
-        media_attachment.download_thumbnail!(size_limit: download_budget.size_limit(MediaAttachment::IMAGE_LIMIT))
-        download_budget.consume(media_attachment.thumbnail_file_size)
+        thumbnail_limit = download_budget.size_limit(MediaAttachment::IMAGE_LIMIT)
+        media_attachment.download_thumbnail!(size_limit: thumbnail_limit)
+        download_budget.charge_download(thumbnail_limit, media_attachment.thumbnail_remote_url, media_attachment.thumbnail_file_size)
       end
 
       media_attachment.save

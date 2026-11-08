@@ -13,6 +13,9 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   before_action :decode_mi_ids!
 
   INVALID_PARAM_ID = '3d81ceae-475f-4600-b2a8-2bc116157532'
+  OFFSET_LIMIT = 1_000
+  MAX_COMPAT_ID = (2**63) - 1
+  COMPAT_TIME_RANGE = (Time.utc(1)..Time.utc(9999, 12, 31, 23, 59, 59))
 
   MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId pageId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId eyeCatchingImageId channelId draftId).freeze
   MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
@@ -111,6 +114,20 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     require_user! if bearer_token.present? || params[:i].present?
   end
 
+  def native_user_token?
+    current_misskey_grant&.native_user_token? && current_token.scopes.exists?(MisskeyCompat::MiAuth::TOKEN_SCOPE)
+  end
+
+  def require_drive_enabled!
+    render_error('Drive is not available on this server', 'UNAVAILABLE', 400) unless Setting.drive_enabled
+  end
+
+  def require_native_user_token!
+    return if native_user_token?
+
+    render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e')
+  end
+
   def current_misskey_grant
     return @current_misskey_grant if defined?(@current_misskey_grant)
 
@@ -126,7 +143,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   end
 
   def render_error(message, code, status, id: nil, kind: 'client', info: nil)
-    error = { message: message, code: code, id: id, kind: kind }
+    error = { message: message, code: code, id: id || Digest::UUID.uuid_v5(Digest::UUID::OID_NAMESPACE, code), kind: kind }
     error[:info] = info unless info.nil?
     render json: { error: error.compact }, status: status
   end
@@ -145,6 +162,14 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   rescue JSON::ParserError
     render_invalid_param('#/type', 'must be object')
     false
+  end
+
+  def offset_param(max: OFFSET_LIMIT)
+    offset = [params[:offset].to_i, 0].max
+    return offset if offset <= max
+
+    render_invalid_param('#/properties/offset', "must be less than or equal to #{max}")
+    nil
   end
 
   def pagination_limit(default: 20, max: 40)
@@ -175,11 +200,30 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   end
 
   def compat_time(value)
+    time = compat_numeric_time(value) || Time.zone.parse(value.to_s)
+    raise ArgumentError, 'date is out of range' unless time.nil? || COMPAT_TIME_RANGE.cover?(time)
+
+    time
+  end
+
+  def compat_numeric_time(value)
     numeric = Float(value)
     numeric /= 1000 if numeric > 10_000_000_000
     Time.zone.at(numeric)
   rescue ArgumentError, TypeError
-    Time.zone.parse(value.to_s)
+    nil
+  rescue RangeError
+    raise ArgumentError, 'date is out of range'
+  end
+
+  def compat_id?(value)
+    value.is_a?(String) && value.match?(/\A[1-9][0-9]*\z/) && value.to_i <= MAX_COMPAT_ID
+  end
+
+  def compat_date?(value)
+    value.is_a?(Integer) && compat_time(value).present?
+  rescue ArgumentError
+    false
   end
 
   def apply_user_origin(scope)
@@ -227,6 +271,12 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       canSearchNotes: true,
       canUseTranslator: TranslationService.configured?,
       canUseReaction: true,
+      chatAvailability: Setting.chat_enabled ? 'available' : 'unavailable',
+      canImportFollowing: Setting.drive_enabled,
+      canImportBlocking: Setting.drive_enabled,
+      canImportMuting: Setting.drive_enabled,
+      canImportUserLists: Setting.drive_enabled,
+      canImportAntennas: false,
       canHideAds: false,
       canScheduleNote: true,
       scheduleNoteMax: ScheduledStatus::TOTAL_LIMIT,

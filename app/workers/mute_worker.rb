@@ -13,6 +13,7 @@ class MuteWorker
     with_read_replica do
       FeedManager.instance.clear_from_home(@account, @target_account)
       FeedManager.instance.clear_from_lists(@account, @target_account)
+      FeedManager.instance.clear_from_antennas(@account, @target_account)
     end
   rescue ActiveRecord::RecordNotFound
     true

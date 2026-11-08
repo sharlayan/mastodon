@@ -33,6 +33,12 @@ class Api::V1::Antennas::ExcludeDomainsController < Api::BaseController
   end
 
   def domains
-    Array(params.permit(domains: [])[:domains]).filter_map { |domain| domain.to_s.strip.presence }
+    Array(params.permit(domains: [])[:domains]).filter_map { |domain| normalized_domain(domain) }.uniq
+  end
+
+  def normalized_domain(domain)
+    TagManager.instance.normalize_domain(domain.to_s.strip.presence)
+  rescue Addressable::URI::InvalidURIError
+    nil
   end
 end

@@ -18,6 +18,8 @@ resources :drive_files, only: [:index, :destroy], path: 'drive/files' do
   end
 end
 
+resources :chat_conversations, only: [:index, :show, :destroy], path: 'chat/conversations'
+
 resources :avatar_decorations, only: [:index, :new, :create, :edit, :update, :destroy] do
   member do
     post :approve

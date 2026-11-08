@@ -156,4 +156,68 @@ RSpec.describe ReactService, type: :service do
       end
     end
   end
+
+  describe 'reacting through a boost' do
+    let(:author) { Fabricate(:account) }
+    let(:original) { Fabricate(:status, account: author, reaction_acceptance: 'likeOnly') }
+    let(:boost) { Fabricate(:status, account: Fabricate(:account), reblog: original) }
+
+    it 'applies the reaction policy of the original status' do
+      reaction = subject.call(sender, boost, '👍')
+
+      expect(reaction).to have_attributes(status_id: original.id, name: "\u2764")
+    end
+
+    it 'honours reaction mutes set by the original author' do
+      ReactionMute.create!(account: author, target_account: sender)
+
+      expect(subject.call(sender, boost, '👍')).to be_nil
+      expect(original.status_reactions).to be_empty
+    end
+
+    it 'refuses reactions from accounts the original author blocks' do
+      author.block!(sender)
+
+      expect { subject.call(sender, boost, '👍') }.to raise_error(Mastodon::NotPermittedError)
+    end
+
+    it 'returns the existing reaction when repeated' do
+      original.update!(reaction_acceptance: nil)
+      first = subject.call(sender, boost, '👍')
+
+      expect(subject.call(sender, boost, '👍')).to eq(first)
+      expect(original.status_reactions.count).to eq(1)
+    end
+  end
+
+  describe 'replacing a reaction with an invalid one' do
+    let(:status) { Fabricate(:status) }
+
+    it 'keeps the existing reaction' do
+      existing = subject.call(sender, status, '👍')
+
+      expect { subject.call(sender, status, 'not_an_emoji') }.to raise_error(ActiveRecord::RecordInvalid)
+      expect(StatusReaction.exists?(existing.id)).to be(true)
+    end
+  end
+
+  describe 'replacing a remote custom emoji with a local one of the same shortcode' do
+    let(:status) { Fabricate(:status) }
+
+    before do
+      Setting.reaction_local_emoji_only = false
+      Fabricate(:custom_emoji, shortcode: 'blobcat', domain: 'remote.example')
+      Fabricate(:custom_emoji, shortcode: 'blobcat')
+    end
+
+    it 'replaces the reaction' do
+      existing = subject.call(sender, status, 'blobcat@remote.example')
+
+      replacement = subject.call(sender, status, 'blobcat')
+
+      expect(StatusReaction.exists?(existing.id)).to be(false)
+      expect(replacement.custom_emoji.domain).to be_nil
+      expect(status.status_reactions.where(account: sender).count).to eq 1
+    end
+  end
 end

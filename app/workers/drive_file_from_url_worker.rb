@@ -100,7 +100,7 @@ class DriveFileFromURLWorker
         existing.update!(
           folder_id: @options[:folder_id].presence || existing.folder_id,
           sensitive: @options[:sensitive].nil? ? existing.sensitive : @options[:sensitive],
-          description: @options[:description],
+          description: @options[:description].nil? ? existing.description : @options[:description],
           created_at: Time.current
         )
       elsif !within_quota?(account, candidate.quota_storage_file_size)

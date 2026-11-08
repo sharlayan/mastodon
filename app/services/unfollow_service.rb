@@ -43,6 +43,7 @@ class UnfollowService < BaseService
       UnmergeWorker.push_bulk(list_ids) do |list_id|
         [@followee.id, list_id, 'list']
       end
+      UnmergeWorker.perform_async(@followee.id, @follower.id, 'antenna') if @follower.antennas.exists?
     end
 
     follow

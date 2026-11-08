@@ -4,6 +4,12 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
   def perform
     return if DomainBlock.reject_favourite?(@account.domain)
 
+    if Sharlayan::ChatFederation::Incoming.chat_reaction?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_reaction(@json, @account) do |shortcode|
+        process_emoji_tags(shortcode, @json['tag']) unless DomainBlock.reject_media?(@account.domain)
+      end
+    end
+
     original_status = status_from_uri(object_uri)
 
     return if original_status.nil? || delete_arrived_first?(@json['id'])
@@ -18,7 +24,8 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
     Trends.statuses.register(original_status)
   end
 
-  def misskey_reaction(original_status)
+  def misskey_reaction(status)
+    original_status = status.proper
     raw_name = @json['content'] || @json['_misskey_reaction']
 
     return false unless raw_name.is_a?(String) && raw_name.present?

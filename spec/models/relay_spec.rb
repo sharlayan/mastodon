@@ -100,6 +100,34 @@ RSpec.describe Relay do
     end
   end
 
+  describe '#pause!' do
+    it 'pauses an accepted relay' do
+      relay = Fabricate :relay, state: :accepted
+
+      expect { relay.pause! }.to change { relay.reload.state }.to('paused')
+    end
+
+    it 'leaves a relay that is not accepted unchanged' do
+      relay = Fabricate :relay, state: :pending
+
+      expect { relay.pause! }.to_not(change { relay.reload.state })
+    end
+  end
+
+  describe '#resume!' do
+    it 'resumes a paused relay' do
+      relay = Fabricate :relay, state: :paused
+
+      expect { relay.resume! }.to change { relay.reload.state }.to('accepted')
+    end
+
+    it 'does not accept a relay that was never followed' do
+      relay = Fabricate :relay, state: :idle
+
+      expect { relay.resume! }.to_not(change { relay.reload.state })
+    end
+  end
+
   def stub_services
     allow(ActivityPub::DeliveryWorker).to receive(:perform_async)
     allow(DeliveryFailureTracker).to receive(:reset!)

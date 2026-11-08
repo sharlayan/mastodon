@@ -51,6 +51,25 @@ RSpec.describe 'Clips' do
       end
     end
 
+    context 'when the clip owner blocks the viewer' do
+      let(:scopes) { 'read:lists' }
+
+      before { clip.account.block!(user.account) }
+
+      it 'returns http not found' do
+        subject
+
+        expect(response).to have_http_status(404)
+      end
+
+      it 'does not list the owner clips' do
+        get "/api/v1/accounts/#{clip.account_id}/clips", headers: headers
+
+        expect(response).to have_http_status(200)
+        expect(response.parsed_body).to be_empty
+      end
+    end
+
     context 'with a token missing the read lists scope' do
       let(:scopes) { 'read:accounts' }
 
@@ -63,6 +82,24 @@ RSpec.describe 'Clips' do
       get '/api/v1/clips'
 
       expect(response).to have_http_status(401)
+    end
+  end
+
+  describe 'owner-only actions on another account clip' do
+    let(:other_clip) { Fabricate(:clip, account: Fabricate(:account), title: 'Original', public: true) }
+
+    it 'does not update the clip' do
+      put "/api/v1/clips/#{other_clip.id}", params: { title: 'Hijacked', public: false }, headers: headers
+
+      expect(response).to have_http_status(404)
+      expect(other_clip.reload).to have_attributes(title: 'Original', public: true)
+    end
+
+    it 'does not delete the clip' do
+      delete "/api/v1/clips/#{other_clip.id}", headers: headers
+
+      expect(response).to have_http_status(404)
+      expect(Clip.exists?(other_clip.id)).to be(true)
     end
   end
 end

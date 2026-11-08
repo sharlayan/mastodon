@@ -1,21 +1,26 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
 import classNames from 'classnames';
 
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
+import LinkIcon from '@/material-icons/400-24px/link.svg?react';
 import NotificationsIcon from '@/material-icons/400-24px/notifications.svg?react';
 import PersonAddIcon from '@/material-icons/400-24px/person_add.svg?react';
 import PersonRemoveIcon from '@/material-icons/400-24px/person_remove.svg?react';
 import CheckIcon from '@/material-icons/400-24px/person_shield.svg?react';
 import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
+import VpnKeyIcon from '@/material-icons/400-24px/vpn_key.svg?react';
 import { Avatar } from 'mastodon/components/avatar';
 import { DisplayName } from 'mastodon/components/display_name';
 import { Toggle } from 'mastodon/components/form_fields';
 import { Icon } from 'mastodon/components/icon';
 import { IconButton } from 'mastodon/components/icon_button';
-import { me } from 'mastodon/initial_state';
+import {
+  me,
+  serverStoredAccountSwitchingEnabled,
+} from 'mastodon/initial_state';
 import { useAppSelector, useAppDispatch } from 'mastodon/store';
 
 import {
@@ -100,21 +105,34 @@ const messages = defineMessages({
     id: 'account_switcher.revoke_inbound_confirm',
     defaultMessage: 'Revoke access from {name} (@{acct})?',
   },
+  authorizeSession: {
+    id: 'account_switcher.authorize_session',
+    defaultMessage:
+      'Sign in to the {name} account or approve this session from an existing device',
+  },
+  approvalPending: {
+    id: 'account_switcher.approval_pending',
+    defaultMessage: '{name}\nWaiting for approval from an existing session',
+  },
+  checkApproval: {
+    id: 'account_switcher.check_approval',
+    defaultMessage: 'Check approval',
+  },
+  signInToAuthorize: {
+    id: 'account_switcher.sign_in_to_authorize',
+    defaultMessage: 'Sign in instead',
+  },
+  serverStoredDisabled: {
+    id: 'account_switcher.server_stored_disabled',
+    defaultMessage:
+      'The server does not allow adding accounts in the team-account format. You cannot add an account, but you can still switch accounts.',
+  },
 });
 
 export interface LinkedNotifPrefs {
   inApp: boolean;
   push: boolean;
 }
-
-const ROOT_ACCOUNT_KEY = 'linked_notif_root_account';
-
-export const getLinkedNotifRootAccount = (): string | null =>
-  localStorage.getItem(ROOT_ACCOUNT_KEY);
-
-export const setLinkedNotifRootAccount = (rootId: string) => {
-  localStorage.setItem(ROOT_ACCOUNT_KEY, rootId);
-};
 
 const PREFS_KEY = (rootId: string) => `linked_notif_prefs_${rootId}`;
 
@@ -140,6 +158,39 @@ export const setLinkedNotifPref = (
   localStorage.setItem(PREFS_KEY(rootId), JSON.stringify(all));
 };
 
+const useLinkedPushToggle = (rootAccountId: string, accountId: string) => {
+  const dispatch = useAppDispatch();
+  const [pushEnabled, setPushEnabled] = useState(
+    () => getLinkedNotifPrefs(rootAccountId)[accountId]?.push ?? false,
+  );
+
+  const handlePushChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      const checked = e.target.checked;
+      const applyPush = (push: boolean) => {
+        setPushEnabled(push);
+        const current = getLinkedNotifPrefs(rootAccountId)[accountId] ?? {
+          inApp: false,
+          push: false,
+        };
+        setLinkedNotifPref(rootAccountId, accountId, { ...current, push });
+      };
+
+      applyPush(checked);
+      const request = checked
+        ? dispatch(enableLinkedPushForward({ linkedAccountId: accountId }))
+        : dispatch(disableLinkedPushForward({ linkedAccountId: accountId }));
+      request.unwrap().catch(() => {
+        applyPush(!checked);
+      });
+    },
+    [accountId, rootAccountId, dispatch],
+  );
+
+  return [pushEnabled, handlePushChange] as const;
+};
+
 const getAccountDisplayName = (
   data: { get(key: string): string } | undefined,
   fallback: string,
@@ -150,6 +201,15 @@ const getAccountDisplayName = (
   if (username.trim().length > 0) return username;
   return fallback;
 };
+
+const ServerLinkedAccountBadge: React.FC = () => (
+  <span
+    className='account-switcher-modal__linked-account-badge'
+    aria-hidden='true'
+  >
+    <Icon id='link' icon={LinkIcon} />
+  </span>
+);
 
 const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
@@ -176,7 +236,20 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   const intl = useIntl();
   const dispatch = useAppDispatch();
   const [addingAccount, setAddingAccount] = useState(false);
+  const [checkingAccountId, setCheckingAccountId] = useState<string | null>(
+    null,
+  );
   const [showSettings, setShowSettings] = useState(false);
+  const popupCleanupRef = useRef<(() => void) | null>(null);
+  const addingAccountRef = useRef(false);
+
+  useEffect(
+    () => () => {
+      popupCleanupRef.current?.();
+      popupCleanupRef.current = null;
+    },
+    [],
+  );
 
   const items = useAppSelector((state) => state.accountSwitches.get('items'));
   const inboundItems = useAppSelector((state) =>
@@ -197,120 +270,117 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   );
 
   useEffect(() => {
-    if (!loaded) {
-      void dispatch(fetchAccountSwitches());
-    }
-  }, [dispatch, loaded]);
+    void dispatch(fetchAccountSwitches());
+  }, [dispatch]);
 
-  useEffect(() => {
-    if (rootAccountId) {
-      setLinkedNotifRootAccount(rootAccountId);
-    }
-  }, [rootAccountId]);
-
-  const handleAddAccount = useCallback(async () => {
-    if (addingAccount) return;
-    setAddingAccount(true);
-
-    try {
-      const response = await fetch('/multi_accounts/entry', {
-        headers: {
-          Accept: 'application/json',
-          'X-CSRF-Token':
-            document.querySelector<HTMLMetaElement>('meta[name=csrf-token]')
-              ?.content ?? '',
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to fetch authorization entry');
-
-      const data = (await response.json()) as {
-        authorize_url: string;
-        state: string;
-        nonce: string;
-      };
-
-      const popup = openOAuthPopup(data.authorize_url);
-      if (!popup) {
+  const handleAddAccount = useCallback(
+    async (reauthenticateAccountId?: string) => {
+      if (addingAccountRef.current) return;
+      addingAccountRef.current = true;
+      setAddingAccount(true);
+      const finishAdding = () => {
+        addingAccountRef.current = false;
         setAddingAccount(false);
-        return;
-      }
-
-      let messageReceived = false;
-      let bc: BroadcastChannel | undefined;
-
-      const handleMessage = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-
-        const messageData = event.data as {
-          type?: string;
-          state?: string;
-          success?: boolean;
-        };
-
-        if (messageData.type !== 'multi_account_callback') return;
-        if (messageData.state !== data.state) return;
-
-        messageReceived = true;
-        window.removeEventListener('message', handleMessage);
-        if (bc) {
-          bc.close();
-          bc = undefined;
-        }
-
-        if (messageData.success) {
-          void dispatch(fetchAccountSwitches()).then(() => {
-            setAddingAccount(false);
-          });
-        } else {
-          setAddingAccount(false);
-        }
       };
 
-      window.addEventListener('message', handleMessage);
+      try {
+        const entryUrl = reauthenticateAccountId
+          ? `/multi_accounts/entry?reauthenticate_account_id=${encodeURIComponent(reauthenticateAccountId)}`
+          : '/multi_accounts/entry';
+        const response = await fetch(entryUrl, {
+          headers: {
+            Accept: 'application/json',
+            'X-CSRF-Token':
+              document.querySelector<HTMLMetaElement>('meta[name=csrf-token]')
+                ?.content ?? '',
+          },
+        });
 
-      if (typeof BroadcastChannel !== 'undefined') {
-        bc = new BroadcastChannel('multi_account_auth');
-        bc.onmessage = (event: MessageEvent) => {
-          const syntheticEvent = Object.assign(
-            Object.create(Object.getPrototypeOf(event) as object),
-            event,
-            { origin: window.location.origin },
-          ) as MessageEvent;
-          handleMessage(syntheticEvent);
+        if (!response.ok)
+          throw new Error('Failed to fetch authorization entry');
+
+        const data = (await response.json()) as {
+          authorize_url: string;
+          state: string;
+          nonce: string;
         };
-      }
 
-      const cleanup = () => {
-        window.removeEventListener('message', handleMessage);
-        if (bc) {
-          bc.close();
-          bc = undefined;
+        const popup = openOAuthPopup(data.authorize_url);
+        if (!popup) {
+          finishAdding();
+          return;
         }
-      };
 
-      setTimeout(() => {
-        if (!messageReceived) {
+        let messageReceived = false;
+        let bc: BroadcastChannel | undefined;
+        const cleanup = () => {
+          popupCleanupRef.current?.();
+          popupCleanupRef.current = null;
+        };
+
+        const handleMessageData = (payload: unknown) => {
+          const messageData = payload as {
+            type?: string;
+            state?: string;
+            success?: boolean;
+          };
+
+          if (messageData.type !== 'multi_account_callback') return;
+          if (messageData.state !== data.state) return;
+
+          messageReceived = true;
           cleanup();
-          setAddingAccount(false);
-        }
-      }, OAUTH_TIMEOUT);
 
-      const checkPopup = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(checkPopup);
-          setTimeout(() => {
-            if (!messageReceived) {
-              cleanup();
-              setAddingAccount(false);
-            }
-          }, 1000);
+          if (messageData.success) {
+            void dispatch(fetchAccountSwitches()).then(() => {
+              finishAdding();
+            });
+          } else {
+            finishAdding();
+          }
+        };
+
+        const handleMessage = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          handleMessageData(event.data);
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        if (typeof BroadcastChannel !== 'undefined') {
+          bc = new BroadcastChannel('multi_account_auth');
+          bc.onmessage = (event: MessageEvent) => {
+            handleMessageData(event.data);
+          };
         }
-      }, 500);
-    } catch {
-      setAddingAccount(false);
-    }
-  }, [addingAccount, dispatch]);
+
+        const finishWithoutMessage = () => {
+          if (messageReceived) return;
+          cleanup();
+          finishAdding();
+        };
+        const timeoutId = setTimeout(finishWithoutMessage, OAUTH_TIMEOUT);
+        let closedTimeoutId: ReturnType<typeof setTimeout> | undefined;
+        const checkPopup = setInterval(() => {
+          if (!popup.closed) return;
+          clearInterval(checkPopup);
+          closedTimeoutId = setTimeout(finishWithoutMessage, 1000);
+        }, 500);
+
+        popupCleanupRef.current = () => {
+          window.removeEventListener('message', handleMessage);
+          bc?.close();
+          bc = undefined;
+          clearTimeout(timeoutId);
+          clearInterval(checkPopup);
+          if (closedTimeoutId !== undefined) clearTimeout(closedTimeoutId);
+        };
+      } catch {
+        finishAdding();
+      }
+    },
+    [dispatch],
+  );
 
   const handleRemoveAccount = useCallback(
     (id: string, name: string, acct: string) => {
@@ -363,6 +433,8 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           id: string;
           target_account_id: string;
           created_at: string;
+          session_authorized: boolean;
+          session_approval_pending: boolean;
         }[];
       }
     | undefined;
@@ -371,6 +443,28 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
   const handleAddAccountClick = useCallback(() => {
     void handleAddAccount();
   }, [handleAddAccount]);
+
+  const handleReauthenticateAccount = useCallback(
+    (accountId: string) => {
+      void handleAddAccount(accountId);
+    },
+    [handleAddAccount],
+  );
+
+  const handleCheckApproval = useCallback(
+    (accountId: string) => {
+      if (checkingAccountId) return;
+
+      setCheckingAccountId(accountId);
+      void dispatch(fetchAccountSwitches())
+        .unwrap()
+        .catch(() => null)
+        .finally(() => {
+          setCheckingAccountId(null);
+        });
+    },
+    [checkingAccountId, dispatch],
+  );
 
   const handleToggleSettings = useCallback(() => {
     setShowSettings((value) => !value);
@@ -382,13 +476,13 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
         <h3>{intl.formatMessage(messages.title)}</h3>
         <div className='account-switcher-modal__header-actions'>
           <IconButton
-            icon=''
+            icon='settings'
             iconComponent={SettingsIcon}
             onClick={handleToggleSettings}
             title={intl.formatMessage(messages.settings)}
           />
           <IconButton
-            icon=''
+            icon='close'
             iconComponent={CloseIcon}
             onClick={onClose}
             title={intl.formatMessage(messages.close)}
@@ -397,6 +491,9 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
       </div>
 
       <div className='account-switcher-modal__content'>
+        {!serverStoredAccountSwitchingEnabled && (
+          <p>{intl.formatMessage(messages.serverStoredDisabled)}</p>
+        )}
         {showSettings ? (
           <div className='account-switcher-modal__linked-settings'>
             <h4>{intl.formatMessage(messages.linkedBy)}</h4>
@@ -427,6 +524,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
 
             {me && (
               <CurrentAccountItem
+                key={rootAccountId ?? ''}
                 isMain={parentAccountId === null}
                 rootAccountId={rootAccountId ?? ''}
                 hasLinkedAccounts={
@@ -452,6 +550,11 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
                 onSwitch={handleSwitchAccount}
                 onRemove={handleRemoveAccount}
                 canRemove={parentAccountId === null}
+                sessionAuthorized={auth.session_authorized}
+                sessionApprovalPending={auth.session_approval_pending}
+                checkingApproval={checkingAccountId === auth.target_account_id}
+                onAuthorize={handleReauthenticateAccount}
+                onCheckApproval={handleCheckApproval}
               />
             ))}
           </>
@@ -463,7 +566,7 @@ export const AccountSwitcherModal: React.FC<AccountSwitcherModalProps> = ({
           <button
             className='account-switcher-modal__add-button'
             onClick={handleAddAccountClick}
-            disabled={addingAccount}
+            disabled={addingAccount || !serverStoredAccountSwitchingEnabled}
             type='button'
           >
             <Icon id='person-add' icon={PersonAddIcon} />
@@ -534,7 +637,6 @@ const ParentAccountItem: React.FC<{
   onSwitch: (accountId: string, name: string) => void;
 }> = ({ accountId, rootAccountId, onSwitch }) => {
   const intl = useIntl();
-  const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
   const unreadCount = useAppSelector(
     (state) =>
@@ -553,9 +655,6 @@ const ParentAccountItem: React.FC<{
   const [showNotifSettings, setShowNotifSettings] = useState(false);
   const [inAppEnabled, setInAppEnabled] = useState(() => {
     return getLinkedNotifPrefs(rootAccountId)[accountId]?.inApp ?? false;
-  });
-  const [pushEnabled, setPushEnabled] = useState(() => {
-    return getLinkedNotifPrefs(rootAccountId)[accountId]?.push ?? false;
   });
 
   const handleSwitch = useCallback(() => {
@@ -597,29 +696,6 @@ const ParentAccountItem: React.FC<{
       });
     },
     [accountId, rootAccountId],
-  );
-
-  const handlePushChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const checked = e.target.checked;
-      setPushEnabled(checked);
-      const current = getLinkedNotifPrefs(rootAccountId)[accountId] ?? {
-        inApp: false,
-        push: false,
-      };
-      setLinkedNotifPref(rootAccountId, accountId, {
-        ...current,
-        push: checked,
-      });
-
-      if (checked) {
-        void dispatch(enableLinkedPushForward({ linkedAccountId: accountId }));
-      } else {
-        void dispatch(disableLinkedPushForward({ linkedAccountId: accountId }));
-      }
-    },
-    [accountId, rootAccountId, dispatch],
   );
 
   if (!account) return null;
@@ -657,7 +733,7 @@ const ParentAccountItem: React.FC<{
         <div className='account-switcher-modal__item__actions'>
           <button
             className={classNames('account-switcher-modal__notif-button', {
-              active: inAppEnabled || pushEnabled,
+              active: inAppEnabled,
               open: showNotifSettings,
             })}
             onClick={handleToggleNotifSettings}
@@ -691,12 +767,6 @@ const ParentAccountItem: React.FC<{
               <Toggle checked={inAppEnabled} onChange={handleInAppChange} />
               <span>{intl.formatMessage(messages.receiveNotifications)}</span>
             </label>
-            <label className='account-switcher-modal__notif-label'>
-              <Toggle checked={pushEnabled} onChange={handlePushChange} />
-              <span>
-                {intl.formatMessage(messages.receivePushNotifications)}
-              </span>
-            </label>
           </div>
         </div>
       )}
@@ -710,7 +780,7 @@ const CurrentAccountItem: React.FC<{
   hasLinkedAccounts: boolean;
 }> = ({ isMain, rootAccountId, hasLinkedAccounts }) => {
   const intl = useIntl();
-  const dispatch = useAppDispatch();
+  const showNotifButton = hasLinkedAccounts && !isMain;
   const account = useAppSelector((state) =>
     me ? state.accounts.get(me) : undefined,
   );
@@ -720,10 +790,10 @@ const CurrentAccountItem: React.FC<{
     if (!me) return false;
     return getLinkedNotifPrefs(rootAccountId)[me]?.inApp ?? false;
   });
-  const [pushEnabled, setPushEnabled] = useState(() => {
-    if (!me) return false;
-    return getLinkedNotifPrefs(rootAccountId)[me]?.push ?? false;
-  });
+  const [pushEnabled, handlePushChange] = useLinkedPushToggle(
+    rootAccountId,
+    me ?? '',
+  );
 
   const handleToggleNotifSettings = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -753,27 +823,6 @@ const CurrentAccountItem: React.FC<{
     [rootAccountId],
   );
 
-  const handlePushChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      if (!me) return;
-      const checked = e.target.checked;
-      setPushEnabled(checked);
-      const current = getLinkedNotifPrefs(rootAccountId)[me] ?? {
-        inApp: false,
-        push: false,
-      };
-      setLinkedNotifPref(rootAccountId, me, { ...current, push: checked });
-
-      if (checked) {
-        void dispatch(enableLinkedPushForward({ linkedAccountId: me }));
-      } else {
-        void dispatch(disableLinkedPushForward({ linkedAccountId: me }));
-      }
-    },
-    [rootAccountId, dispatch],
-  );
-
   if (!account) return null;
 
   return (
@@ -787,6 +836,7 @@ const CurrentAccountItem: React.FC<{
       <div className='account-switcher-modal__item__row'>
         <div className='account-switcher-modal__item__avatar'>
           <Avatar account={account} size={36} />
+          {!isMain && <ServerLinkedAccountBadge />}
         </div>
         <div className='account-switcher-modal__item__info'>
           <span className='account-switcher-modal__parent-label'>
@@ -797,7 +847,7 @@ const CurrentAccountItem: React.FC<{
           <DisplayName account={account} />
         </div>
         <div className='account-switcher-modal__item__actions'>
-          {hasLinkedAccounts && (
+          {showNotifButton && (
             <button
               className={classNames('account-switcher-modal__notif-button', {
                 active: inAppEnabled || pushEnabled,
@@ -822,7 +872,7 @@ const CurrentAccountItem: React.FC<{
         </div>
       </div>
 
-      {hasLinkedAccounts && showNotifSettings && (
+      {showNotifButton && showNotifSettings && (
         /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
         <div
           onClick={handleNotifPanelClick}
@@ -860,9 +910,25 @@ const SwitchableAccountItem: React.FC<{
   onSwitch: (accountId: string, name: string) => void;
   onRemove: (authId: string, name: string, acct: string) => void;
   canRemove: boolean;
-}> = ({ authId, accountId, rootAccountId, onSwitch, onRemove, canRemove }) => {
+  sessionAuthorized: boolean;
+  sessionApprovalPending: boolean;
+  checkingApproval: boolean;
+  onAuthorize: (accountId: string) => void;
+  onCheckApproval: (accountId: string) => void;
+}> = ({
+  authId,
+  accountId,
+  rootAccountId,
+  onSwitch,
+  onRemove,
+  canRemove,
+  sessionAuthorized,
+  sessionApprovalPending,
+  checkingApproval,
+  onAuthorize,
+  onCheckApproval,
+}) => {
   const intl = useIntl();
-  const dispatch = useAppDispatch();
   const account = useAppSelector((state) => state.accounts.get(accountId));
   const unreadCount = useAppSelector(
     (state) =>
@@ -884,9 +950,10 @@ const SwitchableAccountItem: React.FC<{
   const [inAppEnabled, setInAppEnabled] = useState(() => {
     return getLinkedNotifPrefs(rootAccountId)[accountId]?.inApp ?? false;
   });
-  const [pushEnabled, setPushEnabled] = useState(() => {
-    return getLinkedNotifPrefs(rootAccountId)[accountId]?.push ?? false;
-  });
+  const [pushEnabled, handlePushChange] = useLinkedPushToggle(
+    rootAccountId,
+    accountId,
+  );
 
   const handleToggleNotifSettings = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -918,29 +985,6 @@ const SwitchableAccountItem: React.FC<{
     [accountId, rootAccountId],
   );
 
-  const handlePushChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      const checked = e.target.checked;
-      setPushEnabled(checked);
-      const current = getLinkedNotifPrefs(rootAccountId)[accountId] ?? {
-        inApp: false,
-        push: false,
-      };
-      setLinkedNotifPref(rootAccountId, accountId, {
-        ...current,
-        push: checked,
-      });
-
-      if (checked) {
-        void dispatch(enableLinkedPushForward({ linkedAccountId: accountId }));
-      } else {
-        void dispatch(disableLinkedPushForward({ linkedAccountId: accountId }));
-      }
-    },
-    [accountId, rootAccountId, dispatch],
-  );
-
   const handleSwitch = useCallback(() => {
     onSwitch(accountId, displayName);
   }, [accountId, displayName, onSwitch]);
@@ -960,6 +1004,14 @@ const SwitchableAccountItem: React.FC<{
     [authId, displayName, acctHandle, onRemove],
   );
 
+  const handleAuthorize = useCallback(() => {
+    onAuthorize(accountId);
+  }, [accountId, onAuthorize]);
+
+  const handleCheckApproval = useCallback(() => {
+    onCheckApproval(accountId);
+  }, [accountId, onCheckApproval]);
+
   if (!account) return null;
 
   return (
@@ -967,77 +1019,114 @@ const SwitchableAccountItem: React.FC<{
       className={classNames(
         'account-switcher-modal__item',
         'account-switcher-modal__item--switchable',
-        { 'account-switcher-modal__item--notif-open': showNotifSettings },
+        {
+          'account-switcher-modal__item--notif-open': showNotifSettings,
+          'account-switcher-modal__item--authorization-required':
+            !sessionAuthorized,
+        },
       )}
     >
-      <div
-        className='account-switcher-modal__item__row'
-        onClick={handleSwitch}
-        onKeyDown={handleKeyDown}
-        role='button'
-        tabIndex={0}
-        title={intl.formatMessage(messages.switchTo, { name: displayName })}
-      >
-        <div className='account-switcher-modal__item__avatar'>
-          <Avatar account={account} size={36} />
-          {unreadCount > 0 && (
-            <span className='account-switcher-modal__unread-badge'>
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
-        </div>
-        <div className='account-switcher-modal__item__info'>
-          <DisplayName account={account} />
-        </div>
-        <div className='account-switcher-modal__item__actions'>
-          <button
-            className={classNames('account-switcher-modal__notif-button', {
-              active: inAppEnabled || pushEnabled,
-              open: showNotifSettings,
-            })}
-            onClick={handleToggleNotifSettings}
-            type='button'
-            title={intl.formatMessage(messages.notifications)}
-            aria-expanded={showNotifSettings}
-          >
-            <Icon id='notifications' icon={NotificationsIcon} />
-          </button>
-
-          {canRemove && (
-            <button
-              className='account-switcher-modal__remove-button'
-              onClick={handleRemove}
-              type='button'
-              title={intl.formatMessage(messages.removeAccount)}
-            >
-              <Icon id='person-remove' icon={PersonRemoveIcon} />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {showNotifSettings && (
-        /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
+      <div inert={!sessionAuthorized}>
         <div
-          onClick={handleNotifPanelClick}
-          onKeyDown={handleNotifPanelKeyDown}
+          className='account-switcher-modal__item__row'
+          onClick={handleSwitch}
+          onKeyDown={handleKeyDown}
+          role='button'
+          tabIndex={0}
+          title={intl.formatMessage(messages.switchTo, { name: displayName })}
         >
-          <div
-            className='account-switcher-modal__notif-settings'
-            role='group'
-            aria-label={intl.formatMessage(messages.notifications)}
-          >
-            <label className='account-switcher-modal__notif-label'>
-              <Toggle checked={inAppEnabled} onChange={handleInAppChange} />
-              <span>{intl.formatMessage(messages.receiveNotifications)}</span>
-            </label>
-            <label className='account-switcher-modal__notif-label'>
-              <Toggle checked={pushEnabled} onChange={handlePushChange} />
-              <span>
-                {intl.formatMessage(messages.receivePushNotifications)}
+          <div className='account-switcher-modal__item__avatar'>
+            <Avatar account={account} size={36} />
+            <ServerLinkedAccountBadge />
+            {unreadCount > 0 && (
+              <span className='account-switcher-modal__unread-badge'>
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
-            </label>
+            )}
           </div>
+          <div className='account-switcher-modal__item__info'>
+            <DisplayName account={account} />
+          </div>
+          <div className='account-switcher-modal__item__actions'>
+            <button
+              className={classNames('account-switcher-modal__notif-button', {
+                active: inAppEnabled || pushEnabled,
+                open: showNotifSettings,
+              })}
+              onClick={handleToggleNotifSettings}
+              type='button'
+              title={intl.formatMessage(messages.notifications)}
+              aria-expanded={showNotifSettings}
+            >
+              <Icon id='notifications' icon={NotificationsIcon} />
+            </button>
+
+            {canRemove && (
+              <button
+                className='account-switcher-modal__remove-button'
+                onClick={handleRemove}
+                type='button'
+                title={intl.formatMessage(messages.removeAccount)}
+              >
+                <Icon id='person-remove' icon={PersonRemoveIcon} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {showNotifSettings && (
+          /* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event propagation boundary only */
+          <div
+            onClick={handleNotifPanelClick}
+            onKeyDown={handleNotifPanelKeyDown}
+          >
+            <div
+              className='account-switcher-modal__notif-settings'
+              role='group'
+              aria-label={intl.formatMessage(messages.notifications)}
+            >
+              <label className='account-switcher-modal__notif-label'>
+                <Toggle checked={inAppEnabled} onChange={handleInAppChange} />
+                <span>{intl.formatMessage(messages.receiveNotifications)}</span>
+              </label>
+              <label className='account-switcher-modal__notif-label'>
+                <Toggle checked={pushEnabled} onChange={handlePushChange} />
+                <span>
+                  {intl.formatMessage(messages.receivePushNotifications)}
+                </span>
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
+      {!sessionAuthorized && (
+        <div className='account-switcher-modal__authorization-overlay'>
+          <Icon id='vpn-key' icon={VpnKeyIcon} />
+          <span>
+            {sessionApprovalPending
+              ? intl.formatMessage(messages.approvalPending, {
+                  name: displayName,
+                })
+              : intl.formatMessage(messages.authorizeSession, {
+                  name: displayName,
+                })}
+          </span>
+          <span className='account-switcher-modal__authorization-actions'>
+            <button onClick={handleAuthorize} type='button'>
+              {intl.formatMessage(messages.signInToAuthorize)}
+            </button>
+            {sessionApprovalPending && (
+              <button
+                disabled={checkingApproval}
+                onClick={handleCheckApproval}
+                type='button'
+              >
+                {checkingApproval
+                  ? '…'
+                  : intl.formatMessage(messages.checkApproval)}
+              </button>
+            )}
+          </span>
         </div>
       )}
     </div>

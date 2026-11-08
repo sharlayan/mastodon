@@ -11,9 +11,11 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   before_action :require_user_if_authenticated!, only: [:index, :notes, :reactions, :featured_notes, :pinned_users]
 
   def index
+    return if (offset = offset_param).nil?
+
     scope = apply_user_origin(Account.discoverable.without_suspended)
     scope = scope.where(domain: normalized_hostname) if normalized_hostname
-    accounts = apply_user_sort(scope).limit(pagination_limit).offset(params[:offset].to_i).to_a
+    accounts = apply_user_sort(scope).limit(pagination_limit).offset(offset).to_a
     render json: serialize_detailed_accounts(accounts, viewer: current_account)
   end
 
@@ -33,17 +35,17 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     query = params[:query].to_s.strip
     return render json: [] if query.blank?
     return if rate_limited?(:misskey_compat_api)
+    return if (offset = offset_param).nil?
 
     accounts = AccountSearchService.new.call(
       query,
       current_account,
       limit: pagination_limit,
-      offset: params[:offset].to_i,
+      offset: offset,
       resolve: false
     )
 
-    detailed = ActiveModel::Type::Boolean.new.cast(params[:detail])
-    render json: detailed ? serialize_detailed_accounts(accounts) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
+    render json: detailed_param? ? serialize_detailed_accounts(accounts, viewer: current_account) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
   end
 
   def search_by_username_and_host
@@ -51,12 +53,11 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     host = params[:host].to_s.strip.delete_prefix('@').presence
     return render json: [] if username.blank? && host.blank?
 
-    scope = Account.without_suspended
+    scope = Account.without_unapproved.without_suspended.without_instance_actor
     scope = scope.where('lower(accounts.username) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(username.downcase)}%") if username.present?
     scope = apply_host_filter(scope, host) if params.key?(:host)
     accounts = scope.limit(pagination_limit).to_a
-    detailed = ActiveModel::Type::Boolean.new.cast(params[:detail])
-    render json: detailed ? serialize_detailed_accounts(accounts, viewer: current_account) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
+    render json: detailed_param? ? serialize_detailed_accounts(accounts, viewer: current_account) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
   end
 
   def update_memo
@@ -131,7 +132,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
       .joins(:status_stat)
       .where('status_stats.reblogs_count + status_stats.favourites_count > 0')
       .order(id: :desc)
-    scope = scope.not_excluded_by_account(current_account) if current_account
+    scope = current_account ? scope.not_excluded_by_account(current_account) : scope.not_local_only
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('statuses.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     statuses = scope.limit(pagination_limit).to_a
@@ -192,9 +193,19 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def apply_host_filter(scope, host)
-    return scope.where(domain: nil) if host.blank? || host.casecmp?(Rails.configuration.x.local_domain)
+    return scope.where(domain: nil) if local_host?(host)
 
     scope.where('lower(accounts.domain) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(host.downcase)}%")
+  end
+
+  def detailed_param?
+    return true unless params.key?(:detail)
+
+    ActiveModel::Type::Boolean.new.cast(params[:detail])
+  end
+
+  def local_host?(host)
+    host.blank? || host == '.' || host.casecmp?(Rails.configuration.x.local_domain)
   end
 
   def normalized_hostname

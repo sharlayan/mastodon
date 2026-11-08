@@ -13,12 +13,11 @@ class Web::LinkedPushNotificationWorker
     @main_user    = User.find_by(id: main_user_id)
     @notification = Notification.find_by(id: notification_id)
 
-    return unless @main_user && @notification
+    return unless @main_user&.functional? && @notification
     return if @notification.updated_at < TTL.ago
     return if @notification.activity.blank?
 
-    subscriptions = Web::PushSubscription.where(user_id: @main_user.id)
-    subscriptions.each do |subscription|
+    trusted_subscriptions.each do |subscription|
       send_push_for(subscription)
     rescue => e
       Rails.logger.warn { "LinkedPushNotificationWorker failed for subscription #{subscription.id}: #{e.message}" }
@@ -28,6 +27,14 @@ class Web::LinkedPushNotificationWorker
   end
 
   private
+
+  def trusted_subscriptions
+    trusted_sessions = SessionActivation.where(user_id: @main_user.id)
+      .where(id: AccountSwitchDevice.trusted.where(account_id: @notification.account_id).select(:session_activation_id))
+
+    Web::PushSubscription.where(user_id: @main_user.id, access_token_id: trusted_sessions.select(:access_token_id))
+      .select { |subscription| subscription.pushable?(@notification) }
+  end
 
   def send_push_for(subscription)
     web_push_request = WebPushRequest.new(subscription)

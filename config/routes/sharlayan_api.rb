@@ -56,6 +56,39 @@ namespace :api, format: false do
       end
     end
 
+    namespace :chat do
+      resource :settings, only: [:show, :update], controller: :settings
+      resources :conversations, only: [:index, :show, :create, :update, :destroy] do
+        member do
+          post :read
+          delete :leave
+          delete 'members/:account_id', action: :kick
+          post :mute
+          post :unmute
+          post :archive
+          post :unarchive
+        end
+
+        resources :messages, only: [:index, :create]
+        resources :invitations, only: :create
+      end
+
+      resources :messages, only: [:show, :update, :destroy] do
+        collection do
+          get :search
+        end
+      end
+      post 'messages/:message_id/reactions', to: 'reactions#create'
+      delete 'messages/:message_id/reactions/:reaction', to: 'reactions#destroy', constraints: { reaction: %r{[^/]+} }
+
+      resources :invitations, only: [:index, :destroy] do
+        member do
+          post :accept
+          post :reject
+        end
+      end
+    end
+
     namespace :drive do
       resources :files, only: [:index, :show, :create, :update, :destroy] do
         member do
@@ -236,6 +269,7 @@ namespace :api, format: false do
     post 'notes/hybrid-timeline', to: 'notes#hybrid_timeline'
     post 'notes/global-timeline', to: 'notes#global_timeline'
     post 'notes/show', to: 'notes#show'
+    post 'notes/show-partial-bulk', to: 'notes#show_partial_bulk'
     post 'notes/update', to: 'notes#update'
     post 'notes/scheduled/list', to: 'notes#scheduled_list'
     post 'notes/scheduled/cancel', to: 'notes#scheduled_cancel'
@@ -259,6 +293,7 @@ namespace :api, format: false do
 
     post 'drive/files/create', to: 'drive#create'
     post 'drive/files/attached-notes', to: 'drive#attached_notes'
+    post 'drive/files/attached-chat-messages', to: 'drive#attached_chat_messages'
     post 'drive', to: 'drive#overview'
     post 'drive/stream', to: 'drive#stream'
     post 'drive/files', to: 'drive#index'
@@ -382,31 +417,35 @@ namespace :api, format: false do
     post 'pages/update', to: 'pages#update'
     post 'pages/delete', to: 'pages#destroy'
 
-    post 'chat/history', to: 'chat#empty'
-    post 'chat/read-all', to: 'chat#noop'
-    post 'chat/messages/user-timeline', to: 'chat#empty'
-    post 'chat/messages/room-timeline', to: 'chat#empty'
-    post 'chat/messages/show', to: 'chat#noop'
-    post 'chat/messages/create-to-room', to: 'chat#noop'
-    post 'chat/messages/create-to-user', to: 'chat#noop'
-    post 'chat/messages/delete', to: 'stub#no_content'
-    post 'chat/messages/react', to: 'stub#no_content'
-    post 'chat/messages/search', to: 'chat#empty'
-    post 'chat/messages/unreact', to: 'stub#no_content'
-    post 'chat/rooms/create', to: 'chat#noop'
-    post 'chat/rooms/owned', to: 'chat#empty'
-    post 'chat/rooms/joining', to: 'chat#empty'
-    post 'chat/rooms/members', to: 'chat#empty'
-    post 'chat/rooms/show', to: 'chat#noop'
-    post 'chat/rooms/update', to: 'chat#noop'
-    post 'chat/rooms/delete', to: 'chat#noop'
-    post 'chat/rooms/mute', to: 'chat#noop'
-    post 'chat/rooms/leave', to: 'chat#noop'
-    post 'chat/rooms/join', to: 'chat#noop'
-    post 'chat/rooms/invitations/inbox', to: 'chat#empty'
-    post 'chat/rooms/invitations/outbox', to: 'chat#empty'
-    post 'chat/rooms/invitations/create', to: 'chat#noop'
-    post 'chat/rooms/invitations/ignore', to: 'chat#noop'
+    post 'chat/history', to: 'chat#history'
+    post 'chat/read-all', to: 'chat#read_all'
+    post 'chat/messages/user-timeline', to: 'chat#user_timeline'
+    post 'chat/messages/room-timeline', to: 'chat#room_timeline'
+    post 'chat/messages/show', to: 'chat#show'
+    post 'chat/messages/create-to-room', to: 'chat#create_to_room'
+    post 'chat/messages/create-to-user', to: 'chat#create_to_user'
+    post 'chat/messages/update', to: 'chat#update'
+    post 'chat/messages/delete', to: 'chat#destroy'
+    post 'chat/messages/react', to: 'chat#react'
+    post 'chat/messages/search', to: 'chat#search'
+    post 'chat/messages/unreact', to: 'chat#unreact'
+    post 'chat/rooms/create', to: 'chat#create_room'
+    post 'chat/rooms/owned', to: 'chat#owned_rooms'
+    post 'chat/rooms/joining', to: 'chat#joining_rooms'
+    post 'chat/rooms/members', to: 'chat#room_members'
+    post 'chat/rooms/show', to: 'chat#show_room'
+    post 'chat/rooms/update', to: 'chat#update_room'
+    post 'chat/rooms/delete', to: 'chat#destroy_room'
+    post 'chat/rooms/mute', to: 'chat#mute_room'
+    post 'chat/rooms/leave', to: 'chat#leave_room'
+    post 'chat/rooms/kick', to: 'chat#kick_member'
+    post 'chat/rooms/join', to: 'chat#join_room'
+    post 'chat/rooms/invitations/inbox', to: 'chat#invitations_inbox'
+    post 'chat/rooms/invitations/outbox', to: 'chat#invitations_outbox'
+    post 'chat/rooms/invitations/create', to: 'chat#create_invitation'
+    post 'chat/rooms/invitations/ignore', to: 'chat#ignore_invitation'
+    post 'chat/rooms/invitations/reject', to: 'chat#reject_invitation'
+    post 'chat/rooms/invitations/cancel', to: 'chat#cancel_invitation'
 
     post 'flash/my', to: 'stub#unsupported'
     post 'flash/featured', to: 'stub#unsupported'
@@ -471,19 +510,19 @@ namespace :api, format: false do
     post 'reversi/verify', to: 'stub#unsupported'
     post 'i/change-password', to: 'stub#unsupported'
     post 'i/update-email', to: 'stub#unsupported'
-    post 'i/export-antennas', to: 'stub#no_content'
-    post 'i/export-blocking', to: 'stub#no_content'
-    post 'i/export-clips', to: 'stub#no_content'
-    post 'i/export-favorites', to: 'stub#no_content'
-    post 'i/export-following', to: 'stub#no_content'
-    post 'i/export-mute', to: 'stub#no_content'
-    post 'i/export-notes', to: 'stub#no_content'
-    post 'i/export-user-lists', to: 'stub#no_content'
-    post 'i/import-antennas', to: 'stub#no_content'
-    post 'i/import-blocking', to: 'stub#no_content'
-    post 'i/import-following', to: 'stub#no_content'
-    post 'i/import-muting', to: 'stub#no_content'
-    post 'i/import-user-lists', to: 'stub#no_content'
+    post 'i/export-antennas', to: 'stub#unsupported'
+    post 'i/export-blocking', to: 'account_data#export_blocking'
+    post 'i/export-clips', to: 'account_data#export_clips'
+    post 'i/export-favorites', to: 'stub#unsupported'
+    post 'i/export-following', to: 'account_data#export_following'
+    post 'i/export-mute', to: 'account_data#export_mute'
+    post 'i/export-notes', to: 'account_data#export_notes'
+    post 'i/export-user-lists', to: 'account_data#export_user_lists'
+    post 'i/import-antennas', to: 'stub#unsupported'
+    post 'i/import-blocking', to: 'account_data#import_blocking'
+    post 'i/import-following', to: 'account_data#import_following'
+    post 'i/import-muting', to: 'account_data#import_muting'
+    post 'i/import-user-lists', to: 'account_data#import_user_lists'
     post 'i/claim-achievement', to: 'stub#no_content'
     match 'users/achievements', to: 'stub#empty', via: [:get, :post]
     post 'invite/create', to: 'stub#noop'

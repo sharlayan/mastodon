@@ -30,6 +30,7 @@ module Sharlayan::InitialStateSerializerExtensions
       pages_drive_only: Setting.pages_drive_only,
       antenna_enabled: Setting.antenna_enabled,
       drive_enabled: Setting.drive_enabled,
+      chat_enabled: Setting.chat_enabled,
       board_announcements_enabled: Setting.board_announcements_enabled,
       avatar_decorations_enabled: Setting.avatar_decorations_enabled,
       avatar_decorations_federation_enabled: Setting.avatar_decorations_federation_enabled,

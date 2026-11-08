@@ -1,5 +1,8 @@
 ---
 ja:
+  chat:
+    errors:
+      media_in_use: チャットメッセージに添付されたメディアは投稿に使用できません。
   roleplay_reset:
     apply_hint: ロールプレイ強制設定を削除するには、--apply を付けてもう一度実行してください。
     disable_first: このコマンドを実行する前に OC_ROLEPLAY_OPTION を無効にして再起動してください。
@@ -67,6 +70,7 @@ ja:
       unblocked_avatar_decorations_msg: "%{username}のアバターデコレーションのブロックを解除しました"
     action_logs:
       actions:
+        destroy_chat_conversation_html: "%{name} さんがチャットの会話 %{target} を削除しました"
         update_collection_html: "%{name} さんが %{target} によるコレクションを更新しました"
     avatar_decoration_domain_blocks:
       added_at: 追加日
@@ -220,6 +224,29 @@ ja:
       size: サイズ
       status: 状態
       title: ドライブファイル
+    chat:
+      all: すべて
+      attachments: 添付
+      close_copy: このサーバーのコピーを閉じる
+      close_copy_confirm: このサーバーにあるルームのコピーとメッセージを削除しますか？ルームは所有サーバーで引き続き存在し、ローカルの参加者はルームから退出します。
+      conversation: 'チャット #%{id}'
+      deleted_message: 削除されたメッセージ
+      hidden_message: 送信者が非表示
+      destroy: 会話を削除
+      destroy_confirm: この会話とすべてのメッセージを完全に削除しますか？
+      direct: ダイレクト
+      filter: フィルター
+      group: グループ
+      inspect: 確認
+      last_activity: 最終アクティビティ
+      message: メッセージ
+      participants: 参加者
+      previous_versions: 以前の内容
+      remote_copy_hint: 'このルームは %{domain} に属しています。このサーバーはローカルの参加者のためのコピーのみを保持しています。'
+      sender: 送信者
+      sent_at: 送信日時
+      title: チャット会話
+      type: 種類
     instances:
       content_policies:
         policies:
@@ -255,7 +282,7 @@ ja:
         bypass_rate_limit_description: サーバー設定でAPIレート制限のバイパスが有効な場合、この権限を持つユーザーはAPIレート制限を受けません
         view_admin_timeline: 管理タイムラインの閲覧
         view_admin_timeline_description: >-
-          コミュニティ（ロールプレイ）モードで、この権限を持つユーザーは管理タイムラインを閲覧できます。ただしオーナー（最高管理者）アカウントが参加しているダイレクトの会話は、閲覧者がオーナーでない限り非表示になります。公開範囲が限定された投稿は、連合していない(ローカル限定)場合のみ一覧に表示されます。
+          コミュニティ（ロールプレイ）モードで、この権限を持つユーザーは管理タイムラインを閲覧できます。ただしオーナー（最高管理者）アカウントが参加しているダイレクトの会話は、閲覧者がオーナーでない限り非表示になります。公開範囲が限定された投稿は、連合していない(ローカル限定)場合のみ一覧に表示されます。ローカルアカウント間のチャットも閲覧できます。
         view_followers_admin_timeline: フォロワーの投稿の閲覧制限を解除
         view_followers_admin_timeline_description: >-
           コミュニティ（ロールプレイ）モードで、自分をフォローしているローカルアカウントの管理タイムライン対象投稿を公開範囲にかかわらず閲覧できます。オーナー（最高管理者）アカウントが参加しているダイレクトの会話は非表示になります。
@@ -345,6 +372,21 @@ ja:
         enabled: クリップ機能を有効にする
         enabled_hint: ユーザーがクリップを作成し、投稿を名前付きのコレクションにまとめられるようにします。無効にすると既存のクリップは保持されますが、アクセスできなくなります。
         title: クリップ
+      chat:
+        delete_window_hours: メッセージを削除できる時間
+        delete_window_hours_hint: この時間内は送信者が全員からメッセージを削除できます。経過後の削除は送信者本人からのみ非表示にします。最初から全員から削除できなくするには0を設定してください。
+        enabled: ネイティブチャットを有効にする
+        enabled_hint: ローカルアカウントが投稿とは独立したリアルタイムチャットを利用できるようにします。無効にしても既存データは保持されます。
+        federation_enabled: 他のサーバーとチャットを連合する
+        federation_enabled_hint: ローカルアカウントが他のサーバーのアカウントとチャットできるようにします。無効にすると、他のサーバーからのチャットのアクティビティを無視し、既存のリモートの会話も利用できなくなります。
+        max_attachments: メッセージあたりの添付上限
+        max_attachments_hint: 1つのチャットメッセージに添付できるメディアを0～4件に制限します。
+        max_group_members: グループの最大人数
+        max_group_members_hint: オーナーを含むグループチャットの人数を2～200人に制限します。
+        soft_delete_enabled: 削除されたチャットをすべて保持する
+        soft_delete_enabled_hint: 他の参加者からメッセージを削除しません。削除操作は送信者本人からのみ非表示にし、参加者と権限を持つ管理者のために保持します。
+        soft_delete_roleplay_hint: OCロールプレイモードでは、権限を持つオーナーがローカルチャットを監査できるよう常に有効になります。
+        title: チャット
       community_mode:
         soft_hide_deletion: 削除された投稿をオーナーのために保存する
         soft_hide_deletion_hint: 投稿を削除するとき、実際には破棄せず非表示にします。非表示になった投稿と添付メディアはすべてのタイムライン・検索インデックス・公開ページから消え、オーナーだけが管理タイムラインで閲覧できます。非表示の投稿をもう一度削除すると、復元できないように完全に削除されます。
@@ -473,6 +515,8 @@ ja:
     errors:
       limit: カスタム絵文字ミュートの上限数に達しています
   exports:
+    chat: チャット
+    chat_in_archive: アーカイブに含まれます
     clips: クリップ
     json: JSON
     pages: ページ
@@ -516,8 +560,6 @@ ja:
   multi_accounts:
     auth:
       add_account: アカウントを追加
-      authorization_complete: 認証が完了しました。このウィンドウを閉じてください。
-      completing_authorization: 認証を完了しています...
       reauthenticate_account: アカウントを再認証
       reauthentication_account_mismatch: 再認証する連携アカウントでログインしてください。
       reauthentication_hint: このセッションで連携アカウントを使用するため、もう一度ログインしてください。

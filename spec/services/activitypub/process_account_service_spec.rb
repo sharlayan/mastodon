@@ -152,6 +152,39 @@ RSpec.describe ActivityPub::ProcessAccountService do
     end
   end
 
+  context 'with Misskey avatar decorations' do
+    let(:payload) do
+      {
+        'id' => 'https://foo.test',
+        'type' => 'Actor',
+        'preferredUsername' => 'alice',
+        'inbox' => 'https://foo.test/inbox',
+        '_misskey_avatarDecorations' => [{ 'id' => 'deco1', 'url' => 'https://foo.test/deco-new.png', 'angle' => true, 'offsetX' => [1] }],
+      }
+    end
+
+    before do
+      stub_webfinger!
+      Setting.avatar_decorations_enabled = true
+      Setting.avatar_decorations_federation_enabled = true
+    end
+
+    it 'falls back to default placement for non-numeric values' do
+      account = subject.call(payload)
+
+      expect(account.avatar_decorations.first).to include('angle' => 0.0, 'offset_x' => 0.0)
+    end
+
+    it 'drops the stored image when the decoration image URL changes' do
+      decoration = AvatarDecoration.create!(host: 'foo.test', remote_id: 'deco1', name: 'deco1', approved: true, image_remote_url: 'https://foo.test/deco-old.png', image: attachment_fixture('emojo.png'))
+
+      subject.call(payload)
+
+      expect(decoration.reload.image_remote_url).to eq('https://foo.test/deco-new.png')
+      expect(decoration.image_file_name).to be_blank
+    end
+  end
+
   context 'with remote actor activity metadata' do
     let(:outbox_url) { 'https://foo.test/outbox' }
     let(:published_at) { '2026-09-25T12:00:00Z' }

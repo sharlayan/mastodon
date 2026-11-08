@@ -19,6 +19,7 @@ class Api::V1::Accounts::ClipsController < Api::V1::Accounts::BaseController
 
   def load_clips
     return [] if @account.unavailable?
+    return [] if current_account && !owner? && @account.blocking?(current_account)
 
     scope = @account.clips.order(id: :desc)
     scope = scope.public_clips unless owner?

@@ -7,6 +7,7 @@ class ReactService < BaseService
   include ActivityPub::ReactionDistribution
 
   def call(account, status, emoji)
+    status = status.proper
     authorize_with account, status, :react?
 
     return if emoji.blank?
@@ -31,7 +32,10 @@ class ReactService < BaseService
     reaction = StatusReaction.find_by(account: account, status: status, name: name, custom_emoji: custom_emoji)
     return reaction if reaction
 
-    evict_existing_reactions(account, status)
+    evictable = evictable_reactions(account, status)
+    validate_before_eviction!(StatusReaction.new(account: account, status: status, name: name, custom_emoji: custom_emoji), evictable)
+
+    evict_reactions(account, status, evictable)
 
     begin
       reaction = StatusReaction.create!(account: account, status: status, name: name, custom_emoji: custom_emoji)
@@ -51,16 +55,27 @@ class ReactService < BaseService
 
   private
 
-  def evict_existing_reactions(account, status)
-    return unless account.local?
+  def validate_before_eviction!(reaction, evictable)
+    return if reaction.valid?
 
-    target = status.reblog? ? status.reblog : status
-    existing = StatusReaction.where(account: account, status: target).order(id: :asc).to_a
+    reaction.errors.delete(:base, :limit_reached)
+    reaction.errors.delete(:status_id, :taken) if evictable.any? { |existing| existing.name == reaction.name }
+    raise ActiveRecord::RecordInvalid, reaction if reaction.errors.any?
+  end
+
+  def evictable_reactions(account, status)
+    return [] unless account.local?
+
+    existing = StatusReaction.where(account: account, status: status).order(id: :asc).to_a
     overflow = existing.size + 1 - StatusReactionValidator::LIMIT
-    return if overflow <= 0
+    return [] if overflow <= 0
 
-    existing.first(overflow).each do |reaction|
-      UnreactService.new.call(account, target, reaction_emoji_string(reaction))
+    existing.first(overflow)
+  end
+
+  def evict_reactions(account, status, reactions)
+    reactions.each do |reaction|
+      UnreactService.new.call(account, status, reaction_emoji_string(reaction))
     end
   end
 

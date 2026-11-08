@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Auth::OmniauthCallbacksController < Devise::OmniauthCallbacksController
+  include Sharlayan::AccountSwitchDeviceConcern
+
   skip_before_action :check_self_destruct!
   skip_before_action :verify_authenticity_token
 
@@ -36,6 +38,12 @@ class Auth::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   end
 
   private
+
+  def sign_in_and_redirect(resource, *)
+    clear_account_switch_browser_state
+    trust_account_switch_device(resource.account)
+    super
+  end
 
   def record_login_activity
     @user.login_activities.create(

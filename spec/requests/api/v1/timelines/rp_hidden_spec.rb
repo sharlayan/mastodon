@@ -28,6 +28,16 @@ RSpec.describe 'API V1 RP hidden timeline' do
     expect(response.parsed_body).to contain_exactly(include(id: status.id.to_s, rp_hidden: true))
   end
 
+  it 'skips hidden statuses of suspended authors instead of failing the page' do
+    suspended_status = Fabricate(:status, account: Fabricate(:account, suspended: true))
+    RpHiddenStatus.create!(status: suspended_status)
+
+    get '/api/v1/timelines/rp_hidden', headers: headers
+
+    expect(response).to have_http_status(200)
+    expect(response.parsed_body.pluck(:id)).to contain_exactly(status.id.to_s)
+  end
+
   it 'does not return hidden statuses to a non-owner administrator' do
     admin = Fabricate(:user, role: UserRole.find_by(name: 'Admin'))
     admin_token = Fabricate(:accessible_access_token, resource_owner_id: admin.id, scopes: 'read:statuses')

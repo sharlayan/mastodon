@@ -49,6 +49,19 @@ class MisskeyCompat::SerializationContext
     self
   end
 
+  def prime_reactions(statuses)
+    status_ids = statuses.map(&:id).uniq
+    return self if status_ids.empty?
+
+    @reaction_map = Hash.new { |hash, key| hash[key] = [] }
+
+    grouped_reactions(status_ids).each do |record|
+      @reaction_map[record.status_id] << record
+    end
+
+    self
+  end
+
   def prime_relations(statuses)
     return self if @current_account.nil?
 
@@ -127,17 +140,6 @@ class MisskeyCompat::SerializationContext
     end
 
     related.uniq(&:object_id)
-  end
-
-  def prime_reactions(statuses)
-    status_ids = statuses.map(&:id).uniq
-    return if status_ids.empty?
-
-    @reaction_map = Hash.new { |hash, key| hash[key] = [] }
-
-    grouped_reactions(status_ids).each do |record|
-      @reaction_map[record.status_id] << record
-    end
   end
 
   def grouped_reactions(status_ids)

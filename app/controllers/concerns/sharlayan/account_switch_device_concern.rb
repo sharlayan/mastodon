@@ -30,7 +30,13 @@ module Sharlayan::AccountSwitchDeviceConcern
     OpenSSL::HMAC.hexdigest('SHA256', key, account_switch_device_token)
   end
 
-  def find_or_record_account_switch_device(account, trust: false)
+  def find_or_record_account_switch_device(account, trust: false, restore: false)
+    record_account_switch_device(account, trust:, restore:)
+  rescue ActiveRecord::RecordNotUnique
+    record_account_switch_device(account, trust:, restore:)
+  end
+
+  def record_account_switch_device(account, trust:, restore:)
     now = Time.current
     device = AccountSwitchDevice.find_or_initialize_by(account:, token_digest: account_switch_device_digest)
     prune_untrusted_account_switch_devices(account, except: device) if device.new_record?
@@ -46,8 +52,12 @@ module Sharlayan::AccountSwitchDeviceConcern
       device.user_agent = user_agent
       device.session_activation = session_activation if session_activation
     end
-    device.trusted_at ||= now if trust
-    device.revoked_at = nil if trust
+    if restore
+      device.trusted_at ||= now
+      device.revoked_at = nil
+    elsif trust && device.revoked_at.nil?
+      device.trusted_at ||= now
+    end
     device.save! if device.changed?
     device
   end
@@ -60,7 +70,7 @@ module Sharlayan::AccountSwitchDeviceConcern
   end
 
   def trust_account_switch_device(account)
-    device = find_or_record_account_switch_device(account, trust: true)
+    device = find_or_record_account_switch_device(account, restore: true)
     AccountSwitchDeviceApproval.pending.where(account_switch_device: device).delete_all
     device
   end
@@ -68,6 +78,11 @@ module Sharlayan::AccountSwitchDeviceConcern
   def bind_account_switch_device_to_current_session(device)
     session_activation = SessionActivation.find_by(session_id: cookies.signed['_session_id'])
     device.update!(session_activation:) if session_activation
+  end
+
+  def clear_account_switch_browser_state
+    clear_switch_parent_stack
+    cookies.delete(LEGACY_COOKIE)
   end
 
   def legacy_account_switch_session?

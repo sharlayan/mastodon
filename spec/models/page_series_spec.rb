@@ -6,6 +6,14 @@ RSpec.describe PageSeries do
   let(:account) { Fabricate(:account) }
   let(:series) { Fabricate(:page_series, account: account) }
 
+  def chat_media_attachment(owner)
+    room = ChatConversation.create!(conversation_type: :group, title: 'Room', owner_account: owner)
+    room.memberships.create!(account: owner, role: :owner)
+    Fabricate(:media_attachment, account: owner, status: nil).tap do |media|
+      room.messages.create!(account: owner, text: 'sent').media_attachments << media
+    end
+  end
+
   it 'generates an ID when persisted without one' do
     expect(described_class.create!(account: account, title: 'Generated ID')).to be_persisted
   end
@@ -52,6 +60,11 @@ RSpec.describe PageSeries do
 
     expect(series.update(cover_media_attachment: own_cover)).to be true
     expect(series.update(cover_media_attachment: other_cover)).to be false
+    expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true
+  end
+
+  it 'rejects cover media sent in a chat message' do
+    expect(series.update(cover_media_attachment: chat_media_attachment(account))).to be false
     expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true
   end
 

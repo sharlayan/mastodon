@@ -57,6 +57,19 @@ RSpec.describe 'Domain mutes' do
       expect(user.account.domain_mutes.exists?(domain: params[:domain])).to be(true)
     end
 
+    context 'when the domain is already muted in another case' do
+      let(:params) { { domain: 'Example.COM', hide_from_home: true } }
+
+      before { user.account.mute_domain!('example.com') }
+
+      it 'updates the existing domain mute' do
+        subject
+
+        expect(response).to have_http_status(200)
+        expect(user.account.domain_mutes.sole).to have_attributes(domain: 'example.com', hide_from_home: true)
+      end
+    end
+
     context 'with hide_from_home param' do
       let(:params) { { domain: 'example.com', hide_from_home: true } }
 

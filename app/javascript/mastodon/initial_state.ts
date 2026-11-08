@@ -58,6 +58,7 @@ interface InitialStateMeta {
   terms_of_service_enabled: boolean;
   emoji_style?: string;
   custom_emoji_size: boolean;
+  server_stored_account_switching_enabled?: boolean;
   wrapstodon?: InitialStateWrapstodon | null;
   roleplay_mode?: boolean;
 }
@@ -169,6 +170,8 @@ export const termsOfServiceEnabled = getMeta('terms_of_service_enabled');
 export const customEmojiSize = getMeta('custom_emoji_size');
 export const wrapstodon = getMeta('wrapstodon');
 export const roleplayMode = getMeta('roleplay_mode');
+export const serverStoredAccountSwitchingEnabled =
+  getMeta('server_stored_account_switching_enabled') !== false;
 
 const displayNames =
   // Intl.DisplayNames can be undefined in old browsers

@@ -32,6 +32,7 @@ class AttachmentBatch
 
   def delete
     remove_files
+    StatusReaction.where(custom_emoji_id: records.map(&:id)).find_each(&:destroy) if klass == CustomEmoji
     batch.delete_all
   end
 

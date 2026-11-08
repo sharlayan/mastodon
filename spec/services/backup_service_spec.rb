@@ -23,6 +23,33 @@ RSpec.describe BackupService do
     end
   end
 
+  context 'when the user has chats' do
+    let!(:message) do
+      other = Fabricate(:account)
+      conversation = ChatConversation.create!(conversation_type: :direct, direct_key: [user.account_id, other.id].sort.join(':'))
+      conversation.memberships.create!([{ account: user.account }, { account: other }])
+      conversation.messages.create!(account: user.account, text: 'a chat message')
+    end
+
+    it 'includes them in the archive' do
+      Setting.chat_enabled = true
+      service_call
+
+      exported = JSON.parse(read_zip_file(backup, 'chat.json'))
+      expect(exported.dig('chat_conversations', 0, 'messages', 0)).to include('id' => message.id.to_s, 'text' => 'a chat message')
+    ensure
+      Setting.chat_enabled = false
+    end
+
+    it 'leaves them out while chat is disabled' do
+      Setting.chat_enabled = false
+      service_call
+
+      file = Paperclip.io_adapters.for(backup.dump)
+      expect(Zip::File.open(file) { |zipfile| zipfile.glob('chat.json').first }).to be_nil
+    end
+  end
+
   context 'when the user has an avatar and header' do
     before do
       user.account.update!(avatar: attachment_fixture('avatar.gif'))

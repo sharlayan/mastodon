@@ -160,6 +160,19 @@ RSpec.describe 'Misskey-compat notes/drafts endpoints' do
     expect(foreign_draft.reload.data['status']).to eq('Saved draft')
   end
 
+  it 'does not attach media already sent in a chat message' do
+    room = ChatConversation.create!(conversation_type: :group, title: 'Room', owner_account: account)
+    room.memberships.create!(account: account, role: :owner)
+    media = Fabricate(:media_attachment, account: account, status: nil)
+    room.messages.create!(account: account, text: 'sent').media_attachments << media
+
+    rpc_post 'notes/drafts/create', text: 'Reused media', fileIds: [MisskeyCompat::MiId.encode(media.id)]
+
+    expect(response).to have_http_status(404)
+    expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_FILE')
+    expect(media.reload.status_draft_id).to be_nil
+  end
+
   it 'does not accept an invisible reply or renote reference' do
     private_status = Fabricate(:status, visibility: :direct)
 

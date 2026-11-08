@@ -3,6 +3,7 @@
 %w(
   /antennas/(*any)
   /board_announcements
+  /chat/(*any)
   /circles/(*any)
   /clips/(*any)
   /conversations/(*any)

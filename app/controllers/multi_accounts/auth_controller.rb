@@ -2,6 +2,7 @@
 
 class MultiAccounts::AuthController < ApplicationController
   include Sharlayan::AccountSwitchDeviceConcern
+  include Sharlayan::SecondFactorAttemptLimit
 
   skip_before_action :require_functional!
 
@@ -58,11 +59,19 @@ class MultiAccounts::AuthController < ApplicationController
       return
     end
 
+    if second_factor_attempts_exceeded?(user)
+      flash.now[:alert] = I18n.t('users.rate_limited')
+      render :two_factor
+      return
+    end
+
     otp = params[:user][:otp_attempt]
 
     if user.validate_and_consume_otp!(otp) || user.invalidate_otp_backup_code!(otp)
+      clear_second_factor_attempts(user)
       complete_authentication(user)
     else
+      notify_failed_second_factor(user)
       flash.now[:alert] = I18n.t('users.invalid_otp_token')
       render :two_factor
     end
@@ -134,20 +143,18 @@ class MultiAccounts::AuthController < ApplicationController
       return
     end
 
-    unless @reauthentication
-      unless Setting.server_stored_account_switching_enabled
-        render plain: I18n.t('account_switcher.server_stored_disabled'), status: 403
-        return
-      end
-
-      AccountSwitchAuthorization.find_or_create_by!(
-        account: source_account,
-        target_account: target_account
-      )
+    if !@reauthentication && !Setting.server_stored_account_switching_enabled
+      render plain: I18n.t('account_switcher.server_stored_disabled'), status: 403
+      return
     end
-    trust_account_switch_device(target_account)
 
-    MultiAccounts::StateStore.consume!(@state, @state_data[:nonce])
+    unless MultiAccounts::StateStore.consume!(@state, @state_data[:nonce])
+      render plain: I18n.t('devise.failure.timeout'), status: 400
+      return
+    end
+
+    AccountSwitchAuthorization.find_or_create_by!(account: source_account, target_account: target_account) unless @reauthentication
+    trust_account_switch_device(target_account)
 
     @result_state = @state
     render :success

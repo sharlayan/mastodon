@@ -782,4 +782,41 @@ RSpec.describe 'Pages' do
       expect(response).to have_http_status(404)
     end
   end
+
+  describe 'owner-only actions on another account page' do
+    let(:other_page) { Fabricate(:page, account: Fabricate(:account), title: 'Original', content: [{ 'type' => 'text', 'text' => 'body' }]) }
+
+    it 'does not update the page' do
+      put "/api/v1/pages/#{other_page.id}", params: { title: 'Hijacked', visibility: 'private' }, headers: headers
+
+      expect(response).to have_http_status(404)
+      expect(other_page.reload).to have_attributes(title: 'Original', visibility: 'public')
+    end
+
+    it 'does not delete the page' do
+      delete "/api/v1/pages/#{other_page.id}", headers: headers
+
+      expect(response).to have_http_status(404)
+      expect(Page.exists?(other_page.id)).to be(true)
+    end
+
+    it 'does not change the main page' do
+      post "/api/v1/pages/#{other_page.id}/set_main", headers: headers
+
+      expect(response).to have_http_status(404)
+      expect(other_page.reload.is_main).to be(false)
+    end
+  end
+
+  describe 'liking a password page without an access token' do
+    let(:locked_page) { Fabricate(:page, account: Fabricate(:account), visibility: 'password', access_password: 'correct-password') }
+
+    it 'does not record a like' do
+      expect do
+        post "/api/v1/pages/#{locked_page.id}/like", headers: headers
+      end.to_not change(PageLike, :count)
+
+      expect(response).to have_http_status(404)
+    end
+  end
 end

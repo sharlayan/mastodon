@@ -18,7 +18,7 @@ class Api::V1::CirclesController < Api::BaseController
   end
 
   def create
-    @circle = Circle.create!(circle_params.merge(account: current_account))
+    @circle = current_account.with_lock { current_account.circles.create!(circle_params) }
     render json: @circle, serializer: REST::CircleSerializer
   end
 

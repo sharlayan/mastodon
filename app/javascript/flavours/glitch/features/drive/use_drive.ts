@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { defineMessages } from 'react-intl';
 
@@ -58,6 +58,7 @@ export const useDrive = () => {
   const [uploading, setUploading] = useState(false);
   const [next, setNext] = useState<string | undefined>();
   const [reloadKey, setReloadKey] = useState(0);
+  const viewGeneration = useRef(0);
 
   const onError = useCallback(
     (error: unknown) => {
@@ -90,6 +91,7 @@ export const useDrive = () => {
 
   useEffect(() => {
     let cancelled = false;
+    viewGeneration.current += 1;
 
     apiGetDriveFiles(
       orphanedOnly ? { orphaned: true } : { folder_id: currentFolderId ?? '' },
@@ -116,9 +118,11 @@ export const useDrive = () => {
     if (!next || loadingMore) return;
 
     setLoadingMore(true);
+    const generation = viewGeneration.current;
 
     apiGetDriveFiles(undefined, next)
       .then(({ files: more, links }) => {
+        if (generation !== viewGeneration.current) return more;
         setFiles((prev) => [...prev, ...more]);
         setNext(nextLink(links));
         return more;
@@ -155,6 +159,7 @@ export const useDrive = () => {
       setUploading(true);
 
       const targetFolderId = orphanedOnly ? null : currentFolderId;
+      const generation = viewGeneration.current;
 
       Promise.all(
         list.map((file) => {
@@ -166,10 +171,15 @@ export const useDrive = () => {
         }),
       )
         .then((uploaded) => {
-          setFiles((prev) => {
-            const known = new Set(prev.map((file) => file.id));
-            return [...uploaded.filter((file) => !known.has(file.id)), ...prev];
-          });
+          if (generation === viewGeneration.current) {
+            setFiles((prev) => {
+              const known = new Set(prev.map((file) => file.id));
+              return [
+                ...uploaded.filter((file) => !known.has(file.id)),
+                ...prev,
+              ];
+            });
+          }
           refreshUsage();
           return uploaded;
         })

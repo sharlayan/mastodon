@@ -20,6 +20,10 @@ RSpec.describe Web::LinkedPushNotificationWorker do
               endpoint: endpoint,
               data: { alerts: { notification.type => true } })
   end
+  let(:session_activation) { Fabricate(:session_activation, user: main_user).tap { |activation| activation.update!(access_token: subscription.access_token) } }
+  let!(:device) do
+    AccountSwitchDevice.create!(account: linked_account, token_digest: SecureRandom.hex, first_seen_at: Time.current, last_seen_at: Time.current, trusted_at: Time.current, session_activation: session_activation)
+  end
 
   around do |example|
     original_private = Rails.configuration.x.vapid.private_key
@@ -43,6 +47,38 @@ RSpec.describe Web::LinkedPushNotificationWorker do
       subject.perform(main_user.id, notification.id)
 
       expect(a_request(:post, endpoint)).to have_been_made.once
+    end
+
+    it 'skips subscriptions whose session is not authorized for the linked account' do
+      device.update!(revoked_at: Time.current)
+
+      subject.perform(main_user.id, notification.id)
+
+      expect(a_request(:post, endpoint)).to_not have_been_made
+    end
+
+    it 'skips subscriptions of other sessions of the main user' do
+      device.update!(session_activation: Fabricate(:session_activation, user: main_user))
+
+      subject.perform(main_user.id, notification.id)
+
+      expect(a_request(:post, endpoint)).to_not have_been_made
+    end
+
+    it 'respects the alert settings of the subscription' do
+      subscription.update!(data: { alerts: { notification.type => false } })
+
+      subject.perform(main_user.id, notification.id)
+
+      expect(a_request(:post, endpoint)).to_not have_been_made
+    end
+
+    it 'does nothing when the main user is disabled' do
+      main_user.update!(disabled: true)
+
+      subject.perform(main_user.id, notification.id)
+
+      expect(a_request(:post, endpoint)).to_not have_been_made
     end
 
     it 'does nothing when main user is not found' do

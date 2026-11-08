@@ -21,4 +21,9 @@ class RemoteMediaDownloadBudget
   def consume(bytes)
     @remaining_bytes = [@remaining_bytes - bytes.to_i, 0].max
   end
+
+  def charge_download(limit, url, stored_bytes)
+    attempted = url.to_s.match?(%r{\Ahttps?://}i)
+    consume(stored_bytes.to_i.positive? || !attempted ? stored_bytes : limit)
+  end
 end

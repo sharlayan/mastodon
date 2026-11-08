@@ -25,6 +25,15 @@ RSpec.describe Sharlayan::HomeFeedBoundary do
     end
   end
 
+  context 'when the original status itself is in the cached home feed' do
+    before do
+      Fabricate(:status, account: bob, reblog: original)
+      redis.zadd(FeedManager.instance.key(:home, account.id), original.id, original.id)
+    end
+
+    it { is_expected.to be_nil }
+  end
+
   context 'when the account itself reblogged the status' do
     let!(:reblog) { Fabricate(:status, account: account, reblog: original) }
 

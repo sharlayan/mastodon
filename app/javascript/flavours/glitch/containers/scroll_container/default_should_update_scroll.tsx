@@ -10,6 +10,12 @@ export type ShouldUpdateScrollFn = ShouldUpdateScroll<MastodonLocation>;
  * need to prevent this.
  */
 
+const CHAT_SCREEN = /^\/chat(\/|$)/;
+
+const searchedMessage = (location: MastodonLocation | null) =>
+  (location?.state as { chatMessageId?: unknown } | null | undefined)
+    ?.chatMessageId;
+
 export const defaultShouldUpdateScroll: ShouldUpdateScrollFn = (
   prevLocation,
   location,
@@ -19,6 +25,25 @@ export const defaultShouldUpdateScroll: ShouldUpdateScrollFn = (
     location.state?.mastodonModalKey &&
     location.state.mastodonModalKey !== prevLocation?.state?.mastodonModalKey
   );
+
+  if (
+    prevLocation &&
+    CHAT_SCREEN.test(location.pathname) &&
+    prevLocation.pathname === location.pathname &&
+    prevLocation.search === location.search &&
+    searchedMessage(prevLocation) !== undefined &&
+    searchedMessage(location) === undefined
+  )
+    return false;
+
+  if (
+    shouldUpdateScroll &&
+    (prevLocation
+      ? location.pathname === '/chat' &&
+        prevLocation.pathname !== location.pathname
+      : CHAT_SCREEN.test(location.pathname))
+  )
+    return [0, 0];
 
   return shouldUpdateScroll;
 };

@@ -10,6 +10,7 @@ module MisskeyCompat::MiAuth
   SUPPORTED_PERMISSIONS = %w(
     read:account write:account
     read:blocks write:blocks
+    read:chat write:chat
     read:drive write:drive
     read:favorites write:favorites
     read:following write:following

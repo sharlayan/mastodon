@@ -45,7 +45,7 @@ class BroadcastStatusUpdateWorker
       return
     end
 
-    redis.publish('timeline:public', message) if status.public_visibility?
+    redis.publish('timeline:public', message) if status.public_visibility? && !status.local_only?
 
     redis.publish("timeline:#{status.account_id}", message)
 

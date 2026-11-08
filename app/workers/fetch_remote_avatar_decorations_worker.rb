@@ -47,7 +47,7 @@ class FetchRemoteAvatarDecorationsWorker
     account = Account.find_by(id: account_id)
     return if account.nil? || account.local?
     return unless Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
-    return if AvatarDecorationDomainBlock.blocked?(account.domain)
+    return if AvatarDecorationDomainBlock.blocked?(account.domain) || DomainBlock.reject_media?(account.domain)
 
     instance_meta = InstanceMetadata.find_by(domain: account.domain)
     return if instance_meta&.software.present? && !instance_meta.avatar_decorations_compatible?
@@ -101,6 +101,7 @@ class FetchRemoteAvatarDecorationsWorker
   def sync_decoration(account, existing, remote_id, user_decoration, full_decoration, image_url)
     decoration = existing || AvatarDecoration.new(host: account.domain, remote_id:)
     decoration.image_remote_url = image_url.slice(0, 4096)
+    decoration.image = nil if decoration.persisted? && decoration.image_remote_url_changed? && decoration.image_file_name.present?
     decoration.name = (full_decoration&.dig('name') || remote_id).slice(0, 256) if decoration.name.blank?
     decoration.approved = true if decoration.new_record?
     decoration.save! if decoration.changed?

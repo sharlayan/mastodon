@@ -62,7 +62,7 @@ class PageSeries < ApplicationRecord
 
   def validate_cover_media_attachment
     return if cover_media_attachment.nil?
-    return if account_id.present? && account.media_attachments.where(id: cover_media_attachment_id).lock.exists?
+    return if account_id.present? && account.media_attachments.outside_chat.where(id: cover_media_attachment_id).lock.exists?
 
     errors.add(:cover_media_attachment, :invalid)
   end

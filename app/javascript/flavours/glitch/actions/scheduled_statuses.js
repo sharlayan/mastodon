@@ -1,6 +1,6 @@
 import { Map as ImmutableMap, List as ImmutableList, fromJS } from 'immutable';
 
-import api from '../api';
+import api, { getLinks } from '../api';
 
 import { showAlert } from './alerts';
 import { ensureComposeIsVisible } from './compose';
@@ -19,12 +19,27 @@ export const SCHEDULED_STATUS_UPDATE_FAIL = 'SCHEDULED_STATUS_UPDATE_FAIL';
 
 export const SCHEDULED_STATUS_ADD = 'SCHEDULED_STATUS_ADD';
 
+const MAX_SCHEDULED_PAGES = 8;
+
+const fetchAllScheduledPages = async () => {
+  const statuses = [];
+  let url = '/api/v1/scheduled_statuses?limit=40';
+
+  for (let page = 0; url && page < MAX_SCHEDULED_PAGES; page++) {
+    const response = await api().get(url);
+    statuses.push(...response.data);
+    url = getLinks(response).refs.find(link => link.rel === 'next')?.uri;
+  }
+
+  return statuses;
+};
+
 export function fetchScheduledStatuses() {
   return (dispatch) => {
     dispatch({ type: SCHEDULED_STATUSES_FETCH_REQUEST });
 
-    api().get('/api/v1/scheduled_statuses')
-      .then(({ data }) => {
+    return fetchAllScheduledPages()
+      .then((data) => {
         dispatch({
           type: SCHEDULED_STATUSES_FETCH_SUCCESS,
           statuses: data.map(s => fromJS(s)),

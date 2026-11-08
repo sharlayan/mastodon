@@ -9,6 +9,7 @@ export const NAVIGATION_PANEL_ITEMS = [
   'my_archive',
   'collections',
   'direct',
+  'chat',
   'board_announcements',
   'admin_timeline',
 ] as const;
@@ -45,6 +46,7 @@ export const navigationPanelItemMessages: Record<
     defaultMessage: 'Collections',
   },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
+  chat: { id: 'chat.title', defaultMessage: 'Chat' },
   board_announcements: {
     id: 'navigation_bar.board_announcements',
     defaultMessage: 'Announcements',

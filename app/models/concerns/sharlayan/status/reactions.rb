@@ -41,7 +41,7 @@ module Sharlayan::Status::Reactions
       return if records.empty?
 
       needed_ids = records.flat_map { |record| record.grouped_account_ids.first(StatusReaction::USERS_DISPLAY_LIMIT) }.uniq
-      accounts_by_id = Account.where(id: needed_ids).includes(:account_stat, user: :role).index_by(&:id)
+      accounts_by_id = Account.without_suspended.where(id: needed_ids).includes(:account_stat, user: :role).index_by(&:id)
 
       records.each do |record|
         ids = record.grouped_account_ids

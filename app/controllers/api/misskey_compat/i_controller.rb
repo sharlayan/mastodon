@@ -17,6 +17,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
 
   def update
     return unless object_body!
+    return render_invalid_param('#/properties/chatScope', 'must be a chat policy') if params.key?(:chatScope) && %w(everyone followers following mutual none).exclude?(params[:chatScope])
 
     apply_profile!
     apply_privacy!
@@ -115,8 +116,11 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     settings['show_online_status'] = !boolean_param(params[:hideOnlineStatus]) if params.key?(:hideOnlineStatus)
     settings['prevent_ai_learning'] = boolean_param(params[:preventAiLearning]) if params.key?(:preventAiLearning)
     settings['default_language'] = params[:lang].to_s.presence if params.key?(:lang)
+    settings['chat_policy'] = params[:chatScope] if params.key?(:chatScope)
 
+    previous_chat_policy = current_user.settings[:chat_policy]
     current_user.update!(settings_attributes: settings) if settings.present?
+    ActivityPub::UpdateDistributionWorker.perform_in(ActivityPub::UpdateDistributionWorker::DEBOUNCE_DELAY, current_account.id) if current_user.settings[:chat_policy] != previous_chat_policy
   end
 
   def fields_attributes

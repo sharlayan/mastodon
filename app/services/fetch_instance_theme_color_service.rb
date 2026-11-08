@@ -16,6 +16,7 @@ class FetchInstanceThemeColorService < BaseService
     Errno::EHOSTUNREACH,
     Errno::ETIMEDOUT,
     Mastodon::LengthValidationError,
+    Mastodon::HostValidationError,
   ].freeze
 
   INSTANCE_NAME_MAX_LENGTH = 100
@@ -116,7 +117,7 @@ class FetchInstanceThemeColorService < BaseService
 
   def domain_unavailable?
     unavailable_domains_map = Rails.cache.fetch('unavailable_domains') { UnavailableDomain.pluck(:domain).index_with(true) }
-    unavailable_domains_map[@domain].present?
+    unavailable_domains_map[@domain].present? || DomainBlock.blocked?(@domain)
   end
 
   def throttle_only!

@@ -96,6 +96,24 @@ RSpec.describe DeleteAccountService do
     end
   end
 
+  describe 'local settings purge' do
+    let(:user) { Fabricate(:user) }
+
+    before { allow(LocalSettingsStore).to receive(:delete) }
+
+    it 'deletes the synchronized local settings of a deleted user' do
+      described_class.new.call(user.account, skip_side_effects: true)
+
+      expect(LocalSettingsStore).to have_received(:delete).with(user.id)
+    end
+
+    it 'deletes the synchronized local settings when the user record is kept' do
+      described_class.new.call(user.account, reserve_username: true, reserve_email: true, skip_side_effects: true)
+
+      expect(LocalSettingsStore).to have_received(:delete).with(user.id)
+    end
+  end
+
   describe 'custom collection purge' do
     let(:account) { Fabricate(:user).account }
     let(:other_account) { Fabricate(:account) }
@@ -124,6 +142,34 @@ RSpec.describe DeleteAccountService do
       expect(ClipFavourite).to_not exist(clip_favourite.id)
       expect(ClipFavourite).to_not exist(clip_favourite_by_other_account.id)
       expect(redis.exists?(feed_key)).to be false
+    end
+  end
+
+  describe 'private custom data purge' do
+    let(:account) { Fabricate(:user).account }
+    let(:page_owner) { Fabricate(:account) }
+    let(:liked_page) { Fabricate(:page, account: page_owner) }
+
+    before do
+      Fabricate(:status_draft, account: account)
+      account.domain_mutes.create!(domain: 'muted.example')
+      account.favorite_emojis.create!(name: 'blobcat', emoji_type: 'unicode')
+      account.misskey_registry_items.create!(key: 'client-settings', value: { theme: 'dark' })
+      account.page_series.create!(title: 'Private series')
+      PageLike.create!(account: account, page: liked_page)
+    end
+
+    it 'removes drafts, mutes, registry items and series and keeps like counts accurate' do
+      expect(liked_page.reload.likes_count).to eq 1
+
+      described_class.new.call(account, reserve_username: true, reserve_email: true, skip_side_effects: true)
+
+      expect(StatusDraft.where(account: account)).to be_empty
+      expect(AccountDomainMute.where(account: account)).to be_empty
+      expect(FavoriteEmoji.where(account: account)).to be_empty
+      expect(MisskeyRegistryItem.where(account: account)).to be_empty
+      expect(PageSeries.where(account: account)).to be_empty
+      expect(liked_page.reload.likes_count).to eq 0
     end
   end
 

@@ -79,6 +79,15 @@ RSpec.describe UserRole do
 
         expect(target_role).to_not be_valid
         expect(target_role.errors.of_kind?(:extra_permissions_as_keys, :restricted)).to be true
+        expect(target_role.errors.messages_for(:extra_permissions_as_keys)).to include(I18n.t('activerecord.errors.models.user_role.attributes.extra_permissions_as_keys.restricted'))
+      end
+
+      it 'explains why a role holding permissions beyond the current role cannot be saved' do
+        target_role.extra_permissions = described_class::EXTRA_FLAGS[:bypass_rate_limit]
+
+        target_role.valid?
+
+        expect(target_role.errors.full_messages.join).to_not include('Translation missing')
       end
     end
 

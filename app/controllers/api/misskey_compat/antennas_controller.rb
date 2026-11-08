@@ -132,7 +132,7 @@ class Api::MisskeyCompat::AntennasController < Api::MisskeyCompat::BaseControlle
     return if value.blank?
 
     username, domain = value.split('@', 2)
-    domain = nil if domain.present? && domain.casecmp?(Rails.configuration.x.local_domain).zero?
+    domain = nil if domain.present? && domain.casecmp?(Rails.configuration.x.local_domain)
     Account.find_remote(username, domain)
   end
 

@@ -8,13 +8,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   SPECIFIED_REPLY_VISIBILITY_ERROR = 'Cannot reply to a specified note with broader visibility'
 
-  CONVERSATION_OFFSET_LIMIT = 1_000
-  SCHEDULED_OFFSET_LIMIT = 1_000
   TIMELINE_SCAN_LIMIT = 1_000
   TIMELINE_BATCH_SIZE = 100
   TIMELINE_MIN_BATCH_SIZE = 20
   RELATED_NOTE_SCAN_LIMIT = 1_000
-  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show children replies conversation renotes note_reactions featured clips).freeze
+  PARTIAL_BULK_MAX_IDS = 100
+  OPTIONAL_AUTHENTICATION_ACTIONS = %i(show show_partial_bulk children replies conversation renotes note_reactions featured clips).freeze
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
                        :reactions_create, :reactions_delete, :create, :update,
@@ -78,6 +77,23 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     render json: serialize(@note)
   end
 
+  def show_partial_bulk
+    return if current_account.nil? && rate_limited?(:misskey_compat_api)
+
+    ids = params[:noteIds]
+    return render_invalid_param('#/properties/noteIds', 'must be array') unless ids.is_a?(Array)
+    return render_invalid_param('#/properties/noteIds', 'must NOT have fewer than 1 items') if ids.empty?
+    return render_invalid_param('#/properties/noteIds', "must NOT have more than #{PARTIAL_BULK_MAX_IDS} items") if ids.size > PARTIAL_BULK_MAX_IDS
+    return render_invalid_param('#/properties/noteIds/items/type', 'must be string') unless ids.all?(String)
+
+    statuses = Status.where(id: ids.grep(/\A\d+\z/).uniq).includes(:account, :mentions, :media_attachments).to_a
+    context = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(statuses)
+    statuses.select! { |status| context.visible?(status) }
+    context.prime_reactions(statuses)
+
+    render json: statuses.map { |status| MisskeyCompat::NoteSerializer.serialize_reaction_diff(status, context: context) }
+  end
+
   def children
     statuses = Status.arel_table
     attachments = MediaAttachment.arel_table
@@ -98,8 +114,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def conversation
-    offset = [params[:offset].to_i, 0].max
-    return render_invalid_param('#/properties/offset', "must be less than or equal to #{CONVERSATION_OFFSET_LIMIT}") if offset > CONVERSATION_OFFSET_LIMIT
+    return if (offset = offset_param).nil?
 
     limit = pagination_limit(default: 10, max: 100)
     statuses = @note.ancestors(limit + offset, current_account).reverse
@@ -236,8 +251,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def scheduled_list
-    offset = [params[:offset].to_i, 0].max
-    return render_invalid_param('#/properties/offset', "must be less than or equal to #{SCHEDULED_OFFSET_LIMIT}") if offset > SCHEDULED_OFFSET_LIMIT
+    return if (offset = offset_param).nil?
 
     scope = current_account.scheduled_statuses.includes(media_attachments: { drive_file: :custom_name }).order(id: :desc)
     scheduled = scope.limit(pagination_limit).offset(offset).to_a
@@ -330,6 +344,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def mentions
     scope = Status.joins(:mentions).where(mentions: { account_id: current_account.id })
+      .not_excluded_by_account(current_account)
+      .joins(:account).merge(Account.without_suspended)
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
   end
 
@@ -352,6 +368,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     like = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
     scope = Status.where(visibility: [:public, :unlisted])
       .not_excluded_by_account(current_account)
+      .joins(:account).merge(Account.without_suspended)
       .where('statuses.text ILIKE ?', like)
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
   end
@@ -400,14 +417,17 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def polls_recommendation
+    return if (offset = offset_param).nil?
+
     scope = Status.where(visibility: [:public, :unlisted])
       .where.not(poll_id: nil)
       .joins(:poll)
       .where('polls.expires_at IS NULL OR polls.expires_at > ?', Time.now.utc)
       .not_excluded_by_account(current_account)
+      .joins(:account).merge(Account.without_suspended)
       .where.not(account_id: current_account.id)
       .order(id: :desc)
-      .offset(params[:offset].to_i)
+      .offset(offset)
       .limit(pagination_limit)
 
     render_notes scope
@@ -780,7 +800,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
     current_account.with_lock do
       draft.save!
-      media = current_account.media_attachments.where(status_id: nil, scheduled_status_id: nil)
+      media = current_account.media_attachments.where(status_id: nil, scheduled_status_id: nil).outside_chat
         .where(status_draft_id: [nil, draft.id]).where(id: ids).index_by(&:id)
       raise MisskeyCompat::DriveFileResolver::NoSuchFileError unless ids.all? { |id| media.key?(id) }
 

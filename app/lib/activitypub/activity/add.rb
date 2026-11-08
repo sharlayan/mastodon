@@ -4,6 +4,8 @@ class ActivityPub::Activity::Add < ActivityPub::Activity
   def perform
     return if @json['target'].blank?
 
+    return Sharlayan::ChatFederation::Incoming.handle_add(@json, @account) if Sharlayan::ChatFederation::Incoming.chat_add?(@json)
+
     case value_or_id(@json['target'])
     when @account.featured_collection_url
       case @object['type']

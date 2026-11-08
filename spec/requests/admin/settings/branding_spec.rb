@@ -47,6 +47,19 @@ RSpec.describe 'Admin Settings Branding' do
         expect(SiteUpload.where(var: %w(glitch_mascot1 glitch_mascot4)).pluck(:var)).to contain_exactly('glitch_mascot1', 'glitch_mascot4')
       end
 
+      it 'lets an admin turn chat federation off' do
+        Setting.chat_federation_enabled = true
+        get admin_settings_custom_extensions_path
+        expect(response.parsed_body.at_css('input[type="checkbox"][name="form_admin_settings[chat_federation_enabled]"]')).to be_present
+
+        patch admin_settings_custom_extensions_path, params: { form_admin_settings: { chat_federation_enabled: '0' } }
+
+        expect(response).to redirect_to(admin_settings_custom_extensions_path)
+        expect(Setting.chat_federation_enabled).to be(false)
+      ensure
+        Setting.chat_federation_enabled = true
+      end
+
       it 'cannot create a setting value for a non-admin key' do
         expect { put admin_settings_branding_path, params: { form_admin_settings: { new_setting_key: 'New key value' } } }
           .to_not change(Setting, :new_setting_key).from(nil)

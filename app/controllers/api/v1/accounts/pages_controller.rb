@@ -34,9 +34,11 @@ class Api::V1::Accounts::PagesController < Api::V1::Accounts::BaseController
   end
 
   def set_page
-    not_found if @account.unavailable?
+    return not_found if @account.unavailable?
+
     @page = @account.pages.find_by!(name: params[:name])
-    not_found if @page.private_visibility? && @page.account_id != current_account&.id
+    return not_found if @page.private_visibility? && @page.account_id != current_account&.id
+
     not_found if @page.authenticated_visibility? && current_account.nil?
   end
 

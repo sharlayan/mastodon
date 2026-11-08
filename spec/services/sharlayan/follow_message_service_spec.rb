@@ -24,6 +24,12 @@ RSpec.describe Sharlayan::FollowMessageService do
 
       expect(follow.reload.follow_message).to be_nil
     end
+
+    it 'ignores a message that is not a string' do
+      service.store(follow, ['Welcome'])
+
+      expect(follow.reload.follow_message).to be_nil
+    end
   end
 
   describe '#notify' do
