@@ -589,7 +589,9 @@ describe('Chat pagination', () => {
         await pending.promise;
       });
       if (event === 'chat.reaction')
-        expect(screen.getByRole('button', { name: '🎉' })).toBeTruthy();
+        expect(
+          screen.getByRole('img', { name: '🎉 @bob@remote.test' }),
+        ).toBeTruthy();
       else expect(screen.getByText('Edited history')).toBeTruthy();
     },
   );
@@ -652,7 +654,9 @@ describe('Chat live updates', () => {
         await pending.promise;
       });
       if (event === 'chat.reaction') {
-        expect(screen.getByRole('button', { name: '🎉' })).toBeTruthy();
+        expect(
+          screen.getByRole('img', { name: '🎉 @bob@remote.test' }),
+        ).toBeTruthy();
       } else {
         expect(screen.getByText('Live content')).toBeTruthy();
         if (event === 'chat.message')
@@ -678,7 +682,9 @@ describe('Chat live updates', () => {
     );
     mountChat();
     await screen.findByAltText('Private attachment A');
-    expect(screen.getByRole('button', { name: '🎉' })).toBeTruthy();
+    expect(
+      screen.getByRole('img', { name: '🎉 @bob@remote.test' }),
+    ).toBeTruthy();
     act(() => {
       emitChatStreamEvent({
         event: 'chat.message_delete',
@@ -688,11 +694,15 @@ describe('Chat live updates', () => {
     expect(screen.getByText('This message was deleted.')).toBeTruthy();
     expect(screen.queryByText('Private message A')).toBeNull();
     expect(screen.queryByAltText('Private attachment A')).toBeNull();
-    expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+    expect(
+      screen.queryByRole('img', { name: '🎉 @bob@remote.test' }),
+    ).toBeNull();
     act(() => {
       emitChatStreamEvent({ event: 'chat.reaction', payload: reaction });
     });
-    expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+    expect(
+      screen.queryByRole('img', { name: '🎉 @bob@remote.test' }),
+    ).toBeNull();
   });
 
   it.each(['initial', 'reload'])(
@@ -732,7 +742,9 @@ describe('Chat live updates', () => {
       });
       expect(screen.queryByText('Private message A')).toBeNull();
       expect(screen.queryByAltText('Private attachment A')).toBeNull();
-      expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+      expect(
+        screen.queryByRole('img', { name: '🎉 @bob@remote.test' }),
+      ).toBeNull();
       expect(screen.getByText('This message was deleted.')).toBeTruthy();
     },
   );
@@ -778,7 +790,9 @@ describe('Chat live updates', () => {
       });
       expect(screen.queryByText('Delayed content')).toBeNull();
       expect(screen.queryByAltText('Private attachment A')).toBeNull();
-      expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+      expect(
+        screen.queryByRole('img', { name: '🎉 @bob@remote.test' }),
+      ).toBeNull();
       expect(screen.getByText('This message was deleted.')).toBeTruthy();
     },
   );
@@ -813,7 +827,9 @@ describe('Chat live updates', () => {
       });
       expect(screen.queryByText('Private message A')).toBeNull();
       expect(screen.queryByAltText('Private attachment A')).toBeNull();
-      expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+      expect(
+        screen.queryByRole('img', { name: '🎉 @bob@remote.test' }),
+      ).toBeNull();
       expect(screen.getByText('This message was deleted.')).toBeTruthy();
     },
   );
@@ -846,7 +862,9 @@ describe('Chat live updates', () => {
     });
     expect(screen.queryByText('Private message A')).toBeNull();
     expect(screen.queryByAltText('Private attachment A')).toBeNull();
-    expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+    expect(
+      screen.queryByRole('img', { name: '🎉 @bob@remote.test' }),
+    ).toBeNull();
     expect(screen.getByText('This message was deleted.')).toBeTruthy();
   });
 
@@ -920,8 +938,10 @@ describe('Chat live updates', () => {
       emitChatStreamEvent({ event: 'chat.reaction', payload: reaction });
       emitChatStreamEvent({ event: 'chat.reaction', payload: reaction });
     });
-    expect(screen.getAllByRole('button', { name: '🎉' })).toHaveLength(1);
-    expect(screen.getByRole('button', { name: '🎉' }).title).toBe(
+    expect(
+      screen.getAllByRole('img', { name: '🎉 @bob@remote.test' }),
+    ).toHaveLength(1);
+    expect(screen.getByRole('img', { name: '🎉 @bob@remote.test' }).title).toBe(
       'bob@remote.test',
     );
     act(() => {
@@ -934,7 +954,7 @@ describe('Chat live updates', () => {
         },
       });
     });
-    expect(screen.queryByRole('button', { name: '💥' })).toBeNull();
+    expect(screen.queryByText('💥')).toBeNull();
     act(() => {
       emitChatStreamEvent({
         event: 'chat.reaction_delete',
@@ -945,7 +965,24 @@ describe('Chat live updates', () => {
         },
       });
     });
+    expect(screen.queryByText('🎉')).toBeNull();
+  });
+
+  it('offers only your own reactions as buttons, saying they are yours', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    act(() => {
+      emitChatStreamEvent({ event: 'chat.reaction', payload: reaction });
+      emitChatStreamEvent({
+        event: 'chat.reaction',
+        payload: { ...reaction, reaction: '👍', account },
+      });
+    });
+
     expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: '👍' }).getAttribute('aria-pressed'),
+    ).toBe('true');
   });
 });
 
@@ -1077,8 +1114,12 @@ describe('Chat review additions', () => {
       });
     });
 
-    const button = screen.getByRole('button', { name: ':blobcat:' });
-    expect(within(button).getByRole('img', { name: ':blobcat:' })).toBeTruthy();
+    const shown = screen.getByRole('img', {
+      name: ':blobcat: @bob@remote.test',
+    });
+    expect(shown.querySelector('img.emoji')?.getAttribute('alt')).toBe(
+      ':blobcat:',
+    );
   });
 
   it('polls processing media until it is ready', async () => {
@@ -1598,14 +1639,13 @@ describe('Chat screen lifecycle', () => {
         : getResponse(url),
     );
 
-    const { container } = mountChat('/chat');
+    mountChat('/chat');
     await screen.findByText('Room A');
 
+    expect(screen.getByRole('img', { name: 'Unread messages' })).toBeTruthy();
     expect(
-      container
-        .querySelector('.chat-native__conversations i')
-        ?.getAttribute('aria-label'),
-    ).toBe('Unread messages');
+      screen.getByRole('button', { name: /Room A.*Unread messages/ }),
+    ).toBeTruthy();
   });
 });
 
@@ -2400,7 +2440,7 @@ describe('Chat message runs', () => {
     ).toBe(true);
     expect(
       container.querySelector('.chat-native__bubble')?.getAttribute('tabindex'),
-    ).toBe('0');
+    ).toBe('-1');
   });
 });
 

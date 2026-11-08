@@ -729,21 +729,22 @@
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 2px;
+  }
 
-    button {
-      padding: 3px 6px;
-      color: var(--color-text-secondary);
-      font-size: 12px;
-      background: var(--color-bg-tertiary);
-      border: 0;
-      border-radius: 10px;
+  &__reaction {
+    padding: 3px 6px;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+    line-height: normal;
+    background: var(--color-bg-tertiary);
+    border: 0;
+    border-radius: 10px;
+
+    &.mine {
+      color: var(--color-text-primary);
+      background: var(--color-bg-primary);
+      outline: 1px solid var(--color-border-primary);
       cursor: pointer;
-
-      &.mine {
-        color: var(--color-text-primary);
-        background: var(--color-bg-primary);
-        outline: 1px solid var(--color-border-primary);
-      }
     }
   }
 

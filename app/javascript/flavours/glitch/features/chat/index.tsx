@@ -4100,8 +4100,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             </strong>
                           )}
                         <div className='chat-native__bubble-wrap'>
-                          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-                          <div className='chat-native__bubble' tabIndex={0}>
+                          <div className='chat-native__bubble' tabIndex={-1}>
                             {message.reply_to_id && !message.deleted_at && (
                               <ReplyQuote
                                 messageId={message.reply_to_id}
@@ -4184,32 +4183,43 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         </div>
                         {message.reactions.length > 0 && (
                           <div className='chat-native__reactions'>
-                            {message.reactions.map((reaction) => (
-                              <button
-                                key={`${reaction.account.id}-${reaction.reaction}`}
-                                type='button'
-                                className={
-                                  reaction.account.id === me
-                                    ? 'mine'
-                                    : undefined
-                                }
-                                data-message-id={message.id}
-                                data-reaction={reaction.reaction}
-                                data-account-id={reaction.account.id}
-                                onClick={handleReactionClick}
-                                title={reaction.account.acct}
-                              >
-                                {reaction.url ? (
-                                  <img
-                                    className='emoji'
-                                    src={reaction.static_url ?? reaction.url}
-                                    alt={reaction.reaction}
-                                  />
-                                ) : (
-                                  reaction.reaction
-                                )}
-                              </button>
-                            ))}
+                            {message.reactions.map((reaction) => {
+                              const shown = reaction.url ? (
+                                <img
+                                  className='emoji'
+                                  src={reaction.static_url ?? reaction.url}
+                                  alt={reaction.reaction}
+                                />
+                              ) : (
+                                reaction.reaction
+                              );
+                              const key = `${reaction.account.id}-${reaction.reaction}`;
+                              return reaction.account.id === me ? (
+                                <button
+                                  key={key}
+                                  type='button'
+                                  className='chat-native__reaction mine'
+                                  aria-pressed
+                                  data-message-id={message.id}
+                                  data-reaction={reaction.reaction}
+                                  data-account-id={reaction.account.id}
+                                  onClick={handleReactionClick}
+                                  title={reaction.account.acct}
+                                >
+                                  {shown}
+                                </button>
+                              ) : (
+                                <span
+                                  key={key}
+                                  className='chat-native__reaction'
+                                  role='img'
+                                  aria-label={`${reaction.reaction} @${reaction.account.acct}`}
+                                  title={reaction.account.acct}
+                                >
+                                  {shown}
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
                         <div className='chat-native__message-footer'>
@@ -4666,7 +4676,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       </small>
                     )}
                     {item.unread && (
-                      <i aria-label={intl.formatMessage(messages.unread)} />
+                      <i
+                        role='img'
+                        aria-label={intl.formatMessage(messages.unread)}
+                      />
                     )}
                   </button>
                 ))}
