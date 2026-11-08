@@ -81,11 +81,18 @@ interface Room {
   composer: HTMLElement | null;
 }
 
+// The column header: in one column it is drawn in the tabs bar held at the top of the page, otherwise in the column.
+const headerOf = (end: HTMLElement) =>
+  document.querySelector('.tabs-bar__wrapper') ??
+  end.closest('.column')?.querySelector('.column-header__wrapper') ??
+  null;
+
 const readLayout = (room: Room): LayoutReading => {
   const scroller = chatScrollport(room.end);
   const navigation = document
     .querySelector('.ui__navigation-bar')
     ?.getBoundingClientRect();
+  const header = headerOf(room.end)?.getBoundingClientRect();
   return {
     viewport: readViewport(),
     scroller:
@@ -99,6 +106,7 @@ const readLayout = (room: Room): LayoutReading => {
           height: navigation.height,
         }
       : null,
+    header: header ? box(header) : null,
     composer: room.composer ? box(room.composer.getBoundingClientRect()) : null,
     end: box(room.end.getBoundingClientRect()),
   };
@@ -546,11 +554,19 @@ export const useChatScroll = (
       scroll.dispatch({ type: 'composerBlurred' });
     };
     const onPointerDown = (event: Event) => {
+      if (!(event.target instanceof Element)) return;
+      // Android's back key puts the keyboard away and leaves the box focused: a tap on it brings the keyboard back with
+      // no focus to say so (Pixel on f496c2c, kupc-6·8·9: Chrome took the page 70.9px down, and it stayed there).
       if (
-        !(event.target instanceof Element) ||
+        usesTouchKeyboard() &&
+        event.target === document.activeElement &&
+        event.target instanceof HTMLTextAreaElement &&
         composer?.contains(event.target)
-      )
+      ) {
+        scroll.dispatch({ type: 'composerFocused' });
         return;
+      }
+      if (composer?.contains(event.target)) return;
       const pressed = event.target.closest<HTMLElement>('button, a');
       if (!pressed) return;
       const quote = pressed.matches('.chat-native__reply-quote')

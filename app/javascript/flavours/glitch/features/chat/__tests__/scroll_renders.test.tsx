@@ -4241,3 +4241,460 @@ describe('A quote highlighted where it is with the keyboard open, away from the 
     }
   });
 });
+
+// Android on f496c2c262 (android-masto-final6/raw/<galaxy|pixel>/) and the review of f496 (review-masto-f496).
+describe('Android on f496c2c262 and review f496', () => {
+  // The column header, held at the top of the page in one column.
+  const tabsBar = () => {
+    const bar = document.createElement('div');
+    bar.className = 'tabs-bar__wrapper';
+    document.body.prepend(bar);
+    return bar;
+  };
+
+  // Defect 2 (s7h-1): no keyboard, the original under the header by 19.2 / 23.3px, the quote below it. The quote
+  // highlighted the original where it was, half hidden, and nothing moved (4/4).
+  for (const [name, at] of [
+    [
+      'Pixel s7h-1',
+      {
+        innerHeight: 603,
+        height: 603.4,
+        scrollHeight: 1878,
+        scrollTop: 1136.8,
+        header: 50.8,
+        nav: { top: 548.9, bottom: 603.4, height: 54.5 },
+        composer: { top: 479.7, bottom: 548.4 },
+        end: 687.5,
+        original: { top: 31.6, bottom: 66 },
+      },
+    ],
+    [
+      'Galaxy s7h-1',
+      {
+        innerHeight: 744,
+        height: 744.7,
+        scrollHeight: 1924,
+        scrollTop: 1179.3,
+        header: 51,
+        nav: { top: 689.7, bottom: 744.7, height: 55 },
+        composer: { top: 620.7, bottom: 689.7 },
+        end: 690.6,
+        original: { top: 27.7, bottom: 62.6 },
+      },
+    ],
+  ] as const) {
+    for (const under of [true, false])
+      it(`2 ${under ? 'goes to an original partly under the column header' : 'control: highlights one in full view below it'} (${name})`, async () => {
+        withQuote();
+        const page = phonePage({
+          innerHeight: at.innerHeight,
+          clientHeight: at.innerHeight,
+          scrollHeight: at.scrollHeight,
+          scrollTop: at.scrollTop,
+        });
+        const bar = tabsBar();
+        const original = under
+          ? at.original
+          : { top: at.header + 10, bottom: at.header + 44 };
+        try {
+          await openRoom();
+          page.scrollWithPage();
+          page.viewport.height = at.height;
+          vi.spyOn(
+            Element.prototype,
+            'getBoundingClientRect',
+          ).mockImplementation(function (this: Element) {
+            if (this === page.nav) return at.nav as DOMRect;
+            if (this === bar)
+              return {
+                top: 0,
+                bottom: at.header,
+                height: at.header,
+              } as DOMRect;
+            if (this.classList.contains('chat-native__end'))
+              return { top: at.end, bottom: at.end } as DOMRect;
+            if (this.classList.contains('chat-native__composer'))
+              return at.composer as DOMRect;
+            if (this.id === 'chat-message-message-1')
+              return original as DOMRect;
+            return { top: 140, bottom: 188 } as DOMRect;
+          });
+          fireEvent.scroll(window);
+          scrollIntoView.mockClear();
+          const quote = quoteOf('message-1');
+          fireEvent.pointerDown(quote);
+          fireEvent.click(quote);
+          await wait(50);
+          expect({
+            jumped: targetScrolls('message-1'),
+            highlighted: document
+              .getElementById('chat-message-message-1')
+              ?.classList.contains('chat-native__message--highlighted'),
+          }).toEqual({ jumped: under ? 1 : 0, highlighted: true });
+        } finally {
+          bar.remove();
+          page.restore();
+        }
+      });
+  }
+
+  // Defect 3 (kupc-3): read 273px up with Chrome's URL bar collapsed (659 / 603), the box tapped: Chrome takes the
+  // page 131.8px down to it (902.1 → 1033.9). The back key puts the keyboard away and leaves the box focused, and
+  // Chrome shows its bar again at once (375.2 → 603.4, then the window 603). The page was left at 1033.9.
+  it('3 gives the place back when the keyboard goes as Chrome shows its bar again (Pixel kupc-3)', async () => {
+    const page = phonePage({
+      innerHeight: 659,
+      clientHeight: 603,
+      scrollHeight: 1834,
+      scrollTop: 902.1,
+    });
+    const geo = {
+      nav: { top: 604.9, bottom: 659.4, height: 54.5 },
+      composer: { top: 535.7, bottom: 604.4 },
+      end: 878.2,
+    };
+    try {
+      await openRoom();
+      page.scrollWithPage();
+      page.viewport.height = 659.4;
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          if (this === page.nav) return geo.nav as DOMRect;
+          if (this.classList.contains('chat-native__end'))
+            return { top: geo.end, bottom: geo.end } as DOMRect;
+          if (this.classList.contains('chat-native__composer'))
+            return geo.composer as DOMRect;
+          return { top: -2000, bottom: -1950 } as DOMRect;
+        },
+      );
+      fireEvent.scroll(window);
+      expect(screen.queryByRole('button', { name: JUMP })).not.toBeNull();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      // Chrome's keyboard: the visual viewport over it, the page taken down to the box.
+      page.state.top = 1033.9;
+      page.state.client = 659;
+      Object.assign(page.viewport, { height: 375.2, offsetTop: 284.2 });
+      geo.end = 746.4;
+      act(() => {
+        page.viewport.dispatchEvent(new Event('resize'));
+        window.dispatchEvent(new Event('resize'));
+        page.viewport.dispatchEvent(new Event('scroll'));
+      });
+      fireEvent.scroll(window);
+      await wait(50);
+      page.state.writes = [];
+      // The back key: the visual viewport first, then the window with the bar shown again.
+      Object.assign(page.viewport, { height: 603.4, offsetTop: 0 });
+      act(() => {
+        page.viewport.dispatchEvent(new Event('resize'));
+      });
+      window.innerHeight = 603;
+      page.state.client = 603;
+      Object.assign(geo, {
+        nav: { top: 548.9, bottom: 603.4, height: 54.5 },
+        composer: { top: 479.7, bottom: 548.4 },
+        end: 782.8,
+      });
+      act(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
+      await wait(400);
+      expect({
+        focused: document.activeElement === screen.getByRole('textbox'),
+        writes: page.state.writes,
+        closedAt: page.state.top,
+      }).toEqual({ focused: true, writes: [902.1], closedAt: 902.1 });
+    } finally {
+      page.restore();
+    }
+  });
+
+  interface Geo {
+    end: number;
+    composer: { top: number; bottom: number };
+    nav: { top: number; bottom: number };
+    message: (element: Element) => DOMRect | undefined;
+  }
+  // The J1 flow (SE 3 b-aw1: read 418pt up to 1128, the box tapped, Safari at 1426 with its keyboard).
+  const focusAway = async (page: ReturnType<typeof phonePage>, geo: Geo) => {
+    page.scrollWithPage();
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: Element) {
+        if (this === page.nav) return { ...geo.nav, height: 55 } as DOMRect;
+        if (this.classList.contains('chat-native__end'))
+          return { top: geo.end, bottom: geo.end } as DOMRect;
+        if (this.classList.contains('chat-native__composer'))
+          return geo.composer as DOMRect;
+        return geo.message(this) ?? ({ top: -2000, bottom: -1950 } as DOMRect);
+      },
+    );
+    geo.end = 910;
+    page.state.top = 1128;
+    page.viewport.pageTop = 1128;
+    fireEvent.scroll(window);
+    expect(screen.queryByRole('button', { name: JUMP })).not.toBeNull();
+    act(() => {
+      screen.getByRole('textbox').focus();
+    });
+    page.state.top = 1426;
+    Object.assign(page.viewport, {
+      height: 320.5,
+      offsetTop: 226.5,
+      pageTop: 1426,
+    });
+    Object.assign(geo, {
+      end: 612,
+      composer: { top: 196.5, bottom: 265.5 },
+      nav: { top: 265.5, bottom: 320.5 },
+    });
+    act(() => {
+      page.viewport.dispatchEvent(new Event('resize'));
+      page.viewport.dispatchEvent(new Event('scroll'));
+    });
+    fireEvent.scroll(window);
+    await wait(50);
+    page.state.writes = [];
+  };
+  const closeKeyboard = async (
+    page: ReturnType<typeof phonePage>,
+    geo: Geo,
+  ) => {
+    act(() => {
+      screen.getByRole('textbox').blur();
+    });
+    Object.assign(page.viewport, { height: 547, offsetTop: 0 });
+    Object.assign(geo, {
+      composer: { top: 423, bottom: 492 },
+      nav: { top: 492, bottom: 547 },
+    });
+    act(() => {
+      page.viewport.dispatchEvent(new Event('resize'));
+    });
+    await wait(800);
+  };
+
+  // J1′ (review f496 P1): the original, highlighted where it was, goes partly under the composer without a scroll
+  // (something above it grew), and the same quote is pressed again within the highlight: ignored (9), nothing moves.
+  // iOS Safari: a button does not take the focus, so the keyboard stays open across the presses.
+  it('J1′ goes back to where the reader was after the same quote is pressed again (SE 3 b-aw1)', async () => {
+    withQuote();
+    const page = phonePage({
+      innerHeight: 547,
+      clientHeight: 547,
+      scrollHeight: 2092,
+      scrollTop: 1545,
+    });
+    let original = { top: 40, bottom: 90 };
+    const geo: Geo = {
+      end: 493,
+      composer: { top: 423, bottom: 492 },
+      nav: { top: 492, bottom: 547 },
+      message: (element) =>
+        element.id === 'chat-message-message-1'
+          ? (original as DOMRect)
+          : undefined,
+    };
+    try {
+      await openRoom();
+      await focusAway(page, geo);
+      const quote = quoteOf('message-1');
+      fireEvent.pointerDown(quote);
+      fireEvent.click(quote);
+      await wait(50);
+      original = { top: 170, bottom: 220 };
+      fireEvent.pointerDown(quote);
+      fireEvent.click(quote);
+      await wait(50);
+      const highlighted = document
+        .getElementById('chat-message-message-1')
+        ?.classList.contains('chat-native__message--highlighted');
+      const atPress = page.state.top;
+      await closeKeyboard(page, geo);
+      expect({
+        jumped: targetScrolls('message-1'),
+        highlighted,
+        atPress,
+        writes: page.state.writes,
+        closedAt: page.state.top,
+      }).toEqual({
+        jumped: 0,
+        highlighted: true,
+        atPress: 1426,
+        writes: [1128],
+        closedAt: 1128,
+      });
+    } finally {
+      page.restore();
+    }
+  });
+
+  // P4 (review f496): a quote whose original is never found. Older messages come in above while it is sought, 100px
+  // of them, and Safari 18 keeps nothing in place: the app scrolls by them (39). Nothing else moves; closing goes back
+  // to where the reader was, which is 100px further down the page now (rules 4 and 5).
+  it('P4 goes back to where the reader was, older messages and all, after a quote never found (SE 3 b-aw1)', async () => {
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/messages'))
+          return Promise.resolve({
+            data: options?.params?.max_id
+              ? Array.from({ length: 10 }, (_, index) => messageFrom(index))
+              : Array.from({ length: 40 }, (_, index) => ({
+                  ...messageFrom(index + 20),
+                  reply_to_id: index === 39 ? 'gone' : null,
+                })),
+          });
+        return Promise.resolve({ data: responses(url) });
+      },
+    );
+    const page = phonePage({
+      innerHeight: 547,
+      clientHeight: 547,
+      scrollHeight: 2092,
+      scrollTop: 1545,
+    });
+    const geo: Geo = {
+      end: 493,
+      composer: { top: 423, bottom: 492 },
+      nav: { top: 492, bottom: 547 },
+      message: (element) => {
+        if (element.id !== 'chat-message-message-20') return undefined;
+        const top = document.getElementById('chat-message-message-0')
+          ? -500
+          : -600;
+        return { top, bottom: top + 50 } as DOMRect;
+      },
+    };
+    try {
+      render(
+        <IntlProvider locale='en'>
+          <IdentityContext.Provider
+            value={{
+              signedIn: true,
+              permissions: 0,
+              accountId: 'me',
+              disabledAccountId: undefined,
+            }}
+          >
+            <Router
+              history={createMemoryHistory({
+                initialEntries: [`/chat/${ROOM}`],
+              })}
+            >
+              <Route path='/chat/:conversationId?/:view?'>
+                <Chat />
+              </Route>
+            </Router>
+          </IdentityContext.Provider>
+        </IntlProvider>,
+      );
+      await screen.findByText('Message 59');
+      await wait(0);
+      await focusAway(page, geo);
+      const quote = quoteOf('gone');
+      fireEvent.pointerDown(quote);
+      fireEvent.click(quote);
+      await wait(50);
+      const older = document.getElementById('chat-message-message-0') !== null;
+      const sought = page.state.top;
+      await closeKeyboard(page, geo);
+      expect({
+        older,
+        sought,
+        jump: screen.queryByRole('button', { name: JUMP }) !== null,
+        writes: page.state.writes,
+        closedAt: page.state.top,
+      }).toEqual({
+        older: true,
+        sought: 1526,
+        jump: true,
+        writes: [1526, 1228],
+        closedAt: 1228,
+      });
+    } finally {
+      page.restore();
+    }
+  });
+});
+
+// Android on f496c2c262, observation 3 (kupc-6·8·9): after the back key the box keeps the focus, and a tap on it brings
+// the keyboard back without a focus event. Chrome took the page down to the box again (945.5 → 1016.4) and nothing
+// gave the place back when that keyboard went too (3/3).
+describe('The keyboard brought back by a tap on the box still focused (Android on f496c2c262)', () => {
+  it('3 gives the place back again after the keyboard comes back with a tap and goes (Pixel kupc-6)', async () => {
+    const page = phonePage({
+      innerHeight: 603,
+      clientHeight: 603,
+      scrollHeight: 1914,
+      scrollTop: 945.5,
+    });
+    const geo = {
+      nav: { top: 548.9, bottom: 603.4, height: 54.5 },
+      composer: { top: 479.7, bottom: 548.4 },
+      end: 915.1,
+    };
+    const keyboard = (scrollTop: number) => {
+      page.state.top = scrollTop;
+      Object.assign(page.viewport, { height: 319.2, offsetTop: 284.2 });
+      act(() => {
+        page.viewport.dispatchEvent(new Event('resize'));
+        page.viewport.dispatchEvent(new Event('scroll'));
+      });
+      fireEvent.scroll(window);
+    };
+    const backKey = () => {
+      Object.assign(page.viewport, { height: 603.4, offsetTop: 0 });
+      act(() => {
+        page.viewport.dispatchEvent(new Event('resize'));
+        window.dispatchEvent(new Event('resize'));
+      });
+    };
+    try {
+      await openRoom();
+      page.scrollWithPage();
+      page.viewport.height = 603.4;
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          if (this === page.nav) return geo.nav as DOMRect;
+          if (this.classList.contains('chat-native__end'))
+            return { top: geo.end, bottom: geo.end } as DOMRect;
+          if (this.classList.contains('chat-native__composer'))
+            return geo.composer as DOMRect;
+          return { top: -2000, bottom: -1950 } as DOMRect;
+        },
+      );
+      fireEvent.scroll(window);
+      const box = screen.getByRole('textbox');
+      act(() => {
+        box.focus();
+      });
+      keyboard(1016.4);
+      await wait(50);
+      backKey();
+      await wait(400);
+      const first = [...page.state.writes];
+      page.state.writes = [];
+      // The same box, still focused, tapped again.
+      fireEvent.pointerDown(box);
+      keyboard(1016.4);
+      await wait(50);
+      backKey();
+      await wait(400);
+      expect({
+        focused: document.activeElement === box,
+        first,
+        second: page.state.writes,
+        closedAt: page.state.top,
+      }).toEqual({
+        focused: true,
+        first: [945.5],
+        second: [945.5],
+        closedAt: 945.5,
+      });
+    } finally {
+      page.restore();
+    }
+  });
+});

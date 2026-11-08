@@ -54,6 +54,8 @@ export interface LayoutReading {
   // The room's own scrolling box, when it does not scroll with the page.
   scroller: Box | null;
   navigation: (Box & { height: number }) | null;
+  // The column header, held at the top of the page in one column.
+  header?: Box | null;
   composer: Box | null;
   end: Box;
 }
@@ -108,8 +110,8 @@ export const visibleArea = (viewport: ViewportReading): VisibleArea => {
   };
 };
 
-// What of the room can be seen: within the visible area and the room's own scrolling box, above a navigation bar
-// resting on the bottom of the screen.
+// What of the room can be seen: within the visible area and the room's own scrolling box, below a column header held
+// over the top of it, and above a navigation bar resting on the bottom of the screen.
 export const contentBounds = (layout: LayoutReading): Box => {
   const area = visibleArea(layout.viewport);
   let { top, bottom } = area;
@@ -117,14 +119,29 @@ export const contentBounds = (layout: LayoutReading): Box => {
     top = Math.max(top, layout.scroller.top);
     bottom = Math.min(bottom, layout.scroller.bottom);
   }
+  // A message behind the header is not seen (Pixel and Galaxy on f496c2c: an original 19~23px under it was taken as
+  // in full view). Scrolled away, or above what Chrome shows over its keyboard, the header covers nothing.
+  const header = layout.header;
+  if (header && header.top <= top + 2 && header.bottom > top)
+    top = Math.max(top, header.bottom);
   const navigation = layout.navigation;
-  if (
-    navigation &&
-    navigation.height > 0 &&
-    navigation.top <= area.bottom &&
-    navigation.bottom >= area.bottom - 2
-  )
-    bottom = Math.min(bottom, navigation.top);
+  if (navigation && navigation.height > 0) {
+    const { innerHeight } = layout.viewport;
+    // Chrome hiding its URL bar as the reader scrolls grows the visual viewport past innerHeight before the window is
+    // resized, a second later; a bar fixed to the bottom of the window is drawn on the bottom of what is shown while
+    // its rectangle stays where it was (Pixel on f496c2c: 659.4 shown, innerHeight 603, the bar at 548.9~603.4 and the
+    // newest taken as 56px nearer than it was).
+    if (
+      area.bottom > innerHeight + 2 &&
+      Math.abs(navigation.bottom - innerHeight) <= 2
+    )
+      bottom = Math.min(bottom, area.bottom - navigation.height);
+    else if (
+      navigation.top <= area.bottom &&
+      navigation.bottom >= area.bottom - 2
+    )
+      bottom = Math.min(bottom, navigation.top);
+  }
   return { top, bottom };
 };
 
@@ -298,8 +315,8 @@ export interface ScrollState {
   // A finger is on the screen.
   touching: boolean;
   pendingFollow: boolean;
-  // Where the first message was when older ones were about to come in above it.
-  anchor: { id: string; top: number } | null;
+  // Where the first message was when older ones were about to come in above it, and where the page was scrolled to.
+  anchor: { id: string; top: number; scrollTop: number } | null;
   keyboard: KeyboardSession | null;
   echo: { height: number } | null;
   scale: number;
@@ -742,10 +759,11 @@ export const step = (
 
     case 'pageAction':
       // What a button does may move the page, and an explicit move is not undone when the keyboard closes. A quote
-      // whose original is in full view moves nothing (it is highlighted where it is): the reader is still where they
-      // were, and goes back there (review 730b J1: 298px off on the review server's emulated browsers).
-      if (state.keyboard && !(event.quote && s.messageShown(event.quote)))
-        state.keyboard.restoreTop = null;
+      // moves the page only when its original is gone to, which then takes the place over itself (targetLoaded). One
+      // highlighted where it is (review 730b J1: 298px off on the review server's emulated browsers), the same one
+      // pressed again (review f496 J1′), or one whose original never comes (review f496 P4) moves nothing: the reader
+      // is still where they were, and goes back there.
+      if (state.keyboard && !event.quote) state.keyboard.restoreTop = null;
       break;
 
     case 'scrolled':
@@ -838,7 +856,15 @@ export const step = (
           }
           if (s.height < keyboard.baseHeight - KEYBOARD_SHRINK_PX)
             keyboard.shrunk = true;
-          if (keyboard.shrunk && s.height >= keyboard.baseHeight - 2) {
+          // Back to what is shown without a keyboard: the height it opened at, or the root's when the browser shows
+          // its bar again as the keyboard goes. A keyboard opened with Chrome's URL bar collapsed (659.4) and put away
+          // with the back key, which keeps the box focused, came back to 603.4 and was kept as open (Pixel on f496c2c,
+          // 6/17, the place not given back).
+          const closedHeight =
+            s.viewport.rootClientHeight > 0
+              ? Math.min(keyboard.baseHeight, s.viewport.rootClientHeight)
+              : keyboard.baseHeight;
+          if (keyboard.shrunk && s.height >= closedHeight - 2) {
             keyboard.closing = true;
             commands.push({
               type: 'timer',
@@ -883,9 +909,11 @@ export const step = (
     // Older messages come in above what is being read: the reader's place is kept (rule 5). Browsers do not keep it
     // when the page is at its top, where the button to load them is (review f35f D2: +2,700~3,100px). Following, the
     // content growing keeps the newest in view instead.
-    case 'olderArriving':
-      state.anchor = state.following ? null : s.firstMessage;
+    case 'olderArriving': {
+      const first = state.following ? null : s.firstMessage;
+      state.anchor = first && { ...first, scrollTop: s.scrollTop };
       break;
+    }
 
     case 'olderLoaded': {
       const anchor = state.anchor;
@@ -895,6 +923,12 @@ export const step = (
       if (top === null) break;
       const by = top - anchor.top;
       if (Math.abs(by) >= 1) commands.push({ type: 'scrollBy', by });
+      // What was being read is further down the page by what came in above it, kept in place by the browser or by
+      // that scroll, and so is the place to go back to when the keyboard closes (review f496 P4).
+      const grown = top + s.scrollTop - (anchor.top + anchor.scrollTop);
+      const keyboard = state.keyboard;
+      if (keyboard && keyboard.restoreTop !== null && Math.abs(grown) >= 1)
+        keyboard.restoreTop += grown;
       break;
     }
 

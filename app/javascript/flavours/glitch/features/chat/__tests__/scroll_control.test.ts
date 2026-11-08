@@ -1,4 +1,5 @@
 import type {
+  Box,
   Command,
   LayoutReading,
   ScrollEvent,
@@ -2354,5 +2355,404 @@ describe('Review 730b J1: a quote highlighted where it is keeps the place to go 
       [{ type: 'composerBlurred' }],
     ]);
     expect(restores(close(state, 600).commands)).toEqual([]);
+  });
+});
+
+// Android on f496c2c262 (android-masto-final6/raw/<galaxy|pixel>/) and the review of f496 (review-masto-f496).
+describe('Android on f496c2c262 and review f496', () => {
+  const restores = (commands: Command[]) =>
+    commands.filter((command) => command.type === 'restoreScroll');
+  const timers = (commands: Command[], name: string) =>
+    commands.filter(
+      (command) => command.type === 'timer' && command.name === name,
+    );
+
+  // Defect 2 (s7h-1): the original 31.6~66 on Pixel and 27.7~62.6 on Galaxy, under the column header held at the top
+  // of the page down to 50.8 and 51: 19.2 and 23.3px of it hidden. The quote highlighted it where it was.
+  const pixelUnderHeader: LayoutReading = {
+    viewport: {
+      innerHeight: 603,
+      rootClientHeight: 603,
+      visual: { height: 603.4, offsetTop: 0, scale: 1 },
+    },
+    scroller: null,
+    navigation: { top: 548.9, bottom: 603.4, height: 54.5 },
+    composer: { top: 479.7, bottom: 548.4 },
+    end: { top: 687.5, bottom: 687.5 },
+    header: { top: 0, bottom: 50.8 },
+  };
+  const pixelOriginal: Box = { top: 31.6, bottom: 66 };
+  const underHeader: [string, LayoutReading, Box, Box][] = [
+    [
+      'Pixel s7h-1',
+      pixelUnderHeader,
+      pixelOriginal,
+      { top: 140.7, bottom: 188.5 },
+    ],
+    [
+      'Galaxy s7h-1',
+      {
+        viewport: {
+          innerHeight: 744,
+          rootClientHeight: 744,
+          visual: { height: 744.7, offsetTop: 0, scale: 1 },
+        },
+        scroller: null,
+        navigation: { top: 689.7, bottom: 744.7, height: 55 },
+        composer: { top: 620.7, bottom: 689.7 },
+        end: { top: 690.6, bottom: 690.6 },
+        header: { top: 0, bottom: 51 },
+      },
+      { top: 27.7, bottom: 62.6 },
+      { top: 138.3, bottom: 186.3 },
+    ],
+  ];
+  for (const [name, layout, original, quoted] of underHeader) {
+    it(`an original partly under the column header is not in full view (${name})`, () => {
+      expect(rectShown(layout, original)).toBe(false);
+      expect(rectShown(layout, quoted)).toBe(true);
+    });
+
+    it(`what the column header covers is not seen (${name})`, () => {
+      expect(rectVisible(layout, { top: 0, bottom: 45 })).toBe(false);
+      expect(rectVisible(layout, original)).toBe(true);
+    });
+  }
+
+  it('a column header scrolled away, or above what Chrome shows over its keyboard, covers nothing', () => {
+    expect(
+      rectShown(
+        { ...pixelUnderHeader, header: { top: -60, bottom: -9.2 } },
+        pixelOriginal,
+      ),
+    ).toBe(true);
+    // Pixel keyboard (k12): the visual viewport 284.2 below the layout viewport the header is held at the top of.
+    expect(
+      rectShown(
+        { ...device.pixelKeyboard, header: { top: 0, bottom: 50.8 } },
+        { top: 300, bottom: 340 },
+      ),
+    ).toBe(true);
+  });
+
+  // Defect 3 (kupc-1·3·5·7·11, kcol-2): the keyboard opened with Chrome's URL bar collapsed (659.4) is put away with the
+  // back key, which leaves the box focused, and Chrome shows the bar again at once: 375.2 → 603.4, never near 659.4.
+  // The keyboard was kept as open and the page was left 126~132px down from where the reader was (kupc-3: 902.1 →
+  // 1033.9).
+  const pixelUpCollapsed = (state: ScrollState) =>
+    run(state, [
+      [
+        { type: 'scrolled' },
+        {
+          distance: 273.3,
+          scrollTop: 902.1,
+          viewport: {
+            innerHeight: 659,
+            rootClientHeight: 603,
+            visual: { height: 659.4, offsetTop: 0, scale: 1 },
+          },
+        },
+      ],
+      [
+        { type: 'composerFocused' },
+        {
+          height: 659.4,
+          scrollTop: 902.1,
+          composerFocused: true,
+          distance: 273.3,
+          viewport: {
+            innerHeight: 659,
+            rootClientHeight: 603,
+            visual: { height: 659.4, offsetTop: 0, scale: 1 },
+          },
+        },
+      ],
+      [
+        { type: 'viewportResized' },
+        {
+          height: 375.2,
+          scrollTop: 1033.9,
+          composerFocused: true,
+          distance: 0.8,
+          viewport: {
+            innerHeight: 659,
+            rootClientHeight: 659,
+            visual: { height: 375.2, offsetTop: 284.2, scale: 1 },
+          },
+        },
+      ],
+    ]);
+  const backKey = (
+    state: ScrollState,
+    sizes: [number, number, number][],
+  ): ReturnType<typeof run> =>
+    run(
+      state,
+      sizes.map(([innerHeight, rootClientHeight, height]) => [
+        { type: 'viewportResized' },
+        {
+          height,
+          scrollTop: 1033.9,
+          composerFocused: true,
+          distance: 233.9,
+          viewport: {
+            innerHeight,
+            rootClientHeight,
+            visual: { height, offsetTop: 0, scale: 1 },
+          },
+        },
+      ]),
+    );
+
+  it('3 the keyboard put away as Chrome shows its bar again is closed, and the place is given back (kupc-3)', () => {
+    const opened3 = pixelUpCollapsed(opened().state);
+    expect(opened3.state.keyboard).toMatchObject({
+      restoreTop: 902.1,
+      following: false,
+      shrunk: true,
+    });
+    const hidden = backKey(opened3.state, [
+      [659, 659, 603.4],
+      [603, 603, 603.4],
+    ]);
+    expect(timers(hidden.commands, 'keyboardClose')).toEqual([
+      { type: 'timer', name: 'keyboardClose', delay: 200 },
+    ]);
+    const closed = run(hidden.state, [
+      [{ type: 'timer', name: 'keyboardClose' }, { distance: 233.9 }],
+    ]);
+    expect(restores(closed.commands)).toEqual([
+      { type: 'restoreScroll', top: 902.1 },
+    ]);
+    expect(closed.state.keyboard).toBeNull();
+  });
+
+  it('3 control: put away through the collapsed height, as before (kupc-2)', () => {
+    const hidden = backKey(pixelUpCollapsed(opened().state).state, [
+      [659, 659, 659.4],
+      [603, 603, 603.4],
+    ]);
+    expect(timers(hidden.commands, 'keyboardClose').length).toBeGreaterThan(0);
+  });
+
+  it('3 nothing is closed while a keyboard is up, whatever the bar does', () => {
+    const { commands } = backKey(pixelUpCollapsed(opened().state).state, [
+      [659, 659, 319.2],
+      [603, 603, 319.2],
+      [603, 603, 375.2],
+    ]);
+    expect(timers(commands, 'keyboardClose')).toEqual([]);
+    // iPhone SE 3 b-aw1: innerHeight as short as what is shown, the root as tall as the screen.
+    const iphone = run(opened().state, [
+      [
+        { type: 'composerFocused' },
+        { height: 547, composerFocused: true, distance: 418 },
+      ],
+      [
+        { type: 'viewportResized' },
+        {
+          height: 320.5,
+          composerFocused: true,
+          viewport: {
+            innerHeight: 367,
+            rootClientHeight: 547,
+            visual: { height: 320.5, offsetTop: 226.5, scale: 1 },
+          },
+        },
+      ],
+    ]);
+    expect(timers(iphone.commands, 'keyboardClose')).toEqual([]);
+  });
+
+  // Candidate (kupc-7): reading down, Chrome hides its URL bar. The visual viewport is 659.4 for a second before the
+  // window says so: innerHeight still 603, and the navigation bar's rectangle still 548.9~603.4 while it is drawn on the
+  // bottom of what is shown. The end at 878.8 was taken as 219.3 from the newest; it was 273.1 (after the resize).
+  it('5 the navigation bar is on the bottom of what is shown while Chrome hides its bar (kupc-7)', () => {
+    const hiding: LayoutReading = {
+      viewport: {
+        innerHeight: 603,
+        rootClientHeight: 603,
+        visual: { height: 659.4, offsetTop: 0, scale: 1 },
+      },
+      scroller: null,
+      navigation: { top: 548.9, bottom: 603.4, height: 54.5 },
+      composer: { top: 479.7, bottom: 548.4 },
+      end: { top: 878.8, bottom: 878.8 },
+    };
+    const resized: LayoutReading = {
+      ...hiding,
+      viewport: { ...hiding.viewport, innerHeight: 659 },
+      navigation: { top: 604.9, bottom: 659.4, height: 54.5 },
+      composer: { top: 535.7, bottom: 604.4 },
+      end: { top: 878, bottom: 878 },
+    };
+    expect(distanceFromNewest(resized)).toBeCloseTo(273.1, 1);
+    expect(distanceFromNewest(hiding)).toBeCloseTo(273.9, 1);
+    expect(distanceFromNewest(hiding)).toBeGreaterThanOrEqual(240);
+  });
+
+  // J1′ (review f496 P1): the same quote pressed again while its original is highlighted, after it went partly out of
+  // full view without the reader scrolling. The press is ignored (9) and nothing moves.
+  const focusedAway = () => {
+    const away = run(opened().state, [
+      [{ type: 'scrolled' }, { distance: 418, scrollTop: 1128 }],
+    ]).state;
+    return run(away, [
+      [
+        { type: 'composerFocused' },
+        { height: 547, scrollTop: 1128, composerFocused: true, distance: 418 },
+      ],
+      [
+        { type: 'viewportResized' },
+        {
+          height: 320.5,
+          scrollTop: 1426,
+          composerFocused: true,
+          distance: 346.5,
+        },
+      ],
+      [
+        { type: 'scrolled' },
+        {
+          height: 320.5,
+          scrollTop: 1426,
+          composerFocused: true,
+          distance: 346.5,
+        },
+      ],
+    ]).state;
+  };
+  const close = (state: ScrollState, distance: number) =>
+    run(state, [
+      [{ type: 'composerBlurred' }],
+      [{ type: 'timer', name: 'keyboardClose' }, { distance }],
+    ]);
+  const moves = (commands: Command[]) =>
+    commands.filter((command) =>
+      [
+        'alignEnd',
+        'reveal',
+        'scrollToMessage',
+        'restoreScroll',
+        'scrollBy',
+      ].includes(command.type),
+    );
+
+  it('J1′ the same quote pressed again while highlighted keeps the place to go back to (SE 3 b-aw1)', () => {
+    const first = run(focusedAway(), [
+      [
+        { type: 'pageAction', quote: 'm4' },
+        { composerFocused: true, height: 320.5, messageShown: () => true },
+      ],
+      [
+        { type: 'quoteClicked', id: 'm4' },
+        { composerFocused: true, height: 320.5, messageShown: () => true },
+      ],
+      [{ type: 'contentResized' }, { composerFocused: true, height: 320.5 }],
+    ]);
+    const again = run(first.state, [
+      [
+        { type: 'pageAction', quote: 'm4' },
+        { composerFocused: true, height: 320.5, messageShown: () => false },
+      ],
+      [
+        { type: 'quoteClicked', id: 'm4' },
+        { composerFocused: true, height: 320.5, messageShown: () => false },
+      ],
+    ]);
+    expect(moves([...first.commands, ...again.commands])).toEqual([]);
+    expect(again.state.target).toMatchObject({ id: 'm4', phase: 'landed' });
+    expect(restores(close(again.state, 418).commands)).toEqual([
+      { type: 'restoreScroll', top: 1128 },
+    ]);
+  });
+
+  it('J1′ a press shown at the press whose click goes to the original lets the move win (25)', () => {
+    const { state, commands } = run(focusedAway(), [
+      [
+        { type: 'pageAction', quote: 'm4' },
+        { composerFocused: true, height: 320.5, messageShown: () => true },
+      ],
+      [
+        { type: 'quoteClicked', id: 'm4' },
+        { composerFocused: true, height: 320.5, messageShown: () => false },
+      ],
+      [{ type: 'targetLoaded', id: 'm4' }, { composerFocused: true }],
+      [
+        { type: 'targetScrolled', id: 'm4', movedUp: true, moved: true },
+        { composerFocused: true, height: 320.5, distance: 700 },
+      ],
+    ]);
+    expect(
+      commands.filter((command) => command.type === 'scrollToMessage'),
+    ).toEqual([{ type: 'scrollToMessage', id: 'm4' }]);
+    expect(restores(close(state, 700).commands)).toEqual([]);
+  });
+
+  // P4 (review f496): a quote whose original is never found. Nothing moves the reader (5: a quote stays away), and
+  // while it is sought older pages come in above what is read, kept in place by the app or the browser (39): the place
+  // to go back to moves down the page with what was read (rules 4 and 5).
+  for (const [name, after] of [
+    // Safari 18 keeps nothing: the first message is pushed down by what came in, and the app scrolls by it.
+    ['the app keeps the place', { top: -500, scrollTop: 1426 }],
+    // Chrome and Safari 27 anchor the page themselves: the first message stays, the page is scrolled by it.
+    ['the browser keeps the place', { top: -600, scrollTop: 1526 }],
+  ] as const) {
+    it(`P4 a quote never found goes back to the place, moved with older pages (${name})`, () => {
+      const { state, commands } = run(focusedAway(), [
+        [
+          { type: 'pageAction', quote: 'gone' },
+          { composerFocused: true, height: 320.5, messageShown: () => false },
+        ],
+        [
+          { type: 'quoteClicked', id: 'gone' },
+          { composerFocused: true, height: 320.5, messageShown: () => false },
+        ],
+        [
+          { type: 'olderArriving' },
+          {
+            composerFocused: true,
+            height: 320.5,
+            scrollTop: 1426,
+            firstMessage: { id: 'm0', top: -600 },
+          },
+        ],
+        [
+          { type: 'olderLoaded' },
+          {
+            composerFocused: true,
+            height: 320.5,
+            scrollTop: after.scrollTop,
+            messageTop: (id) => (id === 'm0' ? after.top : null),
+          },
+        ],
+        [
+          { type: 'targetMissing' },
+          { composerFocused: true, height: 320.5, distance: 446.5 },
+        ],
+      ]);
+      expect(state.target).toBeNull();
+      expect(
+        moves(commands).filter((command) => command.type !== 'scrollBy'),
+      ).toEqual([]);
+      expect(restores(close(state, 518).commands)).toEqual([
+        { type: 'restoreScroll', top: 1228 },
+      ]);
+    });
+  }
+
+  it('P4 older pages while following move nothing to go back to', () => {
+    const { state, commands } = run(keyboardOpen(opened().state).state, [
+      [
+        { type: 'olderArriving' },
+        { composerFocused: true, firstMessage: { id: 'm0', top: -600 } },
+      ],
+      [
+        { type: 'olderLoaded' },
+        { composerFocused: true, messageTop: () => -500 },
+      ],
+    ]);
+    expect(moves(commands)).toEqual([]);
+    expect(state.keyboard?.restoreTop).toBe(3501);
   });
 });
