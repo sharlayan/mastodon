@@ -34,7 +34,7 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
       return
     end
 
-    scope = current_account.notifications.where(type: TYPE_MAP.keys)
+    scope = current_account.notifications.where(type: TYPE_MAP.keys, filtered: false)
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('notifications.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     scope = scope.where(created_at: ...compat_time(params[:untilDate])) if params[:untilId].blank? && params[:untilDate].present?
@@ -90,7 +90,7 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
   end
 
   def advance_notification_marker!
-    latest_id = current_account.notifications.maximum(:id)
+    latest_id = current_account.notifications.where(filtered: false).maximum(:id)
     return if latest_id.nil?
 
     marker = current_user.markers.find_or_create_by(timeline: 'notifications')

@@ -71,4 +71,32 @@ RSpec.describe PublishScheduledStatusWorker do
       end
     end
   end
+
+  describe 'perform with a reply target that no longer exists' do
+    let(:user) { Fabricate(:user) }
+    let(:scheduled_status) { Fabricate(:scheduled_status, account: user.account, params: { text: 'Late reply', in_reply_to_id: Fabricate(:status).id }) }
+
+    it 'drops the scheduled record without posting' do
+      Status.find(scheduled_status.params['in_reply_to_id']).destroy!
+
+      expect(subject.perform(scheduled_status.id)).to be(true)
+      expect(ScheduledStatus.find_by(id: scheduled_status.id)).to be_nil
+      expect(user.account.statuses.count).to eq 0
+    end
+  end
+
+  describe 'perform when post-processing fails after the status is saved' do
+    let(:user) { Fabricate(:user) }
+    let(:scheduled_status) { Fabricate(:scheduled_status, account: user.account, params: { text: 'Hello world, future!' }) }
+
+    it 'does not publish the status again on retry' do
+      allow_any_instance_of(PostStatusService).to receive(:postprocess_status!).and_raise(Redis::CannotConnectError) # rubocop:disable RSpec/AnyInstance
+
+      expect { subject.perform(scheduled_status.id) }.to raise_error(Redis::CannotConnectError)
+      expect(ScheduledStatus.find_by(id: scheduled_status.id)).to be_nil
+
+      subject.perform(scheduled_status.id)
+      expect(user.account.statuses.count).to eq 1
+    end
+  end
 end

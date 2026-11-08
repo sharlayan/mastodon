@@ -31,6 +31,32 @@ RSpec.describe 'Account switching' do
     response.parsed_body
   end
 
+  describe 'after the child password changes' do
+    it 'no longer lets a previously trusted browser switch into the child' do
+      switch_to_child
+      expect(AccountSwitchDevice.find_by!(account: child)).to be_trusted
+
+      child_user.change_password!('a-new-password-123')
+
+      expect(AccountSwitchDevice.find_by!(account: child)).to_not be_trusted
+      expect(AccountSwitchAuthorization.exists?(authorization.id)).to be(false)
+
+      sign_in parent_user
+      post switch_account_path, params: { switch_to: child.id }
+
+      expect(flash[:alert]).to eq(I18n.t('account_switcher.switch_unauthorized'))
+    end
+
+    it 'keeps links from the child to its own linked accounts' do
+      grandchild = Fabricate(:user).account
+      outgoing = Fabricate(:account_switch_authorization, account: child, target_account: grandchild)
+
+      child_user.update!(password: 'a-new-password-123')
+
+      expect(AccountSwitchAuthorization.exists?(outgoing.id)).to be(true)
+    end
+  end
+
   describe 'switching to an authorized child account' do
     it 'signs in as the child and records the parent' do
       switch_to_child

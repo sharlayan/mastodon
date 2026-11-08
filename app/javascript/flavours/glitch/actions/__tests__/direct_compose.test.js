@@ -51,6 +51,16 @@ describe('direct message notification retention', () => {
     });
   });
 
+  it('does not send while an attachment is still uploading', async () => {
+    state = state.setIn(['direct_compose', 'conversation', 'is_uploading'], true);
+
+    const { dispatch, result } = sendReply();
+    await result;
+
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
   it('retains notifications until the reply request succeeds', async () => {
     let complete;
     apiPost.mockReturnValue(new Promise(resolve => { complete = resolve; }));

@@ -110,5 +110,15 @@ RSpec.describe 'Clip statuses' do
 
       expect(response).to have_http_status(200)
     end
+
+    it 'does not add a status the owner cannot see' do
+      hidden = Fabricate(:status, visibility: :private)
+
+      expect do
+        post "/api/v1/clips/#{clip.id}/statuses", params: { status_id: hidden.id }, headers: headers
+      end.to_not change(ClipStatus, :count)
+
+      expect(response).to have_http_status(404)
+    end
   end
 end

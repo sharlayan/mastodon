@@ -64,7 +64,7 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const effectiveReplyId  = replyOverrideId || inReplyToId;
 
   const countedText = `${spoiler ? spoilerText : ''}${countableText(text)}`;
-  const canSubmit = !isSubmitting && length(countedText) <= maxChars && (text.trim().length > 0 || media.size > 0);
+  const canSubmit = !isSubmitting && !isUploading && length(countedText) <= maxChars && (text.trim().length > 0 || media.size > 0);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -128,9 +128,9 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const handleKeyDown = useCallback(e => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      handleSubmit();
+      if (canSubmit) handleSubmit();
     }
-  }, [handleSubmit]);
+  }, [handleSubmit, canSubmit]);
 
   const handlePaste = useCallback(e => {
     const files = e.clipboardData?.files;

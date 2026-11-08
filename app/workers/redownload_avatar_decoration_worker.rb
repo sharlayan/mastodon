@@ -38,7 +38,7 @@ class RedownloadAvatarDecorationWorker
     decoration = AvatarDecoration.find(id)
 
     return unless decoration.image_repairable?
-    return if decoration.host.present? && AvatarDecorationDomainBlock.blocked?(decoration.host)
+    return if decoration.host.present? && (AvatarDecorationDomainBlock.blocked?(decoration.host) || DomainBlock.reject_media?(decoration.host))
     return unless within_download_budget?(decoration.host, account_id)
 
     decoration.repair_image!

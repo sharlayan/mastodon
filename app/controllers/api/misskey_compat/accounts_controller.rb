@@ -132,7 +132,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
       .joins(:status_stat)
       .where('status_stats.reblogs_count + status_stats.favourites_count > 0')
       .order(id: :desc)
-    scope = scope.not_excluded_by_account(current_account) if current_account
+    scope = current_account ? scope.not_excluded_by_account(current_account) : scope.not_local_only
     scope = scope.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     scope = scope.where('statuses.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     statuses = scope.limit(pagination_limit).to_a

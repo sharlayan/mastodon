@@ -11,14 +11,14 @@ class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
 
   def show
     role = UserRole.find_by(id: params[:roleId])
-    return render_error('No such role', 'NO_SUCH_ROLE', 404) if role.nil? || role.everyone? || role.nobody?
+    return render_error('No such role', 'NO_SUCH_ROLE', 404) if role.nil? || role.everyone? || role.nobody? || !role.highlighted?
 
     render json: serialize_role(role)
   end
 
   def users
     role = UserRole.find_by(id: params[:roleId])
-    return render_error('No such role', 'NO_SUCH_ROLE', 404) if role.nil? || role.everyone? || role.nobody?
+    return render_error('No such role', 'NO_SUCH_ROLE', 404) if role.nil? || role.everyone? || role.nobody? || !role.highlighted?
 
     accounts = discoverable_members(role.id).order(id: :desc)
     accounts = accounts.where(accounts: { id: ...until_id.to_i }) if until_id.present?
@@ -30,7 +30,7 @@ class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
 
   def notes
     role = UserRole.find_by(id: params[:roleId])
-    return render_error('No such role', 'NO_SUCH_ROLE', 404) if role.nil? || role.everyone? || role.nobody?
+    return render_error('No such role', 'NO_SUCH_ROLE', 404) if role.nil? || role.everyone? || role.nobody? || !role.highlighted?
 
     account_ids = discoverable_members(role.id).reselect(:id)
     scope = Status.where(account_id: account_ids, visibility: [:public, :unlisted], reblog_of_id: nil)
@@ -47,7 +47,7 @@ class Api::MisskeyCompat::RolesController < Api::MisskeyCompat::BaseController
     role_ids = discoverable_members.distinct.pluck('users.role_id').compact
     return [] if role_ids.empty?
 
-    UserRole.where(id: role_ids).where.not(id: UserRole::EVERYONE_ROLE_ID).order(position: :asc)
+    UserRole.where(id: role_ids, highlighted: true).where.not(id: UserRole::EVERYONE_ROLE_ID).order(position: :asc)
   end
 
   def discoverable_members(role_id = nil)

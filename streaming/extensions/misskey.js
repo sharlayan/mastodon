@@ -1,6 +1,8 @@
 import { createMisskeyCompat } from '../misskey_compat.js';
 import { excludedReactionAccountIds } from '../reaction_account_filter.js';
 
+import { createDomainTargetsFilter } from './domain_filter.js';
+
 const createEnabledCheck = (pgPool, logger, now = Date.now) => {
   let setting = { value: false, checkedAt: 0 };
   let refresh;
@@ -36,26 +38,69 @@ const authorizeStatusAccess = async (pgPool, statusId, req) => {
   const result = await pgPool.query(`
     SELECT 1
     FROM statuses
+    INNER JOIN accounts ON accounts.id = statuses.account_id
     WHERE statuses.id = $1
+      AND statuses.deleted_at IS NULL
+      AND accounts.suspended_at IS NULL
+      AND accounts.requested_deletion_at IS NULL
       AND (
         statuses.account_id = $2
-        OR statuses.visibility IN (0, 1)
-        OR statuses.visibility = 2 AND EXISTS (
-          SELECT 1 FROM follows
-          WHERE follows.account_id = $2
-            AND follows.target_account_id = statuses.account_id
+        OR NOT EXISTS (SELECT 1 FROM rp_hidden_statuses WHERE rp_hidden_statuses.status_id = statuses.id)
+      )
+      AND (
+        statuses.account_id = $2
+        OR statuses.visibility IN (0, 1) AND NOT EXISTS (
+          SELECT 1 FROM blocks
+          WHERE blocks.account_id = statuses.account_id
+            AND blocks.target_account_id = $2
+        )
+        OR statuses.visibility = 2 AND (
+          EXISTS (
+            SELECT 1 FROM follows
+            WHERE follows.account_id = $2
+              AND follows.target_account_id = statuses.account_id
+          )
+          OR EXISTS (
+            SELECT 1 FROM mentions
+            WHERE mentions.status_id = statuses.id
+              AND mentions.account_id = $2
+          )
         )
         OR statuses.visibility IN (3, 4) AND EXISTS (
           SELECT 1 FROM mentions
           WHERE mentions.status_id = statuses.id
             AND mentions.account_id = $2
-            AND mentions.silent = FALSE
         )
       )
     LIMIT 1
   `, [statusId, req.accountId]);
 
   return result.rows.length > 0;
+};
+
+const excludedTimelineNote = async (pgPool, viewerAccountId, { authorIds, accountIds, domainTargets }) => {
+  if (!viewerAccountId || accountIds.length === 0) return false;
+
+  const queries = [
+    pgPool.query(`
+      SELECT 1
+      FROM blocks
+      WHERE (account_id = $1 AND target_account_id = ANY($2::bigint[]))
+         OR (target_account_id = $1 AND account_id = ANY($3::bigint[]))
+      UNION
+      SELECT 1
+      FROM mutes
+      WHERE account_id = $1
+        AND target_account_id = ANY($2::bigint[])
+      LIMIT 1
+    `, [viewerAccountId, accountIds, authorIds]),
+  ];
+
+  const domainFilter = createDomainTargetsFilter({ accountId: viewerAccountId }, domainTargets);
+  if (domainFilter) queries.push(domainFilter.query(pgPool));
+
+  const results = await Promise.all(queries);
+  return results.some((result) => result.rows.length > 0);
 };
 
 const loadGrantPermissions = async (pgPool, logger, req, failClosed = false) => {
@@ -160,6 +205,7 @@ const createMisskeyExtension = (deps) => {
     ...deps,
     authorizeStatusAccess: (statusId, req) => authorizeStatusAccess(deps.pgPool, statusId, req),
     loadExcludedReactionAccountIds: (viewerAccountId, reactionAccountIds) => excludedReactionAccountIds(deps.pgPool, viewerAccountId, reactionAccountIds),
+    loadExcludedTimelineNote: (viewerAccountId, targets) => excludedTimelineNote(deps.pgPool, viewerAccountId, targets),
     loadGrantPermissions: (req) => loadGrantPermissions(deps.pgPool, deps.logger, req),
     loadChatGrantPermissions: (req) => loadGrantPermissions(deps.pgPool, deps.logger, req, true),
     isChatEnabled: createChatEnabledCheck(deps.pgPool, deps.logger),
@@ -171,4 +217,4 @@ const createMisskeyExtension = (deps) => {
   return { ...compat, isEnabled };
 };
 
-export { authorizeChatAccess, authorizeStatusAccess, createChatEnabledCheck, createEnabledCheck, createMisskeyExtension, isChatEnabled, loadGrantPermissions, markChatRead };
+export { authorizeChatAccess, authorizeStatusAccess, createChatEnabledCheck, createEnabledCheck, createMisskeyExtension, excludedTimelineNote, isChatEnabled, loadGrantPermissions, markChatRead };

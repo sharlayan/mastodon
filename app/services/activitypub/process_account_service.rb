@@ -472,7 +472,7 @@ class ActivityPub::ProcessAccountService < BaseService
   end
 
   def process_avatar_decorations!
-    return if AvatarDecorationDomainBlock.blocked?(@account.domain)
+    return if AvatarDecorationDomainBlock.blocked?(@account.domain) || skip_download?
 
     raw = @json['_misskey_avatarDecorations']
 
@@ -507,6 +507,7 @@ class ActivityPub::ProcessAccountService < BaseService
       decoration = begin
         dec = AvatarDecoration.find_or_initialize_by(host: @account.domain, remote_id: d['id'].to_s)
         dec.image_remote_url = image_url.slice(0, 4096)
+        dec.image            = nil if dec.persisted? && dec.image_remote_url_changed? && dec.image_file_name.present?
         dec.name             = d['id'].to_s.slice(0, 256) if dec.name.blank?
         dec.approved         = true if dec.new_record?
         dec.save if dec.changed?

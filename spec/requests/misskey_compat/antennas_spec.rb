@@ -50,6 +50,19 @@ RSpec.describe 'Misskey-compat antennas' do
       expect(user.account.antennas.last.with_replies).to be(false)
     end
 
+    it 'accepts users given with a remote or local host' do
+      remote = Fabricate(:account, username: 'alice', domain: 'remote.example')
+      local = Fabricate(:account, username: 'bob')
+
+      post '/api/antennas/create', params: {
+        i: write_token, name: 'user antenna', src: 'users',
+        users: ['@alice@remote.example', "@bob@#{Rails.configuration.x.local_domain.upcase}"]
+      }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(user.account.antennas.last.antenna_accounts.pluck(:account_id)).to contain_exactly(remote.id, local.id)
+    end
+
     it 'rejects unsupported sources, options, and AND keyword groups before creating anything' do
       invalid_inputs = [
         { src: 'home' }, { src: 'list', userListId: '123' }, { src: 'unknown' },

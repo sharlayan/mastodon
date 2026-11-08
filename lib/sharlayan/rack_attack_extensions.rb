@@ -124,7 +124,7 @@ module Sharlayan
       end
 
       attack.throttle('throttle_multi_account_login_attempts/email', limit: 25, period: 1.hour) do |req|
-        req.params.dig('user', 'email').presence if req.post? && req.path == '/multi_accounts/auth/sign_in'
+        req.normalized_email if req.post? && req.path == '/multi_accounts/auth/sign_in'
       end
 
       attack.throttle('throttle_multi_account_login_attempts/state', limit: 10, period: 15.minutes) do |req|

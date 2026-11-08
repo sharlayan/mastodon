@@ -22,6 +22,16 @@ RSpec.describe 'Misskey-compat notification endpoints' do
       expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
     end
 
+    it 'excludes notifications held back by the notification policy' do
+      shown = Fabricate(:notification, account: account, type: :follow, activity: Fabricate(:follow, account: actor, target_account: account))
+      Fabricate(:notification, account: account, type: :follow, activity: Fabricate(:follow, account: Fabricate(:account), target_account: account), filtered: true)
+
+      post '/api/i/notifications', params: { i: read_token }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq([MisskeyCompat::MiId.encode(shown.id)])
+    end
+
     it 'returns only supported notifications owned by the authenticated account' do
       follow = Fabricate(:follow, account: actor, target_account: account)
       notification = Fabricate(:notification, account: account, type: :follow, activity: follow)

@@ -3,8 +3,7 @@ const accountTarget = (account) => {
   return domain && account.id ? [domain, account.id] : undefined;
 };
 
-const createDomainFilter = (req, payload) => {
-  const targets = [accountTarget(payload.account), accountTarget(payload.reblog?.account)].filter(Boolean);
+const createDomainTargetsFilter = (req, targets) => {
   if (targets.length === 0) return undefined;
 
   return {
@@ -27,4 +26,6 @@ const createDomainFilter = (req, payload) => {
   };
 };
 
-export { createDomainFilter };
+const createDomainFilter = (req, payload) => createDomainTargetsFilter(req, [accountTarget(payload.account), accountTarget(payload.reblog?.account)].filter(Boolean));
+
+export { createDomainFilter, createDomainTargetsFilter };

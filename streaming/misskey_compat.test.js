@@ -9,15 +9,22 @@ const note = (overrides = {}) => ({
   poll: null, localOnly: false, ...overrides,
 });
 
-const fixture = (channelResult = { channelIds: ['timeline:public:local'], options: { filterLocal: false } }) => {
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+const fixture = (channelResult = { channelIds: ['timeline:public:local'], options: { filterLocal: false } }, isExcluded = () => false) => {
   const listeners = new Map();
   const sent = [];
+  const filterCalls = [];
   const compat = createMisskeyCompat({
     subscribe: (channel, listener) => listeners.set(channel, listener),
     unsubscribe: (channel) => listeners.delete(channel),
     subscriptionHeartbeat: () => () => {},
     channelNameToIds: async () => channelResult,
     authorizeStatusAccess: async () => true,
+    loadExcludedTimelineNote: async (viewerAccountId, targets) => {
+      filterCalls.push({ viewerAccountId, targets });
+      return isExcluded(targets);
+    },
     loadGrantPermissions: async () => undefined,
     isEnabled: async () => true,
     logger: { error: () => {}, warn: () => {} },
@@ -32,7 +39,7 @@ const fixture = (channelResult = { channelIds: ['timeline:public:local'], option
   };
   const emit = (channel, payload) => listeners.get(`misskey:${channel}`)({ event: 'note', payload });
 
-  return { compat, connect, emit, listeners, sent, session };
+  return { compat, connect, emit, filterCalls, listeners, sent, session };
 };
 
 test('hybrid timeline merges home and local notes without duplicate delivery', async () => {
@@ -46,6 +53,7 @@ test('hybrid timeline merges home and local notes without duplicate delivery', a
   emit('timeline:7', note({ id: 'local' }));
   emit('timeline:public:local', note({ id: 'unrelated-local-reply', replyId: 'parent', reply: { userId: '0000000000000009' } }));
   emit('timeline:7', note({ id: 'followed-reply', user: { host: 'remote.example' }, replyId: 'parent', reply: { userId: '0000000000000009' } }));
+  await flush();
 
   assert.deepEqual(sent.map(({ body }) => body.body.id), ['remote', 'local', 'followed-reply']);
 
@@ -70,11 +78,13 @@ test('local timeline excludes unrelated replies by default and honors withReplie
   await defaultTimeline.connect('localTimeline');
   defaultTimeline.emit('timeline:public:local', note({ id: 'unrelated', replyId: 'parent', reply: { userId: '0000000000000009' } }));
   defaultTimeline.emit('timeline:public:local', note({ id: 'self-thread', replyId: 'parent', reply: { userId: '0000000000000008' } }));
+  await flush();
   assert.deepEqual(defaultTimeline.sent.map(({ body }) => body.body.id), ['self-thread']);
 
   const withReplies = fixture();
   await withReplies.connect('localTimeline', { withReplies: true });
   withReplies.emit('timeline:public:local', note({ id: 'unrelated', replyId: 'parent', reply: { userId: '0000000000000009' } }));
+  await flush();
   assert.deepEqual(withReplies.sent.map(({ body }) => body.body.id), ['unrelated']);
 });
 
@@ -91,6 +101,7 @@ test('timeline file and renote filters use the serialized note and public feed s
   global.emit('timeline:public', note({ id: 'blocked-local' }));
   global.emit('timeline:public', note({ id: 'blocked-local-only', user: { host: 'remote.example' }, localOnly: true }));
   global.emit('timeline:public', note({ id: 'allowed-remote', user: { host: 'remote.example' } }));
+  await flush();
   assert.deepEqual(global.sent.map(({ body }) => body.body.id), ['allowed-remote']);
 });
 
@@ -246,4 +257,42 @@ test('channel read commands use the authorized subscription target and decoded m
   chat.compat.handleMessage(chat.session, { type: 'ch', body: { id: 'chatRoom', type: 'read', body: { id: '11' } } });
   await chat.flush();
   assert.deepEqual(chat.reads, [{ channel: 'chatRoom', targetId: '9', viewer: '7', messageId: '10' }]);
+});
+
+test('public timelines drop notes excluded by the viewer blocks, mutes and domain blocks', async () => {
+  const local = fixture(undefined, (targets) => targets.accountIds.includes('9'));
+  await local.connect('localTimeline');
+  local.emit('timeline:public:local', note({ id: 'from-blocked', userId: '0000000000000009' }));
+  local.emit('timeline:public:local', note({ id: 'mentions-muted', mentions: ['0000000000000009'] }));
+  local.emit('timeline:public:local', note({ id: 'renote-of-blocked', text: null, renoteId: 'target', renote: { userId: '0000000000000009', user: { host: 'remote.example' } } }));
+  local.emit('timeline:public:local', note({ id: 'allowed' }));
+  await flush();
+
+  assert.deepEqual(local.sent.map(({ body }) => body.body.id), ['allowed']);
+  assert.deepEqual(local.filterCalls[2].targets, {
+    authorIds: ['8', '9'],
+    accountIds: ['8', '9'],
+    domainTargets: [['remote.example', '9']],
+  });
+  assert.equal(local.filterCalls[0].viewerAccountId, '7');
+});
+
+test('hashtag channel applies feed access settings and viewer filtering', async () => {
+  const hashtag = fixture({ channelIds: ['timeline:hashtag:test'], options: { filterLocal: false, filterRemote: true } }, (targets) => targets.accountIds.includes('9'));
+  await hashtag.connect('hashtag', { q: [['test']] });
+  hashtag.emit('timeline:hashtag:test', note({ id: 'remote', user: { host: 'remote.example' } }));
+  hashtag.emit('timeline:hashtag:test', note({ id: 'blocked', userId: '0000000000000009' }));
+  hashtag.emit('timeline:hashtag:test', note({ id: 'local' }));
+  await flush();
+
+  assert.deepEqual(hashtag.sent.map(({ body }) => body.body.id), ['local']);
+});
+
+test('home and antenna channels are not filtered again in streaming', async () => {
+  const home = fixture({ channelIds: ['timeline:7'] }, () => true);
+  await home.connect('homeTimeline');
+  home.emit('timeline:7', note({ id: 'home' }));
+
+  assert.deepEqual(home.sent.map(({ body }) => body.body.id), ['home']);
+  assert.equal(home.filterCalls.length, 0);
 });

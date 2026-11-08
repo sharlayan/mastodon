@@ -7,6 +7,10 @@ export const reduceStatusDraftCompose = (state, action) => {
     return state.set('draft_id', action.draft.get('id'));
   }
 
+  if (action.type === 'STATUS_DRAFT_DELETE_SUCCESS') {
+    return state.get('draft_id') === action.id ? state.set('draft_id', null) : state;
+  }
+
   if (action.type !== 'COMPOSE_SET_DRAFT') return null;
 
   const draft = action.draft;

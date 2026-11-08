@@ -133,6 +133,7 @@ module Sharlayan::AdminSettingsExtensions
     validates :profile_fields_limit, numericality: { only_integer: true, in: 0..ActivityPub::ProcessAccountService::MAX_PROFILE_FIELDS }, if: -> { defined?(@profile_fields_limit) }
     validates :remote_media_attachments_limit, numericality: { only_integer: true, in: Status::MEDIA_ATTACHMENTS_LIMIT..16 }, if: -> { defined?(@remote_media_attachments_limit) }
     validates :background_opacity, numericality: { only_integer: true, in: 0..100 }, if: -> { defined?(@background_opacity) }
+    validates :avatar_decorations_max_count, numericality: { only_integer: true, in: 0..UpdateAccountService::MAX_DECORATIONS }, if: -> { defined?(@avatar_decorations_max_count) }
     validates :theme_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, if: -> { defined?(@theme_color) }
     validates :background_color, format: { with: /\A#(?:[0-9a-fA-F]{3}){1,2}\z/ }, allow_blank: true, if: -> { defined?(@background_color) }
     validates :user_theme_catalog, :user_theme_defaults, length: { maximum: 65_536 }, if: -> { defined?(@user_theme_catalog) || defined?(@user_theme_defaults) }

@@ -47,7 +47,7 @@ class FetchRemoteAvatarDecorationsWorker
     account = Account.find_by(id: account_id)
     return if account.nil? || account.local?
     return unless Setting.avatar_decorations_enabled && Setting.avatar_decorations_federation_enabled
-    return if AvatarDecorationDomainBlock.blocked?(account.domain)
+    return if AvatarDecorationDomainBlock.blocked?(account.domain) || DomainBlock.reject_media?(account.domain)
 
     instance_meta = InstanceMetadata.find_by(domain: account.domain)
     return if instance_meta&.software.present? && !instance_meta.avatar_decorations_compatible?

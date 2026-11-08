@@ -344,6 +344,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   def mentions
     scope = Status.joins(:mentions).where(mentions: { account_id: current_account.id })
+      .not_excluded_by_account(current_account)
+      .joins(:account).merge(Account.without_suspended)
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
   end
 
@@ -366,6 +368,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     like = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
     scope = Status.where(visibility: [:public, :unlisted])
       .not_excluded_by_account(current_account)
+      .joins(:account).merge(Account.without_suspended)
       .where('statuses.text ILIKE ?', like)
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
   end
@@ -421,6 +424,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       .joins(:poll)
       .where('polls.expires_at IS NULL OR polls.expires_at > ?', Time.now.utc)
       .not_excluded_by_account(current_account)
+      .joins(:account).merge(Account.without_suspended)
       .where.not(account_id: current_account.id)
       .order(id: :desc)
       .offset(offset)

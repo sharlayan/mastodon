@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
+  include Sharlayan::SecondFactorAttemptLimit
+
   NO_SUCH_USER_ID = '6cc579cc-885d-43d8-95c2-b8c7fc963280'
   UNAVAILABLE_ID = 'b2c5a2f0-1d2f-4b0d-9d0a-1b8a6d7f0c11'
   INCORRECT_PASSWORD_ID = '932c904e-9460-45b7-9ce6-7ed33be7eb2c'
@@ -58,7 +60,15 @@ class Api::MisskeyCompat::SigninController < Api::MisskeyCompat::BaseController
     token = params[:token]
 
     if token.present?
-      consume_otp(user, token.to_s) ? render_finished(user) : signin_error(403, INCORRECT_TOKEN_ID)
+      return render_error(I18n.t('errors.429'), 'RATE_LIMIT_EXCEEDED', 429) if second_factor_attempts_exceeded?(user)
+
+      if consume_otp(user, token.to_s)
+        clear_second_factor_attempts(user)
+        render_finished(user)
+      else
+        notify_failed_second_factor(user)
+        signin_error(403, INCORRECT_TOKEN_ID)
+      end
     elsif user.otp_required_for_login?
       render_next('totp')
     else

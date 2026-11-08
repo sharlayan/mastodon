@@ -196,4 +196,44 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
       expect(show_account).to be_empty
     end
   end
+
+  describe 'pinned notes and profile of restricted accounts' do
+    let!(:public_pin) { Fabricate(:status, account: account, visibility: :public).tap { |status| StatusPin.create!(account: account, status: status) } }
+
+    before { StatusPin.create!(account: account, status: Fabricate(:status, account: account, visibility: :public, local_only: true)) }
+
+    it 'hides local-only pinned notes from anonymous viewers' do
+      post '/api/users/show', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
+
+      expect(response.parsed_body[:pinnedNoteIds]).to eq([MisskeyCompat::MiId.encode(public_pin.id)])
+    end
+
+    it 'hides local-only pinned notes from anonymous viewers in batch lookups' do
+      post '/api/users/show', params: { userIds: [MisskeyCompat::MiId.encode(account.id)] }, as: :json
+
+      expect(response.parsed_body.first[:pinnedNoteIds]).to eq([MisskeyCompat::MiId.encode(public_pin.id)])
+    end
+
+    it 'does not expose pinned notes or profile text of a suspended account' do
+      account.update!(note: 'Secret bio', fields: [{ name: 'Site', value: 'example' }])
+      account.suspend!
+
+      post '/api/users/show', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
+
+      expect(response.parsed_body).to include(pinnedNoteIds: [], description: nil, fields: [])
+    end
+  end
+
+  describe 'users/featured-notes for anonymous viewers' do
+    it 'does not return local-only notes' do
+      shared = Fabricate(:status, account: account, visibility: :public)
+      local_only = Fabricate(:status, account: account, visibility: :public, local_only: true)
+      [shared, local_only].each { |status| status.status_stat.update!(favourites_count: 1) }
+
+      post '/api/users/featured-notes', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq([MisskeyCompat::MiId.encode(shared.id)])
+    end
+  end
 end
