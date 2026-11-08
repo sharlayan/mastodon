@@ -127,6 +127,7 @@ module MisskeyCompat::ChatErrors
   # CherryPick never refuses for these reasons. They get the closest code it has, and keep saying what really happened.
   CLOSEST_SERVICE_ERROR_CODES = {
     'One or more media attachments are still being processed' => 'NO_SUCH_FILE',
+    'Rooms cannot be deleted while chat history is preserved' => 'NO_SUCH_ROOM',
     'This message can no longer be edited' => 'NO_SUCH_MESSAGE',
   }.freeze
 
@@ -135,7 +136,10 @@ module MisskeyCompat::ChatErrors
     'create_invitation' => 'NO_SUCH_USER',
     'create_to_room' => 'NO_SUCH_ROOM',
     'create_to_user' => 'CANNOT_CHAT_WITH_USER',
+    'join_room' => 'NO_SUCH_ROOM',
+    'leave_room' => 'NO_SUCH_ROOM',
     'react' => 'NO_SUCH_MESSAGE',
+    'reject_invitation' => 'NO_SUCH_ROOM',
     'update' => 'NO_SUCH_MESSAGE',
   }.freeze
 

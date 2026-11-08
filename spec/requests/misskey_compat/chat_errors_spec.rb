@@ -59,6 +59,12 @@ RSpec.describe 'Misskey-compat chat errors' do
     @room ||= service.create_conversation(account, type: :group, title: 'Room')
   end
 
+  def remote_room
+    @remote_room ||= ChatConversation.create!(conversation_type: :group, owner_account: remote, title: 'Remote', uri: 'https://remote.test/chat/rooms/1').tap do |record|
+      record.memberships.create!(account: remote, role: :owner)
+    end
+  end
+
   def room_with_other
     service.accept_invitation(other.account, service.invite(account, room, other.account))
     room
@@ -561,6 +567,15 @@ RSpec.describe 'Misskey-compat chat errors' do
 
       expect_refusal(*no_such_room)
     end
+
+    it 'refuses a room the owner cannot delete while chat history is preserved' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') do
+        request_chat('rooms/delete', roomId: mi_id(room))
+      end
+
+      expect_refusal('Rooms cannot be deleted while chat history is preserved', 'NO_SUCH_ROOM', 'd4e3753d-97bf-4a19-ab8e-21080fbc0f4b')
+      expect(ChatConversation.exists?(room.id)).to be(true)
+    end
   end
 
   describe 'rooms/mute' do
@@ -585,6 +600,16 @@ RSpec.describe 'Misskey-compat chat errors' do
 
       expect_refusal(*no_such_room)
       expect(room.memberships.exists?(account: account)).to be(true)
+    end
+
+    it 'says what happened with the closest code when federation is off' do
+      remote_room.memberships.create!(account: account)
+      Setting.chat_federation_enabled = false
+
+      request_chat('rooms/leave', roomId: mi_id(remote_room))
+
+      expect_refusal('Chat federation is disabled', *no_such_room.drop(1))
+      expect(remote_room.memberships.exists?(account: account)).to be(true)
     end
   end
 
@@ -637,6 +662,16 @@ RSpec.describe 'Misskey-compat chat errors' do
       request_chat('rooms/join', { roomId: mi_id(room) }, as_user: other)
 
       expect_refusal(*no_such_room)
+    end
+
+    it 'says what happened with the closest code when federation is off' do
+      remote_room.invitations.create!(inviter_account: remote, invitee_account: account)
+      Setting.chat_federation_enabled = false
+
+      request_chat('rooms/join', roomId: mi_id(remote_room))
+
+      expect_refusal('Chat federation is disabled', *no_such_room.drop(1))
+      expect(remote_room.memberships.exists?(account: account)).to be(false)
     end
   end
 
@@ -758,6 +793,16 @@ RSpec.describe 'Misskey-compat chat errors' do
       request_chat('rooms/invitations/reject', { roomId: mi_id(room) }, as_user: other)
 
       expect_refusal('No such room.', 'NO_SUCH_ROOM', '5130557e-5a11-4cfb-9cc5-fe60cda5de0d')
+    end
+
+    it 'says what happened with the closest code when rejecting while federation is off' do
+      invitation = remote_room.invitations.create!(inviter_account: remote, invitee_account: account)
+      Setting.chat_federation_enabled = false
+
+      request_chat('rooms/invitations/reject', roomId: mi_id(remote_room))
+
+      expect_refusal('Chat federation is disabled', 'NO_SUCH_ROOM', '5130557e-5a11-4cfb-9cc5-fe60cda5de0d')
+      expect(invitation.reload).to be_pending
     end
 
     it 'refuses the sent invitations of a room the caller does not own' do
