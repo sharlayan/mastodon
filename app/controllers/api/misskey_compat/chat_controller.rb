@@ -300,7 +300,9 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def enforce_write_rate_limit!
-    rate_limited?(:chat_writes) unless current_user.can_extra?(:bypass_rate_limit)
+    return if Setting.rate_limit_bypass_enabled && current_user.can_extra?(:bypass_rate_limit)
+
+    rate_limited?(:chat_writes)
   end
 
   def enforce_search_rate_limit!

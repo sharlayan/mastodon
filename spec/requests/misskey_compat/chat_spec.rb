@@ -77,6 +77,32 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response).to have_http_status(403)
   end
 
+  it 'enforces the write limit for a bypass role when server bypass is disabled' do
+    user.role.update!(extra_permissions: UserRole::EXTRA_FLAGS[:bypass_rate_limit])
+    Setting.rate_limit_bypass_enabled = false
+    limiter = instance_double(RateLimiter)
+    allow(RateLimiter).to receive(:new).with(account, family: :chat_writes).and_return(limiter)
+    allow(limiter).to receive(:record!).and_raise(Mastodon::RateLimitExceededError)
+
+    request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: 'hello')
+
+    expect(response).to have_http_status(429)
+    expect(ChatMessage.count).to be_zero
+  end
+
+  it 'lets a bypass role skip the write limit when server bypass is enabled' do
+    user.role.update!(extra_permissions: UserRole::EXTRA_FLAGS[:bypass_rate_limit])
+    Setting.rate_limit_bypass_enabled = true
+    allow(RateLimiter).to receive(:new).and_call_original
+
+    request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: 'hello')
+
+    expect(response).to have_http_status(200)
+    expect(RateLimiter).to_not have_received(:new).with(account, family: :chat_writes)
+  ensure
+    Setting.rate_limit_bypass_enabled = false
+  end
+
   it 'creates direct messages with decoded IDs and returns the stored message' do
     request_chat('messages/create-to-user', toUserId: mi_id(other.account), text: 'hello')
 
