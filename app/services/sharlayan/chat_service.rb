@@ -84,6 +84,7 @@ class Sharlayan::ChatService
 
     message = nil
     conversation.with_lock do
+      ensure_conversation_writable!(conversation)
       message = conversation.messages.build(account: account, text: text.to_s.strip.presence, reply_to: reply_to)
       message.pending_media_attachments = attachments
       message.save!

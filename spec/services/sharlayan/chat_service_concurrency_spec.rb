@@ -41,4 +41,14 @@ RSpec.describe Sharlayan::ChatService do
       expect(room.memberships.exists?(account: invitee)).to be(true)
     end
   end
+
+  describe 'sending to a room archived meanwhile' do
+    it 'refuses the message' do
+      stale_room = ChatConversation.find(room.id)
+      ChatConversation.find(room.id).update!(archived_at: Time.current)
+
+      expect { service.create_message(owner, stale_room, text: 'late') }.to raise_error(described_class::Error, 'Archived conversations are read-only')
+      expect(room.messages.count).to eq(0)
+    end
+  end
 end
