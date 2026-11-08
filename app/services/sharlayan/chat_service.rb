@@ -20,6 +20,11 @@ class Sharlayan::ChatService
   MAX_TOMBSTONED_ROOM_MESSAGES = 1000
   ACCEPT_DELIVERY_GRACE = 5.minutes
   LEFT_ROOM_OWNED_HERE = 'removed_here'
+  ROOM_DELETION_DISABLED = 'Rooms cannot be deleted while chat history is preserved'
+
+  def self.room_deletion_enabled?
+    !RoleplayModeHelper.roleplay_mode?
+  end
 
   def self.room_tombstone_key(uri)
     "chat_room_tombstone:#{Digest::SHA256.hexdigest(uri.to_s)}"
@@ -316,6 +321,7 @@ class Sharlayan::ChatService
   def destroy_conversation(account, conversation)
     membership = membership!(account, conversation)
     raise Forbidden unless conversation.chat_group? && membership.owner?
+    raise Error, ROOM_DELETION_DISABLED unless self.class.room_deletion_enabled?
 
     deliver_room_state(account, conversation, Sharlayan::ChatFederation::Payload.delete_room(conversation)) if conversation.local?
     destroy_and_announce(conversation, actor: account)

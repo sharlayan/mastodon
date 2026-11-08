@@ -37,6 +37,7 @@ class Api::V1::Chat::SettingsController < Api::V1::Chat::BaseController
       federation_enabled: Setting.chat_federation_enabled,
       delete_window_hours: Setting.chat_delete_window_hours,
       soft_delete: RoleplayModeHelper.roleplay_mode? || Setting.chat_soft_delete_enabled,
+      room_deletion: Sharlayan::ChatService.room_deletion_enabled?,
     }
   end
 
