@@ -134,7 +134,8 @@ html {
   .column-link .icon-group,
   .column-link .icon-users,
   .column-link .icon-description,
-  .column-link .icon-radar {
+  .column-link .icon-radar,
+  .column-link .icon-chat {
     background-image: none;
     background-color: var(--color-text-primary);
     -webkit-mask-position: center;
@@ -201,6 +202,10 @@ html {
     @include icons.icon-glyph(pages);
   }
 
+  .column-link .icon-chat {
+    @include icons.icon-glyph(chat);
+  }
+
   .column-link.active .icon-campaign {
     @include icons.icon-glyph(megaphone, fill);
   }
@@ -251,6 +256,10 @@ html {
 
   .column-link.active .icon-radar {
     @include icons.icon-glyph(antenna, fill);
+  }
+
+  .column-link.active .icon-chat {
+    @include icons.icon-glyph(chat, fill);
   }
 
   .item-list .lists__item__title .page-list-item__main-icon path,
