@@ -2303,3 +2303,47 @@ describe('Chat when a room was still empty when it was read again', () => {
     expect(shown()).toEqual(numbers(1, 61));
   });
 });
+
+describe('Chat while the stream stays down', () => {
+  it('reads only what is new on each poll after the first, and everything once it is back', async () => {
+    seed('A', 1, 90);
+    const page = await loadPage();
+    await connect(page.socket);
+    page.open('/chat/A');
+    await screen.findByText('Message 90');
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
+    await screen.findByText('Message 11');
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
+    await screen.findByText('Message 1');
+    await settle();
+    const stream = await import('../stream');
+    act(() => {
+      stream.handleChatStreamDisconnected();
+    });
+
+    backend.reads = [];
+    act(() => {
+      stream.handleChatStreamPolled();
+    });
+    await settle();
+    expect(readsOf(MESSAGES)).toHaveLength(3);
+
+    backend.reads = [];
+    seed('A', 91, 91);
+    act(() => {
+      stream.handleChatStreamPolled();
+    });
+    await screen.findByText('Message 91');
+    await settle();
+    expect(readsOf(MESSAGES)).toHaveLength(1);
+    expect(shown()).toEqual(numbers(1, 91));
+
+    backend.reads = [];
+    act(() => {
+      stream.handleChatStreamConnected();
+    });
+    await settle();
+    expect(readsOf(MESSAGES)).toHaveLength(3);
+    expect(shown()).toEqual(numbers(1, 91));
+  });
+});

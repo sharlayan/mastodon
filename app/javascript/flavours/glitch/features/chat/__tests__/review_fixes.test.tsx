@@ -1133,3 +1133,55 @@ describe('Room updates that arrive out of order', () => {
     expect(screen.queryByText('Hikers')).toBeNull();
   });
 });
+
+describe('Polling the room list while the stream stays down', () => {
+  const numbered = (index: number, content: string) =>
+    room(`room-${index}`, 'group', [bob], {
+      title: `Group ${index}`,
+      last_message: {
+        ...myMessage,
+        id: String(1000 - index),
+        conversation_id: `room-${index}`,
+        content,
+      },
+    });
+  const firstPage = (content: string) =>
+    Array.from({ length: 20 }, (_, index) => numbered(index, content));
+  const listReads = () =>
+    api.get.mock.calls.filter(([url]) => url === '/api/v1/chat/conversations');
+
+  it('reads only the first page and keeps the pages read further down', async () => {
+    let first = firstPage('Before');
+    api.get.mockImplementation(
+      (
+        url: string,
+        config?: { params?: { max_id?: string; direction?: string } },
+      ) => {
+        if (url === '/api/v1/chat/conversations')
+          return Promise.resolve({
+            data: config?.params?.max_id
+              ? [numbered(20, 'Further down')]
+              : first,
+            headers: {},
+          });
+        return Promise.resolve({ data: responses(url, config) });
+      },
+    );
+    mountAt('/chat');
+    await screen.findByText('Group 19');
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+    await screen.findByText('Group 20');
+    api.get.mockClear();
+
+    first = firstPage('After');
+    act(() => {
+      emitChatStreamEvent({ event: 'chat.stream_polled', payload: {} });
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('After')).toHaveLength(20);
+    });
+    expect(listReads()).toEqual([['/api/v1/chat/conversations']]);
+    expect(screen.getByText('Group 20')).toBeTruthy();
+  });
+});

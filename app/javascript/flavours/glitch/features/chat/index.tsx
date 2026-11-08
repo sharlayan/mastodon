@@ -66,6 +66,7 @@ import { useAppDispatch } from 'flavours/glitch/store';
 import { createRetries } from './retry';
 import type { PageCheckpoint } from './retry';
 import {
+  CHAT_STREAM_POLLED,
   CHAT_STREAM_RECONNECTED,
   isChatStreamLive,
   subscribeChatStream,
@@ -1635,6 +1636,40 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     ],
   );
 
+  const pollConversations = useCallback(
+    async (nextPage: PageCheckpoint) => {
+      if (conversationPages.current <= 1) return loadConversations(nextPage);
+      const requestId = latestConversationRequest.current;
+      const appliedGeneration = appliedConversationGeneration.current;
+      const updates: ConversationUpdate[] = [];
+      pendingConversationUpdates.current.add(updates);
+      try {
+        const { data } = await api().get<ChatConversation[]>(
+          '/api/v1/chat/conversations',
+        );
+        if (
+          requestId !== latestConversationRequest.current ||
+          appliedGeneration !== appliedConversationGeneration.current
+        )
+          return false;
+        const fresh = updates.reduce((items, update) => update(items), data);
+        const freshIds = new Set(fresh.map((item) => item.id));
+        fresh.forEach((item) => {
+          endedConversations.current.delete(item.id);
+        });
+        setConversations((current) => [
+          ...fresh,
+          ...current.filter((item) => !freshIds.has(item.id)),
+        ]);
+        readRecovered('conversations');
+        return true;
+      } finally {
+        pendingConversationUpdates.current.delete(updates);
+      }
+    },
+    [loadConversations, readRecovered],
+  );
+
   const loadConversationsForAction = useCallback(async () => {
     // One background plan owns a rate-limited read, even if an action asks for it first.
     if (retries.limited('conversations')) {
@@ -1804,7 +1839,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   // Fetches what changed while nothing was arriving, without moving anyone from the older pages they are reading.
   const resyncMessages = useCallback(
-    async (nextPage: PageCheckpoint) => {
+    async (nextPage: PageCheckpoint, latestOnly = false) => {
       if (!conversationId) return;
       const updates: MessageUpdate[] = [];
       pendingMessageUpdates.current.add(updates);
@@ -1816,14 +1851,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       // The shown list can still be a stream-only render while the initial
       // snapshot has been applied but has not rendered yet.
       const from =
-        oldestShown && continuous
-          ? compareId(oldestShown, continuous) < 0
-            ? oldestShown
-            : continuous
-          : (oldestShown ?? continuous);
-      const pageLimit =
-        MESSAGE_RESYNC_PAGES +
-        Math.ceil(shownMessagesRef.current.length / MESSAGE_PAGE_SIZE);
+        latestOnly && continuous
+          ? continuous
+          : oldestShown && continuous
+            ? compareId(oldestShown, continuous) < 0
+              ? oldestShown
+              : continuous
+            : (oldestShown ?? continuous);
+      const pageLimit = latestOnly
+        ? MESSAGE_RESYNC_PAGES
+        : MESSAGE_RESYNC_PAGES +
+          Math.ceil(shownMessagesRef.current.length / MESSAGE_PAGE_SIZE);
       const loaded: ChatMessage[] = [];
       let reachedStart = false;
       let meetsKnown = false;
@@ -1903,6 +1941,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       scroll,
       updateOlderMessageId,
     ],
+  );
+
+  const catchUpMessages = useCallback(
+    (nextPage: PageCheckpoint) => resyncMessages(nextPage, true),
+    [resyncMessages],
   );
 
   const markSeenOnReturn = useCallback(() => {
@@ -2267,35 +2310,48 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         } else if (event === 'chat.invitation_update') {
           if (eventConversationId === conversationId)
             setSentInvitationsVersion((version) => version + 1);
-        } else if (event === CHAT_STREAM_RECONNECTED) {
+        } else if (
+          event === CHAT_STREAM_RECONNECTED ||
+          event === CHAT_STREAM_POLLED
+        ) {
+          const latestOnly = event === CHAT_STREAM_POLLED;
           readSinceStreamWentLive.current = false;
-          setSentInvitationsVersion((version) => version + 1);
+          if (!latestOnly) setSentInvitationsVersion((version) => version + 1);
           // This also runs on every poll while offline, and the next one tries again.
           const readAgain = () => {
-            // A queued reread supersedes the snapshot currently on its way.
-            if (retries.planned('conversations'))
-              latestConversationRequest.current += 1;
-            void retries
-              .keepTrying('conversations', async (nextPage) => {
-                if (await loadConversations(nextPage))
-                  readRecovered('conversations');
-              })
-              .catch(() => undefined);
+            if (!latestOnly || !retries.planned('conversations')) {
+              // A queued reread supersedes the snapshot currently on its way.
+              if (retries.planned('conversations'))
+                latestConversationRequest.current += 1;
+              const readConversations = latestOnly
+                ? pollConversations
+                : loadConversations;
+              void retries
+                .keepTrying('conversations', async (nextPage) => {
+                  if (await readConversations(nextPage))
+                    readRecovered('conversations');
+                })
+                .catch(() => undefined);
+            }
             retries.wake('conversations');
             void retries
               .keepTrying('invitations', loadInvitations)
               .catch(() => undefined);
             retries.wake('invitations');
             if (conversationId) {
-              void retries
-                .keepTrying(
-                  `messages:${conversationId}`,
-                  firstMessagesRead.current
-                    ? resyncMessages
-                    : readFirstMessages,
-                )
-                .catch(() => undefined);
-              retries.wake(`messages:${conversationId}`);
+              const read = `messages:${conversationId}`;
+              if (!latestOnly || !retries.planned(read))
+                void retries
+                  .keepTrying(
+                    read,
+                    !firstMessagesRead.current
+                      ? readFirstMessages
+                      : latestOnly
+                        ? catchUpMessages
+                        : resyncMessages,
+                  )
+                  .catch(() => undefined);
+              retries.wake(read);
             }
           };
           // Starting before the screen's first answers are back would throw them away, and
@@ -2318,8 +2374,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       history,
       jumpButton,
       keepReading,
+      catchUpMessages,
       loadConversations,
       loadInvitations,
+      pollConversations,
       queueVisibleRead,
       readFirstMessages,
       readRecovered,

@@ -61,6 +61,34 @@ describe('Chat stream connection', () => {
     });
     unsubscribe();
   });
+
+  it('asks for everything on the first poll only, until the stream is back', async () => {
+    vi.resetModules();
+    const stream = await import('../stream');
+    const listener = vi.fn();
+    const unsubscribe = stream.subscribeChatStream(listener);
+    const events = () =>
+      listener.mock.calls.map(([item]) => (item as { event: string }).event);
+
+    stream.handleChatStreamConnected();
+    stream.handleChatStreamDisconnected();
+    stream.handleChatStreamPolled();
+    stream.handleChatStreamPolled();
+    stream.handleChatStreamPolled();
+    stream.handleChatStreamConnected();
+    stream.handleChatStreamDisconnected();
+    stream.handleChatStreamPolled();
+
+    expect(events()).toEqual([
+      stream.CHAT_STREAM_RECONNECTED,
+      stream.CHAT_STREAM_RECONNECTED,
+      stream.CHAT_STREAM_POLLED,
+      stream.CHAT_STREAM_POLLED,
+      stream.CHAT_STREAM_RECONNECTED,
+      stream.CHAT_STREAM_RECONNECTED,
+    ]);
+    unsubscribe();
+  });
 });
 
 describe('Chat desktop notifications', () => {

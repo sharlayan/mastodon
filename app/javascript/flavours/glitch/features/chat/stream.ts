@@ -25,8 +25,10 @@ export const emitChatStreamEvent = (event: ChatStreamEvent) => {
 };
 
 export const CHAT_STREAM_RECONNECTED = 'chat.stream_reconnected';
+export const CHAT_STREAM_POLLED = 'chat.stream_polled';
 
 let live = false;
+let polledWhileDown = false;
 
 // Whether every event sent from now on will arrive, so that what does arrive leaves nothing out.
 export const isChatStreamLive = () => live;
@@ -35,6 +37,7 @@ export const isChatStreamLive = () => live;
 // or had not come up yet, and an open chat screen may have read what it shows before that.
 export const handleChatStreamConnected = () => {
   live = true;
+  polledWhileDown = false;
   emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
 };
 
@@ -44,7 +47,9 @@ export const handleChatStreamDisconnected = () => {
 
 // While the stream is down, polling has to catch what it would have delivered.
 export const handleChatStreamPolled = () => {
-  emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+  const event = polledWhileDown ? CHAT_STREAM_POLLED : CHAT_STREAM_RECONNECTED;
+  polledWhileDown = true;
+  emitChatStreamEvent({ event, payload: {} });
 };
 
 export const showChatDesktopNotification = (
