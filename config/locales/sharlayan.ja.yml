@@ -70,7 +70,7 @@ ja:
       unblocked_avatar_decorations_msg: "%{username}のアバターデコレーションのブロックを解除しました"
     action_logs:
       actions:
-        destroy_chat_conversation_html: "%{name} さんがチャットの会話を削除しました"
+        destroy_chat_conversation_html: "%{name} さんがチャットの会話 %{target} を削除しました"
         update_collection_html: "%{name} さんが %{target} によるコレクションを更新しました"
     avatar_decoration_domain_blocks:
       added_at: 追加日

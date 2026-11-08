@@ -71,7 +71,7 @@ en:
       unblocked_avatar_decorations_msg: Avatar decorations unblocked for %{username}
     action_logs:
       actions:
-        destroy_chat_conversation_html: "%{name} deleted a chat conversation"
+        destroy_chat_conversation_html: "%{name} deleted chat conversation %{target}"
         update_collection_html: "%{name} updated collection by %{target}"
     avatar_decoration_domain_blocks:
       added_at: Added

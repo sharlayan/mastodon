@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module Admin::ActionLogsHelper
+  prepend Sharlayan::AdminActionLogsHelperExtensions
+
   def log_target(log)
     case log.target_type
     when 'Account'

@@ -91,6 +91,7 @@ RSpec.describe 'Admin Chat conversations' do
     get admin_action_logs_path
 
     expect(response).to have_http_status(200)
+    expect(response.body).to include("deleted chat conversation <span class=\"target\">##{conversation.id}</span>")
   end
 
   it 'lists conversations without messages after those with messages' do

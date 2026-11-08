@@ -70,7 +70,7 @@ ko:
       unblocked_avatar_decorations_msg: "%{username}의 아바타 장식을 표시합니다"
     action_logs:
       actions:
-        destroy_chat_conversation_html: "%{name} 님이 채팅 대화를 삭제했습니다"
+        destroy_chat_conversation_html: "%{name} 님이 채팅 대화 %{target}을(를) 삭제했습니다"
         update_collection_html: "%{name} 님이 %{target}의 컬렉션을 수정했습니다"
     avatar_decoration_domain_blocks:
       added_at: 추가됨
