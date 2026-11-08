@@ -1214,10 +1214,20 @@ class Sharlayan::ChatService
 
   def purge_messages(account)
     conversation_ids = account.chat_messages.distinct.pluck(:chat_conversation_id)
+    keep_read_pointers_of_others(account)
     account.chat_messages.in_batches.destroy_all
 
     ChatConversation.where(id: conversation_ids, last_message_id: nil).find_each do |conversation|
       conversation.update!(last_message: conversation.messages.first)
+    end
+  end
+
+  def keep_read_pointers_of_others(account)
+    ChatMembership.where(last_read_message_id: account.chat_messages.select(:id)).where.not(account_id: account.id).find_each do |membership|
+      previous_id = ChatMessage.where(chat_conversation_id: membership.chat_conversation_id, id: ...membership.last_read_message_id)
+        .where.not(account_id: account.id)
+        .maximum(:id)
+      membership.update_columns(last_read_message_id: previous_id)
     end
   end
 
