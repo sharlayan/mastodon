@@ -52,6 +52,10 @@ module Sharlayan::MediaAttachmentExtensions
     status_id.nil? && chat_message_media_attachments.any?
   end
 
+  def small_preview?
+    thumbnail.present? || thumbnail_remote_url.present? || image? || gifv? || video?
+  end
+
   def removable_with_chat_message?
     status_id.nil? && scheduled_status_id.nil? && status_draft_id.nil? && !self.class.referenced_by_page.exists?(id: id)
   end

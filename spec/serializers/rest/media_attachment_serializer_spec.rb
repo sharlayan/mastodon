@@ -59,4 +59,36 @@ RSpec.describe REST::MediaAttachmentSerializer do
     expect(URI(result[:url]).path).to eq("/media_proxy/#{remote_attachment.id}/original")
     expect(URI(result[:thumbnailUrl]).path).to eq("/media_proxy/#{remote_attachment.id}/small")
   end
+
+  describe 'a chat attachment' do
+    let(:viewer) { Fabricate(:user).account }
+    let(:media) { Fabricate(:media_attachment, account: account, status: nil) }
+
+    before do
+      room = ChatConversation.create!(conversation_type: :group, title: 'Room', owner_account: account)
+      room.memberships.create!(account: account, role: :owner)
+      room.memberships.create!(account: viewer)
+      room.messages.create!(account: account, text: 'sent').media_attachments << media
+    end
+
+    def preview_url(record)
+      described_class.new(record.reload, current_account: viewer).as_json[:preview_url]
+    end
+
+    it 'gives a protected preview of an image' do
+      expect(URI(preview_url(media)).path).to eq("/media_proxy/#{media.id}/small")
+    end
+
+    it 'gives no preview of audio without a thumbnail' do
+      media.update_columns(type: MediaAttachment.types[:audio], file_content_type: 'audio/mpeg')
+
+      expect(preview_url(media)).to be_nil
+    end
+
+    it 'gives no preview of an unknown file' do
+      media.update_columns(type: MediaAttachment.types[:unknown], file_content_type: 'application/octet-stream')
+
+      expect(preview_url(media)).to be_nil
+    end
+  end
 end

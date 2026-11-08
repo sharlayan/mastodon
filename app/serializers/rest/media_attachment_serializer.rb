@@ -33,7 +33,7 @@ class REST::MediaAttachmentSerializer < ActiveModel::Serializer
 
   def preview_url
     if object.chat_attachment? || object.needs_redownload? || object.on_hold?
-      media_proxy_url(object.id, :small, chat_token: chat_media_token)
+      media_proxy_url(object.id, :small, chat_token: chat_media_token) if object.small_preview?
     elsif object.drive_pointer?
       full_media_attachment_preview_url(object)
     elsif object.thumbnail.present?

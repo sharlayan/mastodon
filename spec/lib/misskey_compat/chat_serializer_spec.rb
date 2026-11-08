@@ -56,6 +56,15 @@ RSpec.describe MisskeyCompat::ChatSerializer do
     expect(payload.dig(:file, :thumbnailUrl)).to include("/media_proxy/#{media.id}/small")
   end
 
+  it 'gives no thumbnail of audio without one' do
+    media = Fabricate(:media_attachment, account: owner, status: nil)
+    media.update_columns(type: MediaAttachment.types[:audio], file_content_type: 'audio/mpeg')
+    message = room.messages.create!(account: owner, text: 'attachment')
+    message.media_attachments << media
+
+    expect(described_class.message(ChatMessage.find(message.id), viewer: member).dig(:file, :thumbnailUrl)).to be_nil
+  end
+
   describe 'the name of an attachment from another server' do
     let(:remote) { Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob') }
     let(:media) { MediaAttachment.create!(account: remote, remote_url: 'https://remote.test/files/abc', file_content_type: 'image/png') }

@@ -109,7 +109,7 @@ class MisskeyCompat::ChatSerializer
     token = Sharlayan::ChatMediaToken.generate(media, @viewer, misskey: true)
     file = MisskeyCompat::DriveFileSerializer.serialize(media).merge(
       url: media_proxy_url(media.id, :original, chat_token: token),
-      thumbnailUrl: media_proxy_url(media.id, :small, chat_token: token)
+      thumbnailUrl: media.small_preview? ? media_proxy_url(media.id, :small, chat_token: token) : nil
     )
     media.remote_url.present? ? file.merge(name: remote_file_name(media)) : file
   end
