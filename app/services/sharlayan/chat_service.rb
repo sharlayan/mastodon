@@ -9,6 +9,7 @@ class Sharlayan::ChatService
 
   MAX_PENDING_REMOTE_ROOMS = 100
   MAX_REMOTE_ROOM_MEMBERS = 1000
+  MAX_ROSTER_ACCOUNT_FETCHES = 20
   MAX_ROOM_TITLE_LENGTH = 256
   MAX_ROOM_DESCRIPTION_LENGTH = 2048
   INVITE_CANCEL_TTL = 6.hours
@@ -778,7 +779,7 @@ class Sharlayan::ChatService
   def apply_roster(conversation, member_uris:, roster_at:)
     return if member_uris.size > MAX_REMOTE_ROOM_MEMBERS
 
-    listed = member_uris.uniq.filter_map { |uri| roster_account(uri) }
+    listed = roster_accounts(conversation, member_uris.uniq, roster_at)
     joined, left = conversation.with_lock { merge_roster(conversation, listed, roster_at) }
 
     broadcast(conversation, 'chat.conversation_update', conversation, REST::ChatConversationSerializer) if joined.any? || left.any?
@@ -791,6 +792,21 @@ class Sharlayan::ChatService
   end
 
   private
+
+  def roster_accounts(conversation, uris, roster_at)
+    known = uris.index_with { |uri| account_from_uri(uri, fetch: false) }
+    unknown = known.filter_map { |uri, account| uri if account.nil? }
+    fetched = unknown.first(roster_fetch_allowance(conversation, roster_at)).filter_map { |uri| roster_account(uri) }
+
+    known.values.compact + fetched
+  end
+
+  def roster_fetch_allowance(conversation, roster_at)
+    latest = conversation.roster_states.maximum(:last_roster_at)
+    return 0 if latest.present? && latest >= roster_at
+
+    (MAX_REMOTE_ROOM_MEMBERS - conversation.memberships.count).clamp(0, MAX_ROSTER_ACCOUNT_FETCHES)
+  end
 
   def roster_account(uri)
     account_from_uri(uri)
