@@ -91,7 +91,7 @@ class Sharlayan::ChatService
       message.update!(uri: local_message_uri(message)) if message.uri.nil? && account.local?
       attachments.each { |attachment| message.chat_message_media_attachments.create!(media_attachment: attachment) }
       conversation.update!(last_message: message)
-      membership.update!(last_read_message: message)
+      advance_read_pointer(membership, message)
     end
     broadcast(conversation, 'chat.message', message, REST::ChatMessageSerializer)
     notify_members(conversation, message)
@@ -134,8 +134,9 @@ class Sharlayan::ChatService
     membership = membership!(account, conversation)
     message = message_id.present? ? conversation.messages.find(message_id) : conversation.last_message
     if message && (membership.last_read_message_id.nil? || message.id > membership.last_read_message_id)
-      membership.update!(last_read_message: message)
-      broadcast_to(account, 'chat.read', { conversation_id: conversation.id.to_s, message_id: message.id.to_s })
+      advanced = advance_read_pointer(membership, message)
+      membership.reload
+      broadcast_to(account, 'chat.read', { conversation_id: conversation.id.to_s, message_id: message.id.to_s }) if advanced
     end
     membership
   end
@@ -823,6 +824,13 @@ class Sharlayan::ChatService
     end
 
     [joined, left]
+  end
+
+  def advance_read_pointer(membership, message)
+    ChatMembership.where(id: membership.id)
+      .where('last_read_message_id IS NULL OR last_read_message_id < ?', message.id)
+      .update_all(last_read_message_id: message.id, updated_at: Time.current)
+      .positive?
   end
 
   def settle_pending_invitation!(invitation, state)

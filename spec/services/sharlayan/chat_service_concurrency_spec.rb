@@ -51,4 +51,45 @@ RSpec.describe Sharlayan::ChatService do
       expect(room.messages.count).to eq(0)
     end
   end
+
+  describe 'marking a room as read' do
+    let(:earlier) { service.create_message(invitee, room, text: 'first') }
+    let(:later) { service.create_message(invitee, room, text: 'second') }
+
+    before { room.memberships.create!(account: invitee) }
+
+    it 'does not move the pointer back when a newer read was saved meanwhile' do
+      stale_membership = room.memberships.find_by!(account: owner)
+      earlier
+      service.mark_read(owner, room, message_id: later.id)
+      allow(service).to receive(:membership!).and_return(stale_membership)
+
+      membership = service.mark_read(owner, room, message_id: earlier.id)
+
+      expect(room.memberships.find_by!(account: owner).last_read_message_id).to eq(later.id)
+      expect(membership.last_read_message_id).to eq(later.id)
+    end
+
+    it 'moves the pointer forward' do
+      earlier
+      later
+
+      membership = service.mark_read(owner, room)
+
+      expect(membership.last_read_message_id).to eq(later.id)
+      expect(room.memberships.find_by!(account: owner).last_read_message_id).to eq(later.id)
+    end
+
+    it 'keeps a newer pointer when the sender writes again' do
+      sent = service.create_message(owner, room, text: 'mine')
+      newer = room.messages.create!(id: sent.id + 1000, account: invitee, text: 'arrived out of order')
+      room.memberships.find_by!(account: owner).update!(last_read_message: newer)
+      stale_membership = room.memberships.find_by!(account: owner).tap { |membership| membership.last_read_message_id = sent.id }
+      allow(service).to receive(:membership!).and_return(stale_membership)
+
+      service.create_message(owner, room, text: 'again')
+
+      expect(room.memberships.find_by!(account: owner).last_read_message_id).to eq(newer.id)
+    end
+  end
 end
