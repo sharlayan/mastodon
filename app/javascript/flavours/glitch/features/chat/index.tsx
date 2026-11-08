@@ -63,6 +63,7 @@ import { me, roleplayMode } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
+import { leaveChatRoute, trackChatHistory } from './history_parent';
 import { createRetries } from './retry';
 import type { PageCheckpoint } from './retry';
 import {
@@ -1000,6 +1001,11 @@ const ComposerSendButton: React.FC<{
 
 export const Chat: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const { conversationId } = useParams<{ conversationId?: string }>();
+  const history = useHistory();
+
+  useEffect(() => {
+    trackChatHistory(history);
+  }, [history]);
 
   return (
     <ChatSession key={conversationId ?? 'home'} multiColumn={multiColumn} />
@@ -1414,11 +1420,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const navigateIfActive = useCallback(
     (path: string, created?: ChatConversation) => {
-      if (isMounted.current)
-        history.push(
-          path,
-          created ? { chatCreatedConversation: created } : undefined,
-        );
+      if (!isMounted.current) return;
+      if (created) history.replace(path, { chatCreatedConversation: created });
+      else leaveChatRoute(history, path);
     },
     [history],
   );
@@ -2234,7 +2238,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
           if (value.conversation_id !== conversationId) return;
           if (!value.reason) {
-            history.push('/chat');
+            leaveChatRoute(history, '/chat');
             return;
           }
           latestConversationRequest.current += 1;
@@ -2467,10 +2471,21 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   const handleBack = useCallback(() => {
-    history.push(
+    leaveChatRoute(
+      history,
       roomView && conversationId ? `/chat/${conversationId}` : '/chat',
     );
   }, [conversationId, history, roomView]);
+
+  const handleBackToChats = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey) return;
+      if (event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      leaveChatRoute(history, '/chat');
+    },
+    [history],
+  );
 
   const listsSentInvitations = roomView === 'members' && isGroupOwner;
 
@@ -3783,7 +3798,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   />
                 )}
               </p>
-              <Link className='button chat-native__ended-back' to='/chat'>
+              <Link
+                className='button chat-native__ended-back'
+                to='/chat'
+                onClick={handleBackToChats}
+              >
                 <FormattedMessage
                   id='chat.room_ended_back'
                   defaultMessage='Back to chats'
