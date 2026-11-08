@@ -2277,3 +2277,29 @@ describe('Chat when the stream comes back before the first read of a room succee
     expect(shown()).toEqual(numbers(1, 61));
   });
 });
+
+describe('Chat when a room was still empty when it was read again', () => {
+  it('reads back to the first message after stream messages were shown', async () => {
+    backend.rooms.set('A', { title: 'Room A', unread: false });
+    const page = await loadPage();
+    page.open('/chat/A');
+    await screen.findByText('No messages yet.', { exact: false });
+    await connect(page.socket);
+    await settle();
+    expect(readsOf(MESSAGES)).toHaveLength(2);
+
+    const next = await dropConnection(page.socket);
+    seed('A', 1, 60);
+    await connectUnanswered(next);
+    const [newest] = seed('A', 61, 61);
+    act(() => {
+      next.deliver('chat.message', newest);
+    });
+    await screen.findByText('Message 61');
+    await answerSubscription(next);
+
+    await screen.findByText('Message 1');
+    await settle();
+    expect(shown()).toEqual(numbers(1, 61));
+  });
+});

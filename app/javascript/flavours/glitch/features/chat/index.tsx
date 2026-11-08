@@ -1817,7 +1817,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         pendingMessageUpdates.current.delete(updates);
       }
       if (requestId !== latestMessageRequest.current) return;
-      initialMessageSnapshotWasEmpty.current = false;
+      initialMessageSnapshotWasEmpty.current = loaded.length === 0;
       setMessagesLoaded(true);
       advanceContinuousUpTo(loaded.at(-1)?.id);
       readSinceStreamWentLive.current = liveWhenAsked && isChatStreamLive();
