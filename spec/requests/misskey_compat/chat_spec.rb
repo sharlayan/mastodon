@@ -36,6 +36,13 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     MisskeyCompat::MiId.encode(record.id)
   end
 
+  def counted_queries(pattern, &block)
+    queries = []
+    callback = ->(*, payload) { queries << payload[:sql] if !payload[:cached] && payload[:sql].match?(pattern) }
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+    queries
+  end
+
   def direct_conversation
     service.create_conversation(account, type: :direct, account_ids: [other.account.id])
   end
@@ -485,6 +492,54 @@ RSpec.describe 'Misskey-compat chat endpoints' do
       expect(response).to have_http_status(400), "#{endpoint} #{params}"
       expect(response.parsed_body[:error]).to include(code: 'INVALID_PARAM', info: include(param: "#/properties/#{key}")), "#{endpoint} #{params}"
     end
+  end
+
+  it 'reads the history read state without a query for every message' do
+    others = Array.new(3) { Fabricate(:user).account.tap { |peer| peer.user.settings[:chat_policy] = 'everyone' }.tap { |peer| peer.user.save! } }
+    others.each { |peer| service.create_message(peer, service.create_conversation(account, type: :direct, account_ids: [peer.id]), text: 'unread') }
+
+    queries = counted_queries(/FROM "chat_memberships" WHERE "chat_memberships"\."chat_conversation_id" = \$1 AND "chat_memberships"\."account_id" = \$2/) do
+      request_chat('history')
+    end
+
+    expect(response.parsed_body.size).to eq(3)
+    expect(response.parsed_body.pluck(:isRead)).to all(be(false))
+    expect(queries).to be_empty
+  end
+
+  it 'looks up custom emojis once for a page of messages' do
+    Fabricate(:custom_emoji, shortcode: 'blobcat')
+    Fabricate(:custom_emoji, shortcode: 'neko')
+    room = group_conversation
+    service.create_message(account, room, text: 'hello :blobcat:')
+    service.create_message(account, room, text: 'hello :neko:')
+    service.create_message(account, room, text: 'plain')
+
+    queries = counted_queries(/FROM "custom_emojis"/) { request_chat('messages/room-timeline', roomId: mi_id(room)) }
+
+    expect(response.parsed_body.pluck(:emojis)).to contain_exactly(include('blobcat' => be_present), include('neko' => be_present), {})
+    expect(queries.size).to eq(1)
+  end
+
+  it 'serializes joined rooms and room members without a query for every room or member' do
+    count_for = lambda do |rooms|
+      rooms.each { |room| service.accept_invitation(account, service.invite(other.account, room, account)) }
+      counted_queries(/FROM "chat_|FROM "accounts"/) { request_chat('rooms/joining') }.size
+    end
+
+    single = count_for.call([service.create_conversation(other.account, type: :group, title: 'One')])
+    several = count_for.call(Array.new(3) { |index| service.create_conversation(other.account, type: :group, title: "Room #{index}") })
+    expect(several).to eq(single)
+
+    room = group_conversation
+    members = Array.new(3) { Fabricate(:user).account }
+    first = members.first
+    service.accept_invitation(first, service.invite(account, room, first))
+    single = counted_queries(/FROM "chat_|FROM "accounts"/) { request_chat('rooms/members', roomId: mi_id(room)) }.size
+    members.drop(1).each { |member| service.accept_invitation(member, service.invite(account, room, member)) }
+    several = counted_queries(/FROM "chat_|FROM "accounts"/) { request_chat('rooms/members', roomId: mi_id(room)) }.size
+    expect(response.parsed_body.size).to eq(3)
+    expect(several).to eq(single)
   end
 
   it 'rejects missing and incorrectly typed parameters without mutating state' do

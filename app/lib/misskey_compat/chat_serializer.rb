@@ -8,6 +8,10 @@ class MisskeyCompat::ChatSerializer
       new(viewer).message(message)
     end
 
+    def messages(messages, viewer:)
+      new(viewer).messages(messages)
+    end
+
     def room(conversation, viewer:)
       new(viewer).room(conversation)
     end
@@ -49,6 +53,12 @@ class MisskeyCompat::ChatSerializer
       reactions: message.deleted? ? [] : reactions(message),
       emojis: message.deleted? ? {} : text_emojis(message),
     }
+  end
+
+  def messages(messages)
+    messages = messages.to_a
+    preload_text_emojis(messages)
+    messages.map { |message| message(message) }
   end
 
   def room(conversation)
@@ -129,9 +139,25 @@ class MisskeyCompat::ChatSerializer
   end
 
   def text_emojis(message)
-    shortcodes = message.text.to_s.scan(/:([a-zA-Z0-9_+-]+):/).flatten.uniq
-    CustomEmoji.where(shortcode: shortcodes, domain: message.account.domain, disabled: false).to_h do |emoji|
-      [emoji.shortcode, full_asset_url(emoji.image.url)]
+    shortcodes = text_shortcodes(message)
+    return {} if shortcodes.empty?
+    return @text_emojis.fetch(message.account.domain, {}).slice(*shortcodes) if @text_emojis
+
+    emoji_urls(CustomEmoji.where(shortcode: shortcodes, domain: message.account.domain, disabled: false))
+  end
+
+  def text_shortcodes(message)
+    message.text.to_s.scan(/:([a-zA-Z0-9_+-]+):/).flatten.uniq
+  end
+
+  def preload_text_emojis(messages)
+    wanted = messages.reject(&:deleted?).group_by { |message| message.account.domain }.transform_values { |grouped| grouped.flat_map { |message| text_shortcodes(message) }.uniq }.reject { |_, shortcodes| shortcodes.empty? }
+    @text_emojis = wanted.to_h do |domain, shortcodes|
+      [domain, emoji_urls(CustomEmoji.where(shortcode: shortcodes, domain: domain, disabled: false))]
     end
+  end
+
+  def emoji_urls(emojis)
+    emojis.to_h { |emoji| [emoji.shortcode, full_asset_url(emoji.image.url)] }
   end
 end

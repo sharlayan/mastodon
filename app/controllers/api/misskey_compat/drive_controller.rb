@@ -78,7 +78,7 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     messages = apply_compat_pagination_dates(messages).reorder(id: forward_pagination? ? :asc : :desc).limit(pagination_limit(default: 10, max: LIMIT))
     messages = messages.includes(:account, chat_conversation: [:owner_account, :invitations, :memberships, :accounts], reactions: :account, media_attachments: [:chat_message_media_attachments, { drive_file: :custom_name }])
 
-    render json: messages.map { |message| MisskeyCompat::ChatSerializer.message(message, viewer: current_account) }
+    render json: MisskeyCompat::ChatSerializer.messages(messages, viewer: current_account)
   end
 
   def index

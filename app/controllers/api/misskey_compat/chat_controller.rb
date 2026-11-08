@@ -9,6 +9,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   NONEMPTY_FIELDS = %i(name query reaction).freeze
   CHAT_ID_PARAMS = %i(messageId roomId toRoomId toUserId invitationId).freeze
   MAX_FILE_IDS = 4
+  ROOM_PRELOADS = %i(owner_account invitations memberships).freeze
   MESSAGE_ACTIONS = %w(show update destroy react unreact).freeze
   REQUIRED_PARAMS = {
     user_timeline: %i(userId), room_timeline: %i(roomId), show: %i(messageId),
@@ -46,7 +47,8 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
     conversations = accessible_conversations.where(conversation_type: params[:room] ? :group : :direct)
     latest_ids = ChatMessage.visible.visible_to(current_account).where(chat_conversation_id: conversations.select(:id)).group(:chat_conversation_id).select('MAX(chat_messages.id)')
     messages = ChatMessage.where(id: latest_ids).order(id: :desc).limit(pagination_limit(default: 10, max: 100))
-    render json: preload_messages(messages).map { |message| serialize_message(message).merge(isRead: read_message?(message)) }
+    messages = preload_messages(messages).to_a
+    render json: MisskeyCompat::ChatSerializer.messages(messages, viewer: current_account).zip(messages).map { |serialized, message| serialized.merge(isRead: read_message?(message)) }
   end
 
   def read_all
@@ -141,17 +143,17 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
 
   def owned_rooms
     rooms = accessible_conversations.chat_group.where(owner_account: current_account)
-    render json: paginate(rooms).map { |conversation| serialize_room(conversation) }
+    render json: paginate(rooms).includes(ROOM_PRELOADS).map { |conversation| serialize_room(conversation) }
   end
 
   def joining_rooms
     memberships = ChatMembership.joins(:chat_conversation).where(account: current_account, chat_conversations: { conversation_type: :group }).where.not(role: :owner)
-    render json: paginate(memberships).includes(:account, :chat_conversation).map { |membership| serialize_membership(membership) }
+    render json: paginate(memberships).includes(:account, chat_conversation: ROOM_PRELOADS).map { |membership| serialize_membership(membership) }
   end
 
   def room_members
     memberships = paginate(member_room!.memberships.where.not(role: :owner))
-    render json: memberships.includes(:account, :chat_conversation).map { |membership| serialize_membership(membership) }
+    render json: memberships.includes(:account, chat_conversation: ROOM_PRELOADS).map { |membership| serialize_membership(membership) }
   end
 
   def show_room
@@ -347,15 +349,15 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def preload_messages(messages)
-    messages.includes(:account, chat_conversation: [:owner_account, :invitations, :memberships, :accounts], reactions: :account, media_attachments: :chat_message_media_attachments)
+    messages.includes(:account, chat_conversation: [*ROOM_PRELOADS, :accounts], reactions: :account, media_attachments: :chat_message_media_attachments)
   end
 
   def render_messages(messages)
-    render json: preload_messages(messages).map { |message| serialize_message(message) }
+    render json: MisskeyCompat::ChatSerializer.messages(preload_messages(messages), viewer: current_account)
   end
 
   def render_invitations(invitations)
-    render json: paginate(invitations).includes(:chat_conversation, :invitee_account, :inviter_account).map { |invitation| MisskeyCompat::ChatSerializer.invitation(invitation, viewer: current_account) }
+    render json: paginate(invitations).includes(:invitee_account, :inviter_account, chat_conversation: ROOM_PRELOADS).map { |invitation| MisskeyCompat::ChatSerializer.invitation(invitation, viewer: current_account) }
   end
 
   def serialize_message(message)
@@ -371,7 +373,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def read_message?(message)
-    message.account_id == current_account.id || message.chat_conversation.memberships.find_by!(account: current_account).last_read_message_id.to_i >= message.id
+    message.account_id == current_account.id || message.chat_conversation.memberships.find { |membership| membership.account_id == current_account.id }&.last_read_message_id.to_i >= message.id
   end
 
   def with_media_ids
