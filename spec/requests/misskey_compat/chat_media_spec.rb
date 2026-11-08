@@ -79,6 +79,30 @@ RSpec.describe 'Misskey chat media downloads' do
   end
 
   context 'when the capability no longer works' do
+    it 'refuses session downloads while chat is disabled' do
+      sign_in viewer.user
+      path = download_path
+      Setting.chat_enabled = false
+
+      get path
+      expect(response).to have_http_status(404)
+
+      get "/media_proxy/#{media.id}/original"
+      expect(response).to have_http_status(404)
+    end
+
+    it 'refuses session downloads while the viewer is suspended' do
+      sign_in viewer.user
+      path = download_path
+      viewer.suspend!
+
+      get path
+      expect(response).to have_http_status(404)
+
+      get "/media_proxy/#{media.id}/original"
+      expect(response).to have_http_status(404)
+    end
+
     it 'lets a signed-in member keep opening the attachment' do
       sign_in viewer.user
       path = download_path

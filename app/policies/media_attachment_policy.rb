@@ -8,7 +8,7 @@ class MediaAttachmentPolicy < ApplicationPolicy
   private
 
   def show_chat?
-    current_account.present? &&
+    Setting.chat_enabled && current_user&.functional? &&
       record.chat_messages
         .where(deleted_at: nil)
         .merge(ChatMessage.visible_to(current_account))
