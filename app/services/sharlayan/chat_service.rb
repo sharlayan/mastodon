@@ -230,7 +230,7 @@ class Sharlayan::ChatService
   def reject_invitation(account, invitation)
     raise Forbidden unless invitation.invitee_account_id == account.id && invitation.pending?
 
-    invitation.update!(state: :rejected)
+    settle_pending_invitation!(invitation, :rejected)
     announce_invitation_settled(invitation)
     owner = invitation.chat_conversation.owner_account
     deliver_to_account(invitation.invitee_account, Sharlayan::ChatFederation::Payload.reject(invitation), owner) if owner&.remote?
@@ -240,7 +240,7 @@ class Sharlayan::ChatService
   def cancel_invitation(account, invitation)
     raise Forbidden unless invitation.inviter_account_id == account.id && invitation.pending?
 
-    invitation.update!(state: :cancelled)
+    settle_pending_invitation!(invitation, :cancelled)
     announce_invitation_settled(invitation)
     if invitation.invitee_account.local?
       broadcast_to(invitation.invitee_account, 'chat.invitation', invitation, REST::ChatInvitationSerializer)
@@ -822,6 +822,15 @@ class Sharlayan::ChatService
     end
 
     [joined, left]
+  end
+
+  def settle_pending_invitation!(invitation, state)
+    invitation.chat_conversation.with_lock do
+      invitation.lock!
+      raise Forbidden unless invitation.pending?
+
+      invitation.update!(state: state)
+    end
   end
 
   # The owner may have yet to hear of an acceptance this server has only just sent.
