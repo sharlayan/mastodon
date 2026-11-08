@@ -1297,6 +1297,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   // and what the live stream brought. The screen can hold newer ones with a gap before
   // them: what was sent from here, or what arrived before the server had subscribed.
   const continuousUpTo = useRef<string | undefined>(undefined);
+  // An empty first snapshot is a known boundary before the first message.
+  const initialMessageSnapshotWasEmpty = useRef(false);
   // The stream only follows on from what was read after it went live.
   const readSinceStreamWentLive = useRef(false);
   const advanceContinuousUpTo = useCallback((id?: string) => {
@@ -1744,6 +1746,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     updateOlderMessageId(
       response.data.length === 40 ? (response.data[0]?.id ?? null) : null,
     );
+    initialMessageSnapshotWasEmpty.current = response.data.length === 0;
     advanceContinuousUpTo(response.data.at(-1)?.id);
     readSinceStreamWentLive.current = liveWhenAsked && isChatStreamLive();
     setMessagesList(
@@ -1774,6 +1777,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const liveWhenAsked = isChatStreamLive();
       const oldestShown = shownMessagesRef.current[0]?.id;
       const continuous = continuousUpTo.current;
+      const mustReachStart = initialMessageSnapshotWasEmpty.current;
       // The shown list can still be a stream-only render while the initial
       // snapshot has been applied but has not rendered yet.
       const from =
@@ -1801,15 +1805,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           reachedStart = data.length < MESSAGE_PAGE_SIZE;
           const oldestLoaded = loaded[0]?.id;
           meetsKnown =
+            !mustReachStart &&
             oldestLoaded !== undefined &&
             from !== undefined &&
             compareId(oldestLoaded, from) <= 0;
-          if (reachedStart || meetsKnown || from === undefined) break;
+          if (reachedStart || meetsKnown || (!mustReachStart && !from)) break;
         }
       } finally {
         pendingMessageUpdates.current.delete(updates);
       }
       if (requestId !== latestMessageRequest.current) return;
+      initialMessageSnapshotWasEmpty.current = false;
       setMessagesLoaded(true);
       advanceContinuousUpTo(loaded.at(-1)?.id);
       readSinceStreamWentLive.current = liveWhenAsked && isChatStreamLive();

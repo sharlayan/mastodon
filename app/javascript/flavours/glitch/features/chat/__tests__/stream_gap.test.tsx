@@ -647,6 +647,29 @@ describe('Chat when the stream connects after the screen has read', () => {
       });
     });
 
+    it('fills the gap after an initially empty answer when a newer stream message appears first', async () => {
+      seed('A', 1, 0);
+      const release = holdNextAnswer(MESSAGES);
+      const page = await loadPage();
+      page.open('/chat/A');
+      await waitFor(() => {
+        expect(readsOf(MESSAGES)).toHaveLength(1);
+      });
+
+      seed('A', 1, PAGE + 2);
+      await connect(page.socket);
+      const [newest] = seed('A', PAGE + 3, PAGE + 3);
+      act(() => {
+        page.socket.deliver('chat.message', newest);
+      });
+      await screen.findByText(`Message ${PAGE + 3}`);
+      await release();
+
+      await waitFor(() => {
+        expect(shown()).toEqual(numbers(1, PAGE + 3));
+      });
+    });
+
     it('reads nothing more for a room that was left, and does not mark it read', async () => {
       seed('A', 1, 2);
       seed('B', 1, 1);
