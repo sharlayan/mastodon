@@ -116,6 +116,29 @@ RSpec.describe MisskeyCompat::ChatStreaming do
     expect(events.map(&:first)).to match_array([owner, member, third].map { |account| "misskey:chatRoom:#{account.id}:#{room.id}" })
   end
 
+  it 'does not tell a removed member that the room was deleted' do
+    room = service.create_conversation(owner, type: :group, title: 'Room')
+    room.memberships.create!(account: member)
+    channel = "chatRoom:#{member.id}:#{room.id}"
+    subscribe(channel)
+
+    service.kick(owner, room, member)
+
+    expect(payloads(channel).pluck('type')).to_not include('roomDeleted')
+  end
+
+  it 'tells members and the owner who deleted the room that it was deleted' do
+    room = service.create_conversation(owner, type: :group, title: 'Room')
+    room.memberships.create!(account: member)
+    [owner, member].each { |account| subscribe("chatRoom:#{account.id}:#{room.id}") }
+
+    service.destroy_conversation(owner, room)
+
+    [owner, member].each do |account|
+      expect(payloads("chatRoom:#{account.id}:#{room.id}").pluck('type')).to eq(%w(roomDeleted))
+    end
+  end
+
   it 'stops compatibility publication when either feature is disabled' do
     room = service.create_conversation(owner, type: :direct, account_ids: [member.id])
     subscribe("chatUser:#{member.id}:#{owner.id}")

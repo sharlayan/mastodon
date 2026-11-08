@@ -3,6 +3,7 @@
 class MisskeyCompat::ChatStreaming
   MESSAGE_EVENTS = %w(chat.message chat.message_update chat.message_delete chat.message_hide chat.reaction chat.reaction_delete chat.notification).freeze
   CONVERSATION_EVENTS = %w(chat.conversation_update chat.member_join chat.member_leave).freeze
+  ROOM_DELETED_REASONS = [nil, 'deleted'].freeze
 
   class Lookups < ActiveSupport::CurrentAttributes
     attribute :records
@@ -16,7 +17,7 @@ class MisskeyCompat::ChatStreaming
 
       data = payload.with_indifferent_access
       if event == 'chat.conversation_delete'
-        publish(redis, "chatRoom:#{viewer.id}:#{data[:conversation_id]}", 'roomDeleted', nil, data[:conversation_id])
+        publish(redis, "chatRoom:#{viewer.id}:#{data[:conversation_id]}", 'roomDeleted', nil, data[:conversation_id]) if ROOM_DELETED_REASONS.include?(data[:reason])
         return
       end
 
