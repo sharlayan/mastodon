@@ -9,6 +9,8 @@ module Sharlayan
       MAX_ACTIVE_IDS = 100
       MAX_ACTOR_ACTIVE_IDS = 1000
       MAX_CANCELLED_IDS = 1000
+      MAX_MESSAGE_REACTIONS = 100
+      ANONYMOUS_ID = 'anonymous'
 
       ADMIT_SCRIPT = <<~LUA
         for _, key in ipairs(KEYS) do
@@ -31,16 +33,19 @@ module Sharlayan
       LUA
 
       def initialize(actor, message, reaction)
+        @actor = actor
+        @message = message
+        @reaction = reaction
         @cancelled_key = "chat_reaction_cancelled:#{actor.id}"
         @active_key = "chat_reaction_active:#{actor.id}:#{message.id}:#{Digest::SHA256.hexdigest(reaction)}"
         @actor_active_key = "chat_reaction_active_ids:#{actor.id}"
       end
 
       def accepts?(activity_id)
-        return true if activity_id.nil?
+        return false unless room_for_reaction?
 
         prune_expired
-        digest = Digest::SHA256.hexdigest(activity_id)
+        digest = digest_of(activity_id)
         return false if redis.zscore(@cancelled_key, digest)
 
         (redis.zscore(@active_key, digest).present? || redis.zcard(@active_key) < MAX_ACTIVE_IDS) &&
@@ -48,9 +53,7 @@ module Sharlayan
       end
 
       def add(activity_id)
-        return true if activity_id.nil?
-
-        digest = Digest::SHA256.hexdigest(activity_id)
+        digest = digest_of(activity_id)
         redis.eval(
           ADMIT_SCRIPT,
           keys: [@cancelled_key, @active_key, @actor_active_key],
@@ -69,18 +72,28 @@ module Sharlayan
           return true
         end
 
-        digest = Digest::SHA256.hexdigest(activity_id)
+        digest = digest_of(activity_id)
+        anonymous = digest_of(nil)
         redis.multi do |transaction|
           transaction.zadd(@cancelled_key, TTL.from_now.to_i, digest)
           transaction.zremrangebyrank(@cancelled_key, 0, -(MAX_CANCELLED_IDS + 1))
           transaction.expire(@cancelled_key, TTL.to_i)
-          transaction.zrem(@active_key, digest)
-          transaction.zrem(@actor_active_key, actor_member(digest))
+          transaction.zrem(@active_key, [digest, anonymous])
+          transaction.zrem(@actor_active_key, [actor_member(digest), actor_member(anonymous)])
         end
         redis.zcard(@active_key).zero?
       end
 
       private
+
+      def room_for_reaction?
+        @message.reactions.exists?(account_id: @actor.id, reaction: @reaction) ||
+          @message.reactions.count < MAX_MESSAGE_REACTIONS
+      end
+
+      def digest_of(activity_id)
+        Digest::SHA256.hexdigest(activity_id || ANONYMOUS_ID)
+      end
 
       def actor_member(digest)
         "#{@active_key}:#{digest}"

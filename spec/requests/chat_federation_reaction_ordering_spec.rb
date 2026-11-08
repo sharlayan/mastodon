@@ -323,4 +323,57 @@ RSpec.describe 'Chat federation reaction ordering' do
     expect(received.reactions.reload).to be_empty
     expect(a_request(:get, image_url)).to_not have_been_made
   end
+
+  def fill_reactions(target, count)
+    (StatusReactionValidator::SUPPORTED_EMOJIS - ['👍']).first(count).each { |emoji| target.reactions.create!(account: other, reaction: emoji) }
+  end
+
+  it 'stops new reactions at the per-message limit before importing a custom emoji' do
+    image_url = 'https://remote.test/emoji/wave.png'
+    stub_request(:get, image_url).to_return(status: 200, body: Rails.root.join('spec', 'fixtures', 'files', 'emojo.png').read, headers: { 'Content-Type' => 'image/png' })
+    fill_reactions(message, 100)
+
+    perform(react('full', content: ':wave:', tag: [{ type: 'Emoji', name: ':wave:', icon: { type: 'Image', url: image_url } }]))
+    perform(react('full-unicode'))
+
+    expect(message.reactions.reload.count).to eq(100)
+    expect(message.reactions.where(account: actor)).to be_empty
+    expect(a_request(:get, image_url)).to_not have_been_made
+    expect(CustomEmoji.where(shortcode: 'wave', domain: 'remote.test')).to be_empty
+  end
+
+  it 'still registers a repeated reaction on a message at the per-message limit' do
+    perform(react('before-full'))
+    fill_reactions(message, 99)
+    second = react('after-full')
+
+    perform(second)
+    perform(undo(react('before-full')))
+
+    expect(message.reactions.reload.where(account: actor).pluck(:reaction)).to eq(['👍'])
+    perform(undo(second))
+    expect(message.reactions.reload.where(account: actor)).to be_empty
+  end
+
+  it 'counts reactions without an ID against the actor limit' do
+    stub_const('Sharlayan::ChatFederation::ReactionState::MAX_ACTOR_ACTIVE_IDS', 1)
+    second_message = service.create_message(owner, conversation, text: 'second')
+    perform(react('first').except('id'))
+    perform(react('second', target: second_message.uri).except('id'))
+
+    expect(message.reactions.reload.pluck(:reaction)).to eq(['👍'])
+    expect(second_message.reactions.reload).to be_empty
+
+    perform(undo(react('first').except('id')))
+    perform(react('second', target: second_message.uri).except('id'))
+    expect(second_message.reactions.reload.pluck(:reaction)).to eq(['👍'])
+  end
+
+  it 'lets an Undo with an ID take back a reaction that had none' do
+    perform(react('anonymous').except('id'))
+
+    perform(undo(react('anonymous')))
+
+    expect(message.reactions.reload).to be_empty
+  end
 end
