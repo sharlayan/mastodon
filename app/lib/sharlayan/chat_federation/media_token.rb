@@ -13,7 +13,7 @@ module Sharlayan
         end
 
         def valid?(token, media_attachment)
-          return false if token.blank?
+          return false unless token.is_a?(String) && token.present?
 
           payload = verifier.verified(token, purpose: PURPOSE)
           payload.present? && payload['id'] == media_attachment.id && !media_attachment.account.suspended? && member_on?(media_attachment, payload['domain'])

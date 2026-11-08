@@ -145,6 +145,22 @@ RSpec.describe 'Misskey chat media downloads' do
     end
   end
 
+  it 'treats a token given as a list or a hash as invalid instead of failing' do
+    [{ chat_token: ['forged'] }, { chat_token: { 'a' => 'b' } }, { token: ['forged'] }, { token: { 'a' => 'b' } }].each do |params|
+      get "/media_proxy/#{media.id}/original", params: params
+
+      expect(response).to have_http_status(404), params.inspect
+    end
+  end
+
+  it 'still lets a signed-in member open the attachment when the token is a list' do
+    sign_in viewer.user
+
+    get "/media_proxy/#{media.id}/original", params: { chat_token: ['forged'], token: ['forged'] }
+
+    expect(response).to redirect_to(%r{system/media_attachments})
+  end
+
   it 'does not allow a previously issued URL to reveal a deleted message attachment' do
     path = download_path
     message.update!(deleted_at: Time.current)

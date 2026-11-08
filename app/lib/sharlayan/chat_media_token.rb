@@ -25,6 +25,8 @@ module Sharlayan::ChatMediaToken
   end
 
   def viewer(token, media)
+    return unless token.is_a?(String)
+
     payload = verifier.verified(token, purpose: PURPOSE)
     return if payload.nil? || payload['media_id'] != media.id
     return if payload['misskey'] && !Setting.misskey_compat_enabled

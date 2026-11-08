@@ -99,4 +99,12 @@ RSpec.describe Sharlayan::ChatMediaToken do
       expect(described_class.signed_for?(server_token, media.id.to_s)).to be(false)
     end
   end
+
+  describe '.viewer' do
+    it 'refuses anything that is not a string' do
+      [nil, ['forged'], { 'a' => 'b' }, ActionController::Parameters.new('a' => 'b')].each do |value|
+        expect(described_class.viewer(value, media)).to be_nil
+      end
+    end
+  end
 end

@@ -41,7 +41,7 @@ class MediaProxyController < ApplicationController
   private
 
   def federated_chat_request?
-    return false if params[:token].blank?
+    return false unless params[:token].is_a?(String) && params[:token].present?
 
     media_attachment = MediaAttachment.find_by(id: params[:id])
     media_attachment.present? && media_attachment.chat_attachment? && Sharlayan::ChatFederation::MediaToken.valid?(params[:token], media_attachment)
