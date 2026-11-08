@@ -355,9 +355,13 @@ class Sharlayan::ChatService
     account.chat_memberships.where(chat_conversation: rooms).includes(chat_conversation: :owner_account).find_each do |membership|
       conversation = membership.chat_conversation
       kick(conversation.owner_account, conversation, account)
+    rescue Forbidden, ActiveRecord::RecordNotFound
+      next
     end
     ChatInvitation.pending.where(invitee_account: account, chat_conversation: rooms).includes(:inviter_account).find_each do |invitation|
       cancel_invitation(invitation.inviter_account, invitation)
+    rescue Forbidden
+      next
     end
   end
 

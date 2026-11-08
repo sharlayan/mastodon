@@ -77,6 +77,41 @@ RSpec.describe Sharlayan::ChatService do
     expect(delivered('Undo').map(&:first)).to eq(['https://third.test/users/dave/inbox'])
   end
 
+  it 'keeps going when an invitation is settled while the suspension is processed' do
+    suspended = Fabricate(:account, domain: 'third.test', uri: 'https://third.test/users/dave', inbox_url: 'https://third.test/users/dave/inbox')
+    other_room = ChatConversation.create!(conversation_type: :group, owner_account: owner, title: 'Other').tap do |record|
+      record.update!(uri: "https://cb6e6126.ngrok.io/chat/rooms/#{record.id}")
+      record.memberships.create!(account: owner, role: :owner)
+    end
+    settled = room.invitations.create!(inviter_account: owner, invitee_account: suspended)
+    remaining = other_room.invitations.create!(inviter_account: owner, invitee_account: suspended)
+    chat = described_class.new
+    allow(chat).to receive(:cancel_invitation).and_call_original
+    allow(chat).to receive(:cancel_invitation).with(owner, settled).and_raise(described_class::Forbidden)
+    suspended.suspend!
+
+    chat.remove_suspended_account(suspended)
+
+    expect(remaining.reload).to be_cancelled
+  end
+
+  it 'keeps going when a member already left the room while the suspension is processed' do
+    other_room = ChatConversation.create!(conversation_type: :group, owner_account: owner, title: 'Other').tap do |record|
+      record.update!(uri: "https://cb6e6126.ngrok.io/chat/rooms/#{record.id}")
+      record.memberships.create!(account: owner, role: :owner)
+      record.memberships.create!(account: remote)
+    end
+    room
+    chat = described_class.new
+    allow(chat).to receive(:kick).and_call_original
+    allow(chat).to receive(:kick).with(owner, room, remote).and_raise(ActiveRecord::RecordNotFound)
+    remote.suspend!
+
+    chat.remove_suspended_account(remote)
+
+    expect(other_room.memberships.exists?(account: remote)).to be(false)
+  end
+
   it 'does not let a pending invitation be used once the suspension ends' do
     invitee = Fabricate(:account, domain: 'third.test', uri: 'https://third.test/users/dave', inbox_url: 'https://third.test/users/dave/inbox')
     room.invitations.create!(inviter_account: owner, invitee_account: invitee)
