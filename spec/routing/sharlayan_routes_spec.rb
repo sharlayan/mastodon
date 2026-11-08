@@ -20,6 +20,8 @@ RSpec.describe 'Sharlayan routes' do
 
   it 'routes custom web application paths' do
     expect(get: '/antennas').to route_to('home#index')
+    expect(get: '/chat').to route_to('home#index')
+    expect(get: '/chat/123').to route_to(controller: 'home', action: 'index', any: '123')
     expect(get: '/conversations/123').to route_to(controller: 'home', action: 'index', any: '123')
     expect(get: '/pages/featured').to route_to(controller: 'home', action: 'index', any: 'featured')
     expect(get: '/scheduled').to route_to('home#index')

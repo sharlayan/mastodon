@@ -141,7 +141,8 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   end
 
   def render_error(message, code, status, id: nil, kind: 'client', info: nil)
-    error = { message: message, code: code, id: id, kind: kind }
+    # Clients such as Aria cannot read an error without an id, and show the bare HTTP status instead.
+    error = { message: message, code: code, id: id || Digest::UUID.uuid_v5(Digest::UUID::OID_NAMESPACE, code), kind: kind }
     error[:info] = info unless info.nil?
     render json: { error: error.compact }, status: status
   end
@@ -250,6 +251,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
       canSearchNotes: true,
       canUseTranslator: TranslationService.configured?,
       canUseReaction: true,
+      chatAvailability: Setting.chat_enabled ? 'available' : 'unavailable',
       canImportFollowing: Setting.drive_enabled,
       canImportBlocking: Setting.drive_enabled,
       canImportMuting: Setting.drive_enabled,

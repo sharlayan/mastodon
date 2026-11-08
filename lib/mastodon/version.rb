@@ -105,7 +105,7 @@ module Mastodon
       @read_git_head_file ||= begin
         head_file_path = '.git/HEAD'
         File.read(head_file_path).strip
-      rescue Errno::ENOENT, Errno::EACCES, IOError
+      rescue Errno::ENOENT, Errno::EACCES, Errno::ENOTDIR, IOError
         ''
       end
     end
@@ -123,7 +123,7 @@ module Mastodon
         else
           head_file_content[0, 5]
         end
-      rescue Errno::ENOENT, Errno::EACCES, IOError
+      rescue Errno::ENOENT, Errno::EACCES, Errno::ENOTDIR, IOError
         ''
       end
     end

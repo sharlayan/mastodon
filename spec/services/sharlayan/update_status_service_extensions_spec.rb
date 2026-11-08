@@ -7,8 +7,8 @@ RSpec.describe Sharlayan::UpdateStatusServiceExtensions do
 
   describe '#prepare_sharlayan_media_attachments' do
     it 'retains the validated attachments and locks newly added Drive files' do
-      next_media_attachments = [instance_double(MediaAttachment)]
-      added_media_attachments = [instance_double(MediaAttachment)]
+      next_media_attachments = [instance_double(MediaAttachment, id: 1)]
+      added_media_attachments = [instance_double(MediaAttachment, id: 2)]
 
       allow(DriveFile).to receive(:lock_for_media_attachments)
 

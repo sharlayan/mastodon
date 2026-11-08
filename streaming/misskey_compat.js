@@ -11,6 +11,8 @@ const MAX_RECENT_HYBRID_NOTES = 200;
 const MAX_DATABASE_ID = 9223372036854775807n;
 const REACTION_NOTE_UPDATE_TYPES = new Set(['reacted', 'unreacted']);
 const TIMELINE_CHANNELS = new Set(['homeTimeline', 'localTimeline', 'hybridTimeline', 'globalTimeline']);
+const CHAT_CHANNELS = new Set(['chatUser', 'chatRoom', 'main']);
+const CHAT_EVENTS = new Set(['message', 'updated', 'deleted', 'react', 'unreact', 'roomUpdated', 'membershipStarted', 'membershipEnded', 'roomDeleted']);
 
 const MI_ID_TIME2000 = 946684800000;
 
@@ -149,10 +151,14 @@ const resolveChannel = (channel, params, request, channelNameToIds) => {
  * @param {Function} deps.loadExcludedReactionAccountIds
  * @param {Function} deps.loadExcludedTimelineNote
  * @param {Function} deps.loadGrantPermissions
+ * @param {Function} deps.loadChatGrantPermissions
+ * @param {Function} deps.isChatEnabled
+ * @param {Function} deps.authorizeChatAccess
+ * @param {Function} deps.markChatRead
  * @param {function(): Promise.<boolean>} deps.isEnabled
  * @param {import('pino').Logger} deps.logger
  */
-const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadExcludedTimelineNote, loadGrantPermissions, isEnabled, logger }) => {
+const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, channelNameToIds, authorizeStatusAccess, loadExcludedReactionAccountIds, loadExcludedTimelineNote, loadGrantPermissions, loadChatGrantPermissions = loadGrantPermissions, isChatEnabled = async () => false, authorizeChatAccess = async () => false, markChatRead = async () => false, isEnabled, logger }) => {
   const send = (session, type, body) => {
     const ws = session.websocket;
     if (ws.readyState !== ws.OPEN) return;
@@ -257,11 +263,93 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
     session.misskeyNotes.delete(noteId);
   };
 
+  const authorizeChat = async (session) => {
+    if (!await isEnabled() || !await isChatEnabled()) return false;
+    const permissions = await loadChatGrantPermissions(session.request);
+    return Array.isArray(permissions) ? permissions.includes('read:chat') : hasScope(session.request, 'read');
+  };
+
+  const chatId = (value) => {
+    if (typeof value !== 'string') return undefined;
+    const decoded = decodeDatabaseId(value);
+    return decoded && BigInt(decoded) > 0n ? BigInt(decoded).toString() : undefined;
+  };
+
+  const connectChat = (session, { channel, id, params = {} }) => {
+    if (!params || typeof params !== 'object' || Array.isArray(params)) return;
+    const targetId = channel === 'main' ? undefined : chatId(channel === 'chatRoom' ? params.roomId : params.otherId);
+    if (channel !== 'main' && (!targetId || channel === 'chatUser' && targetId === session.request.accountId)) return;
+    const channels = store(session).channels;
+    if (channels.has(id) || channels.size >= MAX_CHANNEL_SUBSCRIPTIONS) return;
+    const reservation = {};
+    channels.set(id, reservation);
+
+    authorizeChat(session).then(async (allowed) => {
+      if (!allowed || channels.get(id) !== reservation) return;
+      if (!await authorizeChatAccess(channel, targetId, session.request) || channels.get(id) !== reservation) return;
+
+      const channelId = channel === 'main' ? `misskey:chatMain:${session.request.accountId}` : `misskey:${channel}:${session.request.accountId}:${targetId}`;
+      const subscription = { channel, targetId, channelIds: [channelId], listeners: [], stopHeartbeat: () => {}, pending: Promise.resolve(), closed: false };
+      const listener = (json) => {
+        const event = json?.payload;
+        if (json?.event !== 'chat' || !event || subscription.closed) return;
+        if (channel === 'main' ? event.type !== 'newChatMessage' : !CHAT_EVENTS.has(event.type)) return;
+        if (event.type === 'deleted' && (!event.messageId || chatId(event.body) !== event.messageId)) return;
+        if (channel === 'chatRoom' && event.conversationId !== targetId) return;
+        if (channel === 'chatRoom' && event.type === 'roomDeleted') {
+          teardown(channels, id);
+          authorizeChat(session).then((permitted) => {
+            if (permitted && !channels.has(id)) send(session, 'channel', { id, type: 'roomDeleted', body: null });
+          }).catch((err) => logger.error({ err }, 'misskey compat chat termination failed'));
+          return;
+        }
+
+        subscription.pending = subscription.pending.then(async () => {
+          if (subscription.closed || channels.get(id) !== subscription || !await authorizeChat(session)) return;
+          if (!await authorizeChatAccess(channel, targetId, session.request, event)) {
+            if (channel === 'chatRoom' && !await authorizeChatAccess(channel, targetId, session.request) && channels.get(id) === subscription) teardown(channels, id);
+            return;
+          }
+          if (!subscription.closed && channels.get(id) === subscription) send(session, 'channel', { id, type: event.type, body: event.body });
+        }).catch((err) => logger.error({ err }, 'misskey compat chat event failed'));
+      };
+      subscription.listeners = [listener];
+      channels.set(id, subscription);
+      subscribe(channelId, listener);
+      subscription.stopHeartbeat = subscriptionHeartbeat([channelId]);
+    }).catch((err) => logger.error({ err }, 'misskey compat chat connect failed')).finally(() => {
+      if (channels.get(id) === reservation) channels.delete(id);
+    });
+  };
+
+  const channelMessage = (session, body) => {
+    if (!body || body.type !== 'read' || typeof body.id !== 'string') return;
+    const subscription = session.misskey?.channels.get(body.id);
+    const messageId = chatId(body.body?.id);
+    if (!subscription || !['chatUser', 'chatRoom'].includes(subscription.channel) || !messageId) return;
+    if (!subscription.readPending || BigInt(messageId) > BigInt(subscription.readPending)) subscription.readPending = messageId;
+    if (subscription.reading) return;
+    subscription.reading = true;
+    const advance = async () => {
+      while (subscription.readPending && !subscription.closed) {
+        const pendingId = subscription.readPending;
+        subscription.readPending = undefined;
+        if (!await authorizeChat(session) || subscription.closed) return;
+        await markChatRead(subscription.channel, subscription.targetId, session.request, pendingId);
+      }
+    };
+    advance().catch((err) => logger.error({ err }, 'misskey compat chat read failed')).finally(() => { subscription.reading = false; });
+  };
+
   const connect = (session, body) => {
     if (!body || typeof body.id !== 'string' || typeof body.channel !== 'string') return;
 
     const { channel, id } = body;
     if (id.length > MAX_CHANNEL_ID_LENGTH || channel.length > MAX_CHANNEL_NAME_LENGTH) return;
+    if (CHAT_CHANNELS.has(channel)) {
+      connectChat(session, body);
+      return;
+    }
 
     const params = body.params || {};
     const channels = store(session).channels;
@@ -336,6 +424,7 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
   const teardown = (channels, id) => {
     const sub = channels.get(id);
     if (!sub) return;
+    sub.closed = true;
     if (!sub.channelIds) {
       channels.delete(id);
       return;
@@ -372,6 +461,10 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       break;
     case 'disconnect':
       disconnect(session, json.body);
+      break;
+    case 'channel':
+    case 'ch':
+      channelMessage(session, json.body);
       break;
     case 's':
     case 'sr':

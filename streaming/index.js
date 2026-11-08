@@ -285,6 +285,12 @@ const startServer = async () => {
    */
   const subs = {};
 
+  /**
+   * What Redis was asked to subscribe to, resolved to whether it did once it has answered.
+   * @type {Object.<string, Promise<boolean>>}
+   */
+  const redisSubscriptions = {};
+
   const redisSubscribeClient = Redis.createClient(redisConfig, logger);
 
   // When checking metrics in the browser, the favicon is requested this
@@ -376,12 +382,15 @@ const startServer = async () => {
     if (subs[channel].length === 0) {
       logger.debug(`Subscribe ${channel}`);
 
-      redisSubscribeClient.subscribe(redisNamespaced(channel), (err, count) => {
-        if (err) {
-          logger.error(`Error subscribing to ${channel}`);
-        } else if (typeof count === 'number') {
-          metrics.redisSubscriptions.set(count);
-        }
+      redisSubscriptions[channel] = new Promise(resolve => {
+        redisSubscribeClient.subscribe(redisNamespaced(channel), (err, count) => {
+          if (err) {
+            logger.error(`Error subscribing to ${channel}`);
+          } else if (typeof count === 'number') {
+            metrics.redisSubscriptions.set(count);
+          }
+          resolve(!err);
+        });
       });
     }
 
@@ -413,6 +422,7 @@ const startServer = async () => {
         }
       });
       delete subs[channel];
+      delete redisSubscriptions[channel];
     }
   };
 
@@ -1162,6 +1172,7 @@ const startServer = async () => {
    * @property {string} [antenna]
    * @property {string} [only_media]
    * @property {string} [allow_local_only]
+   * @property {unknown} [ack]
    */
 
   /**
@@ -1323,21 +1334,44 @@ const startServer = async () => {
    */
 
   /**
+   * Tells a client that asked for it that nothing published from now on can pass it by. Only Redis can
+   * say so, and a client that reads what it has missed after this answer has left no gap behind it.
+   * @param {WebSocketSession} session
+   * @param {string[]} channelIds
+   * @param {string[]} streamName
+   * @returns {void}
+   */
+  const acknowledgeSubscription = ({ websocket, logger }, channelIds, streamName) => {
+    Promise.all(channelIds.map(channelId => redisSubscriptions[channelId])).then(results => {
+      if (results.every(Boolean) && websocket.readyState === websocket.OPEN) {
+        websocket.send(JSON.stringify({ stream: streamName, event: 'subscribed' }));
+      }
+    }).catch(err => {
+      logger.error({ err }, 'Websocket subscription acknowledgement error');
+    });
+  };
+
+  /**
    * @param {WebSocketSession} session
    * @param {string} channelName
    * @param {StreamParams} params
    * @returns {void}
    */
-  const subscribeWebsocketToChannel = ({ websocket, request, logger, subscriptions }, channelName, params) => {
+  const subscribeWebsocketToChannel = (session, channelName, params) => {
+    const { websocket, request, logger, subscriptions } = session;
+
     checkScopes(request, logger, channelName).then(() => channelNameToIds(request, channelName, params)).then(({
       channelIds,
       options,
     }) => {
+      const streamName = Reflect.get(options, 'streamName') || streamNameFromChannelName(channelName, params);
+
       if (subscriptions[channelIds.join(';')]) {
+        if (params.ack === true) acknowledgeSubscription(session, channelIds, streamName);
         return;
       }
 
-      const onSend = streamToWs(request, websocket, Reflect.get(options, 'streamName') || streamNameFromChannelName(channelName, params));
+      const onSend = streamToWs(request, websocket, streamName);
       const stopHeartbeat = subscriptionHeartbeat(channelIds);
       const listener = streamFrom(channelIds, request, logger, onSend, undefined, 'websocket', options);
 
@@ -1348,6 +1382,8 @@ const startServer = async () => {
         listener,
         stopHeartbeat,
       };
+
+      if (params.ack === true) acknowledgeSubscription(session, channelIds, streamName);
     }).catch(err => {
       const {statusCode, errorMessage } = extractErrorStatusAndMessage(err);
 

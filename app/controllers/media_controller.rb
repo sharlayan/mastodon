@@ -27,7 +27,7 @@ class MediaController < ApplicationController
   private
 
   def set_media_attachment
-    @media_attachment = MediaAttachment.local.attached.identified(params[:id])
+    @media_attachment = MediaAttachment.local.attached.where.not(status_id: nil).identified(params[:id])
   end
 
   def verify_permitted_status!

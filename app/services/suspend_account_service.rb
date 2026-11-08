@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class SuspendAccountService < BaseService
+  prepend Sharlayan::SuspendAccountServiceExtensions
+
   include Payloadable
 
   # Carry out the suspension of a recently-suspended account

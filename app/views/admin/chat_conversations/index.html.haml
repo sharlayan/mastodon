@@ -1,0 +1,32 @@
+- content_for :page_title do
+  = t('admin.chat.title')
+
+.filter-subset
+  %strong= t('admin.chat.filter')
+  %ul
+    %li= link_to t('admin.chat.all'), admin_chat_conversations_path, class: params[:type].blank? ? 'selected' : nil
+    %li= link_to t('admin.chat.direct'), admin_chat_conversations_path(type: 'direct'), class: params[:type] == 'direct' ? 'selected' : nil
+    %li= link_to t('admin.chat.group'), admin_chat_conversations_path(type: 'group'), class: params[:type] == 'group' ? 'selected' : nil
+
+%hr.spacer
+
+.table-wrapper
+  %table.table
+    %thead
+      %tr
+        %th= t('admin.chat.type')
+        %th= t('admin.chat.participants')
+        %th= t('admin.chat.last_activity')
+        %th
+    %tbody
+      - @conversations.each do |conversation|
+        %tr
+          %td= t("admin.chat.#{conversation.conversation_type}")
+          %td
+            - conversation.accounts.each do |account|
+              = admin_account_link_to account
+          %td= l(conversation.last_message&.created_at || conversation.created_at)
+          %td
+            = link_to t('admin.chat.inspect'), admin_chat_conversation_path(conversation), class: 'table-action-link'
+
+= paginate @conversations

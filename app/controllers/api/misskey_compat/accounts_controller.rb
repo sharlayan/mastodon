@@ -45,8 +45,7 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
       resolve: false
     )
 
-    detailed = ActiveModel::Type::Boolean.new.cast(params[:detail])
-    render json: detailed ? serialize_detailed_accounts(accounts) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
+    render json: detailed_param? ? serialize_detailed_accounts(accounts, viewer: current_account) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
   end
 
   def search_by_username_and_host
@@ -54,12 +53,11 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
     host = params[:host].to_s.strip.delete_prefix('@').presence
     return render json: [] if username.blank? && host.blank?
 
-    scope = Account.without_suspended
+    scope = Account.without_unapproved.without_suspended.without_instance_actor
     scope = scope.where('lower(accounts.username) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(username.downcase)}%") if username.present?
     scope = apply_host_filter(scope, host) if params.key?(:host)
     accounts = scope.limit(pagination_limit).to_a
-    detailed = ActiveModel::Type::Boolean.new.cast(params[:detail])
-    render json: detailed ? serialize_detailed_accounts(accounts, viewer: current_account) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
+    render json: detailed_param? ? serialize_detailed_accounts(accounts, viewer: current_account) : accounts.map { |account| MisskeyCompat::UserSerializer.serialize(account) }
   end
 
   def update_memo
@@ -195,9 +193,19 @@ class Api::MisskeyCompat::AccountsController < Api::MisskeyCompat::BaseControlle
   end
 
   def apply_host_filter(scope, host)
-    return scope.where(domain: nil) if host.blank? || host.casecmp?(Rails.configuration.x.local_domain)
+    return scope.where(domain: nil) if local_host?(host)
 
     scope.where('lower(accounts.domain) LIKE ?', "#{ActiveRecord::Base.sanitize_sql_like(host.downcase)}%")
+  end
+
+  def detailed_param?
+    return true unless params.key?(:detail)
+
+    ActiveModel::Type::Boolean.new.cast(params[:detail])
+  end
+
+  def local_host?(host)
+    host.blank? || host == '.' || host.casecmp?(Rails.configuration.x.local_domain)
   end
 
   def normalized_hostname

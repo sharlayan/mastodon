@@ -14,6 +14,7 @@ module Sharlayan::UserRoleExtensions
 
   EXTRA_FLAGS = {
     bypass_rate_limit: (1 << 0),
+    view_admin_timeline: (1 << 1),
   }.freeze
 
   module ExtraFlags
@@ -23,6 +24,9 @@ module Sharlayan::UserRoleExtensions
     CATEGORIES = {
       api: %i(
         bypass_rate_limit
+      ).freeze,
+      moderation: %i(
+        view_admin_timeline
       ).freeze,
     }.freeze
   end

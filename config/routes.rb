@@ -152,6 +152,11 @@ Rails.application.routes.draw do
     end
   end
 
+  scope module: :activitypub, defaults: { format: :json } do
+    get '/chat/messages/:id', to: 'chat_messages#show', as: :chat_message
+    get '/chat/rooms/:id', to: 'chat_rooms#show', as: :chat_room
+  end
+
   draw(:sharlayan_web)
 
   constraints(encoded_path: /%40.*/) do

@@ -176,7 +176,8 @@ class EmojiPickerMenuImpl extends PureComponent {
     intl: PropTypes.object.isRequired,
     skinTone: PropTypes.number.isRequired,
     onSkinTone: PropTypes.func.isRequired,
-    pickerButtonRef: PropTypes.func.isRequired
+    pickerButtonRef: PropTypes.func.isRequired,
+    fitToViewport: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -193,7 +194,19 @@ class EmojiPickerMenuImpl extends PureComponent {
 
   sizeObserver = new EmojiPickerSizeObserver((pickerSize) => {
     this.setState({ pickerSize });
-  });
+  }, () => !this.isHeldByScreen());
+
+  // Fitted to a short screen, the picker can be smaller than the size the reader chose. That is not a size to keep.
+  isHeldByScreen = () => {
+    if (!this.props.fitToViewport || !this.node) return false;
+
+    const style = getComputedStyle(this.node);
+    const maxHeight = parseFloat(style.maxHeight);
+    const maxWidth = parseFloat(style.maxWidth);
+
+    return (Number.isFinite(maxHeight) && this.node.offsetHeight >= maxHeight - 1) ||
+      (Number.isFinite(maxWidth) && this.node.offsetWidth >= maxWidth - 1);
+  };
 
   componentDidMount() {
     // Because of https://github.com/react-bootstrap/react-bootstrap/issues/2614 we need
@@ -262,7 +275,7 @@ class EmojiPickerMenuImpl extends PureComponent {
   };
 
   render() {
-    const { loading, style, intl, favorite_emojis, skinTone, frequentlyUsedEmojis, onAddFavorite, onRemoveFavorite } = this.props;
+    const { loading, style, intl, favorite_emojis, skinTone, frequentlyUsedEmojis, onAddFavorite, onRemoveFavorite, fitToViewport } = this.props;
 
     if (loading) {
       return <div style={{ width: 329 }} />;
@@ -275,7 +288,7 @@ class EmojiPickerMenuImpl extends PureComponent {
     const pickerStyle = computeEmojiPickerStyle(style, pickerSize);
 
     return (
-      <div className={classNames('emoji-picker-dropdown__menu', { selecting: modifierOpen })} style={pickerStyle} ref={this.setRef}>
+      <div className={classNames('emoji-picker-dropdown__menu', { selecting: modifierOpen, 'emoji-picker-dropdown__menu--fit': fitToViewport })} style={pickerStyle} ref={this.setRef}>
         <EmojiPicker
           perLine={8}
           emojiSize={22}
@@ -325,6 +338,8 @@ class EmojiPickerDropdown extends PureComponent {
     skinTone: PropTypes.number.isRequired,
     inverted: PropTypes.bool,
     disabled: PropTypes.bool,
+    // Keep the whole picker on the screen, shrinking it when the screen is short. Off unless asked for.
+    fitToViewport: PropTypes.bool,
   };
 
   state = {
@@ -373,7 +388,7 @@ class EmojiPickerDropdown extends PureComponent {
   };
 
   render() {
-    const { intl, onPickEmoji, onSkinTone, skinTone, frequentlyUsedEmojis, inverted, disabled, onAddFavorite, onRemoveFavorite } = this.props;
+    const { intl, onPickEmoji, onSkinTone, skinTone, frequentlyUsedEmojis, inverted, disabled, onAddFavorite, onRemoveFavorite, fitToViewport } = this.props;
     const title = intl.formatMessage(messages.emoji);
     const { active, loading, target } = this.state;
 
@@ -395,6 +410,7 @@ class EmojiPickerDropdown extends PureComponent {
           isOpen={active}
           reference={target}
           onClose={this.onHideDropdown}
+          fitViewport={fitToViewport}
         >
           {({ props, placement }) => (
             <div  {...props} className={`dropdown-animation ${placement}`}>
@@ -409,6 +425,7 @@ class EmojiPickerDropdown extends PureComponent {
                 pickerButtonRef={this.target}
                 onAddFavorite={onAddFavorite}
                 onRemoveFavorite={onRemoveFavorite}
+                fitToViewport={fitToViewport}
               />
             </div>
           )}

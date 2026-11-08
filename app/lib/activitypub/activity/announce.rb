@@ -2,6 +2,8 @@
 
 class ActivityPub::Activity::Announce < ActivityPub::Activity
   def perform
+    return Sharlayan::ChatFederation::Incoming.handle_announce(@json, @account) if Sharlayan::ChatFederation::Incoming.chat_announce?(@json)
+
     return reject_payload! if delete_arrived_first?(@json['id']) || !related_to_local_activity?
     return reject_payload! if @object.nil?
     return reject_payload! if reject_relay?

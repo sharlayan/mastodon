@@ -11,6 +11,7 @@ import {
   deleteAnnouncement,
 } from './announcements';
 import { updateConversations, updateConversationReadReceipts } from './conversations';
+import { emitChatStreamEvent, handleChatStreamConnected, handleChatStreamDisconnected, handleChatStreamPolled, showChatDesktopNotification } from '../features/chat/stream';
 import { processNewNotificationForGroups, refreshStaleNotificationGroups, pollRecentNotifications as pollRecentGroupNotifications } from './notification_groups';
 import { updateNotifications } from './notifications';
 import { updateStatus } from './statuses';
@@ -74,6 +75,12 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
      */
 
     const useFallback = async fallback => {
+      // Each poll stands in for what the stream would have brought, chat included. A connection that comes back calls the
+      // fallback too, to fill a short gap in the timelines, but chat reads again on its subscription instead.
+      if (channelName === 'user') {
+        handleChatStreamPolled();
+      }
+
       await fallback(dispatch, getState);
 
       // @ts-expect-error
@@ -109,10 +116,17 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
         }
       },
 
+      // Having it ask for an answer, which only this stream does, is what chat reads again on.
+      ...(channelName === 'user' ? { onSubscribed: handleChatStreamConnected } : {}),
+
       onDisconnect() {
         const { fallback } = options;
 
         isConnected = false;
+
+        if (channelName === 'user') {
+          handleChatStreamDisconnected();
+        }
 
         if (fallback) {
           isDisconnectPending = true;
@@ -130,6 +144,12 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
       onReceive(data) {
         try {
           if (handleSharlayanStreamingEvent({ bogusQuotePolicy, data, dispatch, getState, messages })) return;
+          if (data.event.startsWith('chat.')) {
+            const payload = typeof data.payload === 'string' ? JSON.parse(data.payload) : data.payload;
+            emitChatStreamEvent({ event: data.event, payload });
+            if (data.event === 'chat.notification') showChatDesktopNotification(payload, messages['chat.title']);
+            return;
+          }
 
           switch (data.event) {
           case 'update':

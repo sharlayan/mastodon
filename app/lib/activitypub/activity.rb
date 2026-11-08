@@ -61,6 +61,8 @@ class ActivityPub::Activity
         ActivityPub::Activity::Remove
       when 'Move'
         ActivityPub::Activity::Move
+      when 'Invite'
+        ActivityPub::Activity::Invite
       when 'QuoteRequest'
         ActivityPub::Activity::QuoteRequest
       when 'FeatureRequest'

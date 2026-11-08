@@ -46,6 +46,11 @@ module Sharlayan::DeleteAccountServiceExtensions
     super
   end
 
+  def purge_other_associations!
+    Sharlayan::ChatService.new.purge_account(@account, federate: !skip_activitypub?)
+    super
+  end
+
   def purge_pages!
     @account.page_likes.in_batches do |page_likes|
       Page.where(id: page_likes.pluck(:page_id)).update_all('likes_count = GREATEST(0, likes_count - 1)')

@@ -1,0 +1,26 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/activitystreams",
+    {
+      "misskey": "https://misskey-hub.net/ns#",
+      "_misskey_talk": "misskey:_misskey_talk",
+      "_misskey_content": "misskey:_misskey_content",
+      "_misskey_reaction": "misskey:_misskey_reaction"
+    }
+  ],
+  "id": "__ROOM__#accept/2",
+  "type": "Accept",
+  "actor": "https://remote.test/users/bob",
+  "published": "2026-11-02T00:07:00Z",
+  "object": {
+    "type": "Invite",
+    "actor": "__LOCAL__",
+    "target": "https://remote.test/users/bob",
+    "object": {
+      "id": "__ROOM__",
+      "type": "Group",
+      "name": "Local room",
+      "attributedTo": "__LOCAL__"
+    }
+  }
+}

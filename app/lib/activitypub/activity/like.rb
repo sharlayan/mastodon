@@ -2,6 +2,12 @@
 
 class ActivityPub::Activity::Like < ActivityPub::Activity
   def perform
+    if Sharlayan::ChatFederation::Incoming.chat_reaction?(@json)
+      return Sharlayan::ChatFederation::Incoming.handle_reaction(@json, @account) do |shortcode|
+        process_emoji_tags(shortcode, @json['tag']) unless DomainBlock.reject_media?(@account.domain)
+      end
+    end
+
     return if DomainBlock.reject_favourite?(@account.domain)
 
     original_status = status_from_uri(object_uri)

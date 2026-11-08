@@ -8,7 +8,7 @@ class MediaProxyController < ApplicationController
 
   skip_before_action :require_functional!
 
-  before_action :authenticate_user!, if: :limited_federation_mode?
+  before_action :authenticate_user!, if: -> { limited_federation_mode? && params[:chat_token].blank? && !federated_chat_request? }
   before_action :set_media_attachment
 
   rescue_from ActiveRecord::RecordInvalid, Mastodon::NotPermittedError, Mastodon::UnexpectedResponseError, with: :not_found
@@ -27,6 +27,10 @@ class MediaProxyController < ApplicationController
       end
     end
 
+    # The address with this token only stays the same for a moment, and only this browser was given it. Without this,
+    # opening a conversation again asks for every picture again, however many times the same address was given out.
+    expires_in Sharlayan::ChatMediaToken::STABLE_FOR, public: false if @viewer_holds_chat_token
+
     if requires_file_streaming?
       send_file(media_attachment_file.path, type: media_attachment_file.instance_read(:content_type), disposition: 'inline')
     else
@@ -36,8 +40,30 @@ class MediaProxyController < ApplicationController
 
   private
 
+  def federated_chat_request?
+    return false if params[:token].blank?
+
+    media_attachment = MediaAttachment.find_by(id: params[:id])
+    media_attachment.present? && media_attachment.chat_attachment? && Sharlayan::ChatFederation::MediaToken.valid?(params[:token], media_attachment)
+  end
+
   def set_media_attachment
     @media_attachment = MediaAttachment.attached.find(params[:id])
+    if params[:chat_token].present?
+      viewer = Sharlayan::ChatMediaToken.viewer(params[:chat_token], @media_attachment)
+      allowed = Setting.chat_enabled && viewer.present? && @media_attachment.chat_attachment? &&
+                MediaAttachmentPolicy.new(viewer, @media_attachment).download?
+      @viewer_holds_chat_token = allowed
+      return if allowed
+      # A token expires while a conversation stays open, and only a session can stand in for it.
+      return head(404) unless user_signed_in?
+    end
+
+    if @media_attachment.chat_attachment? && Sharlayan::ChatFederation::MediaToken.valid?(params[:token], @media_attachment)
+      head 404 unless Setting.chat_enabled && Setting.chat_federation_enabled
+      return
+    end
+
     authorize @media_attachment, :download?
   end
 

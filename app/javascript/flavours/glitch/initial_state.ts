@@ -239,6 +239,7 @@ export const {
   pagesDriveOnly,
   antennaEnabled,
   driveEnabled,
+  chatEnabled,
   boardAnnouncementsEnabled,
   visibleReactions,
   showInstanceInfo,

@@ -6,6 +6,8 @@ module Sharlayan::UpdateStatusServiceExtensions
   private
 
   def prepare_sharlayan_media_attachments(next_media_attachments, added_media_attachments)
+    raise Mastodon::ValidationError, I18n.t('chat.errors.media_in_use') if ChatMessageMediaAttachment.exists?(media_attachment_id: added_media_attachments.map(&:id))
+
     @next_media_attachments = next_media_attachments
     DriveFile.lock_for_media_attachments(added_media_attachments)
   end

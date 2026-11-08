@@ -80,6 +80,7 @@ class Api::V1::StatusDraftsController < Api::BaseController
     current_account.with_lock do
       draft.save!
       media = current_account.media_attachments.where(status_id: nil, scheduled_status_id: nil)
+        .where.not(id: ChatMessageMediaAttachment.select(:media_attachment_id))
         .where(status_draft_id: [nil, draft.id]).where(id: media_ids).index_by(&:id)
       raise ActiveRecord::RecordNotFound unless media_ids.all? { |id| media.key?(id) }
 

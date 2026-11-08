@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Export
+  CHAT_MESSAGE_BATCH_SIZE = 500
+
   attr_reader :account
 
   def initialize(account)
@@ -83,7 +85,62 @@ class Export
     JSON.generate(data_collection)
   end
 
+  # Someone can have far more chat than fits in memory, so this writes to the IO as it reads.
+  def write_chat_json(io)
+    io.write('{"chat_conversations":[')
+    ChatConversation.for_account(account).preload(:accounts).find_each.with_index do |conversation, index|
+      io.write(',') unless index.zero?
+      write_chat_conversation(io, conversation)
+    end
+    io.write(']}')
+  end
+
   private
+
+  def write_chat_conversation(io, conversation)
+    io.write(chat_conversation_data(conversation).to_json.delete_suffix('}'))
+    io.write(',"messages":[')
+    chat_messages_for_export(conversation).find_in_batches(batch_size: CHAT_MESSAGE_BATCH_SIZE).with_index do |messages, batch|
+      io.write(',') unless batch.zero?
+      io.write(messages.map { |message| chat_message_data(message).to_json }.join(','))
+    end
+    io.write(']}')
+  end
+
+  def chat_messages_for_export(conversation)
+    ChatMessage.visible_to(account)
+      .where(chat_conversation_id: conversation.id)
+      .includes(:account, :media_attachments, reactions: :account)
+  end
+
+  def chat_conversation_data(conversation)
+    {
+      id: conversation.id.to_s,
+      type: conversation.conversation_type,
+      title: conversation.title,
+      description: conversation.description,
+      archived_at: conversation.archived_at,
+      participants: conversation.accounts.map { |participant| acct(participant) },
+    }
+  end
+
+  def chat_message_data(message)
+    {
+      id: message.id.to_s,
+      sender: acct(message.account),
+      text: message.deleted? ? nil : message.text,
+      reply_to_id: message.reply_to_id&.to_s,
+      created_at: message.created_at,
+      edited_at: message.edited_at,
+      deleted_at: message.deleted_at,
+      attachments: message.media_attachments.map { |attachment| chat_attachment_url(attachment) },
+      reactions: message.reactions.map { |reaction| { reaction: reaction.reaction, account: acct(reaction.account) } },
+    }
+  end
+
+  def chat_attachment_url(attachment)
+    Rails.application.routes.url_helpers.media_proxy_url(attachment.id, :original, **ActionMailer::Base.default_url_options)
+  end
 
   def to_csv(accounts)
     CSV.generate do |csv|

@@ -123,14 +123,15 @@ RSpec.describe UserRole do
 
       expect(role.can_extra?(:bypass_rate_limit)).to be true
       expect(administrator.computed_extra_permissions).to eq(described_class::ExtraFlags::ALL)
+      expect(administrator.can_extra?(:view_admin_timeline)).to be true
     end
 
     it 'round-trips known keys and ignores unknown keys' do
       role = Fabricate.build(:user_role)
 
-      role.extra_permissions_as_keys = %w(bypass_rate_limit unknown)
+      role.extra_permissions_as_keys = %w(bypass_rate_limit view_admin_timeline unknown)
 
-      expect(role.extra_permissions_as_keys).to contain_exactly('bypass_rate_limit')
+      expect(role.extra_permissions_as_keys).to contain_exactly('bypass_rate_limit', 'view_admin_timeline')
     end
 
     it 'rejects unknown permission checks' do

@@ -150,6 +150,91 @@ describe('shared streaming connection', () => {
     disconnect();
   });
 
+  it('asks for a subscription to be answered only by a subscriber that waits for the answer', async () => {
+    const { connectStream } = await import('flavours/glitch/stream');
+    const onSubscribed = vi.fn();
+    connectStream('user', {}, () => ({
+      onConnect: () => undefined,
+      onDisconnect: () => undefined,
+      onReceive: () => undefined,
+      onSubscribed,
+    }))(() => undefined, getState);
+    connectStream('public:local', {}, () => ({
+      onConnect: () => undefined,
+      onDisconnect: () => undefined,
+      onReceive: () => undefined,
+    }))(() => undefined, getState);
+    connectStream('hashtag', { tag: 'chat' }, () => ({
+      onConnect: () => undefined,
+      onDisconnect: () => undefined,
+      onReceive: () => undefined,
+    }))(() => undefined, getState);
+
+    const socket = sockets[sockets.length - 1];
+    socket.onopen();
+
+    expect(socket.sent).toEqual(expect.arrayContaining([
+      { type: 'subscribe', stream: 'user', ack: true },
+      { type: 'subscribe', stream: 'public:local' },
+      { type: 'subscribe', stream: 'hashtag', tag: 'chat' },
+    ]));
+    expect(socket.sent).toHaveLength(3);
+  });
+
+  it('gives the answer to the subscriber and not as an event of the stream', async () => {
+    const { connectStream } = await import('flavours/glitch/stream');
+    const onConnect = vi.fn();
+    const onReceive = vi.fn();
+    const onSubscribed = vi.fn();
+    connectStream('user', {}, () => ({
+      onConnect,
+      onDisconnect: () => undefined,
+      onReceive,
+      onSubscribed,
+    }))(() => undefined, getState);
+    const socket = sockets[sockets.length - 1];
+
+    socket.onopen();
+    expect(onConnect).toHaveBeenCalledTimes(1);
+    expect(onSubscribed).not.toHaveBeenCalled();
+
+    socket.receive({ stream: ['user'], event: 'subscribed' });
+
+    expect(onSubscribed).toHaveBeenCalledTimes(1);
+    expect(onReceive).not.toHaveBeenCalled();
+  });
+
+  it('counts a separate connection as subscribed when it opens, as nothing can answer there', async () => {
+    const { connectStream } = await import('flavours/glitch/stream');
+    const onSubscribed = vi.fn();
+    const sources = [];
+    vi.stubGlobal('EventSource', class {
+      constructor() {
+        sources.push(this);
+      }
+
+      addEventListener() {
+        return undefined;
+      }
+    });
+    const eventSourceState = () => ({
+      meta: ImmutableMap({ streaming_api_base_url: 'https://streaming.test' }),
+    });
+
+    connectStream('user', {}, () => ({
+      onConnect: () => undefined,
+      onDisconnect: () => undefined,
+      onReceive: () => undefined,
+      onSubscribed,
+    }))(() => undefined, eventSourceState);
+    expect(onSubscribed).not.toHaveBeenCalled();
+
+    sources[0].onopen();
+
+    expect(onSubscribed).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
   it('ignores a control message that carries no stream', async () => {
     const onReceive = vi.fn();
     const { socket, disconnect } = await connect(onReceive);

@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+class ChatConversation < ApplicationRecord
+  enum :conversation_type, { direct: 0, group: 1 }, prefix: :chat
+
+  belongs_to :owner_account, class_name: 'Account', optional: true
+  belongs_to :last_message, class_name: 'ChatMessage', optional: true
+
+  has_many :memberships, class_name: 'ChatMembership', dependent: :destroy, inverse_of: :chat_conversation
+  has_many :accounts, through: :memberships
+  has_many :messages, -> { order(id: :desc) }, class_name: 'ChatMessage', dependent: :destroy, inverse_of: :chat_conversation
+  has_many :invitations, class_name: 'ChatInvitation', dependent: :destroy, inverse_of: :chat_conversation
+  has_many :roster_states, class_name: 'ChatRosterState', dependent: :delete_all, inverse_of: :chat_conversation
+
+  validates :direct_key, presence: true, uniqueness: true, if: :chat_direct?
+  validates :direct_key, absence: true, if: :chat_group?
+  validates :title, length: { maximum: 256 }, allow_blank: true
+  validates :title, presence: true, if: :chat_group?
+  validates :description, length: { maximum: 2048 }, allow_blank: true
+
+  scope :for_account, ->(account) { joins(:memberships).where(chat_memberships: { account_id: account.id }) }
+  scope :local_only, -> { where(owner_account_id: nil).or(where(owner_account_id: Account.local.select(:id))) }
+
+  def archived?
+    archived_at.present?
+  end
+
+  def remote?
+    owner_account&.remote? == true || accounts.any?(&:remote?) || pending_remote_invitee?
+  end
+
+  def local?
+    owner_account.nil? || owner_account.local?
+  end
+
+  def destroy_if_unused!
+    return if accounts.local.exists? || invitations.pending.exists?
+
+    destroy!
+  end
+
+  private
+
+  def pending_remote_invitee?
+    return invitations.any? { |invitation| invitation.pending? && invitation.invitee_account.remote? } if invitations.loaded?
+
+    invitations.pending.joins(:invitee_account).merge(Account.remote).exists?
+  end
+end

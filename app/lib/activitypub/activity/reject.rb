@@ -2,6 +2,8 @@
 
 class ActivityPub::Activity::Reject < ActivityPub::Activity
   def perform
+    return Sharlayan::ChatFederation::Incoming.handle_reject(@json, @account) if Sharlayan::ChatFederation::Incoming.chat_invite?(@json)
+
     return reject_follow_for_relay if relay_follow?
     return follow_request_from_object.reject! unless follow_request_from_object.nil?
     return UnfollowService.new.call(follow_from_object.account, @account) unless follow_from_object.nil?

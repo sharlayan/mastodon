@@ -1,0 +1,52 @@
+.fields-group
+  = f.input :chat_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.enabled'),
+            hint: t('admin.settings.chat.enabled_hint'),
+            sharlayan_only: true
+
+.fields-group
+  = f.input :chat_federation_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.federation_enabled'),
+            hint: t('admin.settings.chat.federation_enabled_hint'),
+            disabled: roleplay_mode?,
+            sharlayan_only: true
+
+.fields-group
+  = f.input :chat_soft_delete_enabled,
+            as: :boolean,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.soft_delete_enabled'),
+            hint: roleplay_mode? ? t('admin.settings.chat.soft_delete_roleplay_hint') : t('admin.settings.chat.soft_delete_enabled_hint'),
+            disabled: roleplay_mode?,
+            sharlayan_only: true
+
+.fields-group
+  = f.input :chat_delete_window_hours,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.delete_window_hours'),
+            hint: t('admin.settings.chat.delete_window_hours_hint'),
+            input_html: { min: 0 },
+            sharlayan_only: true
+
+.fields-group
+  = f.input :chat_max_group_members,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.max_group_members'),
+            hint: t('admin.settings.chat.max_group_members_hint'),
+            input_html: { min: 2, max: 200 },
+            sharlayan_only: true
+
+.fields-group
+  = f.input :chat_max_attachments,
+            as: :integer,
+            wrapper: :with_label,
+            label: t('admin.settings.chat.max_attachments'),
+            hint: t('admin.settings.chat.max_attachments_hint'),
+            input_html: { min: 0, max: 4 },
+            sharlayan_only: true
