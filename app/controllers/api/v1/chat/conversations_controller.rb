@@ -25,6 +25,7 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
       conversations = before_cursor(conversations, cursor.id, cursor.last_message_id)
     end
     conversations = conversations.to_a
+    ChatMessageReaction.preload_custom_emojis(conversations.filter_map(&:last_message).flat_map(&:reactions))
     if conversations.any?
       # The visible last message can differ from the value used for ordering.
       response.set_header('X-Chat-Cursor-Message-Id', conversations.last.last_message_id&.to_s || '0')

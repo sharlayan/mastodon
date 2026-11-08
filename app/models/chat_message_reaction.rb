@@ -11,13 +11,33 @@ class ChatMessageReaction < ApplicationRecord
   validate :recognized_reaction
   validate :message_reaction_limit, on: :create
 
+  attr_writer :custom_emoji
+
   def self.shortcode_of(reaction)
     reaction&.match(CUSTOM_EMOJI_RE)&.captures&.first
   end
 
+  def self.preload_custom_emojis(reactions)
+    pending = reactions.reject(&:custom_emoji_loaded?)
+    return reactions if pending.empty?
+
+    ActiveRecord::Associations::Preloader.new(records: pending, associations: :account).call
+    wanted = pending.filter_map { |record| (shortcode = shortcode_of(record.reaction)) && [shortcode, record.account&.domain] }.uniq
+    emojis = wanted.group_by(&:last).flat_map { |domain, pairs| CustomEmoji.where(domain: domain, shortcode: pairs.map(&:first), disabled: false).to_a }
+      .index_by { |emoji| [emoji.shortcode, emoji.domain] }
+    pending.each { |record| record.custom_emoji = emojis[[shortcode_of(record.reaction), record.account&.domain]] }
+    reactions
+  end
+
   def custom_emoji
+    return @custom_emoji if custom_emoji_loaded?
+
     shortcode = self.class.shortcode_of(reaction)
-    shortcode && CustomEmoji.find_by(shortcode: shortcode, domain: account&.domain, disabled: false)
+    @custom_emoji = shortcode && CustomEmoji.find_by(shortcode: shortcode, domain: account&.domain, disabled: false)
+  end
+
+  def custom_emoji_loaded?
+    instance_variable_defined?(:@custom_emoji)
   end
 
   private

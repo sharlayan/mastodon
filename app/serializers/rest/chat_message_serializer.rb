@@ -27,6 +27,10 @@ class REST::ChatMessageSerializer < ActiveModel::Serializer
     object.remote?
   end
 
+  def reactions
+    ChatMessageReaction.preload_custom_emojis(object.reactions.to_a)
+  end
+
   def editable
     !object.deleted? && object.within_delete_window?
   end

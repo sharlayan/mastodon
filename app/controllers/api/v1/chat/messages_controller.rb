@@ -14,7 +14,9 @@ class Api::V1::Chat::MessagesController < Api::V1::Chat::BaseController
   def index
     messages = @conversation.messages.visible_to(current_account).includes(:account, reactions: :account, media_attachments: :chat_message_media_attachments).limit(limit_param(LIMIT, 80))
     messages = messages.where(id: ...params[:max_id]) if params[:max_id].present?
-    render json: messages.reverse, each_serializer: REST::ChatMessageSerializer, current_account: current_account
+    messages = messages.to_a.reverse
+    ChatMessageReaction.preload_custom_emojis(messages.flat_map(&:reactions))
+    render json: messages, each_serializer: REST::ChatMessageSerializer, current_account: current_account
   end
 
   def show
@@ -35,6 +37,8 @@ class Api::V1::Chat::MessagesController < Api::V1::Chat::BaseController
       .order(id: :desc)
       .limit(limit_param(LIMIT, 80))
     messages = messages.where(chat_conversation_id: params[:conversation_id]) if params[:conversation_id].present?
+    messages = messages.to_a
+    ChatMessageReaction.preload_custom_emojis(messages.flat_map(&:reactions))
     render json: messages, each_serializer: REST::ChatMessageSerializer, current_account: current_account
   end
 

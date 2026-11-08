@@ -34,8 +34,6 @@ class REST::ChatMessageReactionSerializer < ActiveModel::Serializer
   private
 
   def custom_emoji
-    return @custom_emoji if defined?(@custom_emoji)
-
-    @custom_emoji = object.custom_emoji
+    object.custom_emoji
   end
 end
