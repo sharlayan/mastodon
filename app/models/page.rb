@@ -410,7 +410,7 @@ class Page < ApplicationRecord
     ids = attached_media_ids
     return if ids.empty? || account_id.blank?
 
-    valid_ids = ids.all? { |id| id.to_s.match?(/\A\d+\z/) } && account.media_attachments.where(id: ids).lock.to_a.size == ids.size
+    valid_ids = ids.all? { |id| id.to_s.match?(/\A\d+\z/) } && account.media_attachments.outside_chat.where(id: ids).lock.to_a.size == ids.size
     errors.add(:content, :invalid) unless valid_ids
   end
 
@@ -438,7 +438,7 @@ class Page < ApplicationRecord
 
   def validate_eye_catching_media_attachment
     return if eye_catching_media_attachment.nil?
-    return if account_id.present? && account.media_attachments.where(id: eye_catching_media_attachment_id).lock.exists?
+    return if account_id.present? && account.media_attachments.outside_chat.where(id: eye_catching_media_attachment_id).lock.exists?
 
     errors.add(:eye_catching_media_attachment, :invalid)
   end

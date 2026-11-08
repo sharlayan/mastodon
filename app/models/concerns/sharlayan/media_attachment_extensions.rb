@@ -37,6 +37,7 @@ module Sharlayan::MediaAttachmentExtensions
     scope :attached, -> { where.not(status_id: nil).or(where.not(scheduled_status_id: nil)).or(where.not(status_draft_id: nil)).or(where(CHAT_REFERENCE_SQL)) }
     scope :referenced_by_page, -> { where(PAGE_REFERENCE_SQL) }
     scope :in_use, -> { attached.or(referenced_by_page) }
+    scope :outside_chat, -> { where.not(CHAT_REFERENCE_SQL) }
     scope :unattached, -> { where(status_id: nil, scheduled_status_id: nil, status_draft_id: nil).where.not(PAGE_REFERENCE_SQL).where.not(CHAT_REFERENCE_SQL) }
 
     before_validation :generate_drive_access_key, if: :drive_pointer?

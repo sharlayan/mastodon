@@ -800,7 +800,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
     current_account.with_lock do
       draft.save!
-      media = current_account.media_attachments.where(status_id: nil, scheduled_status_id: nil)
+      media = current_account.media_attachments.where(status_id: nil, scheduled_status_id: nil).outside_chat
         .where(status_draft_id: [nil, draft.id]).where(id: ids).index_by(&:id)
       raise MisskeyCompat::DriveFileResolver::NoSuchFileError unless ids.all? { |id| media.key?(id) }
 

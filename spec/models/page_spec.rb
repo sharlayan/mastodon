@@ -5,6 +5,14 @@ require 'rails_helper'
 RSpec.describe Page do
   let(:account) { Fabricate(:account) }
 
+  def chat_media_attachment(owner)
+    room = ChatConversation.create!(conversation_type: :group, title: 'Room', owner_account: owner)
+    room.memberships.create!(account: owner, role: :owner)
+    Fabricate(:media_attachment, account: owner, status: nil).tap do |media|
+      room.messages.create!(account: owner, text: 'sent').media_attachments << media
+    end
+  end
+
   describe 'writing statistics' do
     it 'stores the visible character count and tracks create, update, and delete deltas' do
       page = Fabricate(:page, account: account, summary: '요 약', content: [{ type: 'text', text: '**hello**' }])
@@ -182,6 +190,20 @@ RSpec.describe Page do
 
       expect(page).to_not be_valid
       expect(page.errors.of_kind?(:content, :invalid)).to be true
+    end
+
+    it 'rejects image blocks referencing media sent in a chat message' do
+      page = Fabricate.build(:page, account: account, content: [{ type: 'image', fileId: chat_media_attachment(account).id.to_s }])
+
+      expect(page).to_not be_valid
+      expect(page.errors.of_kind?(:content, :invalid)).to be true
+    end
+
+    it 'rejects an eye-catching image sent in a chat message' do
+      page = Fabricate.build(:page, account: account, eye_catching_media_attachment: chat_media_attachment(account))
+
+      expect(page).to_not be_valid
+      expect(page.errors.of_kind?(:eye_catching_media_attachment, :invalid)).to be true
     end
   end
 
