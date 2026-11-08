@@ -206,6 +206,7 @@ class Sharlayan::ChatService
     raise Forbidden unless invitation.invitee_account_id == account.id && invitation.pending?
 
     ensure_conversation_writable!(invitation.chat_conversation)
+    ensure_owner_reachable!(invitation.chat_conversation)
     raise Forbidden if blocked_in_either_direction?(invitation.inviter_account, account) || owner_refused?(invitation.chat_conversation.owner_account)
 
     conversation = invitation.chat_conversation
@@ -232,6 +233,7 @@ class Sharlayan::ChatService
   def reject_invitation(account, invitation)
     raise Forbidden unless invitation.invitee_account_id == account.id && invitation.pending?
 
+    ensure_owner_reachable!(invitation.chat_conversation)
     settle_pending_invitation!(invitation, :rejected)
     announce_invitation_settled(invitation)
     owner = invitation.chat_conversation.owner_account
@@ -258,6 +260,7 @@ class Sharlayan::ChatService
 
     raise Error, 'Only group chats can be left' unless conversation.chat_group?
 
+    ensure_owner_reachable!(conversation)
     deliver_to_conversation(account, conversation, Sharlayan::ChatFederation::Payload.remove(conversation, account))
     membership.destroy!
     forget_acceptance(conversation, account)
@@ -1401,6 +1404,10 @@ class Sharlayan::ChatService
 
   def ensure_federation_available!(conversation)
     raise Error, 'Chat federation is disabled' if !Setting.chat_federation_enabled && conversation.remote?
+  end
+
+  def ensure_owner_reachable!(conversation)
+    raise Error, 'Chat federation is disabled' if !Setting.chat_federation_enabled && conversation.owner_account&.remote?
   end
 
   def ensure_direct_participants_not_blocked!(account, conversation)
