@@ -573,6 +573,15 @@ RSpec.describe 'Chat federation relay and roster sync' do
         expect(message.reactions.reload.map { |item| [item.account_id, item.reaction, item.uri] }).to eq([[third.id, '👍', reaction['id']]])
       end
 
+      it 'ignores one from a domain whose favourites are rejected' do
+        room.memberships.create!(account: third)
+        Fabricate(:domain_block, domain: 'third.test', severity: :noop, reject_favourite: true)
+
+        announce(react_json.merge('id' => 'https://third.test/chat-reactions/1', 'actor' => third.uri))
+
+        expect(message.reactions.reload).to be_empty
+      end
+
       it 'accepts the Like form as well' do
         room.memberships.create!(account: third)
 

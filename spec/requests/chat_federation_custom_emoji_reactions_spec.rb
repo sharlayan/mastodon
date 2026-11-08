@@ -86,6 +86,43 @@ RSpec.describe 'Chat federation custom emoji reactions' do
       expect(a_request(:get, image_url)).to_not have_been_made
       expect(message.reactions.find_by(account: remote, reaction: ':wave:')).to be_present
     end
+
+    it 'drops reactions from a domain whose favourites are rejected' do
+      Fabricate(:domain_block, domain: 'remote.test', severity: :noop, reject_favourite: true)
+
+      perform(reaction_json(remote), remote)
+      perform(reaction_json(remote, tag: []).merge('type' => 'Like', 'id' => "#{remote.uri}/chat-reactions/2", 'content' => '👍', '_misskey_reaction' => '👍'), remote)
+
+      expect(message.reactions.reload).to be_empty
+      expect(a_request(:get, image_url)).to_not have_been_made
+    end
+
+    it 'drops reactions from an account the author muted for reactions' do
+      ReactionMute.create!(account: owner, target_account: remote)
+
+      perform(reaction_json(remote), remote)
+
+      expect(message.reactions.reload).to be_empty
+      expect(a_request(:get, image_url)).to_not have_been_made
+    end
+
+    it 'drops reactions from a domain the author muted for reactions' do
+      ReactionMute.create!(account: owner, target_domain: 'remote.test')
+
+      perform(reaction_json(remote, tag: []).merge('content' => '👍', '_misskey_reaction' => '👍'), remote)
+
+      expect(message.reactions.reload).to be_empty
+    end
+
+    it 'drops a custom emoji the author rejects as a reaction but keeps other reactions' do
+      CustomEmojiMute.create!(account: owner, prefix: 'wa', domain: 'remote.test', reject_reactions: true)
+
+      perform(reaction_json(remote), remote)
+      perform(reaction_json(remote, tag: []).merge('id' => "#{remote.uri}/chat-reactions/2", 'content' => '👍', '_misskey_reaction' => '👍'), remote)
+
+      expect(message.reactions.reload.pluck(:reaction)).to eq(['👍'])
+      expect(a_request(:get, image_url)).to_not have_been_made
+    end
   end
 
   describe 'sending' do

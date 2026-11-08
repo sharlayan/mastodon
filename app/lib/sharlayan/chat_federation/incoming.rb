@@ -224,6 +224,7 @@ module Sharlayan
 
             raise DependencyNotReadyError, 'Chat message has not arrived'
           end
+          return 'skip: muted reaction' if reaction_muted?(message, account, reaction.to_s)
 
           service.react_remote(account, message, reaction.to_s, activity_id: activity_id, activity: json, &emoji_importer)
           'ok: chat reaction'
@@ -496,6 +497,14 @@ module Sharlayan
 
         def member_host?(conversation, uri)
           conversation.accounts.remote.pluck(:uri).any? { |account_uri| same_host?(account_uri, uri) }
+        end
+
+        def reaction_muted?(message, account, reaction)
+          return false unless message.account&.local?
+          return true if ReactionMute.muted?(message.account_id, account)
+
+          shortcode = ChatMessageReaction.shortcode_of(reaction)
+          shortcode.present? && CustomEmojiMute.reaction_muted?(message.account_id, shortcode, account.domain)
         end
 
         def reaction_activity_id(json, account)
