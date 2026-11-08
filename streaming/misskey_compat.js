@@ -316,7 +316,7 @@ const createMisskeyCompat = ({ subscribe, unsubscribe, subscriptionHeartbeat, ch
       subscription.listeners = [listener];
       channels.set(id, subscription);
       subscribe(channelId, listener);
-      subscription.stopHeartbeat = subscriptionHeartbeat([channelId]);
+      subscription.stopHeartbeat = subscriptionHeartbeat([channelId, `misskey:chatClient:${session.request.accountId}`]);
     }).catch((err) => logger.error({ err }, 'misskey compat chat connect failed')).finally(() => {
       if (channels.get(id) === reservation) channels.delete(id);
     });

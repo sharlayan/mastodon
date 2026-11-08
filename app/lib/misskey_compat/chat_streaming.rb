@@ -2,6 +2,13 @@
 
 class MisskeyCompat::ChatStreaming
   MESSAGE_EVENTS = %w(chat.message chat.message_update chat.message_delete chat.message_hide chat.reaction chat.reaction_delete chat.notification).freeze
+  CONVERSATION_EVENTS = %w(chat.conversation_update chat.member_join chat.member_leave).freeze
+
+  class Lookups < ActiveSupport::CurrentAttributes
+    attribute :records
+  end
+
+  Lookup = Struct.new(:message, :conversation, :direct_member_ids)
 
   class << self
     def broadcast(redis, viewer, event, payload)
@@ -13,12 +20,14 @@ class MisskeyCompat::ChatStreaming
         return
       end
 
-      message = message_for(event, data)
-      conversation = message&.chat_conversation || conversation_for(event, data)
+      return unless redis.exists?("subscribed:misskey:chatClient:#{viewer.id}")
+
+      lookup = lookup_for(event, data)
+      message = lookup.message
+      conversation = lookup.conversation
       return if conversation.nil?
 
-      # Most viewers have no compatible client connected, so look that up before anything else about them.
-      channel = channel_for(viewer, conversation, event)
+      channel = channel_for(viewer, lookup, event)
       return if channel.nil? || !redis.exists?("subscribed:misskey:#{channel}")
       return unless conversation.memberships.exists?(account: viewer)
 
@@ -36,6 +45,16 @@ class MisskeyCompat::ChatStreaming
 
     private
 
+    def lookup_for(event, data)
+      key = [event, data[:message_id] || data[:id], data[:conversation_id], data[:edited_at], data[:deleted_at], data[:updated_at]].map(&:to_s)
+      records = Lookups.records ||= {}
+      records[key] ||= begin
+        message = message_for(event, data)
+        conversation = message&.chat_conversation || conversation_for(event, data)
+        Lookup.new(message, conversation, conversation&.chat_direct? ? conversation.memberships.pluck(:account_id) : [])
+      end
+    end
+
     def message_for(event, data)
       return unless MESSAGE_EVENTS.include?(event)
 
@@ -43,16 +62,16 @@ class MisskeyCompat::ChatStreaming
     end
 
     def conversation_for(event, data)
-      return unless %w(chat.conversation_update chat.member_join chat.member_leave).include?(event)
+      return unless CONVERSATION_EVENTS.include?(event)
 
       ChatConversation.find_by(id: data[:conversation_id] || data[:id])
     end
 
-    def channel_for(viewer, conversation, event)
+    def channel_for(viewer, lookup, event)
       return "chatMain:#{viewer.id}" if event == 'chat.notification'
-      return "chatRoom:#{viewer.id}:#{conversation.id}" if conversation.chat_group?
+      return "chatRoom:#{viewer.id}:#{lookup.conversation.id}" if lookup.conversation.chat_group?
 
-      other_id = conversation.memberships.where.not(account_id: viewer.id).pick(:account_id)
+      other_id = (lookup.direct_member_ids - [viewer.id]).first
       "chatUser:#{viewer.id}:#{other_id}" if other_id
     end
 

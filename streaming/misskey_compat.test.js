@@ -117,6 +117,7 @@ const chatFixture = () => {
   const listeners = new Map();
   const sent = [];
   const reads = [];
+  const heartbeats = [];
   const state = { enabled: true, allowed: true, grants: undefined };
   const compat = createMisskeyCompat({
     subscribe: (channel, listener) => {
@@ -124,7 +125,7 @@ const chatFixture = () => {
       listeners.get(channel).add(listener);
     },
     unsubscribe: (channel, listener) => listeners.get(channel)?.delete(listener),
-    subscriptionHeartbeat: () => () => {},
+    subscriptionHeartbeat: (channels) => { heartbeats.push(channels); return () => {}; },
     channelNameToIds: async () => ({ channelIds: [] }),
     loadGrantPermissions: async () => state.grants,
     loadChatGrantPermissions: async () => state.grants,
@@ -144,8 +145,16 @@ const chatFixture = () => {
     for (const listener of listeners.get(channel) ?? []) listener({ event: 'chat', payload });
     await flush();
   };
-  return { compat, session, state, sent, reads, connect, emit, flush, listeners };
+  return { compat, session, state, sent, reads, heartbeats, connect, emit, flush, listeners };
 };
+
+test('chat channels tell the server that the viewer has a compatible client', async () => {
+  const chat = chatFixture();
+  await chat.connect('chatRoom', { roomId: '9' });
+  await chat.connect('main');
+
+  assert.deepEqual(chat.heartbeats, [['misskey:chatRoom:7:9', 'misskey:chatClient:7'], ['misskey:chatMain:7', 'misskey:chatClient:7']]);
+});
 
 test('chatUser and chatRoom deliver viewer-specific message and mutation envelopes', async () => {
   const chat = chatFixture();

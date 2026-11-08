@@ -27,7 +27,15 @@ RSpec.describe MisskeyCompat::ChatStreaming do
   end
 
   def subscribe(channel)
+    redis.setex("subscribed:misskey:chatClient:#{channel.split(':')[1]}", 60, '1')
     redis.setex("subscribed:misskey:#{channel}", 60, '1')
+  end
+
+  def chat_queries(pattern = /FROM "chat_/, &block)
+    queries = []
+    callback = ->(*, payload) { queries << payload[:sql] if !payload[:cached] && payload[:sql].match?(pattern) }
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+    queries
   end
 
   def payloads(channel)
@@ -78,6 +86,34 @@ RSpec.describe MisskeyCompat::ChatStreaming do
     service.send(:broadcast_to, member, 'chat.message', message, REST::ChatMessageSerializer)
 
     expect(events.map(&:first).grep(/\Amisskey:/)).to be_empty
+  end
+
+  it 'looks nothing up for a viewer without a compatible client' do
+    room = service.create_conversation(owner, type: :group, title: 'Room', account_ids: [member.id])
+    message = service.create_message(owner, room, text: 'hello')
+    payload = REST::ChatMessageSerializer.new(message).as_json
+
+    queries = chat_queries { described_class.broadcast(redis, member, 'chat.message', payload) }
+
+    expect(queries).to be_empty
+  end
+
+  it 'looks the message and its conversation up once for every member with a client' do
+    third = Fabricate(:user).account
+    room = service.create_conversation(owner, type: :group, title: 'Room')
+    [member, third].each { |account| room.memberships.create!(account: account) }
+    [owner, member, third].each { |account| subscribe("chatRoom:#{account.id}:#{room.id}") }
+    message = service.create_message(owner, room, text: 'hello')
+    payload = REST::ChatMessageSerializer.new(message).as_json
+    events.clear
+    described_class::Lookups.reset
+
+    messages = chat_queries(/\ASELECT "chat_messages"\.\* FROM "chat_messages" WHERE "chat_messages"\."id" =/) do
+      [owner, member, third].each { |account| described_class.broadcast(redis, account, 'chat.message', payload) }
+    end
+
+    expect(messages.size).to eq(1)
+    expect(events.map(&:first)).to match_array([owner, member, third].map { |account| "misskey:chatRoom:#{account.id}:#{room.id}" })
   end
 
   it 'stops compatibility publication when either feature is disabled' do
