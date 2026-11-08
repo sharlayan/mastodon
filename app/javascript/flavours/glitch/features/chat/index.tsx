@@ -1122,6 +1122,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [sendError, setSendError] = useState<string | null>(null);
   const [readingError, setReadingError] = useState(false);
   const isMounted = useRef(true);
+  const stillMounted = useCallback(() => isMounted.current, []);
   const uploadAbort = useRef<AbortController | null>(null);
   const textBeforeEdit = useRef<string | null>(null);
   const deletedMessages = useRef(new Map<string, string>());
@@ -1475,6 +1476,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const refreshConversation = useCallback(
     (id: string) => {
+      if (!stillMounted()) return;
       const version = conversationVersions.current.get(id) ?? 0;
       // Bursts share a plan, and the scheduler checks the page before a follow-up.
       void retries
@@ -1513,7 +1515,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         })
         .catch(() => undefined);
     },
-    [retries, updateConversations],
+    [retries, stillMounted, updateConversations],
   );
 
   const loadConversations = useCallback(
@@ -1671,6 +1673,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   );
 
   const loadConversationsForAction = useCallback(async () => {
+    if (!stillMounted()) return undefined;
     // One background plan owns a rate-limited read, even if an action asks for it first.
     if (retries.limited('conversations')) {
       if (!retries.planned('conversations'))
@@ -1697,7 +1700,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         .catch(() => undefined);
       return undefined;
     }
-  }, [loadConversations, readFailed, retries]);
+  }, [loadConversations, readFailed, retries, stillMounted]);
 
   const loadMoreConversations = useCallback(() => {
     if (!nextConversationId || loadingMore) return;

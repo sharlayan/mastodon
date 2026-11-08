@@ -1185,3 +1185,92 @@ describe('Polling the room list while the stream stays down', () => {
     expect(screen.getByText('Group 20')).toBeTruthy();
   });
 });
+
+describe('Answers that come back after the screen has gone', () => {
+  const held = () => {
+    let release: () => void = () => undefined;
+    const promise = new Promise<{ data: unknown }>((resolve) => {
+      release = () => {
+        resolve({ data: {} });
+      };
+    });
+    return { promise, release };
+  };
+  const confirmShownModal = () => {
+    const modal = dispatch.mock.calls
+      .map(
+        ([action]) =>
+          (
+            action as {
+              payload?: { modalProps?: { onConfirm?: () => void } };
+            }
+          ).payload?.modalProps,
+      )
+      .findLast((props) => props?.onConfirm);
+    act(() => {
+      modal?.onConfirm?.();
+    });
+  };
+
+  it('does not read the room list again after answering an invitation', async () => {
+    received = [
+      {
+        id: 'inv-1',
+        state: 'pending',
+        conversation: room('invited', 'group', [carol], { title: 'Book club' }),
+        inviter: carol,
+      },
+    ];
+    const answer = held();
+    api.post.mockReturnValue(answer.promise);
+    const view = mountAt('/chat');
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Invitations\s*1/ }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept' }));
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalled();
+    });
+
+    view.unmount();
+    api.get.mockClear();
+    await act(async () => {
+      answer.release();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it('does not read the room again after deleting a message', async () => {
+    const answer = held();
+    api.get.mockImplementation(
+      (url: string, config?: { params?: { direction?: string } }) =>
+        Promise.resolve({
+          data: url.startsWith('/api/v1/chat/messages/')
+            ? { ...myMessage, deletes_for_everyone: true }
+            : responses(url, config),
+        }),
+    );
+    api.delete.mockReturnValue(answer.promise);
+    const view = mountAt('/chat/direct-1');
+    await screen.findByText('What I wrote');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => {
+      expect(dispatch).toHaveBeenCalled();
+    });
+    confirmShownModal();
+    await waitFor(() => {
+      expect(api.delete).toHaveBeenCalled();
+    });
+
+    view.unmount();
+    api.get.mockClear();
+    await act(async () => {
+      answer.release();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(api.get).not.toHaveBeenCalled();
+  });
+});
