@@ -59,7 +59,7 @@ import MediaGallery from 'flavours/glitch/components/media_gallery';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import { useIdentity } from 'flavours/glitch/identity_context';
-import { me } from 'flavours/glitch/initial_state';
+import { me, roleplayMode } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
@@ -3612,7 +3612,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             },
           ]
         : []),
-      ...(isGroup
+      ...(isGroup && !(isOwner && roleplayMode)
         ? [
             null,
             {

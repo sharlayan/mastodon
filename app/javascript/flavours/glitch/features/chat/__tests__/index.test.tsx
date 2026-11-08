@@ -31,9 +31,13 @@ const api = vi.hoisted(() => ({
   delete: vi.fn(),
 }));
 vi.mock('flavours/glitch/api', () => ({ default: () => api }));
+const server = vi.hoisted(() => ({ roleplayMode: false }));
 vi.mock('flavours/glitch/initial_state', async (importOriginal) => ({
   ...(await importOriginal<typeof InitialState>()),
   me: 'me',
+  get roleplayMode() {
+    return server.roleplayMode;
+  },
 }));
 const dispatch = vi.hoisted(() => vi.fn());
 vi.mock('flavours/glitch/store', async (importOriginal) => ({
@@ -1698,6 +1702,33 @@ describe('Chat room layout', () => {
         .getByRole('button', { name: 'Delete group' })
         .getAttribute('data-dangerous'),
     ).toBe('true');
+  });
+
+  it('leaves deleting a group out of the menu on a roleplay server', async () => {
+    server.roleplayMode = true;
+    try {
+      respondWith(room());
+      mountChat();
+      await screen.findByText('Private message A');
+
+      expect(screen.getByRole('button', { name: 'Archive' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Delete group' })).toBeNull();
+    } finally {
+      server.roleplayMode = false;
+    }
+  });
+
+  it('still lets members leave a group on a roleplay server', async () => {
+    server.roleplayMode = true;
+    try {
+      respondWith(room('A', 'member'));
+      mountChat();
+      await screen.findByText('Private message A');
+
+      expect(screen.getByRole('button', { name: 'Leave group' })).toBeTruthy();
+    } finally {
+      server.roleplayMode = false;
+    }
   });
 
   it('gives other members only what applies to them', async () => {
