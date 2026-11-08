@@ -364,7 +364,11 @@ module Sharlayan
 
           return false unless chat_add?(json)
 
-          service.receive_add(account, room_uri: uri_of(json['target']), account_uri: uri_of(json['object']), published: time_of(json['published']))
+          room_uri = uri_of(json['target'])
+          account_uri = uri_of(json['object'])
+          return 'skip: suspended account' if suspended_addition?(room_uri, account_uri, account)
+
+          service.receive_add(account, room_uri: room_uri, account_uri: account_uri, published: time_of(json['published']))
           'ok: chat room member added'
         rescue Sharlayan::ChatService::Forbidden, Sharlayan::ChatService::Error, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           Rails.logger.info("Dropped chat Add from #{account.uri}: #{e.message}")
@@ -492,6 +496,12 @@ module Sharlayan
         # The room an activity names says nothing about what it may do, only whether there is anything left to wait for.
         def deleted_room_activity?(message_uri, *activities)
           service.message_of_deleted_room?(message_uri) || activities.any? { |activity| service.room_gone?(room_uri_of(activity)) }
+        end
+
+        def suspended_addition?(room_uri, account_uri, actor)
+          return false if account_uri.blank? || !ChatConversation.exists?(uri: room_uri, owner_account_id: actor.id)
+
+          service.resolve_account(account_uri)&.suspended? || false
         end
 
         def update_relay?(json)

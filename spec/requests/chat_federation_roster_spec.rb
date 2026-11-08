@@ -83,6 +83,33 @@ RSpec.describe 'Chat federation roster ordering' do
   describe 'Add and Remove' do
     before { room }
 
+    it 'ignores an Add of a suspended account' do
+      member.suspend!
+
+      perform(add(member, published: earlier), owner)
+
+      expect(member?(member)).to be(false)
+    end
+
+    it 'ignores an Add of an account that turns out to be suspended once fetched' do
+      uri = 'https://suspended.test/users/eve'
+      fetcher = instance_double(ActivityPub::FetchRemoteAccountService)
+      allow(ActivityPub::FetchRemoteAccountService).to receive(:new).and_return(fetcher)
+      allow(fetcher).to receive(:call).with(uri) { Fabricate(:account, domain: 'suspended.test', uri: uri, suspended: true) }
+
+      perform(add(member, published: earlier, object: uri), owner)
+
+      expect(room.memberships.joins(:account).where(account: { uri: uri })).to_not exist
+    end
+
+    it 'does not fetch the account named in an Add from someone other than the owner' do
+      allow(ActivityPub::FetchRemoteAccountService).to receive(:new)
+
+      perform(add(member, published: earlier, object: 'https://suspended.test/users/eve'), member)
+
+      expect(ActivityPub::FetchRemoteAccountService).to_not have_received(:new)
+    end
+
     it 'ignores an Add older than a Remove that overtook it' do
       perform(remove(member, published: later), owner)
       perform(add(member, published: earlier), owner)
