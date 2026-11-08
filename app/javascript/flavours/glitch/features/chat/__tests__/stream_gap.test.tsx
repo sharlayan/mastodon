@@ -900,7 +900,7 @@ describe('Chat when the stream connects after the screen has read', () => {
   });
 
   describe('when the connection comes back after the stream delivered', () => {
-    it('reads no further back than what the live stream had already brought', async () => {
+    it('refreshes the whole loaded history when the connection comes back', async () => {
       seed('A', 1, 2);
       const page = await loadPage();
       await connect(page.socket);
@@ -919,7 +919,7 @@ describe('Chat when the stream connects after the screen has read', () => {
       await connect(next);
       await settle();
 
-      expect(readsOf(MESSAGES)).toHaveLength(1);
+      expect(readsOf(MESSAGES)).toHaveLength(2);
       expect(shown()).toEqual(numbers(1, PAGE + 10));
     });
 

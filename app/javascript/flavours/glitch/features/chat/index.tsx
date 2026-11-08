@@ -1772,7 +1772,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       pendingMessageUpdates.current.add(updates);
       const requestId = ++latestMessageRequest.current;
       const liveWhenAsked = isChatStreamLive();
-      const from = shownMessagesRef.current[0]?.id ?? continuousUpTo.current;
+      const oldestShown = shownMessagesRef.current[0]?.id;
+      const continuous = continuousUpTo.current;
+      // The shown list can still be a stream-only render while the initial
+      // snapshot has been applied but has not rendered yet.
+      const from =
+        oldestShown && continuous
+          ? compareId(oldestShown, continuous) < 0
+            ? oldestShown
+            : continuous
+          : (oldestShown ?? continuous);
       const pageLimit =
         MESSAGE_RESYNC_PAGES +
         Math.ceil(shownMessagesRef.current.length / MESSAGE_PAGE_SIZE);
