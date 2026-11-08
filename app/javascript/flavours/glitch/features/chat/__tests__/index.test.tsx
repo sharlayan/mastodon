@@ -2485,6 +2485,99 @@ describe('Chat back button', () => {
 
     expect(history.location.pathname).toBe(to);
   });
+
+  const back = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
+  };
+
+  it('returns to the list entry it came from instead of adding one', async () => {
+    const { history } = mountChat('/chat');
+    await screen.findByRole('button', { name: /Room A/ });
+    navigate(history, '/chat/A');
+    await screen.findByText('Private message A');
+
+    await back();
+
+    expect(history.location.pathname).toBe('/chat');
+    expect(history.index).toBe(0);
+    expect(history.length).toBe(2);
+  });
+
+  it('walks back through a room view and the room to the list', async () => {
+    const { history } = mountChat('/chat');
+    await screen.findByRole('button', { name: /Room A/ });
+    navigate(history, '/chat/A');
+    navigate(history, '/chat/A/members');
+
+    await back();
+    expect(history.location.pathname).toBe('/chat/A');
+    expect(history.index).toBe(1);
+
+    await back();
+    expect(history.location.pathname).toBe('/chat');
+    expect(history.index).toBe(0);
+  });
+
+  it('replaces a room reached from elsewhere with the list', async () => {
+    const { history } = mountChat('/home');
+    navigate(history, '/chat/A');
+    await screen.findByText('Private message A');
+
+    await back();
+
+    expect(history.location.pathname).toBe('/chat');
+    expect(history.length).toBe(2);
+    act(() => {
+      history.goBack();
+    });
+    expect(history.location.pathname).toBe('/home');
+  });
+
+  it('puts a new room in place of the new chat screen', async () => {
+    const { history } = mountChat('/chat');
+    await screen.findByRole('button', { name: /Room A/ });
+    navigate(history, '/chat/new');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create a group' }),
+    );
+    const title = screen.getByPlaceholderText('Group name');
+    fireEvent.change(title, { target: { value: 'Hikers' } });
+    answerNextPost(
+      '/api/v1/chat/conversations',
+      Promise.resolve({
+        data: { ...conversation('A'), type: 'group', title: 'Hikers' },
+      }),
+    );
+    const form = title.closest('form');
+    if (!form) throw new Error('Missing group form');
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe('/chat/A');
+    });
+    expect(history.length).toBe(2);
+
+    await back();
+    expect(history.location.pathname).toBe('/chat');
+    expect(history.index).toBe(0);
+  });
+
+  it('steps back off a room deleted while it was open', async () => {
+    const { history } = mountChat('/chat');
+    await screen.findByRole('button', { name: /Room A/ });
+    navigate(history, '/chat/A');
+    await screen.findByText('Private message A');
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_delete',
+        payload: { conversation_id: 'A' },
+      });
+    });
+
+    expect(history.location.pathname).toBe('/chat');
+    expect(history.index).toBe(0);
+  });
 });
 
 describe('Chat sending with the keyboard', () => {
