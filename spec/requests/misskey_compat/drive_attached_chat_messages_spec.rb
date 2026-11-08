@@ -39,6 +39,20 @@ RSpec.describe 'Misskey-compat Drive attached chat messages', :attachment_proces
     service.create_message(account, conversation, text: 'attached', media_ids: [pointer.id])
   end
 
+  it 'rejects ids and dates beyond the stored range as invalid parameters' do
+    [
+      [{ sinceId: '99999999999999999999' }, 'sinceId'],
+      [{ untilId: '0zzzzzzzzzzzzzzz' }, 'untilId'],
+      [{ sinceDate: 10**20 }, 'sinceDate'],
+      [{ untilDate: -(10**20) }, 'untilDate'],
+    ].each do |options, key|
+      attached(mi_id(file), **options)
+
+      expect(response).to have_http_status(400), options.inspect
+      expect(response.parsed_body[:error]).to include(code: 'INVALID_PARAM', info: include(param: "#/properties/#{key}")), options.inspect
+    end
+  end
+
   it 'finds a Drive file attached using the actual Misskey chat create API, with detailed fields' do
     post '/api/chat/messages/create-to-user', params: { i: token, toUserId: mi_id(other.account), text: 'with file', fileId: mi_id(file) }, as: :json
     expect(response).to have_http_status(200)

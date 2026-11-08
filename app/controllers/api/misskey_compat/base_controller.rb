@@ -14,6 +14,8 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   INVALID_PARAM_ID = '3d81ceae-475f-4600-b2a8-2bc116157532'
   OFFSET_LIMIT = 1_000
+  MAX_COMPAT_ID = (2**63) - 1
+  COMPAT_TIME_RANGE = (Time.utc(1)..Time.utc(9999, 12, 31, 23, 59, 59))
 
   MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId pageId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId eyeCatchingImageId channelId draftId).freeze
   MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
@@ -199,11 +201,30 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   end
 
   def compat_time(value)
+    time = compat_numeric_time(value) || Time.zone.parse(value.to_s)
+    raise ArgumentError, 'date is out of range' unless time.nil? || COMPAT_TIME_RANGE.cover?(time)
+
+    time
+  end
+
+  def compat_numeric_time(value)
     numeric = Float(value)
     numeric /= 1000 if numeric > 10_000_000_000
     Time.zone.at(numeric)
   rescue ArgumentError, TypeError
-    Time.zone.parse(value.to_s)
+    nil
+  rescue RangeError
+    raise ArgumentError, 'date is out of range'
+  end
+
+  def compat_id?(value)
+    value.is_a?(String) && value.match?(/\A[1-9][0-9]*\z/) && value.to_i <= MAX_COMPAT_ID
+  end
+
+  def compat_date?(value)
+    value.is_a?(Integer) && compat_time(value).present?
+  rescue ArgumentError
+    false
   end
 
   def apply_user_origin(scope)

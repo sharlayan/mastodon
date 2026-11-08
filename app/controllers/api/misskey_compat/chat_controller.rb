@@ -267,10 +267,10 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
       next unless params.key?(key)
       next if params[key].nil? && NULLABLE_SEARCH_IDS.include?(key) && action_name == 'search'
 
-      return render_invalid_param("#/properties/#{key}", 'must be an id') unless chat_id?(params[key])
+      return render_invalid_param("#/properties/#{key}", 'must be an id') unless compat_id?(params[key])
     end
 
-    return render_invalid_param('#/properties/fileIds', 'must be a list of ids') if params.key?(:fileIds) && !(params[:fileIds].is_a?(Array) && params[:fileIds].all? { |id| chat_id?(id) })
+    return render_invalid_param('#/properties/fileIds', 'must be a list of ids') if params.key?(:fileIds) && !(params[:fileIds].is_a?(Array) && params[:fileIds].all? { |id| compat_id?(id) })
     return render_invalid_param('#/properties/fileIds', "must have at most #{MAX_FILE_IDS} items") if params.key?(:fileIds) && params[:fileIds].size > MAX_FILE_IDS
 
     { name: 256, description: 1024, query: 256, reaction: 100, text: ChatMessage::MAX_TEXT_LENGTH }.each do |key, max|
@@ -292,11 +292,8 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
 
     %i(sinceDate untilDate).each do |key|
       return render_invalid_param("#/properties/#{key}", 'must be an integer') if params.key?(key) && !params[key].is_a?(Integer)
+      return render_invalid_param("#/properties/#{key}", 'is out of range') if params.key?(key) && !compat_date?(params[key])
     end
-  end
-
-  def chat_id?(value)
-    value.is_a?(String) && value.match?(/\A[1-9][0-9]*\z/)
   end
 
   def enforce_write_rate_limit!

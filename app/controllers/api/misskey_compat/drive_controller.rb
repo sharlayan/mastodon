@@ -194,7 +194,7 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
 
     %i(fileId sinceId untilId).each do |key|
       next unless params.key?(key)
-      next if params[key].is_a?(String) && params[key].match?(/\A[1-9][0-9]*\z/)
+      next if compat_id?(params[key])
 
       render_invalid_param("#/properties/#{key}", 'must be an id')
       return false
@@ -206,9 +206,16 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     end
 
     %i(sinceDate untilDate).each do |key|
-      next unless params.key?(key) && !params[key].is_a?(Integer)
+      next unless params.key?(key)
 
-      render_invalid_param("#/properties/#{key}", 'must be an integer')
+      unless params[key].is_a?(Integer)
+        render_invalid_param("#/properties/#{key}", 'must be an integer')
+        return false
+      end
+
+      next if compat_date?(params[key])
+
+      render_invalid_param("#/properties/#{key}", 'is out of range')
       return false
     end
     true

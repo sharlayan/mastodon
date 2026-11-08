@@ -470,6 +470,23 @@ RSpec.describe 'Misskey-compat chat endpoints' do
     expect(response).to have_http_status(403)
   end
 
+  it 'rejects ids and dates beyond the stored range as invalid parameters' do
+    room = group_conversation
+    [
+      ['messages/room-timeline', { roomId: mi_id(room), sinceId: '99999999999999999999' }, 'sinceId'],
+      ['messages/room-timeline', { roomId: mi_id(room), untilId: '0zzzzzzzzzzzzzzz' }, 'untilId'],
+      ['messages/room-timeline', { roomId: '0zzzzzzzzzzzzzzz' }, 'roomId'],
+      ['rooms/owned', { sinceId: '99999999999999999999' }, 'sinceId'],
+      ['messages/room-timeline', { roomId: mi_id(room), sinceDate: 10**20 }, 'sinceDate'],
+      ['messages/room-timeline', { roomId: mi_id(room), untilDate: -(10**20) }, 'untilDate'],
+    ].each do |endpoint, params, key|
+      request_chat(endpoint, params)
+
+      expect(response).to have_http_status(400), "#{endpoint} #{params}"
+      expect(response.parsed_body[:error]).to include(code: 'INVALID_PARAM', info: include(param: "#/properties/#{key}")), "#{endpoint} #{params}"
+    end
+  end
+
   it 'rejects missing and incorrectly typed parameters without mutating state' do
     request_chat('messages/show')
     expect(response).to have_http_status(400)
