@@ -78,4 +78,92 @@ RSpec.describe 'Admin Chat conversations' do
     expect(response).to have_http_status(403)
     expect(ChatConversation).to exist(conversation.id)
   end
+
+  it 'records the deletion in the audit log' do
+    admin = Fabricate(:admin_user)
+    sign_in admin
+
+    delete admin_chat_conversation_path(conversation)
+
+    log = Admin::ActionLog.last
+    expect(log).to have_attributes(account_id: admin.account_id, action: :destroy, target_type: 'ChatConversation', target_id: conversation.id)
+
+    get admin_action_logs_path
+
+    expect(response).to have_http_status(200)
+  end
+
+  it 'lists conversations without messages after those with messages' do
+    empty = Sharlayan::ChatService.new.create_conversation(first.account, type: :group, title: 'Quiet room')
+    Sharlayan::ChatService.new.create_message(first.account, conversation, text: 'hello')
+
+    get admin_chat_conversations_path
+
+    expect(response.body.index(admin_chat_conversation_path(conversation))).to be < response.body.index(admin_chat_conversation_path(empty))
+  end
+
+  describe 'a copy of a room owned by another server' do
+    let(:service) { Sharlayan::ChatService.new }
+    let(:remote_owner) do
+      Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/owner', inbox_url: 'https://remote.test/users/owner/inbox', can_chat: true, chat_scope: 'everyone')
+    end
+    let(:room_uri) { 'https://remote.test/chat/rooms/copy' }
+    let(:copy) do
+      service.receive_invite(first.account, remote_owner, room_uri: room_uri, title: 'Remote room').tap { |invitation| service.accept_invitation(first.account, invitation) }.chat_conversation
+    end
+
+    before do
+      Setting.chat_federation_enabled = true
+      first.settings[:chat_allow_group_invites] = true
+      first.save!
+      copy
+    end
+
+    after { Setting.chat_federation_enabled = false }
+
+    it 'is listed and can be inspected' do
+      get admin_chat_conversations_path
+      expect(response.body).to include(admin_chat_conversation_path(copy))
+
+      get admin_chat_conversation_path(copy)
+      expect(response).to have_http_status(200)
+      expect(response.body).to include('remote.test')
+    end
+
+    it 'is closed on this server and its owner told' do
+      expect { delete admin_chat_conversation_path(copy) }.to change(ActivityPub::DeliveryWorker.jobs, :size).by(1)
+
+      expect(ChatConversation).to_not exist(copy.id)
+      expect(service.room_closed_here?(room_uri)).to be(true)
+    end
+  end
+
+  describe 'the roleplay audit permission' do
+    let(:remote) do
+      Fabricate(:account, domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/users/bob/inbox', can_chat: true, chat_scope: 'everyone')
+    end
+    let(:with_remote) { ChatConversation.create!(conversation_type: :direct, direct_key: [first.account_id, remote.id].sort.join(':')).tap { |record| record.memberships.create!([{ account: first.account }, { account: remote }]) } }
+
+    around { |example| ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run } }
+
+    before do
+      role = Fabricate(:user_role, extra_permissions: UserRole::EXTRA_FLAGS[:view_admin_timeline])
+      sign_in Fabricate(:user, role: role)
+    end
+
+    it 'does not reach a direct conversation with a remote account' do
+      get admin_chat_conversation_path(with_remote)
+
+      expect(response).to have_http_status(403)
+    end
+
+    it 'lists only conversations between local accounts' do
+      with_remote
+
+      get admin_chat_conversations_path
+
+      expect(response.body).to include(admin_chat_conversation_path(conversation))
+      expect(response.body).to_not include(admin_chat_conversation_path(with_remote))
+    end
+  end
 end

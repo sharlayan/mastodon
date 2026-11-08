@@ -89,15 +89,15 @@ RSpec.describe 'Chat review additions' do
       expect(ChatConversation).to_not exist(conversation.id)
     end
 
-    it 'keeps remote-owned rooms out of the admin index' do
+    it 'shows administrators the copies of remote-owned rooms held here' do
       remote_room = service.receive_invite(owner, remote_member, room_uri: 'https://remote.test/chat/rooms/admin-review', title: 'Remote-owned room').chat_conversation
       sign_in admin
 
       get admin_chat_conversations_path
-      expect(response.body).to_not include('Remote-owned room')
+      expect(response.body).to include(admin_chat_conversation_path(remote_room))
 
       get admin_chat_conversation_path(remote_room)
-      expect(response).to have_http_status(403)
+      expect(response).to have_http_status(200)
     end
 
     it 'does not let the roleplay timeline permission reach unrelated admin pages' do

@@ -6,7 +6,11 @@
   - @conversation.accounts.each do |account|
     = admin_account_link_to account
 
-= link_to t('admin.chat.destroy'), admin_chat_conversation_path(@conversation), data: { confirm: t('admin.chat.destroy_confirm'), method: :delete }, class: 'button button--destructive'
+- if @conversation.local?
+  = link_to t('admin.chat.destroy'), admin_chat_conversation_path(@conversation), data: { confirm: t('admin.chat.destroy_confirm'), method: :delete }, class: 'button button--destructive'
+- else
+  %p.hint= t('admin.chat.remote_copy_hint', domain: @conversation.owner_account.domain)
+  = link_to t('admin.chat.close_copy'), admin_chat_conversation_path(@conversation), data: { confirm: t('admin.chat.close_copy_confirm'), method: :delete }, class: 'button button--destructive'
 
 %hr.spacer
 

@@ -70,6 +70,7 @@ ko:
       unblocked_avatar_decorations_msg: "%{username}의 아바타 장식을 표시합니다"
     action_logs:
       actions:
+        destroy_chat_conversation_html: "%{name} 님이 채팅 대화를 삭제했습니다"
         update_collection_html: "%{name} 님이 %{target}의 컬렉션을 수정했습니다"
     avatar_decoration_domain_blocks:
       added_at: 추가됨
@@ -227,6 +228,8 @@ ko:
     chat:
       all: 전체
       attachments: 첨부
+      close_copy: 이 서버의 사본 닫기
+      close_copy_confirm: '이 서버에 있는 방 사본과 메시지를 삭제할까요? 방은 소유 서버에서 계속 유지되고, 로컬 참가자는 방에서 나가게 됩니다.'
       conversation: '채팅 #%{id}'
       deleted_message: 삭제된 메시지
       hidden_message: 발신자가 숨김
@@ -240,6 +243,7 @@ ko:
       message: 메시지
       participants: 참가자
       previous_versions: 이전 내용
+      remote_copy_hint: '이 방은 %{domain}에 속합니다. 이 서버는 로컬 참가자를 위한 사본만 가지고 있습니다.'
       sender: 보낸 사람
       sent_at: 보낸 시각
       title: 채팅 대화

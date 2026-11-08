@@ -2,24 +2,32 @@
 
 class ChatConversationPolicy < ApplicationPolicy
   def index?
-    moderation_access?
+    manage_access? || audit_access?
   end
 
   def show?
-    moderation_access? && local_conversation?
+    manage_access? || (audit_access? && between_local_accounts?)
   end
 
   def destroy?
-    role.can?(:manage_users) && local_conversation?
+    manage_access?
+  end
+
+  def list_all?
+    manage_access?
   end
 
   private
 
-  def moderation_access?
-    role.can?(:manage_users) || (RoleplayModeHelper.roleplay_mode? && role.can_extra?(:view_admin_timeline))
+  def manage_access?
+    role.can?(:manage_users)
   end
 
-  def local_conversation?
-    record.local?
+  def audit_access?
+    RoleplayModeHelper.roleplay_mode? && role.can_extra?(:view_admin_timeline)
+  end
+
+  def between_local_accounts?
+    record.local? && record.accounts.none?(&:remote?)
   end
 end

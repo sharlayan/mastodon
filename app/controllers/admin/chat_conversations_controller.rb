@@ -17,6 +17,7 @@ module Admin
     def destroy
       authorize @conversation, :destroy?
       Sharlayan::ChatService.new.destroy_conversation_as_admin(@conversation)
+      log_action :destroy, @conversation
       flash[:notice] = I18n.t('generic.changes_saved_msg')
       redirect_to admin_chat_conversations_path
     end
@@ -34,7 +35,8 @@ module Admin
     end
 
     def filtered_conversations
-      scope = ChatConversation.local_only.preload(:accounts, :memberships, last_message: :account).order(last_message_id: :desc, id: :desc)
+      scope = ChatConversation.preload(:accounts, :memberships, last_message: :account).order(Arel.sql('chat_conversations.last_message_id DESC NULLS LAST, chat_conversations.id DESC'))
+      scope = scope.between_local_accounts unless policy(:chat_conversation).list_all?
       scope = scope.where(conversation_type: params[:type]) if ChatConversation.conversation_types.key?(params[:type])
       scope = scope.for_account(Account.find(params[:account_id])) if params[:account_id].present?
       scope

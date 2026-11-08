@@ -71,6 +71,7 @@ en:
       unblocked_avatar_decorations_msg: Avatar decorations unblocked for %{username}
     action_logs:
       actions:
+        destroy_chat_conversation_html: "%{name} deleted a chat conversation"
         update_collection_html: "%{name} updated collection by %{target}"
     avatar_decoration_domain_blocks:
       added_at: Added
@@ -241,6 +242,8 @@ en:
     chat:
       all: All
       attachments: Attachments
+      close_copy: 'Close this server''s copy'
+      close_copy_confirm: 'Remove this server''s copy of the room, along with its messages here? The room goes on on the server that owns it, and local members leave it.'
       conversation: 'Chat #%{id}'
       deleted_message: Deleted message
       hidden_message: Hidden by sender
@@ -254,6 +257,7 @@ en:
       message: Message
       participants: Participants
       previous_versions: Earlier versions
+      remote_copy_hint: 'This room belongs to %{domain}. This server only holds a copy for its local members.'
       sender: Sender
       sent_at: Sent at
       title: Chat conversations

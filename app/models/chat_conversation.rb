@@ -22,6 +22,7 @@ class ChatConversation < ApplicationRecord
 
   scope :for_account, ->(account) { joins(:memberships).where(chat_memberships: { account_id: account.id }) }
   scope :local_only, -> { where(owner_account_id: nil).or(where(owner_account_id: Account.local.select(:id))) }
+  scope :between_local_accounts, -> { local_only.where.not(id: ChatMembership.where(account_id: Account.remote.select(:id)).select(:chat_conversation_id)) }
 
   def archived?
     archived_at.present?
@@ -33,6 +34,10 @@ class ChatConversation < ApplicationRecord
 
   def local?
     owner_account.nil? || owner_account.local?
+  end
+
+  def to_log_human_identifier
+    title.present? ? "#{title} (##{id})" : "##{id}"
   end
 
   def destroy_if_unused!

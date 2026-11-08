@@ -70,6 +70,7 @@ ja:
       unblocked_avatar_decorations_msg: "%{username}のアバターデコレーションのブロックを解除しました"
     action_logs:
       actions:
+        destroy_chat_conversation_html: "%{name} さんがチャットの会話を削除しました"
         update_collection_html: "%{name} さんが %{target} によるコレクションを更新しました"
     avatar_decoration_domain_blocks:
       added_at: 追加日
@@ -226,6 +227,8 @@ ja:
     chat:
       all: すべて
       attachments: 添付
+      close_copy: このサーバーのコピーを閉じる
+      close_copy_confirm: このサーバーにあるルームのコピーとメッセージを削除しますか？ルームは所有サーバーで引き続き存在し、ローカルの参加者はルームから退出します。
       conversation: 'チャット #%{id}'
       deleted_message: 削除されたメッセージ
       hidden_message: 送信者が非表示
@@ -239,6 +242,7 @@ ja:
       message: メッセージ
       participants: 参加者
       previous_versions: 以前の内容
+      remote_copy_hint: 'このルームは %{domain} に属しています。このサーバーはローカルの参加者のためのコピーのみを保持しています。'
       sender: 送信者
       sent_at: 送信日時
       title: チャット会話
