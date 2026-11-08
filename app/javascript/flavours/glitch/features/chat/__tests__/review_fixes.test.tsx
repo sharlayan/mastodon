@@ -895,3 +895,151 @@ describe('The send button while editing', () => {
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
   });
 });
+
+describe('Editing while a message or an attachment is on its way', () => {
+  const uploaded = {
+    id: 'media-1',
+    url: '/a.png',
+    preview_url: '/a-small.png',
+    type: 'image',
+    description: null,
+  };
+  const holdPosts = () => {
+    const held: { url: string; resolve: () => void; reject: () => void }[] = [];
+    api.post.mockImplementation(
+      (url: string, body?: { text?: string }) =>
+        new Promise((resolve, reject) => {
+          held.push({
+            url,
+            resolve: () => {
+              resolve({
+                data:
+                  url === '/api/v2/media'
+                    ? uploaded
+                    : {
+                        ...myMessage,
+                        id: 'sent',
+                        content: body?.text ?? '',
+                      },
+              });
+            },
+            reject: () => {
+              reject(new Error('unavailable'));
+            },
+          });
+        }),
+    );
+    return async (url: string, outcome: 'resolve' | 'reject' = 'resolve') => {
+      const entry = held.find((item) => item.url === url);
+      if (!entry) throw new Error(`Nothing held for ${url}`);
+      await act(async () => {
+        entry[outcome]();
+        await Promise.resolve();
+      });
+    };
+  };
+  const SEND_PATH = '/api/v1/chat/conversations/direct-1/messages';
+  const openRoom = async () => {
+    const view = mountAt('/chat/direct-1');
+    await screen.findByText('What I wrote');
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Attach media' }),
+      ).toHaveProperty('disabled', false);
+    });
+    return view;
+  };
+  const attach = async (
+    container: HTMLElement,
+    finish: ReturnType<typeof holdPosts>,
+  ) => {
+    chooseFile(container);
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/v2/media',
+        expect.any(FormData),
+      );
+    });
+    await finish('/api/v2/media');
+    await screen.findByRole('button', { name: 'Remove attachment' });
+  };
+
+  it('does not bring back what was sent once the edit ends', async () => {
+    const finish = holdPosts();
+    const { container } = await openRoom();
+    await attach(container, finish);
+    fireEvent.change(composer(), { target: { value: 'What' } });
+    fireEvent.click(sendButton());
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        SEND_PATH,
+        expect.objectContaining({ text: 'What', media_ids: ['media-1'] }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(composer().value).toBe('What I wrote');
+    await finish(SEND_PATH);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save' })).toHaveProperty(
+        'disabled',
+        false,
+      );
+    });
+    expect(composer().value).toBe('What I wrote');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(composer().value).toBe('');
+    expect(screen.queryByRole('button', { name: 'Remove attachment' })).toBe(
+      null,
+    );
+  });
+
+  it('keeps what was typed after it when the edit ends', async () => {
+    const finish = holdPosts();
+    await openRoom();
+    fireEvent.change(composer(), { target: { value: 'Going out' } });
+    fireEvent.click(sendButton());
+    fireEvent.change(composer(), { target: { value: 'Going out and more' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    await finish(SEND_PATH);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(composer().value).toBe(' and more');
+  });
+
+  it('keeps what failed to go out for the reader once the edit ends', async () => {
+    const finish = holdPosts();
+    await openRoom();
+    fireEvent.change(composer(), { target: { value: 'Going out' } });
+    fireEvent.click(sendButton());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    await finish(SEND_PATH, 'reject');
+    await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(composer().value).toBe('Going out');
+  });
+
+  it('keeps an attachment that finished uploading during the edit', async () => {
+    const finish = holdPosts();
+    const { container } = await openRoom();
+    chooseFile(container);
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/v2/media',
+        expect.any(FormData),
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    await finish('/api/v2/media');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(
+      await screen.findByRole('button', { name: 'Remove attachment' }),
+    ).toBeTruthy();
+  });
+});

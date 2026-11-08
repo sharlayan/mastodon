@@ -409,15 +409,15 @@ describe('Chat conversation isolation', () => {
     async (mode) => {
       const { history, container } = mountChat();
       await screen.findByText('Private message A');
+      fireEvent.change(composer(), { target: { value: 'Private draft A' } });
+      upload(container);
+      await screen.findByAltText('Private attachment A');
       if (mode !== 'draft')
         fireEvent.click(
           screen.getByRole('button', {
             name: mode === 'edit' ? 'Edit' : 'Reply',
           }),
         );
-      fireEvent.change(composer(), { target: { value: 'Private draft A' } });
-      upload(container);
-      await screen.findByAltText('Private attachment A');
 
       navigate(history, '/chat');
       await screen.findByRole('button', { name: /Room B/ });

@@ -1092,10 +1092,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [readingError, setReadingError] = useState(false);
   const isMounted = useRef(true);
   const uploadAbort = useRef<AbortController | null>(null);
-  const [draftBeforeEdit, setDraftBeforeEdit] = useState<{
-    text: string;
-    media: ChatMedia[];
-  } | null>(null);
+  const textBeforeEdit = useRef<string | null>(null);
   const deletedMessages = useRef(new Map<string, string>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
@@ -2301,10 +2298,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const finishEditing = useCallback(() => {
     setEditingId(null);
-    composerText.set(draftBeforeEdit?.text ?? '');
-    setMedia(draftBeforeEdit?.media ?? []);
-    setDraftBeforeEdit(null);
-  }, [composerText, draftBeforeEdit]);
+    composerText.set(textBeforeEdit.current ?? '');
+    textBeforeEdit.current = null;
+  }, [composerText]);
 
   const isArchived = Boolean(conversation?.archived);
   const recipientSuspended =
@@ -2507,8 +2503,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     }
   }, [directAccount, navigateIfActive]);
 
+  const composerMedia = editingId ? [] : media;
   const hasOtherContent =
-    media.length > 0 ||
+    composerMedia.length > 0 ||
     messagesList.some(
       (message) =>
         message.id === editingId &&
@@ -2527,6 +2524,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     )
       return;
     setLoading(true);
+    const sentMedia = editingId ? [] : media.map((item) => item.id);
     try {
       const response = editingId
         ? await api().patch<ChatMessage>(`/api/v1/chat/messages/${editingId}`, {
@@ -2537,7 +2535,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             {
               text: text.trim(),
               reply_to_id: replyToId,
-              media_ids: media.map((item) => item.id),
+              media_ids: sentMedia,
             },
           );
       setSendError(null);
@@ -2551,11 +2549,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         finishEditing();
       } else {
         // The box stays writable meanwhile: only what went out leaves it.
-        const current = composerText.get();
-        composerText.set(
-          current.startsWith(text) ? current.slice(text.length) : current,
+        const withoutSent = (current: string) =>
+          current.startsWith(text) ? current.slice(text.length) : current;
+        if (textBeforeEdit.current === null)
+          composerText.set(withoutSent(composerText.get()));
+        else textBeforeEdit.current = withoutSent(textBeforeEdit.current);
+        setMedia((current) =>
+          current.filter((item) => !sentMedia.includes(item.id)),
         );
-        setMedia([]);
       }
       setReplyToId(null);
     } catch (sendError) {
@@ -2931,11 +2932,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         if (editingId) finishEditing();
         setReplyToId(id);
       } else if (action === 'edit') {
-        const draft = { text: composerText.get(), media };
-        setDraftBeforeEdit((current) => current ?? draft);
+        textBeforeEdit.current ??= composerText.get();
         setEditingId(id);
         setReplyToId(null);
-        setMedia([]);
         composerText.set(message.content ?? '');
       } else {
         const deletionNotice = (deletesForEveryone: boolean | null) => {
@@ -3003,7 +3002,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       editingId,
       finishEditing,
       intl,
-      media,
       messagesList,
       refreshConversation,
       updateMessages,
@@ -4219,9 +4217,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     </button>
                   </div>
                 )}
-                {media.length > 0 && (
+                {composerMedia.length > 0 && (
                   <div className='chat-native__media-preview'>
-                    {media.map((attachment) => (
+                    {composerMedia.map((attachment) => (
                       <div key={attachment.id}>
                         {attachment.type === 'audio' && attachment.url ? (
                           <audio controls src={attachment.url} />
@@ -4292,7 +4290,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     recipientSuspended ||
                     loading ||
                     uploading ||
-                    media.some((item) => !item.url)
+                    composerMedia.some((item) => !item.url)
                   }
                   label={intl.formatMessage(
                     editingId ? messages.save : messages.send,
