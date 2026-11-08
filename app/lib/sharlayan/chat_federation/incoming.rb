@@ -190,6 +190,8 @@ module Sharlayan
 
           message = ChatMessage.find_by(uri: uri)
           if message.present?
+            return 'skip: local chat message' if message.account&.local?
+
             service.delete_remote_message(account, message, activity: json)
             return 'ok: chat message deleted'
           end
@@ -426,6 +428,7 @@ module Sharlayan
           message = ChatMessage.find_by(uri: uri)
           return 'skip: relayed deletion of an unknown message' if message.nil?
           return 'skip: chat message of another room' unless message.chat_conversation_id == conversation.id
+          return 'skip: local chat message' if message.account&.local?
 
           service.delete_remote_message(actor, message)
           'ok: relayed chat message deleted'

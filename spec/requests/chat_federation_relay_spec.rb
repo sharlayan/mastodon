@@ -486,6 +486,26 @@ RSpec.describe 'Chat federation relay and roster sync' do
         expect(message.reload).to be_deleted
       end
 
+      it 'ignores one from the room owner for a message written here' do
+        local_message = room.messages.create!(account: local, text: 'mine')
+        local_message.update!(uri: Sharlayan::ChatFederation::Payload.message_uri(local_message))
+
+        announce(delete_json.merge('id' => 'https://owner.test/activities/1', 'actor' => owner.uri, 'object' => local_message.uri))
+
+        expect(local_message.reload).to_not be_deleted
+        expect(local_message.text).to eq('mine')
+      end
+
+      it 'ignores a direct one from the room owner for a message written here' do
+        local_message = room.messages.create!(account: local, text: 'mine')
+        local_message.update!(uri: Sharlayan::ChatFederation::Payload.message_uri(local_message))
+
+        perform({ 'id' => 'https://owner.test/activities/2', 'type' => 'Delete', 'object' => local_message.uri }, owner)
+
+        expect(local_message.reload).to_not be_deleted
+        expect(local_message.text).to eq('mine')
+      end
+
       it 'ignores one from another member' do
         room.memberships.create!(account: third)
 
