@@ -3102,7 +3102,7 @@ describe('Review f35f', () => {
     fireEvent.touchMove(window);
     fireEvent.scroll(window);
     await wait(400);
-    receive('resting');
+    receive('resting-newest');
     await wait(50);
     const whileResting = endScrolls();
     fireEvent.touchEnd(window);
@@ -3585,7 +3585,7 @@ describe('iOS keyboard on ddbad17ba3', () => {
       device.measurePage(2957);
       geo.end = { top: 611.1, bottom: 611.1 };
       geo.last = { top: 471.3, bottom: 526.1 };
-      receive('live-near');
+      receive('live-near-newest');
       drag(() => {
         device.page({ scrollY: 2292 }, ['window']);
       });

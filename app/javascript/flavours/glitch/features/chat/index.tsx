@@ -444,13 +444,27 @@ export const upsertConversation = (
       ];
 };
 
+const insertMessage = (list: ChatMessage[], message: ChatMessage) => {
+  const position = list.findIndex(
+    (item) => compareId(item.id, message.id) >= 0,
+  );
+  if (position === -1) return [...list, message];
+  if (list[position]?.id === message.id) return list;
+  return [...list.slice(0, position), message, ...list.slice(position)];
+};
+
 export const withNewMessage = (
   list: ChatConversation[],
   message: ChatMessage,
   unread: boolean,
 ) => {
   const conversation = list.find((item) => item.id === message.conversation_id);
-  if (!conversation) return list;
+  if (
+    !conversation ||
+    (conversation.last_message &&
+      compareId(conversation.last_message.id, message.id) >= 0)
+  )
+    return list;
   return [
     { ...conversation, last_message: message, unread },
     ...list.filter((item) => item !== conversation),
@@ -1758,12 +1772,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       pendingMessageUpdates.current.add(updates);
       const requestId = ++latestMessageRequest.current;
       const liveWhenAsked = isChatStreamLive();
-      const from = continuousUpTo.current;
+      const from = shownMessagesRef.current[0]?.id ?? continuousUpTo.current;
+      const pageLimit =
+        MESSAGE_RESYNC_PAGES +
+        Math.ceil(shownMessagesRef.current.length / MESSAGE_PAGE_SIZE);
       const loaded: ChatMessage[] = [];
       let reachedStart = false;
       let meetsKnown = false;
       try {
-        for (let page = 0; page < MESSAGE_RESYNC_PAGES; page++) {
+        for (let page = 0; page < pageLimit; page++) {
           if (page > 0 && !(await nextPage())) return;
           const { data }: { data: ChatMessage[] } = await api().get<
             ChatMessage[]
@@ -2046,11 +2063,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           if (!isOpen) return;
           if (isChatStreamLive() && readSinceStreamWentLive.current)
             advanceContinuousUpTo(value.id);
-          updateMessages((current) =>
-            current.some((item) => item.id === value.id)
-              ? current
-              : [...current, message],
-          );
+          updateMessages((current) => insertMessage(current, message));
           if (!seen && fromOther) {
             jumpButton.update({ unseen: true });
             unreadWhileAway.current = true;
@@ -2519,7 +2532,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       updateMessages((current) =>
         current.some((item) => item.id === message.id)
           ? current.map((item) => (item.id === message.id ? message : item))
-          : [...current, message],
+          : insertMessage(current, message),
       );
       if (editingId) {
         finishEditing();

@@ -1743,7 +1743,7 @@ describe('Chat scrolling', () => {
         event: 'chat.message',
         payload: {
           ...message(),
-          id: 'live',
+          id: 'message-A-live',
           content: 'Live message',
           account: from,
         },
@@ -2610,7 +2610,7 @@ describe('Chat jump to newest', () => {
         event: 'chat.message',
         payload: {
           ...message(),
-          id: 'live',
+          id: 'message-A-live',
           content: 'Live message',
           account: remote,
         },
@@ -2850,6 +2850,79 @@ describe('Chat deletion notice', () => {
   });
 });
 
+describe('Chat message ordering', () => {
+  it('keeps incoming messages in ID order when broadcasts arrive out of order', async () => {
+    api.get.mockImplementation((url: string) =>
+      url.endsWith('/messages')
+        ? Promise.resolve({ data: [] })
+        : getResponse(url),
+    );
+    const { container } = mountChat();
+    await screen.findByPlaceholderText('Write a message');
+
+    act(() => {
+      for (const id of ['102', '101'])
+        emitChatStreamEvent({
+          event: 'chat.message',
+          payload: { ...message(), id, content: `Message ${id}` },
+        });
+    });
+
+    expect(
+      Array.from(container.querySelectorAll('.chat-native__message')).map(
+        (item) => item.id,
+      ),
+    ).toEqual(['chat-message-101', 'chat-message-102']);
+  });
+
+  it('inserts a delayed send response before a newer streamed message', async () => {
+    api.get.mockImplementation((url: string) =>
+      url.endsWith('/messages')
+        ? Promise.resolve({ data: [] })
+        : getResponse(url),
+    );
+    const pending = deferred<{ data: ReturnType<typeof message> }>();
+    answerNextPost('/api/v1/chat/conversations/A/messages', pending.promise);
+    const { container } = mountChat();
+    await screen.findByPlaceholderText('Write a message');
+    fireEvent.change(composer(), { target: { value: 'Sent message' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await act(async () => {
+      emitChatStreamEvent({
+        event: 'chat.message',
+        payload: { ...message(), id: '102', content: 'Newer message' },
+      });
+      pending.resolve({
+        data: { ...message(), id: '101', content: 'Sent message' },
+      });
+      await pending.promise;
+    });
+
+    expect(
+      Array.from(container.querySelectorAll('.chat-native__message')).map(
+        (item) => item.id,
+      ),
+    ).toEqual(['chat-message-101', 'chat-message-102']);
+  });
+
+  it('keeps a newer conversation preview after an older creation event', async () => {
+    mountChat('/chat');
+    await screen.findByText('Room A');
+
+    act(() => {
+      for (const id of ['102', '101'])
+        emitChatStreamEvent({
+          event: 'chat.message',
+          payload: { ...message(), id, content: `Message ${id}` },
+        });
+    });
+
+    expect(screen.getByText('Message 102')).toBeTruthy();
+    expect(screen.queryByText('Message 101')).toBeNull();
+  });
+});
+
 describe('Chat stream resynchronisation', () => {
   const messageRequests = () =>
     api.get.mock.calls.filter(([url]) => String(url).endsWith('/messages'));
@@ -2934,10 +3007,10 @@ describe('Chat stream resynchronisation', () => {
 
     it('keeps the older page and adds what it missed', async () => {
       await openWithOlderPage();
-      serve([
-        ...page(100).slice(1),
-        { ...message(), id: '140', content: 'Missed' },
-      ]);
+      serve(
+        [...page(100).slice(1), { ...message(), id: '140', content: 'Missed' }],
+        { '101': [older, ...page(100).slice(0, 1)] },
+      );
 
       await reconnect();
 
@@ -2949,11 +3022,12 @@ describe('Chat stream resynchronisation', () => {
     it('applies edits and removals among the messages it fetched again', async () => {
       await openWithOlderPage();
       const fresh = page(100).filter((item) => item.id !== '120');
-      serve(
-        fresh.map((item) =>
+      serve([
+        older,
+        ...fresh.map((item) =>
           item.id === '121' ? { ...item, content: 'Edited offline' } : item,
         ),
-      );
+      ]);
 
       await reconnect();
 
@@ -2962,11 +3036,35 @@ describe('Chat stream resynchronisation', () => {
       expect(screen.getByText('Older page')).toBeTruthy();
     });
 
+    it('refreshes edits in already loaded older pages after reconnecting', async () => {
+      await openWithOlderPage();
+      serve(page(100), {
+        '100': [{ ...older, content: 'Older page edited offline' }],
+      });
+
+      await reconnect();
+
+      expect(await screen.findByText('Older page edited offline')).toBeTruthy();
+      expect(screen.queryByText('Older page')).toBeNull();
+    });
+
+    it('removes hidden messages from already loaded older pages after reconnecting', async () => {
+      await openWithOlderPage();
+      serve(page(100), { '100': [] });
+
+      await reconnect();
+
+      await waitFor(() => {
+        expect(screen.queryByText('Older page')).toBeNull();
+      });
+    });
+
     it('pages back until it meets what it has, so nothing is left out', async () => {
       await openWithOlderPage();
       serve(page(220, 'Newest'), {
         '220': page(180, 'Middle'),
         '180': page(135, 'Bridge'),
+        '135': [older, ...page(100).slice(0, 35)],
       });
 
       await reconnect();
@@ -2976,6 +3074,37 @@ describe('Chat stream resynchronisation', () => {
       expect(screen.getByText('Bridge 135')).toBeTruthy();
       expect(screen.getByText('Older page')).toBeTruthy();
     });
+
+    it('refreshes more than 25 already loaded pages without discarding them', async () => {
+      serve(page(100));
+      mountChat();
+      await screen.findByText('Message 139');
+      act(() => {
+        for (let id = 140; id < 1140; id++)
+          emitChatStreamEvent({
+            event: 'chat.message',
+            payload: { ...message(), id: String(id), content: `Message ${id}` },
+          });
+      });
+      await screen.findByText('Message 1139');
+      const olderPages = Object.fromEntries(
+        Array.from({ length: 25 }, (_, index) => {
+          const cursor = 1100 - index * 40;
+          return [String(cursor), page(cursor - 40)];
+        }),
+      );
+      olderPages['140'] = page(100).map((item) =>
+        item.id === '100'
+          ? { ...item, content: 'Oldest changed offline' }
+          : item,
+      );
+      serve(page(1100), olderPages);
+
+      await reconnect();
+
+      expect(await screen.findByText('Oldest changed offline')).toBeTruthy();
+      expect(screen.getByText('Message 1139')).toBeTruthy();
+    }, 30_000);
 
     it('starts over from the newest page when too much was missed', async () => {
       await openWithOlderPage();
@@ -3002,7 +3131,10 @@ describe('Chat stream resynchronisation', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
       await screen.findByText('Older 60');
 
-      serve(full, { '60': [{ ...older, id: '59' }] });
+      serve(full, {
+        '100': page(60, 'Older'),
+        '60': [{ ...older, id: '59' }],
+      });
       await reconnect();
       fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
 
