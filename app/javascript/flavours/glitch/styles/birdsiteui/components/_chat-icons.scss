@@ -1,0 +1,94 @@
+@use '../variables/icon-mixin' as icons;
+
+.layout-single-column,
+.layout-multiple-columns {
+  .chat-native {
+    &__room-picture .icon,
+    &__jump .icon,
+    &__actions .icon,
+    &__compose-field .icon-photo,
+    &__react-picker .icon-mood,
+    &__tabs .icon,
+    &__member .icon-ellipsis-h {
+      @include icons.icon-box(contain);
+    }
+
+    &__room-picture .icon > path,
+    &__jump .icon > path,
+    &__actions .icon > path,
+    &__compose-field .icon-photo > path,
+    &__react-picker .icon-mood > path,
+    &__tabs .icon > path,
+    &__member .icon-ellipsis-h > path {
+      display: none;
+    }
+
+    &__room-picture .icon-groups {
+      @include icons.icon-swap(group);
+    }
+
+    &__jump .icon-arrow-down {
+      @include icons.icon-swap(arrow-down);
+    }
+
+    &__actions .icon-reply {
+      @include icons.icon-swap(reply);
+    }
+
+    &__actions .icon-edit {
+      @include icons.icon-swap(pencil);
+    }
+
+    &__actions .icon-copy {
+      @include icons.icon-swap(copy);
+    }
+
+    &__actions .icon-delete {
+      @include icons.icon-swap(delete);
+    }
+
+    &__react-picker .icon-mood {
+      @include icons.icon-swap(emoji);
+    }
+
+    &__compose-field .icon-photo {
+      @include icons.icon-swap(attachment);
+    }
+
+    &__member .icon-ellipsis-h {
+      @include icons.icon-swap(more);
+    }
+
+    &__tabs .icon-home {
+      @include icons.icon-swap(home);
+    }
+
+    &__tabs .icon-invitations {
+      @include icons.icon-swap(user-plus);
+    }
+
+    &__tabs .icon-joiningRooms {
+      @include icons.icon-swap(group);
+    }
+
+    &__tabs .icon-ownedRooms {
+      @include icons.icon-swap(settings);
+    }
+
+    &__tabs .active .icon-home {
+      @include icons.icon-swap(home, fill);
+    }
+
+    &__tabs .active .icon-invitations {
+      @include icons.icon-swap(user-plus, fill);
+    }
+
+    &__tabs .active .icon-joiningRooms {
+      @include icons.icon-swap(group, fill);
+    }
+
+    &__tabs .active .icon-ownedRooms {
+      @include icons.icon-swap(settings, fill);
+    }
+  }
+}

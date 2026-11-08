@@ -327,6 +327,14 @@
     @include icons.icon-swap(plus, $color: var(--color-light-text));
   }
 
+  .column-header__button .icon-search {
+    @include icons.icon-swap(search, $color: var(--color-light-text));
+  }
+
+  .column-header__button .icon-ellipsis-h {
+    @include icons.icon-swap(more, $color: var(--color-light-text));
+  }
+
   .search__icon--clear-button .icon-times-circle {
     display: none;
   }

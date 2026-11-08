@@ -76,6 +76,10 @@ export const GLYPHS = {
   pencil: 'pencil',
   sound: 'waveform',
   'upload-file': 'file-arrow-up',
+  chat: 'chats-circle',
+  'arrow-down': 'arrow-down',
+  copy: 'copy-simple',
+  delete: 'trash',
 
   label: 'tag',
   link: 'link-simple',
