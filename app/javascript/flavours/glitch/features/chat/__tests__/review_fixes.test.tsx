@@ -1043,3 +1043,93 @@ describe('Editing while a message or an attachment is on its way', () => {
     ).toBeTruthy();
   });
 });
+
+describe('Room updates that arrive out of order', () => {
+  const said = (id: string, content: string) => ({
+    ...myMessage,
+    id,
+    content,
+    account: cherryNari,
+  });
+  const update = (extra: object) => {
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_update',
+        payload: {
+          ...directNari,
+          updated_at: '2026-11-05T00:00:00.000Z',
+          ...extra,
+        },
+      });
+    });
+  };
+  const row = () =>
+    document.querySelector<HTMLElement>('[data-conversation-id="direct-1"]');
+  const openList = async () => {
+    mountAt('/chat');
+    await screen.findByText('Hikers');
+  };
+
+  it('keeps the newer last message and its unread mark', async () => {
+    await openList();
+    update({ last_message: said('20', 'Newer'), unread: true });
+    await screen.findByText('Newer');
+
+    update({ last_message: said('10', 'Older'), unread: false });
+
+    expect(screen.queryByText('Older')).toBeNull();
+    expect(screen.getByText('Newer')).toBeTruthy();
+    expect(row()?.classList.contains('unread')).toBe(true);
+  });
+
+  it('does not mark a room unread again for a message already read', async () => {
+    await openList();
+    update({ last_message: said('20', 'Newer'), unread: true });
+    await screen.findByText('Newer');
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.read',
+        payload: { conversation_id: 'direct-1', message_id: '20' },
+      });
+    });
+    expect(row()?.classList.contains('unread')).toBe(false);
+
+    update({ last_message: said('20', 'Newer'), unread: true });
+
+    expect(row()?.classList.contains('unread')).toBe(false);
+  });
+
+  it('keeps details changed after the update was made', async () => {
+    await openList();
+    update({ title: 'Renamed', updated_at: '2026-11-06T00:00:00.000Z' });
+    await screen.findByText('Renamed');
+
+    update({ title: 'Old name', updated_at: '2026-11-05T00:00:00.000Z' });
+
+    expect(screen.queryByText('Old name')).toBeNull();
+    expect(screen.getByText('Renamed')).toBeTruthy();
+  });
+
+  it('does not bring back a room deleted before the update arrived', async () => {
+    await openList();
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_delete',
+        payload: { conversation_id: 'group-1' },
+      });
+    });
+    await waitFor(() => {
+      expect(screen.queryByText('Hikers')).toBeNull();
+    });
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_update',
+        payload: { ...hikers, title: 'Hikers again' },
+      });
+    });
+
+    expect(screen.queryByText('Hikers again')).toBeNull();
+    expect(screen.queryByText('Hikers')).toBeNull();
+  });
+});

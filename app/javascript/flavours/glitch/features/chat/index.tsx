@@ -139,6 +139,7 @@ interface ChatConversation {
   current_role: 'owner' | 'member' | null;
   accounts: ChatAccount[];
   last_message: ChatMessage | null;
+  updated_at?: string;
 }
 
 interface ChatInvitation {
@@ -442,6 +443,35 @@ export const upsertConversation = (
         conversation,
         ...remaining.slice(position),
       ];
+};
+
+export const withConversationUpdate = (
+  list: ChatConversation[],
+  conversation: ChatConversation,
+) => {
+  const known = list.find((item) => item.id === conversation.id);
+  if (!known) return upsertConversation(list, conversation);
+  if (
+    Date.parse(conversation.updated_at ?? '') <
+    Date.parse(known.updated_at ?? '')
+  )
+    return list;
+  const knownMessage = known.last_message;
+  const message = conversation.last_message;
+  if (!knownMessage || knownMessage.deleted_at)
+    return upsertConversation(list, conversation);
+  if (!message || compareId(knownMessage.id, message.id) > 0)
+    return upsertConversation(list, {
+      ...conversation,
+      last_message: knownMessage,
+      unread: known.unread,
+    });
+  if (knownMessage.id === message.id)
+    return upsertConversation(list, {
+      ...conversation,
+      unread: known.unread && conversation.unread,
+    });
+  return upsertConversation(list, conversation);
 };
 
 const insertMessage = (list: ChatMessage[], message: ChatMessage) => {
@@ -1121,6 +1151,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   const knownConversationIds = useRef<Set<string> | null>(null);
   const conversationVersions = useRef(new Map<string, number>());
+  const endedConversations = useRef(new Set<string>());
   useEffect(() => {
     if (conversationsLoaded)
       knownConversationIds.current = new Set(
@@ -1458,10 +1489,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               .reduce((items, update) => update(items), [data])
               .find((item) => item.id === id);
             pendingConversationUpdates.current.delete(updates);
-            if (latest)
+            if (latest) {
+              endedConversations.current.delete(id);
               updateConversations((current) =>
                 upsertConversation(current, latest),
               );
+            }
           } catch (loadError) {
             if (
               (loadError as { response?: { status?: number } } | null)?.response
@@ -1580,6 +1613,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         (items, update) => update(items),
         loaded,
       );
+      reconciled.forEach((item) => {
+        endedConversations.current.delete(item.id);
+      });
       setConversations(reconciled);
       setConversationsLoaded(true);
       readRecovered('conversations');
@@ -2132,9 +2168,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
         } else if (event === 'chat.conversation_update') {
           const updated = payload as Partial<ChatConversation>;
+          if (updated.id && endedConversations.current.has(updated.id)) return;
           if (updated.accounts) {
             updateConversations((current) =>
-              upsertConversation(current, updated as ChatConversation),
+              withConversationUpdate(current, updated as ChatConversation),
             );
           } else if (updated.id) {
             refreshConversation(updated.id);
@@ -2194,6 +2231,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               id,
               (conversationVersions.current.get(id) ?? 0) + 1,
             );
+            endedConversations.current.add(id);
             retries.cancel(`conversation:${id}`);
           }
           updateConversations((current) =>
@@ -3124,8 +3162,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           updateInvitations((current) =>
             current.filter((item) => item.id !== invitation.id),
           );
-          if (action === 'accept' && data?.id)
+          if (action === 'accept' && data?.id) {
+            endedConversations.current.delete(data.id);
             updateConversations((current) => upsertConversation(current, data));
+          }
           dispatch(
             showAlert({
               message:
