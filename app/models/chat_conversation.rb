@@ -8,9 +8,11 @@ class ChatConversation < ApplicationRecord
 
   has_many :memberships, class_name: 'ChatMembership', dependent: :destroy, inverse_of: :chat_conversation
   has_many :accounts, through: :memberships
-  has_many :messages, -> { order(id: :desc) }, class_name: 'ChatMessage', dependent: :destroy, inverse_of: :chat_conversation
+  has_many :messages, -> { order(id: :desc) }, class_name: 'ChatMessage', dependent: :delete_all, inverse_of: :chat_conversation
   has_many :invitations, class_name: 'ChatInvitation', dependent: :destroy, inverse_of: :chat_conversation
   has_many :roster_states, class_name: 'ChatRosterState', dependent: :delete_all, inverse_of: :chat_conversation
+
+  before_destroy :schedule_message_media_removal, prepend: true
 
   validates :direct_key, presence: true, uniqueness: true, if: :chat_direct?
   validates :direct_key, absence: true, if: :chat_group?
@@ -40,6 +42,13 @@ class ChatConversation < ApplicationRecord
   end
 
   private
+
+  def schedule_message_media_removal
+    media_ids = ChatMessageMediaAttachment.where(chat_message_id: ChatMessage.where(chat_conversation_id: id).select(:id)).pluck(:media_attachment_id)
+    return if media_ids.empty?
+
+    ActiveRecord.after_all_transactions_commit { ChatMediaRemovalWorker.remove(media_ids) }
+  end
 
   def pending_remote_invitee?
     return invitations.any? { |invitation| invitation.pending? && invitation.invitee_account.remote? } if invitations.loaded?
