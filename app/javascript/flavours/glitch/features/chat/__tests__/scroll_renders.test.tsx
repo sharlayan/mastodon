@@ -4698,3 +4698,75 @@ describe('The keyboard brought back by a tap on the box still focused (Android o
     }
   });
 });
+
+// The regression's keyboard on d25d9cf06b (layout kb, Chromium and WebKit): a smaller window, the root as short as
+// what is shown, as a browser that resizes the page with its keyboard has it. Reading 600px up, the box focused, the
+// page moved 420px to show it (Safari's move, emulated), a message, the keyboard gone: the reader was not taken back.
+describe('A keyboard that shortens the page with it (regression kb on d25d9cf06b)', () => {
+  it('3 gives the place back when it goes', async () => {
+    const page = phonePage({
+      innerHeight: 667,
+      clientHeight: 667,
+      scrollHeight: 4000,
+      scrollTop: 2733,
+    });
+    const geo = {
+      nav: { top: 612, bottom: 667, height: 55 },
+      composer: { top: 543, bottom: 612 },
+      end: 1213,
+    };
+    const resize = (height: number) => {
+      window.innerHeight = height;
+      page.state.client = height;
+      page.viewport.height = height;
+      Object.assign(geo, {
+        nav: { top: height - 55, bottom: height, height: 55 },
+        composer: { top: height - 124, bottom: height - 55 },
+      });
+      act(() => {
+        page.viewport.dispatchEvent(new Event('resize'));
+        window.dispatchEvent(new Event('resize'));
+      });
+    };
+    try {
+      await openRoom();
+      page.scrollWithPage();
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
+        function (this: Element) {
+          if (this === page.nav) return geo.nav as DOMRect;
+          if (this.classList.contains('chat-native__end'))
+            return { top: geo.end, bottom: geo.end } as DOMRect;
+          if (this.classList.contains('chat-native__composer'))
+            return geo.composer as DOMRect;
+          return { top: -2000, bottom: -1950 } as DOMRect;
+        },
+      );
+      fireEvent.scroll(window);
+      expect(screen.queryByRole('button', { name: JUMP })).not.toBeNull();
+      act(() => {
+        screen.getByRole('textbox').focus();
+      });
+      await wait(100);
+      resize(367);
+      await wait(400);
+      page.state.top += 420;
+      geo.end -= 420;
+      fireEvent.scroll(window);
+      await wait(100);
+      page.state.writes = [];
+      receive('kb-reading');
+      await wait(300);
+      resize(667);
+      act(() => {
+        screen.getByRole('textbox').blur();
+      });
+      await wait(900);
+      expect({ writes: page.state.writes, closedAt: page.state.top }).toEqual({
+        writes: [2733],
+        closedAt: 2733,
+      });
+    } finally {
+      page.restore();
+    }
+  });
+});

@@ -2564,6 +2564,38 @@ describe('Android on f496c2c262 and review f496', () => {
     expect(timers(iphone.commands, 'keyboardClose')).toEqual([]);
   });
 
+  // A browser that resizes the page with its keyboard has the root as short as what is shown while the keyboard is up
+  // (the regression's keyboard, a smaller window: 667 → 367 with innerHeight and the root; Firefox does the same). On
+  // d25d9cf06b that was taken as closed as soon as it opened, and the place was not given back (kb, both engines).
+  it('3 a keyboard that shortens the root with it is still open', () => {
+    const page = (height: number) => ({
+      height,
+      composerFocused: true,
+      viewport: {
+        innerHeight: height,
+        rootClientHeight: height,
+        visual: { height, offsetTop: 0, scale: 1 },
+      },
+    });
+    const away = run(opened().state, [
+      [{ type: 'scrolled' }, { distance: 600, scrollTop: 2901 }],
+    ]).state;
+    const open = run(away, [
+      [{ type: 'composerFocused' }, { ...page(667), scrollTop: 2901 }],
+      [{ type: 'viewportResized' }, page(367)],
+      [{ type: 'scrolled' }, { ...page(367), scrollTop: 3321 }],
+    ]);
+    expect(timers(open.commands, 'keyboardClose')).toEqual([]);
+    const closed = run(open.state, [
+      [{ type: 'viewportResized' }, page(667)],
+      [{ type: 'composerBlurred' }, page(667)],
+      [{ type: 'timer', name: 'keyboardClose' }, { distance: 600 }],
+    ]);
+    expect(restores(closed.commands)).toEqual([
+      { type: 'restoreScroll', top: 2901 },
+    ]);
+  });
+
   // Candidate (kupc-7): reading down, Chrome hides its URL bar. The visual viewport is 659.4 for a second before the
   // window says so: innerHeight still 603, and the navigation bar's rectangle still 548.9~603.4 while it is drawn on the
   // bottom of what is shown. The end at 878.8 was taken as 219.3 from the newest; it was 273.1 (after the resize).

@@ -856,15 +856,19 @@ export const step = (
           }
           if (s.height < keyboard.baseHeight - KEYBOARD_SHRINK_PX)
             keyboard.shrunk = true;
-          // Back to what is shown without a keyboard: the height it opened at, or the root's when the browser shows
-          // its bar again as the keyboard goes. A keyboard opened with Chrome's URL bar collapsed (659.4) and put away
-          // with the back key, which keeps the box focused, came back to 603.4 and was kept as open (Pixel on f496c2c,
-          // 6/17, the place not given back).
-          const closedHeight =
-            s.viewport.rootClientHeight > 0
-              ? Math.min(keyboard.baseHeight, s.viewport.rootClientHeight)
-              : keyboard.baseHeight;
-          if (keyboard.shrunk && s.height >= closedHeight - 2) {
+          // Back to what is shown without a keyboard: the height it opened at, or, when the browser shows its bar again
+          // as the keyboard goes, as tall as the root and short of that height by less than a keyboard. A keyboard
+          // opened with Chrome's URL bar collapsed (659.4) and put away with the back key, which keeps the box focused,
+          // came back to 603.4 and was kept as open (Pixel on f496c2c, 6/17, the place not given back). A browser that
+          // resizes the page with its keyboard has the root as short as what is shown while it is up (the
+          // regression's keyboard on d25d9cf06b: 367 of 667, taken as closed as it opened).
+          const { rootClientHeight } = s.viewport;
+          const closed =
+            s.height >= keyboard.baseHeight - 2 ||
+            (rootClientHeight > 0 &&
+              s.height >= rootClientHeight - 2 &&
+              s.height >= keyboard.baseHeight - KEYBOARD_SHRINK_PX);
+          if (keyboard.shrunk && closed) {
             keyboard.closing = true;
             commands.push({
               type: 'timer',
