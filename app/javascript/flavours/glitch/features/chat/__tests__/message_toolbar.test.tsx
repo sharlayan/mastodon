@@ -465,6 +465,33 @@ describe('Long press on a message', () => {
     expect(fireEvent.mouseDown(quote)).toBe(true);
   });
 
+  it('keeps a long-pressed quote marked when the browser focuses it, until the next touch', async () => {
+    await mountForTouch([
+      message('1', 'The original'),
+      message('2', 'Reply', { reply_to_id: '1' }),
+    ]);
+    const quote = bubbleOf('2').querySelector<HTMLButtonElement>(
+      '.chat-native__reply-quote',
+    );
+    if (!quote) throw new Error('Missing quote');
+    fireEvent.touchStart(quote, finger(119, 306));
+    wait(500);
+    expect(document.activeElement).toBe(bubbleOf('2'));
+    quote.focus();
+    fireEvent.touchEnd(quote, { touches: [] });
+    expect(bubbleOf('2').matches('[data-chat-long-pressed]:focus-within')).toBe(
+      true,
+    );
+    const action = toolbarOf('2')?.querySelector('button');
+    if (!action) throw new Error('Missing toolbar button');
+    fireEvent.touchStart(action, finger(119, 280));
+    fireEvent.touchEnd(action, { touches: [] });
+    fireEvent.mouseDown(action);
+    expect(bubbleOf('2').hasAttribute('data-chat-long-pressed')).toBe(true);
+    fireEvent.touchStart(quote, finger(119, 306));
+    expect(bubbleOf('2').hasAttribute('data-chat-long-pressed')).toBe(false);
+  });
+
   it('opens the toolbar by focusing the bubble', async () => {
     await mountForTouch([message('1', 'Hello')]);
 

@@ -9,6 +9,7 @@ const LONG_PRESS_MOVE_PX = 10;
 // A picture keeps its browser menu: it is left alone.
 export const useLongPressOpensToolbar = () => {
   const press = useRef<{ timer: number; x: number; y: number } | null>(null);
+  const longPressedBubble = useRef<HTMLElement | null>(null);
   const touchedControl = useRef<{ element: Element; endedAt?: number } | null>(
     null,
   );
@@ -18,13 +19,32 @@ export const useLongPressOpensToolbar = () => {
     press.current = null;
   }, []);
 
-  useEffect(() => cancel, [cancel]);
+  const clearLongPress = useCallback(() => {
+    longPressedBubble.current?.removeAttribute('data-chat-long-pressed');
+    longPressedBubble.current = null;
+  }, []);
+
+  useEffect(
+    () => () => {
+      cancel();
+      clearLongPress();
+    },
+    [cancel, clearLongPress],
+  );
+
+  const inLongPressedToolbar = useCallback((target: Element) => {
+    const toolbar = target.closest('.chat-native__actions');
+    return Boolean(
+      toolbar && longPressedBubble.current?.parentElement?.contains(toolbar),
+    );
+  }, []);
 
   const onTouchStart = useCallback(
     (event: TouchEvent<HTMLElement>) => {
       cancel();
       const touch = event.touches[0];
       const target = event.target as Element;
+      if (!inLongPressedToolbar(target)) clearLongPress();
       const bubble = target.closest<HTMLElement>('.chat-native__bubble');
       const control = target.closest('button, a[href]');
       touchedControl.current =
@@ -48,11 +68,13 @@ export const useLongPressOpensToolbar = () => {
         y: touch.clientY,
         timer: window.setTimeout(() => {
           press.current = null;
+          longPressedBubble.current = bubble;
+          bubble.setAttribute('data-chat-long-pressed', '');
           bubble.focus({ preventScroll: true });
         }, LONG_PRESS_MS),
       };
     },
-    [cancel],
+    [cancel, clearLongPress, inLongPressedToolbar],
   );
 
   const onTouchMove = useCallback(
@@ -85,28 +107,34 @@ export const useLongPressOpensToolbar = () => {
     touchedControl.current = null;
     cancel();
   }, [cancel]);
-  const onMouseDown = useCallback((event: MouseEvent<HTMLElement>) => {
-    const touched = touchedControl.current;
-    touchedControl.current = null;
-    const target = event.target as Element;
-    if (
-      touched?.endedAt === undefined ||
-      event.timeStamp - touched.endedAt < 0 ||
-      event.timeStamp - touched.endedAt > 1000 ||
-      target.closest('button, a[href]') !== touched.element
-    )
-      return;
+  const onMouseDown = useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      const touched = touchedControl.current;
+      touchedControl.current = null;
+      const target = event.target as Element;
+      if (inLongPressedToolbar(target)) return;
+      if (
+        touched?.endedAt === undefined ||
+        event.timeStamp - touched.endedAt < 0 ||
+        event.timeStamp - touched.endedAt > 1000 ||
+        target.closest('button, a[href]') !== touched.element
+      ) {
+        clearLongPress();
+        return;
+      }
 
-    // Safari can focus the bubble between a quote's touchend and click. The sticky toolbar then appears over the
-    // finger and takes the click. Keep that default focus from moving while allowing the click itself to go through.
-    event.preventDefault();
-    const active = document.activeElement;
-    if (
-      active instanceof HTMLElement &&
-      active.closest('.chat-native__composer')
-    )
-      active.blur();
-  }, []);
+      // Safari can focus the bubble between a quote's touchend and click. The sticky toolbar then appears over the
+      // finger and takes the click. Keep that default focus from moving while allowing the click itself to go through.
+      event.preventDefault();
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        active.closest('.chat-native__composer')
+      )
+        active.blur();
+    },
+    [clearLongPress, inLongPressedToolbar],
+  );
 
   return {
     onTouchStart,

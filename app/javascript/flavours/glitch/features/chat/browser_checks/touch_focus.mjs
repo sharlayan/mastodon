@@ -16,7 +16,11 @@ const hook = path.resolve(
     'app/javascript/flavours/glitch/features/chat/use_message_toolbar.ts',
 );
 const css = sass.compile(
-  'app/javascript/flavours/glitch/styles/mastodon/custom_chat.scss',
+  process.env.CHAT_TEST_SCSS ??
+    'app/javascript/flavours/glitch/styles/mastodon/custom_chat.scss',
+  {
+    loadPaths: [path.resolve('app/javascript/flavours/glitch/styles/mastodon')],
+  },
 ).css;
 const app = (
   await esbuild.build({
@@ -27,7 +31,7 @@ import { useLongPressOpensToolbar } from ${JSON.stringify(hook)};
 const filler = Array.from({length: 12}, (_, i) => <p key={i} style={{height:60,margin:0}} />);
 const App = () => {
   const handlers = useLongPressOpensToolbar();
-  return <><div className="tabs-bar__wrapper" /><div className="chat-native"><div className="chat-native__messages" {...handlers}>{filler}<article className="chat-native__message"><span className="chat-native__avatar-space"/><div className="chat-native__message-content"><div className="chat-native__bubble-wrap"><div className="chat-native__bubble" tabIndex={0}><button className="chat-native__reply-quote" onClick={e => {e.preventDefault(); document.body.dataset.clicked = 'quote';}}><strong>Bob</strong><span>The original message</span></button><p>Message <a href="#link">link</a></p></div><div className="chat-native__actions-rail"><div className="chat-native__actions"><button className="icon-button">one</button><button className="icon-button">two</button><button className="icon-button">three</button></div></div></div></div></article>{filler}</div><form className="chat-native__composer"><textarea /></form></div></>;
+  return <><div className="tabs-bar__wrapper" /><div className="chat-native"><div className="chat-native__messages" {...handlers}>{filler}<article className="chat-native__message"><span className="chat-native__avatar-space"/><div className="chat-native__message-content"><div className="chat-native__bubble-wrap"><div className="chat-native__bubble" tabIndex={0}><button className="chat-native__reply-quote" onClick={e => {e.preventDefault(); document.body.dataset.clicked = 'quote';}}><strong>Bob</strong><span>The original message</span></button><p>Message <a href="#link">link</a></p></div><div className="chat-native__actions-rail"><div className="chat-native__actions"><button className="icon-button" onClick={() => {document.body.dataset.action = 'yes';}}>one</button><button className="icon-button">two</button><button className="icon-button">three</button></div></div></div></div></article>{filler}</div><form className="chat-native__composer"><textarea /></form></div></>;
 };
 createRoot(document.getElementById('root')).render(<App/>);`,
       loader: 'tsx',
@@ -142,6 +146,38 @@ for (const [name, engine] of [
     );
     process.stdout.write(
       `${name} text short tap and synthetic long press opened toolbar\n`,
+    );
+    await page.evaluate(() => document.activeElement?.blur());
+    await quote.evaluate((el) => {
+      const event = new Event('touchstart', { bubbles: true });
+      Object.defineProperty(event, 'touches', {
+        value: [{ identifier: 1, target: el, clientX: 119, clientY: 306 }],
+      });
+      el.dispatchEvent(event);
+    });
+    await page.waitForTimeout(500);
+    // Galaxy Z Flip3: the browser moves focus from the bubble to the quote as its context menu opens.
+    await quote.evaluate((el) => el.closest('button').focus());
+    await page.waitForTimeout(100);
+    await quote.evaluate((el) =>
+      el.dispatchEvent(new Event('touchend', { bubbles: true })),
+    );
+    const afterHold = await page
+      .locator('.chat-native__actions')
+      .evaluate((el) => getComputedStyle(el).opacity);
+    process.stdout.write(
+      `${name} quote hold after native-style focus ${afterHold}\n`,
+    );
+    assert.equal(
+      afterHold,
+      '1',
+      `${name}: the toolbar stays open after the browser focuses a long-pressed quote`,
+    );
+    await page.locator('.chat-native__actions button').first().tap();
+    assert.equal(
+      await page.evaluate(() => document.body.dataset.action),
+      'yes',
+      `${name}: a toolbar button works after the long press`,
     );
     await context.close();
   } catch (error) {

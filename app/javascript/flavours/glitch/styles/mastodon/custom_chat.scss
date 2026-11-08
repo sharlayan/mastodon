@@ -704,8 +704,10 @@
   // The toolbar is the bubble's: it opens when the bubble itself takes the focus (a tap, a long press) or the toolbar
   // does. A finger on a quote, a link, a picture or a reaction is for that, and a toolbar opened by its focus can be
   // held under the column header over what was tapped, taking the click (Pixel and Galaxy on f496c2c: the first tap
-  // on a quote near the top went to the bubble's wrapper).
+  // on a quote near the top went to the bubble's wrapper). A completed long press stays open if the browser moves
+  // focus from the bubble to the quote while opening its context menu.
   &__bubble:focus ~ &__actions-rail &__actions,
+  &__bubble[data-chat-long-pressed]:focus-within ~ &__actions-rail &__actions,
   &__actions:focus-within {
     opacity: 1;
     pointer-events: auto;
