@@ -97,6 +97,41 @@ RSpec.describe 'Incoming ActivityPub chat messages', type: :model do
     end
   end
 
+  context 'when the server is in roleplay mode' do
+    around { |example| ClimateControl.modify(OC_ROLEPLAY_OPTION: 'true') { example.run } }
+
+    it 'ignores a chat note from another server' do
+      ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
+
+      expect(ChatMessage.where(uri: payload['object']['id'])).to be_empty
+      expect(Status.where(uri: payload['object']['id'])).to be_empty
+    end
+
+    %w(Create Update).each do |type|
+      it "ignores a dereferenced chat #{type} from another server" do
+        object = payload['object'].merge('@context' => 'https://www.w3.org/ns/activitystreams', 'published' => Time.current.utc.iso8601)
+        stub_request(:get, object['id']).to_return(body: object.to_json, headers: { 'Content-Type' => 'application/activity+json' })
+
+        ActivityPub::Activity.factory(payload.merge('type' => type, 'object' => object['id']), bob, delivered_to_account_id: alice.id).perform
+
+        expect(ChatMessage.where(uri: object['id'])).to be_empty
+        expect(Status.where(uri: object['id'])).to be_empty
+      end
+    end
+
+    it 'ignores an edit of a chat note kept as a status before roleplay mode' do
+      ClimateControl.modify(OC_ROLEPLAY_OPTION: 'false') do
+        Setting.chat_federation_enabled = false
+        ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
+      end
+      changed = payload['object'].merge('content' => 'changed', '_misskey_content' => 'changed', 'updated' => '2026-11-03T00:00:00Z')
+
+      ActivityPub::Activity.factory(payload.merge('type' => 'Update', 'object' => changed), bob, delivered_to_account_id: alice.id).perform
+
+      expect(Status.find_by!(uri: payload['object']['id']).text).to eq('hello')
+    end
+  end
+
   it 'keeps handling an edit of a stored chat message as chat while federation is off' do
     ActivityPub::Activity.factory(payload, bob, delivered_to_account_id: alice.id).perform
     Setting.chat_federation_enabled = false

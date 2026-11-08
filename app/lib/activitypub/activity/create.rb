@@ -7,14 +7,14 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   PROCESSING_DELAY = (30.seconds)..(10.minutes)
 
   def perform
-    return Sharlayan::ChatFederation::Incoming.handle_create(@json, @account, **@options) if Sharlayan::ChatFederation::Incoming.enabled? && Sharlayan::ChatFederation::Incoming.chat_create?(@json)
+    return Sharlayan::ChatFederation::Incoming.handle_create(@json, @account, **@options) if Sharlayan::ChatFederation::Incoming.handles_chat_note? && Sharlayan::ChatFederation::Incoming.chat_create?(@json)
 
     @account.schedule_refresh_if_stale!
 
     dereference_object!
 
     resolved_json = @json.merge('object' => @object)
-    return Sharlayan::ChatFederation::Incoming.handle_create(resolved_json, @account, **@options) if Sharlayan::ChatFederation::Incoming.enabled? && Sharlayan::ChatFederation::Incoming.chat_create?(resolved_json)
+    return Sharlayan::ChatFederation::Incoming.handle_create(resolved_json, @account, **@options) if Sharlayan::ChatFederation::Incoming.handles_chat_note? && Sharlayan::ChatFederation::Incoming.chat_create?(resolved_json)
 
     create_status
   end

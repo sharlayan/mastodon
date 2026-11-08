@@ -17,6 +17,10 @@ module Sharlayan
           Setting.chat_enabled && Sharlayan::ChatFederation.enabled?
         end
 
+        def handles_chat_note?
+          enabled? || RoleplayModeHelper.roleplay_mode?
+        end
+
         def chat_create?(json)
           object = json['object']
           object.is_a?(Hash) &&
@@ -29,7 +33,7 @@ module Sharlayan
           object = json['object']
           return false unless object.is_a?(Hash) && equals_type?(object['type'], 'Note')
 
-          (object['_misskey_talk'] == true && enabled?) || (uri_of(object).present? && ChatMessage.exists?(uri: uri_of(object)))
+          (object['_misskey_talk'] == true && handles_chat_note?) || (uri_of(object).present? && ChatMessage.exists?(uri: uri_of(object)))
         end
 
         def chat_delete?(json)
