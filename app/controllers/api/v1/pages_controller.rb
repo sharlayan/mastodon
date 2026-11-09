@@ -24,7 +24,7 @@ class Api::V1::PagesController < Api::BaseController
 
   def index
     @pages = current_account.pages.summary_columns.includes(:eye_catching_media_attachment, page_series: :cover_media_attachment).order(is_main: :desc, id: :desc)
-      .offset([params[:offset].to_i, 0].max)
+      .offset([params[:offset].to_s.to_i, 0].max)
       .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
     render json: @pages, each_serializer: REST::PageSummarySerializer
   end
@@ -64,7 +64,7 @@ class Api::V1::PagesController < Api::BaseController
   end
 
   def statistics
-    days = params[:days].to_i.clamp(30, 365)
+    days = params[:days].to_s.to_i.clamp(30, 365)
     days = 365 if params[:days].blank?
     current_date = PageDailyStatistic.current_activity_date
     first_date = current_date - (days - 1).days
