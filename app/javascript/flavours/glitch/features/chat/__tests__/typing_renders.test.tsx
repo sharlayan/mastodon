@@ -20,6 +20,7 @@ import type * as InitialState from 'flavours/glitch/initial_state';
 
 import { Chat } from '../index';
 import { emitChatStreamEvent } from '../stream';
+import { wholeText } from '../testing/whole_text';
 
 await vi.hoisted(() => import('../testing/match_media'));
 
@@ -548,7 +549,7 @@ describe('Typing while replying', () => {
     typeLetters('Before ');
 
     fireEvent.click(rowOf('Message 4').getByRole('button', { name: 'Reply' }));
-    expect(screen.getByText('Replying to Bob')).toBeTruthy();
+    expect(screen.getByText(wholeText('Replying to Bob'))).toBeTruthy();
     typeLetters('after', 'Before ');
     fireEvent.keyDown(box(), { key: 'Enter' });
 
@@ -559,7 +560,7 @@ describe('Typing while replying', () => {
       });
     });
     await waitFor(() => {
-      expect(screen.queryByText('Replying to Bob')).toBeNull();
+      expect(screen.queryByText(wholeText('Replying to Bob'))).toBeNull();
     });
     expect(box().value).toBe('');
   });

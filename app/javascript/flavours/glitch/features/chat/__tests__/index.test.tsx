@@ -27,6 +27,7 @@ import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 
 import { Chat } from '../index';
 import { CHAT_STREAM_RECONNECTED, emitChatStreamEvent } from '../stream';
+import { wholeText } from '../testing/whole_text';
 
 await vi.hoisted(() => import('../testing/match_media'));
 
@@ -1663,7 +1664,7 @@ describe('Chat screen lifecycle', () => {
 
     expect(screen.getByRole('img', { name: 'Unread messages' })).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: /Room A.*Unread messages/ }),
+      screen.getByRole('button', { name: /Unread messages.*Room A/ }),
     ).toBeTruthy();
   });
 });
@@ -2001,13 +2002,13 @@ describe('Chat reply indicator', () => {
   it('names the person being answered', async () => {
     await replyTo('Bob');
 
-    expect(screen.getByText('Replying to Bob')).toBeTruthy();
+    expect(screen.getByText(wholeText('Replying to Bob'))).toBeTruthy();
   });
 
-  it('falls back to the handle when the person has no display name', async () => {
+  it('falls back to the username when the person has no display name', async () => {
     await replyTo('');
 
-    expect(screen.getByText('Replying to bob@remote.test')).toBeTruthy();
+    expect(screen.getByText(wholeText('Replying to bob'))).toBeTruthy();
   });
 
   it('says so when the message being answered is deleted', async () => {
@@ -2026,7 +2027,9 @@ describe('Chat reply indicator', () => {
       '.chat-native__compose-mode',
     ) as HTMLElement;
     await within(indicator).findByText('This message was deleted.');
-    expect(within(indicator).getByText('Replying to Bob')).toBeTruthy();
+    expect(
+      within(indicator).getByText(wholeText('Replying to Bob')),
+    ).toBeTruthy();
   });
 });
 
@@ -2189,7 +2192,7 @@ describe('Chat invitations', () => {
   it('shows the room and who invited, with the actions in words', async () => {
     await openInvitations();
 
-    expect(screen.getByText('Invited by Bob')).toBeTruthy();
+    expect(screen.getByText(wholeText('Invited by Bob'))).toBeTruthy();
     const accept = screen.getByRole('button', { name: 'Accept' });
     const reject = screen.getByRole('button', { name: 'Reject' });
     expect(accept.textContent).toBe('Accept');
@@ -2301,7 +2304,7 @@ describe('Chat message actions', () => {
     fireEvent.click(
       screen.getAllByRole('button', { name: 'Reply' })[0] as HTMLElement,
     );
-    expect(screen.getByText('Replying to Bob')).toBeTruthy();
+    expect(screen.getByText(wholeText('Replying to Bob'))).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     expect(composer().value).toBe('My message');

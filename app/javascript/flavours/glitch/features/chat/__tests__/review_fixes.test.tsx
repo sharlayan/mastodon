@@ -567,9 +567,11 @@ describe('Telling apart people with the same name', () => {
 
   it('does not show the address twice when there is no display name', async () => {
     mountAt('/chat');
-    const name = await screen.findByText('plain@cherry.test');
+    const address = await screen.findByText('@plain@cherry.test');
+    const row = address.closest('button') as HTMLElement;
 
-    expect(name.closest('button')?.textContent).toBe('plain@cherry.test');
+    expect(within(row).getByText('plain')).toBeTruthy();
+    expect(row.textContent.match(/plain@cherry\.test/g)).toHaveLength(1);
   });
 
   it('keeps the full address within reach in search results and selected accounts', async () => {
@@ -586,13 +588,18 @@ describe('Telling apart people with the same name', () => {
     );
 
     const address = await screen.findByText('@carol@cherry.test');
-    expect(address.getAttribute('title')).toBe('@carol@cherry.test');
+    expect(address.closest('[title]')?.getAttribute('title')).toBe(
+      '@carol@cherry.test',
+    );
 
     fireEvent.click(address.closest('button') as HTMLElement);
 
-    expect(screen.getByText('@carol@cherry.test').getAttribute('title')).toBe(
-      '@carol@cherry.test',
-    );
+    expect(
+      screen
+        .getByText('@carol@cherry.test')
+        .closest('[title]')
+        ?.getAttribute('title'),
+    ).toBe('@carol@cherry.test');
   });
 
   it('keeps the full address within reach for members and people invited', async () => {
@@ -600,9 +607,13 @@ describe('Telling apart people with the same name', () => {
     mountAt('/chat/group-1/members');
 
     expect(
-      (await screen.findByText('@carol@cherry.test')).getAttribute('title'),
+      (await screen.findByText('@carol@cherry.test'))
+        .closest('[title]')
+        ?.getAttribute('title'),
     ).toBe('@carol@cherry.test');
-    expect(screen.getByText('@bob').getAttribute('title')).toBe('@bob');
+    expect(
+      screen.getByText('@bob').closest('[title]')?.getAttribute('title'),
+    ).toBe('@bob');
   });
 
   it('leaves a group as its name', async () => {
@@ -620,7 +631,9 @@ describe('Telling apart people with the same name', () => {
 
     expect(within(heading).getByText('Nari')).toBeTruthy();
     const address = within(heading).getByText('@nari@cherry.test');
-    expect(address.getAttribute('title')).toBe('@nari@cherry.test');
+    expect(address.closest('[title]')?.getAttribute('title')).toBe(
+      '@nari@cherry.test',
+    );
     expect(address.closest('a')?.getAttribute('href')).toBe(
       '/@nari@cherry.test',
     );
@@ -673,7 +686,7 @@ describe('People who have not answered an invitation', () => {
       Array.from(document.querySelectorAll('.chat-native__member strong')).map(
         (name) => name.textContent,
       ),
-    ).toEqual(['Alice', 'Bob', 'Carol', 'plain@cherry.test']);
+    ).toEqual(['Alice', 'Bob', 'Carol', 'plain']);
   });
 
   it('lets the owner cancel one, and says so', async () => {

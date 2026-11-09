@@ -31,6 +31,7 @@ import PhotoLibraryIcon from '@/material-icons/400-20px/photo_library.svg?react'
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
+import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import ContentCopyIcon from '@/material-icons/400-24px/content_copy.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
@@ -46,26 +47,37 @@ import { openModal } from 'flavours/glitch/actions/modal';
 import api from 'flavours/glitch/api';
 import type { ApiCustomEmojiJSON } from 'flavours/glitch/api_types/custom_emoji';
 import { compareId } from 'flavours/glitch/compare_id';
-import { Avatar } from 'flavours/glitch/components/avatar';
+import { Badge } from 'flavours/glitch/components/badge';
 import { Button } from 'flavours/glitch/components/button';
 import { CircularProgress } from 'flavours/glitch/components/circular_progress';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { textToEmojis } from 'flavours/glitch/components/emoji';
-import { CustomEmojiProvider } from 'flavours/glitch/components/emoji/context';
+import {
+  AnimateEmojiProvider,
+  CustomEmojiProvider,
+} from 'flavours/glitch/components/emoji/context';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
 import { LoadMore } from 'flavours/glitch/components/load_more';
 import MediaGallery from 'flavours/glitch/components/media_gallery';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
+import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { me, roleplayMode } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
+import type { ChatAccount } from './account';
+import {
+  ChatAccountRow,
+  ChatAvatar,
+  ChatDisplayName,
+  ChatLinkedDisplayName,
+} from './account';
 import { leaveChatRoute, trackChatHistory } from './history_parent';
 import { createRetries } from './retry';
 import type { PageCheckpoint } from './retry';
@@ -81,16 +93,6 @@ import {
   usesTouchKeyboard,
 } from './use_chat_scroll';
 import { useLongPressOpensToolbar } from './use_message_toolbar';
-
-interface ChatAccount {
-  id: string;
-  acct: string;
-  display_name: string;
-  avatar: string;
-  avatar_static: string;
-  suspended?: boolean;
-  emojis?: ApiCustomEmojiJSON[];
-}
 
 type RoomEnding = 'deleted' | 'removed';
 
@@ -268,6 +270,11 @@ const messages = defineMessages({
   },
   tabOwnedRooms: { id: 'chat.owned_rooms', defaultMessage: 'Your groups' },
   unread: { id: 'chat.unread', defaultMessage: 'Unread messages' },
+  removeAccount: {
+    id: 'chat.remove_account',
+    defaultMessage: 'Remove selected account',
+  },
+  cancel: { id: 'chat.cancel', defaultMessage: 'Cancel' },
   deleteGroupConfirm: {
     id: 'chat.delete_group_confirm',
     defaultMessage:
@@ -322,16 +329,17 @@ const EmojiText: React.FC<{
   emojis?: ApiCustomEmojiJSON[];
 }> = ({ text, emojis }) => (
   <CustomEmojiProvider emojis={emojis}>
-    {textToEmojis(text)}
+    <AnimateEmojiProvider as='span'>{textToEmojis(text)}</AnimateEmojiProvider>
   </CustomEmojiProvider>
 );
 
-const AccountName: React.FC<{ account: ChatAccount }> = ({ account }) =>
-  account.display_name ? (
-    <EmojiText text={account.display_name} emojis={account.emojis} />
-  ) : (
-    account.acct
-  );
+const TitleName: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className='display-name'>
+    <bdi>
+      <strong className='display-name__html'>{children}</strong>
+    </bdi>
+  </span>
+);
 
 const ConversationName: React.FC<{ conversation: ChatConversation }> = ({
   conversation,
@@ -345,28 +353,11 @@ const ConversationName: React.FC<{ conversation: ChatConversation }> = ({
         .map((account, index) => (
           <Fragment key={account.id}>
             {index > 0 && ', '}
-            <AccountName account={account} />
+            <ChatDisplayName account={account} />
           </Fragment>
         ))}
     </>
   );
-
-const AccountSummary: React.FC<{
-  account: ChatAccount;
-  detail?: string;
-}> = ({ account, detail }) => (
-  <>
-    <Avatar account={account} size={36} />
-    <span className='chat-native__account-names'>
-      <strong>
-        <AccountName account={account} />
-      </strong>
-      <span title={detail === undefined ? `@${account.acct}` : undefined}>
-        {detail ?? `@${account.acct}`}
-      </span>
-    </span>
-  </>
-);
 
 const directPartner = (conversation: ChatConversation) =>
   conversation.type === 'direct'
@@ -378,42 +369,33 @@ const ConversationTitle: React.FC<{
   linked?: boolean;
 }> = ({ conversation, linked = false }) => {
   const partner = directPartner(conversation);
-  if (conversation.title || !partner?.display_name) {
-    const name = <ConversationName conversation={conversation} />;
-    return linked ? name : <strong>{name}</strong>;
-  }
+  if (conversation.title || !partner)
+    return (
+      <TitleName>
+        <ConversationName conversation={conversation} />
+      </TitleName>
+    );
 
-  const address = `@${partner.acct}`;
-  const Title = linked ? 'span' : 'strong';
-  return (
-    <Title className='chat-native__conversation-title'>
-      <span>
-        <EmojiText text={partner.display_name} emojis={partner.emojis} />
-      </span>
-      {linked ? (
-        <Link
-          to={`/${address}`}
-          title={address}
-          data-hover-card-account={partner.id}
-        >
-          {address}
-        </Link>
-      ) : (
-        <span title={address}>{address}</span>
-      )}
-    </Title>
+  return linked ? (
+    <ChatLinkedDisplayName account={partner} />
+  ) : (
+    <ChatDisplayName account={partner} withHandle />
   );
 };
 
-const ConversationPicture: React.FC<{ conversation: ChatConversation }> = ({
-  conversation,
-}) => {
+const ConversationPicture: React.FC<{
+  conversation: ChatConversation;
+  size: number;
+}> = ({ conversation, size }) => {
   const other = directPartner(conversation);
 
   return other ? (
-    <Avatar account={other} size={36} />
+    <ChatAvatar account={other} size={size} />
   ) : (
-    <span className='chat-native__room-picture'>
+    <span
+      className='chat-native__room-picture'
+      style={{ width: `${size}px`, height: `${size}px` }}
+    >
       <Icon id='groups' icon={GroupsIcon} />
     </span>
   );
@@ -672,31 +654,31 @@ const InvitationRow: React.FC<{
   }, [invitation, onAnswer]);
 
   return (
-    <div className='chat-native__invitation'>
-      <Avatar account={invitation.inviter} size={36} />
-      <div className='chat-native__account-names'>
-        <strong>
+    <ChatAccountRow
+      className='chat-native__invitation'
+      account={invitation.inviter}
+      name={
+        <TitleName>
           <ConversationName conversation={invitation.conversation} />
-        </strong>
-        <span>
-          <FormattedMessage
-            id='chat.invited_by'
-            defaultMessage='Invited by {name}'
-            values={{
-              name: <AccountName account={invitation.inviter} />,
-            }}
-          />
-        </span>
-      </div>
-      <div className='account__relationship'>
-        <Button compact onClick={handleAccept}>
-          <FormattedMessage id='chat.accept' defaultMessage='Accept' />
-        </Button>
-        <Button compact secondary onClick={handleReject}>
-          <FormattedMessage id='chat.reject' defaultMessage='Reject' />
-        </Button>
-      </div>
-    </div>
+        </TitleName>
+      }
+      details={
+        <FormattedMessage
+          id='chat.invited_by'
+          defaultMessage='Invited by {name}'
+          values={{
+            name: <ChatDisplayName account={invitation.inviter} />,
+          }}
+        />
+      }
+    >
+      <Button compact onClick={handleAccept}>
+        <FormattedMessage id='chat.accept' defaultMessage='Accept' />
+      </Button>
+      <Button compact secondary onClick={handleReject}>
+        <FormattedMessage id='chat.reject' defaultMessage='Reject' />
+      </Button>
+    </ChatAccountRow>
   );
 };
 
@@ -710,27 +692,48 @@ const PendingInvitationRow: React.FC<{
   }, [invitation, onCancel]);
 
   return (
-    <div className='chat-native__member'>
-      <Avatar account={invitee} size={36} withLink />
-      <div>
-        <strong>
-          <AccountName account={invitee} />
-        </strong>
-        <span title={`@${invitee.acct}`}>@{invitee.acct}</span>
-      </div>
-      <small className='chat-native__state-badge'>
-        <FormattedMessage
-          id='chat.invitation_pending'
-          defaultMessage='Invited'
-        />
-      </small>
+    <ChatAccountRow
+      className='chat-native__member'
+      account={invitee}
+      target={{ kind: 'profile' }}
+    >
+      <Badge
+        variant='warning'
+        label={
+          <FormattedMessage
+            id='chat.invitation_pending'
+            defaultMessage='Invited'
+          />
+        }
+      />
       <Button compact secondary onClick={handleCancel}>
         <FormattedMessage
           id='chat.cancel_invitation'
           defaultMessage='Cancel invitation'
         />
       </Button>
-    </div>
+    </ChatAccountRow>
+  );
+};
+
+const SelectedAccountCard: React.FC<{
+  account: ChatAccount;
+  onRemove: (accountId: string) => void;
+}> = ({ account, onRemove }) => {
+  const intl = useIntl();
+  const handleRemove = useCallback(() => {
+    onRemove(account.id);
+  }, [account.id, onRemove]);
+
+  return (
+    <ChatAccountRow className='chat-native__account-card' account={account}>
+      <IconButton
+        icon='times'
+        iconComponent={CloseIcon}
+        title={intl.formatMessage(messages.removeAccount)}
+        onClick={handleRemove}
+      />
+    </ChatAccountRow>
   );
 };
 
@@ -772,7 +775,7 @@ const ReplyQuote: React.FC<{
     {target ? (
       <>
         <strong>
-          <AccountName account={target.account} />
+          <ChatDisplayName account={target.account} />
         </strong>
         <span>
           {target.deleted_at ? (
@@ -2813,15 +2816,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [groupAccountResults, searchAccounts],
   );
 
-  const handleRemoveGroupAccount = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      const id = event.currentTarget.dataset.accountId;
-      setGroupAccounts((current) =>
-        current.filter((account) => account.id !== id),
-      );
-    },
-    [],
-  );
+  const handleRemoveGroupAccount = useCallback((id: string) => {
+    setGroupAccounts((current) =>
+      current.filter((account) => account.id !== id),
+    );
+  }, []);
 
   const handleInviteAccountQueryChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -3909,19 +3908,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     </Button>
                     {inviteAccount && (
                       <div className='chat-native__selected-accounts'>
-                        <div className='chat-native__account-card'>
-                          <AccountSummary account={inviteAccount} />
-                          <button
-                            type='button'
-                            onClick={handleRemoveInviteAccount}
-                            aria-label={intl.formatMessage({
-                              id: 'chat.remove_account',
-                              defaultMessage: 'Remove selected account',
-                            })}
-                          >
-                            ×
-                          </button>
-                        </div>
+                        <SelectedAccountCard
+                          account={inviteAccount}
+                          onRemove={handleRemoveInviteAccount}
+                        />
                       </div>
                     )}
                   </form>
@@ -3931,35 +3921,37 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   {inviteAccountResults.length > 0 && (
                     <div className='chat-native__account-results'>
                       {inviteAccountResults.map((account) => (
-                        <button
+                        <ChatAccountRow
                           key={account.id}
-                          type='button'
-                          data-account-id={account.id}
-                          onClick={handleInviteAccountResult}
-                        >
-                          <AccountSummary account={account} />
-                        </button>
+                          account={account}
+                          target={{
+                            kind: 'button',
+                            'data-account-id': account.id,
+                            onClick: handleInviteAccountResult,
+                          }}
+                        />
                       ))}
                     </div>
                   )}
                 </>
               )}
               {conversation.accounts.map((account) => (
-                <div className='chat-native__member' key={account.id}>
-                  <Avatar account={account} size={36} withLink />
-                  <div>
-                    <strong>
-                      <AccountName account={account} />
-                    </strong>
-                    <span title={`@${account.acct}`}>@{account.acct}</span>
-                  </div>
+                <ChatAccountRow
+                  key={account.id}
+                  className='chat-native__member'
+                  account={account}
+                  target={{ kind: 'profile' }}
+                >
                   {isRemoteAccount(account) && (
-                    <small className='chat-native__remote-badge'>
-                      <FormattedMessage
-                        id='chat.remote'
-                        defaultMessage='Remote'
-                      />
-                    </small>
+                    <Badge
+                      variant='subtle'
+                      label={
+                        <FormattedMessage
+                          id='chat.remote'
+                          defaultMessage='Remote'
+                        />
+                      }
+                    />
                   )}
                   {isGroupOwner && account.id !== me && (
                     <Dropdown
@@ -3971,7 +3963,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       items={memberMenu(account)}
                     />
                   )}
-                </div>
+                </ChatAccountRow>
               ))}
               {shownSentInvitations.map(
                 (invitation) =>
@@ -4104,11 +4096,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     >
                       {message.account.id !== me &&
                         (startsRun(messagesList, index) ? (
-                          <Avatar
-                            account={message.account}
-                            size={36}
-                            withLink
-                          />
+                          <ChatAvatar account={message.account} withLink />
                         ) : (
                           <span className='chat-native__avatar-space' />
                         ))}
@@ -4116,7 +4104,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         {message.account.id !== me &&
                           startsRun(messagesList, index) && (
                             <strong>
-                              <AccountName account={message.account} />
+                              <ChatDisplayName account={message.account} />
                             </strong>
                           )}
                         <div className='chat-native__bubble-wrap'>
@@ -4324,7 +4312,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                               defaultMessage='Replying to {account}'
                               values={{
                                 account: (
-                                  <AccountName account={replyTarget.account} />
+                                  <ChatDisplayName
+                                    account={replyTarget.account}
+                                  />
                                 ),
                               }}
                             />
@@ -4480,19 +4470,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   </div>
                   {directAccount && (
                     <div className='chat-native__selected-accounts'>
-                      <div className='chat-native__account-card'>
-                        <AccountSummary account={directAccount} />
-                        <button
-                          type='button'
-                          onClick={handleRemoveDirectAccount}
-                          aria-label={intl.formatMessage({
-                            id: 'chat.remove_account',
-                            defaultMessage: 'Remove selected account',
-                          })}
-                        >
-                          ×
-                        </button>
-                      </div>
+                      <SelectedAccountCard
+                        account={directAccount}
+                        onRemove={handleRemoveDirectAccount}
+                      />
                     </div>
                   )}
                 </form>
@@ -4502,14 +4483,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 {accountResults.length > 0 && (
                   <div className='chat-native__account-results'>
                     {accountResults.map((account) => (
-                      <button
+                      <ChatAccountRow
                         key={account.id}
-                        type='button'
-                        data-account-id={account.id}
-                        onClick={handleAccountResult}
-                      >
-                        <AccountSummary account={account} />
-                      </button>
+                        account={account}
+                        target={{
+                          kind: 'button',
+                          'data-account-id': account.id,
+                          onClick: handleAccountResult,
+                        }}
+                      />
                     ))}
                   </div>
                 )}
@@ -4544,23 +4526,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   {groupAccounts.length > 0 && (
                     <div className='chat-native__selected-accounts'>
                       {groupAccounts.map((account) => (
-                        <div
-                          className='chat-native__account-card'
+                        <SelectedAccountCard
                           key={account.id}
-                        >
-                          <AccountSummary account={account} />
-                          <button
-                            type='button'
-                            data-account-id={account.id}
-                            onClick={handleRemoveGroupAccount}
-                            aria-label={intl.formatMessage({
-                              id: 'chat.remove_account',
-                              defaultMessage: 'Remove selected account',
-                            })}
-                          >
-                            ×
-                          </button>
-                        </div>
+                          account={account}
+                          onRemove={handleRemoveGroupAccount}
+                        />
                       ))}
                     </div>
                   )}
@@ -4571,14 +4541,15 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 {groupAccountResults.length > 0 && (
                   <div className='chat-native__account-results'>
                     {groupAccountResults.map((account) => (
-                      <button
+                      <ChatAccountRow
                         key={account.id}
-                        type='button'
-                        data-account-id={account.id}
-                        onClick={handleGroupAccountResult}
-                      >
-                        <AccountSummary account={account} />
-                      </button>
+                        account={account}
+                        target={{
+                          kind: 'button',
+                          'data-account-id': account.id,
+                          onClick: handleGroupAccountResult,
+                        }}
+                      />
                     ))}
                   </div>
                 )}
@@ -4666,18 +4637,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 {searchResults.length > 0 && (
                   <div className='chat-native__search-results'>
                     {searchResults.map((result) => (
-                      <button
+                      <ChatAccountRow
                         key={result.id}
-                        type='button'
-                        data-conversation-id={result.conversation_id}
-                        data-message-id={result.id}
-                        onClick={handleSearchResult}
-                      >
-                        <AccountSummary
-                          account={result.account}
-                          detail={result.content ?? ''}
-                        />
-                      </button>
+                        account={result.account}
+                        target={{
+                          kind: 'button',
+                          'data-conversation-id': result.conversation_id,
+                          'data-message-id': result.id,
+                          onClick: handleSearchResult,
+                        }}
+                        details={
+                          <EmojiText
+                            text={result.content ?? ''}
+                            emojis={result.emojis}
+                          />
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -4689,14 +4664,48 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   <button
                     key={item.id}
                     type='button'
-                    className={item.unread ? 'unread' : undefined}
+                    className={classNames(
+                      'conversation focusable chat-native__conversation',
+                      { unread: item.unread },
+                    )}
                     data-conversation-id={item.id}
                     onClick={handleOpenConversation}
                   >
-                    <ConversationPicture conversation={item} />
-                    <span className='chat-native__account-names'>
-                      <ConversationTitle conversation={item} />
-                      <span>
+                    <span className='conversation__avatar'>
+                      <ConversationPicture conversation={item} size={48} />
+                    </span>
+                    <span className='conversation__content'>
+                      <span className='conversation__content__info'>
+                        <span className='conversation__content__relative-time'>
+                          {item.unread && (
+                            <span
+                              className='conversation__unread'
+                              role='img'
+                              aria-label={intl.formatMessage(messages.unread)}
+                            />
+                          )}
+                          {item.last_message && (
+                            <RelativeTimestamp
+                              timestamp={item.last_message.created_at}
+                            />
+                          )}
+                        </span>
+                        <span className='conversation__content__names'>
+                          <ConversationTitle conversation={item} />
+                        </span>
+                      </span>
+                      <span className='chat-native__conversation-preview'>
+                        {item.archived && (
+                          <Badge
+                            variant='subtle'
+                            label={
+                              <FormattedMessage
+                                id='chat.archived_badge'
+                                defaultMessage='Archived'
+                              />
+                            }
+                          />
+                        )}
                         {item.last_message?.content && (
                           <EmojiText
                             text={item.last_message.content}
@@ -4705,20 +4714,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         )}
                       </span>
                     </span>
-                    {item.archived && (
-                      <small className='chat-native__state-badge'>
-                        <FormattedMessage
-                          id='chat.archived_badge'
-                          defaultMessage='Archived'
-                        />
-                      </small>
-                    )}
-                    {item.unread && (
-                      <i
-                        role='img'
-                        aria-label={intl.formatMessage(messages.unread)}
-                      />
-                    )}
                   </button>
                 ))}
                 {nextConversationId && (
