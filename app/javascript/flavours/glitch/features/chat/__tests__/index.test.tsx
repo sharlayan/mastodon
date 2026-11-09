@@ -2098,6 +2098,39 @@ describe('Chat home', () => {
     return view;
   };
 
+  it('changes chat settings from the column settings', async () => {
+    api.patch.mockImplementation(
+      (_url: string, body: Record<string, unknown>) =>
+        Promise.resolve({ data: { ...settings, ...body } }),
+    );
+    await home();
+
+    fireEvent.change(screen.getByLabelText('Who can start a direct chat'), {
+      target: { value: 'mutual' },
+    });
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalledWith('/api/v1/chat/settings', {
+        policy: 'mutual',
+      });
+    });
+
+    const invites = screen.getByLabelText('Allow group invitations');
+    expect((invites as HTMLInputElement).checked).toBe(
+      settings.allow_group_invites,
+    );
+    fireEvent.click(invites);
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalledWith('/api/v1/chat/settings', {
+        allow_group_invites: !settings.allow_group_invites,
+      });
+    });
+    await waitFor(() => {
+      expect((invites as HTMLInputElement).checked).toBe(
+        !settings.allow_group_invites,
+      );
+    });
+  });
+
   it('shows only the tabs and conversations until something is opened', async () => {
     const { container } = await home();
 

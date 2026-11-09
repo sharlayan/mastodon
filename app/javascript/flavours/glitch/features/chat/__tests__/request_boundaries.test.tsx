@@ -812,14 +812,14 @@ describe('Review a99b', () => {
     page.open('/chat');
     await waitFor(() => {
       expect(
-        document.querySelector('input[data-setting="allow_group_invites"]'),
+        document.querySelector('#setting-toggle-chat-allow_group_invites'),
       ).toBeTruthy();
     });
     const group = document.querySelector(
-      'input[data-setting="allow_group_invites"]',
+      '#setting-toggle-chat-allow_group_invites',
     ) as HTMLInputElement;
     const notifications = document.querySelector(
-      'input[data-setting="notifications"]',
+      '#setting-toggle-chat-notifications',
     ) as HTMLInputElement;
     fireEvent.click(group);
     await waitFor(() => {

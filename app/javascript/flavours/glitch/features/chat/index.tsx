@@ -22,7 +22,7 @@ import classNames from 'classnames';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 
 import type { List as ImmutableList } from 'immutable';
-import { fromJS } from 'immutable';
+import { fromJS, Map as ImmutableMap } from 'immutable';
 
 import { Helmet } from '@unhead/react/helmet';
 import Textarea from 'react-textarea-autosize';
@@ -58,6 +58,7 @@ import {
   AnimateEmojiProvider,
   CustomEmojiProvider,
 } from 'flavours/glitch/components/emoji/context';
+import { SelectField } from 'flavours/glitch/components/form_fields';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
@@ -66,6 +67,7 @@ import MediaGallery from 'flavours/glitch/components/media_gallery';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
 import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
+import SettingToggle from 'flavours/glitch/features/notifications/components/setting_toggle';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { me, roleplayMode } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
@@ -3520,13 +3522,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
+  const toggleSettings = useMemo(
+    () =>
+      ImmutableMap({
+        allow_group_invites: chatSettings?.allow_group_invites ?? false,
+        notifications: chatSettings?.notifications ?? false,
+      }),
+    [chatSettings?.allow_group_invites, chatSettings?.notifications],
+  );
+
   const handleSettingToggle = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const key = event.target.dataset.setting;
+    (path: string[], checked: boolean) => {
+      const key = path[0];
       if (key !== 'notifications' && key !== 'allow_group_invites') return;
       if (
         key === 'notifications' &&
-        event.target.checked &&
+        checked &&
         'Notification' in window &&
         Notification.permission === 'default'
       ) {
@@ -3535,7 +3546,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       setError(null);
       void api()
         .patch<ChatSettings>('/api/v1/chat/settings', {
-          [key]: event.target.checked,
+          [key]: checked,
         })
         .then((response) => {
           setChatSettings((current) =>
@@ -3909,14 +3920,19 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         }
       >
         {!conversationId && !creating && chatSettings && (
-          <div className='chat-native-settings'>
-            <h3>{intl.formatMessage(messages.settings)}</h3>
-            <label>
-              <FormattedMessage
-                id='chat.policy'
-                defaultMessage='Who can start a direct chat'
-              />
-              <select value={chatSettings.policy} onChange={handlePolicyChange}>
+          <div className='column-settings chat-native-settings'>
+            <section>
+              <h3>{intl.formatMessage(messages.settings)}</h3>
+              <SelectField
+                label={
+                  <FormattedMessage
+                    id='chat.policy'
+                    defaultMessage='Who can start a direct chat'
+                  />
+                }
+                value={chatSettings.policy}
+                onChange={handlePolicyChange}
+              >
                 <option value='everyone'>
                   {intl.formatMessage({
                     id: 'chat.policy.everyone',
@@ -3947,32 +3963,36 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     defaultMessage: 'Nobody',
                   })}
                 </option>
-              </select>
-            </label>
-            <label>
-              <input
-                type='checkbox'
-                data-setting='allow_group_invites'
-                checked={chatSettings.allow_group_invites}
-                onChange={handleSettingToggle}
-              />
-              <FormattedMessage
-                id='chat.allow_group_invites'
-                defaultMessage='Allow group invitations'
-              />
-            </label>
-            <label>
-              <input
-                type='checkbox'
-                data-setting='notifications'
-                checked={chatSettings.notifications}
-                onChange={handleSettingToggle}
-              />
-              <FormattedMessage
-                id='chat.notifications'
-                defaultMessage='Notify me about new chat messages'
-              />
-            </label>
+              </SelectField>
+            </section>
+            <section>
+              <div className='column-settings__row'>
+                <SettingToggle
+                  prefix='chat'
+                  settings={toggleSettings}
+                  settingPath={['allow_group_invites']}
+                  onChange={handleSettingToggle}
+                  label={
+                    <FormattedMessage
+                      id='chat.allow_group_invites'
+                      defaultMessage='Allow group invitations'
+                    />
+                  }
+                />
+                <SettingToggle
+                  prefix='chat'
+                  settings={toggleSettings}
+                  settingPath={['notifications']}
+                  onChange={handleSettingToggle}
+                  label={
+                    <FormattedMessage
+                      id='chat.notifications'
+                      defaultMessage='Notify me about new chat messages'
+                    />
+                  }
+                />
+              </div>
+            </section>
           </div>
         )}
       </ColumnHeader>
