@@ -8,6 +8,7 @@ import { useParams, Link } from 'react-router-dom';
 import { fromJS } from 'immutable';
 
 import { Helmet } from '@unhead/react/helmet';
+import { isAxiosError } from 'axios';
 
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
@@ -170,7 +171,11 @@ const PageShow: React.FC<{
     accountId: string;
     pages: ApiPageJSON[];
   } | null>(null);
-  const [errorId, setErrorId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<{
+    id: string;
+    notFound: boolean;
+  } | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [wideView, setWideView] = useState(false);
   const [password, setPassword] = useState('');
   const [unlocking, setUnlocking] = useState(false);
@@ -223,6 +228,10 @@ const PageShow: React.FC<{
   }, [multiColumn]);
 
   useEffect(() => {
+    if (initialPage?.id === id && !initialPage.locked) {
+      return;
+    }
+
     let active = true;
 
     apiGetPage(id)
@@ -233,20 +242,28 @@ const PageShow: React.FC<{
 
         return data;
       })
-      .catch(() => {
+      .catch((loadFailure: unknown) => {
         if (active) {
-          setErrorId(id);
+          const status = isAxiosError(loadFailure)
+            ? loadFailure.response?.status
+            : undefined;
+          setLoadError({ id, notFound: status === 404 || status === 410 });
         }
       });
 
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, initialPage, loadAttempt]);
+
+  const handleRetryLoad = useCallback(() => {
+    setLoadError(null);
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
 
   const currentPage = page?.id === id ? page : null;
   const currentPageAccountId = currentPage?.account_id;
-  const error = errorId === id;
+  const error = loadError?.id === id && !currentPage ? loadError : null;
   const isOwner = !!currentPage && currentPage.account_id === accountId;
   const useBlogView =
     !!currentPage &&
@@ -555,7 +572,13 @@ const PageShow: React.FC<{
   );
 
   if (error) {
-    return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
+    return (
+      <BundleColumnError
+        multiColumn={multiColumn}
+        errorType={error.notFound ? 'routing' : 'network'}
+        onRetry={handleRetryLoad}
+      />
+    );
   }
 
   const title = currentPage

@@ -170,6 +170,7 @@ describe('PageShow', () => {
     mocks.dispatch.mockReset();
     mocks.applyPageColorScheme.mockReset();
     mocks.accountId = '1';
+    mocks.apiGetPage.mockReset();
     mocks.apiGetPage.mockImplementation((id: string) =>
       Promise.resolve(pageJSON(id, { is_main: id === 'a' })),
     );
@@ -420,5 +421,36 @@ describe('PageShow', () => {
     await waitFor(() => {
       expect(screen.getByTestId('nav').textContent).toBe('e|d');
     });
+  });
+
+  it('does not refetch an unlocked page that was already loaded by name', async () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/@alice/pages/page-a'],
+    });
+
+    render(
+      <IntlProvider locale='en'>
+        <Router history={history}>
+          <PageShow
+            multiColumn
+            pageId='a'
+            initialPage={pageJSON('a', { locked: false })}
+          />
+        </Router>
+      </IntlProvider>,
+    );
+
+    expect((await screen.findByTestId('title')).textContent).toBe('Page a');
+    expect(mocks.apiGetPage).not.toHaveBeenCalled();
+  });
+
+  it('offers a retry instead of not found when loading fails with a network error', async () => {
+    mocks.apiGetPage.mockRejectedValueOnce(new Error('network'));
+    renderShow();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Try again/ }));
+
+    expect((await screen.findByTestId('title')).textContent).toBe('Page a');
+    expect(mocks.apiGetPage).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useParams } from 'react-router-dom';
+
+import { isAxiosError } from 'axios';
 
 import { apiGetAccountPage } from '@/flavours/glitch/api/pages';
 import type { ApiPageJSON } from '@/flavours/glitch/api_types/pages';
@@ -18,7 +20,11 @@ const AccountPage: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
     requestKey: string;
     page: ApiPageJSON;
   } | null>(null);
-  const [notFoundKey, setNotFoundKey] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<{
+    requestKey: string;
+    notFound: boolean;
+  } | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     if (!accountId) {
@@ -36,19 +42,40 @@ const AccountPage: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
 
         return page;
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (active) {
-          setNotFoundKey(currentRequestKey);
+          const status = isAxiosError(error)
+            ? error.response?.status
+            : undefined;
+          setLoadError({
+            requestKey: currentRequestKey,
+            notFound: status === 404 || status === 410,
+          });
         }
       });
 
     return () => {
       active = false;
     };
-  }, [accountId, name]);
+  }, [accountId, name, loadAttempt]);
 
-  if (accountId === null || (requestKey && notFoundKey === requestKey)) {
+  const handleRetryLoad = useCallback(() => {
+    setLoadError(null);
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
+
+  if (accountId === null) {
     return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
+  }
+
+  if (requestKey && loadError?.requestKey === requestKey) {
+    return (
+      <BundleColumnError
+        multiColumn={multiColumn}
+        errorType={loadError.notFound ? 'routing' : 'network'}
+        onRetry={handleRetryLoad}
+      />
+    );
   }
 
   const page =
