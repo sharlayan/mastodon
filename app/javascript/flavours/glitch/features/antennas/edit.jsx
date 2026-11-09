@@ -15,6 +15,7 @@ import {
   fetchAntennaAccounts,
   saveAntenna,
 } from 'flavours/glitch/actions/antennas';
+import { showAlertForError } from 'flavours/glitch/actions/alerts';
 import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
@@ -34,8 +35,12 @@ const ChipList = ({ label, items, getKey, getLabel, onAdd, onRemove, placeholder
     e.preventDefault();
     const trimmed = value.trim();
     if (trimmed.length === 0) return;
-    onAdd(trimmed);
-    setValue('');
+    const result = onAdd(trimmed);
+    if (result && typeof result.then === 'function') {
+      result.then(() => { setValue(''); }, () => {});
+    } else {
+      setValue('');
+    }
   }, [value, onAdd]);
 
   return (
@@ -156,7 +161,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
     setForm(prev => ({ ...prev, [field]: prev[field].filter(item => item !== value) }));
   }, []);
 
-  const addAccount = useCallback((field) => (acct) => {
+  const addAccount = useCallback((field) => (acct) =>
     api().get('/api/v1/accounts/lookup', { params: { acct: acct.replace(/^@/, '') } })
       .then(({ data }) => {
         dispatch(importFetchedAccounts([data]));
@@ -164,8 +169,10 @@ const AntennaEdit = ({ params, multiColumn }) => {
           ? prev
           : { ...prev, [field]: [...prev[field], { id: String(data.id), label: acct }] }));
       })
-      .catch(() => {});
-  }, [dispatch]);
+      .catch((err) => {
+        dispatch(showAlertForError(err));
+        throw err;
+      }), [dispatch]);
 
   const removeAccount = useCallback((field) => (account) => {
     setForm(prev => ({ ...prev, [field]: prev[field].filter(a => a.id !== account.id) }));

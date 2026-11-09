@@ -2,7 +2,7 @@ import { IntlProvider } from 'react-intl';
 
 import { Route, Router, useParams } from 'react-router-dom';
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryHistory } from 'history';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -50,6 +50,9 @@ const server = setupServer(
     antennas[params.id]
       ? HttpResponse.json(antennas[params.id])
       : HttpResponse.json({ error: 'Record not found' }, { status: 404 }),
+  ),
+  http.get('*/api/v1/accounts/lookup', () =>
+    HttpResponse.json({ error: 'Record not found' }, { status: 404 }),
   ),
   http.get('*/api/v1/accounts', ({ request }) => {
     const ids = new URL(request.url).searchParams.getAll('id[]');
@@ -111,5 +114,20 @@ describe('AntennaEdit', () => {
       expect(screen.getByText(/The requested page could not be found/)).toBeTruthy();
     });
     expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
+  });
+
+  it('keeps an account that cannot be found in the input and shows an error', async () => {
+    antennas['2'] = antennaJSON('2');
+    renderEdit('2');
+
+    const [input] = await screen.findAllByPlaceholderText('@user@example.com');
+    const alertCount = store.getState().alerts.length;
+    fireEvent.change(input, { target: { value: '@typo@example.com' } });
+    fireEvent.submit(input.closest('form'));
+
+    await waitFor(() => {
+      expect(store.getState().alerts.length).toBe(alertCount + 1);
+    });
+    expect(input.value).toBe('@typo@example.com');
   });
 });
