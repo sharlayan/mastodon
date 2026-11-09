@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   apiCreatePage: vi.fn(),
   apiUpdatePage: vi.fn(),
   apiUpdatePageSeries: vi.fn(),
+  apiSetBookletMainPage: vi.fn(),
 }));
 
 vi.mock('flavours/glitch/store', async (importOriginal) => ({
@@ -35,7 +36,7 @@ vi.mock('flavours/glitch/store', async (importOriginal) => ({
 vi.mock('flavours/glitch/api/pages', () => ({
   apiGetPage: mocks.apiGetPage,
   apiGetPageSeries: mocks.apiGetPageSeries,
-  apiSetBookletMainPage: vi.fn(),
+  apiSetBookletMainPage: mocks.apiSetBookletMainPage,
   apiUnsetBookletMainPage: vi.fn(),
   apiCreatePage: mocks.apiCreatePage,
   apiUpdatePage: mocks.apiUpdatePage,
@@ -163,6 +164,52 @@ describe('PageEditor', () => {
       );
     });
     expect(mocks.apiGetPage).toHaveBeenCalledTimes(2);
+  });
+
+  it('updates the created page instead of creating a duplicate when setting the Booklet main page fails', async () => {
+    mocks.apiGetPageSeries.mockResolvedValue([
+      { id: 'b1', title: 'Booklet one' },
+    ]);
+    mocks.apiCreatePage.mockResolvedValue({
+      ...pageJSON,
+      id: 'created',
+      booklet_id: 'b1',
+    });
+    mocks.apiSetBookletMainPage.mockRejectedValueOnce(new Error('network'));
+    mocks.apiUpdatePage.mockResolvedValue({
+      ...pageJSON,
+      id: 'created',
+      booklet_id: 'b1',
+      booklet_main: true,
+    });
+    renderEditor('/pages/new');
+
+    fireEvent.change(screen.getByLabelText(/Title/), {
+      target: { value: 'New title' },
+    });
+    await screen.findByRole('option', { name: 'Booklet one' });
+    fireEvent.change(screen.getByLabelText(/^Booklet/), {
+      target: { value: 'b1' },
+    });
+    fireEvent.click(screen.getByLabelText(/representative page/));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(mocks.apiSetBookletMainPage).toHaveBeenCalledWith('created');
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Save').closest('button')?.disabled).toBe(false);
+    });
+
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(mocks.apiUpdatePage).toHaveBeenCalledWith(
+        'created',
+        expect.objectContaining({ title: 'New title', booklet_id: 'b1' }),
+      );
+    });
+    expect(mocks.apiCreatePage).toHaveBeenCalledTimes(1);
   });
 
   it('opens the editor for a new page without loading', () => {

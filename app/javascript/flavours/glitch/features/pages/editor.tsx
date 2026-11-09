@@ -161,6 +161,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     notFound: boolean;
   } | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [createdId, setCreatedId] = useState<string | null>(null);
   const useBlogView = isServerPageBlogViewPath(window.location.pathname);
 
   useEffect(() => {
@@ -378,13 +379,19 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       content,
       eye_catching_media_attachment_id: eyeCatching?.id ?? null,
     });
+    const targetId = id ?? createdId;
+
     Promise.resolve(bookletId || null)
       .then((selectedBookletId) =>
-        isEditing
-          ? apiUpdatePage(id, buildPayload(selectedBookletId))
+        targetId
+          ? apiUpdatePage(targetId, buildPayload(selectedBookletId))
           : apiCreatePage(buildPayload(selectedBookletId)),
       )
       .then((savedPage) => {
+        if (!targetId) {
+          setCreatedId(savedPage.id);
+        }
+
         if (!savedPage.booklet_id || savedPage.visibility !== 'public') {
           return savedPage;
         }
@@ -419,6 +426,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     loaded,
     isEditing,
     id,
+    createdId,
     trimmedTitle,
     name,
     summary,
