@@ -98,6 +98,7 @@ ja:
       approved: 承認済み
       approved_msg: デコレーションが承認されました
       assign_category: カテゴリを割り当て
+      batch_error: "変更を適用できませんでした: %{message}"
       category: カテゴリ
       check_images: デコレーション画像を点検
       check_images_msg: デコレーション画像の点検を開始しました。欠落している画像は再ダウンロードされます

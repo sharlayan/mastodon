@@ -99,6 +99,7 @@ en:
       approved: Approved
       approved_msg: Decoration approved successfully
       assign_category: Assign category
+      batch_error: "Could not apply the change: %{message}"
       category: Category
       check_images: Check decoration images
       check_images_msg: Started checking decoration images; missing ones will be downloaded
