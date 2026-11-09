@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
@@ -14,6 +14,7 @@ import type {
   ApiPageBlockType,
 } from 'flavours/glitch/api_types/pages';
 import { Icon } from 'flavours/glitch/components/icon';
+import { domain } from 'flavours/glitch/initial_state';
 import { useAppDispatch } from 'flavours/glitch/store';
 
 import { pageDocumentTextOnlyLength } from '../util/plain_text';
@@ -93,6 +94,25 @@ const SECTION_CHILD_TYPES: ApiPageBlockType[] = [
   'youtube',
 ];
 
+const parseNoteInput = (value: string): string | null | undefined => {
+  const raw = value.trim();
+
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return raw;
+
+  let url: URL;
+
+  try {
+    url = new URL(raw);
+  } catch {
+    return undefined;
+  }
+
+  if (url.host !== domain) return undefined;
+
+  return /\/(\d+)\/?$/.exec(url.pathname)?.[1];
+};
+
 interface EditorBlockProps {
   block: ApiPageBlock;
   depth: number;
@@ -167,14 +187,31 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
     [onUpdate, blockId],
   );
 
+  const [noteDraft, setNoteDraft] = useState<string | null>(null);
+  const [noteInvalid, setNoteInvalid] = useState(false);
+
   const handleNoteChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = event.target.value.trim();
-      const match = /(\d+)\s*$/.exec(raw);
-      onUpdate(blockId, { note: match?.[1] ?? (raw || null) });
+      setNoteDraft(event.target.value);
+      setNoteInvalid(false);
     },
-    [onUpdate, blockId],
+    [],
   );
+
+  const handleNoteBlur = useCallback(() => {
+    if (noteDraft === null) return;
+
+    const note = parseNoteInput(noteDraft);
+
+    if (note === undefined) {
+      setNoteInvalid(true);
+      onUpdate(blockId, { note: null });
+      return;
+    }
+
+    setNoteDraft(null);
+    onUpdate(blockId, { note });
+  }, [onUpdate, blockId, noteDraft]);
 
   const handleImageChange = useCallback(
     (media: ApiMediaAttachmentJSON | null) => {
@@ -305,9 +342,11 @@ export const EditorBlock: React.FC<EditorBlockProps> = ({
       {block.type === 'note' && (
         <input
           type='text'
-          value={block.note ?? ''}
+          value={noteDraft ?? block.note ?? ''}
           placeholder={intl.formatMessage(messages.notePlaceholder)}
+          aria-invalid={noteInvalid}
           onChange={handleNoteChange}
+          onBlur={handleNoteBlur}
         />
       )}
 
