@@ -167,7 +167,7 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
             <span className='page-editor__hint'>
               {intl.formatMessage(messages.coverHint)}
             </span>
-            <ImageUploadField value={cover} onChange={setCover} />
+            <ImageUploadField value={cover} onChange={setCover} crop />
           </div>
           <div className='fields-group'>
             <SelectField
