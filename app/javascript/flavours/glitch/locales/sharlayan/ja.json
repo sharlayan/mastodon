@@ -253,7 +253,7 @@
   "compose_form.circle.none": "サークルなし",
   "compose_form.circle.select": "サークルを選択",
   "compose_form.clear_schedule": "クリア",
-  "compose_form.clip.count": "クリップ{count}件",
+  "compose_form.clip.count": "{count, plural, other {クリップ#件}}",
   "compose_form.clip.label": "クリップに追加",
   "compose_form.clip.select": "クリップを選択",
   "compose_form.draft.empty": "保存された下書きはありません",

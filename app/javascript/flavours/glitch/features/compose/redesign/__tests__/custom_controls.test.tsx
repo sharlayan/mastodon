@@ -266,6 +266,13 @@ describe('redesign custom compose controls', () => {
     });
   });
 
+  it('pluralizes the selected clip count', () => {
+    state.compose = state.compose.setIn(['clip_ids', 0], 'clip');
+    renderControls(<ComposeCustomControls />);
+
+    expect(screen.getByRole('button', { name: '1 clip' })).toBeTruthy();
+  });
+
   it('honors feature gates and hidden draft or schedule settings', () => {
     context.flags.circlesEnabled = false;
     context.flags.clipsEnabled = false;

@@ -141,7 +141,7 @@ export const ComposeClipButton: React.FC = () => {
       {selectedCount > 0 ? (
         <FormattedMessage
           id='compose_form.clip.count'
-          defaultMessage='{count} clips'
+          defaultMessage='{count, plural, one {# clip} other {# clips}}'
           values={{ count: selectedCount }}
         />
       ) : (

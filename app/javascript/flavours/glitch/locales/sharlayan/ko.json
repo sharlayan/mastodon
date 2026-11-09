@@ -253,7 +253,7 @@
   "compose_form.circle.none": "서클 없음",
   "compose_form.circle.select": "서클 선택",
   "compose_form.clear_schedule": "해제",
-  "compose_form.clip.count": "클립 {count}개",
+  "compose_form.clip.count": "{count, plural, other {클립 #개}}",
   "compose_form.clip.label": "클립에 추가",
   "compose_form.clip.select": "클립 선택",
   "compose_form.draft.empty": "저장된 초안이 없습니다",

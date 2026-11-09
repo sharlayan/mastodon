@@ -253,7 +253,7 @@
   "compose_form.circle.none": "No circle",
   "compose_form.circle.select": "Select circle",
   "compose_form.clear_schedule": "Clear",
-  "compose_form.clip.count": "{count} clips",
+  "compose_form.clip.count": "{count, plural, one {# clip} other {# clips}}",
   "compose_form.clip.label": "Add to clip",
   "compose_form.clip.select": "Select clip",
   "compose_form.draft.empty": "No saved drafts",
