@@ -1475,9 +1475,15 @@ const startServer = async () => {
     metrics.connectedChannels.labels({ type: 'websocket', channel: 'system' }).inc(2);
   };
 
+  /**
+   * @param {string} channel
+   * @param {string} message
+   */
+  const publishNamespaced = (channel, message) => redisClient.publish(redisNamespaced(channel), message);
+
   const extensions = createStreamingExtensions({
     pgPool,
-    publish: (channel, message) => redisClient.publish(redisNamespaced(channel), message),
+    publish: publishNamespaced,
     subscribe,
     unsubscribe,
     subscriptionHeartbeat,
