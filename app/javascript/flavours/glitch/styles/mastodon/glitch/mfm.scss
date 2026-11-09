@@ -76,7 +76,7 @@
 .mfm-unixtime {
   display: inline-block;
   padding: 2px 6px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-primary);
   border-radius: 4px;
   font-size: 0.9em;
 }
@@ -589,7 +589,7 @@ html:not(.no-reduce-motion) .mfm-sparkle-particle:not(.mfm-preview-modal *) {
     border-radius: 4px;
     cursor: pointer;
     user-select: none;
-    color: var(--color-accent);
+    color: var(--color-text-brand);
     font-size: 0.9em;
     padding: 2px 0;
     text-decoration: none;
@@ -625,7 +625,7 @@ html:not(.no-reduce-motion) .mfm-sparkle-particle:not(.mfm-preview-modal *) {
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--color-accent);
+    color: var(--color-text-brand);
     cursor: pointer;
     font-size: inherit;
     font-weight: 500;
@@ -648,7 +648,7 @@ html:not(.no-reduce-motion) .mfm-sparkle-particle:not(.mfm-preview-modal *) {
 
     &:hover,
     &:focus {
-      color: var(--color-accent);
+      color: var(--color-text-brand);
       text-decoration: underline;
     }
   }
@@ -707,7 +707,7 @@ html:not(.no-reduce-motion) .mfm-sparkle-particle:not(.mfm-preview-modal *) {
     font-size: 13px;
 
     a {
-      color: var(--color-accent);
+      color: var(--color-text-brand);
       text-decoration: none;
 
       &:hover,

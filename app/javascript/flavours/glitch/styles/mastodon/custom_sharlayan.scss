@@ -288,7 +288,7 @@ html {
 
       &.active {
         color: var(--color-text-brand);
-        background-color: var(--color-bg-brand-softer);
+        background-color: var(--color-bg-brand-soft);
         border-color: var(--color-text-brand);
         transition: all 100ms ease-in;
         transition-property: background-color, color;
