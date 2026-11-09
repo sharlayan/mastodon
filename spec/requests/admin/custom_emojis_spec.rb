@@ -20,15 +20,10 @@ RSpec.describe 'Admin Custom Emojis' do
 
     before { sign_in admin }
 
-    it 'returns http success' do
+    it 'returns http success without a shortcode input field' do
       get edit_admin_custom_emoji_path(custom_emoji)
 
       expect(response).to have_http_status(200)
-    end
-
-    it 'does not include a shortcode input field' do
-      get edit_admin_custom_emoji_path(custom_emoji)
-
       expect(response.body).to_not include('name="custom_emoji[shortcode]"')
     end
   end
@@ -40,31 +35,17 @@ RSpec.describe 'Admin Custom Emojis' do
     before { sign_in admin }
 
     context 'when updating aliases and license' do
-      it 'updates the record and redirects' do
+      it 'updates aliases, license, sensitive and local-only flags and redirects' do
         patch admin_custom_emoji_path(custom_emoji), params: {
-          custom_emoji: { aliases_raw: 'blob, cat, cute', license: 'CC0' },
+          custom_emoji: { aliases_raw: 'blob, cat, cute', license: 'CC0', is_sensitive: '1', local_only: '1' },
         }
 
         expect(response).to redirect_to(admin_custom_emojis_path)
         custom_emoji.reload
         expect(custom_emoji.aliases).to contain_exactly('blob', 'cat', 'cute')
         expect(custom_emoji.license).to eq('CC0')
-      end
-
-      it 'updates the sensitive flag' do
-        patch admin_custom_emoji_path(custom_emoji), params: {
-          custom_emoji: { is_sensitive: '1' },
-        }
-
-        expect(custom_emoji.reload).to be_is_sensitive
-      end
-
-      it 'updates the local-only flag' do
-        patch admin_custom_emoji_path(custom_emoji), params: {
-          custom_emoji: { local_only: '1' },
-        }
-
-        expect(custom_emoji.reload).to be_local_only
+        expect(custom_emoji).to be_is_sensitive
+        expect(custom_emoji).to be_local_only
       end
 
       it 'strips whitespace from aliases' do
@@ -117,20 +98,14 @@ RSpec.describe 'Admin Custom Emojis' do
   describe 'CustomEmoji.search with aliases' do
     before { sign_in Fabricate(:admin_user) }
 
-    it 'finds emojis by alias' do
+    it 'finds emojis by alias and still by shortcode' do
       Fabricate(:custom_emoji, shortcode: 'blobcat', aliases: ['fluffy', 'cute'])
       Fabricate(:custom_emoji, shortcode: 'cooldog', aliases: [])
 
       results = CustomEmoji.search('fluffy')
       expect(results.map(&:shortcode)).to include('blobcat')
       expect(results.map(&:shortcode)).to_not include('cooldog')
-    end
-
-    it 'still finds emojis by shortcode' do
-      Fabricate(:custom_emoji, shortcode: 'blobcat', aliases: [])
-
-      results = CustomEmoji.search('blob')
-      expect(results.map(&:shortcode)).to include('blobcat')
+      expect(CustomEmoji.search('blob').map(&:shortcode)).to include('blobcat')
     end
   end
 
@@ -144,11 +119,9 @@ RSpec.describe 'Admin Custom Emojis' do
       get '/api/v1/custom_emojis'
     end
 
-    it 'caches the public emoji list under the expected key' do
+    it 'caches the public emoji list under the expected key and purges it when resetting the cache' do
       expect(Rails.cache.exist?(cache_key)).to be true
-    end
 
-    it 'purges the cached list when resetting the cache' do
       post reset_cache_admin_custom_emojis_path
 
       expect(Rails.cache.exist?(cache_key)).to be false
