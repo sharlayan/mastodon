@@ -11,7 +11,7 @@ import { Helmet } from '@unhead/react/helmet';
 
 import { useIdentity } from '@/flavours/glitch/identity_context';
 import ArrowUpwardIcon from '@/material-icons/400-24px/arrow_upward.svg?react';
-import { showAlert } from 'flavours/glitch/actions/alerts';
+import { showAlert, showAlertForError } from 'flavours/glitch/actions/alerts';
 import { openModal } from 'flavours/glitch/actions/modal';
 import {
   apiGetPage,
@@ -93,6 +93,32 @@ const collectPageMedia = (page: ApiPageJSON): PageMediaEntry[] => {
   return entries;
 };
 
+const colorSchemeStorageKey = 'mastodon-page-color-scheme';
+
+const readStoredColorScheme = (supported: ColorScheme[]): ColorScheme => {
+  let stored: string | null = null;
+
+  try {
+    stored = localStorage.getItem(colorSchemeStorageKey);
+  } catch {
+    stored = null;
+  }
+
+  if (stored && (supported as string[]).includes(stored)) {
+    return stored as ColorScheme;
+  }
+
+  return supported.includes('auto') ? 'auto' : (supported[0] ?? 'auto');
+};
+
+const storeColorScheme = (value: ColorScheme) => {
+  try {
+    localStorage.setItem(colorSchemeStorageKey, value);
+  } catch {
+    return;
+  }
+};
+
 const messages = defineMessages({
   heading: { id: 'column.pages', defaultMessage: 'Pages' },
   confirmDelete: {
@@ -151,10 +177,7 @@ const PageShow: React.FC<{
   const [showBackToTop, setShowBackToTop] = useState(false);
   const supportedColorSchemes = pageBlogViewColorSchemes as ColorScheme[];
   const [visitorColorScheme, setVisitorColorScheme] = useState<ColorScheme>(
-    () =>
-      (localStorage.getItem(
-        'mastodon-page-color-scheme',
-      ) as ColorScheme | null) ?? 'auto',
+    () => readStoredColorScheme(supportedColorSchemes),
   );
   const scrollableRef = useRef<HTMLDivElement>(null);
 
@@ -271,8 +294,14 @@ const PageShow: React.FC<{
         history.push('/pages');
         return undefined;
       })
-      .catch(() => undefined);
-  }, [id, history, intl]);
+      .catch((error: unknown) => {
+        dispatch(showAlertForError(error));
+      });
+  }, [id, history, intl, dispatch]);
+
+  const replacePage = useCallback((data: ApiPageJSON) => {
+    setPage((current) => (current?.id === data.id ? data : current));
+  }, []);
 
   const handleLikeToggle = useCallback(() => {
     if (!page) {
@@ -283,11 +312,13 @@ const PageShow: React.FC<{
 
     request(id)
       .then((data) => {
-        setPage(data);
+        replacePage(data);
         return data;
       })
-      .catch(() => undefined);
-  }, [id, page]);
+      .catch((error: unknown) => {
+        dispatch(showAlertForError(error));
+      });
+  }, [id, page, replacePage, dispatch]);
 
   const handleMainToggle = useCallback(() => {
     if (!page) return;
@@ -296,9 +327,9 @@ const PageShow: React.FC<{
 
     request(id)
       .then((data) => {
-        setPage(data);
+        replacePage(data);
         setAccountPagesResult((result) =>
-          result
+          result?.accountId === data.account_id
             ? {
                 ...result,
                 pages: result.pages.map((accountPage) => ({
@@ -310,8 +341,10 @@ const PageShow: React.FC<{
         );
         return data;
       })
-      .catch(() => undefined);
-  }, [id, page]);
+      .catch((error: unknown) => {
+        dispatch(showAlertForError(error));
+      });
+  }, [id, page, replacePage, dispatch]);
 
   const handleShare = useCallback(() => {
     if (currentPage?.visibility !== 'public') {
@@ -319,16 +352,33 @@ const PageShow: React.FC<{
     }
 
     const url = `${window.location.origin}/@${currentPage.account.acct}/pages/${encodeURIComponent(currentPage.name)}`;
-    const supportsNativeShare = 'share' in navigator;
+    const copyLink = () => {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          dispatch(showAlert({ message: messages.linkCopied }));
+          return undefined;
+        })
+        .catch((error: unknown) => {
+          dispatch(showAlertForError(error));
+        });
+    };
 
-    if (supportsNativeShare) {
-      void navigator.share({
-        title: currentPage.title,
-        url,
-      });
+    if ('share' in navigator) {
+      navigator
+        .share({
+          title: currentPage.title,
+          url,
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            return;
+          }
+
+          copyLink();
+        });
     } else {
-      void navigator.clipboard.writeText(url);
-      dispatch(showAlert({ message: messages.linkCopied }));
+      copyLink();
     }
   }, [currentPage, dispatch]);
 
@@ -344,7 +394,7 @@ const PageShow: React.FC<{
 
       apiUnlockPage(id, password)
         .then((data) => {
-          setPage(data);
+          replacePage(data);
           setPassword('');
           setUnlocking(false);
           return data;
@@ -354,7 +404,7 @@ const PageShow: React.FC<{
           setUnlocking(false);
         });
     },
-    [id, password],
+    [id, password, replacePage],
   );
 
   const handlePasswordChange = useCallback(
@@ -498,7 +548,7 @@ const PageShow: React.FC<{
     (event: React.ChangeEvent<HTMLSelectElement>) => {
       const value = event.target.value as ColorScheme;
       setVisitorColorScheme(value);
-      localStorage.setItem('mastodon-page-color-scheme', value);
+      storeColorScheme(value);
     },
     [],
   );
