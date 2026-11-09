@@ -5,6 +5,7 @@ import { replyComposeById } from '@/flavours/glitch/actions/compose_typed';
 import { closeModal } from '@/flavours/glitch/actions/modal';
 import { browserHistory } from '@/flavours/glitch/components/router';
 import { rootReducer } from '@/flavours/glitch/reducers';
+import { accountFactoryAPI, statusFactoryAPI } from '@/testing/factories';
 
 import { Status } from '../legacy';
 
@@ -18,6 +19,18 @@ vi.hoisted(() => {
     }),
   });
 });
+
+const { apiGet, apiRequest } = vi.hoisted(() => ({ apiGet: vi.fn(), apiRequest: vi.fn() }));
+
+vi.mock('@/flavours/glitch/api', async (importOriginal) => ({
+  ...(await importOriginal()),
+  default: () => ({ get: apiGet, request: apiRequest }),
+}));
+
+vi.mock('@/flavours/glitch/initial_state', async (importOriginal) => ({
+  ...(await importOriginal()),
+  localStatusPageAccess: 'authenticated',
+}));
 
 vi.mock('@/flavours/glitch/is_mobile', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -132,5 +145,57 @@ describe('legacy detailed reply', () => {
     component.handleReplyClick(status);
 
     expect(dispatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('legacy status page for logged-out visitors on a restricted server', () => {
+  const loadStatusPage = async (statusId) => {
+    let state = rootReducer(undefined, { type: '@@INIT' });
+    const dispatch = vi.fn(action => {
+      if (typeof action === 'function') {
+        return action(dispatch, () => state);
+      }
+      state = rootReducer(state, action);
+      return action;
+    });
+    const component = new Status({ dispatch, identity: { signedIn: false }, params: { statusId } });
+    component.setState = vi.fn(update => Object.assign(component.state, update));
+
+    component._fetchStatus(statusId);
+    await vi.waitFor(() => expect(state.getIn(['statuses', statusId, 'isLoading'])).toBeFalsy());
+
+    return { component };
+  };
+
+  afterEach(() => {
+    apiGet.mockReset();
+    apiRequest.mockReset();
+  });
+
+  it('loads remote statuses the server allows', async () => {
+    apiGet.mockResolvedValue({ data: statusFactoryAPI({ id: 'remote-status', account: accountFactoryAPI({ id: 'remote-account', acct: 'bob@remote.example' }) }) });
+    apiRequest.mockResolvedValue({ data: { ancestors: [], descendants: [] }, headers: {} });
+
+    const { component } = await loadStatusPage('remote-status');
+
+    expect(component.state.loginRequiredStatusId).toBeUndefined();
+    await vi.waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.objectContaining({ url: '/api/v1/statuses/remote-status/context' })));
+  });
+
+  it('asks for login only when the API refuses the status', async () => {
+    apiGet.mockRejectedValue(Object.assign(new Error('Request failed'), { status: 422, response: { status: 422, data: {} } }));
+
+    const { component } = await loadStatusPage('local-status');
+
+    expect(component.state.loginRequiredStatusId).toBe('local-status');
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
+  it('does not ask for login for missing statuses', async () => {
+    apiGet.mockRejectedValue(Object.assign(new Error('Request failed'), { status: 404, response: { status: 404, data: {} } }));
+
+    const { component } = await loadStatusPage('missing-status');
+
+    expect(component.state.loginRequiredStatusId).toBeUndefined();
   });
 });
