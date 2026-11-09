@@ -64,6 +64,19 @@
   --rich-text-container-color: rgb(255 216 231 / 100%);
   --rich-text-text-color: rgb(114 47 83 / 100%);
   --rich-text-decorations-color: rgb(255 175 212 / 100%);
+  --color-text-success: var(--color-green-700);
+  --color-text-brand-on-inverted: var(--color-brand-mastodon-links);
+  --color-bg-secondary-solid: #f5f8fa;
+  --shadow-strength-primary: 30%;
+  --color-shadow-primary: rgb(
+    from var(--color-black) r g b / var(--shadow-strength-primary)
+  );
+  --dropdown-shadow:
+    0 20px 25px -5px var(--color-shadow-primary),
+    0 8px 10px -6px var(--color-shadow-primary);
+  --color-graph-warning-stroke: var(--color-text-warning);
+  --color-graph-warning-fill: var(--color-bg-warning-softest);
+  --color-graph-disabled-stroke: var(--color-grey-300);
 
   // Icons for light theme
 
