@@ -87,9 +87,11 @@ class BatchedRemoveStatusService < BaseService
   end
 
   def unpush_from_antenna_timelines(statuses)
-    statuses.each do |status|
-      Antenna.matching(status).each do |antenna|
-        FeedManager.instance.unpush_from_antenna(antenna, status)
+    statuses.each_slice(500) do |slice|
+      slice.zip(Antenna.matching_all(slice)).each do |status, antennas|
+        antennas.each do |antenna|
+          FeedManager.instance.unpush_from_antenna(antenna, status)
+        end
       end
     end
   end
