@@ -215,6 +215,12 @@ export const InlineComposeShell = ({ redesign = false }) => {
                   className='inline-compose-shell__tab-remove'
                   aria-label={intl.formatMessage(messages.remove)}
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeTab(tab.tab); }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeTab(tab.tab);
+                  }}
                 >
                   <Icon id='times' icon={CloseIcon} />
                 </span>
