@@ -26,7 +26,7 @@ import { isStandaloneComposePath } from './compose_path';
 import { emojiUse } from './emojis';
 import { importFetchedAccounts, importFetchedStatus } from './importer';
 import { openModal } from './modal';
-import { deleteStatusDraft } from './status_drafts';
+import { deleteStatusDraft, discardPendingStatusDraftSave, getPendingStatusDraftSave } from './status_drafts';
 import { updateTimeline } from './timelines';
 import { insertStatusIntoAccountTimelines } from './timelines_typed';
 import { isRedesignEnabled } from '../utils/environment';
@@ -236,6 +236,7 @@ export function submitCompose(successCallback, overridePrivacy) {
     const media        = getState().getIn(['compose', 'media_attachments']);
     const statusId     = getState().getIn(['compose', 'id'], null);
     const draftId      = getState().getIn(['compose', 'draft_id'], null);
+    const pendingDraftSave = getPendingStatusDraftSave(getState().getIn(['compose', 'draft_save_request']));
     const hasQuote     = !!getState().getIn(['compose', 'quoted_status_id']);
     const spoilers     = getState().getIn(['compose', 'spoiler']) || getState().getIn(['local_settings', 'always_show_spoilers_field']);
     const spoiler_text = spoilers ? getState().getIn(['compose', 'spoiler_text'], '') : '';
@@ -320,6 +321,7 @@ export function submitCompose(successCallback, overridePrivacy) {
       if (draftId) {
         dispatch(deleteStatusDraft(draftId));
       }
+      dispatch(discardPendingStatusDraftSave(pendingDraftSave, draftId));
       if (typeof successCallback === 'function') {
         successCallback(response.data);
       }

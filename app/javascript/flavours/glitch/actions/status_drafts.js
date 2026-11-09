@@ -77,6 +77,8 @@ export const fetchStatusDrafts = () => (dispatch) => {
   });
 };
 
+const pendingDraftSaves = new Map();
+
 export const saveStatusDraft = () => (dispatch, getState) => {
   if (getState().getIn(['compose', 'draft_save_request'])) {
     return Promise.resolve();
@@ -85,6 +87,7 @@ export const saveStatusDraft = () => (dispatch, getState) => {
   const id = getState().getIn(['compose', 'draft_id']);
   const requestId = uuid();
   const payload = composePayload(getState());
+  const pending = { discarded: false };
 
   dispatch({ type: STATUS_DRAFT_SAVE_REQUEST, requestId });
 
@@ -92,12 +95,42 @@ export const saveStatusDraft = () => (dispatch, getState) => {
     ? api().put(`/api/v1/status_drafts/${id}`, payload)
     : api().post('/api/v1/status_drafts', payload);
 
-  return request.then(({ data }) => {
+  pending.promise = request.then(({ data }) => {
     dispatch({ type: STATUS_DRAFT_SAVE_SUCCESS, draft: fromJS(data), requestId });
-    dispatch(showAlert({ message: messages.saved }));
+    if (!pending.discarded) {
+      dispatch(showAlert({ message: messages.saved }));
+    }
+    return data.id;
   }).catch(error => {
     dispatch({ type: STATUS_DRAFT_SAVE_FAIL, requestId });
-    dispatch(showAlertForError(error));
+    if (!pending.discarded) {
+      dispatch(showAlertForError(error));
+    }
+    return null;
+  }).finally(() => {
+    pendingDraftSaves.delete(requestId);
+  });
+
+  pendingDraftSaves.set(requestId, pending);
+
+  return pending.promise.then(() => undefined);
+};
+
+export const getPendingStatusDraftSave = (requestId) =>
+  (requestId && pendingDraftSaves.get(requestId)) || null;
+
+export const discardPendingStatusDraftSave = (pending, keptDraftId) => (dispatch) => {
+  if (!pending) {
+    return Promise.resolve();
+  }
+
+  pending.discarded = true;
+
+  return pending.promise.then((savedDraftId) => {
+    if (savedDraftId && savedDraftId !== keptDraftId) {
+      return dispatch(deleteStatusDraft(savedDraftId));
+    }
+    return undefined;
   });
 };
 

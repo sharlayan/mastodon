@@ -2,12 +2,22 @@ import api, { getLinks } from 'flavours/glitch/api';
 
 import { fromJS } from 'immutable';
 
-import { STATUS_DRAFTS_FETCH_SUCCESS, STATUS_DRAFT_SAVE_REQUEST, fetchStatusDrafts, saveStatusDraft } from '../status_drafts';
+import {
+  STATUS_DRAFTS_FETCH_SUCCESS,
+  STATUS_DRAFT_DELETE_SUCCESS,
+  STATUS_DRAFT_SAVE_REQUEST,
+  discardPendingStatusDraftSave,
+  fetchStatusDrafts,
+  getPendingStatusDraftSave,
+  saveStatusDraft,
+} from '../status_drafts';
 
 vi.mock('flavours/glitch/api', () => ({ default: vi.fn(), getLinks: vi.fn() }));
 
 const apiGet = vi.fn();
 const apiPost = vi.fn();
+const apiPut = vi.fn();
+const apiDelete = vi.fn();
 
 const composeState = (compose) => fromJS({
   compose: {
@@ -28,7 +38,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   apiGet.mockReset();
   apiPost.mockReset();
-  vi.mocked(api).mockReturnValue({ get: apiGet, post: apiPost });
+  apiPut.mockReset();
+  apiDelete.mockReset();
+  vi.mocked(api).mockReturnValue({ get: apiGet, post: apiPost, put: apiPut, delete: apiDelete });
   vi.mocked(getLinks).mockImplementation(result => ({ refs: result.next ? [{ rel: 'next', uri: result.next }] : [] }));
 });
 
@@ -72,4 +84,47 @@ test('saveStatusDraft tags the request and its result with the same request id',
   expect(request.type).toBe(STATUS_DRAFT_SAVE_REQUEST);
   expect(success.requestId).toBe(request.requestId);
   expect(apiPost).toHaveBeenCalledOnce();
+});
+
+const deferred = () => {
+  let resolveDeferred;
+  const promise = new Promise((resolve) => { resolveDeferred = resolve; });
+  return { promise, resolve: resolveDeferred };
+};
+
+const startSave = (compose) => {
+  const dispatch = vi.fn(action => (typeof action === 'function' ? action(dispatch) : action));
+  const done = saveStatusDraft()(dispatch, () => composeState(compose));
+  const request = dispatch.mock.calls[0][0];
+  return { dispatch, done, pending: getPendingStatusDraftSave(request.requestId) };
+};
+
+test('publishing while the first draft save is in flight deletes the draft that save creates', async () => {
+  const response = deferred();
+  apiPost.mockReturnValue(response.promise);
+  apiDelete.mockResolvedValue({});
+  const { dispatch, done, pending } = startSave();
+
+  const discarded = discardPendingStatusDraftSave(pending, null)(dispatch);
+  response.resolve({ data: { id: '9' } });
+  await done;
+  await discarded;
+
+  expect(apiDelete).toHaveBeenCalledWith('/api/v1/status_drafts/9');
+  expect(dispatch.mock.calls.map(([action]) => action)).toContainEqual({ type: STATUS_DRAFT_DELETE_SUCCESS, id: '9' });
+  expect(dispatch.mock.calls.some(([action]) => action?.type === 'alerts/show')).toBe(false);
+  expect(getPendingStatusDraftSave(dispatch.mock.calls[0][0].requestId)).toBeNull();
+});
+
+test('publishing while an existing draft is being updated does not delete it a second time', async () => {
+  const response = deferred();
+  apiPut.mockReturnValue(response.promise);
+  const { dispatch, done, pending } = startSave({ draft_id: '5' });
+
+  const discarded = discardPendingStatusDraftSave(pending, '5')(dispatch);
+  response.resolve({ data: { id: '5' } });
+  await done;
+  await discarded;
+
+  expect(apiDelete).not.toHaveBeenCalled();
 });
