@@ -62,7 +62,7 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   has_one :endpoints, serializer: EndpointsSerializer
 
-  has_one :icon,  serializer: ActivityPub::ImageSerializer
+  has_one :icon,  serializer: ActivityPub::ImageSerializer, if: :icon_available?
   has_one :image, serializer: ActivityPub::ImageSerializer, if: :header_exists?
 
   delegate :suspended?, :instance_actor?, to: :object
@@ -213,6 +213,10 @@ class ActivityPub::ActorSerializer < ActivityPub::Serializer
 
   def avatar_exists?
     !object.unavailable? && object.avatar?
+  end
+
+  def icon_available?
+    !object.unavailable?
   end
 
   def header_exists?
