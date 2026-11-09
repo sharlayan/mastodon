@@ -549,12 +549,12 @@
     border-inline-start: 2px solid var(--color-border-brand);
     cursor: pointer;
 
-    strong {
+    > strong {
       display: block;
       font-weight: 500;
     }
 
-    span {
+    > span {
       display: -webkit-box;
       overflow: hidden;
       overflow-wrap: anywhere;
@@ -741,13 +741,13 @@
     color: var(--color-text-secondary);
     font-size: 12px;
 
-    div,
-    span {
+    > div,
+    > div > span {
       display: block;
       min-width: 0;
     }
 
-    span {
+    > div > span {
       max-width: 320px;
       overflow: hidden;
       text-overflow: ellipsis;

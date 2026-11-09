@@ -4317,22 +4317,24 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       />
                     ) : (
                       <div>
-                        {replyTarget ? (
-                          <FormattedMessage
-                            id='chat.replying_to'
-                            defaultMessage='Replying to {account}'
-                            values={{
-                              account: (
-                                <AccountName account={replyTarget.account} />
-                              ),
-                            }}
-                          />
-                        ) : (
-                          <FormattedMessage
-                            id='chat.replying'
-                            defaultMessage='Replying to message'
-                          />
-                        )}
+                        <span>
+                          {replyTarget ? (
+                            <FormattedMessage
+                              id='chat.replying_to'
+                              defaultMessage='Replying to {account}'
+                              values={{
+                                account: (
+                                  <AccountName account={replyTarget.account} />
+                                ),
+                              }}
+                            />
+                          ) : (
+                            <FormattedMessage
+                              id='chat.replying'
+                              defaultMessage='Replying to message'
+                            />
+                          )}
+                        </span>
                         <span>
                           {replyTarget && !replyTarget.deleted_at ? (
                             <EmojiText
