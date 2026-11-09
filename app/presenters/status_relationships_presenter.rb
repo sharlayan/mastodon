@@ -18,6 +18,7 @@ class StatusRelationshipsPresenter
     statuses   = statuses.compact
     status_ids = statuses.flat_map { |s| [s.id, s.reblog_of_id, s.proper.quote&.quoted_status_id] }.uniq.compact
     @reaction_groups_map = Status.reaction_groups_map(status_ids, current_account_id)
+    remove_reactions_from_groups(options[:removed_reactions]) if options[:removed_reactions].present?
 
     if current_account_id.nil?
       @preloaded_account_relations = {}
@@ -51,6 +52,23 @@ class StatusRelationshipsPresenter
   end
 
   private
+
+  def remove_reactions_from_groups(removed_reactions)
+    removed_reactions.each do |reaction|
+      groups = @reaction_groups_map[reaction.status_id]
+      group = groups&.find { |g| g.name == reaction.name && g.custom_emoji_id == reaction.custom_emoji_id }
+      next if group.nil?
+
+      if group[:count] <= 1
+        groups.delete(group)
+      else
+        group[:count] -= 1
+        group[:me] = false if reaction.account_id == @current_account_id
+        group.preloaded_account_ids = group.grouped_account_ids - [reaction.account_id]
+        group.preloaded_users = group.users.reject { |account| account.id == reaction.account_id }
+      end
+    end
+  end
 
   def metadata_domains(statuses)
     statuses.compact.flat_map { |s| [s.account, s.proper.account, s.proper.quote&.quoted_account] }.compact.filter_map(&:domain)

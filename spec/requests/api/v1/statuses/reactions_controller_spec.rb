@@ -116,6 +116,32 @@ RSpec.describe 'Reactions', :inline_jobs do
       end
     end
 
+    context 'when the unreact job has not run yet', inline_jobs: false do
+      before { ReactService.new.call(user.account, status, '👍') }
+
+      it 'drops the reaction group of the only reactor', :aggregate_failures do
+        subject
+
+        expect(UnreactWorker).to have_enqueued_sidekiq_job(user.account.id, status.id, '👍')
+        expect(user.account.reacted?(status, '👍')).to be true
+        expect(response.parsed_body).to match(a_hash_including(reactions_count: 0, reacted: false, reactions: []))
+      end
+
+      context 'with another account reacting with the same emoji' do
+        let(:other_account) { Fabricate(:account) }
+
+        before { ReactService.new.call(other_account, status, '👍') }
+
+        it 'renders the reaction as removed for the requesting user' do
+          subject
+
+          expect(response.parsed_body).to match(
+            a_hash_including(reactions_count: 1, reacted: false, reactions: [a_hash_including(name: '👍', count: 1, me: false, account_ids: [other_account.id.to_s])])
+          )
+        end
+      end
+    end
+
     context 'when the requesting user was blocked by the status author' do
       before do
         ReactService.new.call(user.account, status, '👍')
