@@ -1432,14 +1432,21 @@ class Sharlayan::ChatService
   end
 
   def media_attachments(account, ids)
-    normalized_ids = ids.map(&:to_s).uniq
+    normalized_ids = ids.map { |id| media_attachment_id(id) }.uniq
     raise Error, "A chat message can contain up to #{Setting.chat_max_attachments} attachments" if normalized_ids.size > Setting.chat_max_attachments
+    raise Error, 'One or more media attachments were not found' if normalized_ids.include?(nil)
 
-    attachments = MediaAttachment.unattached.where(id: normalized_ids, account: account).sort_by { |media| normalized_ids.index(media.id.to_s) }
+    attachments = MediaAttachment.unattached.where(id: normalized_ids, account: account).sort_by { |media| normalized_ids.index(media.id) }
     raise Error, 'One or more media attachments were not found' unless attachments.size == normalized_ids.size
     raise Error, 'One or more media attachments are still being processed' if attachments.any?(&:not_processed?)
 
     attachments
+  end
+
+  def media_attachment_id(id)
+    return id if id.is_a?(Integer)
+
+    Integer(id, 10, exception: false) if id.is_a?(String)
   end
 
   def accepts_group_invites?(account)

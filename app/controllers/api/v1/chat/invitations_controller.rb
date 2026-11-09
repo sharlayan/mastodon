@@ -18,8 +18,8 @@ class Api::V1::Chat::InvitationsController < Api::V1::Chat::BaseController
   end
 
   def create
-    conversation = ChatConversation.for_account(current_account).find(params[:conversation_id])
-    invitee = Account.find(params[:account_id])
+    conversation = ChatConversation.for_account(current_account).find(chat_id_param(:conversation_id))
+    invitee = Account.find(chat_id_param(:account_id))
     invitation = chat_service.invite(current_account, conversation, invitee)
     render json: invitation, serializer: REST::ChatInvitationSerializer, current_account: current_account
   end
