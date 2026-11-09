@@ -106,7 +106,9 @@ class Sharlayan::ChatService
     ensure_federation_available!(message.chat_conversation)
     ensure_direct_participants_not_blocked!(account, message.chat_conversation)
     ensure_direct_recipient_not_suspended!(account, message.chat_conversation)
-    message.with_lock do
+    message.chat_conversation.with_lock do
+      ensure_conversation_writable!(message.chat_conversation)
+      message.lock!
       raise Error, 'Deleted messages cannot be edited' if message.deleted?
 
       edited_at = Time.current
@@ -148,7 +150,9 @@ class Sharlayan::ChatService
     ensure_federation_available!(message.chat_conversation)
     ensure_direct_participants_not_blocked!(account, message.chat_conversation)
     ensure_direct_recipient_not_suspended!(account, message.chat_conversation)
-    record = message.with_lock do
+    record = message.chat_conversation.with_lock do
+      ensure_conversation_writable!(message.chat_conversation)
+      message.lock!
       raise Error, 'Deleted messages cannot receive reactions' if message.deleted?
 
       existing = message.reactions.find_by(account: account, reaction: reaction)
@@ -187,6 +191,7 @@ class Sharlayan::ChatService
     raise Forbidden unless accepts_group_invites?(invitee)
 
     invitation = conversation.with_lock do
+      ensure_conversation_writable!(conversation)
       existing_invitation = conversation.invitations.pending.find_by(invitee_account: invitee)
       next existing_invitation if existing_invitation
 
@@ -213,6 +218,7 @@ class Sharlayan::ChatService
       invitation.lock!
       raise Forbidden unless invitation.pending?
 
+      ensure_conversation_writable!(conversation)
       ensure_group_capacity!(conversation) unless conversation.memberships.exists?(account: account)
       membership = conversation.memberships.find_or_create_by!(account: account)
       invitation.update!(state: :accepted)
