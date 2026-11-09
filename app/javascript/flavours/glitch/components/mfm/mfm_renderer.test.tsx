@@ -55,4 +55,10 @@ describe('MfmRenderer links', () => {
       'https://other.tld/@carol',
     ]);
   });
+
+  it('encodes hashtag links', () => {
+    const { container } = render(<MfmRenderer text='#c%d #g&h=1' />);
+
+    expect(hrefs(container)).toEqual(['/tags/c%25d', '/tags/g%26h%3D1']);
+  });
 });

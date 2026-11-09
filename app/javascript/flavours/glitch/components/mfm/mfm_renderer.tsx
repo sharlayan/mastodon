@@ -277,7 +277,7 @@ function renderNode(
       return (
         <a
           key={key}
-          href={`/tags/${node.props.hashtag}`}
+          href={`/tags/${encodeURIComponent(node.props.hashtag)}`}
           className='mention hashtag'
           rel='tag'
         >
