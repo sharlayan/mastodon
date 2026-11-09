@@ -11,7 +11,7 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
 
   def index
     conversations = ChatConversation.for_account(current_account)
-      .preload(:owner_account, :memberships, accounts: [:account_stat, :user], invitations: :invitee_account, last_message: [:account, { reactions: :account, media_attachments: :chat_message_media_attachments }])
+      .preload(:owner_account, :memberships, accounts: [:account_stat, :user], invitations: :invitee_account, last_message: [{ account: [:account_stat, :user] }, { reactions: { account: [:account_stat, :user] }, media_attachments: :chat_message_media_attachments }])
       .order(Arel.sql('chat_conversations.last_message_id DESC NULLS LAST, chat_conversations.id DESC'))
       .limit(limit_param(LIMIT, 40))
     if params.key?(:max_id_message_id)
