@@ -2,6 +2,12 @@
 
 import { showChatDesktopNotification } from '../stream';
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
+vi.mock('flavours/glitch/components/router', () => ({
+  browserHistory: { push },
+}));
+
 const payload = {
   id: '10',
   conversation_id: '20',
@@ -143,9 +149,10 @@ describe('Chat desktop notifications', () => {
     );
   });
 
-  it('keeps the advanced layout when the notification is opened', () => {
+  it('opens the conversation inside the app when the notification is clicked', () => {
     const addEventListener = vi.fn();
     const assign = vi.fn();
+    push.mockClear();
     class NotificationMock {
       static permission = 'granted';
 
@@ -167,34 +174,8 @@ describe('Chat desktop notifications', () => {
     )?.[1] as (() => void) | undefined;
     click?.();
 
-    expect(assign).toHaveBeenCalledWith('/deck/chat/20');
-  });
-
-  it('opens the single-column chat path outside the advanced layout', () => {
-    const addEventListener = vi.fn();
-    const assign = vi.fn();
-    class NotificationMock {
-      static permission = 'granted';
-
-      addEventListener = addEventListener;
-      close = vi.fn();
-    }
-    vi.stubGlobal('Notification', NotificationMock);
-    vi.stubGlobal('document', { visibilityState: 'hidden' });
-    vi.stubGlobal('window', {
-      Notification: NotificationMock,
-      focus: vi.fn(),
-      location: { assign, pathname: '/home' },
-    });
-
-    showChatDesktopNotification(payload);
-
-    const click = addEventListener.mock.calls.find(
-      ([event]) => event === 'click',
-    )?.[1] as (() => void) | undefined;
-    click?.();
-
-    expect(assign).toHaveBeenCalledWith('/chat/20');
+    expect(push).toHaveBeenCalledWith('/chat/20');
+    expect(assign).not.toHaveBeenCalled();
   });
 
   describe('while the conversation is on screen', () => {

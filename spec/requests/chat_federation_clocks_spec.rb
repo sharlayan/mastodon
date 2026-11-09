@@ -569,6 +569,17 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       expect(service.redis.exists?(Sharlayan::ChatService.held_relay_key('https://member.test/chat/messages/m2'))).to be(false)
     end
 
+    it 'frees room to hold again once held activities are released' do
+      stub_const('Sharlayan::ChatService::MAX_HELD_RELAYS', 1)
+
+      announce(reaction)
+      perform(note, member)
+      run_released_jobs
+      announce(reaction.merge('id' => 'https://third.test/chat-reactions/2', 'object' => 'https://member.test/chat/messages/m2'))
+
+      expect(service.redis.exists?(Sharlayan::ChatService.held_relay_key('https://member.test/chat/messages/m2'))).to be(true)
+    end
+
     it 'skips a relayed deletion with no target and leaves it to the direct one' do
       delete = { 'id' => "#{message_uri}#delete", 'type' => 'Delete', 'actor' => member.uri, 'object' => { 'id' => message_uri, 'type' => 'Tombstone' } }
 

@@ -32,6 +32,13 @@ class Api::V1::Chat::BaseController < Api::BaseController
     not_found unless Setting.chat_enabled
   end
 
+  def chat_id_param(key)
+    value = params[key]
+    raise Mastodon::InvalidParameterError, "#{key} must be a single id" unless value.nil? || value.is_a?(String) || value.is_a?(Integer)
+
+    value
+  end
+
   def set_conversation
     @conversation = ChatConversation.for_account(current_account).find(params[:conversation_id] || params[:id])
   end

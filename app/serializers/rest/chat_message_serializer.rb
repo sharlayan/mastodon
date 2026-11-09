@@ -6,6 +6,7 @@ class REST::ChatMessageSerializer < ActiveModel::Serializer
   belongs_to :account, serializer: REST::AccountSerializer
   has_many :reactions, serializer: REST::ChatMessageReactionSerializer
   has_many :media_attachments, serializer: REST::MediaAttachmentSerializer
+  has_many :emojis, serializer: REST::CustomEmojiSerializer
 
   def id
     object.id.to_s
@@ -17,6 +18,10 @@ class REST::ChatMessageSerializer < ActiveModel::Serializer
 
   def content
     object.deleted? ? nil : object.text
+  end
+
+  def emojis
+    object.deleted? ? [] : CustomEmoji.from_text(object.text, object.account.domain)
   end
 
   def reply_to_id

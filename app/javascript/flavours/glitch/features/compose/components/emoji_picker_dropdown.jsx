@@ -350,18 +350,33 @@ class EmojiPickerDropdown extends PureComponent {
     this.dropdown = c;
   };
 
+  loadPicker = () => {
+    if (EmojiPicker) return Promise.resolve();
+
+    return EmojiPickerAsync().then(EmojiMart => {
+      EmojiPicker = EmojiMart.Picker;
+      Emoji = EmojiMart.Emoji;
+    });
+  };
+
+  handlePreload = () => {
+    this.loadPicker().catch(() => {});
+  };
+
+  componentWillUnmount() {
+    this.unmounted = true;
+  }
+
   onShowDropdown = () => {
     this.setState({ active: true });
 
     if (!EmojiPicker) {
       this.setState({ loading: true });
 
-      EmojiPickerAsync().then(EmojiMart => {
-        EmojiPicker = EmojiMart.Picker;
-        Emoji = EmojiMart.Emoji;
-        this.setState({ loading: false });
+      this.loadPicker().then(() => {
+        if (!this.unmounted) this.setState({ loading: false });
       }).catch(() => {
-        this.setState({ loading: false, active: false });
+        if (!this.unmounted) this.setState({ loading: false, active: false });
       });
     }
   };
@@ -391,7 +406,7 @@ class EmojiPickerDropdown extends PureComponent {
     const { active, loading, target } = this.state;
 
     return (
-      <div className='emoji-picker-dropdown' ref={this.setTargetRef}>
+      <div className='emoji-picker-dropdown' ref={this.setTargetRef} onPointerEnter={this.handlePreload} onFocus={this.handlePreload}>
         <IconButton
           title={title}
           aria-expanded={active}
@@ -405,10 +420,11 @@ class EmojiPickerDropdown extends PureComponent {
         />
 
         <Popover
-          isOpen={active}
+          isOpen={active && !loading}
           reference={target}
           onClose={this.onHideDropdown}
           fitViewport={fitToViewport}
+          strategy='fixed'
         >
           {({ props, placement }) => (
             <div  {...props} className={`dropdown-animation ${placement}`}>

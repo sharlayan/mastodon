@@ -11,14 +11,14 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
 
   def index
     conversations = ChatConversation.for_account(current_account)
-      .preload(:owner_account, :memberships, accounts: [:account_stat, :user], invitations: :invitee_account, last_message: [:account, { reactions: :account, media_attachments: :chat_message_media_attachments }])
+      .preload(:owner_account, :memberships, accounts: [:account_stat, :user], invitations: :invitee_account, last_message: [{ account: [:account_stat, :user] }, { reactions: { account: [:account_stat, :user] }, media_attachments: :chat_message_media_attachments }])
       .order(Arel.sql('chat_conversations.last_message_id DESC NULLS LAST, chat_conversations.id DESC'))
       .limit(limit_param(LIMIT, 40))
     if params.key?(:max_id_message_id)
       room_id = snapshot_cursor_part(params[:max_id], allow_zero: false)
       message_id = snapshot_cursor_part(params[:max_id_message_id], allow_zero: true)
       conversations = before_cursor(conversations, room_id, message_id.zero? ? nil : message_id)
-    elsif params[:max_id].present?
+    elsif chat_id_param(:max_id).present?
       cursor = ChatConversation.for_account(current_account).find(params[:max_id])
       conversations = before_cursor(conversations, cursor.id, cursor.last_message_id)
     end
@@ -54,7 +54,7 @@ class Api::V1::Chat::ConversationsController < Api::V1::Chat::BaseController
   end
 
   def read
-    membership = chat_service.mark_read(current_account, @conversation, message_id: params[:message_id])
+    membership = chat_service.mark_read(current_account, @conversation, message_id: chat_id_param(:message_id))
     render json: { conversation_id: @conversation.id.to_s, last_read_message_id: membership.last_read_message_id&.to_s }
   end
 

@@ -5,9 +5,13 @@ import { IntlProvider } from 'react-intl';
 import type * as ReactRouterDom from 'react-router-dom';
 import { Route, Router } from 'react-router-dom';
 
+import { Map as ImmutableMap } from 'immutable';
+import { Provider } from 'react-redux';
+
 import {
   act,
   cleanup,
+  createEvent,
   fireEvent,
   render,
   screen,
@@ -23,6 +27,8 @@ import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 
 import { Chat } from '../index';
 import { CHAT_STREAM_RECONNECTED, emitChatStreamEvent } from '../stream';
+
+await vi.hoisted(() => import('../testing/match_media'));
 
 const api = vi.hoisted(() => ({
   get: vi.fn(),
@@ -187,6 +193,16 @@ const answerNextPost = (path: string, answer: Promise<unknown>) => {
       : Promise.resolve({ data: attachment });
   });
 };
+const emojiState = {
+  meta: ImmutableMap({ emoji_style: 'twemoji', locale: 'en' }),
+  custom_emoji_mutes: { items: [], hidden: false },
+  emojis: { custom: {} },
+};
+const emojiStore = {
+  getState: () => emojiState,
+  subscribe: () => () => undefined,
+  dispatch: (action: unknown) => action,
+};
 const mountChat = (path = '/chat/A') => {
   const history = createMemoryHistory({ initialEntries: [path] });
   const view = render(
@@ -200,11 +216,13 @@ const mountChat = (path = '/chat/A') => {
           disabledAccountId: undefined,
         }}
       >
-        <Router history={history}>
-          <Route path='/chat/:conversationId?/:view?'>
-            <Chat />
-          </Route>
-        </Router>
+        <Provider store={emojiStore as never}>
+          <Router history={history}>
+            <Route path='/chat/:conversationId?/:view?'>
+              <Chat />
+            </Route>
+          </Router>
+        </Provider>
       </IdentityContext.Provider>
     </IntlProvider>,
   );
@@ -2350,6 +2368,71 @@ describe('Chat message authors', () => {
   });
 });
 
+describe('Chat custom emoji', () => {
+  const blob = {
+    shortcode: 'blob',
+    url: 'https://example.com/blob.gif',
+    static_url: 'https://example.com/blob.png',
+    visible_in_picker: true,
+  };
+  const emojiRoom = {
+    ...conversation('A'),
+    type: 'group',
+    title: 'Hikers :blob:',
+    emojis: [blob],
+    last_message: {
+      ...message(),
+      content: 'Last :blob:',
+      emojis: [blob],
+    },
+  };
+  const blobFriend = { ...remote, display_name: 'Bob :blob:', emojis: [blob] };
+  const respond = (url: string) => {
+    if (url === '/api/v1/chat/conversations')
+      return Promise.resolve({ data: [emojiRoom] });
+    if (url === '/api/v1/chat/conversations/A')
+      return Promise.resolve({ data: emojiRoom });
+    if (url.includes('/A/messages'))
+      return Promise.resolve({
+        data: [
+          {
+            ...message(),
+            content: 'Hello :blob:',
+            emojis: [blob],
+            account: blobFriend,
+          },
+        ],
+      });
+    return getResponse(url);
+  };
+  const blobs = (element: Element) =>
+    element.querySelectorAll('img.custom-emoji[alt=":blob:"]').length;
+
+  it('shows custom emoji in the list title and last message', async () => {
+    api.get.mockImplementation(respond);
+    const { container } = mountChat('/chat');
+    await screen.findByText(/Hikers/);
+
+    const row = container.querySelector(
+      '.chat-native__conversations button',
+    ) as HTMLElement;
+    expect(blobs(row)).toBe(2);
+    expect(row.textContent).not.toContain(':blob:');
+  });
+
+  it('shows custom emoji in the room title, author name and message', async () => {
+    api.get.mockImplementation(respond);
+    const { container } = mountChat('/chat/A');
+    await screen.findByText(/Hello/);
+
+    const header = container.querySelector('header') as HTMLElement;
+    expect(blobs(header)).toBeGreaterThan(0);
+    const row = container.querySelector('.chat-native__message') as HTMLElement;
+    expect(blobs(row)).toBe(2);
+    expect(row.textContent).not.toContain(':blob:');
+  });
+});
+
 describe('Chat home loading', () => {
   it('does not claim there is no history before the list has loaded', async () => {
     const pending = deferred<{ data: ReturnType<typeof conversation>[] }>();
@@ -3533,6 +3616,55 @@ describe('Chat attachments', () => {
         { text: '', reply_to_id: null, media_ids: ['media-2', 'media-3'] },
       );
     });
+  });
+
+  it('uploads an image pasted into the composer', async () => {
+    api.post.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: url === '/api/v2/media' ? pictures[0] : message(),
+      }),
+    );
+    mountChat();
+    await screen.findByText('Private message A');
+    await waitFor(() => {
+      expect(
+        screen
+          .getByRole('button', { name: 'Attach media' })
+          .hasAttribute('disabled'),
+      ).toBe(false);
+    });
+
+    const pasted = new File(['private'], 'pasted.png', { type: 'image/png' });
+    const event = createEvent.paste(composer(), {
+      clipboardData: { files: [pasted], items: [], types: ['Files'] },
+    });
+    fireEvent(composer(), event);
+
+    expect(event.defaultPrevented).toBe(true);
+    await screen.findByAltText('Picture 1');
+    const body = (api.post.mock.calls as [string, FormData][]).find(
+      ([url]) => url === '/api/v2/media',
+    )?.[1];
+    expect(body?.get('file')).toBe(pasted);
+  });
+
+  it('leaves a paste without files to the composer', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    api.post.mockClear();
+
+    const event = createEvent.paste(composer(), {
+      clipboardData: {
+        files: [],
+        items: [],
+        types: ['text/plain'],
+        getData: () => 'hello',
+      },
+    });
+    fireEvent(composer(), event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(api.post).not.toHaveBeenCalled();
   });
 
   it('turns away more files than the limit with a message that says so', async () => {

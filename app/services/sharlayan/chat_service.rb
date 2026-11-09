@@ -106,7 +106,9 @@ class Sharlayan::ChatService
     ensure_federation_available!(message.chat_conversation)
     ensure_direct_participants_not_blocked!(account, message.chat_conversation)
     ensure_direct_recipient_not_suspended!(account, message.chat_conversation)
-    message.with_lock do
+    message.chat_conversation.with_lock do
+      ensure_conversation_writable!(message.chat_conversation)
+      message.lock!
       raise Error, 'Deleted messages cannot be edited' if message.deleted?
 
       edited_at = Time.current
@@ -148,7 +150,9 @@ class Sharlayan::ChatService
     ensure_federation_available!(message.chat_conversation)
     ensure_direct_participants_not_blocked!(account, message.chat_conversation)
     ensure_direct_recipient_not_suspended!(account, message.chat_conversation)
-    record = message.with_lock do
+    record = message.chat_conversation.with_lock do
+      ensure_conversation_writable!(message.chat_conversation)
+      message.lock!
       raise Error, 'Deleted messages cannot receive reactions' if message.deleted?
 
       existing = message.reactions.find_by(account: account, reaction: reaction)
@@ -187,6 +191,7 @@ class Sharlayan::ChatService
     raise Forbidden unless accepts_group_invites?(invitee)
 
     invitation = conversation.with_lock do
+      ensure_conversation_writable!(conversation)
       existing_invitation = conversation.invitations.pending.find_by(invitee_account: invitee)
       next existing_invitation if existing_invitation
 
@@ -213,6 +218,7 @@ class Sharlayan::ChatService
       invitation.lock!
       raise Forbidden unless invitation.pending?
 
+      ensure_conversation_writable!(conversation)
       ensure_group_capacity!(conversation) unless conversation.memberships.exists?(account: account)
       membership = conversation.memberships.find_or_create_by!(account: account)
       invitation.update!(state: :accepted)
@@ -507,10 +513,10 @@ class Sharlayan::ChatService
     return if conversation.nil? || Sharlayan::ChatFederation::Roster.member_answer_stale?(conversation, actor, published)
 
     invitation = conversation.invitations.pending.find_by(invitee_account: actor)
-    return if invitation && answers_earlier_invitation?(invitation, invited_at)
+    return if invitation.nil? || answers_earlier_invitation?(invitation, invited_at)
 
-    invitation&.update!(state: :rejected)
-    announce_invitation_settled(invitation) if invitation
+    invitation.update!(state: :rejected)
+    announce_invitation_settled(invitation)
     conversation.destroy_if_unused!
   end
 
@@ -925,10 +931,18 @@ class Sharlayan::ChatService
       transaction.lrange(key, 0, -1)
       transaction.del(key)
     end
+    release_held_relay_count(message.chat_conversation_id, entries.size)
     entries.each do |entry|
       held = JSON.parse(entry)
       ActivityPub::ProcessingWorker.perform_async(held['owner_id'], held['activity'])
     end
+  end
+
+  def release_held_relay_count(conversation_id, released)
+    return if released.zero?
+
+    count_key = "chat_held_relay_count:#{conversation_id}"
+    redis.del(count_key) unless redis.decrby(count_key, released).positive?
   end
 
   def message_tombstone_key(uri)
@@ -1058,7 +1072,7 @@ class Sharlayan::ChatService
   end
 
   def refresh_remote_account(account)
-    return unless account.remote? && account.possibly_stale?
+    return unless account.remote? && account.possibly_stale? && Sharlayan::ChatFederation.enabled?
 
     ActivityPub::FetchRemoteAccountService.new.call(account.uri)
     account.reload
@@ -1225,7 +1239,7 @@ class Sharlayan::ChatService
       previous_id = ChatMessage.where(chat_conversation_id: membership.chat_conversation_id, id: ...membership.last_read_message_id)
         .where.not(account_id: account.id)
         .maximum(:id)
-      membership.update_columns(last_read_message_id: previous_id)
+      ChatMembership.where(id: membership.id, last_read_message_id: membership.last_read_message_id).update_all(last_read_message_id: previous_id)
     end
   end
 
@@ -1432,14 +1446,21 @@ class Sharlayan::ChatService
   end
 
   def media_attachments(account, ids)
-    normalized_ids = ids.map(&:to_s).uniq
+    normalized_ids = ids.map { |id| media_attachment_id(id) }.uniq
     raise Error, "A chat message can contain up to #{Setting.chat_max_attachments} attachments" if normalized_ids.size > Setting.chat_max_attachments
+    raise Error, 'One or more media attachments were not found' if normalized_ids.include?(nil)
 
-    attachments = MediaAttachment.unattached.where(id: normalized_ids, account: account).sort_by { |media| normalized_ids.index(media.id.to_s) }
+    attachments = MediaAttachment.unattached.where(id: normalized_ids, account: account).sort_by { |media| normalized_ids.index(media.id) }
     raise Error, 'One or more media attachments were not found' unless attachments.size == normalized_ids.size
     raise Error, 'One or more media attachments are still being processed' if attachments.any?(&:not_processed?)
 
     attachments
+  end
+
+  def media_attachment_id(id)
+    return id if id.is_a?(Integer)
+
+    Integer(id, 10, exception: false) if id.is_a?(String)
   end
 
   def accepts_group_invites?(account)

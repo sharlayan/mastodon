@@ -9,17 +9,21 @@ class Api::V1::Chat::InvitationsController < Api::V1::Chat::BaseController
   before_action :set_invitation, only: [:accept, :reject, :destroy]
 
   def index
-    invitations = ChatInvitation.pending.includes(:chat_conversation, :inviter_account, :invitee_account)
+    invitations = ChatInvitation.pending.preload(
+      inviter_account: [:account_stat, :user],
+      invitee_account: [:account_stat, :user],
+      chat_conversation: [:owner_account, :memberships, { accounts: [:account_stat, :user], invitations: :invitee_account, last_message: [{ account: [:account_stat, :user] }, { reactions: { account: [:account_stat, :user] }, media_attachments: :chat_message_media_attachments }] }]
+    )
     invitations = params[:direction] == 'sent' ? invitations.where(inviter_account: current_account) : invitations.where(invitee_account: current_account).from_available_inviters
     invitations = invitations.where(chat_conversation_id: params[:conversation_id]) if params[:conversation_id].present?
-    invitations = invitations.where(id: ...params[:max_id]) if params[:max_id].present?
+    invitations = invitations.where(id: ...params[:max_id]) if chat_id_param(:max_id).present?
     invitations = invitations.order(id: :desc).limit(limit_param(LIMIT, LIMIT))
     render json: invitations, each_serializer: REST::ChatInvitationSerializer, current_account: current_account
   end
 
   def create
-    conversation = ChatConversation.for_account(current_account).find(params[:conversation_id])
-    invitee = Account.find(params[:account_id])
+    conversation = ChatConversation.for_account(current_account).find(chat_id_param(:conversation_id))
+    invitee = Account.find(chat_id_param(:account_id))
     invitation = chat_service.invite(current_account, conversation, invitee)
     render json: invitation, serializer: REST::ChatInvitationSerializer, current_account: current_account
   end

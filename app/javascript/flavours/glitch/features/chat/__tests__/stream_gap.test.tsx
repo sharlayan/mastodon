@@ -18,6 +18,8 @@ import { setupServer } from 'msw/node';
 
 import type * as InitialState from 'flavours/glitch/initial_state';
 
+await vi.hoisted(() => import('../testing/match_media'));
+
 const Socket = vi.hoisted(() => {
   class FakeSocket {
     static CONNECTING = 0;
