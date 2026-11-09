@@ -62,6 +62,7 @@ import { SelectField } from 'flavours/glitch/components/form_fields';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
+import { IconWithBadge } from 'flavours/glitch/components/icon_with_badge';
 import { LoadMore } from 'flavours/glitch/components/load_more';
 import MediaGallery from 'flavours/glitch/components/media_gallery';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
@@ -4545,11 +4546,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             </>
           )
         ) : creating ? (
-          <section id='chat-new-panel' className='chat-native__new-panel'>
-            <div className='chat-native__new-modes'>
+          <>
+            <div className='account__section-headline chat-native__new-modes'>
               <button
                 type='button'
                 data-mode='direct'
+                className={classNames({ active: newChatMode === 'direct' })}
                 aria-pressed={newChatMode === 'direct'}
                 onClick={handleNewChatMode}
               >
@@ -4558,120 +4560,129 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               <button
                 type='button'
                 data-mode='group'
+                className={classNames({ active: newChatMode === 'group' })}
                 aria-pressed={newChatMode === 'group'}
                 onClick={handleNewChatMode}
               >
                 {intl.formatMessage(messages.newGroup)}
               </button>
             </div>
-            {newChatMode === 'direct' ? (
-              <>
-                <form
-                  className='chat-native__new'
-                  onSubmit={handleDirectSubmit}
-                >
-                  <div className='chat-native__form-row'>
-                    <input
-                      value={directAccountQuery}
-                      onChange={handleDirectAccountQueryChange}
-                      placeholder={intl.formatMessage(messages.accountSearch)}
-                    />
-                    <Button type='submit' disabled={loading || !directAccount}>
-                      {intl.formatMessage(messages.open)}
-                    </Button>
-                  </div>
-                  {directAccount && (
-                    <div className='chat-native__selected-accounts'>
-                      <SelectedAccountCard
-                        account={directAccount}
-                        onRemove={handleRemoveDirectAccount}
+            <section id='chat-new-panel' className='chat-native__new-panel'>
+              {newChatMode === 'direct' ? (
+                <>
+                  <form
+                    className='chat-native__new'
+                    onSubmit={handleDirectSubmit}
+                  >
+                    <div className='chat-native__form-row'>
+                      <input
+                        value={directAccountQuery}
+                        onChange={handleDirectAccountQueryChange}
+                        placeholder={intl.formatMessage(messages.accountSearch)}
                       />
+                      <Button
+                        type='submit'
+                        disabled={loading || !directAccount}
+                      >
+                        {intl.formatMessage(messages.open)}
+                      </Button>
                     </div>
-                  )}
-                </form>
-                {directAccountQuery.trim().length >= 2 && (
-                  <AccountSearchNotice status={accountSearchStatus} />
-                )}
-                {accountResults.length > 0 && (
-                  <div className='chat-native__account-results'>
-                    {accountResults.map((account) => (
-                      <ChatAccountRow
-                        key={account.id}
-                        account={account}
-                        target={{
-                          kind: 'button',
-                          'data-account-id': account.id,
-                          onClick: handleAccountResult,
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <form className='chat-native__new' onSubmit={handleGroupSubmit}>
-                  <div className='chat-native__form-row'>
-                    <input
-                      name='search'
-                      autoComplete='off'
-                      value={groupTitle}
-                      onChange={handleGroupTitleChange}
-                      placeholder={intl.formatMessage(messages.groupTitle)}
-                    />
-                  </div>
-                  <div className='chat-native__form-row'>
-                    <input
-                      name='search'
-                      autoComplete='off'
-                      value={groupAccountQuery}
-                      onChange={handleGroupAccountQueryChange}
-                      placeholder={intl.formatMessage(messages.accountSearch)}
-                    />
-                    <Button
-                      type='submit'
-                      disabled={loading || !groupTitle.trim()}
-                    >
-                      {intl.formatMessage(messages.create)}
-                    </Button>
-                  </div>
-                  {groupAccounts.length > 0 && (
-                    <div className='chat-native__selected-accounts'>
-                      {groupAccounts.map((account) => (
+                    {directAccount && (
+                      <div className='chat-native__selected-accounts'>
                         <SelectedAccountCard
+                          account={directAccount}
+                          onRemove={handleRemoveDirectAccount}
+                        />
+                      </div>
+                    )}
+                  </form>
+                  {directAccountQuery.trim().length >= 2 && (
+                    <AccountSearchNotice status={accountSearchStatus} />
+                  )}
+                  {accountResults.length > 0 && (
+                    <div className='chat-native__account-results'>
+                      {accountResults.map((account) => (
+                        <ChatAccountRow
                           key={account.id}
                           account={account}
-                          onRemove={handleRemoveGroupAccount}
+                          target={{
+                            kind: 'button',
+                            'data-account-id': account.id,
+                            onClick: handleAccountResult,
+                          }}
                         />
                       ))}
                     </div>
                   )}
-                </form>
-                {groupAccountQuery.trim().length >= 2 && (
-                  <AccountSearchNotice status={accountSearchStatus} />
-                )}
-                {groupAccountResults.length > 0 && (
-                  <div className='chat-native__account-results'>
-                    {groupAccountResults.map((account) => (
-                      <ChatAccountRow
-                        key={account.id}
-                        account={account}
-                        target={{
-                          kind: 'button',
-                          'data-account-id': account.id,
-                          onClick: handleGroupAccountResult,
-                        }}
+                </>
+              ) : (
+                <>
+                  <form
+                    className='chat-native__new'
+                    onSubmit={handleGroupSubmit}
+                  >
+                    <div className='chat-native__form-row'>
+                      <input
+                        name='search'
+                        autoComplete='off'
+                        value={groupTitle}
+                        onChange={handleGroupTitleChange}
+                        placeholder={intl.formatMessage(messages.groupTitle)}
                       />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </section>
+                    </div>
+                    <div className='chat-native__form-row'>
+                      <input
+                        name='search'
+                        autoComplete='off'
+                        value={groupAccountQuery}
+                        onChange={handleGroupAccountQueryChange}
+                        placeholder={intl.formatMessage(messages.accountSearch)}
+                      />
+                      <Button
+                        type='submit'
+                        disabled={loading || !groupTitle.trim()}
+                      >
+                        {intl.formatMessage(messages.create)}
+                      </Button>
+                    </div>
+                    {groupAccounts.length > 0 && (
+                      <div className='chat-native__selected-accounts'>
+                        {groupAccounts.map((account) => (
+                          <SelectedAccountCard
+                            key={account.id}
+                            account={account}
+                            onRemove={handleRemoveGroupAccount}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </form>
+                  {groupAccountQuery.trim().length >= 2 && (
+                    <AccountSearchNotice status={accountSearchStatus} />
+                  )}
+                  {groupAccountResults.length > 0 && (
+                    <div className='chat-native__account-results'>
+                      {groupAccountResults.map((account) => (
+                        <ChatAccountRow
+                          key={account.id}
+                          account={account}
+                          target={{
+                            kind: 'button',
+                            'data-account-id': account.id,
+                            onClick: handleGroupAccountResult,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+          </>
         ) : (
           <>
             <nav
-              className='chat-native__tabs'
+              className='account__section-headline chat-native__tabs'
               aria-label={intl.formatMessage(messages.heading)}
             >
               {(
@@ -4690,11 +4701,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   aria-current={activeTab === tab ? 'page' : undefined}
                   onClick={handleTabChange}
                 >
-                  <Icon id={tab} icon={icon} />
-                  {intl.formatMessage(tabMessage)}
-                  {tab === 'invitations' && invitations.length > 0 && (
-                    <span>{invitations.length}</span>
-                  )}
+                  <span>{intl.formatMessage(tabMessage)}</span>
+                  <IconWithBadge
+                    id={tab}
+                    icon={icon}
+                    count={tab === 'invitations' ? invitations.length : 0}
+                    className=''
+                  />
                 </button>
               ))}
             </nav>
