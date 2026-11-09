@@ -41,7 +41,7 @@ RSpec.describe 'Misskey-compat i/update profile images' do
       expect(account.header_file_name).to be_present
     end
 
-    it 'rejects a Drive file that is not an image' do
+    it "rejects a Drive file that is not an image and another account's Drive file" do
       video_file = account.drive_files.create!(file: attachment_fixture('attachment.webm'))
       previous = account.avatar_file_name
 
@@ -50,9 +50,7 @@ RSpec.describe 'Misskey-compat i/update profile images' do
       expect(response).to have_http_status(400)
       expect(error).to include(code: 'AVATAR_NOT_AN_IMAGE', id: 'f419f9f8-2f4d-46b1-9fb4-49d3a2fd7191')
       expect(account.reload.avatar_file_name).to eq(previous)
-    end
 
-    it "rejects another account's Drive file" do
       other = Fabricate(:account).drive_files.create!(file: attachment_fixture('attachment.jpg'))
 
       update(bannerId: MisskeyCompat::MiId.encode(other.id))
@@ -62,31 +60,27 @@ RSpec.describe 'Misskey-compat i/update profile images' do
     end
   end
 
-  it 'returns NO_SUCH_AVATAR for an unknown id without changing anything' do
+  it 'returns NO_SUCH_AVATAR and NO_SUCH_BANNER for unknown ids without changing anything' do
     update(name: 'Changed', avatarId: MisskeyCompat::MiId.encode(999_999_999))
 
     expect(response).to have_http_status(400)
     expect(error).to include(code: 'NO_SUCH_AVATAR', id: '539f3a45-f215-4f81-a9a8-31293640207f')
     expect(account.reload.display_name).to_not eq('Changed')
-  end
 
-  it 'returns NO_SUCH_BANNER for an unknown id' do
     update(bannerId: MisskeyCompat::MiId.encode(999_999_999))
 
     expect(response).to have_http_status(400)
     expect(error).to include(code: 'NO_SUCH_BANNER')
   end
 
-  it 'rejects a non-image media attachment as a banner' do
+  it 'rejects a non-image media attachment as a banner and a non-string id' do
     video = Fabricate(:media_attachment, account: account, type: :video, file: attachment_fixture('attachment.webm'))
 
     update(bannerId: MisskeyCompat::MiId.encode(video.id))
 
     expect(response).to have_http_status(400)
     expect(error).to include(code: 'BANNER_NOT_AN_IMAGE', id: '75aedb19-2afd-4e6d-87fc-67941256fa60')
-  end
 
-  it 'rejects a non-string id' do
     image = Fabricate(:media_attachment, account: account)
 
     update(avatarId: [image.id.to_s])

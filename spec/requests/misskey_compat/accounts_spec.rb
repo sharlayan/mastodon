@@ -27,17 +27,15 @@ RSpec.describe 'Misskey-compat account endpoints' do
     expect(response.parsed_body.dig('error', 'info', 'param')).to eq('#/properties/offset')
   end
 
-  it 'rejects poll recommendation offsets above the query budget' do
+  it 'accepts a negative poll recommendation offset and rejects offsets above the query budget' do
+    post '/api/notes/polls/recommendation', params: { i: read_token, offset: -1 }, as: :json
+
+    expect(response).to have_http_status(200)
+
     post '/api/notes/polls/recommendation', params: { i: read_token, offset: 1_001 }, as: :json
 
     expect(response).to have_http_status(400)
     expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
-  end
-
-  it 'accepts a negative poll recommendation offset' do
-    post '/api/notes/polls/recommendation', params: { i: read_token, offset: -1 }, as: :json
-
-    expect(response).to have_http_status(200)
   end
 
   it 'keeps memo values null in directory and detailed search results' do
@@ -56,13 +54,6 @@ RSpec.describe 'Misskey-compat account endpoints' do
     expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('memo' => nil)
   end
 
-  it 'treats the Misskey local host marker as a local account filter' do
-    post '/api/users/search-by-username-and-host', params: { i: read_token, username: target.username, host: '.' }, as: :json
-
-    expect(response).to have_http_status(200)
-    expect(response.parsed_body.pluck('id')).to include(MisskeyCompat::MiId.encode(target.id))
-  end
-
   it 'does not return remote accounts when filtering by the local host marker' do
     remote = Fabricate(:account, domain: 'remote.example', username: 'bob')
     local  = Fabricate(:account, username: 'bob')
@@ -75,21 +66,19 @@ RSpec.describe 'Misskey-compat account endpoints' do
     expect(ids).to_not include(MisskeyCompat::MiId.encode(remote.id))
   end
 
-  it 'returns detailed users by default from the username search' do
+  it 'returns detailed users by default from the username search and lite users when detail is false' do
     post '/api/users/search-by-username-and-host', params: { i: read_token, username: target.username, host: '.' }, as: :json
 
     expect(response).to have_http_status(200)
     expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('url')
-  end
 
-  it 'returns lite users when detail is false' do
     post '/api/users/search-by-username-and-host', params: { i: read_token, username: target.username, host: '.', detail: false }, as: :json
 
     expect(response).to have_http_status(200)
     expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to_not include('url')
   end
 
-  it 'returns detailed users with viewer relationships by default from search' do
+  it 'returns detailed users with viewer relationships by default from search and lite users without them when detail is false' do
     target.update!(discoverable: true)
     account.follow!(target, reblogs: true, notify: false)
 
@@ -97,10 +86,6 @@ RSpec.describe 'Misskey-compat account endpoints' do
 
     expect(response).to have_http_status(200)
     expect(response.parsed_body.find { |item| item['id'] == MisskeyCompat::MiId.encode(target.id) }).to include('url', 'isFollowing' => true)
-  end
-
-  it 'returns lite users without viewer relationships when search detail is false' do
-    target.update!(discoverable: true)
 
     post '/api/users/search', params: { i: read_token, query: target.username, detail: false }, as: :json
 
@@ -132,18 +117,21 @@ RSpec.describe 'Misskey-compat account endpoints' do
   end
 
   describe 'POST /api/users/update-memo' do
-    it 'requires authentication' do
+    it 'requires authentication, rejects a read-only token without changing data, and returns NO_SUCH_USER for an unknown account' do
       post '/api/users/update-memo', params: { userId: target.id, memo: 'private note' }, as: :json
 
       expect(response).to have_http_status(401)
       expect(response.parsed_body.dig(:error, :code)).to eq('CREDENTIAL_REQUIRED')
-    end
 
-    it 'rejects a read-only token without changing data' do
       post '/api/users/update-memo', params: { i: read_token, userId: target.id, memo: 'private note' }, as: :json
 
       expect(response).to have_http_status(403)
       expect(account.account_notes).to be_empty
+
+      post '/api/users/update-memo', params: { i: write_token, userId: MisskeyCompat::MiId.encode(-1), memo: 'private note' }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_USER')
     end
 
     it 'creates, updates, and clears a memo using a MiId userId' do
@@ -161,24 +149,15 @@ RSpec.describe 'Misskey-compat account endpoints' do
       expect(response).to have_http_status(204)
       expect(account.account_notes.find_by(target_account: target)).to be_nil
     end
-
-    it 'returns NO_SUCH_USER for an unknown account' do
-      post '/api/users/update-memo', params: { i: write_token, userId: MisskeyCompat::MiId.encode(-1), memo: 'private note' }, as: :json
-
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_USER')
-    end
   end
 
   describe 'POST /api/users/search' do
-    it 'requires a read-capable token' do
+    it 'requires a read-capable token and returns an empty result for a blank query' do
       post '/api/users/search', params: { i: write_token, query: target.username }, as: :json
 
       expect(response).to have_http_status(403)
       expect(response.parsed_body.dig(:error, :code)).to eq('PERMISSION_DENIED')
-    end
 
-    it 'returns an empty result for a blank query' do
       post '/api/users/search', params: { i: read_token, query: '   ' }, as: :json
 
       expect(response).to have_http_status(200)
@@ -187,16 +166,14 @@ RSpec.describe 'Misskey-compat account endpoints' do
   end
 
   describe 'POST /api/users/notes' do
-    it 'uses the Misskey withReplies parameter' do
+    it 'uses the Misskey withReplies parameter and rejects combining it with withFiles' do
       parent = Fabricate(:status)
       reply = Fabricate(:status, account: target, thread: parent)
 
       post '/api/users/notes', params: { i: read_token, userId: MisskeyCompat::MiId.encode(target.id), withReplies: true }, as: :json
 
       expect(response.parsed_body.pluck(:id)).to include(MisskeyCompat::MiId.encode(reply.id))
-    end
 
-    it 'rejects combining withReplies and withFiles' do
       post '/api/users/notes', params: { i: read_token, userId: MisskeyCompat::MiId.encode(target.id), withReplies: true, withFiles: true }, as: :json
 
       expect(response).to have_http_status(400)

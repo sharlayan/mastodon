@@ -46,7 +46,7 @@ RSpec.describe 'Misskey-compat avatar decorations endpoint', :attachment_process
     expect(response.parsed_body.first[:url]).to be_present
   end
 
-  it 'returns an empty list when federation exposure is disabled' do
+  it 'returns an empty list when federation exposure is disabled or in local-only view mode' do
     Fabricate(:avatar_decoration)
     Setting.avatar_decorations_federation_enabled = false
 
@@ -54,10 +54,8 @@ RSpec.describe 'Misskey-compat avatar decorations endpoint', :attachment_process
 
     expect(response).to have_http_status(200)
     expect(response.parsed_body).to eq([])
-  end
 
-  it 'returns an empty list in local-only view mode' do
-    Fabricate(:avatar_decoration)
+    Setting.avatar_decorations_federation_enabled = true
     Setting.avatar_decorations_local_only_view = true
 
     post '/api/get-avatar-decorations', as: :json

@@ -44,21 +44,17 @@ RSpec.describe 'Misskey-compat notes/show-partial-bulk endpoint' do
     expect(response.parsed_body.first['reactions']).to eq({})
   end
 
-  it 'rejects an empty id list' do
+  it 'rejects an empty, oversized, or missing id list' do
     post '/api/notes/show-partial-bulk', params: { noteIds: [] }, as: :json
 
     expect(response).to have_http_status(400)
     expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
-  end
 
-  it 'rejects more than 100 ids' do
     post '/api/notes/show-partial-bulk', params: { noteIds: Array.new(101) { |index| mi(index + 1) } }, as: :json
 
     expect(response).to have_http_status(400)
     expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
-  end
 
-  it 'rejects a missing id list' do
     post '/api/notes/show-partial-bulk', params: {}, as: :json
 
     expect(response).to have_http_status(400)

@@ -29,14 +29,12 @@ RSpec.describe 'Misskey-compat account relationship endpoints' do
       )
     end
 
-    it 'rejects writes made with a read-only token' do
+    it 'rejects writes made with a read-only token, then creates and removes a block using a MiId userId' do
       post '/api/blocking/create', params: { i: read_token, userId: target.id }, as: :json
 
       expect(response).to have_http_status(403)
       expect(account.blocking?(target)).to be(false)
-    end
 
-    it 'creates and removes a block using a MiId userId' do
       user_id = MisskeyCompat::MiId.encode(target.id)
 
       post '/api/blocking/create', params: { i: write_token, userId: user_id }, as: :json
@@ -66,14 +64,12 @@ RSpec.describe 'Misskey-compat account relationship endpoints' do
       )
     end
 
-    it 'returns NOT_FOLLOWING when updating a missing relationship' do
+    it 'returns NOT_FOLLOWING for a missing relationship and updates notifications on an owned follow relationship' do
       post '/api/following/update', params: { i: write_token, userId: MisskeyCompat::MiId.encode(target.id), notify: 'normal' }, as: :json
 
       expect(response).to have_http_status(400)
       expect(response.parsed_body.dig(:error, :code)).to eq('NOT_FOLLOWING')
-    end
 
-    it 'updates notifications on an owned follow relationship' do
       follow = Fabricate(:follow, account: account, target_account: target, notify: false)
 
       post '/api/following/update', params: { i: write_token, userId: MisskeyCompat::MiId.encode(target.id), notify: 'normal' }, as: :json
@@ -138,14 +134,12 @@ RSpec.describe 'Misskey-compat account relationship endpoints' do
       end
     end
 
-    it 'treats a past expiresAt as a successful no-op' do
+    it 'treats a past expiresAt as a successful no-op and rejects a non-integer expiresAt' do
       post '/api/mute/create', params: { i: write_token, userId: MisskeyCompat::MiId.encode(target.id), expiresAt: 1.minute.ago.to_i * 1000 }, as: :json
 
       expect(response).to have_http_status(204)
       expect(account.muting?(target)).to be(false)
-    end
 
-    it 'rejects a non-integer expiresAt' do
       post '/api/mute/create', params: { i: write_token, userId: MisskeyCompat::MiId.encode(target.id), expiresAt: 'tomorrow' }, as: :json
 
       expect(response).to have_http_status(400)

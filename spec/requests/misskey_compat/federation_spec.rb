@@ -9,14 +9,6 @@ RSpec.describe 'Misskey-compat federation' do
   let(:user)  { Fabricate(:user) }
   let(:token) { Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token }
 
-  describe 'authentication' do
-    it 'rejects unauthenticated read requests' do
-      post '/api/federation/instances', params: {}, as: :json
-
-      expect(response).to have_http_status(401)
-    end
-  end
-
   describe 'federation/instances' do
     it 'lists instance snapshots and honours filters and sort' do
       Fabricate(:misskey_federation_instance_stat, domain: 'small.example', users_count: 1, following_count: 0, followers_count: 0)
@@ -30,7 +22,11 @@ RSpec.describe 'Misskey-compat federation' do
       expect(body.first).to include(host: 'big.example', usersCount: 10)
     end
 
-    it 'rejects offsets above the query budget' do
+    it 'rejects unauthenticated read requests and offsets above the query budget' do
+      post '/api/federation/instances', params: {}, as: :json
+
+      expect(response).to have_http_status(401)
+
       post '/api/federation/instances', params: { i: token, offset: 1_001 }, as: :json
 
       expect(response).to have_http_status(400)
@@ -103,16 +99,14 @@ RSpec.describe 'Misskey-compat federation' do
       before  { Setting.misskey_compat_expose_follow_graph = true }
       after   { Setting.misskey_compat_expose_follow_graph = false }
 
-      it 'returns follow relationships for the host' do
+      it 'returns follow relationships for the host and the nearest newer ones for a since cursor' do
         post '/api/federation/following', params: { i: token, host: 'remote.example' }, as: :json
         expect(response).to have_http_status(200)
         expect(response.parsed_body.first).to include(followerId: MisskeyCompat::MiId.encode(remote.id))
 
         post '/api/federation/followers', params: { i: token, host: 'remote.example' }, as: :json
         expect(response.parsed_body).to be_empty
-      end
 
-      it 'returns the nearest newer follow relationships' do
         follows = Array.new(4) do |index|
           remote = Fabricate(:account, domain: 'remote.example', username: "follower#{index}")
           Fabricate(:follow, account: remote, target_account: local)
@@ -139,15 +133,10 @@ RSpec.describe 'Misskey-compat federation' do
   describe 'federation/update-remote-user' do
     let(:remote) { Fabricate(:account, domain: 'remote.example', username: 'carol') }
 
-    it 'requires authentication' do
+    it 'requires authentication and rejects users without the manage_federation privilege' do
       post '/api/federation/update-remote-user', params: { userId: MisskeyCompat::MiId.encode(remote.id) }, as: :json
 
       expect(response).to have_http_status(401)
-    end
-
-    it 'rejects users without the manage_federation privilege' do
-      user = Fabricate(:user)
-      token = Fabricate(:accessible_access_token, resource_owner_id: user.id, scopes: 'read').token
 
       post '/api/federation/update-remote-user', params: { i: token, userId: MisskeyCompat::MiId.encode(remote.id) }, as: :json
 

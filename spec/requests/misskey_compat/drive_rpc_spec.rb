@@ -49,8 +49,11 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
   describe 'file RPC' do
     let!(:file) { DriveFile.create!(account: account, file: attachment_fixture('attachment.jpg')).tap { |item| item.update!(md5: '0123456789abcdef') } }
 
-    it 'lists, shows, updates, finds, and moves owned files with MiId fields' do
+    it 'lists with wildcard MIME filters, shows, updates, finds, and moves owned files with MiId fields' do
       folder = account.drive_folders.create!(name: 'Pictures')
+
+      rpc_post 'drive/files', type: 'image/*'
+      expect(response.parsed_body.pluck(:id)).to include(mi_id(file.id))
 
       rpc_post 'drive/files', folderId: nil, limit: 30
       expect(response).to have_http_status(200)
@@ -114,12 +117,6 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(response).to have_http_status(400)
       expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
       expect(file.reload.folder_id).to be_nil
-    end
-
-    it 'supports Misskey wildcard MIME filters' do
-      rpc_post 'drive/files', type: 'image/*'
-
-      expect(response.parsed_body.pluck(:id)).to include(mi_id(file.id))
     end
 
     it 'broadcasts compatibility file mutations to the Drive stream' do
@@ -297,7 +294,7 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(response.parsed_body.dig(:parent, :parent, :parent)).to be_nil
     end
 
-    it 'truncates a self-referencing parent in folder details' do
+    it 'truncates self-referencing parents and repeated ancestors in cyclic folder details' do
       folder = account.drive_folders.create!(name: 'Self parent')
       folder.update_column(:parent_id, folder.id)
 
@@ -306,9 +303,7 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:id]).to eq(mi_id(folder.id))
       expect(response.parsed_body[:parent]).to be_nil
-    end
 
-    it 'truncates a repeated ancestor in cyclic folder details' do
       first = account.drive_folders.create!(name: 'First')
       second = account.drive_folders.create!(name: 'Second', parent: first)
       first.update_column(:parent_id, second.id)
@@ -320,29 +315,22 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       expect(response.parsed_body.dig(:parent, :parent)).to be_nil
     end
 
-    it 'rejects deletion of a folder with a child folder without moving it' do
+    it 'rejects deletion of a folder with a child folder or a file without moving them' do
       folder = account.drive_folders.create!(name: 'Parent')
       child = account.drive_folders.create!(name: 'Child', parent: folder)
-
-      rpc_post 'drive/folders/delete', folderId: mi_id(folder.id)
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('HAS_CHILD_FILES_OR_FOLDERS')
-      expect(folder.reload).to be_persisted
-      expect(child.reload.parent_id).to eq(folder.id)
-    end
-
-    it 'rejects deletion of a folder with a file without moving it' do
-      folder = account.drive_folders.create!(name: 'Pictures')
+      pictures = account.drive_folders.create!(name: 'Pictures')
       file = insert_drive_file
-      file.update!(folder: folder)
+      file.update!(folder: pictures)
 
-      rpc_post 'drive/folders/delete', folderId: mi_id(folder.id)
+      [folder, pictures].each do |target|
+        rpc_post 'drive/folders/delete', folderId: mi_id(target.id)
 
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('HAS_CHILD_FILES_OR_FOLDERS')
-      expect(folder.reload).to be_persisted
-      expect(file.reload.folder_id).to eq(folder.id)
+        expect(response).to have_http_status(400), target.name
+        expect(response.parsed_body.dig(:error, :code)).to eq('HAS_CHILD_FILES_OR_FOLDERS'), target.name
+        expect(target.reload).to be_persisted
+      end
+      expect(child.reload.parent_id).to eq(folder.id)
+      expect(file.reload.folder_id).to eq(pictures.id)
     end
 
     it 'rejects another account parent folder' do
@@ -352,17 +340,6 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
 
       expect(response).to have_http_status(404)
       expect(response.parsed_body.dig(:error, :code)).to eq('NO_SUCH_FOLDER')
-    end
-  end
-
-  it 'requires the native Drive feature for resource RPC' do
-    Setting.drive_enabled = false
-
-    %w(drive drive/stream drive/files).each do |endpoint|
-      rpc_post endpoint
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('UNAVAILABLE')
     end
   end
 
@@ -377,7 +354,9 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
     expect(file.reload.display_name).to_not eq('Denied')
   end
 
-  it 'advertises exactly the implemented Drive HTTP endpoints while Drive is enabled' do
+  it 'advertises exactly the implemented Drive HTTP endpoints while Drive is enabled, even if chat is disabled' do
+    Setting.chat_enabled = false
+
     post '/api/endpoints', as: :json
 
     drive_endpoints = response.parsed_body.grep(%r{\Adrive/})
@@ -403,19 +382,18 @@ RSpec.describe 'Misskey-compat Drive RPC', :attachment_processing do
       drive/stream
     )
     expect(drive_endpoints).to match_array(expected)
-    expect(response.parsed_body).to include('drive')
+    expect(response.parsed_body).to include('drive', 'chat/messages/user-timeline')
   end
 
-  it 'advertises the endpoint when Drive is enabled even if chat is disabled' do
-    Setting.chat_enabled = false
-
-    post '/api/endpoints', as: :json
-
-    expect(response.parsed_body).to include('drive/files/attached-chat-messages', 'chat/messages/user-timeline')
-  end
-
-  it 'advertises only the legacy upload endpoint while the native Drive feature is disabled' do
+  it 'requires the native Drive feature for resource RPC and advertises only the legacy upload endpoint while it is disabled' do
     Setting.drive_enabled = false
+
+    %w(drive drive/stream drive/files).each do |endpoint|
+      rpc_post endpoint
+
+      expect(response).to have_http_status(400), endpoint
+      expect(response.parsed_body.dig(:error, :code)).to eq('UNAVAILABLE'), endpoint
+    end
 
     post '/api/endpoints', as: :json
 

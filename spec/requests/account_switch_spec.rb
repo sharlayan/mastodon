@@ -242,19 +242,13 @@ RSpec.describe 'Account switching' do
   end
 
   describe 'when another account reuses the same browser' do
-    it 'does not adopt the parent stack of the previous account' do
+    it 'does not adopt the parent stack of the previous account and discards the persisted stack cookie' do
       switch_to_child
 
       body = account_switches_as(other_user)
 
       expect(body[:parent]).to be_nil
       expect(body[:root_account_id]).to eq(other_user.account.id.to_s)
-    end
-
-    it 'discards the persisted stack cookie' do
-      switch_to_child
-      account_switches_as(other_user)
-
       expect(cookies[:switch_parent_stack]).to be_blank
     end
   end

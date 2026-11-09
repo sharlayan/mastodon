@@ -12,7 +12,11 @@ RSpec.describe 'Misskey-compat i endpoints' do
   after  { Setting.misskey_compat_enabled = false }
 
   describe 'POST /api/i' do
-    it 'returns the authenticated account with compat-only fields' do
+    it 'rejects an unauthenticated request and returns the authenticated account with compat-only fields' do
+      post '/api/i', params: {}, as: :json
+
+      expect(response).to have_http_status(401)
+
       post '/api/i', params: { i: token }, as: :json
 
       expect(response).to have_http_status(200)
@@ -21,12 +25,6 @@ RSpec.describe 'Misskey-compat i endpoints' do
         username: account.username
       )
       expect(response.parsed_body).to include(:hasUnreadAnnouncement, :policies)
-    end
-
-    it 'rejects an unauthenticated request' do
-      post '/api/i', params: {}, as: :json
-
-      expect(response).to have_http_status(401)
     end
 
     it 'reports the own moderator and administrator role accurately' do
@@ -72,7 +70,7 @@ RSpec.describe 'Misskey-compat i endpoints' do
       expect(response.parsed_body[:error]).to include(code: 'INVALID_PARAM')
     end
 
-    it 'applies profile fields sent with Misskey names' do
+    it 'applies profile fields sent with Misskey names and leaves untouched fields alone' do
       update(name: 'New Name', description: 'about me', location: 'Seoul', birthday: '1990-01-01')
 
       expect(response).to have_http_status(200)
@@ -82,15 +80,11 @@ RSpec.describe 'Misskey-compat i endpoints' do
         birthday: '1990-01-01'
       )
       expect(account.note).to eq('about me')
-    end
-
-    it 'leaves untouched fields alone' do
-      account.update!(display_name: 'Keep Me')
 
       update(description: 'only the note changes')
 
       expect(response).to have_http_status(200)
-      expect(account.reload.display_name).to eq('Keep Me')
+      expect(account.reload).to have_attributes(display_name: 'New Name', note: 'only the note changes')
     end
 
     it 'sets profile images by ID, preserves omitted images, and removes explicitly nulled images' do
@@ -116,18 +110,11 @@ RSpec.describe 'Misskey-compat i endpoints' do
       expect(account.reload.header_file_name).to be_nil
     end
 
-    it 'maps isBot to the Service actor type and isLocked to locked' do
-      update(isBot: true, isLocked: true)
+    it 'maps isBot to the Service actor type, isLocked to locked, and isExplorable to discoverable' do
+      update(isBot: true, isLocked: true, isExplorable: false)
 
       expect(response).to have_http_status(200)
-      expect(account.reload).to have_attributes(actor_type: 'Service', locked: true)
-    end
-
-    it 'maps isExplorable to discoverable' do
-      update(isExplorable: false)
-
-      expect(response).to have_http_status(200)
-      expect(account.reload.discoverable).to be(false)
+      expect(account.reload).to have_attributes(actor_type: 'Service', locked: true, discoverable: false)
     end
 
     it 'hides collections unless follow visibility is public' do
@@ -172,15 +159,18 @@ RSpec.describe 'Misskey-compat i endpoints' do
       expect(JSON.parse(user.reload.settings['misskey_muted_words'])).to eq([['spoiler'], %w(two words)])
     end
 
-    it 'rejects muted words that are not an array' do
+    it 'rejects muted words that are not an array or exceed the size budget, and muted instances or emojis over the limit' do
       update(mutedWords: 'spoiler')
-
       expect(response).to have_http_status(400)
-    end
 
-    it 'rejects a muted words payload over the size budget' do
       update(mutedWords: [['x' * (64 * 1024)]])
+      expect(response).to have_http_status(400)
 
+      update(mutedInstances: Array.new(101) { |i| "host#{i}.example" })
+      expect(response).to have_http_status(400)
+      expect(account.reload.domain_mutes).to be_empty
+
+      update(mutedEmojis: Array.new(1001) { |i| "emoji#{i}" })
       expect(response).to have_http_status(400)
     end
 
@@ -192,23 +182,15 @@ RSpec.describe 'Misskey-compat i endpoints' do
       expect(response).to have_http_status(200)
       expect(account.reload.domain_mutes.pluck(:domain)).to contain_exactly('new.example')
     end
-
-    it 'rejects more muted instances than the limit allows' do
-      update(mutedInstances: Array.new(101) { |i| "host#{i}.example" })
-
-      expect(response).to have_http_status(400)
-      expect(account.reload.domain_mutes).to be_empty
-    end
-
-    it 'rejects more muted emojis than the limit allows' do
-      update(mutedEmojis: Array.new(1001) { |i| "emoji#{i}" })
-
-      expect(response).to have_http_status(400)
-    end
   end
 
   describe 'POST /api/i/read-announcement' do
-    it 'marks a published announcement as read' do
+    it 'marks a published announcement as read and returns NO_SUCH_ANNOUNCEMENT for an unknown id' do
+      post '/api/i/read-announcement', params: { i: token, announcementId: MisskeyCompat::MiId.encode(0) }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_ANNOUNCEMENT')
+
       announcement = BoardAnnouncement.create!(title: 'Notice', text: 'body', published: true)
 
       post '/api/i/read-announcement', params: { i: token, announcementId: MisskeyCompat::MiId.encode(announcement.id) }, as: :json
@@ -216,19 +198,20 @@ RSpec.describe 'Misskey-compat i endpoints' do
       expect(response).to have_http_status(204)
       expect(BoardAnnouncementRead.exists?(account: account, board_announcement: announcement)).to be(true)
     end
-
-    it 'returns NO_SUCH_ANNOUNCEMENT for an unknown id' do
-      post '/api/i/read-announcement', params: { i: token, announcementId: MisskeyCompat::MiId.encode(0) }, as: :json
-
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_ANNOUNCEMENT')
-    end
   end
 
   describe 'POST /api/i/pin and /api/i/unpin' do
     let(:status) { Fabricate(:status, account: account) }
 
-    it 'pins and unpins the caller own status' do
+    it 'pins and unpins the caller own status and refuses to pin somebody else status' do
+      other = Fabricate(:status)
+
+      post '/api/i/pin', params: { i: token, noteId: MisskeyCompat::MiId.encode(other.id) }, as: :json
+
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_NOTE')
+      expect(StatusPin.exists?(account: account, status: other)).to be(false)
+
       post '/api/i/pin', params: { i: token, noteId: MisskeyCompat::MiId.encode(status.id) }, as: :json
 
       expect(response).to have_http_status(200)
@@ -238,16 +221,6 @@ RSpec.describe 'Misskey-compat i endpoints' do
 
       expect(response).to have_http_status(200)
       expect(StatusPin.exists?(account: account, status: status)).to be(false)
-    end
-
-    it 'refuses to pin somebody else status' do
-      other = Fabricate(:status)
-
-      post '/api/i/pin', params: { i: token, noteId: MisskeyCompat::MiId.encode(other.id) }, as: :json
-
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_NOTE')
-      expect(StatusPin.exists?(account: account, status: other)).to be(false)
     end
   end
 end

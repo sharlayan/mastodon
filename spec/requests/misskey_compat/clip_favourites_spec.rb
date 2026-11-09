@@ -21,7 +21,7 @@ RSpec.describe 'Misskey-compat clip favourites' do
   describe 'POST /api/clips/favorite' do
     let(:clip) { Fabricate(:clip, account: other, public: true) }
 
-    it 'favorites another account public clip' do
+    it 'favorites another account public clip and returns the Misskey duplicate favorite error on repeat' do
       expect do
         post '/api/clips/favorite', params: { i: write_token, clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
       end.to change(ClipFavourite, :count).by(1)
@@ -30,10 +30,6 @@ RSpec.describe 'Misskey-compat clip favourites' do
 
       post '/api/clips/show', params: { i: read_token, clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
       expect(response.parsed_body).to include(favoritedCount: 1, isFavorited: true)
-    end
-
-    it 'returns the Misskey duplicate favorite error' do
-      user.account.clip_favourites.create!(clip: clip)
 
       post '/api/clips/favorite', params: { i: write_token, clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
 
@@ -54,7 +50,12 @@ RSpec.describe 'Misskey-compat clip favourites' do
   describe 'POST /api/clips/unfavorite' do
     let(:clip) { Fabricate(:clip, account: other, public: true) }
 
-    it 'removes an existing favorite even after the clip becomes private' do
+    it 'returns the Misskey missing favorite error and removes an existing favorite even after the clip becomes private' do
+      post '/api/clips/unfavorite', params: { i: write_token, clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
+
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig(:error, :code)).to eq('NOT_FAVORITED')
+
       user.account.clip_favourites.create!(clip: clip)
       clip.update!(public: false)
 
@@ -63,13 +64,6 @@ RSpec.describe 'Misskey-compat clip favourites' do
       end.to change(ClipFavourite, :count).by(-1)
 
       expect(response).to have_http_status(204)
-    end
-
-    it 'returns the Misskey missing favorite error' do
-      post '/api/clips/unfavorite', params: { i: write_token, clipId: MisskeyCompat::MiId.encode(clip.id) }, as: :json
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('NOT_FAVORITED')
     end
   end
 
@@ -85,7 +79,7 @@ RSpec.describe 'Misskey-compat clip favourites' do
       hidden_clip.update!(public: false)
     end
 
-    it 'returns visible favorites, including another account public clip' do
+    it 'returns visible favorites, including another account public clip, and hides favorites owned by an account that has requested deletion' do
       post '/api/clips/my-favorites', params: { i: read_token }, as: :json
 
       expect(response).to have_http_status(200)
@@ -94,9 +88,7 @@ RSpec.describe 'Misskey-compat clip favourites' do
         MisskeyCompat::MiId.encode(own_clip.id)
       )
       expect(response.parsed_body).to all(include(favoritedCount: 1, isFavorited: true))
-    end
 
-    it 'hides favorites owned by an account that has requested deletion' do
       public_clip.account.mark_deleted!
 
       post '/api/clips/my-favorites', params: { i: read_token }, as: :json

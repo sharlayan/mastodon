@@ -35,39 +35,33 @@ RSpec.describe 'Misskey-compat notes/mentions endpoint' do
     statuses.map { |status| MisskeyCompat::MiId.encode(status.id) }
   end
 
-  it 'excludes silent mentions on public notes but keeps silent limited recipients' do
+  it 'excludes silent mentions on public notes but keeps silent limited recipients, and limits results to followed authors when following is true' do
     post '/api/notes/mentions', params: { i: token }, as: :json
 
     expect(response).to have_http_status(200)
     expect(note_ids).to match_array(encoded(public_mention, direct_mention, limited_mention))
     expect(note_ids).to_not include(*encoded(silent_public))
-  end
 
-  it 'returns only direct and limited notes for the specified visibility' do
-    post '/api/notes/mentions', params: { i: token, visibility: 'specified' }, as: :json
-
-    expect(response).to have_http_status(200)
-    expect(note_ids).to match_array(encoded(direct_mention, limited_mention))
-  end
-
-  it 'filters by public visibility' do
-    post '/api/notes/mentions', params: { i: token, visibility: 'public' }, as: :json
-
-    expect(response).to have_http_status(200)
-    expect(note_ids).to eq(encoded(public_mention))
-  end
-
-  it 'returns nothing for an unknown visibility' do
-    post '/api/notes/mentions', params: { i: token, visibility: 'nonsense' }, as: :json
-
-    expect(response).to have_http_status(200)
-    expect(note_ids).to be_empty
-  end
-
-  it 'limits results to followed authors when following is true' do
     post '/api/notes/mentions', params: { i: token, following: true }, as: :json
 
     expect(response).to have_http_status(200)
     expect(note_ids).to match_array(encoded(public_mention, limited_mention))
+  end
+
+  it 'filters by specified and public visibility and returns nothing for an unknown visibility' do
+    post '/api/notes/mentions', params: { i: token, visibility: 'specified' }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(note_ids).to match_array(encoded(direct_mention, limited_mention))
+
+    post '/api/notes/mentions', params: { i: token, visibility: 'public' }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(note_ids).to eq(encoded(public_mention))
+
+    post '/api/notes/mentions', params: { i: token, visibility: 'nonsense' }, as: :json
+
+    expect(response).to have_http_status(200)
+    expect(note_ids).to be_empty
   end
 end

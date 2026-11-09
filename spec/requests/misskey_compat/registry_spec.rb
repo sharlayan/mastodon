@@ -15,7 +15,11 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
   end
 
   describe 'set / get round-trip' do
-    it 'stores and returns arbitrary JSON values by type' do
+    it 'stores and returns arbitrary JSON values by type and returns NO_SUCH_KEY for a missing key' do
+      post '/api/i/registry/get', params: { i: token, scope: %w(client base), key: 'nope' }, as: :json
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig('error', 'code')).to eq('NO_SUCH_KEY')
+
       set_item('darkMode', true)
       expect(response).to have_http_status(204)
 
@@ -41,14 +45,6 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
     end
   end
 
-  describe 'get on a missing key' do
-    it 'returns NO_SUCH_KEY' do
-      post '/api/i/registry/get', params: { i: token, scope: %w(client base), key: 'nope' }, as: :json
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body.dig('error', 'code')).to eq('NO_SUCH_KEY')
-    end
-  end
-
   describe 'get-all / keys / keys-with-type' do
     before do
       set_item('darkMode', true)
@@ -56,17 +52,13 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
       set_item('nullable', nil)
     end
 
-    it 'get-all returns a key->value object scoped correctly' do
+    it 'returns a key->value object, the key names, and the JSON type of each value' do
       post '/api/i/registry/get-all', params: { i: token, scope: %w(client base) }, as: :json
       expect(response.parsed_body).to eq('darkMode' => true, 'count' => 3, 'nullable' => nil)
-    end
 
-    it 'keys returns just the key names' do
       post '/api/i/registry/keys', params: { i: token, scope: %w(client base) }, as: :json
       expect(response.parsed_body).to contain_exactly('darkMode', 'count', 'nullable')
-    end
 
-    it 'keys-with-type reports the JSON type of each value' do
       post '/api/i/registry/keys-with-type', params: { i: token, scope: %w(client base) }, as: :json
       expect(response.parsed_body).to eq('darkMode' => 'boolean', 'count' => 'number', 'nullable' => 'null')
     end
@@ -84,18 +76,16 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
   end
 
   describe 'remove' do
-    it 'deletes the key and 204s, then get returns NO_SUCH_KEY' do
+    it 'returns NO_SUCH_KEY for a missing key, deletes an existing key with 204, then get returns NO_SUCH_KEY' do
+      post '/api/i/registry/remove', params: { i: token, scope: %w(client base), key: 'nope' }, as: :json
+      expect(response).to have_http_status(404)
+
       set_item('lang', 'ja')
 
       post '/api/i/registry/remove', params: { i: token, scope: %w(client base), key: 'lang' }, as: :json
       expect(response).to have_http_status(204)
 
       post '/api/i/registry/get', params: { i: token, scope: %w(client base), key: 'lang' }, as: :json
-      expect(response).to have_http_status(404)
-    end
-
-    it 'returns NO_SUCH_KEY when removing a missing key' do
-      post '/api/i/registry/remove', params: { i: token, scope: %w(client base), key: 'nope' }, as: :json
       expect(response).to have_http_status(404)
     end
   end
@@ -198,26 +188,22 @@ RSpec.describe 'Misskey-compat i/registry endpoints' do
   end
 
   describe 'validation and auth' do
-    it 'rejects scope items that are not identifier-safe' do
+    it 'requires authentication and rejects scope items that are not identifier-safe' do
+      post '/api/i/registry/get-all', params: { scope: %w(client base) }, as: :json
+      expect(response).to have_http_status(401)
+
       post '/api/i/registry/get-all', params: { i: token, scope: ['bad scope!'] }, as: :json
       expect(response).to have_http_status(400)
       expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
     end
 
-    it 'requires authentication' do
-      post '/api/i/registry/get-all', params: { scope: %w(client base) }, as: :json
-      expect(response).to have_http_status(401)
-    end
-
-    it 'rejects oversized registry values' do
+    it 'rejects oversized registry values and new writes when legacy data already exceeds the account quota' do
       set_item('large', 'x' * (Api::MisskeyCompat::RegistryController::MAX_VALUE_BYTES + 1))
 
       expect(response).to have_http_status(400)
       expect(response.parsed_body.dig('error', 'code')).to eq('INVALID_PARAM')
       expect(account.misskey_registry_items).to_not exist
-    end
 
-    it 'rejects a new write when legacy data already exceeds the account quota' do
       item = account.misskey_registry_items.create!(domain: nil, scope: %w(other), key: 'legacy', value: 'small')
       item.update_column(:value, 'x' * MisskeyRegistryItem::MAX_ACCOUNT_BYTES)
 

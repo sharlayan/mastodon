@@ -71,7 +71,7 @@ RSpec.describe 'Misskey-compat charts' do
     Setting.drive_enabled = false
   end
 
-  it 'returns the stable zero-valued shape when no federation requests were recorded' do
+  it 'returns the stable zero-valued shape without records and sums recorded federation requests across every domain for the server-wide chart' do
     post '/api/charts/ap-request', params: { span: 'day', limit: 2 }, as: :json
 
     expect(response).to have_http_status(200)
@@ -80,9 +80,7 @@ RSpec.describe 'Misskey-compat charts' do
       'deliverSucceeded' => [0, 0],
       'inboxReceived' => [0, 0]
     )
-  end
 
-  it 'sums recorded federation requests across every domain for the server-wide chart' do
     Fabricate(:federation_request_statistic, domain: 'a.example', bucket_at: Time.utc(2026, 7, 24, 12), deliver_succeeded_count: 3, deliver_failed_count: 1, inbox_received_count: 5)
     Fabricate(:federation_request_statistic, domain: 'b.example', bucket_at: Time.utc(2026, 7, 24, 12), deliver_succeeded_count: 4, inbox_received_count: 2)
     Fabricate(:federation_request_statistic, domain: 'a.example', bucket_at: Time.utc(2026, 7, 24, 10), deliver_failed_count: 7)
@@ -163,17 +161,13 @@ RSpec.describe 'Misskey-compat charts' do
     Setting.drive_enabled = false
   end
 
-  it 'requires an authenticated user for per-user charts' do
-    account = Fabricate(:account)
-
-    post '/api/charts/user/notes', params: { userId: MisskeyCompat::MiId.encode(account.id), span: 'day', limit: 1 }, as: :json
-
-    expect(response).to have_http_status(401)
-  end
-
-  it 'refuses every per-user chart for a different account' do
+  it 'requires an authenticated user for per-user charts and refuses every per-user chart for a different account' do
     other = Fabricate(:account)
     Setting.drive_enabled = true
+
+    post '/api/charts/user/notes', params: { userId: MisskeyCompat::MiId.encode(other.id), span: 'day', limit: 1 }, as: :json
+
+    expect(response).to have_http_status(401)
 
     %w(drive following notes pv reactions).each do |name|
       post "/api/charts/user/#{name}", params: { i: token, userId: MisskeyCompat::MiId.encode(other.id), span: 'day', limit: 1 }, as: :json

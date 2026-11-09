@@ -20,7 +20,7 @@ RSpec.describe 'Misskey-compatible URL preview' do
     )
   end
 
-  it 'returns the Misskey URL_PREVIEW_FAILED error for unknown URLs' do
+  it 'returns the Misskey URL_PREVIEW_FAILED error for unknown URLs and rejects a non-string url' do
     get '/url', params: { url: 'https://unknown.example/article' }
 
     expect(response).to have_http_status(422)
@@ -28,9 +28,7 @@ RSpec.describe 'Misskey-compatible URL preview' do
       'code' => 'URL_PREVIEW_FAILED',
       'id' => '09d01cb5-53b9-4856-82e5-38a50c290a3b'
     )
-  end
 
-  it 'rejects a non-string url' do
     get '/url', params: { url: ['https://requested.example/article'] }
 
     expect(response).to have_http_status(400)

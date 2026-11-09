@@ -6,7 +6,7 @@ RSpec.describe 'Misskey-compat server-info endpoint' do
   before { Setting.misskey_compat_enabled = true }
   after  { Setting.misskey_compat_enabled = false }
 
-  it 'returns the privacy-preserving Misskey server information shape' do
+  it 'returns the privacy-preserving Misskey server information shape and advertises server-info' do
     get '/api/server-info'
 
     expect(response).to have_http_status(200)
@@ -24,9 +24,7 @@ RSpec.describe 'Misskey-compat server-info endpoint' do
         'used' => 0,
       }
     )
-  end
 
-  it 'advertises server-info' do
     post '/api/endpoints', as: :json
 
     expect(response).to have_http_status(200)

@@ -31,12 +31,17 @@ RSpec.describe 'Misskey-compat meta endpoint' do
       )
     end
 
-    it 'returns lite meta without detailed keys when detail is false' do
+    it 'returns lite meta without detailed keys when detail is false and 404 when the compat layer is disabled' do
       post '/api/meta', params: { detail: false }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to include(:name)
       expect(response.parsed_body).to_not include(:features)
+
+      Setting.misskey_compat_enabled = false
+      post '/api/meta', params: {}, as: :json
+
+      expect(response).to have_http_status(404)
     end
 
     it 'prefers the app icon configured by the Mastodon administrator' do
@@ -49,7 +54,7 @@ RSpec.describe 'Misskey-compat meta endpoint' do
       expect(response.parsed_body[:iconUrl]).to end_with(app_icon.file.url(:original))
     end
 
-    it 'mirrors Misskey INVALID_PARAM when the body is not an object' do
+    it 'mirrors Misskey INVALID_PARAM when the body is not an object or detail has the wrong type' do
       post '/api/meta', params: '[]', headers: { 'CONTENT_TYPE' => 'application/json' }
 
       expect(response).to have_http_status(400)
@@ -60,23 +65,11 @@ RSpec.describe 'Misskey-compat meta endpoint' do
         kind: 'client'
       )
       expect(response.parsed_body.deep_symbolize_keys[:error][:info]).to eq(param: '#/type', reason: 'must be object')
-    end
 
-    it 'mirrors Misskey INVALID_PARAM when detail has the wrong type' do
       post '/api/meta', params: { detail: 'nope' }, as: :json
 
       expect(response).to have_http_status(400)
       expect(response.parsed_body.deep_symbolize_keys.dig(:error, :info)).to eq(param: '#/properties/detail/type', reason: 'must be boolean')
-    end
-  end
-
-  describe 'when the compat layer is disabled' do
-    before { Setting.misskey_compat_enabled = false }
-
-    it 'returns 404' do
-      post '/api/meta', params: {}, as: :json
-
-      expect(response).to have_http_status(404)
     end
   end
 end

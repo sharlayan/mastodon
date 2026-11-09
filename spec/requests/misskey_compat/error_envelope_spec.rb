@@ -35,13 +35,18 @@ RSpec.describe 'Misskey-compat error envelope' do
     expect(error_body).to include('code' => 'ACCESS_DENIED', 'id' => '56f35758-7dd5-468b-8439-5d6fb8ec9b8e')
   end
 
-  it 'renders unfollowable targets as an ACCESS_DENIED error' do
+  it 'renders unfollowable targets as an ACCESS_DENIED error and following yourself as FOLLOWEE_IS_YOURSELF' do
     target.update!(moved_to_account: Fabricate(:account))
 
     post '/api/following/create', params: { i: token, userId: target.id.to_s }, as: :json
 
     expect(response).to have_http_status(403)
     expect(error_body).to include('code' => 'ACCESS_DENIED')
+
+    post '/api/following/create', params: { i: token, userId: account.id.to_s }, as: :json
+
+    expect(response).to have_http_status(400)
+    expect(error_body).to include('code' => 'FOLLOWEE_IS_YOURSELF', 'id' => '26fbe7bb-a331-4857-af17-205b426669a9')
   end
 
   it 'reports a blocker with the Misskey BLOCKED error' do
@@ -62,29 +67,17 @@ RSpec.describe 'Misskey-compat error envelope' do
     expect(error_body).to include('code' => 'BLOCKING', 'id' => '4e2206ec-aa4f-4960-b865-6c23ac38e2d9')
   end
 
-  it 'reports following yourself with the Misskey FOLLOWEE_IS_YOURSELF error' do
-    post '/api/following/create', params: { i: token, userId: account.id.to_s }, as: :json
-
-    expect(response).to have_http_status(400)
-    expect(error_body).to include('code' => 'FOLLOWEE_IS_YOURSELF', 'id' => '26fbe7bb-a331-4857-af17-205b426669a9')
-  end
-
-  it 'reports accepting a missing follow request with NO_FOLLOW_REQUEST' do
+  it 'reports accepting a missing follow request with NO_FOLLOW_REQUEST, treats rejecting one as a no-op, and still rejects pending requests' do
     post '/api/following/requests/accept', params: { i: token, userId: target.id.to_s }, as: :json
 
     expect(response).to have_http_status(400)
     expect(error_body).to include('code' => 'NO_FOLLOW_REQUEST', 'id' => 'bcde4f8b-0913-4614-8881-614e522fb041')
-  end
 
-  it 'treats rejecting a missing follow request as a no-op like Misskey' do
     post '/api/following/requests/reject', params: { i: token, userId: target.id.to_s }, as: :json
 
     expect(response).to have_http_status(204)
-  end
 
-  it 'still rejects pending follow requests' do
     Fabricate(:follow_request, account: target, target_account: account)
-
     post '/api/following/requests/reject', params: { i: token, userId: target.id.to_s }, as: :json
 
     expect(response).to have_http_status(204)

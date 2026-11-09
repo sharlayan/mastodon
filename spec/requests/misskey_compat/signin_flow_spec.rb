@@ -24,88 +24,56 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
   let!(:user) { Fabricate(:user, email: email, password: password, account_attributes: { username: username }) }
 
   describe 'POST /api/signin-flow' do
-    context 'when the compat gate is off' do
-      before { Setting.misskey_compat_enabled = false }
+    it 'is not routed as an available endpoint when either the compat gate or the dedicated signin-flow gate is off' do
+      Setting.misskey_compat_enabled = false
+      post '/api/signin-flow', params: { username: email, password: password }, headers: origin_headers, as: :json
 
-      it 'is not routed as an available endpoint' do
-        post '/api/signin-flow', params: { username: email, password: password }, headers: origin_headers, as: :json
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig('error', 'code')).to eq('ENDPOINT_DISABLED')
 
-        expect(response).to have_http_status(404)
-        expect(response.parsed_body.dig('error', 'code')).to eq('ENDPOINT_DISABLED')
-      end
-    end
+      Setting.misskey_compat_enabled = true
+      Setting.misskey_compat_signin_flow_enabled = false
+      post '/api/signin-flow', params: { username: email, password: password }, headers: origin_headers, as: :json
 
-    context 'when the dedicated signin-flow gate is off' do
-      before { Setting.misskey_compat_signin_flow_enabled = false }
-
-      it 'remains disabled even when Misskey compatibility is enabled' do
-        post '/api/signin-flow', params: { username: email, password: password }, headers: origin_headers, as: :json
-
-        expect(response).to have_http_status(404)
-        expect(response.parsed_body.dig('error', 'code')).to eq('ENDPOINT_DISABLED')
-      end
+      expect(response).to have_http_status(404)
+      expect(response.parsed_body.dig('error', 'code')).to eq('ENDPOINT_DISABLED')
     end
 
     context 'with a non-local request' do
-      it 'rejects a cross-origin request' do
-        post '/api/signin-flow',
-             params: { username: email, password: password },
-             headers: { 'HTTP_ORIGIN' => 'https://attacker.example', 'REMOTE_ADDR' => '203.0.113.10' },
-             as: :json
+      def sign_in_from(headers)
+        post '/api/signin-flow', params: { username: email, password: password }, headers: headers, as: :json
+      end
+
+      it 'rejects cross-origin, missing, configured-subdomain, and plain HTTP allowlisted origins' do
+        sign_in_from('HTTP_ORIGIN' => 'https://attacker.example', 'REMOTE_ADDR' => '203.0.113.10')
 
         expect(response).to have_http_status(403)
         expect(response.parsed_body.dig('error', 'code')).to eq('ORIGIN_NOT_ALLOWED')
-      end
 
-      it 'allows a same-origin request' do
-        post '/api/signin-flow',
-             params: { username: email, password: password },
-             headers: { 'HTTP_ORIGIN' => 'https://local.test', 'REMOTE_ADDR' => '203.0.113.10' },
-             as: :json
-
-        expect(response).to have_http_status(200)
-      end
-
-      it 'rejects a request without an Origin header' do
-        post '/api/signin-flow',
-             params: { username: email, password: password },
-             headers: { 'REMOTE_ADDR' => '127.0.0.1' },
-             as: :json
+        sign_in_from('REMOTE_ADDR' => '127.0.0.1')
 
         expect(response).to have_http_status(403)
-      end
 
-      it 'allows an exact configured HTTPS origin' do
         Setting.misskey_compat_signin_flow_allowed_origins = 'https://frontend.example'
-
-        post '/api/signin-flow',
-             params: { username: email, password: password },
-             headers: { 'HTTP_ORIGIN' => 'https://frontend.example', 'REMOTE_ADDR' => '203.0.113.10' },
-             as: :json
-
-        expect(response).to have_http_status(200)
-      end
-
-      it 'does not implicitly allow a subdomain of a configured origin' do
-        Setting.misskey_compat_signin_flow_allowed_origins = 'https://frontend.example'
-
-        post '/api/signin-flow',
-             params: { username: email, password: password },
-             headers: { 'HTTP_ORIGIN' => 'https://child.frontend.example', 'REMOTE_ADDR' => '203.0.113.10' },
-             as: :json
+        sign_in_from('HTTP_ORIGIN' => 'https://child.frontend.example', 'REMOTE_ADDR' => '203.0.113.10')
 
         expect(response).to have_http_status(403)
-      end
 
-      it 'does not accept an HTTP origin from the additional allowlist' do
         Setting.misskey_compat_signin_flow_allowed_origins = 'http://frontend.example'
-
-        post '/api/signin-flow',
-             params: { username: email, password: password },
-             headers: { 'HTTP_ORIGIN' => 'http://frontend.example', 'REMOTE_ADDR' => '203.0.113.10' },
-             as: :json
+        sign_in_from('HTTP_ORIGIN' => 'http://frontend.example', 'REMOTE_ADDR' => '203.0.113.10')
 
         expect(response).to have_http_status(403)
+      end
+
+      it 'allows a same-origin request and an exact configured HTTPS origin' do
+        sign_in_from('HTTP_ORIGIN' => 'https://local.test', 'REMOTE_ADDR' => '203.0.113.10')
+
+        expect(response).to have_http_status(200)
+
+        Setting.misskey_compat_signin_flow_allowed_origins = 'https://frontend.example'
+        sign_in_from('HTTP_ORIGIN' => 'https://frontend.example', 'REMOTE_ADDR' => '203.0.113.10')
+
+        expect(response).to have_http_status(200)
       end
     end
 
@@ -115,21 +83,16 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
       expect(response.parsed_body).to_not include('signin-flow')
     end
 
-    it 'asks for the password without looking up the email' do
-      post '/api/signin-flow', params: { username: email }, headers: origin_headers, as: :json
+    it 'asks for the password without looking up the email, giving an unknown email the same first step' do
+      [email, 'nobody@example.com'].each do |identifier|
+        post '/api/signin-flow', params: { username: identifier }, headers: origin_headers, as: :json
 
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body).to eq('finished' => false, 'next' => 'password')
+        expect(response).to have_http_status(200), identifier
+        expect(response.parsed_body).to eq('finished' => false, 'next' => 'password'), identifier
+      end
     end
 
-    it 'gives an unknown email the same first step as a registered one' do
-      post '/api/signin-flow', params: { username: 'nobody@example.com' }, headers: origin_headers, as: :json
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body).to eq('finished' => false, 'next' => 'password')
-    end
-
-    it 'finishes with a usable access token on a correct password' do
+    it 'finishes with a usable access token on a correct password, matching the email case-insensitively' do
       post '/api/signin-flow', params: { username: email, password: password }, headers: origin_headers, as: :json
 
       expect(response).to have_http_status(200)
@@ -142,56 +105,35 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
       expect(token.scopes.to_s).to eq(MisskeyCompat::MiAuth::TOKEN_SCOPE)
       expect(token.misskey_access_grant.permissions).to match_array(MisskeyCompat::MiAuth::SUPPORTED_PERMISSIONS)
       expect(token.misskey_access_grant.native_user_token?).to be true
-    end
 
-    it 'matches the email case-insensitively and ignores surrounding whitespace' do
       post '/api/signin-flow', params: { username: "  #{email.upcase} ", password: password }, headers: origin_headers, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body['finished']).to be(true)
     end
 
-    it 'does not sign in with the username instead of the email' do
-      post '/api/signin-flow', params: { username: username, password: password }, headers: origin_headers, as: :json
+    it 'rejects a username, an unknown email, a wrong password, and an account without a local password with the INCORRECT_PASSWORD id' do
+      [[username, password], ['nobody@example.com', password], [email, 'nope']].each do |identifier, attempt|
+        post '/api/signin-flow', params: { username: identifier, password: attempt }, headers: origin_headers, as: :json
 
-      expect(response).to have_http_status(403)
-      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
-    end
+        expect(response).to have_http_status(403), identifier
+        expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID), identifier
+      end
 
-    it 'rejects an unknown email like a wrong password' do
-      post '/api/signin-flow', params: { username: 'nobody@example.com', password: password }, headers: origin_headers, as: :json
-
-      expect(response).to have_http_status(403)
-      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
-    end
-
-    it 'rejects a wrong password with the Misskey INCORRECT_PASSWORD id' do
-      post '/api/signin-flow', params: { username: email, password: 'nope' }, headers: origin_headers, as: :json
-
-      expect(response).to have_http_status(403)
-      expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
-    end
-
-    it 'rejects an account without a local password' do
       user.update_column(:encrypted_password, '')
-
       post '/api/signin-flow', params: { username: email, password: password }, headers: origin_headers, as: :json
 
       expect(response).to have_http_status(403)
       expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
     end
 
-    it 'does not reveal a suspended account before the password is verified' do
+    it 'does not reveal a suspended account before the password is verified, then treats it as an unknown user' do
       user.account.suspend!
 
       post '/api/signin-flow', params: { username: email, password: 'nope' }, headers: origin_headers, as: :json
 
       expect(response).to have_http_status(403)
       expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
-    end
-
-    it 'treats a suspended account as an unknown user' do
-      user.account.suspend!
 
       post '/api/signin-flow', params: { username: email, password: password }, headers: origin_headers, as: :json
 
@@ -204,21 +146,17 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
         Fabricate(:user, email: email, password: password, otp_required_for_login: true, otp_secret: User.generate_otp_secret, account_attributes: { username: username })
       end
 
-      it 'asks for the password first like any other account' do
+      it 'asks for the password first, does not ask for TOTP after a wrong password, and asks for TOTP after a correct password' do
         post '/api/signin-flow', params: { username: email }, headers: origin_headers, as: :json
 
         expect(response).to have_http_status(200)
         expect(response.parsed_body).to eq('finished' => false, 'next' => 'password')
-      end
 
-      it 'does not ask for TOTP after a wrong password' do
         post '/api/signin-flow', params: { username: email, password: 'nope' }, headers: origin_headers, as: :json
 
         expect(response).to have_http_status(403)
         expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_PASSWORD_ID)
-      end
 
-      it 'asks for the TOTP step after a correct password' do
         post '/api/signin-flow', params: { username: email, password: password }, headers: origin_headers, as: :json
 
         expect(response).to have_http_status(200)
@@ -233,13 +171,6 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
         expect(Doorkeeper::AccessToken.by_token(response.parsed_body['i'])&.resource_owner_id).to eq(user.id)
       end
 
-      it 'rejects an invalid TOTP token with the Misskey INCORRECT_TOTP id' do
-        post '/api/signin-flow', params: { username: email, password: password, token: '000000' }, headers: origin_headers, as: :json
-
-        expect(response).to have_http_status(403)
-        expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_TOKEN_ID)
-      end
-
       it 'shares the hourly two-factor attempt limit with the web sign-in' do
         redis.set("2fa_auth_attempts:#{user.id}:#{Time.now.utc.hour}", Auth::SessionsController::MAX_2FA_ATTEMPTS_PER_HOUR)
 
@@ -249,11 +180,13 @@ RSpec.describe 'Misskey-compat signin-flow endpoint' do
         expect(response.parsed_body['finished']).to be_nil
       end
 
-      it 'notifies the owner of a failed two-factor attempt', :inline_jobs do
+      it 'rejects an invalid TOTP token with the Misskey INCORRECT_TOTP id and notifies the owner', :inline_jobs do
         emails = capture_emails do
           post '/api/signin-flow', params: { username: email, password: password, token: '000000' }, headers: origin_headers, as: :json
         end
 
+        expect(response).to have_http_status(403)
+        expect(response.parsed_body.dig('error', 'id')).to eq(Api::MisskeyCompat::SigninController::INCORRECT_TOKEN_ID)
         expect(emails.size).to eq(1)
         expect(emails.first.to).to eq([email])
       end

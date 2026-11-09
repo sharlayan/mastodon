@@ -18,20 +18,18 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
   end
 
   describe 'POST /api/sw/register' do
-    it 'requires credentials' do
+    it 'requires credentials and rejects a request without the push keys' do
       post '/api/sw/register', params: { endpoint: endpoint, auth: auth, publickey: publickey }, as: :json
 
       expect(response).to have_http_status(401)
-    end
 
-    it 'rejects a request without the push keys' do
       post '/api/sw/register', params: register_params(auth: '', publickey: ''), as: :json
 
       expect(response).to have_http_status(400)
       expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
     end
 
-    it 'creates the subscription and echoes the endpoint unchanged' do
+    it 'creates the subscription, echoes the endpoint unchanged, and reports a repeated registration instead of duplicating it' do
       post '/api/sw/register', params: register_params, as: :json
 
       expect(response).to have_http_status(200)
@@ -46,10 +44,7 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
       subscription = Web::PushSubscription.find_by(user_id: user.id, endpoint: endpoint)
       expect(subscription).to have_attributes(key_auth: auth, key_p256dh: publickey, access_token_id: token.id)
       expect(subscription.data['compat']).to eq('misskey')
-    end
 
-    it 'reports an existing registration instead of duplicating it' do
-      post '/api/sw/register', params: register_params, as: :json
       post '/api/sw/register', params: register_params, as: :json
 
       expect(response).to have_http_status(200)
@@ -59,14 +54,12 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
   end
 
   describe 'POST /api/sw/show-registration' do
-    it 'returns null when nothing is registered for the endpoint' do
+    it 'returns null when nothing is registered for the endpoint and the registration for a known endpoint' do
       post '/api/sw/show-registration', params: { i: token.token, endpoint: endpoint }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to be_nil
-    end
 
-    it 'returns the registration for a known endpoint' do
       post '/api/sw/register', params: register_params, as: :json
       post '/api/sw/show-registration', params: { i: token.token, endpoint: endpoint }, as: :json
 
@@ -89,21 +82,17 @@ RSpec.describe 'Misskey-compat service worker endpoints' do
       expect(response).to have_http_status(204)
     end
 
-    it 'removes the subscription' do
+    it 'removes the subscription and succeeds when it is already gone or the current session has none' do
       post '/api/sw/register', params: register_params, as: :json
 
       expect { post '/api/sw/unregister', params: { i: token.token, endpoint: endpoint }, as: :json }
         .to change { Web::PushSubscription.where(user_id: user.id, endpoint: endpoint).count }.from(1).to(0)
       expect(response).to have_http_status(204)
-    end
 
-    it 'succeeds when the subscription is already gone' do
       post '/api/sw/unregister', params: { i: token.token, endpoint: endpoint }, as: :json
 
       expect(response).to have_http_status(204)
-    end
 
-    it 'succeeds when the current session has no subscription' do
       post '/api/sw/unregister', params: { i: token.token }, as: :json
 
       expect(response).to have_http_status(204)

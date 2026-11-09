@@ -20,13 +20,11 @@ RSpec.describe 'Misskey-compat retention' do
     expect(body.first[:data]).to eq('2026-07-24' => 3)
   end
 
-  it 'supports GET as well' do
+  it 'supports GET as well and is gated behind Misskey compatibility being enabled' do
     get '/api/retention'
 
     expect(response).to have_http_status(200)
-  end
 
-  it 'is gated behind Misskey compatibility being enabled' do
     Setting.misskey_compat_enabled = false
 
     post '/api/retention', params: {}, as: :json

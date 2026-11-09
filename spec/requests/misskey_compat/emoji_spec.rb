@@ -9,26 +9,19 @@ RSpec.describe 'Misskey-compat emoji endpoint' do
   describe 'POST /api/emoji' do
     before { Fabricate(:custom_emoji, shortcode: 'coolcat', is_sensitive: true, local_only: true, license: 'CC BY 4.0') }
 
-    it 'returns the single emoji detail with an id' do
+    it 'returns the single emoji detail with an id, tolerating surrounding colons, and NO_SUCH_EMOJI for an unknown emoji' do
       post '/api/emoji', params: { name: 'coolcat' }, as: :json
 
       expect(response).to have_http_status(200)
-      expect(response.parsed_body).to include(name: 'coolcat', host: nil)
+      expect(response.parsed_body).to include(name: 'coolcat', host: nil, isSensitive: true, license: 'CC BY 4.0', localOnly: true)
       expect(response.parsed_body[:id]).to be_present
       expect(response.parsed_body[:url]).to be_present
-      expect(response.parsed_body[:isSensitive]).to be(true)
-      expect(response.parsed_body[:license]).to eq('CC BY 4.0')
-      expect(response.parsed_body[:localOnly]).to be(true)
-    end
 
-    it 'tolerates surrounding colons' do
       post '/api/emoji', params: { name: ':coolcat:' }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body[:name]).to eq('coolcat')
-    end
 
-    it 'returns a Misskey error envelope when the emoji is unknown' do
       post '/api/emoji', params: { name: 'nope' }, as: :json
 
       expect(response).to have_http_status(404)
@@ -52,21 +45,21 @@ RSpec.describe 'Misskey-compat emoji endpoint' do
   describe 'GET /emoji/:name' do
     let(:asset_host) { Class.new { include RoutingHelper }.new }
 
-    it 'redirects a local emoji request to the image' do
+    it 'redirects a local emoji request to the original or static image, accepting the Misskey local host marker' do
       emoji = Fabricate(:custom_emoji, shortcode: 'coolcat')
 
       get '/emoji/coolcat.webp'
 
       expect(response).to redirect_to(asset_host.full_asset_url(emoji.image.url(:original)))
       expect(response).to have_http_status(302)
-    end
-
-    it 'accepts the Misskey local host marker' do
-      emoji = Fabricate(:custom_emoji, shortcode: 'coolcat')
 
       get '/emoji/coolcat@..webp'
 
       expect(response).to redirect_to(asset_host.full_asset_url(emoji.image.url(:original)))
+
+      get '/emoji/coolcat.webp', params: { static: 1 }
+
+      expect(response).to redirect_to(asset_host.full_asset_url(emoji.image.url(:static)))
     end
 
     it 'resolves a remote emoji by host' do
@@ -77,20 +70,16 @@ RSpec.describe 'Misskey-compat emoji endpoint' do
       expect(response).to redirect_to(asset_host.full_asset_url(emoji.image.url(:original)))
     end
 
-    it 'serves the static style when asked' do
-      emoji = Fabricate(:custom_emoji, shortcode: 'coolcat')
-
-      get '/emoji/coolcat.webp', params: { static: 1 }
-
-      expect(response).to redirect_to(asset_host.full_asset_url(emoji.image.url(:static)))
-    end
-
-    it 'does not resolve a local name as a remote emoji' do
+    it 'does not resolve a local name as a remote emoji and rejects a name with more than one host separator' do
       Fabricate(:custom_emoji, shortcode: 'coolcat')
 
       get '/emoji/coolcat@remote.example.webp'
 
       expect(response).to have_http_status(404)
+
+      get '/emoji/coolcat@remote.example@evil.example.webp'
+
+      expect(response).to have_http_status(400)
     end
 
     it 'rejects a disabled emoji' do
@@ -99,12 +88,6 @@ RSpec.describe 'Misskey-compat emoji endpoint' do
       get '/emoji/coolcat.webp'
 
       expect(response).to have_http_status(404)
-    end
-
-    it 'rejects a name with more than one host separator' do
-      get '/emoji/coolcat@remote.example@evil.example.webp'
-
-      expect(response).to have_http_status(400)
     end
 
     it 'is unavailable while misskey compatibility is disabled' do

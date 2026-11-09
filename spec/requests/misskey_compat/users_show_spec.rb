@@ -10,7 +10,7 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
   after  { Setting.misskey_compat_enabled = false }
 
   describe 'account lookup' do
-    it 'finds a local account by MiId-encoded userId' do
+    it 'finds a local account by MiId-encoded userId or by username when no host is given' do
       post '/api/users/show', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
 
       expect(response).to have_http_status(200)
@@ -19,9 +19,14 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
         username: account.username,
         host: nil
       )
+
+      post '/api/users/show', params: { username: account.username }, as: :json
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(account.id))
     end
 
-    it 'returns existing accounts in userIds order and skips missing or deleted accounts' do
+    it 'returns existing accounts in userIds order, skipping missing or deleted accounts, and an empty array for empty userIds' do
       remote = Fabricate(:account, username: 'ghost', domain: 'remote.example')
       deleted = Fabricate(:account, requested_deletion_at: Time.now.utc)
       ids = [remote.id, deleted.id, account.id, 0].map { |id| MisskeyCompat::MiId.encode(id) }
@@ -31,56 +36,33 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
       expect(response).to have_http_status(200)
       expect(response.parsed_body.pluck(:id)).to eq([ids.first, ids.third])
       expect(response.parsed_body).to all(include(:avatarDecorations))
-    end
 
-    it 'returns an empty array for empty userIds' do
       post '/api/users/show', params: { userIds: [] }, as: :json
 
       expect(response).to have_http_status(200)
       expect(response.parsed_body).to eq([])
     end
 
-    it 'rejects non-string userIds' do
-      post '/api/users/show', params: { userIds: [account.id] }, as: :json
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
-    end
-
-    it 'rejects userIds that is not an array' do
-      post '/api/users/show', params: { userIds: MisskeyCompat::MiId.encode(account.id) }, as: :json
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
-    end
-
-    it 'rejects duplicate userIds' do
+    it 'rejects non-string, non-array, and duplicate userIds' do
       id = MisskeyCompat::MiId.encode(account.id)
 
-      post '/api/users/show', params: { userIds: [id, id] }, as: :json
+      [[account.id], id, [id, id]].each do |user_ids|
+        post '/api/users/show', params: { userIds: user_ids }, as: :json
 
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM')
+        expect(response).to have_http_status(400), user_ids.inspect
+        expect(response.parsed_body.dig(:error, :code)).to eq('INVALID_PARAM'), user_ids.inspect
+      end
     end
 
-    it 'finds a local account by username when no host is given' do
-      post '/api/users/show', params: { username: account.username }, as: :json
-
-      expect(response).to have_http_status(200)
-      expect(response.parsed_body[:id]).to eq(MisskeyCompat::MiId.encode(account.id))
-    end
-
-    it 'does not fall back to a remote account when no host is given' do
+    it 'finds a remote account only by username and host, returning NO_SUCH_USER without a host or for a blank username' do
       remote = Fabricate(:account, username: 'ghost', domain: 'remote.example')
 
-      post '/api/users/show', params: { username: remote.username }, as: :json
+      [{ username: remote.username }, { username: '   ' }].each do |params|
+        post '/api/users/show', params: params, as: :json
 
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_USER')
-    end
-
-    it 'finds a remote account by username and host' do
-      remote = Fabricate(:account, username: 'ghost', domain: 'remote.example')
+        expect(response).to have_http_status(404), params.inspect
+        expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_USER')
+      end
 
       post '/api/users/show', params: { username: remote.username, host: 'remote.example' }, as: :json
 
@@ -89,13 +71,6 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
         id: MisskeyCompat::MiId.encode(remote.id),
         host: 'remote.example'
       )
-    end
-
-    it 'returns NO_SUCH_USER for a blank username' do
-      post '/api/users/show', params: { username: '   ' }, as: :json
-
-      expect(response).to have_http_status(404)
-      expect(response.parsed_body[:error]).to include(code: 'NO_SUCH_USER')
     end
 
     it 'hides accounts that requested deletion' do
@@ -163,37 +138,29 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
       )
     end
 
-    it 'returns nothing when decoration federation is disabled' do
+    it 'returns nothing when decoration federation or decorations are disabled, local-only view is on, the account is blocked, or the host is domain-blocked' do
       Setting.avatar_decorations_federation_enabled = false
-
       expect(show_account).to be_empty
-    end
+      Setting.avatar_decorations_federation_enabled = true
 
-    it 'returns nothing when decorations are disabled entirely' do
       Setting.avatar_decorations_enabled = false
-
       expect(show_account).to be_empty
-    end
+      Setting.avatar_decorations_enabled = true
 
-    it 'returns nothing for a local account while local-only view is on' do
       Setting.avatar_decorations_local_only_view = true
+      expect(show_account).to be_empty
+      Setting.avatar_decorations_local_only_view = false
 
+      account.update!(avatar_decorations_blocked: true)
+      expect(show_account).to be_empty
+      account.update!(avatar_decorations_blocked: false)
+      expect(show_account).to_not be_empty
+
+      decoration.update!(host: 'blocked.example')
+      Fabricate(:avatar_decoration_domain_block, domain: 'blocked.example')
       expect(show_account).to be_empty
     ensure
       Setting.avatar_decorations_local_only_view = false
-    end
-
-    it 'returns nothing when the account is decoration-blocked' do
-      account.update!(avatar_decorations_blocked: true)
-
-      expect(show_account).to be_empty
-    end
-
-    it 'omits decorations whose host is domain-blocked' do
-      decoration.update!(host: 'blocked.example')
-      Fabricate(:avatar_decoration_domain_block, domain: 'blocked.example')
-
-      expect(show_account).to be_empty
     end
   end
 
@@ -202,13 +169,11 @@ RSpec.describe 'Misskey-compat users/show endpoint' do
 
     before { StatusPin.create!(account: account, status: Fabricate(:status, account: account, visibility: :public, local_only: true)) }
 
-    it 'hides local-only pinned notes from anonymous viewers' do
+    it 'hides local-only pinned notes from anonymous viewers in single and batch lookups' do
       post '/api/users/show', params: { userId: MisskeyCompat::MiId.encode(account.id) }, as: :json
 
       expect(response.parsed_body[:pinnedNoteIds]).to eq([MisskeyCompat::MiId.encode(public_pin.id)])
-    end
 
-    it 'hides local-only pinned notes from anonymous viewers in batch lookups' do
       post '/api/users/show', params: { userIds: [MisskeyCompat::MiId.encode(account.id)] }, as: :json
 
       expect(response.parsed_body.first[:pinnedNoteIds]).to eq([MisskeyCompat::MiId.encode(public_pin.id)])

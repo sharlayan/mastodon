@@ -31,7 +31,7 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
   end
 
   describe 'exports' do
-    it 'stores the Mastodon following export in the drive' do
+    it 'stores the Mastodon following export in the drive and keeps it editable after creation' do
       account.follow!(Fabricate(:account, username: 'bob'))
 
       expect do
@@ -44,6 +44,9 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
       expect(drive_file.file_content_type).to eq('text/csv')
       expect(drive_file.file_file_name).to start_with('following_accounts-')
       expect(Paperclip.io_adapters.for(drive_file.file).read).to eq(Export.new(account).to_following_accounts_csv)
+
+      drive_file.reload.update!(description: 'renamed')
+      expect(drive_file.reload.description).to eq('renamed')
     end
 
     it 'stores blocks, mutes and lists in the drive' do
@@ -71,17 +74,14 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
       expect(account.drive_files).to be_empty
     end
 
-    it 'keeps generated exports editable after creation' do
-      account.follow!(Fabricate(:account))
-      post '/api/i/export-following', params: { i: token }, as: :json
+    it 'exports clips only when clips are enabled, storing them as JSON' do
+      Setting.clips_enabled = false
 
-      drive_file = account.drive_files.last
-      drive_file.reload.update!(description: 'renamed')
+      post '/api/i/export-clips', params: { i: token }, as: :json
 
-      expect(drive_file.reload.description).to eq('renamed')
-    end
+      expect(response).to have_http_status(400)
+      expect(response.parsed_body.dig('error', 'code')).to eq('UNAVAILABLE')
 
-    it 'stores the clips export as JSON when clips are enabled' do
       Setting.clips_enabled = true
       Fabricate(:clip, account: account)
 
@@ -93,26 +93,13 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
       Setting.clips_enabled = false
     end
 
-    it 'exports clips only when clips are enabled' do
-      Setting.clips_enabled = false
-
-      post '/api/i/export-clips', params: { i: token }, as: :json
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body.dig('error', 'code')).to eq('UNAVAILABLE')
-    end
-
-    it 'requires the drive for file exports' do
+    it 'requires the drive for file exports but requests a Mastodon archive for notes without it' do
       Setting.drive_enabled = false
 
       post '/api/i/export-following', params: { i: token }, as: :json
 
       expect(response).to have_http_status(400)
       expect(response.parsed_body.dig('error', 'code')).to eq('UNAVAILABLE')
-    end
-
-    it 'requests a Mastodon archive for notes without the drive' do
-      Setting.drive_enabled = false
 
       expect do
         post '/api/i/export-notes', params: { i: token }, as: :json
@@ -177,24 +164,18 @@ RSpec.describe 'Misskey-compat account export and import endpoints' do
       expect(response.parsed_body['error']).to include('code' => 'NO_SUCH_FILE', 'id' => 'e674141e-bd2a-ba85-e616-aefb187c9c2a')
     end
 
-    it 'returns the Misskey error when the stored file is missing' do
-      drive_file = upload_drive_csv("bob@remote.example\n")
-      File.delete(drive_file.file.path)
+    it 'returns the Misskey error when the stored file is missing or the storage cannot provide it' do
+      missing_file = upload_drive_csv("bob@remote.example\n")
+      File.delete(missing_file.file.path)
+      truncated_file = upload_drive_csv("alice@remote.example\n")
+      File.truncate(truncated_file.file.path, 0)
 
-      post '/api/i/import-following', params: { i: token, fileId: mi(drive_file.id) }, as: :json
+      [missing_file, truncated_file].each do |drive_file|
+        post '/api/i/import-following', params: { i: token, fileId: mi(drive_file.id) }, as: :json
 
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body['error']).to include('code' => 'NO_SUCH_FILE', 'id' => 'b98644cf-a5ac-4277-a502-0b8054a709a3')
-    end
-
-    it 'returns the Misskey error when the storage cannot provide the file' do
-      drive_file = upload_drive_csv("bob@remote.example\n")
-      File.truncate(drive_file.file.path, 0)
-
-      post '/api/i/import-following', params: { i: token, fileId: mi(drive_file.id) }, as: :json
-
-      expect(response).to have_http_status(400)
-      expect(response.parsed_body['error']).to include('code' => 'NO_SUCH_FILE', 'id' => 'b98644cf-a5ac-4277-a502-0b8054a709a3')
+        expect(response).to have_http_status(400)
+        expect(response.parsed_body['error']).to include('code' => 'NO_SUCH_FILE', 'id' => 'b98644cf-a5ac-4277-a502-0b8054a709a3')
+      end
       expect(account.bulk_imports).to be_empty
     end
 
