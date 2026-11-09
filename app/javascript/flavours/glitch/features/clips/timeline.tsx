@@ -1,8 +1,10 @@
 import { useEffect, useCallback } from 'react';
 
-import { FormattedMessage } from 'react-intl';
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import { useParams, useHistory, Link } from 'react-router-dom';
+
+import { isFulfilled } from '@reduxjs/toolkit';
 
 import { Helmet } from '@unhead/react/helmet';
 
@@ -16,6 +18,7 @@ import {
   removeColumn,
   moveColumn,
 } from 'flavours/glitch/actions/columns';
+import { openModal } from 'flavours/glitch/actions/modal';
 import { expandClipTimeline } from 'flavours/glitch/actions/timelines';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
@@ -27,12 +30,28 @@ import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
 import { ClipFavouriteButton } from './components/favourite_button';
 
+const messages = defineMessages({
+  deleteTitle: {
+    id: 'confirmations.delete_clip.title',
+    defaultMessage: 'Delete clip?',
+  },
+  deleteMessage: {
+    id: 'confirmations.delete_clip.message',
+    defaultMessage: 'Are you sure you want to permanently delete this clip?',
+  },
+  deleteConfirm: {
+    id: 'confirmations.delete_clip.confirm',
+    defaultMessage: 'Delete',
+  },
+});
+
 const ClipTimeline: React.FC<{
   multiColumn?: boolean;
   columnId?: string;
   params?: { id?: string } | null;
 }> = ({ multiColumn, columnId, params }) => {
   const dispatch = useAppDispatch();
+  const intl = useIntl();
   const history = useHistory();
   const { accountId } = useIdentity();
   const { id: routeId } = useParams<{ id: string }>();
@@ -55,16 +74,32 @@ const ClipTimeline: React.FC<{
   }, [dispatch, id, nextUri]);
 
   const handleDeleteClick = useCallback(() => {
-    void dispatch(deleteClip({ id })).then(() => {
-      if (columnId) {
-        dispatch(removeColumn(columnId));
-      } else {
-        history.push('/clips');
-      }
+    dispatch(
+      openModal({
+        modalType: 'CONFIRM',
+        modalProps: {
+          title: intl.formatMessage(messages.deleteTitle),
+          message: intl.formatMessage(messages.deleteMessage),
+          confirm: intl.formatMessage(messages.deleteConfirm),
+          onConfirm: () => {
+            void dispatch(deleteClip({ id })).then((result) => {
+              if (!isFulfilled(result)) {
+                return result;
+              }
 
-      return '';
-    });
-  }, [dispatch, history, id, columnId]);
+              if (columnId) {
+                dispatch(removeColumn(columnId));
+              } else {
+                history.push('/clips');
+              }
+
+              return result;
+            });
+          },
+        },
+      }),
+    );
+  }, [dispatch, history, id, columnId, intl]);
 
   const handlePin = useCallback(() => {
     if (columnId) {
