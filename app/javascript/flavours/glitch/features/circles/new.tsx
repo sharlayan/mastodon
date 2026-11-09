@@ -26,6 +26,7 @@ import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { TextInputField } from 'flavours/glitch/components/form_fields';
 import { Icon } from 'flavours/glitch/components/icon';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
+import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
 import type { Circle } from 'flavours/glitch/models/circle';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
@@ -171,6 +172,10 @@ const NewCircleWrapper: React.FC<{
   }, [dispatch, signedIn, id]);
 
   const isLoading = id && !circle;
+
+  if (signedIn && id && circle === null) {
+    return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
+  }
 
   return (
     <Column
