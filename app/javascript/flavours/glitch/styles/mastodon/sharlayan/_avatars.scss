@@ -166,7 +166,6 @@
 
 .status__info .status__display-name:has(.account__avatar--cat),
 .detailed-status__display-name:has(.account__avatar--cat),
-.account__header__tabs:has(.account__avatar--cat),
 .detailed-status:has(.account__avatar--cat) {
   overflow: visible;
 }
@@ -230,26 +229,6 @@
     width: 16px;
     height: 16px;
   }
-}
-
-.account__header.inactive .account__header__image,
-.account__header.inactive .account__avatar {
-  filter: grayscale(100%);
-}
-
-.account__header__bar .avatar {
-  display: block;
-  flex: 0 0 auto;
-}
-
-.account__header__bar .avatar .account__avatar {
-  background: var(--color-bg-primary);
-  border: 1px solid var(--color-border-primary);
-  border-radius: var(--avatar-border-radius);
-}
-
-.account__header__tabs:has(.account__avatar--decorated) {
-  overflow: visible;
 }
 
 .status__wrapper:has(.account__avatar--decorated) {

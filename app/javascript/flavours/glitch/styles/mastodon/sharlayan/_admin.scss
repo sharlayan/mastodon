@@ -35,15 +35,6 @@
   overflow: hidden;
 }
 
-.batch-table__toolbar--bottom {
-  position: static;
-  border-radius: 0;
-  border-top: none;
-  background: transparent;
-  height: auto;
-  padding-block: 8px;
-}
-
 .bulk-edit-row {
   display: flex;
   flex-direction: row;

@@ -3,13 +3,6 @@
 
 html {
   .admin-wrapper {
-    .instance-metadata-panel {
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 20px;
-      border: 1px solid var(--color-border-primary);
-    }
-
     .metadata-header {
       display: flex;
       align-items: center;
@@ -165,15 +158,6 @@ html {
   border-top: none;
   border-radius: 0 0 4px 4px;
   overflow: hidden;
-}
-
-.batch-table__toolbar--bottom {
-  position: static;
-  border-radius: 0;
-  border-top: none;
-  background: transparent;
-  height: auto;
-  padding-block: 8px;
 }
 
 .batch-table__form {
