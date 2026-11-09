@@ -260,7 +260,7 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.show_media              = @json['showMedia'] if @json.key?('showMedia')
     @account.show_media_replies      = @json['showRepliesInMedia'] if @json.key?('showRepliesInMedia')
     @account.attribution_domains     = as_array(@json['attributionDomains'] || []).take(Account::ATTRIBUTION_DOMAINS_HARD_LIMIT).grep(String)
-    @account.followed_message        = (@json['_misskey_followedMessage'] || @json['followedMessage'] || '')[0...256].presence
+    @account.followed_message        = @json.values_at('_misskey_followedMessage', 'followedMessage').find { |value| value.is_a?(String) }.to_s[0...256].presence
     @account.is_cat                  = Setting.cat_enabled && Setting.cat_federation_enabled && (@json['isCat'] || false)
     @account.can_chat                = @json['_misskey_canChat'] == true
     @account.chat_scope              = Sharlayan::ChatFederation::ChatScope.normalize(@json['_misskey_chatScope'])

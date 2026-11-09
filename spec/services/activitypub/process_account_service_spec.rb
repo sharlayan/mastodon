@@ -152,6 +152,28 @@ RSpec.describe ActivityPub::ProcessAccountService do
     end
   end
 
+  context 'with a non-string followed message' do
+    let(:payload) do
+      {
+        'id' => 'https://foo.test',
+        'type' => 'Actor',
+        'preferredUsername' => 'alice',
+        'inbox' => 'https://foo.test/inbox',
+        '_misskey_followedMessage' => true,
+        'followedMessage' => 1.5,
+      }
+    end
+
+    before { stub_webfinger! }
+
+    it 'processes the account without a followed message' do
+      account = subject.call(payload)
+
+      expect(account).to be_persisted
+      expect(account.followed_message).to be_nil
+    end
+  end
+
   context 'with Misskey avatar decorations' do
     let(:payload) do
       {
