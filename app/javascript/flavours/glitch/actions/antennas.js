@@ -67,9 +67,15 @@ export const updateAntenna = (id, params) => (dispatch) =>
 export const deleteAntenna = id => (dispatch) => {
   dispatch({ type: ANTENNA_DELETE_REQUEST, id });
 
-  api().delete(`/api/v1/antennas/${id}`)
-    .then(() => dispatch({ type: ANTENNA_DELETE_SUCCESS, id }))
-    .catch(err => dispatch({ type: ANTENNA_DELETE_FAIL, id, error: err }));
+  return api().delete(`/api/v1/antennas/${id}`)
+    .then(() => {
+      dispatch({ type: ANTENNA_DELETE_SUCCESS, id });
+      return true;
+    })
+    .catch(err => {
+      dispatch({ type: ANTENNA_DELETE_FAIL, id, error: err });
+      return false;
+    });
 };
 
 export const removeStatusFromAntenna = (antennaId, statusId) => (dispatch) =>

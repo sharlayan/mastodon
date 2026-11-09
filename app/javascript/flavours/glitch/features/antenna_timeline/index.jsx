@@ -116,13 +116,17 @@ class AntennaTimeline extends PureComponent {
         message: intl.formatMessage(messages.deleteMessage),
         confirm: intl.formatMessage(messages.deleteConfirm),
         onConfirm: () => {
-          dispatch(deleteAntenna(id));
+          dispatch(deleteAntenna(id)).then((deleted) => {
+            if (!deleted) {
+              return;
+            }
 
-          if (columnId) {
-            dispatch(removeColumn(columnId));
-          } else {
-            history.push('/antennas');
-          }
+            if (columnId) {
+              dispatch(removeColumn(columnId));
+            } else {
+              history.push('/antennas');
+            }
+          });
         },
       },
     }));
