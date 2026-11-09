@@ -25,7 +25,7 @@ RSpec.describe 'Chat query counts' do
   end
 
   def group_with_members(count, display_name: 'Member :blobcat:')
-    members = Array.new(count) { Fabricate(:user, account: Fabricate(:account, display_name: display_name)).account }
+    members = Array.new(count) { Fabricate(:user, account_attributes: { display_name: display_name }).account }
     ChatConversation.create!(conversation_type: :group, owner_account: user.account, title: 'Room').tap do |record|
       record.memberships.create!(account: user.account, role: :owner)
       members.each { |member| record.memberships.create!(account: member) }
@@ -88,7 +88,7 @@ RSpec.describe 'Chat query counts' do
       local_emoji = Fabricate(:custom_emoji, shortcode: "local#{SecureRandom.hex(3)}")
       domain = "remote#{SecureRandom.hex(3)}.test"
       remote_emoji = Fabricate(:custom_emoji, shortcode: "remote#{SecureRandom.hex(3)}", domain: domain)
-      local = Fabricate(:user, role: role, account: Fabricate(:account, display_name: "Local :#{local_emoji.shortcode}:")).account
+      local = Fabricate(:user, role: role, account_attributes: { display_name: "Local :#{local_emoji.shortcode}:" }).account
       remote = Fabricate(:account, domain: domain, display_name: "Remote :#{remote_emoji.shortcode}:")
       ChatConversation.create!(conversation_type: :group, owner_account: user.account, title: 'Room').tap do |record|
         record.memberships.create!(account: user.account, role: :owner)
@@ -112,6 +112,7 @@ RSpec.describe 'Chat query counts' do
 
       expect(response.parsed_body.size).to eq(5)
       expect(response.parsed_body.flat_map { |room| room[:last_message][:reactions] }.pluck(:url)).to all(be_present)
+      expect(response.parsed_body.map { |room| room[:accounts].flat_map { |account| account[:roles] || [] } }).to all(be_present)
       expect(many.grep_v(/"instance_metadata"/).size).to eq(one.grep_v(/"instance_metadata"/).size)
     end
   end
