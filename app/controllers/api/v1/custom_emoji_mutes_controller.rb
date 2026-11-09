@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 class Api::V1::CustomEmojiMutesController < Api::BaseController
+  include Sharlayan::Api::MuteTargetParams
+
   before_action -> { doorkeeper_authorize! :read, :'read:mutes' }, only: :index
   before_action -> { doorkeeper_authorize! :write, :'write:mutes' }, except: :index
   before_action :require_user!
+  before_action -> { require_scalar_mute_params!(:prefix, :domain) }, only: :create
 
   def index
     @mutes = current_account.custom_emoji_mutes.order(id: :desc)
@@ -15,7 +18,10 @@ class Api::V1::CustomEmojiMutesController < Api::BaseController
     return render json: { error: 'Must provide prefix' }, status: 422 if prefix.blank?
 
     domain = params[:domain].to_s.strip
-    domain = TagManager.instance.normalize_domain(domain) if domain.present?
+    if domain.present?
+      domain = normalized_mute_domain(domain)
+      return render json: { error: 'Invalid domain' }, status: 422 if domain.nil?
+    end
 
     mute = current_account.custom_emoji_mutes.find_or_create_by!(prefix: prefix, domain: domain.to_s)
     mute.update!(reject_reactions: ActiveModel::Type::Boolean.new.cast(params[:reject_reactions])) if params.key?(:reject_reactions)
