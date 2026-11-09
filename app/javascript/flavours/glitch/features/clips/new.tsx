@@ -25,6 +25,7 @@ import {
   Toggle,
 } from 'flavours/glitch/components/form_fields';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
+import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
 import type { Clip } from 'flavours/glitch/models/clip';
 import { useAppDispatch, useAppSelector } from 'flavours/glitch/store';
 
@@ -223,6 +224,10 @@ const NewClipWrapper: React.FC<{
   }, [dispatch, signedIn, id]);
 
   const isLoading = id && !clip;
+
+  if (signedIn && id && clip === null) {
+    return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
+  }
 
   return (
     <Column

@@ -47,7 +47,10 @@ export const clipsReducer: Reducer<State> = (state = initialState, action) => {
   } else if (fetchFavouriteClips.fulfilled.match(action)) {
     state = state.map((clip) => clip?.set('favourited', false) ?? null);
     return normalizeClips(state, action.payload);
-  } else if (deleteClip.fulfilled.match(action)) {
+  } else if (
+    deleteClip.fulfilled.match(action) ||
+    fetchClip.rejected.match(action)
+  ) {
     return state.set(action.meta.arg.id, null);
   } else {
     return state;
