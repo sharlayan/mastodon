@@ -5,6 +5,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   class NoSuchReplyTargetError < StandardError; end
   class CannotReplyToSpecifiedVisibilityNoteError < StandardError; end
+  class NoSuchRenoteTargetError < StandardError; end
+  class CannotReRenoteError < StandardError; end
+  class RenoteTargetBlockedError < StandardError; end
+  class CannotRenoteDueToVisibilityError < StandardError; end
 
   SPECIFIED_REPLY_VISIBILITY_ERROR = 'Cannot reply to a specified note with broader visibility'
 
@@ -210,7 +214,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
     status = if renote_id.present? && pure_renote_request?
                reaction_acceptance_option if params.key?(:reactionAcceptance)
-               ReblogService.new.call(current_account, quoted_status)
+               ReblogService.new.call(current_account, reblog_target)
              else
                with_resolved_media_ids do |media_ids|
                  PostStatusService.new.call(current_account, post_options.merge(media_ids: media_ids))
@@ -224,6 +228,14 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     render_error('No such reply target', 'NO_SUCH_REPLY_TARGET', 404)
   rescue CannotReplyToSpecifiedVisibilityNoteError
     render_error(SPECIFIED_REPLY_VISIBILITY_ERROR, 'CANNOT_REPLY_TO_SPECIFIED_VISIBILITY_NOTE_WITH_EXTENDED_VISIBILITY', 400, id: 'ed940410-535c-4d5e-bfa3-af798671e93c')
+  rescue NoSuchRenoteTargetError
+    render_error('No such renote target', 'NO_SUCH_RENOTE_TARGET', 404, id: 'b5c90186-4ab0-49c8-9bba-a1f76c282ba4')
+  rescue CannotReRenoteError
+    render_error('You can not Renote a pure Renote', 'CANNOT_RENOTE_TO_A_PURE_RENOTE', 400, id: 'fd4cc33e-2a37-48dd-99cc-9b806eb2031a')
+  rescue RenoteTargetBlockedError
+    render_error('You have been blocked by this user', 'YOU_HAVE_BEEN_BLOCKED', 400, id: 'b390d7e1-8a5e-46ed-b625-06271cafd3d3')
+  rescue CannotRenoteDueToVisibilityError
+    render_error('You can not Renote due to target visibility', 'CANNOT_RENOTE_DUE_TO_VISIBILITY', 400, id: 'be9529e9-fe72-4de0-ae43-0b363c4938af')
   rescue ActiveRecord::RecordNotFound
     render_error('No such note', 'NO_SUCH_NOTE', 404)
   rescue Mastodon::NotPermittedError
@@ -545,12 +557,38 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     @reply_status = status
   end
 
-  def quoted_status
-    return @quoted_status if defined?(@quoted_status)
+  def renote_target
+    return @renote_target if defined?(@renote_target)
 
-    @quoted_status = renote_id.present? ? Status.find(renote_id) : nil
-    authorize(@quoted_status, :show?) if @quoted_status
-    @quoted_status
+    status = Status.find_by(id: renote_id)
+    raise NoSuchRenoteTargetError if status.nil?
+    raise RenoteTargetBlockedError if renote_target_blocks_requester?(status)
+    raise NoSuchRenoteTargetError unless StatusPolicy.new(current_account, status).show?
+
+    @renote_target = status
+  end
+
+  def renote_target_blocks_requester?(status)
+    status.account_id != current_account.id &&
+      !status.direct_visibility? && !status.limited_visibility? &&
+      current_account.blocked_by?(status.account)
+  end
+
+  def reblog_target
+    status = renote_target.proper
+    raise CannotRenoteDueToVisibilityError unless StatusPolicy.new(current_account, status).reblog?
+
+    status
+  end
+
+  def quoted_status
+    return if renote_id.blank?
+
+    status = renote_target
+    raise CannotReRenoteError if status.reblog?
+    raise CannotRenoteDueToVisibilityError unless StatusPolicy.new(current_account, status).quote?
+
+    status
   end
 
   def post_options
