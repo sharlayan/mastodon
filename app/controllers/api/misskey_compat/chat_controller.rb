@@ -349,7 +349,7 @@ class Api::MisskeyCompat::ChatController < Api::MisskeyCompat::BaseController
   end
 
   def preload_messages(messages)
-    messages.includes(:account, chat_conversation: [*ROOM_PRELOADS, :accounts], reactions: :account, media_attachments: :chat_message_media_attachments)
+    messages.includes(:account, chat_conversation: [*ROOM_PRELOADS, :accounts], reactions: :account, media_attachments: [:chat_message_media_attachments, { drive_file: :custom_name }])
   end
 
   def render_messages(messages)
