@@ -144,7 +144,7 @@ export const uploadDirectMedia = (conversationId, files) => (dispatch, getState)
   const uploadLimit = getState().getIn(['server', 'server', 'item', 'configuration', 'statuses', 'max_media_attachments'], 4);
   const current     = getState().getIn(['direct_compose', conversationId, 'media'], ImmutableList()).size;
 
-  if (current >= uploadLimit) {
+  if (getState().getIn(['direct_compose', conversationId, 'is_uploading']) || current >= uploadLimit) {
     return;
   }
 

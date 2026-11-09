@@ -6,6 +6,7 @@ import {
   DIRECT_COMPOSE_SUBMIT_FAIL,
   DIRECT_COMPOSE_SUBMIT_SUCCESS,
   submitDirectMessage,
+  uploadDirectMedia,
 } from '../direct_compose';
 import { dismissNotificationsForStatuses } from '../notification_groups';
 
@@ -112,5 +113,33 @@ describe('direct message notification retention', () => {
 
     expect(apiPost).not.toHaveBeenCalled();
     expect(dismissNotificationsForStatuses).not.toHaveBeenCalled();
+  });
+});
+
+describe('direct message uploads', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiPost.mockReset();
+    vi.mocked(api).mockReturnValue({ post: apiPost });
+    apiPost.mockReturnValue(new Promise(() => {}));
+  });
+
+  it('does not start another upload while one is in progress', () => {
+    state = fromJS({ direct_compose: { conversation: { is_uploading: true, media: [] } } });
+    const dispatch = vi.fn();
+
+    uploadDirectMedia('conversation', [new File(['a'], 'a.png')])(dispatch, () => state);
+
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('starts an upload when none is in progress', () => {
+    state = fromJS({ direct_compose: { conversation: { is_uploading: false, media: [] } } });
+    const dispatch = vi.fn();
+
+    uploadDirectMedia('conversation', [new File(['a'], 'a.png')])(dispatch, () => state);
+
+    expect(apiPost).toHaveBeenCalledTimes(1);
   });
 });
