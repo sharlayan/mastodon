@@ -29,5 +29,22 @@ RSpec.describe 'Reacted statuses' do
           )
       end
     end
+
+    context 'with local and remote custom emoji sharing a shortcode' do
+      let!(:local_blob) { Fabricate(:status_reaction, account: user.account, name: 'blob', custom_emoji: Fabricate(:custom_emoji, shortcode: 'blob')) }
+      let!(:remote_blob) { Fabricate(:status_reaction, account: user.account, name: 'blob', custom_emoji: Fabricate(:custom_emoji, shortcode: 'blob', domain: 'remote.tld')) }
+
+      it 'filters the local emoji by its bare name' do
+        get '/api/v1/reactions', headers: headers, params: { name: 'blob' }
+
+        expect(response.parsed_body.pluck(:id)).to eq([local_blob.status_id.to_s])
+      end
+
+      it 'filters the remote emoji by name and domain' do
+        get '/api/v1/reactions', headers: headers, params: { name: 'blob@remote.tld' }
+
+        expect(response.parsed_body.pluck(:id)).to eq([remote_blob.status_id.to_s])
+      end
+    end
   end
 end

@@ -24,6 +24,9 @@ interface ReactionSummaryEntry {
   unknown?: boolean;
 }
 
+const filterNameFor = (entry: ReactionSummaryEntry) =>
+  entry.domain ? `${entry.name}@${entry.domain}` : entry.name;
+
 interface ReactionSummaryBarProps {
   summary: unknown;
   activeFilter: string | null;
@@ -65,7 +68,7 @@ export const ReactionSummaryBar: React.FC<ReactionSummaryBarProps> = ({
         <ReactionSummaryItem
           key={`${entry.name}-${entry.domain ?? ''}`}
           entry={entry}
-          active={activeFilter === entry.name}
+          active={activeFilter === filterNameFor(entry)}
           onFilterChange={onFilterChange}
         />
       ))}
@@ -82,8 +85,8 @@ const ReactionSummaryItem: React.FC<{
   const [hovered, setHovered] = useState(false);
 
   const handleClick = useCallback(() => {
-    onFilterChange(active ? null : entry.name);
-  }, [active, entry.name, onFilterChange]);
+    onFilterChange(active ? null : filterNameFor(entry));
+  }, [active, entry, onFilterChange]);
 
   const handleMouseEnter = useCallback(() => {
     setHovered(true);

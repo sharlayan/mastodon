@@ -36,8 +36,16 @@ class Api::V1::ReactionsController < Api::BaseController
 
   def account_reactions
     scope = current_account.status_reactions
-    scope = scope.where(name: params[:name]) if params[:name].present?
-    scope
+    return scope if params[:name].blank?
+
+    name, domain = params[:name].to_s.split('@', 2)
+    scope = scope.where(name: name)
+
+    if domain.present?
+      scope.joins(:custom_emoji).where(custom_emojis: { domain: domain })
+    else
+      scope.left_joins(:custom_emoji).where(custom_emojis: { domain: nil })
+    end
   end
 
   def build_reaction_summary
