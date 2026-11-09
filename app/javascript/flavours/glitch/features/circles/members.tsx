@@ -69,21 +69,30 @@ const AccountItem: React.FC<{
     }
   }, [dispatch, accountId]);
 
+  const [pending, setPending] = useState(false);
+
   const handleClick = useCallback(() => {
-    if (partOfCircle) {
-      void apiRemoveAccountFromCircle(circleId, accountId);
-      onToggle(accountId);
-    } else {
-      apiAddAccountToCircle(circleId, accountId)
-        .then(() => {
-          onToggle(accountId);
-          return '';
-        })
-        .catch((err: unknown) => {
-          dispatch(showAlertForError(err));
-        });
+    if (pending) {
+      return;
     }
-  }, [dispatch, accountId, circleId, partOfCircle, onToggle]);
+
+    setPending(true);
+
+    const request = partOfCircle
+      ? apiRemoveAccountFromCircle(circleId, accountId)
+      : apiAddAccountToCircle(circleId, accountId);
+
+    request
+      .then(() => {
+        setPending(false);
+        onToggle(accountId);
+        return '';
+      })
+      .catch((err: unknown) => {
+        setPending(false);
+        dispatch(showAlertForError(err));
+      });
+  }, [dispatch, accountId, circleId, partOfCircle, onToggle, pending]);
 
   if (!account) {
     return null;
@@ -126,6 +135,7 @@ const AccountItem: React.FC<{
               partOfCircle ? messages.remove : messages.add,
             )}
             secondary={partOfCircle}
+            disabled={pending}
             onClick={handleClick}
           />
         </div>
