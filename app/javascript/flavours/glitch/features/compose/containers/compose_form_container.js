@@ -75,9 +75,8 @@ const mapStateToProps = state => ({
   isUploading: state.getIn(['compose', 'is_uploading']),
   anyMedia: state.getIn(['compose', 'media_attachments']).size > 0,
   missingAltText: state.getIn(['compose', 'media_attachments']).some(media => ['image', 'gifv'].includes(media.get('type')) && (media.get('description') ?? '').length === 0),
-  quoteToPrivate:
+  quoteNotifiesWhenPrivate:
     !!state.getIn(['compose', 'quoted_status_id'])
-    && state.getIn(['compose', 'privacy']) === 'private'
     && state.getIn(['statuses', state.getIn(['compose', 'quoted_status_id']), 'account']) !== me
     && !state.getIn(['settings', 'dismissed_banners', PRIVATE_QUOTE_MODAL_ID]),
   isInReply: state.getIn(['compose', 'in_reply_to']) !== null,
@@ -103,7 +102,7 @@ const mapDispatchToProps = (dispatch, props) => ({
     } else if (quoteToPrivate) {
       dispatch(openModal({
         modalType: 'CONFIRM_PRIVATE_QUOTE_NOTIFY',
-        modalProps: { onSubmitSuccess: props.onSubmitSuccess },
+        modalProps: { overridePrivacy, onSubmitSuccess: props.onSubmitSuccess },
       }));
     } else {
       dispatch(submitCompose((status) => {

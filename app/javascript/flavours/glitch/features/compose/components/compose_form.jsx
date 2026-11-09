@@ -160,7 +160,7 @@ class ComposeForm extends ImmutablePureComponent {
 
     this.props.onSubmit({
       missingAltText: missingAltTextModal && this.props.missingAltText && this.props.privacy !== 'direct',
-      quoteToPrivate: this.props.quoteToPrivate,
+      quoteToPrivate: this.props.quoteNotifiesWhenPrivate && (overridePrivacy ?? this.props.privacy) === 'private',
       overridePrivacy,
     });
 
