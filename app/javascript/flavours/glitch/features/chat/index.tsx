@@ -3207,10 +3207,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             showAlert({
               message: messages.invitationCancelled,
               values: {
-                account:
-                  invitation.invitee?.display_name ??
-                  invitation.invitee?.acct ??
-                  '',
+                account: invitation.invitee
+                  ? invitation.invitee.display_name || invitation.invitee.acct
+                  : '',
               },
             }),
           );
