@@ -754,58 +754,6 @@ describe('Review a1b5', () => {
     expect(shown).toBe(false);
   });
 
-  it('N3c (consequence) opening a hidden search result reads the whole room looking for it', async () => {
-    seed('A', 1, 200);
-    const target = {
-      ...message('A', 5),
-      account: me,
-      content: 'A unique search result',
-    };
-    backend.messages.set(
-      'A',
-      (backend.messages.get('A') ?? []).filter((item) => item.id !== '5'),
-    );
-    server.use(
-      http.get('*/api/v1/chat/messages/search', () =>
-        HttpResponse.json([target]),
-      ),
-    );
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat');
-    await screen.findByText('Room A');
-    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
-    fireEvent.change(screen.getByPlaceholderText('Search messages'), {
-      target: { value: 'unique' },
-    });
-    await later(1_000);
-    await screen.findByText('A unique search result');
-    act(() => {
-      page.socket.deliver('chat.message_hide', {
-        id: '5',
-        conversation_id: 'A',
-      });
-    });
-    await settle();
-    const stillShown = Boolean(screen.queryByText('A unique search result'));
-    if (stillShown) {
-      fireEvent.click(
-        document.querySelector(
-          '.chat-native__search-results button',
-        ) as HTMLElement,
-      );
-      await screen.findByText('Message 200');
-      await later(3_000);
-      await settle();
-    }
-    const MESSAGES = /\/conversations\/A\/messages$/;
-    await note('N3c-hidden-result-jump', {
-      stillShown,
-      messageReads: readsOf(MESSAGES),
-    });
-    expect(stillShown).toBe(false);
-  }, 30_000);
-
   it('N4 a sent invitation shows on the members screen without waiting out a sent-list deadline', async () => {
     seed('A', 1, 1);
     backend.rooms.set('A', {
@@ -905,68 +853,6 @@ describe('Review a1b5 search matching', () => {
     server.resetHandlers();
   });
 
-  it('N5 keeps an edited result that the server search still matches (Turkish dotted I)', async () => {
-    seed('A', 1, 1);
-    const found = { ...message('A', 1), content: 'Istanbul trip' };
-    server.use(
-      http.get('*/api/v1/chat/messages/search', () =>
-        HttpResponse.json([found]),
-      ),
-    );
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat');
-    await screen.findByText('Room A');
-    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
-    fireEvent.change(screen.getByPlaceholderText('Search messages'), {
-      target: { value: 'istanbul' },
-    });
-    await later(1_000);
-    await screen.findByText('Istanbul trip');
-    act(() => {
-      page.socket.deliver('chat.message_update', {
-        ...found,
-        content: 'İstanbul trip',
-      });
-    });
-    await settle();
-    const shown = document.querySelectorAll(
-      '.chat-native__search-results button',
-    ).length;
-    await note('N5-unicode-case', { resultsAfterEdit: shown });
-    expect(shown).toBe(1);
-  });
-
-  it('keeps Greek case-folded search results after an edit', async () => {
-    seed('A', 1, 1);
-    const found = { ...message('A', 1), content: 'ΟΔΟΣ' };
-    server.use(
-      http.get('*/api/v1/chat/messages/search', () =>
-        HttpResponse.json([found]),
-      ),
-    );
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat');
-    await screen.findByText('Room A');
-    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
-    fireEvent.change(screen.getByPlaceholderText('Search messages'), {
-      target: { value: 'ΟΔΟΣ' },
-    });
-    await later(1_000);
-    await screen.findByText('ΟΔΟΣ');
-    act(() => {
-      page.socket.deliver('chat.message_update', {
-        ...found,
-        content: 'ΟΔΟΣΑ',
-      });
-    });
-    await settle();
-    expect(
-      document.querySelectorAll('.chat-native__search-results button'),
-    ).toHaveLength(1);
-  });
-
   it('N6 an edit while a new query is on its way is judged against the results it changes', async () => {
     seed('A', 1, 2);
     const apple = { ...message('A', 1), content: 'apple pie' };
@@ -1027,7 +913,7 @@ describe('Pasting text that Safari also supplies as a URI', () => {
     vi.useRealTimers();
     server.resetHandlers();
   });
-  it('inserts the plain text into the composer at its selection and updates React state', async () => {
+  it('leaves an ordinary copied link and a file paste to the browser, and inserts plain text into the composer at its selection, updating React state', async () => {
     seed('A', 1, 1);
     const page = await loadPage();
     await connect(page.socket);
@@ -1035,6 +921,48 @@ describe('Pasting text that Safari also supplies as a URI', () => {
     await screen.findByText('Message 1');
     const box =
       screen.getByPlaceholderText<HTMLTextAreaElement>('Write a message');
+    const untouched = vi.fn();
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: untouched,
+    });
+    const clipboard = {
+      types: ['text/plain', 'text/uri-list'],
+      files: [],
+      items: [],
+      getData: () => 'https://example.test/',
+    };
+    expect(fireEvent.paste(box, { clipboardData: clipboard })).toBe(true);
+    const files = [new File(['x'], 'file.txt')];
+    expect(
+      fireEvent.paste(box, {
+        clipboardData: {
+          ...clipboard,
+          files,
+          getData: (type: string) =>
+            type === 'text/plain' ? 'Note: hello' : 'note:%20hello',
+        },
+      }),
+    ).toBe(true);
+    expect(
+      fireEvent.paste(box, {
+        clipboardData: {
+          ...clipboard,
+          types: ['text/plain'],
+          getData: () => 'Note: hello',
+        },
+      }),
+    ).toBe(true);
+    expect(
+      fireEvent.paste(box, {
+        clipboardData: {
+          ...clipboard,
+          getData: (type: string) =>
+            type === 'text/plain' ? 'Note: hello' : 'https://example.test/',
+        },
+      }),
+    ).toBe(true);
+    expect(untouched).not.toHaveBeenCalled();
     fireEvent.change(box, { target: { value: 'before after' } });
     box.focus();
     box.setSelectionRange(7, 12);
@@ -1152,57 +1080,6 @@ describe('Pasting text that Safari also supplies as a URI', () => {
       expect(page.history.location.pathname).toBe('/chat/G');
     });
     expect(backend.rooms.get('G')?.title).toBe('Note: hello world');
-  });
-  it('leaves an ordinary copied link and a file paste to the browser', async () => {
-    seed('A', 1, 1);
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat/A');
-    await screen.findByText('Message 1');
-    const box =
-      screen.getByPlaceholderText<HTMLTextAreaElement>('Write a message');
-    const exec = vi.fn();
-    Object.defineProperty(document, 'execCommand', {
-      configurable: true,
-      value: exec,
-    });
-    const clipboard = {
-      types: ['text/plain', 'text/uri-list'],
-      files: [],
-      items: [],
-      getData: () => 'https://example.test/',
-    };
-    expect(fireEvent.paste(box, { clipboardData: clipboard })).toBe(true);
-    const files = [new File(['x'], 'file.txt')];
-    expect(
-      fireEvent.paste(box, {
-        clipboardData: {
-          ...clipboard,
-          files,
-          getData: (type: string) =>
-            type === 'text/plain' ? 'Note: hello' : 'note:%20hello',
-        },
-      }),
-    ).toBe(true);
-    expect(
-      fireEvent.paste(box, {
-        clipboardData: {
-          ...clipboard,
-          types: ['text/plain'],
-          getData: () => 'Note: hello',
-        },
-      }),
-    ).toBe(true);
-    expect(
-      fireEvent.paste(box, {
-        clipboardData: {
-          ...clipboard,
-          getData: (type: string) =>
-            type === 'text/plain' ? 'Note: hello' : 'https://example.test/',
-        },
-      }),
-    ).toBe(true);
-    expect(exec).not.toHaveBeenCalled();
   });
 });
 

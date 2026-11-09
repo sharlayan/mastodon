@@ -244,15 +244,11 @@ afterEach(() => {
 });
 
 describe('Typing in a room', () => {
-  it('draws the messages at all, or the counts below would prove nothing', async () => {
+  it('draws the messages and room once, then only the box for the letters typed, within its size limits', async () => {
     await openRoom();
 
     expect(drawn.messages).toBeGreaterThan(0);
     expect(drawn.room).toBeGreaterThan(0);
-  });
-
-  it('draws neither the messages nor the room for the letters typed', async () => {
-    await openRoom();
 
     const typing = drawnWhile(() => {
       typeLetters('seventeen letters');
@@ -260,9 +256,10 @@ describe('Typing in a room', () => {
 
     expect(typing).toEqual({ messages: 0, room: 0, box: 17 });
     expect(box().value).toBe('seventeen letters');
+    expect(drawn.rows).toEqual({ minRows: 1, maxRows: 6 });
   });
 
-  it('draws neither the messages nor the room when the Send button changes', async () => {
+  it('only offers Send when there is something to send, drawing neither the messages nor the room when it changes', async () => {
     await openRoom();
     expect(sendButton().disabled).toBe(true);
 
@@ -277,17 +274,12 @@ describe('Typing in a room', () => {
 
     expect(enabling).toEqual({ messages: 0, room: 0, box: 1 });
     expect(disabling).toEqual({ messages: 0, room: 0, box: 1 });
-  });
 
-  it('draws neither the messages nor the room when a message gets too long', async () => {
-    await openRoom();
+    type('   ');
+    expect(sendButton().disabled).toBe(true);
 
-    const typing = drawnWhile(() => {
-      type('x'.repeat(4097));
-    });
-
-    expect(typing).toEqual({ messages: 0, room: 0, box: 1 });
-    expect(screen.getByText(/This message is too long/)).toBeTruthy();
+    type('  a ');
+    expect(sendButton().disabled).toBe(false);
   });
 
   it('does not bring back drawing the messages when scrolling with something typed', async () => {
@@ -305,28 +297,15 @@ describe('Typing in a room', () => {
     expect(box().value).toBe('Typed');
   });
 
-  it('keeps the size limits of the box', async () => {
+  it('does not send a message that is too long without drawing the messages or room, and offers it again once it fits', async () => {
     await openRoom();
 
-    type('Typed');
+    const typing = drawnWhile(() => {
+      type('x'.repeat(4097));
+    });
 
-    expect(drawn.rows).toEqual({ minRows: 1, maxRows: 6 });
-  });
-
-  it('only offers Send when there is something to send', async () => {
-    await openRoom();
-
-    type('   ');
-    expect(sendButton().disabled).toBe(true);
-
-    type('  a ');
-    expect(sendButton().disabled).toBe(false);
-  });
-
-  it('does not send a message that is too long, and offers it again once it fits', async () => {
-    await openRoom();
-
-    type('x'.repeat(4097));
+    expect(typing).toEqual({ messages: 0, room: 0, box: 1 });
+    expect(screen.getByText(/This message is too long/)).toBeTruthy();
     expect(screen.getByText(/4097\/4096/)).toBeTruthy();
     expect(sendButton().disabled).toBe(true);
     fireEvent.keyDown(box(), { key: 'Enter' });
@@ -382,7 +361,7 @@ describe('Sending what was typed', () => {
     expect(box().disabled).toBe(false);
   });
 
-  it('keeps what is typed while sending, and only what went out leaves the box', async () => {
+  it('does not send twice while sending, keeps what is typed meanwhile, and only what went out leaves the box', async () => {
     const sending = deferred<{ data: unknown }>();
     await openRoom();
     api.post.mockImplementation((url: string) =>
@@ -394,6 +373,9 @@ describe('Sending what was typed', () => {
     await waitFor(() => {
       expect(posts(MESSAGES)).toHaveLength(1);
     });
+    fireEvent.keyDown(box(), { key: 'Enter' });
+    fireEvent.click(sendButton());
+    expect(posts(MESSAGES)).toHaveLength(1);
     typeLetters(' and more', 'First');
 
     await act(async () => {
@@ -428,28 +410,6 @@ describe('Sending what was typed', () => {
 
     await screen.findByText('First');
     expect(box().value).toBe('Something else');
-  });
-
-  it('does not send twice while sending', async () => {
-    const sending = deferred<{ data: unknown }>();
-    await openRoom();
-    api.post.mockImplementation((url: string) =>
-      url === MESSAGES ? sending.promise : Promise.resolve({ data: {} }),
-    );
-
-    type('First');
-    fireEvent.keyDown(box(), { key: 'Enter' });
-    await waitFor(() => {
-      expect(posts(MESSAGES)).toHaveLength(1);
-    });
-    fireEvent.keyDown(box(), { key: 'Enter' });
-    fireEvent.click(sendButton());
-
-    expect(posts(MESSAGES)).toHaveLength(1);
-    await act(async () => {
-      sending.resolve({ data: sentMessage('sent', 'First') });
-      await sending.promise;
-    });
   });
 
   it('keeps the text when sending fails', async () => {
@@ -496,7 +456,7 @@ describe('Korean input', () => {
     expect(box().value).toBe('한글');
   });
 
-  it('does not send when Enter confirms a syllable', async () => {
+  it('does not send when Enter confirms a syllable, and sends the whole word once it is confirmed', async () => {
     await openRoom();
     fireEvent.compositionStart(box());
     composing('한');
@@ -506,11 +466,7 @@ describe('Korean input', () => {
 
     expect(posts(MESSAGES)).toHaveLength(0);
     expect(box().value).toBe('한');
-  });
 
-  it('sends the whole word once the syllable is confirmed', async () => {
-    await openRoom();
-    fireEvent.compositionStart(box());
     composing('한글');
     fireEvent.compositionEnd(box(), { data: '글' });
 
@@ -719,28 +675,22 @@ describe('Typing with a picture attached', () => {
     expect(box().value).toBe('');
   });
 
-  it('can send a picture with nothing typed', async () => {
+  it('keeps the picture when what was typed is rubbed out, and sends it with nothing typed', async () => {
     const { container } = await openRoom();
     expect(sendButton().disabled).toBe(true);
 
     await attachPicture(container);
+    expect(sendButton().disabled).toBe(false);
+    typeLetters('Typed');
+    type('');
+
+    expect(screen.getByAltText('Picture 1')).toBeTruthy();
     expect(sendButton().disabled).toBe(false);
     fireEvent.click(sendButton());
 
     await waitFor(() => {
       expect(lastSent()).toMatchObject({ text: '', media_ids: ['media-1'] });
     });
-  });
-
-  it('keeps the picture when what was typed is rubbed out', async () => {
-    const { container } = await openRoom();
-    await attachPicture(container);
-
-    typeLetters('Typed');
-    type('');
-
-    expect(screen.getByAltText('Picture 1')).toBeTruthy();
-    expect(sendButton().disabled).toBe(false);
   });
 });
 

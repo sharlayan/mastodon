@@ -6,16 +6,14 @@ import {
 } from '../inline_reply_navigation';
 
 describe('inline compose reply navigation', () => {
-  it.each([
-    '/@alice/123',
-    '/@alice@example.com/123',
-    '/statuses/123',
-  ])('exits a detailed status route in single-column mode: %s', (pathname) => {
-    expect(shouldExitDetailedForInlineCompose({
+  it('exits detailed status routes in single-column mode', () => {
+    const paths = ['/@alice/123', '/@alice@example.com/123', '/statuses/123'];
+
+    expect(paths.filter((pathname) => !shouldExitDetailedForInlineCompose({
       enabled: true,
       layout: 'single-column',
       pathname,
-    })).toBe(true);
+    }))).toEqual([]);
   });
 
   it('does not exit in multi-column mode', () => {
@@ -56,24 +54,23 @@ describe('inline compose reply navigation', () => {
     })).toBe(false);
   });
 
-  it.each([
-    '/home',
-    '/public',
-    '/public/local',
-    '/lists/123',
-    '/antennas/123',
-    '/conversations',
-    '/timelines/direct',
-  ])('uses the reply popup on an inline-compose feed: %s', (pathname) => {
-    expect(shouldOpenInlineComposeReplyModal({
+  it('uses the reply popup on inline-compose feeds and keeps timeline replies inline when the popup is disabled', () => {
+    const paths = [
+      '/home',
+      '/public',
+      '/public/local',
+      '/lists/123',
+      '/antennas/123',
+      '/conversations',
+      '/timelines/direct',
+    ];
+
+    expect(paths.filter((pathname) => !shouldOpenInlineComposeReplyModal({
       disablePopup: false,
       enabled: true,
       layout: 'single-column',
       pathname,
-    })).toBe(true);
-  });
-
-  it('keeps timeline replies in the inline compose box when the popup is disabled', () => {
+    }))).toEqual([]);
     expect(shouldOpenInlineComposeReplyModal({
       disablePopup: true,
       enabled: true,
@@ -82,21 +79,28 @@ describe('inline compose reply navigation', () => {
     })).toBe(false);
   });
 
-  it.each([
-    '/deck/home',
-    '/deck/public/local',
-    '/deck/timelines/antenna/123',
-    '/timelines/home',
-    '/timelines/public',
-    '/timelines/public/local',
-    '/timelines/antenna/123',
-    '/deck/conversations',
-  ])('applies reply navigation preferences on the supported feed alias %s', pathname => {
-    const options = { enabled: true, layout: 'mobile', pathname };
+  it('applies reply navigation preferences on the supported feed aliases', () => {
+    const paths = [
+      '/deck/home',
+      '/deck/public/local',
+      '/deck/timelines/antenna/123',
+      '/timelines/home',
+      '/timelines/public',
+      '/timelines/public/local',
+      '/timelines/antenna/123',
+      '/deck/conversations',
+    ];
 
-    expect(shouldNavigateToComposePage({ ...options, disableMobilePopup: true })).toBe(true);
-    expect(shouldOpenInlineComposeReplyModal({ ...options, disableMobilePopup: false })).toBe(true);
-    expect(shouldOpenInlineComposeReplyModal({ ...options, layout: 'single-column', disablePopup: false })).toBe(true);
+    expect(paths.map((pathname) => {
+      const options = { enabled: true, layout: 'mobile', pathname };
+
+      return [
+        pathname,
+        shouldNavigateToComposePage({ ...options, disableMobilePopup: true }),
+        shouldOpenInlineComposeReplyModal({ ...options, disableMobilePopup: false }),
+        shouldOpenInlineComposeReplyModal({ ...options, layout: 'single-column', disablePopup: false }),
+      ];
+    })).toEqual(paths.map((pathname) => [pathname, true, true, true]));
   });
 
   it('preserves the conversation list exception without treating a conversation thread as an inline feed', () => {
@@ -106,19 +110,13 @@ describe('inline compose reply navigation', () => {
     expect(shouldOpenInlineComposeReplyModal({ ...options, pathname: '/conversations/123' })).toBe(false);
   });
 
-  it.each([
-    '/home',
-    '/@alice/123',
-  ])('navigates to the compose page when the popup is disabled on mobile: %s', (pathname) => {
-    expect(shouldNavigateToComposePage({
+  it('navigates to the compose page when the popup is disabled on mobile but keeps the inline box on desktop single-column layout', () => {
+    expect(['/home', '/@alice/123'].map((pathname) => shouldNavigateToComposePage({
       disableMobilePopup: true,
       enabled: true,
       layout: 'mobile',
       pathname,
-    })).toBe(true);
-  });
-
-  it('keeps the inline compose box when the popup is disabled on desktop single-column layout', () => {
+    }))).toEqual([true, true]);
     expect(shouldNavigateToComposePage({
       disableMobilePopup: true,
       enabled: true,

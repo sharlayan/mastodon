@@ -45,21 +45,26 @@ describe('Sharlayan route registry', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it.each([
-    ['clip-new', 'clip-show'],
-    ['clip-edit', 'clip-show'],
-    ['page-new', 'page-show'],
-    ['page-edit', 'page-show'],
-    ['page-show', 'pages'],
-    ['circle-edit', 'circles'],
-    ['circle-members', 'circles'],
-    ['antenna-edit', 'antenna-show'],
-    ['antenna-show', 'antennas'],
-    ['account-page', 'account-pages'],
-  ])('places %s before %s', (earlier, later) => {
+  it('places specific routes before the routes they would shadow', () => {
     const keys = sharlayanRouteDescriptors.map(({ key }) => key);
+    const pairs: [string, string][] = [
+      ['clip-new', 'clip-show'],
+      ['clip-edit', 'clip-show'],
+      ['page-new', 'page-show'],
+      ['page-edit', 'page-show'],
+      ['page-show', 'pages'],
+      ['circle-edit', 'circles'],
+      ['circle-members', 'circles'],
+      ['antenna-edit', 'antenna-show'],
+      ['antenna-show', 'antennas'],
+      ['account-page', 'account-pages'],
+    ];
 
-    expect(keys.indexOf(earlier)).toBeLessThan(keys.indexOf(later));
+    expect(
+      pairs.filter(
+        ([earlier, later]) => !(keys.indexOf(earlier) < keys.indexOf(later)),
+      ),
+    ).toEqual([]);
   });
 
   it('retains exact matching for collection routes', () => {

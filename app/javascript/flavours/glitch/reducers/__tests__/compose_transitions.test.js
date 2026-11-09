@@ -84,15 +84,20 @@ describe('compose restoration transitions', () => {
     expect(submission.clipIds).toEqual(type === COMPOSE_SET_STATUS ? undefined : []);
   });
 
-  it.each([COMPOSE_SET_STATUS, REDRAFT])('does not carry over quote and reaction restrictions absent from the source with %s', type => {
-    const state = restore(loadedDraft(), type, sourceStatus
+  it('does not carry over quote and reaction restrictions absent from the source when editing or redrafting', () => {
+    const source = sourceStatus
       .delete('quote')
       .delete('quote_approval')
-      .delete('reaction_acceptance'));
+      .delete('reaction_acceptance');
 
-    expect(state.get('quoted_status_id')).toBeNull();
-    expect(state.get('quote_policy')).toBe('nobody');
-    expect(state.get('reaction_acceptance')).toBeNull();
+    expect([COMPOSE_SET_STATUS, REDRAFT].map(type => {
+      const state = restore(loadedDraft(), type, source);
+
+      return [type, state.get('quoted_status_id'), state.get('quote_policy'), state.get('reaction_acceptance')];
+    })).toEqual([
+      [COMPOSE_SET_STATUS, null, 'nobody', null],
+      [REDRAFT, null, 'nobody', null],
+    ]);
   });
 
   it('forgets the loaded draft when the composer is reset', () => {

@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { isRoleplayPublicTimelineChannel } from './roleplay.js';
 
-test('roleplay mode restricts every public timeline channel', () => {
+test('roleplay mode restricts every public timeline channel and treats a missing channel name as non-public', () => {
   const env = { OC_ROLEPLAY_OPTION: 'true' };
 
   assert.equal(isRoleplayPublicTimelineChannel('public', env), true);
@@ -11,6 +11,7 @@ test('roleplay mode restricts every public timeline channel', () => {
   assert.equal(isRoleplayPublicTimelineChannel('public:remote:media', env), true);
   assert.equal(isRoleplayPublicTimelineChannel('user', env), false);
   assert.equal(isRoleplayPublicTimelineChannel('hashtag:local', env), false);
+  assert.equal(isRoleplayPublicTimelineChannel(undefined, env), false);
 });
 
 test('public timeline channels remain available outside roleplay mode', () => {
@@ -21,8 +22,4 @@ test('public timeline channels remain available outside roleplay mode', () => {
     }),
     false,
   );
-});
-
-test('roleplay mode treats a missing channel name as a non-public channel', () => {
-  assert.equal(isRoleplayPublicTimelineChannel(undefined, { OC_ROLEPLAY_OPTION: 'true' }), false);
 });

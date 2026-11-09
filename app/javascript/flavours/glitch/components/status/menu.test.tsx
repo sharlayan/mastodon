@@ -179,20 +179,31 @@ describe('redesign custom status menu', () => {
     ).toBeNull();
   });
 
-  it.each(['loggedOut', 'remote', 'roleplayOff', 'softHideOff', 'notOwner'])(
-    'does not expose RP deletion when %s',
-    (gate) => {
-      if (gate === 'loggedOut') mocks.conditions.isLoggedIn = false;
-      if (gate === 'remote') mocks.conditions.isLocal = false;
-      if (gate === 'roleplayOff') mocks.roleplay = false;
-      if (gate === 'softHideOff') mocks.softHide = false;
-      if (gate === 'notOwner') mocks.owner = false;
-      renderMenu();
-      expect(
-        screen.queryByRole('button', { name: 'Delete (Admin)' }),
-      ).toBeNull();
-    },
-  );
+  it('does not expose RP deletion when logged out, remote, roleplay or soft hide is off, or not an owner', () => {
+    const gates = [
+      'loggedOut',
+      'remote',
+      'roleplayOff',
+      'softHideOff',
+      'notOwner',
+    ];
+
+    expect(
+      gates.filter((gate) => {
+        mocks.conditions.isLoggedIn = gate !== 'loggedOut';
+        mocks.conditions.isLocal = gate !== 'remote';
+        mocks.roleplay = gate !== 'roleplayOff';
+        mocks.softHide = gate !== 'softHideOff';
+        mocks.owner = gate !== 'notOwner';
+        const { unmount } = renderMenu();
+        const exposed = !!screen.queryByRole('button', {
+          name: 'Delete (Admin)',
+        });
+        unmount();
+        return exposed;
+      }),
+    ).toEqual([]);
+  });
 
   it('routes admin soft deletion through the existing confirmation', () => {
     renderMenu();

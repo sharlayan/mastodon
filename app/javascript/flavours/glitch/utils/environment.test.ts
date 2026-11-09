@@ -41,18 +41,20 @@ describe('redesign feature gates', () => {
     expect(isRedesignEnabled()).toBe(true);
   });
 
-  it.each([null, '', 'other', 'redesign-preview'])(
-    'keeps the redesign disabled with client experiments %j',
-    (experiments) => {
-      state.initialState = { features: ['fasp'] };
+  it('keeps the redesign disabled with missing, empty or unrelated client experiments', () => {
+    state.initialState = { features: ['fasp'] };
+    const experimentsList = [null, '', 'other', 'redesign-preview'];
 
-      if (experiments !== null) {
-        window.localStorage.setItem('experiments', experiments);
-      }
-
-      expect(isRedesignEnabled()).toBe(false);
-    },
-  );
+    expect(
+      experimentsList.map((experiments) => {
+        window.localStorage.removeItem('experiments');
+        if (experiments !== null) {
+          window.localStorage.setItem('experiments', experiments);
+        }
+        return isRedesignEnabled();
+      }),
+    ).toEqual(experimentsList.map(() => false));
+  });
 
   it('keeps the redesign disabled without initial state or client experiments', () => {
     state.initialState = undefined;
@@ -93,28 +95,26 @@ describe('redesign feature gates', () => {
     expect(getItem).not.toHaveBeenCalled();
   });
 
-  it.each([
-    { server: true, client: false },
-    { server: false, client: true },
-    { server: true, client: true },
-  ])(
-    'keeps Glitch Legacy on the legacy UI with server=$server and client=$client',
-    ({ server, client }) => {
-      document.documentElement.dataset.userFlavour = 'glitch-classic';
-      state.initialState = { features: server ? ['redesign'] : [] };
-      if (client) {
-        window.localStorage.setItem('experiments', 'redesign');
-      }
-
-      expect(isRedesignEnabled()).toBe(false);
-    },
-  );
-
-  it('does not read client experiments for Glitch Legacy', () => {
+  it('keeps Glitch Legacy on the legacy UI without reading client experiments', () => {
     document.documentElement.dataset.userFlavour = 'glitch-classic';
     const getItem = vi.spyOn(Storage.prototype, 'getItem');
+    const combinations = [
+      { server: false, client: false },
+      { server: true, client: false },
+      { server: false, client: true },
+      { server: true, client: true },
+    ];
 
-    expect(isRedesignEnabled()).toBe(false);
+    expect(
+      combinations.map(({ server, client }) => {
+        window.localStorage.removeItem('experiments');
+        state.initialState = { features: server ? ['redesign'] : [] };
+        if (client) {
+          window.localStorage.setItem('experiments', 'redesign');
+        }
+        return isRedesignEnabled();
+      }),
+    ).toEqual(combinations.map(() => false));
     expect(getItem).not.toHaveBeenCalled();
   });
 

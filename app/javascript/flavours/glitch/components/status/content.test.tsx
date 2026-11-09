@@ -130,17 +130,19 @@ describe('redesign status content', () => {
     );
   });
 
-  it.each(['server', 'user', 'status'])(
-    'keeps ordinary HTML when the %s MFM gate is off',
-    (gate) => {
-      if (gate === 'server') mocks.globalMfm = false;
-      if (gate === 'user') setSettings({ mfm_enabled: false });
-      renderContent({ status: { ...status, mfm: gate !== 'status' } });
+  it('keeps ordinary HTML when the server, user or status MFM gate is off', () => {
+    for (const gate of ['server', 'user', 'status']) {
+      mocks.globalMfm = gate !== 'server';
+      setSettings(gate === 'user' ? { mfm_enabled: false } : {});
+      const { unmount } = renderContent({
+        status: { ...status, mfm: gate !== 'status' },
+      });
 
       expect(screen.queryByTestId('mfm')).toBeNull();
       expect(screen.getByText('HTML fallback')).not.toBeNull();
-    },
-  );
+      unmount();
+    }
+  });
 
   it('uses completed translated content and preserves line breaks instead of showing the source', () => {
     renderContent({
@@ -184,14 +186,24 @@ describe('redesign status content', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ['sensitive', '$[spin Spin]', true],
-    ['none', '$[spin Spin]', false],
-    ['none', 'a'.repeat(1001), true],
-  ])('applies %s fold mode to the MFM source', (mode, source, folded) => {
-    setSettings({ mfm_fold_mode: mode });
-    renderContent({ status: { ...status, mfm_text: source } });
-    expect(!!screen.queryByText('Expand MFM post')).toBe(folded);
+  it('applies sensitive and none fold modes to the MFM source', () => {
+    const cases = [
+      ['sensitive', '$[spin Spin]', true],
+      ['none', '$[spin Spin]', false],
+      ['none', 'a'.repeat(1001), true],
+    ] as const;
+
+    expect(
+      cases.map(([mode, source]) => {
+        setSettings({ mfm_fold_mode: mode });
+        const { unmount } = renderContent({
+          status: { ...status, mfm_text: source },
+        });
+        const folded = !!screen.queryByText('Expand MFM post');
+        unmount();
+        return folded;
+      }),
+    ).toEqual(cases.map(([, , folded]) => folded));
   });
 
   it('applies cat speech only through its existing preference gate', () => {

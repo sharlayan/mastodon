@@ -153,14 +153,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Chat attachments from another server on an open screen', () => {
-  it('shows nothing to look at until a file has arrived', async () => {
+  it('shows nothing until a file has arrived, then draws each picture as its file arrives in any order, without calling the message edited or reading the messages again', async () => {
     await mountOpenRoom();
+    const requests = () =>
+      api.get.mock.calls.filter(([url]) => String(url).endsWith('/messages'))
+        .length;
+    const before = requests();
 
     expect(shownPictures()).toEqual([]);
-  });
-
-  it('draws each picture when its file arrives, whatever the order', async () => {
-    await mountOpenRoom();
 
     await emit('chat.message_update', incoming([3]));
     expect(shownPictures()).toEqual([3]);
@@ -171,6 +171,8 @@ describe('Chat attachments from another server on an open screen', () => {
     await emit('chat.message_update', incoming([1, 3, 4]));
     await emit('chat.message_update', incoming([1, 2, 3, 4]));
     expect(shownPictures()).toEqual([1, 2, 3, 4]);
+    expect(screen.queryByText('Edited')).toBeNull();
+    expect(requests()).toBe(before);
   });
 
   it('leaves a file that could not be fetched out while the rest show', async () => {
@@ -180,26 +182,5 @@ describe('Chat attachments from another server on an open screen', () => {
 
     expect(shownPictures()).toEqual([1, 2, 4]);
     expect(screen.getByText('Four pictures')).toBeTruthy();
-  });
-
-  it('does not call the message edited', async () => {
-    await mountOpenRoom();
-
-    await emit('chat.message_update', incoming([1, 2, 3, 4]));
-
-    expect(shownPictures()).toEqual([1, 2, 3, 4]);
-    expect(screen.queryByText('Edited')).toBeNull();
-  });
-
-  it('does not ask the server for the messages again', async () => {
-    await mountOpenRoom();
-    const requests = () =>
-      api.get.mock.calls.filter(([url]) => String(url).endsWith('/messages'))
-        .length;
-    const before = requests();
-
-    await emit('chat.message_update', incoming([1]));
-
-    expect(requests()).toBe(before);
   });
 });

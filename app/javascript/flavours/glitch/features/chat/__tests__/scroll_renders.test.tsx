@@ -232,7 +232,7 @@ describe('Scrolling in a room', () => {
     expect(readsPosted()).toBe(before + 1);
   });
 
-  it('does not follow or mark a new message during zoom even without a scroll event', async () => {
+  it('does not follow or mark incoming messages read while zoomed, with or without a scroll event', async () => {
     const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
     const viewport = Object.assign(new EventTarget(), {
       scale: 1,
@@ -250,28 +250,8 @@ describe('Scrolling in a room', () => {
       receive('zoomed-without-scroll');
       expect(scrollIntoView).not.toHaveBeenCalled();
       expect(readsPosted()).toBe(before);
-    } finally {
-      if (original) Object.defineProperty(window, 'visualViewport', original);
-      else Reflect.deleteProperty(window, 'visualViewport');
-    }
-  });
 
-  it('does not scroll or mark incoming messages read while zoomed', async () => {
-    const original = Object.getOwnPropertyDescriptor(window, 'visualViewport');
-    const viewport = Object.assign(new EventTarget(), {
-      scale: 1,
-      height: 667,
-    });
-    Object.defineProperty(window, 'visualViewport', {
-      configurable: true,
-      value: viewport,
-    });
-    try {
-      await openRoom();
-      viewport.scale = 2;
       scrollUp();
-      const before = readsPosted();
-      scrollIntoView.mockClear();
       receive('zoomed');
       expect(scrollIntoView).not.toHaveBeenCalled();
       expect(readsPosted()).toBe(before);
@@ -831,32 +811,17 @@ describe('Scrolling in a room', () => {
     expect(scrollport.scrollTop).toBe(100);
   });
 
-  it('draws the messages at all, or the counts below would prove nothing', async () => {
+  it('draws the messages, then shows and hides the way back over several trips without drawing them or the box again', async () => {
     await openRoom();
 
     expect(drawn.messages).toBeGreaterThan(0);
     expect(drawn.composer).toBeGreaterThan(0);
-  });
-
-  it('shows the way back without drawing the messages or the box again', async () => {
-    await openRoom();
 
     expect(drawnWhile(scrollUp)).toEqual(NOTHING);
-
     expect(screen.getByRole('button', { name: JUMP })).toBeTruthy();
-  });
-
-  it('hides the way back without drawing the messages or the box again', async () => {
-    await openRoom();
-    scrollUp();
 
     expect(drawnWhile(scrollToBottom)).toEqual(NOTHING);
-
     expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
-  });
-
-  it('draws nothing again over several trips, or while staying on one side', async () => {
-    await openRoom();
 
     const trips = drawnWhile(() => {
       for (let trip = 0; trip < 4; trip++) {
@@ -870,9 +835,10 @@ describe('Scrolling in a room', () => {
     expect(trips).toEqual(NOTHING);
   });
 
-  it('tells about a message that arrives while reading older ones, and draws it', async () => {
+  it('tells about and draws a message that arrives while reading older ones, keeping the notice and not counting it read', async () => {
     await openRoom();
     scrollUp();
+    const before = readsPosted();
 
     const arriving = drawnWhile(() => {
       receive('live');
@@ -881,16 +847,10 @@ describe('Scrolling in a room', () => {
     expect(screen.getByText('New messages')).toBeTruthy();
     expect(screen.getByText('Live live')).toBeTruthy();
     expect(arriving.messages).toBeGreaterThan(0);
-  });
 
-  it('does not count a message as read while reading older ones', async () => {
-    await openRoom();
-    scrollUp();
-    const before = readsPosted();
-
-    receive('live');
     scrollUp();
 
+    expect(screen.getByText('New messages')).toBeTruthy();
     expect(readsPosted()).toBe(before);
   });
 
@@ -924,16 +884,6 @@ describe('Scrolling in a room', () => {
     expect(screen.queryByRole('button', { name: JUMP })).toBeNull();
     expect(readsPosted()).toBe(before + 1);
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps the notice while still reading older ones', async () => {
-    await openRoom();
-    scrollUp();
-    receive('live');
-
-    scrollUp();
-
-    expect(screen.getByText('New messages')).toBeTruthy();
   });
 
   it('does not go down for a message of mine while reading older ones', async () => {

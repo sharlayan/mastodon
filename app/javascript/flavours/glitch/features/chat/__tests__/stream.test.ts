@@ -20,24 +20,6 @@ const payload = {
 };
 
 describe('Chat stream connection', () => {
-  it('announces every connection, the first one included', async () => {
-    vi.resetModules();
-    const stream = await import('../stream');
-    const listener = vi.fn();
-    const unsubscribe = stream.subscribeChatStream(listener);
-
-    stream.handleChatStreamConnected();
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenLastCalledWith({
-      event: stream.CHAT_STREAM_RECONNECTED,
-      payload: {},
-    });
-
-    stream.handleChatStreamConnected();
-    expect(listener).toHaveBeenCalledTimes(2);
-    unsubscribe();
-  });
-
   it('is live only from being subscribed until it is cut off', async () => {
     vi.resetModules();
     const stream = await import('../stream');
@@ -66,7 +48,7 @@ describe('Chat stream connection', () => {
     unsubscribe();
   });
 
-  it('asks for everything on the first poll only, until the stream is back', async () => {
+  it('announces every connection, the first one included, and asks for everything on the first poll only, until the stream is back', async () => {
     vi.resetModules();
     const stream = await import('../stream');
     const listener = vi.fn();
@@ -75,6 +57,10 @@ describe('Chat stream connection', () => {
       listener.mock.calls.map(([item]) => (item as { event: string }).event);
 
     stream.handleChatStreamConnected();
+    expect(listener).toHaveBeenLastCalledWith({
+      event: stream.CHAT_STREAM_RECONNECTED,
+      payload: {},
+    });
     stream.handleChatStreamDisconnected();
     stream.handleChatStreamPolled();
     stream.handleChatStreamPolled();
@@ -201,20 +187,14 @@ describe('Chat desktop notifications', () => {
       return constructor;
     };
 
-    it('stays quiet in the visible conversation', () => {
-      const constructor = setUp('/chat/20', 'visible');
+    it('stays quiet in the visible conversation, in either layout', () => {
+      for (const pathname of ['/chat/20', '/deck/chat/20']) {
+        const constructor = setUp(pathname, 'visible');
 
-      showChatDesktopNotification(payload);
+        showChatDesktopNotification(payload);
 
-      expect(constructor).not.toHaveBeenCalled();
-    });
-
-    it('stays quiet in the visible conversation in the advanced layout', () => {
-      const constructor = setUp('/deck/chat/20', 'visible');
-
-      showChatDesktopNotification(payload);
-
-      expect(constructor).not.toHaveBeenCalled();
+        expect(constructor, pathname).not.toHaveBeenCalled();
+      }
     });
 
     it('notifies when that conversation is in a background tab', () => {

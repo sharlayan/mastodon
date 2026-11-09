@@ -14,57 +14,39 @@ describe('How long chat waits before trying again', () => {
     expect(waits).toEqual([2_000, 5_000, 15_000, 30_000, null]);
   });
 
-  it('waits the seconds Retry-After gives', () => {
+  it('waits what Retry-After or the rate limit reset gives, never less than the backoff and never beyond ten minutes', () => {
+    const at = new Date(NOW + 30_000).toUTCString();
+    const reset = (offset: number) =>
+      refused(429, {
+        'x-ratelimit-reset': new Date(NOW + offset).toISOString(),
+      });
+
     expect(retryDelay(refused(429, { 'retry-after': '40' }), 0, NOW)).toBe(
       40_000,
     );
-  });
-
-  it('waits until the date Retry-After gives', () => {
-    const at = new Date(NOW + 30_000).toUTCString();
-
     expect(retryDelay(refused(429, { 'retry-after': at }), 0, NOW)).toBe(
       30_000,
     );
+    expect(retryDelay(reset(20_000), 0, NOW)).toBe(20_000);
+    expect(retryDelay(reset(-5_000), 1, NOW)).toBe(5_000);
+    expect(retryDelay(reset(3_600_000), 0, NOW)).toBeNull();
   });
 
-  it('waits until the reset time of the rate limit', () => {
-    const reset = new Date(NOW + 20_000).toISOString();
+  it('does not try again after a refusal, but does after a status that may pass', () => {
+    const delayAfter = (status: number) => retryDelay(refused(status), 0, NOW);
 
-    expect(
-      retryDelay(refused(429, { 'x-ratelimit-reset': reset }), 0, NOW),
-    ).toBe(20_000);
+    expect([400, 401, 403, 404, 410, 422].map(delayAfter)).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+    expect([408, 500, 502, 503].map(delayAfter)).toEqual([
+      2_000, 2_000, 2_000, 2_000,
+    ]);
   });
-
-  it('never waits less than it would have anyway', () => {
-    const reset = new Date(NOW - 5_000).toISOString();
-
-    expect(
-      retryDelay(refused(429, { 'x-ratelimit-reset': reset }), 1, NOW),
-    ).toBe(5_000);
-  });
-
-  it('does not retry early when the rate limit resets more than ten minutes away', () => {
-    const reset = new Date(NOW + 3_600_000).toISOString();
-
-    expect(
-      retryDelay(refused(429, { 'x-ratelimit-reset': reset }), 0, NOW),
-    ).toBeNull();
-  });
-
-  it.each([400, 401, 403, 404, 410, 422])(
-    'does not try again after the server said no with %i',
-    (status) => {
-      expect(retryDelay(refused(status), 0, NOW)).toBeNull();
-    },
-  );
-
-  it.each([408, 500, 502, 503])(
-    'tries again after a %i, which may pass',
-    (status) => {
-      expect(retryDelay(refused(status), 0, NOW)).toBe(2_000);
-    },
-  );
 });
 
 describe('Chat retries while the page is hidden', () => {

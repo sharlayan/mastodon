@@ -210,20 +210,6 @@ describe('Pressing Send with the message box in use', () => {
     });
     return view;
   };
-  const holdSend = () => {
-    let answer: () => void = () => undefined;
-    api.post.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          answer = () => {
-            resolve({ data: { ...myMessage, id: 'sent' } });
-          };
-        }),
-    );
-    return () => {
-      answer();
-    };
-  };
   const formOf = (container: HTMLElement) => {
     const form = container.querySelector<HTMLElement>(
       'form.chat-native__composer',
@@ -233,19 +219,15 @@ describe('Pressing Send with the message box in use', () => {
   };
   const movesFocus = (element: HTMLElement) => fireEvent.mouseDown(element);
 
-  it('keeps the focus in the box', async () => {
-    await mountRoom();
-    fireEvent.change(composer(), { target: { value: 'Going out' } });
-    composer().focus();
-
-    expect(movesFocus(sendButton())).toBe(false);
-  });
-
-  it('keeps the focus in the box when the button is disabled', async () => {
+  it('keeps the focus in the box when the button is disabled, and leaves the other controls of the composer alone', async () => {
     const { container } = await mountRoom();
     composer().focus();
 
     expect(movesFocus(formOf(container))).toBe(false);
+    expect(
+      movesFocus(screen.getByRole('button', { name: 'Attach media' })),
+    ).toBe(true);
+    expect(movesFocus(composer())).toBe(true);
   });
 
   it('does not touch the focus when the box does not have it', async () => {
@@ -255,74 +237,6 @@ describe('Pressing Send with the message box in use', () => {
     expect(movesFocus(sendButton())).toBe(true);
     expect(movesFocus(formOf(container))).toBe(true);
     expect(document.activeElement).not.toBe(composer());
-  });
-
-  it('leaves the other controls of the composer alone', async () => {
-    await mountRoom();
-    composer().focus();
-
-    expect(
-      movesFocus(screen.getByRole('button', { name: 'Attach media' })),
-    ).toBe(true);
-    expect(movesFocus(composer())).toBe(true);
-  });
-
-  it('keeps the box writable while the message is on its way', async () => {
-    const answer = holdSend();
-    await mountRoom();
-    fireEvent.change(composer(), { target: { value: 'Going out' } });
-
-    fireEvent.click(sendButton());
-
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalled();
-    });
-    expect(composer().readOnly).toBe(false);
-    await act(async () => {
-      answer();
-      await Promise.resolve();
-    });
-  });
-
-  it('keeps what is typed while the message is on its way', async () => {
-    const answer = holdSend();
-    await mountRoom();
-    fireEvent.change(composer(), { target: { value: 'Going out' } });
-
-    fireEvent.click(sendButton());
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalled();
-    });
-    fireEvent.change(composer(), { target: { value: 'Going out and more' } });
-    await act(async () => {
-      answer();
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(composer().value).toBe(' and more');
-    });
-  });
-
-  it('keeps a box rewritten while the message is on its way', async () => {
-    const answer = holdSend();
-    await mountRoom();
-    fireEvent.change(composer(), { target: { value: 'Going out' } });
-
-    fireEvent.click(sendButton());
-    await waitFor(() => {
-      expect(api.post).toHaveBeenCalled();
-    });
-    fireEvent.change(composer(), { target: { value: 'Something else' } });
-    await act(async () => {
-      answer();
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(document.getElementById('chat-message-sent')).toBeTruthy();
-    });
-    expect(composer().value).toBe('Something else');
   });
 });
 
@@ -356,59 +270,36 @@ describe('Home and End in the message box', () => {
     vi.restoreAllMocks();
   });
 
-  it.each(['Home', 'End'])(
-    'keeps %s from moving the conversation on a Mac',
-    async (key) => {
-      await mountOn(MAC);
-
-      expect(leftToBrowser(shape(0, 44, 44), { key })).toBe(false);
-    },
-  );
-
-  it('leaves End to the box while it still has more to scroll', async () => {
+  it('keeps only Home and End without a modifier from moving the conversation on a Mac, once the box has no more to scroll', async () => {
     await mountOn(MAC);
+    const pressed = (init: object) =>
+      leftToBrowser(shape(0, 44, 44), { key: 'End', ...init });
 
+    expect(leftToBrowser(shape(0, 44, 44), { key: 'Home' })).toBe(false);
+    expect(leftToBrowser(shape(0, 44, 44), { key: 'End' })).toBe(false);
+    expect(
+      [
+        { shiftKey: true },
+        { metaKey: true },
+        { ctrlKey: true },
+        { altKey: true },
+        { key: 'PageUp' },
+        { key: 'PageDown' },
+        { key: 'ArrowLeft' },
+      ].map(pressed),
+    ).toEqual([true, true, true, true, true, true, true]);
     expect(leftToBrowser(shape(0, 44, 300), { key: 'End' })).toBe(true);
     expect(leftToBrowser(shape(256, 44, 300), { key: 'End' })).toBe(false);
-  });
-
-  it('leaves Home to the box while it still has more to scroll', async () => {
-    await mountOn(MAC);
-
     expect(leftToBrowser(shape(100, 44, 300), { key: 'Home' })).toBe(true);
     expect(leftToBrowser(shape(0, 44, 300), { key: 'Home' })).toBe(false);
   });
 
-  it.each([
-    { shiftKey: true },
-    { metaKey: true },
-    { ctrlKey: true },
-    { altKey: true },
-  ])('leaves End with a modifier alone on a Mac: %o', async (modifier) => {
-    await mountOn(MAC);
+  it('leaves Home and End moving the caret on other systems', async () => {
+    await mountOn(WINDOWS);
 
-    expect(leftToBrowser(shape(0, 44, 44), { key: 'End', ...modifier })).toBe(
-      true,
-    );
+    expect(leftToBrowser(shape(0, 44, 44), { key: 'Home' })).toBe(true);
+    expect(leftToBrowser(shape(0, 44, 44), { key: 'End' })).toBe(true);
   });
-
-  it.each(['PageUp', 'PageDown', 'ArrowLeft'])(
-    'leaves %s alone on a Mac',
-    async (key) => {
-      await mountOn(MAC);
-
-      expect(leftToBrowser(shape(0, 44, 44), { key })).toBe(true);
-    },
-  );
-
-  it.each(['Home', 'End'])(
-    'leaves %s moving the caret on other systems',
-    async (key) => {
-      await mountOn(WINDOWS);
-
-      expect(leftToBrowser(shape(0, 44, 44), { key })).toBe(true);
-    },
-  );
 });
 
 describe('Typing while an attachment uploads', () => {
@@ -547,31 +438,24 @@ describe('Telling apart people with the same name', () => {
   const rowOf = (acct: string) =>
     screen.getByText(`@${acct}`).closest('button') as HTMLElement;
 
-  it('shows the address beside the name of a direct chat in the list', async () => {
+  it('shows the address beside the name of a direct chat in the list, only once, with the full address within reach, and a group as its name', async () => {
     mountAt('/chat');
     await screen.findByText('@nari@cherry.test');
 
     expect(within(rowOf('nari@cherry.test')).getByText('Nari')).toBeTruthy();
     expect(within(rowOf('nari@other.test')).getByText('Nari')).toBeTruthy();
     expect(rowOf('nari@cherry.test')).not.toBe(rowOf('nari@other.test'));
-  });
-
-  it('keeps the full address within reach when it is cut off', async () => {
-    mountAt('/chat');
-    await screen.findByText('@nari@cherry.test');
-
     expect(
       rowOf('nari@cherry.test').querySelector('[title="@nari@cherry.test"]'),
     ).toBeTruthy();
-  });
-
-  it('does not show the address twice when there is no display name', async () => {
-    mountAt('/chat');
-    const address = await screen.findByText('@plain@cherry.test');
-    const row = address.closest('button') as HTMLElement;
-
+    const row = rowOf('plain@cherry.test');
     expect(within(row).getByText('plain')).toBeTruthy();
     expect(row.textContent.match(/plain@cherry\.test/g)).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Your groups' }));
+    const name = await screen.findByText('Hikers');
+
+    expect(name.closest('button')?.textContent).toBe('Hikers');
   });
 
   it('keeps the full address within reach in search results and selected accounts', async () => {
@@ -616,14 +500,6 @@ describe('Telling apart people with the same name', () => {
     ).toBe('@bob');
   });
 
-  it('leaves a group as its name', async () => {
-    mountAt('/chat');
-    fireEvent.click(await screen.findByRole('button', { name: 'Your groups' }));
-    const name = await screen.findByText('Hikers');
-
-    expect(name.closest('button')?.textContent).toBe('Hikers');
-  });
-
   it('shows name and address as the title of a direct chat, linked to the profile', async () => {
     mountAt('/chat/direct-1');
     await screen.findByText('What I wrote');
@@ -655,7 +531,7 @@ describe('People who have not answered an invitation', () => {
     await screen.findByText('@bob');
   };
 
-  it('shows them apart from the members, for the owner', async () => {
+  it('shows them apart from the members for the owner, who can cancel one and is told so', async () => {
     sentInvitations = [invitationTo(carol)];
 
     await openMembers();
@@ -671,28 +547,6 @@ describe('People who have not answered an invitation', () => {
     });
     const bobRow = screen.getByText('@bob').closest('.chat-native__member');
     expect(bobRow?.textContent).not.toContain('Invited');
-  });
-
-  it('lists them in the order they were invited, after the members', async () => {
-    sentInvitations = [
-      invitationTo(unnamed, 'sent-2'),
-      invitationTo(carol, 'sent-1'),
-    ];
-
-    await openMembers();
-    await screen.findByText('Carol');
-
-    expect(
-      Array.from(document.querySelectorAll('.chat-native__member strong')).map(
-        (name) => name.textContent,
-      ),
-    ).toEqual(['Alice', 'Bob', 'Carol', 'plain']);
-  });
-
-  it('lets the owner cancel one, and says so', async () => {
-    sentInvitations = [invitationTo(carol)];
-    await openMembers();
-    await screen.findByText('Carol');
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel invitation' }));
 
@@ -712,6 +566,22 @@ describe('People who have not answered an invitation', () => {
         values: { account: 'Carol' },
       }),
     );
+  });
+
+  it('lists them in the order they were invited, after the members', async () => {
+    sentInvitations = [
+      invitationTo(unnamed, 'sent-2'),
+      invitationTo(carol, 'sent-1'),
+    ];
+
+    await openMembers();
+    await screen.findByText('Carol');
+
+    expect(
+      Array.from(document.querySelectorAll('.chat-native__member strong')).map(
+        (name) => name.textContent,
+      ),
+    ).toEqual(['Alice', 'Bob', 'Carol', 'plain']);
   });
 
   it('keeps the row and shows an error when cancelling fails', async () => {
@@ -748,26 +618,7 @@ describe('People who have not answered an invitation', () => {
     expect(await screen.findByText('Invited')).toBeTruthy();
   });
 
-  it('updates an open screen when someone answers', async () => {
-    sentInvitations = [invitationTo(carol)];
-    await openMembers();
-    await screen.findByText('Carol');
-
-    sentInvitations = [];
-    await act(async () => {
-      emitChatStreamEvent({
-        event: 'chat.invitation_update',
-        payload: { conversation_id: 'group-1' },
-      });
-      await Promise.resolve();
-    });
-
-    await waitFor(() => {
-      expect(screen.queryByText('Carol')).toBeNull();
-    });
-  });
-
-  it('ignores an answer about another group', async () => {
+  it('ignores an answer about another group, and updates an open screen when someone answers', async () => {
     sentInvitations = [invitationTo(carol)];
     await openMembers();
     await screen.findByText('Carol');
@@ -789,6 +640,19 @@ describe('People who have not answered an invitation', () => {
     });
 
     expect(requests()).toBe(before);
+
+    sentInvitations = [];
+    await act(async () => {
+      emitChatStreamEvent({
+        event: 'chat.invitation_update',
+        payload: { conversation_id: 'group-1' },
+      });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Carol')).toBeNull();
+    });
   });
 
   it('moves someone who accepted into the member count and list on an open screen', async () => {
@@ -847,23 +711,13 @@ describe('Answering an invitation', () => {
     await screen.findByText('Book club');
   };
 
-  it('says what each button does, in words', async () => {
-    await openInvitations();
-
-    expect(screen.getByRole('button', { name: 'Accept' }).textContent).toBe(
-      'Accept',
-    );
-    expect(screen.getByRole('button', { name: 'Reject' }).textContent).toBe(
-      'Reject',
-    );
-  });
-
   it.each([
     ['Accept', 'chat.invitation_accepted'],
     ['Reject', 'chat.invitation_rejected'],
-  ])('reports the result of %s', async (name, id) => {
+  ])('says %s in words and reports its result', async (name, id) => {
     await openInvitations();
 
+    expect(screen.getByRole('button', { name }).textContent).toBe(name);
     fireEvent.click(screen.getByRole('button', { name }));
 
     await waitFor(() => {

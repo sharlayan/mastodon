@@ -546,17 +546,16 @@ describe('Chat recovery and request lifecycles', () => {
       });
       return page;
     };
-    it('keeps polling an upload while the tab is hidden', async () => {
-      await startUpload();
+    it('keeps polling an upload while the tab is hidden, and starts no media status GET after leaving the room', async () => {
+      const page = await startUpload();
       await later(1_500);
       setHidden(true);
       const atHide = readsOf(MEDIA).length;
       await later(5_000);
       const whileHidden = readsOf(MEDIA).length - atHide;
       expect(whileHidden).toBeGreaterThan(0);
-    }, 30_000);
-    it('starts no media status GET after leaving the room', async () => {
-      const page = await startUpload();
+
+      setHidden(false);
       act(() => {
         page.history.push('/chat/B');
       });

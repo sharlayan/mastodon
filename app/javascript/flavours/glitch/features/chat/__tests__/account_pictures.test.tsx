@@ -137,6 +137,9 @@ const expectPictureWhileChoosingBob = async () => {
   expect(pictureOf(result)).toBe('/avatars/bob.png');
   expect(result?.querySelector('a')).toBeNull();
   expect(closestTo('@bob@remote.test', 'button')).toBe(result);
+  expect(
+    screen.getByRole('button', { name: /^Bob\s*@bob@remote\.test$/ }),
+  ).toBe(result);
 
   if (result) fireEvent.click(result);
 
@@ -156,7 +159,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Chat account pictures', () => {
-  it('shows who is found and chosen for a direct chat', async () => {
+  it('shows who is found and chosen for a direct chat, named by name and address', async () => {
     mountAt('/chat/new');
     await screen.findByPlaceholderText('Search for an account');
 
@@ -242,17 +245,5 @@ describe('Chat account pictures', () => {
     const group = (await screen.findByText('Book club')).closest('button');
     expect(group?.querySelector('.account__avatar')).toBeNull();
     expect(group?.querySelector('.chat-native__room-picture svg')).toBeTruthy();
-  });
-
-  it('keeps the accessible name of a result to the names', async () => {
-    mountAt('/chat/new');
-    fireEvent.change(
-      await screen.findByPlaceholderText('Search for an account'),
-      { target: { value: 'bob' } },
-    );
-
-    expect(
-      await screen.findByRole('button', { name: /^Bob\s*@bob@remote\.test$/ }),
-    ).toBeTruthy();
   });
 });

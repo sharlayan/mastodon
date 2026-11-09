@@ -134,15 +134,20 @@ describe('inline composer shell', () => {
     expect(textarea.closest('.inline-compose-form--collapsed')).toBeNull();
   });
 
-  it.each(['Enter', ' '])('removes a feed tab with the %j key', (key) => {
+  it('removes a feed tab with the Enter and space keys', () => {
     vi.mocked(apiRequestPut).mockResolvedValue({});
-    renderShell();
 
-    const remove = screen.getByRole('button', { name: 'Remove tab' });
-    const notPrevented = fireEvent.keyDown(remove, { key });
+    for (const key of ['Enter', ' ']) {
+      vi.mocked(apiRequestPut).mockClear();
+      const { unmount } = renderShell();
 
-    expect(notPrevented).toBe(false);
-    expect(apiRequestPut).toHaveBeenCalledWith('v1/inline_compose_tabs', { tabs: [] });
+      const remove = screen.getByRole('button', { name: 'Remove tab' });
+      const notPrevented = fireEvent.keyDown(remove, { key });
+
+      expect(notPrevented).toBe(false);
+      expect(apiRequestPut).toHaveBeenCalledWith('v1/inline_compose_tabs', { tabs: [] });
+      unmount();
+    }
   });
 
   it('shows an alert when saving the feed tabs fails', async () => {

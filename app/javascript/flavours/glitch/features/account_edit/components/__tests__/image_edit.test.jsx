@@ -156,16 +156,21 @@ describe('Drive profile image selection', () => {
     });
   });
 
-  it.each(['', '/avatar.png'])('hides Drive when disabled with existing image %s', (src) => {
+  it('hides Drive when disabled with or without an existing image', () => {
     mocks.driveEnabled = false;
-    mocks.state.profileEdit.imageInfo.src = src;
-    renderImageEdit('avatar');
 
-    expect(screen.queryByRole('button', { name: 'Use image from Drive' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: src ? 'Replace image' : 'Add image' }));
-    expect(mocks.dispatch.mock.calls[0][0].payload).toEqual({
-      modalType: 'ACCOUNT_EDIT_IMAGE_UPLOAD',
-      modalProps: { location: 'avatar' },
-    });
+    for (const [src, name] of [['', 'Add image'], ['/avatar.png', 'Replace image']]) {
+      mocks.dispatch.mockClear();
+      mocks.state.profileEdit.imageInfo.src = src;
+      const { unmount } = renderImageEdit('avatar');
+
+      expect(screen.queryByRole('button', { name: 'Use image from Drive' })).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name }));
+      expect(mocks.dispatch.mock.calls[0][0].payload).toEqual({
+        modalType: 'ACCOUNT_EDIT_IMAGE_UPLOAD',
+        modalProps: { location: 'avatar' },
+      });
+      unmount();
+    }
   });
 });

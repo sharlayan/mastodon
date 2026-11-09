@@ -151,7 +151,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('A room with no messages', () => {
-  it('says so with the empty indicator of the other lists', async () => {
+  it('says so where the messages will be, tells the owner of a group how invitations work without asking who was invited, and goes with the first message from the stream', async () => {
     respond(room(), () => Promise.resolve({ data: [] }));
     mount();
 
@@ -162,16 +162,31 @@ describe('A room with no messages', () => {
       indicator()?.closest('.chat-native__messages'),
       'it sits where the messages will be',
     ).toBeTruthy();
-  });
-
-  it('tells the owner of a group how invitations work', async () => {
-    respond(room(), () => Promise.resolve({ data: [] }));
-    mount();
-
-    await waitFor(() => {
-      expect(indicator()?.textContent).toContain(SEND_FIRST);
-    });
+    expect(indicator()?.textContent).toContain(SEND_FIRST);
     expect(indicator()?.textContent).toContain(INVITES);
+    await settle();
+
+    const asked = api.get.mock.calls.map(([url]) => url as string);
+    expect(asked.filter((url) => url.endsWith('/messages'))).toHaveLength(1);
+    expect(asked.filter((url) => url.includes('/members'))).toEqual([]);
+    expect(
+      api.get.mock.calls.filter(
+        ([url, config]) =>
+          url === '/api/v1/chat/invitations' &&
+          (config as { params?: { direction?: string } } | undefined)?.params
+            ?.direction === 'sent',
+      ),
+    ).toEqual([]);
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message',
+        payload: message('1', 'First!'),
+      });
+    });
+
+    expect(screen.getByText('First!')).toBeTruthy();
+    expect(indicator()).toBeNull();
   });
 
   it('does not tell a member about invitations they cannot see', async () => {
@@ -343,44 +358,5 @@ describe('A room with no messages', () => {
 
     expect(screen.queryByText('Message 40')).toBeNull();
     expect(indicator()).toBeNull();
-  });
-
-  it('goes as soon as the first message comes over the stream', async () => {
-    respond(room(), () => Promise.resolve({ data: [] }));
-    mount();
-    await waitFor(() => {
-      expect(indicator()).toBeTruthy();
-    });
-
-    act(() => {
-      emitChatStreamEvent({
-        event: 'chat.message',
-        payload: message('1', 'First!'),
-      });
-    });
-
-    expect(screen.getByText('First!')).toBeTruthy();
-    expect(indicator()).toBeNull();
-  });
-
-  it('adds no request to find out who was invited', async () => {
-    respond(room(), () => Promise.resolve({ data: [] }));
-    mount();
-    await waitFor(() => {
-      expect(indicator()).toBeTruthy();
-    });
-    await settle();
-
-    const asked = api.get.mock.calls.map(([url]) => url as string);
-    expect(asked.filter((url) => url.endsWith('/messages'))).toHaveLength(1);
-    expect(asked.filter((url) => url.includes('/members'))).toEqual([]);
-    expect(
-      api.get.mock.calls.filter(
-        ([url, config]) =>
-          url === '/api/v1/chat/invitations' &&
-          (config as { params?: { direction?: string } } | undefined)?.params
-            ?.direction === 'sent',
-      ),
-    ).toEqual([]);
   });
 });

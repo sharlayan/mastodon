@@ -479,7 +479,7 @@ describe('Chat when the stream connects after the screen has read', () => {
     ['one column', false],
     ['several columns', true],
   ])(
-    'shows the messages that came in between, in %s',
+    'shows the messages that came in between, reading each list once more, in %s',
     async (_, multiColumn) => {
       seed('A', 1, 2);
       const page = await loadPage();
@@ -491,6 +491,10 @@ describe('Chat when the stream connects after the screen has read', () => {
 
       await screen.findByText('Message 4');
       expect(shown()).toEqual(['1', '2', '3', '4']);
+      await settle();
+      expect(readsOf(MESSAGES)).toHaveLength(2);
+      expect(readsOf(ROOMS)).toHaveLength(2);
+      expect(readsOf(INVITATIONS)).toHaveLength(2);
     },
   );
 
@@ -835,20 +839,6 @@ describe('Chat when the stream connects after the screen has read', () => {
       await screen.findByText('Message 4');
       expect(shown()).toEqual(['1', '2', '3', '4']);
     });
-
-    it('reads once however many rooms and invitations there are to read', async () => {
-      seed('A', 1, 2);
-      const page = await loadPage();
-      page.open('/chat/A');
-      await screen.findByText('Message 2');
-
-      await connect(page.socket);
-      await settle();
-
-      expect(readsOf(MESSAGES)).toHaveLength(2);
-      expect(readsOf(ROOMS)).toHaveLength(2);
-      expect(readsOf(INVITATIONS)).toHaveLength(2);
-    });
   });
 
   describe('when the reader sends something before the stream is up', () => {
@@ -1082,18 +1072,19 @@ describe('Chat when the stream connects after the screen has read', () => {
       await settle();
     };
 
-    it('leaves it unread', async () => {
-      const { page } = await openFurtherUp();
+    it('leaves it unread, also when the reader only comes back to the tab, and marks it read once they are back at the bottom', async () => {
+      const { page, back } = await openFurtherUp();
 
       await deliverNext(page);
 
       expect(backend.marked).toEqual([]);
       expect(screen.getByText('New messages')).toBeTruthy();
-    });
 
-    it('marks it read once the reader is back at the bottom', async () => {
-      const { page, back } = await openFurtherUp();
-      await deliverNext(page);
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await settle();
+      expect(backend.marked).toEqual([]);
 
       back();
 
@@ -1123,18 +1114,6 @@ describe('Chat when the stream connects after the screen has read', () => {
       const { back } = await openFurtherUp();
 
       back();
-      await settle();
-
-      expect(backend.marked).toEqual([]);
-    });
-
-    it('leaves it unread when the reader only comes back to the tab', async () => {
-      const { page } = await openFurtherUp();
-      await deliverNext(page);
-
-      act(() => {
-        document.dispatchEvent(new Event('visibilitychange'));
-      });
       await settle();
 
       expect(backend.marked).toEqual([]);
@@ -1305,17 +1284,11 @@ describe('Chat when something it asked for by itself fails', () => {
   });
 
   describe('marking the room read', () => {
-    it('does not say that a request failed', async () => {
-      backend.refusals.push({ path: READ, status: 503 });
-      await openUnread();
-      await settle();
-
-      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
-    });
-
-    it('tries again by itself, and the room is then read', async () => {
+    it('does not say that a request failed, tries again by itself, and the room is then read', async () => {
       backend.refusals.push({ path: READ, status: 503 });
       const page = await openUnread();
+      await settle();
+      expect(screen.queryByText(REQUEST_FAILED)).toBeNull();
 
       await later(3_000);
 
@@ -1520,7 +1493,7 @@ describe('Chat when something it asked for by itself fails', () => {
   });
 
   describe('what the reader did', () => {
-    it('keeps saying that sending failed, and does not send again by itself', async () => {
+    it('keeps saying that sending failed after a later background read fails and recovers, and does not send again by itself', async () => {
       seed('A', 1, 2);
       const page = await loadPage();
       await connect(page.socket);
@@ -1534,6 +1507,15 @@ describe('Chat when something it asked for by itself fails', () => {
       });
       fireEvent.click(screen.getByRole('button', { name: 'Send' }));
       await screen.findByText(REQUEST_FAILED);
+      expect(backend.messages.get('A')).toHaveLength(2);
+
+      backend.failing.push(INVITATIONS);
+      act(() => {
+        page.socket.deliver('chat.invitation', { id: 'invite' });
+      });
+      await settle();
+      await later(3_000);
+      expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
 
       await later(10 * 60_000);
 
@@ -1552,31 +1534,6 @@ describe('Independent review: overlapping failures', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
-  });
-
-  it('preserves a user send failure after a later background read fails and recovers', async () => {
-    seed('A', 1, 2);
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat/A');
-    await screen.findByText('Message 2');
-    await settle();
-    backend.failing.push(/\/messages$/);
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: 'unsent text' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await screen.findByText(REQUEST_FAILED);
-    expect(backend.messages.get('A')).toHaveLength(2);
-    backend.failing.push(INVITATIONS);
-    act(() => {
-      page.socket.deliver('chat.invitation', { id: 'invite' });
-    });
-    await settle();
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    expect(screen.getByText(REQUEST_FAILED)).toBeTruthy();
   });
 
   it('keeps the send failure visible while a retry has not yet succeeded', async () => {
@@ -1604,7 +1561,7 @@ describe('Independent review: overlapping failures', () => {
     });
   });
 
-  it('honours the invitation endpoint 429 deadline when a second invitation event arrives', async () => {
+  it('honours the invitation 429 deadline when a second invitation event arrives and when the stream reconnects', async () => {
     seed('A', 1, 2);
     const page = await loadPage();
     await connect(page.socket);
@@ -1629,27 +1586,6 @@ describe('Independent review: overlapping failures', () => {
     });
     await settle();
     expect(readsOf(INVITATIONS).length).toBe(prior + 1);
-  });
-
-  it('honours the invitation 429 deadline when the stream reconnects', async () => {
-    seed('A', 1, 2);
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat/A');
-    await screen.findByText('Message 2');
-    await settle();
-    const prior = readsOf(INVITATIONS).length;
-    backend.refusals.push({
-      path: INVITATIONS,
-      status: 429,
-      headers: { 'Retry-After': '20' },
-    });
-    act(() => {
-      page.socket.deliver('chat.invitation', { id: 'invite1' });
-    });
-    await waitFor(() => {
-      expect(readsOf(INVITATIONS).length).toBe(prior + 1);
-    });
     const next = await dropConnection(page.socket);
     await connect(next);
     await settle();
@@ -1703,7 +1639,7 @@ describe('Independent review: hidden tab', () => {
   afterEach(() => {
     Reflect.deleteProperty(document, 'visibilityState');
   });
-  it('does not fetch invitations for an event received while hidden', async () => {
+  it('does not fetch invitations for an event received while hidden, nor on a reconnect, until the page is shown', async () => {
     seed('A', 1, 2);
     const page = await loadPage();
     await connect(page.socket);
@@ -1723,23 +1659,6 @@ describe('Independent review: hidden tab', () => {
     });
     await settle();
     expect(readsOf(INVITATIONS).length).toBe(prior);
-  });
-
-  it('does not fetch invitations on a reconnect until the page is shown', async () => {
-    seed('A', 1, 2);
-    const page = await loadPage();
-    await connect(page.socket);
-    page.open('/chat/A');
-    await screen.findByText('Message 2');
-    await settle();
-    const prior = readsOf(INVITATIONS).length;
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'hidden',
-    });
-    act(() => {
-      document.dispatchEvent(new Event('visibilitychange'));
-    });
     const next = await dropConnection(page.socket);
     await connect(next);
     await settle();

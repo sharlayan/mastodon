@@ -65,23 +65,26 @@ describe('legacy detailed reply', () => {
     browserHistory.replace('/');
   });
 
-  it.each([
-    ['content warning', { spoiler: true, spoiler_text: 'Draft warning' }],
-    ['media', { media_attachments: [{ id: 'draft-media', unattached: true }] }],
-    ['poll', { poll: { options: ['First', 'Second'] } }],
-    ['quote', { quoted_status_id: 'draft-quote' }],
-    ['pending upload', { pending_media_attachments: 1 }],
-  ])('keeps a %s-only draft until the reply is confirmed', (_, draft) => {
-    const { component, getState, status } = createReplyHarness({ draft });
-    const originalCompose = getState().compose;
+  it('keeps content warning, media, poll, quote or pending upload-only drafts until the reply is confirmed', () => {
+    const drafts = [
+      ['content warning', { spoiler: true, spoiler_text: 'Draft warning' }],
+      ['media', { media_attachments: [{ id: 'draft-media', unattached: true }] }],
+      ['poll', { poll: { options: ['First', 'Second'] } }],
+      ['quote', { quoted_status_id: 'draft-quote' }],
+      ['pending upload', { pending_media_attachments: 1 }],
+    ];
 
-    component.handleReplyClick(status);
+    expect(drafts.map(([kind, draft]) => {
+      const { component, getState, status } = createReplyHarness({ draft });
+      const originalCompose = getState().compose;
 
-    expect(getState().compose).toBe(originalCompose);
-    expect(getState().modal.get('stack').first().toJS()).toEqual({
+      component.handleReplyClick(status);
+
+      return [kind, getState().compose === originalCompose, getState().modal.get('stack').first().toJS()];
+    })).toEqual(drafts.map(([kind]) => [kind, true, {
       modalType: 'CONFIRM_REPLY',
       modalProps: { statusId: 'reply-status' },
-    });
+    }]));
   });
 
   it('opens the custom inline composer after confirming a reply', () => {

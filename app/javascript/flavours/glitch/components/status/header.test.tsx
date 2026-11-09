@@ -123,18 +123,25 @@ describe('redesign status header extensions', () => {
     expect(screen.getByText('@author@remote.test')).not.toBeNull();
   });
 
-  it.each([
-    [{ show_instance_info: false }, false, 'remote.test'],
-    [{}, false, 'local.test'],
-    [{ show_instance_info_local: true }, true, 'local.test'],
-  ])(
-    'honors the instance visibility preferences',
-    (settings, visible, domain) => {
-      setSettings(settings);
-      renderHeader({ status: { ...status, instance_metadata: { domain } } });
-      expect(!!screen.queryByTestId('instance-badge')).toBe(visible);
-    },
-  );
+  it('honors the instance visibility preferences', () => {
+    const cases = [
+      [{ show_instance_info: false }, false, 'remote.test'],
+      [{}, false, 'local.test'],
+      [{ show_instance_info_local: true }, true, 'local.test'],
+    ] as const;
+
+    expect(
+      cases.map(([settings, , domain]) => {
+        setSettings(settings);
+        const { unmount } = renderHeader({
+          status: { ...status, instance_metadata: { domain } },
+        });
+        const visible = !!screen.queryByTestId('instance-badge');
+        unmount();
+        return visible;
+      }),
+    ).toEqual(cases.map(([, visible]) => visible));
+  });
 
   it('keeps the collapsed header and exposes its expand action while hiding instance details', () => {
     setSettings({ collapsed: { enabled: true } });
@@ -179,23 +186,27 @@ describe('redesign status header extensions', () => {
     expect(screen.getByText('Deleted')).not.toBeNull();
   });
 
-  it.each([false, undefined])(
-    'does not mark a visible post as deleted (%s)',
-    (rp_hidden) => {
-      renderHeader({ status: { ...status, rp_hidden } });
-      expect(screen.queryByText('Deleted')).toBeNull();
-    },
-  );
+  it('does not mark a visible post as deleted', () => {
+    const { unmount } = renderHeader({
+      status: { ...status, rp_hidden: false },
+    });
+    expect(screen.queryByText('Deleted')).toBeNull();
+    unmount();
+
+    renderHeader({ status: { ...status, rp_hidden: undefined } });
+    expect(screen.queryByText('Deleted')).toBeNull();
+  });
 });
 
 describe('redesign detailed status scope', () => {
-  it.each([
-    ['direct', 'circle', 'Circle'],
-    ['unlisted', undefined, 'Quiet public'],
-  ] as const)(
-    'renders %s/%s scope and local-only separately',
-    (visibility, limited_scope, label) => {
-      render(
+  it('renders Circle and unlisted scope separately from local-only', () => {
+    const cases = [
+      ['direct', 'circle', 'Circle'],
+      ['unlisted', undefined, 'Quiet public'],
+    ] as const;
+
+    for (const [visibility, limited_scope, label] of cases) {
+      const { unmount } = render(
         <MemoryRouter>
           <IntlProvider locale='en'>
             <StatusMeta status={{ ...status, visibility, limited_scope }} />
@@ -204,6 +215,7 @@ describe('redesign detailed status scope', () => {
       );
       expect(screen.getByText(label)).not.toBeNull();
       expect(screen.getByText('Local-only')).not.toBeNull();
-    },
-  );
+      unmount();
+    }
+  });
 });

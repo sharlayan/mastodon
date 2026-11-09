@@ -66,27 +66,37 @@ describe('redesign automatic post collapse', () => {
     ).toBe(true);
   });
 
-  it.each([true, undefined])(
-    'does not auto-collapse notifications with unread=%s',
-    (unread) => {
-      expect(
-        shouldCollapse({ all: true }, { contextType: 'notifications', unread }),
-      ).toBe(false);
-    },
-  );
+  it('does not auto-collapse unread notifications', () => {
+    expect(
+      shouldCollapse(
+        { all: true },
+        { contextType: 'notifications', unread: true },
+      ),
+    ).toBe(false);
+    expect(
+      shouldCollapse(
+        { all: true },
+        { contextType: 'notifications', unread: undefined },
+      ),
+    ).toBe(false);
+  });
 
-  it.each([
-    [{ notifications: true }, { contextType: 'notifications', unread: false }],
-    [{ reblogs: true }, { boosted: true }],
-    [{ replies: true }, { status: { ...status, in_reply_to_id: '2' } }],
-    [{ quotes: true }, { status: { ...status, quote: {} } }],
-    [{ media: true }, { status: { ...status, media_attachments: [{}] } }],
-  ])(
-    'preserves the individual auto-collapse preferences',
-    (settings, overrides) => {
-      expect(shouldCollapse(settings, overrides)).toBe(true);
-    },
-  );
+  it('preserves the individual auto-collapse preferences', () => {
+    const cases: [Record<string, boolean>, Record<string, unknown>][] = [
+      [
+        { notifications: true },
+        { contextType: 'notifications', unread: false },
+      ],
+      [{ reblogs: true }, { boosted: true }],
+      [{ replies: true }, { status: { ...status, in_reply_to_id: '2' } }],
+      [{ quotes: true }, { status: { ...status, quote: {} } }],
+      [{ media: true }, { status: { ...status, media_attachments: [{}] } }],
+    ];
+
+    expect(
+      cases.map(([settings, overrides]) => shouldCollapse(settings, overrides)),
+    ).toEqual(cases.map(() => true));
+  });
 
   it('keeps media inside a CW under the CW control', () => {
     expect(

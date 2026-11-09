@@ -40,7 +40,7 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.getIn(['collapsed', 'show_action_bar'])).toBe(true);
   });
 
-  it('deep-merges nested defaults without dropping upstream keys', () => {
+  it('deep-merges nested defaults without dropping or changing upstream defaults', () => {
     const state = initial();
 
     expect(state.getIn(['media', 'no_autoplay_gifv'])).toBe(false);
@@ -55,11 +55,6 @@ describe('sharlayan local_settings defaults', () => {
         hidden: ImmutableMap({ clip: true, quote: true }),
       }),
     );
-  });
-
-  it('preserves upstream defaults untouched', () => {
-    const state = initial();
-
     expect(state.get('stretch')).toBe(true);
     expect(state.get('hicolor_privacy_icons')).toBe(false);
     expect(state.getIn(['status_icons', 'visibility'])).toBe(true);

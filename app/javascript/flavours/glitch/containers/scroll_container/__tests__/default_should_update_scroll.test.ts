@@ -20,12 +20,13 @@ const update = (prev: MastodonLocation | null, next: MastodonLocation) =>
 
 describe('defaultShouldUpdateScroll', () => {
   describe('when a chat screen is loaded', () => {
-    it.each(['/chat', '/chat/new', '/chat/123', '/chat/123/members'])(
-      'starts %s at the top, whatever an earlier load in this tab saved',
-      (pathname) => {
-        expect(update(null, at(pathname))).toEqual([0, 0]);
-      },
-    );
+    it('starts every chat screen at the top, whatever an earlier load in this tab saved', () => {
+      const paths = ['/chat', '/chat/new', '/chat/123', '/chat/123/members'];
+
+      expect(paths.map((pathname) => update(null, at(pathname)))).toEqual(
+        paths.map(() => [0, 0]),
+      );
+    });
 
     it('starts at the top when reloading a location that has its own key too', () => {
       expect(update(null, at('/chat', { key: 'abc' }))).toEqual([0, 0]);
@@ -33,14 +34,15 @@ describe('defaultShouldUpdateScroll', () => {
   });
 
   describe('arriving at the conversation list inside the app', () => {
-    it.each(['/chat/123', '/chat/new', '/home'])(
-      'starts at the top coming from %s, since the list is fetched again',
-      (pathname) => {
-        expect(update(at(pathname), at('/chat', { key: 'abc' }))).toEqual([
-          0, 0,
-        ]);
-      },
-    );
+    it('starts at the top coming from anywhere, since the list is fetched again', () => {
+      const paths = ['/chat/123', '/chat/new', '/home'];
+
+      expect(
+        paths.map((pathname) =>
+          update(at(pathname), at('/chat', { key: 'abc' })),
+        ),
+      ).toEqual(paths.map(() => [0, 0]));
+    });
 
     it('stays where it is when a modal opens on the list', () => {
       expect(
@@ -85,21 +87,31 @@ describe('defaultShouldUpdateScroll', () => {
   });
 
   describe('moving to other chat screens inside the app', () => {
-    it.each(['/chat/123', '/chat/123/members', '/chat/new'])(
-      'leaves %s to the usual rules',
-      (pathname) => {
-        expect(update(at('/chat'), at(pathname, { key: 'def' }))).toBe(true);
-      },
-    );
+    it('leaves rooms, members and new chats to the usual rules', () => {
+      const paths = ['/chat/123', '/chat/123/members', '/chat/new'];
+
+      expect(
+        paths.map((pathname) =>
+          update(at('/chat'), at(pathname, { key: 'def' })),
+        ),
+      ).toEqual(paths.map(() => true));
+    });
   });
 
   describe('other screens', () => {
-    it.each(['/home', '/notifications', '/chatter', '/@chat', '/lists/chat'])(
-      'leaves a load of %s to the usual rules',
-      (pathname) => {
-        expect(update(null, at(pathname))).toBe(true);
-      },
-    );
+    it('leaves a load of non-chat screens to the usual rules', () => {
+      const paths = [
+        '/home',
+        '/notifications',
+        '/chatter',
+        '/@chat',
+        '/lists/chat',
+      ];
+
+      expect(paths.map((pathname) => update(null, at(pathname)))).toEqual(
+        paths.map(() => true),
+      );
+    });
 
     it('still does not scroll when a modal opens', () => {
       expect(

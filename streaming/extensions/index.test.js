@@ -10,14 +10,11 @@ import { dispatchCallbacks } from './index.js';
 import { acceptsLanguage } from './language.js';
 import { createEnabledCheck, loadGrantPermissions } from './misskey.js';
 
-test('Misskey fallback is fail-closed when compatibility is disabled', async () => {
+test('Misskey fallback is fail-closed when compatibility is disabled or the setting lookup fails', async () => {
   await assert.rejects(
     authenticateFallback({}, { i: 'token' }, () => assert.fail(), async () => false),
     AuthenticationError
   );
-});
-
-test('Misskey fallback is fail-closed when the setting lookup fails', async () => {
   await assert.rejects(
     authenticateFallback({}, { i: 'token' }, () => assert.fail(), async () => { throw new Error('database unavailable'); }),
     /database unavailable/
@@ -34,28 +31,21 @@ test('OAuth token query preserves expiry and account security conditions', () =>
   assert.match(ACCESS_TOKEN_QUERY, /WHEN COALESCE\(user_roles\.permissions, 0\) & 1 = 1 THEN -1/);
 });
 
-test('Antenna authorization rejects an antenna owned by another account', async () => {
-  const pgPool = { query: async () => ({ rows: [] }) };
+test('Antenna authorization rejects antennas of other accounts and lookup failures, and returns the owned stream contract', async () => {
+  const otherOwnerPool = { query: async () => ({ rows: [] }) };
+  const failingPool = { query: async () => { throw new Error('database unavailable'); } };
+  const ownedPool = { query: async () => ({ rows: [{ id: '2', account_id: '1' }] }) };
 
   await assert.rejects(
-    authorizeChannel(pgPool, { accountId: '1' }, 'antenna', { antenna: '2' }),
+    authorizeChannel(otherOwnerPool, { accountId: '1' }, 'antenna', { antenna: '2' }),
     AuthenticationError
   );
-});
-
-test('Antenna authorization rejects lookup failures', async () => {
-  const pgPool = { query: async () => { throw new Error('database unavailable'); } };
-
   await assert.rejects(
-    authorizeChannel(pgPool, { accountId: '1' }, 'antenna', { antenna: '2' }),
+    authorizeChannel(failingPool, { accountId: '1' }, 'antenna', { antenna: '2' }),
     AuthenticationError
   );
-});
 
-test('Antenna authorization returns the owned stream contract', async () => {
-  const pgPool = { query: async () => ({ rows: [{ id: '2', account_id: '1' }] }) };
-
-  const result = await authorizeChannel(pgPool, { accountId: '1' }, 'antenna', { antenna: '2' });
+  const result = await authorizeChannel(ownedPool, { accountId: '1' }, 'antenna', { antenna: '2' });
 
   assert.deepEqual(result.channelIds, ['timeline:antenna:2']);
   assert.deepEqual(result.options.streamName, ['antenna', '2']);
@@ -409,19 +399,14 @@ const createCompatFixture = (grantPermissions) => {
   return { compat, session, subscribed };
 };
 
-test('MiAuth tokens can stream timelines and notes without a Mastodon read scope', async () => {
-  const { compat, session, subscribed } = createCompatFixture(['read:account']);
+test('MiAuth tokens stream timelines and notes with read:account and without a Mastodon read scope, but not without read:account', async () => {
+  const cases = [
+    [['read:account'], ['misskey:timeline:7', 'misskey:timeline:public:local', 'misskey:note:9abcdefghijklmno']],
+    [[], []],
+    [['read:drive'], []],
+  ];
 
-  compat.handleMessage(session, { type: 'connect', body: { id: 'ch1', channel: 'homeTimeline' } });
-  compat.handleMessage(session, { type: 'connect', body: { id: 'ch2', channel: 'localTimeline' } });
-  compat.handleMessage(session, { type: 'subNote', body: { id: '9abcdefghijklmno' } });
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.deepEqual(subscribed, ['misskey:timeline:7', 'misskey:timeline:public:local', 'misskey:note:9abcdefghijklmno']);
-});
-
-test('MiAuth tokens need read:account for timelines and notes', async () => {
-  for (const permissions of [[], ['read:drive']]) {
+  for (const [permissions, expected] of cases) {
     const { compat, session, subscribed } = createCompatFixture(permissions);
 
     compat.handleMessage(session, { type: 'connect', body: { id: 'ch1', channel: 'homeTimeline' } });
@@ -429,7 +414,7 @@ test('MiAuth tokens need read:account for timelines and notes', async () => {
     compat.handleMessage(session, { type: 'subNote', body: { id: '9abcdefghijklmno' } });
     await new Promise((resolve) => setImmediate(resolve));
 
-    assert.deepEqual(subscribed, []);
+    assert.deepEqual(subscribed, expected);
   }
 });
 

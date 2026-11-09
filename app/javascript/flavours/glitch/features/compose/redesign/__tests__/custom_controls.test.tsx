@@ -379,15 +379,19 @@ describe('redesign custom compose controls', () => {
     ).toBe(true);
   });
 
-  it.each([
-    ['copy', 'public', 'private'],
-    ['restrict', 'public', 'private'],
-    ['restrict', 'direct', 'direct'],
-    ['none', 'public', 'public'],
-  ] as const)('keeps the %s reply side-arm policy', (mode, base, expected) => {
-    expect(selectComposeSideArm.resultFunc(false, base, mode, 'private')).toBe(
-      expected,
-    );
+  it('keeps the copy, restrict and none reply side-arm policies', () => {
+    const cases = [
+      ['copy', 'public', 'private'],
+      ['restrict', 'public', 'private'],
+      ['restrict', 'direct', 'direct'],
+      ['none', 'public', 'public'],
+    ] as const;
+
+    expect(
+      cases.map(([mode, base]) =>
+        selectComposeSideArm.resultFunc(false, base, mode, 'private'),
+      ),
+    ).toEqual(cases.map(([, , expected]) => expected));
   });
 
   it('submits the configured side-arm visibility and hides it while editing', () => {

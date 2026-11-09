@@ -17,7 +17,7 @@ describe('emojiPickerFavoritesCategoryLabel', () => {
 });
 
 describe('emojiPickerFavoriteProps', () => {
-  it('passes through the favorite emojis and callbacks', () => {
+  it('passes through the favorite emojis and callbacks and resolves the action labels', () => {
     const favoriteEmojis = ['a'];
     const onAddFavorite = () => undefined;
     const onRemoveFavorite = () => undefined;
@@ -31,11 +31,6 @@ describe('emojiPickerFavoriteProps', () => {
     expect(props.favoriteEmojis).toBe(favoriteEmojis);
     expect(props.onAddFavorite).toBe(onAddFavorite);
     expect(props.onRemoveFavorite).toBe(onRemoveFavorite);
-  });
-
-  it('resolves the favorite action labels', () => {
-    const props = emojiPickerFavoriteProps(intl, {});
-
     expect(props.addToFavoritesLabel).toBe('emoji_button.add_to_favorites');
     expect(props.alreadyInFavoritesLabel).toBe(
       'emoji_button.already_in_favorites',
@@ -55,13 +50,10 @@ describe('shouldIgnoreEmojiDropdownClose', () => {
     expect(shouldIgnoreEmojiDropdownClose(event)).toBe(true);
   });
 
-  it('does not ignore clicks elsewhere', () => {
+  it('does not ignore clicks elsewhere and is safe for a missing event or target', () => {
     const event = { target: { closest: () => null } };
 
     expect(shouldIgnoreEmojiDropdownClose(event)).toBe(false);
-  });
-
-  it('is safe for missing event or target', () => {
     expect(shouldIgnoreEmojiDropdownClose(undefined)).toBe(false);
     expect(shouldIgnoreEmojiDropdownClose({})).toBe(false);
   });

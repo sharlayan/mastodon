@@ -217,76 +217,56 @@ afterEach(() => {
 });
 
 describe('Message toolbar', () => {
-  it('ends with the copy button on a message from someone else', async () => {
-    await mountRoom([message('1', 'Hello')]);
+  it('orders the buttons of each message, ending with a named copy button only inside the toolbar, and has none on a deleted message', async () => {
+    await mountRoom([
+      message('1', 'Hello'),
+      message('2', 'Hello', fromMe),
+      message('3', 'Hello', { ...fromMe, editable: false }),
+      message('4', 'Look at this', { media_attachments: [picture] }),
+      message('5', null, { deleted_at: '2026-11-04T01:00:00Z' }),
+    ]);
 
-    expect(buttonsOf('1')).toEqual(['Reply', 'React', 'Copy']);
-  });
-
-  it('asks the reaction picker to stay on the screen', async () => {
-    await mountRoom([message('1', 'Hello')]);
-
+    expect(['1', '2', '3', '4'].map(buttonsOf)).toEqual([
+      ['Reply', 'React', 'Copy'],
+      ['Reply', 'Edit', 'Copy', 'Delete'],
+      ['Reply', 'Copy', 'Delete'],
+      ['Reply', 'React', 'Copy'],
+    ]);
+    expect(toolbarOf('5')).toBeNull();
     const react = toolbarOf('1')?.querySelector('button[aria-label="React"]');
     expect(react?.getAttribute('data-fit-viewport')).toBe('yes');
-  });
-
-  it('keeps delete last on my own message', async () => {
-    await mountRoom([message('1', 'Hello', fromMe)]);
-
-    expect(buttonsOf('1')).toEqual(['Reply', 'Edit', 'Copy', 'Delete']);
-  });
-
-  it('offers copy on my message that can no longer be edited', async () => {
-    await mountRoom([message('1', 'Hello', { ...fromMe, editable: false })]);
-
-    expect(buttonsOf('1')).toEqual(['Reply', 'Copy', 'Delete']);
-  });
-
-  it('names the copy button for both pointer and screen reader', async () => {
-    await mountRoom([message('1', 'Hello')]);
-
     expect(copyButtonOf('1').getAttribute('title')).toBe('Copy');
     expect(copyButtonOf('1').getAttribute('aria-label')).toBe('Copy');
-  });
-
-  it('only ever shows the copy button inside the toolbar', async () => {
-    await mountRoom([message('1', 'Hello'), message('2', 'Hi', fromMe)]);
-
     const copies = screen.getAllByRole('button', { name: 'Copy' });
-    expect(copies).toHaveLength(2);
+    expect(copies).toHaveLength(4);
     copies.forEach((button) => {
       expect(button.closest('.chat-native__actions')).toBeTruthy();
     });
   });
 
-  it.each([
-    ['no text', null],
-    ['empty text', ''],
-    ['only blank text', ' \n '],
-  ])('offers no copy on a message with %s', async (_name, content) => {
-    await mountRoom([
-      message('1', content, { media_attachments: [picture] }),
-      message('2', content, { ...fromMe, media_attachments: [picture] }),
-    ]);
+  it('offers no copy on a message with no, empty or only blank text', async () => {
+    const contents = [null, '', ' \n '];
+    await mountRoom(
+      contents.flatMap((content, index) => [
+        message(`other-${index}`, content, { media_attachments: [picture] }),
+        message(`mine-${index}`, content, {
+          ...fromMe,
+          media_attachments: [picture],
+        }),
+      ]),
+    );
 
-    expect(buttonsOf('1')).toEqual(['Reply', 'React']);
-    expect(buttonsOf('2')).toEqual(['Reply', 'Edit', 'Delete']);
-  });
-
-  it('offers copy on a message with both a picture and text', async () => {
-    await mountRoom([
-      message('1', 'Look at this', { media_attachments: [picture] }),
-    ]);
-
-    expect(buttonsOf('1')).toContain('Copy');
-  });
-
-  it('has no toolbar on a deleted message', async () => {
-    await mountRoom([
-      message('1', null, { deleted_at: '2026-11-04T01:00:00Z' }),
-    ]);
-
-    expect(toolbarOf('1')).toBeNull();
+    expect(
+      contents.map((_content, index) => [
+        buttonsOf(`other-${index}`),
+        buttonsOf(`mine-${index}`),
+      ]),
+    ).toEqual(
+      contents.map(() => [
+        ['Reply', 'React'],
+        ['Reply', 'Edit', 'Delete'],
+      ]),
+    );
   });
 });
 
@@ -317,8 +297,8 @@ describe('Copying a message', () => {
     expect(writeText).toHaveBeenCalledWith('My answer');
   });
 
-  it('does not say it was copied when writing fails', async () => {
-    writeText.mockRejectedValue(new Error('NotAllowedError'));
+  it('does not say it was copied when writing fails, and clears the failure once a copy works', async () => {
+    writeText.mockRejectedValueOnce(new Error('NotAllowedError'));
     await mountRoom([message('1', 'Hello')]);
 
     fireEvent.click(copyButtonOf('1'));
@@ -327,6 +307,13 @@ describe('Copying a message', () => {
       'The message could not be copied.',
     );
     expect(alerts()).toEqual([]);
+
+    fireEvent.click(copyButtonOf('1'));
+
+    await waitFor(() => {
+      expect(alerts()).toEqual(['copy_icon_button.copied']);
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('does not say it was copied when the browser has no clipboard', async () => {
@@ -340,35 +327,24 @@ describe('Copying a message', () => {
     );
     expect(alerts()).toEqual([]);
   });
-
-  it('clears the failure once a copy works', async () => {
-    writeText.mockRejectedValueOnce(new Error('NotAllowedError'));
-    await mountRoom([message('1', 'Hello')]);
-
-    fireEvent.click(copyButtonOf('1'));
-    await screen.findByRole('alert');
-    fireEvent.click(copyButtonOf('1'));
-
-    await waitFor(() => {
-      expect(alerts()).toEqual(['copy_icon_button.copied']);
-    });
-    expect(screen.queryByRole('alert')).toBeNull();
-  });
 });
 
 describe('Archived room', () => {
-  it('shows only the copy button, on anyone’s message', async () => {
+  it('shows only the copy button, on anyone’s message with text, and still copies', async () => {
     await mountRoom(
-      [message('1', 'From Bob'), message('2', 'From me', fromMe)],
+      [
+        message('1', 'From Bob'),
+        message('2', 'From me', fromMe),
+        message('3', null, { media_attachments: [picture] }),
+        message('4', null, { deleted_at: '2026-11-04T01:00:00Z' }),
+      ],
       true,
     );
 
     expect(buttonsOf('1')).toEqual(['Copy']);
     expect(buttonsOf('2')).toEqual(['Copy']);
-  });
-
-  it('still copies', async () => {
-    await mountRoom([message('1', 'From Bob')], true);
+    expect(toolbarOf('3')).toBeNull();
+    expect(toolbarOf('4')).toBeNull();
 
     fireEvent.click(copyButtonOf('1'));
 
@@ -376,19 +352,6 @@ describe('Archived room', () => {
     await waitFor(() => {
       expect(alerts()).toEqual(['copy_icon_button.copied']);
     });
-  });
-
-  it('has no toolbar when there is nothing to copy', async () => {
-    await mountRoom(
-      [
-        message('1', null, { media_attachments: [picture] }),
-        message('2', null, { deleted_at: '2026-11-04T01:00:00Z' }),
-      ],
-      true,
-    );
-
-    expect(toolbarOf('1')).toBeNull();
-    expect(toolbarOf('2')).toBeNull();
   });
 });
 
@@ -436,7 +399,7 @@ describe('Long press on a message', () => {
     expect(fireEvent.click(quote)).toBe(true);
   });
 
-  it('leaves an ordinary mouse press and bubble text alone', async () => {
+  it('leaves an ordinary mouse press, bubble text, and a quote touch that turns into a scroll alone', async () => {
     await mountForTouch([
       message('1', 'The original'),
       message('2', 'Reply', { reply_to_id: '1' }),
@@ -449,17 +412,7 @@ describe('Long press on a message', () => {
     fireEvent.touchStart(textOf('2'), finger());
     fireEvent.touchEnd(textOf('2'), { touches: [] });
     expect(fireEvent.mouseDown(textOf('2'))).toBe(true);
-  });
 
-  it('does not suppress mouse focus after a quote touch turns into a scroll', async () => {
-    await mountForTouch([
-      message('1', 'The original'),
-      message('2', 'Reply', { reply_to_id: '1' }),
-    ]);
-    const quote = bubbleOf('2').querySelector(
-      '.chat-native__reply-quote strong',
-    );
-    if (!quote) throw new Error('Missing quote');
     fireEvent.touchStart(quote, finger(103, 100));
     fireEvent.touchMove(quote, finger(103, 89));
     fireEvent.touchEnd(quote, { touches: [] });
@@ -493,8 +446,9 @@ describe('Long press on a message', () => {
     expect(bubbleOf('2').hasAttribute('data-chat-long-pressed')).toBe(false);
   });
 
-  it('opens the toolbar by focusing the bubble', async () => {
+  it('opens the toolbar by focusing the bubble without scrolling, before the finger lifts', async () => {
     await mountForTouch([message('1', 'Hello')]);
+    const focus = vi.spyOn(bubbleOf('1'), 'focus');
 
     fireEvent.touchStart(textOf('1'), finger());
     wait(499);
@@ -505,48 +459,40 @@ describe('Long press on a message', () => {
     expect(toolbarOf('1')?.closest('article')?.matches(':focus-within')).toBe(
       true,
     );
-  });
-
-  it('does not wait for the finger to lift', async () => {
-    await mountForTouch([message('1', 'Hello')]);
-
-    fireEvent.touchStart(textOf('1'), finger());
-    wait(500);
-
-    expect(document.activeElement).toBe(bubbleOf('1'));
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
     fireEvent.touchEnd(textOf('1'), { touches: [] });
     expect(document.activeElement).toBe(bubbleOf('1'));
   });
 
-  it('does not scroll the page to the bubble', async () => {
+  it('stays closed after a short tap, a scrolling finger, a browser takeover, or a second finger', async () => {
     await mountForTouch([message('1', 'Hello')]);
-    const focus = vi.spyOn(bubbleOf('1'), 'focus');
-
-    fireEvent.touchStart(textOf('1'), finger());
-    wait(500);
-
-    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
-  });
-
-  it('stays closed after a short tap', async () => {
-    await mountForTouch([message('1', 'Hello')]);
+    const two = {
+      touches: [
+        { identifier: 1, clientX: 10, clientY: 10 },
+        { identifier: 2, clientX: 50, clientY: 50 },
+      ],
+    };
 
     fireEvent.touchStart(textOf('1'), finger());
     wait(100);
     fireEvent.touchEnd(textOf('1'), { touches: [] });
     wait(1000);
-
     expect(document.activeElement).not.toBe(bubbleOf('1'));
-  });
-
-  it('stays closed when the finger moves to scroll', async () => {
-    await mountForTouch([message('1', 'Hello')]);
 
     fireEvent.touchStart(textOf('1'), finger(10, 100));
     wait(100);
     fireEvent.touchMove(textOf('1'), finger(10, 89));
     wait(1000);
+    expect(document.activeElement).not.toBe(bubbleOf('1'));
 
+    fireEvent.touchStart(textOf('1'), finger());
+    fireEvent.touchCancel(textOf('1'), { touches: [] });
+    wait(1000);
+    expect(document.activeElement).not.toBe(bubbleOf('1'));
+
+    fireEvent.touchStart(textOf('1'), finger());
+    fireEvent.touchStart(textOf('1'), two);
+    wait(1000);
     expect(document.activeElement).not.toBe(bubbleOf('1'));
   });
 
@@ -560,56 +506,23 @@ describe('Long press on a message', () => {
     expect(document.activeElement).toBe(bubbleOf('1'));
   });
 
-  it('stays closed when the browser takes the touch over', async () => {
-    await mountForTouch([message('1', 'Hello')]);
-
-    fireEvent.touchStart(textOf('1'), finger());
-    fireEvent.touchCancel(textOf('1'), { touches: [] });
-    wait(1000);
-
-    expect(document.activeElement).not.toBe(bubbleOf('1'));
-  });
-
-  it('stays closed when a second finger comes down', async () => {
-    await mountForTouch([message('1', 'Hello')]);
-    const two = {
-      touches: [
-        { identifier: 1, clientX: 10, clientY: 10 },
-        { identifier: 2, clientX: 50, clientY: 50 },
-      ],
-    };
-
-    fireEvent.touchStart(textOf('1'), finger());
-    fireEvent.touchStart(textOf('1'), two);
-    wait(1000);
-
-    expect(document.activeElement).not.toBe(bubbleOf('1'));
-  });
-
-  it('leaves a picture in the bubble to the browser', async () => {
+  it('leaves a picture or another attachment in the bubble to the browser', async () => {
     const { container } = await mountForTouch([
       message('1', 'Look', { media_attachments: [picture] }),
+      message('2', 'Look', { media_attachments: [pending] }),
     ]);
     const gallery = container.querySelector('.chat-native__gallery');
     if (!gallery) throw new Error('Missing gallery');
-
-    fireEvent.touchStart(gallery, finger());
-    wait(1000);
-
-    expect(document.activeElement).not.toBe(bubbleOf('1'));
-  });
-
-  it('leaves other attachments in the bubble to the browser', async () => {
-    const { container } = await mountForTouch([
-      message('1', 'Look', { media_attachments: [pending] }),
-    ]);
     const attachment = container.querySelector('.chat-native__attachment');
     if (!attachment) throw new Error('Missing attachment');
 
+    fireEvent.touchStart(gallery, finger());
+    wait(1000);
+    expect(document.activeElement).not.toBe(bubbleOf('1'));
+
     fireEvent.touchStart(attachment, finger());
     wait(1000);
-
-    expect(document.activeElement).not.toBe(bubbleOf('1'));
+    expect(document.activeElement).not.toBe(bubbleOf('2'));
   });
 
   it('does nothing once the screen has gone', async () => {

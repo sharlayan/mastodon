@@ -8,39 +8,47 @@ import {
 } from './calculations';
 
 describe('Sharlayan compose calculations', () => {
-  it.each([
-    [
-      {
-        isEditing: true,
-        scheduledAt: '2026-07-17T01:00:00Z',
-        isInReply: true,
-        usePublishToot: true,
-      },
-      'saveChanges',
-    ],
-    [
-      {
-        scheduledAt: '2026-07-17T01:00:00Z',
-        isInReply: true,
-        usePublishToot: true,
-      },
-      'schedule',
-    ],
-    [{ isInReply: true, usePublishToot: true }, 'reply'],
-    [{ usePublishToot: true }, 'publishToot'],
-    [{}, 'publish'],
-  ])('selects the submit label for %o', (options, expected) => {
-    expect(getSharlayanSubmitLabel(options)).toBe(expected);
+  it('selects the submit label by editing, schedule, reply and toot preference', () => {
+    const cases: [Parameters<typeof getSharlayanSubmitLabel>[0], string][] = [
+      [
+        {
+          isEditing: true,
+          scheduledAt: '2026-07-17T01:00:00Z',
+          isInReply: true,
+          usePublishToot: true,
+        },
+        'saveChanges',
+      ],
+      [
+        {
+          scheduledAt: '2026-07-17T01:00:00Z',
+          isInReply: true,
+          usePublishToot: true,
+        },
+        'schedule',
+      ],
+      [{ isInReply: true, usePublishToot: true }, 'reply'],
+      [{ usePublishToot: true }, 'publishToot'],
+      [{}, 'publish'],
+    ];
+
+    expect(cases.map(([options]) => getSharlayanSubmitLabel(options))).toEqual(
+      cases.map(([, expected]) => expected),
+    );
   });
 
-  it.each([
-    [{ fullText: '12345', maxChars: 5 }, true],
-    [{ fullText: '123456', maxChars: 5 }, false],
-    [{ fullText: '', maxChars: 5, isSubmitting: true }, false],
-    [{ fullText: '', maxChars: 5, isUploading: true }, false],
-    [{ fullText: '', maxChars: 5, isChangingUpload: true }, false],
-  ])('preserves submit availability for %o', (options, expected) => {
-    expect(canSubmitCompose(options)).toBe(expected);
+  it('preserves submit availability for length and busy states', () => {
+    const cases: [Parameters<typeof canSubmitCompose>[0], boolean][] = [
+      [{ fullText: '12345', maxChars: 5 }, true],
+      [{ fullText: '123456', maxChars: 5 }, false],
+      [{ fullText: '', maxChars: 5, isSubmitting: true }, false],
+      [{ fullText: '', maxChars: 5, isUploading: true }, false],
+      [{ fullText: '', maxChars: 5, isChangingUpload: true }, false],
+    ];
+
+    expect(cases.map(([options]) => canSubmitCompose(options))).toEqual(
+      cases.map(([, expected]) => expected),
+    );
   });
 
   it('deducts the content warning budget from the overflow boundary', () => {
@@ -96,44 +104,51 @@ describe('Sharlayan compose calculations', () => {
     expect(shouldShowComposeLanguage(true)).toBe(false);
   });
 
-  it.each([
-    [
-      {},
-      {
-        scheduleDisabled: false,
-        scheduleEditing: false,
-        scheduleVisible: false,
-        selectionDisabled: false,
-      },
-    ],
-    [
-      { showScheduleButton: true },
-      {
-        scheduleDisabled: false,
-        scheduleEditing: false,
-        scheduleVisible: true,
-        selectionDisabled: false,
-      },
-    ],
-    [
-      { isEditing: true, showScheduleButton: true },
-      {
-        scheduleDisabled: true,
-        scheduleEditing: true,
-        scheduleVisible: true,
-        selectionDisabled: true,
-      },
-    ],
-    [
-      { isEditing: true, isEditingScheduled: true },
-      {
-        scheduleDisabled: false,
-        scheduleEditing: false,
-        scheduleVisible: true,
-        selectionDisabled: true,
-      },
-    ],
-  ])('preserves compose control state for %o', (options, expected) => {
-    expect(getComposeControlState(options)).toEqual(expected);
+  it('preserves compose control state for new, scheduled and edited posts', () => {
+    const cases: [
+      Parameters<typeof getComposeControlState>[0],
+      ReturnType<typeof getComposeControlState>,
+    ][] = [
+      [
+        {},
+        {
+          scheduleDisabled: false,
+          scheduleEditing: false,
+          scheduleVisible: false,
+          selectionDisabled: false,
+        },
+      ],
+      [
+        { showScheduleButton: true },
+        {
+          scheduleDisabled: false,
+          scheduleEditing: false,
+          scheduleVisible: true,
+          selectionDisabled: false,
+        },
+      ],
+      [
+        { isEditing: true, showScheduleButton: true },
+        {
+          scheduleDisabled: true,
+          scheduleEditing: true,
+          scheduleVisible: true,
+          selectionDisabled: true,
+        },
+      ],
+      [
+        { isEditing: true, isEditingScheduled: true },
+        {
+          scheduleDisabled: false,
+          scheduleEditing: false,
+          scheduleVisible: true,
+          selectionDisabled: true,
+        },
+      ],
+    ];
+
+    expect(cases.map(([options]) => getComposeControlState(options))).toEqual(
+      cases.map(([, expected]) => expected),
+    );
   });
 });

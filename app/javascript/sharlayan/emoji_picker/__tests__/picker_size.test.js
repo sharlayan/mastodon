@@ -13,17 +13,13 @@ describe('loadEmojiPickerSize', () => {
     localStorage.clear();
   });
 
-  it('returns null when nothing is stored', () => {
+  it('parses a stored size and returns null when nothing or invalid JSON is stored', () => {
     expect(loadEmojiPickerSize()).toBeNull();
-  });
 
-  it('parses a stored size', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ width: 320, height: 400 }));
 
     expect(loadEmojiPickerSize()).toEqual({ width: 320, height: 400 });
-  });
 
-  it('returns null on invalid JSON', () => {
     localStorage.setItem(STORAGE_KEY, '{not json');
 
     expect(loadEmojiPickerSize()).toBeNull();
@@ -31,13 +27,11 @@ describe('loadEmojiPickerSize', () => {
 });
 
 describe('computeEmojiPickerStyle', () => {
-  it('returns the base style when no size is set', () => {
+  it('returns the base style without a size and merges width and height from a stored size', () => {
     const style = { color: 'red' };
 
     expect(computeEmojiPickerStyle(style, null)).toBe(style);
-  });
 
-  it('merges width and height from the stored size', () => {
     const result = computeEmojiPickerStyle(
       { color: 'red' },
       { width: 320, height: 400 },
