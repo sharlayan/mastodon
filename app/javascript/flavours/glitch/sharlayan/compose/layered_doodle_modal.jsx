@@ -298,8 +298,13 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
 
   componentWillUnmount () {
     window.removeEventListener('keydown', this.handleKeyDown, false);
-    this.state.layers.forEach(layer => layer.sketcher.destroy());
+    this.state.layers.forEach(this.destroyLayer);
   }
+
+  destroyLayer = layer => {
+    layer.sketcher.destroy();
+    layer.fillWorker?.terminate();
+  };
 
   setStackRef = element => {
     this.stack = element;
@@ -308,9 +313,17 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
   makeLayer = (name, { background = false, color, sizeKey = this.size } = {}) => {
     const [width, height] = DOODLE_SIZES[sizeKey];
     const canvas = document.createElement('canvas');
-    const sketcher = new Atrament(canvas, { width, height, fill });
+    let fillWorker = null;
+    class TrackedFillWorker {
+      constructor () {
+        fillWorker = new fill();
+        return fillWorker;
+      }
+    }
+    const sketcher = new Atrament(canvas, { width, height, fill: TrackedFillWorker });
     const layer = {
       canvas,
+      fillWorker,
       background,
       color,
       history: { redos: [], undos: [] },
@@ -551,7 +564,7 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
 
     if (!layer || layer.background || !confirm(this.props.intl.formatMessage(messages.deleteLayerConfirm, { name: layer.name }))) return;
 
-    layer.sketcher.destroy();
+    this.destroyLayer(layer);
     layer.canvas.remove();
     this.setState(state => {
       const layers = state.layers.filter(item => item.id !== layer.id);
@@ -591,7 +604,7 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     if (size === this.size || !confirm(this.props.intl.formatMessage(messages.changeSizeConfirm))) return;
 
     this.state.layers.forEach(layer => {
-      layer.sketcher.destroy();
+      this.destroyLayer(layer);
       layer.canvas.remove();
     });
     this.props.setOpt({ size });
