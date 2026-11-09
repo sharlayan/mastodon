@@ -2323,6 +2323,68 @@ describe('Chat invitations', () => {
     await screen.findByText('Book club');
   };
 
+  it('drops an invitation accepted from another tab or device', async () => {
+    await openInvitations();
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.member_join',
+        payload: { conversation_id: 'C', account_id: 'me' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Book club')).toBeNull();
+    });
+  });
+
+  it('keeps an invitation when someone else joins the group', async () => {
+    await openInvitations();
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.member_join',
+        payload: { conversation_id: 'C', account_id: 'remote' },
+      });
+    });
+
+    expect(screen.getByText('Book club')).toBeTruthy();
+  });
+
+  it('drops an invitation once the group lists you as a member', async () => {
+    await openInvitations();
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.conversation_update',
+        payload: {
+          ...invitation.conversation,
+          accounts: [account, remote],
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+    });
+  });
+
+  it('reads invitations again when an answer is refused', async () => {
+    await openInvitations();
+    api.post.mockRejectedValueOnce({ response: { status: 403 } });
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/invitations'
+        ? Promise.resolve({ data: [] })
+        : getResponse(url),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+    });
+  });
+
   it('shows the room and who invited, with the actions in words', async () => {
     await openInvitations();
 

@@ -2349,6 +2349,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         } else if (event === 'chat.conversation_update') {
           const updated = payload as Partial<ChatConversation>;
           if (updated.id && endedConversations.current.has(updated.id)) return;
+          if (updated.accounts?.some((account) => account.id === me))
+            updateInvitations((current) =>
+              current.filter((item) => item.conversation.id !== updated.id),
+            );
           if (updated.accounts) {
             updateConversations((current) =>
               withConversationUpdate(current, updated as ChatConversation),
@@ -2496,6 +2500,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             readAgain();
           }
         } else if (event !== 'chat.notification' && eventConversationId) {
+          if (event === 'chat.member_join' && value.account_id === me)
+            updateInvitations((current) =>
+              current.filter(
+                (item) => item.conversation.id !== eventConversationId,
+              ),
+            );
           refreshConversation(eventConversationId);
         }
       }),
@@ -3388,13 +3398,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
           return loadConversationsForAction();
         })
-        .catch(() => {
+        .catch((answerError: unknown) => {
           setError('invite');
+          if (isRefused(answerError) || isNotFound(answerError))
+            void loadInvitations().catch(() => undefined);
         });
     },
     [
       dispatch,
       loadConversationsForAction,
+      loadInvitations,
       updateConversations,
       updateInvitations,
     ],
