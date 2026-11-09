@@ -243,6 +243,80 @@ RSpec.describe 'Pages' do
     end
   end
 
+  describe 'GET /api/v1/accounts/:account_id/pages with booklet_id' do
+    let(:booklet) { Fabricate(:page_series, account: user.account) }
+    let(:other_user) { Fabricate(:user) }
+    let(:other_token) { Fabricate(:accessible_access_token, resource_owner_id: other_user.id, scopes: scopes) }
+    let(:other_headers) { { 'Authorization' => "Bearer #{other_token.token}" } }
+    let(:path) { "/api/v1/accounts/#{user.account_id}/pages" }
+
+    before { user.update!(role: Fabricate(:user_role, daily_page_limit: 100)) }
+
+    it 'lists only the booklet pages in booklet order with offset pagination' do
+      Fabricate(:page, account: user.account, is_main: true)
+      later = Fabricate(:page, account: user.account, page_series: booklet, series_position: 2)
+      tied = Array.new(2) { Fabricate(:page, account: user.account, page_series: booklet, series_position: 1) }
+      first = Fabricate(:page, account: user.account, page_series: booklet, series_position: 0)
+      filler = Array.new(20) { |index| Fabricate(:page, account: user.account, page_series: booklet, series_position: 10 + index) }
+      expected = [first, *tied, later, *filler].map { |page| page.id.to_s }
+
+      get path, params: { booklet_id: booklet.id }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.pluck(:id)).to eq(expected.first(20))
+
+      get path, params: { booklet_id: booklet.id, offset: 20 }
+      expect(response.parsed_body.pluck(:id)).to eq(expected.drop(20))
+
+      get path, params: { booklet_id: booklet.id, limit: 100 }
+      expect(response.parsed_body.pluck(:id)).to eq(expected)
+    end
+
+    it 'applies the account page list visibility rules' do
+      public_page = Fabricate(:page, account: user.account, page_series: booklet, series_position: 0)
+      authenticated_page = Fabricate(:page, account: user.account, page_series: booklet, series_position: 1, visibility: 'authenticated')
+      password_page = Fabricate(:page, account: user.account, page_series: booklet, series_position: 2, visibility: 'password', access_password: 'correct-password', content: [{ 'id' => 'secret', 'type' => 'text', 'text' => 'Hidden body' }])
+      Fabricate(:page, account: user.account, page_series: booklet, series_position: 3, draft: true)
+
+      get path, params: { booklet_id: booklet.id }
+      expect(response.parsed_body.pluck(:id)).to eq([public_page, password_page].map { |page| page.id.to_s })
+      expect(response.parsed_body.last).to include('locked' => true, 'content' => [], 'attached_media' => [])
+
+      [headers, other_headers].each do |request_headers|
+        get path, params: { booklet_id: booklet.id }, headers: request_headers
+        expect(response.parsed_body.pluck(:id)).to eq([public_page, authenticated_page, password_page].map { |page| page.id.to_s })
+      end
+    end
+
+    it 'returns not found for unknown, foreign, malformed, or hidden booklets' do
+      Fabricate(:page, account: user.account, page_series: booklet)
+      foreign_booklet = Fabricate(:page_series, account: other_user.account)
+      Fabricate(:page, account: other_user.account, page_series: foreign_booklet)
+      private_booklet = Fabricate(:page_series, account: user.account)
+      Fabricate(:page, account: user.account, page_series: private_booklet, draft: true)
+      authenticated_booklet = Fabricate(:page_series, account: user.account)
+      Fabricate(:page, account: user.account, page_series: authenticated_booklet, visibility: 'authenticated')
+
+      [0, 'abc', foreign_booklet.id, private_booklet.id].each do |booklet_id|
+        get path, params: { booklet_id: booklet_id }, headers: headers
+        expect(response).to have_http_status(404)
+      end
+
+      get path, params: { booklet_id: [booklet.id] }
+      expect(response).to have_http_status(404)
+
+      get path, params: { booklet_id: authenticated_booklet.id }
+      expect(response).to have_http_status(404)
+
+      get path, params: { booklet_id: authenticated_booklet.id }, headers: other_headers
+      expect(response).to have_http_status(200)
+
+      user.account.suspend!
+      get path, params: { booklet_id: booklet.id }, headers: other_headers
+      expect(response).to have_http_status(404)
+    end
+  end
+
   describe 'search-engine access' do
     let!(:page) { Fabricate(:page, account: user.account) }
     let(:crawler_headers) { { 'User-Agent' => 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' } }

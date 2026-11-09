@@ -10,11 +10,15 @@ class Api::V1::Accounts::PagesController < Api::V1::Accounts::BaseController
   before_action :require_feature_enabled!
   before_action -> { authorize_if_got_token! :read, :'read:accounts' }
   before_action :set_account
+  before_action :set_booklet, only: :index
   before_action :set_page, only: :show
 
   def index
+    pages = listed_pages
+    return not_found if @booklet && !pages&.exists?
+
     cache_if_unauthenticated!
-    @pages = load_pages
+    @pages = pages.nil? ? [] : paginate_pages(pages)
     render json: @pages, each_serializer: REST::PageSummarySerializer, include_locked_header: true
   end
 
@@ -42,14 +46,28 @@ class Api::V1::Accounts::PagesController < Api::V1::Accounts::BaseController
     not_found if @page.authenticated_visibility? && current_account.nil?
   end
 
-  def load_pages
-    return [] if @account.unavailable?
-    return [] if page_hidden_from_search_engine?(@account)
+  def set_booklet
+    return if params[:booklet_id].blank?
+    return not_found unless params[:booklet_id].is_a?(String)
+
+    @booklet = @account.page_series.find_by(id: params[:booklet_id])
+    not_found if @booklet.nil?
+  end
+
+  def listed_pages
+    return if @account.unavailable?
+    return if page_hidden_from_search_engine?(@account)
 
     pages = @account.pages.listed
     pages = pages.where.not(visibility: 'authenticated') if current_account.nil?
+    pages = pages.where(page_series_id: @booklet.id) if @booklet
+    pages
+  end
 
-    pages.summary_columns.includes(:eye_catching_media_attachment, page_series: :cover_media_attachment).order(is_main: :desc, id: :desc)
+  def paginate_pages(pages)
+    order = @booklet ? { series_position: :asc, id: :asc } : { is_main: :desc, id: :desc }
+
+    pages.summary_columns.includes(:eye_catching_media_attachment, page_series: :cover_media_attachment).order(order)
       .offset([params[:offset].to_s.to_i, 0].max)
       .limit(limit_param(Page::LIST_LIMIT, Page::MAX_LIST_LIMIT))
   end
