@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 
 import * as mfm from 'mfm-js';
 
@@ -57,19 +63,85 @@ export function hasAnyMfmFn(text: string): boolean {
   }
 }
 
+export interface MfmMentionTarget {
+  username: string;
+  acct: string;
+  url: string;
+}
+
+interface MfmMentionScope {
+  mentions: readonly MfmMentionTarget[];
+  authorAcct: string | null;
+}
+
+const MfmMentionContext = createContext<MfmMentionScope>({
+  mentions: [],
+  authorAcct: null,
+});
+
+export function mfmMentionHref(
+  username: string,
+  host: string | null,
+  { mentions, authorAcct }: MfmMentionScope,
+): string {
+  const domain = host ?? authorAcct?.split('@')[1] ?? null;
+  const acct = (domain ? `${username}@${domain}` : username).toLowerCase();
+  const mention = mentions.find((item) => item.acct.toLowerCase() === acct);
+
+  if (mention) return mention.url;
+
+  return domain
+    ? `https://${domain}/@${encodeURIComponent(username)}`
+    : `/@${encodeURIComponent(username)}`;
+}
+
+const MfmMention: React.FC<{ username: string; host: string | null }> = ({
+  username,
+  host,
+}) => {
+  const scope = useContext(MfmMentionContext);
+
+  return (
+    <span className='h-card'>
+      <a
+        href={mfmMentionHref(username, host, scope)}
+        className='u-url mention'
+        rel='nofollow noopener noreferrer'
+        target='_blank'
+      >
+        @<span>{username}</span>
+        {host ? <span>@{host}</span> : null}
+      </a>
+    </span>
+  );
+};
+
 interface MfmRendererProps {
   text: string;
   emojis?: CustomEmojiMapArg | null;
   isProfile?: boolean;
   animationsEnabled?: boolean;
+  mentions?: readonly MfmMentionTarget[] | null;
+  authorAcct?: string | null;
 }
+
+const NO_MENTIONS: readonly MfmMentionTarget[] = [];
 
 export const MfmRenderer: React.FC<MfmRendererProps> = ({
   text,
   emojis,
   isProfile = false,
   animationsEnabled = true,
+  mentions,
+  authorAcct,
 }) => {
+  const mentionScope = useMemo(
+    () => ({
+      mentions: mentions ?? NO_MENTIONS,
+      authorAcct: authorAcct ?? null,
+    }),
+    [mentions, authorAcct],
+  );
   const ast = useMemo(() => {
     try {
       return mfm.parse(text);
@@ -98,16 +170,18 @@ export const MfmRenderer: React.FC<MfmRendererProps> = ({
 
   return (
     <CustomEmojiProvider emojis={emojis}>
-      <MfmHoverContext.Provider value={hovered}>
-        <AnimateEmojiProvider
-          as='span'
-          className='mfm-container'
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          {renderedNodes}
-        </AnimateEmojiProvider>
-      </MfmHoverContext.Provider>
+      <MfmMentionContext.Provider value={mentionScope}>
+        <MfmHoverContext.Provider value={hovered}>
+          <AnimateEmojiProvider
+            as='span'
+            className='mfm-container'
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            {renderedNodes}
+          </AnimateEmojiProvider>
+        </MfmHoverContext.Provider>
+      </MfmMentionContext.Provider>
     </CustomEmojiProvider>
   );
 };
@@ -190,25 +264,14 @@ function renderNode(
         </a>
       );
 
-    case 'mention': {
-      const host = node.props.host;
-      const href = host
-        ? `https://${host}/@${node.props.username}`
-        : `/@${node.props.acct}`;
+    case 'mention':
       return (
-        <span key={key} className='h-card'>
-          <a
-            href={href}
-            className='u-url mention'
-            rel='nofollow noopener noreferrer'
-            target='_blank'
-          >
-            @<span>{node.props.username}</span>
-            {host ? <span>@{host}</span> : null}
-          </a>
-        </span>
+        <MfmMention
+          key={key}
+          username={node.props.username}
+          host={node.props.host}
+        />
       );
-    }
 
     case 'hashtag':
       return (

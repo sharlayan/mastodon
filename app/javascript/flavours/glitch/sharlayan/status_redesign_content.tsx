@@ -24,7 +24,11 @@ export function redesignMfmSource(status: AnyStatusShape, content: string) {
   return mfmPlainTextFromHtml(content);
 }
 
-export function useRedesignMfmContent(status: AnyStatusShape, content: string) {
+export function useRedesignMfmContent(
+  status: AnyStatusShape,
+  content: string,
+  authorAcct?: string | null,
+) {
   const enabled = useAppSelector(
     (state) => state.meta.get('mfm_enabled') !== false,
   );
@@ -44,6 +48,8 @@ export function useRedesignMfmContent(status: AnyStatusShape, content: string) {
       text={source}
       emojis={status.emojis}
       animationsEnabled={animations}
+      mentions={status.mentions}
+      authorAcct={authorAcct}
     />
   );
 

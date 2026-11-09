@@ -34,7 +34,13 @@ export const renderSharlayanMfmContent = (status, { content, language, mfmEnable
   const foldMfm = shouldFoldMfm(mfmSourceText, mfmFoldMode);
 
   const renderer = (
-    <MfmRenderer text={mfmSourceText} emojis={status.get('emojis')} animationsEnabled={mfmAnimationsEnabled} />
+    <MfmRenderer
+      text={mfmSourceText}
+      emojis={status.get('emojis')}
+      animationsEnabled={mfmAnimationsEnabled}
+      mentions={status.get('mentions')?.toJS()}
+      authorAcct={status.getIn(['account', 'acct'])}
+    />
   );
 
   return (

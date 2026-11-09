@@ -8,6 +8,7 @@ import {
   mfmPlainTextFromHtml,
 } from '@/flavours/glitch/components/mfm';
 import { useElementHandledLink } from '@/flavours/glitch/components/status/handled_link';
+import { useAccount } from '@/flavours/glitch/hooks/useAccount';
 import { mfmAnimations, mfmEnabled } from '@/flavours/glitch/initial_state';
 import type { CustomEmoji } from '@/flavours/glitch/models/custom_emoji';
 import type { Status } from '@/flavours/glitch/models/status';
@@ -44,6 +45,7 @@ export const EmbeddedStatusContent: React.FC<{
     hrefToMention,
   });
 
+  const author = useAccount(status.get('account') as string | undefined);
   const isMfm = (status.get('mfm') as boolean) && mfmEnabled;
 
   if (isMfm) {
@@ -56,6 +58,8 @@ export const EmbeddedStatusContent: React.FC<{
           text={mfmText}
           emojis={status.get('emojis') as List<CustomEmoji>}
           animationsEnabled={mfmAnimations}
+          mentions={mentions}
+          authorAcct={author?.acct}
         />
       </div>
     );
