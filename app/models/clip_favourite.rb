@@ -19,5 +19,10 @@ class ClipFavourite < ApplicationRecord
 
   validates :clip_id, uniqueness: { scope: :account_id }
 
-  scope :visible_to, ->(account) { joins(clip: :account).merge(Account.without_suspended).where('clips.public = ? OR clips.account_id = ?', true, account.id) }
+  scope :visible_to, lambda { |account|
+    joins(clip: :account)
+      .merge(Account.without_suspended)
+      .where('clips.public = ? OR clips.account_id = ?', true, account.id)
+      .where.not(clips: { account_id: Block.where(target_account_id: account.id).select(:account_id) })
+  }
 end
