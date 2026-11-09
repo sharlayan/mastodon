@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 class Api::V1::Statuses::HistoriesController < Api::V1::Statuses::BaseController
+  include Sharlayan::LocalStatusPageAccess
+
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }
+  before_action :require_status_page_access!
 
   def show
     cache_if_unauthenticated!

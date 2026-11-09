@@ -3,6 +3,7 @@
 class Api::V1::Statuses::ContextsController < Api::BaseController
   include Authorization
   include AsyncRefreshesConcern
+  include Sharlayan::LocalStatusPageAccess
 
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }
   before_action :set_status
@@ -34,8 +35,8 @@ class Api::V1::Statuses::ContextsController < Api::BaseController
 
     ancestors_results   = @status.in_reply_to_id.nil? ? [] : @status.ancestors(ancestors_limit, current_account)
     descendants_results = @status.descendants(descendants_limit, current_account, descendants_depth_limit)
-    loaded_ancestors    = preload_collection(ancestors_results, Status)
-    loaded_descendants  = preload_collection(descendants_results, Status)
+    loaded_ancestors    = filter_local_status_page_access(preload_collection(ancestors_results, Status))
+    loaded_descendants  = filter_local_status_page_access(preload_collection(descendants_results, Status))
 
     @context = Context.new(ancestors: loaded_ancestors, descendants: loaded_descendants)
     statuses = [@status] + @context.ancestors + @context.descendants
@@ -64,9 +65,5 @@ class Api::V1::Statuses::ContextsController < Api::BaseController
     authorize @status, :show?
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     not_found
-  end
-
-  def require_status_page_access!
-    require_local_content_access!(Setting.local_status_page_access) if @status.local?
   end
 end

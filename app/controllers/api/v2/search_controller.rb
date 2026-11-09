@@ -3,6 +3,7 @@
 class Api::V2::SearchController < Api::BaseController
   include AsyncRefreshesConcern
   include Authorization
+  include Sharlayan::LocalStatusPageAccess
 
   RESULTS_LIMIT = (ENV['MAX_SEARCH_RESULTS'] || 20).to_i
 
@@ -57,17 +58,23 @@ class Api::V2::SearchController < Api::BaseController
     truthy_param?(:resolve)
   end
 
+  def url_query?
+    %r{\Ahttps?://}.match?(params[:q].to_s.strip)
+  end
+
   def pagination_requested?
     params[:offset].present?
   end
 
   def search_results
-    SearchService.new.call(
+    results = SearchService.new.call(
       params[:q],
       current_account,
       limit_param(RESULTS_LIMIT),
       combined_search_params
     )
+    results[:statuses] = filter_local_status_page_access(results[:statuses]) if results[:statuses].present? && url_query?
+    results
   end
 
   def combined_search_params

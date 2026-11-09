@@ -5,6 +5,7 @@ class Api::V1::StatusesController < Api::BaseController
 
   include Authorization
   include Api::InteractionPoliciesConcern
+  include Sharlayan::LocalStatusPageAccess
 
   before_action -> { authorize_if_got_token! :read, :'read:statuses' }, except: [:create, :update, :destroy]
   before_action -> { doorkeeper_authorize! :write, :'write:statuses' }, only:   [:create, :update, :destroy]
@@ -20,7 +21,7 @@ class Api::V1::StatusesController < Api::BaseController
   override_rate_limit_headers :update, family: :statuses
 
   def index
-    @statuses = preload_collection(@statuses, Status)
+    @statuses = filter_local_status_page_access(preload_collection(@statuses, Status))
     render json: @statuses, each_serializer: REST::StatusSerializer
   end
 
@@ -111,10 +112,6 @@ class Api::V1::StatusesController < Api::BaseController
     authorize @status, :show?
   rescue ActiveRecord::RecordNotFound, Mastodon::NotPermittedError
     not_found
-  end
-
-  def require_status_page_access!
-    require_local_content_access!(Setting.local_status_page_access) if @status.local?
   end
 
   def set_thread

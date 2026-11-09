@@ -2,6 +2,7 @@
 
 class Api::V1::Clips::StatusesController < Api::BaseController
   include Api::ClipNotesRateLimit
+  include Sharlayan::LocalStatusPageAccess
 
   before_action :require_feature_enabled!
   before_action -> { authorize_if_got_token! :read, :'read:lists' }, only: :index
@@ -51,14 +52,7 @@ class Api::V1::Clips::StatusesController < Api::BaseController
 
   def load_statuses
     preloaded = preload_collection(results.map(&:status), Status)
-    preloaded.select { |status| (!status.local? || local_status_page_accessible?) && StatusPolicy.new(current_account, status).show? }
-  end
-
-  def local_status_page_accessible?
-    return @local_status_page_accessible if defined?(@local_status_page_accessible)
-
-    mode = Setting.local_status_page_access
-    @local_status_page_accessible = mode == 'public' || (current_user.present? && (mode != 'disabled' || current_user.can?(:view_feeds)))
+    filter_local_status_page_access(preloaded).select { |status| StatusPolicy.new(current_account, status).show? }
   end
 
   def results
