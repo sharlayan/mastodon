@@ -3011,6 +3011,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setSearchQuery('');
     setSearchResults([]);
     setSearchedQuery(null);
+    setError((current) => (current === 'search' ? null : current));
   }, [cancelMessageSearch]);
 
   useEffect(() => cancelMessageSearch, [cancelMessageSearch]);
@@ -3068,6 +3069,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       } else {
         setSearchResults([]);
         setSearchedQuery(null);
+        setError((current) => (current === 'search' ? null : current));
       }
     },
     [cancelMessageSearch, runMessageSearch],
@@ -3834,7 +3836,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleTabChange = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const tab = event.currentTarget.dataset.tab as ChatHomeTab | undefined;
-      if (tab) setActiveTab(tab);
+      if (!tab) return;
+      setActiveTab(tab);
+      setError((current) => (current === 'invite' ? null : current));
     },
     [],
   );

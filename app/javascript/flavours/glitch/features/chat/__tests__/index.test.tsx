@@ -2168,6 +2168,24 @@ describe('Chat home', () => {
     return view;
   };
 
+  it('clears a failed message search once the search is closed', async () => {
+    api.get.mockImplementation((url: string) =>
+      url === '/api/v1/chat/messages/search'
+        ? Promise.reject(new Error('down'))
+        : getResponse(url),
+    );
+    await home();
+    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
+    fireEvent.change(screen.getByPlaceholderText('Search messages'), {
+      target: { value: 'hello' },
+    });
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Search messages' }));
+
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('changes chat settings from the column settings', async () => {
     api.patch.mockImplementation(
       (_url: string, body: Record<string, unknown>) =>
@@ -2394,6 +2412,17 @@ describe('Chat invitations', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
     });
+  });
+
+  it('clears a failed answer when moving to another tab', async () => {
+    await openInvitations();
+    api.post.mockRejectedValueOnce(new Error('down'));
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Home' }));
+
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('reads invitations again when an answer is refused', async () => {
