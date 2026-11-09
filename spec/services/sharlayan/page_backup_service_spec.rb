@@ -23,6 +23,36 @@ RSpec.describe Sharlayan::PageBackupService do
     end
   end
 
+  it 'restores a protected page with its existing password' do
+    Fabricate(:page, account: account, visibility: 'password', access_password: 'page-password')
+
+    archive_upload(service.export) do |upload|
+      account.pages.destroy_all
+      service.import!(upload)
+    end
+
+    expect(account.pages.sole.valid_access_password?('page-password')).to be true
+  end
+
+  it 'rejects imported password digests with excessive work factors' do
+    digest = Devise::Encryptor.digest(User, 'page-password').sub(/\$\d{2}\$/, '$31$')
+    archive = zip_archive do |zip|
+      zip.get_output_stream(described_class::MANIFEST) do |io|
+        io.write({
+          format: described_class::FORMAT,
+          version: 1,
+          pages: [{ title: 'Protected', name: 'protected', content: [], visibility: 'password', access_password_digest: digest }],
+          media: [],
+        }.to_json)
+      end
+    end
+
+    archive_upload(archive) do |upload|
+      expect { service.import!(upload) }.to raise_error(described_class::InvalidArchive)
+    end
+    expect(account.pages).to be_empty
+  end
+
   it 'exports and restores page data and Booklet display preferences without retaining source IDs' do
     series = Fabricate(:page_series, account: account, title: 'Manuals', description: 'A series', displayed: false)
     Fabricate(:page_series, account: account, title: 'Visible', displayed: true)

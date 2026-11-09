@@ -5,6 +5,30 @@ require 'rails_helper'
 RSpec.describe Page do
   let(:account) { Fabricate(:account) }
 
+  describe 'password digests' do
+    it 'rejects malformed and excessive-cost digests before verifying a password' do
+      digest = Devise::Encryptor.digest(User, 'page-password')
+      excessive_cost = digest.sub(/\$\d{2}\$/, '$31$')
+      allow(Devise::Encryptor).to receive(:compare).and_return(false)
+
+      [excessive_cost, 'invalid-digest', digest.sub('$2a$', '$2x$')].each do |value|
+        page = Fabricate.build(:page, account: account, visibility: 'password', access_password_digest: value)
+
+        expect(page).to_not be_valid
+        expect(page.errors.of_kind?(:access_password, :invalid)).to be true
+        expect(page.valid_access_password?('page-password')).to be false
+        expect(Devise::Encryptor).to_not have_received(:compare)
+      end
+    end
+
+    it 'accepts a password digest generated using the configured work factor' do
+      page = Fabricate(:page, account: account, visibility: 'password', access_password: 'page-password')
+
+      expect(page.valid_access_password?('page-password')).to be true
+      expect(page.valid_access_password?('incorrect-password')).to be false
+    end
+  end
+
   def chat_media_attachment(owner)
     room = ChatConversation.create!(conversation_type: :group, title: 'Room', owner_account: owner)
     room.memberships.create!(account: owner, role: :owner)
