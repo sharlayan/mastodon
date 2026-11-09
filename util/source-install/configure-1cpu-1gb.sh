@@ -126,8 +126,12 @@ check() {
     *) fail "Ruby 4.x is required (found $ruby_version)" ;;
   esac
 
-  node_major=$("$NODE_BIN" -p 'process.versions.node.split(".")[0]')
-  [ "$node_major" -ge 22 ] || fail "Node.js 22+ is required (found $("$NODE_BIN" -v))"
+  node_required=$("$NODE_BIN" -p 'require(process.argv[1]).engines.node' "$APP_DIR/package.json")
+  "$NODE_BIN" -e '
+    const [major, minor] = process.argv[1].replace(/^>=/, "").split(".").map(Number);
+    const [currentMajor, currentMinor] = process.versions.node.split(".").map(Number);
+    process.exit(currentMajor > major || (currentMajor === major && currentMinor >= (minor || 0)) ? 0 : 1);
+  ' "$node_required" || fail "Node.js $node_required is required (found $("$NODE_BIN" -v))"
   (cd "$APP_DIR" && "$BUNDLE_BIN" check) >/dev/null 2>&1 ||
     fail 'locked production gems are not installed'
   [ -d "$APP_DIR/node_modules" ] || fail 'node_modules is not installed'
