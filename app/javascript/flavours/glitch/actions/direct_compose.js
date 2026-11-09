@@ -4,7 +4,7 @@ import api from '../api';
 import { me } from '../initial_state';
 import { uuid } from '../uuid';
 
-import { showAlert } from './alerts';
+import { showAlert, showAlertForError } from './alerts';
 import { importFetchedStatus } from './importer';
 import { dismissNotificationsForStatuses } from './notification_groups';
 import { updateTimeline } from './timelines';
@@ -169,13 +169,17 @@ export const uploadDirectMedia = (conversationId, files) => (dispatch, getState)
           } else if (response.status === 206) {
             setTimeout(() => poll(), 1000);
           }
-        }).catch(error => dispatch({ type: DIRECT_COMPOSE_UPLOAD_FAIL, conversationId, error }));
+        }).catch(error => {
+          dispatch({ type: DIRECT_COMPOSE_UPLOAD_FAIL, conversationId, error });
+          dispatch(showAlertForError(error));
+        });
       };
 
       poll();
     }
   }).catch(error => {
     dispatch({ type: DIRECT_COMPOSE_UPLOAD_FAIL, conversationId, error });
+    dispatch(showAlertForError(error));
   });
 };
 

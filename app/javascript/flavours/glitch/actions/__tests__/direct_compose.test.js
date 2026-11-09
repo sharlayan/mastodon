@@ -5,6 +5,7 @@ import api from '../../api';
 import {
   DIRECT_COMPOSE_SUBMIT_FAIL,
   DIRECT_COMPOSE_SUBMIT_SUCCESS,
+  DIRECT_COMPOSE_UPLOAD_FAIL,
   submitDirectMessage,
   uploadDirectMedia,
 } from '../direct_compose';
@@ -12,7 +13,10 @@ import { dismissNotificationsForStatuses } from '../notification_groups';
 
 vi.mock('../../api', () => ({ default: vi.fn() }));
 vi.mock('../../initial_state', () => ({ me: 'self' }));
-vi.mock('../alerts', () => ({ showAlert: vi.fn(() => ({ type: 'TEST_ALERT' })) }));
+vi.mock('../alerts', () => ({
+  showAlert: vi.fn(() => ({ type: 'TEST_ALERT' })),
+  showAlertForError: vi.fn(error => ({ type: 'TEST_ALERT_FOR_ERROR', error })),
+}));
 vi.mock('../importer', () => ({ importFetchedStatus: vi.fn(() => ({ type: 'TEST_IMPORT' })) }));
 vi.mock('../timelines', () => ({ updateTimeline: vi.fn(() => ({ type: 'TEST_TIMELINE_UPDATE' })) }));
 vi.mock('../notification_groups', () => ({
@@ -141,5 +145,17 @@ describe('direct message uploads', () => {
     uploadDirectMedia('conversation', [new File(['a'], 'a.png')])(dispatch, () => state);
 
     expect(apiPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an alert when the upload fails', async () => {
+    state = fromJS({ direct_compose: { conversation: { is_uploading: false, media: [] } } });
+    const error = new Error('Request failed');
+    apiPost.mockRejectedValue(error);
+    const dispatch = vi.fn();
+
+    uploadDirectMedia('conversation', [new File(['a'], 'a.png')])(dispatch, () => state);
+
+    await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: DIRECT_COMPOSE_UPLOAD_FAIL, conversationId: 'conversation', error }));
+    expect(dispatch).toHaveBeenCalledWith({ type: 'TEST_ALERT_FOR_ERROR', error });
   });
 });
