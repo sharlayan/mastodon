@@ -2631,17 +2631,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       !jumpTargetId ||
       jumpTargetLoaded ||
       newestMessageConversationId !== conversationId ||
-      error ||
-      sendError ||
-      readingError
+      failedReads.current.has('messages')
     )
       return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadOlderMessages();
   }, [
     conversationId,
-    error,
-    sendError,
     readingError,
     jumpTargetId,
     jumpTargetLoaded,

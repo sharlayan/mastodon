@@ -573,6 +573,49 @@ describe('Chat pagination', () => {
     expect(screen.getByText('Recent 39')).toBeTruthy();
   });
 
+  it('still finds a quoted older message while an unrelated error is shown', async () => {
+    const recent = Array.from({ length: 40 }, (_, index) => ({
+      ...message(),
+      id: String(index + 10),
+      content: `Recent ${index}`,
+      reply_to_id: index === 39 ? '9' : null,
+    }));
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { max_id?: string } }) => {
+        if (url.endsWith('/A/messages')) {
+          return Promise.resolve({
+            data:
+              options?.params?.max_id === '10'
+                ? [{ ...message(), id: '9', content: 'Older message' }]
+                : recent,
+          });
+        }
+        return getResponse(url);
+      },
+    );
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new Error('denied')) },
+    });
+    const { container } = mountChat();
+    await screen.findByText('Recent 39');
+
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Copy' })[0] as HTMLElement,
+    );
+    await screen.findByText('The message could not be copied.');
+    fireEvent.click(
+      container.querySelector('.chat-native__reply-quote') as HTMLElement,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector('#chat-message-9')?.textContent).toContain(
+        'Older message',
+      );
+    });
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
   it.each(['chat.message_update', 'chat.reaction'])(
     'preserves %s received while an older message page is loading',
     async (event) => {
