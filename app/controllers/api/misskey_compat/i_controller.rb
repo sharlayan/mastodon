@@ -5,6 +5,36 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   MAX_MUTED_INSTANCES = 100
   MAX_MUTED_EMOJIS = 1_000
 
+  PROFILE_IMAGE_ERRORS = {
+    avatarId: {
+      missing: ['No such avatar file', 'NO_SUCH_AVATAR', '539f3a45-f215-4f81-a9a8-31293640207f'],
+      not_image: ['The file specified as an avatar is not an image', 'AVATAR_NOT_AN_IMAGE', 'f419f9f8-2f4d-46b1-9fb4-49d3a2fd7191'],
+    },
+    bannerId: {
+      missing: ['No such banner file', 'NO_SUCH_BANNER', '0d8f5629-f210-41c2-9433-735831a58595'],
+      not_image: ['The file specified as a banner is not an image', 'BANNER_NOT_AN_IMAGE', '75aedb19-2afd-4e6d-87fc-67941256fa60'],
+    },
+  }.freeze
+
+  class ProfileImageError < StandardError
+    attr_reader :key, :reason
+
+    def initialize(key, reason)
+      @key = key
+      @reason = reason
+      super("#{key} #{reason}")
+    end
+  end
+
+  rescue_from ProfileImageError do |e|
+    if e.reason == :invalid
+      render_invalid_param("#/properties/#{e.key}", 'must be string')
+    else
+      message, code, id = PROFILE_IMAGE_ERRORS.fetch(e.key).fetch(e.reason)
+      render_error(message, code, 400, id: id)
+    end
+  end
+
   requires_write_scope :update, :read_announcement, :pin, :unpin
   requires_misskey_permission 'read:account', :show
   requires_misskey_permission 'write:account', :update, :read_announcement, :pin, :unpin
@@ -97,12 +127,8 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     hide = ff_hide_collections
     attrs[:hide_collections] = hide unless hide.nil?
 
-    avatar = drive_file(params[:avatarId]) if params.key?(:avatarId)
-    header = drive_file(params[:bannerId]) if params.key?(:bannerId)
-    attrs[:avatar] = avatar.file if avatar
-    attrs[:header] = header.file if header
-    attrs[:avatar] = nil if params.key?(:avatarId) && params[:avatarId].nil?
-    attrs[:header] = nil if params.key?(:bannerId) && params[:bannerId].nil?
+    attrs.merge!(profile_image_attributes(:avatar, :avatarId))
+    attrs.merge!(profile_image_attributes(:header, :bannerId))
 
     UpdateAccountService.new.call(current_account, attrs, raise_error: true) if attrs.present?
   end
@@ -150,10 +176,26 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     visibility.to_s != 'public'
   end
 
-  def drive_file(id)
-    return nil if id.blank?
+  def profile_image_attributes(attachment, key)
+    return {} unless params.key?(key)
 
-    current_account.media_attachments.find_by(id: id)
+    id = params[key]
+    return { attachment => nil } if id.nil?
+    raise ProfileImageError.new(key, :invalid) unless id.is_a?(String)
+    return {} if id.blank?
+
+    drive_file = current_account.drive_files.find_by(id: id) if Setting.drive_enabled && current_account.local?
+    if drive_file
+      raise ProfileImageError.new(key, :not_image) unless Account::Avatar::AVATAR_IMAGE_MIME_TYPES.include?(drive_file.file_content_type)
+
+      return { "#{attachment}_drive_file_id": drive_file.id }
+    end
+
+    media = current_account.media_attachments.find_by(id: id)
+    raise ProfileImageError.new(key, :missing) if media.nil?
+    raise ProfileImageError.new(key, :not_image) unless media.image?
+
+    { attachment => media.file }
   end
 
   def boolean_param(value)
