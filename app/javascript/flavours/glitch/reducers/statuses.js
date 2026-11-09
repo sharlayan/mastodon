@@ -59,7 +59,7 @@ const importStatusReactions = (state, status) => {
     const users = reaction.get('users');
     const normalized = users ? reaction.set('users', users.map(normalizeReactionUser)) : reaction;
     const currentReaction = currentReactions?.find(item => item.get('name') === normalized.get('name'));
-    return currentReaction?.get('me') ? normalized.set('me', true) : normalized;
+    return !normalized.has('me') && currentReaction?.get('me') ? normalized.set('me', true) : normalized;
   });
 
   return state

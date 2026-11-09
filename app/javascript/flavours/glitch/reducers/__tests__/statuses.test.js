@@ -26,6 +26,21 @@ describe('statuses reducer reaction updates', () => {
     expect(nextState.getIn(['20', 'reactions', 0, 'me'])).toBe(true);
   });
 
+  it('drops the current account reaction when the payload says it is no longer mine', () => {
+    const state = fromJS({
+      20: { id: '20', reactions_count: 2, reactions: [{ name: '👍', count: 1, me: true, users: [] }] },
+    });
+
+    const nextState = statuses(state, importStatusReactions({
+      id: '20',
+      reactions_count: 2,
+      reactions: [{ name: '👍', count: 1, me: false, users: [] }, { name: '🎉', count: 1, me: true, users: [] }],
+    }));
+
+    expect(nextState.getIn(['20', 'reactions', 0, 'me'])).toBe(false);
+    expect(nextState.getIn(['20', 'reactions', 1, 'me'])).toBe(true);
+  });
+
   it('derives display_name_html for reaction users from the lightweight payload', () => {
     const state = fromJS({
       20: { id: '20', reactions_count: 0, reactions: [] },

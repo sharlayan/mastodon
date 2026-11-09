@@ -2,6 +2,7 @@ import { Map as ImmutableMap, fromJS } from 'immutable';
 
 import { updateStatus } from '../../statuses';
 import { importFetchedAccounts, importFetchedStatusReactions, importFetchedStatuses } from '../index';
+import { normalizeStatus } from '../normalizer';
 
 const account = (id, moved = null) => ({
   id,
@@ -111,5 +112,22 @@ describe('status importer recursion guards', () => {
     expect(statusesAction.statuses[0].reactions_count).toBe(1);
     expect(statusesAction.statuses[0].reactions.toJS()).toEqual([{ name: '👍', count: 1, me: true }]);
     expect(statusesAction.statuses[0].reacted).toBe(true);
+  });
+
+  it('keeps the previous reaction highlight only when the incoming reaction has no me flag', () => {
+    const oldStatus = fromJS({
+      id: '20',
+      content: '',
+      spoiler_text: '',
+      reactions: [{ name: '👍', count: 1, me: true }, { name: '🎉', count: 1, me: true }],
+    });
+    const incoming = {
+      ...status('20', account('10')),
+      reactions: [{ name: '👍', count: 1, me: false }, { name: '🎉', count: 2 }],
+    };
+
+    const normalized = normalizeStatus(incoming, oldStatus, { settings: ImmutableMap() });
+
+    expect(normalized.reactions).toEqual([{ name: '👍', count: 1, me: false }, { name: '🎉', count: 2, me: true }]);
   });
 });
