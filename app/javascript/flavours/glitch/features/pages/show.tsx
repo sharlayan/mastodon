@@ -303,7 +303,7 @@ const PageShow: React.FC<{
                 ...result,
                 pages: result.pages.map((accountPage) => ({
                   ...accountPage,
-                  is_main: accountPage.id === data.id,
+                  is_main: data.is_main && accountPage.id === data.id,
                 })),
               }
             : result,
