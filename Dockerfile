@@ -408,6 +408,10 @@ RUN \
   # Set Mastodon user as owner of tmp folder
   chown -R mastodon:mastodon /opt/mastodon/tmp;
 
+RUN \
+  mkdir -p /opt/mastodon/local_settings_sync; \
+  chown mastodon:mastodon /opt/mastodon/local_settings_sync;
+
 # Set the running user for resulting container
 USER mastodon
 # Expose default Puma ports
