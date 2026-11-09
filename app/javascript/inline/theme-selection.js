@@ -1,8 +1,15 @@
 (function (element) {
   const {colorScheme, contrast} = element.dataset;
   const supportedColorSchemes = (element.dataset.supportedColorSchemes || 'auto light dark').split(' ');
+  const readPageColorScheme = () => {
+    try {
+      return window.localStorage.getItem('mastodon-page-color-scheme');
+    } catch {
+      return null;
+    }
+  };
   const pageColorScheme = element.dataset.pageBlogView === 'true'
-    ? window.localStorage.getItem('mastodon-page-color-scheme')
+    ? readPageColorScheme()
     : null;
   const requestedColorScheme = pageColorScheme || colorScheme;
   const effectiveColorScheme = supportedColorSchemes.includes(requestedColorScheme)
