@@ -4,7 +4,7 @@ import api from '../api';
 import { me } from '../initial_state';
 import { uuid } from '../uuid';
 
-import { showAlert, showAlertForError } from './alerts';
+import { showAlertForError } from './alerts';
 import { importFetchedStatus } from './importer';
 import { dismissNotificationsForStatuses } from './notification_groups';
 import { updateTimeline } from './timelines';
@@ -136,7 +136,7 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
     }
   }).catch(error => {
     dispatch({ type: DIRECT_COMPOSE_SUBMIT_FAIL, conversationId, error });
-    dispatch(showAlert({ message: error.message }));
+    dispatch(showAlertForError(error));
   });
 };
 

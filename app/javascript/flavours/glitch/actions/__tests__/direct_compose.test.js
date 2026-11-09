@@ -92,6 +92,17 @@ describe('direct message notification retention', () => {
     expect(dismissNotificationsForStatuses).not.toHaveBeenCalled();
   });
 
+  it('shows the localized error alert when sending fails', async () => {
+    const error = new Error('Request failed with status code 500');
+    apiPost.mockRejectedValue(error);
+
+    const { dispatch, result } = sendReply();
+    await result;
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'TEST_ALERT_FOR_ERROR', error });
+    expect(dispatch).not.toHaveBeenCalledWith({ type: 'TEST_ALERT' });
+  });
+
   it('does not dismiss messages received while the reply is being sent', async () => {
     let complete;
     apiPost.mockReturnValue(new Promise(resolve => { complete = resolve; }));
