@@ -2408,6 +2408,67 @@ describe('Chat message actions', () => {
   });
 });
 
+describe('Chat composer answers arriving late', () => {
+  const theirs = {
+    ...message(),
+    id: 'theirs',
+    content: 'Their message',
+    account: remote,
+  };
+  const mine = { ...message(), id: 'mine', content: 'My message' };
+  const mountMessages = async () => {
+    api.get.mockImplementation((url: string) =>
+      url.includes('/A/messages')
+        ? Promise.resolve({ data: [theirs, mine] })
+        : getResponse(url),
+    );
+    const view = mountChat();
+    await screen.findByText('My message');
+    return view;
+  };
+  const submit = () => {
+    fireEvent.submit(composer().closest('form') as HTMLFormElement);
+  };
+
+  it('keeps the restored draft when an edit is cancelled before it is saved', async () => {
+    await mountMessages();
+    const saved = deferred<{ data: unknown }>();
+    api.patch.mockReturnValueOnce(saved.promise);
+    fireEvent.change(composer(), { target: { value: 'hello' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.change(composer(), { target: { value: 'My message, fixed' } });
+    submit();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(composer().value).toBe('hello');
+
+    await act(async () => {
+      saved.resolve({ data: { ...mine, content: 'My message, fixed' } });
+      await saved.promise;
+    });
+
+    expect(composer().value).toBe('hello');
+    await screen.findByText('My message, fixed');
+  });
+
+  it('keeps a reply chosen while the previous message was being sent', async () => {
+    await mountMessages();
+    const sent = deferred<{ data: unknown }>();
+    answerNextPost('/api/v1/chat/conversations/A/messages', sent.promise);
+    fireEvent.change(composer(), { target: { value: 'first' } });
+    submit();
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Reply' })[0] as HTMLElement,
+    );
+
+    await act(async () => {
+      sent.resolve({ data: { ...mine, id: 'sent', content: 'first' } });
+      await sent.promise;
+    });
+
+    expect(screen.getByText(wholeText('Replying to Bob'))).toBeTruthy();
+  });
+});
+
 describe('Chat message authors', () => {
   const pictured = {
     ...remote,

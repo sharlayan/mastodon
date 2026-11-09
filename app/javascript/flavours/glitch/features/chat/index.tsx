@@ -2524,6 +2524,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     ],
   );
 
+  const composeMode = useRef({ editingId, replyToId });
+  useLayoutEffect(() => {
+    composeMode.current = { editingId, replyToId };
+  }, [editingId, replyToId]);
+
   const finishEditing = useCallback(() => {
     setEditingId(null);
     composerText.set(textBeforeEdit.current ?? '');
@@ -2758,6 +2763,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     )
       return;
     setLoading(true);
+    const sentEditing = editingId;
+    const sentReply = replyToId;
     const sentMedia = editingId ? [] : media.map((item) => item.id);
     try {
       const response = editingId
@@ -2779,8 +2786,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ? current.map((item) => (item.id === message.id ? message : item))
           : insertMessage(current, message),
       );
-      if (editingId) {
-        finishEditing();
+      if (sentEditing) {
+        if (composeMode.current.editingId === sentEditing) finishEditing();
       } else {
         const withoutSent = (current: string) =>
           current.startsWith(text) ? current.slice(text.length) : current;
@@ -2791,7 +2798,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           current.filter((item) => !sentMedia.includes(item.id)),
         );
       }
-      setReplyToId(null);
+      setReplyToId((current) => (current === sentReply ? null : current));
     } catch (sendError) {
       setSendError(isRefused(sendError) ? 'refused' : 'send');
     } finally {
