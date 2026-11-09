@@ -330,7 +330,7 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     canvas.addEventListener('pointerup', event => this.endTextureStroke(layer, event));
     canvas.addEventListener('pointercancel', event => this.endTextureStroke(layer, event));
     sketcher.addEventListener('strokeend', () => {
-      if (this.state.activeLayerId === layer.id && this.state.texture !== 'chalk' && this.mode !== 'fill') this.saveLayerSnapshot(layer);
+      if (this.state.activeLayerId === layer.id && !(this.state.texture === 'chalk' && this.mode === 'draw') && this.mode !== 'fill') this.saveLayerSnapshot(layer);
     });
     sketcher.addEventListener('fillend', () => queueMicrotask(() => this.saveLayerSnapshot(layer)));
     this.stack.appendChild(canvas);
@@ -380,8 +380,8 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     sketcher.pressureLow = 0.35;
     sketcher.pressureHigh = 1.8;
     sketcher.pressureSmoothing = 0.35;
-    sketcher.mode = this.state.texture === 'chalk' ? MODE_DISABLED : this.mode === 'erase' ? MODE_ERASE : this.mode === 'fill' ? MODE_FILL : MODE_DRAW;
-    layer.canvas.getContext('2d').globalAlpha = this.state.texture === 'marker' ? 0.35 : this.opacity;
+    sketcher.mode = this.mode === 'erase' ? MODE_ERASE : this.mode === 'fill' ? MODE_FILL : this.state.texture === 'chalk' ? MODE_DISABLED : MODE_DRAW;
+    layer.canvas.getContext('2d').globalAlpha = this.state.texture === 'marker' && this.mode === 'draw' ? 0.35 : this.opacity;
   };
 
   saveLayerSnapshot = layer => {
