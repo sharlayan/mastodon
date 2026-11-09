@@ -195,4 +195,30 @@ RSpec.describe 'Page series' do
     expect(response).to have_http_status(404)
     expect(series.reload.title).to_not eq('Stolen')
   end
+
+  it 'counts only the pages each viewer can list' do
+    other_account = Fabricate(:account)
+    booklet = Fabricate(:page_series, account: other_account)
+    representative = Fabricate(:page, account: other_account, page_series: booklet, visibility: 'public')
+    booklet.update!(main_page: representative)
+    Fabricate(:page, account: other_account, page_series: booklet, visibility: 'authenticated')
+    Fabricate(:page, account: other_account, page_series: booklet, visibility: 'private')
+    Fabricate(:page, account: other_account, page_series: booklet, draft: true)
+
+    get '/api/v1/page_series/others', headers: headers
+    expect(response.parsed_body.find { |item| item[:id] == booklet.id.to_s }[:pages_count]).to eq 2
+
+    get "/api/v1/accounts/#{other_account.id}/page_series"
+    expect(response.parsed_body.find { |item| item[:id] == booklet.id.to_s }[:pages_count]).to eq 1
+
+    own_booklet = Fabricate(:page_series, account: user.account)
+    Fabricate(:page, account: user.account, page_series: own_booklet, visibility: 'public')
+    Fabricate(:page, account: user.account, page_series: own_booklet, visibility: 'private')
+
+    get '/api/v1/page_series', headers: headers
+    expect(response.parsed_body.find { |item| item[:id] == own_booklet.id.to_s }[:pages_count]).to eq 2
+
+    get "/api/v1/accounts/#{user.account.id}/page_series", headers: headers
+    expect(response.parsed_body.find { |item| item[:id] == own_booklet.id.to_s }[:pages_count]).to eq 2
+  end
 end

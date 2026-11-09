@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class REST::PageSeriesSerializer < ActiveModel::Serializer
+  LISTED_VISIBILITIES = %w(public authenticated password).freeze
+
   attributes :id, :title, :description, :displayed, :account_id, :main_page_id, :main_page_name, :entry_page_id, :entry_page_name,
              :cover_media_attachment_id, :pages_count, :created_at, :updated_at
 
@@ -36,10 +38,23 @@ class REST::PageSeriesSerializer < ActiveModel::Serializer
   end
 
   def pages_count
-    object.pages.size
+    return object.pages.size if owner?
+
+    object.pages.count { |page| listed_for_viewer?(page) }
   end
 
   private
+
+  def owner?
+    scope.present? && scope.account_id == object.account_id
+  end
+
+  def listed_for_viewer?(page)
+    return false if page.draft? || page.private_visibility?
+    return false if page.authenticated_visibility? && scope.blank?
+
+    LISTED_VISIBILITIES.include?(page.visibility)
+  end
 
   def entry_page
     return @entry_page if defined?(@entry_page)
