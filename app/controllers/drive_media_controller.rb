@@ -6,6 +6,7 @@ class DriveMediaController < ApplicationController
   skip_before_action :require_functional!, raise: false
 
   before_action :set_media_attachment
+  before_action :verify_available!
 
   def show
     attachment, resolved_style = resolve_attachment
@@ -29,6 +30,17 @@ class DriveMediaController < ApplicationController
     @media_attachment = MediaAttachment.find_by!(drive_access_key: params[:id])
   rescue ActiveRecord::RecordNotFound
     not_found
+  end
+
+  def verify_available!
+    not_found unless available?
+  end
+
+  def available?
+    account = @media_attachment.account
+    return false if account.nil? || account.unavailable?
+
+    @media_attachment.status_id.nil? || Status.unscoped.exists?(id: @media_attachment.status_id, deleted_at: nil)
   end
 
   def source_record
