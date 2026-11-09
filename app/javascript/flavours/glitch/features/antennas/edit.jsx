@@ -19,6 +19,7 @@ import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
+import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
 import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 
 const messages = defineMessages({
@@ -217,6 +218,10 @@ const AntennaEdit = ({ params, multiColumn }) => {
       setError(err?.response?.data?.error || intl.formatMessage(messages.saveError));
     }).finally(() => setSaving(false));
   }, [dispatch, id, form, original, saving, intl]);
+
+  if (antenna === false) {
+    return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
+  }
 
   if (!antenna || !antenna.get || !form) {
     return (

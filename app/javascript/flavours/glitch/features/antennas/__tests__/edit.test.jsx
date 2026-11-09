@@ -103,4 +103,13 @@ describe('AntennaEdit', () => {
     expect(screen.queryByText('10')).toBeNull();
     expect(screen.queryByText('11')).toBeNull();
   });
+
+  it('shows an error instead of loading forever when the antenna is missing', async () => {
+    renderEdit('404');
+
+    await waitFor(() => {
+      expect(screen.getByText(/The requested page could not be found/)).toBeTruthy();
+    });
+    expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
+  });
 });
