@@ -58,12 +58,12 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
   end
 
   def memberships
-    members = @list.list_accounts.includes(:account).order(id: :desc)
+    members = @list.list_accounts.includes(:account, :follow, :follow_request).order(id: :desc)
     members = members.where(id: ...(params[:untilId].to_i)) if params[:untilId].present?
     members = members.limit(pagination_limit)
 
     render json: members.map { |la|
-      { id: MisskeyCompat::MiId.encode(la.id), createdAt: Mastodon::Snowflake.to_time(la.id).iso8601, userId: MisskeyCompat::MiId.encode(la.account_id), user: MisskeyCompat::UserSerializer.serialize(la.account), withReplies: la.with_replies }
+      { id: MisskeyCompat::MiId.encode(la.id), createdAt: membership_created_at(la).utc.iso8601, userId: MisskeyCompat::MiId.encode(la.account_id), user: MisskeyCompat::UserSerializer.serialize(la.account), withReplies: la.with_replies }
     }
   end
 
@@ -81,6 +81,10 @@ class Api::MisskeyCompat::ListsController < Api::MisskeyCompat::BaseController
   end
 
   private
+
+  def membership_created_at(list_account)
+    list_account.follow&.created_at || list_account.follow_request&.created_at || @list.created_at
+  end
 
   def set_list!
     @list = current_account.owned_lists.find(params[:listId])
