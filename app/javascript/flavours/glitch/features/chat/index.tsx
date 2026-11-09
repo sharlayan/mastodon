@@ -2694,9 +2694,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!account) return;
       setDirectAccount(account);
       setDirectAccountQuery('');
-      setAccountResults([]);
+      searchAccounts('', setAccountResults);
     },
-    [accountResults],
+    [accountResults, searchAccounts],
   );
 
   const handleRemoveDirectAccount = useCallback(() => {
@@ -2754,9 +2754,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           : [...current, account],
       );
       setGroupAccountQuery('');
-      setGroupAccountResults([]);
+      searchAccounts('', setGroupAccountResults);
     },
-    [groupAccountResults],
+    [groupAccountResults, searchAccounts],
   );
 
   const handleRemoveGroupAccount = useCallback(
@@ -2785,9 +2785,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!account) return;
       setInviteAccount(account);
       setInviteAccountQuery('');
-      setInviteAccountResults([]);
+      searchAccounts('', setInviteAccountResults);
     },
-    [inviteAccountResults],
+    [inviteAccountResults, searchAccounts],
   );
 
   const handleRemoveInviteAccount = useCallback(() => {
