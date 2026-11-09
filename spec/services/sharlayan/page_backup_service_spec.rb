@@ -124,6 +124,27 @@ RSpec.describe Sharlayan::PageBackupService do
     expect(restored.content.dig(0, 'fileId')).to eq(restored.eye_catching_media_attachment_id.to_s)
   end
 
+  it 'restores image blocks without a file or with a file missing from the archive' do
+    content = [
+      { 'id' => 'empty', 'type' => 'image' },
+      { 'id' => 'missing', 'type' => 'image', 'fileId' => '999' },
+    ]
+    archive = zip_archive do |zip|
+      zip.get_output_stream(described_class::MANIFEST) do |io|
+        io.write({
+          format: described_class::FORMAT,
+          version: described_class::VERSION,
+          pages: [{ backup_id: 1, title: 'Images', name: 'images', content: content, visibility: 'public' }],
+          media: [],
+        }.to_json)
+      end
+    end
+
+    archive_upload(archive) { |upload| service.import!(upload) }
+
+    expect(account.pages.sole.content).to eq([{ 'id' => 'empty', 'type' => 'image' }, { 'id' => 'missing', 'type' => 'image' }])
+  end
+
   it 'rejects a non-page archive' do
     archive_upload('not a zip') do |upload|
       expect { service.import!(upload) }.to raise_error(described_class::InvalidArchive)

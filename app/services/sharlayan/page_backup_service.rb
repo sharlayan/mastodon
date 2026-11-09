@@ -246,10 +246,15 @@ class Sharlayan::PageBackupService
       next block unless block.is_a?(Hash)
 
       block = block.deep_dup
-      block['fileId'] = media_ids.fetch(block['fileId'].to_s) if block['type'] == 'image'
+      replace_image_file_id!(block, media_ids) if block['type'] == 'image'
       block['children'] = replace_media_ids(block['children'], media_ids) if block['children'].is_a?(Array)
       block
     end
+  end
+
+  def replace_image_file_id!(block, media_ids)
+    file_id = media_ids[block['fileId'].to_s]
+    file_id.nil? ? block.delete('fileId') : block['fileId'] = file_id
   end
 
   def available_name(name)
