@@ -89,7 +89,7 @@ class MisskeyCompat::NoteSerializer
       user: @context.user(status.account),
       visibility: VISIBILITY_MAP.fetch(status.visibility, 'public'),
       renoteId: MisskeyCompat::MiId.encode(status.reblog_of_id),
-      renote: embed_relations ? serialize(status.reblog, embed_relations: false, context: @context) : nil,
+      renote: embed_relations ? embedded_note(status.reblog) : nil,
       reactionAcceptance: status.reaction_acceptance,
       reactions: {},
       reactionCount: 0,

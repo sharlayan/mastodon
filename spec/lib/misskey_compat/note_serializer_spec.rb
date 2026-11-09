@@ -72,6 +72,22 @@ RSpec.describe MisskeyCompat::NoteSerializer do
     expect(serialized).to include(reactionAcceptance: 'likeOnly', reactions: {}, reactionCount: 0)
   end
 
+  it 'only embeds a pure renote original while the viewer can still access it' do
+    viewer = Fabricate(:account)
+    original = Fabricate(:status, text: 'Original content')
+    renote = Fabricate(:status, reblog: original, text: '')
+
+    expect(described_class.serialize(renote, current_account: viewer).dig(:renote, :text)).to eq('Original content')
+
+    original.account.block!(viewer)
+    context = MisskeyCompat::SerializationContext.for([renote], current_account: viewer)
+    expect(described_class.serialize(renote, context: context)[:renote]).to be_nil
+
+    original.account.unblock!(viewer)
+    original.account.suspend!
+    expect(described_class.serialize(renote, current_account: viewer)[:renote]).to be_nil
+  end
+
   it 'counts accepted quotes as renotes without exposing a pending quote relationship' do
     root = Fabricate(:status)
     Fabricate(:status, reblog: root)
