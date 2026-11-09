@@ -77,7 +77,10 @@ export const boardAnnouncementsReducer = createReducer<BoardAnnouncementsState>(
 
         if (item && !item.read) {
           item.read = true;
-          state.unreadCount = Math.max(0, state.unreadCount - 1);
+
+          if (!item.silence) {
+            state.unreadCount = Math.max(0, state.unreadCount - 1);
+          }
         }
       })
       .addCase(addBoardAnnouncementReaction.pending, (state, action) => {
