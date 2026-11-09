@@ -3,6 +3,9 @@
 class Api::V1::Drive::BaseController < Api::BaseController
   include Redisable
 
+  DATE_RANGE_MIN = Time.utc(1970, 1, 1)
+  DATE_RANGE_MAX = Time.utc(9999, 12, 31)
+
   before_action :require_feature_enabled!
   before_action :require_user!
 
@@ -31,13 +34,14 @@ class Api::V1::Drive::BaseController < Api::BaseController
   def parse_time_param(value)
     return if value.blank?
 
-    if /\A\d+\z/.match?(value.to_s)
-      epoch = value.to_i
-      Time.zone.at(epoch > 100_000_000_000 ? epoch / 1000.0 : epoch)
-    else
-      Time.zone.parse(value.to_s)
-    end
-  rescue ArgumentError, TypeError
+    time = if /\A\d+\z/.match?(value.to_s)
+             epoch = value.to_i
+             Time.zone.at(epoch > 100_000_000_000 ? epoch / 1000.0 : epoch)
+           else
+             Time.zone.parse(value.to_s)
+           end
+    time&.clamp(DATE_RANGE_MIN, DATE_RANGE_MAX)
+  rescue ArgumentError, TypeError, RangeError
     nil
   end
 end
