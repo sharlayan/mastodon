@@ -86,13 +86,15 @@ export const NotificationWithStatus: React.FC<{
       getStatusHidden(state, { id: statusId, contextType: 'notifications' }),
   );
 
+  const opensConversation = openAsConversation ?? isPrivateMention;
+
   const handleOpen = useCallback(() => {
-    if (openAsConversation) {
+    if (opensConversation) {
       dispatch(navigateToStatusOrConversation(statusId));
     } else {
       dispatch(navigateToStatus(statusId));
     }
-  }, [dispatch, statusId, openAsConversation]);
+  }, [dispatch, statusId, opensConversation]);
 
   const handlers = useMemo(
     () => ({
@@ -151,7 +153,7 @@ export const NotificationWithStatus: React.FC<{
           avatarSize={40}
           unfocusable
           collapsed={autoCollapseEnabled && collapsed}
-          onOpen={openAsConversation ? handleOpen : undefined}
+          onOpen={opensConversation ? handleOpen : undefined}
         />
       </div>
     </Hotkeys>
