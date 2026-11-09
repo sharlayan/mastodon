@@ -983,8 +983,8 @@ html.content-font-size__xx_large {
   margin: 0 0 8px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: var(--error-background-color, #df405a);
-  color: #fff;
+  background: var(--color-bg-error-base);
+  color: var(--color-text-on-error-base);
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
