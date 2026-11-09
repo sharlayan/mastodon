@@ -30,6 +30,30 @@ class AccountSwitchDevice < ApplicationRecord
 
   scope :trusted, -> { where.not(trusted_at: nil).where(revoked_at: nil) }
 
+  PARENT_NOTIFICATION_SESSION_JOINS = <<~SQL.squish.freeze
+    INNER JOIN users ON users.id = session_activations.user_id
+    INNER JOIN account_switch_devices child_devices
+      ON child_devices.session_activation_id = session_activations.id
+      AND child_devices.account_id = users.account_id
+      AND child_devices.trusted_at IS NOT NULL
+      AND child_devices.revoked_at IS NULL
+    INNER JOIN account_switch_authorizations
+      ON account_switch_authorizations.target_account_id = child_devices.account_id
+      AND account_switch_authorizations.account_id <> account_switch_authorizations.target_account_id
+    INNER JOIN account_switch_devices root_devices
+      ON root_devices.account_id = account_switch_authorizations.account_id
+      AND root_devices.token_digest = child_devices.token_digest
+      AND root_devices.trusted_at IS NOT NULL
+      AND root_devices.revoked_at IS NULL
+  SQL
+
+  def self.parent_notification_sessions(root_account_id)
+    SessionActivation
+      .joins(PARENT_NOTIFICATION_SESSION_JOINS)
+      .where(account_switch_authorizations: { account_id: root_account_id })
+      .where.not(access_token_id: nil)
+  end
+
   def trusted?
     trusted_at.present? && revoked_at.nil?
   end

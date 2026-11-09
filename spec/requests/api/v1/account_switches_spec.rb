@@ -145,6 +145,56 @@ RSpec.describe 'AccountSwitches' do
     end
   end
 
+  describe 'parent account notifications in a switched child session' do
+    let(:source_account) { Fabricate(:account) }
+    let(:child_session) { child_user.session_activations.order(:id).last }
+    let(:child_session_headers) { { 'Authorization' => "Bearer #{child_session.access_token.token}" } }
+
+    before do
+      web_app
+      Fabricate(:account_switch_authorization, account: user.account, target_account: child)
+      sign_in user
+      post switch_account_path, params: { switch_to: child.id }
+      child_device = AccountSwitchDevice.find_by!(account: child)
+      child_device.update!(trusted_at: Time.current)
+      AccountSwitchDevice.create!(account: user.account, token_digest: child_device.token_digest, trusted_at: Time.current, first_seen_at: Time.current, last_seen_at: Time.current)
+      post switch_account_path, params: { switch_to: child.id }
+      2.times { Fabricate(:notification, account: user.account, activity: Fabricate(:status, account: source_account)) }
+    end
+
+    it 'reports the parent as authorized and counts its unread notifications for this session only' do
+      get '/api/v1/account_switches', headers: child_session_headers, params: { passive: true }
+
+      expect(response.parsed_body[:parent][:id]).to eq user.account.id.to_s
+      expect(response.parsed_body[:parent_session_authorized]).to be true
+
+      get '/api/v1/account_switches/linked_unread_counts', headers: child_session_headers
+
+      expect(response.parsed_body).to eq(user.account.id.to_s => 2)
+    end
+
+    it 'does not authorize the parent for another session of the child account' do
+      other_token = Fabricate(:accessible_access_token, application: web_app, resource_owner_id: child_user.id, scopes: 'read:accounts')
+      other_headers = { 'Authorization' => "Bearer #{other_token.token}" }
+
+      get '/api/v1/account_switches', headers: other_headers, params: { passive: true }
+      expect(response.parsed_body[:parent_session_authorized]).to be false
+
+      get '/api/v1/account_switches/linked_unread_counts', headers: other_headers
+      expect(response.parsed_body).to eq({})
+    end
+
+    it 'stops authorizing the parent once the device trust for the parent is revoked' do
+      AccountSwitchDevice.find_by!(account: user.account).update!(revoked_at: Time.current)
+
+      get '/api/v1/account_switches', headers: child_session_headers, params: { passive: true }
+      expect(response.parsed_body[:parent_session_authorized]).to be false
+
+      get '/api/v1/account_switches/linked_unread_counts', headers: child_session_headers
+      expect(response.parsed_body).to eq({})
+    end
+  end
+
   describe 'inbound authorizations' do
     let(:linking_user) { Fabricate(:user) }
     let!(:auth) { Fabricate(:account_switch_authorization, account: linking_user.account, target_account: user.account) }

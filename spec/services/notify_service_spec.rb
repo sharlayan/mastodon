@@ -92,6 +92,90 @@ RSpec.describe NotifyService do
     end
   end
 
+  describe 'parent notifications for switched child sessions' do
+    let(:child_user) { Fabricate(:user) }
+    let(:child) { child_user.account }
+    let(:notification) { Fabricate(:notification, account: recipient, from_account: sender, type: :follow, activity: activity) }
+    let(:service) { described_class.new }
+    let(:redis_client) { instance_double(Redis) }
+    let(:child_session) { Fabricate(:session_activation, user: child_user) }
+    let(:other_child_session) { Fabricate(:session_activation, user: child_user) }
+    let(:root_session) { Fabricate(:session_activation, user: user) }
+    let!(:root_device) { device_for(recipient, 'browser') }
+    let!(:child_device) { device_for(child, 'browser', session_activation: child_session) }
+    let(:published_channels) { [] }
+
+    def device_for(account, digest, session_activation: nil)
+      AccountSwitchDevice.create!(account:, token_digest: digest, session_activation:, trusted_at: Time.current, first_seen_at: Time.current, last_seen_at: Time.current)
+    end
+
+    def push!
+      service.send(:push_to_parent_notification_sessions!)
+    end
+
+    before do
+      Fabricate(:application, superapp: true)
+      Fabricate(:account_switch_authorization, account: recipient, target_account: child)
+      other_child_session
+      device_for(child, 'other-browser', session_activation: root_session)
+      service.instance_variable_set(:@recipient, recipient)
+      service.instance_variable_set(:@notification, notification)
+      allow(service).to receive(:redis).and_return(redis_client)
+      allow(redis_client).to receive(:publish) { |channel, _message| published_channels << channel }
+    end
+
+    it 'publishes the root notification only to the child session switched from the root on a trusted device' do
+      push!
+
+      expect(published_channels).to eq ["timeline:access_token:#{child_session.access_token_id}:notifications"]
+      expect(redis_client).to have_received(:publish).with(anything, include("\\\"linked_account_id\\\":\\\"#{recipient.id}\\\""))
+    end
+
+    it 'does not create notifications for the child account' do
+      expect { push! }.to_not(change { Notification.where(account: child).count })
+    end
+
+    it 'stops delivery when the root device trust is revoked' do
+      root_device.update!(revoked_at: Time.current)
+
+      push!
+
+      expect(published_channels).to be_empty
+    end
+
+    it 'stops delivery when the child device trust is revoked' do
+      child_device.update!(revoked_at: Time.current)
+
+      push!
+
+      expect(published_channels).to be_empty
+    end
+
+    it 'stops delivery when the accounts are unlinked' do
+      AccountSwitchAuthorization.where(account: recipient, target_account: child).delete_all
+
+      push!
+
+      expect(published_channels).to be_empty
+    end
+
+    it 'does not deliver to a child session whose device is not trusted for the root' do
+      root_device.update!(token_digest: 'another-browser')
+
+      push!
+
+      expect(published_channels).to be_empty
+    end
+
+    it 'does not deliver child notifications to the root through session channels' do
+      service.instance_variable_set(:@recipient, child)
+
+      push!
+
+      expect(published_channels).to be_empty
+    end
+  end
+
   it 'does not notify when sender is blocked' do
     recipient.block!(sender)
     expect { subject }.to_not change(Notification, :count)

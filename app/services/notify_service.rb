@@ -266,6 +266,7 @@ class NotifyService < BaseService
     push_to_streaming_api! if subscribed_to_streaming_api?
     push_to_web_push_subscriptions!
     push_to_linked_account_subscribers!
+    push_to_parent_notification_sessions!
   end
 
   def push_to_streaming_api!
@@ -305,7 +306,23 @@ class NotifyService < BaseService
   def push_linked_notification_to_streaming!(main_account_id)
     return unless redis.exists?("subscribed:timeline:#{main_account_id}") || redis.exists?("subscribed:timeline:#{main_account_id}:notifications")
 
-    payload = {
+    redis.publish("timeline:#{main_account_id}:notifications", linked_notification_message)
+  end
+
+  def push_to_parent_notification_sessions!
+    access_token_ids = AccountSwitchDevice.parent_notification_sessions(@recipient.id).distinct.pluck(:access_token_id)
+
+    access_token_ids.each do |access_token_id|
+      redis.publish("timeline:access_token:#{access_token_id}:notifications", linked_notification_message)
+    end
+  end
+
+  def linked_notification_message
+    @linked_notification_message ||= { event: :linked_notification, payload: linked_notification_payload.to_json }.to_json
+  end
+
+  def linked_notification_payload
+    {
       linked_account_id: @recipient.id.to_s,
       linked_account_acct: @recipient.acct,
       notification: {
@@ -321,8 +338,6 @@ class NotifyService < BaseService
         },
       },
     }
-
-    redis.publish("timeline:#{main_account_id}:notifications", { event: :linked_notification, payload: payload.to_json }.to_json)
   end
 
   def web_push_subscriptions
