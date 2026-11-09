@@ -37,8 +37,14 @@ namespace :roleplay do
     before = ENV.fetch('BEFORE') { abort 'BEFORE is required (e.g. BEFORE=2026-07-13 or a full timestamp).' }
     after  = ENV.fetch('AFTER', nil)
 
-    max_id = Mastodon::Snowflake.id_at(Time.zone.parse(before), with_random: false)
-    min_id = after.present? ? Mastodon::Snowflake.id_at(Time.zone.parse(after), with_random: false) : nil
+    parse_time = lambda do |name, value|
+      Time.zone.parse(value) || abort("#{name} is not a valid date or timestamp: #{value}")
+    rescue ArgumentError
+      abort("#{name} is not a valid date or timestamp: #{value}")
+    end
+
+    max_id = Mastodon::Snowflake.id_at(parse_time.call('BEFORE', before), with_random: false)
+    min_id = after.present? ? Mastodon::Snowflake.id_at(parse_time.call('AFTER', after), with_random: false) : nil
 
     scope = Status.with_rp_hidden.local.where(id: ..max_id)
     scope = scope.where(id: min_id..) if min_id
