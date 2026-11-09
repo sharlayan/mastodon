@@ -38,5 +38,15 @@ RSpec.describe Rake::Task do
         expect(status.reload.rp_hidden?).to be false
       end
     end
+
+    context 'when both bounds are valid' do
+      let(:before_value) { 1.day.from_now.iso8601 }
+      let(:after_value) { 1.day.ago.iso8601 }
+
+      it 'hides statuses in the period' do
+        expect { subject.invoke }.to output(/newly hidden 1/).to_stdout
+        expect(Status.with_rp_hidden.find(status.id).rp_hidden?).to be true
+      end
+    end
   end
 end

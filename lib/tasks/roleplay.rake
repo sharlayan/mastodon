@@ -52,7 +52,7 @@ namespace :roleplay do
     total  = 0
     hidden = 0
 
-    scope.reorder(id: :desc).find_each do |status|
+    scope.unscope(:order).find_each(order: :desc) do |status|
       total += 1
       next if status.rp_hidden?
 
