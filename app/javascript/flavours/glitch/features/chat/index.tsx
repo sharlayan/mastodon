@@ -44,6 +44,7 @@ import SettingsIcon from '@/material-icons/400-24px/settings.svg?react';
 import { showAlert } from 'flavours/glitch/actions/alerts';
 import { openModal } from 'flavours/glitch/actions/modal';
 import api from 'flavours/glitch/api';
+import type { ApiCustomEmojiJSON } from 'flavours/glitch/api_types/custom_emoji';
 import { compareId } from 'flavours/glitch/compare_id';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { Button } from 'flavours/glitch/components/button';
@@ -51,6 +52,8 @@ import { CircularProgress } from 'flavours/glitch/components/circular_progress';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
+import { textToEmojis } from 'flavours/glitch/components/emoji';
+import { CustomEmojiProvider } from 'flavours/glitch/components/emoji/context';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
@@ -86,6 +89,7 @@ interface ChatAccount {
   avatar: string;
   avatar_static: string;
   suspended?: boolean;
+  emojis?: ApiCustomEmojiJSON[];
 }
 
 type RoomEnding = 'deleted' | 'removed';
@@ -111,6 +115,7 @@ interface ChatMessage {
   account: ChatAccount;
   reactions: ChatReaction[];
   media_attachments: ChatMedia[];
+  emojis?: ApiCustomEmojiJSON[];
   editable?: boolean;
   deletes_for_everyone?: boolean;
 }
@@ -141,6 +146,7 @@ interface ChatConversation {
   current_role: 'owner' | 'member' | null;
   accounts: ChatAccount[];
   last_message: ChatMessage | null;
+  emojis?: ApiCustomEmojiJSON[];
   updated_at?: string;
 }
 
@@ -311,6 +317,40 @@ const conversationName = (conversation: ChatConversation) => {
     .join(', ');
 };
 
+const EmojiText: React.FC<{
+  text: string;
+  emojis?: ApiCustomEmojiJSON[];
+}> = ({ text, emojis }) => (
+  <CustomEmojiProvider emojis={emojis}>
+    {textToEmojis(text)}
+  </CustomEmojiProvider>
+);
+
+const AccountName: React.FC<{ account: ChatAccount }> = ({ account }) =>
+  account.display_name ? (
+    <EmojiText text={account.display_name} emojis={account.emojis} />
+  ) : (
+    account.acct
+  );
+
+const ConversationName: React.FC<{ conversation: ChatConversation }> = ({
+  conversation,
+}) =>
+  conversation.title ? (
+    <EmojiText text={conversation.title} emojis={conversation.emojis} />
+  ) : (
+    <>
+      {conversation.accounts
+        .filter((account) => account.id !== me)
+        .map((account, index) => (
+          <Fragment key={account.id}>
+            {index > 0 && ', '}
+            <AccountName account={account} />
+          </Fragment>
+        ))}
+    </>
+  );
+
 const AccountSummary: React.FC<{
   account: ChatAccount;
   detail?: string;
@@ -318,7 +358,9 @@ const AccountSummary: React.FC<{
   <>
     <Avatar account={account} size={36} />
     <span className='chat-native__account-names'>
-      <strong>{account.display_name || account.acct}</strong>
+      <strong>
+        <AccountName account={account} />
+      </strong>
       <span title={detail === undefined ? `@${account.acct}` : undefined}>
         {detail ?? `@${account.acct}`}
       </span>
@@ -337,7 +379,7 @@ const ConversationTitle: React.FC<{
 }> = ({ conversation, linked = false }) => {
   const partner = directPartner(conversation);
   if (conversation.title || !partner?.display_name) {
-    const name = conversationName(conversation);
+    const name = <ConversationName conversation={conversation} />;
     return linked ? name : <strong>{name}</strong>;
   }
 
@@ -345,7 +387,9 @@ const ConversationTitle: React.FC<{
   const Title = linked ? 'span' : 'strong';
   return (
     <Title className='chat-native__conversation-title'>
-      <span>{partner.display_name}</span>
+      <span>
+        <EmojiText text={partner.display_name} emojis={partner.emojis} />
+      </span>
       {linked ? (
         <Link
           to={`/${address}`}
@@ -631,13 +675,15 @@ const InvitationRow: React.FC<{
     <div className='chat-native__invitation'>
       <Avatar account={invitation.inviter} size={36} />
       <div className='chat-native__account-names'>
-        <strong>{conversationName(invitation.conversation)}</strong>
+        <strong>
+          <ConversationName conversation={invitation.conversation} />
+        </strong>
         <span>
           <FormattedMessage
             id='chat.invited_by'
             defaultMessage='Invited by {name}'
             values={{
-              name: invitation.inviter.display_name || invitation.inviter.acct,
+              name: <AccountName account={invitation.inviter} />,
             }}
           />
         </span>
@@ -667,7 +713,9 @@ const PendingInvitationRow: React.FC<{
     <div className='chat-native__member'>
       <Avatar account={invitee} size={36} withLink />
       <div>
-        <strong>{invitee.display_name || invitee.acct}</strong>
+        <strong>
+          <AccountName account={invitee} />
+        </strong>
         <span title={`@${invitee.acct}`}>@{invitee.acct}</span>
       </div>
       <small className='chat-native__state-badge'>
@@ -723,7 +771,9 @@ const ReplyQuote: React.FC<{
   >
     {target ? (
       <>
-        <strong>{target.account.display_name || target.account.acct}</strong>
+        <strong>
+          <AccountName account={target.account} />
+        </strong>
         <span>
           {target.deleted_at ? (
             <FormattedMessage
@@ -731,7 +781,7 @@ const ReplyQuote: React.FC<{
               defaultMessage='This message was deleted.'
             />
           ) : (
-            target.content
+            <EmojiText text={target.content ?? ''} emojis={target.emojis} />
           )}
         </span>
       </>
@@ -3876,7 +3926,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 <div className='chat-native__member' key={account.id}>
                   <Avatar account={account} size={36} withLink />
                   <div>
-                    <strong>{account.display_name || account.acct}</strong>
+                    <strong>
+                      <AccountName account={account} />
+                    </strong>
                     <span title={`@${account.acct}`}>@{account.acct}</span>
                   </div>
                   {isRemoteAccount(account) && (
@@ -4042,8 +4094,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         {message.account.id !== me &&
                           startsRun(messagesList, index) && (
                             <strong>
-                              {message.account.display_name ||
-                                message.account.acct}
+                              <AccountName account={message.account} />
                             </strong>
                           )}
                         <div className='chat-native__bubble-wrap'>
@@ -4062,7 +4113,10 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                                   defaultMessage='This message was deleted.'
                                 />
                               ) : (
-                                message.content
+                                <EmojiText
+                                  text={message.content ?? ''}
+                                  emojis={message.emojis}
+                                />
                               )}
                             </p>
                             <ChatMessageMedia
@@ -4246,9 +4300,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             id='chat.replying_to'
                             defaultMessage='Replying to {account}'
                             values={{
-                              account:
-                                replyTarget.account.display_name ||
-                                replyTarget.account.acct,
+                              account: (
+                                <AccountName account={replyTarget.account} />
+                              ),
                             }}
                           />
                         ) : (
@@ -4258,12 +4312,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                           />
                         )}
                         <span>
-                          {replyTarget && !replyTarget.deleted_at
-                            ? replyTarget.content
-                            : intl.formatMessage({
-                                id: 'chat.message_deleted',
-                                defaultMessage: 'This message was deleted.',
-                              })}
+                          {replyTarget && !replyTarget.deleted_at ? (
+                            <EmojiText
+                              text={replyTarget.content ?? ''}
+                              emojis={replyTarget.emojis}
+                            />
+                          ) : (
+                            intl.formatMessage({
+                              id: 'chat.message_deleted',
+                              defaultMessage: 'This message was deleted.',
+                            })
+                          )}
                         </span>
                       </div>
                     )}
@@ -4612,7 +4671,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     <ConversationPicture conversation={item} />
                     <span className='chat-native__account-names'>
                       <ConversationTitle conversation={item} />
-                      <span>{item.last_message?.content}</span>
+                      <span>
+                        {item.last_message?.content && (
+                          <EmojiText
+                            text={item.last_message.content}
+                            emojis={item.last_message.emojis}
+                          />
+                        )}
+                      </span>
                     </span>
                     {item.archived && (
                       <small className='chat-native__state-badge'>

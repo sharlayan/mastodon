@@ -5,6 +5,7 @@ class REST::ChatConversationSerializer < ActiveModel::Serializer
 
   has_many :accounts, serializer: REST::AccountSerializer
   has_one :visible_last_message, key: :last_message, serializer: REST::ChatMessageSerializer
+  has_many :emojis, serializer: REST::CustomEmojiSerializer
 
   def id
     object.id.to_s
@@ -16,6 +17,10 @@ class REST::ChatConversationSerializer < ActiveModel::Serializer
 
   def remote
     object.remote?
+  end
+
+  def emojis
+    CustomEmoji.from_text(object.title, object.owner_account&.domain)
   end
 
   def owner_account_id
