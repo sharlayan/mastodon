@@ -9,6 +9,7 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
 
   before_action :require_chat_enabled!, only: :attached_chat_messages
   before_action :require_user!, except: :unavailable
+  before_action :require_chat_read_permission!, only: :attached_chat_messages
   before_action :require_drive_enabled!, only: [:overview, :stream, :index, :show, :update, :destroy, :find, :find_by_hash, :check_existence, :move_bulk, :upload_from_url]
   before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
   before_action :enforce_search_rate_limit!, only: [:find, :find_by_hash]
@@ -182,6 +183,12 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
 
   def require_chat_enabled!
     render_error('Chat is not available', 'ENDPOINT_DISABLED', 404) unless Setting.chat_enabled
+  end
+
+  def require_chat_read_permission!
+    return if current_misskey_grant.nil? || current_misskey_grant.allows?('read:chat')
+
+    render_error('Insufficient token scope', 'PERMISSION_DENIED', 403)
   end
 
   def valid_attached_chat_params?
