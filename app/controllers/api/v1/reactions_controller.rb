@@ -67,11 +67,11 @@ class Api::V1::ReactionsController < Api::BaseController
   end
 
   def next_path
-    api_v1_reactions_url pagination_params(max_id: pagination_max_id) if records_continue?
+    api_v1_reactions_url pagination_params(max_id: pagination_max_id, name: params[:name].presence) if records_continue?
   end
 
   def prev_path
-    api_v1_reactions_url pagination_params(min_id: pagination_since_id) unless results.empty?
+    api_v1_reactions_url pagination_params(min_id: pagination_since_id, name: params[:name].presence) unless results.empty?
   end
 
   def pagination_collection
