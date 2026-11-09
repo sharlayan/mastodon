@@ -12,7 +12,10 @@ import { FOCUS_TARGET } from '@/flavours/glitch/components/navigation_focus_targ
 import { ContentWarning } from '@/flavours/glitch/components/status/legacy/content_warning';
 import BarChart4BarsIcon from '@/material-icons/400-24px/bar_chart_4_bars.svg?react';
 import PhotoLibraryIcon from '@/material-icons/400-24px/photo_library.svg?react';
-import { toggleStatusSpoilers } from 'flavours/glitch/actions/statuses';
+import {
+  navigateToStatusOrConversation,
+  toggleStatusSpoilers,
+} from 'flavours/glitch/actions/statuses';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { DisplayName } from 'flavours/glitch/components/display_name';
 import { Icon } from 'flavours/glitch/components/icon';
@@ -69,7 +72,11 @@ export const EmbeddedStatus: React.FC<{
         const path = `/@${account.acct}/${statusId}`;
 
         if (button === 0 && !(ctrlKey || metaKey)) {
-          history.push(path, { focusTarget: FOCUS_TARGET.POST });
+          if (status?.get('visibility') === 'direct') {
+            dispatch(navigateToStatusOrConversation(statusId));
+          } else {
+            history.push(path, { focusTarget: FOCUS_TARGET.POST });
+          }
         } else if (button === 1 || (button === 0 && (ctrlKey || metaKey))) {
           window.open(path, '_blank', 'noopener');
         }
@@ -77,7 +84,7 @@ export const EmbeddedStatus: React.FC<{
 
       clickCoordinatesRef.current = null;
     },
-    [clickCoordinatesRef, statusId, account, history],
+    [clickCoordinatesRef, statusId, account, history, status, dispatch],
   );
 
   const handleContentWarningClick = useCallback(() => {

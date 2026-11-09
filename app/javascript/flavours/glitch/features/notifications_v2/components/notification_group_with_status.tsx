@@ -7,7 +7,10 @@ import type { Map as ImmutableMap } from 'immutable';
 
 import { replyComposeById } from '@/flavours/glitch/actions/compose_typed';
 import { LinkedDisplayName } from '@/flavours/glitch/components/display_name';
-import { navigateToStatus } from 'flavours/glitch/actions/statuses';
+import {
+  navigateToStatus,
+  navigateToStatusOrConversation,
+} from 'flavours/glitch/actions/statuses';
 import { Avatar } from 'flavours/glitch/components/avatar';
 import { AvatarGroup } from 'flavours/glitch/components/avatar_group';
 import { CollapseButton } from 'flavours/glitch/components/collapse_button';
@@ -103,7 +106,11 @@ export const NotificationGroupWithStatus: React.FC<{
   const handlers = useMemo(
     () => ({
       open: () => {
-        dispatch(navigateToStatus(statusId));
+        dispatch(
+          isPrivateMention
+            ? navigateToStatusOrConversation(statusId)
+            : navigateToStatus(statusId),
+        );
       },
 
       reply: () => {
@@ -113,7 +120,7 @@ export const NotificationGroupWithStatus: React.FC<{
         if (collapseEnabled) setCollapsed(!collapsed);
       },
     }),
-    [dispatch, statusId, collapseEnabled, collapsed],
+    [dispatch, statusId, collapseEnabled, collapsed, isPrivateMention],
   );
 
   return (
