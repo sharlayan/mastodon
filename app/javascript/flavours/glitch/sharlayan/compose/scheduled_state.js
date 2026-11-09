@@ -27,6 +27,7 @@ export const reduceScheduledCompose = (state, action) => {
   return state.withMutations(map => {
     map.set('id', scheduledStatus.get('id'));
     map.set('draft_id', null);
+    map.set('draft_save_request', null);
     map.set('text', getParam('status') ?? getParam('text') ?? '');
     map.set('in_reply_to', getParam('in_reply_to_id') || null);
     map.set('quoted_status_id', getParam('quoted_status_id') || null);

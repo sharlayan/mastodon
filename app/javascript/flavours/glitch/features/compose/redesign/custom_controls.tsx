@@ -165,7 +165,8 @@ export const ComposeDraftButton: React.FC = () => {
   const busy = useAppSelector(
     (state) =>
       !!state.compose.get('is_submitting') ||
-      !!state.compose.get('is_uploading'),
+      !!state.compose.get('is_uploading') ||
+      !!state.compose.get('draft_save_request'),
   );
   const drafts = useAppSelector(
     (state) =>

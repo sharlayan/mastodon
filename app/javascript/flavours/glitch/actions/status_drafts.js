@@ -3,6 +3,7 @@ import { defineMessages } from 'react-intl';
 
 import api, { getLinks } from 'flavours/glitch/api';
 import { forceLocalOnly } from 'flavours/glitch/initial_state';
+import { uuid } from 'flavours/glitch/uuid';
 
 import { showAlert, showAlertForError } from './alerts';
 import { ensureComposeIsVisible } from './compose';
@@ -10,7 +11,9 @@ import { ensureComposeIsVisible } from './compose';
 export const STATUS_DRAFTS_FETCH_REQUEST = 'STATUS_DRAFTS_FETCH_REQUEST';
 export const STATUS_DRAFTS_FETCH_SUCCESS = 'STATUS_DRAFTS_FETCH_SUCCESS';
 export const STATUS_DRAFTS_FETCH_FAIL = 'STATUS_DRAFTS_FETCH_FAIL';
+export const STATUS_DRAFT_SAVE_REQUEST = 'STATUS_DRAFT_SAVE_REQUEST';
 export const STATUS_DRAFT_SAVE_SUCCESS = 'STATUS_DRAFT_SAVE_SUCCESS';
+export const STATUS_DRAFT_SAVE_FAIL = 'STATUS_DRAFT_SAVE_FAIL';
 export const STATUS_DRAFT_DELETE_SUCCESS = 'STATUS_DRAFT_DELETE_SUCCESS';
 
 const messages = defineMessages({
@@ -75,15 +78,27 @@ export const fetchStatusDrafts = () => (dispatch) => {
 };
 
 export const saveStatusDraft = () => (dispatch, getState) => {
+  if (getState().getIn(['compose', 'draft_save_request'])) {
+    return Promise.resolve();
+  }
+
   const id = getState().getIn(['compose', 'draft_id']);
+  const requestId = uuid();
+  const payload = composePayload(getState());
+
+  dispatch({ type: STATUS_DRAFT_SAVE_REQUEST, requestId });
+
   const request = id
-    ? api().put(`/api/v1/status_drafts/${id}`, composePayload(getState()))
-    : api().post('/api/v1/status_drafts', composePayload(getState()));
+    ? api().put(`/api/v1/status_drafts/${id}`, payload)
+    : api().post('/api/v1/status_drafts', payload);
 
   return request.then(({ data }) => {
-    dispatch({ type: STATUS_DRAFT_SAVE_SUCCESS, draft: fromJS(data) });
+    dispatch({ type: STATUS_DRAFT_SAVE_SUCCESS, draft: fromJS(data), requestId });
     dispatch(showAlert({ message: messages.saved }));
-  }).catch(error => dispatch(showAlertForError(error)));
+  }).catch(error => {
+    dispatch({ type: STATUS_DRAFT_SAVE_FAIL, requestId });
+    dispatch(showAlertForError(error));
+  });
 };
 
 export const deleteStatusDraft = (id) => (dispatch) =>

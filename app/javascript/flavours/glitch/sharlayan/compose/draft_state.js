@@ -3,8 +3,18 @@ import { List as ImmutableList, Map as ImmutableMap } from 'immutable';
 import { uuid } from 'flavours/glitch/uuid';
 
 export const reduceStatusDraftCompose = (state, action) => {
+  if (action.type === 'STATUS_DRAFT_SAVE_REQUEST') {
+    return state.set('draft_save_request', action.requestId);
+  }
+
   if (action.type === 'STATUS_DRAFT_SAVE_SUCCESS') {
-    return state.set('draft_id', action.draft.get('id'));
+    if (state.get('draft_save_request') !== action.requestId) return state;
+
+    return state.set('draft_id', action.draft.get('id')).set('draft_save_request', null);
+  }
+
+  if (action.type === 'STATUS_DRAFT_SAVE_FAIL') {
+    return state.get('draft_save_request') === action.requestId ? state.set('draft_save_request', null) : state;
   }
 
   if (action.type === 'STATUS_DRAFT_DELETE_SUCCESS') {
@@ -33,6 +43,7 @@ export const reduceStatusDraftCompose = (state, action) => {
   return state.withMutations(map => {
     map.set('id', null);
     map.set('draft_id', draft.get('id'));
+    map.set('draft_save_request', null);
     map.set('text', params.get('status') || '');
     map.set('spoiler', spoilerText.length > 0);
     map.set('spoiler_text', spoilerText);

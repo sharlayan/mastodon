@@ -8,6 +8,7 @@ export const sharlayanComposeInitialState = ImmutableMap({
   clip_ids: ImmutableList(),
   scheduled_at: null,
   draft_id: null,
+  draft_save_request: null,
   reaction_acceptance: null,
   default_reaction_acceptance: null,
 });

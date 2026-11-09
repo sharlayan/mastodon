@@ -1,15 +1,34 @@
 import api, { getLinks } from 'flavours/glitch/api';
 
-import { STATUS_DRAFTS_FETCH_SUCCESS, fetchStatusDrafts } from '../status_drafts';
+import { fromJS } from 'immutable';
+
+import { STATUS_DRAFTS_FETCH_SUCCESS, STATUS_DRAFT_SAVE_REQUEST, fetchStatusDrafts, saveStatusDraft } from '../status_drafts';
 
 vi.mock('flavours/glitch/api', () => ({ default: vi.fn(), getLinks: vi.fn() }));
 
 const apiGet = vi.fn();
+const apiPost = vi.fn();
+
+const composeState = (compose) => fromJS({
+  compose: {
+    text: 'Draft text',
+    spoiler: false,
+    spoiler_text: '',
+    media_attachments: [],
+    clip_ids: [],
+    poll: null,
+    advanced_options: { do_not_federate: false },
+    draft_id: null,
+    draft_save_request: null,
+    ...compose,
+  },
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
   apiGet.mockReset();
-  vi.mocked(api).mockReturnValue({ get: apiGet });
+  apiPost.mockReset();
+  vi.mocked(api).mockReturnValue({ get: apiGet, post: apiPost });
   vi.mocked(getLinks).mockImplementation(result => ({ refs: result.next ? [{ rel: 'next', uri: result.next }] : [] }));
 });
 
@@ -32,4 +51,25 @@ test('fetchStatusDrafts stops after the draft limit worth of pages', async () =>
   await fetchStatusDrafts()(vi.fn());
 
   expect(apiGet).toHaveBeenCalledTimes(5);
+});
+
+test('saveStatusDraft does not start a second save while one is in flight', async () => {
+  const dispatch = vi.fn();
+
+  await saveStatusDraft()(dispatch, () => composeState({ draft_save_request: 'save-1' }));
+
+  expect(apiPost).not.toHaveBeenCalled();
+  expect(dispatch).not.toHaveBeenCalled();
+});
+
+test('saveStatusDraft tags the request and its result with the same request id', async () => {
+  apiPost.mockResolvedValue({ data: { id: '9' } });
+  const dispatch = vi.fn();
+
+  await saveStatusDraft()(dispatch, () => composeState());
+
+  const [request, success] = dispatch.mock.calls.map(([action]) => action);
+  expect(request.type).toBe(STATUS_DRAFT_SAVE_REQUEST);
+  expect(success.requestId).toBe(request.requestId);
+  expect(apiPost).toHaveBeenCalledOnce();
 });

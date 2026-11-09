@@ -33,6 +33,7 @@ describe('Sharlayan compose state', () => {
       clip_ids: [],
       scheduled_at: null,
       draft_id: null,
+      draft_save_request: null,
       reaction_acceptance: null,
       default_reaction_acceptance: null,
     });
@@ -41,6 +42,7 @@ describe('Sharlayan compose state', () => {
       clip_ids: [],
       scheduled_at: null,
       draft_id: null,
+      draft_save_request: null,
       reaction_acceptance: null,
       default_reaction_acceptance: null,
       text: 'keep me',

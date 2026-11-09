@@ -68,6 +68,12 @@ export const DraftButton: FC<DraftButtonProps> = ({
   const visible = useAppSelector(
     (state) => state.local_settings.get('show_draft_button', false) as boolean,
   );
+  const busy = useAppSelector(
+    (state) =>
+      !!state.compose.get('is_submitting') ||
+      !!state.compose.get('is_uploading') ||
+      !!state.compose.get('draft_save_request'),
+  );
   const drafts = useAppSelector(
     (state) =>
       (state.status_drafts as ImmutableMap<string, unknown>).get(
@@ -147,7 +153,7 @@ export const DraftButton: FC<DraftButtonProps> = ({
         title={intl.formatMessage(messages.draft)}
         aria-expanded={isOpen}
         onClick={handleToggle}
-        disabled={disabled}
+        disabled={disabled || busy}
         className={classNames('dropdown-button', { active: isOpen })}
       >
         <Icon id='save' icon={SaveIcon} />
