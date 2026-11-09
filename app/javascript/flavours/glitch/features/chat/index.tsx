@@ -737,6 +737,130 @@ const SelectedAccountCard: React.FC<{
   );
 };
 
+interface ReactionGroup {
+  reaction: string;
+  url?: string;
+  staticUrl?: string;
+  sensitive: boolean;
+  accounts: ChatAccount[];
+  mine: boolean;
+}
+
+const groupReactions = (reactions: ChatReaction[]) => {
+  const groups = new Map<string, ReactionGroup>();
+  reactions.forEach((item) => {
+    const group = groups.get(item.reaction) ?? {
+      reaction: item.reaction,
+      url: item.url,
+      staticUrl: item.static_url,
+      sensitive: Boolean(item.is_sensitive),
+      accounts: [],
+      mine: false,
+    };
+    group.url ??= item.url;
+    group.staticUrl ??= item.static_url;
+    group.accounts.push(item.account);
+    if (item.account.id === me) group.mine = true;
+    groups.set(item.reaction, group);
+  });
+  return Array.from(groups.values());
+};
+
+const MessageReactions: React.FC<{
+  messageId: string;
+  reactions: ChatReaction[];
+  canReact: boolean;
+  onRemove: (event: MouseEvent<HTMLButtonElement>) => void;
+  onAdd: (messageId: string, emoji: PickedEmoji) => void;
+}> = ({ messageId, reactions, canReact, onRemove, onAdd }) => {
+  const groups = useMemo(() => groupReactions(reactions), [reactions]);
+  const handleAdd = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      const reaction = event.currentTarget.dataset.reaction;
+      if (reaction) onAdd(messageId, { native: reaction });
+    },
+    [messageId, onAdd],
+  );
+
+  return (
+    <AnimateEmojiProvider className='reactions-bar chat-native__reactions'>
+      {groups.map((group) => {
+        const accounts = group.accounts
+          .map((account) => `@${account.acct}`)
+          .join(', ');
+        const label = `${group.reaction} ${accounts}`;
+        const contents = (
+          <>
+            <span className='reactions-bar__item__emoji'>
+              {group.url ? (
+                <img
+                  draggable='false'
+                  className={classNames('emojione custom-emoji', {
+                    'sensitive-custom-emoji': group.sensitive,
+                  })}
+                  src={group.staticUrl ?? group.url}
+                  alt={group.reaction}
+                />
+              ) : (
+                textToEmojis(group.reaction)
+              )}
+            </span>
+            <span className='reactions-bar__item__count'>
+              {group.accounts.length}
+            </span>
+          </>
+        );
+
+        if (group.mine)
+          return (
+            <button
+              key={group.reaction}
+              type='button'
+              className='reactions-bar__item active'
+              aria-pressed
+              aria-label={label}
+              title={accounts}
+              data-message-id={messageId}
+              data-reaction={group.reaction}
+              data-account-id={me}
+              onClick={onRemove}
+            >
+              {contents}
+            </button>
+          );
+
+        if (canReact)
+          return (
+            <button
+              key={group.reaction}
+              type='button'
+              className='reactions-bar__item'
+              aria-pressed={false}
+              aria-label={label}
+              title={accounts}
+              data-reaction={group.reaction}
+              onClick={handleAdd}
+            >
+              {contents}
+            </button>
+          );
+
+        return (
+          <span
+            key={group.reaction}
+            className='reactions-bar__item chat-native__reaction-static'
+            role='img'
+            aria-label={label}
+            title={accounts}
+          >
+            {contents}
+          </span>
+        );
+      })}
+    </AnimateEmojiProvider>
+  );
+};
+
 type MessageAction = 'reply' | 'edit' | 'copy' | 'delete';
 
 const hasText = (message: ChatMessage) => Boolean(message.content?.trim());
@@ -4193,45 +4317,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             )}
                         </div>
                         {message.reactions.length > 0 && (
-                          <div className='chat-native__reactions'>
-                            {message.reactions.map((reaction) => {
-                              const shown = reaction.url ? (
-                                <img
-                                  className='emoji'
-                                  src={reaction.static_url ?? reaction.url}
-                                  alt={reaction.reaction}
-                                />
-                              ) : (
-                                reaction.reaction
-                              );
-                              const key = `${reaction.account.id}-${reaction.reaction}`;
-                              return reaction.account.id === me ? (
-                                <button
-                                  key={key}
-                                  type='button'
-                                  className='chat-native__reaction mine'
-                                  aria-pressed
-                                  data-message-id={message.id}
-                                  data-reaction={reaction.reaction}
-                                  data-account-id={reaction.account.id}
-                                  onClick={handleReactionClick}
-                                  title={reaction.account.acct}
-                                >
-                                  {shown}
-                                </button>
-                              ) : (
-                                <span
-                                  key={key}
-                                  className='chat-native__reaction'
-                                  role='img'
-                                  aria-label={`${reaction.reaction} @${reaction.account.acct}`}
-                                  title={reaction.account.acct}
-                                >
-                                  {shown}
-                                </span>
-                              );
-                            })}
-                          </div>
+                          <MessageReactions
+                            messageId={message.id}
+                            reactions={message.reactions}
+                            canReact={!isArchived && message.account.id !== me}
+                            onRemove={handleReactionClick}
+                            onAdd={handleEmojiPick}
+                          />
                         )}
                         <div className='chat-native__message-footer'>
                           {endsRun(messagesList, index) && (

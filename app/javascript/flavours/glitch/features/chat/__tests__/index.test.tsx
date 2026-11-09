@@ -962,7 +962,7 @@ describe('Chat live updates', () => {
       screen.getAllByRole('img', { name: '🎉 @bob@remote.test' }),
     ).toHaveLength(1);
     expect(screen.getByRole('img', { name: '🎉 @bob@remote.test' }).title).toBe(
-      'bob@remote.test',
+      '@bob@remote.test',
     );
     act(() => {
       emitChatStreamEvent({
@@ -999,10 +999,68 @@ describe('Chat live updates', () => {
       });
     });
 
-    expect(screen.queryByRole('button', { name: '🎉' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /🎉/ })).toBeNull();
     expect(
-      screen.getByRole('button', { name: '👍' }).getAttribute('aria-pressed'),
+      screen
+        .getByRole('button', { name: '👍 @alice' })
+        .getAttribute('aria-pressed'),
     ).toBe('true');
+  });
+
+  it('groups the same reaction into one item with how many gave it', async () => {
+    const { container } = mountChat();
+    await screen.findByText('Private message A');
+    act(() => {
+      emitChatStreamEvent({ event: 'chat.reaction', payload: reaction });
+      emitChatStreamEvent({
+        event: 'chat.reaction',
+        payload: { ...reaction, account },
+      });
+    });
+
+    const item = screen.getByRole('button', {
+      name: '🎉 @bob@remote.test, @alice',
+    });
+    expect(item.getAttribute('aria-pressed')).toBe('true');
+    expect(item.querySelector('.reactions-bar__item__count')?.textContent).toBe(
+      '2',
+    );
+    expect(container.querySelectorAll('.reactions-bar__item')).toHaveLength(1);
+  });
+
+  it('adds the same reaction when pressing one given to someone else', async () => {
+    mountChat();
+    await screen.findByText('Private message A');
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message',
+        payload: {
+          ...message('A'),
+          id: 'theirs',
+          content: 'From Bob',
+          account: remote,
+        },
+      });
+      emitChatStreamEvent({
+        event: 'chat.reaction',
+        payload: { ...reaction, message_id: 'theirs' },
+      });
+    });
+    api.post.mockResolvedValue({
+      data: { ...reaction, message_id: 'theirs', account },
+    });
+
+    const item = screen.getByRole('button', { name: '🎉 @bob@remote.test' });
+    expect(item.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(item);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        '/api/v1/chat/messages/theirs/reactions',
+        { reaction: '🎉' },
+      );
+    });
+    await screen.findByRole('button', { name: '🎉 @bob@remote.test, @alice' });
   });
 });
 
@@ -1137,7 +1195,7 @@ describe('Chat review additions', () => {
     const shown = screen.getByRole('img', {
       name: ':blobcat: @bob@remote.test',
     });
-    expect(shown.querySelector('img.emoji')?.getAttribute('alt')).toBe(
+    expect(shown.querySelector('img.custom-emoji')?.getAttribute('alt')).toBe(
       ':blobcat:',
     );
   });
