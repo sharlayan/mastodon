@@ -113,6 +113,46 @@ describe('compose streaming extensions', () => {
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 
+  it('accepts parent account notifications only while the parent is authorized for this session', () => {
+    const parentLinked = { ...linked, linked_account_id: '1', linked_account_acct: 'root' };
+    const childSessionState = (parentSessionAuthorized) => ({
+      accountSwitches: new Map([
+        ['rootAccountId', '1'],
+        ['parentAccountId', '1'],
+        ['parentSessionAuthorized', parentSessionAuthorized],
+        ['items', [{ get: (key) => ({ target_account_id: '1', session_authorized: true })[key] }]],
+      ]),
+    });
+    const values = { linked_notif_prefs_1: JSON.stringify({ 1: { inApp: true } }) };
+    const storage = createStorage(values);
+    const dispatch = vi.fn();
+    const messages = { 'notification.mention': '{name} mentioned you' };
+
+    expect(linkedAccountSessionAuthorized(childSessionState(false), '1')).toBe(false);
+    handleSharlayanStreamingEvent({
+      data: { event: 'linked_notification', payload: JSON.stringify(parentLinked) },
+      dispatch,
+      getState: () => childSessionState(false),
+      messages,
+      storage,
+    });
+    expect(dispatch).not.toHaveBeenCalled();
+
+    expect(linkedAccountSessionAuthorized(childSessionState(true), '1')).toBe(true);
+    handleSharlayanStreamingEvent({
+      data: { event: 'linked_notification', payload: JSON.stringify(parentLinked) },
+      dispatch,
+      getState: () => childSessionState(true),
+      messages,
+      storage,
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'accountSwitches/incrementLinkedUnreadCount',
+      payload: '1',
+    });
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'alerts/show' }));
+  });
+
   it('preserves the antenna timeline id, channel, params, and gap fill', () => {
     const connectTimeline = vi.fn((_timeline, _channel, _params, options) => options);
     const fillGaps = vi.fn((id) => ({ id }));

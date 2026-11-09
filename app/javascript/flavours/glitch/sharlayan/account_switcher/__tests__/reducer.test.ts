@@ -81,4 +81,43 @@ describe('accountSwitchesReducer', () => {
     expect(counts.get('2')).toBeUndefined();
     expect(counts.get('3')).toBe(1);
   });
+
+  it('keeps the parent unread count only while the parent is authorized for this session', () => {
+    const parentResponse = (authorized: boolean) => ({
+      ...response([]),
+      parent: {
+        id: '1',
+      } as ApiAccountSwitchesResponseJSON['children'][number]['target_account'],
+      parent_session_authorized: authorized,
+    });
+    let state = accountSwitchesReducer(
+      undefined,
+      setLinkedUnreadCounts({ '1': 5 }),
+    );
+    state = accountSwitchesReducer(state, pending('authorized'));
+    state = accountSwitchesReducer(
+      state,
+      fulfilled('authorized', parentResponse(true)),
+    );
+
+    expect(state.get('parentSessionAuthorized')).toBe(true);
+    expect(
+      (state.get('linkedUnreadCounts') as unknown as Map<string, number>).get(
+        '1',
+      ),
+    ).toBe(5);
+
+    state = accountSwitchesReducer(state, pending('revoked'));
+    state = accountSwitchesReducer(
+      state,
+      fulfilled('revoked', parentResponse(false)),
+    );
+
+    expect(state.get('parentSessionAuthorized')).toBe(false);
+    expect(
+      (state.get('linkedUnreadCounts') as unknown as Map<string, number>).get(
+        '1',
+      ),
+    ).toBeUndefined();
+  });
 });

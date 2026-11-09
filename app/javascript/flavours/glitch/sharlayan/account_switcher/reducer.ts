@@ -29,6 +29,7 @@ const initialState = ImmutableMap({
   items: ImmutableList<Authorization>(),
   inboundItems: ImmutableList<Authorization>(),
   parentAccountId: null as string | null,
+  parentSessionAuthorized: false,
   rootAccountId: null as string | null,
   isLoading: false,
   loaded: false,
@@ -70,11 +71,15 @@ const applyAccountSwitches = (
       .filter((auth) => auth.session_authorized)
       .map((auth) => auth.target_account.id),
   );
+  const parentSessionAuthorized =
+    !!data.parent && data.parent_session_authorized === true;
+  if (data.parent && parentSessionAuthorized) authorizedIds.add(data.parent.id);
 
   return state
     .set('items', items)
     .set('inboundItems', inboundItems)
     .set('parentAccountId', data.parent?.id ?? null)
+    .set('parentSessionAuthorized', parentSessionAuthorized)
     .set('rootAccountId', data.root_account_id)
     .set('loaded', true)
     .update('linkedUnreadCounts', (counts) =>
