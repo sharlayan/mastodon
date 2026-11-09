@@ -18,12 +18,13 @@ import {
   apiGetPage,
   apiUnlockPage,
   apiGetAccountPages,
+  apiGetAccountBookletPages,
   apiDeletePage,
   apiLikePage,
   apiUnlikePage,
   apiSetMainPage,
   apiUnsetMainPage,
-  PAGE_LIST_LIMIT,
+  PAGE_LIST_MAX_LIMIT,
 } from 'flavours/glitch/api/pages';
 import type {
   ApiPageBlock,
@@ -171,6 +172,11 @@ const PageShow: React.FC<{
     accountId: string;
     pages: ApiPageJSON[];
   } | null>(null);
+  const [bookletPagesResult, setBookletPagesResult] = useState<{
+    accountId: string;
+    bookletId: string;
+    pages: ApiPageJSON[];
+  } | null>(null);
   const [loadError, setLoadError] = useState<{
     id: string;
     notFound: boolean;
@@ -263,6 +269,7 @@ const PageShow: React.FC<{
 
   const currentPage = page?.id === id ? page : null;
   const currentPageAccountId = currentPage?.account_id;
+  const currentBookletId = currentPage?.booklet_id ?? null;
   const error = loadError?.id === id && !currentPage ? loadError : null;
   const isOwner = !!currentPage && currentPage.account_id === accountId;
   const useBlogView =
@@ -301,6 +308,59 @@ const PageShow: React.FC<{
       active = false;
     };
   }, [currentPageAccountId]);
+
+  useEffect(() => {
+    if (!currentPageAccountId || !currentBookletId) {
+      return;
+    }
+
+    let active = true;
+
+    const loadBookletPages = async () => {
+      const pages: ApiPageJSON[] = [];
+
+      while (active) {
+        const batch = await apiGetAccountBookletPages(
+          currentPageAccountId,
+          currentBookletId,
+          pages.length,
+        );
+        pages.push(...batch);
+
+        if (batch.length < PAGE_LIST_MAX_LIMIT) {
+          break;
+        }
+      }
+
+      return pages;
+    };
+
+    loadBookletPages()
+      .then((pages) => {
+        if (active) {
+          setBookletPagesResult({
+            accountId: currentPageAccountId,
+            bookletId: currentBookletId,
+            pages,
+          });
+        }
+
+        return pages;
+      })
+      .catch(() => {
+        if (active) {
+          setBookletPagesResult({
+            accountId: currentPageAccountId,
+            bookletId: currentBookletId,
+            pages: [],
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [currentPageAccountId, currentBookletId]);
 
   const handleDelete = useCallback(() => {
     if (!window.confirm(intl.formatMessage(messages.confirmDelete))) {
@@ -346,7 +406,11 @@ const PageShow: React.FC<{
     request(id)
       .then((data) => {
         replacePage(data);
-        setAccountPagesResult((result) =>
+        const updateMain = <
+          T extends { accountId: string; pages: ApiPageJSON[] },
+        >(
+          result: T | null,
+        ) =>
           result?.accountId === data.account_id
             ? {
                 ...result,
@@ -355,8 +419,9 @@ const PageShow: React.FC<{
                   is_main: data.is_main && accountPage.id === data.id,
                 })),
               }
-            : result,
-        );
+            : result;
+        setAccountPagesResult(updateMain);
+        setBookletPagesResult(updateMain);
         return data;
       })
       .catch((error: unknown) => {
@@ -588,29 +653,20 @@ const PageShow: React.FC<{
     accountPagesResult && accountPagesResult.accountId === currentPageAccountId
       ? accountPagesResult.pages
       : null;
-  const visibleAccountPages = currentPage
-    ? [
-        ...(accountPages?.some((accountPage) => accountPage.id === id)
-          ? []
-          : [currentPage]),
-        ...(accountPages ?? []),
-      ]
+  const bookletPages =
+    bookletPagesResult &&
+    bookletPagesResult.accountId === currentPageAccountId &&
+    bookletPagesResult.bookletId === currentBookletId
+      ? bookletPagesResult.pages
+      : null;
+  const navigationPages = currentBookletId ? bookletPages : accountPages;
+  const currentPageListed = !!navigationPages?.some(
+    (accountPage) => accountPage.id === id,
+  );
+  const filteredAccountPages = currentPage
+    ? [...(currentPageListed ? [] : [currentPage]), ...(navigationPages ?? [])]
     : [];
-  const filteredAccountPages = currentPage?.booklet_id
-    ? visibleAccountPages
-        .filter(
-          (accountPage) => accountPage.booklet_id === currentPage.booklet_id,
-        )
-        .toSorted(
-          (left, right) =>
-            left.booklet_position - right.booklet_position ||
-            left.id.localeCompare(right.id),
-        )
-    : visibleAccountPages;
-  const navigationReliable =
-    !!accountPages?.some((accountPage) => accountPage.id === id) &&
-    (!currentPage?.booklet_id || accountPages.length < PAGE_LIST_LIMIT);
-  const currentPageIndex = navigationReliable
+  const currentPageIndex = currentPageListed
     ? filteredAccountPages.findIndex((accountPage) => accountPage.id === id)
     : -1;
   const previousPage =

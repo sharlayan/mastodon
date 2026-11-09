@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   apiGetPage: vi.fn(),
   apiUnlockPage: vi.fn(),
   apiGetAccountPages: vi.fn(),
+  apiGetAccountBookletPages: vi.fn(),
   apiDeletePage: vi.fn(),
   apiLikePage: vi.fn(),
   apiUnlikePage: vi.fn(),
@@ -41,12 +42,13 @@ vi.mock('flavours/glitch/api/pages', () => ({
   apiGetPage: mocks.apiGetPage,
   apiUnlockPage: mocks.apiUnlockPage,
   apiGetAccountPages: mocks.apiGetAccountPages,
+  apiGetAccountBookletPages: mocks.apiGetAccountBookletPages,
   apiDeletePage: mocks.apiDeletePage,
   apiLikePage: mocks.apiLikePage,
   apiUnlikePage: mocks.apiUnlikePage,
   apiSetMainPage: mocks.apiSetMainPage,
   apiUnsetMainPage: mocks.apiUnsetMainPage,
-  PAGE_LIST_LIMIT: 20,
+  PAGE_LIST_MAX_LIMIT: 100,
 }));
 
 vi.mock('@/flavours/glitch/identity_context', () => ({
@@ -178,6 +180,7 @@ describe('PageShow', () => {
       pageJSON('a', { is_main: true }),
       pageJSON('b'),
     ]);
+    mocks.apiGetAccountBookletPages.mockReset();
   });
 
   afterEach(() => {
@@ -390,67 +393,99 @@ describe('PageShow', () => {
     expect(screen.getByTestId('nav').textContent).toBe('-|-');
   });
 
-  it('does not link Booklet neighbours from a truncated page list', async () => {
-    const booklet = (id: string, position: number) =>
-      pageJSON(id, { booklet_id: 'b1', booklet_position: position });
-    mocks.apiGetPage.mockResolvedValue(booklet('c', 2));
-    mocks.apiGetAccountPages.mockResolvedValue([
-      booklet('c', 2),
-      booklet('d', 3),
-      ...Array.from({ length: 18 }, (_, index) => pageJSON(`p${index}`)),
-    ]);
-    renderShow('/pages/c');
+  it('builds Booklet navigation from every batch of the Booklet page list', async () => {
+    const booklet = (id: string) => pageJSON(id, { booklet_id: 'b1' });
+    mocks.apiGetPage.mockResolvedValue(booklet('p99'));
+    mocks.apiGetAccountPages.mockResolvedValue(
+      Array.from({ length: 20 }, (_, index) => pageJSON(`o${index}`)),
+    );
+    mocks.apiGetAccountBookletPages.mockImplementation(
+      (_accountId: string, _bookletId: string, offset: number) =>
+        Promise.resolve(
+          offset === 0
+            ? Array.from({ length: 100 }, (_, index) => booklet(`p${index}`))
+            : [booklet('q')],
+        ),
+    );
+    renderShow('/pages/p99');
 
     await waitFor(() => {
-      expect(screen.getByTestId('sidebar').textContent).toBe('c:-d:-');
+      expect(screen.getByTestId('nav').textContent).toBe('p98|q');
     });
-    expect(screen.getByTestId('nav').textContent).toBe('-|-');
+    expect(mocks.apiGetAccountBookletPages.mock.calls).toEqual([
+      ['1', 'b1', 0],
+      ['1', 'b1', 100],
+    ]);
+    expect(screen.getByTestId('sidebar').textContent).not.toContain('o0');
   });
 
-  it('links Booklet neighbours when the page list is complete', async () => {
+  it('keeps the Booklet order returned by the server', async () => {
     const booklet = (id: string, position: number) =>
       pageJSON(id, { booklet_id: 'b1', booklet_position: position });
     mocks.apiGetPage.mockResolvedValue(booklet('c', 2));
-    mocks.apiGetAccountPages.mockResolvedValue([
+    mocks.apiGetAccountBookletPages.mockResolvedValue([
+      booklet('e', 1),
       booklet('c', 2),
       booklet('d', 3),
-      booklet('e', 1),
     ]);
     renderShow('/pages/c');
 
     await waitFor(() => {
       expect(screen.getByTestId('nav').textContent).toBe('e|d');
     });
+    expect(screen.getByTestId('sidebar').textContent).toBe('e:-c:-d:-');
   });
 
-  it('does not refetch an unlocked page that was already loaded by name', async () => {
-    const history = createMemoryHistory({
-      initialEntries: ['/@alice/pages/page-a'],
+  it('ignores a Booklet page list that arrives after switching Booklets', async () => {
+    let resolveStale: (value: ApiPageJSON[]) => void = () => undefined;
+    mocks.apiGetPage.mockImplementation((id: string) =>
+      Promise.resolve(pageJSON(id, { booklet_id: id === 'c' ? 'b1' : 'b2' })),
+    );
+    mocks.apiGetAccountBookletPages.mockImplementation(
+      (_accountId: string, bookletId: string) =>
+        bookletId === 'b1'
+          ? new Promise((resolve) => {
+              resolveStale = resolve;
+            })
+          : Promise.resolve([
+              pageJSON('x', { booklet_id: 'b2' }),
+              pageJSON('y', { booklet_id: 'b2' }),
+            ]),
+    );
+    const history = renderShow('/pages/c');
+
+    await waitFor(() => {
+      expect(mocks.apiGetAccountBookletPages).toHaveBeenCalledTimes(1);
+    });
+    act(() => {
+      history.push('/pages/x');
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('nav').textContent).toBe('-|y');
     });
 
-    render(
-      <IntlProvider locale='en'>
-        <Router history={history}>
-          <PageShow
-            multiColumn
-            pageId='a'
-            initialPage={pageJSON('a', { locked: false })}
-          />
-        </Router>
-      </IntlProvider>,
-    );
+    await act(async () => {
+      resolveStale([pageJSON('c', { booklet_id: 'b1' })]);
+      await Promise.resolve();
+    });
 
-    expect((await screen.findByTestId('title')).textContent).toBe('Page a');
-    expect(mocks.apiGetPage).not.toHaveBeenCalled();
+    expect(screen.getByTestId('sidebar').textContent).toBe('x:-y:-');
+    expect(screen.getByTestId('nav').textContent).toBe('-|y');
   });
 
-  it('offers a retry instead of not found when loading fails with a network error', async () => {
-    mocks.apiGetPage.mockRejectedValueOnce(new Error('network'));
-    renderShow();
+  it('does not link Booklet neighbours when the Booklet page list fails', async () => {
+    mocks.apiGetPage.mockResolvedValue(pageJSON('c', { booklet_id: 'b1' }));
+    mocks.apiGetAccountBookletPages.mockRejectedValue(new Error('offline'));
+    renderShow('/pages/c');
 
-    fireEvent.click(await screen.findByRole('button', { name: /Try again/ }));
+    await waitFor(() => {
+      expect(mocks.apiGetAccountBookletPages).toHaveBeenCalled();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
 
-    expect((await screen.findByTestId('title')).textContent).toBe('Page a');
-    expect(mocks.apiGetPage).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('sidebar').textContent).toBe('c:-');
+    expect(screen.getByTestId('nav').textContent).toBe('-|-');
   });
 });

@@ -29,6 +29,7 @@ const storePageAccessToken = (pageId: string, token: string) => {
 };
 
 export const PAGE_LIST_LIMIT = 20;
+export const PAGE_LIST_MAX_LIMIT = 100;
 
 export const apiGetPages = (offset = 0) =>
   apiRequestGet<ApiPageJSON[]>('v1/pages', {
@@ -50,6 +51,17 @@ export const apiGetPageWritingStatistics = () =>
 export const apiGetAccountPages = (accountId: string, offset = 0) =>
   apiRequestGet<ApiPageJSON[]>(`v1/accounts/${accountId}/pages`, {
     limit: PAGE_LIST_LIMIT,
+    offset,
+  });
+
+export const apiGetAccountBookletPages = (
+  accountId: string,
+  bookletId: string,
+  offset = 0,
+) =>
+  apiRequestGet<ApiPageJSON[]>(`v1/accounts/${accountId}/pages`, {
+    booklet_id: bookletId,
+    limit: PAGE_LIST_MAX_LIMIT,
     offset,
   });
 
