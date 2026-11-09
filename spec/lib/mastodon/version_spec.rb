@@ -39,4 +39,17 @@ RSpec.describe Mastodon::Version do
     expect(version.read_git_hash_from_file).to eq('12345')
     expect(version.current_git_branch).to eq('develop')
   end
+
+  it 'reads the short hash from packed refs when the loose reference is missing' do
+    Dir.mkdir('.git')
+    File.write('.git/HEAD', "ref: refs/heads/develop\n")
+    File.write('.git/packed-refs', <<~REFS)
+      # pack-refs with: peeled fully-peeled sorted
+      fedcba987654321 refs/heads/dev
+      abcdef123456789 refs/heads/develop
+      ^0123456789abcde
+    REFS
+
+    expect(version.read_git_hash_from_file).to eq('abcde')
+  end
 end

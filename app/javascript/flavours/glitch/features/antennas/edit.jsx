@@ -12,27 +12,37 @@ import RadarIcon from '@/material-icons/400-24px/radar.svg?react';
 import api from 'flavours/glitch/api';
 import {
   fetchAntenna,
+  fetchAntennaAccounts,
   saveAntenna,
 } from 'flavours/glitch/actions/antennas';
+import { showAlertForError } from 'flavours/glitch/actions/alerts';
+import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
+import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
 import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 
 const messages = defineMessages({
   heading: { id: 'column.antennas', defaultMessage: 'Antennas' },
   saveError: { id: 'antennas.save_error', defaultMessage: 'Could not save changes. Please check your input.' },
+  remove: { id: 'antennas.remove', defaultMessage: 'Remove' },
 });
 
 const ChipList = ({ label, items, getKey, getLabel, onAdd, onRemove, placeholder, children }) => {
+  const intl = useIntl();
   const [value, setValue] = useState('');
 
   const handleAdd = useCallback(e => {
     e.preventDefault();
     const trimmed = value.trim();
     if (trimmed.length === 0) return;
-    onAdd(trimmed);
-    setValue('');
+    const result = onAdd(trimmed);
+    if (result && typeof result.then === 'function') {
+      result.then(() => { setValue(''); }, () => {});
+    } else {
+      setValue('');
+    }
   }, [value, onAdd]);
 
   return (
@@ -42,7 +52,7 @@ const ChipList = ({ label, items, getKey, getLabel, onAdd, onRemove, placeholder
         {items.map(item => (
           <span key={getKey(item)} className='antenna-editor__chip'>
             {getLabel(item)}
-            <button type='button' onClick={() => { onRemove(item); }} aria-label='Remove'>×</button>
+            <button type='button' onClick={() => { onRemove(item); }} aria-label={intl.formatMessage(messages.remove)}>×</button>
           </span>
         ))}
       </div>
@@ -105,6 +115,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
   const dispatch = useDispatch();
   const intl = useIntl();
   const antenna = useSelector(state => state.getIn(['antennas', id]));
+  const accountsMap = useSelector(state => state.get('accounts'));
 
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -117,8 +128,17 @@ const AntennaEdit = ({ params, multiColumn }) => {
   useEffect(() => {
     if (antenna && antenna.get) {
       setForm(buildInitialState(antenna));
+      dispatch(fetchAntennaAccounts([
+        ...toArray(antenna.get('accounts')),
+        ...toArray(antenna.get('exclude_accounts')),
+      ].map(String)));
     }
-  }, [antenna]);
+  }, [antenna, dispatch]);
+
+  const getAccountLabel = useCallback((account) => {
+    const acct = accountsMap.getIn([account.id, 'acct']);
+    return acct ? `@${acct}` : account.label;
+  }, [accountsMap]);
 
   const original = useMemo(() => (antenna && antenna.get ? buildInitialState(antenna) : null), [antenna]);
 
@@ -143,15 +163,18 @@ const AntennaEdit = ({ params, multiColumn }) => {
     setForm(prev => ({ ...prev, [field]: prev[field].filter(item => item !== value) }));
   }, []);
 
-  const addAccount = useCallback((field) => (acct) => {
+  const addAccount = useCallback((field) => (acct) =>
     api().get('/api/v1/accounts/lookup', { params: { acct: acct.replace(/^@/, '') } })
       .then(({ data }) => {
+        dispatch(importFetchedAccounts([data]));
         setForm(prev => (prev[field].some(a => a.id === String(data.id))
           ? prev
           : { ...prev, [field]: [...prev[field], { id: String(data.id), label: acct }] }));
       })
-      .catch(() => {});
-  }, []);
+      .catch((err) => {
+        dispatch(showAlertForError(err));
+        throw err;
+      }), [dispatch]);
 
   const removeAccount = useCallback((field) => (account) => {
     setForm(prev => ({ ...prev, [field]: prev[field].filter(a => a.id !== account.id) }));
@@ -204,6 +227,10 @@ const AntennaEdit = ({ params, multiColumn }) => {
       setError(err?.response?.data?.error || intl.formatMessage(messages.saveError));
     }).finally(() => setSaving(false));
   }, [dispatch, id, form, original, saving, intl]);
+
+  if (antenna === false) {
+    return <BundleColumnError multiColumn={multiColumn} errorType='routing' />;
+  }
 
   if (!antenna || !antenna.get || !form) {
     return (
@@ -287,7 +314,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
             label={<FormattedMessage id='antennas.accounts' defaultMessage='Accounts' />}
             items={form.accounts}
             getKey={account => account.id}
-            getLabel={account => account.label}
+            getLabel={getAccountLabel}
             onAdd={addAccount('accounts')}
             onRemove={removeAccount('accounts')}
             placeholder='@user@example.com'
@@ -297,7 +324,7 @@ const AntennaEdit = ({ params, multiColumn }) => {
             label={<FormattedMessage id='antennas.exclude_accounts' defaultMessage='Excluded accounts' />}
             items={form.excludeAccounts}
             getKey={account => account.id}
-            getLabel={account => account.label}
+            getLabel={getAccountLabel}
             onAdd={addAccount('excludeAccounts')}
             onRemove={removeAccount('excludeAccounts')}
             placeholder='@user@example.com'

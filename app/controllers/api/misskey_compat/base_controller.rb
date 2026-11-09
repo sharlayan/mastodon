@@ -10,15 +10,21 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   skip_before_action :verify_authenticity_token, raise: false
 
   before_action :require_misskey_compat_enabled!
+  before_action :require_scalar_params!
   before_action :decode_mi_ids!
+  before_action :require_compat_pagination_ids!
 
   INVALID_PARAM_ID = '3d81ceae-475f-4600-b2a8-2bc116157532'
+  ACCESS_DENIED_ID = '56f35758-7dd5-468b-8439-5d6fb8ec9b8e'
+  NOT_FOUND_CODES = { 'Status' => ['No such note', 'NO_SUCH_NOTE'], 'Account' => ['No such user', 'NO_SUCH_USER'] }.freeze
   OFFSET_LIMIT = 1_000
   MAX_COMPAT_ID = (2**63) - 1
   COMPAT_TIME_RANGE = (Time.utc(1)..Time.utc(9999, 12, 31, 23, 59, 59))
 
   MI_ID_SCALAR_PARAMS = %i(untilId sinceId userId noteId roleId clipId pageId replyId renoteId listId antennaId announcementId avatarId bannerId folderId parentId fileId eyeCatchingImageId channelId draftId).freeze
   MI_ID_ARRAY_PARAMS = %i(fileIds visibleUserIds userIds noteIds).freeze
+  PAGINATION_ID_PARAMS = %i(untilId sinceId).freeze
+  SCALAR_PARAM_TYPES = %i(limit offset untilDate sinceDate).index_with('integer').merge(MI_ID_SCALAR_PARAMS.index_with('string')).freeze
 
   RequesterIdentity = Struct.new(:id)
 
@@ -42,6 +48,19 @@ class Api::MisskeyCompat::BaseController < ApplicationController
     render_error(e.to_s, 'INVALID_PARAM', 400)
   end
 
+  rescue_from ActionDispatch::Http::Parameters::ParseError do
+    render_invalid_param('#/', 'must be valid JSON')
+  end
+
+  rescue_from ActiveRecord::RecordNotFound do |e|
+    message, code = NOT_FOUND_CODES.fetch(e.model.to_s, ['No such object', 'NO_SUCH_OBJECT'])
+    render_error(message, code, 404)
+  end
+
+  rescue_from Mastodon::NotPermittedError do
+    render_error('Access denied', 'ACCESS_DENIED', 403, id: ACCESS_DENIED_ID)
+  end
+
   private
 
   def rate_limited?(family)
@@ -58,6 +77,24 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   def follow_graph_exposed?
     Setting.misskey_compat_expose_follow_graph
+  end
+
+  def require_scalar_params!
+    key = SCALAR_PARAM_TYPES.each_key.find { |name| params.key?(name) && !scalar_param?(params[name]) }
+    render_invalid_param("#/properties/#{key}", "must be #{SCALAR_PARAM_TYPES[key]}") unless key.nil?
+  end
+
+  def scalar_param?(value)
+    value.nil? || value.is_a?(String) || value.is_a?(Numeric)
+  end
+
+  def require_compat_pagination_ids!
+    key = PAGINATION_ID_PARAMS.find { |name| params[name].present? && !compat_pagination_id?(params[name].to_s) }
+    render_invalid_param("#/properties/#{key}", 'must be a valid id') unless key.nil?
+  end
+
+  def compat_pagination_id?(value)
+    value.match?(/\A[0-9]+\z/) && value.to_i <= MAX_COMPAT_ID
   end
 
   def decode_mi_ids!
@@ -125,7 +162,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   def require_native_user_token!
     return if native_user_token?
 
-    render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e')
+    render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: ACCESS_DENIED_ID)
   end
 
   def current_misskey_grant

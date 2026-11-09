@@ -43,6 +43,7 @@ class BoardAnnouncement < ApplicationRecord
   validates :text, presence: true, length: { maximum: 65_535 }
   validates :icon, inclusion: { in: ICONS }
   validates :display, inclusion: { in: DISPLAYS }
+  validates :sort_priority, numericality: { only_integer: true, greater_than_or_equal_to: -2_147_483_648, less_than_or_equal_to: 2_147_483_647 }
 
   before_save :render_text_html
   before_save :set_published_at

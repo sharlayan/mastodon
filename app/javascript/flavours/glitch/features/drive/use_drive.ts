@@ -161,7 +161,7 @@ export const useDrive = () => {
       const targetFolderId = orphanedOnly ? null : currentFolderId;
       const generation = viewGeneration.current;
 
-      Promise.all(
+      void Promise.allSettled(
         list.map((file) => {
           const data = new FormData();
           data.append('file', file);
@@ -169,24 +169,28 @@ export const useDrive = () => {
           if (targetFolderId) data.append('folder_id', targetFolderId);
           return apiUploadDriveFile(data);
         }),
-      )
-        .then((uploaded) => {
-          if (generation === viewGeneration.current) {
-            setFiles((prev) => {
-              const known = new Set(prev.map((file) => file.id));
-              return [
-                ...uploaded.filter((file) => !known.has(file.id)),
-                ...prev,
-              ];
-            });
+      ).then((results) => {
+        const uploaded: ApiDriveFileJSON[] = [];
+
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') {
+            uploaded.push(result.value);
+          } else {
+            onError(result.reason);
           }
-          refreshUsage();
-          return uploaded;
-        })
-        .catch(onError)
-        .finally(() => {
-          setUploading(false);
         });
+
+        if (uploaded.length > 0 && generation === viewGeneration.current) {
+          setFiles((prev) => {
+            const known = new Set(prev.map((file) => file.id));
+            return [...uploaded.filter((file) => !known.has(file.id)), ...prev];
+          });
+        }
+
+        refreshUsage();
+        setUploading(false);
+        return uploaded;
+      });
     },
     [currentFolderId, orphanedOnly, onError, refreshUsage],
   );

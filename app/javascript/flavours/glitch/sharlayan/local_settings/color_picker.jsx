@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-import { useIntl } from 'react-intl';
+import { defineMessages, useIntl } from 'react-intl';
+
+const messages = defineMessages({
+  hue: { id: 'settings.user_theme.color.hue', defaultMessage: 'Hue' },
+  saturation: { id: 'settings.user_theme.color.saturation', defaultMessage: 'Saturation' },
+  lightness: { id: 'settings.user_theme.color.lightness', defaultMessage: 'Lightness' },
+  alpha: { id: 'settings.user_theme.color.alpha', defaultMessage: 'Opacity' },
+});
 
 const clamp = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
 
@@ -170,10 +177,10 @@ const ColorPicker = ({ value, variable, onChange }) => {
   };
 
   const controls = [
-    ['hue', 0, 360, 1, 'settings.user_theme.color.hue', 'Hue'],
-    ['saturation', 0, 100, 1, 'settings.user_theme.color.saturation', 'Saturation'],
-    ['lightness', 0, 100, 1, 'settings.user_theme.color.lightness', 'Lightness'],
-    ['alpha', 0, 1, 0.01, 'settings.user_theme.color.alpha', 'Opacity'],
+    ['hue', 0, 360, 1],
+    ['saturation', 0, 100, 1],
+    ['lightness', 0, 100, 1],
+    ['alpha', 0, 1, 0.01],
   ];
   const preview = serializeColor(color);
 
@@ -200,9 +207,9 @@ const ColorPicker = ({ value, variable, onChange }) => {
               <RgbInput channel={channel} value={rgb[index]} onChange={nextValue => updateRgb(index, nextValue)} key={channel} />
             ))}
           </span>
-          {controls.map(([key, minimum, maximum, step, messageId, defaultMessage]) => (
+          {controls.map(([key, minimum, maximum, step]) => (
             <label key={key}>
-              <span>{intl.formatMessage({ id: messageId, defaultMessage })}</span>
+              <span>{intl.formatMessage(messages[key])}</span>
               <input type='range' min={minimum} max={maximum} step={step} value={color[key]} onChange={event => update(key, event.target.value)} />
               <output>{key === 'alpha' ? `${Math.round(color[key] * 100)}%` : Math.round(color[key])}</output>
             </label>

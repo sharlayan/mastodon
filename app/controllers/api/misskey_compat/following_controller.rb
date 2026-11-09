@@ -9,6 +9,10 @@ class Api::MisskeyCompat::FollowingController < Api::MisskeyCompat::BaseControll
   before_action :set_target!, except: [:requests]
 
   def create
+    return render_error('Followee is yourself', 'FOLLOWEE_IS_YOURSELF', 400, id: '26fbe7bb-a331-4857-af17-205b426669a9') if @target.id == current_account.id
+    return render_error('You are blocked by that user', 'BLOCKED', 400, id: 'c4ab57cc-4e41-45e9-bfd9-584f61e35ce0') if @target.blocking?(current_account)
+    return render_error('You are blocking that user', 'BLOCKING', 400, id: '4e2206ec-aa4f-4960-b865-6c23ac38e2d9') if current_account.blocking?(@target)
+
     FollowService.new.call(current_account, @target)
     render json: MisskeyCompat::UserSerializer.serialize(@target, detailed: true)
   end
@@ -32,12 +36,14 @@ class Api::MisskeyCompat::FollowingController < Api::MisskeyCompat::BaseControll
   end
 
   def accept_request
+    return render_error('No follow request', 'NO_FOLLOW_REQUEST', 400, id: 'bcde4f8b-0913-4614-8881-614e522fb041') unless @target.requested?(current_account)
+
     AuthorizeFollowService.new.call(@target, current_account)
     head 204
   end
 
   def reject_request
-    RejectFollowService.new.call(@target, current_account)
+    RejectFollowService.new.call(@target, current_account) if @target.requested?(current_account)
     head 204
   end
 

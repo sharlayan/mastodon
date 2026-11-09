@@ -19,13 +19,12 @@ const messages = defineMessages({
   reschedule: { id: 'scheduled_status.reschedule', defaultMessage: 'Change time' },
 });
 
-const MIN_OFFSET_MINUTES = 5;
+const MIN_OFFSET_MS = 5 * 60_000;
+const MIN_MARGIN_MS = 30_000;
+const MINUTE_MS = 60_000;
 
 function getMinDatetime() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() + MIN_OFFSET_MINUTES);
-  d.setSeconds(0, 0);
-  return d;
+  return new Date(Math.ceil((Date.now() + MIN_OFFSET_MS + MIN_MARGIN_MS) / MINUTE_MS) * MINUTE_MS);
 }
 
 function getDefaultScheduleDatetime() {

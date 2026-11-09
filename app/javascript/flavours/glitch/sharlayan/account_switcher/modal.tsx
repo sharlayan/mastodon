@@ -663,7 +663,10 @@ const ParentAccountItem: React.FC<{
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') handleSwitch();
+      if (e.target !== e.currentTarget) return;
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      handleSwitch();
     },
     [handleSwitch],
   );
@@ -991,7 +994,10 @@ const SwitchableAccountItem: React.FC<{
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') handleSwitch();
+      if (e.target !== e.currentTarget) return;
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      handleSwitch();
     },
     [handleSwitch],
   );

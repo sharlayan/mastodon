@@ -5,6 +5,7 @@ import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 import { useParams } from 'react-router-dom';
 
 import { Helmet } from '@unhead/react/helmet';
+import { isAxiosError } from 'axios';
 
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import {
@@ -31,7 +32,9 @@ import {
   SelectField,
   CheckboxField,
 } from 'flavours/glitch/components/form_fields';
+import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useAppHistory } from 'flavours/glitch/components/router';
+import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
 import {
   domain,
   isServerPageBlogViewPath,
@@ -152,6 +155,12 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const [titleError, setTitleError] = useState(false);
+  const [loadedId, setLoadedId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<{
+    id: string;
+    notFound: boolean;
+  } | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const useBlogView = isServerPageBlogViewPath(window.location.pathname);
 
   useEffect(() => {
@@ -178,8 +187,14 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       return;
     }
 
+    let active = true;
+
     apiGetPage(id)
       .then((page) => {
+        if (!active) {
+          return page;
+        }
+
         setTitle(page.title);
         setName(page.name);
         setSummary(page.summary ?? '');
@@ -197,10 +212,29 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             page.attached_media.map((media) => [media.id, media]),
           ),
         );
+        setLoadedId(id);
         return page;
       })
-      .catch(() => undefined);
-  }, [id]);
+      .catch((error: unknown) => {
+        if (!active) {
+          return;
+        }
+
+        const status = isAxiosError(error) ? error.response?.status : undefined;
+        setLoadError({ id, notFound: status === 404 || status === 410 });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, loadAttempt]);
+
+  const handleRetryLoad = useCallback(() => {
+    setLoadError(null);
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
+
+  const loaded = !isEditing || loadedId === id;
 
   const handleTitleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,6 +352,10 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const trimmedTitle = title.trim();
 
   const handleSave = useCallback(() => {
+    if (!loaded) {
+      return;
+    }
+
     if (!trimmedTitle) {
       setTitleError(true);
       return;
@@ -378,6 +416,7 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         setSaving(false);
       });
   }, [
+    loaded,
     isEditing,
     id,
     trimmedTitle,
@@ -399,6 +438,39 @@ const PageEditor: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     isEditing ? messages.editHeading : messages.newHeading,
   );
   const pageUrl = `https://${domain}/@${account?.username ?? ''}/pages/${name}`;
+
+  if (isEditing && loadError?.id === id) {
+    return (
+      <BundleColumnError
+        multiColumn={multiColumn}
+        errorType={loadError.notFound ? 'routing' : 'network'}
+        onRetry={handleRetryLoad}
+      />
+    );
+  }
+
+  if (!loaded) {
+    return (
+      <Column
+        bindToDocument={!multiColumn}
+        className='page-editor-column'
+        label={heading}
+      >
+        <ColumnHeader
+          title={heading}
+          icon='description'
+          iconComponent={DescriptionIcon}
+          multiColumn={multiColumn}
+          showBackButton
+        />
+        <LoadingIndicator />
+        <Helmet>
+          <title>{heading}</title>
+          <meta name='robots' content='noindex' />
+        </Helmet>
+      </Column>
+    );
+  }
 
   return (
     <Column

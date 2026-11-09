@@ -77,6 +77,19 @@ RSpec.describe Scheduler::InstanceMetadataRefreshScheduler do
       end
     end
 
+    it 'enqueues active domains without metadata when many active domains already have metadata' do
+      200.times do |i|
+        domain = "known#{i}.example.com"
+        Fabricate(:instance_metadata, domain: domain, software: 'mastodon', instance_name: 'Test', local_posts_count: 1, theme_color_updated_at: 1.hour.ago, metadata_updated_at: 1.hour.ago)
+        Fabricate(:account_stat, account: Fabricate(:account, domain: domain), last_status_at: 1.day.ago)
+      end
+      Fabricate(:account_stat, account: Fabricate(:account).tap { |account| account.update_column(:domain, 'new-remote.example.com') }, last_status_at: 1.day.ago)
+
+      scheduler.perform
+
+      expect(InstanceMetadataUpdateWorker).to have_received(:perform_async).with('new-remote.example.com')
+    end
+
     it 'runs without error when no records exist' do
       expect { scheduler.perform }.to_not raise_error
     end

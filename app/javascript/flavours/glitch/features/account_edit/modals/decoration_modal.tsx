@@ -4,6 +4,7 @@ import type React from 'react';
 
 import { defineMessages, useIntl } from 'react-intl';
 
+import { showAlertForError } from '@/flavours/glitch/actions/alerts';
 import { apiGetAvatarDecorations } from '@/flavours/glitch/api/accounts';
 import type { ApiAvatarDecorationJSON } from '@/flavours/glitch/api_types/accounts';
 import type { ApiProfileDecorationConfigJSON } from '@/flavours/glitch/api_types/profile';
@@ -593,10 +594,15 @@ export const DecorationModal: FC<DialogModalProps> = ({ onClose }) => {
   );
 
   useEffect(() => {
-    void apiGetAvatarDecorations().then((list) => {
-      setAvailable(list);
-    });
-  }, []);
+    void apiGetAvatarDecorations()
+      .then((list) => {
+        setAvailable(list);
+      })
+      .catch((error: unknown) => {
+        setAvailable([]);
+        dispatch(showAlertForError(error));
+      });
+  }, [dispatch]);
 
   const decorationsById = useMemo(
     () => new Map((available ?? []).map((d) => [d.id, d])),

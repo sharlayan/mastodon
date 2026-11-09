@@ -51,7 +51,19 @@ build_app() {
     set -eu
     cd '$APP_DIR'
     ruby -e 'abort unless RUBY_VERSION.start_with?(File.read(%q{.ruby-version}).strip)'
-    node -e 'const n=+process.versions.node.split(\".\")[0]; process.exit(n >= 22 ? 0 : 1)'
+    node -e '
+      const required = require(\"./package.json\").engines.node;
+      const [major, minor] = required.replace(/^>=/, \"\").split(\".\").map(Number);
+      const [currentMajor, currentMinor] = process.versions.node.split(\".\").map(Number);
+      if (currentMajor > major || (currentMajor === major && currentMinor >= (minor || 0))) process.exit(0);
+      console.error(\"Node.js \" + required + \" is required (found \" + process.version + \")\");
+      process.exit(1);
+    '
+    export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+    case \$(yarn --version 2>/dev/null || true) in
+      4.*) ;;
+      *) echo 'Yarn 4 is required: run corepack enable, or npm install -g corepack first on Node.js 25+' >&2; exit 1 ;;
+    esac
     export RAILS_ENV=production NODE_ENV=production MAKEFLAGS=-j1 CMAKE_BUILD_PARALLEL_LEVEL=1
     bundle config set --local deployment true
     bundle config set --local without 'development test'

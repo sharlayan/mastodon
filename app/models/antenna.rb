@@ -55,16 +55,37 @@ class Antenna < ApplicationRecord
   scope :configured, -> { where('NOT (antennas.any_accounts AND antennas.any_domains AND antennas.any_tags AND antennas.any_keywords)') }
 
   def self.matching(status)
-    target = status.reblog? ? status.reblog : status
-    return [] if target.nil?
+    matching_all([status]).first
+  end
 
-    domain = target.account.domain || Rails.configuration.x.local_domain
-    tag_ids = target.tags.map(&:id)
-    text    = keyword_searchable_text(target)
+  def self.matching_all(statuses)
+    entries = statuses.map do |status|
+      target = status.reblog? ? status.reblog : status
+      next if target.nil?
 
-    domain_antenna_ids  = AntennaDomain.includes_only.where(name: domain).pluck(:antenna_id)
-    account_antenna_ids = AntennaAccount.includes_only.where(account_id: target.account_id).pluck(:antenna_id)
-    tag_antenna_ids     = AntennaTag.includes_only.where(tag_id: tag_ids).pluck(:antenna_id)
+      { status: status, target: target, domain: target.account.domain || Rails.configuration.x.local_domain, tag_ids: target.tags.map(&:id) }
+    end
+
+    candidates = matching_candidates(entries.compact)
+    return statuses.map { [] } if candidates.empty?
+
+    needs_text = candidates.any? { |antenna| !antenna.any_keywords? || antenna.exclude_keywords.any? }
+    ActiveRecord::Associations::Preloader.new(records: entries.compact.pluck(:target).uniq, associations: [:media_attachments, :preloadable_poll]).call if needs_text
+
+    entries.map do |entry|
+      next [] if entry.nil?
+
+      text = needs_text ? keyword_searchable_text(entry[:target]) : ''
+      candidates.select { |antenna| antenna.matches?(entry[:status], domain: entry[:domain], tag_ids: entry[:tag_ids], text: text) }
+    end
+  end
+
+  def self.matching_candidates(entries)
+    return [] if entries.empty?
+
+    domain_antenna_ids  = AntennaDomain.includes_only.where(name: entries.pluck(:domain).uniq).pluck(:antenna_id)
+    account_antenna_ids = AntennaAccount.includes_only.where(account_id: entries.map { |entry| entry[:target].account_id }.uniq).pluck(:antenna_id)
+    tag_antenna_ids     = AntennaTag.includes_only.where(tag_id: entries.flat_map { |entry| entry[:tag_ids] }.uniq).pluck(:antenna_id)
 
     availables
       .configured
@@ -72,7 +93,7 @@ class Antenna < ApplicationRecord
       .where('antennas.any_accounts = TRUE OR antennas.id IN (?)', account_antenna_ids.presence || [-1])
       .where('antennas.any_tags = TRUE OR antennas.id IN (?)', tag_antenna_ids.presence || [-1])
       .includes(:antenna_accounts, :antenna_domains, :antenna_tags, account: :user)
-      .select { |antenna| antenna.matches?(status, domain: domain, tag_ids: tag_ids, text: text) }
+      .to_a
   end
 
   def keywords

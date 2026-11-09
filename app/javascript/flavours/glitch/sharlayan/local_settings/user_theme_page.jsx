@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { FormattedMessage, useIntl } from 'react-intl';
+import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 
@@ -10,6 +10,16 @@ import { userTheme, userThemeCatalog, userThemeDefaults } from 'flavours/glitch/
 import { containsUnsafeUserThemeValue, encodeUserThemeStorage, isSafeUserThemeValue, parseUserThemeOverrides, portableUserThemeConfig, resolveUserThemeConfig, userThemeCatalogForActiveSkin, USER_THEME_VARIABLE_GROUPS, watchUserTheme } from 'flavours/glitch/sharlayan/user_theme';
 
 import ColorPicker from './color_picker';
+
+const messages = defineMessages({
+  light: { id: 'settings.user_theme.light', defaultMessage: 'Light mode' },
+  dark: { id: 'settings.user_theme.dark', defaultMessage: 'Dark mode' },
+  text: { id: 'settings.user_theme.category.text', defaultMessage: 'Text' },
+  backgrounds: { id: 'settings.user_theme.category.backgrounds', defaultMessage: 'Backgrounds' },
+  borders: { id: 'settings.user_theme.category.borders', defaultMessage: 'Borders' },
+  corners: { id: 'settings.user_theme.category.corners', defaultMessage: 'Corners' },
+  spacing: { id: 'settings.user_theme.category.spacing', defaultMessage: 'Spacing' },
+});
 
 const UserThemePage = () => {
   const intl = useIntl();
@@ -136,7 +146,7 @@ const UserThemePage = () => {
       {['light', 'dark'].map(scheme => (
         <section className='user-theme__scheme' key={scheme}>
           <div className='user-theme__scheme__heading'>
-            <h2><FormattedMessage id={`settings.user_theme.${scheme}`} defaultMessage={scheme === 'light' ? 'Light mode' : 'Dark mode'} /></h2>
+            <h2>{intl.formatMessage(messages[scheme])}</h2>
             <Button secondary onClick={() => resetScheme(scheme)}><FormattedMessage id='settings.user_theme.reset' defaultMessage='Reset' /></Button>
           </div>
           <label className='user-theme__select' htmlFor={`user-theme-${scheme}`}>
@@ -159,7 +169,7 @@ const UserThemePage = () => {
                   onClick={() => setActiveCategories(current => ({ ...current, [scheme]: group.id }))}
                   key={group.id}
                 >
-                  <FormattedMessage id={`settings.user_theme.category.${group.id}`} defaultMessage={group.id} />
+                  {intl.formatMessage(messages[group.id])}
                 </button>
               ))}
             </div>

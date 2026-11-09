@@ -1,5 +1,6 @@
 import api from '../api';
 import { showAlertForError } from './alerts';
+import { importFetchedAccounts } from './importer';
 import { timelineDeleteStatus } from './timelines_typed';
 
 export const ANTENNAS_FETCH_REQUEST = 'ANTENNAS_FETCH_REQUEST';
@@ -35,6 +36,18 @@ export const fetchAntenna = id => (dispatch, getState) => {
   api().get(`/api/v1/antennas/${id}`)
     .then(({ data }) => dispatch({ type: ANTENNA_FETCH_SUCCESS, antenna: data }))
     .catch(err => dispatch({ type: ANTENNA_FETCH_FAIL, id, error: err }));
+};
+
+const ACCOUNTS_PER_REQUEST = 40;
+
+export const fetchAntennaAccounts = ids => (dispatch, getState) => {
+  const missing = [...new Set(ids)].filter(id => !getState().getIn(['accounts', id]));
+
+  for (let index = 0; index < missing.length; index += ACCOUNTS_PER_REQUEST) {
+    api().get('/api/v1/accounts', { params: { id: missing.slice(index, index + ACCOUNTS_PER_REQUEST) } })
+      .then(({ data }) => dispatch(importFetchedAccounts(data)))
+      .catch(() => {});
+  }
 };
 
 export const createAntenna = params => (dispatch) =>

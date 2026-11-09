@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 class Api::V1::AvatarDecorationsController < Api::BaseController
+  include Sharlayan::Api::MuteTargetParams
+
   before_action -> { doorkeeper_authorize! :write, :'write:mutes' }, only: [:create_mute, :destroy_mute]
   before_action :require_user!, only: [:create_mute, :destroy_mute]
   before_action :require_feature_enabled!
+  before_action -> { require_scalar_mute_params!(:account_id, :domain) }, only: :create_mute
 
   def index
     @decorations = AvatarDecoration.local.approved.order(:name)
@@ -15,7 +18,7 @@ class Api::V1::AvatarDecorationsController < Api::BaseController
       target = Account.find(params[:account_id])
       mute = current_account.avatar_decoration_mutes.find_or_create_by!(target_account: target)
     elsif params[:domain].present?
-      domain = TagManager.instance.normalize_domain(params[:domain])
+      domain = normalized_mute_domain(params[:domain])
       return render json: { error: 'Invalid domain' }, status: 422 if domain.blank?
 
       mute = current_account.avatar_decoration_mutes.find_or_create_by!(target_domain: domain)

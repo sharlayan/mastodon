@@ -116,4 +116,21 @@ RSpec.describe ActivityPub::ActorSerializer do
       ))
     end
   end
+
+  describe 'icon availability' do
+    context 'with a suspended account that has an avatar' do
+      let(:record) { Fabricate(:account, avatar: attachment_fixture('avatar.gif'), suspended: true) }
+
+      it { is_expected.to_not have_key('icon') }
+    end
+
+    context 'with an account without an avatar' do
+      let(:record) { Fabricate(:account) }
+
+      it 'publishes the default icon without a null media type' do
+        expect(subject['icon']).to include('type' => 'Image', 'url' => be_present)
+        expect(subject['icon']).to_not have_key('mediaType')
+      end
+    end
+  end
 end

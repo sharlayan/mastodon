@@ -32,7 +32,7 @@ module Admin
       @decoration = AvatarDecoration.new(decoration_params)
       @decoration.approved = true
 
-      if @decoration.save
+      if assign_new_category(@decoration) && @decoration.save
         log_action :create, @decoration
         redirect_to admin_avatar_decorations_path, notice: I18n.t('admin.avatar_decorations.created_msg')
       else
@@ -44,7 +44,9 @@ module Admin
       authorize :avatar_decoration, :update?
       raise Mastodon::NotPermittedError unless @decoration.local?
 
-      if @decoration.update(decoration_params)
+      @decoration.assign_attributes(decoration_params)
+
+      if assign_new_category(@decoration) && @decoration.save
         log_action :update, @decoration
         redirect_to admin_avatar_decorations_path, notice: I18n.t('admin.avatar_decorations.updated_msg')
       else
@@ -98,6 +100,8 @@ module Admin
       flash[:alert] = I18n.t('admin.avatar_decorations.no_decoration_selected')
     rescue Mastodon::NotPermittedError
       flash[:alert] = I18n.t('admin.not_permitted')
+    rescue ActiveRecord::RecordInvalid => e
+      flash[:alert] = I18n.t('admin.avatar_decorations.batch_error', message: e.record.errors.full_messages.to_sentence)
     ensure
       redirect_to admin_avatar_decorations_path(filter_params)
     end
@@ -109,12 +113,22 @@ module Admin
     end
 
     def decoration_params
-      permitted = params.expect(avatar_decoration: [:name, :description, :image, :required_role_id, :category_id, :category_name])
-      category_name = permitted.delete(:category_name)
+      params.expect(avatar_decoration: [:name, :description, :image, :required_role_id, :category_id, :category_name])
+    end
 
-      permitted[:category_id] = AvatarDecorationCategory.find_or_create_by!(name: category_name.strip).id if category_name.present?
+    def assign_new_category(decoration)
+      name = decoration.category_name.to_s.strip
+      return true if name.blank?
 
-      permitted
+      category = AvatarDecorationCategory.find_or_create_by(name: name)
+
+      if category.persisted?
+        decoration.category_id = category.id
+        true
+      else
+        category.errors.each { |error| decoration.errors.add(:category_name, error.type, **error.options) }
+        false
+      end
     end
 
     def filtered_decorations

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { FormattedMessage, useIntl, defineMessages } from 'react-intl';
 
@@ -10,6 +10,7 @@ import { EmptyState } from '@/flavours/glitch/components/empty_state';
 import { LoadingIndicator } from '@/flavours/glitch/components/loading_indicator';
 import { NavigationFocusTarget } from '@/flavours/glitch/components/navigation_focus_target';
 import CloseIcon from '@/material-icons/400-24px/close.svg?react';
+import { showAlertForError } from 'flavours/glitch/actions/alerts';
 import { fetchClips } from 'flavours/glitch/actions/clips';
 import { toggleComposeClip } from 'flavours/glitch/actions/compose_typed';
 import {
@@ -33,6 +34,7 @@ const ClipRow: React.FC<{
   statusId: string;
   initialChecked: boolean;
 }> = ({ clip, statusId, initialChecked }) => {
+  const dispatch = useAppDispatch();
   const [checked, setChecked] = useState(initialChecked);
   const [updating, setUpdating] = useState(false);
 
@@ -47,14 +49,15 @@ const ClipRow: React.FC<{
         : apiRemoveStatusFromClip(clip.id, statusId);
 
       request
-        .catch(() => {
+        .catch((error: unknown) => {
           setChecked(!shouldAdd);
+          dispatch(showAlertForError(error));
         })
         .finally(() => {
           setUpdating(false);
         });
     },
-    [clip.id, statusId],
+    [clip.id, statusId, dispatch],
   );
 
   return (
@@ -95,6 +98,11 @@ export const ClipAdder: React.FC<{
   const clips = useAppSelector((state) => getOrderedAccountClips(state, me));
   const [loading, setLoading] = useState(true);
   const [memberClipIds, setMemberClipIds] = useState<Set<string>>(new Set());
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     let active = true;
@@ -102,9 +110,18 @@ export const ClipAdder: React.FC<{
     void Promise.all([
       dispatch(fetchClips()),
       statusId
-        ? apiGetStatusClips(statusId).then((data) => {
-            if (active) setMemberClipIds(new Set(data.map((clip) => clip.id)));
-          })
+        ? apiGetStatusClips(statusId).then(
+            (data) => {
+              if (active)
+                setMemberClipIds(new Set(data.map((clip) => clip.id)));
+            },
+            (error: unknown) => {
+              if (!active) return;
+              active = false;
+              dispatch(showAlertForError(error));
+              onCloseRef.current();
+            },
+          )
         : Promise.resolve(),
     ])
       .catch(() => undefined)

@@ -5,6 +5,20 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
   class NoSuchReplyTargetError < StandardError; end
   class CannotReplyToSpecifiedVisibilityNoteError < StandardError; end
+  class NoSuchRenoteTargetError < StandardError; end
+  class CannotReRenoteError < StandardError; end
+  class RenoteTargetBlockedError < StandardError; end
+  class CannotRenoteDueToVisibilityError < StandardError; end
+
+  class InvalidParamError < StandardError
+    attr_reader :param, :reason
+
+    def initialize(param, reason)
+      @param = param
+      @reason = reason
+      super("#{param} #{reason}")
+    end
+  end
 
   SPECIFIED_REPLY_VISIBILITY_ERROR = 'Cannot reply to a specified note with broader visibility'
 
@@ -13,6 +27,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   TIMELINE_MIN_BATCH_SIZE = 20
   RELATED_NOTE_SCAN_LIMIT = 1_000
   PARTIAL_BULK_MAX_IDS = 100
+  SCALAR_ID_PARAMS = %i(noteId replyId renoteId draftId).freeze
   OPTIONAL_AUTHENTICATION_ACTIONS = %i(show show_partial_bulk children replies conversation renotes note_reactions featured clips).freeze
 
   requires_write_scope :unrenote, :thread_muting_create, :thread_muting_delete,
@@ -46,7 +61,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   before_action :require_user_if_authenticated!, only: OPTIONAL_AUTHENTICATION_ACTIONS
   before_action :enforce_reaction_rate_limit!, only: %i(reactions_create reactions_delete)
   before_action :enforce_status_draft_rate_limit!, only: %i(drafts_list drafts_count drafts_create drafts_update drafts_delete)
+  before_action :reject_compound_id_params!
   before_action :set_note, only: [:show, :children, :replies, :conversation, :renotes, :unrenote, :destroy, :state, :translate, :reactions_create, :reactions_delete, :note_reactions, :thread_muting_create, :thread_muting_delete, :favorites_create, :favorites_delete, :polls_vote, :clips]
+
+  rescue_from InvalidParamError do |e|
+    render_invalid_param(e.param, e.reason)
+  end
 
   def timeline
     render_notes filtered_timeline([HomeFeed.new(current_account)], timeline_pagination_limit)
@@ -206,11 +226,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def create
-    return render_invalid_param('#/properties/poll', 'poll expiration is required') if params[:poll].present? && params.dig(:poll, :expiredAfter).blank? && params.dig(:poll, :expiresAt).blank?
+    poll = poll_param
+    return render_invalid_param('#/properties/poll', 'poll expiration is required') if poll && poll[:expiredAfter].blank? && poll[:expiresAt].blank?
 
     status = if renote_id.present? && pure_renote_request?
                reaction_acceptance_option if params.key?(:reactionAcceptance)
-               ReblogService.new.call(current_account, quoted_status)
+               ReblogService.new.call(current_account, reblog_target)
              else
                with_resolved_media_ids do |media_ids|
                  PostStatusService.new.call(current_account, post_options.merge(media_ids: media_ids))
@@ -224,6 +245,14 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     render_error('No such reply target', 'NO_SUCH_REPLY_TARGET', 404)
   rescue CannotReplyToSpecifiedVisibilityNoteError
     render_error(SPECIFIED_REPLY_VISIBILITY_ERROR, 'CANNOT_REPLY_TO_SPECIFIED_VISIBILITY_NOTE_WITH_EXTENDED_VISIBILITY', 400, id: 'ed940410-535c-4d5e-bfa3-af798671e93c')
+  rescue NoSuchRenoteTargetError
+    render_error('No such renote target', 'NO_SUCH_RENOTE_TARGET', 404, id: 'b5c90186-4ab0-49c8-9bba-a1f76c282ba4')
+  rescue CannotReRenoteError
+    render_error('You can not Renote a pure Renote', 'CANNOT_RENOTE_TO_A_PURE_RENOTE', 400, id: 'fd4cc33e-2a37-48dd-99cc-9b806eb2031a')
+  rescue RenoteTargetBlockedError
+    render_error('You have been blocked by this user', 'YOU_HAVE_BEEN_BLOCKED', 400, id: 'b390d7e1-8a5e-46ed-b625-06271cafd3d3')
+  rescue CannotRenoteDueToVisibilityError
+    render_error('You can not Renote due to target visibility', 'CANNOT_RENOTE_DUE_TO_VISIBILITY', 400, id: 'be9529e9-fe72-4de0-ae43-0b363c4938af')
   rescue ActiveRecord::RecordNotFound
     render_error('No such note', 'NO_SUCH_NOTE', 404)
   rescue Mastodon::NotPermittedError
@@ -271,8 +300,7 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     scope = current_account.status_drafts.within_data_limit.includes(media_attachments: { drive_file: :custom_name }).order(id: :desc)
     scope = scope.where(id: ...(until_id.to_i)) if until_id.present?
     scope = scope.where('status_drafts.id > ?', since_id.to_i) if since_id.present?
-    scope = scope.where(created_at: ...(Time.zone.at(params[:untilDate].to_i / 1000.0))) if params[:untilDate].present?
-    scope = scope.where(created_at: (Time.zone.at(params[:sinceDate].to_i / 1000.0))..) if params[:sinceDate].present?
+    scope = apply_compat_date_range(scope)
     scope = scope.none if ActiveModel::Type::Boolean.new.cast(params[:scheduled])
     drafts = scope.limit(pagination_limit(default: StatusDraft::LIST_LIMIT, max: StatusDraft::LIST_LIMIT)).to_a
     statuses_by_id = draft_reference_statuses(drafts)
@@ -343,9 +371,12 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def mentions
-    scope = Status.joins(:mentions).where(mentions: { account_id: current_account.id })
+    mentioned = Status.joins(:mentions).where(mentions: { account_id: current_account.id })
+    scope = mentioned.where(mentions: { silent: false }).or(mentioned.where(visibility: %i(direct limited)))
       .not_excluded_by_account(current_account)
       .joins(:account).merge(Account.without_suspended)
+    scope = scope.where(visibility: mention_visibilities) if params[:visibility].present?
+    scope = scope.where(account_id: current_account.following.select(:id)).or(scope.where(account_id: current_account.id)) if ActiveModel::Type::Boolean.new.cast(params[:following])
     render_notes scope.to_a_paginated_by_id(pagination_limit, max_id: until_id, since_id: since_id)
   end
 
@@ -393,11 +424,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def my_favorites
-    favourites = current_account.favourites.includes(status: :account).order(id: :desc)
+    favourites = current_account.favourites.joins(:status).includes(status: [:account, :mentions]).order(id: :desc)
     favourites = favourites.where(id: ...(until_id.to_i)) if until_id.present?
     favourites = favourites.where('favourites.id > ?', since_id.to_i) if since_id.present?
     favourites = favourites.limit(pagination_limit).to_a
 
+    relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(favourites.map(&:status))
+    favourites.select! { |fav| relations.visible?(fav.status) }
     statuses = favourites.map(&:status)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
@@ -437,7 +470,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     poll = @note.preloadable_poll
     render_error('No such poll', 'NO_POLL', 404) and return if poll.nil?
 
-    VoteService.new.call(current_account, poll, [params[:choice].to_i])
+    choice = params[:choice]
+    raise InvalidParamError.new('#/properties/choice', 'must be integer') unless choice.is_a?(Integer) || (choice.is_a?(String) && choice.match?(/\A\d+\z/))
+
+    VoteService.new.call(current_account, poll, [choice.to_i])
     head 204
   end
 
@@ -525,6 +561,10 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     Nokogiri::HTML5.fragment(html.to_s.gsub(%r{</p><p>}, "\n\n").gsub('<br>', "\n").gsub('<br/>', "\n")).text
   end
 
+  def mention_visibilities
+    MisskeyCompat::NoteSerializer::VISIBILITY_MAP.select { |_, visibility| visibility == params[:visibility] }.keys
+  end
+
   def renote_id
     params[:renoteId].presence
   end
@@ -545,12 +585,38 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     @reply_status = status
   end
 
-  def quoted_status
-    return @quoted_status if defined?(@quoted_status)
+  def renote_target
+    return @renote_target if defined?(@renote_target)
 
-    @quoted_status = renote_id.present? ? Status.find(renote_id) : nil
-    authorize(@quoted_status, :show?) if @quoted_status
-    @quoted_status
+    status = Status.find_by(id: renote_id)
+    raise NoSuchRenoteTargetError if status.nil?
+    raise RenoteTargetBlockedError if renote_target_blocks_requester?(status)
+    raise NoSuchRenoteTargetError unless StatusPolicy.new(current_account, status).show?
+
+    @renote_target = status
+  end
+
+  def renote_target_blocks_requester?(status)
+    status.account_id != current_account.id &&
+      !status.direct_visibility? && !status.limited_visibility? &&
+      current_account.blocked_by?(status.account)
+  end
+
+  def reblog_target
+    status = renote_target.proper
+    raise CannotRenoteDueToVisibilityError unless StatusPolicy.new(current_account, status).reblog?
+
+    status
+  end
+
+  def quoted_status
+    return if renote_id.blank?
+
+    status = renote_target
+    raise CannotReRenoteError if status.reblog?
+    raise CannotRenoteDueToVisibilityError unless StatusPolicy.new(current_account, status).quote?
+
+    status
   end
 
   def post_options
@@ -604,9 +670,39 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def scheduled_at_option
-    return nil if params[:scheduledAt].blank?
+    millis_time_param(params[:scheduledAt], '#/properties/scheduledAt')
+  end
 
-    Time.at(params[:scheduledAt].to_i / 1000.0).utc
+  def millis_param(value, param)
+    return nil if value.blank?
+    raise InvalidParamError.new(param, 'must be integer') unless value.is_a?(Numeric) || (value.is_a?(String) && value.match?(/\A-?\d+\z/))
+
+    value.to_i
+  end
+
+  def millis_time_param(value, param)
+    millis = millis_param(value, param)
+    return nil if millis.nil?
+
+    time = Time.at(millis / 1000.0).utc
+    raise InvalidParamError.new(param, 'is out of range') unless COMPAT_TIME_RANGE.cover?(time)
+
+    time
+  rescue RangeError
+    raise InvalidParamError.new(param, 'is out of range')
+  end
+
+  def poll_param
+    poll = params[:poll]
+    return nil if poll.blank?
+    raise InvalidParamError.new('#/properties/poll', 'must be object') unless poll.is_a?(ActionController::Parameters)
+
+    choices = poll[:choices]
+    raise InvalidParamError.new('#/properties/poll/properties/choices', 'must be array of strings') unless choices.nil? || (choices.is_a?(Array) && choices.all?(String))
+
+    millis_param(poll[:expiredAfter], '#/properties/poll/properties/expiredAfter')
+    millis_time_param(poll[:expiresAt], '#/properties/poll/properties/expiresAt')
+    poll
   end
 
   def reaction_acceptance_option
@@ -619,8 +715,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def poll_options
-    poll = params[:poll]
-    return nil if poll.blank?
+    poll = poll_param
+    return nil if poll.nil?
 
     {
       options: Array(poll[:choices]),
@@ -633,10 +729,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
     options = poll_options
     return if options.nil?
 
-    options[:expires_in] = if params.dig(:poll, :expiredAfter).present?
-                             params.dig(:poll, :expiredAfter).to_i / 1000.0
-                           elsif params.dig(:poll, :expiresAt).present?
-                             (Time.at(params.dig(:poll, :expiresAt).to_i / 1000.0).utc - Time.current).ceil
+    poll = poll_param
+    expired_after = millis_param(poll[:expiredAfter], '#/properties/poll/properties/expiredAfter')
+    expires_at = millis_time_param(poll[:expiresAt], '#/properties/poll/properties/expiresAt')
+    options[:expires_in] = if expired_after
+                             expired_after / 1000.0
+                           elsif expires_at
+                             (expires_at - Time.current).ceil
                            end
     options.compact
   end
@@ -679,6 +778,11 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
       token = "@#{account.acct}"
       token unless text.match?(/#{Regexp.escape(token)}(?![\w@.-])/i)
     end.join(' ')
+  end
+
+  def reject_compound_id_params!
+    key = SCALAR_ID_PARAMS.find { |name| params[name].is_a?(Array) || params[name].is_a?(ActionController::Parameters) }
+    render_invalid_param("#/properties/#{key}", 'must be string') if key
   end
 
   def set_note
@@ -746,8 +850,8 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
 
     reaction_acceptance_option if params.key?(:reactionAcceptance)
 
-    poll = params[:poll]
-    return if poll.blank?
+    poll = poll_param
+    return if poll.nil?
 
     choices = Array(poll[:choices])
     raise ArgumentError, 'invalid poll choices' if choices.length > PollOptionsValidator::MAX_OPTIONS || choices.any? { |choice| choice.blank? || choice.to_s.each_grapheme_cluster.count > PollOptionsValidator::MAX_OPTION_CHARS }

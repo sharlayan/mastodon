@@ -27,6 +27,7 @@
 /public/misskey
 /public/fluent-emoji
 /public/twemoji
+/BUILD_INFO
 stats.html
 .env
 .env.production

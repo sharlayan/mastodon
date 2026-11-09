@@ -152,6 +152,28 @@ RSpec.describe ActivityPub::ProcessAccountService do
     end
   end
 
+  context 'with a non-string followed message' do
+    let(:payload) do
+      {
+        'id' => 'https://foo.test',
+        'type' => 'Actor',
+        'preferredUsername' => 'alice',
+        'inbox' => 'https://foo.test/inbox',
+        '_misskey_followedMessage' => true,
+        'followedMessage' => 1.5,
+      }
+    end
+
+    before { stub_webfinger! }
+
+    it 'processes the account without a followed message' do
+      account = subject.call(payload)
+
+      expect(account).to be_persisted
+      expect(account.followed_message).to be_nil
+    end
+  end
+
   context 'with Misskey avatar decorations' do
     let(:payload) do
       {
@@ -182,6 +204,17 @@ RSpec.describe ActivityPub::ProcessAccountService do
 
       expect(decoration.reload.image_remote_url).to eq('https://foo.test/deco-new.png')
       expect(decoration.image_file_name).to be_blank
+    end
+
+    it 'clears stored decorations immediately when the actor sends an empty list' do
+      decoration = AvatarDecoration.create!(host: 'foo.test', remote_id: 'deco1', name: 'deco1', approved: true, image_remote_url: 'https://foo.test/deco.png')
+      account = Fabricate(:account, uri: 'https://foo.test', domain: 'foo.test', username: 'alice', avatar_decorations: [AvatarDecoration.normalize_config(decoration.id, {})])
+
+      subject.call(payload.merge('_misskey_avatarDecorations' => []))
+
+      expect(account.reload.avatar_decorations).to eq([])
+      expect(CleanupRemoteAvatarDecorationsWorker).to have_enqueued_sidekiq_job([decoration.id])
+      expect(FetchRemoteAvatarDecorationsWorker).to_not have_enqueued_sidekiq_job(account.id)
     end
   end
 

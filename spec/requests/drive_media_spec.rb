@@ -119,6 +119,46 @@ RSpec.describe 'Drive media', :attachment_processing do
     allow(Paperclip::Attachment.default_options).to receive(:[]).with(:storage).and_return(:s3)
   end
 
+  it 'does not serve media of a suspended account' do
+    pointer
+    account.suspend!
+
+    get drive_media_path(pointer.drive_access_key, :original)
+
+    expect(response).to have_http_status(404)
+  end
+
+  it 'does not serve media of a suspended account from private S3 storage' do
+    pointer
+    account.suspend!
+    stub_object_storage
+    stub_drive_attachment(:expiring_url, 3600, :original, 'https://private.example/drive/signed-object.png')
+
+    ClimateControl.modify S3_ENABLED: 'true', S3_PERMISSION: '' do
+      get drive_media_path(pointer.drive_access_key, :original)
+    end
+
+    expect(response).to have_http_status(404)
+  end
+
+  it 'does not serve media attached to a removed status' do
+    status = Fabricate(:status, account: account)
+    pointer.update!(status: status)
+    status.discard
+
+    get drive_media_path(pointer.drive_access_key, :original)
+
+    expect(response).to have_http_status(404)
+  end
+
+  it 'keeps serving media attached to a visible status' do
+    pointer.update!(status: Fabricate(:status, account: account))
+
+    get drive_media_path(pointer.drive_access_key, :original)
+
+    expect(response).to have_http_status(200)
+  end
+
   it 'does not resolve a numeric media attachment ID as an access key' do
     get drive_media_path(pointer.id, :original)
 

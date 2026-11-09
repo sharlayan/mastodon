@@ -5,7 +5,7 @@ module LowResourceFeatures
 
   def enabled?(name, default:)
     value = ENV.fetch(name, nil)
-    value.nil? ? default : value != 'false'
+    value.blank? ? default : %w(0 f false n no off).exclude?(value.strip.downcase)
   end
   private_class_method :enabled?
 

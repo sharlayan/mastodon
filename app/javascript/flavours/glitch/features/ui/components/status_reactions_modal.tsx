@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { defineMessages, FormattedMessage, useIntl } from 'react-intl';
 
@@ -58,9 +58,13 @@ export const StatusReactionsModal: React.FC<{
   const [items, setItems] = useState<ApiStatusReactionAccountJSON[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
+  const selectionRef = useRef(0);
 
   const loadMore = useCallback(async () => {
     if (!selectedName || loading) return;
+
+    const selection = selectionRef.current;
+    const isCurrent = () => selectionRef.current === selection;
 
     setLoading(true);
     try {
@@ -69,13 +73,14 @@ export const StatusReactionsModal: React.FC<{
         selectedName,
         items.at(-1)?.id,
       );
+      if (!isCurrent()) return;
       dispatch(importFetchedAccounts(page.map((item) => item.account)));
       setItems((currentItems) => [...currentItems, ...page]);
       setHasMore(page.length === STATUS_REACTION_ACCOUNTS_PAGE_SIZE);
     } catch (error) {
-      dispatch(showAlertForError(error));
+      if (isCurrent()) dispatch(showAlertForError(error));
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [dispatch, items, loading, selectedName, statusId]);
 
@@ -91,6 +96,7 @@ export const StatusReactionsModal: React.FC<{
       setItems([]);
       setHasMore(false);
       setLoading(true);
+      selectionRef.current += 1;
       setSelectedName(name);
     },
     [selectedName],

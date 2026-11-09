@@ -11,6 +11,8 @@ class Sharlayan::PageBackupService
   MAX_ARCHIVE_ENTRIES = 10_000
   MAX_UNCOMPRESSED_SIZE = MAX_MANIFEST_SIZE + MAX_MEDIA_SIZE
   MAX_SERIES = 500
+  PAGE_ATTRIBUTES = %w(title name summary category content align_center hide_title_when_pinned font visibility access_password_digest series_position).freeze
+  IMPORTED_PAGE_ATTRIBUTES = (PAGE_ATTRIBUTES + %w(page_series_id eye_catching_media_attachment_id)).freeze
 
   class InvalidArchive < StandardError; end
 
@@ -61,7 +63,7 @@ class Sharlayan::PageBackupService
         restore_series_mains!(data.fetch('series', []), series_ids, page_ids)
       end
     end
-  rescue Zip::Error, JSON::ParserError, KeyError, ActiveRecord::RecordInvalid => e
+  rescue Zip::Error, JSON::ParserError, KeyError, ActiveRecord::RecordInvalid, CreateDriveFileService::NoFreeSpaceError => e
     raise InvalidArchive, e.message
   end
 
@@ -78,7 +80,7 @@ class Sharlayan::PageBackupService
   end
 
   def page_attributes(page)
-    page.slice('title', 'name', 'summary', 'category', 'content', 'align_center', 'hide_title_when_pinned', 'font', 'visibility', 'access_password_digest', 'series_position')
+    page.slice(*PAGE_ATTRIBUTES)
       .merge(
         'backup_id' => page.id,
         'page_series_id' => page.page_series_id,
@@ -187,10 +189,17 @@ class Sharlayan::PageBackupService
         total_size += copy_entry(entry, file, MAX_MEDIA_SIZE - total_size)
         file.rewind
         upload = ActionDispatch::Http::UploadedFile.new(tempfile: file, filename: File.basename(path), type: attributes['content_type'])
-        attachment = @account.media_attachments.create!(file: upload, description: attributes['description'])
+        attachment = create_media_attachment!(upload, attributes['description'])
         result[attributes.fetch('id').to_s] = attachment.id.to_s
       end
     end
+  end
+
+  def create_media_attachment!(upload, description)
+    return @account.media_attachments.create!(file: upload, description: description) unless Setting.pages_drive_only
+
+    drive_file = CreateDriveFileService.new.call(account: @account, user: @account.user, file: upload, description: description)
+    drive_file.build_pointer(@account).tap(&:save!)
   end
 
   def copy_entry(entry, output, limit)
@@ -224,7 +233,7 @@ class Sharlayan::PageBackupService
   end
 
   def import_page!(attributes, media_ids, series_ids)
-    attributes = attributes.slice(*Page.attribute_names).except('id', 'account_id', 'created_at', 'updated_at', 'likes_count', 'draft')
+    attributes = attributes.slice(*IMPORTED_PAGE_ATTRIBUTES)
     attributes['content'] = replace_media_ids(attributes['content'], media_ids)
     attributes['eye_catching_media_attachment_id'] = media_ids[attributes['eye_catching_media_attachment_id'].to_s]
     attributes['page_series_id'] = series_ids.fetch(attributes['page_series_id'].to_s) if attributes['page_series_id'].present?
@@ -246,10 +255,15 @@ class Sharlayan::PageBackupService
       next block unless block.is_a?(Hash)
 
       block = block.deep_dup
-      block['fileId'] = media_ids.fetch(block['fileId'].to_s) if block['type'] == 'image'
+      replace_image_file_id!(block, media_ids) if block['type'] == 'image'
       block['children'] = replace_media_ids(block['children'], media_ids) if block['children'].is_a?(Array)
       block
     end
+  end
+
+  def replace_image_file_id!(block, media_ids)
+    file_id = media_ids[block['fileId'].to_s]
+    file_id.nil? ? block.delete('fileId') : block['fileId'] = file_id
   end
 
   def available_name(name)

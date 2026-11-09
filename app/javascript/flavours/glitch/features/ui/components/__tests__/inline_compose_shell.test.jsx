@@ -7,10 +7,11 @@ import { MemoryRouter } from 'react-router';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { mountCompose, unmountCompose } from 'flavours/glitch/actions/compose';
+import { apiRequestPut } from 'flavours/glitch/api';
 
 import { InlineComposeShell } from '../inline_compose_shell';
 
-const context = vi.hoisted(() => ({ dispatch: vi.fn(), displayState: 'hidden' }));
+const context = vi.hoisted(() => ({ dispatch: vi.fn(), displayState: 'hidden', tabs: [{ type: 'list', id: '5' }] }));
 let immutableState;
 
 vi.mock('flavours/glitch/store', () => ({
@@ -27,12 +28,13 @@ vi.mock('flavours/glitch/initial_state', () => ({
   antennaEnabled: false,
   federatedTimelineEnabled: false,
   localTimelineEnabled: false,
-  inlineComposeTabs: [],
+  inlineComposeTabs: context.tabs,
 }));
 vi.mock('flavours/glitch/actions/antennas', () => ({ fetchAntennas: vi.fn() }));
 vi.mock('flavours/glitch/actions/lists_typed', () => ({ fetchLists: vi.fn() }));
 vi.mock('flavours/glitch/actions/compose', () => ({ mountCompose: vi.fn(), unmountCompose: vi.fn() }));
 vi.mock('flavours/glitch/api', () => ({ apiRequestPut: vi.fn() }));
+vi.mock('flavours/glitch/actions/alerts', () => ({ showAlertForError: vi.fn(error => ({ type: 'TEST_ALERT', error })) }));
 vi.mock('flavours/glitch/selectors/lists', () => ({ getOrderedLists: () => [] }));
 vi.mock('flavours/glitch/components/icon', () => ({ Icon: () => null }));
 vi.mock('flavours/glitch/components/loading_indicator', () => ({ LoadingIndicator: () => null }));
@@ -130,5 +132,26 @@ describe('inline composer shell', () => {
     expect(textarea.closest('.inline-compose-form--collapsed')).toBeTruthy();
     fireEvent.focus(textarea);
     expect(textarea.closest('.inline-compose-form--collapsed')).toBeNull();
+  });
+
+  it.each(['Enter', ' '])('removes a feed tab with the %j key', (key) => {
+    vi.mocked(apiRequestPut).mockResolvedValue({});
+    renderShell();
+
+    const remove = screen.getByRole('button', { name: 'Remove tab' });
+    const notPrevented = fireEvent.keyDown(remove, { key });
+
+    expect(notPrevented).toBe(false);
+    expect(apiRequestPut).toHaveBeenCalledWith('v1/inline_compose_tabs', { tabs: [] });
+  });
+
+  it('shows an alert when saving the feed tabs fails', async () => {
+    const error = new Error('Request failed');
+    vi.mocked(apiRequestPut).mockRejectedValue(error);
+    renderShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tab' }));
+
+    await vi.waitFor(() => expect(context.dispatch).toHaveBeenCalledWith({ type: 'TEST_ALERT', error }));
   });
 });

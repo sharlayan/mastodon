@@ -52,6 +52,26 @@ RSpec.describe BatchedRemoveStatusService, :inline_jobs do
       .to have_been_made.at_least_once
   end
 
+  it 'removes statuses from matching antenna feeds without querying antennas for each status' do
+    antenna = Fabricate(:antenna, account: jeff, any_keywords: false, keywords: %w(Another))
+    other_antenna = Fabricate(:antenna, account: jeff, any_keywords: false, keywords: %w(unrelated))
+    statuses = Array.new(5) { PostStatusService.new.call(alice, text: 'Another antenna status') }
+    feed_key = FeedManager.instance.key(:antenna, antenna.id)
+    other_feed_key = FeedManager.instance.key(:antenna, other_antenna.id)
+    statuses.each do |status|
+      redis.zadd(feed_key, status.id, status.id)
+      redis.zadd(other_feed_key, status.id, status.id)
+    end
+    antenna_queries = []
+    callback = ->(*, payload) { antenna_queries << payload[:sql] if payload[:sql].match?(/antenna|media_attachments|polls/) && !payload[:cached] }
+
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { subject.call(statuses) }
+
+    expect(redis.zrange(feed_key, 0, -1)).to be_empty
+    expect(redis.zrange(other_feed_key, 0, -1)).to match_array(statuses.map { |status| status.id.to_s })
+    expect(antenna_queries.size).to be <= 8
+  end
+
   def feed_ids_for(account)
     HomeFeed
       .new(account)

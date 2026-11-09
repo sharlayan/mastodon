@@ -18,7 +18,11 @@ class TransferDriveFileToMediaAttachmentsService < BaseService
 
       attachments.each do |attachment|
         transfer_attachment(drive_file.file, attachment.file)
-        transfer_attachment(drive_file.thumbnail, attachment.thumbnail) if drive_file.thumbnail.present?
+        if !attachment.audio_or_video?
+          attachment.thumbnail = nil
+        elsif drive_file.thumbnail.present?
+          transfer_attachment(drive_file.thumbnail, attachment.thumbnail)
+        end
         attachment.drive_file = nil
         attachment.save!
       end

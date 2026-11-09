@@ -63,6 +63,31 @@ RSpec.describe RedownloadAvatarDecorationWorker do
     end
   end
 
+  it 'retries a decoration after the download budget period when the budget is exhausted' do
+    stub_const("#{described_class}::ACCOUNT_LIMIT", 1)
+    first = remote_decoration('one')
+    second = remote_decoration('two')
+    key = described_class.deduplication_key(second)
+    delays = []
+    allow(described_class).to receive(:perform_in) { |delay, *| delays << delay }
+
+    worker.perform(first.id, account.id)
+    worker.perform(second.id, account.id)
+
+    expect(described_class).to have_received(:perform_in).with(anything, second.id, account.id).once
+    expect(delays.sole).to be_between(1, described_class::BUDGET_PERIOD + 60)
+    expect(RedisConnection.with { |redis| redis.ttl(key) }).to be >= delays.sole
+  ensure
+    bucket = Time.now.to_i / described_class::BUDGET_PERIOD
+    RedisConnection.with do |redis|
+      redis.del(
+        key,
+        "avatar_decoration_download:domain:remote.example:#{bucket}",
+        "avatar_decoration_download:account:#{account.id}:#{bucket}"
+      )
+    end
+  end
+
   def remote_decoration(id)
     Fabricate(
       :avatar_decoration,

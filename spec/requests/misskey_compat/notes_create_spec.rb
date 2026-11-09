@@ -112,7 +112,7 @@ RSpec.describe 'Misskey-compat notes/create endpoint' do
   end
 
   describe 'POST /api/notes/create with renoteId' do
-    let(:quoted) { Fabricate(:status, account: Fabricate(:account, username: 'quoted')) }
+    let(:quoted) { Fabricate(:status, account: Fabricate(:account, username: 'quoted'), quote_approval_policy: InteractionPolicy::POLICY_FLAGS[:public] << 16) }
     let(:renote_id) { MisskeyCompat::MiId.encode(quoted.id) }
 
     it 'keeps a content warning in a quote with no text' do

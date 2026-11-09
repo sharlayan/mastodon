@@ -136,6 +136,10 @@ class AvatarDecoration < ApplicationRecord
     host.nil?
   end
 
+  def to_log_human_identifier
+    host.present? ? "#{name}@#{host}" : name
+  end
+
   def available_to_account?(account)
     return false unless approved?
     return true if required_role_id.nil?

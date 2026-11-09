@@ -14,6 +14,7 @@ import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
 import RadarIcon from '@/material-icons/400-24px/radar.svg?react';
+import { showAlertForError } from 'flavours/glitch/actions/alerts';
 import { fetchAntennas, createAntenna, deleteAntenna } from 'flavours/glitch/actions/antennas';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { Column } from 'flavours/glitch/components/column';
@@ -92,8 +93,10 @@ const Antennas = ({ multiColumn }) => {
 
     dispatch(createAntenna({ title: title.trim() })).then(antenna => {
       setCreated(antenna);
-    }).catch(() => {});
-    setTitle('');
+      setTitle('');
+    }).catch(error => {
+      dispatch(showAlertForError(error));
+    });
   }, [dispatch, title]);
 
   const emptyMessage = (

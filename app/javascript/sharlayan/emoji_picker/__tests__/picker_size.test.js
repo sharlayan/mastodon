@@ -146,6 +146,19 @@ describe('EmojiPickerSizeObserver', () => {
 
       expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual({ width: 300, height: 150 });
     });
+
+    it('remembers a size still waiting to be saved when the picker closes', () => {
+      const store = new EmojiPickerSizeObserver(() => undefined);
+
+      store.observe({});
+      store.observer.callback([{ contentRect: { width: 360, height: 420 } }]);
+      store.dispose();
+
+      expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toEqual({ width: 360, height: 420 });
+      localStorage.clear();
+      vi.runAllTimers();
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    });
   });
 
   it('disconnects on dispose', () => {

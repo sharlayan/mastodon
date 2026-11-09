@@ -16,15 +16,22 @@
 
 설치 도우미는 검증되지 않은 외부 설치 프로그램으로 Ruby 또는 Node.js를 내려받지 않습니다.
 먼저 `.ruby-version`과 `.nvmrc`에 고정된 버전을 설치한 다음 아래 명령을 사용합니다.
+Node.js는 `package.json`의 `engines.node` 이상이어야 하며, 빌드에는 Corepack으로 활성화한 Yarn 4가 필요합니다.
+Node.js 25부터는 Corepack이 포함되지 않으므로 `npm install -g corepack`을 먼저 실행하고, Node.js 24에서는
+`corepack enable`을 실행합니다.
 
 ```sh
 sudo util/source-install/install-debian.sh packages # Alpine은 install-alpine.sh
 util/source-install/install-debian.sh check
 sudo env BUILD_FROM_SOURCE=true \
   util/source-install/install-debian.sh build
+sudo -u mastodon cp .env.production.sample .env.production # 값을 채운 뒤 진행
 sudo util/source-install/install-debian.sh database
 sudo util/source-install/install-debian.sh configure
 ```
+
+`configure`는 `.env.production`이 없으면 실패하므로, 그 전에 `.env.production`을 만들고
+데이터베이스·Redis·도메인·비밀 키 값을 채워야 합니다.
 
 1GB 호스트에서 빌드하려면 swap이 최소 2GB 필요합니다.
 
@@ -32,9 +39,9 @@ sudo util/source-install/install-debian.sh configure
 가능하면 다른 호스트에서 빌드한 산출물을 사용하는 것을 권장합니다.
 
 `configure`는 서비스를 설치하고 활성화하지만 자동으로 시작하지 않습니다.
-PostgreSQL, Redis, `.env.production`을 초기화하고
+PostgreSQL 데이터베이스와 Redis가 준비되었는지 확인하고
 `RAILS_ENV=production bundle exec rails db:prepare`를 실행한 다음
-`mastodon-*` 서비스 3개를 시작합니다.
+`mastodon-*` 서비스 3개를 시작하고 `sudo util/source-install/configure-1cpu-1gb.sh verify`로 확인합니다.
 
 Custodon 나이틀리 및 수동 이미지 빌드 워크플로는
 `mastodon-assets-<commit>.tar.gz`도 게시합니다. 소스 checkout 루트에서 압축을 풀면 1GB

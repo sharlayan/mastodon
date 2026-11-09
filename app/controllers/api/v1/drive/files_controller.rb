@@ -8,7 +8,7 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   before_action :enforce_upload_rate_limit!, only: [:create, :upload_from_url]
   before_action :set_file, only: [:show, :update, :destroy, :attach, :transfer_to_posts, :attached_notes]
   before_action :enforce_search_rate_limit!, only: [:find, :find_by_hash]
-  after_action :insert_pagination_headers, only: [:index, :find, :find_by_hash]
+  after_action :insert_pagination_headers, only: [:index, :find, :find_by_hash, :attached_notes]
 
   LIMIT = 40
   SEARCH_LIMIT = 20
@@ -173,12 +173,13 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   end
 
   def load_attached_statuses
+    @attached_page = []
     status_ids = @file.media_attachments.attached.where.not(status_id: nil).distinct.pluck(:status_id)
     return [] if status_ids.empty?
 
     scope = apply_date_range(Status.where(id: status_ids))
-    statuses = scope.paginate_by_max_id(limit_param(LIMIT), params[:max_id], params[:since_id]).to_a
-    statuses.select! { |status| StatusPolicy.new(current_account, status).show? }
+    @attached_page = scope.paginate_by_max_id(limit_param(LIMIT), params[:max_id], params[:since_id]).to_a
+    statuses = @attached_page.select { |status| StatusPolicy.new(current_account, status).show? }
     Status.preload_cacheable_associations(statuses)
     statuses
   end
@@ -240,12 +241,14 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
   end
 
   def next_path
+    return attached_notes_next_path if attached_notes_action?
     return search_path(pagination_params(max_id: pagination_max_id)) if search_action? && records_continue?
 
     api_v1_drive_files_url pagination_params(max_id: pagination_max_id) if records_continue?
   end
 
   def prev_path
+    return attached_notes_prev_path if attached_notes_action?
     return search_path(pagination_params(since_id: pagination_since_id)) if search_action? && !@files.empty?
 
     api_v1_drive_files_url pagination_params(since_id: pagination_since_id) unless @files.empty?
@@ -263,6 +266,22 @@ class Api::V1::Drive::FilesController < Api::V1::Drive::BaseController
     return search_pagination_params(core_params) if search_action?
 
     params.slice(:limit, :folder_id, :type, :orphaned, :sort, :since_date, :until_date).permit(:limit, :folder_id, :type, :orphaned, :sort, :since_date, :until_date).merge(core_params)
+  end
+
+  def attached_notes_action?
+    action_name == 'attached_notes'
+  end
+
+  def attached_notes_next_path
+    attached_notes_path_with(max_id: @attached_page.last.id) if @attached_page.size == limit_param(LIMIT)
+  end
+
+  def attached_notes_prev_path
+    attached_notes_path_with(since_id: @attached_page.first.id) if @attached_page.any?
+  end
+
+  def attached_notes_path_with(core_params)
+    attached_notes_api_v1_drive_file_url(@file, params.slice(:limit, :since_date, :until_date).permit(:limit, :since_date, :until_date).merge(core_params))
   end
 
   def search_action?

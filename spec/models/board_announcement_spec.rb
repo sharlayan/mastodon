@@ -16,4 +16,25 @@ RSpec.describe BoardAnnouncement do
       expect(visible_announcements).to_not include(old_existing_users_announcement)
     end
   end
+
+  describe 'sort_priority validation' do
+    it 'rejects a blank priority instead of failing the not-null constraint' do
+      announcement = described_class.new(title: 'Title', text: 'Body', sort_priority: '')
+
+      expect(announcement).to_not be_valid
+      expect(announcement.errors[:sort_priority]).to be_present
+    end
+
+    it 'rejects a priority outside the integer column range' do
+      announcement = described_class.new(title: 'Title', text: 'Body', sort_priority: '99999999999')
+
+      expect(announcement).to_not be_valid
+      expect(announcement.errors[:sort_priority]).to be_present
+    end
+
+    it 'accepts negative and positive priorities within range' do
+      expect(described_class.new(title: 'Title', text: 'Body', sort_priority: '-5')).to be_valid
+      expect(described_class.new(title: 'Title', text: 'Body', sort_priority: '2147483647')).to be_valid
+    end
+  end
 end

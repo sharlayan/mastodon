@@ -261,6 +261,8 @@ class Page < ApplicationRecord
   end
 
   def validate_page_series
+    return errors.add(:page_series, :invalid) if page_series_id.present? && page_series.nil?
+
     errors.add(:page_series, :invalid) if page_series && page_series.account_id != account_id
   end
 
@@ -437,7 +439,7 @@ class Page < ApplicationRecord
   end
 
   def validate_eye_catching_media_attachment
-    return if eye_catching_media_attachment.nil?
+    return if eye_catching_media_attachment_id.nil?
     return if account_id.present? && account.media_attachments.outside_chat.where(id: eye_catching_media_attachment_id).lock.exists?
 
     errors.add(:eye_catching_media_attachment, :invalid)

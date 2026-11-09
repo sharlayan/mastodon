@@ -25,6 +25,7 @@ export class EmojiPickerSizeObserver {
     this.shouldKeep = shouldKeep;
     this.observer = null;
     this.timeout = null;
+    this.pendingSize = null;
   }
 
   observe(node) {
@@ -52,11 +53,26 @@ export class EmojiPickerSizeObserver {
       clearTimeout(this.timeout);
     }
 
-    this.timeout = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ width, height }));
-      } catch {}
-    }, SAVE_DEBOUNCE_MS);
+    this.pendingSize = { width, height };
+    this.timeout = setTimeout(() => this.flush(), SAVE_DEBOUNCE_MS);
+  }
+
+  flush() {
+    if (this.timeout) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
+    }
+
+    if (!this.pendingSize) {
+      return;
+    }
+
+    const size = this.pendingSize;
+    this.pendingSize = null;
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(size));
+    } catch {}
   }
 
   dispose() {
@@ -65,10 +81,7 @@ export class EmojiPickerSizeObserver {
       this.observer = null;
     }
 
-    if (this.timeout) {
-      clearTimeout(this.timeout);
-      this.timeout = null;
-    }
+    this.flush();
   }
 
 }

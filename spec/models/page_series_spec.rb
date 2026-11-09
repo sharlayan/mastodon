@@ -63,6 +63,16 @@ RSpec.describe PageSeries do
     expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true
   end
 
+  it 'rejects a cover media id that does not exist' do
+    expect(series.update(cover_media_attachment_id: MediaAttachment.maximum(:id).to_i + 1000)).to be false
+    expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true
+  end
+
+  it 'rejects a main page id that does not exist' do
+    expect(series.update(main_page_id: Page.maximum(:id).to_i + 1000)).to be false
+    expect(series.errors.of_kind?(:main_page, :invalid)).to be true
+  end
+
   it 'rejects cover media sent in a chat message' do
     expect(series.update(cover_media_attachment: chat_media_attachment(account))).to be false
     expect(series.errors.of_kind?(:cover_media_attachment, :invalid)).to be true

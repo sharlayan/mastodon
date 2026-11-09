@@ -5,10 +5,10 @@ RUBY_VERSION=$(cat .ruby-version)
 rails_export () {
   export LD_PRELOAD=/lib/x86_64-linux-gnu/libjemalloc.so.2
 
+  export PATH="/home/mastodon/.rbenv/bin:$PATH"
   eval "$(rbenv init -)"
 
   export NODE_OPTIONS=--openssl-legacy-provider
-  export PATH="/home/mastodon/.rbenv/bin:$PATH"
   export RAILS_ENV=production
   export NODE_ENV=production
 }
@@ -147,9 +147,9 @@ pwd
 
 echo -e " * Current Config"
 echo -e " * dotenv            : \033[33m$ENV_FILE \033[0m"
-echo -e " * Web Port          : \033[33m$WEB_PORT \033[0m"
-echo -e " * Streaming Port    : \033[33m$STREAMING_PORT \033[0m"
-echo -e " * Bind              : \033[33m$BIND \033[0m"
+echo -e " * Web Port          : \033[33m${PORT:-3000} \033[0m"
+echo -e " * Streaming Port    : \033[33m4000 \033[0m"
+echo -e " * Bind              : \033[33m${BIND:-127.0.0.1} \033[0m"
 
 if [[ $# -eq 0 ]]; then
   show_help

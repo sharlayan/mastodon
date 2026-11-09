@@ -5,13 +5,18 @@ import api from '../../api';
 import {
   DIRECT_COMPOSE_SUBMIT_FAIL,
   DIRECT_COMPOSE_SUBMIT_SUCCESS,
+  DIRECT_COMPOSE_UPLOAD_FAIL,
   submitDirectMessage,
+  uploadDirectMedia,
 } from '../direct_compose';
 import { dismissNotificationsForStatuses } from '../notification_groups';
 
 vi.mock('../../api', () => ({ default: vi.fn() }));
 vi.mock('../../initial_state', () => ({ me: 'self' }));
-vi.mock('../alerts', () => ({ showAlert: vi.fn(() => ({ type: 'TEST_ALERT' })) }));
+vi.mock('../alerts', () => ({
+  showAlert: vi.fn(() => ({ type: 'TEST_ALERT' })),
+  showAlertForError: vi.fn(error => ({ type: 'TEST_ALERT_FOR_ERROR', error })),
+}));
 vi.mock('../importer', () => ({ importFetchedStatus: vi.fn(() => ({ type: 'TEST_IMPORT' })) }));
 vi.mock('../timelines', () => ({ updateTimeline: vi.fn(() => ({ type: 'TEST_TIMELINE_UPDATE' })) }));
 vi.mock('../notification_groups', () => ({
@@ -87,6 +92,17 @@ describe('direct message notification retention', () => {
     expect(dismissNotificationsForStatuses).not.toHaveBeenCalled();
   });
 
+  it('shows the localized error alert when sending fails', async () => {
+    const error = new Error('Request failed with status code 500');
+    apiPost.mockRejectedValue(error);
+
+    const { dispatch, result } = sendReply();
+    await result;
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'TEST_ALERT_FOR_ERROR', error });
+    expect(dispatch).not.toHaveBeenCalledWith({ type: 'TEST_ALERT' });
+  });
+
   it('does not dismiss messages received while the reply is being sent', async () => {
     let complete;
     apiPost.mockReturnValue(new Promise(resolve => { complete = resolve; }));
@@ -112,5 +128,45 @@ describe('direct message notification retention', () => {
 
     expect(apiPost).not.toHaveBeenCalled();
     expect(dismissNotificationsForStatuses).not.toHaveBeenCalled();
+  });
+});
+
+describe('direct message uploads', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiPost.mockReset();
+    vi.mocked(api).mockReturnValue({ post: apiPost });
+    apiPost.mockReturnValue(new Promise(() => {}));
+  });
+
+  it('does not start another upload while one is in progress', () => {
+    state = fromJS({ direct_compose: { conversation: { is_uploading: true, media: [] } } });
+    const dispatch = vi.fn();
+
+    uploadDirectMedia('conversation', [new File(['a'], 'a.png')])(dispatch, () => state);
+
+    expect(apiPost).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it('starts an upload when none is in progress', () => {
+    state = fromJS({ direct_compose: { conversation: { is_uploading: false, media: [] } } });
+    const dispatch = vi.fn();
+
+    uploadDirectMedia('conversation', [new File(['a'], 'a.png')])(dispatch, () => state);
+
+    expect(apiPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an alert when the upload fails', async () => {
+    state = fromJS({ direct_compose: { conversation: { is_uploading: false, media: [] } } });
+    const error = new Error('Request failed');
+    apiPost.mockRejectedValue(error);
+    const dispatch = vi.fn();
+
+    uploadDirectMedia('conversation', [new File(['a'], 'a.png')])(dispatch, () => state);
+
+    await vi.waitFor(() => expect(dispatch).toHaveBeenCalledWith({ type: DIRECT_COMPOSE_UPLOAD_FAIL, conversationId: 'conversation', error }));
+    expect(dispatch).toHaveBeenCalledWith({ type: 'TEST_ALERT_FOR_ERROR', error });
   });
 });

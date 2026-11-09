@@ -4,7 +4,7 @@ import api from '../api';
 import { me } from '../initial_state';
 import { uuid } from '../uuid';
 
-import { showAlert } from './alerts';
+import { showAlertForError } from './alerts';
 import { importFetchedStatus } from './importer';
 import { dismissNotificationsForStatuses } from './notification_groups';
 import { updateTimeline } from './timelines';
@@ -136,7 +136,7 @@ export const submitDirectMessage = (conversationId, { inReplyToId, recipientIds 
     }
   }).catch(error => {
     dispatch({ type: DIRECT_COMPOSE_SUBMIT_FAIL, conversationId, error });
-    dispatch(showAlert({ message: error.message }));
+    dispatch(showAlertForError(error));
   });
 };
 
@@ -144,7 +144,7 @@ export const uploadDirectMedia = (conversationId, files) => (dispatch, getState)
   const uploadLimit = getState().getIn(['server', 'server', 'item', 'configuration', 'statuses', 'max_media_attachments'], 4);
   const current     = getState().getIn(['direct_compose', conversationId, 'media'], ImmutableList()).size;
 
-  if (current >= uploadLimit) {
+  if (getState().getIn(['direct_compose', conversationId, 'is_uploading']) || current >= uploadLimit) {
     return;
   }
 
@@ -169,13 +169,17 @@ export const uploadDirectMedia = (conversationId, files) => (dispatch, getState)
           } else if (response.status === 206) {
             setTimeout(() => poll(), 1000);
           }
-        }).catch(error => dispatch({ type: DIRECT_COMPOSE_UPLOAD_FAIL, conversationId, error }));
+        }).catch(error => {
+          dispatch({ type: DIRECT_COMPOSE_UPLOAD_FAIL, conversationId, error });
+          dispatch(showAlertForError(error));
+        });
       };
 
       poll();
     }
   }).catch(error => {
     dispatch({ type: DIRECT_COMPOSE_UPLOAD_FAIL, conversationId, error });
+    dispatch(showAlertForError(error));
   });
 };
 

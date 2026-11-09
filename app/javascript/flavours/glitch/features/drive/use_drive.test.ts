@@ -5,6 +5,7 @@ import {
   apiGetDriveFiles,
   apiGetDriveFolders,
   apiGetDriveUsage,
+  apiUploadDriveFile,
 } from '@/flavours/glitch/api/drive';
 import type { ApiDriveFileJSON } from '@/flavours/glitch/api_types/drive';
 
@@ -86,5 +87,41 @@ describe('useDrive', () => {
     });
 
     expect(result.current.files.map((entry) => entry.id)).toEqual(['b1']);
+  });
+
+  it('keeps the uploaded files and refreshes usage when another upload fails', async () => {
+    vi.mocked(apiGetDriveFiles).mockResolvedValue(page(['existing']));
+    vi.mocked(apiUploadDriveFile).mockImplementation((data: FormData) => {
+      const name = data.get('name') as string;
+      return name === 'bad.png'
+        ? Promise.reject(new Error('too large'))
+        : Promise.resolve(file(`uploaded-${name}`));
+    });
+    dispatch.mockClear();
+
+    const { result } = renderHook(() => useDrive());
+    await waitFor(() => {
+      expect(result.current.files.map((entry) => entry.id)).toEqual([
+        'existing',
+      ]);
+    });
+    vi.mocked(apiGetDriveUsage).mockClear();
+
+    act(() => {
+      result.current.uploadFiles([
+        new File(['a'], 'good.png'),
+        new File(['b'], 'bad.png'),
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(result.current.uploading).toBe(false);
+    });
+    expect(result.current.files.map((entry) => entry.id)).toEqual([
+      'uploaded-good.png',
+      'existing',
+    ]);
+    expect(apiGetDriveUsage).toHaveBeenCalled();
+    expect(dispatch).toHaveBeenCalledTimes(1);
   });
 });

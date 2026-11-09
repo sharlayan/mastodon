@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
@@ -243,6 +243,7 @@ const BoardAnnouncements: React.FC<{
     (state) => state.boardAnnouncements.isLoading,
   );
   const loaded = useAppSelector((state) => state.boardAnnouncements.loaded);
+  const readRequestedIds = useRef(new Set<string>());
 
   useEffect(() => {
     void dispatch(fetchBoardAnnouncements());
@@ -250,8 +251,14 @@ const BoardAnnouncements: React.FC<{
 
   useEffect(() => {
     items
-      .filter((item) => !item.read && !item.need_confirmation_to_read)
+      .filter(
+        (item) =>
+          !item.read &&
+          !item.need_confirmation_to_read &&
+          !readRequestedIds.current.has(item.id),
+      )
       .forEach((item) => {
+        readRequestedIds.current.add(item.id);
         void dispatch(readBoardAnnouncement({ id: item.id }));
       });
   }, [dispatch, items]);

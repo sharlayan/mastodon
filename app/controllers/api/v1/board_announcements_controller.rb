@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::BoardAnnouncementsController < Api::BaseController
+  INDEX_LIMIT = 500
+
   before_action -> { doorkeeper_authorize! :read, :'read:accounts' }, only: [:index, :show, :unread_count]
   before_action -> { doorkeeper_authorize! :write, :'write:accounts' }, only: :read
   before_action :require_user!
@@ -18,8 +20,7 @@ class Api::V1::BoardAnnouncementsController < Api::BaseController
   end
 
   def unread_count
-    count = BoardAnnouncement.published
-      .for_account(current_account)
+    count = BoardAnnouncement.where(id: listed_announcements.select(:id))
       .where(silence: false)
       .where.not(id: BoardAnnouncementRead.where(account_id: current_account.id).select(:board_announcement_id))
       .count
@@ -38,8 +39,12 @@ class Api::V1::BoardAnnouncementsController < Api::BaseController
   end
 
   def set_announcements
-    @announcements = BoardAnnouncement.published.for_account(current_account).reverse_chronological.includes(:attachments).page(params[:page])
+    @announcements = listed_announcements.includes(:attachments).to_a
     preload_read_state
+  end
+
+  def listed_announcements
+    BoardAnnouncement.published.for_account(current_account).reverse_chronological.limit(INDEX_LIMIT)
   end
 
   def set_announcement

@@ -10,7 +10,10 @@ class MisskeyCompat::DriveFileSerializer
   def serialize(media, sensitive: nil)
     if media.is_a?(MediaAttachment) && media.drive_pointer?
       sensitive = media.drive_file.sensitive? if sensitive.nil?
-      return serialize_drive_file(media.drive_file, sensitive: sensitive)
+      return serialize_drive_file(media.drive_file, sensitive: sensitive).merge(
+        url: full_media_attachment_url(media),
+        thumbnailUrl: full_media_attachment_preview_url(media)
+      )
     end
 
     return serialize_drive_file(media, sensitive: sensitive) if media.is_a?(DriveFile)
