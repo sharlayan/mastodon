@@ -79,13 +79,23 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
   useEffect(() => {
     if (!accountId || forceEmptyState || tab !== 'booklets') return;
 
+    let active = true;
+
     void apiGetAccountPageSeries(accountId)
       .then((items) => {
-        setBookletResult({ accountId, items });
+        if (active) {
+          setBookletResult({ accountId, items });
+        }
       })
       .catch(() => {
-        setBookletResult({ accountId, items: [] });
+        if (active) {
+          setBookletResult({ accountId, items: [] });
+        }
       });
+
+    return () => {
+      active = false;
+    };
   }, [accountId, forceEmptyState, tab]);
 
   const showPages = useCallback(() => {
@@ -135,8 +145,9 @@ const AccountPages: React.FC<{ multiColumn: boolean }> = ({ multiColumn }) => {
         : fetchedPages
       : null;
   const mainPage = pages?.find((page) => page.is_main);
-  const booklets =
-    bookletResult && bookletResult.accountId === accountId
+  const booklets = forceEmptyState
+    ? []
+    : bookletResult && bookletResult.accountId === accountId
       ? bookletResult.items
       : null;
   const accountDisplayName = account?.get('display_name');
