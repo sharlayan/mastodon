@@ -405,11 +405,13 @@ class Api::MisskeyCompat::NotesController < Api::MisskeyCompat::BaseController
   end
 
   def my_favorites
-    favourites = current_account.favourites.includes(status: :account).order(id: :desc)
+    favourites = current_account.favourites.joins(:status).includes(status: [:account, :mentions]).order(id: :desc)
     favourites = favourites.where(id: ...(until_id.to_i)) if until_id.present?
     favourites = favourites.where('favourites.id > ?', since_id.to_i) if since_id.present?
     favourites = favourites.limit(pagination_limit).to_a
 
+    relations = MisskeyCompat::SerializationContext.new(current_account: current_account).prime_relations(favourites.map(&:status))
+    favourites.select! { |fav| relations.visible?(fav.status) }
     statuses = favourites.map(&:status)
     context = MisskeyCompat::SerializationContext.for(statuses, current_account: current_account)
 
