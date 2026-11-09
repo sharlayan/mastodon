@@ -1,10 +1,12 @@
 import { AxiosError } from 'axios';
+import { Record, fromJS } from 'immutable';
 
 import api, { getLinks } from '../../api';
 import {
   SCHEDULED_STATUSES_FETCH_SUCCESS,
   deleteScheduledStatus,
   fetchScheduledStatuses,
+  setComposeToScheduledStatus,
   updateScheduledStatus,
 } from '../scheduled_statuses';
 
@@ -80,4 +82,15 @@ test('deleteScheduledStatus shows an alert when the deletion fails', async () =>
   await deleteScheduledStatus('1')(dispatch);
   await vi.waitFor(() => expect(alertsFrom(dispatch)).toHaveLength(1));
   expect(dispatch).toHaveBeenCalledWith({ type: 'SCHEDULED_STATUS_DELETE_FAIL', id: '1' });
+});
+
+test('setComposeToScheduledStatus passes the server poll option limit', () => {
+  const state = Record({ server: undefined })({
+    server: fromJS({ server: { item: { configuration: { polls: { max_options: 10 } } } } }),
+  });
+  const dispatch = vi.fn();
+
+  setComposeToScheduledStatus(fromJS({ id: '1' }))(dispatch, () => state);
+
+  expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'COMPOSE_SET_SCHEDULED', maxOptions: 10 }));
 });

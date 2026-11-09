@@ -90,7 +90,7 @@ export function setComposeToScheduledStatus(scheduledStatus) {
     dispatch({
       type: 'COMPOSE_SET_SCHEDULED',
       scheduledStatus,
-      maxOptions: getState().server.getIn(['server', 'configuration', 'polls', 'max_options']),
+      maxOptions: getState().getIn(['server', 'server', 'item', 'configuration', 'polls', 'max_options']),
     });
     ensureComposeIsVisible(getState);
   };
