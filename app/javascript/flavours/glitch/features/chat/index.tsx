@@ -1294,6 +1294,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const stillMounted = useCallback(() => isMounted.current, []);
   const uploadAbort = useRef<AbortController | null>(null);
   const textBeforeEdit = useRef<string | null>(null);
+  const composeMode = useRef({ editingId, replyToId });
+  useLayoutEffect(() => {
+    composeMode.current = { editingId, replyToId };
+  }, [editingId, replyToId]);
+
+  const finishEditing = useCallback(() => {
+    setEditingId(null);
+    composerText.set(textBeforeEdit.current ?? '');
+    textBeforeEdit.current = null;
+  }, [composerText]);
+
   const deletedMessages = useRef(new Map<string, string>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
@@ -2343,6 +2354,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           deletedMessages.current.set(value.id, new Date().toISOString());
           if (eventConversationId) refreshConversation(eventConversationId);
           if (eventConversationId !== conversationId) return;
+          if (composeMode.current.editingId === id) finishEditing();
+          setReplyToId((current) => (current === id ? null : current));
           updateMessages((current) =>
             current.filter((item) => item.id !== value.id),
           );
@@ -2513,6 +2526,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       advanceContinuousUpTo,
       applyTombstone,
       conversationId,
+      finishEditing,
       history,
       jumpButton,
       keepReading,
@@ -2533,17 +2547,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       updateSearchResults,
     ],
   );
-
-  const composeMode = useRef({ editingId, replyToId });
-  useLayoutEffect(() => {
-    composeMode.current = { editingId, replyToId };
-  }, [editingId, replyToId]);
-
-  const finishEditing = useCallback(() => {
-    setEditingId(null);
-    composerText.set(textBeforeEdit.current ?? '');
-    textBeforeEdit.current = null;
-  }, [composerText]);
 
   const isArchived = Boolean(conversation?.archived);
   const recipientSuspended =

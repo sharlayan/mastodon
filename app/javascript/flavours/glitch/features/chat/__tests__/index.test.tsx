@@ -2555,6 +2555,41 @@ describe('Chat composer answers arriving late', () => {
     await screen.findByText('My message, fixed');
   });
 
+  it('stops editing a message hidden from another device', async () => {
+    await mountMessages();
+    fireEvent.change(composer(), { target: { value: 'hello' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByText('Editing message')).toBeTruthy();
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message_hide',
+        payload: { id: 'mine', conversation_id: 'A' },
+      });
+    });
+
+    expect(screen.queryByText('Editing message')).toBeNull();
+    expect(composer().value).toBe('hello');
+  });
+
+  it('stops replying to a message hidden from another device', async () => {
+    await mountMessages();
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Reply' })[0] as HTMLElement,
+    );
+    expect(screen.getByText(wholeText('Replying to Bob'))).toBeTruthy();
+
+    act(() => {
+      emitChatStreamEvent({
+        event: 'chat.message_hide',
+        payload: { id: 'theirs', conversation_id: 'A' },
+      });
+    });
+
+    expect(screen.queryByText(wholeText('Replying to Bob'))).toBeNull();
+    expect(screen.queryByText('Replying to message')).toBeNull();
+  });
+
   it('keeps a reply chosen while the previous message was being sent', async () => {
     await mountMessages();
     const sent = deferred<{ data: unknown }>();
