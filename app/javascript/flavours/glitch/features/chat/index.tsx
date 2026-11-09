@@ -2566,6 +2566,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       !conversationId ||
       loading ||
       uploading ||
+      recipientSuspended ||
       !(text.trim() || hasOtherContent) ||
       isTooLong(text)
     )
@@ -2619,6 +2620,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     hasOtherContent,
     loading,
     media,
+    recipientSuspended,
     replyToId,
     updateMessages,
     uploading,
