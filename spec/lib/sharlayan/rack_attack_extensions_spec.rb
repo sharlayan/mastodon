@@ -3,6 +3,81 @@
 require 'rails_helper'
 
 RSpec.describe Sharlayan::RackAttackExtensions do
+  describe 'page password attempts', type: :request do
+    let(:page) { Fabricate(:page, visibility: 'password', access_password: 'correct-password') }
+
+    around do |example|
+      original_store = Rack::Attack.cache.store
+      original_enabled = Rack::Attack.enabled
+      Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+      Rack::Attack.enabled = true
+      example.run
+    ensure
+      Rack::Attack.cache.store = original_store
+      Rack::Attack.enabled = original_enabled
+    end
+
+    before do
+      freeze_time
+      Setting.pages_enabled = true
+    end
+
+    it 'limits repeated requests to the same page' do
+      10.times do
+        post "/api/v1/pages/#{page.id}/unlock", params: { password: 'incorrect-password' }
+        expect(response).to have_http_status(403)
+      end
+
+      post "/api/v1/pages/#{page.id}/unlock", params: { password: 'incorrect-password' }
+      expect(response).to have_http_status(429)
+    end
+
+    it 'shares the limit between representations of the same page ID' do
+      10.times do |index|
+        post "/api/v1/pages/#{'0' * index}#{page.id}/unlock", params: { password: 'incorrect-password' }
+        expect(response).to have_http_status(403)
+      end
+
+      post "/api/v1/pages/0000000000#{page.id}/unlock", params: { password: 'incorrect-password' }
+      expect(response).to have_http_status(429)
+    end
+
+    it 'does not route the JSON extension to page unlock' do
+      post "/api/v1/pages/#{page.id}/unlock.json", params: { password: 'incorrect-password' }
+
+      expect(response).to have_http_status(404)
+    end
+
+    it 'shares the limit with percent-encoded page IDs' do
+      10.times do
+        post "/api/v1/pages/#{page.id}/unlock", params: { password: 'incorrect-password' }
+        expect(response).to have_http_status(403)
+      end
+
+      encoded_id = page.id.to_s.chars.map { |digit| format('%%%02X', digit.ord) }.join
+      post "/api/v1/pages/#{encoded_id}/unlock", params: { password: 'incorrect-password' }
+      expect(response).to have_http_status(429)
+    end
+
+    it 'shares the limit with other IDs that Active Record casts to the same integer' do
+      10.times do
+        post "/api/v1/pages/#{page.id}/unlock", params: { password: 'incorrect-password' }
+        expect(response).to have_http_status(403)
+      end
+
+      ["+#{page.id}", "#{page.id}suffix", "%20#{page.id}", "#{page.id}%2Fextra", "%0A#{page.id}"].each do |id|
+        post "/api/v1/pages/#{id}/unlock", params: { password: 'incorrect-password' }
+        expect(response).to have_http_status(429), id
+      end
+    end
+
+    it 'handles invalid encoded path bytes without an error' do
+      post '/api/v1/pages/%FF/unlock', params: { password: 'incorrect-password' }
+
+      expect(response).to have_http_status(400)
+    end
+  end
+
   describe Sharlayan::RackAttackExtensions::RequestMethods do
     subject(:request) { request_class.new(user.id) }
 
