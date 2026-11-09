@@ -42,6 +42,13 @@ const messages = defineMessages({
 
 const RedesignComposeForm = lazy(() => import('flavours/glitch/features/compose/redesign').then(({ RedesignComposeForm }) => ({ default: RedesignComposeForm })));
 
+let persistedTabList = inlineComposeTabs;
+
+const persistTabList = (tabs) => apiRequestPut('v1/inline_compose_tabs', { tabs }).then((result) => {
+  persistedTabList = tabs;
+  return result;
+});
+
 export const InlineComposeShell = ({ redesign = false }) => {
   const intl = useIntl();
   const dispatch = useAppDispatch();
@@ -66,7 +73,7 @@ export const InlineComposeShell = ({ redesign = false }) => {
   const antennas = useAppSelector((state) => state.get('antennas'));
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [savedTabList, setSavedTabList] = useState(inlineComposeTabs);
+  const [savedTabList, setSavedTabList] = useState(() => persistedTabList);
   const [composeExpanded, setComposeExpanded] = useState(false);
   const menuRef = useRef(null);
   const wasSubmitting = useRef(isSubmitting);
@@ -168,14 +175,14 @@ export const InlineComposeShell = ({ redesign = false }) => {
     const next = savedTabList.filter((tab) => !(tab.type === type && String(tab.id) === String(id)));
     next.push({ type, id: String(id) });
     setSavedTabList(next);
-    void apiRequestPut('v1/inline_compose_tabs', { tabs: next }).catch((error) => dispatch(showAlertForError(error)));
+    void persistTabList(next).catch((error) => dispatch(showAlertForError(error)));
     setMenuOpen(false);
   }, [dispatch, savedTabList]);
 
   const removeTab = useCallback((tab) => {
     const next = savedTabList.filter((item) => !(item.type === tab.type && String(item.id) === String(tab.id)));
     setSavedTabList(next);
-    void apiRequestPut('v1/inline_compose_tabs', { tabs: next }).catch((error) => dispatch(showAlertForError(error)));
+    void persistTabList(next).catch((error) => dispatch(showAlertForError(error)));
   }, [dispatch, savedTabList]);
 
   const availableLists = useMemo(

@@ -9,10 +9,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { mountCompose, unmountCompose } from 'flavours/glitch/actions/compose';
 import { apiRequestPut } from 'flavours/glitch/api';
 
-import { InlineComposeShell } from '../inline_compose_shell';
 
 const context = vi.hoisted(() => ({ dispatch: vi.fn(), displayState: 'hidden', tabs: [{ type: 'list', id: '5' }] }));
 let immutableState;
+let InlineComposeShell;
 
 vi.mock('flavours/glitch/store', () => ({
   useAppDispatch: () => context.dispatch,
@@ -64,8 +64,10 @@ const renderShell = (redesign = false) => render(
 );
 
 describe('inline composer shell', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    vi.resetModules();
+    ({ InlineComposeShell } = await import('../inline_compose_shell'));
     context.displayState = 'hidden';
     immutableState = fromJS({
       local_settings: { inline_compose_timelines: true, inline_compose_expand_on_click: false },
@@ -148,6 +150,19 @@ describe('inline composer shell', () => {
       expect(apiRequestPut).toHaveBeenCalledWith('v1/inline_compose_tabs', { tabs: [] });
       unmount();
     }
+  });
+
+  it('keeps saved feed tabs when the shell remounts', async () => {
+    vi.mocked(apiRequestPut).mockResolvedValue({});
+    const first = renderShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tab' }));
+    await vi.waitFor(() => expect(apiRequestPut).toHaveBeenCalledWith('v1/inline_compose_tabs', { tabs: [] }));
+    first.unmount();
+
+    renderShell();
+
+    expect(screen.queryByRole('button', { name: 'Remove tab' })).toBeNull();
   });
 
   it('shows an alert when saving the feed tabs fails', async () => {
