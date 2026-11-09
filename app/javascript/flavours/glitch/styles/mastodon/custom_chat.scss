@@ -536,13 +536,6 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-
-    button {
-      color: var(--color-text-secondary);
-      background: transparent;
-      border: 0;
-      cursor: pointer;
-    }
   }
 
   &__selected-accounts {
@@ -590,14 +583,9 @@
       border-radius: 8px;
     }
 
-    button {
+    > div > .button {
       width: 100%;
-      padding: 3px;
-      color: var(--color-text-secondary);
-      font-size: 11px;
-      background: transparent;
-      border: 0;
-      cursor: pointer;
+      margin-top: 4px;
     }
   }
 
@@ -644,15 +632,8 @@
     font-size: 13px;
     text-align: center;
 
-    button {
+    .link-button {
       margin-inline-start: 8px;
-      padding: 0;
-      color: var(--color-text-brand);
-      font-weight: 500;
-      text-decoration: underline;
-      background: transparent;
-      border: 0;
-      cursor: pointer;
     }
   }
 
@@ -718,15 +699,9 @@
     color: var(--color-text-tertiary);
   }
 
-  &__empty {
-    padding: 32px 16px;
-    color: var(--color-text-tertiary);
-    text-align: center;
-  }
-
-  &__ended-back {
-    display: inline-block;
-    margin-top: 16px;
+  .empty-column-indicator {
+    flex-direction: column;
+    gap: 16px;
   }
 }
 

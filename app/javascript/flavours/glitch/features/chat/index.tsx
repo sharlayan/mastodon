@@ -542,7 +542,7 @@ const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
     );
   if (status === 'empty')
     return (
-      <div className='chat-native__empty'>
+      <div className='empty-column-indicator'>
         <FormattedMessage
           id='chat.account_search_no_results'
           defaultMessage='No accounts found.'
@@ -551,7 +551,7 @@ const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
     );
   if (status === 'failed')
     return (
-      <div className='chat-native__empty'>
+      <div className='empty-column-indicator'>
         <FormattedMessage
           id='chat.account_search_failed'
           defaultMessage='Could not search for accounts. Try again.'
@@ -4005,7 +4005,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       <div className='scrollable chat-native' onPaste={pastePlainText}>
         {conversationId && conversationMissing ? (
           roomEnding && (
-            <div className='chat-native__empty'>
+            <div className='empty-column-indicator'>
               <p>
                 {roomEnding === 'deleted' ? (
                   <FormattedMessage
@@ -4019,11 +4019,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   />
                 )}
               </p>
-              <Link
-                className='button chat-native__ended-back'
-                to='/chat'
-                onClick={handleBackToChats}
-              >
+              <Link className='button' to='/chat' onClick={handleBackToChats}>
                 <FormattedMessage
                   id='chat.room_ended_back'
                   defaultMessage='Back to chats'
@@ -4399,7 +4395,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       />
                     </span>
                     {isGroupOwner && (
-                      <button type='button' onClick={handleReopen}>
+                      <button
+                        type='button'
+                        className='link-button'
+                        onClick={handleReopen}
+                      >
                         {intl.formatMessage(messages.unarchive)}
                       </button>
                     )}
@@ -4457,12 +4457,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         </span>
                       </div>
                     )}
-                    <button type='button' onClick={handleCancelComposeMode}>
-                      <FormattedMessage
-                        id='chat.cancel'
-                        defaultMessage='Cancel'
-                      />
-                    </button>
+                    <IconButton
+                      icon='times'
+                      iconComponent={CloseIcon}
+                      title={intl.formatMessage(messages.cancel)}
+                      onClick={handleCancelComposeMode}
+                    />
                   </div>
                 )}
                 {composerMedia.length > 0 && (
@@ -4485,8 +4485,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             alt={attachment.description ?? ''}
                           />
                         )}
-                        <button
-                          type='button'
+                        <Button
+                          compact
+                          secondary
                           data-media-id={attachment.id}
                           onClick={handleRemoveMedia}
                         >
@@ -4494,7 +4495,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             id='chat.remove_attachment'
                             defaultMessage='Remove attachment'
                           />
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -4727,7 +4728,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               </section>
             )}
             {activeTab === 'invitations' && invitations.length === 0 && (
-              <div className='chat-native__empty'>
+              <div className='empty-column-indicator'>
                 <FormattedMessage
                   id='chat.no_invitations'
                   defaultMessage='You have no chat invitations.'
@@ -4756,7 +4757,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   </form>
                 </div>
                 {searchedQuery && searchResults.length === 0 && (
-                  <div className='chat-native__empty'>
+                  <div className='empty-column-indicator'>
                     <FormattedMessage
                       id='chat.search_no_results'
                       defaultMessage='No messages found.'
@@ -4852,7 +4853,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   />
                 )}
                 {conversationsLoaded && visibleConversations.length === 0 && (
-                  <div className='chat-native__empty'>
+                  <div className='empty-column-indicator'>
                     {activeTab === 'home' ? (
                       <FormattedMessage
                         id='chat.no_history'
