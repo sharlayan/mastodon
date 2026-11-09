@@ -18,6 +18,8 @@ vendor/bundle
 *~
 postgres
 postgres14
+postgres18
+local_settings_sync
 redis
 elasticsearch
 opensearch
