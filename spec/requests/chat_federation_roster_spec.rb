@@ -557,6 +557,18 @@ RSpec.describe 'Chat federation roster ordering' do
     end
   end
 
+  describe 'a Reject for a room it holds no invitation of' do
+    let(:stranger) { Fabricate(:account, domain: 'stranger.test', uri: 'https://stranger.test/users/s', inbox_url: 'https://stranger.test/users/s/inbox', can_chat: true) }
+
+    it 'keeps the room left by everyone here until its cleanup' do
+      service.leave(local, room)
+
+      perform({ 'id' => 'https://stranger.test/reject/1', 'type' => 'Reject', 'object' => invite(stranger) }, stranger)
+
+      expect(ChatConversation.exists?(room.id)).to be(true)
+    end
+  end
+
   describe 'a local member and the owner list' do
     let(:second) { Fabricate(:user).account }
     let(:invitation) { room.invitations.find_by!(invitee_account: second, state: :accepted) }

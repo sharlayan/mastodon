@@ -513,10 +513,10 @@ class Sharlayan::ChatService
     return if conversation.nil? || Sharlayan::ChatFederation::Roster.member_answer_stale?(conversation, actor, published)
 
     invitation = conversation.invitations.pending.find_by(invitee_account: actor)
-    return if invitation && answers_earlier_invitation?(invitation, invited_at)
+    return if invitation.nil? || answers_earlier_invitation?(invitation, invited_at)
 
-    invitation&.update!(state: :rejected)
-    announce_invitation_settled(invitation) if invitation
+    invitation.update!(state: :rejected)
+    announce_invitation_settled(invitation)
     conversation.destroy_if_unused!
   end
 
