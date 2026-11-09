@@ -70,6 +70,16 @@ ja:
       unblocked_avatar_decorations_msg: "%{username}のアバターデコレーションのブロックを解除しました"
     action_logs:
       actions:
+        create_avatar_decoration_html: "%{name} さんがアバターデコレーション %{target} を作成しました"
+        create_avatar_decoration_domain_block_html: "%{name} さんが %{target} のアバターデコレーションをブロックしました"
+        create_board_announcement_html: "%{name} さんが掲示板型お知らせ %{target} を作成しました"
+        destroy_avatar_decoration_domain_block_html: "%{name} さんが %{target} のアバターデコレーションのブロックを解除しました"
+        destroy_avatar_decoration_html: "%{name} さんがアバターデコレーション %{target} を削除しました"
+        destroy_board_announcement_html: "%{name} さんが掲示板型お知らせ %{target} を削除しました"
+        destroy_drive_file_html: "%{name} さんがドライブファイル %{target} を削除しました"
+        update_account_html: "%{name} さんがアカウント %{target} を更新しました"
+        update_avatar_decoration_html: "%{name} さんがアバターデコレーション %{target} を更新しました"
+        update_board_announcement_html: "%{name} さんが掲示板型お知らせ %{target} を更新しました"
         destroy_chat_conversation_html: "%{name} さんがチャットの会話 %{target} を削除しました"
         update_collection_html: "%{name} さんが %{target} によるコレクションを更新しました"
     avatar_decoration_domain_blocks:

@@ -16,6 +16,10 @@ class AvatarDecorationDomainBlock < ApplicationRecord
 
   scope :by_domain, ->(domain) { where(domain: domain) }
 
+  def to_log_human_identifier
+    domain
+  end
+
   def self.blocked?(domain)
     return false if domain.blank?
 

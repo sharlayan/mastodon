@@ -173,6 +173,10 @@ class DriveFile < ApplicationRecord
     )
   end
 
+  def to_log_human_identifier
+    file_file_name.presence || id.to_s
+  end
+
   def quota_storage_file_size
     queued_files = [file, thumbnail].flat_map { |attachment| attachment.queued_for_write.values }
     queued_files.present? ? queued_files.sum(&:size) : storage_file_size

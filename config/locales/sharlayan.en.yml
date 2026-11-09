@@ -71,6 +71,16 @@ en:
       unblocked_avatar_decorations_msg: Avatar decorations unblocked for %{username}
     action_logs:
       actions:
+        create_avatar_decoration_html: "%{name} created avatar decoration %{target}"
+        create_avatar_decoration_domain_block_html: "%{name} blocked avatar decorations from %{target}"
+        create_board_announcement_html: "%{name} created board announcement %{target}"
+        destroy_avatar_decoration_domain_block_html: "%{name} unblocked avatar decorations from %{target}"
+        destroy_avatar_decoration_html: "%{name} deleted avatar decoration %{target}"
+        destroy_board_announcement_html: "%{name} deleted board announcement %{target}"
+        destroy_drive_file_html: "%{name} deleted drive file %{target}"
+        update_account_html: "%{name} updated account %{target}"
+        update_avatar_decoration_html: "%{name} updated avatar decoration %{target}"
+        update_board_announcement_html: "%{name} updated board announcement %{target}"
         destroy_chat_conversation_html: "%{name} deleted chat conversation %{target}"
         update_collection_html: "%{name} updated collection by %{target}"
     avatar_decoration_domain_blocks:

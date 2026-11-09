@@ -70,6 +70,16 @@ ko:
       unblocked_avatar_decorations_msg: "%{username}의 아바타 장식을 표시합니다"
     action_logs:
       actions:
+        create_avatar_decoration_html: "%{name} 님이 아바타 장식 %{target}을(를) 만들었습니다"
+        create_avatar_decoration_domain_block_html: "%{name} 님이 %{target}의 아바타 장식을 차단했습니다"
+        create_board_announcement_html: "%{name} 님이 게시판형 공지사항 %{target}을(를) 만들었습니다"
+        destroy_avatar_decoration_domain_block_html: "%{name} 님이 %{target}의 아바타 장식 차단을 해제했습니다"
+        destroy_avatar_decoration_html: "%{name} 님이 아바타 장식 %{target}을(를) 삭제했습니다"
+        destroy_board_announcement_html: "%{name} 님이 게시판형 공지사항 %{target}을(를) 삭제했습니다"
+        destroy_drive_file_html: "%{name} 님이 드라이브 파일 %{target}을(를) 삭제했습니다"
+        update_account_html: "%{name} 님이 계정 %{target}을(를) 수정했습니다"
+        update_avatar_decoration_html: "%{name} 님이 아바타 장식 %{target}을(를) 수정했습니다"
+        update_board_announcement_html: "%{name} 님이 게시판형 공지사항 %{target}을(를) 수정했습니다"
         destroy_chat_conversation_html: "%{name} 님이 채팅 대화 %{target}을(를) 삭제했습니다"
         update_collection_html: "%{name} 님이 %{target}의 컬렉션을 수정했습니다"
     avatar_decoration_domain_blocks:
