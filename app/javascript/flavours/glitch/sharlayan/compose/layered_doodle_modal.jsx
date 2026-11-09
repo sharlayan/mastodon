@@ -332,7 +332,7 @@ export class LayeredDoodleModal extends ImmutablePureComponent {
     sketcher.addEventListener('strokeend', () => {
       if (this.state.activeLayerId === layer.id && this.state.texture !== 'chalk' && this.mode !== 'fill') this.saveLayerSnapshot(layer);
     });
-    sketcher.addEventListener('fillend', () => this.saveLayerSnapshot(layer));
+    sketcher.addEventListener('fillend', () => queueMicrotask(() => this.saveLayerSnapshot(layer)));
     this.stack.appendChild(canvas);
     if (color) {
       const context = canvas.getContext('2d');
