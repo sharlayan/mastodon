@@ -9,11 +9,11 @@ module MisskeyCompat
     before_action :require_misskey_compat_enabled!
 
     def show
-      url = params[:url].to_s
-      return render json: {}, status: 400 if url.blank?
+      url = params[:url]
+      return render json: {}, status: 400 unless url.is_a?(String) && url.present?
 
       card = find_card(url)
-      return head 204 if card.nil?
+      return render_preview_failed if card.nil?
 
       expires_in 1.hour, public: true
       render json: summaly(card)
@@ -23,6 +23,10 @@ module MisskeyCompat
 
     def require_misskey_compat_enabled!
       not_found unless Setting.misskey_compat_enabled
+    end
+
+    def render_preview_failed
+      render json: { error: { message: 'Failed to get preview', code: 'URL_PREVIEW_FAILED', id: '09d01cb5-53b9-4856-82e5-38a50c290a3b', kind: 'client' } }, status: 422
     end
 
     def find_card(url)
