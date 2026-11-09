@@ -1231,7 +1231,7 @@ class Sharlayan::ChatService
       previous_id = ChatMessage.where(chat_conversation_id: membership.chat_conversation_id, id: ...membership.last_read_message_id)
         .where.not(account_id: account.id)
         .maximum(:id)
-      membership.update_columns(last_read_message_id: previous_id)
+      ChatMembership.where(id: membership.id, last_read_message_id: membership.last_read_message_id).update_all(last_read_message_id: previous_id)
     end
   end
 
