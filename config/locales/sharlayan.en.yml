@@ -165,6 +165,7 @@ en:
         copy_hint: Click to copy Markdown
         error: Upload failed
         remove: Remove
+        remove_error: Could not remove the media
         uploading: Uploading…
       need_confirmation_to_read_hint: Require users to press a confirmation button
         before it is marked as read.

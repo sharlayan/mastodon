@@ -159,6 +159,7 @@ ja:
         copy_hint: クリックでMarkdownをコピー
         error: アップロードに失敗しました
         remove: 削除
+        remove_error: メディアを削除できませんでした
         uploading: アップロード中…
       need_confirmation_to_read_hint: 既読にする前に、ユーザーに確認ボタンを押させます。
       new:

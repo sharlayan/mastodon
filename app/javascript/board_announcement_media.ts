@@ -10,6 +10,7 @@ interface MediaLabels {
   add: string;
   copy: string;
   remove: string;
+  removeError: string;
   copied: string;
   uploading: string;
   error: string;
@@ -43,6 +44,7 @@ function setupBoardAnnouncementMedia(container: HTMLElement) {
     add: container.dataset.labelAdd ?? 'Add media',
     copy: container.dataset.labelCopy ?? 'Click to copy markdown',
     remove: container.dataset.labelRemove ?? 'Remove',
+    removeError: container.dataset.labelRemoveError ?? 'Could not remove media',
     copied: container.dataset.labelCopied ?? 'Copied to clipboard',
     uploading: container.dataset.labelUploading ?? 'Uploading…',
     error: container.dataset.labelError ?? 'Upload failed',
@@ -94,16 +96,29 @@ function setupBoardAnnouncementMedia(container: HTMLElement) {
   const removeMedia = (
     media: BoardAnnouncementMediaJSON,
     item: HTMLElement,
+    button: HTMLButtonElement,
   ) => {
     const destroyUrl = destroyUrlTemplate.replace(/\/0$/, `/${media.id}`);
+
+    button.disabled = true;
 
     void fetch(destroyUrl, {
       method: 'DELETE',
       headers: { 'X-CSRF-Token': getCSRFToken() },
       credentials: 'same-origin',
-    }).finally(() => {
-      item.remove();
-    });
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(labels.removeError);
+        }
+
+        item.remove();
+        return response;
+      })
+      .catch(() => {
+        button.disabled = false;
+        showStatus(labels.removeError, true);
+      });
   };
 
   const appendMedia = (media: BoardAnnouncementMediaJSON) => {
@@ -146,7 +161,7 @@ function setupBoardAnnouncementMedia(container: HTMLElement) {
     remove.title = labels.remove;
     remove.textContent = '×';
     remove.addEventListener('click', () => {
-      removeMedia(media, item);
+      removeMedia(media, item, remove);
     });
 
     item.appendChild(trigger);

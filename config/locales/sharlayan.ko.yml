@@ -159,6 +159,7 @@ ko:
         copy_hint: 클릭하면 마크다운이 복사됩니다
         error: 업로드에 실패했습니다
         remove: 제거
+        remove_error: 미디어를 제거하지 못했습니다
         uploading: 업로드 중…
       need_confirmation_to_read_hint: 읽음으로 처리되기 전에 사용자가 확인 버튼을 누르도록 요구합니다.
       new:
