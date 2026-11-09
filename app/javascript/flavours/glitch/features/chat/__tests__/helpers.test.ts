@@ -1,6 +1,6 @@
 import { isRemoteAccount, reactionFromEmoji } from '../index';
 
-import '../testing/match_media';
+await vi.hoisted(() => import('../testing/match_media'));
 
 describe('chat federation helpers', () => {
   it('marks accounts with a domain as remote', () => {

@@ -28,7 +28,7 @@ import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { Chat } from '../index';
 import { CHAT_STREAM_RECONNECTED, emitChatStreamEvent } from '../stream';
 
-import '../testing/match_media';
+await vi.hoisted(() => import('../testing/match_media'));
 
 const api = vi.hoisted(() => ({
   get: vi.fn(),

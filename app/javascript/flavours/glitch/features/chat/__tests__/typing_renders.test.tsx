@@ -21,7 +21,7 @@ import type * as InitialState from 'flavours/glitch/initial_state';
 import { Chat } from '../index';
 import { emitChatStreamEvent } from '../stream';
 
-import '../testing/match_media';
+await vi.hoisted(() => import('../testing/match_media'));
 
 const api = vi.hoisted(() => ({
   get: vi.fn(),
