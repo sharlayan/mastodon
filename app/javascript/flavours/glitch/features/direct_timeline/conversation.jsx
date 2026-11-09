@@ -185,9 +185,9 @@ const ConversationThread = ({ multiColumn, columnId, params }) => {
 
   const handleLoadMore = useCallback(() => {
     if (oldestId && hasMore && !isLoading) {
-      dispatch(expandConversationStatuses(conversationId, { maxId: oldestId }));
+      dispatch(expandConversationStatuses(conversationId, { maxId: oldestId, preserveGroup }));
     }
-  }, [dispatch, conversationId, oldestId, hasMore, isLoading]);
+  }, [dispatch, conversationId, oldestId, hasMore, isLoading, preserveGroup]);
 
   const handlePin = useCallback(() => {
     if (columnId) {

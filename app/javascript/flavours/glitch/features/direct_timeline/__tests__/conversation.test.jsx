@@ -7,7 +7,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { fromJS } from 'immutable';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, fireEvent, render } from '@testing-library/react';
+
+import { expandConversationStatuses } from 'flavours/glitch/actions/conversations';
 
 import { dismissNotificationsForStatuses } from 'flavours/glitch/actions/notification_groups';
 
@@ -85,5 +87,33 @@ describe('opening a DM conversation', () => {
     rerender(conversationView());
 
     expect(dismissNotificationsForStatuses).not.toHaveBeenCalled();
+  });
+});
+
+describe('loading older DM messages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useDispatch).mockReturnValue(vi.fn(() => vi.fn()));
+    vi.mocked(useSelector).mockImplementation(selector => selector(state));
+    state = fromJS({
+      settings: { direct: { preserve_group_on_new_mentions: true } },
+      conversations: { items: [] },
+      accounts: {},
+      statuses: { newer: { account: 'sender', visibility: 'direct' }, older: { account: 'sender', visibility: 'direct' } },
+      timelines: { 'conversation:conversation': { items: ['newer', 'older'], hasMore: true, isLoading: false } },
+    });
+    state.notificationGroups = { groups: [] };
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('keeps the preserved group when fetching older pages', () => {
+    const { getByText } = render(conversationView());
+
+    fireEvent.click(getByText('Load older messages'));
+
+    expect(expandConversationStatuses).toHaveBeenLastCalledWith('conversation', { maxId: 'older', preserveGroup: true });
   });
 });
