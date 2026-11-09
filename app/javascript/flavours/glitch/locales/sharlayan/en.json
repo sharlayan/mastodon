@@ -440,6 +440,7 @@
   "navigation_bar.public_timeline": "Federated",
   "navigation_bar.reaction_mutes": "Emoji reaction mutes",
   "navigation_bar.reactions": "Reactions",
+  "navigation_bar.roleplay_public_timeline": "Public timeline",
   "navigation_bar.rp_hidden": "Deleted posts",
   "navigation_bar.scheduled": "Scheduled posts",
   "navigation_panel.collapse_extensions": "Collapse extensions menu",
