@@ -32,11 +32,16 @@ class Scheduler::InstanceMetadataRefreshScheduler
       InstanceMetadataUpdateWorker.perform_async(domain)
     end
 
-    active_domains = Account.remote.where.not(domain: nil).joins(:account_stat).where(account_stats: { last_status_at: 30.days.ago.. }).distinct.limit(30).pluck(:domain)
+    active_domains = Account.remote
+      .where.not(domain: nil)
+      .where.not(domain: InstanceMetadata.select(:domain))
+      .joins(:account_stat)
+      .where(account_stats: { last_status_at: 30.days.ago.. })
+      .distinct
+      .limit(30)
+      .pluck(:domain)
 
     active_domains.each do |domain|
-      next if InstanceMetadata.exists?(domain: domain)
-
       InstanceMetadataUpdateWorker.perform_async(domain)
     end
   end
