@@ -470,6 +470,26 @@ RSpec.describe 'Drive files API' do
     end
   end
 
+  describe 'GET /api/v1/drive/files/:id/attached_notes' do
+    it 'returns pagination links for the attached statuses' do
+      drive_file = insert_drive_file
+      pointers = Array.new(3) { attach_to_status(drive_file) }
+
+      get "/api/v1/drive/files/#{drive_file.id}/attached_notes", headers: headers, params: { limit: 2 }
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq 2
+      links = LinkHeader.parse(response.headers['Link'])
+      expect(links.find_link(%w(rel next)).href).to include("/api/v1/drive/files/#{drive_file.id}/attached_notes", 'limit=2', "max_id=#{pointers[1].status_id}")
+      expect(links.find_link(%w(rel prev)).href).to include("since_id=#{pointers[2].status_id}")
+
+      get "/api/v1/drive/files/#{drive_file.id}/attached_notes", headers: headers, params: { limit: 2, max_id: pointers[1].status_id }
+
+      expect(response.parsed_body.pluck(:id)).to eq [pointers[0].status_id.to_s]
+      expect(LinkHeader.parse(response.headers['Link']).find_link(%w(rel next))).to be_nil
+    end
+  end
+
   def sorted_drive_file_fixtures
     [30, 10, 40, 20, 20].map do |size|
       file = insert_drive_file
