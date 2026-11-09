@@ -159,6 +159,7 @@ export const Popover: React.FC<PopoverProps> = ({
     floatingStyles,
     middlewareData,
     elements,
+    isPositioned,
   } = useFloating({
     elements: {
       reference,
@@ -239,7 +240,9 @@ export const Popover: React.FC<PopoverProps> = ({
   }
 
   const props: PopoverChildProps = {
-    style: floatingStyles,
+    style: isPositioned
+      ? floatingStyles
+      : { ...floatingStyles, visibility: 'hidden' },
     'data-popover-placement': computedPlacement,
     'data-popover-reference-hidden': middlewareData.hide?.referenceHidden,
     'data-popover-escaped': middlewareData.hide?.escaped,
