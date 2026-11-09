@@ -11,6 +11,8 @@ class Sharlayan::PageBackupService
   MAX_ARCHIVE_ENTRIES = 10_000
   MAX_UNCOMPRESSED_SIZE = MAX_MANIFEST_SIZE + MAX_MEDIA_SIZE
   MAX_SERIES = 500
+  PAGE_ATTRIBUTES = %w(title name summary category content align_center hide_title_when_pinned font visibility access_password_digest series_position).freeze
+  IMPORTED_PAGE_ATTRIBUTES = (PAGE_ATTRIBUTES + %w(page_series_id eye_catching_media_attachment_id)).freeze
 
   class InvalidArchive < StandardError; end
 
@@ -78,7 +80,7 @@ class Sharlayan::PageBackupService
   end
 
   def page_attributes(page)
-    page.slice('title', 'name', 'summary', 'category', 'content', 'align_center', 'hide_title_when_pinned', 'font', 'visibility', 'access_password_digest', 'series_position')
+    page.slice(*PAGE_ATTRIBUTES)
       .merge(
         'backup_id' => page.id,
         'page_series_id' => page.page_series_id,
@@ -224,7 +226,7 @@ class Sharlayan::PageBackupService
   end
 
   def import_page!(attributes, media_ids, series_ids)
-    attributes = attributes.slice(*Page.attribute_names).except('id', 'account_id', 'created_at', 'updated_at', 'likes_count', 'draft')
+    attributes = attributes.slice(*IMPORTED_PAGE_ATTRIBUTES)
     attributes['content'] = replace_media_ids(attributes['content'], media_ids)
     attributes['eye_catching_media_attachment_id'] = media_ids[attributes['eye_catching_media_attachment_id'].to_s]
     attributes['page_series_id'] = series_ids.fetch(attributes['page_series_id'].to_s) if attributes['page_series_id'].present?

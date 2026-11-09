@@ -145,6 +145,23 @@ RSpec.describe Sharlayan::PageBackupService do
     expect(account.pages.sole.content).to eq([{ 'id' => 'empty', 'type' => 'image' }, { 'id' => 'missing', 'type' => 'image' }])
   end
 
+  it 'ignores counters and main page flags that the exporter does not write' do
+    pages = Array.new(2) do |index|
+      { backup_id: index, title: "Page #{index}", name: "page-#{index}", content: [], visibility: 'public' }
+        .merge(is_main: true, anonymous_views_count: 1000, authenticated_views_count: 2000, likes_count: 3000)
+    end
+    archive = zip_archive do |zip|
+      zip.get_output_stream(described_class::MANIFEST) do |io|
+        io.write({ format: described_class::FORMAT, version: described_class::VERSION, pages: pages, media: [] }.to_json)
+      end
+    end
+
+    archive_upload(archive) { |upload| service.import!(upload) }
+
+    expect(account.pages.where(is_main: true)).to be_empty
+    expect(account.pages.pluck(:anonymous_views_count, :authenticated_views_count, :likes_count)).to all(eq([0, 0, 0]))
+  end
+
   it 'rejects a non-page archive' do
     archive_upload('not a zip') do |upload|
       expect { service.import!(upload) }.to raise_error(described_class::InvalidArchive)
