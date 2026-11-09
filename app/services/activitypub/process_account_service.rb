@@ -476,7 +476,7 @@ class ActivityPub::ProcessAccountService < BaseService
 
     raw = @json['_misskey_avatarDecorations']
 
-    if raw.is_a?(Array) && raw.any?
+    if raw.is_a?(Array)
       process_avatar_decorations_from_ap!(raw)
     elsif @account.domain.present?
       meta = InstanceMetadata.find_by(domain: @account.domain)
