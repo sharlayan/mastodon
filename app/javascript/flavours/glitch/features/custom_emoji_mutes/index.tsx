@@ -2,6 +2,8 @@ import { useEffect, useCallback, useState } from 'react';
 
 import { defineMessages, useIntl, FormattedMessage } from 'react-intl';
 
+import { isFulfilled } from '@reduxjs/toolkit';
+
 import { Helmet } from '@unhead/react/helmet';
 
 import MoodIcon from '@/material-icons/400-24px/mood.svg?react';
@@ -153,11 +155,16 @@ const CustomEmojiMutes: React.FC<{ multiColumn: boolean }> = ({
           reject_reactions: rejectReactions,
           hide_in_picker: hideInPicker,
         }),
-      );
-      setPrefix('');
-      setDomain('');
-      setRejectReactions(false);
-      setHideInPicker(false);
+      ).then((result) => {
+        if (isFulfilled(result)) {
+          setPrefix('');
+          setDomain('');
+          setRejectReactions(false);
+          setHideInPicker(false);
+        }
+
+        return result;
+      });
     },
     [dispatch, prefix, domain, rejectReactions, hideInPicker],
   );
