@@ -526,6 +526,12 @@ export const withNewMessage = (
 };
 
 type AccountSearchStatus = 'idle' | 'searching' | 'empty' | 'failed';
+type AccountSearchField = 'direct' | 'group' | 'invite';
+const idleAccountSearches: Record<AccountSearchField, AccountSearchStatus> = {
+  direct: 'idle',
+  group: 'idle',
+  invite: 'idle',
+};
 
 const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
   status,
@@ -1248,7 +1254,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [directAccount, setDirectAccount] = useState<ChatAccount | null>(null);
   const [accountResults, setAccountResults] = useState<ChatAccount[]>([]);
   const [accountSearchStatus, setAccountSearchStatus] =
-    useState<AccountSearchStatus>('idle');
+    useState(idleAccountSearches);
   const [jumpButton] = useState(createJumpButtonState);
   const [groupTitle, setGroupTitle] = useState('');
   const [groupAccountQuery, setGroupAccountQuery] = useState('');
@@ -1310,8 +1316,14 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const messagesListRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
-  const searchRequestRef = useRef(0);
-  const searchTimeoutRef = useRef<number | null>(null);
+  const searchRequestRef = useRef<Record<AccountSearchField, number>>({
+    direct: 0,
+    group: 0,
+    invite: 0,
+  });
+  const searchTimeoutRef = useRef<Partial<Record<AccountSearchField, number>>>(
+    {},
+  );
   const messageSearchTimeoutRef = useRef<number | undefined>(undefined);
   const latestMessageSearch = useRef(0);
 
@@ -1555,29 +1567,37 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   useEffect(
     () => () => {
-      if (searchTimeoutRef.current !== null)
-        window.clearTimeout(searchTimeoutRef.current);
+      Object.values(searchTimeoutRef.current).forEach((timer) => {
+        window.clearTimeout(timer);
+      });
     },
     [],
   );
 
   const searchAccounts = useCallback(
-    (query: string, setter: (accounts: ChatAccount[]) => void) => {
+    (
+      field: AccountSearchField,
+      query: string,
+      setter: (accounts: ChatAccount[]) => void,
+    ) => {
       const normalized = query.trim();
-      const requestId = searchRequestRef.current + 1;
-      searchRequestRef.current = requestId;
-      setAccountSearchStatus(normalized.length < 2 ? 'idle' : 'searching');
+      const requestId = searchRequestRef.current[field] + 1;
+      searchRequestRef.current[field] = requestId;
+      const setStatus = (status: AccountSearchStatus) => {
+        setAccountSearchStatus((current) =>
+          current[field] === status ? current : { ...current, [field]: status },
+        );
+      };
+      setStatus(normalized.length < 2 ? 'idle' : 'searching');
 
-      if (searchTimeoutRef.current !== null) {
-        window.clearTimeout(searchTimeoutRef.current);
-      }
+      window.clearTimeout(searchTimeoutRef.current[field]);
 
       if (normalized.length < 2) {
         setter([]);
         return;
       }
 
-      searchTimeoutRef.current = window.setTimeout(() => {
+      searchTimeoutRef.current[field] = window.setTimeout(() => {
         void api()
           .get<{ accounts: ChatAccount[] }>('/api/v2/search', {
             params: {
@@ -1588,17 +1608,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             },
           })
           .then((response) => {
-            if (requestId !== searchRequestRef.current) return;
+            if (requestId !== searchRequestRef.current[field]) return;
             const accounts = response.data.accounts.filter(
               (account) => account.id !== me,
             );
             setter(accounts);
-            setAccountSearchStatus(accounts.length === 0 ? 'empty' : 'idle');
+            setStatus(accounts.length === 0 ? 'empty' : 'idle');
           })
           .catch(() => {
-            if (requestId !== searchRequestRef.current) return;
+            if (requestId !== searchRequestRef.current[field]) return;
             setter([]);
-            setAccountSearchStatus('failed');
+            setStatus('failed');
           });
       }, SEARCH_DEBOUNCE_MS);
     },
@@ -2887,7 +2907,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const value = event.target.value;
       setDirectAccount(null);
       setDirectAccountQuery(value);
-      searchAccounts(value, setAccountResults);
+      searchAccounts('direct', value, setAccountResults);
     },
     [searchAccounts],
   );
@@ -2899,7 +2919,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!account) return;
       setDirectAccount(account);
       setDirectAccountQuery('');
-      searchAccounts('', setAccountResults);
+      searchAccounts('direct', '', setAccountResults);
     },
     [accountResults, searchAccounts],
   );
@@ -2943,7 +2963,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleGroupAccountQueryChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setGroupAccountQuery(event.target.value);
-      searchAccounts(event.target.value, setGroupAccountResults);
+      searchAccounts('group', event.target.value, setGroupAccountResults);
     },
     [searchAccounts],
   );
@@ -2959,7 +2979,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           : [...current, account],
       );
       setGroupAccountQuery('');
-      searchAccounts('', setGroupAccountResults);
+      searchAccounts('group', '', setGroupAccountResults);
     },
     [groupAccountResults, searchAccounts],
   );
@@ -2974,7 +2994,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     (event: ChangeEvent<HTMLInputElement>) => {
       setInviteAccount(null);
       setInviteAccountQuery(event.target.value);
-      searchAccounts(event.target.value, setInviteAccountResults);
+      searchAccounts('invite', event.target.value, setInviteAccountResults);
     },
     [searchAccounts],
   );
@@ -2986,7 +3006,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!account) return;
       setInviteAccount(account);
       setInviteAccountQuery('');
-      searchAccounts('', setInviteAccountResults);
+      searchAccounts('invite', '', setInviteAccountResults);
     },
     [inviteAccountResults, searchAccounts],
   );
@@ -4085,7 +4105,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     )}
                   </form>
                   {inviteAccountQuery.trim().length >= 2 && (
-                    <AccountSearchNotice status={accountSearchStatus} />
+                    <AccountSearchNotice status={accountSearchStatus.invite} />
                   )}
                   {inviteAccountResults.length > 0 && (
                     <div className='chat-native__account-results'>
@@ -4626,7 +4646,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     )}
                   </form>
                   {directAccountQuery.trim().length >= 2 && (
-                    <AccountSearchNotice status={accountSearchStatus} />
+                    <AccountSearchNotice status={accountSearchStatus.direct} />
                   )}
                   {accountResults.length > 0 && (
                     <div className='chat-native__account-results'>
@@ -4687,7 +4707,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     )}
                   </form>
                   {groupAccountQuery.trim().length >= 2 && (
-                    <AccountSearchNotice status={accountSearchStatus} />
+                    <AccountSearchNotice status={accountSearchStatus.group} />
                   )}
                   {groupAccountResults.length > 0 && (
                     <div className='chat-native__account-results'>

@@ -4651,6 +4651,36 @@ describe('Searching for an account', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it('keeps what each kind of new chat found apart', async () => {
+    api.get.mockImplementation(
+      (url: string, options?: { params?: { q?: string } }) =>
+        url === '/api/v2/search'
+          ? Promise.resolve({
+              data: { accounts: options?.params?.q === 'bob' ? [remote] : [] },
+            })
+          : getResponse(url),
+    );
+    mountChat('/chat/new');
+    fireEvent.change(
+      await screen.findByPlaceholderText('Search for an account'),
+      { target: { value: 'bob' } },
+    );
+    await screen.findByText('@bob@remote.test');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create a group' }));
+    fireEvent.change(screen.getByPlaceholderText('Search for an account'), {
+      target: { value: 'nobody' },
+    });
+    await screen.findByText('No accounts found.');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Start a direct chat' }),
+    );
+
+    expect(screen.getByText('@bob@remote.test')).toBeTruthy();
+    expect(screen.queryByText('No accounts found.')).toBeNull();
+  });
+
   it('says nothing for a query too short to search', async () => {
     deferredSearch();
     mountChat('/chat/new');
