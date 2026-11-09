@@ -1064,7 +1064,7 @@ class Sharlayan::ChatService
   end
 
   def refresh_remote_account(account)
-    return unless account.remote? && account.possibly_stale?
+    return unless account.remote? && account.possibly_stale? && Sharlayan::ChatFederation.enabled?
 
     ActivityPub::FetchRemoteAccountService.new.call(account.uri)
     account.reload

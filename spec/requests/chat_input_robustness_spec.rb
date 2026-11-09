@@ -90,4 +90,18 @@ RSpec.describe 'Chat input that is not a single id' do
       expect(response).to have_http_status(400)
     end
   end
+
+  describe 'starting a chat while federation is off' do
+    let(:remote) { Fabricate(:account, username: 'bob', domain: 'remote.test', uri: 'https://remote.test/users/bob', inbox_url: 'https://remote.test/inbox', last_webfingered_at: 2.days.ago, can_chat: true, chat_scope: 'everyone') }
+
+    it 'does not contact the remote server before refusing' do
+      Setting.chat_federation_enabled = false
+      fetcher = instance_double(ActivityPub::FetchRemoteAccountService, call: nil)
+      allow(ActivityPub::FetchRemoteAccountService).to receive(:new).and_return(fetcher)
+
+      expect { service.create_direct_message(account, remote, text: 'hi') }
+        .to raise_error(Sharlayan::ChatService::Error, /federation is disabled/)
+      expect(fetcher).to_not have_received(:call)
+    end
+  end
 end
