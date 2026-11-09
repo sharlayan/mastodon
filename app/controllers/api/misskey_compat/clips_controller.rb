@@ -122,8 +122,8 @@ class Api::MisskeyCompat::ClipsController < Api::MisskeyCompat::BaseController
 
   def visible_statuses(clip)
     statuses = clip.statuses.includes(:account).reorder(id: :desc)
-    statuses = statuses.where(id: ...params[:untilId]) if params[:untilId].present?
-    statuses = statuses.where('statuses.id > ?', params[:sinceId]) if params[:sinceId].present?
+    statuses = statuses.where(id: ...params[:untilId].to_i) if params[:untilId].present?
+    statuses = statuses.where('statuses.id > ?', params[:sinceId].to_i) if params[:sinceId].present?
     statuses = statuses.limit(Clip::STATUSES_LIMIT).to_a
     statuses = statuses.select { |status| StatusPolicy.new(current_account, status).show? }
 

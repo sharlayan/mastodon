@@ -73,8 +73,8 @@ class Api::MisskeyCompat::DriveController < Api::MisskeyCompat::BaseController
     message_ids = ChatMessageMediaAttachment.where(media_attachment_id: media_ids).select(:chat_message_id)
     conversations = ChatConversation.for_account(current_account).select(:id)
     messages = ChatMessage.visible_to(current_account).visible.where(id: message_ids, chat_conversation_id: conversations)
-    messages = messages.where(ChatMessage.arel_table[:id].lt(params[:untilId])) if params[:untilId].present?
-    messages = messages.where(ChatMessage.arel_table[:id].gt(params[:sinceId])) if params[:sinceId].present?
+    messages = messages.where(ChatMessage.arel_table[:id].lt(params[:untilId].to_i)) if params[:untilId].present?
+    messages = messages.where(ChatMessage.arel_table[:id].gt(params[:sinceId].to_i)) if params[:sinceId].present?
     messages = apply_compat_pagination_dates(messages).reorder(id: forward_pagination? ? :asc : :desc).limit(pagination_limit(default: 10, max: LIMIT))
     messages = messages.includes(:account, chat_conversation: [:owner_account, :invitations, :memberships, :accounts], reactions: :account, media_attachments: [:chat_message_media_attachments, { drive_file: :custom_name }])
 
