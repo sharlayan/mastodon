@@ -23,7 +23,7 @@ class ActivityPub::ImageSerializer < ActivityPub::Serializer
   end
 
   def media_type?
-    object.content_type.present?
+    media_type.present?
   end
 
   def focal_point?
