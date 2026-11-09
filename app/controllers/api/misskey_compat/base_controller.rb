@@ -13,6 +13,8 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   before_action :decode_mi_ids!
 
   INVALID_PARAM_ID = '3d81ceae-475f-4600-b2a8-2bc116157532'
+  ACCESS_DENIED_ID = '56f35758-7dd5-468b-8439-5d6fb8ec9b8e'
+  NOT_FOUND_CODES = { 'Status' => ['No such note', 'NO_SUCH_NOTE'], 'Account' => ['No such user', 'NO_SUCH_USER'] }.freeze
   OFFSET_LIMIT = 1_000
   MAX_COMPAT_ID = (2**63) - 1
   COMPAT_TIME_RANGE = (Time.utc(1)..Time.utc(9999, 12, 31, 23, 59, 59))
@@ -40,6 +42,19 @@ class Api::MisskeyCompat::BaseController < ApplicationController
 
   rescue_from ActiveRecord::RecordInvalid do |e|
     render_error(e.to_s, 'INVALID_PARAM', 400)
+  end
+
+  rescue_from ActionDispatch::Http::Parameters::ParseError do
+    render_invalid_param('#/', 'must be valid JSON')
+  end
+
+  rescue_from ActiveRecord::RecordNotFound do |e|
+    message, code = NOT_FOUND_CODES.fetch(e.model.to_s, ['No such object', 'NO_SUCH_OBJECT'])
+    render_error(message, code, 404)
+  end
+
+  rescue_from Mastodon::NotPermittedError do
+    render_error('Access denied', 'ACCESS_DENIED', 403, id: ACCESS_DENIED_ID)
   end
 
   private
@@ -125,7 +140,7 @@ class Api::MisskeyCompat::BaseController < ApplicationController
   def require_native_user_token!
     return if native_user_token?
 
-    render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: '56f35758-7dd5-468b-8439-5d6fb8ec9b8e')
+    render_error(I18n.t('errors.403'), 'ACCESS_DENIED', 403, id: ACCESS_DENIED_ID)
   end
 
   def current_misskey_grant
