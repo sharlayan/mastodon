@@ -14,6 +14,7 @@ import HomeIcon from '@/material-icons/400-24px/home-fill.svg?react';
 import ListAltIcon from '@/material-icons/400-24px/list_alt.svg?react';
 import PublicIcon from '@/material-icons/400-24px/public.svg?react';
 import RadarIcon from '@/material-icons/400-24px/radar.svg?react';
+import { showAlertForError } from 'flavours/glitch/actions/alerts';
 import { fetchAntennas } from 'flavours/glitch/actions/antennas';
 import { mountCompose, unmountCompose } from 'flavours/glitch/actions/compose';
 import { apiRequestPut } from 'flavours/glitch/api';
@@ -167,15 +168,15 @@ export const InlineComposeShell = ({ redesign = false }) => {
     const next = savedTabList.filter((tab) => !(tab.type === type && String(tab.id) === String(id)));
     next.push({ type, id: String(id) });
     setSavedTabList(next);
-    void apiRequestPut('v1/inline_compose_tabs', { tabs: next }).catch(() => undefined);
+    void apiRequestPut('v1/inline_compose_tabs', { tabs: next }).catch((error) => dispatch(showAlertForError(error)));
     setMenuOpen(false);
-  }, [savedTabList]);
+  }, [dispatch, savedTabList]);
 
   const removeTab = useCallback((tab) => {
     const next = savedTabList.filter((item) => !(item.type === tab.type && String(item.id) === String(tab.id)));
     setSavedTabList(next);
-    void apiRequestPut('v1/inline_compose_tabs', { tabs: next }).catch(() => undefined);
-  }, [savedTabList]);
+    void apiRequestPut('v1/inline_compose_tabs', { tabs: next }).catch((error) => dispatch(showAlertForError(error)));
+  }, [dispatch, savedTabList]);
 
   const availableLists = useMemo(
     () => lists.filter((list) => !savedTabList.some((tab) => tab.type === 'list' && String(tab.id) === String(list.id))),

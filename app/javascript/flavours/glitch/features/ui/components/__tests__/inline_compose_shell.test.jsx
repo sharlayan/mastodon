@@ -34,6 +34,7 @@ vi.mock('flavours/glitch/actions/antennas', () => ({ fetchAntennas: vi.fn() }));
 vi.mock('flavours/glitch/actions/lists_typed', () => ({ fetchLists: vi.fn() }));
 vi.mock('flavours/glitch/actions/compose', () => ({ mountCompose: vi.fn(), unmountCompose: vi.fn() }));
 vi.mock('flavours/glitch/api', () => ({ apiRequestPut: vi.fn() }));
+vi.mock('flavours/glitch/actions/alerts', () => ({ showAlertForError: vi.fn(error => ({ type: 'TEST_ALERT', error })) }));
 vi.mock('flavours/glitch/selectors/lists', () => ({ getOrderedLists: () => [] }));
 vi.mock('flavours/glitch/components/icon', () => ({ Icon: () => null }));
 vi.mock('flavours/glitch/components/loading_indicator', () => ({ LoadingIndicator: () => null }));
@@ -142,5 +143,15 @@ describe('inline composer shell', () => {
 
     expect(notPrevented).toBe(false);
     expect(apiRequestPut).toHaveBeenCalledWith('v1/inline_compose_tabs', { tabs: [] });
+  });
+
+  it('shows an alert when saving the feed tabs fails', async () => {
+    const error = new Error('Request failed');
+    vi.mocked(apiRequestPut).mockRejectedValue(error);
+    renderShell();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tab' }));
+
+    await vi.waitFor(() => expect(context.dispatch).toHaveBeenCalledWith({ type: 'TEST_ALERT', error }));
   });
 });
