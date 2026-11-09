@@ -104,6 +104,9 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
     type = notification_type(notification, status)
     return nil if type.nil? || notification.from_account.nil?
 
+    note = note_status(notification, status)
+    return nil if note && !context.visible?(note)
+
     data = {
       id: MisskeyCompat::MiId.encode(notification.id),
       createdAt: notification.created_at.iso8601,
@@ -112,7 +115,6 @@ class Api::MisskeyCompat::NotificationsController < Api::MisskeyCompat::BaseCont
       user: context.user(notification.from_account),
     }
 
-    note = note_status(notification, status)
     data[:note] = MisskeyCompat::NoteSerializer.serialize(note, context: context) if note
     data[:reaction] = reaction_for(notification)
     data.compact

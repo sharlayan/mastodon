@@ -13,6 +13,21 @@ RSpec.describe 'Misskey-compat notification endpoints' do
   after  { Setting.misskey_compat_enabled = false }
 
   describe 'POST /api/i/notifications' do
+    it 'omits notes after the recipient loses access to them' do
+      account.follow!(actor)
+      status = Fabricate(:status, account: actor, visibility: :private)
+      notification = Fabricate(:notification, account: account, type: :status, activity: status)
+
+      post '/api/i/notifications', params: { i: read_token, markAsRead: false }, as: :json
+      expect(response.parsed_body).to contain_exactly(include(id: MisskeyCompat::MiId.encode(notification.id), note: include(text: status.text)))
+
+      account.unfollow!(actor)
+
+      post '/api/i/notifications', params: { i: read_token, markAsRead: false }, as: :json
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body).to eq([])
+    end
+
     it 'requires authentication and read scope' do
       post '/api/i/notifications', as: :json
       expect(response).to have_http_status(401)
