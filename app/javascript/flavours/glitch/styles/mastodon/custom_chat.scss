@@ -457,19 +457,6 @@
     max-width: min(calc(100% - 114px), 620px);
     color: var(--color-text-primary);
 
-    img {
-      display: block;
-      max-width: 100%;
-      max-height: 280px;
-      margin: 8px 0;
-      border-radius: 10px;
-    }
-
-    .account__avatar img {
-      margin: 0;
-      max-height: none;
-    }
-
     > a,
     > .account__avatar {
       flex: 0 0 auto;
