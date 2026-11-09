@@ -162,6 +162,27 @@ RSpec.describe Sharlayan::PageBackupService do
     expect(account.pages.pluck(:anonymous_views_count, :authenticated_views_count, :likes_count)).to all(eq([0, 0, 0]))
   end
 
+  it 'restores page media as Drive pointers when pages are limited to Drive files' do
+    Setting.pages_drive_only = true
+    drive_file = CreateDriveFileService.new.call(account: account, user: account.user, file: fixture_file_upload('attachment.jpg', 'image/jpeg'))
+    pointer = drive_file.build_pointer(account).tap(&:save!)
+    page = Fabricate(:page, account: account, content: [{ 'id' => 'image', 'type' => 'image', 'fileId' => pointer.id.to_s }], eye_catching_media_attachment: pointer)
+    Fabricate(:page_series, account: account, cover_media_attachment: pointer).then { |series| page.update!(page_series: series) }
+
+    archive_upload(service.export) do |upload|
+      account.pages.destroy_all
+      account.page_series.destroy_all
+      pointer.destroy!
+      drive_file.destroy!
+      service.import!(upload)
+    end
+
+    restored = account.pages.sole
+    expect(restored.eye_catching_media_attachment).to be_drive_pointer
+    expect(restored.content.dig(0, 'fileId')).to eq(restored.eye_catching_media_attachment_id.to_s)
+    expect(restored.page_series.cover_media_attachment).to be_drive_pointer
+  end
+
   it 'rejects a non-page archive' do
     archive_upload('not a zip') do |upload|
       expect { service.import!(upload) }.to raise_error(described_class::InvalidArchive)

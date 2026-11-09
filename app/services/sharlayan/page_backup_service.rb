@@ -63,7 +63,7 @@ class Sharlayan::PageBackupService
         restore_series_mains!(data.fetch('series', []), series_ids, page_ids)
       end
     end
-  rescue Zip::Error, JSON::ParserError, KeyError, ActiveRecord::RecordInvalid => e
+  rescue Zip::Error, JSON::ParserError, KeyError, ActiveRecord::RecordInvalid, CreateDriveFileService::NoFreeSpaceError => e
     raise InvalidArchive, e.message
   end
 
@@ -189,10 +189,17 @@ class Sharlayan::PageBackupService
         total_size += copy_entry(entry, file, MAX_MEDIA_SIZE - total_size)
         file.rewind
         upload = ActionDispatch::Http::UploadedFile.new(tempfile: file, filename: File.basename(path), type: attributes['content_type'])
-        attachment = @account.media_attachments.create!(file: upload, description: attributes['description'])
+        attachment = create_media_attachment!(upload, attributes['description'])
         result[attributes.fetch('id').to_s] = attachment.id.to_s
       end
     end
+  end
+
+  def create_media_attachment!(upload, description)
+    return @account.media_attachments.create!(file: upload, description: description) unless Setting.pages_drive_only
+
+    drive_file = CreateDriveFileService.new.call(account: @account, user: @account.user, file: upload, description: description)
+    drive_file.build_pointer(@account).tap(&:save!)
   end
 
   def copy_entry(entry, output, limit)
