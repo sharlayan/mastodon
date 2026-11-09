@@ -3,6 +3,12 @@
 @use 'variables' as *;
 
 html {
+  --radius-xs: var(--radius-2);
+  --radius-sm: var(--radius-3);
+  --radius-md: var(--radius-4);
+  --radius-lg: var(--radius-5);
+  --radius-xl: var(--radius-6);
+
   @include meta.load-css('sharlayan/accounts');
   @include meta.load-css('sharlayan/avatars');
   @include meta.load-css('sharlayan/clips');
