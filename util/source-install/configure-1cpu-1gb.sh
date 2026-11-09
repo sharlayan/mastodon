@@ -254,8 +254,10 @@ verify() {
   require_root
   check
   if command -v systemctl >/dev/null 2>&1; then
-    systemctl is-active --quiet mastodon-web mastodon-sidekiq mastodon-streaming ||
-      fail 'one or more Mastodon systemd services are inactive'
+    for service in web sidekiq streaming; do
+      systemctl is-active --quiet mastodon-$service ||
+        fail "mastodon-$service is inactive"
+    done
   elif command -v rc-service >/dev/null 2>&1; then
     for service in web sidekiq streaming; do
       rc-service mastodon-$service status >/dev/null ||
