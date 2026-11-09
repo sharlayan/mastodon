@@ -58,7 +58,11 @@ import {
   AnimateEmojiProvider,
   CustomEmojiProvider,
 } from 'flavours/glitch/components/emoji/context';
-import { SelectField } from 'flavours/glitch/components/form_fields';
+import {
+  SelectField,
+  TextArea,
+  TextInput,
+} from 'flavours/glitch/components/form_fields';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
@@ -4036,7 +4040,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     className='chat-native__invite'
                     onSubmit={handleInviteSubmit}
                   >
-                    <input
+                    <TextInput
                       value={inviteAccountQuery}
                       onChange={handleInviteAccountQueryChange}
                       placeholder={intl.formatMessage(messages.accountSearch)}
@@ -4128,7 +4132,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 className='chat-native__group-edit'
                 onSubmit={handleGroupEditSubmit}
               >
-                <input
+                <TextInput
                   name='search'
                   autoComplete='off'
                   value={
@@ -4141,7 +4145,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   maxLength={256}
                   disabled={conversation.archived}
                 />
-                <textarea
+                <TextArea
                   name='search'
                   value={
                     groupEdit?.conversationId === conversation.id
@@ -4575,7 +4579,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     onSubmit={handleDirectSubmit}
                   >
                     <div className='chat-native__form-row'>
-                      <input
+                      <TextInput
                         value={directAccountQuery}
                         onChange={handleDirectAccountQueryChange}
                         placeholder={intl.formatMessage(messages.accountSearch)}
@@ -4622,7 +4626,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     onSubmit={handleGroupSubmit}
                   >
                     <div className='chat-native__form-row'>
-                      <input
+                      <TextInput
                         name='search'
                         autoComplete='off'
                         value={groupTitle}
@@ -4631,7 +4635,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       />
                     </div>
                     <div className='chat-native__form-row'>
-                      <input
+                      <TextInput
                         name='search'
                         autoComplete='off'
                         value={groupAccountQuery}
@@ -4738,8 +4742,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     role='search'
                     onSubmit={handleSearchSubmit}
                   >
-                    <Icon id='search' icon={SearchIcon} />
-                    <input
+                    <TextInput
+                      icon={SearchIcon}
                       ref={searchInputRef}
                       type='search'
                       name='search'
