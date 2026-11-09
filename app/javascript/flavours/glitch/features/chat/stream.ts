@@ -1,3 +1,5 @@
+import { browserHistory } from 'flavours/glitch/components/router';
+
 export interface ChatStreamEvent {
   event: string;
   payload: unknown;
@@ -73,8 +75,7 @@ export const showChatDesktopNotification = (
   });
   notification.addEventListener('click', () => {
     window.focus();
-    const prefix = window.location.pathname.startsWith('/deck/') ? '/deck' : '';
-    window.location.assign(`${prefix}/chat/${message.conversation_id}`);
+    browserHistory.push(`/chat/${message.conversation_id}`);
     notification.close();
   });
 };
