@@ -133,4 +133,40 @@ RSpec.describe 'Admin Custom Emojis' do
       expect(results.map(&:shortcode)).to include('blobcat')
     end
   end
+
+  describe 'custom emoji API cache purging' do
+    let(:cache_key) { 'api/v1/custom_emojis/index' }
+    let!(:valid_emoji) { Fabricate(:custom_emoji, domain: nil, shortcode: 'valid_one') }
+
+    before do
+      allow(Rails.cache).to receive(:delete_matched)
+      sign_in Fabricate(:admin_user)
+      get '/api/v1/custom_emojis'
+    end
+
+    it 'caches the public emoji list under the expected key' do
+      expect(Rails.cache.exist?(cache_key)).to be true
+    end
+
+    it 'purges the cached list when resetting the cache' do
+      post reset_cache_admin_custom_emojis_path
+
+      expect(Rails.cache.exist?(cache_key)).to be false
+    end
+
+    it 'purges the cached list when some bulk updates succeed and others fail' do
+      broken_emoji = Fabricate(:custom_emoji, domain: nil, shortcode: 'broken_one')
+      broken_emoji.update_column(:shortcode, 'bro ken')
+
+      post bulk_update_admin_custom_emojis_path, params: {
+        emojis: {
+          valid_emoji.id.to_s => { license: 'CC0', aliases_raw: '', category_id: '' },
+          broken_emoji.id.to_s => { license: 'CC0', aliases_raw: '', category_id: '' },
+        },
+      }
+
+      expect(valid_emoji.reload.license).to eq 'CC0'
+      expect(Rails.cache.exist?(cache_key)).to be false
+    end
+  end
 end

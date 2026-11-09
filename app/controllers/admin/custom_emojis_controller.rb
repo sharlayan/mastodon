@@ -96,10 +96,11 @@ module Admin
         end
       end
 
+      purge_emoji_cache if updated.positive?
+
       if failed.positive?
         flash[:alert] = I18n.t('admin.custom_emojis.bulk_update_partial', updated: updated, failed: failed)
       else
-        purge_emoji_cache
         flash[:notice] = I18n.t('admin.custom_emojis.bulk_updated_msg', count: updated)
       end
 
@@ -109,8 +110,7 @@ module Admin
     def reset_cache
       authorize :custom_emoji, :index?
 
-      Rails.cache.delete('api/v1/custom_emojis')
-      Rails.cache.delete_matched('emoji:*')
+      purge_emoji_cache
 
       redirect_to admin_custom_emojis_path, notice: I18n.t('admin.custom_emojis.reset_cache_done_msg')
     end
@@ -146,7 +146,7 @@ module Admin
     end
 
     def purge_emoji_cache
-      Rails.cache.delete('api/v1/custom_emojis')
+      Rails.cache.delete('api/v1/custom_emojis/index')
       Rails.cache.delete_matched('emoji:*')
     end
 
