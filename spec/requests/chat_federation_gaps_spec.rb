@@ -86,17 +86,12 @@ RSpec.describe 'Chat federation gaps' do
 
     before { service.create_conversation(owner, type: :direct, account_ids: [remote.id]) }
 
-    it 'downloads a federated attachment as soon as it arrives' do
-      perform(note_json(attachment: [attachment]))
+    it 'queues one download for all the attachments as soon as they arrive and records the declared media type until then' do
+      perform(note_json(attachment: [attachment, attachment.merge('url' => 'https://remote.test/media_proxy/2/original?token=abc')]))
 
       message = ChatMessage.find_by(uri: 'https://remote.test/chat/messages/1')
       expect(ChatMediaDownloadWorker.jobs.pluck('args')).to contain_exactly([message.id])
-    end
-
-    it 'queues one download for all the attachments of a message' do
-      perform(note_json(attachment: [attachment, attachment.merge('url' => 'https://remote.test/media_proxy/2/original?token=abc')]))
-
-      expect(ChatMediaDownloadWorker.jobs.size).to eq(1)
+      expect(message.media_attachments.map(&:type)).to eq(%w(video video))
     end
 
     it 'queues the download after publishing the message, so the first redraw cannot arrive before it' do
@@ -114,12 +109,6 @@ RSpec.describe 'Chat federation gaps' do
       perform(note_json)
 
       expect(ChatMediaDownloadWorker.jobs).to be_empty
-    end
-
-    it 'records the declared media type until the file is downloaded' do
-      perform(note_json(attachment: [attachment]))
-
-      expect(ChatMessage.find_by(uri: 'https://remote.test/chat/messages/1').media_attachments.first.type).to eq('video')
     end
 
     it 'does not download media from a domain whose media is rejected' do
@@ -140,16 +129,11 @@ RSpec.describe 'Chat federation gaps' do
       service.create_message(owner, room, text: 'look', media_ids: [media.id])
     end
 
-    it 'outlives delivery retries and receivers that cache lazily' do
+    it 'outlives delivery retries and lazy caches and has no time limit of its own' do
       token = described_class.generate(media, domain: remote.domain)
 
       travel 30.days
-
       expect(described_class.valid?(token, media)).to be(true)
-    end
-
-    it 'has no time limit of its own, for a receiver that keeps no copy' do
-      token = described_class.generate(media, domain: remote.domain)
 
       travel 5.years
 
@@ -180,15 +164,11 @@ RSpec.describe 'Chat federation gaps' do
       expect(delivered_types(remote)).to include('Delete')
     end
 
-    it 'tells them when the room is renamed' do
+    it 'tells them when the room is renamed but does not send them messages before they join' do
+      service.create_message(owner, room, text: 'members only')
       service.update_conversation(owner, room, { title: 'Renamed' })
 
       expect(delivered_to(remote).find { |payload| payload['type'] == 'Update' }.dig('object', 'name')).to eq('Renamed')
-    end
-
-    it 'does not send them messages before they join' do
-      service.create_message(owner, room, text: 'members only')
-
       expect(delivered_types(remote)).to_not include('Create')
     end
   end
@@ -344,15 +324,12 @@ RSpec.describe 'Chat federation gaps' do
       expect(actor_json(owner)).to include('_misskey_canChat' => true, '_misskey_chatScope' => 'mutual')
     end
 
-    it 'explicitly refuses chat while federation is disabled' do
+    it 'explicitly refuses chat while federation or chat is disabled' do
       Setting.chat_federation_enabled = false
-
       expect(actor_json(owner)).to include('_misskey_canChat' => false)
-    end
 
-    it 'explicitly refuses chat while chat is disabled' do
+      Setting.chat_federation_enabled = true
       Setting.chat_enabled = false
-
       expect(actor_json(owner)).to include('_misskey_canChat' => false)
     end
 
@@ -379,22 +356,13 @@ RSpec.describe 'Chat federation gaps' do
       expect(process_actor(_misskey_canChat: true).can_chat).to be(true)
     end
 
-    it 'does not start a direct chat with an account without chat support' do
+    it 'does not start a direct chat with, invite, or create a group with an account without chat support' do
+      room
       remote.update!(can_chat: false)
 
       expect { service.create_conversation(owner, type: :direct, account_ids: [remote.id]) }
         .to raise_error(Sharlayan::ChatService::Forbidden)
-    end
-
-    it 'does not invite an account without chat support' do
-      remote.update!(can_chat: false)
-
       expect { service.invite(owner, room, remote) }.to raise_error(Sharlayan::ChatService::Forbidden)
-    end
-
-    it 'does not create a group with an account without chat support' do
-      remote.update!(can_chat: false)
-
       expect { service.create_conversation(owner, type: :group, title: 'Room', account_ids: [remote.id]) }
         .to raise_error(Sharlayan::ChatService::Forbidden)
     end

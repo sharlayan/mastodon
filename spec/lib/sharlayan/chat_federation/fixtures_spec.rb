@@ -137,21 +137,16 @@ RSpec.describe 'Chat federation fixtures', type: :model do
 
       before { room.invitations.create!(inviter_account: alice, invitee_account: bob) }
 
-      it 'accepts an invitation to the room named under the sender host' do
-        perform(invite_response('Accept', "https://remote.test/chat/rooms/#{id}"), bob)
-
-        expect(room.memberships.exists?(account: bob)).to be true
-        expect(room.invitations.find_by(invitee_account: bob)).to be_accepted
-      end
-
       it 'rejects an invitation to the room named by a path guessed from an actor URI' do
         perform(invite_response('Reject', "https://#{Rails.configuration.x.web_domain}/ap/chat/rooms/#{id}"), bob)
 
         expect(room.invitations.find_by(invitee_account: bob)).to be_rejected
       end
 
-      it 'lets a member leave a room named by a path guessed from an actor URI' do
+      it 'accepts an invitation to the room named under the sender host and lets the member leave it by a path guessed from an actor URI' do
         perform(invite_response('Accept', "https://remote.test/chat/rooms/#{id}"), bob)
+        expect(room.memberships.exists?(account: bob)).to be true
+        expect(room.invitations.find_by(invitee_account: bob)).to be_accepted
 
         perform({
           '@context' => 'https://www.w3.org/ns/activitystreams',

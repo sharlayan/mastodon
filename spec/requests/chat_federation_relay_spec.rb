@@ -55,14 +55,12 @@ RSpec.describe 'Chat federation relay and roster sync' do
       owned.invitations.create!(inviter_account: local, invitee_account: third)
     end
 
-    it 'names the members and the time to a member' do
+    it 'names the members and the time to a member but keeps them from someone who is only invited' do
       get "/chat/rooms/#{owned.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: member
 
       expect(response.parsed_body['_misskey_chatRoomMembers']).to contain_exactly(actor_uri(local), member.uri)
       expect(response.parsed_body['_misskey_chatRoomRosterAt']).to match(/\A\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z\z/)
-    end
 
-    it 'keeps the members from someone who is only invited' do
       get "/chat/rooms/#{owned.id}", headers: { 'Accept' => 'application/activity+json' }, sign_with: third
 
       expect(response).to have_http_status(200)
@@ -129,15 +127,10 @@ RSpec.describe 'Chat federation relay and roster sync' do
     it 'asks once a minute for each room and member' do
       2.times { Sharlayan::ChatFederation::Roster.request_sync(room, member.id) }
       expect(sync_jobs.size).to eq(1)
+      expect(service.redis.ttl("chat_roster_sync:#{room.id}:#{member.id}")).to be_between(55, 60)
 
       Sharlayan::ChatFederation::Roster.request_sync(room, third.id)
       expect(sync_jobs.size).to eq(2)
-    end
-
-    it 'keeps the limit for a minute' do
-      Sharlayan::ChatFederation::Roster.request_sync(room, member.id)
-
-      expect(service.redis.ttl("chat_roster_sync:#{room.id}:#{member.id}")).to be_between(55, 60)
     end
   end
 
@@ -153,16 +146,11 @@ RSpec.describe 'Chat federation relay and roster sync' do
 
     before { room }
 
-    it 'adds a member this server never heard of so a retried message succeeds' do
+    it 'asks with a local member signature and adds a member this server never heard of so a retried message succeeds' do
       sync(members: [owner.uri, actor_uri(local), member.uri])
 
       expect(room.memberships.exists?(account: member)).to be(true)
       expect(service.receive_group_message(member, room_uri: room_uri, uri: message_uri, text: 'hi').text).to eq('hi')
-    end
-
-    it 'signs the request as a local member' do
-      sync(members: [owner.uri, actor_uri(local), member.uri])
-
       expect(a_request(:get, room_uri).with { |request| request.headers['Signature'].to_s.include?(ActivityPub::TagManager.instance.key_uri_for(local)) }).to have_been_made
     end
 
@@ -362,24 +350,16 @@ RSpec.describe 'Chat federation relay and roster sync' do
       expect(deliveries).to be_empty
     end
 
-    it 'announces a deletion with the original activity inside' do
+    it 'announces a deletion once with the original activity inside' do
       activity = { 'id' => "#{message_uri}#delete", 'type' => 'Delete', 'actor' => member.uri, 'object' => { 'id' => message_uri, 'type' => 'Tombstone' }, 'signature' => { 'type' => 'RsaSignature2017' } }
 
-      perform(activity, member)
+      2.times { perform(activity, member) }
 
       expect(deliveries.size).to eq(1)
       announce, inbox = deliveries.first
       expect(inbox).to eq(third.inbox_url)
       expect(announce['id']).to eq("#{owned.uri}#relay/#{ERB::Util.url_encode(activity['id'])}")
       expect(announce['object']).to eq(activity.except('signature'))
-    end
-
-    it 'does not announce a deletion twice' do
-      activity = { 'id' => "#{message_uri}#delete", 'type' => 'Delete', 'object' => { 'id' => message_uri, 'type' => 'Tombstone' } }
-
-      2.times { perform(activity, member) }
-
-      expect(deliveries.size).to eq(1)
     end
 
     it 'announces a reaction once with the original activity inside' do
@@ -486,7 +466,7 @@ RSpec.describe 'Chat federation relay and roster sync' do
         expect(message.reload).to be_deleted
       end
 
-      it 'ignores one from the room owner for a message written here' do
+      it 'ignores one from the room owner, relayed or direct, for a message written here' do
         local_message = room.messages.create!(account: local, text: 'mine')
         local_message.update!(uri: Sharlayan::ChatFederation::Payload.message_uri(local_message))
 
@@ -494,11 +474,6 @@ RSpec.describe 'Chat federation relay and roster sync' do
 
         expect(local_message.reload).to_not be_deleted
         expect(local_message.text).to eq('mine')
-      end
-
-      it 'ignores a direct one from the room owner for a message written here' do
-        local_message = room.messages.create!(account: local, text: 'mine')
-        local_message.update!(uri: Sharlayan::ChatFederation::Payload.message_uri(local_message))
 
         perform({ 'id' => 'https://owner.test/activities/2', 'type' => 'Delete', 'object' => local_message.uri }, owner)
 
@@ -546,31 +521,30 @@ RSpec.describe 'Chat federation relay and roster sync' do
         expect(message.reload).to_not be_deleted
       end
 
-      it 'does not remember one for a message that has not arrived, even from a known participant' do
-        uri = 'https://member.test/chat/messages/later'
+      it 'does not remember one for a message that has not arrived, from a known participant or an account unknown to the room' do
+        known_uri = 'https://member.test/chat/messages/later'
+        unknown_uri = 'https://third.test/chat/messages/later'
 
-        announce(delete_json.merge('object' => uri))
+        announce(delete_json.merge('object' => known_uri))
+        announce(delete_json.merge('id' => 'https://third.test/activities/1', 'actor' => third.uri, 'object' => unknown_uri))
 
-        expect(service).to_not be_tombstone(uri, member)
-      end
-
-      it 'does not remember one for an account unknown to the room' do
-        uri = 'https://third.test/chat/messages/later'
-
-        announce(delete_json.merge('id' => 'https://third.test/activities/1', 'actor' => third.uri, 'object' => uri))
-
-        expect(service).to_not be_tombstone(uri, third)
+        expect(service).to_not be_tombstone(known_uri, member)
+        expect(service).to_not be_tombstone(unknown_uri, third)
       end
     end
 
     describe 'a reaction' do
-      it 'applies one from a current member' do
+      it 'applies one from a current member and keeps one copy when it also arrives directly' do
         room.memberships.create!(account: third)
         reaction = react_json.merge('id' => 'https://third.test/chat-reactions/1', 'actor' => third.uri)
 
         announce(reaction)
 
         expect(message.reactions.reload.map { |item| [item.account_id, item.reaction, item.uri] }).to eq([[third.id, '👍', reaction['id']]])
+
+        perform(reaction, third)
+
+        expect(message.reactions.reload.size).to eq(1)
       end
 
       it 'ignores one from a domain whose favourites are rejected' do
@@ -586,16 +560,6 @@ RSpec.describe 'Chat federation relay and roster sync' do
         room.memberships.create!(account: third)
 
         announce(react_json.merge('id' => 'https://third.test/chat-reactions/1', 'actor' => third.uri, 'type' => 'Like'))
-
-        expect(message.reactions.reload.size).to eq(1)
-      end
-
-      it 'keeps one copy when the reaction also arrives directly' do
-        room.memberships.create!(account: third)
-        reaction = react_json.merge('id' => 'https://third.test/chat-reactions/1', 'actor' => third.uri)
-
-        announce(reaction)
-        perform(reaction, third)
 
         expect(message.reactions.reload.size).to eq(1)
       end
@@ -648,19 +612,32 @@ RSpec.describe 'Chat federation relay and roster sync' do
         expect(message.reactions.reload).to be_empty
       end
 
-      it 'takes a custom emoji from the reacting server and not from the relay' do
+      it 'takes a custom emoji from the reacting server and not from the relay, using the tag named like the reaction wherever it is in the list' do
         room.memberships.create!(account: third)
         emoji_uri = 'https://third.test/emojis/wave'
         real_image = 'https://third.test/emoji/wave.png'
         emoji_json = { '@context' => 'https://www.w3.org/ns/activitystreams', 'id' => emoji_uri, 'type' => 'Emoji', 'name' => ':wave:', 'icon' => { 'type' => 'Image', 'url' => real_image } }
         stub_request(:get, emoji_uri).to_return(status: 200, body: emoji_json.to_json, headers: { 'Content-Type' => 'application/activity+json' })
         stub_request(:get, real_image).to_return(request_fixture('avatar.txt'))
-        tag = { 'id' => emoji_uri, 'type' => 'Emoji', 'name' => ':wave:', 'icon' => { 'type' => 'Image', 'url' => 'https://owner.test/forged.png' } }
+        other = stub_request(:get, 'https://third.test/emojis/other')
+        tags = %w(other wave).map { |name| { 'id' => "https://third.test/emojis/#{name}", 'type' => 'Emoji', 'name' => ":#{name}:", 'icon' => { 'type' => 'Image', 'url' => 'https://owner.test/forged.png' } } }
 
-        announce(react_json.merge('id' => 'https://third.test/chat-reactions/1', 'actor' => third.uri, 'content' => ':wave:', '_misskey_reaction' => ':wave:', 'tag' => [tag]))
+        announce(react_json.merge('id' => 'https://third.test/chat-reactions/1', 'actor' => third.uri, 'content' => ':wave:', '_misskey_reaction' => ':wave:', 'tag' => tags))
 
         expect(CustomEmoji.find_by(shortcode: 'wave', domain: third.domain).image_remote_url).to eq(real_image)
         expect(a_request(:get, 'https://owner.test/forged.png')).to_not have_been_made
+        expect(other).to_not have_been_requested
+      end
+
+      it 'fetches no custom emoji when no tag is named like the reaction' do
+        room.memberships.create!(account: third)
+        other = stub_request(:get, 'https://third.test/emojis/other')
+        tag = { 'id' => 'https://third.test/emojis/other', 'type' => 'Emoji', 'name' => ':other:', 'icon' => { 'type' => 'Image', 'url' => 'https://owner.test/forged.png' } }
+
+        announce(react_json.merge('id' => 'https://third.test/chat-reactions/1', 'actor' => third.uri, 'content' => ':wave:', '_misskey_reaction' => ':wave:', 'tag' => [tag]))
+
+        expect(other).to_not have_been_requested
+        expect(CustomEmoji.find_by(shortcode: 'other', domain: third.domain)).to be_nil
       end
 
       it 'does not take a custom emoji whose ID is on another server' do

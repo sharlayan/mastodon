@@ -36,19 +36,16 @@ RSpec.describe Sharlayan::ChatFederation::Delivery do
       allow(ActivityPub::DeliveryWorker).to receive(:perform_async)
     end
 
-    %w(Create Update Announce EmojiReact Add).each do |type|
-      it "does not send them #{type}" do
+    it 'sends them only removals: no Create, Update, Announce, EmojiReact or Add, but Delete, Remove and Undo' do
+      %w(Create Update Announce EmojiReact Add).each do |type|
         described_class.call(actor: owner, conversation: conversation, payload: { 'type' => type })
-
-        expect(ActivityPub::DeliveryWorker).to_not have_received(:perform_async)
       end
-    end
 
-    %w(Delete Remove Undo).each do |type|
-      it "still sends them #{type}" do
+      expect(ActivityPub::DeliveryWorker).to_not have_received(:perform_async)
+
+      %w(Delete Remove Undo).each do |type|
         described_class.call(actor: owner, conversation: conversation, payload: { 'type' => type })
-
-        expect(ActivityPub::DeliveryWorker).to have_received(:perform_async).with(anything, owner.id, remote.inbox_url)
+        expect(ActivityPub::DeliveryWorker).to have_received(:perform_async).with(include("\"type\":\"#{type}\""), owner.id, remote.inbox_url)
       end
     end
 

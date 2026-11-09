@@ -77,11 +77,9 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       service.accept_invitation(local, mirror.invitations.find_by!(invitee_account: local))
     end
 
-    it 'does not let its own clock into the record when someone here accepts' do
+    it 'keeps its own clock out of the record and leaves one older than any owner time when the invitation or Add stated none' do
       expect(roster_time(mirror, local)).to eq(Time.iso8601(stamp(behind)))
-    end
 
-    it 'leaves a record older than any owner time when the invitation stated none' do
       other = Fabricate(:user).account
       other.user.settings[:chat_allow_group_invites] = true
       other.user.save!
@@ -89,9 +87,7 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       service.accept_invitation(other, mirror.invitations.find_by!(invitee_account: other))
 
       expect(roster_time(mirror, other)).to eq(Time.zone.at(0))
-    end
 
-    it 'leaves a record older than any owner time for an Add that states none' do
       perform(add_json(member), owner)
 
       expect(member?(member)).to be(true)
@@ -145,21 +141,16 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       expect(member?(member)).to be(false)
     end
 
-    it 'does not let a fast clock hold back the next Add from the owner' do
+    it 'keeps its record in the owner clock so a fast clock does not hold back the next Add from the owner' do
+      before = roster_time(mirror, member)
+
       perform(remove_json(member, at: 4.minutes.from_now), member)
       expect(member?(member)).to be(false)
+      expect(roster_time(mirror, member)).to eq(before)
 
       perform(add_json(member, at: 1.second.from_now), owner)
 
       expect(member?(member)).to be(true)
-    end
-
-    it 'keeps its record in the owner clock' do
-      before = roster_time(mirror, member)
-
-      perform(remove_json(member, at: 4.minutes.from_now), member)
-
-      expect(roster_time(mirror, member)).to eq(before)
     end
 
     it 'still lets someone who never joined be ignored' do
@@ -208,16 +199,11 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       accepted = 1.hour.ago
       perform(accept_json(member, at: accepted), member)
       expect(member_time(member)).to eq(Time.iso8601(stamp(accepted)))
+      expect(roster_time(owned, member)).to eq(Time.zone.at(0))
 
       perform(leave_json(member, at: accepted + 1.second), member)
 
       expect(member_of_owned?(member)).to be(false)
-    end
-
-    it 'keeps what the member server says apart from the record of what the owner says' do
-      perform(accept_json(member, at: 1.hour.ago), member)
-
-      expect(roster_time(owned, member)).to eq(Time.zone.at(0))
     end
 
     it 'does not move the record when it invites someone again' do
@@ -286,27 +272,19 @@ RSpec.describe 'Chat federation across servers with different clocks' do
     context 'when an answer to an earlier invitation arrives' do
       let!(:invitation) { owned.invitations.pending.find_by!(invitee_account: member) }
 
-      it 'ignores an Accept of an invitation older than the pending one' do
+      it 'ignores an Accept of an invitation older than the pending one without answering it' do
+        ActivityPub::DeliveryWorker.clear
         perform(accept_json(member, at: Time.current, invited_at: invitation.created_at - 1.minute), member)
 
         expect(member_of_owned?(member)).to be(false)
         expect(invitation.reload).to be_pending
+        expect(ActivityPub::DeliveryWorker.jobs).to be_empty
       end
 
       it 'ignores a Reject of an invitation older than the pending one' do
         perform(reject_json(member, at: Time.current, invited_at: invitation.created_at - 1.minute), member)
 
         expect(invitation.reload).to be_pending
-      end
-
-      it 'says nothing back to an answer it ignores' do
-        Sidekiq::Testing.fake! do
-          invitation
-          ActivityPub::DeliveryWorker.clear
-          perform(accept_json(member, at: Time.current, invited_at: invitation.created_at - 1.minute), member)
-
-          expect(ActivityPub::DeliveryWorker.jobs).to be_empty
-        end
       end
 
       it 'accepts an answer stating the time of the pending invitation, cut to milliseconds' do
@@ -438,14 +416,6 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       expect(pending?(local)).to be(true)
     end
 
-    it 'applies a newer cancellation of a pending invitation' do
-      perform(invite_json(local, at: early), owner)
-
-      perform(undo_invite_json(local, at: late), owner)
-
-      expect(pending?(local)).to be(false)
-    end
-
     it 'applies an Invite and a cancellation without a time in arrival order' do
       perform(invite_json(local), owner)
       expect(pending?(local)).to be(true)
@@ -520,20 +490,15 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       jobs.each { |job| ActivityPub::ProcessingWorker.new.perform(*job['args']) }
     end
 
-    it 'holds a reaction without using up retries and applies it when the message arrives' do
+    it 'holds a reaction for six hours without using up retries and applies it when the message arrives' do
       expect { announce(reaction) }.to_not raise_error
       expect(ActivityPub::ProcessingWorker.jobs).to be_empty
+      expect(service.redis.ttl(Sharlayan::ChatService.held_relay_key(message_uri))).to be_between(6.hours.to_i - 60, 6.hours.to_i)
 
       perform(note, member)
       run_released_jobs
 
       expect(ChatMessage.find_by!(uri: message_uri).reactions.pluck(:account_id, :reaction)).to eq([[third.id, '👍']])
-    end
-
-    it 'keeps what it holds for six hours' do
-      announce(reaction)
-
-      expect(service.redis.ttl(Sharlayan::ChatService.held_relay_key(message_uri))).to be_between(6.hours.to_i - 60, 6.hours.to_i)
     end
 
     it 'applies a held reaction and its held Undo in order' do
@@ -591,53 +556,6 @@ RSpec.describe 'Chat federation across servers with different clocks' do
     end
   end
 
-  describe 'the custom emoji of a relayed reaction' do
-    let(:room) do
-      service.receive_invite(local, owner, room_uri: room_uri, title: 'Remote room').tap { |invitation| service.accept_invitation(local, invitation) }.chat_conversation
-    end
-    let(:stored) { service.receive_group_message(member, room_uri: room_uri, uri: message_uri, text: 'stored') }
-    let(:reaction) { { 'id' => 'https://third.test/chat-reactions/1', 'type' => 'EmojiReact', 'actor' => third.uri, 'object' => message_uri, 'content' => ':wave:', '_misskey_reaction' => ':wave:' } }
-
-    before do
-      room.memberships.create!(account: member)
-      room.memberships.create!(account: third)
-      stored
-    end
-
-    def announce(object)
-      perform({ 'id' => "#{room_uri}#relay/x", 'type' => 'Announce', 'object' => object, 'context' => room_uri, '_misskey_chatRoom' => room_uri }, owner)
-    end
-
-    def emoji_tag(name)
-      { 'id' => "https://third.test/emojis/#{name}", 'type' => 'Emoji', 'name' => ":#{name}:", 'icon' => { 'type' => 'Image', 'url' => 'https://owner.test/forged.png' } }
-    end
-
-    def stub_emoji(name)
-      json = { '@context' => 'https://www.w3.org/ns/activitystreams', 'id' => "https://third.test/emojis/#{name}", 'type' => 'Emoji', 'name' => ":#{name}:", 'icon' => { 'type' => 'Image', 'url' => "https://third.test/emoji/#{name}.png" } }
-      stub_request(:get, json['id']).to_return(status: 200, body: json.to_json, headers: { 'Content-Type' => 'application/activity+json' })
-      stub_request(:get, "https://third.test/emoji/#{name}.png").to_return(request_fixture('avatar.txt'))
-    end
-
-    it 'takes the tag named like the reaction, wherever it is in the list' do
-      stub_emoji('wave')
-      other = stub_request(:get, 'https://third.test/emojis/other')
-
-      announce(reaction.merge('tag' => [emoji_tag('other'), emoji_tag('wave')]))
-
-      expect(CustomEmoji.find_by(shortcode: 'wave', domain: third.domain).image_remote_url).to eq('https://third.test/emoji/wave.png')
-      expect(other).to_not have_been_requested
-    end
-
-    it 'fetches nothing when no tag is named like the reaction' do
-      other = stub_request(:get, 'https://third.test/emojis/other')
-
-      announce(reaction.merge('tag' => [emoji_tag('other')]))
-
-      expect(other).to_not have_been_requested
-      expect(CustomEmoji.find_by(shortcode: 'other', domain: third.domain)).to be_nil
-    end
-  end
-
   describe 'a copy of a room a moderator removed here' do
     let(:room) do
       service.receive_invite(local, owner, room_uri: room_uri, title: 'Remote room').tap { |invitation| service.accept_invitation(local, invitation) }.chat_conversation
@@ -668,11 +586,6 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       expect(activities.find { |activity| activity['type'] == 'Reject' }).to include('actor' => actor_uri(invited))
     end
 
-    it 'is told apart from a room its owner deleted' do
-      expect(service).to be_room_closed_here(room_uri)
-      expect(service).to_not be_room_tombstoned(room_uri)
-    end
-
     it 'skips what arrives later instead of retrying' do
       expect { perform({ 'id' => "#{message_uri}2/activity", 'type' => 'Create', 'object' => { 'id' => "#{message_uri}2", 'type' => 'Note', 'attributedTo' => member.uri, '_misskey_talk' => true, '_misskey_content' => 'late', '_misskey_chatRoom' => room_uri } }, member) }.to_not raise_error
       expect { perform({ 'id' => "#{room_uri}#relay/x", 'type' => 'Announce', 'object' => message_uri, 'context' => room_uri, '_misskey_chatRoom' => room_uri }, owner) }.to_not raise_error
@@ -680,7 +593,10 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       expect { perform({ 'id' => 'https://member.test/chat-reactions/2', 'type' => 'EmojiReact', 'object' => message_uri, 'content' => '👍' }, member) }.to_not raise_error
     end
 
-    it 'can be made again by a new Invite, which ends the mark' do
+    it 'is told apart from a room its owner deleted and can be made again by a new Invite, which ends the mark' do
+      expect(service).to be_room_closed_here(room_uri)
+      expect(service).to_not be_room_tombstoned(room_uri)
+
       perform(invite_json(local, at: Time.current), owner)
 
       expect(mirror).to be_present

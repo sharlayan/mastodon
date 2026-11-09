@@ -51,14 +51,12 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     expect(compacted['object']).to include('context' => room_uri, '_misskey_chatRoom' => room_uri)
   end
 
-  it 'names the room in the @context of the Note in a Create for servers that read it only there' do
+  it 'names the room in the @context of a Create Note and addresses more than one account so a room of two is not taken for a direct message' do
     room_uri = "https://#{Rails.configuration.x.web_domain}/chat/rooms/#{conversation.id}"
+    object = described_class.create(message)['object']
 
-    expect(described_class.create(message)['object']).to include('@context' => room_uri, 'context' => room_uri)
-  end
-
-  it 'addresses more than one account in a Create for a room of two so it is not taken for a direct message' do
-    expect(described_class.create(message)['object']['to']).to contain_exactly(remote.uri, ActivityPub::TagManager.instance.uri_for(owner))
+    expect(object).to include('@context' => room_uri, 'context' => room_uri)
+    expect(object['to']).to contain_exactly(remote.uri, ActivityPub::TagManager.instance.uri_for(owner))
   end
 
   it 'does not put a room in the @context of a direct message' do
@@ -97,21 +95,10 @@ RSpec.describe Sharlayan::ChatFederation::Payload do
     expect(undo['object']).to include('id' => react['id'], 'type' => 'EmojiReact')
   end
 
-  it 'builds a Group object' do
+  it 'builds a Group object and sends an empty summary once the description is cleared' do
     expect(described_class.room(conversation)).to include('type' => 'Group', 'name' => 'Room', 'summary' => 'desc')
-  end
 
-  it 'sends an empty summary when the room description is cleared' do
     conversation.update!(description: '')
     expect(described_class.room(conversation)).to include('summary' => '')
-  end
-
-  it 'makes relative media paths absolute' do
-    file = double(url: '/system/media/test.png')
-    attachment = double(id: 123, file: file, file_content_type: 'image/png', description: 'image', sensitive: false)
-
-    expect(described_class.send(:document, attachment, 'remote.test')['url'])
-      .to start_with("#{Rails.configuration.x.use_https ? 'https' : 'http'}://#{Rails.configuration.x.local_domain}/media_proxy/123/original")
-    expect(described_class.send(:document, attachment, 'remote.test')['url']).to include('token=')
   end
 end

@@ -58,19 +58,13 @@ RSpec.describe 'Chat attachments and the media proxy limit' do
       Sharlayan::ChatFederation::Payload.for_domain(Sharlayan::ChatFederation::Payload.create(message), message, 'cherry.test').dig('object', 'attachment').pluck('url')
     end
 
-    it 'gets every attachment of more messages than the general limit would allow' do
+    it 'gets every attachment of more messages than the general limit would allow without using up what it allows others at that address' do
       urls = Array.new(26) { message_with_attachments(4) }.flat_map { |message| delivered_urls(message) }
+      statuses = nil
 
-      statuses = urls.map { |url| fetch(url, server_ip) }
-
+      expect { statuses = urls.map { |url| fetch(url, server_ip) } }.to_not(change { media_proxy_count(server_ip) })
       expect(statuses.size).to be > general_limit
       expect(statuses).to all(satisfy { |status| [200, 302].include?(status) })
-    end
-
-    it 'does not use up what the general limit allows others at that address' do
-      url = delivered_urls(message_with_attachments(1)).first
-
-      expect { fetch(url, server_ip) }.to_not(change { media_proxy_count(server_ip) })
     end
   end
 
@@ -94,18 +88,15 @@ RSpec.describe 'Chat attachments and the media proxy limit' do
 
     before { fill_general_limit(ip) }
 
-    it 'keeps a forged chat_token under the general limit' do
+    it 'keeps a missing, forged, copied or oddly shaped token under the general limit' do
+      copied = "#{Sharlayan::ChatMediaToken.generate(media, reader.account).split('--').first}--#{'0' * 64}"
+
+      expect(fetch("/media_proxy/#{media.id}/original", ip)).to eq(429)
       expect(fetch("/media_proxy/#{media.id}/original?chat_token=forged", ip)).to eq(429)
-    end
-
-    it 'keeps a forged server token under the general limit' do
       expect(fetch("/media_proxy/#{media.id}/original?token=forged", ip)).to eq(429)
-    end
-
-    it 'keeps a token copied from another signature under the general limit' do
-      forged = "#{Sharlayan::ChatMediaToken.generate(media, reader.account).split('--').first}--#{'0' * 64}"
-
-      expect(fetch("/media_proxy/#{media.id}/original?chat_token=#{forged}", ip)).to eq(429)
+      expect(fetch("/media_proxy/#{media.id}/original?chat_token=#{copied}", ip)).to eq(429)
+      expect(fetch("/media_proxy/#{media.id}/original?chat_token[]=forged", ip)).to eq(429)
+      expect(fetch("/media_proxy/#{media.id}/original?chat_token=%FF%FE", ip)).to eq(429)
     end
 
     it 'keeps a valid token used for another attachment under the general limit' do
@@ -119,15 +110,6 @@ RSpec.describe 'Chat attachments and the media proxy limit' do
       fill_general_limit(ip)
 
       expect(fetch("/media_proxy/#{media.id}/original?chat_token=#{expired}", ip)).to eq(429)
-    end
-
-    it 'keeps a token sent in an unexpected shape under the general limit' do
-      expect(fetch("/media_proxy/#{media.id}/original?chat_token[]=forged", ip)).to eq(429)
-      expect(fetch("/media_proxy/#{media.id}/original?chat_token=%FF%FE", ip)).to eq(429)
-    end
-
-    it 'keeps a request without a token under the general limit' do
-      expect(fetch("/media_proxy/#{media.id}/original", ip)).to eq(429)
     end
 
     it 'does not let a valid token past the limit on the other proxy path' do
@@ -190,11 +172,8 @@ RSpec.describe 'Chat attachments and the media proxy limit' do
     let(:media) { message_with_attachments(1).media_attachments.first }
     let(:limit) { Rack::Attack.throttles.fetch('throttle_chat_media').limit }
 
-    it 'is larger than the general one' do
+    it 'is larger than the general one, stops a valid token past it and allows it again in the next period' do
       expect(limit).to be > general_limit
-    end
-
-    it 'stops a valid token past that limit and allows it again in the next period' do
       url = "/media_proxy/#{media.id}/original?chat_token=#{Sharlayan::ChatMediaToken.generate(media, reader.account)}"
       limit.times { Rack::Attack.cache.count("throttle_chat_media:#{ip}", period) }
 
