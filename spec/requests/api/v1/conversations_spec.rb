@@ -70,6 +70,18 @@ RSpec.describe 'API V1 Conversations' do
       expect(response.parsed_body.first[:member_ids].size).to eq 2
       expect(response.parsed_body.first[:unread]).to be true
     end
+
+    it 'keeps the grouped parameter in pagination links', :aggregate_failures do
+      PostStatusService.new.call(user.account, text: 'Hey, nobody here', visibility: 'direct')
+
+      get '/api/v1/conversations', params: { grouped: '1', limit: 1 }, headers: headers
+
+      expect(response).to have_http_status(200)
+      expect(response.parsed_body.size).to eq 1
+      links = LinkHeader.parse(response.headers['Link'])
+      expect(links.find_link(%w(rel next)).href).to include('grouped=1')
+      expect(links.find_link(%w(rel prev)).href).to include('grouped=1')
+    end
   end
 
   describe 'GET /api/v1/conversations with preserve_group=1', :inline_jobs do

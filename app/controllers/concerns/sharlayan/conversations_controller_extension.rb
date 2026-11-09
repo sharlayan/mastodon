@@ -238,17 +238,21 @@ module Sharlayan::ConversationsControllerExtension
 
   def next_path
     return statuses_api_v1_conversation_url(@conversation, pagination_params(max_id: pagination_max_id).merge(preserve_group: params[:preserve_group])) if action_name == 'statuses' && records_continue?
-    return api_v1_conversations_url(pagination_params(max_id: pagination_max_id).merge(grouped: '1', preserve_group: params[:preserve_group])) if action_name == 'index' && preserve_group? && records_continue?
+    return api_v1_conversations_url(pagination_params(max_id: pagination_max_id).merge(grouped_pagination_params)) if action_name == 'index' && grouped? && records_continue?
 
     super
   end
 
   def prev_path
-    return api_v1_conversations_url(pagination_params(min_id: pagination_since_id).merge(grouped: '1', preserve_group: params[:preserve_group])) if action_name == 'index' && preserve_group? && !@conversations.empty?
+    return api_v1_conversations_url(pagination_params(min_id: pagination_since_id).merge(grouped_pagination_params)) if action_name == 'index' && grouped? && !@conversations.empty?
     return super unless action_name == 'statuses'
     return if @statuses.empty?
 
     statuses_api_v1_conversation_url(@conversation, pagination_params(min_id: pagination_since_id).merge(preserve_group: params[:preserve_group]))
+  end
+
+  def grouped_pagination_params
+    { grouped: '1', preserve_group: params[:preserve_group].presence }.compact
   end
 
   def pagination_max_id
