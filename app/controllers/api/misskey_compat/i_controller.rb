@@ -16,6 +16,8 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     },
   }.freeze
 
+  SCALAR_ID_PARAMS = %i(noteId announcementId).freeze
+
   class ProfileImageError < StandardError
     attr_reader :key, :reason
 
@@ -26,13 +28,23 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
     end
   end
 
-  rescue_from ProfileImageError do |e|
-    if e.reason == :invalid
-      render_invalid_param("#/properties/#{e.key}", 'must be string')
-    else
-      message, code, id = PROFILE_IMAGE_ERRORS.fetch(e.key).fetch(e.reason)
-      render_error(message, code, 400, id: id)
+  class InvalidParamError < StandardError
+    attr_reader :param, :reason
+
+    def initialize(param, reason)
+      @param = param
+      @reason = reason
+      super("#{param} #{reason}")
     end
+  end
+
+  rescue_from ProfileImageError do |e|
+    message, code, id = PROFILE_IMAGE_ERRORS.fetch(e.key).fetch(e.reason)
+    render_error(message, code, 400, id: id)
+  end
+
+  rescue_from InvalidParamError do |e|
+    render_invalid_param(e.param, e.reason)
   end
 
   requires_write_scope :update, :read_announcement, :pin, :unpin
@@ -40,6 +52,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   requires_misskey_permission 'write:account', :update, :read_announcement, :pin, :unpin
 
   before_action :require_user!
+  before_action :reject_compound_id_params!
 
   def show
     render json: me_json
@@ -150,13 +163,14 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
   end
 
   def fields_attributes
-    Array(params[:fields]).first(Account.fields_limit).map do |field|
+    fields = object_items(params[:fields], '#/properties/fields')
+    fields.first(Account.fields_limit).map do |field|
       { name: field[:name].to_s, value: field[:value].to_s }
     end
   end
 
   def avatar_decorations_attributes
-    Array(params[:avatarDecorations]).map do |config|
+    object_items(params[:avatarDecorations], '#/properties/avatarDecorations').map do |config|
       {
         id: MisskeyCompat::MiId.decode(config[:id]),
         angle: config[:angle],
@@ -167,6 +181,18 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
         opacity: config.key?(:opacity) ? config[:opacity] : 1.0,
       }
     end
+  end
+
+  def object_items(value, param)
+    items = Array(value)
+    raise InvalidParamError.new(param, 'must be array of objects') unless items.all?(ActionController::Parameters)
+
+    items
+  end
+
+  def reject_compound_id_params!
+    key = SCALAR_ID_PARAMS.find { |name| params[name].is_a?(Array) || params[name].is_a?(ActionController::Parameters) }
+    render_invalid_param("#/properties/#{key}", 'must be string') if key
   end
 
   def ff_hide_collections
@@ -181,7 +207,7 @@ class Api::MisskeyCompat::IController < Api::MisskeyCompat::BaseController
 
     id = params[key]
     return { attachment => nil } if id.nil?
-    raise ProfileImageError.new(key, :invalid) unless id.is_a?(String)
+    raise InvalidParamError.new("#/properties/#{key}", 'must be string') unless id.is_a?(String)
     return {} if id.blank?
 
     drive_file = current_account.drive_files.find_by(id: id) if Setting.drive_enabled && current_account.local?
