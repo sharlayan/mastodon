@@ -6,6 +6,79 @@
   border-collapse: initial;
 }
 
+.editor-toolbar {
+  border-color: var(--color-border-primary);
+  color: var(--color-text-primary);
+}
+
+.editor-toolbar button {
+  color: var(--color-text-primary);
+}
+
+.editor-toolbar button.active,
+.editor-toolbar button:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border-primary);
+}
+
+.editor-toolbar i.separator {
+  border-left-color: var(--color-border-primary);
+  border-right-color: transparent;
+}
+
+.editor-toolbar.fullscreen {
+  background: var(--color-bg-primary);
+}
+
+.editor-toolbar.fullscreen::before {
+  background: linear-gradient(to right, var(--color-bg-primary), transparent);
+}
+
+.editor-toolbar.fullscreen::after {
+  background: linear-gradient(to right, transparent, var(--color-bg-primary));
+}
+
+.EasyMDEContainer .CodeMirror {
+  border-color: var(--color-border-primary);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.EasyMDEContainer .CodeMirror-fullscreen {
+  background: var(--color-bg-primary);
+}
+
+.EasyMDEContainer .CodeMirror-cursor {
+  border-left-color: var(--color-text-primary);
+}
+
+.EasyMDEContainer .CodeMirror-selected,
+.EasyMDEContainer .CodeMirror-focused .CodeMirror-selected {
+  background: color-mix(in srgb, var(--color-bg-brand-base) 30%, transparent);
+}
+
+.EasyMDEContainer .CodeMirror-line::selection,
+.EasyMDEContainer .CodeMirror-line > span::selection,
+.EasyMDEContainer .CodeMirror-line > span > span::selection {
+  background: color-mix(in srgb, var(--color-bg-brand-base) 30%, transparent);
+}
+
+.editor-preview,
+.editor-preview-side {
+  border-color: var(--color-border-primary);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.editor-preview pre {
+  background: var(--color-bg-secondary);
+}
+
+.editor-preview table td,
+.editor-preview table th {
+  border-color: var(--color-border-primary);
+}
+
 .CodeMirror .cm-header-1,
 .CodeMirror .cm-header-2,
 .CodeMirror .cm-header-3,
