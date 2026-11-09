@@ -1767,6 +1767,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       setConversationMissing(missing);
       setRoomEnding(ending);
       if (missing && !ending) setError('load');
+      else if (!missing)
+        setError((current) => (current === 'load' ? null : current));
       const reconciled = updates.reduce(
         (items, update) => update(items),
         loaded,

@@ -1690,6 +1690,33 @@ describe('Chat screen lifecycle', () => {
     });
   });
 
+  it('clears the notice once a room that was not found turns up', async () => {
+    let found = false;
+    api.get.mockImplementation((url: string) => {
+      if (url === '/api/v1/chat/conversations')
+        return Promise.resolve({ data: found ? [conversation('A')] : [] });
+      if (url === '/api/v1/chat/conversations/A' && !found)
+        return Promise.reject(
+          Object.assign(new Error('Not found'), {
+            response: { status: 404 },
+          }),
+        );
+      return getResponse(url);
+    });
+
+    mountChat();
+    expect(await screen.findByRole('alert')).toBeTruthy();
+
+    found = true;
+    act(() => {
+      emitChatStreamEvent({ event: CHAT_STREAM_RECONNECTED, payload: {} });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+  });
+
   it('counts code points when limiting message length, like the server', async () => {
     mountChat();
     await screen.findByText('Private message A');
