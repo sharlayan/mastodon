@@ -6,6 +6,7 @@ import type { ApiDriveFileJSON } from '@/flavours/glitch/api_types/drive';
 
 import { useDrive } from '../../use_drive';
 import { DriveBrowser } from '../drive_browser';
+import { FileCard } from '../file_card';
 
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
@@ -103,5 +104,37 @@ describe('Drive image picker pagination', () => {
     expect(mocks.apiGetDriveFiles).toHaveBeenLastCalledWith(undefined, next);
     expect(onSelectFile).toHaveBeenCalledWith(image);
     expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+  });
+});
+
+describe('Drive file card keyboard handling', () => {
+  it('does not open the viewer for keys pressed on inner action buttons', () => {
+    const file = makeFile('Portrait', 'image');
+    const onSelect = vi.fn();
+
+    render(
+      <IntlProvider locale='en'>
+        <FileCard
+          file={file}
+          manageable
+          draggable={false}
+          onSelect={onSelect}
+          onDelete={vi.fn()}
+          onRename={vi.fn()}
+          onTransferToPosts={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    const rename = screen.getByRole('button', { name: 'Rename file' });
+    const enter = fireEvent.keyDown(rename, { key: 'Enter' });
+    fireEvent.keyDown(rename, { key: ' ' });
+
+    expect(enter).toBe(true);
+    expect(onSelect).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByTitle('Portrait'), { key: 'Enter' });
+
+    expect(onSelect).toHaveBeenCalledWith(file);
   });
 });

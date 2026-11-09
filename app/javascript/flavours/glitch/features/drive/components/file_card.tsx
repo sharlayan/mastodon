@@ -85,10 +85,10 @@ export const FileCard: React.FC<{
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        onSelect(file);
-      }
+      if (e.target !== e.currentTarget) return;
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      onSelect(file);
     },
     [file, onSelect],
   );
