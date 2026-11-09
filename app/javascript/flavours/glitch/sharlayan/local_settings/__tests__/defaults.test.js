@@ -81,6 +81,30 @@ describe('sharlayan local_settings defaults', () => {
     expect(state.getIn(['media', 'letterbox'])).toBe(true);
   });
 
+  it('replaces imported lists and keeps account-derived values on LOCAL_SETTING_IMPORT', () => {
+    const before = localSettings(initial(), {
+      type: 'LOCAL_SETTING_CHANGE',
+      key: ['navigation_panel', 'order'],
+      value: ImmutableList(['a', 'b']),
+    });
+    const state = localSettings(before, {
+      type: 'LOCAL_SETTING_IMPORT',
+      settings: {
+        navigation_panel: { order: ['b', 'a'], hidden: { a: true } },
+        status_action_bar: { order: ['reply', 'reblog'] },
+        use_my_archive: !useMyArchive,
+        synced_at: '2020-01-01T00:00:00Z',
+      },
+    });
+
+    expect(state.getIn(['navigation_panel', 'order'])).toEqual(ImmutableList(['b', 'a']));
+    expect(state.getIn(['navigation_panel', 'hidden'])).toEqual(ImmutableMap({ a: true }));
+    expect(state.getIn(['status_action_bar', 'order'])).toEqual(ImmutableList(['reply', 'reblog']));
+    expect(state.getIn(['status_action_bar', 'hidden'])).toEqual(ImmutableMap({ clip: true, quote: true }));
+    expect(state.get('use_my_archive')).toBe(useMyArchive);
+    expect(state.get('synced_at')).toBe(null);
+  });
+
   it('prefers a stored local instance badge setting over the server seed', () => {
     const storedValue = showInstanceInfo !== true;
     const state = localSettings(initial(), {

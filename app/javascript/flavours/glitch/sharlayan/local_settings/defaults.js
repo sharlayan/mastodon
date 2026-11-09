@@ -62,10 +62,28 @@ export const sharlayanLocalSettingsDefaults = ImmutableMap({
   }),
 });
 
+const mergeImported = (current, incoming) => {
+  if (ImmutableMap.isMap(current) && ImmutableMap.isMap(incoming)) {
+    return incoming.reduce((result, value, key) => result.set(key, mergeImported(result.get(key), value)), current);
+  }
+
+  return incoming;
+};
+
+const importSettings = (state, settings) => {
+  const incoming = fromJS(settings);
+
+  if (!ImmutableMap.isMap(incoming)) {
+    return state;
+  }
+
+  return mergeImported(state, incoming.delete('use_my_archive').delete('synced_at'));
+};
+
 export function sharlayanLocalSettingsReducer(state, action) {
   switch (action.type) {
   case LOCAL_SETTING_IMPORT:
-    return state.mergeDeep(fromJS(action.settings));
+    return importSettings(state, action.settings);
   default:
     return state;
   }
