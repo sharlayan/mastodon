@@ -46,6 +46,7 @@ vi.mock('flavours/glitch/api/pages', () => ({
   apiUnlikePage: mocks.apiUnlikePage,
   apiSetMainPage: mocks.apiSetMainPage,
   apiUnsetMainPage: mocks.apiUnsetMainPage,
+  PAGE_LIST_LIMIT: 20,
 }));
 
 vi.mock('@/flavours/glitch/identity_context', () => ({
@@ -89,8 +90,12 @@ vi.mock('../components/page_show_content', () => ({
     onLikeToggle,
     onShare,
     onDelete,
+    previousPage,
+    nextPage,
   }: {
     page: ApiPageJSON;
+    previousPage: ApiPageJSON | null;
+    nextPage: ApiPageJSON | null;
     onMainToggle: () => void;
     onLikeToggle: () => void;
     onShare: () => void;
@@ -98,6 +103,7 @@ vi.mock('../components/page_show_content', () => ({
   }) => (
     <div>
       <span data-testid='title'>{page.title}</span>
+      <span data-testid='nav'>{`${previousPage?.id ?? '-'}|${nextPage?.id ?? '-'}`}</span>
       <button type='button' onClick={onMainToggle}>
         main
       </button>
@@ -372,5 +378,47 @@ describe('PageShow', () => {
     });
 
     expect(screen.getByTestId('title').textContent).toBe('Page b');
+  });
+
+  it('does not link neighbours when the open page is missing from the fetched list', async () => {
+    renderShow('/pages/x');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sidebar').textContent).toBe('x:-a:mainb:-');
+    });
+    expect(screen.getByTestId('nav').textContent).toBe('-|-');
+  });
+
+  it('does not link Booklet neighbours from a truncated page list', async () => {
+    const booklet = (id: string, position: number) =>
+      pageJSON(id, { booklet_id: 'b1', booklet_position: position });
+    mocks.apiGetPage.mockResolvedValue(booklet('c', 2));
+    mocks.apiGetAccountPages.mockResolvedValue([
+      booklet('c', 2),
+      booklet('d', 3),
+      ...Array.from({ length: 18 }, (_, index) => pageJSON(`p${index}`)),
+    ]);
+    renderShow('/pages/c');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sidebar').textContent).toBe('c:-d:-');
+    });
+    expect(screen.getByTestId('nav').textContent).toBe('-|-');
+  });
+
+  it('links Booklet neighbours when the page list is complete', async () => {
+    const booklet = (id: string, position: number) =>
+      pageJSON(id, { booklet_id: 'b1', booklet_position: position });
+    mocks.apiGetPage.mockResolvedValue(booklet('c', 2));
+    mocks.apiGetAccountPages.mockResolvedValue([
+      booklet('c', 2),
+      booklet('d', 3),
+      booklet('e', 1),
+    ]);
+    renderShow('/pages/c');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('nav').textContent).toBe('e|d');
+    });
   });
 });

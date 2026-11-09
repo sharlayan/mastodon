@@ -22,6 +22,7 @@ import {
   apiUnlikePage,
   apiSetMainPage,
   apiUnsetMainPage,
+  PAGE_LIST_LIMIT,
 } from 'flavours/glitch/api/pages';
 import type {
   ApiPageBlock,
@@ -583,9 +584,12 @@ const PageShow: React.FC<{
             left.id.localeCompare(right.id),
         )
     : visibleAccountPages;
-  const currentPageIndex = filteredAccountPages.findIndex(
-    (accountPage) => accountPage.id === id,
-  );
+  const navigationReliable =
+    !!accountPages?.some((accountPage) => accountPage.id === id) &&
+    (!currentPage?.booklet_id || accountPages.length < PAGE_LIST_LIMIT);
+  const currentPageIndex = navigationReliable
+    ? filteredAccountPages.findIndex((accountPage) => accountPage.id === id)
+    : -1;
   const previousPage =
     currentPageIndex > 0
       ? (filteredAccountPages[currentPageIndex - 1] ?? null)
