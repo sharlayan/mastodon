@@ -80,6 +80,7 @@ class Api::V1::AccountSwitchesController < Api::BaseController
         scope_name: :current_user
       ).as_json,
       children: serialized_children,
+      current_push_forward: current_push_forward(children_owner),
       inbound: inbound_authorizations,
     }
   end
@@ -124,6 +125,12 @@ class Api::V1::AccountSwitchesController < Api::BaseController
   end
 
   private
+
+  def current_push_forward(children_owner)
+    return if children_owner.id == current_account.id
+
+    children_owner.account_switch_authorizations.find_by(target_account_id: current_account.id)&.push_forward
+  end
 
   def require_web_app_token!
     render json: { error: 'This method requires a web session token' }, status: 403 unless doorkeeper_token&.application&.superapp?

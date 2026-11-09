@@ -1,6 +1,7 @@
 import { createAction } from '@reduxjs/toolkit';
 
 import { importFetchedAccounts } from 'flavours/glitch/actions/importer';
+import { me } from 'flavours/glitch/initial_state';
 import type { AppDispatch, RootState } from 'flavours/glitch/store';
 import { createDataLoadingThunk } from 'flavours/glitch/store/typed_functions';
 
@@ -42,6 +43,12 @@ const importAccountSwitches = (
         prefs[accountId] = {
           ...(prefs[accountId] ?? {}),
           push: auth.push_forward,
+        };
+      }
+      if (me && typeof data.current_push_forward === 'boolean') {
+        prefs[me] = {
+          ...(prefs[me] ?? {}),
+          push: data.current_push_forward,
         };
       }
       localStorage.setItem(key, JSON.stringify(prefs));

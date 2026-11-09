@@ -24,6 +24,7 @@ RSpec.describe 'AccountSwitches' do
         expect(response.parsed_body[:children]).to be_empty
         expect(response.parsed_body[:parent]).to be_nil
         expect(response.parsed_body[:inbound]).to be_empty
+        expect(response.parsed_body[:current_push_forward]).to be_nil
       end
     end
 
@@ -153,6 +154,19 @@ RSpec.describe 'AccountSwitches' do
 
       expect(response.parsed_body[:inbound].map { |item| item.dig(:account, :id) })
         .to contain_exactly(linking_user.account.id.to_s)
+    end
+
+    it 'reports push forwarding for the current account while switched into it' do
+      auth.update!(push_forward: true)
+      sign_in linking_user
+      post switch_account_path, params: { switch_to: user.account.id }
+      AccountSwitchDevice.find_by!(account: user.account).update!(trusted_at: Time.current)
+      post switch_account_path, params: { switch_to: user.account.id }
+
+      get '/api/v1/account_switches', headers: read_headers
+
+      expect(response.parsed_body[:root_account_id]).to eq linking_user.account.id.to_s
+      expect(response.parsed_body[:current_push_forward]).to be true
     end
 
     it 'allows the target account to revoke access' do
