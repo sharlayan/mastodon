@@ -16,6 +16,20 @@ vi.mock('flavours/glitch/initial_state', async (importOriginal) => {
   };
 });
 
+const api = vi.hoisted(() => ({
+  post: vi.fn(),
+  mute: vi.fn(),
+}));
+
+vi.mock('flavours/glitch/api', async (importOriginal) => ({
+  ...(await importOriginal()),
+  apiRequestPost: api.post,
+}));
+
+vi.mock('flavours/glitch/actions/reaction_mutes', () => ({
+  createReactionMute: (params) => ({ type: 'reaction_mutes/create', params }),
+}));
+
 let headerMenu;
 
 const intl = { formatMessage: (msg) => msg.id };
@@ -113,6 +127,49 @@ describe('sharlayanReactionMuteItems', () => {
         ),
       ),
     ).toEqual(['account.menu.mute_decorations', 'account.menu.mute_reactions']);
+  });
+});
+
+describe('sharlayanReactionMuteItems actions', () => {
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  const run = async (index, outcome) => {
+    const dispatch = vi.fn((action) =>
+      action.type === 'reaction_mutes/create'
+        ? Promise.resolve({ ...action, meta: { requestId: '1', requestStatus: outcome } })
+        : action,
+    );
+    const items = headerMenu.sharlayanReactionMuteItems(context({ dispatch })).filter(Boolean);
+    items[index].action();
+    await settle();
+    return dispatch.mock.calls.map(([action]) => action);
+  };
+
+  it('mutes reactions through the store and confirms success', async () => {
+    const accountActions = await run(1, 'fulfilled');
+    expect(accountActions[0]).toEqual({ type: 'reaction_mutes/create', params: { account_id: '1' } });
+    expect(accountActions[1].payload.message.id).toBe('account.menu.mute_reactions_done');
+
+    const domainActions = await run(2, 'fulfilled');
+    expect(domainActions[0]).toEqual({ type: 'reaction_mutes/create', params: { domain: 'remote.example' } });
+    expect(domainActions[1].payload.message.id).toBe('account.menu.mute_domain_reactions_done');
+  });
+
+  it('leaves failed reaction mutes to the rejected action alert', async () => {
+    expect(await run(1, 'rejected')).toHaveLength(1);
+  });
+
+  it('reports decoration mute success and failure', async () => {
+    api.post.mockResolvedValueOnce({});
+    const success = await run(0, 'fulfilled');
+    expect(api.post).toHaveBeenCalledWith('v1/avatar_decoration_mutes', { account_id: '1' });
+    expect(success[0].payload.message.id).toBe('account.menu.mute_decorations_done');
+
+    api.post.mockRejectedValueOnce(new Error('boom'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failure = await run(0, 'fulfilled');
+    expect(failure[0].type).toBe('alerts/show');
+    expect(failure[0].payload.message.id).not.toBe('account.menu.mute_decorations_done');
   });
 });
 
