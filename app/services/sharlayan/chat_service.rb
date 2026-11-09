@@ -931,10 +931,18 @@ class Sharlayan::ChatService
       transaction.lrange(key, 0, -1)
       transaction.del(key)
     end
+    release_held_relay_count(message.chat_conversation_id, entries.size)
     entries.each do |entry|
       held = JSON.parse(entry)
       ActivityPub::ProcessingWorker.perform_async(held['owner_id'], held['activity'])
     end
+  end
+
+  def release_held_relay_count(conversation_id, released)
+    return if released.zero?
+
+    count_key = "chat_held_relay_count:#{conversation_id}"
+    redis.del(count_key) unless redis.decrby(count_key, released).positive?
   end
 
   def message_tombstone_key(uri)
