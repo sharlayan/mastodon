@@ -57,6 +57,13 @@
   --color-border-primary: #e1e8ed;
   --color-graph-primary-stroke: var(--color-accent-dark);
   --color-graph-primary-fill: rgb(99 100 255 / 10%);
+  --color-text-warning: var(--color-orange-700);
+  --color-bg-disabled: var(--color-grey-400);
+  --color-text-on-disabled: var(--color-grey-200);
+  --color-graph-disabled-fill: var(--color-bg-disabled);
+  --rich-text-container-color: rgb(255 216 231 / 100%);
+  --rich-text-text-color: rgb(114 47 83 / 100%);
+  --rich-text-decorations-color: rgb(255 175 212 / 100%);
 
   // Icons for light theme
 
