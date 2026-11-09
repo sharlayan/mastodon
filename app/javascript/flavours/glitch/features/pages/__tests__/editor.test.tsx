@@ -16,6 +16,7 @@ import { createMemoryHistory } from 'history';
 
 import type { ApiPageJSON } from 'flavours/glitch/api_types/pages';
 
+import { BookletEditor } from '../booklet_editor';
 import PageEditor from '../editor';
 
 const mocks = vi.hoisted(() => ({
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   apiGetPageSeries: vi.fn(),
   apiCreatePage: vi.fn(),
   apiUpdatePage: vi.fn(),
+  apiUpdatePageSeries: vi.fn(),
 }));
 
 vi.mock('flavours/glitch/store', async (importOriginal) => ({
@@ -37,6 +39,8 @@ vi.mock('flavours/glitch/api/pages', () => ({
   apiUnsetBookletMainPage: vi.fn(),
   apiCreatePage: mocks.apiCreatePage,
   apiUpdatePage: mocks.apiUpdatePage,
+  apiCreatePageSeries: vi.fn(),
+  apiUpdatePageSeries: mocks.apiUpdatePageSeries,
 }));
 
 vi.mock('flavours/glitch/components/column/header', () => ({
@@ -167,5 +171,83 @@ describe('PageEditor', () => {
     expect(screen.queryAllByRole('progressbar')).toHaveLength(0);
     expect(screen.getByText('Save')).toBeTruthy();
     expect(mocks.apiGetPage).not.toHaveBeenCalled();
+  });
+});
+
+describe('BookletEditor', () => {
+  const booklet = {
+    id: 'b1',
+    title: 'Saved booklet',
+    description: 'Saved description',
+    cover_media_attachment: null,
+    displayed: true,
+  };
+
+  const renderBookletEditor = () => {
+    const history = createMemoryHistory({
+      initialEntries: ['/pages/booklets/b1/edit'],
+    });
+
+    render(
+      <IntlProvider locale='en'>
+        <Router history={history}>
+          <Route path='/pages/booklets/:id/edit'>
+            <BookletEditor multiColumn />
+          </Route>
+        </Router>
+      </IntlProvider>,
+    );
+  };
+
+  beforeEach(() => {
+    mocks.apiGetPageSeries.mockReset();
+    mocks.apiUpdatePageSeries.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('does not offer an empty form that can overwrite the Booklet when loading fails', async () => {
+    mocks.apiGetPageSeries.mockRejectedValueOnce(new Error('network'));
+    mocks.apiGetPageSeries.mockResolvedValueOnce([booklet]);
+    renderBookletEditor();
+
+    const retry = await screen.findByRole('button', { name: /Try again/ });
+
+    expect(screen.queryByText('Save')).toBeNull();
+    expect(screen.queryByLabelText(/Booklet title/)).toBeNull();
+
+    fireEvent.click(retry);
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText<HTMLInputElement>(/Booklet title/).value,
+      ).toBe('Saved booklet');
+    });
+    expect(mocks.apiUpdatePageSeries).not.toHaveBeenCalled();
+  });
+
+  it('shows a loading indicator and no save button until the Booklet is loaded', async () => {
+    let resolveBooklets: (value: (typeof booklet)[]) => void = () => undefined;
+    mocks.apiGetPageSeries.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveBooklets = resolve;
+        }),
+    );
+    renderBookletEditor();
+
+    expect(screen.getAllByRole('progressbar').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Save')).toBeNull();
+
+    await act(async () => {
+      resolveBooklets([booklet]);
+      await Promise.resolve();
+    });
+
+    expect(screen.getByLabelText<HTMLInputElement>(/Booklet title/).value).toBe(
+      'Saved booklet',
+    );
   });
 });

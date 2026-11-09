@@ -5,6 +5,7 @@ import { defineMessages, useIntl } from 'react-intl';
 import { useParams } from 'react-router-dom';
 
 import { Helmet } from '@unhead/react/helmet';
+import { isAxiosError } from 'axios';
 
 import DescriptionIcon from '@/material-icons/400-24px/description.svg?react';
 import {
@@ -20,7 +21,9 @@ import {
   TextAreaField,
   TextInputField,
 } from 'flavours/glitch/components/form_fields';
+import { LoadingIndicator } from 'flavours/glitch/components/loading_indicator';
 import { useAppHistory } from 'flavours/glitch/components/router';
+import { BundleColumnError } from 'flavours/glitch/features/ui/components/bundle_column_error';
 
 import { ImageUploadField } from './components/image_upload_field';
 
@@ -66,6 +69,12 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
   const [displayed, setDisplayed] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  const [loadedId, setLoadedId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<{
+    id: string;
+    notFound: boolean;
+  } | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const handleTitleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,18 +100,49 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
   useEffect(() => {
     if (!id) return;
 
-    void apiGetPageSeries().then((booklets) => {
-      const booklet = booklets.find((item) => item.id === id);
-      if (!booklet) return;
-      setTitle(booklet.title);
-      setDescription(booklet.description ?? '');
-      setCover(booklet.cover_media_attachment);
-      setDisplayed(booklet.displayed);
-    });
-  }, [id]);
+    let active = true;
+
+    apiGetPageSeries()
+      .then((booklets) => {
+        if (!active) return booklets;
+
+        const booklet = booklets.find((item) => item.id === id);
+
+        if (!booklet) {
+          setLoadError({ id, notFound: true });
+          return booklets;
+        }
+
+        setTitle(booklet.title);
+        setDescription(booklet.description ?? '');
+        setCover(booklet.cover_media_attachment);
+        setDisplayed(booklet.displayed);
+        setLoadedId(id);
+        return booklets;
+      })
+      .catch((loadFailure: unknown) => {
+        if (!active) return;
+
+        const status = isAxiosError(loadFailure)
+          ? loadFailure.response?.status
+          : undefined;
+        setLoadError({ id, notFound: status === 404 || status === 410 });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, loadAttempt]);
+
+  const handleRetryLoad = useCallback(() => {
+    setLoadError(null);
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
+
+  const loaded = !id || loadedId === id;
 
   const handleSave = useCallback(() => {
-    if (!title.trim()) return;
+    if (!loaded || !title.trim()) return;
     setSaving(true);
     setError(false);
     const payload = {
@@ -122,11 +162,44 @@ export const BookletEditor: React.FC<{ multiColumn?: boolean }> = ({
         setSaving(false);
         setError(true);
       });
-  }, [cover, description, displayed, history, id, title]);
+  }, [cover, description, displayed, history, id, loaded, title]);
 
   const heading = intl.formatMessage(
     id ? messages.editHeading : messages.newHeading,
   );
+
+  if (id && loadError?.id === id) {
+    return (
+      <BundleColumnError
+        multiColumn={multiColumn}
+        errorType={loadError.notFound ? 'routing' : 'network'}
+        onRetry={handleRetryLoad}
+      />
+    );
+  }
+
+  if (!loaded) {
+    return (
+      <Column
+        bindToDocument={!multiColumn}
+        className='page-editor-column'
+        label={heading}
+      >
+        <ColumnHeader
+          title={heading}
+          icon='description'
+          iconComponent={DescriptionIcon}
+          multiColumn={multiColumn}
+          showBackButton
+        />
+        <LoadingIndicator />
+        <Helmet>
+          <title>{heading}</title>
+          <meta name='robots' content='noindex' />
+        </Helmet>
+      </Column>
+    );
+  }
 
   return (
     <Column
