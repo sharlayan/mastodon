@@ -538,10 +538,12 @@ RSpec.describe 'Chat federation across servers with different clocks' do
       stub_const('Sharlayan::ChatService::MAX_HELD_RELAYS', 1)
 
       announce(reaction)
+      announce(reaction.merge('id' => 'https://third.test/chat-reactions/3', 'object' => 'https://member.test/chat/messages/m3'))
       perform(note, member)
       run_released_jobs
       announce(reaction.merge('id' => 'https://third.test/chat-reactions/2', 'object' => 'https://member.test/chat/messages/m2'))
 
+      expect(service.redis.exists?(Sharlayan::ChatService.held_relay_key('https://member.test/chat/messages/m3'))).to be(false)
       expect(service.redis.exists?(Sharlayan::ChatService.held_relay_key('https://member.test/chat/messages/m2'))).to be(true)
     end
 

@@ -747,7 +747,10 @@ class Sharlayan::ChatService
     count_key = "chat_held_relay_count:#{conversation.id}"
     count = redis.incr(count_key)
     redis.expire(count_key, HELD_RELAY_TTL.to_i) if count == 1
-    return false if count > MAX_HELD_RELAYS
+    if count > MAX_HELD_RELAYS
+      release_held_relay_count(conversation.id, 1)
+      return false
+    end
 
     key = self.class.held_relay_key(message_uri)
     redis.multi do |transaction|
