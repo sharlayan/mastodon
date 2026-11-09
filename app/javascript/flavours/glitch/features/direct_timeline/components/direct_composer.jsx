@@ -16,6 +16,7 @@ import {
   changeDirectCompose,
   changeDirectComposeSpoiler,
   toggleDirectComposeSpoiler,
+  directMessageMentions,
   submitDirectMessage,
   uploadDirectMedia,
   removeDirectMedia,
@@ -63,7 +64,9 @@ export const DirectComposer = ({ conversationId, inReplyToId, recipientIds }) =>
   const replyStatus       = useSelector(state => replyOverrideId ? getStatus(state, { id: replyOverrideId }) : null);
   const effectiveReplyId  = replyOverrideId || inReplyToId;
 
-  const countedText = `${spoiler ? spoilerText : ''}${countableText(text)}`;
+  const mentions     = useSelector(state => directMessageMentions(state, { inReplyToId: effectiveReplyId, recipientIds }));
+
+  const countedText = `${spoiler ? spoilerText : ''}${countableText(mentions ? `${mentions} ${text}` : text)}`;
   const canSubmit = !isSubmitting && !isUploading && length(countedText) <= maxChars && (text.trim().length > 0 || media.size > 0);
 
   useLayoutEffect(() => {
