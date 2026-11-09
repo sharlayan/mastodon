@@ -22,7 +22,7 @@ import classNames from 'classnames';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 
 import type { List as ImmutableList } from 'immutable';
-import { fromJS } from 'immutable';
+import { fromJS, Map as ImmutableMap } from 'immutable';
 
 import { Helmet } from '@unhead/react/helmet';
 import Textarea from 'react-textarea-autosize';
@@ -31,6 +31,7 @@ import PhotoLibraryIcon from '@/material-icons/400-20px/photo_library.svg?react'
 import AddIcon from '@/material-icons/400-24px/add.svg?react';
 import ArrowDownwardIcon from '@/material-icons/400-24px/arrow_downward.svg?react';
 import ChatIcon from '@/material-icons/400-24px/chat.svg?react';
+import CloseIcon from '@/material-icons/400-24px/close.svg?react';
 import ContentCopyIcon from '@/material-icons/400-24px/content_copy.svg?react';
 import DeleteIcon from '@/material-icons/400-24px/delete.svg?react';
 import EditIcon from '@/material-icons/400-24px/edit.svg?react';
@@ -46,26 +47,44 @@ import { openModal } from 'flavours/glitch/actions/modal';
 import api from 'flavours/glitch/api';
 import type { ApiCustomEmojiJSON } from 'flavours/glitch/api_types/custom_emoji';
 import { compareId } from 'flavours/glitch/compare_id';
-import { Avatar } from 'flavours/glitch/components/avatar';
+import { Badge } from 'flavours/glitch/components/badge';
 import { Button } from 'flavours/glitch/components/button';
 import { CircularProgress } from 'flavours/glitch/components/circular_progress';
 import { Column } from 'flavours/glitch/components/column';
 import { ColumnHeader } from 'flavours/glitch/components/column/header';
 import { Dropdown } from 'flavours/glitch/components/dropdown_menu';
 import { textToEmojis } from 'flavours/glitch/components/emoji';
-import { CustomEmojiProvider } from 'flavours/glitch/components/emoji/context';
+import {
+  AnimateEmojiProvider,
+  CustomEmojiProvider,
+} from 'flavours/glitch/components/emoji/context';
+import {
+  SelectField,
+  TextArea,
+  TextInput,
+} from 'flavours/glitch/components/form_fields';
 import type { IconProp } from 'flavours/glitch/components/icon';
 import { Icon } from 'flavours/glitch/components/icon';
 import { IconButton } from 'flavours/glitch/components/icon_button';
+import { IconWithBadge } from 'flavours/glitch/components/icon_with_badge';
 import { LoadMore } from 'flavours/glitch/components/load_more';
 import MediaGallery from 'flavours/glitch/components/media_gallery';
 import { NotSignedInIndicator } from 'flavours/glitch/components/not_signed_in_indicator';
+import { RelativeTimestamp } from 'flavours/glitch/components/relative_timestamp';
 import EmojiPickerDropdown from 'flavours/glitch/features/compose/containers/emoji_picker_dropdown_container';
+import SettingToggle from 'flavours/glitch/features/notifications/components/setting_toggle';
 import { useIdentity } from 'flavours/glitch/identity_context';
 import { me, roleplayMode } from 'flavours/glitch/initial_state';
 import type { MenuItem } from 'flavours/glitch/models/dropdown_menu';
 import { useAppDispatch } from 'flavours/glitch/store';
 
+import type { ChatAccount } from './account';
+import {
+  ChatAccountRow,
+  ChatAvatar,
+  ChatDisplayName,
+  ChatLinkedDisplayName,
+} from './account';
 import { leaveChatRoute, trackChatHistory } from './history_parent';
 import { createRetries } from './retry';
 import type { PageCheckpoint } from './retry';
@@ -81,16 +100,6 @@ import {
   usesTouchKeyboard,
 } from './use_chat_scroll';
 import { useLongPressOpensToolbar } from './use_message_toolbar';
-
-interface ChatAccount {
-  id: string;
-  acct: string;
-  display_name: string;
-  avatar: string;
-  avatar_static: string;
-  suspended?: boolean;
-  emojis?: ApiCustomEmojiJSON[];
-}
 
 type RoomEnding = 'deleted' | 'removed';
 
@@ -268,6 +277,11 @@ const messages = defineMessages({
   },
   tabOwnedRooms: { id: 'chat.owned_rooms', defaultMessage: 'Your groups' },
   unread: { id: 'chat.unread', defaultMessage: 'Unread messages' },
+  removeAccount: {
+    id: 'chat.remove_account',
+    defaultMessage: 'Remove selected account',
+  },
+  cancel: { id: 'chat.cancel', defaultMessage: 'Cancel' },
   deleteGroupConfirm: {
     id: 'chat.delete_group_confirm',
     defaultMessage:
@@ -322,16 +336,17 @@ const EmojiText: React.FC<{
   emojis?: ApiCustomEmojiJSON[];
 }> = ({ text, emojis }) => (
   <CustomEmojiProvider emojis={emojis}>
-    {textToEmojis(text)}
+    <AnimateEmojiProvider as='span'>{textToEmojis(text)}</AnimateEmojiProvider>
   </CustomEmojiProvider>
 );
 
-const AccountName: React.FC<{ account: ChatAccount }> = ({ account }) =>
-  account.display_name ? (
-    <EmojiText text={account.display_name} emojis={account.emojis} />
-  ) : (
-    account.acct
-  );
+const TitleName: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className='display-name'>
+    <bdi>
+      <strong className='display-name__html'>{children}</strong>
+    </bdi>
+  </span>
+);
 
 const ConversationName: React.FC<{ conversation: ChatConversation }> = ({
   conversation,
@@ -345,28 +360,11 @@ const ConversationName: React.FC<{ conversation: ChatConversation }> = ({
         .map((account, index) => (
           <Fragment key={account.id}>
             {index > 0 && ', '}
-            <AccountName account={account} />
+            <ChatDisplayName account={account} />
           </Fragment>
         ))}
     </>
   );
-
-const AccountSummary: React.FC<{
-  account: ChatAccount;
-  detail?: string;
-}> = ({ account, detail }) => (
-  <>
-    <Avatar account={account} size={36} />
-    <span className='chat-native__account-names'>
-      <strong>
-        <AccountName account={account} />
-      </strong>
-      <span title={detail === undefined ? `@${account.acct}` : undefined}>
-        {detail ?? `@${account.acct}`}
-      </span>
-    </span>
-  </>
-);
 
 const directPartner = (conversation: ChatConversation) =>
   conversation.type === 'direct'
@@ -378,42 +376,33 @@ const ConversationTitle: React.FC<{
   linked?: boolean;
 }> = ({ conversation, linked = false }) => {
   const partner = directPartner(conversation);
-  if (conversation.title || !partner?.display_name) {
-    const name = <ConversationName conversation={conversation} />;
-    return linked ? name : <strong>{name}</strong>;
-  }
+  if (conversation.title || !partner)
+    return (
+      <TitleName>
+        <ConversationName conversation={conversation} />
+      </TitleName>
+    );
 
-  const address = `@${partner.acct}`;
-  const Title = linked ? 'span' : 'strong';
-  return (
-    <Title className='chat-native__conversation-title'>
-      <span>
-        <EmojiText text={partner.display_name} emojis={partner.emojis} />
-      </span>
-      {linked ? (
-        <Link
-          to={`/${address}`}
-          title={address}
-          data-hover-card-account={partner.id}
-        >
-          {address}
-        </Link>
-      ) : (
-        <span title={address}>{address}</span>
-      )}
-    </Title>
+  return linked ? (
+    <ChatLinkedDisplayName account={partner} />
+  ) : (
+    <ChatDisplayName account={partner} withHandle />
   );
 };
 
-const ConversationPicture: React.FC<{ conversation: ChatConversation }> = ({
-  conversation,
-}) => {
+const ConversationPicture: React.FC<{
+  conversation: ChatConversation;
+  size: number;
+}> = ({ conversation, size }) => {
   const other = directPartner(conversation);
 
   return other ? (
-    <Avatar account={other} size={36} />
+    <ChatAvatar account={other} size={size} />
   ) : (
-    <span className='chat-native__room-picture'>
+    <span
+      className='chat-native__room-picture'
+      style={{ width: `${size}px`, height: `${size}px` }}
+    >
       <Icon id='groups' icon={GroupsIcon} />
     </span>
   );
@@ -537,6 +526,12 @@ export const withNewMessage = (
 };
 
 type AccountSearchStatus = 'idle' | 'searching' | 'empty' | 'failed';
+type AccountSearchField = 'direct' | 'group' | 'invite';
+const idleAccountSearches: Record<AccountSearchField, AccountSearchStatus> = {
+  direct: 'idle',
+  group: 'idle',
+  invite: 'idle',
+};
 
 const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
   status,
@@ -553,7 +548,7 @@ const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
     );
   if (status === 'empty')
     return (
-      <div className='chat-native__empty'>
+      <div className='empty-column-indicator'>
         <FormattedMessage
           id='chat.account_search_no_results'
           defaultMessage='No accounts found.'
@@ -562,7 +557,7 @@ const AccountSearchNotice: React.FC<{ status: AccountSearchStatus }> = ({
     );
   if (status === 'failed')
     return (
-      <div className='chat-native__empty'>
+      <div className='empty-column-indicator'>
         <FormattedMessage
           id='chat.account_search_failed'
           defaultMessage='Could not search for accounts. Try again.'
@@ -672,31 +667,31 @@ const InvitationRow: React.FC<{
   }, [invitation, onAnswer]);
 
   return (
-    <div className='chat-native__invitation'>
-      <Avatar account={invitation.inviter} size={36} />
-      <div className='chat-native__account-names'>
-        <strong>
+    <ChatAccountRow
+      className='chat-native__invitation'
+      account={invitation.inviter}
+      name={
+        <TitleName>
           <ConversationName conversation={invitation.conversation} />
-        </strong>
-        <span>
-          <FormattedMessage
-            id='chat.invited_by'
-            defaultMessage='Invited by {name}'
-            values={{
-              name: <AccountName account={invitation.inviter} />,
-            }}
-          />
-        </span>
-      </div>
-      <div className='account__relationship'>
-        <Button compact onClick={handleAccept}>
-          <FormattedMessage id='chat.accept' defaultMessage='Accept' />
-        </Button>
-        <Button compact secondary onClick={handleReject}>
-          <FormattedMessage id='chat.reject' defaultMessage='Reject' />
-        </Button>
-      </div>
-    </div>
+        </TitleName>
+      }
+      details={
+        <FormattedMessage
+          id='chat.invited_by'
+          defaultMessage='Invited by {name}'
+          values={{
+            name: <ChatDisplayName account={invitation.inviter} />,
+          }}
+        />
+      }
+    >
+      <Button compact onClick={handleAccept}>
+        <FormattedMessage id='chat.accept' defaultMessage='Accept' />
+      </Button>
+      <Button compact secondary onClick={handleReject}>
+        <FormattedMessage id='chat.reject' defaultMessage='Reject' />
+      </Button>
+    </ChatAccountRow>
   );
 };
 
@@ -710,27 +705,172 @@ const PendingInvitationRow: React.FC<{
   }, [invitation, onCancel]);
 
   return (
-    <div className='chat-native__member'>
-      <Avatar account={invitee} size={36} withLink />
-      <div>
-        <strong>
-          <AccountName account={invitee} />
-        </strong>
-        <span title={`@${invitee.acct}`}>@{invitee.acct}</span>
-      </div>
-      <small className='chat-native__state-badge'>
-        <FormattedMessage
-          id='chat.invitation_pending'
-          defaultMessage='Invited'
-        />
-      </small>
+    <ChatAccountRow
+      className='chat-native__member'
+      account={invitee}
+      target={{ kind: 'profile' }}
+    >
+      <Badge
+        variant='warning'
+        label={
+          <FormattedMessage
+            id='chat.invitation_pending'
+            defaultMessage='Invited'
+          />
+        }
+      />
       <Button compact secondary onClick={handleCancel}>
         <FormattedMessage
           id='chat.cancel_invitation'
           defaultMessage='Cancel invitation'
         />
       </Button>
-    </div>
+    </ChatAccountRow>
+  );
+};
+
+const SelectedAccountCard: React.FC<{
+  account: ChatAccount;
+  onRemove: (accountId: string) => void;
+}> = ({ account, onRemove }) => {
+  const intl = useIntl();
+  const handleRemove = useCallback(() => {
+    onRemove(account.id);
+  }, [account.id, onRemove]);
+
+  return (
+    <ChatAccountRow className='chat-native__account-card' account={account}>
+      <IconButton
+        icon='times'
+        iconComponent={CloseIcon}
+        title={intl.formatMessage(messages.removeAccount)}
+        onClick={handleRemove}
+      />
+    </ChatAccountRow>
+  );
+};
+
+interface ReactionGroup {
+  reaction: string;
+  url?: string;
+  staticUrl?: string;
+  sensitive: boolean;
+  accounts: ChatAccount[];
+  mine: boolean;
+}
+
+const groupReactions = (reactions: ChatReaction[]) => {
+  const groups = new Map<string, ReactionGroup>();
+  reactions.forEach((item) => {
+    const group = groups.get(item.reaction) ?? {
+      reaction: item.reaction,
+      url: item.url,
+      staticUrl: item.static_url,
+      sensitive: Boolean(item.is_sensitive),
+      accounts: [],
+      mine: false,
+    };
+    group.url ??= item.url;
+    group.staticUrl ??= item.static_url;
+    group.accounts.push(item.account);
+    if (item.account.id === me) group.mine = true;
+    groups.set(item.reaction, group);
+  });
+  return Array.from(groups.values());
+};
+
+const MessageReactions: React.FC<{
+  messageId: string;
+  reactions: ChatReaction[];
+  canReact: boolean;
+  onRemove: (event: MouseEvent<HTMLButtonElement>) => void;
+  onAdd: (messageId: string, emoji: PickedEmoji) => void;
+}> = ({ messageId, reactions, canReact, onRemove, onAdd }) => {
+  const groups = useMemo(() => groupReactions(reactions), [reactions]);
+  const handleAdd = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      const reaction = event.currentTarget.dataset.reaction;
+      if (reaction) onAdd(messageId, { native: reaction });
+    },
+    [messageId, onAdd],
+  );
+
+  return (
+    <AnimateEmojiProvider className='reactions-bar chat-native__reactions'>
+      {groups.map((group) => {
+        const accounts = group.accounts
+          .map((account) => `@${account.acct}`)
+          .join(', ');
+        const label = `${group.reaction} ${accounts}`;
+        const contents = (
+          <>
+            <span className='reactions-bar__item__emoji'>
+              {group.url ? (
+                <img
+                  draggable='false'
+                  className={classNames('emojione custom-emoji', {
+                    'sensitive-custom-emoji': group.sensitive,
+                  })}
+                  src={group.staticUrl ?? group.url}
+                  alt={group.reaction}
+                />
+              ) : (
+                textToEmojis(group.reaction)
+              )}
+            </span>
+            <span className='reactions-bar__item__count'>
+              {group.accounts.length}
+            </span>
+          </>
+        );
+
+        if (group.mine)
+          return (
+            <button
+              key={group.reaction}
+              type='button'
+              className='reactions-bar__item active'
+              aria-pressed
+              aria-label={label}
+              title={accounts}
+              data-message-id={messageId}
+              data-reaction={group.reaction}
+              data-account-id={me}
+              onClick={onRemove}
+            >
+              {contents}
+            </button>
+          );
+
+        if (canReact)
+          return (
+            <button
+              key={group.reaction}
+              type='button'
+              className='reactions-bar__item'
+              aria-pressed={false}
+              aria-label={label}
+              title={accounts}
+              data-reaction={group.reaction}
+              onClick={handleAdd}
+            >
+              {contents}
+            </button>
+          );
+
+        return (
+          <span
+            key={group.reaction}
+            className='reactions-bar__item chat-native__reaction-static'
+            role='img'
+            aria-label={label}
+            title={accounts}
+          >
+            {contents}
+          </span>
+        );
+      })}
+    </AnimateEmojiProvider>
   );
 };
 
@@ -772,7 +912,7 @@ const ReplyQuote: React.FC<{
     {target ? (
       <>
         <strong>
-          <AccountName account={target.account} />
+          <ChatDisplayName account={target.account} />
         </strong>
         <span>
           {target.deleted_at ? (
@@ -1114,7 +1254,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const [directAccount, setDirectAccount] = useState<ChatAccount | null>(null);
   const [accountResults, setAccountResults] = useState<ChatAccount[]>([]);
   const [accountSearchStatus, setAccountSearchStatus] =
-    useState<AccountSearchStatus>('idle');
+    useState(idleAccountSearches);
   const [jumpButton] = useState(createJumpButtonState);
   const [groupTitle, setGroupTitle] = useState('');
   const [groupAccountQuery, setGroupAccountQuery] = useState('');
@@ -1160,13 +1300,30 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const stillMounted = useCallback(() => isMounted.current, []);
   const uploadAbort = useRef<AbortController | null>(null);
   const textBeforeEdit = useRef<string | null>(null);
+  const composeMode = useRef({ editingId, replyToId });
+  useLayoutEffect(() => {
+    composeMode.current = { editingId, replyToId };
+  }, [editingId, replyToId]);
+
+  const finishEditing = useCallback(() => {
+    setEditingId(null);
+    composerText.set(textBeforeEdit.current ?? '');
+    textBeforeEdit.current = null;
+  }, [composerText]);
+
   const deletedMessages = useRef(new Map<string, string>());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesListRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
-  const searchRequestRef = useRef(0);
-  const searchTimeoutRef = useRef<number | null>(null);
+  const searchRequestRef = useRef<Record<AccountSearchField, number>>({
+    direct: 0,
+    group: 0,
+    invite: 0,
+  });
+  const searchTimeoutRef = useRef<Partial<Record<AccountSearchField, number>>>(
+    {},
+  );
   const messageSearchTimeoutRef = useRef<number | undefined>(undefined);
   const latestMessageSearch = useRef(0);
 
@@ -1410,29 +1567,37 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
 
   useEffect(
     () => () => {
-      if (searchTimeoutRef.current !== null)
-        window.clearTimeout(searchTimeoutRef.current);
+      Object.values(searchTimeoutRef.current).forEach((timer) => {
+        window.clearTimeout(timer);
+      });
     },
     [],
   );
 
   const searchAccounts = useCallback(
-    (query: string, setter: (accounts: ChatAccount[]) => void) => {
+    (
+      field: AccountSearchField,
+      query: string,
+      setter: (accounts: ChatAccount[]) => void,
+    ) => {
       const normalized = query.trim();
-      const requestId = searchRequestRef.current + 1;
-      searchRequestRef.current = requestId;
-      setAccountSearchStatus(normalized.length < 2 ? 'idle' : 'searching');
+      const requestId = searchRequestRef.current[field] + 1;
+      searchRequestRef.current[field] = requestId;
+      const setStatus = (status: AccountSearchStatus) => {
+        setAccountSearchStatus((current) =>
+          current[field] === status ? current : { ...current, [field]: status },
+        );
+      };
+      setStatus(normalized.length < 2 ? 'idle' : 'searching');
 
-      if (searchTimeoutRef.current !== null) {
-        window.clearTimeout(searchTimeoutRef.current);
-      }
+      window.clearTimeout(searchTimeoutRef.current[field]);
 
       if (normalized.length < 2) {
         setter([]);
         return;
       }
 
-      searchTimeoutRef.current = window.setTimeout(() => {
+      searchTimeoutRef.current[field] = window.setTimeout(() => {
         void api()
           .get<{ accounts: ChatAccount[] }>('/api/v2/search', {
             params: {
@@ -1443,17 +1608,17 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             },
           })
           .then((response) => {
-            if (requestId !== searchRequestRef.current) return;
+            if (requestId !== searchRequestRef.current[field]) return;
             const accounts = response.data.accounts.filter(
               (account) => account.id !== me,
             );
             setter(accounts);
-            setAccountSearchStatus(accounts.length === 0 ? 'empty' : 'idle');
+            setStatus(accounts.length === 0 ? 'empty' : 'idle');
           })
           .catch(() => {
-            if (requestId !== searchRequestRef.current) return;
+            if (requestId !== searchRequestRef.current[field]) return;
             setter([]);
-            setAccountSearchStatus('failed');
+            setStatus('failed');
           });
       }, SEARCH_DEBOUNCE_MS);
     },
@@ -1622,6 +1787,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       setConversationMissing(missing);
       setRoomEnding(ending);
       if (missing && !ending) setError('load');
+      else if (!missing)
+        setError((current) => (current === 'load' ? null : current));
       const reconciled = updates.reduce(
         (items, update) => update(items),
         loaded,
@@ -2209,12 +2376,18 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           deletedMessages.current.set(value.id, new Date().toISOString());
           if (eventConversationId) refreshConversation(eventConversationId);
           if (eventConversationId !== conversationId) return;
+          if (composeMode.current.editingId === id) finishEditing();
+          setReplyToId((current) => (current === id ? null : current));
           updateMessages((current) =>
             current.filter((item) => item.id !== value.id),
           );
         } else if (event === 'chat.conversation_update') {
           const updated = payload as Partial<ChatConversation>;
           if (updated.id && endedConversations.current.has(updated.id)) return;
+          if (updated.accounts?.some((account) => account.id === me))
+            updateInvitations((current) =>
+              current.filter((item) => item.conversation.id !== updated.id),
+            );
           if (updated.accounts) {
             updateConversations((current) =>
               withConversationUpdate(current, updated as ChatConversation),
@@ -2362,6 +2535,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             readAgain();
           }
         } else if (event !== 'chat.notification' && eventConversationId) {
+          if (event === 'chat.member_join' && value.account_id === me)
+            updateInvitations((current) =>
+              current.filter(
+                (item) => item.conversation.id !== eventConversationId,
+              ),
+            );
           refreshConversation(eventConversationId);
         }
       }),
@@ -2369,6 +2548,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       advanceContinuousUpTo,
       applyTombstone,
       conversationId,
+      finishEditing,
       history,
       jumpButton,
       keepReading,
@@ -2389,12 +2569,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       updateSearchResults,
     ],
   );
-
-  const finishEditing = useCallback(() => {
-    setEditingId(null);
-    composerText.set(textBeforeEdit.current ?? '');
-    textBeforeEdit.current = null;
-  }, [composerText]);
 
   const isArchived = Boolean(conversation?.archived);
   const recipientSuspended =
@@ -2492,17 +2666,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       !jumpTargetId ||
       jumpTargetLoaded ||
       newestMessageConversationId !== conversationId ||
-      error ||
-      sendError ||
-      readingError
+      failedReads.current.has('messages')
     )
       return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadOlderMessages();
   }, [
     conversationId,
-    error,
-    sendError,
     readingError,
     jumpTargetId,
     jumpTargetLoaded,
@@ -2624,6 +2793,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     )
       return;
     setLoading(true);
+    const sentEditing = editingId;
+    const sentReply = replyToId;
     const sentMedia = editingId ? [] : media.map((item) => item.id);
     try {
       const response = editingId
@@ -2645,8 +2816,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           ? current.map((item) => (item.id === message.id ? message : item))
           : insertMessage(current, message),
       );
-      if (editingId) {
-        finishEditing();
+      if (sentEditing) {
+        if (composeMode.current.editingId === sentEditing) finishEditing();
       } else {
         const withoutSent = (current: string) =>
           current.startsWith(text) ? current.slice(text.length) : current;
@@ -2657,7 +2828,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           current.filter((item) => !sentMedia.includes(item.id)),
         );
       }
-      setReplyToId(null);
+      setReplyToId((current) => (current === sentReply ? null : current));
     } catch (sendError) {
       setSendError(isRefused(sendError) ? 'refused' : 'send');
     } finally {
@@ -2736,7 +2907,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       const value = event.target.value;
       setDirectAccount(null);
       setDirectAccountQuery(value);
-      searchAccounts(value, setAccountResults);
+      searchAccounts('direct', value, setAccountResults);
     },
     [searchAccounts],
   );
@@ -2748,7 +2919,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!account) return;
       setDirectAccount(account);
       setDirectAccountQuery('');
-      searchAccounts('', setAccountResults);
+      searchAccounts('direct', '', setAccountResults);
     },
     [accountResults, searchAccounts],
   );
@@ -2792,7 +2963,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleGroupAccountQueryChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setGroupAccountQuery(event.target.value);
-      searchAccounts(event.target.value, setGroupAccountResults);
+      searchAccounts('group', event.target.value, setGroupAccountResults);
     },
     [searchAccounts],
   );
@@ -2808,26 +2979,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           : [...current, account],
       );
       setGroupAccountQuery('');
-      searchAccounts('', setGroupAccountResults);
+      searchAccounts('group', '', setGroupAccountResults);
     },
     [groupAccountResults, searchAccounts],
   );
 
-  const handleRemoveGroupAccount = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      const id = event.currentTarget.dataset.accountId;
-      setGroupAccounts((current) =>
-        current.filter((account) => account.id !== id),
-      );
-    },
-    [],
-  );
+  const handleRemoveGroupAccount = useCallback((id: string) => {
+    setGroupAccounts((current) =>
+      current.filter((account) => account.id !== id),
+    );
+  }, []);
 
   const handleInviteAccountQueryChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setInviteAccount(null);
       setInviteAccountQuery(event.target.value);
-      searchAccounts(event.target.value, setInviteAccountResults);
+      searchAccounts('invite', event.target.value, setInviteAccountResults);
     },
     [searchAccounts],
   );
@@ -2839,7 +3006,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       if (!account) return;
       setInviteAccount(account);
       setInviteAccountQuery('');
-      searchAccounts('', setInviteAccountResults);
+      searchAccounts('invite', '', setInviteAccountResults);
     },
     [inviteAccountResults, searchAccounts],
   );
@@ -2864,6 +3031,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     setSearchQuery('');
     setSearchResults([]);
     setSearchedQuery(null);
+    setError((current) => (current === 'search' ? null : current));
   }, [cancelMessageSearch]);
 
   useEffect(() => cancelMessageSearch, [cancelMessageSearch]);
@@ -2921,6 +3089,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       } else {
         setSearchResults([]);
         setSearchedQuery(null);
+        setError((current) => (current === 'search' ? null : current));
       }
     },
     [cancelMessageSearch, runMessageSearch],
@@ -3256,13 +3425,16 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
           );
           return loadConversationsForAction();
         })
-        .catch(() => {
+        .catch((answerError: unknown) => {
           setError('invite');
+          if (isRefused(answerError) || isNotFound(answerError))
+            void loadInvitations().catch(() => undefined);
         });
     },
     [
       dispatch,
       loadConversationsForAction,
+      loadInvitations,
       updateConversations,
       updateInvitations,
     ],
@@ -3376,14 +3548,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     ],
   );
 
+  const settingRequests = useRef({
+    policy: 0,
+    allow_group_invites: 0,
+    notifications: 0,
+  });
+
   const handlePolicyChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
       setError(null);
+      const requestId = ++settingRequests.current.policy;
       void api()
         .patch<ChatSettings>('/api/v1/chat/settings', {
           policy: event.target.value,
         })
         .then((response) => {
+          if (requestId !== settingRequests.current.policy) return;
           setChatSettings((current) =>
             current
               ? { ...current, policy: response.data.policy }
@@ -3397,24 +3577,35 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
     [],
   );
 
+  const toggleSettings = useMemo(
+    () =>
+      ImmutableMap({
+        allow_group_invites: chatSettings?.allow_group_invites ?? false,
+        notifications: chatSettings?.notifications ?? false,
+      }),
+    [chatSettings?.allow_group_invites, chatSettings?.notifications],
+  );
+
   const handleSettingToggle = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const key = event.target.dataset.setting;
+    (path: string[], checked: boolean) => {
+      const key = path[0];
       if (key !== 'notifications' && key !== 'allow_group_invites') return;
       if (
         key === 'notifications' &&
-        event.target.checked &&
+        checked &&
         'Notification' in window &&
         Notification.permission === 'default'
       ) {
         void Notification.requestPermission();
       }
       setError(null);
+      const requestId = ++settingRequests.current[key];
       void api()
         .patch<ChatSettings>('/api/v1/chat/settings', {
-          [key]: event.target.checked,
+          [key]: checked,
         })
         .then((response) => {
+          if (requestId !== settingRequests.current[key]) return;
           setChatSettings((current) =>
             current ? { ...current, [key]: response.data[key] } : response.data,
           );
@@ -3675,7 +3866,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
   const handleTabChange = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const tab = event.currentTarget.dataset.tab as ChatHomeTab | undefined;
-      if (tab) setActiveTab(tab);
+      if (!tab) return;
+      setActiveTab(tab);
+      setError((current) => (current === 'invite' ? null : current));
     },
     [],
   );
@@ -3786,14 +3979,19 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
         }
       >
         {!conversationId && !creating && chatSettings && (
-          <div className='chat-native-settings'>
-            <h3>{intl.formatMessage(messages.settings)}</h3>
-            <label>
-              <FormattedMessage
-                id='chat.policy'
-                defaultMessage='Who can start a direct chat'
-              />
-              <select value={chatSettings.policy} onChange={handlePolicyChange}>
+          <div className='column-settings chat-native-settings'>
+            <section>
+              <h3>{intl.formatMessage(messages.settings)}</h3>
+              <SelectField
+                label={
+                  <FormattedMessage
+                    id='chat.policy'
+                    defaultMessage='Who can start a direct chat'
+                  />
+                }
+                value={chatSettings.policy}
+                onChange={handlePolicyChange}
+              >
                 <option value='everyone'>
                   {intl.formatMessage({
                     id: 'chat.policy.everyone',
@@ -3824,32 +4022,36 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     defaultMessage: 'Nobody',
                   })}
                 </option>
-              </select>
-            </label>
-            <label>
-              <input
-                type='checkbox'
-                data-setting='allow_group_invites'
-                checked={chatSettings.allow_group_invites}
-                onChange={handleSettingToggle}
-              />
-              <FormattedMessage
-                id='chat.allow_group_invites'
-                defaultMessage='Allow group invitations'
-              />
-            </label>
-            <label>
-              <input
-                type='checkbox'
-                data-setting='notifications'
-                checked={chatSettings.notifications}
-                onChange={handleSettingToggle}
-              />
-              <FormattedMessage
-                id='chat.notifications'
-                defaultMessage='Notify me about new chat messages'
-              />
-            </label>
+              </SelectField>
+            </section>
+            <section>
+              <div className='column-settings__row'>
+                <SettingToggle
+                  prefix='chat'
+                  settings={toggleSettings}
+                  settingPath={['allow_group_invites']}
+                  onChange={handleSettingToggle}
+                  label={
+                    <FormattedMessage
+                      id='chat.allow_group_invites'
+                      defaultMessage='Allow group invitations'
+                    />
+                  }
+                />
+                <SettingToggle
+                  prefix='chat'
+                  settings={toggleSettings}
+                  settingPath={['notifications']}
+                  onChange={handleSettingToggle}
+                  label={
+                    <FormattedMessage
+                      id='chat.notifications'
+                      defaultMessage='Notify me about new chat messages'
+                    />
+                  }
+                />
+              </div>
+            </section>
           </div>
         )}
       </ColumnHeader>
@@ -3857,7 +4059,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
       <div className='scrollable chat-native' onPaste={pastePlainText}>
         {conversationId && conversationMissing ? (
           roomEnding && (
-            <div className='chat-native__empty'>
+            <div className='empty-column-indicator'>
               <p>
                 {roomEnding === 'deleted' ? (
                   <FormattedMessage
@@ -3871,11 +4073,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   />
                 )}
               </p>
-              <Link
-                className='button chat-native__ended-back'
-                to='/chat'
-                onClick={handleBackToChats}
-              >
+              <Link className='button' to='/chat' onClick={handleBackToChats}>
                 <FormattedMessage
                   id='chat.room_ended_back'
                   defaultMessage='Back to chats'
@@ -3892,7 +4090,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     className='chat-native__invite'
                     onSubmit={handleInviteSubmit}
                   >
-                    <input
+                    <TextInput
                       value={inviteAccountQuery}
                       onChange={handleInviteAccountQueryChange}
                       placeholder={intl.formatMessage(messages.accountSearch)}
@@ -3909,57 +4107,50 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     </Button>
                     {inviteAccount && (
                       <div className='chat-native__selected-accounts'>
-                        <div className='chat-native__account-card'>
-                          <AccountSummary account={inviteAccount} />
-                          <button
-                            type='button'
-                            onClick={handleRemoveInviteAccount}
-                            aria-label={intl.formatMessage({
-                              id: 'chat.remove_account',
-                              defaultMessage: 'Remove selected account',
-                            })}
-                          >
-                            ×
-                          </button>
-                        </div>
+                        <SelectedAccountCard
+                          account={inviteAccount}
+                          onRemove={handleRemoveInviteAccount}
+                        />
                       </div>
                     )}
                   </form>
                   {inviteAccountQuery.trim().length >= 2 && (
-                    <AccountSearchNotice status={accountSearchStatus} />
+                    <AccountSearchNotice status={accountSearchStatus.invite} />
                   )}
                   {inviteAccountResults.length > 0 && (
                     <div className='chat-native__account-results'>
                       {inviteAccountResults.map((account) => (
-                        <button
+                        <ChatAccountRow
                           key={account.id}
-                          type='button'
-                          data-account-id={account.id}
-                          onClick={handleInviteAccountResult}
-                        >
-                          <AccountSummary account={account} />
-                        </button>
+                          account={account}
+                          target={{
+                            kind: 'button',
+                            'data-account-id': account.id,
+                            onClick: handleInviteAccountResult,
+                          }}
+                        />
                       ))}
                     </div>
                   )}
                 </>
               )}
               {conversation.accounts.map((account) => (
-                <div className='chat-native__member' key={account.id}>
-                  <Avatar account={account} size={36} withLink />
-                  <div>
-                    <strong>
-                      <AccountName account={account} />
-                    </strong>
-                    <span title={`@${account.acct}`}>@{account.acct}</span>
-                  </div>
+                <ChatAccountRow
+                  key={account.id}
+                  className='chat-native__member'
+                  account={account}
+                  target={{ kind: 'profile' }}
+                >
                   {isRemoteAccount(account) && (
-                    <small className='chat-native__remote-badge'>
-                      <FormattedMessage
-                        id='chat.remote'
-                        defaultMessage='Remote'
-                      />
-                    </small>
+                    <Badge
+                      variant='subtle'
+                      label={
+                        <FormattedMessage
+                          id='chat.remote'
+                          defaultMessage='Remote'
+                        />
+                      }
+                    />
                   )}
                   {isGroupOwner && account.id !== me && (
                     <Dropdown
@@ -3971,7 +4162,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       items={memberMenu(account)}
                     />
                   )}
-                </div>
+                </ChatAccountRow>
               ))}
               {shownSentInvitations.map(
                 (invitation) =>
@@ -3991,7 +4182,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 className='chat-native__group-edit'
                 onSubmit={handleGroupEditSubmit}
               >
-                <input
+                <TextInput
                   name='search'
                   autoComplete='off'
                   value={
@@ -4004,7 +4195,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   maxLength={256}
                   disabled={conversation.archived}
                 />
-                <textarea
+                <TextArea
                   name='search'
                   value={
                     groupEdit?.conversationId === conversation.id
@@ -4104,11 +4295,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     >
                       {message.account.id !== me &&
                         (startsRun(messagesList, index) ? (
-                          <Avatar
-                            account={message.account}
-                            size={36}
-                            withLink
-                          />
+                          <ChatAvatar account={message.account} withLink />
                         ) : (
                           <span className='chat-native__avatar-space' />
                         ))}
@@ -4116,7 +4303,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         {message.account.id !== me &&
                           startsRun(messagesList, index) && (
                             <strong>
-                              <AccountName account={message.account} />
+                              <ChatDisplayName account={message.account} />
                             </strong>
                           )}
                         <div className='chat-native__bubble-wrap'>
@@ -4205,45 +4392,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             )}
                         </div>
                         {message.reactions.length > 0 && (
-                          <div className='chat-native__reactions'>
-                            {message.reactions.map((reaction) => {
-                              const shown = reaction.url ? (
-                                <img
-                                  className='emoji'
-                                  src={reaction.static_url ?? reaction.url}
-                                  alt={reaction.reaction}
-                                />
-                              ) : (
-                                reaction.reaction
-                              );
-                              const key = `${reaction.account.id}-${reaction.reaction}`;
-                              return reaction.account.id === me ? (
-                                <button
-                                  key={key}
-                                  type='button'
-                                  className='chat-native__reaction mine'
-                                  aria-pressed
-                                  data-message-id={message.id}
-                                  data-reaction={reaction.reaction}
-                                  data-account-id={reaction.account.id}
-                                  onClick={handleReactionClick}
-                                  title={reaction.account.acct}
-                                >
-                                  {shown}
-                                </button>
-                              ) : (
-                                <span
-                                  key={key}
-                                  className='chat-native__reaction'
-                                  role='img'
-                                  aria-label={`${reaction.reaction} @${reaction.account.acct}`}
-                                  title={reaction.account.acct}
-                                >
-                                  {shown}
-                                </span>
-                              );
-                            })}
-                          </div>
+                          <MessageReactions
+                            messageId={message.id}
+                            reactions={message.reactions}
+                            canReact={!isArchived && message.account.id !== me}
+                            onRemove={handleReactionClick}
+                            onAdd={handleEmojiPick}
+                          />
                         )}
                         <div className='chat-native__message-footer'>
                           {endsRun(messagesList, index) && (
@@ -4294,7 +4449,11 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       />
                     </span>
                     {isGroupOwner && (
-                      <button type='button' onClick={handleReopen}>
+                      <button
+                        type='button'
+                        className='link-button'
+                        onClick={handleReopen}
+                      >
                         {intl.formatMessage(messages.unarchive)}
                       </button>
                     )}
@@ -4317,22 +4476,26 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                       />
                     ) : (
                       <div>
-                        {replyTarget ? (
-                          <FormattedMessage
-                            id='chat.replying_to'
-                            defaultMessage='Replying to {account}'
-                            values={{
-                              account: (
-                                <AccountName account={replyTarget.account} />
-                              ),
-                            }}
-                          />
-                        ) : (
-                          <FormattedMessage
-                            id='chat.replying'
-                            defaultMessage='Replying to message'
-                          />
-                        )}
+                        <span>
+                          {replyTarget ? (
+                            <FormattedMessage
+                              id='chat.replying_to'
+                              defaultMessage='Replying to {account}'
+                              values={{
+                                account: (
+                                  <ChatDisplayName
+                                    account={replyTarget.account}
+                                  />
+                                ),
+                              }}
+                            />
+                          ) : (
+                            <FormattedMessage
+                              id='chat.replying'
+                              defaultMessage='Replying to message'
+                            />
+                          )}
+                        </span>
                         <span>
                           {replyTarget && !replyTarget.deleted_at ? (
                             <EmojiText
@@ -4348,12 +4511,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         </span>
                       </div>
                     )}
-                    <button type='button' onClick={handleCancelComposeMode}>
-                      <FormattedMessage
-                        id='chat.cancel'
-                        defaultMessage='Cancel'
-                      />
-                    </button>
+                    <IconButton
+                      icon='times'
+                      iconComponent={CloseIcon}
+                      title={intl.formatMessage(messages.cancel)}
+                      onClick={handleCancelComposeMode}
+                    />
                   </div>
                 )}
                 {composerMedia.length > 0 && (
@@ -4376,8 +4539,9 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             alt={attachment.description ?? ''}
                           />
                         )}
-                        <button
-                          type='button'
+                        <Button
+                          compact
+                          secondary
                           data-media-id={attachment.id}
                           onClick={handleRemoveMedia}
                         >
@@ -4385,7 +4549,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                             id='chat.remove_attachment'
                             defaultMessage='Remove attachment'
                           />
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -4441,11 +4605,12 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
             </>
           )
         ) : creating ? (
-          <section id='chat-new-panel' className='chat-native__new-panel'>
-            <div className='chat-native__new-modes'>
+          <>
+            <div className='account__section-headline chat-native__new-modes'>
               <button
                 type='button'
                 data-mode='direct'
+                className={classNames({ active: newChatMode === 'direct' })}
                 aria-pressed={newChatMode === 'direct'}
                 onClick={handleNewChatMode}
               >
@@ -4454,139 +4619,129 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               <button
                 type='button'
                 data-mode='group'
+                className={classNames({ active: newChatMode === 'group' })}
                 aria-pressed={newChatMode === 'group'}
                 onClick={handleNewChatMode}
               >
                 {intl.formatMessage(messages.newGroup)}
               </button>
             </div>
-            {newChatMode === 'direct' ? (
-              <>
-                <form
-                  className='chat-native__new'
-                  onSubmit={handleDirectSubmit}
-                >
-                  <div className='chat-native__form-row'>
-                    <input
-                      value={directAccountQuery}
-                      onChange={handleDirectAccountQueryChange}
-                      placeholder={intl.formatMessage(messages.accountSearch)}
-                    />
-                    <Button type='submit' disabled={loading || !directAccount}>
-                      {intl.formatMessage(messages.open)}
-                    </Button>
-                  </div>
-                  {directAccount && (
-                    <div className='chat-native__selected-accounts'>
-                      <div className='chat-native__account-card'>
-                        <AccountSummary account={directAccount} />
-                        <button
-                          type='button'
-                          onClick={handleRemoveDirectAccount}
-                          aria-label={intl.formatMessage({
-                            id: 'chat.remove_account',
-                            defaultMessage: 'Remove selected account',
-                          })}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </form>
-                {directAccountQuery.trim().length >= 2 && (
-                  <AccountSearchNotice status={accountSearchStatus} />
-                )}
-                {accountResults.length > 0 && (
-                  <div className='chat-native__account-results'>
-                    {accountResults.map((account) => (
-                      <button
-                        key={account.id}
-                        type='button'
-                        data-account-id={account.id}
-                        onClick={handleAccountResult}
+            <section id='chat-new-panel' className='chat-native__new-panel'>
+              {newChatMode === 'direct' ? (
+                <>
+                  <form
+                    className='chat-native__new'
+                    onSubmit={handleDirectSubmit}
+                  >
+                    <div className='chat-native__form-row'>
+                      <TextInput
+                        value={directAccountQuery}
+                        onChange={handleDirectAccountQueryChange}
+                        placeholder={intl.formatMessage(messages.accountSearch)}
+                      />
+                      <Button
+                        type='submit'
+                        disabled={loading || !directAccount}
                       >
-                        <AccountSummary account={account} />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <form className='chat-native__new' onSubmit={handleGroupSubmit}>
-                  <div className='chat-native__form-row'>
-                    <input
-                      name='search'
-                      autoComplete='off'
-                      value={groupTitle}
-                      onChange={handleGroupTitleChange}
-                      placeholder={intl.formatMessage(messages.groupTitle)}
-                    />
-                  </div>
-                  <div className='chat-native__form-row'>
-                    <input
-                      name='search'
-                      autoComplete='off'
-                      value={groupAccountQuery}
-                      onChange={handleGroupAccountQueryChange}
-                      placeholder={intl.formatMessage(messages.accountSearch)}
-                    />
-                    <Button
-                      type='submit'
-                      disabled={loading || !groupTitle.trim()}
-                    >
-                      {intl.formatMessage(messages.create)}
-                    </Button>
-                  </div>
-                  {groupAccounts.length > 0 && (
-                    <div className='chat-native__selected-accounts'>
-                      {groupAccounts.map((account) => (
-                        <div
-                          className='chat-native__account-card'
+                        {intl.formatMessage(messages.open)}
+                      </Button>
+                    </div>
+                    {directAccount && (
+                      <div className='chat-native__selected-accounts'>
+                        <SelectedAccountCard
+                          account={directAccount}
+                          onRemove={handleRemoveDirectAccount}
+                        />
+                      </div>
+                    )}
+                  </form>
+                  {directAccountQuery.trim().length >= 2 && (
+                    <AccountSearchNotice status={accountSearchStatus.direct} />
+                  )}
+                  {accountResults.length > 0 && (
+                    <div className='chat-native__account-results'>
+                      {accountResults.map((account) => (
+                        <ChatAccountRow
                           key={account.id}
-                        >
-                          <AccountSummary account={account} />
-                          <button
-                            type='button'
-                            data-account-id={account.id}
-                            onClick={handleRemoveGroupAccount}
-                            aria-label={intl.formatMessage({
-                              id: 'chat.remove_account',
-                              defaultMessage: 'Remove selected account',
-                            })}
-                          >
-                            ×
-                          </button>
-                        </div>
+                          account={account}
+                          target={{
+                            kind: 'button',
+                            'data-account-id': account.id,
+                            onClick: handleAccountResult,
+                          }}
+                        />
                       ))}
                     </div>
                   )}
-                </form>
-                {groupAccountQuery.trim().length >= 2 && (
-                  <AccountSearchNotice status={accountSearchStatus} />
-                )}
-                {groupAccountResults.length > 0 && (
-                  <div className='chat-native__account-results'>
-                    {groupAccountResults.map((account) => (
-                      <button
-                        key={account.id}
-                        type='button'
-                        data-account-id={account.id}
-                        onClick={handleGroupAccountResult}
+                </>
+              ) : (
+                <>
+                  <form
+                    className='chat-native__new'
+                    onSubmit={handleGroupSubmit}
+                  >
+                    <div className='chat-native__form-row'>
+                      <TextInput
+                        name='search'
+                        autoComplete='off'
+                        value={groupTitle}
+                        onChange={handleGroupTitleChange}
+                        placeholder={intl.formatMessage(messages.groupTitle)}
+                      />
+                    </div>
+                    <div className='chat-native__form-row'>
+                      <TextInput
+                        name='search'
+                        autoComplete='off'
+                        value={groupAccountQuery}
+                        onChange={handleGroupAccountQueryChange}
+                        placeholder={intl.formatMessage(messages.accountSearch)}
+                      />
+                      <Button
+                        type='submit'
+                        disabled={loading || !groupTitle.trim()}
                       >
-                        <AccountSummary account={account} />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </section>
+                        {intl.formatMessage(messages.create)}
+                      </Button>
+                    </div>
+                    {groupAccounts.length > 0 && (
+                      <div className='chat-native__selected-accounts'>
+                        {groupAccounts.map((account) => (
+                          <SelectedAccountCard
+                            key={account.id}
+                            account={account}
+                            onRemove={handleRemoveGroupAccount}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </form>
+                  {groupAccountQuery.trim().length >= 2 && (
+                    <AccountSearchNotice status={accountSearchStatus.group} />
+                  )}
+                  {groupAccountResults.length > 0 && (
+                    <div className='chat-native__account-results'>
+                      {groupAccountResults.map((account) => (
+                        <ChatAccountRow
+                          key={account.id}
+                          account={account}
+                          target={{
+                            kind: 'button',
+                            'data-account-id': account.id,
+                            onClick: handleGroupAccountResult,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+          </>
         ) : (
           <>
             <nav
-              className='chat-native__tabs'
+              className='account__section-headline chat-native__tabs'
               aria-label={intl.formatMessage(messages.heading)}
             >
               {(
@@ -4605,11 +4760,13 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   aria-current={activeTab === tab ? 'page' : undefined}
                   onClick={handleTabChange}
                 >
-                  <Icon id={tab} icon={icon} />
-                  {intl.formatMessage(tabMessage)}
-                  {tab === 'invitations' && invitations.length > 0 && (
-                    <span>{invitations.length}</span>
-                  )}
+                  <span>{intl.formatMessage(tabMessage)}</span>
+                  <IconWithBadge
+                    id={tab}
+                    icon={icon}
+                    count={tab === 'invitations' ? invitations.length : 0}
+                    className=''
+                  />
                 </button>
               ))}
             </nav>
@@ -4625,7 +4782,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
               </section>
             )}
             {activeTab === 'invitations' && invitations.length === 0 && (
-              <div className='chat-native__empty'>
+              <div className='empty-column-indicator'>
                 <FormattedMessage
                   id='chat.no_invitations'
                   defaultMessage='You have no chat invitations.'
@@ -4640,8 +4797,8 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     role='search'
                     onSubmit={handleSearchSubmit}
                   >
-                    <Icon id='search' icon={SearchIcon} />
-                    <input
+                    <TextInput
+                      icon={SearchIcon}
                       ref={searchInputRef}
                       type='search'
                       name='search'
@@ -4654,7 +4811,7 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   </form>
                 </div>
                 {searchedQuery && searchResults.length === 0 && (
-                  <div className='chat-native__empty'>
+                  <div className='empty-column-indicator'>
                     <FormattedMessage
                       id='chat.search_no_results'
                       defaultMessage='No messages found.'
@@ -4664,18 +4821,22 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                 {searchResults.length > 0 && (
                   <div className='chat-native__search-results'>
                     {searchResults.map((result) => (
-                      <button
+                      <ChatAccountRow
                         key={result.id}
-                        type='button'
-                        data-conversation-id={result.conversation_id}
-                        data-message-id={result.id}
-                        onClick={handleSearchResult}
-                      >
-                        <AccountSummary
-                          account={result.account}
-                          detail={result.content ?? ''}
-                        />
-                      </button>
+                        account={result.account}
+                        target={{
+                          kind: 'button',
+                          'data-conversation-id': result.conversation_id,
+                          'data-message-id': result.id,
+                          onClick: handleSearchResult,
+                        }}
+                        details={
+                          <EmojiText
+                            text={result.content ?? ''}
+                            emojis={result.emojis}
+                          />
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -4687,14 +4848,48 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                   <button
                     key={item.id}
                     type='button'
-                    className={item.unread ? 'unread' : undefined}
+                    className={classNames(
+                      'conversation focusable chat-native__conversation',
+                      { unread: item.unread },
+                    )}
                     data-conversation-id={item.id}
                     onClick={handleOpenConversation}
                   >
-                    <ConversationPicture conversation={item} />
-                    <span className='chat-native__account-names'>
-                      <ConversationTitle conversation={item} />
-                      <span>
+                    <span className='conversation__avatar'>
+                      <ConversationPicture conversation={item} size={48} />
+                    </span>
+                    <span className='conversation__content'>
+                      <span className='conversation__content__info'>
+                        <span className='conversation__content__relative-time'>
+                          {item.unread && (
+                            <span
+                              className='conversation__unread'
+                              role='img'
+                              aria-label={intl.formatMessage(messages.unread)}
+                            />
+                          )}
+                          {item.last_message && (
+                            <RelativeTimestamp
+                              timestamp={item.last_message.created_at}
+                            />
+                          )}
+                        </span>
+                        <span className='conversation__content__names'>
+                          <ConversationTitle conversation={item} />
+                        </span>
+                      </span>
+                      <span className='chat-native__conversation-preview'>
+                        {item.archived && (
+                          <Badge
+                            variant='subtle'
+                            label={
+                              <FormattedMessage
+                                id='chat.archived_badge'
+                                defaultMessage='Archived'
+                              />
+                            }
+                          />
+                        )}
                         {item.last_message?.content && (
                           <EmojiText
                             text={item.last_message.content}
@@ -4703,20 +4898,6 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                         )}
                       </span>
                     </span>
-                    {item.archived && (
-                      <small className='chat-native__state-badge'>
-                        <FormattedMessage
-                          id='chat.archived_badge'
-                          defaultMessage='Archived'
-                        />
-                      </small>
-                    )}
-                    {item.unread && (
-                      <i
-                        role='img'
-                        aria-label={intl.formatMessage(messages.unread)}
-                      />
-                    )}
                   </button>
                 ))}
                 {nextConversationId && (
@@ -4725,21 +4906,23 @@ const ChatSession: React.FC<{ multiColumn?: boolean }> = ({ multiColumn }) => {
                     loading={loadingMore}
                   />
                 )}
-                {conversationsLoaded && visibleConversations.length === 0 && (
-                  <div className='chat-native__empty'>
-                    {activeTab === 'home' ? (
-                      <FormattedMessage
-                        id='chat.no_history'
-                        defaultMessage='You have no chat history yet.'
-                      />
-                    ) : (
-                      <FormattedMessage
-                        id='chat.no_rooms'
-                        defaultMessage='There are no groups here.'
-                      />
-                    )}
-                  </div>
-                )}
+                {conversationsLoaded &&
+                  !nextConversationId &&
+                  visibleConversations.length === 0 && (
+                    <div className='empty-column-indicator'>
+                      {activeTab === 'home' ? (
+                        <FormattedMessage
+                          id='chat.no_history'
+                          defaultMessage='You have no chat history yet.'
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id='chat.no_rooms'
+                          defaultMessage='There are no groups here.'
+                        />
+                      )}
+                    </div>
+                  )}
               </div>
             )}
           </>
