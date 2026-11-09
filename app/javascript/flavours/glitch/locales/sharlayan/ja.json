@@ -64,6 +64,7 @@
   "antennas.keywords_hint": "空のときはこの条件を無視します。",
   "antennas.new.title_placeholder": "新しいアンテナの名前",
   "antennas.no_antennas_yet": "まだアンテナがありません。",
+  "antennas.remove": "削除",
   "antennas.save": "変更を保存",
   "antennas.save_error": "変更を保存できませんでした。入力内容を確認してください。",
   "antennas.tags": "ハッシュタグ",

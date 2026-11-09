@@ -64,6 +64,7 @@
   "antennas.keywords_hint": "When empty, this condition is ignored.",
   "antennas.new.title_placeholder": "New antenna title",
   "antennas.no_antennas_yet": "No antennas yet.",
+  "antennas.remove": "Remove",
   "antennas.save": "Save changes",
   "antennas.save_error": "Could not save changes. Please check your input.",
   "antennas.tags": "Hashtags",

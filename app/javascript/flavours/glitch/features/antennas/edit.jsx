@@ -26,9 +26,11 @@ import { WithRouterPropTypes } from 'flavours/glitch/utils/react_router';
 const messages = defineMessages({
   heading: { id: 'column.antennas', defaultMessage: 'Antennas' },
   saveError: { id: 'antennas.save_error', defaultMessage: 'Could not save changes. Please check your input.' },
+  remove: { id: 'antennas.remove', defaultMessage: 'Remove' },
 });
 
 const ChipList = ({ label, items, getKey, getLabel, onAdd, onRemove, placeholder, children }) => {
+  const intl = useIntl();
   const [value, setValue] = useState('');
 
   const handleAdd = useCallback(e => {
@@ -50,7 +52,7 @@ const ChipList = ({ label, items, getKey, getLabel, onAdd, onRemove, placeholder
         {items.map(item => (
           <span key={getKey(item)} className='antenna-editor__chip'>
             {getLabel(item)}
-            <button type='button' onClick={() => { onRemove(item); }} aria-label='Remove'>×</button>
+            <button type='button' onClick={() => { onRemove(item); }} aria-label={intl.formatMessage(messages.remove)}>×</button>
           </span>
         ))}
       </div>

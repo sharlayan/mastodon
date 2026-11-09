@@ -78,12 +78,14 @@ const EditRoute = () => {
   return <AntennaEdit params={params} multiColumn />;
 };
 
-const renderEdit = (id) => {
+const ignoreIntlError = () => undefined;
+
+const renderEdit = (id, locale = 'en', messages = {}) => {
   const history = createMemoryHistory({ initialEntries: [`/antennas/${id}/edit`] });
 
   render(
     <Provider store={store}>
-      <IntlProvider locale='en'>
+      <IntlProvider locale={locale} messages={messages} onError={ignoreIntlError}>
         <Router history={history}>
           <Route path='/antennas/:id/edit' component={EditRoute} />
         </Router>
@@ -129,5 +131,12 @@ describe('AntennaEdit', () => {
       expect(store.getState().alerts.length).toBe(alertCount + 1);
     });
     expect(input.value).toBe('@typo@example.com');
+  });
+
+  it('labels the chip remove button with a translated message', async () => {
+    antennas['3'] = antennaJSON('3', { domains: ['example.com'] });
+    renderEdit('3', 'ko', { 'antennas.remove': '제거' });
+
+    expect(await screen.findByRole('button', { name: '제거' })).toBeTruthy();
   });
 });
