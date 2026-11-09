@@ -103,7 +103,10 @@ export const useDrive = () => {
         return loaded;
       })
       .catch((error: unknown) => {
-        if (!cancelled) onError(error);
+        if (cancelled) return;
+        setFiles([]);
+        setNext(undefined);
+        onError(error);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -138,6 +141,7 @@ export const useDrive = () => {
       if (folderId === currentFolderId && !orphanedOnly) return;
 
       setLoading(true);
+      setFiles([]);
       setNext(undefined);
       setOrphanedOnly(false);
       setCurrentFolderId(folderId);
@@ -147,6 +151,7 @@ export const useDrive = () => {
 
   const toggleOrphanedOnly = useCallback(() => {
     setLoading(true);
+    setFiles([]);
     setNext(undefined);
     setOrphanedOnly((prev) => !prev);
   }, []);
